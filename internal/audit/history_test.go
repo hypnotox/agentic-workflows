@@ -3,11 +3,14 @@ package audit
 import (
 	"context"
 	"errors"
+	"fmt"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
+	"unsafe"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -20,7 +23,746 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-// invariant: tooling/audit-and-snapshots:audit-history-operation-owned (TestHistoryOperationCollectsRangeOnceAndCachesStates)
+// Legacy focused assertions use these test-only adapters; production replay
+// always executes the single interleaved graph schedule through run.
+func (h *historyOperation) transitionFindings(ctx context.Context) ([]Finding, error) {
+	graph, err := newReplayGraph(ctx, h.commits)
+	if err != nil {
+		return nil, err
+	}
+	var findings []Finding
+	for _, commit := range graph.schedule {
+		step, err := h.replayTransition(ctx, commit)
+		if err != nil {
+			return nil, err
+		}
+		findings = append(findings, step...)
+	}
+	return findings, nil
+}
+
+func (h *historyOperation) staleMergeFindings(ctx context.Context) ([]Finding, error) {
+	graph, err := newReplayGraph(ctx, h.commits)
+	if err != nil {
+		return nil, err
+	}
+	var findings []Finding
+	for _, commit := range graph.schedule {
+		step, err := h.replayStale(ctx, commit)
+		if err != nil {
+			return nil, err
+		}
+		findings = append(findings, step...)
+	}
+	return findings, nil
+}
+
+func TestRevisionStoreTracksLogicalHeavyHighWater(t *testing.T) {
+	store := newRevisionStore()
+	first := &revisionEntry{result: revisionResult{state: fixedRevisionState(nil, false, currentstate.Universe{})}}
+	second := &revisionEntry{result: revisionResult{state: fixedRevisionState(nil, false, currentstate.Universe{})}}
+	store.retainHeavy(first)
+	store.retainHeavy(second)
+	store.releaseHeavy(first)
+	store.retainHeavy(first)
+	store.releaseHeavy(second)
+	store.releaseHeavy(first)
+	if store.currentHeavy != 0 || store.highWaterHeavy != 2 {
+		t.Fatalf("logical heavy entries current=%d high-water=%d, want 0 and 2", store.currentHeavy, store.highWaterHeavy)
+	}
+}
+
+func TestHistoryOperationReleasesAliasedHeavyStateAtFinalUse(t *testing.T) {
+	loads := map[string]int{}
+	parent := &revisionState{lockReady: true, configReady: true, config: &config.Config{DocsDir: "docs"}}
+	parent.loadUniverse = func() (currentstate.Universe, error) { return currentstate.Universe{}, nil }
+	op := newHistoryOperationFromCompact([]replayCommit{
+		{Hash: "child", Revision: "child", Parents: []string{"parent"}, Paths: []string{"internal/code.go"}},
+		{Hash: "parent", Revision: "parent"},
+	}, nil, 2, func(_ context.Context, revision string) (*revisionState, error) {
+		loads[revision]++
+		if revision != "parent" {
+			return nil, errors.New("unexpected distinct load " + revision)
+		}
+		return parent, nil
+	}, func(context.Context, string) ([]string, error) { return nil, nil }, func(context.Context) ([]Finding, error) { return nil, nil })
+	if _, err := op.run(testContext(t)); err != nil {
+		t.Fatal(err)
+	}
+	if loads["parent"] != 1 || loads["child"] != 0 {
+		t.Fatalf("light alias loads=%#v, want one parent load", loads)
+	}
+	if op.store.currentHeavy != 0 || op.store.highWaterHeavy != 1 || parent.loadUniverse != nil || parent.universe.Sources != nil || len(parent.universe.ADRs) != 0 || len(parent.universe.Topics) != 0 {
+		t.Fatalf("final release current=%d high-water=%d loader=%v universe=%#v", op.store.currentHeavy, op.store.highWaterHeavy, parent.loadUniverse != nil, parent.universe)
+	}
+}
+
+func TestHistoryOperationPreResolvesRecursiveAliasesAndFrontier(t *testing.T) {
+	commits := []replayCommit{
+		{Hash: "leaf", Revision: "zz-leaf", Parents: []string{"yy-middle"}, Paths: []string{"internal/leaf.go"}},
+		{Hash: "middle", Revision: "yy-middle", Parents: []string{"aa-parent"}, Paths: []string{"internal/middle.go"}},
+		{Hash: "sibling", Revision: "xx-sibling", Parents: []string{"aa-parent"}, Paths: []string{"internal/sibling.go"}},
+		{Hash: "relevant", Revision: "ww-relevant", Parents: []string{"aa-parent"}, Paths: []string{".awf/config.yaml"}},
+		{Hash: "parent", Revision: "aa-parent"},
+	}
+	lightLoads := map[string]int{}
+	heavyLoads := map[string]int{}
+	states := map[string]*revisionState{}
+	op := newHistoryOperationFromCompact(commits, nil, len(commits), func(_ context.Context, revision string) (*revisionState, error) {
+		lightLoads[revision]++
+		state := &revisionState{lockReady: true, configReady: true, config: &config.Config{DocsDir: "docs"}}
+		state.loadUniverse = func() (currentstate.Universe, error) {
+			heavyLoads[revision]++
+			return currentstate.Universe{}, nil
+		}
+		states[revision] = state
+		return state, nil
+	}, func(context.Context, string) ([]string, error) { return nil, nil }, func(context.Context) ([]Finding, error) { return nil, nil })
+	if findings, err := op.run(testContext(t)); err != nil || len(findings) != 0 {
+		t.Fatalf("recursive alias replay findings = %#v, error = %v", findings, err)
+	}
+	if lightLoads["aa-parent"] != 1 || lightLoads["ww-relevant"] != 1 || lightLoads["yy-middle"] != 0 || lightLoads["zz-leaf"] != 0 || lightLoads["xx-sibling"] != 0 {
+		t.Fatalf("recursive alias light loads = %#v", lightLoads)
+	}
+	if heavyLoads["aa-parent"] != 1 || heavyLoads["ww-relevant"] != 1 || len(heavyLoads) != 2 {
+		t.Fatalf("canonical heavy loads = %#v, want parent and relevant once", heavyLoads)
+	}
+	if op.store.currentHeavy != 0 || op.store.highWaterHeavy != 2 || len(op.store.keys) != 0 || len(op.store.entries) != 0 {
+		t.Fatalf("terminal ownership current=%d high-water=%d keys=%d entries=%d", op.store.currentHeavy, op.store.highWaterHeavy, len(op.store.keys), len(op.store.entries))
+	}
+	for revision, state := range states {
+		if state.loadUniverse != nil || state.config != nil || state.universeErr != nil {
+			t.Fatalf("revision %s retained controls or heavy outcome: %#v", revision, state)
+		}
+	}
+}
+
+func TestHistoryOperationAliasHistoryLengthKeepsTheSameHeavyFrontier(t *testing.T) {
+	for _, length := range []int{1, 32} {
+		t.Run(strconv.Itoa(length), func(t *testing.T) {
+			root := &revisionState{lockReady: true, configReady: true, config: &config.Config{DocsDir: "docs"}}
+			root.loadUniverse = func() (currentstate.Universe, error) { return currentstate.Universe{}, nil }
+			commits := make([]replayCommit, 0, length+1)
+			commits = append(commits, replayCommit{Hash: "root", Revision: "00-root"})
+			parent := "00-root"
+			for i := range length {
+				revision := fmt.Sprintf("%02d-alias", i+1)
+				commits = append(commits, replayCommit{Hash: revision, Revision: revision, Parents: []string{parent}, Paths: []string{"internal/code.go"}})
+				parent = revision
+			}
+			loads := 0
+			op := newHistoryOperationFromCompact(commits, nil, len(commits), func(_ context.Context, revision string) (*revisionState, error) {
+				loads++
+				if revision != "00-root" {
+					return nil, fmt.Errorf("unexpected distinct alias load %s", revision)
+				}
+				return root, nil
+			}, func(context.Context, string) ([]string, error) { return nil, nil }, func(context.Context) ([]Finding, error) { return nil, nil })
+			if _, err := op.run(testContext(t)); err != nil {
+				t.Fatal(err)
+			}
+			if loads != 1 || op.store.highWaterHeavy != 1 || op.store.currentHeavy != 0 {
+				t.Fatalf("alias length %d loads=%d high-water=%d current=%d, want 1, 1, 0", length, loads, op.store.highWaterHeavy, op.store.currentHeavy)
+			}
+		})
+	}
+}
+
+func TestHistoryOwnershipPlanningPropagatesNestedMergeCancellation(t *testing.T) {
+	boom := context.Canceled
+	for _, tc := range []struct {
+		name  string
+		outer replayCommit
+	}{
+		{"selected first parent", replayCommit{Hash: "outer", Revision: "outer", Parents: []string{"nested"}, Paths: []string{"internal/outer.go"}}},
+		{"selected incoming parent", replayCommit{Hash: "outer", Revision: "outer", IsMerge: true, Parents: []string{"outer-first", "nested"}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			commits := []replayCommit{
+				tc.outer,
+				{Hash: "nested", Revision: "nested", IsMerge: true, Parents: []string{"nested-first", "nested-incoming"}},
+			}
+			op := newHistoryOperationFromCompact(commits, nil, len(commits), func(context.Context, string) (*revisionState, error) {
+				return &revisionState{lockReady: true, configReady: true, config: &config.Config{DocsDir: "docs"}, universeReady: true}, nil
+			}, func(_ context.Context, revision string) ([]string, error) {
+				if revision == "nested" {
+					return nil, boom
+				}
+				return nil, nil
+			}, func(context.Context) ([]Finding, error) { return nil, nil })
+			graph, err := newReplayGraph(testContext(t), commits)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := op.planRevisionOwnership(testContext(t), graph.schedule); !errors.Is(err, boom) {
+				t.Fatalf("nested merge planning error = %v, want %v", err, boom)
+			}
+		})
+	}
+}
+
+func TestHistoryOwnershipPlanningStopsAfterAliasResolutionCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(testContext(t))
+	commits := []replayCommit{
+		{Hash: "leaf", Revision: "a-leaf", Parents: []string{"b-middle"}, Paths: []string{"internal/leaf.go"}},
+		{Hash: "middle", Revision: "b-middle", Parents: []string{"c-root"}, Paths: []string{"internal/middle.go"}},
+		{Hash: "root", Revision: "c-root"},
+		{Hash: "later", Revision: "z-later"},
+	}
+	loads := map[string]int{}
+	op := newHistoryOperationFromCompact(commits, nil, len(commits), func(_ context.Context, revision string) (*revisionState, error) {
+		loads[revision]++
+		if revision == "c-root" {
+			cancel()
+		}
+		return &revisionState{lockReady: true, configReady: true, config: &config.Config{DocsDir: "docs"}, universeReady: true}, nil
+	}, func(context.Context, string) ([]string, error) { return nil, nil }, func(context.Context) ([]Finding, error) { return nil, nil })
+	graph, err := newReplayGraph(testContext(t), commits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := op.planRevisionOwnership(ctx, graph.schedule); !errors.Is(err, context.Canceled) {
+		t.Fatalf("alias planning cancellation = %v, loads = %#v", err, loads)
+	}
+	if loads["z-later"] != 0 {
+		t.Fatalf("alias planning continued to later revision: loads = %#v", loads)
+	}
+}
+
+func TestHistoryOwnershipPlanningObservesEachCancellationCheckpoint(t *testing.T) {
+	commits := []replayCommit{{Hash: "child", Revision: "child", Parents: []string{"parent"}}}
+	run := func(ctx context.Context) error {
+		op := newHistoryOperationFromCompact(commits, nil, len(commits), func(context.Context, string) (*revisionState, error) {
+			return &revisionState{lockReady: true, configReady: true, config: &config.Config{DocsDir: "docs"}, universeReady: true}, nil
+		}, nil, func(context.Context) ([]Finding, error) { return nil, nil })
+		return op.planRevisionOwnership(ctx, commits)
+	}
+	baseline := &cancellationCheckpointContext{Context: testContext(t)}
+	if err := run(baseline); err != nil {
+		t.Fatal(err)
+	}
+	for cancelAt := 1; cancelAt <= baseline.checks; cancelAt++ {
+		ctx := &cancellationCheckpointContext{Context: testContext(t), cancelAt: cancelAt}
+		if err := run(ctx); !errors.Is(err, context.Canceled) {
+			t.Fatalf("ownership cancellation checkpoint %d/%d = %v", cancelAt, baseline.checks, err)
+		}
+	}
+}
+
+func TestHistoryOperationKeepsBoundaryRevisionsDistinct(t *testing.T) {
+	commits := []replayCommit{
+		{Hash: "left", Revision: "left", Parents: []string{"boundary-left"}, Paths: []string{"internal/left.go"}},
+		{Hash: "right", Revision: "right", Parents: []string{"boundary-right"}, Paths: []string{"internal/right.go"}},
+	}
+	loads := map[string]int{}
+	op := newHistoryOperationFromCompact(commits, nil, len(commits), func(_ context.Context, revision string) (*revisionState, error) {
+		loads[revision]++
+		state := &revisionState{lockReady: true, configReady: true, config: &config.Config{DocsDir: "docs"}}
+		state.loadUniverse = func() (currentstate.Universe, error) { return currentstate.Universe{}, nil }
+		return state, nil
+	}, func(context.Context, string) ([]string, error) { return nil, nil }, func(context.Context) ([]Finding, error) { return nil, nil })
+	if _, err := op.run(testContext(t)); err != nil {
+		t.Fatal(err)
+	}
+	if loads["boundary-left"] != 1 || loads["boundary-right"] != 1 || loads["left"] != 0 || loads["right"] != 0 {
+		t.Fatalf("boundary resolution loads = %#v", loads)
+	}
+	if op.store.highWaterHeavy != 1 || len(op.store.keys) != 0 || len(op.store.entries) != 0 {
+		t.Fatalf("boundary frontier high-water=%d keys=%d entries=%d", op.store.highWaterHeavy, len(op.store.keys), len(op.store.entries))
+	}
+}
+
+func TestHistoryOperationDischargesSkippedAndFailedConsumers(t *testing.T) {
+	t.Run("pre-schema merge", func(t *testing.T) {
+		commits := []replayCommit{{Hash: "merge", Revision: "result", IsMerge: true, Parents: []string{"first", "incoming"}}}
+		heavyLoads := map[string]int{}
+		op := newHistoryOperationFromCompact(commits, nil, 1, func(_ context.Context, revision string) (*revisionState, error) {
+			state := &revisionState{lockReady: true, lock: &manifest.Lock{SchemaVersion: 30}, lockFound: true, configReady: true, config: &config.Config{DocsDir: "docs"}}
+			state.loadUniverse = func() (currentstate.Universe, error) {
+				heavyLoads[revision]++
+				return currentstate.Universe{Sources: map[string][]byte{revision: []byte(revision)}}, nil
+			}
+			return state, nil
+		}, nil, func(context.Context) ([]Finding, error) { return nil, nil })
+		if err := op.planRevisionOwnership(testContext(t), commits); err != nil {
+			t.Fatal(err)
+		}
+		op.reserveConsumers(commits)
+		if _, err := op.replayStale(testContext(t), commits[0]); err != nil {
+			t.Fatal(err)
+		}
+		if op.store.keys["incoming"] != nil || op.store.keys["result"] == nil || op.store.keys["first"] == nil {
+			t.Fatalf("pre-schema stale discharge keys = %#v", op.store.keys)
+		}
+		for _, revision := range []string{"result", "first"} {
+			entry := op.store.keys[revision].entry
+			if entry.sourceUses != 0 || entry.universeUses != 1 || entry.lightUses != 1 {
+				t.Fatalf("pre-schema %s remaining uses = light %d source %d universe %d", revision, entry.lightUses, entry.sourceUses, entry.universeUses)
+			}
+		}
+		resultState, err := op.state(testContext(t), "result")
+		if err != nil {
+			t.Fatal(err)
+		}
+		resultUniverse, err := op.currentState("result", resultState)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resultUniverse.Sources != nil || resultState.universe.Sources != nil || !resultState.heavyLive {
+			t.Fatalf("post-stale materialization retained sources: returned=%#v state=%#v", resultUniverse.Sources, resultState.universe.Sources)
+		}
+		if _, err := op.replayTransition(testContext(t), commits[0]); err != nil {
+			t.Fatal(err)
+		}
+		if heavyLoads["result"] != 1 || heavyLoads["first"] != 1 || heavyLoads["incoming"] != 0 {
+			t.Fatalf("pre-schema heavy loads = %#v", heavyLoads)
+		}
+		if op.store.currentHeavy != 0 || len(op.store.keys) != 0 || len(op.store.entries) != 0 {
+			t.Fatalf("pre-schema replay retained ownership: current=%d keys=%d entries=%d", op.store.currentHeavy, len(op.store.keys), len(op.store.entries))
+		}
+	})
+
+	t.Run("cached heavy error", func(t *testing.T) {
+		boom := errors.New("heavy failure")
+		heavyLoads := 0
+		state := &revisionState{lockReady: true, configReady: true, config: &config.Config{DocsDir: "docs"}}
+		state.loadUniverse = func() (currentstate.Universe, error) { heavyLoads++; return currentstate.Universe{}, boom }
+		op := newHistoryOperationFromCompact([]replayCommit{{Hash: "ordinary", Revision: "ordinary"}}, nil, 1,
+			func(context.Context, string) (*revisionState, error) { return state, nil }, nil,
+			func(context.Context) ([]Finding, error) { return nil, nil })
+		if err := op.planRevisionOwnership(testContext(t), op.commits); err != nil {
+			t.Fatal(err)
+		}
+		op.reserveConsumers(op.commits)
+		findings, err := op.replayTransition(testContext(t), op.commits[0])
+		if err != nil || countRule(findings, currentStateTransitionRule, severity.Warn) != 1 {
+			t.Fatalf("heavy failure findings = %#v, error = %v", findings, err)
+		}
+		if heavyLoads != 1 || state.universeErr != nil || state.loadUniverse != nil || len(op.store.keys) != 0 || len(op.store.entries) != 0 {
+			t.Fatalf("heavy failure retained outcome: loads=%d state=%#v keys=%d entries=%d", heavyLoads, state, len(op.store.keys), len(op.store.entries))
+		}
+	})
+}
+
+func TestHistoryOperationReleasesSourcesBeforeUniverse(t *testing.T) {
+	source := []byte("historical ADR")
+	state := &revisionState{lockReady: true, lock: &manifest.Lock{SchemaVersion: 31}, lockFound: true}
+	state.loadUniverse = func() (currentstate.Universe, error) {
+		return currentstate.Universe{Sources: map[string][]byte{"0001": source}}, nil
+	}
+	commit := replayCommit{Hash: "merge", Revision: "result", IsMerge: true, Message: "Merge", Parents: []string{"first", "incoming"}}
+	op := newHistoryOperationFromCompact([]replayCommit{commit}, nil, 1, func(context.Context, string) (*revisionState, error) {
+		return nil, errors.New("planned canonical keys must avoid revision reloads")
+	}, nil, func(context.Context) ([]Finding, error) { return nil, nil })
+	entry := op.store.addDistinct(commit.Revision, revisionResult{state: state})
+	for _, parent := range commit.Parents {
+		op.store.addKey(parent, entry)
+	}
+	op.reserveConsumers([]replayCommit{commit})
+	if _, err := op.replayStale(testContext(t), commit); err != nil {
+		t.Fatal(err)
+	}
+	if state.universe.Sources != nil || !state.heavyLive || op.store.currentHeavy != 1 {
+		t.Fatalf("stale final use did not release only sources: state=%#v current=%d", state.universe, op.store.currentHeavy)
+	}
+	if _, err := op.replayTransition(testContext(t), commit); err != nil {
+		t.Fatal(err)
+	}
+	if state.heavyLive || op.store.currentHeavy != 0 || len(state.universe.Sources) != 0 {
+		t.Fatalf("transition final use did not release universe: state=%#v current=%d", state.universe, op.store.currentHeavy)
+	}
+}
+
+func TestHistoryOperationTracksHeterogeneousOctopusFrontier(t *testing.T) {
+	commit := replayCommit{Hash: "octopus", Revision: "result", IsMerge: true, Message: "Merge", Parents: []string{"first", "incoming-one", "incoming-two", "incoming-three"}}
+	states := map[string]*revisionState{}
+	op := newHistoryOperationFromCompact([]replayCommit{commit}, nil, 1, func(_ context.Context, revision string) (*revisionState, error) {
+		state := &revisionState{lockReady: true, lock: &manifest.Lock{SchemaVersion: 31}, lockFound: true, configReady: true, config: &config.Config{DocsDir: "docs"}}
+		state.loadUniverse = func() (currentstate.Universe, error) {
+			return currentstate.Universe{Sources: map[string][]byte{revision: []byte(revision)}}, nil
+		}
+		states[revision] = state
+		return state, nil
+	}, nil, func(context.Context) ([]Finding, error) { return nil, nil })
+	if err := op.planRevisionOwnership(testContext(t), []replayCommit{commit}); err != nil {
+		t.Fatal(err)
+	}
+	op.reserveConsumers([]replayCommit{commit})
+	if _, err := op.replayStale(testContext(t), commit); err != nil {
+		t.Fatal(err)
+	}
+	if op.store.currentHeavy != 2 || op.store.highWaterHeavy != 5 {
+		t.Fatalf("octopus stale frontier current=%d high-water=%d, want 2 and 5", op.store.currentHeavy, op.store.highWaterHeavy)
+	}
+	for _, revision := range []string{"result", "first"} {
+		state := states[revision]
+		if state.universe.Sources != nil || op.store.keys[revision] == nil {
+			t.Fatalf("octopus retained stale evidence for %s: state=%#v key=%v", revision, state, op.store.keys[revision] != nil)
+		}
+	}
+	for _, revision := range commit.Parents[1:] {
+		state := states[revision]
+		if op.store.keys[revision] != nil || state.loadUniverse != nil || state.universeErr != nil || state.config != nil {
+			t.Fatalf("octopus incoming %s retained ownership: state=%#v key=%v", revision, state, op.store.keys[revision] != nil)
+		}
+	}
+	if _, err := op.replayTransition(testContext(t), commit); err != nil {
+		t.Fatal(err)
+	}
+	if op.store.currentHeavy != 0 || len(op.store.keys) != 0 || len(op.store.entries) != 0 {
+		t.Fatalf("octopus terminal ownership current=%d keys=%d entries=%d", op.store.currentHeavy, len(op.store.keys), len(op.store.entries))
+	}
+}
+
+func TestStreamingProjectionDetachesRetainedSubjects(t *testing.T) {
+	message := "not conventional\n\n" + strings.Repeat("body", 4096)
+	subject := message[:len("not conventional")]
+	commit := awfgit.Commit{Hash: "deadbeef", Revision: strings.Repeat("d", 40), Subject: subject}
+	replay := compactReplayCommit(0, commit)
+	retainedFinding := finding(severity.Error, "test", commit, "detail")
+	if unsafe.StringData(replay.Subject) == unsafe.StringData(subject) {
+		t.Fatal("compact replay subject retains the rich message backing allocation")
+	}
+	if unsafe.StringData(retainedFinding.Subject) == unsafe.StringData(subject) {
+		t.Fatal("ordinary finding subject retains the rich message backing allocation")
+	}
+}
+
+type cancellationCheckpointContext struct {
+	context.Context
+	cancelAt int
+	checks   int
+}
+
+func (c *cancellationCheckpointContext) Err() error {
+	c.checks++
+	if c.cancelAt > 0 && c.checks >= c.cancelAt {
+		return context.Canceled
+	}
+	return nil
+}
+
+func TestReplayGraphObservesCancellationThroughoutConstruction(t *testing.T) {
+	commits := []replayCommit{
+		{Revision: "child", Parents: []string{"parent", "boundary"}},
+		{Revision: "parent"},
+	}
+	baseline := &cancellationCheckpointContext{Context: testContext(t)}
+	if _, err := newReplayGraph(baseline, commits); err != nil {
+		t.Fatal(err)
+	}
+	for cancelAt := 1; cancelAt <= baseline.checks; cancelAt++ {
+		ctx := &cancellationCheckpointContext{Context: testContext(t), cancelAt: cancelAt}
+		if _, err := newReplayGraph(ctx, commits); !errors.Is(err, context.Canceled) {
+			t.Fatalf("graph cancellation checkpoint %d/%d = %v", cancelAt, baseline.checks, err)
+		}
+	}
+}
+
+func TestReplayGraphSchedulesChildrenBeforeParentsDeterministically(t *testing.T) {
+	commits := []replayCommit{
+		{Revision: "merge", Parents: []string{"left", "right"}, IsMerge: true},
+		{Revision: "left", Parents: []string{"root"}},
+		{Revision: "right", Parents: []string{"root"}},
+		{Revision: "root", Parents: []string{"boundary"}},
+		{Revision: "isolated", Parents: []string{"boundary"}},
+	}
+	graph, err := newReplayGraph(testContext(t), commits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, commit := range graph.schedule {
+		got = append(got, commit.Revision)
+	}
+	if want := []string{"isolated", "merge", "left", "right", "root"}; !slices.Equal(got, want) {
+		t.Fatalf("schedule = %v, want %v", got, want)
+	}
+	if !graph.boundaries["boundary"] {
+		t.Fatalf("boundary parents = %#v", graph.boundaries)
+	}
+	for _, permuted := range replayPermutations(commits) {
+		permutedGraph, err := newReplayGraph(testContext(t), permuted)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var permutedSchedule []string
+		for _, commit := range permutedGraph.schedule {
+			permutedSchedule = append(permutedSchedule, commit.Revision)
+		}
+		if !slices.Equal(got, permutedSchedule) {
+			t.Fatalf("permuted schedule = %v, want %v", permutedSchedule, got)
+		}
+	}
+	octopusParents := []string{"first", "second", "third", "shared-boundary"}
+	octopusGraph, err := newReplayGraph(testContext(t), []replayCommit{
+		{Revision: "octopus", Parents: octopusParents, IsMerge: true},
+		{Revision: "first", Parents: []string{"shared-boundary"}},
+		{Revision: "second", Parents: []string{"shared-boundary"}},
+		{Revision: "third", Parents: []string{"shared-boundary"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(octopusGraph.schedule[0].Parents, octopusParents) || !octopusGraph.boundaries["shared-boundary"] {
+		t.Fatalf("octopus graph lost ordered parent roles or shared boundary: %#v", octopusGraph)
+	}
+	for _, invalid := range [][]replayCommit{
+		{{}},
+		{{Revision: "empty-parent", Parents: []string{""}}},
+		{{Revision: "same"}, {Revision: "same"}},
+		{{Revision: "self", Parents: []string{"self"}}},
+		{{Revision: "one", Parents: []string{"two"}}, {Revision: "two", Parents: []string{"one"}}},
+	} {
+		if _, err := newReplayGraph(testContext(t), invalid); err == nil {
+			t.Fatalf("invalid graph accepted: %#v", invalid)
+		}
+	}
+	op := newHistoryOperationFromCompact([]replayCommit{{Revision: "duplicate"}, {Revision: "duplicate"}}, nil, 2,
+		func(context.Context, string) (*revisionState, error) {
+			t.Fatal("invalid graph loaded a revision")
+			return fixedRevisionState(nil, false, currentstate.Universe{}), nil
+		}, nil,
+		func(context.Context) ([]Finding, error) {
+			t.Fatal("invalid graph ran live evaluation")
+			return []Finding{}, nil
+		})
+	if _, err := op.run(testContext(t)); err == nil {
+		t.Fatal("run accepted an invalid graph")
+	}
+}
+
+func replayPermutations(commits []replayCommit) [][]replayCommit {
+	working := slices.Clone(commits)
+	var permutations [][]replayCommit
+	var generate func(int)
+	generate = func(index int) {
+		if index == len(working) {
+			permutations = append(permutations, slices.Clone(working))
+			return
+		}
+		for candidate := index; candidate < len(working); candidate++ {
+			working[index], working[candidate] = working[candidate], working[index]
+			generate(index + 1)
+			working[index], working[candidate] = working[candidate], working[index]
+		}
+	}
+	generate(0)
+	return permutations
+}
+
+func TestHistoryOperationPreservesStreamFindingOrderAcrossGraphReplay(t *testing.T) {
+	ordinary := Finding{Severity: severity.Warn, Rule: "ordinary"}
+	liveFinding := Finding{Severity: severity.Error, Rule: "live"}
+	t.Run("stale merge findings", func(t *testing.T) {
+		commits := []replayCommit{
+			{Ordinal: 0, Hash: "stream-first", Revision: "z-result", IsMerge: true, Message: "Merge\n\nAWF-Allow-Version: bad", Parents: []string{"z-first", "z-incoming"}},
+			{Ordinal: 1, Hash: "stream-second", Revision: "a-result", IsMerge: true, Message: "Merge\n\nAWF-Allow-Version: bad", Parents: []string{"a-first", "a-incoming"}},
+		}
+		op := newHistoryOperationFromCompact(commits, []Finding{ordinary}, len(commits), func(context.Context, string) (*revisionState, error) {
+			return fixedRevisionState(&manifest.Lock{SchemaVersion: 31}, true, currentstate.Universe{}), nil
+		}, nil, func(context.Context) ([]Finding, error) { return []Finding{liveFinding}, nil })
+		findings, err := op.run(testContext(t))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := []string{findings[1].Commit, findings[2].Commit}; !slices.Equal(got, []string{"stream-first", "stream-second"}) {
+			t.Fatalf("stale finding commits = %v, want stream order; findings=%#v", got, findings)
+		}
+		if got := []string{findings[0].Rule, findings[3].Rule}; !slices.Equal(got, []string{"ordinary", "live"}) {
+			t.Fatalf("external finding groups = %v; findings=%#v", got, findings)
+		}
+	})
+
+	t.Run("transition warnings", func(t *testing.T) {
+		commits := []replayCommit{
+			{Ordinal: 0, Hash: "stream-first", Revision: "z-result"},
+			{Ordinal: 1, Hash: "stream-second", Revision: "a-result"},
+		}
+		op := newHistoryOperationFromCompact(commits, []Finding{ordinary}, len(commits), func(_ context.Context, revision string) (*revisionState, error) {
+			return nil, errors.New("cannot load " + revision)
+		}, nil, func(context.Context) ([]Finding, error) { return []Finding{liveFinding}, nil })
+		findings, err := op.run(testContext(t))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := []string{findings[2].Commit, findings[3].Commit}; !slices.Equal(got, []string{"stream-first", "stream-second"}) {
+			t.Fatalf("transition finding commits = %v, want stream order; findings=%#v", got, findings)
+		}
+		if got := []string{findings[0].Rule, findings[1].Rule}; !slices.Equal(got, []string{"ordinary", "live"}) {
+			t.Fatalf("external finding groups = %v; findings=%#v", got, findings)
+		}
+	})
+}
+
+func TestHistoryOperationConsumesOrderedOctopusParents(t *testing.T) {
+	commits := []replayCommit{{
+		Hash:     "octopus",
+		Revision: "result",
+		IsMerge:  true,
+		Parents:  []string{"first", "incoming-one", "incoming-two", "incoming-three"},
+	}}
+	var loads []string
+	op := newHistoryOperationFromCompact(commits, nil, 1, func(_ context.Context, revision string) (*revisionState, error) {
+		loads = append(loads, revision)
+		return fixedRevisionState(&manifest.Lock{SchemaVersion: 31}, true, currentstate.Universe{}), nil
+	}, nil, func(context.Context) ([]Finding, error) { return nil, nil })
+	if findings, err := op.run(testContext(t)); err != nil || len(findings) != 0 {
+		t.Fatalf("octopus replay findings = %#v, error = %v", findings, err)
+	}
+	if want := []string{"result", "first", "incoming-one", "incoming-two", "incoming-three"}; !slices.Equal(loads, want) {
+		t.Fatalf("octopus revision loads = %v, want ordered roles %v", loads, want)
+	}
+}
+
+func TestHistoryOperationUsesGraphOrderForCoexistingFatalFailures(t *testing.T) {
+	graphFirst := errors.New("graph-first failure")
+	streamFirst := errors.New("stream-first failure")
+	var loads []string
+	op := newHistoryOperationFromCompact([]replayCommit{
+		{Ordinal: 0, Hash: "stream-first", Revision: "z-result", IsMerge: true},
+		{Ordinal: 1, Hash: "graph-first", Revision: "a-result", IsMerge: true},
+	}, nil, 2, func(_ context.Context, revision string) (*revisionState, error) {
+		loads = append(loads, revision)
+		if revision == "a-result" {
+			return nil, graphFirst
+		}
+		return nil, streamFirst
+	}, nil, func(context.Context) ([]Finding, error) {
+		t.Fatal("fatal replay ran live evaluation")
+		return nil, nil
+	})
+	if _, err := op.run(testContext(t)); !errors.Is(err, graphFirst) || errors.Is(err, streamFirst) {
+		t.Fatalf("coexisting fatal error = %v, want graph-first identity", err)
+	}
+	if !slices.Equal(loads, []string{"a-result", "z-result"}) {
+		t.Fatalf("light planning loads = %v, want deterministic graph order", loads)
+	}
+}
+
+func TestHistoryOperationChecksCancellationBetweenCachedConsumers(t *testing.T) {
+	t.Run("between stale and transition", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(testContext(t))
+		state := &revisionState{
+			loadLock: func() (*manifest.Lock, bool, error) {
+				cancel()
+				return &manifest.Lock{SchemaVersion: 30}, true, nil
+			},
+			universeReady: true,
+		}
+		liveCalls := 0
+		op := newHistoryOperationFromCompact([]replayCommit{{Hash: "merge", Revision: "merge", IsMerge: true}}, nil, 1,
+			func(context.Context, string) (*revisionState, error) { return state, nil }, nil,
+			func(context.Context) ([]Finding, error) { liveCalls++; return nil, nil })
+		if _, err := op.run(ctx); !errors.Is(err, context.Canceled) || liveCalls != 0 {
+			t.Fatalf("between-consumer cancellation = %v, live calls=%d", err, liveCalls)
+		}
+	})
+
+	t.Run("before live evaluation", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(testContext(t))
+		state := fixedRevisionState(nil, false, currentstate.Universe{})
+		state.loadUniverse = func() (currentstate.Universe, error) {
+			cancel()
+			return currentstate.Universe{}, nil
+		}
+		state.universeReady = false
+		op := newHistoryOperationFromCompact([]replayCommit{{Hash: "only", Revision: "only"}}, nil, 1,
+			func(context.Context, string) (*revisionState, error) { return state, nil }, nil,
+			func(context.Context) ([]Finding, error) {
+				t.Fatal("canceled replay ran live evaluation")
+				return nil, nil
+			})
+		if _, err := op.run(ctx); !errors.Is(err, context.Canceled) {
+			t.Fatalf("pre-live cancellation = %v", err)
+		}
+	})
+
+	t.Run("between scheduled commits", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(testContext(t))
+		loads := map[string]int{}
+		heavyLoads := map[string]int{}
+		op := newHistoryOperationFromCompact([]replayCommit{
+			{Hash: "first", Revision: "a", Ordinal: 1},
+			{Hash: "later", Revision: "b", Ordinal: 0},
+		}, nil, 2, func(_ context.Context, revision string) (*revisionState, error) {
+			loads[revision]++
+			state := fixedRevisionState(nil, false, currentstate.Universe{})
+			state.loadUniverse = func() (currentstate.Universe, error) {
+				heavyLoads[revision]++
+				if revision == "a" {
+					cancel()
+				}
+				return currentstate.Universe{}, nil
+			}
+			state.universeReady = false
+			return state, nil
+		}, nil, func(context.Context) ([]Finding, error) {
+			t.Fatal("canceled replay ran live evaluation")
+			return nil, nil
+		})
+		if _, err := op.run(ctx); !errors.Is(err, context.Canceled) || loads["b"] != 1 || heavyLoads["b"] != 0 {
+			t.Fatalf("scheduled cancellation = %v, light=%#v heavy=%#v", err, loads, heavyLoads)
+		}
+	})
+}
+
+func TestStreamingHistoryOperationReportsMalformedMergeAuthorization(t *testing.T) {
+	state := fixedRevisionState(&manifest.Lock{SchemaVersion: 31}, true, currentstate.Universe{})
+	op := newHistoryOperationFromCompact([]replayCommit{{Hash: "merge", Revision: "merge", IsMerge: true, Message: "Merge\n\nAWF-Allow-Version: bad", Parents: []string{"first", "incoming"}}}, nil, 1, func(context.Context, string) (*revisionState, error) { return state, nil }, nil, func(context.Context) ([]Finding, error) { return nil, nil })
+	findings, err := op.staleMergeFindings(testContext(t))
+	if err != nil || countRule(findings, "stale-merge-authorization", severity.Error) != 1 {
+		t.Fatalf("malformed merge findings = %#v, %v", findings, err)
+	}
+}
+
+func TestStreamingHistoryOperationProjectsCompactReplayEvidence(t *testing.T) {
+	commit := awfgit.Commit{Hash: "short", Revision: "full", Subject: "feat(awf): stream", Message: "full message", Changes: []awfgit.FileChange{{OldPath: "z.md", Path: "a.md", OldText: "large before", NewText: "large after", Added: 9, Deleted: 8}}}
+	walks := 0
+	op, err := newStreamingHistoryOperation(testContext(t), "base", "head", Inputs{}, func(_ context.Context, base, head string, visit func(awfgit.Commit) error) (int, error) {
+		walks++
+		if base != "base" || head != "head" {
+			t.Fatalf("range = %q..%q", base, head)
+		}
+		if err := visit(commit); err != nil {
+			return 0, err
+		}
+		return 1, nil
+	}, func(context.Context, string) (*revisionState, error) {
+		return fixedRevisionState(nil, false, currentstate.Universe{}), nil
+	}, nil, func(context.Context) ([]Finding, error) { return nil, nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if walks != 1 || op.visited != 1 || len(op.commits) != 1 {
+		t.Fatalf("walks=%d visited=%d commits=%#v", walks, op.visited, op.commits)
+	}
+	record := op.commits[0]
+	if record.Message != "" || !slices.Equal(record.Paths, []string{"a.md", "z.md"}) || record.Subject != commit.Subject || record.Revision != commit.Revision {
+		t.Fatalf("compact record = %#v", record)
+	}
+}
+
+type testRangeCollector func(context.Context, string, string) ([]awfgit.Commit, error)
+
+func newHistoryOperation(ctx context.Context, base, head string, _ Inputs, collect testRangeCollector, load revisionLoader, _ firstParentPaths, live liveEvaluator) (*historyOperation, error) {
+	commits, err := collect(ctx, base, head)
+	if err != nil {
+		return nil, fmt.Errorf("collect audit range: %w", err)
+	}
+	return newHistoryOperationWithRelevance(commits, Inputs{}, load, nil, live), nil
+}
+
+func newHistoryOperationWithRelevance(commits []awfgit.Commit, _ Inputs, load revisionLoader, paths firstParentPaths, live liveEvaluator) *historyOperation {
+	evaluator := newRangeEvaluator(Inputs{})
+	compact := make([]replayCommit, 0, len(commits))
+	for i, commit := range commits {
+		evaluator.observe(commit)
+		compact = append(compact, compactReplayCommit(i, commit))
+	}
+	return newHistoryOperationFromCompact(compact, evaluator.findings(), len(compact), load, paths, live)
+}
+
 func TestHistoryOperationCollectsRangeOnceAndCachesStates(t *testing.T) {
 	ctx := testContext(t)
 	commits := []awfgit.Commit{{Hash: "child", Revision: "child-revision", Subject: "feat(awf): child", Parents: []string{"outside-revision"}}}
@@ -353,8 +1095,8 @@ func TestAuditPropagatesHistoricalCancellation(t *testing.T) {
 					return nil, nil
 				})
 			findings, err := op.run(testContext(t))
-			if _, cachedErr := op.state(testContext(t), "shared"); !errors.Is(cachedErr, termination) {
-				t.Fatalf("cached termination = %v", cachedErr)
+			if len(op.store.keys) != 0 || len(op.store.entries) != 0 {
+				t.Fatalf("terminated operation retained revision ownership: keys=%d entries=%d", len(op.store.keys), len(op.store.entries))
 			}
 			return findings, events, err
 		},
@@ -498,7 +1240,7 @@ func TestAuditPropagatesHistoricalCancellation(t *testing.T) {
 				ctx, cancel := context.WithCancel(testContext(t))
 				defer cancel()
 				var events []string
-				_, err := loadSelectedRevision(ctx, t.TempDir(), "revision",
+				state, err := loadSelectedRevision(ctx, t.TempDir(), "revision",
 					func(context.Context, string) ([]awfgit.TreeEntry, error) {
 						events = append(events, "enumerate")
 						return []awfgit.TreeEntry{{Path: ".awf/config.yaml", Mode: awfgit.BlobRegular}}, nil
@@ -510,6 +1252,9 @@ func TestAuditPropagatesHistoricalCancellation(t *testing.T) {
 						}
 						return []awfgit.IndexBlob{{Path: ".awf/config.yaml", Mode: awfgit.BlobRegular, Bytes: []byte("prefix: test\nintegrationBranch: main\n")}}, nil
 					})
+				if err == nil {
+					_, err = state.currentState()
+				}
 				wantEvents := []string{"enumerate", "selected blob read"}
 				if cancelAfterRead == 2 {
 					wantEvents = append(wantEvents, "selected blob read")
@@ -539,6 +1284,21 @@ func TestAuditPropagatesHistoricalCancellation(t *testing.T) {
 	})
 }
 
+func TestLoadSelectedRevisionStopsAfterCanceledEnumeration(t *testing.T) {
+	ctx, cancel := context.WithCancel(testContext(t))
+	blobReads := 0
+	_, err := loadSelectedRevision(ctx, t.TempDir(), "revision", func(context.Context, string) ([]awfgit.TreeEntry, error) {
+		cancel()
+		return []awfgit.TreeEntry{{Path: ".awf/config.yaml", Mode: awfgit.BlobRegular}}, nil
+	}, func(context.Context, string, []string) ([]awfgit.IndexBlob, error) {
+		blobReads++
+		return nil, nil
+	})
+	if !errors.Is(err, context.Canceled) || blobReads != 0 {
+		t.Fatalf("canceled enumeration error=%v blob reads=%d", err, blobReads)
+	}
+}
+
 func TestLoadCompleteRevisionPropagatesCommittedTreeFailure(t *testing.T) {
 	repo, _ := staleAuditRepo(t, 31)
 	handle, _, err := awfgit.OpenContaining(repo.Root())
@@ -552,8 +1312,33 @@ func TestLoadCompleteRevisionPropagatesCommittedTreeFailure(t *testing.T) {
 	}
 }
 
-// invariant: tooling/audit-and-snapshots:audit-history-operation-owned (TestHistoryOperationSharesStatesAcrossTransitionAndStaleReplay)
-func TestHistoryOperationSharesStatesAcrossTransitionAndStaleReplay(t *testing.T) {
+func retainedType(candidate, target reflect.Type, seen map[reflect.Type]bool) bool {
+	if candidate == target {
+		return true
+	}
+	if seen[candidate] {
+		return false
+	}
+	seen[candidate] = true
+	switch candidate.Kind() {
+	case reflect.Pointer, reflect.Slice, reflect.Array:
+		return retainedType(candidate.Elem(), target, seen)
+	case reflect.Map:
+		return retainedType(candidate.Key(), target, seen) || retainedType(candidate.Elem(), target, seen)
+	case reflect.Struct:
+		for i := range candidate.NumField() {
+			if retainedType(candidate.Field(i).Type, target, seen) {
+				return true
+			}
+		}
+	default:
+		return false
+	}
+	return false
+}
+
+// invariant: tooling/audit-and-snapshots:audit-history-operation-owned (TestHistoryOperationStreamsAndReleasesFinalConsumers)
+func TestHistoryOperationStreamsAndReleasesFinalConsumers(t *testing.T) {
 	ctx := testContext(t)
 	source := []byte(staleADR(adr.CurrentStateV1, "0001"))
 	record, err := adr.ParseRecord("0001-old.md", source)
@@ -569,8 +1354,21 @@ func TestHistoryOperationSharesStatesAcrossTransitionAndStaleReplay(t *testing.T
 		"first":    fixedRevisionState(&manifest.Lock{SchemaVersion: 31}, true, first),
 		"incoming": fixedRevisionState(&manifest.Lock{SchemaVersion: 31}, true, withRecord),
 	}
+	states["first"].configReady = true
+	states["first"].config = &config.Config{DocsDir: "docs"}
+	heavyLoads := map[string]int{}
+	for revision, state := range states {
+		revision, universe := revision, state.universe
+		state.universe = currentstate.Universe{}
+		state.universeReady = false
+		state.loadUniverse = func() (currentstate.Universe, error) {
+			heavyLoads[revision]++
+			return universe, nil
+		}
+	}
 	commits := []awfgit.Commit{
 		{Hash: "pure", Revision: "ordinary", Subject: "not conventional"},
+		{Hash: "alias", Revision: "irrelevant", Subject: "feat(awf): irrelevant", Parents: []string{"first"}, Changes: []awfgit.FileChange{{Path: "internal/code.go"}}},
 		{Hash: "merge", Revision: "result", Subject: "Merge feature", Message: "Merge feature", Parents: []string{"first", "incoming"}, IsMerge: true},
 	}
 	loads := map[string]int{}
@@ -582,37 +1380,119 @@ func TestHistoryOperationSharesStatesAcrossTransitionAndStaleReplay(t *testing.T
 		}
 		return state, nil
 	}
-	liveCalls := 0
-	op, err := newHistoryOperation(ctx, "base", "head", Inputs{},
-		func(context.Context, string, string) ([]awfgit.Commit, error) { return commits, nil },
+	liveCalls, walks := 0, 0
+	op, err := newStreamingHistoryOperation(ctx, "base", "head", Inputs{},
+		func(_ context.Context, base, head string, visit func(awfgit.Commit) error) (int, error) {
+			walks++
+			if base != "base" || head != "head" {
+				t.Fatalf("stream range = %q..%q", base, head)
+			}
+			for _, commit := range commits {
+				if err := visit(commit); err != nil {
+					return 0, err
+				}
+			}
+			return len(commits), nil
+		},
 		load,
-		nil,
+		func(context.Context, string) ([]string, error) { return []string{".awf/config.yaml"}, nil },
 		func(context.Context) ([]Finding, error) {
 			liveCalls++
+			if states["result"].universe.Sources != nil {
+				t.Fatal("merge result source evidence survived its final stale consumer")
+			}
+			if states["result"].universe.ADRs != nil || states["result"].universe.Topics != nil {
+				t.Fatal("merge result universe survived its final heavy consumer")
+			}
 			return []Finding{{Severity: severity.Error, Rule: "live-cleanliness"}}, nil
 		})
 	if err != nil {
 		t.Fatal(err)
 	}
+	if retainedType(reflect.TypeOf(*op), reflect.TypeOf(awfgit.Commit{}), map[reflect.Type]bool{}) {
+		t.Fatal("streaming history operation retains the rich Git commit representation")
+	}
+	for i, record := range op.commits {
+		if unsafe.StringData(record.Subject) == unsafe.StringData(commits[i].Subject) {
+			t.Fatalf("compact record %d retains rich subject backing storage", i)
+		}
+	}
 	findings, err := op.run(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	gotRules := make([]string, len(findings))
-	for i, finding := range findings {
-		gotRules[i] = finding.Rule
+	wantFindings := []Finding{
+		{Severity: severity.Error, Rule: "conventional-commits", Commit: "pure", Subject: "not conventional", Detail: "subject is not Conventional Commits (type(scope)?: subject)"},
+		{Severity: severity.Error, Rule: "stale-merge-authorization", Commit: "merge", Subject: "Merge feature", Detail: "missing authorization version current-state-v1 for ADR-0001"},
+		{Severity: severity.Error, Rule: "live-cleanliness"},
+		{Severity: severity.Error, Rule: currentStateTransitionRule, Commit: "alias", Subject: "feat(awf): irrelevant", Detail: "claim alpha/one:owned cites pending ADR-legacy which is not in the corpus"},
+		{Severity: severity.Error, Rule: currentStateTransitionRule, Commit: "merge", Subject: "Merge feature", Detail: "claim alpha/one:owned was removed with no ADR remove operation in this transition"},
 	}
-	want := "conventional-commits,stale-merge-authorization,live-cleanliness,current-state-transition"
-	if got := strings.Join(gotRules, ","); got != want {
-		t.Fatalf("finding order = %s, want %s; findings=%#v", got, want, findings)
+	if !slices.Equal(findings, wantFindings) {
+		t.Fatalf("grouped findings = %#v, want %#v", findings, wantFindings)
 	}
 	for revision := range states {
-		if loads[revision] != 1 {
-			t.Fatalf("loads[%s] = %d, want 1", revision, loads[revision])
+		if loads[revision] != 1 || heavyLoads[revision] != 1 {
+			t.Fatalf("revision %s derivations = light %d heavy %d, want 1 and 1", revision, loads[revision], heavyLoads[revision])
 		}
+	}
+	if loads["irrelevant"] != 0 {
+		t.Fatalf("irrelevant alias loaded a distinct state: %#v", loads)
+	}
+	if walks != 1 || op.visited != len(commits) {
+		t.Fatalf("stream ownership walks=%d visited=%d, want 1 and %d", walks, op.visited, len(commits))
+	}
+	if op.store.currentHeavy != 0 || op.store.highWaterHeavy != 3 || len(op.store.keys) != 0 || len(op.store.entries) != 0 {
+		t.Fatalf("terminal heavy ownership current=%d high-water=%d keys=%d entries=%d", op.store.currentHeavy, op.store.highWaterHeavy, len(op.store.keys), len(op.store.entries))
 	}
 	if liveCalls != 1 {
 		t.Fatalf("live calls = %d, want 1", liveCalls)
+	}
+
+	cachedBoom := errors.New("cached load failure")
+	errorLoads := 0
+	errorCommit := replayCommit{Hash: "cached-error", Revision: "cached-error", Subject: "feat(awf): cached error"}
+	newErrorOperation := func() *historyOperation {
+		return newHistoryOperationFromCompact([]replayCommit{errorCommit}, nil, 1, func(context.Context, string) (*revisionState, error) {
+			errorLoads++
+			return nil, cachedBoom
+		}, nil, func(context.Context) ([]Finding, error) { return nil, nil })
+	}
+	errorOp := newErrorOperation()
+	graph, err := newReplayGraph(ctx, errorOp.commits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := errorOp.planRevisionOwnership(ctx, graph.schedule); err != nil {
+		t.Fatal(err)
+	}
+	errorOp.reserveConsumers(graph.schedule)
+	for attempt := range 2 {
+		if _, err := errorOp.state(ctx, errorCommit.Revision); !errors.Is(err, cachedBoom) {
+			t.Fatalf("cached error attempt %d identity = %v, want exact %v", attempt+1, err, cachedBoom)
+		}
+	}
+	errorFindings, err := errorOp.replayTransition(ctx, errorCommit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantErrorFindings := []Finding{{
+		Severity: severity.Warn,
+		Rule:     currentStateTransitionRule,
+		Commit:   errorCommit.Hash,
+		Subject:  errorCommit.Subject,
+		Detail:   "could not load the current-state universes for this commit: " + cachedBoom.Error(),
+	}}
+	if !slices.Equal(errorFindings, wantErrorFindings) || errorLoads != 1 || len(errorOp.store.keys) != 0 || len(errorOp.store.entries) != 0 {
+		t.Fatalf("cached error outcome findings=%#v loads=%d keys=%d entries=%d", errorFindings, errorLoads, len(errorOp.store.keys), len(errorOp.store.entries))
+	}
+	freshOp := newErrorOperation()
+	freshFindings, err := freshOp.run(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(freshFindings, wantErrorFindings) || errorLoads != 2 || len(freshOp.store.keys) != 0 || len(freshOp.store.entries) != 0 || &freshOp.store == &errorOp.store {
+		t.Fatalf("separate invocation reused cached operation state: findings=%#v loads=%d", freshFindings, errorLoads)
 	}
 }
 
@@ -872,7 +1752,7 @@ func TestHistoricalStateUsesPolicyProjectionAndReusesIrrelevantCommits(t *testin
 		}
 	}
 	op := newHistoryOperationWithRelevance(commits, Inputs{}, load, firstParentPaths, func(context.Context) ([]Finding, error) { return nil, nil })
-	for _, commit := range commits {
+	for _, commit := range op.commits {
 		if _, err := op.stateForCommit(ctx, commit); err != nil {
 			t.Fatalf("state for %s: %v", commit.Revision, err)
 		}
@@ -987,6 +1867,10 @@ func TestHistoricalStateSelectsOnlyAuthorityBlobs(t *testing.T) {
 				if stateErr == nil {
 					t.Fatal("symlink authority was accepted")
 				}
+				lock, found, lockErr := state.lockEvidence()
+				if lockErr != nil || !found || lock == nil || lock.SchemaVersion != 31 {
+					t.Fatalf("symlink config lost safe lock evidence: lock=%#v found=%v err=%v", lock, found, lockErr)
+				}
 				if !slices.EqualFunc(reads, tc.wantReads, slices.Equal[[]string]) {
 					t.Fatalf("selected reads before symlink error = %#v, want %#v", reads, tc.wantReads)
 				}
@@ -1022,8 +1906,8 @@ func TestHistoricalStateSelectsOnlyAuthorityBlobs(t *testing.T) {
 	if _, err := op.stateForCommit(testContext(t), op.commits[1]); err != nil {
 		t.Fatal(err)
 	}
-	if entries != 1 || reads != 5 {
-		t.Fatalf("irrelevant commit did not reuse derived state: entry reads=%d blob reads=%d, want 1 and 5", entries, reads)
+	if entries != 1 || reads != 2 {
+		t.Fatalf("irrelevant commit did not reuse light controls: entry reads=%d blob reads=%d, want 1 and 2", entries, reads)
 	}
 }
 
@@ -1101,7 +1985,8 @@ func TestLoadSelectedRevisionRejectsIncompleteOrUnscannableEvidence(t *testing.T
 		})
 	}
 
-	state := revisionStateWithConfigError(errors.New("config is a symlink"))
+	configErr := errors.New("config is a symlink")
+	state := &revisionState{configReady: true, configErr: configErr, universeReady: true, universeErr: configErr}
 	if _, err := state.currentState(); err == nil {
 		t.Fatal("configuration error did not prevent current-state loading")
 	}
@@ -1112,7 +1997,11 @@ func TestLoadSelectedRevisionRejectsIncompleteOrUnscannableEvidence(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := revisionStateFromControls(t.TempDir(), controls).currentState(); err == nil {
+	lock, found, lockErr := auditLockFromSelection(controls)
+	if lockErr == nil {
+		t.Fatal("malformed lock was accepted")
+	}
+	if _, err := revisionStateFromControlOutcome(lock, found, lockErr, lockErr).currentState(); err == nil {
 		t.Fatal("malformed lock did not prevent current-state loading")
 	}
 }

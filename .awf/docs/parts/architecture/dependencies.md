@@ -10,10 +10,12 @@
   control-root resolution, refs and worktree topology, and working-tree truth. Both are backends
   of `internal/git` and nothing else: no other production package may import the library or
   construct a git subprocess, and `internal/testsupport/gitfixture` is the single exception on
-  the test side, which the zero-internal-deps rule forces rather than permits. Historical audit
-  enumerates committed path and mode metadata through this seam without reading blobs, then reads
-  only its exact configuration, schema, ADR, and topic authority selection and caches the resulting
-  state only for its invocation. Exact selected reads reject unsafe, duplicate, missing, outside-root,
+  the test side, which the zero-internal-deps rule forces rather than permits. The seam walks audit
+  ranges through one rich-commit visitor without audit policy. Historical audit enumerates committed
+  path and mode metadata through this seam without reading blobs, then its light load reads only
+  configuration and schema controls. A one-shot heavy loader reads the exact ADR and topic authority
+  selection at first use, releases its captured selection immediately, and the audit-owned alias-aware
+  store releases sources and parsed universes at their separately counted final consumers. Exact selected reads reject unsafe, duplicate, missing, outside-root,
   and unsupported paths. First-parent changed paths are separate merge relevance evidence and never
   populate ordinary commit changes; current and staged checks retain complete snapshots and their full
   marker, coverage, and domain-sidecar projection.
@@ -36,3 +38,5 @@
 `internal/manifest` owns schema-sensitive lock decoding, while `internal/migrate` owns generation-31 removal of retired ADR routing payload.
 
 - The generated context-usage extension uses the same pinned Pi runtime floor as handoff and subagents, but owns its local formatter rather than sharing subagent presentation code.
+
+- **Pinned Pi runtime floor**: the retained fork-v0.81.1-awf.3 coding-agent artifact (embedded 0.81.1) supplies `getActiveTools`, `setActiveTools`, tool prompt guidance, and `withFileMutationQueue`; the effort companion guards these APIs before registration and uses the shared real-path mutation queue.

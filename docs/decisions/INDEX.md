@@ -242,3 +242,6 @@
 - [ADR-0235: Derive render completeness from output authority](0235-derive-render-completeness-from-output-authority.md) (Implemented)
 - [ADR-0236: Layer catalog list defaults and project entries](0236-layer-catalog-list-defaults-and-project-entries.md) (Implemented)
 - [ADR-0237: Separate structural Markdown headings from section bodies](0237-separate-structural-markdown-headings-from-section-bodies.md) (Implemented)
+- [ADR-0238: Lifetime-bounded historical audit replay](0238-lifetime-bounded-historical-audit-replay.md) (Implemented)
+- [ADR-0239: Add associated Pi effort memory tools](0239-add-associated-pi-effort-memory-tools.md) (Implemented)
+- [ADR-0240: Authority-Guided Implementation Autonomy](0240-authority-guided-implementation-autonomy.md) (Implemented)

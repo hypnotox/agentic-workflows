@@ -89,7 +89,7 @@ blind task-level successor is forbidden. See this document's Model selection sec
 
 Core `effort-workflow` is selected only by new untrimmed scaffolds. Existing adopter selections remain byte-for-byte stable until their owner explicitly runs `awf enable skill effort-workflow`. The selected core guide renders for every enabled target and directs native persistent checkout or context tooling to the exact existing `.awf/worktrees/<slug>` checkout. Pi additionally derives, rather than selects, `using-effort` and the `awf-effort` extension; non-Pi targets never receive or invoke them, claim activity, or create a parallel harness-owned worktree.
 
-Pi association stays at repository root. `using_effort` directly attaches with an effort slug or detaches with `{detach:true}` and never changes CWD or transfers a conversation. Attached model calls receive the relative owned memory path and, when the fixed directory exists, the managed-worktree path. Activity and complete Remote Pi metadata are advisory only, never authority or a lock. Optional display suffix publication carries only the effort slug or null, never a routing input or composed name; restart begins detached and local lifecycle degradation is silent.
+Pi association stays at repository root. `using_effort` directly attaches with an effort slug or detaches with `{detach:true}` and never changes CWD or transfers a conversation. Attached model calls receive the relative owned memory path and, when the fixed directory exists, the managed-worktree path. While associated, prefer the pathless memory tools for complete-document reads, exact Markdown-body edits, and separate `phase` or `next` updates with automatic timestamps; they are a convenience, not workflow authority, so direct file access and ordinary awf commands remain available. Activity and complete Remote Pi metadata are advisory only, never authority or a lock. Optional display suffix publication carries only the effort slug or null, never a routing input or composed name; restart begins detached and local lifecycle degradation is silent.
 
 A convention part replaces only its section body. A declared Markdown structural heading is awf-owned, excluded from part replacement and in-place read-back, and disappears only when the complete section is dropped.
 
@@ -171,3 +171,5 @@ changelog --since <previous version>` lists every adopter-facing change in betwe
 drift check and commit the config and rendered files together.
 
 Pi renders five governed TypeScript outputs: context usage, handoff, and subagent index, routing, and runner. Context usage is a standalone transient observation with a deterministic unavailable form; it neither persists facts nor triggers a pressure action.
+
+Pi extensions require the retained 0.81.1 fork runtime APIs, including dynamic active tools and the shared file-mutation queue; incompatible runtimes receive one actionable notice before registration.

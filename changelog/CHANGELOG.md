@@ -12,6 +12,10 @@ query a single version or a range.
 
 - Native harness discovery now replaces the generated skill roster in managed agent guides, while canonical documentation carries the full procedure. Fixed default and self-hosted guide proofs prevent base-guide regrowth, and aggregate `awf check` warns when a managed guide exceeds its advisory size bound.
 
+- Implementation paths now resolve authority-preserving reasoned deviations and review findings autonomously; inline owners amend mutable plans, delegated owners report deviations for post-review parent reconciliation, and material authority, outcome, scope, or persistent safety and verification boundaries still escalate.
+
+- `awf effort memory read`, `edit`, and `update` now provide owner-free readable commands plus owner-scoped protocol forms. Reads paginate on complete lines with handled refusals, exact body-only edit batches update timestamps automatically, and advisory owner loss is reported without treating activity as authorization.
+
 - Schema generation 36 makes structural Markdown headings awf-owned while convention parts and in-place editing own only section bodies. Dropping a section removes its complete structure, and the exact frozen convention-part migration removes only copied legacy headings or refuses ambiguous content before changing files.
 
 - Catalog-backed sidecar lists now preserve standard defaults before project entries unless `dataDefaults.<key>: false` explicitly suppresses them. Null and non-list project values are rejected, glossary term layering remains specialized, and the schema-35 upgrade records suppression for existing replacements without changing their rendered meaning.
@@ -19,6 +23,10 @@ query a single version or a range.
 - Planning and implementation review now carry focused human checks for contradictory generated prose, concept-preserving paraphrase, and intentional literal placeholder syntax at each affected output boundary. The guidance requires concrete examples and expected readings without introducing semantic inference or a universal output validator.
 
 - Render completeness now derives conditional config-tree units and live template identities from their existing catalog, kind, target, and singleton declarations. Config-reference live values use one exhaustive typed classification for generated documentation and CLI presentation, and singleton template conditionals are checked against their artifact-specific live contexts.
+
+### Bug fixes
+
+- Historical audit now streams range evidence once and releases consumed historical authority state after its final consumer, preventing long authority-heavy audits from exhausting memory.
 
 ## [0.30.0] - 2026-08-05
 

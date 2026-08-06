@@ -29,5 +29,7 @@ where the date is the day the plan is written (ISO-8601). Example:
 - Any helper partition exhaustively assigns every affected site to the parent or exactly one helper, keeps helper subsets path-disjoint, shared files parent-owned, and mutating commands confined to the assigned subset. Helpers are sequential and commit-disabled. Each Phase close stages the complete transaction and creates one closing commit only after `awf check staged` and the gate pass.
 - Required `## Definition of done` contains one or more observable whole-plan bullets beginning with unique `` `dod: <slug>` `` markers. Any number of phases may each advance an outcome, but at most one phase may complete it; Proposed plans emit non-failing notes for omitted Applying assignments, unassigned outcomes, and advanced-only outcomes missing a completion owner, while hard structural and reference failures always block. Optional `## Notes` records deviations, spike answers, follow-ups, and findings.
 
+Inline owners immediately correct stale instructions and record reasoned deviations in Notes. Delegated owners may report rather than edit; the parent supplies that report to phase review and reconciles it with findings in one focused post-review settlement commit before checkpointing or later execution.
+
 A plan stays mutable as `status: Proposed` through review and implementation and freezes at `status: Implemented` only after terminal review establishes completion. Plans remain as the historical execution record.
 <!-- awf:end -->

@@ -6,11 +6,12 @@ import { getPackageDir, type ExtensionAPI } from "@earendil-works/pi-coding-agen
 import { truncateToWidth } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 
-// Retained subagent and handoff entrypoints use this floor. The optional using_effort companion stays at the repository root, invokes its binary protocol directly, and uses Remote-event capability presence only for advisory publication.
+// Retained entrypoints use this floor. The optional using_effort companion also requires active-tool APIs and the package-exported real-path file-mutation queue; Remote events remain advisory publication only.
 export const MIN_PI_VERSION = "0.81.1";
 const MINIMUM_RUNTIME_NOTICE = Symbol.for("awf.pi.minimum-runtime-notified");
 export interface MinimumRuntimeDependencies { packageVersion: string; }
-export type MinimumRuntimeAPI = "on" | "eventsOn" | "eventsEmit" | "appendEntry" | "registerTool" | "registerCommand" | "queueCommand" | "exec" | "getThinkingLevel" | "getActiveTools";
+export type MinimumRuntimeAPI = "on" | "eventsOn" | "eventsEmit" | "appendEntry" | "registerTool" | "registerCommand" | "queueCommand" | "exec" | "getThinkingLevel" | "getActiveTools" | "setActiveTools";
+export type MinimumRuntimeExternalAPI = "withFileMutationQueue";
 function parseVersion(value: string): [number, number, number] | undefined {
   const match = /^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/.exec(value);
   return match ? [Number(match[1]), Number(match[2]), Number(match[3])] : undefined;
@@ -28,7 +29,7 @@ export function guardMinimumRuntime(pi: ExtensionAPI, deps: MinimumRuntimeDepend
   const requirements: Record<MinimumRuntimeAPI, boolean> = {
     on: typeof pi.on === "function", eventsOn: typeof pi.events?.on === "function", eventsEmit: typeof pi.events?.emit === "function",
     appendEntry: typeof pi.appendEntry === "function", registerTool: typeof pi.registerTool === "function", registerCommand: typeof pi.registerCommand === "function",
-    queueCommand: typeof pi.queueCommand === "function", exec: typeof pi.exec === "function", getThinkingLevel: typeof pi.getThinkingLevel === "function", getActiveTools: typeof pi.getActiveTools === "function",
+    queueCommand: typeof pi.queueCommand === "function", exec: typeof pi.exec === "function", getThinkingLevel: typeof pi.getThinkingLevel === "function", getActiveTools: typeof pi.getActiveTools === "function", setActiveTools: typeof (pi as any).setActiveTools === "function",
   };
   const missing = required.filter((name) => !requirements[name]);
   if (versionSupported(deps.packageVersion) && missing.length === 0) return true;

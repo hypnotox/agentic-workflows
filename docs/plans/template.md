@@ -43,4 +43,4 @@ feat(scope): describe phase outcome
 <!-- awf:edit notes: default; create .awf/parts/plans-template/notes.md to override -->
 ## Notes
 
-Record deviations, spike answers, follow-ups, and findings surfaced during implementation.
+Inline owners immediately correct stale instructions and record reasoned deviations here. Delegated owners may report rather than edit; the parent supplies the report to phase review and reconciles it with findings in one focused post-review settlement commit before checkpointing or later execution. Record deviations, spike answers, follow-ups, and findings surfaced during implementation.

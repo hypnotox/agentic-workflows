@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
@@ -89,6 +90,9 @@ func TestNativePiSkillsAreDiscoverableAndPruned(t *testing.T) {
 // invariant: rendering/pi-runtime:pi-extension-target-render (TestPiRuntimeTargetRender)
 // invariant: rendering/pi-workflows:using-effort-skill (TestPiRuntimeTargetRender)
 func TestPiRuntimeTargetRender(t *testing.T) {
+	if _, independentlySelectable := catalog.Standard.Skills["using-effort"]; independentlySelectable {
+		t.Fatal("using-effort companion became independently selectable")
+	}
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [effort-workflow]\nagents: []\ntargets: [pi]\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -127,12 +131,12 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 		"remote-pi:display-suffix:set",
 		"remote-pi:display-suffix:request",
 		"displaySuffix",
-		"{value:string|null}",
-		`suffixSupported&&current?current.slug:null`,
-		`pi.on?.("session_start",(_event:any)=>{current=undefined;publish();requestCapabilities()})`,
-		`pi.events?.on?.("remote-pi:display-suffix:request",()=>publishSuffix())`,
-		`pi.events?.on?.("remote-pi:capabilities",(caps:RemotePiCapabilitiesReplyPayload)=>{suffixSupported=supportsDisplaySuffix(caps);publishSuffix()})`,
-		`emit("remote-pi:metadata:set",{namespace:"awf",value:x?`,
+		"value: string | null",
+		`suffixSupported && current ? current.slug : null`,
+		`pi.on?.("session_start", () => { clear(); requestCapabilities(); })`,
+		`pi.events?.on?.("remote-pi:display-suffix:request", () => publishSuffix())`,
+		`pi.events?.on?.("remote-pi:capabilities", (caps: RemotePiCapabilitiesReplyPayload) => { suffixSupported = supportsDisplaySuffix(caps); publishSuffix(); })`,
+		`namespace: "awf", value: snapshot ?`,
 	} {
 		if !strings.Contains(effort, required) {
 			t.Errorf("awf effort extension lacks display-suffix behavior %q", required)
@@ -183,10 +187,66 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 			usingEffort = file.Content
 		}
 	}
-	for _, want := range []string{"{ effort: \"<canonical-slug>\" }", "{ detach: true }", "Pi remains at repository root", "`.awf/efforts/<slug>/memory.md`", "`.awf/worktrees/<slug>`", "Restart begins detached", "display-only suffix", "suffix is never routing input", "Activity is neither authority nor a lock"} {
+	for _, want := range []string{"Use `using_effort` explicitly", "{ effort: \"<canonical-slug>\" }", "{ detach: true }", "Pi remains at repository root", "use the supplied relative memory path `.awf/efforts/<slug>/memory.md`", "when present, managed-worktree path `.awf/worktrees/<slug>`", "Restart begins detached", "display-only suffix", "suffix is never routing input", "Activity is neither authority nor a lock", "When attached, prefer `effort_memory_read` for pathless reads", "`effort_memory_edit` only for Markdown body changes", "`effort_memory_update` for `phase` or `next`", "timestamps are automatic", "Generic file tools and direct awf commands remain available"} {
 		if !strings.Contains(usingEffort, want) {
 			t.Errorf("using-effort companion missing %q:\n%s", want, usingEffort)
 		}
+	}
+	for _, config := range []string{
+		"prefix: example\nintegrationBranch: main\nskills: [effort-workflow]\nagents: []\ntargets: [claude]\n",
+		"prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n",
+	} {
+		for path, content := range explorationRenderedByPath(t, config) {
+			if strings.Contains(path, "awf-effort") || strings.Contains(path, "using-effort") || strings.Contains(content, "awf-effort") || strings.Contains(content, "using-effort") || strings.Contains(content, "effort_memory_") {
+				t.Errorf("unselected or non-Pi rendering leaked using-effort contract into %s", path)
+			}
+		}
+	}
+}
+
+// invariant: rendering/pi-workflows:pi-effort-memory-tools (TestPiEffortMemoryToolContract)
+func TestPiEffortMemoryToolContract(t *testing.T) {
+	selected := explorationRenderedByPath(t, "prefix: example\nintegrationBranch: main\nskills: [effort-workflow]\nagents: []\ntargets: [pi]\n")
+	index := selected[".pi/extensions/awf-effort/index.ts"]
+	client := selected[".pi/extensions/awf-effort/client.ts"]
+	guidance := selected[".pi/skills/example-using-effort/SKILL.md"]
+	for _, want := range []string{
+		`MEMORY_TOOL_NAMES = ["effort_memory_read", "effort_memory_edit", "effort_memory_update"]`,
+		`Type.Object({ offset: Type.Optional(Type.Integer({ minimum: 1 })), limit: Type.Optional(Type.Integer({ minimum: 1 })) }, { additionalProperties: false })`,
+		`Type.Array(Type.Object({ oldText: Type.String({ minLength: 1, maxLength: 1048576 }), newText: Type.String({ maxLength: 1048576 }) }, { additionalProperties: false }), { minItems: 1, maxItems: 128 })`,
+		`Type.Object({ phase: Type.Optional(Type.String({ minLength: 1, maxLength: 500 })), next: Type.Optional(Type.String({ minLength: 1, maxLength: 500 })) }, { additionalProperties: false })`,
+		"activate(true)", "const clear = () => { current = undefined; activate(false); publish(); }", "fileMutationQueue(join(ctx.cwd, \".awf\", \"efforts\", snapshot.slug, \"memory.md\"), run)",
+		"const memoryCall = async", "serial(async () =>", `reply.condition === "not-owner" || reply.condition === "missing" || reply.condition === "unsafe-activity"`, `pi.on?.("session_start", () => { clear();`,
+		"getActiveTools", "setActiveTools", "withFileMutationQueue", "promptGuidelines", "Generic file tools remain available",
+	} {
+		if !strings.Contains(index, want) {
+			t.Errorf("rendered effort index missing memory-tool contract %q", want)
+		}
+	}
+	for _, want := range []string{"decodeMemory", "exact(reply", "MEMORY_STDOUT_MAX", "MEMORY_STDERR_MAX", `stdout.endsWith("\n")`, "memoryRead", "memoryEdit", "memoryUpdate", "childMemoryExecutor"} {
+		if !strings.Contains(client, want) {
+			t.Errorf("rendered effort client missing memory-tool contract %q", want)
+		}
+	}
+	for _, want := range []string{"prefer `effort_memory_read`", "`effort_memory_edit` only for Markdown body changes", "`effort_memory_update` for `phase` or `next`", "timestamps are automatic", "Generic file tools and direct awf commands remain available"} {
+		if !strings.Contains(guidance, want) {
+			t.Errorf("rendered using-effort guidance missing %q", want)
+		}
+	}
+	for _, config := range []string{
+		"prefix: example\nintegrationBranch: main\nskills: [effort-workflow]\nagents: []\ntargets: [claude]\n",
+		"prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n",
+	} {
+		for path, content := range explorationRenderedByPath(t, config) {
+			if strings.Contains(path, "awf-effort") || strings.Contains(path, "using-effort") || strings.Contains(content, "effort_memory_") {
+				t.Errorf("unselected or non-Pi rendering leaked memory tools into %s", path)
+			}
+		}
+	}
+	fallback := renderSkillGolden(t, "using-effort", map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}})
+	assertNoLeaks(t, fallback)
+	if os.Getenv("AWF_PI_RUNTIME_SMOKE") == "1" {
+		assertPiRuntimeSmoke(t)
 	}
 }
 
@@ -226,16 +286,30 @@ func TestPiContextUsageInjection(t *testing.T) {
 // invariant: rendering/pi-workflows:pi-session-handoff-public-contract (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-runtime:pi-context-usage-injection (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-runtime:pi-minimum-runtime (TestPiRealRuntimeSmoke)
+var (
+	piRuntimeSmokeOnce   sync.Once
+	piRuntimeSmokeOutput []byte
+	piRuntimeSmokeErr    error
+)
+
+func assertPiRuntimeSmoke(t *testing.T) {
+	t.Helper()
+	piRuntimeSmokeOnce.Do(func() {
+		root := repoRootDir(t)
+		cmd := exec.Command(filepath.Join(root, "x"), "pi-test", "run")
+		cmd.Dir = root
+		piRuntimeSmokeOutput, piRuntimeSmokeErr = cmd.CombinedOutput()
+	})
+	if piRuntimeSmokeErr != nil {
+		t.Fatalf("generated Pi runtime smoke failed: %v\n%s", piRuntimeSmokeErr, piRuntimeSmokeOutput)
+	}
+}
+
 func TestPiRealRuntimeSmoke(t *testing.T) {
 	if os.Getenv("AWF_PI_RUNTIME_SMOKE") != "1" {
 		t.Skip("Pi container skipped; run './x pi-test run' alone or './x gate' to include it")
 	}
-	root := repoRootDir(t)
-	cmd := exec.Command(filepath.Join(root, "x"), "pi-test", "run")
-	cmd.Dir = root
-	if output, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("generated Pi runtime smoke failed: %v\n%s", err, output)
-	}
+	assertPiRuntimeSmoke(t)
 }
 
 func TestTargetOutputRenderError(t *testing.T) {

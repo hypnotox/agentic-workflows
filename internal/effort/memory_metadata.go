@@ -30,18 +30,9 @@ type MemoryUpdate struct {
 	Next  *string
 }
 
-// InvalidMemoryError reports a memory which could not safely be updated.  A
-// caller can use NextAction directly without trying to interpret parser prose.
-type InvalidMemoryError struct {
-	Slug       string
+type invalidMemoryUpdate struct {
 	NextAction string
-	Err        error
 }
-
-func (e *InvalidMemoryError) Error() string {
-	return fmt.Sprintf("invalid memory for effort %q: %v; changed bytes: no; next action: %s", e.Slug, e.Err, e.NextAction)
-}
-func (e *InvalidMemoryError) Unwrap() error { return e.Err }
 
 type memoryDocument struct {
 	metadata MemoryMetadata

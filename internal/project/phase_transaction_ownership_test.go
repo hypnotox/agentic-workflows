@@ -8,6 +8,7 @@ import (
 )
 
 // invariant: rendering/workflow-skill-templates:phase-transaction-ownership (TestPhaseTransactionOwnershipAcrossWorkflowSurfaces)
+// invariant: rendering/workflow-skill-templates:authority-guided-implementation-autonomy (TestPhaseTransactionOwnershipAcrossWorkflowSurfaces)
 func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 	renderSurfaces := func(data map[string]any) map[string]string {
 		t.Helper()
@@ -84,7 +85,10 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 			"never transfer commit, review, checkpoint, handoff, helper, or outcome authority", "projection changes neither ownership nor checkpoint boundaries",
 			"one implementation child alone", "state commit-capable phase-owner mode in the brief", "complete phase",
 			"stages the complete transaction", "declared phase-closing commit", "awf check staged", gatePhrase,
-			"report-only phase review", "focused settlement commits",
+			"inventory the completed child report for deviations", "supply that report verbatim to report-only phase review",
+			"When deviations or findings exist", "focused post-review settlement commit", "plan Notes reconciliation",
+			"before checkpointing or later execution", "never rewrites the child phase-closing commit",
+			"no-deviation, no-finding phase needs no empty settlement commit", "focused settlement commits",
 			"checkpoints only after findings resolve", "**Routine checkpoint.**", "parent completion",
 			"redispatch the complete revised phase", "stop for user input", "dirty-state inventory",
 			"recovery verification", "blind successor instruction")
@@ -108,6 +112,18 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 			if strings.Count(body, "**Routine checkpoint.**") != 1 {
 				t.Errorf("%s/%s has %d routine checkpoints, want one settled-phase checkpoint", variant, name, strings.Count(body, "**Routine checkpoint.**"))
 			}
+		}
+		subagent := surfaces["subagent"]
+		assertOrderedPhrases(t, subagent,
+			"inventory the completed child report for deviations",
+			"supply that report verbatim to report-only phase review",
+			"focused post-review settlement commit",
+			"plan Notes reconciliation",
+			"before checkpointing or later execution",
+			"**Routine checkpoint.**",
+		)
+		if got := strings.Count(subagent, "declared phase-closing commit"); got != 1 {
+			t.Errorf("%s/subagent renders %d child phase-closing commit declarations, want one", variant, got)
 		}
 		phase := surfaces["template"]
 		assertOrderedPhrases(t, phase, "Task 1.1", "Phase close", "Stage the complete transaction", "awf check staged", gatePhrase, "```commit", "Definition of done")

@@ -217,6 +217,19 @@ func (s store) create(record Record) error {
 	return nil
 }
 
+type memoryPublicationError struct {
+	Changed bool
+	Err     error
+}
+
+func (e *memoryPublicationError) Error() string { return e.Err.Error() }
+func (e *memoryPublicationError) Unwrap() error { return e.Err }
+
+func memoryPublicationChanged(err error) bool {
+	var publication *memoryPublicationError
+	return errors.As(err, &publication) && publication.Changed
+}
+
 // replaceMemory publishes a fully synced sibling and then atomically replaces
 // the old memory. All injected failures before rename leave the old bytes.
 func (s store) replaceMemory(path string, raw []byte) (returnErr error) {
@@ -263,10 +276,10 @@ func (s store) replaceMemory(path string, raw []byte) (returnErr error) {
 	}
 	published = true
 	if err := s.hit("memory-update.directory-fsync"); err != nil {
-		return err
+		return &memoryPublicationError{Changed: true, Err: err}
 	}
 	if err := syncDirectory(dir); err != nil { // coverage-ignore: injected directory-fsync stages cover the durability boundary; a real failure requires a kernel or storage fault
-		return fmt.Errorf("fsync effort directory after memory update: %w", err)
+		return &memoryPublicationError{Changed: true, Err: fmt.Errorf("fsync effort directory after memory update: %w", err)}
 	}
 	return nil
 }

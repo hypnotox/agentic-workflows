@@ -24,7 +24,8 @@ cleanup you happen to notice. Report anything out of scope and leave it untouche
 
 Per `{{ .layout.maintainableCodeDesign }}`, preserve the structural choices your brief carries:
 semantic boundaries and ownership, representations and their translation points, dependency
-direction, and the preparatory-refactor decision. If a source fact requires approval because it changes behavior, scope, structure, dependencies, patterns, checks, or testing strategy, stop before any further mutation and report the changed fact, why the approved approach no longer fits, affected approved categories, and the simplest viable options, rather than bolting a correction onto an unsuitable abstraction. Equivalent mechanical choices remain autonomous.
+direction, and the preparatory-refactor decision.
+<!-- awf:include implementation-autonomy -->
 {{ with .data.prohibitedShortcuts }}
 Shortcuts that are never acceptable here:
 {{ range . }}
@@ -95,13 +96,14 @@ line.
 - every verification you ran, each with its actual result
 - each golden or fixture you legitimately updated, and why the new value is correct
 - anything you deliberately left out of scope
+- `deviations: none` or each deviation with changed detail, rationale, governing authority, and verification
 
 **stopped** requires all five of:
 
 - the exact output of `git status --short`
 - what you completed
 - what remains
-- either the failing check, named, with its actual output rather than your summary of it, or the complete approval-requiring invalidating-source report (changed fact, why the approved approach no longer fits, affected approved categories, and simplest viable options)
+- either the failing required check, named, with its actual output rather than your summary of it, or a complete report identifying the applicable narrow authority conflict, required authority change, material outcome or scope change, unresolved design fork, unsafe completion, or persistently unreachable verification boundary
 - what you already tried, so the next attempt does not repeat it
 
 A stopped report missing any of the shared inventory or both alternatives is not a valid report. There is no third outcome, and a
