@@ -8,6 +8,10 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Breaking changes
+
+- The owner-free `awf effort memory edit` and `awf effort memory update` commands now report the same bounded contextual diff the owner-scoped protocol carries: numbered removed, added, and surrounding context rows with omission markers, instead of the previous `before:`/`after:` whole-body pair. The reported first changed line and truncation flag are unchanged in meaning. Adopters reading that field expecting complete before-and-after bodies must read the resident itself.
+
 ### Features
 
 - Plan, ADR, resync, and implementation review now apply authority-preserving corrections autonomously, including after the single verify pass, and ask the user only when a correction would deviate from settled user-approved design or an active current-state claim.
