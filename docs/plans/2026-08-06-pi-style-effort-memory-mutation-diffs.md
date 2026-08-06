@@ -41,12 +41,15 @@ helpers are report-only or commit-disabled.
 Write failing service tests before production changes. Promote `github.com/pmezard/go-difflib` from
 indirect to direct and use its line change model behind one effort-owned display-diff formatter. The
 formatter must emit the grammar consumed by Pi's `renderDiff`: `-<old-line> <content>`,
-`+<new-line> <content>`, and ` <line> <content>`, with four context lines and a numbered omission
-row between separated regions. Preserve UTF-8, the 50-KiB result bound, and an exact `truncated`
-fact. Never cut a row prefix or UTF-8 sequence. If a changed source line cannot fit, retain the
+`+<new-line> <content>`, and ` <line> <content>`, with four context lines. Between separated regions,
+emit Pi's exact omission row: one leading space, a line-number-width blank field, one space, and
+`...`; the omission row carries no line number. Preserve UTF-8, the 50-KiB result bound, and an exact `truncated`
+fact. Never cut a row prefix or UTF-8 sequence. If one changed source line cannot fit, retain the
 complete numbered row grammar, deterministically elide its content with an explicit ASCII marker,
-and set `truncated:true`. Assert that changed rows survive bounding and that the result remains
-renderable.
+and set `truncated:true`. If all changed-row prefixes cannot fit, deterministically retain
+representative changed rows and replace whole changed rows or ranges with the same explicit omission
+row. Assert the stable representative-selection method, omission placement, `truncated:true`, and
+renderability; do not require every changed row to survive the fixed bound.
 
 Add the `previewed` success condition and preview selection to the typed memory inputs/results
 without adding a second memory parser or public filesystem seam. Extract only cohesive shared
@@ -85,7 +88,7 @@ and `go.sum` and confirm `go-difflib` is a direct requirement with no unrelated 
 ### Task 1.2: Expose the closed owner-scoped preview protocol
 Latitude: exact
 Applying: ["render-effort-memory-edits-like-pi:binary-owned-preview-protocol"]
-Paths: ["internal/clispec/clispec.go", "internal/clispec/clispec_test.go", "cmd/awf/effort.go", "cmd/awf/effort_test.go", "cmd/awf/gate_test.go"]
+Paths: ["internal/clispec/clispec.go", "internal/clispec/clispec_test.go", "cmd/awf/effort.go", "cmd/awf/effort_test.go", "cmd/awf/gate_test.go", "templates/pi/awf-effort/client.ts.tmpl", "tools/pi-extension-test/tests/using-effort.test.ts"]
 
 Add nonrepeatable `--preview` to the edit and update command specifications and help. Accept it only
 on these owner-scoped JSON forms, preserving arbitrary valid flag ordering:
@@ -119,13 +122,21 @@ bytes unchanged, a failed preview never invokes publication, and normal update/e
 failure branches remain unchanged. Update the gated command probes only if the command-table change
 requires it; do not create a new command.
 
+In the generated-client template and Pi extension test source, make Phase 1 forward-compatible with
+the changed normal-update envelope before the binary protocol lands: normal `updated` decoding must
+require and freeze the new diff object, while read and normal edit decoding remain byte-for-byte
+compatible. Add strict accepted/rejected normal-update diff cases and keep normal update invocation
+argv unchanged. Do not add `previewed` decoding, preview argv, preview orchestration, or custom
+rendering until Phase 2.
+
 Run `go test ./internal/clispec ./cmd/awf`; it must exit zero. Run the owner-scoped preview commands
-against a test repository through the CLI tests, not the active effort resident.
+against a test repository through the CLI tests, not the active effort resident. The Pi suite runs
+only after Task 1.3 renders this template into the generated client.
 
 ### Task 1.3: Apply the tooling claims and direct-dependency documentation
 Latitude: exact
 Applying: ["render-effort-memory-edits-like-pi:preview-is-presentation-only", "render-effort-memory-edits-like-pi:pi-compatible-memory-display-diff", "render-effort-memory-edits-like-pi:binary-owned-preview-protocol", "render-effort-memory-edits-like-pi:direct-line-diff-dependency"]
-Paths: [".awf/topics/parts/tooling/cli/current-state.md", ".awf/topics/parts/tooling/effort-management/current-state.md", ".awf/docs/parts/architecture/dependencies.md", "docs/decisions/render-effort-memory-edits-like-pi.md", "docs/decisions/INDEX.md", "docs/topics/tooling/cli.md", "docs/topics/tooling/effort-management.md", "docs/architecture.md", ".awf/awf.lock"]
+Paths: [".awf/topics/parts/tooling/cli/current-state.md", ".awf/topics/parts/tooling/effort-management/current-state.md", ".awf/docs/parts/architecture/dependencies.md", "templates/pi/awf-effort/client.ts.tmpl", ".pi/extensions/awf-effort/client.ts", "tools/pi-extension-test/tests/using-effort.test.ts", "docs/decisions/render-effort-memory-edits-like-pi.md", "docs/decisions/INDEX.md", "docs/topics/tooling/cli.md", "docs/topics/tooling/effort-management.md", "docs/architecture.md", ".awf/awf.lock"]
 
 Update `tooling/cli:effort-command-contract` with the exact owner-scoped-only preview grammar,
 operation-specific `previewed` envelopes, update-success diff, and unchanged owner-free and normal
@@ -150,7 +161,10 @@ mechanically: place a 64-zero lowercase placeholder, run `./x check`, copy only 
 reported for this ADR, replace the placeholder, and rerun. Run `./x render`, then read back every
 listed authored and generated document. Confirm the rendered CLI, effort-management, and
 architecture prose says preview cannot alter normal validation, update preview omits `updated`, and
-normal update final diff includes the actual timestamp. Confirm no literal `<no value>` appears.
+normal update final diff includes the actual timestamp. Confirm the generated client requires the
+new normal-update diff without yet exposing preview or custom rendering, and no literal `<no value>`
+appears. Run `./x pi-test run`; it must exit zero against the Phase 1 binary envelope and rendered
+forward-compatible client.
 
 ### Phase close
 
@@ -159,7 +173,7 @@ and `./x gate` must all exit zero; staged current-state output must classify exa
 operations Applied and the rendering operation Remaining. Create the single closing commit:
 
 ```commit
-feat(awf): previews (applies render-effort-memory-edits-like-pi)
+feat(awf): add previews (applies render-effort-memory-edits-like-pi)
 ```
 
 ## Phase 2: Pi preview orchestration and retained rendering
@@ -179,11 +193,12 @@ errors and zero warnings, `go test ./internal/project -run
 zero. The phase owner retains shared topic, ADR, generated outputs, staging, gate, and commit
 ownership; helpers are report-only or commit-disabled.
 
-Extend the generated client operation model so strict decoding knows whether it is handling read,
-normal edit, edit preview, normal update, or update preview. Keep one validation home for shared
-memory facts, diff facts, and refusal facts while enforcing the two distinct `previewed` envelopes:
-edit preview requires `replacementCount`; update preview forbids it; both forbid memory. Normal
-update now requires memory plus diff. Reject extra, missing, wrong-type, over-bound, mismatched slug,
+Starting from Phase 1's required normal-update diff decoder, extend the generated client operation
+model so strict decoding additionally distinguishes edit preview and update preview. Keep one
+validation home for shared memory facts, diff facts, and refusal facts while enforcing the two
+distinct `previewed` envelopes:
+edit preview requires `replacementCount`; update preview forbids it; both forbid memory. Retain Phase 1's normal update requirement for memory plus diff. Reject extra, missing, wrong-type,
+over-bound, mismatched slug,
 invalid nullability, nonempty diff with null line, empty diff with a line, and wrong-operation
 envelopes.
 
@@ -194,9 +209,10 @@ the bounded Pi executor because it has no stdin. Preserve the request-size cap, 
 cancellation, process-group termination, stdout/stderr caps, single-envelope parsing, and existing
 normal invocation argv byte-for-byte.
 
-Add client tests before implementation for exact argv and stdin, every accepted success shape,
+Add client test source before implementation for exact argv and stdin, every accepted preview shape,
 cross-operation rejection, refusal parity, transport bounds, and preview nonmutation assumptions.
-Run `./x pi-test run`; it must exit zero before continuing.
+Do not run the Pi suite against stale generated files here; Task 2.3 renders the template and runs the
+suite before the phase closes.
 
 ### Task 2.2: Preview first and retain the authoritative diff in both Pi tools
 Latitude: exact
@@ -289,7 +305,7 @@ operations Applied with no Remaining operations, while the ADR remains Implement
 single closing commit:
 
 ```commit
-feat(rendering): diffs (applies render-effort-memory-edits-like-pi)
+feat(rendering): add diffs (applies render-effort-memory-edits-like-pi)
 ```
 
 ## Definition of done
