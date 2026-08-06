@@ -42,9 +42,10 @@ authority-preserving correction.
 1. `decision: authority-deviation-boundary` Reserve `user-decision` review findings for cases where
    every viable correct remediation would contradict or change a settled user-approved design or
    decision, or would require an unauthorized change to an active current-state claim. A newly
-   material load-bearing choice outside approved durable boundaries requires the existing design or
-   ADR approval workflow because proceeding would establish new settled authority. A reviewer
-   classifying a finding as `user-decision` must cite the affected or missing authority and explain
+   material load-bearing choice outside approved durable boundaries is not escalated merely because
+   it is ambiguous: the dispatcher routes it through the existing grounded-design or ADR workflow
+   and pauses only at that workflow's mandatory approval boundary before adopting the new authority.
+   A reviewer classifying a finding as `user-decision` must cite the affected authority and explain
    the required deviation. When no such authority is affected, the finding is not a user decision.
 
 2. `decision: autonomous-review-judgment` Keep the shared review spine as the single semantic home
