@@ -75,7 +75,7 @@ Verify: For each new or amended ADR and its linked plan, apply the post-implemen
 ### `invariant: source-embed-parity`
 
 The repository source population walks `os.DirFS(".")`, includes every file below root template directories while excluding only root Go source and test files, and compares its exact regular-file set bidirectionally with the regular-file set walked from the embedded filesystem root. Failures diagnose sorted paths as missing from embed or unexpected in embed; this proves file-set parity only, not semantic validation.
-Origin: ADR-derive-publication-completeness-from-source-authorities
+Origin: ADR-0242
 Backing: test
 
 ### `invariant: templates-valid-frontmatter`

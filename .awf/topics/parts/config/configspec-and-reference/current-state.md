@@ -16,7 +16,7 @@ not applicable because no singular project value exists. The generated reference
 that classification through bidirectional resolver validation, so an omitted, extra, or structural
 static resolver fails while current project summaries remain complete and non-secret.
 Origin: ADR-0235
-Revised-by: ADR-derive-publication-completeness-from-source-authorities
+Revised-by: ADR-0242
 Backing: test
 
 ### `invariant: config-reference-no-bare-vars`

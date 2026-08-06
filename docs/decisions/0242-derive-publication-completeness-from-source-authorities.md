@@ -4,7 +4,7 @@ slug: derive-publication-completeness-from-source-authorities
 status: Implementing
 date: 2026-08-06
 ---
-# ADR-derive-publication-completeness-from-source-authorities: Derive Publication Completeness from Source Authorities
+# ADR-0242: Derive Publication Completeness from Source Authorities
 
 
 ## Context

@@ -433,7 +433,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:8ab8bd803cbb2294f51d8e1014bd90daaf899d386ec9f34580fa5cc09a0dd57e",
+      "outputHash": "sha256:69a4cde3d48cd350f834e47dd6035e8298ff451929545c1177c2b71d257198a1",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -637,8 +637,8 @@
     "docs/topics/config/configspec-and-reference.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:478ff80dbe6d53fb835985df984b9d1bf8e9171cd78953e20c1c91ee9c42ed89",
-      "outputHash": "sha256:247283553ac1846fc260a3b2d29378b1d82fd3cd9cb2e55aa9bcd22c77034aed"
+      "configHash": "sha256:b3d2af714b936b5320d99dd797790a373d2a0c1373ad46f8663adbe8007c2a3c",
+      "outputHash": "sha256:2d1f33dedad3973f214d8e028adba8114f0d1189122fb53f1d55ce05dc4d5c3b"
     },
     "docs/topics/config/configuration.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -769,8 +769,8 @@
     "docs/topics/rendering/templates.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:62a177e303e4d66645b2cbf45e704dd10062480a2287b671320f94c648122170",
-      "outputHash": "sha256:14a41f7605e7d70afb8973b8f811c350a1afe9a24ddb19e7b955973e80fa72e8"
+      "configHash": "sha256:89a959ea16c0b0a17f9234b524a329dbc2bc1067a17eeff1d748fdfa0be7eb53",
+      "outputHash": "sha256:852af0bc3f5959001de7b3710b60e9a69bfb832536c442ff9bcaf9fa23f24062"
     },
     "docs/topics/rendering/workflow-skill-templates.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -799,8 +799,8 @@
     "docs/topics/tooling/cli.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:5577a41341a8b4735f5eb736934491e9a5187e63338801742138593751f504a4",
-      "outputHash": "sha256:842b9d719345697b9e402eb468aa8757a904c20e71e0a03fcea66ed75499a61a"
+      "configHash": "sha256:4ba92778be1f11896ce0add10912160d0a0838a9065b054a9a8b8ee7a1a67f5c",
+      "outputHash": "sha256:1b6c34f695e1bf88400c84a84ad34457f4ca401d9257e656bd17ae75564dc565"
     },
     "docs/topics/tooling/commit-policy.md": {
       "templateId": "topics/topic.md.tmpl",
