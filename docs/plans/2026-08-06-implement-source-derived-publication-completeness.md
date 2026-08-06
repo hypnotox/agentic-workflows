@@ -299,3 +299,7 @@ Phase 2 review found incomplete fixture proof for the exact root-Go exclusion an
 paths; settlement added root non-Go, nested Go, and multiple unexpected-path coverage. Its proposed
 nested-checkout concern did not apply: `os.DirFS(".")` runs from the `templates` package directory,
 so the walk is bounded to the settled template source tree rather than the repository root.
+
+Phase 3 review found three mechanical proof gaps. Settlement independently exercises every structural
+classifier predicate, covers present-false commit policy and the non-nil empty scalar boundary, and
+asserts each generated current value against the exact table row that owns its path.

@@ -38,13 +38,16 @@ const (
 func LiveStateClassifications() map[string]LiveStateClass {
 	classes := make(map[string]LiveStateClass, len(Keys()))
 	for _, entry := range Keys() {
-		class := LiveStateProjection
-		if strings.HasPrefix(entry.Path, "sidecar.") || strings.Contains(entry.Path, "[]") || strings.Contains(entry.Path, "<name>") {
-			class = StaticNotApplicable
-		}
-		classes[entry.Path] = class
+		classes[entry.Path] = liveStateClass(entry.Path)
 	}
 	return classes
+}
+
+func liveStateClass(path string) LiveStateClass {
+	if strings.HasPrefix(path, "sidecar.") || strings.Contains(path, "[]") || strings.Contains(path, "<name>") {
+		return StaticNotApplicable
+	}
+	return LiveStateProjection
 }
 
 // VarEntry describes one config var. Description text is carried verbatim

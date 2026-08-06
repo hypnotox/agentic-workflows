@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/configspec"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/render"
@@ -170,9 +171,27 @@ func TestConfigReferenceDerivedLiveValues(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		lines := strings.Split(string(b), "\n")
 		for path, value := range want {
-			if !strings.Contains(string(b), "`"+path+"`") || !strings.Contains(string(b), "| "+value+" |") {
-				t.Errorf("generated reference missing %q current %q", path, value)
+			prefix := "| `" + path + "` | "
+			var row string
+			for _, line := range lines {
+				if strings.HasPrefix(line, prefix) {
+					row = line
+					break
+				}
+			}
+			if row == "" {
+				t.Errorf("generated reference missing %q row", path)
+				continue
+			}
+			columns := strings.Split(row, " | ")
+			if len(columns) < 5 {
+				t.Errorf("generated reference row %q has %d columns", path, len(columns))
+				continue
+			}
+			if got := columns[3]; got != value {
+				t.Errorf("generated reference %s current = %q, want %q", path, got, value)
 			}
 		}
 	}
@@ -184,6 +203,24 @@ func TestConfigReferenceDerivedLiveValues(t *testing.T) {
 		"commitPolicy.allowedIdentities":    "(none)",
 		"commitPolicy.requireSignedCommits": "false (default)",
 		"commitPolicy.allowedSigners":       "(none)",
+	})
+
+	presentFalsePolicy := absent + `commitPolicy:
+  grandfatheredThrough: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  requireSignedCommits: false
+`
+	assertValues(t, presentFalsePolicy, map[string]string{
+		"commitPolicy.grandfatheredThrough": "`aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`",
+		"commitPolicy.allowedIdentities":    "(none)",
+		"commitPolicy.requireSignedCommits": "false",
+		"commitPolicy.allowedSigners":       "(none)",
+	})
+
+	t.Run("non-nil empty grandfathered boundary", func(t *testing.T) {
+		p := &Project{Cfg: &config.Config{CommitPolicy: &config.CommitPolicyConfig{}}}
+		if got := p.currentValueResolvers()["commitPolicy.grandfatheredThrough"](); got != "(none)" {
+			t.Errorf("empty grandfatheredThrough current = %q, want (none)", got)
+		}
 	})
 
 	configured := absent + `tags:

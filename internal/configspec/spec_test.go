@@ -169,6 +169,16 @@ func TestLiveStateClassificationsDeriveProjectValues(t *testing.T) {
 			return fmt.Sprintf("LiveStateClass(%d)", class)
 		}
 	}
+	for path, want := range map[string]LiveStateClass{
+		"project.value":         LiveStateProjection,
+		"sidecar.value":         StaticNotApplicable,
+		"collection[].value":    StaticNotApplicable,
+		"settings.<name>.value": StaticNotApplicable,
+	} {
+		if got := liveStateClass(path); got != want {
+			t.Errorf("synthetic %s class = %s, want %s", path, className(got), className(want))
+		}
+	}
 	for _, path := range []string{
 		"tags",
 		"contextIgnore",
