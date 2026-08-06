@@ -65,9 +65,12 @@ type replayGraph struct {
 	boundaries map[string]bool
 }
 
-func newReplayGraph(commits []replayCommit) (replayGraph, error) {
+func newReplayGraph(ctx context.Context, commits []replayCommit) (replayGraph, error) {
 	byRevision := make(map[string]replayCommit, len(commits))
 	for _, commit := range commits {
+		if err := ctx.Err(); err != nil {
+			return replayGraph{}, err
+		}
 		if commit.Revision == "" {
 			return replayGraph{}, errors.New("replay commit has no revision")
 		}
@@ -79,7 +82,13 @@ func newReplayGraph(commits []replayCommit) (replayGraph, error) {
 	remainingChildren := make(map[string]int, len(commits))
 	boundaries := map[string]bool{}
 	for _, commit := range commits {
+		if err := ctx.Err(); err != nil {
+			return replayGraph{}, err
+		}
 		for _, parent := range commit.Parents {
+			if err := ctx.Err(); err != nil {
+				return replayGraph{}, err
+			}
 			if parent == "" {
 				return replayGraph{}, fmt.Errorf("replay revision %s has an empty parent", commit.Revision)
 			}
@@ -95,6 +104,9 @@ func newReplayGraph(commits []replayCommit) (replayGraph, error) {
 	}
 	ready := make([]string, 0, len(commits))
 	for revision := range byRevision {
+		if err := ctx.Err(); err != nil {
+			return replayGraph{}, err
+		}
 		if remainingChildren[revision] == 0 {
 			ready = append(ready, revision)
 		}
@@ -102,6 +114,9 @@ func newReplayGraph(commits []replayCommit) (replayGraph, error) {
 	slices.Sort(ready)
 	schedule := make([]replayCommit, 0, len(commits))
 	for len(ready) > 0 {
+		if err := ctx.Err(); err != nil {
+			return replayGraph{}, err
+		}
 		revision := ready[0]
 		ready = ready[1:]
 		commit := byRevision[revision]
@@ -319,7 +334,7 @@ func replayContext(ctx context.Context, consumer string, commit replayCommit) er
 }
 
 func (h *historyOperation) run(ctx context.Context) ([]Finding, error) {
-	graph, err := newReplayGraph(h.commits)
+	graph, err := newReplayGraph(ctx, h.commits)
 	if err != nil {
 		return nil, fmt.Errorf("build historical replay graph: %w", err)
 	}
@@ -383,6 +398,9 @@ func (h *historyOperation) loadDistinctRevision(ctx context.Context, revision st
 func (h *historyOperation) planRevisionOwnership(ctx context.Context, schedule []replayCommit) error {
 	byRevision := make(map[string]replayCommit, len(schedule))
 	for _, commit := range schedule {
+		if err := ctx.Err(); err != nil {
+			return fmt.Errorf("plan revision ownership: %w", err)
+		}
 		byRevision[commit.Revision] = commit
 	}
 	resolving := map[string]bool{}
@@ -391,6 +409,9 @@ func (h *historyOperation) planRevisionOwnership(ctx context.Context, schedule [
 		if err != nil {
 			return err
 		}
+		if err := ctx.Err(); err != nil {
+			return fmt.Errorf("resolve revision %s: %w", commit.Hash, err)
+		}
 		if contextTermination(entry.result.err) {
 			return fmt.Errorf("resolve revision %s: %w", commit.Hash, entry.result.err)
 		}
@@ -398,6 +419,9 @@ func (h *historyOperation) planRevisionOwnership(ctx context.Context, schedule [
 			entry, err := h.resolveRevision(ctx, parent, byRevision, resolving)
 			if err != nil {
 				return err
+			}
+			if err := ctx.Err(); err != nil {
+				return fmt.Errorf("resolve parent of %s: %w", commit.Hash, err)
 			}
 			if contextTermination(entry.result.err) {
 				return fmt.Errorf("resolve parent of %s: %w", commit.Hash, entry.result.err)
@@ -408,6 +432,9 @@ func (h *historyOperation) planRevisionOwnership(ctx context.Context, schedule [
 }
 
 func (h *historyOperation) resolveRevision(ctx context.Context, revision string, byRevision map[string]replayCommit, resolving map[string]bool) (*revisionEntry, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("resolve revision %s: %w", revision, err)
+	}
 	if key, ok := h.store.keys[revision]; ok {
 		return key.entry, nil
 	}
@@ -432,6 +459,9 @@ func (h *historyOperation) resolveCommit(ctx context.Context, commit replayCommi
 	parentEntry, err := h.resolveRevision(ctx, commit.Parents[0], byRevision, resolving)
 	if err != nil {
 		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("resolve first parent of %s: %w", commit.Hash, err)
 	}
 	parent, parentErr := parentEntry.result.state, parentEntry.result.err
 	if parentErr != nil || parent == nil {

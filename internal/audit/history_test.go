@@ -26,7 +26,7 @@ import (
 // Legacy focused assertions use these test-only adapters; production replay
 // always executes the single interleaved graph schedule through run.
 func (h *historyOperation) transitionFindings(ctx context.Context) ([]Finding, error) {
-	graph, err := newReplayGraph(h.commits)
+	graph, err := newReplayGraph(ctx, h.commits)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func (h *historyOperation) transitionFindings(ctx context.Context) ([]Finding, e
 }
 
 func (h *historyOperation) staleMergeFindings(ctx context.Context) ([]Finding, error) {
-	graph, err := newReplayGraph(h.commits)
+	graph, err := newReplayGraph(ctx, h.commits)
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +190,7 @@ func TestHistoryOwnershipPlanningPropagatesNestedMergeCancellation(t *testing.T)
 				}
 				return nil, nil
 			}, func(context.Context) ([]Finding, error) { return nil, nil })
-			graph, err := newReplayGraph(commits)
+			graph, err := newReplayGraph(testContext(t), commits)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -198,6 +198,54 @@ func TestHistoryOwnershipPlanningPropagatesNestedMergeCancellation(t *testing.T)
 				t.Fatalf("nested merge planning error = %v, want %v", err, boom)
 			}
 		})
+	}
+}
+
+func TestHistoryOwnershipPlanningStopsAfterAliasResolutionCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(testContext(t))
+	commits := []replayCommit{
+		{Hash: "leaf", Revision: "a-leaf", Parents: []string{"b-middle"}, Paths: []string{"internal/leaf.go"}},
+		{Hash: "middle", Revision: "b-middle", Parents: []string{"c-root"}, Paths: []string{"internal/middle.go"}},
+		{Hash: "root", Revision: "c-root"},
+		{Hash: "later", Revision: "z-later"},
+	}
+	loads := map[string]int{}
+	op := newHistoryOperationFromCompact(commits, nil, len(commits), func(_ context.Context, revision string) (*revisionState, error) {
+		loads[revision]++
+		if revision == "c-root" {
+			cancel()
+		}
+		return &revisionState{lockReady: true, configReady: true, config: &config.Config{DocsDir: "docs"}, universeReady: true}, nil
+	}, func(context.Context, string) ([]string, error) { return nil, nil }, func(context.Context) ([]Finding, error) { return nil, nil })
+	graph, err := newReplayGraph(testContext(t), commits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := op.planRevisionOwnership(ctx, graph.schedule); !errors.Is(err, context.Canceled) {
+		t.Fatalf("alias planning cancellation = %v, loads = %#v", err, loads)
+	}
+	if loads["z-later"] != 0 {
+		t.Fatalf("alias planning continued to later revision: loads = %#v", loads)
+	}
+}
+
+func TestHistoryOwnershipPlanningObservesEachCancellationCheckpoint(t *testing.T) {
+	commits := []replayCommit{{Hash: "child", Revision: "child", Parents: []string{"parent"}}}
+	run := func(ctx context.Context) error {
+		op := newHistoryOperationFromCompact(commits, nil, len(commits), func(context.Context, string) (*revisionState, error) {
+			return &revisionState{lockReady: true, configReady: true, config: &config.Config{DocsDir: "docs"}, universeReady: true}, nil
+		}, nil, func(context.Context) ([]Finding, error) { return nil, nil })
+		return op.planRevisionOwnership(ctx, commits)
+	}
+	baseline := &cancellationCheckpointContext{Context: testContext(t)}
+	if err := run(baseline); err != nil {
+		t.Fatal(err)
+	}
+	for cancelAt := 1; cancelAt <= baseline.checks; cancelAt++ {
+		ctx := &cancellationCheckpointContext{Context: testContext(t), cancelAt: cancelAt}
+		if err := run(ctx); !errors.Is(err, context.Canceled) {
+			t.Fatalf("ownership cancellation checkpoint %d/%d = %v", cancelAt, baseline.checks, err)
+		}
 	}
 }
 
@@ -380,6 +428,37 @@ func TestStreamingProjectionDetachesRetainedSubjects(t *testing.T) {
 	}
 }
 
+type cancellationCheckpointContext struct {
+	context.Context
+	cancelAt int
+	checks   int
+}
+
+func (c *cancellationCheckpointContext) Err() error {
+	c.checks++
+	if c.cancelAt > 0 && c.checks >= c.cancelAt {
+		return context.Canceled
+	}
+	return nil
+}
+
+func TestReplayGraphObservesCancellationThroughoutConstruction(t *testing.T) {
+	commits := []replayCommit{
+		{Revision: "child", Parents: []string{"parent", "boundary"}},
+		{Revision: "parent"},
+	}
+	baseline := &cancellationCheckpointContext{Context: testContext(t)}
+	if _, err := newReplayGraph(baseline, commits); err != nil {
+		t.Fatal(err)
+	}
+	for cancelAt := 1; cancelAt <= baseline.checks; cancelAt++ {
+		ctx := &cancellationCheckpointContext{Context: testContext(t), cancelAt: cancelAt}
+		if _, err := newReplayGraph(ctx, commits); !errors.Is(err, context.Canceled) {
+			t.Fatalf("graph cancellation checkpoint %d/%d = %v", cancelAt, baseline.checks, err)
+		}
+	}
+}
+
 func TestReplayGraphSchedulesChildrenBeforeParentsDeterministically(t *testing.T) {
 	commits := []replayCommit{
 		{Revision: "merge", Parents: []string{"left", "right"}, IsMerge: true},
@@ -388,7 +467,7 @@ func TestReplayGraphSchedulesChildrenBeforeParentsDeterministically(t *testing.T
 		{Revision: "root", Parents: []string{"boundary"}},
 		{Revision: "isolated", Parents: []string{"boundary"}},
 	}
-	graph, err := newReplayGraph(commits)
+	graph, err := newReplayGraph(testContext(t), commits)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -403,7 +482,7 @@ func TestReplayGraphSchedulesChildrenBeforeParentsDeterministically(t *testing.T
 		t.Fatalf("boundary parents = %#v", graph.boundaries)
 	}
 	for _, permuted := range replayPermutations(commits) {
-		permutedGraph, err := newReplayGraph(permuted)
+		permutedGraph, err := newReplayGraph(testContext(t), permuted)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -416,7 +495,7 @@ func TestReplayGraphSchedulesChildrenBeforeParentsDeterministically(t *testing.T
 		}
 	}
 	octopusParents := []string{"first", "second", "third", "shared-boundary"}
-	octopusGraph, err := newReplayGraph([]replayCommit{
+	octopusGraph, err := newReplayGraph(testContext(t), []replayCommit{
 		{Revision: "octopus", Parents: octopusParents, IsMerge: true},
 		{Revision: "first", Parents: []string{"shared-boundary"}},
 		{Revision: "second", Parents: []string{"shared-boundary"}},
@@ -435,7 +514,7 @@ func TestReplayGraphSchedulesChildrenBeforeParentsDeterministically(t *testing.T
 		{{Revision: "self", Parents: []string{"self"}}},
 		{{Revision: "one", Parents: []string{"two"}}, {Revision: "two", Parents: []string{"one"}}},
 	} {
-		if _, err := newReplayGraph(invalid); err == nil {
+		if _, err := newReplayGraph(testContext(t), invalid); err == nil {
 			t.Fatalf("invalid graph accepted: %#v", invalid)
 		}
 	}
@@ -1380,7 +1459,7 @@ func TestHistoryOperationStreamsAndReleasesFinalConsumers(t *testing.T) {
 		}, nil, func(context.Context) ([]Finding, error) { return nil, nil })
 	}
 	errorOp := newErrorOperation()
-	graph, err := newReplayGraph(errorOp.commits)
+	graph, err := newReplayGraph(ctx, errorOp.commits)
 	if err != nil {
 		t.Fatal(err)
 	}
