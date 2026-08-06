@@ -112,7 +112,7 @@ func TestGateRunnerModes(t *testing.T) {
 
 	t.Run("Pi smoke must run rather than skip", func(t *testing.T) {
 		stderr, status, lines := run([]string{"FAKE_PI_RESULT=skip"}, "gate", "timings")
-		if status != 1 || !strings.Contains(stderr, "gate: Pi runtime smoke did not run and pass") {
+		if status != 1 || !strings.Contains(stderr, "gate: Pi runtime smoke proving units did not run and pass") {
 			t.Fatalf("skipped Pi smoke status=%d stderr=%q", status, stderr)
 		}
 		if strings.Contains(strings.Join(lines, "\n"), "vet ./...") {
@@ -150,7 +150,8 @@ printf 'goos=%s|goarch=%s|pi=%s|%s\n' "${GOOS:-}" "${GOARCH:-}" "${AWF_PI_RUNTIM
 if [ -n "${FAKE_GO_FAIL_CONTAINS:-}" ] && [[ "$*" == *"$FAKE_GO_FAIL_CONTAINS"* ]]; then
   exit 17
 fi
-if [[ "$*" == "test -json ./internal/project -run ^TestPiRealRuntimeSmoke$ -count=1" ]]; then
+if [[ "$*" == "test -json ./internal/project -run ^TestPi(EffortMemoryToolContract|RealRuntimeSmoke)$ -count=1" ]]; then
+  printf '{"Time":"2026-08-02T00:00:00Z","Action":"%s","Package":"example/project","Test":"TestPiEffortMemoryToolContract","Elapsed":0}\n' "${FAKE_PI_RESULT:-pass}"
   printf '{"Time":"2026-08-02T00:00:00Z","Action":"%s","Package":"example/project","Test":"TestPiRealRuntimeSmoke","Elapsed":0}\n' "${FAKE_PI_RESULT:-pass}"
 fi
 `
@@ -187,7 +188,7 @@ func assertGateInvocations(t *testing.T, lines []string) {
 	want := []string{
 		"goos=|goarch=|pi=|test ./... -coverpkg=./... -coverprofile=coverage.out",
 		"goos=|goarch=|pi=|run ./cmd/covercheck coverage.out",
-		"goos=|goarch=|pi=1|test -json ./internal/project -run ^TestPiRealRuntimeSmoke$ -count=1",
+		"goos=|goarch=|pi=1|test -json ./internal/project -run ^TestPi(EffortMemoryToolContract|RealRuntimeSmoke)$ -count=1",
 		"goos=|goarch=|pi=|vet ./...",
 		"goos=linux|goarch=arm64|pi=|build ./...",
 		"goos=darwin|goarch=amd64|pi=|build ./...",

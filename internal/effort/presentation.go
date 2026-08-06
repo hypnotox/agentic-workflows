@@ -1,7 +1,9 @@
 package effort
 
 import (
+	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
@@ -101,19 +103,6 @@ func (e *CorruptError) Diagnostic() (presentation.Diagnostic, error) {
 	return presentation.Diagnostic{Condition: "effort resident is unusable", State: "resident", Cause: fmt.Sprintf("%s: %v", e.Path, e.Err), Changed: changed, Steps: steps}, nil
 }
 
-// Diagnostic maps an invalid memory refusal into the common readable diagnostic.
-func (e *InvalidMemoryError) Diagnostic() (presentation.Diagnostic, error) {
-	changed, err := unchangedBytes()
-	if err != nil { // coverage-ignore: unchangedBytes constructs fixed valid presentation facts
-		return presentation.Diagnostic{}, err
-	}
-	steps, err := recoverySteps([]RecoveryAction{{Text: e.NextAction}})
-	if err != nil { // coverage-ignore: service-generated NextAction is a bounded valid effort command
-		return presentation.Diagnostic{}, err
-	}
-	return presentation.Diagnostic{Condition: fmt.Sprintf("memory for effort %q cannot be updated", e.Slug), State: "memory", Cause: e.Err.Error(), Changed: changed, Steps: steps}, nil
-}
-
 // Detail maps one resident record into its ordered readable facts.
 func (r Record) Detail() (presentation.Detail, error) {
 	fields, err := r.presentationFields("slug")
@@ -190,6 +179,149 @@ func (r Record) NewEffortMutation(mutation presentation.Mutation) (presentation.
 	}
 	mutation.Identity = append(identity, mutation.Identity...)
 	return mutation, nil
+}
+
+// MemoryDocument maps every protocol-neutral memory fact to ordinary readable text.
+func (r MemoryOperationResult) MemoryDocument() (presentation.Document, error) {
+	fields := []presentation.Field{}
+	add := func(label, text string, prose bool) error {
+		var value presentation.Value
+		var err error
+		if prose {
+			value, err = presentation.Prose(text)
+		} else {
+			value, err = presentation.Literal(text)
+		}
+		if err != nil {
+			return err
+		}
+		field, err := presentation.NewField(label, value)
+		if err != nil { // coverage-ignore: every caller supplies a fixed grammar-valid label
+			return err
+		}
+		fields = append(fields, field)
+		return nil
+	}
+	if r.Outcome != nil {
+		if err := add("condition", r.Outcome.Condition, true); err != nil {
+			return presentation.Document{}, err
+		}
+		if err := add("state", r.Outcome.Category, true); err != nil {
+			return presentation.Document{}, err
+		}
+		if r.Outcome.Cause != "" {
+			if err := add("cause", r.Outcome.Cause, true); err != nil { // coverage-ignore: a nonempty mechanism cause always normalizes to valid prose
+				return presentation.Document{}, err
+			}
+		}
+		if err := add("changed memory", yesNo(r.Outcome.ChangedMemory), false); err != nil { // coverage-ignore: fixed label and yes/no literal are constructor-valid
+			return presentation.Document{}, err
+		}
+		for _, fact := range memoryRefusalPresentationFacts(r) {
+			if err := add(fact.label, fact.value, false); err != nil { // coverage-ignore: fixed labels and integer literals are constructor-valid
+				return presentation.Document{}, err
+			}
+		}
+		steps, err := recoverySteps(r.Outcome.NextActions)
+		if err != nil {
+			return presentation.Document{}, err
+		}
+		nodes := fieldsAsNodesForEffort(fields)
+		if len(steps) > 0 {
+			stepNode, err := presentation.NewSteps("steps", steps...)
+			if err != nil { // coverage-ignore: recoverySteps validated every action
+				return presentation.Document{}, err
+			}
+			diagnostic, err := presentation.NewSection("diagnostic", stepNode)
+			if err != nil { // coverage-ignore: fixed labels and validated children are constructor-valid
+				return presentation.Document{}, err
+			}
+			nodes = append(nodes, diagnostic)
+		}
+		return presentation.NewDocument(nodes...)
+	}
+	if err := add("status", string(r.Condition), true); err != nil {
+		return presentation.Document{}, err
+	}
+	if r.Memory == nil {
+		return presentation.Document{}, errors.New("memory success requires metadata")
+	}
+	for _, fact := range []struct{ label, value string }{{"effort", r.Memory.Effort}, {"phase", r.Memory.Phase}, {"next", r.Memory.Next}, {"updated", r.Memory.Updated}} {
+		if err := add(fact.label, fact.value, false); err != nil {
+			return presentation.Document{}, err
+		}
+	}
+	if r.Condition == MemoryRead {
+		if r.Range == nil {
+			return presentation.Document{}, errors.New("memory read requires range")
+		}
+		next := "null"
+		if r.Range.NextOffset != nil {
+			next = strconv.Itoa(*r.Range.NextOffset)
+		}
+		for _, fact := range []struct{ label, value string }{
+			{"start line", strconv.Itoa(r.Range.StartLine)},
+			{"end line", strconv.Itoa(r.Range.EndLine)},
+			{"total lines", strconv.Itoa(r.Range.TotalLines)},
+			{"next offset", next},
+			{"truncated by", r.Range.TruncatedBy},
+			{"content", strconv.Quote(r.Content)},
+		} {
+			if err := add(fact.label, fact.value, false); err != nil { // coverage-ignore: fixed labels and quoted or typed range literals are constructor-valid
+				return presentation.Document{}, err
+			}
+		}
+	}
+	if r.Condition == MemoryEdited {
+		if r.Diff == nil {
+			return presentation.Document{}, errors.New("memory edit requires diff")
+		}
+		first := "null"
+		if r.Diff.FirstChangedLine != nil {
+			first = strconv.Itoa(*r.Diff.FirstChangedLine)
+		}
+		for _, fact := range []struct{ label, value string }{
+			{"replacements", strconv.Itoa(r.ReplacementCount)},
+			{"diff", strconv.Quote(r.Diff.Text)},
+			{"first changed line", first},
+			{"diff truncated", yesNo(r.Diff.Truncated)},
+		} {
+			if err := add(fact.label, fact.value, false); err != nil { // coverage-ignore: fixed labels and quoted or typed diff literals are constructor-valid
+				return presentation.Document{}, err
+			}
+		}
+	}
+	return presentation.NewDocument(fieldsAsNodesForEffort(fields)...)
+}
+
+type memoryPresentationFact struct{ label, value string }
+
+func memoryRefusalPresentationFacts(r MemoryOperationResult) []memoryPresentationFact {
+	facts := []memoryPresentationFact{}
+	if r.Offset != nil {
+		facts = append(facts, memoryPresentationFact{"offset", strconv.Itoa(r.Offset.Offset)}, memoryPresentationFact{"total lines", strconv.Itoa(r.Offset.TotalLines)})
+	}
+	if r.Edit != nil {
+		facts = append(facts, memoryPresentationFact{"edit index", strconv.Itoa(r.Edit.Index)})
+		if r.Edit.Occurrences > 0 {
+			facts = append(facts, memoryPresentationFact{"occurrences", strconv.Itoa(r.Edit.Occurrences)})
+		}
+	}
+	if r.Overlap != nil {
+		facts = append(facts, memoryPresentationFact{"first edit index", strconv.Itoa(r.Overlap.FirstIndex)}, memoryPresentationFact{"second edit index", strconv.Itoa(r.Overlap.SecondIndex)})
+	}
+	if r.Size != nil {
+		facts = append(facts, memoryPresentationFact{"bytes", strconv.Itoa(r.Size.Bytes)}, memoryPresentationFact{"maximum bytes", strconv.Itoa(r.Size.MaxBytes)})
+	}
+	return facts
+}
+
+func fieldsAsNodesForEffort(fields []presentation.Field) []presentation.Node {
+	nodes := make([]presentation.Node, len(fields))
+	for i := range fields {
+		nodes[i] = fields[i]
+	}
+	return nodes
 }
 
 // FinishMutation maps a completed restartable finish into its effort-owned

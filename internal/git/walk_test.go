@@ -13,6 +13,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/filemode"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v5/plumbing/storer"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
@@ -34,6 +35,276 @@ func walkRepo(t *testing.T, root string) *Repo {
 	return repo
 }
 
+func collectWalkRange(t *testing.T, repo *Repo, base, head string) ([]Commit, int, error) {
+	t.Helper()
+	var commits []Commit
+	count, err := repo.WalkRangeCommits(testContext(t), base, head, func(commit Commit) error {
+		commits = append(commits, commit)
+		return nil
+	})
+	return commits, count, err
+}
+
+func TestWalkRangeCommitsStopsAtVisitorError(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	base := gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{"a.md": "base\n"})
+	gitfixture.Commit(t, repo, "feat(awf): first", map[string]string{"a.md": "first\n"})
+	gitfixture.Commit(t, repo, "feat(awf): second", map[string]string{"a.md": "second\n"})
+	gitfixture.Commit(t, repo, "feat(awf): third", map[string]string{"a.md": "third\n"})
+	t.Run("multiple successful visits", func(t *testing.T) {
+		visits := 0
+		count, err := walkRepo(t, repo.Root()).WalkRangeCommits(testContext(t), base, "HEAD", func(Commit) error {
+			visits++
+			return nil
+		})
+		if err != nil || count != 3 || visits != 3 {
+			t.Fatalf("WalkRangeCommits = (%d, %v), visits %d; want (3, nil), 3", count, err, visits)
+		}
+	})
+	t.Run("later visitor error preserves identity and stops", func(t *testing.T) {
+		boom := errors.New("visitor failed")
+		visits := 0
+		count, err := walkRepo(t, repo.Root()).WalkRangeCommits(testContext(t), base, "HEAD", func(Commit) error {
+			visits++
+			if visits == 3 {
+				return boom
+			}
+			return nil
+		})
+		if !errors.Is(err, boom) || count != 2 || visits != 3 {
+			t.Fatalf("WalkRangeCommits = (%d, %v), visits %d; want (2, visitor identity), 3", count, err, visits)
+		}
+	})
+	t.Run("go-git stop sentinel remains a visitor error", func(t *testing.T) {
+		visits := 0
+		count, err := walkRepo(t, repo.Root()).WalkRangeCommits(testContext(t), base, "HEAD", func(Commit) error {
+			visits++
+			if visits == 2 {
+				return storer.ErrStop
+			}
+			return nil
+		})
+		if !errors.Is(err, storer.ErrStop) || count != 1 || visits != 2 {
+			t.Fatalf("WalkRangeCommits = (%d, %v), visits %d; want (1, storer.ErrStop), 2", count, err, visits)
+		}
+	})
+	t.Run("visitor boundary cancellation", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(testContext(t))
+		defer cancel()
+		visits := 0
+		count, err := walkRepo(t, repo.Root()).WalkRangeCommits(ctx, "HEAD~1", "HEAD", func(Commit) error {
+			visits++
+			cancel()
+			return nil
+		})
+		if !errors.Is(err, context.Canceled) || count != 1 || visits != 1 {
+			t.Fatalf("WalkRangeCommits = (%d, %v), visits %d; want (1, context.Canceled), 1", count, err, visits)
+		}
+	})
+}
+
+func TestWalkRangeRichConstructionPreservesCancellation(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	base := gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{"nested/a.md": "base\n"})
+	head := gitfixture.Commit(t, repo, "feat(awf): head", map[string]string{"nested/a.md": "head\n"})
+	ctx, cancel := context.WithCancel(testContext(t))
+	cancel()
+	headCommit := walkCommitObject(t, repo.Root(), head)
+	if _, err := toCommit(ctx, headCommit, ""); !errors.Is(err, context.Canceled) {
+		t.Fatalf("rich commit cancellation = %v", err)
+	}
+	parent, cancelDuringDiff := context.WithCancel(testContext(t))
+	duringDiff := &cancelOnDoneContext{Context: parent, cancel: cancelDuringDiff, target: 1}
+	if _, err := toCommit(duringDiff, headCommit, ""); !errors.Is(err, context.Canceled) || duringDiff.count < duringDiff.target {
+		t.Fatalf("rich commit diff cancellation = %v, observations %d", err, duringDiff.count)
+	}
+	parent, cancelDuringPatch := context.WithCancel(testContext(t))
+	duringPatch := &cancelOnDoneContext{Context: parent, cancel: cancelDuringPatch, target: 4}
+	if _, err := toCommit(duringPatch, headCommit, ""); !errors.Is(err, context.Canceled) || duringPatch.count < duringPatch.target {
+		t.Fatalf("rich commit patch cancellation = %v, observations %d", err, duringPatch.count)
+	}
+
+	gitfixture.CheckoutNewBranch(t, repo, "feature", base)
+	feature := gitfixture.Commit(t, repo, "feat(awf): feature", map[string]string{"nested/feature.md": "feature\n"})
+	gitfixture.StageFile(t, repo, "nested/a.md", "head\n", 0o644)
+	merge := gitfixture.Merge(t, repo, "Merge head", feature, head)
+	mergeCommit := walkCommitObject(t, repo.Root(), merge)
+	if _, err := toCommit(ctx, mergeCommit, ""); !errors.Is(err, context.Canceled) {
+		t.Fatalf("merge rich commit cancellation = %v", err)
+	}
+	if _, err := mergeTouchesPrefix(ctx, mergeCommit, "nested"); !errors.Is(err, context.Canceled) {
+		t.Fatalf("merge prefix cancellation = %v", err)
+	}
+	parent, cancelDuringMergeDiff := context.WithCancel(testContext(t))
+	duringMergeDiff := &cancelOnDoneContext{Context: parent, cancel: cancelDuringMergeDiff, target: 1}
+	if _, err := mergeTouchesPrefix(duringMergeDiff, mergeCommit, "nested"); !errors.Is(err, context.Canceled) || duringMergeDiff.count < duringMergeDiff.target {
+		t.Fatalf("merge prefix diff cancellation = %v, observations %d", err, duringMergeDiff.count)
+	}
+}
+
+func TestValidateChangedTreeFrontierReportsNestedChangedEvidence(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	backend := openWalkRepo(t, repo.Root())
+	validHash := storeWalkTree(t, backend, []object.TreeEntry{{Name: "file.md", Mode: filemode.Regular, Hash: plumbing.NewHash(strings.Repeat("2", 40))}}).Hash
+	validRoot := storeWalkTree(t, backend, []object.TreeEntry{{Name: "nested", Mode: filemode.Dir, Hash: validHash}})
+	brokenHash := storeWalkTree(t, backend, []object.TreeEntry{{Name: "missing", Mode: filemode.Dir, Hash: plumbing.NewHash(strings.Repeat("1", 40))}}).Hash
+	brokenRoot := storeWalkTree(t, backend, []object.TreeEntry{{Name: "nested", Mode: filemode.Dir, Hash: brokenHash}})
+	empty := storeWalkTree(t, backend, nil)
+	for _, tc := range []struct {
+		name          string
+		before, after *object.Tree
+	}{
+		{"changed directory", validRoot, brokenRoot},
+		{"deleted directory", brokenRoot, empty},
+		{"added directory", empty, brokenRoot},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := validateChangedTreeFrontier(testContext(t), tc.before, tc.after); err == nil {
+				t.Fatal("missing nested changed tree evidence accepted")
+			}
+		})
+	}
+}
+
+func TestWalkRangeCommitsReportsOrdinaryCorruptTrees(t *testing.T) {
+	for _, target := range []string{"current tree", "parent tree", "current subtree", "parent subtree"} {
+		t.Run(target, func(t *testing.T) {
+			repo := gitfixture.InitRepo(t)
+			base := gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{"nested/a.md": "base\n"})
+			head := gitfixture.Commit(t, repo, "feat(awf): head", map[string]string{"nested/a.md": "head\n"})
+			removeHash := ""
+			switch target {
+			case "current tree":
+				removeHash = gitfixture.TreeHash(t, repo, head)
+			case "parent tree":
+				removeHash = gitfixture.TreeHash(t, repo, base)
+			case "current subtree":
+				backend := openWalkRepo(t, repo.Root())
+				top := &object.Tree{Entries: []object.TreeEntry{{Name: "nested", Mode: filemode.Dir, Hash: plumbing.NewHash(strings.Repeat("1", 40))}}}
+				encodedTree := backend.Storer.NewEncodedObject()
+				if err := top.Encode(encodedTree); err != nil {
+					t.Fatal(err)
+				}
+				treeHash, err := backend.Storer.SetEncodedObject(encodedTree)
+				if err != nil {
+					t.Fatal(err)
+				}
+				commit := &object.Commit{Author: *gitfixture.Sig, Committer: *gitfixture.Sig, Message: "corrupt subtree\n", TreeHash: treeHash, ParentHashes: []plumbing.Hash{plumbing.NewHash(base)}}
+				encodedCommit := backend.Storer.NewEncodedObject()
+				if err := commit.Encode(encodedCommit); err != nil {
+					t.Fatal(err)
+				}
+				commitHash, err := backend.Storer.SetEncodedObject(encodedCommit)
+				if err != nil {
+					t.Fatal(err)
+				}
+				head = commitHash.String()
+			case "parent subtree":
+				tree, err := walkCommitObject(t, repo.Root(), base).Tree()
+				if err != nil {
+					t.Fatal(err)
+				}
+				subtree, err := tree.Tree("nested")
+				if err != nil {
+					t.Fatal(err)
+				}
+				removeHash = subtree.Hash.String()
+			}
+			if removeHash != "" {
+				if err := os.Remove(filepath.Join(repo.Root(), ".git", "objects", removeHash[:2], removeHash[2:])); err != nil {
+					t.Fatal(err)
+				}
+			}
+			visits := 0
+			count, err := walkRepo(t, repo.Root()).WalkRangeCommits(testContext(t), base, head, func(Commit) error {
+				visits++
+				return nil
+			})
+			if err == nil || count != 0 || visits != 0 {
+				t.Fatalf("corrupt %s = (%d, %v), visits %d; want (0, error), 0", target, count, err, visits)
+			}
+			if errors.Is(err, plumbing.ErrObjectNotFound) {
+				t.Fatalf("corrupt %s leaked backend error identity: %v", target, err)
+			}
+		})
+	}
+}
+
+func TestWalkRangeCommitsReportsOrdinaryCorruptBlobs(t *testing.T) {
+	for _, target := range []string{"current blob", "parent blob"} {
+		t.Run(target, func(t *testing.T) {
+			repo := gitfixture.InitRepo(t)
+			base := gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{"nested/a.md": "base\n"})
+			head := gitfixture.Commit(t, repo, "feat(awf): head", map[string]string{"nested/a.md": "head\n"})
+			revision := head
+			if target == "parent blob" {
+				revision = base
+			}
+			tree, err := walkCommitObject(t, repo.Root(), revision).Tree()
+			if err != nil {
+				t.Fatal(err)
+			}
+			file, err := tree.File("nested/a.md")
+			if err != nil {
+				t.Fatal(err)
+			}
+			hash := file.Hash.String()
+			if err := os.Remove(filepath.Join(repo.Root(), ".git", "objects", hash[:2], hash[2:])); err != nil {
+				t.Fatal(err)
+			}
+			visits := 0
+			count, err := walkRepo(t, repo.Root()).WalkRangeCommits(testContext(t), base, head, func(Commit) error {
+				visits++
+				return nil
+			})
+			if err == nil || count != 0 || visits != 0 {
+				t.Fatalf("corrupt %s = (%d, %v), visits %d; want (0, error), 0", target, count, err, visits)
+			}
+			if errors.Is(err, plumbing.ErrObjectNotFound) {
+				t.Fatalf("corrupt %s leaked backend error identity: %v", target, err)
+			}
+		})
+	}
+}
+
+func TestWalkRangeCommitsSkipsMissingUnchangedSubtree(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	base := gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{"stable/a.md": "stable\n", "changed.md": "base\n"})
+	head := gitfixture.Commit(t, repo, "feat(awf): head", map[string]string{"changed.md": "head\n"})
+	baseTree, err := walkCommitObject(t, repo.Root(), base).Tree()
+	if err != nil {
+		t.Fatal(err)
+	}
+	stable, err := baseTree.Tree("stable")
+	if err != nil {
+		t.Fatal(err)
+	}
+	hash := stable.Hash.String()
+	if err := os.Remove(filepath.Join(repo.Root(), ".git", "objects", hash[:2], hash[2:])); err != nil {
+		t.Fatal(err)
+	}
+	commits, count, err := collectWalkRange(t, walkRepo(t, repo.Root()), base, head)
+	if err != nil || count != 1 || len(commits) != 1 {
+		t.Fatalf("range with missing unchanged subtree = (%d, %#v, %v), want one commit", count, commits, err)
+	}
+}
+
+func TestWalkRangeCommitsContract(t *testing.T) {
+	t.Run("visit count failure and cancellation", TestWalkRangeCommitsStopsAtVisitorError)
+	t.Run("rich construction cancellation", TestWalkRangeRichConstructionPreservesCancellation)
+	t.Run("rich linear evidence", TestRangeCommitsLinearRangeCarriesChangesAndText)
+	t.Run("merge evidence", TestRangeCommitsMergedRangeKeepsMergeAndNoChanges)
+	t.Run("prefix filtering and rerooting", TestRangeCommitsNestedScopeFiltersAndReroots)
+	t.Run("prefix merge inclusion", TestRangeCommitsNestedScopeKeepsRelevantMerges)
+	t.Run("prefix merge corrupt evidence", TestRangeCommitsNestedMergeReportsTreeErrors)
+	t.Run("root and boundary errors", TestRangeCommitsBoundaryErrorsAndRoot)
+	t.Run("unrelated boundary", TestRangeCommitsUnrelatedHistoryAndWorktreeConfig)
+	t.Run("shallow boundary", TestObjectReadsReportAMissingParentInAShallowClone)
+	t.Run("corrupt tree evidence", TestWalkRangeCommitsReportsOrdinaryCorruptTrees)
+	t.Run("corrupt blob evidence", TestWalkRangeCommitsReportsOrdinaryCorruptBlobs)
+	t.Run("unchanged missing subtree", TestWalkRangeCommitsSkipsMissingUnchangedSubtree)
+}
+
 func TestRangeCommitsLinearRangeCarriesChangesAndText(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
@@ -49,7 +320,7 @@ func TestRangeCommitsLinearRangeCarriesChangesAndText(t *testing.T) {
 	}, "delete.txt", "rename.txt")
 	gitfixture.Commit(t, repo, "fix(awf): two", map[string]string{"c.md": "new\n"})
 
-	commits, err := walkRepo(t, dir).RangeCommits(testContext(t), base, "HEAD")
+	commits, _, err := collectWalkRange(t, walkRepo(t, dir), base, "HEAD")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +372,7 @@ func TestRangeCommitsMergedRangeKeepsMergeAndNoChanges(t *testing.T) {
 	gitfixture.StageFile(t, repo, "mainside.txt", "main\n", 0o644)
 	gitfixture.Merge(t, repo, "Merge branch 'master' into feature", feature, main)
 
-	commits, err := walkRepo(t, dir).RangeCommits(testContext(t), "master", "HEAD")
+	commits, _, err := collectWalkRange(t, walkRepo(t, dir), "master", "HEAD")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +397,7 @@ func TestRangeCommitsNestedScopeFiltersAndReroots(t *testing.T) {
 	gitfixture.Commit(t, repo, "outside", map[string]string{"outside.txt": "new\n"})
 	gitfixture.Commit(t, repo, "inside", map[string]string{"nested/docs/old.md": "new\n", "nested/new.txt": "new\n"})
 
-	commits, err := walkRepo(t, filepath.Join(dir, "nested")).RangeCommits(testContext(t), base, "HEAD")
+	commits, _, err := collectWalkRange(t, walkRepo(t, filepath.Join(dir, "nested")), base, "HEAD")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -159,7 +430,7 @@ func TestRangeCommitsNestedScopeKeepsRelevantMerges(t *testing.T) {
 	gitfixture.StageFile(t, repo, "outside.txt", "main\n", 0o644)
 	gitfixture.Merge(t, repo, "Merge feature", main, feature)
 
-	commits, err := walkRepo(t, filepath.Join(dir, "nested")).RangeCommits(testContext(t), "master", "HEAD")
+	commits, _, err := collectWalkRange(t, walkRepo(t, filepath.Join(dir, "nested")), "master", "HEAD")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +449,7 @@ func TestRangeCommitsNestedScopeKeepsRelevantMerges(t *testing.T) {
 	outsideFeature := gitfixture.Commit(t, outsideRepo, "feature", map[string]string{"feature.txt": "feature\n"})
 	gitfixture.StageFile(t, outsideRepo, "outside.txt", "main\n", 0o644)
 	gitfixture.Merge(t, outsideRepo, "Merge outside", outsideMain, outsideFeature)
-	commits, err = walkRepo(t, filepath.Join(outsideDir, "nested")).RangeCommits(testContext(t), "master", "HEAD")
+	commits, _, err = collectWalkRange(t, walkRepo(t, filepath.Join(outsideDir, "nested")), "master", "HEAD")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,7 +459,7 @@ func TestRangeCommitsNestedScopeKeepsRelevantMerges(t *testing.T) {
 }
 
 func TestRangeCommitsNestedMergeReportsTreeErrors(t *testing.T) {
-	for _, name := range []string{"merge result tree", "first parent tree"} {
+	for _, name := range []string{"merge result tree", "first parent tree", "merge result subtree", "first parent subtree", "unsafe result path"} {
 		t.Run(name, func(t *testing.T) {
 			repo := gitfixture.InitRepo(t)
 			dir := repo.Root()
@@ -200,17 +471,63 @@ func TestRangeCommitsNestedMergeReportsTreeErrors(t *testing.T) {
 			merge := gitfixture.Merge(t, repo, "Merge feature", main, feature)
 
 			var hash string
+			head := "HEAD"
 			switch name {
 			case "merge result tree":
 				hash = gitfixture.TreeHash(t, repo, merge)
 			case "first parent tree":
 				hash = gitfixture.TreeHash(t, repo, main)
+			case "merge result subtree", "first parent subtree":
+				revision := merge
+				if name == "first parent subtree" {
+					revision = main
+				}
+				tree, err := walkCommitObject(t, dir, revision).Tree()
+				if err != nil {
+					t.Fatal(err)
+				}
+				subtree, err := tree.Tree("nested")
+				if err != nil {
+					t.Fatal(err)
+				}
+				hash = subtree.Hash.String()
+			case "unsafe result path":
+				backend := openWalkRepo(t, dir)
+				mainTree, err := walkCommitObject(t, dir, main).Tree()
+				if err != nil {
+					t.Fatal(err)
+				}
+				file, err := mainTree.File("nested/main.txt")
+				if err != nil {
+					t.Fatal(err)
+				}
+				top := &object.Tree{Entries: []object.TreeEntry{{Name: "..", Mode: filemode.Regular, Hash: file.Hash}}}
+				encodedTree := backend.Storer.NewEncodedObject()
+				if err := top.Encode(encodedTree); err != nil {
+					t.Fatal(err)
+				}
+				treeHash, err := backend.Storer.SetEncodedObject(encodedTree)
+				if err != nil {
+					t.Fatal(err)
+				}
+				commit := &object.Commit{Author: *gitfixture.Sig, Committer: *gitfixture.Sig, Message: "Merge unsafe\n", TreeHash: treeHash, ParentHashes: []plumbing.Hash{plumbing.NewHash(main), plumbing.NewHash(feature)}}
+				encodedCommit := backend.Storer.NewEncodedObject()
+				if err := commit.Encode(encodedCommit); err != nil {
+					t.Fatal(err)
+				}
+				commitHash, err := backend.Storer.SetEncodedObject(encodedCommit)
+				if err != nil {
+					t.Fatal(err)
+				}
+				head = commitHash.String()
 			}
-			if err := os.Remove(filepath.Join(dir, ".git", "objects", hash[:2], hash[2:])); err != nil {
-				t.Fatal(err)
+			if hash != "" {
+				if err := os.Remove(filepath.Join(dir, ".git", "objects", hash[:2], hash[2:])); err != nil {
+					t.Fatal(err)
+				}
 			}
-			if _, err := walkRepo(t, filepath.Join(dir, "nested")).RangeCommits(testContext(t), "master", "HEAD"); err == nil {
-				t.Fatal("nested merge with missing tree object accepted")
+			if _, _, err := collectWalkRange(t, walkRepo(t, filepath.Join(dir, "nested")), "master", head); err == nil {
+				t.Fatal("nested merge with malformed tree evidence accepted")
 			}
 		})
 	}
@@ -222,7 +539,7 @@ func TestRangeCommitsBoundaryErrorsAndRoot(t *testing.T) {
 	root := gitfixture.Commit(t, repo, "root", map[string]string{"a.md": "root\n"})
 	handle := walkRepo(t, dir)
 	rootCommit := walkCommitObject(t, dir, root)
-	commit, err := toCommit(rootCommit, "")
+	commit, err := toCommit(testContext(t), rootCommit, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -232,10 +549,10 @@ func TestRangeCommitsBoundaryErrorsAndRoot(t *testing.T) {
 	if _, found, err := handle.FileText(testContext(t), "HEAD", "missing.md"); err != nil || found {
 		t.Fatalf("missing text = %t, %v", found, err)
 	}
-	if commits, err := handle.RangeCommits(testContext(t), root, "HEAD"); err != nil || commits != nil {
+	if commits, count, err := collectWalkRange(t, handle, root, "HEAD"); err != nil || count != 0 || commits != nil {
 		t.Fatalf("empty range = %#v, %v", commits, err)
 	}
-	if _, err := handle.RangeCommits(testContext(t), "missing", "HEAD"); err == nil {
+	if _, _, err := collectWalkRange(t, handle, "missing", "HEAD"); err == nil {
 		t.Fatal("missing base revision accepted")
 	} else {
 		var command *CommandError
@@ -243,7 +560,7 @@ func TestRangeCommitsBoundaryErrorsAndRoot(t *testing.T) {
 			t.Fatalf("revision error leaked CommandError: %v", err)
 		}
 	}
-	if _, err := handle.RangeCommits(testContext(t), "HEAD", "missing"); err == nil {
+	if _, _, err := collectWalkRange(t, handle, "HEAD", "missing"); err == nil {
 		t.Fatal("missing head revision accepted")
 	}
 	if _, _, err := handle.FileText(testContext(t), "missing", "a.md"); err == nil {
@@ -279,11 +596,11 @@ func TestRangeCommitsUnrelatedHistoryAndWorktreeConfig(t *testing.T) {
 	base := gitfixture.Commit(t, repo, "base", map[string]string{"a.txt": "a"})
 	gitfixture.Commit(t, repo, "head", map[string]string{"a.txt": "b"})
 	orphan := storeOrphan(t, dir)
-	if _, err := walkRepo(t, dir).RangeCommits(testContext(t), orphan, "HEAD"); err == nil || !strings.Contains(err.Error(), "unrelated histories") {
+	if _, _, err := collectWalkRange(t, walkRepo(t, dir), orphan, "HEAD"); err == nil || !strings.Contains(err.Error(), "unrelated histories") {
 		t.Fatalf("unrelated histories = %v", err)
 	}
 	enableWalkWorktreeConfig(t, dir)
-	if commits, err := walkRepo(t, dir).RangeCommits(testContext(t), base, "HEAD"); err != nil || len(commits) != 1 {
+	if commits, _, err := collectWalkRange(t, walkRepo(t, dir), base, "HEAD"); err != nil || len(commits) != 1 {
 		t.Fatalf("worktreeConfig range = %#v, %v", commits, err)
 	}
 }
@@ -296,7 +613,7 @@ func TestWalkMethodsRespectCanceledContextAndNativeErrors(t *testing.T) {
 	handle := walkRepo(t, dir)
 	ctx, cancel := context.WithCancel(testContext(t))
 	cancel()
-	if _, err := handle.RangeCommits(ctx, "HEAD", "HEAD"); !errors.Is(err, context.Canceled) {
+	if _, err := handle.WalkRangeCommits(ctx, "HEAD", "HEAD", func(Commit) error { return nil }); !errors.Is(err, context.Canceled) {
 		t.Fatalf("RangeCommits cancellation = %v", err)
 	}
 	if _, _, err := handle.FileText(ctx, "HEAD", "a.go"); !errors.Is(err, context.Canceled) {
@@ -310,13 +627,13 @@ func TestWalkMethodsRespectCanceledContextAndNativeErrors(t *testing.T) {
 	}
 	t.Run("base walk", func(t *testing.T) {
 		midWalk := &cancelAfterContext{Context: testContext(t), remaining: 2}
-		if _, err := handle.RangeCommits(midWalk, "HEAD", "HEAD"); !errors.Is(err, context.Canceled) {
+		if _, err := handle.WalkRangeCommits(midWalk, "HEAD", "HEAD", func(Commit) error { return nil }); !errors.Is(err, context.Canceled) {
 			t.Fatalf("base-walk cancellation = %v", err)
 		}
 	})
 	t.Run("head walk", func(t *testing.T) {
 		midWalk := &cancelAfterContext{Context: testContext(t), remaining: 3}
-		if _, err := handle.RangeCommits(midWalk, "HEAD~1", "HEAD"); !errors.Is(err, context.Canceled) {
+		if _, err := handle.WalkRangeCommits(midWalk, "HEAD~1", "HEAD", func(Commit) error { return nil }); !errors.Is(err, context.Canceled) {
 			t.Fatalf("head-walk cancellation = %v", err)
 		}
 	})
@@ -436,7 +753,7 @@ func TestFirstParentChangedPathsContracts(t *testing.T) {
 	if err != nil || strings.Join(mergePaths, ",") != "feature.txt" {
 		t.Fatalf("merge first-parent paths = %v, %v", mergePaths, err)
 	}
-	commits, err := handle.RangeCommits(testContext(t), head, merge)
+	commits, _, err := collectWalkRange(t, handle, head, merge)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -592,6 +909,21 @@ func TestSplitWalkMessage(t *testing.T) {
 	}
 }
 
+type cancelOnDoneContext struct {
+	context.Context
+	cancel context.CancelFunc
+	target int
+	count  int
+}
+
+func (c *cancelOnDoneContext) Done() <-chan struct{} {
+	c.count++
+	if c.count == c.target {
+		c.cancel()
+	}
+	return c.Context.Done()
+}
+
 type cancelAtDiffContext struct {
 	context.Context
 	remaining    int
@@ -635,6 +967,24 @@ func walkCommitObject(t *testing.T, dir, rev string) *object.Commit {
 		t.Fatal(err)
 	}
 	return commit
+}
+
+func storeWalkTree(t *testing.T, repo *gogit.Repository, entries []object.TreeEntry) *object.Tree {
+	t.Helper()
+	tree := &object.Tree{Entries: entries}
+	encoded := repo.Storer.NewEncodedObject()
+	if err := tree.Encode(encoded); err != nil {
+		t.Fatal(err)
+	}
+	hash, err := repo.Storer.SetEncodedObject(encoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored, err := repo.TreeObject(hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return stored
 }
 
 func openWalkRepo(t *testing.T, dir string) *gogit.Repository {
@@ -739,7 +1089,7 @@ func TestObjectReadsReportAMissingParentInAShallowClone(t *testing.T) {
 	}
 	// The range walk reaches the same absent object: it enumerates ancestors of
 	// head, and the boundary commit's recorded parent is not there to resolve.
-	if _, err := handle.RangeCommits(testContext(t), head, head); err == nil {
+	if _, _, err := collectWalkRange(t, handle, head, head); err == nil {
 		t.Error("RangeCommits walked past a parent the shallow clone never fetched")
 	}
 
@@ -754,7 +1104,7 @@ func TestObjectReadsReportAMissingParentInAShallowClone(t *testing.T) {
 	deepHandle := walkRepo(t, deeper)
 	deepHead := gitfixture.NativeRevParse(t, gitfixture.At(deeper), "HEAD")
 	deepBase := gitfixture.NativeRevParse(t, gitfixture.At(deeper), "HEAD~2")
-	if _, err := deepHandle.RangeCommits(testContext(t), deepBase, deepHead); err == nil {
+	if _, _, err := collectWalkRange(t, deepHandle, deepBase, deepHead); err == nil {
 		t.Error("RangeCommits resolved a merge base across the shallow boundary")
 	}
 }

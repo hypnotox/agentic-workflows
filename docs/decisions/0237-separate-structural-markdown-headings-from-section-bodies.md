@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: separate-structural-markdown-headings-from-section-bodies
-status: Implementing
+status: Implemented
 date: 2026-08-05
 ---
 # ADR-0237: Separate structural Markdown headings from section bodies
@@ -86,3 +86,4 @@ shell and other non-Markdown section bodies from misclassifying comment lines as
 - 2026-08-05: Accepted; content-sha256: e1d2f50c8b35c7669642facb1a55c113e46eb83ffe98d838b6fb08367d9fecfb
 - 2026-08-05: Implementing; content-sha256: e1d2f50c8b35c7669642facb1a55c113e46eb83ffe98d838b6fb08367d9fecfb
 - 2026-08-05: Applied; operations: update `rendering/render-engine:section-edit-pointer`, add `rendering/render-engine:structural-heading-owned`, update `rendering/render-engine:section-default-splice`, update `rendering/inplace-and-placeholders:in-place-readback`, update `rendering/inplace-and-placeholders:in-place-spacing-owned`, update `rendering/inplace-and-placeholders:in-place-tamper-drift`, add `config/migrations-and-locks:structural-heading-part-migration`
+- 2026-08-06: Implemented; content-sha256: e1d2f50c8b35c7669642facb1a55c113e46eb83ffe98d838b6fb08367d9fecfb

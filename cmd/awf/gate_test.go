@@ -239,6 +239,8 @@ var gatedProbes = map[string][]string{
 	"effort worktree":           {"awf", "effort", "worktree", "add", "gate-probe"},
 	"effort integrate":          {"awf", "effort", "integrate", "gate-probe"},
 	"effort memory":             {"awf", "effort", "memory", "update", "gate-probe", "--phase", "phase"},
+	"effort memory read":        {"awf", "effort", "memory", "read", "gate-probe"},
+	"effort memory edit":        {"awf", "effort", "memory", "edit", "gate-probe"},
 	"effort memory update":      {"awf", "effort", "memory", "update", "gate-probe", "--phase", "phase"},
 	"effort activity":           {"awf", "effort", "activity", "attach", "gate-probe", "--owner", "00000000-0000-4000-8000-000000000001", "--json"},
 	"effort activity attach":    {"awf", "effort", "activity", "attach", "gate-probe", "--owner", "00000000-0000-4000-8000-000000000001", "--json"},

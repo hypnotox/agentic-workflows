@@ -152,3 +152,5 @@ Use the exact `hypnotox/pi` `fork-v0.81.1-awf.3` build for Pi 0.81.1, or a later
   gate, and this binary consumes seals rather than producing them. If a transaction is interrupted,
   `awf upgrade --recover` rolls it back or cleans it up; if the journal is unusable, restore the working
   tree from Git and reinstall the bridge release before retrying.
+
+Release verification retains the pinned fork-v0.81.1-awf.3 runtime smoke; unit stubs do not replace that real-runtime check.

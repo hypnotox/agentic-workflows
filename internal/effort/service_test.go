@@ -22,15 +22,19 @@ func noTopology(deps *Dependencies) {
 	deps.BranchExists = func(context.Context, string) (bool, error) { return false, nil }
 }
 
+func updateMemoryForTest(service *Service, slug string, update MemoryUpdate) (MemoryOperationResult, error) {
+	return service.UpdateMemory(MemoryUpdateInput{Slug: slug, Update: update})
+}
+
 func TestUpdateMemoryRefusesInvalidResidentsAndUnrepairedMetadata(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, nil)
 	value := "replacement"
-	if err := service.UpdateMemory("bad_slug", MemoryUpdate{Phase: &value}); err == nil || !strings.Contains(err.Error(), "invalid effort slug") {
+	if _, err := updateMemoryForTest(service, "bad_slug", MemoryUpdate{Phase: &value}); err == nil || !strings.Contains(err.Error(), "invalid effort slug") {
 		t.Fatalf("invalid slug = %v", err)
 	}
-	if err := service.UpdateMemory("missing-effort", MemoryUpdate{Phase: &value}); err == nil {
-		t.Fatal("missing resident accepted")
+	if result, err := updateMemoryForTest(service, "missing-effort", MemoryUpdate{Phase: &value}); err != nil || result.Condition != MemoryMissing {
+		t.Fatalf("missing resident result=%#v err=%v", result, err)
 	}
 	if _, err := service.New(testContext(t), NewInput{Slug: "update-faults", Title: "Update faults"}); err != nil {
 		t.Fatal(err)
@@ -39,14 +43,14 @@ func TestUpdateMemoryRefusesInvalidResidentsAndUnrepairedMetadata(t *testing.T) 
 	if err := os.Remove(memory); err != nil {
 		t.Fatal(err)
 	}
-	if err := service.UpdateMemory("update-faults", MemoryUpdate{Phase: &value}); err == nil || !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("missing memory = %v", err)
+	if result, err := updateMemoryForTest(service, "update-faults", MemoryUpdate{Phase: &value}); err != nil || result.Condition != MemoryInvalid || result.Outcome == nil {
+		t.Fatalf("missing memory result=%#v err=%v", result, err)
 	}
 	if err := os.WriteFile(memory, []byte("---\neffort: update-faults\nphase: old\nnext: old\nupdated: invalid\n---\nbody\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := service.UpdateMemory("update-faults", MemoryUpdate{Phase: &value, Next: &value}); err != nil {
-		t.Fatalf("canonical metadata refresh = %v", err)
+	if result, err := updateMemoryForTest(service, "update-faults", MemoryUpdate{Phase: &value, Next: &value}); err != nil || result.Condition != MemoryUpdated {
+		t.Fatalf("canonical metadata refresh result=%#v err=%v", result, err)
 	}
 	raw, err := os.ReadFile(memory)
 	if err != nil || !strings.Contains(string(raw), "updated: ") || strings.Contains(string(raw), "updated: invalid") {
@@ -87,12 +91,6 @@ func TestRefusalDiagnosticsPreserveErrorIdentityAndSeparateFacts(t *testing.T) {
 		t.Fatal("corrupt refusal lost cause identity")
 	}
 	assertRefusalDiagnostic(t, corrupt, "condition: effort resident is unusable\nstate: resident\ncause: resident: resident fault\n\ndiagnostic:\n  changed:\n    bytes: no\n  steps:\n    step 1: preserve the resident and inspect it for manual cleanup\n")
-
-	invalidMemory := &InvalidMemoryError{Slug: "demo", Err: cause, NextAction: "repair memory.md"}
-	if !errors.Is(invalidMemory, cause) {
-		t.Fatal("invalid memory refusal lost cause identity")
-	}
-	assertRefusalDiagnostic(t, invalidMemory, "condition: memory for effort \"demo\" cannot be updated\nstate: memory\ncause: resident fault\n\ndiagnostic:\n  changed:\n    bytes: no\n  steps:\n    step 1: repair memory.md\n")
 
 	if _, err := recoverySteps([]RecoveryAction{{Text: "invalid\naction"}}); err == nil {
 		t.Fatal("recovery steps accepted a multiline action")

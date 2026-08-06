@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -22,6 +23,47 @@ import (
 type Commit = awfgit.Commit
 type FileChange = awfgit.FileChange
 type Action = awfgit.Action
+
+func ruleFindings(commits []Commit, in Inputs, rule string) []Finding {
+	findings := slices.DeleteFunc(evaluate(commits, in), func(f Finding) bool { return f.Rule != rule })
+	if len(findings) == 0 {
+		return nil
+	}
+	return findings
+}
+
+func ruleConventionalCommits(commits []Commit, in Inputs) []Finding {
+	return ruleFindings(commits, in, "conventional-commits")
+}
+func ruleADRStatusCochange(commits []Commit, in Inputs) []Finding {
+	return ruleFindings(commits, in, "adr-status-cochange")
+}
+func ruleDependencyADR(commits []Commit, in Inputs) []Finding {
+	return ruleFindings(commits, in, "dependency-adr")
+}
+func rulePlanForLargeChange(commits []Commit, in Inputs) []Finding {
+	return ruleFindings(commits, in, "plan-for-large-change")
+}
+func ruleDomainDocStaleness(commits []Commit, in Inputs) []Finding {
+	return ruleFindings(commits, in, "domain-doc-staleness")
+}
+func ruleUndocumentedDomain(commits []Commit, in Inputs) []Finding {
+	return ruleFindings(commits, in, "undocumented-domain")
+}
+func ruleDomainCodeStaleness(commits []Commit, in Inputs) []Finding {
+	return ruleFindings(commits, in, "domain-code-staleness")
+}
+func rulePlainPunctuation(commits []Commit, in Inputs) []Finding {
+	return ruleFindings(commits, in, "plain-punctuation")
+}
+
+func evaluate(commits []Commit, in Inputs) []Finding {
+	evaluator := newRangeEvaluator(in)
+	for _, commit := range commits {
+		evaluator.observe(commit)
+	}
+	return evaluator.findings()
+}
 
 const (
 	Added    = awfgit.Added
@@ -743,6 +785,104 @@ func TestAuditSnapshotReadersAndErrors(t *testing.T) {
 	if universe, err := auditUniverseFromTree(t.TempDir(), tree); err != nil || len(universe.ADRs) != 0 {
 		t.Fatalf("full audit universe = %#v, %v", universe, err)
 	}
+}
+
+func TestRangeEvaluatorStreamsEveryOrdinaryRuleState(t *testing.T) {
+	in := Inputs{Settings: Settings{DependencyManifests: []string{"go.mod"}, DiffThreshold: 1, DomainDocStaleness: true, DomainCodeStaleness: true, UndocumentedDomain: true, PlainPunctuation: true}, GeneratedPaths: map[string]bool{"docs/generated.md": true}, ADRDir: "docs/decisions", DocsDir: "docs", IndexMd: "docs/decisions/INDEX.md", PlansDir: "docs/plans", ConfiguredDomains: []string{"tooling"}, DomainsPartsDir: ".awf/domains/parts", DomainPaths: map[string][]string{"tooling": {"internal/**"}}}
+	evaluator := newRangeEvaluator(in)
+	evaluator.observe(Commit{Hash: "one", Subject: "bad", Changes: []FileChange{
+		{Path: "go.mod", Added: 2},
+		{Path: "docs/decisions/bad.md", Action: Added, NewText: "---\nstatus: [\n---\n"},
+		{Path: "docs/decisions/0137-x.md", Action: Added, NewText: auditV1(t, "Accepted")},
+		adrChange(Added, "Implemented", "tooling, ghost"),
+		{Path: "internal/a.go", Added: 1},
+		{Path: "docs/readme.md", OldText: "plain", NewText: string(rune(0x2014))},
+		{Path: "docs/generated.md", Added: 99, OldText: "plain", NewText: string(rune(0x2014))},
+	}})
+	findings := evaluator.findings()
+	for _, rule := range []string{"adr-frontmatter", "adr-status-cochange", "plan-for-large-change", "domain-doc-staleness", "undocumented-domain", "domain-code-staleness", "plain-punctuation"} {
+		if countRule(findings, rule, severity.Warn)+countRule(findings, rule, severity.Error) == 0 {
+			t.Errorf("missing %s finding: %#v", rule, findings)
+		}
+	}
+	withPlan := newRangeEvaluator(in)
+	withPlan.observe(Commit{Changes: []FileChange{{Path: ".awf/domains/parts/tooling/current-state.md"}, {Path: "docs/plans/p.md", Added: 2}}})
+	if got := withPlan.findings(); countRule(got, "plan-for-large-change", severity.Warn) != 0 {
+		t.Fatalf("plan did not suppress threshold finding: %#v", got)
+	}
+}
+
+func TestRangeEvaluatorPreservesFrozenGroupedFindings(t *testing.T) {
+	dash := string(rune(0x2014))
+	in := Inputs{Settings: Settings{DependencyManifests: []string{"go.mod"}, DiffThreshold: 1, DomainDocStaleness: true, DomainCodeStaleness: true, UndocumentedDomain: true, PlainPunctuation: true}, GeneratedPaths: map[string]bool{"docs/generated.md": true, "internal/generated.go": true}, ADRDir: "docs/decisions", DocsDir: "docs", IndexMd: "docs/decisions/INDEX.md", PlansDir: "docs/plans", ConfiguredDomains: []string{"tooling"}, DomainsPartsDir: ".awf/domains/parts", DomainPaths: map[string][]string{"tooling": {"internal/**"}}}
+	t.Run("every ordinary group in final order", func(t *testing.T) {
+		status := strings.Replace(auditV1(t, "Implemented"), "date:", "domains: [tooling, ghost]\ndate:", 1)
+		evaluator := newRangeEvaluator(in)
+		evaluator.observe(Commit{Hash: "one", Subject: "not conventional", Changes: []FileChange{
+			{Path: "go.mod", Added: 2},
+			{Path: "docs/decisions/bad.md", Action: Added, NewText: "---\nstatus: [\n---\n"},
+			{Path: "docs/decisions/0137-status.md", Action: Added, NewText: status},
+			{Path: "internal/a.go", Added: 1},
+			{Path: "internal/generated.go", Added: 99},
+			{Path: "docs/rise.md", OldText: "plain", NewText: dash},
+			{Path: "docs/fall.md", OldText: dash, NewText: "plain"},
+			{Path: "docs/stable.md", OldText: dash, NewText: dash},
+			{Path: "docs/generated.md", OldText: "plain", NewText: dash},
+		}})
+		want := []Finding{
+			{Severity: severity.Error, Rule: "conventional-commits", Commit: "one", Subject: "not conventional", Detail: "subject is not Conventional Commits (type(scope)?: subject)"},
+			{Severity: severity.Error, Rule: "adr-status-cochange", Commit: "one", Subject: "not conventional", Detail: "0137-status.md status set/changed without INDEX.md in the same commit"},
+			{Severity: severity.Warn, Rule: "adr-frontmatter", Commit: "one", Subject: "not conventional", Detail: "bad.md frontmatter does not parse; ADR status rules skipped for it"},
+			{Severity: severity.Warn, Rule: "plan-for-large-change", Detail: "branch changes 3 non-generated lines (> 1) with no plan under docs/plans"},
+			{Severity: severity.Warn, Rule: "domain-doc-staleness", Detail: "an ADR in domain \"tooling\" reached Implemented but .awf/domains/parts/tooling/current-state.md was not refreshed in this range"},
+			{Severity: severity.Warn, Rule: "undocumented-domain", Detail: "an ADR is tagged with domain \"ghost\", which has no domain doc: add it to config.Domains and author its current-state narrative, or drop the tag"},
+			{Severity: severity.Warn, Rule: "domain-code-staleness", Detail: "files in domain \"tooling\" changed but .awf/domains/parts/tooling/current-state.md was not refreshed in this range: if anything meaningful changed, document it"},
+			{Severity: severity.Warn, Rule: "plain-punctuation", Commit: "one", Subject: "not conventional", Detail: "docs/rise.md adds typographic punctuation: em-dash (U+2014) (0 to 1); authored prose uses plain punctuation (a colon, semicolon, comma, or parentheses; an ASCII hyphen for a range; three periods for elision)"},
+		}
+		if got := evaluator.findings(); !slices.Equal(got, want) {
+			t.Fatalf("incremental findings = %#v, want %#v", got, want)
+		}
+	})
+	t.Run("dependency aggregation", func(t *testing.T) {
+		evaluator := newRangeEvaluator(in)
+		evaluator.observe(Commit{Hash: "dependency", Subject: "feat: dependency", Changes: []FileChange{{Path: "go.mod"}}})
+		want := []Finding{{Severity: severity.Warn, Rule: "dependency-adr", Commit: "dependency", Subject: "feat: dependency", Detail: "dependency manifest changed on this branch with no ADR touched: if a dependency was added, confirm an ADR covers it"}}
+		if got := evaluator.findings(); !slices.Equal(got, want) {
+			t.Fatalf("dependency findings = %#v, want %#v", got, want)
+		}
+	})
+	t.Run("ADR aggregation suppresses dependency and status index cochange", func(t *testing.T) {
+		evaluator := newRangeEvaluator(in)
+		evaluator.observe(Commit{Subject: "feat: governed dependency", Changes: []FileChange{
+			{Path: "go.mod"},
+			{Path: "docs/decisions/0137-x.md", Action: Added, NewText: auditV1(t, "Accepted")},
+			{Path: "docs/decisions/INDEX.md"},
+		}})
+		if got := evaluator.findings(); got != nil {
+			t.Fatalf("ADR and index cochange = %#v, want nil", got)
+		}
+	})
+	t.Run("plan and current-state cochanges suppress their groups", func(t *testing.T) {
+		evaluator := newRangeEvaluator(in)
+		evaluator.observe(Commit{Subject: "feat: cochanges", Changes: []FileChange{
+			{Path: "docs/plans/p.md", Added: 2},
+			{Path: ".awf/domains/parts/tooling/current-state.md"},
+			{Path: "internal/a.go", Added: 2},
+		}})
+		if got := evaluator.findings(); got != nil {
+			t.Fatalf("cochanges = %#v, want nil", got)
+		}
+	})
+	t.Run("all disabled and empty preserve nil", func(t *testing.T) {
+		evaluator := newRangeEvaluator(Inputs{})
+		if got := evaluator.findings(); got != nil {
+			t.Fatalf("empty findings = %#v, want nil", got)
+		}
+		evaluator.observe(Commit{Subject: "feat: enabled", Changes: []FileChange{{Path: "go.mod", Added: 100}, {Path: "docs/rise.md", NewText: dash}, adrChange(Added, "Implemented", "ghost")}})
+		if got := evaluator.findings(); got != nil {
+			t.Fatalf("all-disabled findings = %#v, want nil", got)
+		}
+	})
 }
 
 func loadUniverseFromTree(tree *snapshot.Tree, cfg *config.Config) (currentstate.Universe, error) {

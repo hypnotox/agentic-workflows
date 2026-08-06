@@ -82,8 +82,8 @@ func Run(ctx context.Context, repoRoot, base, head string, in Inputs) ([]Finding
 	if err != nil {
 		return nil, 0, fmt.Errorf("open repo: %w", err)
 	}
-	op, err := newHistoryOperation(ctx, base, head, in,
-		repo.RangeCommits,
+	op, err := newStreamingHistoryOperation(ctx, base, head, in,
+		repo.WalkRangeCommits,
 		func(ctx context.Context, revision string) (*revisionState, error) {
 			return loadSelectedRevision(ctx, repoRoot, revision, repo.CommitEntries, repo.CommitBlobsAt)
 		},
@@ -98,34 +98,134 @@ func Run(ctx context.Context, repoRoot, base, head string, in Inputs) ([]Finding
 	if err != nil {
 		return nil, 0, err
 	}
-	return findings, len(op.commits), nil
+	return findings, op.visited, nil
 }
 
 var ccRe = regexp.MustCompile(`^([a-zA-Z]+)(\(([^)]+)\))?(!)?: .+`)
 
-// evaluate applies every rule to the range and returns all findings.
-func evaluate(commits []awfgit.Commit, in Inputs) []Finding {
-	var out []Finding
-	out = append(out, ruleConventionalCommits(commits, in)...)
-	out = append(out, ruleADRStatusCochange(commits, in)...)
-	out = append(out, ruleADRFrontmatter(commits, in)...)
-	out = append(out, ruleDependencyADR(commits, in)...)
-	out = append(out, rulePlanForLargeChange(commits, in)...)
-	out = append(out, ruleDomainDocStaleness(commits, in)...)
-	out = append(out, ruleUndocumentedDomain(commits, in)...)
-	out = append(out, ruleDomainCodeStaleness(commits, in)...)
-	out = append(out, rulePlainPunctuation(commits, in)...)
-	return out
+// rangeEvaluator owns only the summaries each ordinary range rule needs. A
+// rich commit is consumed synchronously by observe and is never retained.
+type rangeEvaluator struct {
+	in                          Inputs
+	conventional, status, front []Finding
+	punctuation                 []Finding
+	manifest                    *Finding
+	adrTouched, planTouched     bool
+	lines                       int
+	refreshed, docFlagged       map[string]bool
+	undocumented, codeChurned   map[string]bool
 }
 
-// ruleConventionalCommits applies the shared Conventional Commits check to every
-// commit in the range.
-func ruleConventionalCommits(commits []awfgit.Commit, in Inputs) []Finding {
-	var out []Finding
-	for _, c := range commits {
-		out = append(out, CheckConventionalCommit(c, in.Settings)...)
+func newRangeEvaluator(in Inputs) *rangeEvaluator {
+	return &rangeEvaluator{in: in, refreshed: map[string]bool{}, docFlagged: map[string]bool{}, undocumented: map[string]bool{}, codeChurned: map[string]bool{}}
+}
+
+func (e *rangeEvaluator) observe(c awfgit.Commit) {
+	e.conventional = append(e.conventional, CheckConventionalCommit(c, e.in.Settings)...)
+	indexTouched := false
+	for _, ch := range c.Changes {
+		indexTouched = indexTouched || ch.Path == e.in.IndexMd
 	}
-	return out
+	for _, ch := range c.Changes {
+		if isADRFile(ch.Path, e.in.ADRDir) {
+			e.adrTouched = true
+		}
+		if e.manifest == nil && matchesAny(e.in.DependencyManifests, ch.Path) {
+			f := finding(severity.Warn, "dependency-adr", c, "dependency manifest changed on this branch with no ADR touched: if a dependency was added, confirm an ADR covers it")
+			e.manifest = &f
+		}
+		if e.in.PlansDir != "" && underDir(ch.Path, e.in.PlansDir) {
+			e.planTouched = true
+		}
+		if !e.in.GeneratedPaths[ch.Path] {
+			e.lines += ch.Added + ch.Deleted
+		}
+		if d, ok := domainOfPart(ch.Path, e.in.DomainsPartsDir); ok {
+			e.refreshed[d] = true
+		}
+		if !e.in.GeneratedPaths[ch.Path] {
+			for d, globs := range e.in.DomainPaths {
+				if matchesAny(globs, ch.Path) {
+					e.codeChurned[d] = true
+				}
+			}
+		}
+		if isADRFile(ch.Path, e.in.ADRDir) && ch.Action != awfgit.Deleted {
+			rec, ok := adrRecordOf(ch.Path, ch.NewText)
+			if !ok {
+				e.front = append(e.front, finding(severity.Warn, "adr-frontmatter", c, filepath.Base(ch.Path)+" frontmatter does not parse; ADR status rules skipped for it"))
+			}
+			if ok && rec.HasStatus() && rec.IsGoverned() {
+				old, oldOK := adrRecordOf(ch.Path, ch.OldText)
+				if (ch.Action == awfgit.Added || (oldOK && old.Status != rec.Status)) && !indexTouched {
+					e.status = append(e.status, finding(severity.Error, "adr-status-cochange", c, filepath.Base(ch.Path)+" status set/changed without INDEX.md in the same commit"))
+				}
+			}
+			if ok && rec.IsImplemented() {
+				old, oldOK := adrRecordOf(ch.Path, ch.OldText)
+				if ch.Action == awfgit.Added || (oldOK && !old.IsImplemented()) {
+					for _, d := range rec.Domains {
+						if slices.Contains(e.in.ConfiguredDomains, d) {
+							e.docFlagged[d] = true
+						}
+					}
+				}
+			}
+			if ok {
+				for _, d := range rec.Domains {
+					if !slices.Contains(e.in.ConfiguredDomains, d) {
+						e.undocumented[d] = true
+					}
+				}
+			}
+		}
+		if ch.Action != awfgit.Deleted && strings.HasSuffix(ch.Path, ".md") && underDir(ch.Path, e.in.DocsDir) && !e.in.GeneratedPaths[ch.Path] && e.in.PlainPunctuation {
+			before, after := countBanned(ch.OldText), countBanned(ch.NewText)
+			var risen []string
+			for r, name := range bannedProseRunes {
+				if after[r] > before[r] {
+					risen = append(risen, fmt.Sprintf("%s (%d to %d)", name, before[r], after[r]))
+				}
+			}
+			if len(risen) != 0 {
+				slices.Sort(risen)
+				e.punctuation = append(e.punctuation, finding(severity.Warn, "plain-punctuation", c, fmt.Sprintf("%s adds typographic punctuation: %s; authored prose uses plain punctuation (a colon, semicolon, comma, or parentheses; an ASCII hyphen for a range; three periods for elision)", ch.Path, strings.Join(risen, ", "))))
+			}
+		}
+	}
+}
+
+func (e *rangeEvaluator) findings() []Finding {
+	var out []Finding
+	out = append(out, e.conventional...)
+	out = append(out, e.status...)
+	out = append(out, e.front...)
+	if e.manifest != nil && !e.adrTouched {
+		out = append(out, *e.manifest)
+	}
+	if e.in.DiffThreshold > 0 && e.lines > e.in.DiffThreshold && !e.planTouched {
+		out = append(out, Finding{Severity: severity.Warn, Rule: "plan-for-large-change", Detail: fmt.Sprintf("branch changes %d non-generated lines (> %d) with no plan under %s", e.lines, e.in.DiffThreshold, e.in.PlansDir)})
+	}
+	if e.in.DomainDocStaleness {
+		for _, d := range slices.Sorted(maps.Keys(e.docFlagged)) {
+			if !e.refreshed[d] {
+				out = append(out, Finding{Severity: severity.Warn, Rule: "domain-doc-staleness", Detail: fmt.Sprintf("an ADR in domain %q reached Implemented but %s/%s/current-state.md was not refreshed in this range", d, e.in.DomainsPartsDir, d)})
+			}
+		}
+	}
+	if e.in.UndocumentedDomain && len(e.in.ConfiguredDomains) > 0 {
+		for _, d := range slices.Sorted(maps.Keys(e.undocumented)) {
+			out = append(out, Finding{Severity: severity.Warn, Rule: "undocumented-domain", Detail: fmt.Sprintf("an ADR is tagged with domain %q, which has no domain doc: add it to config.Domains and author its current-state narrative, or drop the tag", d)})
+		}
+	}
+	if e.in.DomainCodeStaleness {
+		for _, d := range slices.Sorted(maps.Keys(e.codeChurned)) {
+			if !e.refreshed[d] {
+				out = append(out, Finding{Severity: severity.Warn, Rule: "domain-code-staleness", Detail: fmt.Sprintf("files in domain %q changed but %s/%s/current-state.md was not refreshed in this range: if anything meaningful changed, document it", d, e.in.DomainsPartsDir, d)})
+			}
+		}
+	}
+	return append(out, e.punctuation...)
 }
 
 // CheckConventionalCommit validates one commit's subject against the Conventional
@@ -139,18 +239,13 @@ func CheckConventionalCommit(c awfgit.Commit, s Settings) []Finding {
 	return checkConventionalCommit(c, s, severity.Error)
 }
 
-// CheckPlannedSubject validates a commit subject a plan proposes (not yet
-// committed) against the same rule, but relaxes a disallowed scope to a warn rank: a
-// plan may be the change that adds the scope (ADR-0111), so scope conformance is
-// advisory at plan time while length, type, and malformed shape stay hard (error).
+// CheckPlannedSubject validates a commit subject a plan proposes with the shared policy.
 func CheckPlannedSubject(subject string, s Settings) []Finding {
 	return checkConventionalCommit(awfgit.Commit{Subject: subject}, s, severity.Warn)
 }
 
-// checkConventionalCommit is the shared core. scopeSeverity is the rank of a
-// disallowed-scope finding: error for the commit-time callers, warn at plan time.
 func checkConventionalCommit(c awfgit.Commit, s Settings, scopeSeverity severity.Rank) []Finding {
-	if c.IsMerge { // merges exempt (ADR-0017 constraint 2)
+	if c.IsMerge {
 		return nil
 	}
 	m := ccRe.FindStringSubmatch(c.Subject)
@@ -166,202 +261,6 @@ func checkConventionalCommit(c awfgit.Commit, s Settings, scopeSeverity severity
 	}
 	if n := utf8.RuneCountInString(c.Subject); s.SubjectMaxLength > 0 && n > s.SubjectMaxLength {
 		out = append(out, finding(severity.Error, "conventional-commits", c, fmt.Sprintf("subject %d chars > %d", n, s.SubjectMaxLength)))
-	}
-	return out
-}
-
-// ruleADRFrontmatter surfaces an ADR change whose new frontmatter does not
-// parse: the status-cochange and staleness rules cannot evaluate such a change,
-// so the breakage is reported instead of silently skipped.
-func ruleADRFrontmatter(commits []awfgit.Commit, in Inputs) []Finding {
-	var out []Finding
-	for _, c := range commits {
-		for _, ch := range c.Changes {
-			if !isADRFile(ch.Path, in.ADRDir) || ch.Action == awfgit.Deleted {
-				continue
-			}
-			if _, ok := adrRecordOf(ch.Path, ch.NewText); !ok {
-				out = append(out, finding(severity.Warn, "adr-frontmatter", c,
-					filepath.Base(ch.Path)+" frontmatter does not parse; ADR status rules skipped for it"))
-			}
-		}
-	}
-	return out
-}
-
-func ruleADRStatusCochange(commits []awfgit.Commit, in Inputs) []Finding {
-	var out []Finding
-	for _, c := range commits {
-		indexTouched := false
-		for _, ch := range c.Changes {
-			if ch.Path == in.IndexMd {
-				indexTouched = true
-			}
-		}
-		for _, ch := range c.Changes {
-			if !isADRFile(ch.Path, in.ADRDir) || ch.Action == awfgit.Deleted {
-				continue
-			}
-			rec, ok := adrRecordOf(ch.Path, ch.NewText)
-			if !ok || !rec.HasStatus() || !rec.IsGoverned() {
-				continue // malformed ADRs are reported separately; legacy transitions predate INDEX.md
-			}
-			// An unparseable old side cannot witness a transition - skip rather
-			// than read garbage as a status change.
-			oldRec, oldOK := adrRecordOf(ch.Path, ch.OldText)
-			if ch.Action == awfgit.Added || (oldOK && oldRec.Status != rec.Status) {
-				if !indexTouched {
-					out = append(out, finding(severity.Error, "adr-status-cochange", c,
-						filepath.Base(ch.Path)+" status set/changed without INDEX.md in the same commit"))
-				}
-			}
-		}
-	}
-	return out
-}
-
-func ruleDependencyADR(commits []awfgit.Commit, in Inputs) []Finding {
-	if len(in.DependencyManifests) == 0 {
-		return nil
-	}
-	var manifestCommit *awfgit.Commit
-	adrTouched := false
-	for i := range commits {
-		for _, ch := range commits[i].Changes {
-			if isADRFile(ch.Path, in.ADRDir) {
-				adrTouched = true
-			}
-			if manifestCommit == nil && matchesAny(in.DependencyManifests, ch.Path) {
-				manifestCommit = &commits[i]
-			}
-		}
-	}
-	if manifestCommit != nil && !adrTouched {
-		return []Finding{finding(severity.Warn, "dependency-adr", *manifestCommit,
-			"dependency manifest changed on this branch with no ADR touched: if a dependency was added, confirm an ADR covers it")}
-	}
-	return nil
-}
-
-func rulePlanForLargeChange(commits []awfgit.Commit, in Inputs) []Finding {
-	if in.DiffThreshold <= 0 {
-		return nil
-	}
-	total, planTouched := 0, false
-	for _, c := range commits {
-		for _, ch := range c.Changes {
-			if in.PlansDir != "" && underDir(ch.Path, in.PlansDir) {
-				planTouched = true
-			}
-			if in.GeneratedPaths[ch.Path] {
-				continue
-			}
-			total += ch.Added + ch.Deleted
-		}
-	}
-	if total > in.DiffThreshold && !planTouched {
-		return []Finding{{Severity: severity.Warn, Rule: "plan-for-large-change",
-			Detail: fmt.Sprintf("branch changes %d non-generated lines (> %d) with no plan under %s", total, in.DiffThreshold, in.PlansDir)}}
-	}
-	return nil
-}
-
-// touches-state: tooling/audit-and-snapshots:audit-domain-doc-staleness - domain-doc-staleness audit rule; proof in audit_test.go
-func ruleDomainDocStaleness(commits []awfgit.Commit, in Inputs) []Finding {
-	if !in.DomainDocStaleness {
-		return nil
-	}
-	refreshed := map[string]bool{} // domains whose source narrative changed in range
-	flagged := map[string]bool{}   // configured domains brought to Implemented in range
-	for _, c := range commits {
-		for _, ch := range c.Changes {
-			if d, ok := domainOfPart(ch.Path, in.DomainsPartsDir); ok {
-				refreshed[d] = true
-			}
-			if !isADRFile(ch.Path, in.ADRDir) || ch.Action == awfgit.Deleted {
-				continue
-			}
-			rec, ok := adrRecordOf(ch.Path, ch.NewText)
-			if !ok || !rec.IsImplemented() {
-				continue
-			}
-			if oldRec, oldOK := adrRecordOf(ch.Path, ch.OldText); ch.Action != awfgit.Added && (!oldOK || oldRec.IsImplemented()) {
-				continue // already Implemented (or unknowable old side); not a witnessed transition
-			}
-			for _, d := range rec.Domains {
-				if slices.Contains(in.ConfiguredDomains, d) {
-					flagged[d] = true
-				}
-			}
-		}
-	}
-	var out []Finding
-	for _, d := range slices.Sorted(maps.Keys(flagged)) {
-		if !refreshed[d] {
-			out = append(out, Finding{Severity: severity.Warn, Rule: "domain-doc-staleness",
-				Detail: fmt.Sprintf("an ADR in domain %q reached Implemented but %s/%s/current-state.md was not refreshed in this range", d, in.DomainsPartsDir, d)})
-		}
-	}
-	return out
-}
-
-// touches-state: tooling/audit-and-snapshots:audit-undocumented-domain - undocumented-domain audit rule; proof in audit_test.go
-func ruleUndocumentedDomain(commits []awfgit.Commit, in Inputs) []Finding {
-	if !in.UndocumentedDomain || len(in.ConfiguredDomains) == 0 {
-		return nil
-	}
-	flagged := map[string]bool{}
-	for _, c := range commits {
-		for _, ch := range c.Changes {
-			if !isADRFile(ch.Path, in.ADRDir) || ch.Action == awfgit.Deleted {
-				continue
-			}
-			// An unparseable record yields no domains, which is what the
-			// previous bespoke parser returned too; ruleADRFrontmatter is the
-			// rule that reports the parse failure itself.
-			rec, _ := adrRecordOf(ch.Path, ch.NewText)
-			for _, d := range rec.Domains {
-				if !slices.Contains(in.ConfiguredDomains, d) {
-					flagged[d] = true
-				}
-			}
-		}
-	}
-	var out []Finding
-	for _, d := range slices.Sorted(maps.Keys(flagged)) {
-		out = append(out, Finding{Severity: severity.Warn, Rule: "undocumented-domain",
-			Detail: fmt.Sprintf("an ADR is tagged with domain %q, which has no domain doc: add it to config.Domains and author its current-state narrative, or drop the tag", d)})
-	}
-	return out
-}
-
-func ruleDomainCodeStaleness(commits []awfgit.Commit, in Inputs) []Finding {
-	if !in.DomainCodeStaleness || len(in.DomainPaths) == 0 {
-		return nil
-	}
-	refreshed := map[string]bool{} // domains whose source narrative changed in range
-	churned := map[string]bool{}   // domains whose declared territory changed in range
-	for _, c := range commits {
-		for _, ch := range c.Changes {
-			if d, ok := domainOfPart(ch.Path, in.DomainsPartsDir); ok {
-				refreshed[d] = true
-			}
-			if in.GeneratedPaths[ch.Path] {
-				continue
-			}
-			for d, globs := range in.DomainPaths {
-				if !churned[d] && matchesAny(globs, ch.Path) {
-					churned[d] = true
-				}
-			}
-		}
-	}
-	var out []Finding
-	for _, d := range slices.Sorted(maps.Keys(churned)) {
-		if !refreshed[d] {
-			out = append(out, Finding{Severity: severity.Warn, Rule: "domain-code-staleness",
-				Detail: fmt.Sprintf("files in domain %q changed but %s/%s/current-state.md was not refreshed in this range: if anything meaningful changed, document it", d, in.DomainsPartsDir, d)})
-		}
 	}
 	return out
 }
@@ -403,39 +302,8 @@ func countBanned(s string) map[rune]int {
 	return out
 }
 
-// touches-state: tooling/audit-and-snapshots:audit-plain-punctuation - plain-punctuation audit rule; proof in audit_test.go
-func rulePlainPunctuation(commits []awfgit.Commit, in Inputs) []Finding {
-	if !in.PlainPunctuation || in.DocsDir == "" {
-		return nil
-	}
-	var out []Finding
-	for _, c := range commits {
-		for _, ch := range c.Changes {
-			if ch.Action == awfgit.Deleted || !strings.HasSuffix(ch.Path, ".md") ||
-				!underDir(ch.Path, in.DocsDir) || in.GeneratedPaths[ch.Path] {
-				continue
-			}
-			before, after := countBanned(ch.OldText), countBanned(ch.NewText)
-			var risen []string
-			for r, name := range bannedProseRunes {
-				if after[r] > before[r] {
-					risen = append(risen, fmt.Sprintf("%s (%d to %d)", name, before[r], after[r]))
-				}
-			}
-			if len(risen) == 0 {
-				continue
-			}
-			slices.Sort(risen)
-			out = append(out, finding(severity.Warn, "plain-punctuation", c,
-				fmt.Sprintf("%s adds typographic punctuation: %s; authored prose uses plain punctuation (a colon, semicolon, comma, or parentheses; an ASCII hyphen for a range; three periods for elision)",
-					ch.Path, strings.Join(risen, ", "))))
-		}
-	}
-	return out
-}
-
 func finding(s severity.Rank, rule string, c awfgit.Commit, detail string) Finding {
-	return Finding{Severity: s, Rule: rule, Commit: c.Hash, Subject: c.Subject, Detail: detail}
+	return Finding{Severity: s, Rule: rule, Commit: c.Hash, Subject: strings.Clone(c.Subject), Detail: detail}
 }
 
 // isADRFile reports whether path is a decision record directly under adrDir.

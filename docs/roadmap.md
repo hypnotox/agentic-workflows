@@ -255,9 +255,26 @@ primary checkout for integration, worktree removal, retrospective, and finish. T
 because Pi effort association is runtime metadata rather than awf CLI authority, and read-only
 commands must remain usable from either checkout.
 
+## Preserve configured identity for lifecycle Git mutations
+
+The native Git runner deliberately suppresses global and system configuration to prevent repository
+or credential redirection. `awf effort integrate` uses that runner for `git merge --no-ff --no-commit`,
+but Git still requires committer identity before it prepares the merge. In a checkout that correctly
+keeps owner identity only in global configuration, integration therefore fails as `merge-conflict`
+with `Committer identity unknown`. A temporary repository-local identity makes the merge proceed but
+contradicts this repository's explicit ban on local identity overrides.
+
+A follow-up should let lifecycle mutations receive the validated effective owner identity without
+reopening repository selection, credential, signing, or arbitrary-config injection. Integration
+should also distinguish pre-merge configuration failure from a visible content conflict. Tests must
+cover global-only identity, hostile inherited Git configuration, and a real merge conflict. This
+needs design because the Git seam's isolation is load-bearing and a generic relaxation would weaken
+its control-root and noninteractive guarantees.
+
 
 <!-- awf:edit deferred: from .awf/docs/parts/roadmap/deferred.md -->
 ## Deferred
+### Historical stale-branch seal-crossing incident
 
 The former cutoff-based integration incident is superseded by intrinsic ADR formats and stale-merge authorization. Schema generation 31 retires permanent format cutoffs; a real merge may instead import an exact older-format incoming-parent ADR when its final message has the shared authorization trailer pair. `awf audit` replays that authorization for committed schema-31-and-later merges. The historical account below is retained as the incident record that motivated the successor decision.
 

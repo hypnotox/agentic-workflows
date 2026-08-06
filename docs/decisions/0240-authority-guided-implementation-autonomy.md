@@ -4,7 +4,7 @@ slug: authority-guided-implementation-autonomy
 status: Implementing
 date: 2026-08-06
 ---
-# ADR-authority-guided-implementation-autonomy: Authority-Guided Implementation Autonomy
+# ADR-0240: Authority-Guided Implementation Autonomy
 
 
 ## Context

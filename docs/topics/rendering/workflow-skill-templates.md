@@ -34,13 +34,13 @@ Backing: test
 
 The rendered brainstorming skill carries mandatory first-creation confirmation before detailed design: it presents labeled `Outcome:`, `Effort title:`, and `Effort slug:` fields, asks the user to confirm all three, ends the turn without mutation, and permits the required explicit-slug creation command only after a clear response in a later turn. Brainstorming also closes with final grounded-design approval, and ADR review closes with settled-ADR approval; each final approval persists memory, presents the completed summary, explicitly requests approval, and stops. Continuation and handoff begin only after the applicable later response is persisted when an effort exists. Brainstorming also settles a proportionate simplicity contract covering scope and exclusions, structural approach and dependencies, patterns or abstractions, and checks and testing strategy. No other chain skill renders a final approval stop, and no checkpoint creates missing ownership.
 Origin: ADR-0152
-Revised-by: ADR-0160, ADR-0167, ADR-0222, ADR-0226, ADR-0232, ADR-authority-guided-implementation-autonomy
+Revised-by: ADR-0160, ADR-0167, ADR-0222, ADR-0226, ADR-0232, ADR-0240
 Backing: test
 
 ### `invariant: authority-guided-implementation-autonomy`
 
 One variable-free shared prose partial is directly included once by every named implementation consumer. It requires authority-preserving reasoned correction and diagnosis before escalation, preserves the approved outcome, material scope, settled durable boundaries, and required verification, and forbids weakened oracles and unrelated cleanup. Inline owners amend stale mutable instructions and Notes; delegated owners report deviations for report-only review and focused parent reconciliation before checkpointing or later execution. Implementation review routes authority-determined remedies by classification and keeps one verify pass. Empty-data rendering remains coherent.
-Origin: ADR-authority-guided-implementation-autonomy
+Origin: ADR-0240
 Backing: test
 
 ### `invariant: memory-checkpoint-chain-coverage`
@@ -127,7 +127,7 @@ Backing: test
 
 Every scoped implementation brief carries only the task-relevant semantic boundaries and ownership, representations and translation points, dependency direction, preparatory-refactor decision, prohibited bolt-on shortcuts, and validation expectations; the implementer makes authority-preserving reasoned detail deviations with a structured completed report without becoming a second planner, broadening scope, or performing unrelated cleanup, and inline plan execution extracts the same context for its current task.
 Origin: ADR-0168
-Revised-by: ADR-authority-guided-implementation-autonomy
+Revised-by: ADR-0240
 Backing: test
 
 ### `invariant: deliberate-subagent-model-selection`
@@ -141,7 +141,7 @@ Backing: test
 
 The rendered implementer agent body states its two authority modes, that the dispatched task is the complete scope, that the agent guide's invariants and commands bind while its skill catalog and chain routing do not, that reaching green is the job and no assertion or golden may be weakened to hide a failure, that no interactive channel exists so escalation is a returned inventory, the commit-capable owner's explicit-stage, staged-check, gate, single-commit procedure, and a closed two-outcome return whose stopped outcome requires working-tree status, work completed, work remaining, the named failing check with its actual output, and what was already tried. The completed outcome inventories deviations or `none`; stopped reserves persistent verification failure or a narrow authority, outcome, scope, ambiguity, or safety boundary while retaining the shared inventory and closed two-outcome contract. The subagent-driven-development and executing-plans skills name that agent in every dispatch branch, and their parent-facing imperatives for raising concerns, preserving the plan's settled design, running the context command, and inventorying batch returns each carry an explicit subject. The body renders coherently with unset data and carries no runtime tool-name token.
 Origin: ADR-0177
-Revised-by: ADR-0179, ADR-0232, ADR-authority-guided-implementation-autonomy
+Revised-by: ADR-0179, ADR-0232, ADR-0240
 Backing: test
 
 ### `invariant: maintainable-code-review-lenses`
