@@ -45,11 +45,12 @@ entry and a template per skill.
 
 ## Decision
 
-1. `decision: mechanism-support-skills` awf ships a support skill for each of its own mechanisms. A
-   mechanism support skill's rendered body carries only what an agent needs in order to decide its
-   next action, and delegates every rule to the surface that owns it. This is the boundary that
-   distinguishes it from the artifact ADR-0157 declined: a transaction shape with pointers is
-   admissible, a command or configuration reference is not.
+1. `decision: mechanism-support-skills` A support skill for one of awf's own mechanisms or authoring
+   surfaces carries only what an agent needs in order to decide its next action, and delegates every
+   rule to the surface that owns it. The shape is what this record commits to, not a count of which
+   mechanisms have a skill: awf takes on no obligation to ship one per mechanism. That shape is the
+   boundary distinguishing such a skill from the artifact ADR-0157 declined: a transaction shape with
+   pointers is admissible, a command or configuration reference is not.
 2. `decision: using-awf-skill` `using-awf` joins the catalog as a support skill owning the
    generated-tree transaction: that `.awf/` is the source and rendered outputs are never
    hand-edited, that the transaction runs from a source edit through render and check to staging the
@@ -61,10 +62,12 @@ entry and a template per skill.
    change.
 3. `decision: writing-docs-skill` `writing-docs` joins the catalog as a support skill owning doc
    authoring: selecting the single doc that owns the fact, reading the documentation standard before
-   writing, referencing rather than restating what another surface owns, editing the convention part
-   rather than the rendered file, and letting the doc travel in the commit that makes it true. It
-   carries neither the documentation standard's own rules nor the render transaction, delegating the
-   first to `docs/doc-standard.md` and the second to `using-awf`.
+   writing, referencing rather than restating what another surface owns, and letting the doc travel
+   in the commit that makes it true. Where authoring becomes a file edit it hands off to `using-awf`
+   rather than restating where the editable source lives, so the source-of-truth rule stays
+   exclusively item 2's. It carries neither the documentation standard's own rules nor the
+   generated-tree transaction, delegating the first to `docs/doc-standard.md` and the second to
+   `using-awf`.
 4. `decision: description-only-selection` Both skills are selected by their exposed descriptions
    alone. Neither is named, listed, or triggered from the rendered guide, so
    `guide-entry-point-routing` remains satisfied unchanged.
