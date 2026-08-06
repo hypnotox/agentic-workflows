@@ -7,6 +7,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -33,13 +34,44 @@ func TestMemoryDisplayDiffUsesPiRows(t *testing.T) {
 		}
 	}
 
+	// Pi parses each row with /^([+-\s])(\s*\d*)\s(.*)$/, so the omission row is
+	// spelled out here rather than read back from the helper under test: a kind
+	// byte, an empty right-aligned number field, one space, and an ellipsis.
+	for _, want := range []struct {
+		width int
+		row   string
+	}{{1, "   ..."}, {2, "    ..."}, {5, "       ..."}} {
+		if got := omissionDisplayRow(want.width); got != want.row || !piDisplayRow.MatchString(got) {
+			t.Fatalf("omission row width %d = %q, want %q matching %s", want.width, got, want.row, piDisplayRow)
+		}
+	}
+
 	before := "old\n" + strings.Repeat("context\n", 12) + "tail old\n"
 	after := "new\n" + strings.Repeat("context\n", 12) + "tail new\n"
 	separated := memoryDiff([]byte(before), []byte(after), 0)
-	if strings.Count(separated.Text, omissionDisplayRow(2)+"\n") != 1 || !separated.Truncated {
+	if strings.Count(separated.Text, "    ...\n") != 1 || !separated.Truncated {
 		t.Fatalf("separated diff=%#v", separated)
 	}
+
+	// The context window is pinned from below as well as above: exactly four
+	// unchanged rows surround a lone change in a document with ample context.
+	window := strings.Repeat("ctx\n", 20)
+	var want strings.Builder
+	for line := 17; line <= 20; line++ {
+		fmt.Fprintf(&want, " %d ctx\n", line)
+	}
+	want.WriteString("-21 old\n+21 new\n")
+	for line := 22; line <= 25; line++ {
+		fmt.Fprintf(&want, " %d ctx\n", line)
+	}
+	single := memoryDiff([]byte(window+"old\n"+window), []byte(window+"new\n"+window), 0)
+	if single.Text != want.String() || single.Truncated {
+		t.Fatalf("context window=%q, want %q", single.Text, want.String())
+	}
 }
+
+// piDisplayRow is Pi's own parseDiffLine grammar, transcribed.
+var piDisplayRow = regexp.MustCompile(`^([-+\s])(\s*\d*)\s(.*)$`)
 
 func TestMemoryDisplayDiffBoundsCompleteRows(t *testing.T) {
 	long := strings.Repeat("é", maxMemoryDiffBytes)
@@ -58,11 +90,11 @@ func TestMemoryDisplayDiffBoundsCompleteRows(t *testing.T) {
 		rows[i] = displayDiffRow{text: displayRow(kind, i+1, 5, strings.Repeat("x", 16)), changed: changed}
 	}
 	text, truncated := boundedDisplayRows(rows, 5)
-	if !truncated || len(text) > maxMemoryDiffBytes || !utf8.ValidString(text) || !strings.Contains(text, "+    1 ") || !strings.Contains(text, "+12001 ") || !strings.Contains(text, omissionDisplayRow(5)+"\n") {
-		t.Fatalf("aggregate diff truncated=%t bytes=%d head/tail/omission=%t/%t/%t", truncated, len(text), strings.Contains(text, "+    1 "), strings.Contains(text, "+12001 "), strings.Contains(text, omissionDisplayRow(5)+"\n"))
+	if !truncated || len(text) > maxMemoryDiffBytes || !utf8.ValidString(text) || !strings.Contains(text, "+    1 ") || !strings.Contains(text, "+12001 ") || !strings.Contains(text, "       ...\n") {
+		t.Fatalf("aggregate diff truncated=%t bytes=%d head/tail/omission=%t/%t/%t", truncated, len(text), strings.Contains(text, "+    1 "), strings.Contains(text, "+12001 "), strings.Contains(text, "       ...\n"))
 	}
 	for _, line := range strings.Split(strings.TrimSuffix(text, "\n"), "\n") {
-		if line == omissionDisplayRow(5) {
+		if line == "       ..." {
 			continue
 		}
 		if len(line) < 8 || (line[0] != '+' && line[0] != '-' && line[0] != ' ') {
@@ -71,7 +103,7 @@ func TestMemoryDisplayDiffBoundsCompleteRows(t *testing.T) {
 	}
 
 	oversizedContext := []displayDiffRow{{text: strings.Repeat("x", maxMemoryDiffBytes+1)}, {text: "+1 changed", changed: true}}
-	if got, cut := boundedDisplayRows(oversizedContext, 1); !cut || !strings.Contains(got, "+1 changed") || !strings.Contains(got, omissionDisplayRow(1)) {
+	if got, cut := boundedDisplayRows(oversizedContext, 1); !cut || !strings.Contains(got, "+1 changed") || !strings.Contains(got, "   ...") {
 		t.Fatalf("oversized context text=%q truncated=%t", got, cut)
 	}
 	nearLimit := strings.Repeat("x", maxMemoryDiffBytes-1)
@@ -653,20 +685,24 @@ func TestMemoryEditResultBoundsAndDiffBounds(t *testing.T) {
 		t.Fatalf("bounded diff=%#v err=%v", got, err)
 	}
 
-	// These literal fixture sizes make the complete diff exactly 50 KiB, then
-	// one byte over it, without relying on the production bound.
-	exactDiffBody := strings.Repeat("a", 25589) + "OLD"
+	// One removed and one added row, each a kind byte, a one-digit line number,
+	// a space, its content, and a terminator. These literal fixture sizes make
+	// the complete diff exactly 50 KiB, then one byte over it, without relying
+	// on the production bound.
+	exactDiffBody := strings.Repeat("a", 25593) + "OLD"
 	writeMemoryFixture(t, path, "bounded-edit", []byte(exactDiffBody))
 	got, err = service.Memory(MemoryEditInput{Slug: "bounded-edit", Edits: []MemoryReplacement{{OldText: "OLD", NewText: "NEW"}}})
-	if err != nil || got.Condition != MemoryEdited || got.Diff.Truncated || len(got.Diff.Text) > 51200 {
-		t.Fatalf("literal contextual diff=%#v err=%v", got, err)
+	if err != nil || got.Condition != MemoryEdited || got.Diff.Truncated || len(got.Diff.Text) != 51200 {
+		t.Fatalf("exactly bounded contextual diff=%#v bytes=%d err=%v", got, len(got.Diff.Text), err)
 	}
 
-	overDiffBody := strings.Repeat("b", 25591) + "X"
+	// One byte over, so the added row is dropped for an omission row and the
+	// result reports the bounding loss.
+	overDiffBody := strings.Repeat("b", 25595) + "X"
 	writeMemoryFixture(t, path, "bounded-edit", []byte(overDiffBody))
 	got, err = service.Memory(MemoryEditInput{Slug: "bounded-edit", Edits: []MemoryReplacement{{OldText: "X", NewText: "XY"}}})
-	if err != nil || got.Condition != MemoryEdited || len(got.Diff.Text) > 51200 {
-		t.Fatalf("literal contextual diff=%#v err=%v", got, err)
+	if err != nil || got.Condition != MemoryEdited || !got.Diff.Truncated || len(got.Diff.Text) > 51200 || !strings.HasPrefix(got.Diff.Text, "-7 b") || !strings.HasSuffix(got.Diff.Text, "\n   ...\n") {
+		t.Fatalf("over-bound contextual diff truncated=%t bytes=%d err=%v", got.Diff.Truncated, len(got.Diff.Text), err)
 	}
 }
 
