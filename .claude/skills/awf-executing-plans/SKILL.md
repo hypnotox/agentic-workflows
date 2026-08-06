@@ -24,7 +24,7 @@ Invoke for an accepted plan with an `inline` phase. Read every phase's declared 
 
 <!-- awf:edit procedure-per-task: default; create .awf/skills/parts/executing-plans/procedure-per-task.md to override -->
 3. **Iterate phases, not tasks.** Per `docs/maintainable-code-design.md`, you preserve the plan's settled structural choices, including a bounded enabling refactor; reassess if grounded source contradicts them, stop rather than bolt correctness onto the wrong abstraction, and do not drift from the plan.
-## Authority-guided implementation autonomy
+**Authority-guided implementation autonomy.**
 
 Resolve implementation findings autonomously when applicable ADRs, current-state claims, and repository authority determine a compliant correction that preserves the approved outcome, material scope, settled durable boundaries, and required verification. Diagnose a source contradiction, correctness or safety concern, review finding, blocker symptom, or failed check before treating it as an escalation.
 

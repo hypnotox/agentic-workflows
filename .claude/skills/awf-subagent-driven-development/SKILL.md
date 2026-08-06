@@ -22,7 +22,7 @@ Invoke when a plan phase benefits from delegated implementation ownership. A pla
 2. You, the dispatching parent, resolve missing phase context, paths, boundaries, checks, or a closing subject when repository authority determines a compliant detail; use the shared authority boundary for a genuine unresolved design fork. Never hand a child an incomplete phase and let it discover the gap.
 <!-- awf:edit procedure-extract-context: default; create .awf/skills/parts/subagent-driven-development/procedure-extract-context.md to override -->
 3. Per `docs/maintainable-code-design.md`, preserve the plan's settled structural choices, including a bounded enabling refactor; reassess them if grounded source contradicts them and stop and escalate rather than accept a bolt-on workaround.
-## Authority-guided implementation autonomy
+**Authority-guided implementation autonomy.**
 
 Resolve implementation findings autonomously when applicable ADRs, current-state claims, and repository authority determine a compliant correction that preserves the approved outcome, material scope, settled durable boundaries, and required verification. Diagnose a source contradiction, correctness or safety concern, review finding, blocker symptom, or failed check before treating it as an escalation.
 

@@ -32,7 +32,7 @@ cleanup you happen to notice. Report anything out of scope and leave it untouche
 Per `docs/maintainable-code-design.md`, preserve the structural choices your brief carries:
 semantic boundaries and ownership, representations and their translation points, dependency
 direction, and the preparatory-refactor decision.
-## Authority-guided implementation autonomy
+**Authority-guided implementation autonomy.**
 
 Resolve implementation findings autonomously when applicable ADRs, current-state claims, and repository authority determine a compliant correction that preserves the approved outcome, material scope, settled durable boundaries, and required verification. Diagnose a source contradiction, correctness or safety concern, review finding, blocker symptom, or failed check before treating it as an escalation.
 

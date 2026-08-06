@@ -380,7 +380,12 @@ func TestImplementerAgent(t *testing.T) {
 		"either the failing required check, named, with its actual output",
 		"`deviations: none`",
 		"changed detail, rationale, governing authority, and verification",
-		"narrow authority conflict, required authority change",
+		"narrow authority conflict",
+		"required authority change",
+		"material outcome or scope change",
+		"unresolved design fork",
+		"unsafe completion",
+		"persistently unreachable verification boundary",
 		"what you already tried, so the next attempt does not repeat it",
 		"There is no third outcome",
 		"The invariants, conventions, and commands in the repository's agent guide bind you",
@@ -573,6 +578,19 @@ func renderSkillGolden(t *testing.T, skill string, data map[string]any) string {
 
 // invariant: rendering/workflow-skill-templates:authority-guided-implementation-autonomy (TestAuthorityGuidedImplementationAutonomy)
 func TestAuthorityGuidedImplementationAutonomy(t *testing.T) {
+	partial, err := fs.ReadFile(templates.FS, "partials/implementation-autonomy.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(partial), "{{") {
+		t.Errorf("shared autonomy partial must remain variable-free:\n%s", partial)
+	}
+	for _, line := range strings.Split(string(partial), "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "#") {
+			t.Errorf("shared autonomy partial must not interrupt consumer structure with heading %q", line)
+		}
+	}
+
 	consumers := []string{"agents/implementer.md.tmpl", "skills/executing-direct/SKILL.md.tmpl", "skills/bugfix/SKILL.md.tmpl", "skills/tdd/SKILL.md.tmpl", "skills/executing-plans/SKILL.md.tmpl", "skills/subagent-driven-development/SKILL.md.tmpl", "skills/reviewing-impl/SKILL.md.tmpl"}
 	variants := map[string]map[string]any{
 		"configured": {
@@ -622,6 +640,13 @@ func TestAuthorityGuidedImplementationAutonomy(t *testing.T) {
 			for _, reject := range obsolete {
 				if strings.Contains(out, reject) {
 					t.Errorf("%s/%s retains obsolete broad-stop rule %q", variant, consumer, reject)
+				}
+			}
+			if consumer == "skills/executing-plans/SKILL.md.tmpl" {
+				for _, want := range []string{"amend the mutable plan immediately", "record the reasoned deviation in Notes"} {
+					if !strings.Contains(out, want) {
+						t.Errorf("%s/%s missing inline reconciliation directive %q", variant, consumer, want)
+					}
 				}
 			}
 		}
@@ -777,6 +802,20 @@ func TestMaintainableCodeSubagentContract(t *testing.T) {
 				t.Errorf("review branch lost report-only clause %q:\n%s", tc.reportOnly, review)
 			}
 		})
+	}
+
+	implementer := renderAgentGolden(t, "implementer", data)
+	for _, want := range []string{
+		"Resolve implementation findings autonomously",
+		"applicable ADRs, current-state claims, and repository authority",
+		"reasoned non-mechanical deviation records its changed detail, rationale, governing authority, and verification",
+		"Do not replan the approved outcome, broaden material scope",
+		"or perform unrelated cleanup",
+		"`deviations: none` or each deviation with changed detail, rationale, governing authority, and verification",
+	} {
+		if !strings.Contains(implementer, want) {
+			t.Errorf("implementer contract missing authority-preserving deviation clause %q:\n%s", want, implementer)
+		}
 	}
 
 	inline := renderSection(t, "skills/executing-plans/SKILL.md.tmpl", "procedure-per-task", data)
@@ -956,6 +995,14 @@ func TestConditionalVerifyPass(t *testing.T) {
 		"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}, "targetSubagentTools": true,
 	}
 	implementationReview := renderSkillGolden(t, "reviewing-impl", implementationData)
+	assertOrderedPhrases(t, implementationReview,
+		"Surface the digest, then route the findings",
+		"Diagnose each finding against the shared authority boundary before final classification",
+		"route by classification kind, not severity",
+		"**mechanical**",
+		"**reasoned**",
+		"**user-decision**",
+	)
 	assertOrderedPhrases(t, implementationReview,
 		"After the single verify pass",
 		"authority-determined residual fix",
