@@ -133,7 +133,9 @@ type historyOperation struct {
 	loadRevision     revisionLoader
 	firstParentPaths firstParentPaths
 	live             liveEvaluator
-	states           map[string]revisionResult
+	store            revisionStore
+	universeUses     map[string]int
+	sourceUses       map[string]int
 }
 
 type revisionResult struct {
@@ -141,12 +143,46 @@ type revisionResult struct {
 	err   error
 }
 
+// revisionStore separates revision keys from the canonical immutable state they
+// resolve to. Its counters are logical ownership instrumentation, not heap
+// measurements: they make the heavy frontier deterministic in tests.
+type revisionStore struct {
+	keys           map[string]revisionResult
+	currentHeavy   int
+	highWaterHeavy int
+}
+
+func newRevisionStore() revisionStore { return revisionStore{keys: map[string]revisionResult{}} }
+
+func (s *revisionStore) retainHeavy(state *revisionState) {
+	if state.heavyLive {
+		return
+	}
+	state.heavyLive = true
+	s.currentHeavy++
+	if s.currentHeavy > s.highWaterHeavy {
+		s.highWaterHeavy = s.currentHeavy
+	}
+}
+
+func (s *revisionStore) releaseHeavy(state *revisionState) {
+	if !state.heavyLive {
+		return
+	}
+	state.heavyLive = false
+	s.currentHeavy--
+	state.universe = currentstate.Universe{}
+	state.universeErr = nil
+}
+
 // revisionState is one lazily parsed committed revision. The committed snapshot
 // is loaded once by the operation; lock and current-state parsing are separately
 // lazy so a pre-policy merge can inspect only its schema boundary.
 type revisionState struct {
-	loadLock     func() (*manifest.Lock, bool, error)
-	loadUniverse func() (currentstate.Universe, error)
+	loadLock          func() (*manifest.Lock, bool, error)
+	loadUniverse      func() (currentstate.Universe, error)
+	heavyMaterialized bool
+	heavyLive         bool
 
 	lockReady bool
 	lock      *manifest.Lock
@@ -185,7 +221,9 @@ func newHistoryOperationFromCompact(commits []replayCommit, ordinary []Finding, 
 		loadRevision:     load,
 		firstParentPaths: paths,
 		live:             live,
-		states:           map[string]revisionResult{},
+		store:            newRevisionStore(),
+		universeUses:     map[string]int{},
+		sourceUses:       map[string]int{},
 	}
 }
 
@@ -215,6 +253,7 @@ func (h *historyOperation) run(ctx context.Context) ([]Finding, error) {
 	if err != nil {
 		return nil, fmt.Errorf("build historical replay graph: %w", err)
 	}
+	h.reserveConsumers(graph.schedule)
 	var stale, transitions []scheduledFindings
 	for _, commit := range graph.schedule {
 		if err := replayContext(ctx, "replay stale-merge evidence", commit); err != nil {
@@ -252,21 +291,21 @@ func (h *historyOperation) run(ctx context.Context) ([]Finding, error) {
 }
 
 func (h *historyOperation) state(ctx context.Context, revision string) (*revisionState, error) {
-	if cached, ok := h.states[revision]; ok {
+	if cached, ok := h.store.keys[revision]; ok {
 		return cached.state, cached.err
 	}
 	state, err := h.loadRevision(ctx, revision)
 	if err == nil && state == nil {
 		err = errors.New("revision loader returned no state")
 	}
-	h.states[revision] = revisionResult{state: state, err: err}
+	h.store.keys[revision] = revisionResult{state: state, err: err}
 	return state, err
 }
 
 // stateForCommit reuses the first-parent state only after committed path
 // evidence proves this revision cannot affect the reduced policy authority.
 func (h *historyOperation) stateForCommit(ctx context.Context, commit replayCommit) (*revisionState, error) {
-	if cached, ok := h.states[commit.Revision]; ok {
+	if cached, ok := h.store.keys[commit.Revision]; ok {
 		return cached.state, cached.err
 	}
 	if len(commit.Parents) == 0 || h.firstParentPaths == nil {
@@ -303,7 +342,7 @@ func (h *historyOperation) stateForCommit(ctx context.Context, commit replayComm
 	}
 	// Alias the immutable parent result, including a previously cached error;
 	// neither the value nor its slices/maps are mutated by this operation.
-	h.states[commit.Revision] = h.states[commit.Parents[0]]
+	h.store.keys[commit.Revision] = h.store.keys[commit.Parents[0]]
 	return parent, nil
 }
 
@@ -336,10 +375,70 @@ func (s *revisionState) lockEvidence() (*manifest.Lock, bool, error) {
 
 func (s *revisionState) currentState() (currentstate.Universe, error) {
 	if !s.universeReady {
-		s.universe, s.universeErr = s.loadUniverse()
+		load := s.loadUniverse
+		s.loadUniverse = nil // release the exact selected blobs captured by the loader
+		if load != nil {
+			s.universe, s.universeErr = load()
+			s.heavyMaterialized = true
+		}
 		s.universeReady = true
 	}
 	return s.universe, s.universeErr
+}
+
+func (h *historyOperation) currentState(state *revisionState) (currentstate.Universe, error) {
+	universe, err := state.currentState()
+	if state.heavyMaterialized {
+		h.store.retainHeavy(state)
+	}
+	return universe, err
+}
+
+// reserveConsumers counts fixed replay roles without reading heavy authority.
+// They attach to revision keys until relevance has resolved aliases.
+func (h *historyOperation) reserveConsumers(schedule []replayCommit) {
+	for _, commit := range schedule {
+		h.universeUses[commit.Revision]++ // transition result
+		if len(commit.Parents) > 0 {
+			h.universeUses[commit.Parents[0]]++ // transition first parent
+		}
+		if commit.IsMerge {
+			for _, revision := range append([]string{commit.Revision}, commit.Parents...) {
+				h.universeUses[revision]++
+				h.sourceUses[revision]++
+			}
+		}
+	}
+}
+
+func (h *historyOperation) remaining(uses map[string]int, state *revisionState) int {
+	remaining := 0
+	for revision, result := range h.store.keys {
+		if result.state == state {
+			remaining += uses[revision]
+		}
+	}
+	return remaining
+}
+
+func (h *historyOperation) consumeUniverse(revision string, state *revisionState) {
+	if state == nil || h.universeUses[revision] == 0 {
+		return
+	}
+	h.universeUses[revision]--
+	if h.remaining(h.universeUses, state) == 0 {
+		h.store.releaseHeavy(state)
+	}
+}
+
+func (h *historyOperation) consumeSources(revision string, state *revisionState) {
+	if state == nil || h.sourceUses[revision] == 0 {
+		return
+	}
+	h.sourceUses[revision]--
+	if h.remaining(h.sourceUses, state) == 0 {
+		state.universe.Sources = nil
+	}
 }
 
 func (s *revisionState) committedConfig() (*config.Config, error) {
@@ -405,28 +504,32 @@ func loadSelectedRevision(ctx context.Context, root, revision string, entryRead 
 		return revisionStateFromControls(root, controlSelection), nil //nolint:nilerr // preserve malformed committed controls as lazy policy warnings, not fatal audit failure
 	}
 	authorityPaths := selectedAuthorityPaths(entries, cfg.DocsDir)
-	blobs, err = blobRead(ctx, revision, authorityPaths)
-	if err != nil {
-		return nil, err
-	}
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-	authority, err := snapshot.NewSelectionFromBlobs(blobs)
-	if err != nil {
-		return nil, err
-	}
-	for _, file := range authority.List() {
-		if !file.Scannable() {
-			return nil, fmt.Errorf("selected authority %q is not a scannable file", file.Path)
+	// Authority bytes are deliberately not read with controls. Keep only the
+	// exact path selection in this light state; the one-shot heavy loader drops
+	// it immediately after materialization.
+	return revisionStateFromAuthority(cfg, lock, lockFound, func() (currentstate.Universe, error) {
+		blobs, err := blobRead(ctx, revision, authorityPaths)
+		if err != nil {
+			return currentstate.Universe{}, err
 		}
-	}
-	all := append(controlSelection.List(), authority.List()...)
-	selection, err := snapshot.NewSelection(all)
-	if err != nil {
-		return nil, err
-	}
-	return revisionStateFromSelection(selection, cfg, lock, lockFound), nil
+		if err := ctx.Err(); err != nil {
+			return currentstate.Universe{}, err
+		}
+		authority, err := snapshot.NewSelectionFromBlobs(blobs)
+		if err != nil {
+			return currentstate.Universe{}, err
+		}
+		allowed := make(map[string]bool, len(authorityPaths))
+		for _, selected := range authorityPaths {
+			allowed[selected] = true
+		}
+		for _, file := range authority.List() {
+			if !allowed[file.Path] || !file.Scannable() {
+				return currentstate.Universe{}, fmt.Errorf("selected authority %q is not a scannable file", file.Path)
+			}
+		}
+		return currentstate.LoadUniverseFromSelection(authority, cfg)
+	}), nil
 }
 
 func selectedAuthorityPaths(entries []awfgit.TreeEntry, docsDir string) []string {
@@ -477,12 +580,8 @@ func revisionStateFromControls(root string, selection *snapshot.Selection) *revi
 	return state
 }
 
-func revisionStateFromSelection(selection *snapshot.Selection, cfg *config.Config, lock *manifest.Lock, lockFound bool) *revisionState {
-	state := &revisionState{lockReady: true, lock: lock, lockFound: lockFound, configReady: true, config: cfg}
-	state.loadUniverse = func() (currentstate.Universe, error) {
-		return currentstate.LoadUniverseFromSelection(selection, cfg)
-	}
-	return state
+func revisionStateFromAuthority(cfg *config.Config, lock *manifest.Lock, lockFound bool, load func() (currentstate.Universe, error)) *revisionState {
+	return &revisionState{lockReady: true, lock: lock, lockFound: lockFound, configReady: true, config: cfg, loadUniverse: load}
 }
 
 func (h *historyOperation) replayTransition(ctx context.Context, commit replayCommit) ([]Finding, error) {
@@ -495,7 +594,8 @@ func (h *historyOperation) replayTransition(ctx context.Context, commit replayCo
 		out = append(out, transitionLoadWarning(commit, err))
 		return out, nil
 	}
-	after, err := afterState.currentState()
+	defer h.consumeUniverse(commit.Revision, afterState)
+	after, err := h.currentState(afterState)
 	if err != nil {
 		if contextTermination(err) {
 			return nil, fmt.Errorf("derive transition result current state %s: %w", commit.Hash, err)
@@ -513,7 +613,8 @@ func (h *historyOperation) replayTransition(ctx context.Context, commit replayCo
 			out = append(out, transitionLoadWarning(commit, loadErr))
 			return out, nil
 		}
-		before, err = beforeState.currentState()
+		defer h.consumeUniverse(commit.Parents[0], beforeState)
+		before, err = h.currentState(beforeState)
 		if err != nil {
 			if contextTermination(err) {
 				return nil, fmt.Errorf("derive transition first-parent current state %s: %w", commit.Hash, err)
@@ -547,6 +648,19 @@ func (h *historyOperation) replayStale(ctx context.Context, commit replayCommit)
 	if !commit.IsMerge {
 		return nil, nil
 	}
+	// Every merge role was reserved during light planning. Discharge it even
+	// when schema controls make stale qualification inapplicable.
+	consume := func(revision string, state *revisionState) {
+		h.consumeSources(revision, state)
+		h.consumeUniverse(revision, state)
+	}
+	for _, revision := range append([]string{commit.Revision}, commit.Parents...) {
+		defer func(revision string) {
+			if result, ok := h.store.keys[revision]; ok {
+				consume(revision, result.state)
+			}
+		}(revision)
+	}
 	var findings []Finding
 	resultState, err := h.stateForCommit(ctx, commit)
 	if err != nil {
@@ -563,7 +677,7 @@ func (h *historyOperation) replayStale(ctx context.Context, commit replayCommit)
 	if len(commit.Parents) < 2 {
 		return nil, fmt.Errorf("merge %s has fewer than two parents", commit.Hash)
 	}
-	result, err := resultState.currentState()
+	result, err := h.currentState(resultState)
 	if err != nil {
 		return nil, fmt.Errorf("load merge result current state %s: %w", commit.Hash, err)
 	}
@@ -571,7 +685,7 @@ func (h *historyOperation) replayStale(ctx context.Context, commit replayCommit)
 	if err != nil {
 		return nil, fmt.Errorf("load merge first parent %s: %w", commit.Hash, err)
 	}
-	first, err := firstState.currentState()
+	first, err := h.currentState(firstState)
 	if err != nil {
 		return nil, fmt.Errorf("load merge first parent current state %s: %w", commit.Hash, err)
 	}
@@ -581,7 +695,7 @@ func (h *historyOperation) replayStale(ctx context.Context, commit replayCommit)
 		if loadErr != nil {
 			return nil, fmt.Errorf("load merge incoming parent %s: %w", commit.Hash, loadErr)
 		}
-		incoming[i], err = incomingState.currentState()
+		incoming[i], err = h.currentState(incomingState)
 		if err != nil {
 			return nil, fmt.Errorf("load merge incoming parent current state %s: %w", commit.Hash, err)
 		}

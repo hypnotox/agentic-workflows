@@ -56,6 +56,71 @@ func (h *historyOperation) staleMergeFindings(ctx context.Context) ([]Finding, e
 	return findings, nil
 }
 
+func TestRevisionStoreTracksLogicalHeavyHighWater(t *testing.T) {
+	store := newRevisionStore()
+	first := fixedRevisionState(nil, false, currentstate.Universe{})
+	second := fixedRevisionState(nil, false, currentstate.Universe{})
+	store.retainHeavy(first)
+	store.retainHeavy(second)
+	store.releaseHeavy(first)
+	store.retainHeavy(first)
+	store.releaseHeavy(second)
+	store.releaseHeavy(first)
+	if store.currentHeavy != 0 || store.highWaterHeavy != 2 {
+		t.Fatalf("logical heavy entries current=%d high-water=%d, want 0 and 2", store.currentHeavy, store.highWaterHeavy)
+	}
+}
+
+func TestHistoryOperationReleasesAliasedHeavyStateAtFinalUse(t *testing.T) {
+	loads := map[string]int{}
+	parent := &revisionState{lockReady: true, configReady: true, config: &config.Config{DocsDir: "docs"}}
+	parent.loadUniverse = func() (currentstate.Universe, error) { return currentstate.Universe{}, nil }
+	op := newHistoryOperationFromCompact([]replayCommit{
+		{Hash: "child", Revision: "child", Parents: []string{"parent"}, Paths: []string{"internal/code.go"}},
+		{Hash: "parent", Revision: "parent"},
+	}, nil, 2, func(_ context.Context, revision string) (*revisionState, error) {
+		loads[revision]++
+		if revision != "parent" {
+			return nil, errors.New("unexpected distinct load " + revision)
+		}
+		return parent, nil
+	}, func(context.Context, string) ([]string, error) { return nil, nil }, func(context.Context) ([]Finding, error) { return nil, nil })
+	if _, err := op.run(testContext(t)); err != nil {
+		t.Fatal(err)
+	}
+	if loads["parent"] != 1 || loads["child"] != 0 {
+		t.Fatalf("light alias loads=%#v, want one parent load", loads)
+	}
+	if op.store.currentHeavy != 0 || op.store.highWaterHeavy != 1 || parent.loadUniverse != nil || parent.universe.Sources != nil || len(parent.universe.ADRs) != 0 || len(parent.universe.Topics) != 0 {
+		t.Fatalf("final release current=%d high-water=%d loader=%v universe=%#v", op.store.currentHeavy, op.store.highWaterHeavy, parent.loadUniverse != nil, parent.universe)
+	}
+}
+
+func TestHistoryOperationReleasesSourcesBeforeUniverse(t *testing.T) {
+	source := []byte("historical ADR")
+	state := &revisionState{lockReady: true, lock: &manifest.Lock{SchemaVersion: 31}, lockFound: true}
+	state.loadUniverse = func() (currentstate.Universe, error) {
+		return currentstate.Universe{Sources: map[string][]byte{"0001": source}}, nil
+	}
+	commit := replayCommit{Hash: "merge", Revision: "result", IsMerge: true, Message: "Merge", Parents: []string{"first", "incoming"}}
+	op := newHistoryOperationFromCompact([]replayCommit{commit}, nil, 1, func(context.Context, string) (*revisionState, error) {
+		return state, nil
+	}, nil, func(context.Context) ([]Finding, error) { return nil, nil })
+	op.reserveConsumers([]replayCommit{commit})
+	if _, err := op.replayStale(testContext(t), commit); err != nil {
+		t.Fatal(err)
+	}
+	if state.universe.Sources != nil || !state.heavyLive || op.store.currentHeavy != 1 {
+		t.Fatalf("stale final use did not release only sources: state=%#v current=%d", state.universe, op.store.currentHeavy)
+	}
+	if _, err := op.replayTransition(testContext(t), commit); err != nil {
+		t.Fatal(err)
+	}
+	if state.heavyLive || op.store.currentHeavy != 0 || len(state.universe.Sources) != 0 {
+		t.Fatalf("transition final use did not release universe: state=%#v current=%d", state.universe, op.store.currentHeavy)
+	}
+}
+
 func TestStreamingProjectionDetachesRetainedSubjects(t *testing.T) {
 	message := "not conventional\n\n" + strings.Repeat("body", 4096)
 	subject := message[:len("not conventional")]
@@ -851,7 +916,7 @@ func TestAuditPropagatesHistoricalCancellation(t *testing.T) {
 				ctx, cancel := context.WithCancel(testContext(t))
 				defer cancel()
 				var events []string
-				_, err := loadSelectedRevision(ctx, t.TempDir(), "revision",
+				state, err := loadSelectedRevision(ctx, t.TempDir(), "revision",
 					func(context.Context, string) ([]awfgit.TreeEntry, error) {
 						events = append(events, "enumerate")
 						return []awfgit.TreeEntry{{Path: ".awf/config.yaml", Mode: awfgit.BlobRegular}}, nil
@@ -863,6 +928,9 @@ func TestAuditPropagatesHistoricalCancellation(t *testing.T) {
 						}
 						return []awfgit.IndexBlob{{Path: ".awf/config.yaml", Mode: awfgit.BlobRegular, Bytes: []byte("prefix: test\nintegrationBranch: main\n")}}, nil
 					})
+				if err == nil {
+					_, err = state.currentState()
+				}
 				wantEvents := []string{"enumerate", "selected blob read"}
 				if cancelAfterRead == 2 {
 					wantEvents = append(wantEvents, "selected blob read")
@@ -1375,8 +1443,8 @@ func TestHistoricalStateSelectsOnlyAuthorityBlobs(t *testing.T) {
 	if _, err := op.stateForCommit(testContext(t), op.commits[1]); err != nil {
 		t.Fatal(err)
 	}
-	if entries != 1 || reads != 5 {
-		t.Fatalf("irrelevant commit did not reuse derived state: entry reads=%d blob reads=%d, want 1 and 5", entries, reads)
+	if entries != 1 || reads != 2 {
+		t.Fatalf("irrelevant commit did not reuse light controls: entry reads=%d blob reads=%d, want 1 and 2", entries, reads)
 	}
 }
 

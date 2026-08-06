@@ -419,8 +419,8 @@
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
       "templateHash": "sha256:9a0c3317f528e24e24920c3a7dc0b57e30764c3dbd9091db3576d837be7af07c",
-      "configHash": "sha256:b2eece4a4429f117d55b5a41110b1850e57cc110f35f9367d6c3c39b248ef08e",
-      "outputHash": "sha256:9abd58a41dcc0483811c8668f2e82248bfd32b236944a6ae3e790038d49a10ab"
+      "configHash": "sha256:281ce650cb1314ffe70dbb7299949278f94828e64eba81da64695af81b60f87d",
+      "outputHash": "sha256:19afcec748897ec6a3c2984be725620cef635dd73b065450cdd3bcd861ec3fe4"
     },
     "docs/config-reference.md": {
       "templateId": "",
