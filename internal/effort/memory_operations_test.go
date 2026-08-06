@@ -49,7 +49,9 @@ func TestMemoryDisplayDiffUsesPiRows(t *testing.T) {
 	before := "old\n" + strings.Repeat("context\n", 12) + "tail old\n"
 	after := "new\n" + strings.Repeat("context\n", 12) + "tail new\n"
 	separated := memoryDiff([]byte(before), []byte(after), 0)
-	if strings.Count(separated.Text, "    ...\n") != 1 || !separated.Truncated {
+	// Unjoinable hunks drop only context the fixed window never selected, so the
+	// complete diff must not claim the bounding loss truncated reports.
+	if strings.Count(separated.Text, "    ...\n") != 1 || separated.Truncated {
 		t.Fatalf("separated diff=%#v", separated)
 	}
 
@@ -284,21 +286,74 @@ func TestMemoryPreviewDoesNotPublishOrClock(t *testing.T) {
 	if !bytes.Equal(before, after) || calls != 1 {
 		t.Fatalf("preview published=%t clock calls=%d", !bytes.Equal(before, after), calls)
 	}
+	// previewUpdateOf runs one update preview against exact resident bytes
+	// through the entrypoint Pi uses, so the preview under test is the shipped
+	// one and its read-only promise is checked on every case.
+	previewUpdateOf := func(raw []byte, update MemoryUpdate) MemoryDiff {
+		t.Helper()
+		if writeErr := os.WriteFile(path, raw, 0o600); writeErr != nil {
+			t.Fatal(writeErr)
+		}
+		result, previewErr := service.Memory(MemoryUpdateInput{Slug: "preview", Update: update, Preview: true})
+		if previewErr != nil || result.Condition != MemoryPreviewed || result.Diff == nil {
+			t.Fatalf("preview=%#v err=%v", result, previewErr)
+		}
+		unchanged, readErr := os.ReadFile(path)
+		if readErr != nil || !bytes.Equal(raw, unchanged) {
+			t.Fatalf("preview published bytes err=%v", readErr)
+		}
+		return *result.Diff
+	}
+
 	currentPhase := beforePhase(before)
-	noChange := updatePreviewDiff(before, MemoryUpdate{Phase: &currentPhase}, MemoryMetadata{Phase: currentPhase}, false)
+	noChange := previewUpdateOf(before, MemoryUpdate{Phase: &currentPhase})
 	if noChange.Text != "" || noChange.FirstChangedLine != nil {
 		t.Fatalf("no change diff=%#v", noChange)
 	}
 	canonicalWithMetadataLikeBody := []byte("---\neffort: preview\nphase: old phase\nnext: old next\nupdated: \"2026-08-06T12:00:00Z\"\n---\nphase: body phase\nnext: body next\n")
-	bodySafe := updatePreviewDiff(canonicalWithMetadataLikeBody, MemoryUpdate{Phase: &phase, Next: &next}, MemoryMetadata{Phase: "old phase", Next: "old next"}, false)
-	if strings.Contains(bodySafe.Text, "+7 phase: next phase") || strings.Contains(bodySafe.Text, "+8 next: next action") {
+	bodySafe := previewUpdateOf(canonicalWithMetadataLikeBody, MemoryUpdate{Phase: &phase, Next: &next})
+	if !strings.Contains(bodySafe.Text, "+3 phase: next phase") || !strings.Contains(bodySafe.Text, "+4 next: next action") || strings.Contains(bodySafe.Text, "+7 phase: next phase") || strings.Contains(bodySafe.Text, "+8 next: next action") {
 		t.Fatalf("preview rewrote body metadata lookalikes: %#v", bodySafe)
 	}
 
+	// inspectCanonical constrains duplicates and unknown keys but never key
+	// order, and safe repair inserts an absent key, so a preview located by
+	// fixed line index silently shows nothing for either shape.
+	reordered := []byte("---\neffort: preview\nupdated: \"2026-08-06T12:00:00Z\"\nphase: old phase\nnext: old next\n---\nbody\n")
+	shape := previewUpdateOf(reordered, MemoryUpdate{Phase: &phase, Next: &next})
+	if !strings.Contains(shape.Text, "+3 phase: next phase") || !strings.Contains(shape.Text, "+4 next: next action") || strings.Contains(changedDiffRows(shape.Text), "updated:") {
+		t.Fatalf("reordered-key preview=%#v", shape)
+	}
+	absentPhase := []byte("---\neffort: preview\nnext: old next\nupdated: \"2026-08-06T12:00:00Z\"\n---\nbody\n")
+	shape = previewUpdateOf(absentPhase, MemoryUpdate{Phase: &phase})
+	if !strings.Contains(shape.Text, "+3 phase: next phase") || strings.Contains(changedDiffRows(shape.Text), "updated:") {
+		t.Fatalf("absent-phase repair preview=%#v", shape)
+	}
+
+	// A previewed metadata line must carry the quoting publication applies, or
+	// the reader is shown a line the resident will never contain.
+	quoted := "weird: value"
+	shape = previewUpdateOf(before, MemoryUpdate{Phase: &quoted})
+	published, err := service.Memory(MemoryUpdateInput{Slug: "preview", Update: MemoryUpdate{Phase: &quoted}})
+	if err != nil || published.Condition != MemoryUpdated {
+		t.Fatalf("quoted publication=%#v err=%v", published, err)
+	}
+	quotedRaw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(shape.Text, "+3 phase: 'weird: value'") || !strings.Contains(string(quotedRaw), "phase: 'weird: value'\n") {
+		t.Fatalf("quoted preview=%q published=%q", shape.Text, quotedRaw)
+	}
+
 	legacyRaw := []byte("Effort: preview\nPhase: old phase\nNext: old next\nUpdated: Not yet updated.\n\nold body")
-	legacy := updatePreviewDiff(legacyRaw, MemoryUpdate{Next: &next}, MemoryMetadata{Phase: "old phase", Next: "old next"}, true)
+	legacy := previewUpdateOf(legacyRaw, MemoryUpdate{Next: &next})
 	if legacy.FirstChangedLine == nil || *legacy.FirstChangedLine != 3 || !strings.Contains(legacy.Text, "-3 Next: old next") || !strings.Contains(legacy.Text, "+3 Next: next action") || strings.Contains(legacy.Text, "+4 Updated:") || strings.Contains(legacy.Text, "-4 Updated:") {
 		t.Fatalf("legacy preview=%#v", legacy)
+	}
+	legacyPhase := previewUpdateOf(legacyRaw, MemoryUpdate{Phase: &phase})
+	if !strings.Contains(legacyPhase.Text, "-2 Phase: old phase") || !strings.Contains(legacyPhase.Text, "+2 Phase: next phase") || strings.Contains(changedDiffRows(legacyPhase.Text), "Next:") {
+		t.Fatalf("legacy phase preview=%#v", legacyPhase)
 	}
 	if err := os.WriteFile(path, legacyRaw, 0o600); err != nil {
 		t.Fatal(err)
@@ -346,6 +401,18 @@ func TestMemoryPreviewDoesNotPublishOrClock(t *testing.T) {
 	if err != nil || repaired.Condition != MemoryUpdated || !strings.Contains(repaired.Diff.Text, "+3 phase: next phase") || !strings.Contains(repaired.Diff.Text, "+4 next: next action") || !strings.Contains(repaired.Diff.Text, "updated:") {
 		t.Fatalf("safe repair result=%#v diff=%q err=%v", repaired, repaired.Diff.Text, err)
 	}
+}
+
+// changedDiffRows keeps only the added and removed rows, so an assertion about
+// a rewritten line cannot be satisfied by an unchanged context row.
+func changedDiffRows(text string) string {
+	var rows []string
+	for _, line := range strings.Split(text, "\n") {
+		if strings.HasPrefix(line, "+") || strings.HasPrefix(line, "-") {
+			rows = append(rows, line)
+		}
+	}
+	return strings.Join(rows, "\n")
 }
 
 func beforePhase(raw []byte) string {

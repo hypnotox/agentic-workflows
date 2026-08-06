@@ -335,18 +335,21 @@ func (s *Service) UpdateMemory(input MemoryUpdateInput) (MemoryOperationResult, 
 		}
 		return MemoryOperationResult{}, err
 	}
-	if input.Preview {
-		if invalid := invalidMemoryUpdateFor(input.Slug, doc, input.Update); invalid != nil {
-			result := memoryRefusal(MemoryInvalid, "the effort memory metadata cannot be safely repaired by this update", "inspect the effort memory metadata", invalid.NextAction)
-			return result, nil
-		}
-		diff := updatePreviewDiff(raw, input.Update, doc.metadata, doc.legacy)
-		return MemoryOperationResult{Condition: MemoryPreviewed, Diff: &diff}, nil
+	// A preview reuses the publication machinery with the timestamp held at its
+	// current value, so what it shows is what publication will write apart from
+	// the deliberately omitted clock read.
+	updated := doc.metadata.Updated
+	if !input.Preview {
+		updated = formatMemoryTime(s.now())
 	}
-	metadata, encoded, invalid := s.prepareMemoryUpdate(input.Slug, doc, input.Update)
+	metadata, encoded, invalid := prepareMemoryUpdate(input.Slug, doc, input.Update, updated)
 	if invalid != nil {
 		result := memoryRefusal(MemoryInvalid, "the effort memory metadata cannot be safely repaired by this update", "inspect the effort memory metadata", invalid.NextAction)
 		return result, nil //nolint:nilerr // unsafe repair is a typed handled refusal
+	}
+	if input.Preview {
+		diff := updatePreviewDiff(raw, encoded, doc, input.Update)
+		return MemoryOperationResult{Condition: MemoryPreviewed, Diff: &diff}, nil
 	}
 	if len(encoded) > maxMemoryBytes {
 		result := memoryRefusal(MemoryResultTooLarge, "the updated memory would exceed the resident size bound", "reduce the replacement metadata size")
@@ -437,7 +440,7 @@ func invalidMemoryUpdateFor(slug string, doc memoryDocument, update MemoryUpdate
 	return nil
 }
 
-func (s *Service) prepareMemoryUpdate(slug string, doc memoryDocument, update MemoryUpdate) (MemoryMetadata, []byte, *invalidMemoryUpdate) {
+func prepareMemoryUpdate(slug string, doc memoryDocument, update MemoryUpdate, updated string) (MemoryMetadata, []byte, *invalidMemoryUpdate) {
 	if invalid := invalidMemoryUpdateFor(slug, doc, update); invalid != nil {
 		return MemoryMetadata{}, nil, invalid
 	}
@@ -449,7 +452,7 @@ func (s *Service) prepareMemoryUpdate(slug string, doc memoryDocument, update Me
 	if update.Next != nil {
 		metadata.Next = *update.Next
 	}
-	metadata.Updated = formatMemoryTime(s.now())
+	metadata.Updated = updated
 	if validateMemoryMutable(metadata.Phase) != nil || validateMemoryMutable(metadata.Next) != nil { // coverage-ignore: supplied fields are validated and every unrepaired invalid field returned above
 		return MemoryMetadata{}, nil, &invalidMemoryUpdate{NextAction: memoryUpdateCommand(slug, doc.invalid)}
 	}
@@ -512,11 +515,9 @@ func memoryDiff(before, after []byte, lineOffset int) MemoryDiff {
 	width := len(strconv.Itoa(max(len(oldLines), len(newLines)) + lineOffset))
 	var rows []displayDiffRow
 	first := 0
-	contextOmitted := false
 	for groupIndex, group := range groups {
 		if groupIndex > 0 {
 			rows = append(rows, displayDiffRow{text: omissionDisplayRow(width)})
-			contextOmitted = true
 		}
 		for _, code := range group {
 			switch code.Tag {
@@ -555,8 +556,11 @@ func memoryDiff(before, after []byte, lineOffset int) MemoryDiff {
 			}
 		}
 	}
+	// Truncated reports bounding loss alone. Unchanged context that the fixed
+	// four-line window never selected is not loss: the diff still carries every
+	// changed row, and marking it truncated would warn about complete diffs.
 	text, truncated := boundedDisplayRows(rows, width)
-	return MemoryDiff{Text: text, FirstChangedLine: &first, Truncated: truncated || contextOmitted}
+	return MemoryDiff{Text: text, FirstChangedLine: &first, Truncated: truncated}
 }
 
 func diffLines(raw []byte) []string {
@@ -713,28 +717,30 @@ func renderSelectedDisplayRows(rows []displayDiffRow, selected []bool, width int
 	return string(out), true
 }
 
-func updatePreviewDiff(raw []byte, update MemoryUpdate, metadata MemoryMetadata, legacy bool) MemoryDiff {
-	phaseKey, nextKey := "phase:", "next:"
-	if legacy {
-		phaseKey, nextKey = "Phase:", "Next:"
+// updatePreviewDiff compares the current document against the one publication
+// would write. A canonical resident is previewed through the publication
+// encoding itself, so reordered keys, an absent key that safe repair inserts,
+// and YAML quoting all appear exactly as they will be written.
+func updatePreviewDiff(raw, encoded []byte, doc memoryDocument, update MemoryUpdate) MemoryDiff {
+	if doc.legacy {
+		return memoryDiff(raw, legacyPreviewDocument(doc, update), 0)
 	}
-	phaseLine, nextLine := 2, 3
-	if legacy {
-		phaseLine, nextLine = 1, 2
+	return memoryDiff(raw, encoded, 0)
+}
+
+// A legacy resident is accepted only as exactly four "Key: value" lines before
+// a blank separator, so reconstructing that grammar reproduces the original
+// bytes wherever the update changes nothing. Publication rewrites a legacy
+// resident into canonical form; the preview keeps the legacy line offsets the
+// reader is looking at.
+func legacyPreviewDocument(doc memoryDocument, update MemoryUpdate) []byte {
+	metadata := doc.metadata
+	if update.Phase != nil {
+		metadata.Phase = *update.Phase
 	}
-	lines := completeLines(raw)
-	after := make([]byte, 0, len(raw))
-	for index, line := range lines {
-		text := strings.TrimSuffix(strings.TrimSuffix(string(line), "\n"), "\r")
-		ending := string(line[len(text):])
-		switch {
-		case index == phaseLine && update.Phase != nil && strings.HasPrefix(text, phaseKey) && *update.Phase != metadata.Phase:
-			text = phaseKey + " " + *update.Phase
-		case index == nextLine && update.Next != nil && strings.HasPrefix(text, nextKey) && *update.Next != metadata.Next:
-			text = nextKey + " " + *update.Next
-		}
-		after = append(after, text...)
-		after = append(after, ending...)
+	if update.Next != nil {
+		metadata.Next = *update.Next
 	}
-	return memoryDiff(raw, after, 0)
+	header := fmt.Sprintf("Effort: %s\nPhase: %s\nNext: %s\nUpdated: %s\n\n", metadata.Effort, metadata.Phase, metadata.Next, metadata.Updated)
+	return append([]byte(header), doc.body...)
 }
