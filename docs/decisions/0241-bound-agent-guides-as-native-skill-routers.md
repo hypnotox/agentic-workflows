@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: bound-agent-guides-as-native-skill-routers
-status: Implementing
+status: Implemented
 date: 2026-08-06
 ---
 # ADR-0241: Bound agent guides as native-skill routers
@@ -62,3 +62,4 @@ A durable bound is needed because prose-only review allowed the guide to regress
 - 2026-08-06: Applied; operations: update `rendering/guide-and-doc-templates:guide-entry-point-routing`, update `rendering/workflow-skill-templates:deliberate-subagent-model-selection`
 - 2026-08-06: Applied; operations: update `rendering/guide-and-doc-templates:working-memory-single-home`, add `rendering/guide-and-doc-templates:agent-guide-size-budgets`
 - 2026-08-06: Applied; operations: add `rendering/sync-and-drift:agent-guide-size-advisory`
+- 2026-08-06: Implemented; content-sha256: 979a8685564b1e3db06e61efdb21090ea5341744e13cf676a7ad6e8b1c8b030b

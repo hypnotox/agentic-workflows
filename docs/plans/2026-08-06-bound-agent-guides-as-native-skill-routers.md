@@ -3,7 +3,7 @@ format: plan-v2
 date: 2026-08-06
 adrs:
   - bound-agent-guides-as-native-skill-routers
-status: Proposed
+status: Implemented
 ---
 # Plan: Bound agent guides as native-skill routers
 
