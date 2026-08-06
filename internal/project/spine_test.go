@@ -2637,12 +2637,17 @@ func TestAuthorityGuidedReviewRemediation(t *testing.T) {
 		"A consensus deviation remains a user decision.",
 		"A review finding stops the workflow only when",
 		// The reconciling clause that keeps this partial from reading as a
-		// rival to an implementation stop list. Unpinned, the contradiction
-		// the resync round settled could be reinstated with no signal.
-		"is not the unresolved design fork",
+		// rival to an implementation stop list. Pinned with its full referent:
+		// a positional "adjacent list" wording dangles in the six skill
+		// outputs that never render implementation-autonomy beside it.
+		"is not the unresolved design fork that an implementation stop list names",
 		stopCriterion,
 		nonTriggers,
 		noLoopException,
+		// The stop criterion literal ends before the citation directive, so
+		// pin the directive with enough of its left context to bind it to the
+		// stop sentence rather than to any other authority mention.
+		"active current-state claim; cite the affected authority",
 	}
 
 	// The pinned non-trigger enumeration deliberately starts at "competing
@@ -2806,6 +2811,13 @@ func TestAuthorityGuidedReviewRemediation(t *testing.T) {
 		}
 		for variant, out := range outs {
 			assertNoLeaks(t, out)
+			// The claim predicates the ambiguity non-trigger on the shared
+			// spine, whose leading "Ambiguity," reaches only these agent
+			// bodies. A bare token is not enough here: code-reviewer names
+			// ambiguity elsewhere, so pin the spine sentence's own opening.
+			if !strings.Contains(out, "Ambiguity, competing clean options") {
+				t.Errorf("%s/%s spine paragraph no longer opens the non-trigger list with ambiguity", variant, name)
+			}
 			for _, want := range reviewerWants {
 				if !strings.Contains(out, want) {
 					t.Errorf("%s/%s missing spine clause %q", variant, name, want)
