@@ -630,6 +630,18 @@ test("an authoritative result latches the row against a preview that settles aft
   assert.match(latched, /\+7 new/, "a late preview replaced the authoritative diff");
   assert.equal(latched.includes("+6 preview"), false, "a late preview replaced the authoritative diff");
   assert.equal(latched.includes("Diff truncated for display."), false, "a late preview replaced the authoritative truncation state");
+  // The latch belongs to the call it settled, so the row reset a new key
+  // performs must release it: the next call's preview has nothing authoritative
+  // left to defer to, and an unreleased latch leaves that row blank forever.
+  const reused = { edits: [{ oldText: "old", newText: "third" }] };
+  const reusedContext = rowContext({ args: reused, toolCallId: "call-latch-2", state: context.state });
+  assert.equal(tool.renderCall(reused, fakeTheme, reusedContext), row, "the next call rendered a different row");
+  await settle();
+  assert.equal(gates.length, 2, "the next call never started its own preview");
+  gates[1](memoryEditPreviewReply({ diff: { text: "-8 old\n+8 third\n", firstChangedLine: 8, truncated: false } })); await settle();
+  const repainted = rowText(row);
+  assert.match(repainted, /\+8 third/, "the previous call's latch blocked the next call's preview");
+  assert.equal(repainted.includes("+7 new"), false, "the row kept the previous call's authoritative diff");
 });
 
 test("preview refusal and transport failure fail before mutation and clear only lost associations", async () => {
