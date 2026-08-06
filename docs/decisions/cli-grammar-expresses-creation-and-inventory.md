@@ -14,9 +14,9 @@ eight kinds: the three catalog-backed kinds skill, agent and doc, each mapping t
 the freeform domain kind; the adapter target kind; and the three nameless singleton kinds
 bootstrap, hooks and runner, which write a block rather than an array entry (ADR-0024, ADR-0037,
 ADR-0040, ADR-0048, ADR-0101; both verbs renamed from `add`/`remove` by ADR-0093). Enabling applies
-a requirement closure and pairs a reviewing skill with its agent (ADR-0148), and disabling refuses
-while dependents remain (ADR-0081). `awf new skill`, `awf new agent` and `awf new doc` scaffold
-project-local artifacts (ADR-0068, ADR-0091).
+a requirement closure and pairs a reviewing skill with its agent (ADR-0050, generalized by
+ADR-0081), and disabling refuses while dependents remain (ADR-0081). `awf new skill`,
+`awf new agent` and `awf new doc` scaffold project-local artifacts (ADR-0068, ADR-0091).
 
 The three companion records retire everything those commands select over. The house-standard record
 retires the `skills`, `agents`, `docs` and `targets` arrays and the sidecar `local` field; the
@@ -46,12 +46,12 @@ reading what exists.
    command that edits configuration edits a repository fact.
 
 2. `decision: retire-selection-commands` `awf enable` and `awf disable` are retired in full rather
-   than narrowed to their one surviving kind. That covers all eight kinds: the catalog-backed
-   arms, the target arms, and the three nameless singleton arms for bootstrap, hooks and runner,
-   together with the enablement requirement closure and its provenance plan, the reviewing-skill
-   agent pairing, and the dependent-refusal guard. The `list` filters for the singleton kinds go
-   with them. This record retires the command surface; the companion records retire the keys those
-   arms wrote.
+   than narrowed to their one surviving kind. That covers all eight kinds: the three catalog-backed
+   arms, the target arm, the three nameless singleton arms for bootstrap, hooks and runner, and the
+   domain arm, whose creation and removal item 3 relocates to `awf new` and `awf remove`. It takes
+   with them the enablement requirement closure and its provenance plan, the reviewing-skill agent
+   pairing, and the dependent-refusal guard. This record retires the command surface; the companion
+   records retire the keys those arms wrote.
 
 3. `decision: domain-lifecycle-under-new` A domain is created with `awf new domain <name>` and
    removed with `awf remove domain <name>`, which introduces `awf remove` as a new top-level verb
@@ -71,7 +71,9 @@ reading what exists.
 5. `decision: list-is-inventory` `awf list` reports what exists without reporting whether it is
    selected. The `enabled`, `available` and `local` states are retired because every catalog entry
    is present unconditionally and none is locally owned; a catalog entry is distinguished only by
-   whether a sidecar tunes it, and a domain continues to list as configured.
+   whether a sidecar tunes it, and a domain continues to list as configured. The target listing
+   survives as a fixed inventory of `claude` and `pi` carrying no state token, and the bare listing
+   drops the bootstrap, hooks and runner categories along with the keys behind them.
 
 6. `decision: no-deprecation-window-for-a-retired-key` awf ships no deprecation window for a
    retired configuration key. Because parsing is strict, a command that writes a key the loader no
@@ -102,13 +104,18 @@ scaffold, and only on the non-doc branch, so `adr`, `plan`, `topic` and `domain`
 the domain scaffold writes a fixed string constant with no template source at all. The claim is
 already inert today, because both local base templates are varless. Retiring it takes
 `seedScaffoldVars` and `project.ScaffoldVarRefs` with it, which the dead-code gate requires, while
-`config.SeedVarKey` survives on its migration callers.
+`config.SeedVarKey` survives on its migration callers. The same gate forces a larger cascade from
+item 2 that is easy to miss: the enablement resolver's exported surface and the plan-document
+presentation it feeds have no consumer outside the retired enable and disable arms, so they retire
+with those arms rather than lingering as unreachable production code.
 
-The two `config/configuration` mutation claims are not at risk either way. `config-mutation-roundtrip`
-and `remove-block-scoped` keep five live callers in the frozen historical migrations that the
-house-standard record preserves, and the close-enabled-set migration exercises the two-key
-discriminating case that `remove-block-scoped` describes. The domain commands keep both mechanisms
-reachable from the live CLI surface as well, but they are not what keeps the claims backed.
+The two `config/configuration` mutation claims are not at risk either way, and backing and
+reachability are separate questions here. `config-mutation-roundtrip` and `remove-block-scoped` are
+both proven directly in the config package's own edit tests, which exercise the editor rather than
+any caller, so no command retirement can unback them. What callers determine is reachability for
+the dead-code gate, and five live callers survive in the frozen historical migrations the
+house-standard record preserves, with the domain commands keeping the editor reachable from the
+live CLI surface as well.
 
 A repository can no longer author an artifact awf does not ship. Convention parts reshape a catalog
 artifact; they cannot introduce one, and the local channel and its scaffolding commands are both
@@ -134,6 +141,11 @@ because the topic that would otherwise own the behaviour half is reduced to init
 The listing's state vocabulary is deliberately left unclaimed. No current-state claim covers it
 today, and item 5's commitment is proven by the listing tests rather than by a claim.
 
+Item 6's rule likewise stays record-only. A rule that awf ships no deprecation window for a retired
+key constrains how a future retirement is scheduled, not what any code path does, so there is
+nothing a test could pin; it binds as recorded reasoning that a later retirement cites, in the same
+way item 5's vocabulary is left to its tests.
+
 Two implementation constraints follow that the plan must respect. The domain arms of `new` and
 `remove` must dispatch through the exported kind accessors rather than comparing a literal kind
 name, so the single-dispatch-table claim stays true. And this record must land in the same release
@@ -148,7 +160,7 @@ as the house-standard record, per item 6.
 | `awf add domain`/`awf remove domain`, reverting ADR-0093's verbs | ADR-0093's objection was that `add` reads as create and collides with `awf new`; for domains that reading is correct, so the honest response is to use `awf new`, not to revive a verb it rejected. |
 | Let `awf new topic` create an unconfigured domain implicitly, so domain creation needs no command | A mistyped domain name would silently create a domain, and it hides a configuration write inside a topic-scaffolding command. |
 | Keep `awf new` scaffolding a skill, agent or doc into templates rather than the local channel | A repository does not author templates; a scaffolded template would be a fork of the catalog entry with no mechanism keeping it current. |
-| Leave domains to hand-editing and retire all configuration commands | Makes the one genuinely creative configuration act the only one with no command, and drops the path-safety validation that keeps a written entry loadable. |
+| Leave domains to hand-editing and retire all configuration commands | Makes the one genuinely creative configuration act the only one with no command, and drops the pre-write refusal, so a mistyped name surfaces as a failing load rather than an actionable command error. |
 | Deprecate the selection commands for one release before removing them | Strict parsing means a deprecated command writes a key the next load rejects, so the deprecation window is precisely the broken interval. |
 
 ## Status history
