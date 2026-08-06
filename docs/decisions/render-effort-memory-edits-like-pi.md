@@ -4,16 +4,17 @@ slug: render-effort-memory-edits-like-pi
 status: Proposed
 date: 2026-08-06
 ---
-# ADR-render-effort-memory-edits-like-pi: Render Effort Memory Edits Like Pi
+# ADR-render-effort-memory-edits-like-pi: Render Effort Memory Mutations Like Pi
 
 
 ## Context
 
-ADR-0239 added the pathless `effort_memory_edit` tool and kept exact body matching,
-memory validation, clocking, and publication in the awf binary. The tool currently returns a
-bounded `diff.text` that concatenates the complete old and new bodies under literal `before:` and
-`after:` labels. The generated Pi extension has no custom renderer for that result, so interactive
-users see two bodies rather than the contextual colored diff used by Pi's built-in edit tool.
+ADR-0239 added the pathless `effort_memory_edit` and `effort_memory_update` tools and kept exact
+body matching, structured metadata changes, memory validation, clocking, and publication in the awf
+binary. Edit currently returns a bounded `diff.text` that concatenates the complete old and new
+bodies under literal `before:` and `after:` labels, while update returns no diff. The generated Pi
+extension has no custom renderer for either result, so interactive users cannot see the contextual
+colored preview and retained mutation diff used by Pi's built-in edit tool.
 
 Pi's edit tool has two distinct presentation moments. Its call renderer computes a preview once the
 arguments are complete, and its result renderer retains the authoritative diff after execution. Pi
@@ -22,12 +23,14 @@ preview computation. Reusing the internal whole-file computation would also be s
 effort memory edits may match only the Markdown body, preserve structured metadata, and canonicalize
 a valid legacy memory only during publication.
 
-A preview therefore needs the binary's body boundary and exact replacement semantics. It is not a
-prospective publication. In particular, it must not update a timestamp, encode a canonical
-replacement, apply the one-MiB published-result check, or otherwise change whether the existing
-normal edit operation accepts a mutation. A failed preview must stop the Pi tool before mutation;
-a successful preview does not make the later mutation authoritative, because the memory may change
-before normal edit validation runs.
+An edit preview therefore needs the binary's body boundary and exact replacement semantics. An
+update preview needs the binary's structured-field and safe-repair semantics, but should show only
+the requested `phase` and `next` changes; a preview-time `updated` value would never be published.
+Neither preview is a prospective publication. In particular, preview must not clock, encode a
+prospective complete resident, apply the one-MiB published-result check, or otherwise change whether
+the existing normal mutation operation accepts a write. A failed preview must stop the Pi tool
+before mutation; a successful preview does not make the later mutation authoritative, because the
+memory may change before normal validation runs.
 
 The current diff bound is 50 KiB, while one memory line or replacement string may approach one MiB.
 A display diff must retain complete renderable rows and changed content within that bound rather
@@ -44,44 +47,73 @@ rewritten.
 
 ## Decision
 
-1. `decision: preview-is-presentation-only` Add a read-only preview mode to the existing effort
-   memory edit command. Preview performs the safe owner-scoped memory read and only the body-boundary,
-   exact-match, ambiguity, overlap, and replacement work required to compute the requested diff. It
-   never clocks, encodes, size-validates, publishes, or reports a prospective memory fact. The normal
-   edit path retains its existing validation and publication semantics unchanged. In the generated
-   Pi tool, preview success permits normal edit execution, while any preview refusal or execution
-   failure is surfaced as the tool error and prevents mutation. Normal edit validation remains
-   authoritative after preview and may still refuse changed state.
+1. `decision: preview-is-presentation-only` Add read-only preview modes to the existing effort
+   memory edit and update commands. Edit preview performs the safe owner-scoped memory read and only
+   the body-boundary, exact-match, ambiguity, overlap, and replacement work required to compute its
+   diff. Update preview applies the structured-field and safe-repair checks required to identify the
+   requested `phase` and `next` changes, but its diff preserves the current `updated` value and omits
+   publication-only canonicalization. Neither preview clocks, encodes a prospective complete
+   resident, applies the published-result size check, publishes, or reports a prospective memory
+   fact. The normal edit and update paths retain their existing validation and publication semantics
+   unchanged. In each generated Pi tool, preview success permits normal execution, while any preview
+   refusal or execution failure is surfaced as the tool error and prevents mutation. Normal
+   validation remains authoritative after preview and may still refuse changed state.
 
-2. `decision: pi-compatible-memory-display-diff` Replace the before-and-after body concatenation
-   with a deterministic Pi-compatible display diff: removed and added rows use Pi's numbered `-` and
+2. `decision: pi-compatible-memory-display-diff` Use one deterministic Pi-compatible display diff
+   for mutation previews and authoritative results: removed and added rows use Pi's numbered `-` and
    `+` grammar, unchanged rows provide four lines of surrounding context, and separated regions use
    the same omission convention. Preview line numbers describe the currently stored canonical or
-   legacy document; successful edit line numbers describe the canonical published document. Empty
-   body changes retain an empty diff. The 50-KiB protocol bound remains, but bounding preserves
-   complete display rows and at least changed rows rather than returning a partial row.
+   legacy document; successful results describe the canonical published document. Body no-ops and
+   update previews whose requested fields are unchanged retain an empty diff. The 50-KiB protocol
+   bound remains. Bounding never cuts the display-row grammar or a UTF-8 sequence; when a changed
+   source line cannot fit, its content is deterministically elided inside a complete numbered change
+   row and `truncated` is true.
 
-3. `decision: binary-owned-preview-protocol` Extend the existing closed owner-scoped memory edit
-   protocol with a distinct successful preview condition selected only by nonrepeatable `--preview`
-   on `awf effort memory edit`. The preview success carries only replacement count and the bounded
-   diff; it cannot be mistaken for publication. The generated client uses the same edit request
-   schema and strict decoding for preview and mutation. The binary remains the single owner of body
-   parsing, exact replacement, and diff facts; TypeScript neither reads memory directly nor
-   reimplements those rules.
+3. `decision: binary-owned-preview-protocol` Permit nonrepeatable `--preview` only on these exact
+   owner-scoped protocol forms; owner-free human forms reject it:
 
-4. `decision: stable-pi-edit-rendering` Give `effort_memory_edit` a self-rendered Pi call and result
-   surface built from the public `renderDiff` helper. The call renderer starts one association-keyed,
-   argument-keyed preview after complete arguments, discards stale completion, and retains the final
-   authoritative edit diff in the same stable component. Preview is serialized with association
-   lifecycle but never enters the file-mutation queue; mutation retains both association
-   serialization and the shared real-path mutation queue. Successful model-visible content is a
-   compact replacement summary, while structured details retain the diff and truncation fact for
-   interactive rendering. Noninteractive modes remain compact and contain no terminal styling.
+   - `awf effort memory edit <slug> --preview --owner <uuid> --json`
+   - `awf effort memory update <slug> [--phase <text>] [--next <text>] --preview --owner <uuid> --json`
+
+   Edit retains its closed stdin request. A successful edit preview has exactly this protocol-1
+   envelope, where `replacementCount` is 1 through 128:
+
+   ```json
+   {"schemaVersion":1,"condition":"previewed","replacementCount":1,"diff":{"text":"text","firstChangedLine":1,"truncated":false}}
+   ```
+
+   A successful update preview has exactly this protocol-1 envelope:
+
+   ```json
+   {"schemaVersion":1,"condition":"previewed","diff":{"text":"text","firstChangedLine":1,"truncated":false}}
+   ```
+
+   In both forms `diff.text` is bounded to 50 KiB, `firstChangedLine` is a positive integer or null
+   for an empty diff, and `truncated` is boolean. Preview carries no memory fact and cannot be
+   mistaken for publication. A successful normal update adds the same required `diff` object beside
+   its authoritative memory fact; normal edit retains its existing success shape with the new diff
+   representation. The generated client selects and strictly decodes the operation-specific closed
+   envelope. The binary remains the single owner of memory parsing, safe repair, exact replacement,
+   and diff facts; TypeScript neither reads memory directly nor reimplements those rules.
+
+4. `decision: stable-pi-mutation-rendering` Give `effort_memory_edit` and `effort_memory_update`
+   self-rendered Pi call and result surfaces built from the public `renderDiff` helper. Each call
+   renderer starts one association-keyed, argument-keyed preview after complete arguments, discards
+   stale completion, and retains the final authoritative mutation diff in the same stable component.
+   Preview is serialized with association lifecycle but never enters the file-mutation queue;
+   mutation retains both association serialization and the shared real-path mutation queue.
+   Successful model-visible content is a compact mutation summary, while structured details retain
+   the diff and truncation fact for interactive rendering. Noninteractive modes remain compact and
+   contain no terminal styling.
 
 5. `decision: direct-line-diff-dependency` Adopt `github.com/pmezard/go-difflib` as a direct binary
    dependency for the line change model. The dependency avoids a project-local diff algorithm while
    leaving awf responsible for Pi-compatible row formatting, document line offsets, context
    selection, and bounded complete-row output.
+
+6. `decision: publication-safe-mutation-templates` Require every changed Pi extension template to
+   retain missingkey-zero behavior and render coherent generic output for empty variables without
+   `<no value>` or another unresolved-value token.
 
 ## State changes
 
@@ -91,20 +123,24 @@ rewritten.
 
 ## Consequences
 
-Interactive effort memory edits gain the same preview-then-retained-diff shape as Pi's ordinary edit
-tool without weakening body-only exact matching or moving memory semantics into the extension.
-Preview errors become fail-closed: a transient preview transport failure can prevent a mutation that
-would otherwise have succeeded, which is preferable to mutating after the user-visible preview
-failed.
+Interactive effort memory edits and metadata updates gain the same preview-then-retained-diff shape
+as Pi's ordinary edit tool without weakening exact replacement, structured update, or safe-repair
+semantics and without moving memory rules into the extension. Update preview intentionally omits the
+automatic timestamp, while its final result shows the actual published timestamp change. Preview
+errors become fail-closed: a transient preview transport failure can prevent a mutation that would
+otherwise have succeeded, which is preferable to mutating after the user-visible preview failed.
 
 Preview and mutation remain two reads separated in time. Their diffs may differ, and normal edit may
 refuse after a successful preview. The final result always replaces the preview and remains the only
 publication fact.
 
-The protocol gains one success condition and one command flag, the extension gains asynchronous
-row-local presentation state, and the binary gains a direct diff dependency. Complete-row bounding
-requires deterministic selection when the full contextual diff exceeds 50 KiB. Dependency and Pi
-workflow documentation must travel with these changes.
+The protocol gains one success condition across two operation-specific envelopes and one command
+flag on each mutation, the extension gains asynchronous row-local presentation state, and the binary
+gains a direct diff dependency. Changed-row content elision means an extreme line is represented
+faithfully as a changed row but not reproduced in full. Dependency and Pi workflow documentation
+must travel with these changes. The implementation plan must carry layered service, command,
+protocol-client, renderer, and generated-contract regression coverage that backs every updated
+invariant claim.
 
 Legacy preview and canonical edit results may use different line offsets by design because each
 reports the document represented at that moment. No memory format migration is introduced.
@@ -113,12 +149,13 @@ reports the document represented at that moment. No memory format migration is i
 
 | Alternative | Why not chosen |
 |---|---|
-| Render the existing `before:` and `after:` payload with colors | Coloring does not provide Pi's contextual diff or call-time preview. |
-| Reimplement body parsing and replacement in TypeScript | It creates a second memory semantics implementation that can drift from the binary. |
+| Render the existing `before:` and `after:` payload with colors | Coloring does not provide Pi's contextual diff or call-time preview, and update has no payload to render. |
+| Reimplement memory parsing and mutation in TypeScript | It creates a second memory semantics implementation that can drift from the binary. |
 | Deep-import Pi's internal preview helper | The helper is not a supported public export and applies whole-file rather than body-only semantics. |
 | Add a separate `memory preview` subcommand | Preview is a nonpublishing mode of the same edit request, not an independent memory operation. |
 | Let execution proceed after preview failure | Mutation after the requested user-visible preview failed is surprising and not fail-closed. |
-| Apply publication validation during preview | Preview-only timestamp, encoding, or size checks could change or misrepresent normal edit acceptance. |
+| Apply publication validation during preview | Preview-only timestamp, encoding, or size checks could change or misrepresent normal mutation acceptance. |
+| Preview an update timestamp | The preview-time value would never be the timestamp published by normal execution. |
 | Keep a project-local line-diff implementation | It adds bespoke algorithmic code when the existing transitive library can become an explicit dependency. |
 
 ## Status history
