@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-04
 adrs: [proportional-simplicity-boundaries]
-status: Proposed
+status: Implemented
 ---
 # Plan: Implement Proportional Simplicity Boundaries
 
@@ -110,5 +110,3 @@ Plan-review settlement: the plan remains Proposed through implementation and fre
 Phase-review settlement: the project-authored `.awf/parts/workflow/chain.md` fully replaces the changed workflow template section, so the initial render omitted the root workflow's proportionate-planning semantics. The user approved adding the concise equivalent to that existing override, rerendering, and strengthening the two incomplete semantic proofs; no new mechanism or output surface was introduced.
 
 Integration settlement: ADR-0230 removed Sundial from the active adopter and render set before integration, so the governed merge retained that authoritative removal and render-green now covers the active root, Pi, and Claude outputs. Another integration took ADR-0231 after the first numbering attempt; the documented reset, merge-current-main, and renumber sequence assigned this record ADR-0232. The user-approved project-override proof was then reapplied to the reconstructed branch before renewed terminal review.
-
-Terminal-review settlement: the plan remains Proposed and ADR-0232 remains Implementing. The status-only ADR and plan closure is deferred to effort-workflow after applicable assurance settles or is explicitly skipped; this review settlement changes the workflow authority and its focused proofs only. The focused catalog-derived workflow proof remains in `internal/evals/independent_workflow_escalation_test.go` rather than restoring the obsolete exhaustive model in `internal/evals/chain_test.go`: it now exercises independent triggers, negative ownership, ordering, and all effort/review completion routes against both rendered targets.
