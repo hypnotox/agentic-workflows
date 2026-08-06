@@ -85,17 +85,22 @@ semantics.
    user constraints, implementation summary, commit range, and verification results. Effort-free
    review creates no memory, checkpoint, retrospective, or topology work.
 
-6. `decision: guarded-grounding-backfill` Select grounding by default for new adopters. In the next
-   config migration, enable it only when standard brainstorming is enabled, leave project-local
-   brainstorming untouched, and refuse with actionable rename-or-adopt-standard guidance when a
-   project-local grounding artifact collides with the new standard name. Never overwrite or
-   reinterpret local artifacts, and keep successful reruns idempotent.
+6. `decision: guarded-grounding-backfill` Select grounding by default for new adopters. Schema
+   generation 37, whose minimum binary version is 0.31.0, enables it only when standard
+   brainstorming is enabled, leaves project-local brainstorming untouched, and refuses with
+   actionable rename-or-adopt-standard guidance when a project-local grounding artifact collides
+   with the new standard name. Never overwrite or reinterpret local artifacts, and keep successful
+   reruns idempotent. The ordinary upgrade transaction edits the config selection before rendering
+   the added skill, enforces the schema minimum before render, and stamps the resulting manifest at
+   generation 37; older trees and binaries retain the existing minimum-version and ascending
+   migration protections.
 
 7. `decision: judgment-not-classifier` Express these triggers through concise workflow, skill,
    guide, and review contracts backed by semantic rendering tests. Add no policy schema, classifier,
    manifest, checklist, workflow router, effort-state format, or new runtime mechanism. Preserve the
-   existing deterministic gates and use tests to prove ownership and routing semantics rather than
-   freeze whole prose passages.
+   existing deterministic gates, `missingkey=zero` behavior, and token-free rendering with unset or
+   empty-string variables. Use focused tests to prove ownership, routing, and empty-input rendering
+   semantics rather than freeze whole prose passages.
 
 ## State changes
 
@@ -131,8 +136,10 @@ and routing contracts.
 
 Existing adopters with standard brainstorming receive the new grounding support automatically.
 Local brainstorming stays local, and a local grounding name collision fails visibly rather than
-changing meaning. The migration and the Pi prompt guidance add implementation work, but neither
-changes effort data nor adds a new runtime role or public tool.
+changing meaning. Annotated migration tests cover standard and local brainstorming, already-enabled
+grounding, the local-name collision, missing configuration, and successful reruns. The migration and
+the Pi prompt guidance add implementation work, but neither changes effort data nor adds a new
+runtime role or public tool.
 
 The change revises several long-lived workflow claims and tests because earlier decisions encoded
 the full-chain assumptions at each stage. That breadth is the cost of making the policy coherent
