@@ -294,3 +294,8 @@ semantic prose inference.
 Phase 1 review found that its duplicate-marker fixture could pass through byte inequality without
 proving both unique marker-count guards; settlement added explicit duplicate-start and duplicate-end
 error assertions.
+
+Phase 2 review found incomplete fixture proof for the exact root-Go exclusion and sorted unexpected
+paths; settlement added root non-Go, nested Go, and multiple unexpected-path coverage. Its proposed
+nested-checkout concern did not apply: `os.DirFS(".")` runs from the `templates` package directory,
+so the walk is bounded to the settled template source tree rather than the repository root.

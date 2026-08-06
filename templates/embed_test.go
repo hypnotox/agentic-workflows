@@ -68,9 +68,12 @@ func TestTemplateFileSetParity(t *testing.T) {
 		diagnostic string
 	}{
 		{
-			name:     "exact parity",
-			source:   fstest.MapFS{"agents/a.md": {}, "embed.go": {}, "embed_test.go": {}, "skills/b.md": {}},
-			embedded: fstest.MapFS{"agents/a.md": {}, "skills/b.md": {}},
+			name: "exact parity with precise root Go exclusion",
+			source: fstest.MapFS{
+				"agents/a.md": {}, "embed.go": {}, "embed_test.go": {},
+				"root.tmpl": {}, "skills/b.go": {},
+			},
+			embedded: fstest.MapFS{"agents/a.md": {}, "root.tmpl": {}, "skills/b.go": {}},
 		},
 		{
 			name:       "source-only file",
@@ -79,10 +82,10 @@ func TestTemplateFileSetParity(t *testing.T) {
 			diagnostic: "missing from embed: skills/b.md",
 		},
 		{
-			name:       "embed-only file",
+			name:       "embed-only files have sorted diagnostics",
 			source:     fstest.MapFS{"agents/a.md": {}},
-			embedded:   fstest.MapFS{"agents/a.md": {}, "skills/b.md": {}},
-			diagnostic: "unexpected in embed: skills/b.md",
+			embedded:   fstest.MapFS{"agents/a.md": {}, "skills/z.md": {}, "docs/a.md": {}},
+			diagnostic: "unexpected in embed: docs/a.md, skills/z.md",
 		},
 		{
 			name:       "source-only new top-level directory",
