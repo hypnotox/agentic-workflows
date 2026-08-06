@@ -37,7 +37,7 @@ presentation boundary.
 
 ## Decision
 
-1. `decision: source-derived-publication-completeness` Publication projections whose population has an existing source authority derive and check that population at the owning boundary rather than maintaining a parallel manual membership decision. The root README command block derives its ordered top-level command usages and summaries from `clispec`, while surrounding prose remains hand-owned. Repository template parity compares every source template file with the embedded filesystem, including files in new directories and files requiring `all:` semantics. Config-reference classification derives from configspec path structure: project config values require live resolvers, while sidecar fields and item-schema leaves are statically not applicable because they have no singular project value. Bidirectional checks fail with the missing or divergent member, and no generalized publication registry or semantic prose inference is introduced.
+1. `decision: source-derived-publication-completeness` Publication projections whose population has an existing source authority derive and check that population at the owning boundary rather than maintaining a parallel manual membership decision. The root README command block derives its ordered top-level command usages and summaries from `clispec`, while surrounding prose remains hand-owned. Repository template parity compares every source template file with the embedded filesystem, including files in new directories and files requiring `all:` semantics; template execution retains its existing missingkey=zero behavior and token-free empty-value rendering. Config-reference classification derives from configspec path structure: project config values require live resolvers, while sidecar fields and item-schema leaves are statically not applicable because they have no singular project value. Bidirectional checks fail with the missing or divergent member, and no generalized publication registry or semantic prose inference is introduced.
 
 ## State changes
 
@@ -70,6 +70,7 @@ taxonomy, and arbitrary prose meaning remain outside this decision.
 |---|---|
 | Keep the three pitfalls as review reminders | The omissions are mechanically knowable and recurring manual checks add friction without improving judgment. |
 | Preserve ADR-0235's explicit live/static map and add more examples | A future meaningful field can still be intentionally classified static and remain check-clean. |
+| Add production machinery to generate the bounded README command block | A repository-only projection test can derive the same exact block and diagnostic without making repository-specific Markdown part of the shipped CLI. |
 | Generate the entire README | Only the command population has a stable source authority; generating surrounding narrative would erase useful hand ownership. |
 | Add a generalized publication or render registry | The command table, template source tree, embedded filesystem, and configspec already own their facts; another registry would duplicate them. |
 
