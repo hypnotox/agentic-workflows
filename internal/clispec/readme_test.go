@@ -101,7 +101,6 @@ func TestCompareREADMECommandBlock(t *testing.T) {
 		{"reordered row", strings.Replace(want, "| `awf one` | One |\n| `awf two` | Two |", "| `awf two` | Two |\n| `awf one` | One |", 1), false},
 		{"reworded summary", strings.Replace(want, "| `awf two` | Two |", "| `awf two` | Changed |", 1), false},
 		{"missing marker", strings.Replace(want, readmeCommandBlockStart+"\n", "", 1), false},
-		{"duplicate marker", readmeCommandBlockStart + "\n" + want, false},
 		{"exact match", want, true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -109,6 +108,25 @@ func TestCompareREADMECommandBlock(t *testing.T) {
 			matched := err == nil && got == want
 			if matched != test.match {
 				t.Errorf("README command block match = %v, want %v (block %q, error %v)", matched, test.match, got, err)
+			}
+		})
+	}
+}
+
+func TestREADMECommandBlockRequiresUniqueMarkers(t *testing.T) {
+	block := formatREADMECommandBlock([]Command{{Summary: "One", Help: Help{Usage: []string{"awf one"}}}})
+	for _, test := range []struct {
+		name   string
+		readme string
+		want   string
+	}{
+		{"duplicate start", block + readmeCommandBlockStart, "README start marker count = 2, want 1"},
+		{"duplicate end", block + readmeCommandBlockEnd, "README end marker count = 2, want 1"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := READMECommandBlock(test.readme)
+			if err == nil || err.Error() != test.want {
+				t.Fatalf("READMECommandBlock() error = %v, want %q", err, test.want)
 			}
 		})
 	}

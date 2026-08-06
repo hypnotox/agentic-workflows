@@ -290,3 +290,7 @@ with findings in one focused post-review settlement commit before checkpointing 
 Record deviations, review findings, and any representation adjustment required by existing
 config-reference presentation conventions; do not widen those adjustments into singleton fan-out or
 semantic prose inference.
+
+Phase 1 review found that its duplicate-marker fixture could pass through byte inequality without
+proving both unique marker-count guards; settlement added explicit duplicate-start and duplicate-end
+error assertions.
