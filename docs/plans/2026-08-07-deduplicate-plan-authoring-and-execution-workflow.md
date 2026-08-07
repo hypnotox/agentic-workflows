@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-07
 adrs: [deduplicate-plan-authoring-and-execution-workflow]
-status: Proposed
+status: Implemented
 ---
 # Plan: Deduplicate Plan Authoring and Execution Workflow
 

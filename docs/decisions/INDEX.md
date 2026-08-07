@@ -3,7 +3,6 @@
 ## In flight
 
 - [ADR-0246: Ship thin support skills for awf's own mechanisms](0246-ship-thin-support-skills-for-awf-s-own-mechanisms.md) (Proposed)
-- [ADR-0255: Deduplicate Plan Authoring and Execution Workflow](0255-deduplicate-plan-authoring-and-execution-workflow.md) (Implementing)
 
 ## History
 
@@ -260,3 +259,4 @@
 - [ADR-0252: Retire The Bootstrap Installer](0252-retire-the-bootstrap-installer.md) (Abandoned)
 - [ADR-0253: Unconditional Gates And Audit Rules](0253-unconditional-gates-and-audit-rules.md) (Implemented)
 - [ADR-0254: CLI Grammar Expresses Creation And Inventory](0254-cli-grammar-expresses-creation-and-inventory.md) (Implemented)
+- [ADR-0255: Deduplicate Plan Authoring and Execution Workflow](0255-deduplicate-plan-authoring-and-execution-workflow.md) (Implemented)
