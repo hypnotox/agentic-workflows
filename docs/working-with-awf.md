@@ -93,6 +93,17 @@ Pi association stays at repository root. `using_effort` directly attaches with a
 
 A convention part replaces only its section body. A declared Markdown structural heading is awf-owned, excluded from part replacement and in-place read-back, and disappears only when the complete section is dropped.
 
+**Reading generated source guidance.** The generated-by banner says that awf owns the rendered
+file; it is not an editing instruction. An `awf:edit` pointer identifies the convention part that
+owns one rendered section. An informational `awf:source` comment, when present immediately after
+the banner, identifies the compact reader-facing authority for an otherwise opaque generated
+document. It is neither an `awf:edit` pointer nor a read-back boundary, and it is not an exhaustive
+dependency list. For a topic page, edit both `.awf/topics/metadata/<domain>/<topic>.yaml` and
+`.awf/topics/parts/<domain>/<topic>/current-state.md`; a topic index instead names the family globs
+`.awf/topics/metadata/<domain>/*.yaml` and `.awf/topics/parts/<domain>/*/current-state.md`. The
+output plan remains the authority for machine render dependencies; `.awf/awf.lock` remains the
+drift authority.
+
 
 <!-- awf:edit model-selection: default; create .awf/parts/working-with-awf/model-selection.md to override -->
 ## Model selection

@@ -21,3 +21,14 @@ Core `effort-workflow` is selected only by new untrimmed scaffolds. Existing ado
 Pi association stays at repository root. `using_effort` directly attaches with an effort slug or detaches with `{detach:true}` and never changes CWD or transfers a conversation. Attached model calls receive the relative owned memory path and, when the fixed directory exists, the managed-worktree path. While associated, prefer the pathless memory tools for complete-document reads, exact Markdown-body edits, and separate `phase` or `next` updates with automatic timestamps; they are a convenience, not workflow authority, so direct file access and ordinary awf commands remain available. Activity and complete Remote Pi metadata are advisory only, never authority or a lock. Optional display suffix publication carries only the effort slug or null, never a routing input or composed name; restart begins detached and local lifecycle degradation is silent.
 
 A convention part replaces only its section body. A declared Markdown structural heading is awf-owned, excluded from part replacement and in-place read-back, and disappears only when the complete section is dropped.
+
+**Reading generated source guidance.** The generated-by banner says that awf owns the rendered
+file; it is not an editing instruction. An `awf:edit` pointer identifies the convention part that
+owns one rendered section. An informational `awf:source` comment, when present immediately after
+the banner, identifies the compact reader-facing authority for an otherwise opaque generated
+document. It is neither an `awf:edit` pointer nor a read-back boundary, and it is not an exhaustive
+dependency list. For a topic page, edit both `.awf/topics/metadata/<domain>/<topic>.yaml` and
+`.awf/topics/parts/<domain>/<topic>/current-state.md`; a topic index instead names the family globs
+`.awf/topics/metadata/<domain>/*.yaml` and `.awf/topics/parts/<domain>/*/current-state.md`. The
+output plan remains the authority for machine render dependencies; `.awf/awf.lock` remains the
+drift authority.

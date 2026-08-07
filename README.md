@@ -197,7 +197,8 @@ its descriptor-owned layout, and Pi places its artifacts and extensions under `.
 
 You change the config and run `awf render`; you never hand-edit a rendered file.
 `awf check` fails when a rendered file is stale or was edited by hand, so the two can't
-silently diverge. To customise one section of an artifact, drop a *convention part*
+silently diverge. For detailed source-editing guidance for generated documents, see
+[`docs/working-with-awf.md`](docs/working-with-awf.md). To customise one section of an artifact, drop a *convention part*
 under `.awf/`; it replaces that section's body and inherits the rest of the template.
 For skills and agents the catalog doesn't have, `awf new skill <name> "<desc>"` (or
 `agent`) scaffolds a project-local artifact that gets the same rendering, validation,

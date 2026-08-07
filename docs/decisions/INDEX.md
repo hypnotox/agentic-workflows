@@ -2,7 +2,7 @@
 ## In flight
 
 - [ADR-0246: Ship thin support skills for awf's own mechanisms](0246-ship-thin-support-skills-for-awf-s-own-mechanisms.md) (Proposed)
-- [ADR-compact-source-provenance-for-generated-documents: Compact Source Provenance for Generated Documents](compact-source-provenance-for-generated-documents.md) (Proposed)
+- [ADR-compact-source-provenance-for-generated-documents: Compact Source Provenance for Generated Documents](compact-source-provenance-for-generated-documents.md) (Implementing)
 
 ## History
 

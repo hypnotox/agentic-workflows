@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: compact-source-provenance-for-generated-documents
-status: Proposed
+status: Implementing
 date: 2026-08-07
 ---
 # ADR-compact-source-provenance-for-generated-documents: Compact Source Provenance for Generated Documents
@@ -113,3 +113,5 @@ the rule that rendered files are not hand-edited.
 ## Status history
 
 - 2026-08-07: Proposed
+- 2026-08-07: Implementing; content-sha256: 27b3dd4fdd7e9b15a63f760c137e7e63384f30dcfeea5175801f281218e49e51
+- 2026-08-07: Applied; operations: update `rendering/render-engine:no-section-marker-leak`, add `rendering/render-engine:source-marker-informational`

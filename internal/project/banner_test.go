@@ -60,6 +60,55 @@ func TestInjectBannerFrontmatter(t *testing.T) {
 	}
 }
 
+func TestInjectSourceMarker(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		content string
+		sources []string
+		want    string
+	}{
+		{
+			name:    "plain markdown",
+			content: injectBanner("# Title\n\nbody\n", ""),
+			sources: []string{".awf/topics/metadata/rendering/engine.yaml"},
+			want: "<!-- " + bannerText + " -->\n" +
+				"<!-- awf:source .awf/topics/metadata/rendering/engine.yaml -->\n# Title\n\nbody\n",
+		},
+		{
+			name:    "frontmatter",
+			content: injectBanner("---\ntitle: Engine\n---\n# Title\n", ""),
+			sources: []string{".awf/topics/metadata/rendering/engine.yaml"},
+			want: "---\ntitle: Engine\n---\n<!-- " + bannerText + " -->\n" +
+				"<!-- awf:source .awf/topics/metadata/rendering/engine.yaml -->\n# Title\n",
+		},
+		{
+			name:    "headingless body",
+			content: injectBanner("body\n", ""),
+			sources: []string{"derived:engine"},
+			want:    "<!-- " + bannerText + " -->\n<!-- awf:source derived:engine -->\nbody\n",
+		},
+		{
+			name:    "multiple sources",
+			content: injectBanner("body\n", ""),
+			sources: []string{"one", "two/*"},
+			want:    "<!-- " + bannerText + " -->\n<!-- awf:source one two/* -->\nbody\n",
+		},
+		{
+			name:    "empty sources preserve bannered content",
+			content: injectBanner("body\n", ""),
+			want:    "<!-- " + bannerText + " -->\nbody\n",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := injectSourceMarker(tc.content, tc.sources)
+			// invariant: rendering/render-engine:source-marker-informational (TestInjectSourceMarker)
+			if got != tc.want {
+				t.Fatalf("source marker = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 // A resident gitignore is neither markdown nor a shebang script: its banner is a
 // leading #-comment keyed on the template id (ADR-0069).
 func TestInjectBannerResidentGitignore(t *testing.T) {

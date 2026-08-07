@@ -95,7 +95,21 @@ Run `awf new topic <domain> "<title>"` to create the metadata and part pair. It 
 collision-free kebab slug, prints both repository-relative paths, and writes an empty claim shell with
 a valid anchored path placeholder. It does not run sync or mutate config, the lock, or rendered docs.
 Replace the placeholder, revise the generic summary and prose, and add reviewed claims manually; a
-zero-claim shell renders but does not satisfy scoped coverage. Query a topic as
+zero-claim shell renders but does not satisfy scoped coverage.
+
+**Reading generated source guidance.** The generated-by banner says that awf owns the
+rendered file; it is not an editing instruction. An `awf:edit` pointer identifies the
+convention part that owns one rendered section. An informational `awf:source` comment,
+when present immediately after the banner, identifies the compact reader-facing authority
+for an otherwise opaque generated document. It is neither an `awf:edit` pointer nor a
+read-back boundary, and it is not an exhaustive dependency list. For a topic page, edit
+both `.awf/topics/metadata/<domain>/<topic>.yaml` and
+`.awf/topics/parts/<domain>/<topic>/current-state.md`; a topic index instead names the
+family globs `.awf/topics/metadata/<domain>/*.yaml` and
+`.awf/topics/parts/<domain>/*/current-state.md`. The output plan remains the authority
+for machine render dependencies; `.awf/awf.lock` remains the drift authority.
+
+Query a topic as
 `awf topic <domain>/<topic>` or one claim as `awf topic <domain>/<topic>:<claim>`. Defaults return
 active state and hide provenance and reference edges; `--history`, `--references`, and `--coverage`
 independently add direct detail. Queries are

@@ -223,6 +223,7 @@ func TestTopicHashPropagatesReaderFault(t *testing.T) {
 }
 
 func TestTopicRenderLifecycle(t *testing.T) {
+	// invariant: rendering/render-engine:source-marker-informational (TestTopicRenderLifecycle)
 	root := topicProject(t)
 	writeProjectTopic(t, root, "zeta", "Zeta", "paths: [\"internal/**\"]\n")
 	writeProjectTopic(t, root, "alpha", "Alpha", "applies: global\n")
@@ -255,8 +256,20 @@ func TestTopicRenderLifecycle(t *testing.T) {
 	if strings.Index(index, "Alpha") > strings.Index(index, "Zeta") {
 		t.Fatalf("index order: %s", index)
 	}
+	indexMarker := "<!-- awf:source .awf/topics/metadata/rendering/*.yaml .awf/topics/parts/rendering/*/current-state.md -->"
+	if !strings.Contains(index, "<!-- "+bannerText+" -->\n"+indexMarker+"\n") || strings.Count(index, "awf:source") != 1 {
+		t.Fatalf("topic index marker = %s", index)
+	}
 	doc := string(mustRead(t, filepath.Join(root, "docs/topics/rendering/zeta.md")))
-	if strings.Contains(doc, "awf:comment") || !strings.Contains(doc, "{{ .value }}") || !strings.Contains(doc, "Applicability") {
+	docMarker := "<!-- awf:source .awf/topics/metadata/rendering/zeta.yaml .awf/topics/parts/rendering/zeta/current-state.md -->"
+	if !strings.Contains(doc, "<!-- "+bannerText+" -->\n"+docMarker+"\n") || strings.Count(doc, "awf:source") != 1 {
+		t.Fatalf("topic marker = %s", doc)
+	}
+	bodyAt := strings.Index(doc, "# Zeta")
+	if bodyAt < 0 || strings.Contains(doc[bodyAt:], "awf:source") {
+		t.Fatalf("topic body contains source marker: %s", doc)
+	}
+	if strings.Contains(doc, "awf:comment") || strings.Contains(doc, "<no value>") || !strings.Contains(doc, "{{ .value }}") || !strings.Contains(doc, "Applicability") {
 		t.Fatalf("topic output: %s", doc)
 	}
 	domain := readDomainDoc(t, root, "rendering")
