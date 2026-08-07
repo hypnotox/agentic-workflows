@@ -54,15 +54,22 @@ contract forward rather than amending history.
    not adequately explain a generated documentation source: individual topic pages, topic indexes,
    generated topic navigation in domain pages, sidecar-derived glossary and pitfalls content, the
    ADR index, the regenerated config reference, and target bridges. Exact paths are used for small
-   fixed source sets and globs for clear multi-file families. Section-overridable standard docs,
-   `AGENTS.md`, ADR and plan support templates, and generated local docs do not duplicate adequate
-   `awf:edit` guidance. Authored ADRs, authored plans, and `local: true` documents remain banner-free.
+   fixed source sets and globs for clear multi-file families. Other section-overridable standard
+   docs, `AGENTS.md`, ADR and plan support templates, and generated local docs do not duplicate
+   adequate `awf:edit` guidance. Glossary and pitfalls are exceptions only for their computed
+   content; their ordinary section pointers remain unchanged. Authored ADRs, authored plans, and
+   `local: true` documents remain banner-free.
 
 4. `decision: instruction-authority` The rendered working-with-awf guide is the canonical
    operational map from generated document families to their editable or derived sources. Individual
    markers provide the immediate concise pointer, the README retains an onboarding summary, the
    glossary defines the provenance vocabulary, and the config reference explains configuration and
    data ownership rather than duplicating template mechanics.
+
+5. `decision: publication-safe-source-markers` Source markers are assembled from known nonempty
+   reader-facing authorities rather than optional template values. Affected templates retain the
+   engine's `missingkey=zero` behavior and render coherently when project variables or optional data
+   are empty, without `<no value>` or another unresolved-value token in marker or document content.
 
 ## State changes
 
@@ -81,8 +88,10 @@ instructions.
 The marker grammar and family selection become published behavior that needs deterministic tests and
 current documentation. Mixed and regenerated outputs require explicit source policy rather than a
 single automatic derivation. A source marker intentionally need not be a complete build-dependency
-manifest, so the canonical working guide must explain that distinction. Adding the marker changes
-rendered outputs and lock hashes across adopters when they upgrade and re-render.
+manifest, so the canonical working guide must explain that distinction. The distinct marker accepts
+ongoing grammar and per-family policy maintenance in exchange for keeping banner ownership and source
+provenance independently legible. Adding it deliberately regenerates affected adopter outputs and
+changes their lock hashes on upgrade and re-render.
 
 This record narrows ADR-0015's marker exclusivity: `awf:section` and `awf:end` still never survive
 assembly, while the allowed rendered marker set gains informational `awf:source` alongside the
@@ -94,6 +103,7 @@ the rule that rendered files are not hand-edited.
 | Alternative | Why not chosen |
 |---|---|
 | Documentation-only guidance | A reader starting from an opaque rendered file would still need to know where the separate guide lives. |
+| Extend the generated-by banner with source payloads | Conflates the universal ownership warning with optional family-specific provenance, lengthens the first-line contract, and makes source grammar changes part of banner compatibility. |
 | Overload `awf:edit` for non-section provenance | `awf:edit` is a structural section and read-back protocol; topic pairs, aggregates, and regenerated state are not editable sections. |
 | Emit one typed marker per source | Repeats syntax, consumes more agent-context tokens, and is noisier than one compact path-and-glob list. |
 | Add `awf:source` to every generated document | Duplicates already-actionable `awf:edit` pointers without improving source discovery. |
