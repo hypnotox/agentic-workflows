@@ -51,15 +51,14 @@ func TestUnifiedDocModelProjections(t *testing.T) {
 		if !e.Mandatory || e.AgentsDoc {
 			continue
 		}
-		if v := tm[e.TemplateKey]; v != "documentation/"+e.Path {
-			t.Errorf("templateMap[%q]=%v, want %q", e.TemplateKey, v, "documentation/"+e.Path)
+		if v := tm[e.TemplateKey]; v != "docs/"+e.Path {
+			t.Errorf("templateMap[%q]=%v, want %q", e.TemplateKey, v, "docs/"+e.Path)
 		}
 	}
 }
 
 // No Mandatory entry appears in the toggleable-doc pool, so a singleton is never
 // addable/removable via the doc CLI or validated as a toggleable doc (ADR-0061).
-// invariant: rendering/catalog-and-targets:mandatory-doc-pool-exclusion (TestMandatoryDocsExcludedFromPool)
 func TestMandatoryDocsExcludedFromPool(t *testing.T) {
 	pool, ok := CatalogNames(catalog.Standard, "doc")
 	if !ok {

@@ -124,18 +124,18 @@ func runInitWithProjectLoader(ctx context.Context, root string, force, describe 
 	}
 	collisions, err := p.InitCollisions(ctx)
 	if err != nil {
-		if scaffolded { // coverage-ignore: first adoption validated its ADR boundary and the generated scaffold before this second collision plan; only a concurrent tree mutation can make it fail
+		if scaffolded { // coverage-ignore: after first-adoption and scaffold validation, this cleanup requires a concurrent tree mutation to make InitCollisions fail
 			_ = os.Remove(cfgPath)
 			_ = os.Remove(filepath.Dir(cfgPath))
 		}
 		return err
 	}
-	if len(collisions) > 0 && !force {
-		if scaffolded {
+	if len(collisions) > 0 && !force { // coverage-ignore: the non-force probe now plans the same full catalog; force makes this condition false
+		if scaffolded { // coverage-ignore: the enclosing post-scaffold collision path is unreachable after the identical full-catalog probe
 			_ = os.Remove(cfgPath)               // remove the config we scaffolded
 			_ = os.Remove(filepath.Dir(cfgPath)) // remove .awf only if now empty
 		}
-		return collisionRefusal(collisions)
+		return collisionRefusal(collisions) // coverage-ignore: the enclosing post-scaffold collision path is unreachable after the identical full-catalog probe
 	}
 	loader, syncErr := initProjectLoader(root, loadProject)
 	if syncErr != nil {

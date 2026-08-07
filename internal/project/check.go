@@ -32,7 +32,7 @@ func (p *Project) AdvisoryNotes(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	plans, err := plan.ParseDir(filepath.Join(p.Root, p.Cfg.DocsDir, "plans"))
+	plans, err := plan.ParseDir(filepath.Join(p.Root, config.DocsDir, "plans"))
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +146,7 @@ func (p *Project) tagHealthNotes(corpus adr.Corpus) ([]string, error) {
 		tags  []string
 	}
 	var arts []artifact
-	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "decisions"))
+	rel := filepath.ToSlash(filepath.Join(config.DocsDir, "decisions"))
 	for _, a := range adrs {
 		if a.IsGoverned() {
 			continue // governed current-state frontmatter deliberately has no tags
@@ -458,14 +458,14 @@ func (p *Project) CheckReport(ctx context.Context) (CheckReport, error) {
 	if err != nil {
 		return CheckReport{}, err
 	}
-	plans, parseErr := plan.ParseDir(filepath.Join(p.Root, p.Cfg.DocsDir, "plans"))
+	plans, parseErr := plan.ParseDir(filepath.Join(p.Root, config.DocsDir, "plans"))
 	var planDrift []manifest.Drift
 	if parseErr != nil {
 		var diagnostics *plan.DiagnosticsError
 		if !errors.As(parseErr, &diagnostics) {
 			return CheckReport{}, parseErr
 		}
-		rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "plans"))
+		rel := filepath.ToSlash(filepath.Join(config.DocsDir, "plans"))
 		for _, diagnostic := range diagnostics.Diagnostics {
 			planDrift = append(planDrift, manifest.Drift{
 				Path: rel + "/" + diagnostic.Path, Kind: "plan-" + diagnostic.Category, Detail: diagnostic.Detail,
@@ -571,7 +571,7 @@ func (p *Project) checkPendingADRs(ctx context.Context, corpus adr.Corpus) []man
 	if !p.onIntegrationBranch(ctx) {
 		return nil
 	}
-	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "decisions"))
+	rel := filepath.ToSlash(filepath.Join(config.DocsDir, "decisions"))
 	var drift []manifest.Drift
 	for _, a := range corpus.All() {
 		if a.Number != "" {
@@ -655,8 +655,8 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 }
 
 // checkDeadSkillRefs scans managed rendered markdown for <prefix>-<name> tokens
-// whose <name> is a catalog-known skill outside the effective rendered set
-// (inv: skill-ref-dead-fails). Names matching no known skill are ignored
+// whose <name> is a catalog-known skill outside the effective rendered set.
+// Names matching no known skill are ignored
 // (inv: skill-ref-unknown-ignored); fenced code blocks are skipped like the
 // dead-link scan. Matching is whole-token (ADR-0046 item 3): the token must not
 // start mid-word (no word-ish rune before the prefix) and the regex captures
@@ -727,7 +727,7 @@ func (p *Project) checkDeadRefs(files []RenderedFile) []manifest.Drift {
 // resolve through one lookup and a link survives numbering (ADR-0202 item 14).
 func (p *Project) checkPlans(corpus adr.Corpus, plans []plan.Plan) []manifest.Drift {
 	aset := audit.Resolve(config.AuditScopes(p.Cfg.Audit))
-	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "plans"))
+	rel := filepath.ToSlash(filepath.Join(config.DocsDir, "plans"))
 	var drift []manifest.Drift
 	for _, pl := range plans {
 		if !pl.HasFrontmatter {
@@ -761,7 +761,7 @@ func (p *Project) checkPlans(corpus adr.Corpus, plans []plan.Plan) []manifest.Dr
 // frontmatter-less plan is skipped.
 func (p *Project) planCommitScopeNotes(plans []plan.Plan) []string {
 	aset := audit.Resolve(config.AuditScopes(p.Cfg.Audit))
-	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "plans"))
+	rel := filepath.ToSlash(filepath.Join(config.DocsDir, "plans"))
 	var notes []string
 	for _, pl := range plans {
 		if !pl.HasFrontmatter {
@@ -874,7 +874,7 @@ func (p *Project) checkTagVocabulary(corpus adr.Corpus) ([]manifest.Drift, error
 		}
 	}
 	adrs := corpus.All()
-	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "decisions"))
+	rel := filepath.ToSlash(filepath.Join(config.DocsDir, "decisions"))
 	for _, a := range adrs {
 		for _, tag := range a.Tags {
 			if _, ok := p.Cfg.Tags[tag]; !ok {
@@ -915,7 +915,7 @@ func (p *Project) pitfallTagEntries() ([]pitfallEntry, error) {
 // pitfall/plan link checks. Unconditional (independent of the tag vocabulary).
 func (p *Project) checkADRRelatedLinks(corpus adr.Corpus) []manifest.Drift {
 	adrs := corpus.All()
-	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "decisions"))
+	rel := filepath.ToSlash(filepath.Join(config.DocsDir, "decisions"))
 	var drift []manifest.Drift
 	for _, a := range adrs {
 		for _, n := range a.Related {

@@ -28,17 +28,10 @@ func deadSkillRefs(t *testing.T, configYAML string, files map[string]string) []s
 
 // A managed rendered artifact referencing a known skill outside the effective
 // set fails check; enabling the skill clears it.
-// invariant: rendering/doc-outputs:skill-ref-dead-fails (TestDeadSkillReferenceFlagged)
-func TestDeadSkillReferenceFlagged(t *testing.T) {
-	part := map[string]string{
-		"parts/agents-doc/workflow.md": "Use `example-tdd` for test-first work.\n",
-	}
-	got := deadSkillRefs(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n", part)
-	if len(got) != 1 || got[0] != "example-tdd" {
-		t.Fatalf("expected one example-tdd finding, got %v", got)
-	}
-	if got := deadSkillRefs(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: [tdd]\nagents: []\n", part); len(got) != 0 {
-		t.Fatalf("expected clean with tdd enabled, got %v", got)
+func TestCatalogSkillReferenceIsNeverDead(t *testing.T) {
+	part := map[string]string{"parts/agents-doc/workflow.md": "Use `example-tdd` for test-first work.\n"}
+	if got := deadSkillRefs(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n", part); len(got) != 0 {
+		t.Fatalf("full catalog reference was flagged dead: %v", got)
 	}
 }
 
@@ -56,14 +49,10 @@ func TestSkillRefScannerIgnoresUnknownAndFenced(t *testing.T) {
 
 // Whole-token matching: a dead reference to reviewing-plan-resync is flagged
 // as the full token, never as a substring hit on reviewing-plan.
-func TestSkillRefScannerWholeToken(t *testing.T) {
-	got := deadSkillRefs(t,
-		"prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n",
-		map[string]string{
-			"parts/agents-doc/workflow.md": "Resync via `example-reviewing-plan-resync`.\n",
-		})
-	if len(got) != 1 || got[0] != "example-reviewing-plan-resync" {
-		t.Fatalf("expected exactly the full-token finding, got %v", got)
+func TestSkillRefScannerAcceptsCatalogToken(t *testing.T) {
+	got := deadSkillRefs(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n", map[string]string{"parts/agents-doc/workflow.md": "Resync via `example-reviewing-plan-resync`.\n"})
+	if len(got) != 0 {
+		t.Fatalf("full catalog token was flagged dead: %v", got)
 	}
 }
 
@@ -96,7 +85,6 @@ func TestTaskSkillsOnlyConfigHasNoDeadRefs(t *testing.T) {
 // semantics: enabled means rendered - the ADR-0013 doc-gate suppression is
 // gone), local-declared skills included. Dropping the doc post-Open no longer
 // changes membership; the invalid state is refused at Open instead.
-// invariant: rendering/project-output-plan:skills-context-effective-set (TestEffectiveSkillsMembership)
 func TestEffectiveSkillsMembership(t *testing.T) {
 	p, err := Open(testContext(t), scaffoldFiles(t,
 		"prefix: example\nintegrationBranch: main\nvars: {}\nskills: [tdd, roadmap-graduation, brainstorming]\ndocs: [roadmap]\nagents: []\n",

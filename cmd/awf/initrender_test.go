@@ -108,10 +108,13 @@ func TestEmptyInitRendersCoherently(t *testing.T) {
 			}
 			if strings.HasSuffix(line, "include:") {
 				next := ""
-				if lines := strings.Split(string(b), "\n"); i+1 < len(lines) {
-					next = lines[i+1]
+				for _, candidate := range strings.Split(string(b), "\n")[i+1:] {
+					if strings.TrimSpace(candidate) != "" {
+						next = candidate
+						break
+					}
 				}
-				if !strings.HasPrefix(next, "- ") {
+				if !strings.HasPrefix(strings.TrimSpace(next), "- ") {
 					t.Errorf("%s:%d: list introduction with no items: %q", rel, i+1, line)
 				}
 			}
@@ -128,7 +131,6 @@ func TestEmptyInitRendersCoherently(t *testing.T) {
 	// command-wiring error demands), the tree must pass check with notes only
 	// (advisory, exit 0) - in particular zero dead-skill-reference findings on
 	// the curated default.
-	// invariant: rendering/project-output-plan:curated-init-skill-refs-clean (TestEmptyInitRendersCoherently)
 	setScaffoldGateCmd(t, root)
 	if err := runSync(ctx, root, io.Discard); err != nil {
 		t.Fatalf("sync after wiring gateCmd: %v", err)

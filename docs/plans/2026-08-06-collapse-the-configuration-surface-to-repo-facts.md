@@ -692,3 +692,9 @@ Record deviations, spike answers, follow-ups, and findings surfaced during imple
   five audit rules, and generation 38's empty-block and exact-announcement semantics. This preserves
   the ADR's fixed-value and unconditional-behavior decisions while making each claim mutation-sensitive;
   focused package tests and the full gate verify the correction.
+- Phase 2 full-catalog coverage exposed that the Pi-derived `using-effort` output declared regeneration
+  policy despite carrying no in-place section, while rendering correctly reported it frozen. The phase
+  corrects the descriptor to frozen policy; `TestRegenCheckedAttribute` and the full gate verify parity.
+- Phase 2's required roadmap-graduation stub advisory exposed that its empty `failure-modes` section
+  lacked stub attribution. The template now marks that existing empty section as a stub so the newly
+  unconditional output reports the non-failing advisory the plan and ADR require.

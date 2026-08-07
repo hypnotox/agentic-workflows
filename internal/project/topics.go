@@ -63,7 +63,7 @@ func (p *Project) generateTopicDocs(ctx context.Context, corpus topic.Corpus) (f
 			return nil, nil, err
 		}
 	}
-	base := strings.TrimRight(p.Cfg.DocsDir, "/") + "/topics"
+	base := config.DocsDir + "/topics"
 	for _, discovered := range corpus.All() {
 		t, _ := corpus.ByTopicID(discovered.ID.String())
 		var referenceProjection []string

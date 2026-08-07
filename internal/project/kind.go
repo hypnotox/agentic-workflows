@@ -52,10 +52,7 @@ var kindDescriptors = []kindDescriptor{
 	},
 	{
 		Plural: "docs", Singular: "doc", graphKind: true,
-		enable: func(c *config.Config) []string { return c.Docs },
-		// Toggleable pool excludes Mandatory singletons (ADR-0061 inv:
-		// mandatory-doc-pool-exclusion), so a singleton never becomes addable via
-		// `awf enable doc` or validated as a toggleable doc.
+		enable:    func(c *config.Config) []string { return c.Docs },
 		poolNames: catalog.NonMandatoryDocNames,
 		sections:  func(c *catalog.Catalog, n string) ([]string, bool) { d, ok := c.Docs[n]; return d.Sections, ok },
 		outPath:   nil,

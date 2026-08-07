@@ -120,7 +120,7 @@ func TestLoaderOpenUsesSemanticResidentRoot(t *testing.T) {
 	if resolved != root || p.Root != root || p.roots.Resident != resident {
 		t.Fatalf("roots: resolved=%q root=%q resident=%q", resolved, p.Root, p.roots.Resident)
 	}
-	if len(p.Targets) != 1 || p.Targets[0].Name != "claude" {
+	if len(p.Targets) != len(KnownTargets()) || p.Targets[0].Name != "claude" || p.Targets[1].Name != "pi" {
 		t.Fatalf("targets = %#v", p.Targets)
 	}
 	if p.Cat == injectedStandard {

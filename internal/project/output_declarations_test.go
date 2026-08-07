@@ -331,6 +331,44 @@ func TestNormalizeOutputInputsOrdersRolesAtOnePath(t *testing.T) {
 	}
 }
 
+// Full-catalog declaration planning must parse every standard sidecar, even
+// when Phase 2's legacy selection arrays omit that artifact.
+func TestBuildOutputDeclarationsRejectsMalformedFullCatalogSidecars(t *testing.T) {
+	for _, tc := range []struct {
+		name, kind, artifact, config, sidecar string
+	}{
+		{"skill", "skills", "tdd", "skills: []\n", ".awf/skills/tdd.yaml"},
+		{"agent", "agents", "code-reviewer", "agents: []\n", ".awf/agents/code-reviewer.yaml"},
+		{"doc", "docs", "architecture", "docs: []\n", ".awf/docs/architecture.yaml"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			read := memoryProjectReader{tc.sidecar: []byte("local: [bad")}
+			cfg, err := config.ParseTree(".awf", []byte("prefix: example\n"+tc.config), configReaderAdapter{read})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := cfg.Sidecar(tc.kind, tc.artifact); err == nil {
+				t.Fatalf("test fixture did not corrupt %s sidecar", tc.name)
+			}
+			if _, err := BuildOutputDeclarations(cfg, catalog.Standard, []Target{{Name: "test"}}, read, mustCorpus(nil)); err == nil || !strings.Contains(err.Error(), tc.sidecar[5:]) {
+				t.Fatalf("full-catalog malformed %s sidecar error = %v", tc.name, err)
+			}
+		})
+	}
+}
+
+func TestResolvedTargetOutputsFiltersRequiredSkills(t *testing.T) {
+	target := Target{SkillDir: ".target/skills", Outputs: []TargetOutput{{Path: "always"}, {Path: "conditional", RequiresSkill: "tdd"}, {SkillName: "workflow", RequiresSkill: "effort-workflow"}}}
+	outputs := resolvedTargetOutputs(target, "example", []string{"tdd"})
+	if len(outputs) != 2 || outputs[0].Path != "always" || outputs[1].Path != "conditional" {
+		t.Fatalf("filtered outputs = %#v", outputs)
+	}
+	outputs = resolvedTargetOutputs(target, "example", []string{"effort-workflow"})
+	if len(outputs) != 2 || outputs[1].Path != ".target/skills/example-workflow/SKILL.md" {
+		t.Fatalf("skill-path outputs = %#v", outputs)
+	}
+}
+
 type memoryProjectReader map[string][]byte
 
 func (r memoryProjectReader) ReadFile(p string) ([]byte, bool, error) {

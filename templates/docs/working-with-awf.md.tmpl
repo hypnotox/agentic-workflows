@@ -71,7 +71,7 @@ field, and per-artifact data key is described in the generated
 vars are set, what consumes them, and what enabling would activate.
 
 **Toggle kinds.** `target` selects an adapter runtime (e.g. `awf enable target pi`); adapter
-artifacts render once per enabled target. `bootstrap` toggles the rendered `.awf/bootstrap.sh`, a
+artifacts render once per built-in target. `bootstrap` toggles the rendered `.awf/bootstrap.sh`, a
 checksum-verified installer that prints the path of this project's pinned awf binary for hooks and
 CI (`"$(bash .awf/bootstrap.sh)" check`). awf always renders five git-hook payloads under
 `.awf/hooks/`: pre-commit, commit-msg, pre-merge-commit, reference-transaction, and pre-push. They are inert scripts you wire into hook setups you own; awf never touches Git configuration. The reference-transaction and pre-push payloads apply optional commit-policy provenance checks only when you configure that policy. Preview intended history first with `awf check commit-policy <revision-or-range>...`; an absent policy remains successful and does not need invented values. For tracked wiring, have each stub resolve `git rev-parse --show-toplevel` and delegate to that worktree's `.awf/hooks/<payload>.sh`, rather than reading a primary checkout. That is safe with either absolute or relative `core.hooksPath` and gives linked worktrees their own policy. These local checks are preflight only; the remote's receiving and protected-branch policy is the final enforcement boundary.
@@ -176,7 +176,7 @@ re-add the key to recover.
 **Project-local skills, agents, and docs.** Beyond overriding catalog artifacts, you can define your own.
 `awf new skill <name> "<description>"` enables a name that is not in awf's standard catalog, writes a
 declaring sidecar, and drops a `content` convention part for you to author. awf renders it from a
-built-in base template (once per enabled target), so a skill you define once is emitted for every
+built-in base template (once per built-in target), so a skill you define once is emitted for every
 agent harness you target. Edit its body at `.awf/skills/parts/<name>/content.md` (agents:
 `.awf/agents/parts/<name>/content.md`); the sidecar's `data.description` becomes its frontmatter
 description. `awf new doc <name> "<description>"` works the same way for a managed doc: the name

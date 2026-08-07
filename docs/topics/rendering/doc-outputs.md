@@ -17,20 +17,28 @@ Backing: test
 
 ### `invariant: domains-dir-given`
 
-The layout's domains directory is computed as <docsDir>/domains.
+The layout's domains directory is computed as `docs/domains` beneath the fixed documentation root.
 Origin: ADR-0148
+Revised-by: ADR-house-standard-configuration-expresses-repo-facts-only
 Backing: test
 
 ### `invariant: layout-derivation`
 
-The decisions directory, ADR index file, and plans directory are derived structurally from the configured docsDir rather than being independently configurable, so setting docsDir to documentation resolves them under documentation/decisions, documentation/decisions/INDEX.md, and documentation/plans.
+The decisions directory, ADR index file, and plans directory derive structurally from the fixed `docs` root as `docs/decisions`, `docs/decisions/INDEX.md`, and `docs/plans`, rather than being independently configurable.
 Origin: ADR-0148
+Revised-by: ADR-house-standard-configuration-expresses-repo-facts-only
 Backing: test
 
-### `invariant: layout-docs-enabled-only`
+### `invariant: docs-root-fixed`
 
-The layout docs map contains exactly the enabled doc names, each mapping to <docsDir>/<name>.md, and no other keys.
-Origin: ADR-0148
+The documentation root is exactly `docs`, fixed in the binary rather than read from configuration.
+Origin: ADR-house-standard-configuration-expresses-repo-facts-only
+Backing: test
+
+### `invariant: layout-docs-full-catalog`
+
+The layout docs map contains exactly every catalog document name, each mapping to `docs/<name>.md`, and no other keys.
+Origin: ADR-house-standard-configuration-expresses-repo-facts-only
 Backing: test
 
 ### `invariant: pitfall-adr-link-resolved`
@@ -64,22 +72,18 @@ check reports one non-failing note per glossary term whose meaning exceeds the t
 Origin: ADR-0207
 Backing: test
 
-### `invariant: skill-ref-dead-fails`
-
-awf check fails when a managed rendered artifact references a known skill name via its prefix-anchored token while that skill is not in the effective rendered set.
-Origin: ADR-0148
-Backing: test
-
 ### `invariant: skill-ref-unknown-ignored`
 
-A prefix-anchored token whose trailing word matches no catalog or local skill name produces no dead-skill-reference finding.
+A prefix-anchored token whose trailing word matches no catalog skill name produces no dead-skill-reference finding.
 Origin: ADR-0148
+Revised-by: ADR-house-standard-configuration-expresses-repo-facts-only
 Backing: test
 
 ### `invariant: stub-notes-path-keyed`
 
-The unauthored-content advisory reports one entry per rendered output path, so artifacts that share a template id, including per-target local artifacts and domain docs, each report independently.
+The unauthored-content advisory reports one entry per rendered output path, so artifacts that share a template id, including per-target artifacts and domain docs, each report independently.
 Origin: ADR-0148
+Revised-by: ADR-house-standard-configuration-expresses-repo-facts-only
 Backing: test
 
 ### `invariant: topic-output-complete`
@@ -91,6 +95,7 @@ Backing: unbacked
 Verify: Creating and removing a topic in a render fixture changes awf render, awf check, the output plan, the lock, the index, and stale-output pruning consistently.
 ### `invariant: working-with-awf-mandatory`
 
-The working-with-awf doc renders as an always-on singleton for every project, present in the plain-singleton set and the catalog's singleton kinds, and is suppressible only by a local: true sidecar.
+The working-with-awf doc renders as an always-on singleton for every project, present in the plain-singleton set and the catalog's singleton kinds; during the schema-compatible intermediate it remains suppressible only by a local: true sidecar.
 Origin: ADR-0148
+Revised-by: ADR-house-standard-configuration-expresses-repo-facts-only
 Backing: test

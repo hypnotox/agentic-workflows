@@ -401,77 +401,6 @@ func TestSyncWritesFilesAndLock(t *testing.T) {
 	}
 }
 
-// invariant: rendering/sync-and-drift:target-prune-ancestors (TestSyncPrunesRemovedTargetTree)
-func TestSyncPrunesRemovedTargetTree(t *testing.T) {
-	root := scaffold(t, sampleYAML+"targets:\n  - claude\n  - pi\n")
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.Sync(); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Stat(filepath.Join(root, ".pi/skills/example-tdd/SKILL.md")); err != nil {
-		t.Fatalf("expected Pi skill rendered on first sync: %v", err)
-	}
-	// Drop the Pi target (sampleYAML has no targets key and defaults to claude).
-	if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte(sampleYAML), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	p2, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p2.Sync(); err != nil {
-		t.Fatal(err)
-	}
-	// The whole .pi/ tree is gone - every empty ancestor, not just the leaf parent.
-	for _, dir := range []string{".pi/skills/example-tdd", ".pi/skills", ".pi/agents", ".pi/extensions", ".pi"} {
-		if _, err := os.Stat(filepath.Join(root, dir)); !os.IsNotExist(err) {
-			t.Errorf("expected %s removed, stat err = %v", dir, err)
-		}
-	}
-}
-
-// invariant: rendering/pi-runtime:pi-extension-target-render (TestSyncPrunesAllPiExtensionsWithoutTouchingUnrelatedContent)
-func TestSyncPrunesAllPiExtensionsWithoutTouchingUnrelatedContent(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\nskills: []\nagents: []\ntargets: [pi]\n")
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.Sync(); err != nil {
-		t.Fatal(err)
-	}
-	for _, rel := range []string{".pi/extensions/awf-context-usage/index.ts", ".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/model-routing.ts", ".pi/extensions/awf-subagents/runner.ts"} {
-		if _, err := os.Stat(filepath.Join(root, rel)); err != nil {
-			t.Fatalf("missing %s: %v", rel, err)
-		}
-	}
-	unrelated := filepath.Join(root, ".pi", "keep.txt")
-	if err := os.WriteFile(unrelated, []byte("keep"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(configPath(root), []byte("prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\nskills: []\nagents: []\ntargets: [claude]\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	p, err = Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.Sync(); err != nil {
-		t.Fatal(err)
-	}
-	for _, rel := range []string{".pi/extensions/awf-context-usage", ".pi/extensions/awf-handoff", ".pi/extensions/awf-subagents", ".pi/extensions"} {
-		if _, err := os.Stat(filepath.Join(root, rel)); !os.IsNotExist(err) {
-			t.Errorf("expected %s removed: %v", rel, err)
-		}
-	}
-	if got, err := os.ReadFile(unrelated); err != nil || string(got) != "keep" {
-		t.Errorf("unrelated Pi content changed: %q %v", got, err)
-	}
-}
-
 func TestCheckCleanAfterSync(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, _ := Open(testContext(t), root)
@@ -558,6 +487,7 @@ agents:
 	// A local skill is hand-authored; provide its on-disk file with valid frontmatter.
 	localPath := ".claude/skills/example-adding-thing/SKILL.md"
 	writeLocalSkill(t, root, localPath)
+	writeLocalSkill(t, root, ".pi/skills/example-adding-thing/SKILL.md")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -755,37 +685,6 @@ func TestOpenAllowsLocalSkillNotInCatalog(t *testing.T) {
 	_, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("local skill not in catalog should be allowed, got: %v", err)
-	}
-}
-
-func TestSyncPrunesRemovedSkill(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	p, _ := Open(testContext(t), root)
-	_ = p.Sync()
-	// Rewrite config without the tdd skill, re-open, re-sync.
-	noTDD := strings.Replace(sampleYAML, "skills:\n  - tdd\n", "skills: []\n", 1)
-	_ = os.WriteFile(configPath(root), []byte(noTDD), 0o644)
-	p2, _ := Open(testContext(t), root)
-	backups, _, pruned, err := p2.SyncReport(testContext(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Stat(filepath.Join(root, ".claude/skills/example-tdd/SKILL.md")); !os.IsNotExist(err) {
-		t.Errorf("removed skill should be pruned")
-	}
-	if !slices.Contains(pruned, ".claude/skills/example-tdd/SKILL.md") {
-		t.Errorf("pruned report missing the removed skill: %v", pruned)
-	}
-	if !slices.IsSorted(pruned) {
-		t.Errorf("pruned report must be sorted for deterministic output: %v", pruned)
-	}
-	// The prune backup is scoped to the outgoing co-owned runner alone
-	// (ADR-0156 item 9): a pruned non-runner path is deleted, never backed up.
-	if len(backups) != 0 {
-		t.Errorf("a non-runner prune must report no backups: %v", backups)
-	}
-	if _, err := os.Stat(filepath.Join(root, ".claude/skills/example-tdd/SKILL.md.awf-bak")); !os.IsNotExist(err) {
-		t.Errorf("a pruned non-runner path must leave no .awf-bak sibling, stat err = %v", err)
 	}
 }
 
@@ -1223,58 +1122,31 @@ func TestSyncRendersAgentsDoc(t *testing.T) {
 // TestSyncPrunesEmptySkillDir verifies that after a skill is removed from config
 // and Sync runs again, both the SKILL.md file and its now-empty parent directory
 // are removed.
-func TestSyncPrunesEmptySkillDir(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	if err := p.Sync(); err != nil {
-		t.Fatalf("first Sync: %v", err)
-	}
-	skillDir := filepath.Join(root, ".claude/skills/example-tdd")
-	if _, err := os.Stat(skillDir); err != nil {
-		t.Fatalf("skill dir should exist after first sync: %v", err)
-	}
 
-	noTDD := strings.Replace(sampleYAML, "skills:\n  - tdd\n", "skills: []\n", 1)
-	if err := os.WriteFile(configPath(root), []byte(noTDD), 0o644); err != nil {
-		t.Fatalf("rewrite config: %v", err)
-	}
-	p2, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatalf("Open after removing tdd skill: %v", err)
-	}
-	if err := p2.Sync(); err != nil {
-		t.Fatalf("second Sync: %v", err)
-	}
-
-	if _, err := os.Stat(filepath.Join(skillDir, "SKILL.md")); !os.IsNotExist(err) {
-		t.Errorf("SKILL.md should have been pruned")
-	}
-	if _, err := os.Stat(skillDir); !os.IsNotExist(err) {
-		t.Errorf("skill directory %s should have been pruned when empty", skillDir)
-	}
-}
-
-// invariant: rendering/doc-outputs:layout-derivation (TestLayoutDerivesFromDocsDir)
-func TestLayoutDerivesFromDocsDir(t *testing.T) {
-	p := &Project{Cfg: &config.Config{DocsDir: "documentation", Docs: []string{"architecture"}}}
+// invariant: rendering/doc-outputs:layout-derivation (TestLayoutUsesFixedDocsRootAndFullCatalog)
+// invariant: rendering/doc-outputs:docs-root-fixed (TestLayoutUsesFixedDocsRootAndFullCatalog)
+func TestLayoutUsesFixedDocsRootAndFullCatalog(t *testing.T) {
+	p := &Project{Cfg: &config.Config{DocsDir: "documentation", Docs: []string{"architecture"}}, Cat: catalog.Standard}
 	l := p.layout()
-	if l.DocsDir != "documentation" || l.ADRDir != "documentation/decisions" ||
-		l.IndexMd != "documentation/decisions/INDEX.md" || l.PlansDir != "documentation/plans" {
+	if l.DocsDir != config.DocsDir || l.ADRDir != "docs/decisions" ||
+		l.IndexMd != "docs/decisions/INDEX.md" || l.PlansDir != "docs/plans" {
 		t.Errorf("layout = %+v", l)
 	}
-	// invariant: rendering/doc-outputs:domains-dir-given (TestLayoutDerivesFromDocsDir)
-	if l.DomainsDir != "documentation/domains" {
+	// invariant: rendering/doc-outputs:domains-dir-given (TestLayoutUsesFixedDocsRootAndFullCatalog)
+	if l.DomainsDir != "docs/domains" {
 		t.Errorf("domainsDir = %q", l.DomainsDir)
 	}
-	// invariant: rendering/doc-outputs:layout-docs-enabled-only (TestLayoutDerivesFromDocsDir)
-	wantDocs := map[string]string{
-		"architecture": "documentation/architecture.md",
+	// invariant: rendering/doc-outputs:layout-docs-full-catalog (TestLayoutUsesFixedDocsRootAndFullCatalog)
+	if len(l.Docs) != len(catalog.Standard.Docs) {
+		t.Errorf("Docs has %d entries, want full catalog of %d: %v", len(l.Docs), len(catalog.Standard.Docs), l.Docs)
 	}
-	if !reflect.DeepEqual(l.Docs, wantDocs) {
-		t.Errorf("Docs = %v, want %v", l.Docs, wantDocs)
+	for name := range catalog.Standard.Docs {
+		if _, ok := l.Docs[name]; !ok {
+			t.Errorf("Docs missing catalog document %q", name)
+		}
+	}
+	if l.Docs["debugging"] != "docs/debugging.md" || l.Docs["agents-doc"] != "AGENTS.md" {
+		t.Errorf("Docs has wrong fixed output paths: %v", l.Docs)
 	}
 	// templateMap reproduces the historical .layout map by literal value (ConfigHash
 	// stability). The fixed directory keys are hand-built; the mandatory-singleton
@@ -1282,27 +1154,27 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 	// wrong derivation is caught, not just a present key.
 	tm := l.templateMap()
 	wantTM := map[string]string{
-		"docsDir":                "documentation",
-		"adrDir":                 "documentation/decisions",
-		"indexMd":                "documentation/decisions/INDEX.md",
-		"plansDir":               "documentation/plans",
-		"domainsDir":             "documentation/domains",
-		"adrReadme":              "documentation/decisions/README.md",
-		"adrTemplate":            "documentation/decisions/template.md",
-		"plansReadme":            "documentation/plans/README.md",
-		"plansTemplate":          "documentation/plans/template.md",
-		"workflowRef":            "documentation/workflow.md",
-		"docStandard":            "documentation/doc-standard.md",
-		"agentsMdStandard":       "documentation/agents-md-standard.md",
-		"workingWithAwf":         "documentation/working-with-awf.md",
-		"maintainableCodeDesign": "documentation/maintainable-code-design.md",
+		"docsDir":                "docs",
+		"adrDir":                 "docs/decisions",
+		"indexMd":                "docs/decisions/INDEX.md",
+		"plansDir":               "docs/plans",
+		"domainsDir":             "docs/domains",
+		"adrReadme":              "docs/decisions/README.md",
+		"adrTemplate":            "docs/decisions/template.md",
+		"plansReadme":            "docs/plans/README.md",
+		"plansTemplate":          "docs/plans/template.md",
+		"workflowRef":            "docs/workflow.md",
+		"docStandard":            "docs/doc-standard.md",
+		"agentsMdStandard":       "docs/agents-md-standard.md",
+		"workingWithAwf":         "docs/working-with-awf.md",
+		"maintainableCodeDesign": "docs/maintainable-code-design.md",
 	}
 	for k, want := range wantTM {
 		if tm[k] != want {
 			t.Errorf("templateMap[%q] = %v, want %q", k, tm[k], want)
 		}
 	}
-	if got, ok := tm["docs"].(map[string]any); !ok || got["architecture"] != "documentation/architecture.md" {
+	if got, ok := tm["docs"].(map[string]any); !ok || got["architecture"] != "docs/architecture.md" || got["debugging"] != "docs/debugging.md" {
 		t.Errorf("templateMap[docs] = %v", tm["docs"])
 	}
 	// 5 fixed dir keys + docs + 10 mandatory-singleton keys = 16 (agents-doc has
@@ -1311,44 +1183,56 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 	if len(tm) != 16 {
 		t.Errorf("templateMap has %d keys, want 16", len(tm))
 	}
-	if got := p.docOutPath("architecture"); got != "documentation/architecture.md" {
+	if got := p.docOutPath("architecture"); got != "docs/architecture.md" {
 		t.Errorf("docOutPath = %q", got)
 	}
 }
 
-// A doc-gated skill always renders while enabled: the ADR-0013 render-time
-// suppression is gone (ADR-0081 Decision 7) - the doc-less state is refused
-// at Open instead (TestOpenRefusesUnclosedEnabledSet), so enabled means
-// rendered even when the doc is dropped post-Open.
-func TestRenderAllRendersEnabledDocGatedSkill(t *testing.T) {
-	cfg := "prefix: example\nintegrationBranch: main\nskills: [roadmap-graduation]\ndocs: [roadmap]\nagents: []\n"
-	root := scaffoldFiles(t, cfg, map[string]string{"agents-doc.yaml": "local: true\n"})
+// invariant: rendering/project-output-plan:full-catalog-render (TestRenderAllRendersFullCatalogForBothTargets)
+func TestRenderAllRendersFullCatalogForBothTargets(t *testing.T) {
+	cfg := "prefix: example\nintegrationBranch: main\nskills: []\ndocs: []\nagents: []\ntargets: [claude]\n"
+	root := scaffold(t, cfg)
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-
-	const rel = ".claude/skills/example-roadmap-graduation/SKILL.md"
-	rendered := func() bool {
-		files, err := p.RenderAll()
-		if err != nil {
-			t.Fatalf("RenderAll: %v", err)
-		}
-		for _, f := range files {
-			if f.Path == rel {
-				return true
+	if got := len(p.Targets); got != len(KnownTargets()) {
+		t.Fatalf("targets = %d, want full built-in set of %d", got, len(KnownTargets()))
+	}
+	files, err := p.RenderAll()
+	if err != nil {
+		t.Fatalf("RenderAll: %v", err)
+	}
+	paths := map[string]bool{}
+	for _, file := range files {
+		paths[file.Path] = true
+	}
+	for _, target := range p.Targets {
+		for name := range catalog.Standard.Skills {
+			if path := target.SkillPath("example", name); !paths[path] {
+				t.Errorf("missing catalog skill output %q", path)
 			}
 		}
-		return false
+		for name := range catalog.Standard.Agents {
+			if path := target.AgentPath(name); !paths[path] {
+				t.Errorf("missing catalog agent output %q", path)
+			}
+		}
 	}
-	if !rendered() {
-		t.Error("roadmap-graduation should render when the roadmap doc is enabled")
+	for _, path := range []string{"docs/debugging.md", ".claude/skills/example-roadmap-graduation/SKILL.md", ".pi/skills/example-roadmap-graduation/SKILL.md"} {
+		if !paths[path] {
+			t.Errorf("missing unconditional catalog output %q", path)
+		}
 	}
-	// The doc-less state (unreachable through Open) no longer silently
-	// suppresses: the publication-safety net fails the render loudly.
-	p.Cfg.Docs = nil
-	if _, err := p.RenderAll(); err == nil || !strings.Contains(err.Error(), "<no value>") {
-		t.Errorf("fabricated doc-less state should fail the publication-safety net, got %v", err)
+	notes, err := p.AdvisoryNotes(testContext(t))
+	if err != nil {
+		t.Fatalf("AdvisoryNotes: %v", err)
+	}
+	joined := strings.Join(notes, "\n")
+	for _, path := range []string{"docs/debugging.md", ".claude/skills/example-roadmap-graduation/SKILL.md", ".pi/skills/example-roadmap-graduation/SKILL.md"} {
+		if !strings.Contains(joined, path+" has unauthored stub content") {
+			t.Errorf("missing non-failing stub advisory for %s in:\n%s", path, joined)
+		}
 	}
 }
 
@@ -1630,7 +1514,7 @@ func TestRegenCheckedAttribute(t *testing.T) {
 	}
 	for _, f := range files {
 		if f.Policy.Regenerate != f.RegenChecked {
-			t.Errorf("plan policy and RegenChecked disagree for %s", f.Path)
+			t.Errorf("plan policy and RegenChecked disagree for %s: policy=%v regenChecked=%v", f.Path, f.Policy.Regenerate, f.RegenChecked)
 		}
 	}
 }
@@ -1676,7 +1560,6 @@ func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.
 // declared config order, so reviewing-impl's missing code-reviewer is reported
 // rather than executing-plans' missing implementer (ADR-0050, generalized by
 // ADR-0081's closure validation).
-// invariant: rendering/project-output-plan:reviewing-skill-agent-pairing (TestOpenRejectsPairedSkillWithoutAgent)
 func TestOpenRejectsPairedSkillWithoutAgent(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [reviewing-impl, executing-plans, retrospective, subagent-driven-development]\nagents: []\n")
 	_, err := Open(testContext(t), root)
@@ -1698,7 +1581,6 @@ func TestOpenAllowsPairedSkillWithAgent(t *testing.T) {
 
 // Every enabled, non-local artifact's direct catalog requirements must be
 // enabled - a violation fails open with a repair hint (ADR-0081 Decision 3).
-// invariant: rendering/catalog-and-targets:enabled-set-closed (TestOpenRefusesUnclosedEnabledSet)
 func TestOpenRefusesUnclosedEnabledSet(t *testing.T) {
 	cases := []struct {
 		name, cfg, wantSub string

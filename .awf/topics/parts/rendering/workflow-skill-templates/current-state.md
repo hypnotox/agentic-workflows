@@ -79,10 +79,10 @@ Backing: test
 
 ### `invariant: workflow-transitions-advisory`
 
-Rendered workflow skills describe catalog relationships only as recommendations. Any enabled skill may be used when its purpose fits, while controls within a selected skill remain mandatory.
+Rendered workflow skills describe catalog relationships only as recommendations. Any catalog skill may be used when its purpose fits, while controls within a selected skill remain mandatory.
 This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0167
-Revised-by: ADR-0243
+Revised-by: ADR-0243, ADR-house-standard-configuration-expresses-repo-facts-only
 Backing: test
 
 ### `invariant: phase-transaction-ownership`

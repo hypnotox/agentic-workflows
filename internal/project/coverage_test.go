@@ -412,7 +412,8 @@ func TestCheckFlagsFileWhereKindDirBelongs(t *testing.T) {
 	t.Fatalf("expected unclaimed drift for the .awf/domains file, got %#v", drift)
 }
 
-func TestCheckReportsLockEntryNoLongerProduced(t *testing.T) {
+// invariant: rendering/sync-and-drift:target-prune-ancestors (TestSyncPrunesRemovedTargetTree)
+func TestSyncPrunesRemovedTargetTree(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -421,28 +422,22 @@ func TestCheckReportsLockEntryNoLongerProduced(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	// Drop tdd from config but keep the lock (no re-sync): its lock entry is now
-	// orphaned because RenderAll no longer produces it.
 	noTDD := strings.Replace(sampleYAML, "skills:\n  - tdd\n", "skills: []\n", 1)
 	if err := os.WriteFile(configPath(root), []byte(noTDD), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	p2, err := Open(testContext(t), root)
+	p, err = Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p2.Check(testContext(t))
+	drift, err := p.Check(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
-	found := false
 	for _, d := range drift {
 		if d.Path == ".claude/skills/example-tdd/SKILL.md" && d.Kind == "orphaned" {
-			found = true
+			t.Fatalf("catalog output was orphaned after selection changed: %#v", drift)
 		}
-	}
-	if !found {
-		t.Errorf("expected orphaned drift for the unproduced lock entry, got %#v", drift)
 	}
 }
 
@@ -478,6 +473,7 @@ func TestCheckReportsLocalFrontmatterDrift(t *testing.T) {
 	cfg := "prefix: example\nintegrationBranch: main\nskills: [my-local]\nagents: []\n"
 	root := scaffoldFiles(t, cfg, map[string]string{"skills/my-local.yaml": "local: true\n"})
 	writeLocalSkill(t, root, ".claude/skills/example-my-local/SKILL.md")
+	writeLocalSkill(t, root, ".pi/skills/example-my-local/SKILL.md")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)

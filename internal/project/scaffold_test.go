@@ -56,7 +56,6 @@ func TestScaffoldEnablesCoreTargets(t *testing.T) {
 			wantSkills[name] = true
 		}
 	}
-	// invariant: rendering/project-output-plan:scaffold-core-only (TestScaffoldEnablesCoreTargets)
 	if got := sliceSet(cfg.Skills); !maps.Equal(got, wantSkills) {
 		t.Errorf("scaffold skills = %v, want core set %v",
 			slices.Sorted(maps.Keys(got)), slices.Sorted(maps.Keys(wantSkills)))
@@ -96,7 +95,6 @@ func TestScaffoldWritesValidIntegrationBranch(t *testing.T) {
 
 // TestScaffoldCatalogTrim asserts a non-nil trim dimension replaces the curated
 // core verbatim while a nil dimension keeps the core (full-deselectable trim).
-// invariant: rendering/project-output-plan:catalog-trim-applied (TestScaffoldCatalogTrim)
 func TestScaffoldCatalogTrim(t *testing.T) {
 	cat := catalog.Standard
 

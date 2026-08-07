@@ -183,7 +183,7 @@ func TestSidecarAbsentRendersDefault(t *testing.T) {
 func TestLocalFrontmatterChecked(t *testing.T) {
 	cfg := "prefix: example\nintegrationBranch: main\nskills: [my-local]\nagents: []\n"
 	root := scaffoldFiles(t, cfg, map[string]string{"skills/my-local.yaml": "local: true\n"})
-	out := ".claude/skills/example-my-local/SKILL.md"
+	outs := []string{".claude/skills/example-my-local/SKILL.md", ".pi/skills/example-my-local/SKILL.md"}
 
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -194,12 +194,16 @@ func TestLocalFrontmatterChecked(t *testing.T) {
 		t.Error("expected sync error: local skill file absent")
 	}
 	// (b) Present but with empty name/description fails identically to a rendered target.
-	testsupport.WriteFile(t, filepath.Join(root, out), "---\nname: \"\"\ndescription: \"\"\n---\nbody\n")
+	for _, out := range outs {
+		testsupport.WriteFile(t, filepath.Join(root, out), "---\nname: \"\"\ndescription: \"\"\n---\nbody\n")
+	}
 	if err := p.Sync(); err == nil {
 		t.Error("expected sync error: local skill has empty frontmatter")
 	}
 	// (c) Valid frontmatter → sync succeeds and check reports no frontmatter drift.
-	testsupport.WriteFile(t, filepath.Join(root, out), "---\nname: my-local\ndescription: a local skill\n---\nbody\n")
+	for _, out := range outs {
+		testsupport.WriteFile(t, filepath.Join(root, out), "---\nname: my-local\ndescription: a local skill\n---\nbody\n")
+	}
 	if err := p.Sync(); err != nil {
 		t.Fatalf("sync should succeed with valid local frontmatter: %v", err)
 	}

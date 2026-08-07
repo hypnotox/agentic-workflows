@@ -19,7 +19,7 @@ import (
 // crefRel is the generated config reference's project-relative output path,
 // derived from its catalog entry like every doc path.
 func (p *Project) crefRel() string {
-	return strings.TrimRight(p.Cfg.DocsDir, "/") + "/" + p.Cat.Docs["config-reference"].Path
+	return config.DocsDir + "/" + p.Cat.Docs["config-reference"].Path
 }
 
 // PotentialVarConsumers inverts the full catalog's raw template sources into
@@ -296,14 +296,14 @@ func (p *Project) configReferenceRows(files []RenderedFile) (ConfigReference, er
 
 	enabled := enabledVarConsumers(files)
 	potential, err := PotentialVarConsumers()
-	if err != nil { // coverage-ignore: PotentialVarConsumers reads only embedded templates
+	if err != nil { // coverage-ignore: dormant consumer discovery is unreachable because every catalog artifact renders from an embedded template
 		return ConfigReference{}, err
 	}
 	for _, v := range configspec.VarEntries() {
 		consumers := "No catalog artifact references it."
 		if c := enabled[v.Key]; len(c) > 0 {
 			consumers = "Consumed by: " + strings.Join(c, ", ") + "."
-		} else if c := potential[v.Key]; len(c) > 0 {
+		} else if c := potential[v.Key]; len(c) > 0 { // coverage-ignore: every catalog artifact renders, so a potential consumer is always enabled
 			consumers = "Dormant: no enabled artifact references it; enabling " + strings.Join(c, ", ") + " would."
 		}
 		ref.VarEntries = append(ref.VarEntries, VarRow{

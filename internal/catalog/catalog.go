@@ -77,10 +77,10 @@ type SkillSpec struct {
 	Profile        WorkflowProfile `yaml:"profile"`
 }
 
-// DocEntry is one entry in the unified doc collection (ADR-0061): a toggleable
-// doc (Mandatory false) or an always-on singleton (Mandatory true). Path is the
-// docsDir-relative output suffix (empty for agents-doc, which renders to root
-// AGENTS.md); TemplateKey is its .layout camelCase key (empty when not
+// DocEntry is one entry in the unified doc collection. Every entry renders;
+// Path distinguishes structural singleton outputs from name-derived docs
+// (empty for agents-doc, which renders to root AGENTS.md). Mandatory remains
+// the sidecar-location discriminator. TemplateKey is its .layout camelCase key (empty when not
 // layout-exposed); TID is the embedded template id; DocumentMap marks entries
 // the AGENTS.md document map lists via .layout.*; AgentsDoc flags the one
 // root-output special case. Title/Desc/Sections/Data are as before.
@@ -101,14 +101,14 @@ type DocEntry struct {
 	Generated bool
 }
 
-// SingletonKinds returns every always-on singleton kind (the Mandatory doc
-// entries, agents-doc included), derived from the one doc collection - no
-// hand-maintained list (ADR-0061). internal/config.IsSingletonKind reads it for
-// sidecar/part path classification.
+// SingletonKinds returns every structural singleton kind: the root agent guide
+// and entries that declare their own output Path. It is derived from the one doc
+// collection; internal/config.IsSingletonKind reads it for sidecar and part
+// path classification.
 func SingletonKinds() []string {
 	var out []string
 	for k, e := range Standard.Docs {
-		if e.Mandatory {
+		if e.AgentsDoc || e.Path != "" {
 			out = append(out, k)
 		}
 	}
@@ -116,14 +116,12 @@ func SingletonKinds() []string {
 	return out
 }
 
-// NonMandatoryDocNames returns c's sorted toggleable-doc names (Mandatory
-// false) - the pool an adopter selects from and that `awf enable`/`disable doc`
-// operate on. Mandatory singletons are excluded (ADR-0061). It takes the catalog
-// so the kind-descriptor pool honours the catalog handed to it.
+// NonMandatoryDocNames returns c's sorted name-derived document names. The
+// legacy name remains until Phase 3 removes the selection command surface.
 func NonMandatoryDocNames(c *Catalog) []string {
 	var out []string
 	for k, e := range c.Docs {
-		if !e.Mandatory {
+		if !e.AgentsDoc && e.Path == "" {
 			out = append(out, k)
 		}
 	}

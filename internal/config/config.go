@@ -21,6 +21,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// DocsDir is the fixed root for awf-managed documentation.
+const DocsDir = "docs"
+
 // SectionOverride is a sidecar's per-section override. Body replacement is by
 // convention part only; the field set is deliberately just Drop.
 // touches-state: config/configuration:no-replacewith - SectionOverride field set omits replaceWith; proof in config_test.go

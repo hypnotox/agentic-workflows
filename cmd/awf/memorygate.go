@@ -27,8 +27,7 @@ func memoryCheckFindings(cfg *config.Config, tree *snapshot.Tree) ([]presentatio
 	for _, e := range configured {
 		exemptions = append(exemptions, memorycite.Exemption{Path: e.Path, Count: e.Count})
 	}
-	d := strings.TrimRight(cfg.DocsDir, "/")
-	prefixes := []string{d + "/decisions/", d + "/plans/"}
+	prefixes := []string{config.DocsDir + "/decisions/", config.DocsDir + "/plans/"}
 	var files []memorycite.File
 	for _, blob := range tree.List() {
 		if !blob.Scannable() {

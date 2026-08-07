@@ -20,7 +20,7 @@ import (
 func TestGuideRoutesNativeSkillsWithoutCatalog(t *testing.T) {
 	data := map[string]any{"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}, "commitScopes": "", "gatedCommands": "", "skills": map[string]bool{}}
 	out := renderGuide(t, data)
-	if !strings.Contains(out, "Use any enabled native skill whose exposed description fits the current work.") {
+	if !strings.Contains(out, "Use any native skill whose exposed description fits the current work.") {
 		t.Error("guide does not route selection through native skill descriptions")
 	}
 	for _, banned := range []string{"Enabled skills:", "example-brainstorming", "purpose", "Trigger:", "Usually follows:", "Common follow-ups:", "fallback", "<no value>", "awf_workflow", "only legal predecessor", "only legal successor", "mandatory successor", "must follow", "must be followed by", "mandatory transition"} {
@@ -46,7 +46,7 @@ func TestGuideRoutesNativeSkillsWithoutCatalog(t *testing.T) {
 func TestWorkflowSkillRelationshipsStayAdvisory(t *testing.T) {
 	skills := slices.Sorted(maps.Keys(catalog.Standard.Skills))
 	agents := slices.Sorted(maps.Keys(catalog.Standard.Agents))
-	const advisorySelection = "Use any enabled native skill whose exposed description fits the current work."
+	const advisorySelection = "Use any native skill whose exposed description fits the current work."
 	mandatoryRelationships := []string{"only legal predecessor", "only legal successor", "mandatory successor", "must follow", "must be followed by", "mandatory transition"}
 	operativeControls := []string{" must ", " never ", " requires ", "Do not ", "Stop ", "stop ", "forbidden"}
 

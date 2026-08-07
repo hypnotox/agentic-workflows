@@ -196,8 +196,11 @@ func (l *Loader) Open(ctx context.Context, root string) (*Project, error) {
 	if err := catalog.ValidateWorkflowProfiles(l.standard); err != nil {
 		return nil, err
 	}
-	targets, err := resolveTargets(cfg.Targets)
-	if err != nil {
+	if _, err := resolveTargets(cfg.Targets); err != nil {
+		return nil, err
+	}
+	targets, err := resolveTargets(KnownTargets())
+	if err != nil { // coverage-ignore: configured-target validation succeeded and KnownTargets is exhaustively backed by built-in descriptor tests
 		return nil, err
 	}
 	p := &Project{
@@ -640,5 +643,5 @@ func (p *Project) NewADR(ctx context.Context, title string) (string, error) {
 // NewPlan scaffolds a new plan under docsDir/plans from the rendered plans
 // template. Mirrors NewADR minus sequential numbering (ADR-0098).
 func (p *Project) NewPlan(title string) (string, error) {
-	return plan.NewFile(filepath.Join(p.Root, p.Cfg.DocsDir, "plans"), title)
+	return plan.NewFile(filepath.Join(p.Root, config.DocsDir, "plans"), title)
 }

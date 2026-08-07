@@ -1849,7 +1849,7 @@ func TestAgentsDocNativeSkillRouter(t *testing.T) {
 		"Preserve the approved design boundary",
 		"docs/maintainable-code-design.md",
 		"make gate",
-		"Use any enabled native skill whose exposed description fits the current work.",
+		"Use any native skill whose exposed description fits the current work.",
 	} {
 		if !strings.Contains(out, phrase) {
 			t.Errorf("expected phrase %q in output:\n%s", phrase, out)

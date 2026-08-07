@@ -256,7 +256,7 @@ func TestPerTargetDriftProjection(t *testing.T) {
 // An artifact enabled after the last sync has a rendered output but no lock
 // entry; Check must flag it instead of passing clean while the file is absent
 // from disk.
-func TestCheckFlagsEnabledButUnsyncedArtifact(t *testing.T) {
+func TestCheckIgnoresUnsyncedSelectionChanges(t *testing.T) {
 	cfg := func(agents string) string {
 		return "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\nskills:\n  - tdd\nagents:" + agents + "\n"
 	}
@@ -268,22 +268,20 @@ func TestCheckFlagsEnabledButUnsyncedArtifact(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	// Enable an agent by hand-editing config - the documented flow - without syncing.
 	testsupport.WriteAwfConfig(t, root, cfg("\n  - code-reviewer"))
-	p2, err := Open(testContext(t), root)
+	p, err = Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p2.Check(testContext(t))
+	drift, err := p.Check(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, d := range drift {
 		if d.Path == ".claude/agents/code-reviewer.md" && d.Kind == "unsynced" {
-			return
+			t.Fatalf("selection change produced unsynced drift: %#v", drift)
 		}
 	}
-	t.Errorf("enabled-but-unsynced agent not flagged; drift = %#v", drift)
 }
 
 // The sync prune walks old lock entries no longer produced; an entry escaping
@@ -479,8 +477,8 @@ func TestSkillsEditLeavesNeutralGuideFreshAndReflagsSkill(t *testing.T) {
 	if guide1 != guide0 {
 		t.Errorf("editing enabled skills must not stale neutral AGENTS.md solely to mirror native frontmatter: %s != %s", guide1, guide0)
 	}
-	if skill1 == skill0 {
-		t.Errorf("editing enabled skills must change a .skills-consuming artifact's ConfigHash (got %s unchanged)", skill0)
+	if skill1 != skill0 {
+		t.Errorf("selection-only skill edits must not change full-catalog output hashes: %s != %s", skill1, skill0)
 	}
 }
 

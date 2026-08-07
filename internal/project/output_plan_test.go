@@ -277,7 +277,7 @@ func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *test
 			sharedHash = n.file.ConfigHash
 		}
 	}
-	p.Targets[1].Name = "renamed-pi"
+	p.Targets[len(p.Targets)-1].Name = "renamed-pi"
 	op, err = p.OutputPlan(testContext(t))
 	if err != nil {
 		t.Fatal(err)
@@ -287,7 +287,7 @@ func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *test
 			t.Fatal("declarer descriptor identity did not change drift hash")
 		}
 	}
-	p.Targets[1].Outputs[0].Policy = OutputPolicy{Regenerate: true}
+	p.Targets[len(p.Targets)-1].Outputs[0].Policy = OutputPolicy{Regenerate: true}
 	if _, err := p.OutputPlan(testContext(t)); err == nil || !strings.Contains(err.Error(), "conflicting output recipes") {
 		t.Fatalf("conflicting shared output error = %v", err)
 	}
@@ -419,5 +419,17 @@ func TestTargetOutputDeclarationsRejectUnknownRequiredSkill(t *testing.T) {
 	p := &Project{Cfg: &config.Config{Prefix: "example"}, Cat: catalog.Standard, Targets: []Target{bad}}
 	if _, err := p.targetOutputDeclarations(nil); err == nil || !strings.Contains(err.Error(), "unknown catalog skill") {
 		t.Fatalf("unknown target output requirement error = %v", err)
+	}
+}
+
+func TestValidateLiveTemplatesRejectsMissingTargetTemplate(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.Targets = append(p.Targets, Target{Outputs: []TargetOutput{{TemplateID: "missing/live-template.tmpl"}}})
+	if err := p.validateLiveTemplates(); err == nil || !strings.Contains(err.Error(), "read template missing/live-template.tmpl") {
+		t.Fatalf("missing live template error = %v", err)
 	}
 }

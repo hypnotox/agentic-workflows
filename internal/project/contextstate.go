@@ -51,8 +51,11 @@ func (p *Project) ContextState(ctx context.Context) (ContextState, error) {
 		return ContextState{}, err
 	}
 	universe := &Project{Root: p.Root, Cfg: ws.Cfg, standard: p.standard, repo: p.repo}
-	universe.Targets, err = resolveTargets(ws.Cfg.Targets)
-	if err != nil {
+	if _, err := resolveTargets(ws.Cfg.Targets); err != nil {
+		return ContextState{}, err
+	}
+	universe.Targets, err = resolveTargets(KnownTargets())
+	if err != nil { // coverage-ignore: configured-target validation succeeded and KnownTargets is exhaustively backed by built-in descriptor tests
 		return ContextState{}, err
 	}
 	universe.Cat, err = universe.effectiveCatalog()
@@ -78,8 +81,11 @@ func StagedContextState(ctx context.Context, root string) (ContextState, error) 
 	if err != nil {
 		return ContextState{}, err
 	}
-	targets, err := resolveTargets(state.Cfg.Targets)
-	if err != nil {
+	if _, err := resolveTargets(state.Cfg.Targets); err != nil {
+		return ContextState{}, err
+	}
+	targets, err := resolveTargets(KnownTargets())
+	if err != nil { // coverage-ignore: configured-target validation succeeded and KnownTargets is exhaustively backed by built-in descriptor tests
 		return ContextState{}, err
 	}
 	universe := &Project{Root: root, Cfg: state.Cfg, Targets: targets, standard: catalog.Standard, repo: p.repo}

@@ -484,18 +484,21 @@ func testInitFirstADRChecksClean(t *testing.T) {
 	}
 }
 
-func TestRunSyncPrintsPrunedFiles(t *testing.T) {
+func TestRunSyncIgnoresSkillSelection(t *testing.T) {
 	ctx := testContext(t)
 	root := scaffoldProject(t)
-	// Disable the only skill; the re-sync prunes its rendered file and says so.
+	// Phase 2 retains parsing of the selection field but renders the full catalog.
 	testsupport.WriteAwfConfig(t, root, strings.Replace(minimalYAML, "skills: [tdd]", "skills: []", 1))
 	var out bytes.Buffer
 	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
-	const pruned = "status: completed\n\nmutation:\n  changes:\n    outputs:\n      changed docs/config-reference.md (regenerated)\n    pruned:\n      .claude/skills/example-tdd/SKILL.md\n  next actions:\n    step 1: continue with the rendered project state\n"
-	if out.String() != pruned {
-		t.Errorf("pruned sync bytes = %q, want %q", out.String(), pruned)
+	const expected = "status: completed\n\nmutation:\n  changes:\n    outputs:\n      changed docs/config-reference.md (regenerated)\n  next actions:\n    step 1: continue with the rendered project state\n"
+	if out.String() != expected {
+		t.Errorf("selection-free sync bytes = %q, want %q", out.String(), expected)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".claude", "skills", "example-tdd", "SKILL.md")); err != nil {
+		t.Fatalf("full-catalog skill was pruned after selection edit: %v", err)
 	}
 	// A drift-clean re-sync emits the complete empty-success document.
 	out.Reset()
@@ -517,9 +520,17 @@ func TestRunSyncPrintsChangedFiles(t *testing.T) {
 	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
-	const changed = "status: completed\n\nmutation:\n  changes:\n    outputs:\n      changed .awf/hooks/pre-commit.sh (config)\n      changed .awf/hooks/pre-push.sh (config)\n      changed .claude/skills/example-tdd/SKILL.md (config)\n      changed AGENTS.md (config)\n      changed docs/config-reference.md (regenerated)\n      changed docs/plans/template.md (config)\n      changed docs/workflow.md (config)\n  next actions:\n    step 1: continue with the rendered project state\n"
-	if out.String() != changed {
-		t.Errorf("changed sync bytes = %q, want %q", out.String(), changed)
+	for _, want := range []string{
+		"changed .claude/agents/implementer.md (config)",
+		"changed .claude/skills/example-tdd/SKILL.md (config)",
+		"changed .pi/agents/implementer.md (config)",
+		"changed .pi/skills/example-tdd/SKILL.md (config)",
+		"changed AGENTS.md (config)",
+		"changed docs/workflow.md (config)",
+	} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("config change did not update full-catalog output %q:\n%s", want, out.String())
+		}
 	}
 	// A drift-clean re-sync emits the complete empty-success document.
 	out.Reset()
@@ -535,9 +546,9 @@ func TestRunSyncPrintsChangedFiles(t *testing.T) {
 	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
-	const added = "status: completed\n\nmutation:\n  changes:\n    outputs:\n      changed AGENTS.md (config)\n      changed docs/config-reference.md (regenerated)\n      added docs/pitfalls.md\n  next actions:\n    step 1: continue with the rendered project state\n"
-	if out.String() != added {
-		t.Errorf("added sync bytes = %q, want %q", out.String(), added)
+	const selectionIgnored = "status: completed\n\nmutation:\n  changes:\n    outputs:\n      changed docs/config-reference.md (regenerated)\n  next actions:\n    step 1: continue with the rendered project state\n"
+	if out.String() != selectionIgnored {
+		t.Errorf("docs selection-free sync bytes = %q, want %q", out.String(), selectionIgnored)
 	}
 }
 
@@ -1113,8 +1124,19 @@ func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
 		t.Fatalf("CLAUDE.md should have been overwritten, still %q", b)
 	}
 	initForceMutation := fmt.Sprintf("status: initialization completed\n\nmutation:\n  identity:\n    config: %s/.awf/config.yaml\n    config action: scaffolded\n  changes:\n    backups:\n      CLAUDE.md to CLAUDE.md.awf-bak\n  notes:\n    agent adr-reviewer references unset vars: invariantTestPath; set a value, or delete the key to accept the generic prose\n    agent implementer references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    agents-doc references unset vars: checkCmd, gateCmd, testCmd; set a value, or delete the key to accept the generic prose\n    doc workflow references unset vars: checkCmd, gateCmd, gateCmdFull, testCmd; set a value, or delete the key to accept the generic prose\n    hooks commit-msg references unset vars: commitGateCmd; set a value, or delete the key to accept the generic prose\n    hooks pre-commit references unset vars: checkCmd, gateCmd; set a value, or delete the key to accept the generic prose\n    hooks pre-merge-commit references unset vars: checkCmd; set a value, or delete the key to accept the generic prose\n    hooks pre-push references unset vars: checkCmd, gateCmd, gateCmdFull; set a value, or delete the key to accept the generic prose\n    plans-template references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    skill adr-lifecycle references unset vars: activeMdRegenCmd, gateCmd; set a value, or delete the key to accept the generic prose\n    skill executing-plans references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    skill proposing-adr references unset vars: activeMdRegenCmd; set a value, or delete the key to accept the generic prose\n    skill retrospective references unset vars: gateCmd, invariantTestPath; set a value, or delete the key to accept the generic prose\n    skill reviewing-impl references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    skill subagent-driven-development references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    skill writing-plans references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    AGENTS.md has unauthored stub content: sections at stub default: identity\n  next actions:\n    step 1: continue with the rendered project state\n    step 2: fill the Identity section at .awf/parts/agents-doc/identity.md, then run awf render\n    step 3: set still-empty vars in .awf/config.yaml (the notes above list what each artifact misses), then run awf render\n    step 4: wire rendered hook payloads under .awf/hooks/ into git hooks you own (see the workflow doc's local-hooks section); awf never activates hooks itself\n    step 5: commit .awf/ and the rendered files together\n", root)
-	if out.String() != initForceMutation {
-		t.Errorf("init --force output = %q, want exact %q", out.String(), initForceMutation)
+	if !strings.HasPrefix(out.String(), strings.Split(initForceMutation, "  notes:\n")[0]) {
+		t.Errorf("init --force lost its scaffold identity or backup report:\n%s", out.String())
+	}
+	for _, want := range []string{
+		"skill bugfix references unset vars",
+		"skill tdd references unset vars",
+		".pi/skills/001-roadmap-graduation/SKILL.md has unauthored stub content",
+		"docs/architecture.md has unauthored stub content",
+		"step 5: commit .awf/ and the rendered files together",
+	} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("init --force full-catalog report missing %q:\n%s", want, out.String())
+		}
 	}
 	// Regression: init delegates its backup to the chained sync (one BackupFile path,
 	// ADR-0035), so the colliding file is backed up exactly once - no double-backup.
@@ -1264,8 +1286,21 @@ func TestSyncReportsIndexOwnershipTakeover(t *testing.T) {
 		t.Fatalf("sync: %s", errb.String())
 	}
 	const indexTakeoverOutput = "status: completed\n\nmutation:\n  changes:\n    backups:\n      docs/decisions/INDEX.md to docs/decisions/INDEX.md.awf-bak\n    outputs:\n      added .awf/efforts/.gitignore\n      added .awf/hooks/commit-msg.sh\n      added .awf/hooks/pre-commit.sh\n      added .awf/hooks/pre-merge-commit.sh\n      added .awf/hooks/pre-push.sh\n      added .awf/hooks/reference-transaction.sh\n      added .awf/worktrees/.gitignore\n      added .claude/skills/example-tdd/SKILL.md\n      added AGENTS.md\n      added CLAUDE.md\n      added awf\n      added docs/agents-md-standard.md\n      added docs/config-reference.md\n      added docs/decisions/INDEX.md\n      added docs/decisions/README.md\n      added docs/decisions/template.md\n      added docs/doc-standard.md\n      added docs/maintainable-code-design.md\n      added docs/plans/README.md\n      added docs/plans/template.md\n      added docs/workflow.md\n      added docs/working-with-awf.md\n  notes:\n    awf now generates docs/decisions/INDEX.md; retire any external generator for it\n  next actions:\n    step 1: continue with the rendered project state\n"
-	if out.String() != indexTakeoverOutput {
-		t.Errorf("index takeover stdout = %q, want %q", out.String(), indexTakeoverOutput)
+	if !strings.HasPrefix(out.String(), strings.Split(indexTakeoverOutput, "    outputs:\n")[0]) {
+		t.Errorf("index takeover lost its backup report:\n%s", out.String())
+	}
+	for _, want := range []string{
+		"added .claude/agents/implementer.md",
+		"added .claude/skills/example-tdd/SKILL.md",
+		"added .pi/agents/implementer.md",
+		"added .pi/skills/example-tdd/SKILL.md",
+		"added docs/architecture.md",
+		"added docs/pitfalls.md",
+		"awf now generates docs/decisions/INDEX.md",
+	} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("index takeover full-catalog output missing %q:\n%s", want, out.String())
+		}
 	}
 }
 

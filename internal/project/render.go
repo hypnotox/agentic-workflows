@@ -10,6 +10,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/audit"
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/refs"
@@ -112,15 +113,13 @@ func (p *Project) commitScopesDisplay() string {
 	return strings.Join(quoted, ", ")
 }
 
-// effectiveSkills returns the skill names whose files exist on disk under
-// awf's model: exactly the enabled set - closure validation (ADR-0081) makes
-// enabled mean rendered, and local-declared names are hand-maintained but
-// present. The sidecar read stays as the validation choke point Open relies
-// on (amended semantics; formerly enabled minus ADR-0013 doc-gate-suppressed).
+// effectiveSkills returns the full catalog skill set. Phase 2 still admits a
+// configured project-local skill into the effective catalog, including a
+// local-only hand-maintained one, so every catalog member is present.
 func (p *Project) effectiveSkills() (map[string]bool, error) {
 	eff := map[string]bool{}
-	for _, name := range p.Cfg.Skills {
-		if _, err := p.Cfg.Sidecar("skills", name); err != nil { // coverage-ignore: declaration-first planning just parsed this enabled skill sidecar
+	for name := range p.Cat.Skills {
+		if _, err := p.Cfg.Sidecar("skills", name); err != nil { // coverage-ignore: declaration-first planning just parsed this catalog skill sidecar
 			return nil, err
 		}
 		eff[name] = true
@@ -452,7 +451,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	var out []RenderedFile
 	// Neutral: docs render once - the output path is docsDir-relative, not adapter-placed.
 	docsRfs, err := p.renderKind(renderKindSpec{
-		kind: "docs", names: p.Cfg.Docs,
+		kind: "docs", names: catalog.NonMandatoryDocNames(p.Cat),
 		tid:       p.docTID,
 		sections:  func(n string) []string { return p.Cat.Docs[n].Sections },
 		outPath:   func(_ Target, n string) string { return p.docOutPath(n) },
@@ -466,7 +465,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	// Adapter: skills + agents render once per enabled target (inv: multi-target-render).
 	// touches-state: rendering/project-output-plan:multi-target-render - skills/agents render once per enabled target; proof in target_test.go
 	for _, t := range p.Targets {
-		skillNames := p.Cfg.Skills
+		skillNames := slices.Sorted(maps.Keys(p.Cat.Skills))
 		skillPath := func(t Target, n string) string { return t.SkillPath(p.Cfg.Prefix, n) }
 		for _, spec := range []renderKindSpec{
 			{
@@ -477,7 +476,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 				defaults: func(n string) map[string]any { return p.Cat.Skills[n].Data },
 			},
 			{
-				kind: "agents", names: p.Cfg.Agents, target: t,
+				kind: "agents", names: slices.Sorted(maps.Keys(p.Cat.Agents)), target: t,
 				tid:      p.agentTID,
 				sections: func(n string) []string { return p.Cat.Agents[n].Sections },
 				outPath:  func(t Target, n string) string { return t.AgentPath(n) },
@@ -493,7 +492,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 			}
 			out = append(out, rfs...)
 		}
-		for _, targetOutput := range resolvedTargetOutputs(t, p.Cfg.Prefix, p.Cfg.Skills) {
+		for _, targetOutput := range resolvedTargetOutputs(t, p.Cfg.Prefix, skillNames) {
 			if targetOutputs[targetOutput.Path].canonical != t.Name {
 				continue
 			}
@@ -543,8 +542,8 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 		if err != nil {
 			return nil, err
 		}
-		for _, name := range p.Cfg.Docs {
-			if ok, sidecarErr := p.Cfg.HasSidecar("docs", name); sidecarErr != nil { // coverage-ignore: declaration-first planning already read every enabled doc sidecar from the same filesystem invocation
+		for _, name := range slices.Sorted(maps.Keys(p.Cat.Docs)) {
+			if ok, sidecarErr := p.Cfg.HasSidecar("docs", name); sidecarErr != nil { // coverage-ignore: declaration-first planning already read every catalog doc sidecar from the same filesystem invocation
 				return nil, sidecarErr
 			} else if ok {
 				rf.ConsumedInputs = append(rf.ConsumedInputs, OutputInput{Path: config.DirName + "/docs/" + name + ".yaml", Role: ArtifactAuthoredData})

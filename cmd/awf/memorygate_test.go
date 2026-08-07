@@ -98,7 +98,7 @@ func TestMemoryGateScansOnlyDecisionRecords(t *testing.T) {
 	}
 }
 
-func TestMemoryGateFollowsDocsDir(t *testing.T) {
+func TestMemoryGateUsesFixedDocsDir(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	root := memoryGateRepo(t, "docsDir: handbook\n", map[string]string{
@@ -108,10 +108,13 @@ func TestMemoryGateFollowsDocsDir(t *testing.T) {
 	var out strings.Builder
 	err := runMemoryGate(ctx, root, &out)
 	if err == nil {
-		t.Fatal("a custom docsDir must be scanned")
+		t.Fatal("a citation under fixed docs/ must be scanned despite docsDir config")
 	}
-	if strings.Contains(out.String(), "docs/plans/q.md") {
-		t.Errorf("the default docs directory must not be scanned under a custom docsDir: %q", out.String())
+	if !strings.Contains(out.String(), "docs/plans/q.md") {
+		t.Errorf("fixed docs directory was not scanned: %q", out.String())
+	}
+	if strings.Contains(out.String(), "handbook/plans/p.md") {
+		t.Errorf("configured custom docsDir must not affect the scan: %q", out.String())
 	}
 }
 

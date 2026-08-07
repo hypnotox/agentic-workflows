@@ -121,6 +121,8 @@ func TestSweepFlagsLocalArtifactParts(t *testing.T) {
 	})
 	testsupport.WriteFile(t, filepath.Join(root, ".claude/skills/example-tdd/SKILL.md"),
 		"---\nname: example-tdd\ndescription: hand-maintained\n---\nbody\n")
+	testsupport.WriteFile(t, filepath.Join(root, ".pi/skills/example-tdd/SKILL.md"),
+		"---\nname: example-tdd\ndescription: hand-maintained\n---\nbody\n")
 	got := orphanedByPath(checkDrift(t, root))
 	for _, path := range []string{".awf/skills/parts/tdd", ".awf/parts/workflow"} {
 		if got[path] != localPartsDetail {

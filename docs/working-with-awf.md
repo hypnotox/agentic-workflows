@@ -13,7 +13,7 @@ awf always renders self-ignoring `.gitignore` files at `.awf/efforts/` and `.awf
 
 The rendered `commit-msg` payload makes older-format ADR merge authorization definitive only after Git exposes the assembled index, incoming parents, and final message. A refusal preserves the merge for trailer correction and `git commit` retry; `pre-merge-commit` continues to check only its earlier staged evidence.
 
-Core `effort-workflow` is selected in a new untrimmed scaffold. It renders for every enabled target and directs native persistent checkout or context tooling to the exact existing `.awf/worktrees/<slug>` worktree. Existing adopters retain their chosen skills until an owner explicitly runs `awf enable skill effort-workflow`; it does not create a parallel harness-owned worktree or standalone memory.
+Core `effort-workflow` renders for both built-in targets and directs native persistent checkout or context tooling to the exact existing `.awf/worktrees/<slug>` worktree. It does not create a parallel harness-owned worktree or standalone memory.
 
 
 <!-- awf:edit commands: from .awf/parts/working-with-awf/commands.md -->
@@ -87,7 +87,7 @@ phase, or transfers the complete revised phase with completed and remaining work
 verification. Heading-identified tasks, executable projections, and helper returns are not transaction or checkpoint boundaries, and a
 blind task-level successor is forbidden. See this document's Model selection section for the full model-tier definitions. In Pi, omission uses the configured role default and an exact tier reference is supplied only for a deliberate override.
 
-Core `effort-workflow` is selected only by new untrimmed scaffolds. Existing adopter selections remain byte-for-byte stable until their owner explicitly runs `awf enable skill effort-workflow`. The selected core guide renders for every enabled target and directs native persistent checkout or context tooling to the exact existing `.awf/worktrees/<slug>` checkout. Pi additionally derives, rather than selects, `using-effort` and the `awf-effort` extension; non-Pi targets never receive or invoke them, claim activity, or create a parallel harness-owned worktree.
+Core `effort-workflow` renders for both built-in targets and directs native persistent checkout or context tooling to the exact existing `.awf/worktrees/<slug>` checkout. Pi additionally derives `using-effort` and the `awf-effort` extension; non-Pi targets never receive or invoke them, claim activity, or create a parallel harness-owned worktree.
 
 Pi association stays at repository root. `using_effort` directly attaches with an effort slug or detaches with `{detach:true}` and never changes CWD or transfers a conversation. Attached model calls receive the relative owned memory path and, when the fixed directory exists, the managed-worktree path. While associated, prefer the pathless memory tools for complete-document reads, exact Markdown-body edits, and separate `phase` or `next` updates with automatic timestamps; they are a convenience, not workflow authority, so direct file access and ordinary awf commands remain available. Activity and complete Remote Pi metadata are advisory only, never authority or a lock. Optional display suffix publication carries only the effort slug or null, never a routing input or composed name; restart begins detached and local lifecycle degradation is silent.
 

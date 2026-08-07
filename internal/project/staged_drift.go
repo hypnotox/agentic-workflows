@@ -26,8 +26,11 @@ func (p *Project) CheckStagedDrift(ctx context.Context) ([]manifest.Drift, error
 	if err != nil {
 		return nil, err
 	}
-	targets, err := resolveTargets(state.Cfg.Targets)
-	if err != nil {
+	if _, err := resolveTargets(state.Cfg.Targets); err != nil {
+		return nil, err
+	}
+	targets, err := resolveTargets(KnownTargets())
+	if err != nil { // coverage-ignore: configured-target validation succeeded and KnownTargets is exhaustively backed by built-in descriptor tests
 		return nil, err
 	}
 	read := snapshotTreeReader{tree: state.Tree}
@@ -43,7 +46,7 @@ func (p *Project) CheckStagedDrift(ctx context.Context) ([]manifest.Drift, error
 		return nil, err
 	}
 	effective := map[string]bool{}
-	for _, name := range state.Cfg.Skills {
+	for name := range universe.Cat.Skills {
 		effective[name] = true
 	}
 	op, err := universe.outputPlan(ctx, state.Loaded.Corpus, state.Loaded.Topics, effective)

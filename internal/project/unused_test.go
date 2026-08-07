@@ -122,8 +122,10 @@ func TestCheckFlagsLocalSidecarData(t *testing.T) {
 		"skills/tdd.yaml": "local: true\ndata:\n  k: v\n",
 	})
 	// A local: true artifact's file is hand-maintained and must exist on disk.
-	testsupport.WriteFile(t, filepath.Join(root, ".claude/skills/example-tdd/SKILL.md"),
-		"---\nname: example-tdd\ndescription: hand-maintained\n---\nbody\n")
+	for _, path := range []string{".claude/skills/example-tdd/SKILL.md", ".pi/skills/example-tdd/SKILL.md"} {
+		testsupport.WriteFile(t, filepath.Join(root, path),
+			"---\nname: example-tdd\ndescription: hand-maintained\n---\nbody\n")
+	}
 	hits := driftOfKind(checkDrift(t, root), "unused-data")
 	if len(hits) != 1 || !strings.Contains(hits[0].Detail, "local: true renders nothing") {
 		t.Fatalf("want the local-sidecar detail, got %#v", hits)

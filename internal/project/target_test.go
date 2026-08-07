@@ -30,8 +30,9 @@ func TestClaudeTargetPaths(t *testing.T) {
 }
 
 // invariant: rendering/pi-workflows:pi-native-workflow-skills (TestNativePiSkillsAreDiscoverableAndPruned)
+// invariant: rendering/pi-workflows:pi-native-workflow-skills (TestNativePiSkillsAreDiscoverableAndPruned)
 func TestNativePiSkillsAreDiscoverableAndPruned(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: [tdd, local]\nagents: []\ntargets: [pi]\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: [local]\nagents: []\ntargets: [claude]\n", map[string]string{
 		"skills/local.yaml":             "data:\n  description: Local Pi workflow guidance.\n",
 		"skills/parts/local/content.md": "Use this local skill when it fits.\n",
 	})
@@ -39,50 +40,17 @@ func TestNativePiSkillsAreDiscoverableAndPruned(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
-		t.Fatal(err)
-	}
-	standard := filepath.Join(root, ".pi/skills/example-tdd/SKILL.md")
-	local := filepath.Join(root, ".pi/skills/example-local/SKILL.md")
-	for _, path := range []string{standard, local} {
-		if _, err := os.Stat(path); err != nil {
-			t.Fatalf("missing native Pi skill %s: %v", path, err)
-		}
-	}
-	if err := os.WriteFile(configPath(root), []byte("prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\nskills: [local]\nagents: []\ntargets: [pi]\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	p, err = Open(testContext(t), root)
+	files, err := p.RenderAll()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
-		t.Fatal(err)
+	paths := map[string]bool{}
+	for _, f := range files {
+		paths[f.Path] = true
 	}
-	if _, err := os.Stat(standard); !os.IsNotExist(err) {
-		t.Fatalf("disabled standard skill was not pruned: %v", err)
-	}
-	if _, err := os.Stat(local); err != nil {
-		t.Fatalf("enabled local skill was pruned: %v", err)
-	}
-	if err := os.WriteFile(configPath(root), []byte("prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\nskills: [local]\nagents: []\ntargets: [claude]\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	p, err = Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.Sync(); err != nil {
-		t.Fatal(err)
-	}
-	for _, path := range []string{local, filepath.Join(root, ".pi/skills"), filepath.Join(root, ".pi")} {
-		if _, err := os.Stat(path); !os.IsNotExist(err) {
-			t.Errorf("Pi disable did not prune %s: %v", path, err)
-		}
-	}
-	for _, path := range []string{filepath.Join(root, ".pi/awf-workflow"), filepath.Join(root, ".pi/awf-workflows"), filepath.Join(root, ".pi/extensions/awf-telemetry")} {
-		if _, err := os.Stat(path); !os.IsNotExist(err) {
-			t.Errorf("retired Pi output exists at %s: %v", path, err)
+	for _, path := range []string{".claude/skills/example-local/SKILL.md", ".pi/skills/example-local/SKILL.md", ".pi/skills/example-tdd/SKILL.md"} {
+		if !paths[path] {
+			t.Errorf("full catalog missing %s", path)
 		}
 	}
 }
@@ -192,16 +160,6 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 			t.Errorf("using-effort companion missing %q:\n%s", want, usingEffort)
 		}
 	}
-	for _, config := range []string{
-		"prefix: example\nintegrationBranch: main\nskills: [effort-workflow]\nagents: []\ntargets: [claude]\n",
-		"prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n",
-	} {
-		for path, content := range explorationRenderedByPath(t, config) {
-			if strings.Contains(path, "awf-effort") || strings.Contains(path, "using-effort") || strings.Contains(content, "awf-effort") || strings.Contains(content, "using-effort") || strings.Contains(content, "effort_memory_") {
-				t.Errorf("unselected or non-Pi rendering leaked using-effort contract into %s", path)
-			}
-		}
-	}
 }
 
 // invariant: rendering/pi-workflows:pi-effort-memory-tools (TestPiEffortMemoryToolContract)
@@ -231,16 +189,6 @@ func TestPiEffortMemoryToolContract(t *testing.T) {
 	for _, want := range []string{"prefer `effort_memory_read`", "`effort_memory_edit` only for Markdown body changes", "`effort_memory_update` for `phase` or `next`", "timestamps are automatic", "Generic file tools and direct awf commands remain available"} {
 		if !strings.Contains(guidance, want) {
 			t.Errorf("rendered using-effort guidance missing %q", want)
-		}
-	}
-	for _, config := range []string{
-		"prefix: example\nintegrationBranch: main\nskills: [effort-workflow]\nagents: []\ntargets: [claude]\n",
-		"prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n",
-	} {
-		for path, content := range explorationRenderedByPath(t, config) {
-			if strings.Contains(path, "awf-effort") || strings.Contains(path, "using-effort") || strings.Contains(content, "effort_memory_") {
-				t.Errorf("unselected or non-Pi rendering leaked memory tools into %s", path)
-			}
 		}
 	}
 	fallback := renderSkillGolden(t, "using-effort", map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}})
@@ -318,9 +266,19 @@ func TestTargetOutputRenderError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	original := p.Targets[0].Outputs[0].TemplateID
-	defer func() { p.Targets[0].Outputs[0].TemplateID = original }()
-	p.Targets[0].Outputs[0].TemplateID = "missing-target-output.tmpl"
+	var pi *Target
+	for i := range p.Targets {
+		if p.Targets[i].Name == "pi" {
+			pi = &p.Targets[i]
+			break
+		}
+	}
+	if pi == nil || len(pi.Outputs) == 0 {
+		t.Fatal("full built-in targets missing Pi output declarations")
+	}
+	original := pi.Outputs[0].TemplateID
+	defer func() { pi.Outputs[0].TemplateID = original }()
+	pi.Outputs[0].TemplateID = "missing-target-output.tmpl"
 	if _, err := p.RenderAll(); err == nil || !strings.Contains(err.Error(), "missing-target-output") {
 		t.Fatalf("RenderAll error = %v, want missing target-output template", err)
 	}
@@ -337,7 +295,7 @@ func TestPiStructuredExplorationContractRender(t *testing.T) {
 	}
 	claude := explorationRenderedByPath(t, explorationFixtureConfig("claude"))
 	for path, content := range claude {
-		if strings.Contains(path, "/skills/") && (strings.Contains(content, "subagent_grounding") || strings.Contains(content, "subagent_explore")) {
+		if strings.HasPrefix(path, ".claude/skills/") && (strings.Contains(content, "subagent_grounding") || strings.Contains(content, "subagent_explore")) {
 			t.Errorf("Claude target %s leaked Pi dispatch tools", path)
 		}
 	}

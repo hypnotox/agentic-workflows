@@ -207,7 +207,7 @@ func (p *Project) CheckStaged(ctx context.Context) (CurrentStateReport, error) {
 		Provisional: currentstate.OlderIntroductions(before.Universe(), after.Universe(), adr.CurrentFormat()),
 	}
 	report.Coverage = topic.EvaluateCoverage(after.Topics, eligiblePaths(afterTree, afterLock, afterCfg.ContextIgnore), coveragePolicy(afterCfg.CurrentState))
-	plans, planDrift, err := plansFromTree(afterTree, afterCfg.DocsDir)
+	plans, planDrift, err := plansFromTree(afterTree, config.DocsDir)
 	if err != nil { // coverage-ignore: plansFromTree converts every validated plan parse failure into plan drift
 		return CurrentStateReport{}, err
 	}

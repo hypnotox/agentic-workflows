@@ -94,12 +94,14 @@ func TestLocalAgentRendersFromBase(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := findByTID(files, "agents/_base.md.tmpl")
-	if len(got) != 1 { // default target claude only
-		t.Fatalf("expected 1 base agent file, got %d", len(got))
+	if len(got) != len(KnownTargets()) {
+		t.Fatalf("expected one base agent file per built-in target (%d), got %d", len(KnownTargets()), len(got))
 	}
-	for _, want := range []string{"name: my-agent", "Reviews the frobnicator.", "Agent body here."} {
-		if !strings.Contains(got[0].Content, want) {
-			t.Errorf("missing %q in:\n%s", want, got[0].Content)
+	for _, file := range got {
+		for _, want := range []string{"name: my-agent", "Reviews the frobnicator.", "Agent body here."} {
+			if !strings.Contains(file.Content, want) {
+				t.Errorf("missing %q in:\n%s", want, file.Content)
+			}
 		}
 	}
 }

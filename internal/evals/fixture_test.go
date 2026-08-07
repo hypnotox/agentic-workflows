@@ -61,9 +61,31 @@ func fullCatalogConfigForTarget(cat *catalog.Catalog, target string) string {
 	return b.String()
 }
 
-// syncFullCatalog scaffolds the Claude full-catalog fixture for focused evals.
+// syncFullCatalog scaffolds the full-catalog fixture for focused Claude evals.
 func syncFullCatalog(t *testing.T, cat *catalog.Catalog) string {
 	return syncFullCatalogForTarget(t, cat, "claude")
+}
+
+func targetNamed(t *testing.T, targets []project.Target, name string) project.Target {
+	t.Helper()
+	for _, target := range targets {
+		if target.Name == name {
+			return target
+		}
+	}
+	t.Fatalf("requested target %q not rendered in %#v", name, targets)
+	return project.Target{}
+}
+
+func catalogDocPath(root, name string, entry catalog.DocEntry) string {
+	if entry.AgentsDoc {
+		return filepath.Join(root, "AGENTS.md")
+	}
+	path := entry.Path
+	if path == "" {
+		path = name + ".md"
+	}
+	return filepath.Join(root, "docs", filepath.FromSlash(path))
 }
 
 // syncFullCatalogForTarget scaffolds a temp project with the full-catalog
@@ -109,20 +131,28 @@ func TestFullCatalogCoverage(t *testing.T) {
 			if err != nil {
 				t.Fatalf("open initialized project: %v", err)
 			}
-			if len(p.Targets) != 1 {
-				t.Fatalf("targets = %d, want one", len(p.Targets))
+			if len(p.Targets) != 2 {
+				t.Fatalf("targets = %d, want both built-in targets", len(p.Targets))
 			}
-			target := p.Targets[0]
-			for _, s := range sortedKeys(cat.Skills) {
-				path := filepath.Join(root, filepath.FromSlash(target.SkillPath(evalPrefix, s)))
-				if _, err := os.Stat(path); err != nil {
-					t.Errorf("catalog skill %q not rendered: %v", s, err)
+			for _, target := range p.Targets {
+				for _, s := range sortedKeys(cat.Skills) {
+					path := filepath.Join(root, filepath.FromSlash(target.SkillPath(evalPrefix, s)))
+					if _, err := os.Stat(path); err != nil {
+						t.Errorf("%s catalog skill %q not rendered: %v", target.Name, s, err)
+					}
+				}
+				for _, a := range sortedKeys(cat.Agents) {
+					path := filepath.Join(root, filepath.FromSlash(target.AgentPath(a)))
+					if _, err := os.Stat(path); err != nil {
+						t.Errorf("%s catalog agent %q not rendered: %v", target.Name, a, err)
+					}
 				}
 			}
-			for _, a := range sortedKeys(cat.Agents) {
-				path := filepath.Join(root, filepath.FromSlash(target.AgentPath(a)))
+			target := targetNamed(t, p.Targets, targetName)
+			for name, entry := range cat.Docs {
+				path := catalogDocPath(root, name, entry)
 				if _, err := os.Stat(path); err != nil {
-					t.Errorf("catalog agent %q not rendered: %v", a, err)
+					t.Errorf("catalog doc %q not rendered at %s: %v", name, path, err)
 				}
 			}
 			if drift, err := p.Check(testsupport.Context(t)); err != nil || len(drift) != 0 {

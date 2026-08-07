@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -141,6 +142,20 @@ func (r filesystemProjectReader) Paths(prefix string) ([]string, error) {
 // BuildOutputDeclarations enumerates deterministic producer declarations without
 // rendering or materializing the selected tree.
 func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader, adrs adr.Corpus) ([]OutputDeclaration, error) {
+	// Selection arrays remain parseable during the Phase 2 intermediate, and
+	// configured project-local artifacts still derive through their sidecars.
+	// Read every configured declaration even when a malformed name is absent
+	// from the supplied effective catalog so declaration planning fails closed.
+	for _, configured := range []struct {
+		kind  string
+		names []string
+	}{{"skills", cfg.Skills}, {"agents", cfg.Agents}, {"docs", cfg.Docs}} {
+		for _, name := range configured.names {
+			if _, err := cfg.Sidecar(configured.kind, name); err != nil {
+				return nil, err
+			}
+		}
+	}
 	decls := []OutputDeclaration{}
 	add := func(path, tid, who string, inputs []OutputInput, reservation bool) {
 		if path == "" {
@@ -203,7 +218,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		return nil, err
 	}
 	for _, t := range targets {
-		for _, name := range cfg.Skills {
+		for _, name := range slices.Sorted(maps.Keys(cat.Skills)) {
 			sc, err := cfg.Sidecar("skills", name)
 			if err != nil {
 				return nil, err
@@ -224,7 +239,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			}
 			add(t.SkillPath(cfg.Prefix, name), tid, declarer, input, sc.Local)
 		}
-		for _, name := range cfg.Agents {
+		for _, name := range slices.Sorted(maps.Keys(cat.Agents)) {
 			sc, err := cfg.Sidecar("agents", name)
 			if err != nil {
 				return nil, err
@@ -251,7 +266,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		if err := validateTargetOutputRequirements(t, cat); err != nil {
 			return nil, err
 		}
-		for _, o := range resolvedTargetOutputs(t, cfg.Prefix, cfg.Skills) {
+		for _, o := range resolvedTargetOutputs(t, cfg.Prefix, slices.Sorted(maps.Keys(cat.Skills))) {
 			declaredInputs := inputs(o.TemplateID)
 			for _, input := range o.Inputs {
 				declaredInputs = append(declaredInputs, OutputInput(input))
@@ -259,10 +274,8 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			add(o.Path, o.TemplateID, t.Name, declaredInputs, false)
 		}
 	}
-	for name, e := range cat.Docs {
-		if !e.Mandatory && !slices.Contains(cfg.Docs, name) {
-			continue
-		}
+	for _, name := range slices.Sorted(maps.Keys(cat.Docs)) {
+		e := cat.Docs[name]
 		sc, err := cfg.Sidecar(func() string {
 			if e.Mandatory {
 				return name
@@ -282,7 +295,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		if e.AgentsDoc {
 			out = "AGENTS.md"
 		} else if out != "" {
-			out = strings.TrimRight(cfg.DocsDir, "/") + "/" + out
+			out = config.DocsDir + "/" + out
 		}
 		sidecarPath := ".awf/" + name + ".yaml"
 		if !e.Mandatory {
@@ -290,8 +303,10 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		}
 		authored := []OutputInput{{Path: sidecarPath, Role: ArtifactAuthoredData}}
 		if e.AgentsDoc {
-			for _, doc := range cfg.Docs {
-				authored = append(authored, OutputInput{Path: ".awf/docs/" + doc + ".yaml", Role: ArtifactAuthoredData})
+			for _, doc := range slices.Sorted(maps.Keys(cat.Docs)) {
+				if !cat.Docs[doc].Mandatory {
+					authored = append(authored, OutputInput{Path: ".awf/docs/" + doc + ".yaml", Role: ArtifactAuthoredData})
+				}
 			}
 		}
 		authored = append(authored, partInputs(func() string {
@@ -324,7 +339,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			}
 		}
 		domainTID := mustDescriptor("domains").tid(d)
-		add(strings.TrimRight(cfg.DocsDir, "/")+"/domains/"+d+".md", domainTID, "generated-domain", inputs(domainTID, authored...), false)
+		add(config.DocsDir+"/domains/"+d+".md", domainTID, "generated-domain", inputs(domainTID, authored...), false)
 	}
 	allMetadata, err := read.Paths(".awf/topics/metadata/")
 	if err != nil {
@@ -335,7 +350,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			continue
 		}
 		id := strings.TrimSuffix(strings.TrimPrefix(p, ".awf/topics/metadata/"), ".yaml")
-		add(strings.TrimRight(cfg.DocsDir, "/")+"/topics/"+id+".md", topicTID, "topic:"+id, inputs(topicTID, OutputInput{Path: p, Role: ArtifactTopicMetadata}, OutputInput{Path: ".awf/topics/parts/" + id + "/current-state.md", Role: ArtifactClaimPart}), false)
+		add(config.DocsDir+"/topics/"+id+".md", topicTID, "topic:"+id, inputs(topicTID, OutputInput{Path: p, Role: ArtifactTopicMetadata}, OutputInput{Path: ".awf/topics/parts/" + id + "/current-state.md", Role: ArtifactClaimPart}), false)
 	}
 	for _, d := range cfg.Domains {
 		topicInputs := []OutputInput{}
@@ -350,14 +365,14 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			}
 		}
 		if len(topicInputs) > 0 {
-			add(strings.TrimRight(cfg.DocsDir, "/")+"/topics/"+d+"/index.md", topicIndexTID, "topic-index:"+d, inputs(topicIndexTID, topicInputs...), false)
+			add(config.DocsDir+"/topics/"+d+"/index.md", topicIndexTID, "topic-index:"+d, inputs(topicIndexTID, topicInputs...), false)
 		}
 	}
 	decisionInputs := []OutputInput{}
 	for _, record := range adrs.All() {
-		decisionInputs = append(decisionInputs, OutputInput{Path: strings.TrimRight(cfg.DocsDir, "/") + "/decisions/" + record.Filename, Role: ArtifactDecisionRecord})
+		decisionInputs = append(decisionInputs, OutputInput{Path: config.DocsDir + "/decisions/" + record.Filename, Role: ArtifactDecisionRecord})
 	}
-	add(strings.TrimRight(cfg.DocsDir, "/")+"/decisions/INDEX.md", "", "generated-index", inputs("", decisionInputs...), false)
+	add(config.DocsDir+"/decisions/INDEX.md", "", "generated-index", inputs("", decisionInputs...), false)
 	for _, unit := range conditionalUnits() {
 		if !unit.enabled(cfg) {
 			continue
@@ -380,7 +395,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 				}
 			}
 		case catalog.Standard.Docs["config-reference"].TID:
-			decisionIndex := strings.TrimRight(cfg.DocsDir, "/") + "/decisions/INDEX.md"
+			decisionIndex := config.DocsDir + "/decisions/INDEX.md"
 			for _, candidate := range decls {
 				if !candidate.Reservation && candidate.Path != decls[i].Path && candidate.Path != decisionIndex {
 					decls[i].Dependencies = append(decls[i].Dependencies, candidate.Path)
@@ -533,7 +548,7 @@ func (p *Project) targetOutputDeclarations(eff map[string]bool) (map[string]targ
 		if err := validateTargetOutputRequirements(t, p.Cat); err != nil {
 			return nil, err
 		}
-		for _, o := range resolvedTargetOutputs(t, p.Cfg.Prefix, p.Cfg.Skills) {
+		for _, o := range resolvedTargetOutputs(t, p.Cfg.Prefix, slices.Sorted(maps.Keys(p.Cat.Skills))) {
 			src, err := fs.ReadFile(templates.FS, o.TemplateID)
 			if err != nil { // coverage-ignore: TestTargetOutputDeclarationsRejectUnreadableTemplate proves this error; Go's embedded-filesystem profile does not attribute its return block.
 				return nil, fmt.Errorf("read template %s: %w", o.TemplateID, err)
@@ -596,7 +611,7 @@ func (p *Project) outputPlan(ctx context.Context, corpus adr.Corpus, topics topi
 	if err != nil {
 		return nil, err
 	}
-	if err := p.validateLiveTemplates(); err != nil {
+	if err := p.validateLiveTemplates(); err != nil { // coverage-ignore: renderAllBase already resolved every live identity; TestValidateLiveTemplatesRejectsMissingTargetTemplate proves the defensive check
 		return nil, err
 	}
 	plan := &OutputPlan{}

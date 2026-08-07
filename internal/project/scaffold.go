@@ -98,7 +98,6 @@ func scaffoldSelection(cat *catalog.Catalog, trim *config.CatalogTrim) (skillNam
 	// enabled (every one is workflow-essential). No core docs remain -
 	// workflow/doc-standard/agents-md-standard are mandatory singletons
 	// (ADR-0043), not toggleable.
-	// touches-state: rendering/project-output-plan:scaffold-core-only - core-only skill scaffold; proof in scaffold_test.go
 	for name, spec := range cat.Skills {
 		if spec.Core {
 			skillNames = append(skillNames, name)

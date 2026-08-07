@@ -2,7 +2,7 @@
 ## In flight
 
 - [ADR-cli-grammar-expresses-creation-and-inventory: CLI Grammar Expresses Creation And Inventory](cli-grammar-expresses-creation-and-inventory.md) (Proposed)
-- [ADR-house-standard-configuration-expresses-repo-facts-only: House Standard: Configuration Expresses Repo Facts Only](house-standard-configuration-expresses-repo-facts-only.md) (Proposed)
+- [ADR-house-standard-configuration-expresses-repo-facts-only: House Standard: Configuration Expresses Repo Facts Only](house-standard-configuration-expresses-repo-facts-only.md) (Implementing)
 - [ADR-unconditional-gates-and-audit-rules: Unconditional Gates And Audit Rules](unconditional-gates-and-audit-rules.md) (Implementing)
 
 ## History
