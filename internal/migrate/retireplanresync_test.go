@@ -92,7 +92,14 @@ func TestRemovePlanResyncSelectionResolvesAliases(t *testing.T) {
 // invariant: config/migrations-and-locks:retired-plan-resync-selection-migration (TestRetirePlanResyncMigrationReportsAndStamps)
 func TestRetirePlanResyncMigrationReportsAndStamps(t *testing.T) {
 	root := t.TempDir()
-	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "prefix: ex\nintegrationBranch: main\nskills: [reviewing-plan-resync, reviewing-plan, reviewing-plan-resync]\nagents: [plan-reviewer]\n")
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "prefix: ex\nintegrationBranch: main\nvars: {}\nskills: [reviewing-plan-resync, reviewing-plan, reviewing-plan-resync]\nagents: [plan-reviewer]\ndocs: [workflow]\ntargets: [claude]\ndocsDir: docs\n")
+	skillSidecar := filepath.Join(root, ".awf", "skills", "tdd.yaml")
+	docSidecar := filepath.Join(root, ".awf", "docs", "guide.yaml")
+	testsupport.WriteFile(t, skillSidecar, "local: false\npurpose: keep\n")
+	testsupport.WriteFile(t, docSidecar, "local: false\npath: guide.md\n")
+	if err := os.Chmod(skillSidecar, 0o640); err != nil {
+		t.Fatal(err)
+	}
 	stampLockAt(t, filepath.Join(root, ".awf", "awf.lock"), 39)
 	applied, changes, err := Upgrade(context.Background(), root)
 	if err != nil {
@@ -109,6 +116,11 @@ func TestRetirePlanResyncMigrationReportsAndStamps(t *testing.T) {
 		"retire-plan-resync: removed reviewing-plan-resync from skills",
 		"drop-selection: removed skills",
 		"drop-selection: removed agents",
+		"drop-selection: removed docs",
+		"drop-selection: removed targets",
+		"drop-selection: removed docsDir",
+		"drop-selection: removed local from " + filepath.ToSlash(skillSidecar),
+		"drop-selection: removed local from " + filepath.ToSlash(docSidecar),
 		"schema-stamp: updated awf.lock schema version",
 	}) {
 		t.Fatalf("changes = %v", texts)
@@ -117,11 +129,25 @@ func TestRetirePlanResyncMigrationReportsAndStamps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(got), retiredPlanResyncSkill) || strings.Contains(string(got), "skills:") || strings.Contains(string(got), "agents:") {
-		t.Fatalf("config = %s", got)
+	for _, retired := range append([]string{retiredPlanResyncSkill}, selectionRetiredKeys...) {
+		if strings.Contains(string(got), retired) {
+			t.Fatalf("config retained %q: %s", retired, got)
+		}
 	}
 	if _, err := config.Load(filepath.Join(root, ".awf")); err != nil {
 		t.Fatalf("strict-load generation-40 config: %v", err)
+	}
+	for _, sidecar := range []string{skillSidecar, docSidecar} {
+		body, err := os.ReadFile(sidecar)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(body), "local:") {
+			t.Fatalf("sidecar retained local: %s", body)
+		}
+	}
+	if info, err := os.Stat(skillSidecar); err != nil || info.Mode().Perm() != 0o640 {
+		t.Fatalf("skill sidecar mode = %v, %v", info, err)
 	}
 	applied, changes, err = Upgrade(context.Background(), root)
 	if err != nil || len(applied) != 0 || len(changes) != 0 {
@@ -162,14 +188,21 @@ func TestRetirePlanResyncMigrationMalformedIsAtomic(t *testing.T) {
 
 // invariant: config/migrations-and-locks:retired-plan-resync-selection-migration (TestConfigForCurrentSchemaAlwaysRetiresPlanResync)
 func TestConfigForCurrentSchemaAlwaysRetiresPlanResync(t *testing.T) {
-	src := []byte("prefix: ex\nintegrationBranch: main\nskills: [reviewing-plan-resync, reviewing-plan]\nagents: [plan-reviewer]\n")
+	src := []byte("prefix: ex\nintegrationBranch: main\nvars: {}\nskills: [reviewing-plan-resync, reviewing-plan]\nagents: [plan-reviewer]\ndocs: [workflow]\ntargets: [claude]\ndocsDir: docs\n")
 	for from := 1; from <= Current(); from++ {
 		got, err := ConfigForCurrentSchema(src, from)
 		if err != nil {
 			t.Fatalf("from %d: %v", from, err)
 		}
-		if strings.Contains(string(got), retiredPlanResyncSkill) {
-			t.Fatalf("from %d retained selection: %s", from, got)
+		for _, retired := range append([]string{retiredPlanResyncSkill}, selectionRetiredKeys...) {
+			if strings.Contains(string(got), retired) {
+				t.Fatalf("from %d retained %q: %s", from, retired, got)
+			}
+		}
+		root := t.TempDir()
+		testsupport.WriteFile(t, filepath.Join(root, "config.yaml"), string(got))
+		if _, err := config.Load(root); err != nil {
+			t.Fatalf("from %d strict load: %v", from, err)
 		}
 	}
 	aliased := []byte("prefix: ex\nintegrationBranch: main\nskills: [&retired reviewing-plan-resync, *retired, reviewing-plan]\nagents: [plan-reviewer]\nvars:\n  literal: *retired\n")
