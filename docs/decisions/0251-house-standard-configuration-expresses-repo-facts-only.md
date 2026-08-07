@@ -191,6 +191,7 @@ would push the same pressure back into the keys this record retires.
 - update `rendering/doc-outputs:skill-ref-unknown-ignored`
 - update `rendering/doc-outputs:stub-notes-path-keyed`
 - update `rendering/doc-outputs:working-with-awf-mandatory`
+- update `rendering/doc-outputs:opaque-doc-source-guidance`
 - update `rendering/singletons-and-payloads:adr-system-singletons-rendered`
 - update `rendering/singletons-and-payloads:plain-singleton-via-renderkind`
 - update `rendering/singletons-and-payloads:singleton-kinds-complete`
@@ -289,3 +290,4 @@ are removed, rather than here.
 - 2026-08-07: Applied; operations: remove `rendering/templates:local-base-publication-safe`, remove `rendering/templates:local-doc-base-publication-safe`
 - 2026-08-07: Reapplied; operations: add `rendering/project-output-plan:full-catalog-render`, update `rendering/project-output-plan:output-plan-complete`, update `rendering/doc-outputs:working-with-awf-mandatory`, update `rendering/singletons-and-payloads:adr-system-singletons-rendered`, update `rendering/singletons-and-payloads:plain-singleton-via-renderkind`
 - 2026-08-07: Reapplied; operations: update `rendering/sync-and-drift:agent-guide-size-advisory`, update `rendering/sync-and-drift:managed-output-attribution`
+- 2026-08-07: Amended; content-sha256: b8506f282017cd98777bab37d877200c518ba3e6b4161792f6ddc1a49782d965
