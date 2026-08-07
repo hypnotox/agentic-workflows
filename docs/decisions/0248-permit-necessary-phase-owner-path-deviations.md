@@ -39,7 +39,8 @@ paths. A helper cannot know whether widening its assignment violates that owners
    integration.
 
 3. `decision: no-path-classifier` Express the distinction in the existing shared implementation
-   autonomy and implementer contracts, backed by rendered contract tests. Do not introduce a path
+   autonomy and implementer contracts, backed by rendered contract tests. Preserve missingkey-zero
+   behavior and coherent token-free rendering when variables are empty. Do not introduce a path
    policy schema, automated material-scope classifier, runtime permission mechanism, or separate
    deviation ledger.
 
