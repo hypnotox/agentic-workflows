@@ -1,5 +1,5 @@
 {
-  "awfVersion": "0.31.0",
+  "awfVersion": "0.32.0",
   "schemaVersion": 40,
   "files": {
     ".awf/efforts/.gitignore": {

@@ -8,6 +8,8 @@ query a single version or a range.
 
 ## [Unreleased]
 
+## [0.32.0] - 2026-08-07
+
 ### Breaking changes
 
 - Rendering unconditionally emits the complete standard catalog for fixed Claude Code and Pi targets beneath the fixed `docs` root. Schema generation 39 retires the `skills`, `agents`, `docs`, `targets`, and `docsDir` selection keys and the artifact-sidecar `local` field; `bootstrap.enabled` remains conditional.
