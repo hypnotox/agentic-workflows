@@ -125,6 +125,9 @@ func impactFields(impact contextPathImpact, facets []ContextFacet) []presentatio
 	if impact.ADR != nil {
 		adr := impact.ADR
 		nodes = append(nodes, literalField("adr", fmt.Sprintf("ADR-%s | %s | %s | %s", adr.Number, adr.Title, adr.Status, adr.Mutability)), field("authority-role", adr.AuthorityRole))
+		if containsFacet(facets, FacetReferences) && len(adr.LinkedPlans) > 0 {
+			nodes = append(nodes, literalField("linked-plans", strings.Join(adr.LinkedPlans, ", ")))
+		}
 		for _, operation := range adr.Operations {
 			nodes = append(nodes, literalField("operation", fmt.Sprintf("%s | %s | %s | %s", operation.Operation, operation.Claim, operation.Progress, operation.ClaimState)))
 			if operation.Detail != nil && operation.Detail.Current != nil {

@@ -29,6 +29,8 @@ type ContextState struct {
 	Cfg *config.Config
 	// Loaded is the parsed ADR and topic view of that same snapshot.
 	Loaded currentstate.Loaded
+	// PlanState is the parsed plan view and resolved reverse ADR links from that snapshot.
+	PlanState PlanContext
 	// Tree is the snapshot the universe was loaded from.
 	Tree *snapshot.Tree
 	// Lock is the parsed output manifest, nil when the tree carries none.
@@ -63,7 +65,11 @@ func (p *Project) ContextState(ctx context.Context) (ContextState, error) {
 	if err != nil { // coverage-ignore: the snapshot-local catalog and every declaration input were already parsed from this immutable tree
 		return ContextState{}, err
 	}
-	return ContextState{Layout: universe.layout(), Cfg: ws.Cfg, Loaded: ws.Loaded, Tree: ws.Tree, Lock: ws.Lock, Declarations: declarations, Eligible: eligiblePaths(ws.Tree, ws.Lock, ws.Cfg.ContextIgnore)}, nil
+	plans, err := planContextFromTree(ws.Tree, ws.Cfg.DocsDir, ws.Loaded.Corpus)
+	if err != nil { // coverage-ignore: planContextFromTree converts plan parse failures into drift before context construction
+		return ContextState{}, err
+	}
+	return ContextState{Layout: universe.layout(), Cfg: ws.Cfg, Loaded: ws.Loaded, PlanState: plans, Tree: ws.Tree, Lock: ws.Lock, Declarations: declarations, Eligible: eligiblePaths(ws.Tree, ws.Lock, ws.Cfg.ContextIgnore)}, nil
 }
 
 // StagedContextState assembles the index universe at root. It deliberately
@@ -91,7 +97,11 @@ func StagedContextState(ctx context.Context, root string) (ContextState, error) 
 	if err != nil { // coverage-ignore: the staged snapshot-local catalog and every declaration input were already parsed from this immutable tree
 		return ContextState{}, err
 	}
-	return ContextState{Layout: universe.layout(), Cfg: state.Cfg, Loaded: state.Loaded, Tree: state.Tree, Lock: state.Lock, Declarations: declarations, Eligible: eligiblePaths(state.Tree, state.Lock, state.Cfg.ContextIgnore)}, nil
+	plans, err := planContextFromTree(state.Tree, state.Cfg.DocsDir, state.Loaded.Corpus)
+	if err != nil { // coverage-ignore: planContextFromTree converts plan parse failures into drift before context construction
+		return ContextState{}, err
+	}
+	return ContextState{Layout: universe.layout(), Cfg: state.Cfg, Loaded: state.Loaded, PlanState: plans, Tree: state.Tree, Lock: state.Lock, Declarations: declarations, Eligible: eligiblePaths(state.Tree, state.Lock, state.Cfg.ContextIgnore)}, nil
 }
 
 // indexState is one loaded index universe: the parsed ADR/topic view, the Tree

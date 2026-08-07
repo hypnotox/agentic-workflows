@@ -431,8 +431,8 @@
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
       "templateHash": "sha256:9a0c3317f528e24e24920c3a7dc0b57e30764c3dbd9091db3576d837be7af07c",
-      "configHash": "sha256:c968acb9d98e68af66339d6a317d3834062c4cdd7fa46e48615a0e40cfbc9f63",
-      "outputHash": "sha256:c624dfb02310fc9ea09dd6f60122cbcde7cd3d7cbe482d11b8e6d04aed97fe2a"
+      "configHash": "sha256:76573a4b3d28b65945fd6f30fe6e19aa0e27934af63a5985462c21cc333cca24",
+      "outputHash": "sha256:17d3f8a50680f11d8f9a42958147e1c47503384f3bfbcd218c3ef2c0dd239c9d"
     },
     "docs/config-reference.md": {
       "templateId": "",
@@ -445,7 +445,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:273de3bee6c8a5f6972013ae6e61893847aa56a9a44001755603fa4bdc57d171",
+      "outputHash": "sha256:3ca40c47cc51fd6f4c8cc41d966c9395408e95ef166be44a24e9fdeb7b8d4a12",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -823,8 +823,8 @@
     "docs/topics/tooling/context-and-topic.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:868e4af77561996739b9e7cfa90454f53bb59743183884b16f3add7911d9d946",
-      "outputHash": "sha256:ec6583aa6051f89eb17ea0681b531829c6d92cea1fa5d4bf1be37cdec4673956"
+      "configHash": "sha256:78156f364bcaaae50bba6e608accdfb718b375dd256e3b6803871f182a289aa7",
+      "outputHash": "sha256:cc75e031e71f1103f2eaa8b9a1005b82c7b2105e9d9ae41d6fe84e282a560255"
     },
     "docs/topics/tooling/effort-management.md": {
       "templateId": "topics/topic.md.tmpl",

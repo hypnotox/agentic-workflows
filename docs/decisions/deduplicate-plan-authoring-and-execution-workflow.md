@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: deduplicate-plan-authoring-and-execution-workflow
-status: Proposed
+status: Implementing
 date: 2026-08-07
 ---
 # ADR-deduplicate-plan-authoring-and-execution-workflow: Deduplicate Plan Authoring and Execution Workflow
@@ -173,3 +173,5 @@ otherwise reuse would be an assurance reduction rather than deduplication.
 ## Status history
 
 - 2026-08-07: Proposed
+- 2026-08-07: Implementing; content-sha256: 053c394ffd48cb926a2a125babb491a46da7bc393e88b96871e39f2e2da6ff1e
+- 2026-08-07: Applied; operations: add `tooling/context-and-topic:adr-linked-plan-references`

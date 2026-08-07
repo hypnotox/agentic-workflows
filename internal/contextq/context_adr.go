@@ -22,9 +22,10 @@ type adrOperationContext struct {
 type adrArtifactContext struct {
 	Number, Title, Status, Mutability, AuthorityRole string
 	Operations                                       []adrOperationContext
+	LinkedPlans                                      []string
 }
 
-func projectADRArtifact(filePath, decisionsDir string, adrs adr.Corpus, topics topic.Corpus, facets []ContextFacet) *adrArtifactContext {
+func projectADRArtifact(filePath, decisionsDir string, adrs adr.Corpus, topics topic.Corpus, linkedPlans []string, facets []ContextFacet) *adrArtifactContext {
 	prefix := strings.TrimRight(decisionsDir, "/") + "/"
 	if !strings.HasPrefix(filePath, prefix) {
 		return nil
@@ -39,7 +40,10 @@ func projectADRArtifact(filePath, decisionsDir string, adrs adr.Corpus, topics t
 		mutability = "mutable"
 	}
 	identity := record.Identity()
-	out := &adrArtifactContext{Number: identity, Title: trimADRTitle(identity, record.Title), Status: record.Status, Mutability: mutability, AuthorityRole: "pending intent or decision history; not current authority", Operations: []adrOperationContext{}}
+	out := &adrArtifactContext{Number: identity, Title: trimADRTitle(identity, record.Title), Status: record.Status, Mutability: mutability, AuthorityRole: "pending intent or decision history; not current authority", Operations: []adrOperationContext{}, LinkedPlans: []string{}}
+	if slices.Contains(facets, FacetReferences) {
+		out.LinkedPlans = append(out.LinkedPlans, linkedPlans...)
+	}
 	if !slices.Contains(facets, FacetPending) {
 		return out
 	}

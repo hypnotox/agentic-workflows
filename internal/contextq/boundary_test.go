@@ -52,7 +52,7 @@ var movedVocabulary = []string{
 // further (Project, Open, Version) to build fixtures.
 var seamSurface = map[string]bool{
 	"ContextState": true, "StagedContextState": true,
-	"Layout": true, "OutputDeclaration": true,
+	"PlanContext": true, "Layout": true, "OutputDeclaration": true,
 	"ArtifactRole": true, "ArtifactConfig": true, "ArtifactLock": true,
 	"ArtifactManifest": true, "ArtifactTemplate": true, "ArtifactConventionPart": true,
 	"ArtifactAuthoredData": true, "ArtifactTopicMetadata": true, "ArtifactClaimPart": true,

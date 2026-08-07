@@ -17,6 +17,12 @@ Origin: ADR-0148
 Revised-by: ADR-0165
 Backing: test
 
+### `invariant: adr-linked-plan-references`
+
+The references facet on an explicit governed ADR request reports the deterministic repository-relative set of plans whose parsed plan-level links resolve to that ADR, without Markdown scanning, modification-time inference, current-authority promotion, or output on unrelated requests.
+Origin: ADR-deduplicate-plan-authoring-and-execution-workflow
+Backing: test
+
 ### `invariant: context-applicability-navigation`
 
 Topic and context applicability share one evidence model: awf topic --coverage remains the unbounded drilldown for matched paths and marker sites, while the context selectors facet reports owning-domain and topic selector declarations separately, states that both must match, and never lists matched paths.

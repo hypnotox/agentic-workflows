@@ -214,3 +214,24 @@ func TestRenderAllContextBranches(t *testing.T) {
 		t.Fatalf("empty coverage report:\n%s", empty)
 	}
 }
+
+func TestRenderADRLinkedPlansOnlyWithReferences(t *testing.T) {
+	result := ContextResult{Selection: SelectionExplicit, Requests: []contextRequestReport{{
+		Index: 1, Argument: "docs/decisions/0007-example.md", Exact: &contextExactEntry{Path: "docs/decisions/0007-example.md", Context: contextPathImpact{
+			Classification: pathContextIgnored,
+			ADR:            &adrArtifactContext{Number: "0007", Title: "Example", Status: "Proposed", Mutability: "mutable", AuthorityRole: "pending intent or decision history; not current authority", LinkedPlans: []string{"docs/plans/2026-08-01-a.md", "docs/plans/2026-08-02-b.md"}},
+		}},
+	}}}
+	withReferences := RenderContextText(result, "header", []ContextFacet{FacetReferences})
+	if !strings.Contains(withReferences, "linked-plans: docs/plans/2026-08-01-a.md, docs/plans/2026-08-02-b.md") {
+		t.Fatalf("linked plans missing from references output:\n%s", withReferences)
+	}
+	withoutReferences := RenderContextText(result, "header", nil)
+	if strings.Contains(withoutReferences, "linked-plans:") {
+		t.Fatalf("linked plans appeared without references facet:\n%s", withoutReferences)
+	}
+	result.Requests[0].Exact.Context.ADR.LinkedPlans = nil
+	if empty := RenderContextText(result, "header", []ContextFacet{FacetReferences}); strings.Contains(empty, "linked-plans:") {
+		t.Fatalf("empty linked plans rendered:\n%s", empty)
+	}
+}

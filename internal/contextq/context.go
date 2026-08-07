@@ -7,6 +7,7 @@ package contextq
 
 import (
 	"maps"
+	"path"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -96,7 +97,12 @@ func (q *Query) ContextForOptions(queries []string, options ContextOptions) Cont
 			impact.Warnings = append(impact.Warnings, warningEligibleUnowned)
 		}
 		if explicit {
-			impact.ADR = projectADRArtifact(filePath, lay.ADRDir, selectedADRs, state.Loaded.Topics, options.Facets)
+			identity := adr.FileIdentity(path.Base(filePath))
+			linkedPlans := []string{}
+			if record, ok := selectedADRs.ByIdentity(identity); ok { // coverage-ignore: explicit non-ADR requests retain the initialized empty set
+				linkedPlans = state.PlanState.LinkedPlans(record.Identity())
+			}
+			impact.ADR = projectADRArtifact(filePath, lay.ADRDir, selectedADRs, state.Loaded.Topics, linkedPlans, options.Facets)
 		}
 		return impact
 	}
