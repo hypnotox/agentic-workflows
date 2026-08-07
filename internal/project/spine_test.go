@@ -1454,13 +1454,10 @@ func TestOrientingTemplate(t *testing.T) {
 
 // invariant: rendering/workflow-skill-templates:orienting-single-home (TestOrientingSkillContract)
 func TestOrientingSkillContract(t *testing.T) {
-	if !catalog.Standard.Skills["orienting"].Core {
-		t.Fatal("orienting is not a core skill")
-	}
-	// The three consumer skills are enabled so the same render proves both the
-	// single home and the references that replaced their inline copies.
+	// The same render proves both the single home and the references that
+	// replaced the three consumer skills' inline copies.
 	config := func(target string) string {
-		return "prefix: example\nintegrationBranch: main\nskills: [brainstorming, exploring, orienting, proposing-adr, writing-plans]\nagents: [explorer, grounding-checker]\ntargets: [" + target + "]\n"
+		return "prefix: example\nintegrationBranch: main\n"
 	}
 	for _, target := range KnownTargets() {
 		t.Run(target, func(t *testing.T) {
@@ -1877,7 +1874,7 @@ func TestAgentsDocNativeSkillRouter(t *testing.T) {
 		"Preserve the approved design boundary",
 		"docs/maintainable-code-design.md",
 		"make gate",
-		"Use any enabled native skill whose exposed description fits the current work.",
+		"Use any native skill whose exposed description fits the current work.",
 	} {
 		if !strings.Contains(out, phrase) {
 			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
@@ -2303,30 +2300,6 @@ var unsetFallbackCases = []fallbackCase{
 		},
 		ban: []string{"example-reviewing-impl", "example-proposing-adr", "``"},
 	},
-	// invariant: rendering/templates:local-base-publication-safe (skills/_base/SKILL.md.tmpl)
-	{
-		tmpl: "skills/_base/SKILL.md.tmpl",
-		want: []string{
-			"example-local-skill",
-			"A project-local example skill.",
-			"Describe when to use this skill",
-		},
-		ban: []string{"<no value>", "``"},
-	},
-	{
-		tmpl: "agents/_base.md.tmpl",
-		want: []string{
-			"# local-agent",
-			"Describe this agent's role",
-		},
-		ban: []string{"<no value>"},
-	},
-	// invariant: rendering/templates:local-doc-base-publication-safe (docs/_base.md.tmpl)
-	{
-		tmpl: "docs/_base.md.tmpl",
-		want: []string{"Project documentation", "Project-local documentation.", "Replace this with the document body"},
-		ban:  []string{"<no value>"},
-	},
 	// invariant: rendering/workflow-skill-templates:reviewers-report-only (agents/adr-reviewer.md.tmpl)
 	{
 		tmpl: "agents/adr-reviewer.md.tmpl",
@@ -2543,7 +2516,7 @@ func TestRoadmapGraduationTemplate(t *testing.T) {
 // invariant: rendering/guide-and-doc-templates:guide-entry-point-routing (TestGuideOmitsLocalAndStandardSkillMetadata)
 func TestGuideOmitsLocalAndStandardSkillMetadata(t *testing.T) {
 	const localDescription = "Route ultraviolet nebula work through its native procedure."
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: [brainstorming, bugfix, nebula-router]\nagents: [grounding-checker]\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
 		"skills/nebula-router.yaml": "data:\n  description: " + localDescription + "\n",
 	})
 	p, err := Open(testContext(t), root)

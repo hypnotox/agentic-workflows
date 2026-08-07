@@ -1,6 +1,7 @@
 package topic
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -26,6 +27,13 @@ func coverageCorpus() Corpus {
 		{ID: TopicID{"core", "rules"}, Metadata: Metadata{Paths: []string{"internal/app/**"}}, Claims: []Claim{{ID: "core/rules:a"}}},
 		{ID: TopicID{"core", "empty"}, Metadata: Metadata{Paths: []string{"internal/lib/**"}}},
 		{ID: TopicID{"core", "empty2"}, Metadata: Metadata{Paths: []string{"internal/lib/**"}}},
+		{ID: TopicID{"core", "empty3"}, Metadata: Metadata{Paths: []string{"internal/lib/**"}}},
+		{ID: TopicID{"core", "empty4"}, Metadata: Metadata{Paths: []string{"internal/lib/**"}}},
+		{ID: TopicID{"core", "empty5"}, Metadata: Metadata{Paths: []string{"internal/lib/**"}}},
+		{ID: TopicID{"core", "empty6"}, Metadata: Metadata{Paths: []string{"internal/lib/**"}}},
+		{ID: TopicID{"core", "empty7"}, Metadata: Metadata{Paths: []string{"internal/lib/**"}}},
+		{ID: TopicID{"core", "empty8"}, Metadata: Metadata{Paths: []string{"internal/lib/**"}}},
+		{ID: TopicID{"core", "empty9"}, Metadata: Metadata{Paths: []string{"internal/lib/**"}}},
 		{ID: TopicID{"core", "glob"}, Metadata: Metadata{Applies: "global"}},
 		{ID: TopicID{"overlap", "extra"}, Metadata: Metadata{Paths: []string{"internal/app/**"}}, Claims: []Claim{{ID: "overlap/extra:a"}}},
 	}
@@ -38,12 +46,11 @@ func TestEvaluateCoverage(t *testing.T) {
 	paths := []string{"internal/app/y.go", "internal/lib/x.go", "bare/z.go", "shared/a.go", "README.md"}
 
 	// internal/lib/x.go is both uncovered (only claimless topics) and over the
-	// fan-out budget, so its two findings exercise the kind tie-break in the sort.
-	got := EvaluateCoverage(c, paths, CoveragePolicy{Coverage: true, Fanout: true, MaxTopicsPerPath: 1})
+	// fixed fan-out budget, so its two findings exercise the kind tie-break in the sort.
+	got := EvaluateCoverage(c, paths, CoveragePolicy{Coverage: true, Fanout: true})
 	want := []CoverageFinding{
 		{Path: "bare/z.go", Domain: "bare", Kind: Uncovered, Severity: severity.Error},
-		{Path: "internal/app/y.go", Kind: Fanout, Severity: severity.Warn, Topics: 2},
-		{Path: "internal/lib/x.go", Kind: Fanout, Severity: severity.Warn, Topics: 2},
+		{Path: "internal/lib/x.go", Kind: Fanout, Severity: severity.Warn, Topics: 9},
 		{Path: "internal/lib/x.go", Domain: "core", Kind: Uncovered, Severity: severity.Error},
 		{Path: "shared/a.go", Domain: "d1", Kind: Uncovered, Severity: severity.Error},
 		{Path: "shared/a.go", Domain: "d2", Kind: Uncovered, Severity: severity.Error},
@@ -54,18 +61,14 @@ func TestEvaluateCoverage(t *testing.T) {
 
 	// Requesting fan-out only produces no Uncovered finding, even though four
 	// paths are uncovered: an unrequested check does not run.
-	got = EvaluateCoverage(c, paths, CoveragePolicy{Coverage: false, Fanout: true, MaxTopicsPerPath: 1})
-	want = []CoverageFinding{
-		{Path: "internal/app/y.go", Kind: Fanout, Severity: severity.Warn, Topics: 2},
-		{Path: "internal/lib/x.go", Kind: Fanout, Severity: severity.Warn, Topics: 2},
-	}
+	got = EvaluateCoverage(c, paths, CoveragePolicy{Coverage: false, Fanout: true})
+	want = []CoverageFinding{{Path: "internal/lib/x.go", Kind: Fanout, Severity: severity.Warn, Topics: 9}}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("fan-out only:\n got %#v\nwant %#v", got, want)
 	}
 
-	// Requesting coverage only produces no Fanout finding, even though two paths
-	// exceed the budget of 1.
-	got = EvaluateCoverage(c, paths, CoveragePolicy{Coverage: true, Fanout: false, MaxTopicsPerPath: 1})
+	// Requesting coverage only produces no Fanout finding.
+	got = EvaluateCoverage(c, paths, CoveragePolicy{Coverage: true, Fanout: false})
 	want = []CoverageFinding{
 		{Path: "bare/z.go", Domain: "bare", Kind: Uncovered, Severity: severity.Error},
 		{Path: "internal/lib/x.go", Domain: "core", Kind: Uncovered, Severity: severity.Error},
@@ -76,13 +79,37 @@ func TestEvaluateCoverage(t *testing.T) {
 		t.Fatalf("coverage only:\n got %#v\nwant %#v", got, want)
 	}
 
-	// A generous budget leaves no fan-out finding; requesting neither check
-	// yields nothing at all.
-	if got := EvaluateCoverage(c, []string{"internal/app/y.go"}, CoveragePolicy{Coverage: true, Fanout: true, MaxTopicsPerPath: 8}); len(got) != 0 {
-		t.Fatalf("generous budget: %#v", got)
-	}
-	if got := EvaluateCoverage(c, paths, CoveragePolicy{Coverage: false, Fanout: false, MaxTopicsPerPath: 1}); len(got) != 0 {
+	// Requesting neither check yields nothing at all.
+	if got := EvaluateCoverage(c, paths, CoveragePolicy{Coverage: false, Fanout: false}); len(got) != 0 {
 		t.Fatalf("neither check requested: %#v", got)
+	}
+}
+
+// invariant: invariants/topics-and-markers:fan-out-budget-fixed (TestEvaluateCoverageFanoutBoundary)
+func TestEvaluateCoverageFanoutBoundary(t *testing.T) {
+	corpus := func(count int) Corpus {
+		c := Corpus{DomainPaths: map[string][]string{"core": {"internal/**"}}}
+		for i := range count {
+			path := "internal/**"
+			if i%2 == 0 {
+				path = "internal/app/**"
+			}
+			c.all = append(c.all, Topic{
+				ID:       TopicID{"core", fmt.Sprintf("topic-%d", i)},
+				Metadata: Metadata{Paths: []string{path}},
+				Claims:   []Claim{{ID: fmt.Sprintf("core/topic-%d:claim", i)}},
+			})
+		}
+		return c
+	}
+	policy := CoveragePolicy{Fanout: true}
+	if got := EvaluateCoverage(corpus(8), []string{"internal/app/x.go"}, policy); len(got) != 0 {
+		t.Fatalf("eight matching topics exceeded the fixed budget: %#v", got)
+	}
+	got := EvaluateCoverage(corpus(9), []string{"internal/app/x.go"}, policy)
+	want := []CoverageFinding{{Path: "internal/app/x.go", Kind: Fanout, Severity: severity.Warn, Topics: 9}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("nine matching topics:\n got %#v\nwant %#v", got, want)
 	}
 }
 

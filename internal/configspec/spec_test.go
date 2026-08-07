@@ -5,8 +5,6 @@ import (
 	"io/fs"
 	"reflect"
 	"regexp"
-	"slices"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -227,7 +225,6 @@ func TestCurrentStateKeysPublished(t *testing.T) {
 		"currentState.sources[].marker",
 		"currentState.sources[].close",
 		"currentState.testGlobs",
-		"currentState.maxTopicsPerPath",
 	} {
 		entry, ok := got[path]
 		if !ok {
@@ -290,12 +287,9 @@ func TestConfigspecDataParity(t *testing.T) {
 	for name, spec := range catalog.Standard.Skills {
 		collect("skills", name, "skills/"+name+"/SKILL.md.tmpl", spec.Data)
 	}
-	collect("skills", "_base", "skills/_base/SKILL.md.tmpl", nil)
 	for name, spec := range catalog.Standard.Agents {
 		collect("agents", name, "agents/"+name+".md.tmpl", spec.Data)
 	}
-	collect("agents", "_base", "agents/_base.md.tmpl", nil)
-	collect("docs", "_base", "docs/_base.md.tmpl", nil)
 	for name, e := range catalog.Standard.Docs {
 		if e.Generated { // the config reference's collections are injected, not adopter-settable
 			continue
@@ -388,24 +382,5 @@ func TestConfigspecDescriptionResidue(t *testing.T) {
 	}
 	for _, d := range DataKeys() {
 		check(fmt.Sprintf("data key %s/%s.%s", d.Kind, d.Artifact, d.Key), d.Description)
-	}
-}
-
-// TestConfigspecAuditDefaultsPinned keeps the prose defaults for the numeric
-// audit knobs equal to the resolver's actual defaults.
-func TestConfigspecAuditDefaultsPinned(t *testing.T) {
-	defaults := audit.Resolve(nil)
-	byPath := map[string]Entry{}
-	for _, e := range Keys() {
-		byPath[e.Path] = e
-	}
-	if want := strconv.Itoa(defaults.SubjectMaxLength); !strings.Contains(byPath["audit.subjectMaxLength"].Default, want) {
-		t.Errorf("audit.subjectMaxLength default prose %q does not carry the resolver default %s", byPath["audit.subjectMaxLength"].Default, want)
-	}
-	if want := strconv.Itoa(defaults.DiffThreshold); !strings.Contains(byPath["audit.diffThreshold"].Default, want) {
-		t.Errorf("audit.diffThreshold default prose %q does not carry the resolver default %s", byPath["audit.diffThreshold"].Default, want)
-	}
-	if !slices.Contains(defaults.AllowedTypes, "feat") {
-		t.Error("resolver default types lost feat; update the audit.allowedTypes default prose")
 	}
 }

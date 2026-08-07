@@ -3,7 +3,6 @@ package project
 import (
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
@@ -23,17 +22,17 @@ func (p *Project) validateAgainstCatalog() error {
 		}
 	}
 	// Domain sidecars are paths-only (ADR-0086 Decision 5): domain rendering
-	// passes an empty sidecar and injects its own data map, so an authored
-	// data:, sections:, or local: entry silently does nothing - and the
-	// domain template's own .data.domain reference would mask a data: block
+	// passes an empty sidecar and injects its own data map, so authored data:
+	// or sections: silently does nothing - and the domain template's own
+	// .data.domain reference would mask a data: block
 	// from the consumption check.
 	for _, name := range p.Cfg.Domains {
 		sc, err := p.Cfg.Sidecar("domains", name)
 		if err != nil {
 			return err
 		}
-		if len(sc.Data) > 0 || len(sc.DataDefaults) > 0 || len(sc.Sections) > 0 || sc.Local {
-			return fmt.Errorf("domain %q: a domain sidecar is paths-only; nothing reads data:, dataDefaults:, sections:, or local: on it; remove them from .awf/domains/%s.yaml", name, name)
+		if len(sc.Data) > 0 || len(sc.DataDefaults) > 0 || len(sc.Sections) > 0 {
+			return fmt.Errorf("domain %q: a domain sidecar is paths-only; nothing reads data:, dataDefaults:, or sections: on it; remove them from .awf/domains/%s.yaml", name, name)
 		}
 	}
 	// agents-doc section overrides against catalog (always-on singleton).
@@ -47,10 +46,8 @@ func (p *Project) validateAgainstCatalog() error {
 	if err := validateCatalogListData("agents-doc.yaml", ad, p.Cat.Docs["agents-doc"].Data); err != nil {
 		return err
 	}
-	if !ad.Local {
-		if err := checkSectionsAllowed("agents-doc", "", p.Cat.Docs["agents-doc"].Sections, ad.Sections); err != nil {
-			return err
-		}
+	if err := checkSectionsAllowed("agents-doc", "", p.Cat.Docs["agents-doc"].Sections, ad.Sections); err != nil {
+		return err
 	}
 	for _, sg := range plainSingletons {
 		sc, err := p.Cfg.Sidecar(sg.kind, "")
@@ -63,10 +60,8 @@ func (p *Project) validateAgainstCatalog() error {
 		if err := validateCatalogListData(sg.kind+".yaml", sc, p.Cat.Docs[sg.kind].Data); err != nil {
 			return err
 		}
-		if !sc.Local {
-			if err := checkSectionsAllowed(sg.kind, "", sg.sections(p.Cat), sc.Sections); err != nil {
-				return err
-			}
+		if err := checkSectionsAllowed(sg.kind, "", sg.sections(p.Cat), sc.Sections); err != nil {
+			return err
 		}
 	}
 	// The config reference's data namespace is injected at generation
@@ -78,54 +73,26 @@ func (p *Project) validateAgainstCatalog() error {
 		return err
 	}
 	if len(cr.Data) > 0 || len(cr.DataDefaults) > 0 {
-		return errors.New("config-reference: the reference tables are generated; data: and dataDefaults: have no effect; remove them from .awf/config-reference.yaml (sections:/local: remain available)")
+		return errors.New("config-reference: the reference tables are generated; data: and dataDefaults: have no effect; remove them from .awf/config-reference.yaml (sections: remains available)")
 	}
 	if len(cr.Paths) > 0 {
 		return errors.New("config-reference: paths: is read only from domain sidecars; remove it from .awf/config-reference.yaml")
 	}
-	if !cr.Local {
-		if err := checkSectionsAllowed("config-reference", "", p.Cat.Docs["config-reference"].Sections, cr.Sections); err != nil {
-			return err
-		}
+	if err := checkSectionsAllowed("config-reference", "", p.Cat.Docs["config-reference"].Sections, cr.Sections); err != nil {
+		return err
 	}
 	return nil
 }
 
-// checkKindAgainstCatalog verifies every enabled non-local target of a
-// catalog-backed kind is in the catalog and that its sidecar section overrides
-// name declared sections.
+// checkKindAgainstCatalog validates every catalog artifact's shaping sidecar.
 func (p *Project) checkKindAgainstCatalog(d kindDescriptor) error {
-	pool := d.poolNames(p.Cat)
-	for _, name := range d.enable(p.Cfg) {
+	for _, name := range d.poolNames(p.Cat) {
 		sc, err := p.Cfg.Sidecar(d.Plural, name)
 		if err != nil {
 			return err
 		}
-		// Inert-field rejection (ADR-0086 Decision 5): paths: is read only from
-		// domain sidecars (ADR-0077), so on any other kind it is configuration
-		// that silently does nothing. Checked before the local: skip - a local
-		// sidecar cannot carry it either.
 		if len(sc.Paths) > 0 {
 			return fmt.Errorf("%s %q: paths: is read only from domain sidecars; remove it from .awf/%s/%s.yaml", d.Singular, name, d.Plural, name)
-		}
-		if sc.Local {
-			if len(sc.DataDefaults) > 0 {
-				return fmt.Errorf("%s/%s.yaml dataDefaults is invalid for a local-only artifact", d.Plural, name)
-			}
-			continue
-		}
-		if !slices.Contains(pool, name) {
-			return fmt.Errorf("%s %q is not in the catalog", d.Singular, name)
-		}
-		// Closure validation (ADR-0081): every enabled, non-local artifact's
-		// direct catalog requirements are enabled - transitive closure follows
-		// by induction. Generalizes the ADR-0050 RequiresAgent pairing (that
-		// edge is now one case of the same loop); a silently-thinner chain is
-		// the failure mode the workflow exists to prevent.
-		if d.Plural == "skills" || d.Plural == "agents" {
-			if err := p.checkNodeRequirements(catalog.Node{Kind: d.Singular, Name: name}); err != nil {
-				return err
-			}
 		}
 		if err := validateCatalogListData(d.Plural+"/"+name+".yaml", sc, catalogData(p.Cat, d.Plural, name), specializedListDataKeys(d.Plural, name)...); err != nil {
 			return err
@@ -183,32 +150,6 @@ func validateCatalogListData(sidecar string, sc config.Sidecar, defaults map[str
 	return nil
 }
 
-// checkNodeRequirements fails when any of n's direct catalog requirements is
-// not enabled, with a repair hint naming the exact edit and awf upgrade as
-// the pre-migration recovery path (ADR-0081 Decision 3).
-func (p *Project) checkNodeRequirements(n catalog.Node) error {
-	for _, r := range catalog.RequiresOf(p.Cat, n) {
-		if !p.nodeEnabled(r) {
-			return fmt.Errorf("%s %q requires %s %q; add it to %s: in .awf/config.yaml (or run `awf upgrade` after a binary upgrade), or remove the %s",
-				n.Kind, n.Name, r.Kind, r.Name, r.Kind+"s", n.Kind)
-		}
-	}
-	return nil
-}
-
-// nodeEnabled reports whether n appears in its kind's config enable array.
-func (p *Project) nodeEnabled(n catalog.Node) bool {
-	switch n.Kind {
-	case "skill":
-		return slices.Contains(p.Cfg.Skills, n.Name)
-	case "agent":
-		return slices.Contains(p.Cfg.Agents, n.Name)
-	case "doc":
-		return slices.Contains(p.Cfg.Docs, n.Name)
-	}
-	return false
-}
-
 // checkSectionsAllowed verifies that every key in used appears in declared.
 // kind and name are used only for error formatting; name may be empty for a
 // singleton (e.g. agents-doc).
@@ -229,28 +170,11 @@ func checkSectionsAllowed(kind, name string, declared []string, used map[string]
 	return nil
 }
 
-// validateCommandWiring fails sync and check when the rendered hook payloads
-// could not resolve their commands (ADR-0156 Decision 5): an enabled hooks
-// singleton needs a project gate command, and with the runner singleton
-// disabled the two surviving hook-referenced awf-verb vars must be set
-// explicitly. It is
-// deliberately not wired into awf init's scaffold sync (a fresh init with an
-// empty interactive gateCmd answer must not hard-fail) or the staged index
-// check (the working-tree check in the same gate run covers the config).
+// validateCommandWiring binds the always-rendered payloads' gate command at
+// sync and check, but not init or the staged index check.
 func validateCommandWiring(cfg *config.Config) error {
-	if cfg.Hooks == nil || !cfg.Hooks.Enabled {
-		return nil
-	}
 	if commandVarUnset(cfg, "gateCmd") {
-		return errors.New("hooks.enabled requires vars.gateCmd: the rendered hook payloads run the project gate; set vars.gateCmd in .awf/config.yaml")
-	}
-	if cfg.Runner != nil && cfg.Runner.Enabled {
-		return nil
-	}
-	for _, name := range []string{"checkCmd", "commitGateCmd"} {
-		if commandVarUnset(cfg, name) {
-			return fmt.Errorf("hooks.enabled without the runner singleton requires vars.%s: set it in .awf/config.yaml or enable the runner (awf enable runner)", name)
-		}
+		return errors.New("rendered hook payloads require vars.gateCmd: set it in .awf/config.yaml")
 	}
 	return nil
 }
@@ -293,17 +217,4 @@ func validateFrontmatter(content []byte) error {
 // filename suffix. This keeps policy routing independent of path spelling.
 func validateArtifact(content []byte, _ AgentDialect) error {
 	return validateFrontmatter(content)
-}
-
-// localOutPaths returns the conventional output paths for a local artifact.
-func (p *Project) localOutPaths(kind, name string) []string {
-	d, ok := descriptorByPlural(kind)
-	if !ok || d.outPath == nil {
-		return nil
-	}
-	paths := make([]string, 0, len(p.Targets))
-	for _, t := range p.Targets {
-		paths = append(paths, d.outPath(t, p.Cfg.Prefix, name))
-	}
-	return paths
 }

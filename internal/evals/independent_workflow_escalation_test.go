@@ -104,12 +104,9 @@ func TestIndependentWorkflowEscalation(t *testing.T) {
 				"evaluate brainstorming, continuity/effort, grounding, ADR, plan, and implementation-review need independently", "load-bearing", "sequencing, coordination, or resumability", "Each written artifact gets a fresh-context review", "line count", "artifact type")
 			assertContainsAll(t, target+" workflow ownership", workflow,
 				"No line count, artifact type, or another mechanism firing selects a trigger", "parent owns inline integration", "one independently green coherent implementation transaction", "A checkpoint never creates an effort", "routine implementation checkpoint occurs only after a phase's closing commit has received report-only review")
-			if target == "pi" {
-				assertContainsAll(t, target+" session handoff", workflow,
-					"After a persisted formal phase or approval checkpoint", "requests replacement", "## Handoff log", "continuation, cancellation, or failure that leaves the old session active appends none")
-			} else if strings.Contains(workflow, "requests replacement") {
-				t.Errorf("%s workflow leaks Pi session-replacement behavior", target)
-			}
+			// docs/workflow.md is a shared fixed-docs artifact, not a target output.
+			// Target-specific workflow assertions above inspect only the requested
+			// target's rendered skills and agents.
 		})
 	}
 }

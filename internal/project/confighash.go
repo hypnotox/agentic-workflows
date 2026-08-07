@@ -1,7 +1,6 @@
 package project
 
 import (
-	"maps"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -28,7 +27,7 @@ func (p *Project) consumedParts(kind, artifact string, plan map[string]render.Se
 // artifactConfigHash projects the drift signal onto one rendered file: the prefix, the
 // subset of vars the assembled template references, the artifact's sidecar (marshalled),
 // and the bytes of every convention part it consumed - in deterministic order.
-func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPaths []string, eff map[string]bool, targets ...Target) (string, error) {
+func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPaths []string, _ map[string]bool, targets ...Target) (string, error) {
 	refs := render.ReferencedVars(assembled)
 	proj := map[string]any{
 		"prefix": p.Cfg.Prefix,
@@ -58,12 +57,6 @@ func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPa
 		// outputs and adopters with no policy byte-stable.
 		proj["commitPolicy"] = p.Cfg.CommitPolicy
 	}
-	if render.ReferencesSkills(assembled) {
-		// A template that reads .skills re-renders when the enable array
-		// changes; folding the effective set in flags it stale (ADR-0046).
-		// touches-state: rendering/sync-and-drift:skills-set-in-confighash - folds the effective skills set into ConfigHash; proof in drift_test.go
-		proj["skills"] = slices.Sorted(maps.Keys(eff))
-	}
 	// A template that reads .commitScopes re-renders when audit.allowedScopes
 	// changes; folding the resolved list in flags it stale (ADR-0051).
 	foldScopes := render.ReferencesScopes(assembled)
@@ -92,7 +85,7 @@ func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPa
 	}
 	proj["parts"] = parts
 	if foldScopes {
-		proj["commitScopes"] = audit.Resolve(p.Cfg.Audit).AllowedScopes
+		proj["commitScopes"] = audit.Resolve(config.AuditScopes(p.Cfg.Audit)).AllowedScopes
 	}
 	enc, err := yaml.Marshal(proj)
 	if err != nil { // coverage-ignore: proj holds only YAML-sourced, marshalable values; yaml.Marshal cannot fail here

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -61,7 +62,6 @@ type OutputDeclaration struct {
 	Declarers    []string
 	Inputs       []OutputInput
 	Dependencies []string
-	Reservation  bool
 }
 
 type snapshotTreeReader struct{ tree *snapshot.Tree }
@@ -142,7 +142,7 @@ func (r filesystemProjectReader) Paths(prefix string) ([]string, error) {
 // rendering or materializing the selected tree.
 func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader, adrs adr.Corpus) ([]OutputDeclaration, error) {
 	decls := []OutputDeclaration{}
-	add := func(path, tid, who string, inputs []OutputInput, reservation bool) {
+	add := func(path, tid, who string, inputs []OutputInput) {
 		if path == "" {
 			return
 		}
@@ -151,13 +151,13 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			inputs[i].Path = filepath.ToSlash(filepath.Clean(inputs[i].Path))
 		}
 		for i := range decls {
-			if decls[i].Path == path && decls[i].TemplateID == tid && decls[i].Reservation == reservation {
+			if decls[i].Path == path && decls[i].TemplateID == tid {
 				decls[i].Declarers = append(decls[i].Declarers, who)
 				decls[i].Inputs = append(decls[i].Inputs, inputs...)
 				return
 			}
 		}
-		decls = append(decls, OutputDeclaration{Path: path, TemplateID: tid, Declarers: []string{who}, Inputs: inputs, Reservation: reservation})
+		decls = append(decls, OutputDeclaration{Path: path, TemplateID: tid, Declarers: []string{who}, Inputs: inputs})
 	}
 	configInput := []OutputInput{{Path: ".awf/config.yaml", Role: ArtifactConfig}}
 	var readErr error
@@ -198,71 +198,41 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		}
 		return out
 	}
-	agentsDoc, err := cfg.Sidecar("agents-doc", "")
-	if err != nil {
-		return nil, err
-	}
 	for _, t := range targets {
-		for _, name := range cfg.Skills {
+		for _, name := range slices.Sorted(maps.Keys(cat.Skills)) {
 			sc, err := cfg.Sidecar("skills", name)
 			if err != nil {
 				return nil, err
 			}
 			tid := mustDescriptor("skills").tid(name)
-			sections := []string{"content"}
-			if spec, ok := cat.Skills[name]; ok {
-				sections = spec.Sections
-				if spec.Base {
-					tid = baseTID("skills")
-				}
-			}
+			sections := cat.Skills[name].Sections
 			input := inputs(tid, append([]OutputInput{{Path: ".awf/skills/" + name + ".yaml", Role: ArtifactAuthoredData}}, partInputs("skills", name, sections, sc.Sections)...)...)
-			declarer := t.Name
-			if sc.Local {
-				declarer = "skills:" + name
-				tid, input = "", nil
-			}
-			add(t.SkillPath(cfg.Prefix, name), tid, declarer, input, sc.Local)
+			add(t.SkillPath(cfg.Prefix, name), tid, t.Name, input)
 		}
-		for _, name := range cfg.Agents {
+		for _, name := range slices.Sorted(maps.Keys(cat.Agents)) {
 			sc, err := cfg.Sidecar("agents", name)
 			if err != nil {
 				return nil, err
 			}
 			tid := mustDescriptor("agents").tid(name)
-			sections := []string{"content"}
-			if spec, ok := cat.Agents[name]; ok {
-				sections = spec.Sections
-				if spec.Base {
-					tid = baseTID("agents")
-				}
-			}
+			sections := cat.Agents[name].Sections
 			input := inputs(tid, append([]OutputInput{{Path: ".awf/agents/" + name + ".yaml", Role: ArtifactAuthoredData}}, partInputs("agents", name, sections, sc.Sections)...)...)
-			declarer := t.Name
-			if sc.Local {
-				declarer = "agents:" + name
-				tid, input = "", nil
-			}
-			add(t.AgentPath(name), tid, declarer, input, sc.Local)
+			add(t.AgentPath(name), tid, t.Name, input)
 		}
-		if !agentsDoc.Local {
-			add(t.BridgeFile, t.BridgeTemplate, t.BridgeTemplate, inputs(t.BridgeTemplate), false)
-		}
+		add(t.BridgeFile, t.BridgeTemplate, t.BridgeTemplate, inputs(t.BridgeTemplate))
 		if err := validateTargetOutputRequirements(t, cat); err != nil {
 			return nil, err
 		}
-		for _, o := range resolvedTargetOutputs(t, cfg.Prefix, cfg.Skills) {
+		for _, o := range resolvedTargetOutputs(t, cfg.Prefix, slices.Sorted(maps.Keys(cat.Skills))) {
 			declaredInputs := inputs(o.TemplateID)
 			for _, input := range o.Inputs {
 				declaredInputs = append(declaredInputs, OutputInput(input))
 			}
-			add(o.Path, o.TemplateID, t.Name, declaredInputs, false)
+			add(o.Path, o.TemplateID, t.Name, declaredInputs)
 		}
 	}
-	for name, e := range cat.Docs {
-		if !e.Mandatory && !slices.Contains(cfg.Docs, name) {
-			continue
-		}
+	for _, name := range slices.Sorted(maps.Keys(cat.Docs)) {
+		e := cat.Docs[name]
 		sc, err := cfg.Sidecar(func() string {
 			if e.Mandatory {
 				return name
@@ -272,17 +242,17 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		if err != nil {
 			return nil, err
 		}
-		if _, standard := catalog.Standard.Docs[name]; standard && sc.Local {
-			continue
-		}
-		out := e.Path
-		if !e.Mandatory && out == "" {
-			out = name + ".md"
+		// Output shape is catalog structure, independent of Mandatory. AgentsDoc
+		// owns the root guide, Path owns a structural docs output, and an empty
+		// Path is a name-derived doc. Mandatory only selects sidecar location.
+		out := name + ".md"
+		if e.Path != "" {
+			out = e.Path
 		}
 		if e.AgentsDoc {
 			out = "AGENTS.md"
-		} else if out != "" {
-			out = strings.TrimRight(cfg.DocsDir, "/") + "/" + out
+		} else {
+			out = config.DocsDir + "/" + out
 		}
 		sidecarPath := ".awf/" + name + ".yaml"
 		if !e.Mandatory {
@@ -290,8 +260,10 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		}
 		authored := []OutputInput{{Path: sidecarPath, Role: ArtifactAuthoredData}}
 		if e.AgentsDoc {
-			for _, doc := range cfg.Docs {
-				authored = append(authored, OutputInput{Path: ".awf/docs/" + doc + ".yaml", Role: ArtifactAuthoredData})
+			for _, doc := range slices.Sorted(maps.Keys(cat.Docs)) {
+				if !cat.Docs[doc].Mandatory {
+					authored = append(authored, OutputInput{Path: ".awf/docs/" + doc + ".yaml", Role: ArtifactAuthoredData})
+				}
 			}
 		}
 		authored = append(authored, partInputs(func() string {
@@ -304,7 +276,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		if e.Generated {
 			declarer = "generated-config-reference"
 		}
-		add(out, e.TID, declarer, inputs(e.TID, authored...), false)
+		add(out, e.TID, declarer, inputs(e.TID, authored...))
 	}
 	for _, d := range cfg.Domains {
 		sc, err := cfg.Sidecar("domains", d)
@@ -324,7 +296,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			}
 		}
 		domainTID := mustDescriptor("domains").tid(d)
-		add(strings.TrimRight(cfg.DocsDir, "/")+"/domains/"+d+".md", domainTID, "generated-domain", inputs(domainTID, authored...), false)
+		add(config.DocsDir+"/domains/"+d+".md", domainTID, "generated-domain", inputs(domainTID, authored...))
 	}
 	allMetadata, err := read.Paths(".awf/topics/metadata/")
 	if err != nil {
@@ -335,7 +307,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			continue
 		}
 		id := strings.TrimSuffix(strings.TrimPrefix(p, ".awf/topics/metadata/"), ".yaml")
-		add(strings.TrimRight(cfg.DocsDir, "/")+"/topics/"+id+".md", topicTID, "topic:"+id, inputs(topicTID, OutputInput{Path: p, Role: ArtifactTopicMetadata}, OutputInput{Path: ".awf/topics/parts/" + id + "/current-state.md", Role: ArtifactClaimPart}), false)
+		add(config.DocsDir+"/topics/"+id+".md", topicTID, "topic:"+id, inputs(topicTID, OutputInput{Path: p, Role: ArtifactTopicMetadata}, OutputInput{Path: ".awf/topics/parts/" + id + "/current-state.md", Role: ArtifactClaimPart}))
 	}
 	for _, d := range cfg.Domains {
 		topicInputs := []OutputInput{}
@@ -350,23 +322,23 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			}
 		}
 		if len(topicInputs) > 0 {
-			add(strings.TrimRight(cfg.DocsDir, "/")+"/topics/"+d+"/index.md", topicIndexTID, "topic-index:"+d, inputs(topicIndexTID, topicInputs...), false)
+			add(config.DocsDir+"/topics/"+d+"/index.md", topicIndexTID, "topic-index:"+d, inputs(topicIndexTID, topicInputs...))
 		}
 	}
 	decisionInputs := []OutputInput{}
 	for _, record := range adrs.All() {
-		decisionInputs = append(decisionInputs, OutputInput{Path: strings.TrimRight(cfg.DocsDir, "/") + "/decisions/" + record.Filename, Role: ArtifactDecisionRecord})
+		decisionInputs = append(decisionInputs, OutputInput{Path: config.DocsDir + "/decisions/" + record.Filename, Role: ArtifactDecisionRecord})
 	}
-	add(strings.TrimRight(cfg.DocsDir, "/")+"/decisions/INDEX.md", "", "generated-index", inputs("", decisionInputs...), false)
+	add(config.DocsDir+"/decisions/INDEX.md", "", "generated-index", inputs("", decisionInputs...))
 	for _, unit := range conditionalUnits() {
 		if !unit.enabled(cfg) {
 			continue
 		}
-		add(unit.path, unit.tid, unit.tid, inputs(unit.tid, partInputs(unit.kind, "", unit.sections)...), false)
+		add(unit.path, unit.tid, unit.tid, inputs(unit.tid, partInputs(unit.kind, "", unit.sections)...))
 	}
 	for _, name := range resident.RootNames() {
 		tid := residentGitignoreTID(name)
-		add(".awf/"+name+"/.gitignore", tid, tid, inputs(tid), false)
+		add(".awf/"+name+"/.gitignore", tid, tid, inputs(tid))
 	}
 	if readErr != nil {
 		return nil, readErr
@@ -380,9 +352,9 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 				}
 			}
 		case catalog.Standard.Docs["config-reference"].TID:
-			decisionIndex := strings.TrimRight(cfg.DocsDir, "/") + "/decisions/INDEX.md"
+			decisionIndex := config.DocsDir + "/decisions/INDEX.md"
 			for _, candidate := range decls {
-				if !candidate.Reservation && candidate.Path != decls[i].Path && candidate.Path != decisionIndex {
+				if candidate.Path != decls[i].Path && candidate.Path != decisionIndex {
 					decls[i].Dependencies = append(decls[i].Dependencies, candidate.Path)
 				}
 			}
@@ -410,7 +382,6 @@ type OutputPolicy struct {
 	ScanReferences      bool
 	ScanSkillReferences bool
 	Regenerate          bool
-	LocalValidation     bool
 }
 
 // OutputRecipe is the normalized, output-affecting declaration used for
@@ -423,9 +394,7 @@ type OutputRecipe struct {
 	Provenance                           string
 }
 
-// OutputNode is one path in the deterministic internal output plan. A node is
-// either a write or a reservation; reservations protect local artifacts but are
-// never written or entered in the lock manifest.
+// OutputNode is one path in the deterministic internal output plan.
 type OutputNode struct {
 	Path                string
 	Recipe              OutputRecipe
@@ -435,7 +404,6 @@ type OutputNode struct {
 	DependsOn           []string
 	ConsumedInputs      []OutputInput
 	ObservedTemplateID  string
-	Reservation         bool
 	file                *RenderedFile
 }
 
@@ -462,7 +430,7 @@ func classifyFrozenObservedDrift(file RenderedFile, entry manifest.Entry, observ
 func (op *OutputPlan) writeFiles() []RenderedFile {
 	files := make([]RenderedFile, 0, len(op.Nodes))
 	for _, n := range op.Nodes {
-		if !n.Reservation && n.file != nil {
+		if n.file != nil {
 			files = append(files, *n.file)
 		}
 	}
@@ -533,7 +501,7 @@ func (p *Project) targetOutputDeclarations(eff map[string]bool) (map[string]targ
 		if err := validateTargetOutputRequirements(t, p.Cat); err != nil {
 			return nil, err
 		}
-		for _, o := range resolvedTargetOutputs(t, p.Cfg.Prefix, p.Cfg.Skills) {
+		for _, o := range resolvedTargetOutputs(t, p.Cfg.Prefix, slices.Sorted(maps.Keys(p.Cat.Skills))) {
 			src, err := fs.ReadFile(templates.FS, o.TemplateID)
 			if err != nil { // coverage-ignore: TestTargetOutputDeclarationsRejectUnreadableTemplate proves this error; Go's embedded-filesystem profile does not attribute its return block.
 				return nil, fmt.Errorf("read template %s: %w", o.TemplateID, err)
@@ -596,7 +564,7 @@ func (p *Project) outputPlan(ctx context.Context, corpus adr.Corpus, topics topi
 	if err != nil {
 		return nil, err
 	}
-	if err := p.validateLiveTemplates(); err != nil {
+	if err := p.validateLiveTemplates(); err != nil { // coverage-ignore: renderAllBase already resolved every live identity; TestValidateLiveTemplatesRejectsMissingTargetTemplate proves the defensive check
 		return nil, err
 	}
 	plan := &OutputPlan{}
@@ -638,20 +606,7 @@ func (p *Project) outputPlan(ctx context.Context, corpus adr.Corpus, topics topi
 	if err != nil {
 		return nil, err
 	}
-	localDocs := map[string]bool{}
-	for _, name := range p.Cfg.Docs {
-		sc, err := p.Cfg.Sidecar("docs", name)
-		if err != nil { // coverage-ignore: renderAllBase already read every enabled doc sidecar
-			return nil, err
-		}
-		if sc.Local {
-			localDocs[p.docOutPath(name)] = true
-		}
-	}
 	for _, f := range topicFiles {
-		if localDocs[f.Path] {
-			return nil, fmt.Errorf("local document and topic output render to the same output path %q", f.Path)
-		}
 		if err := add(f, f.Declarer, topicDeps[f.Path]...); err != nil {
 			return nil, err
 		}
@@ -684,31 +639,6 @@ func (p *Project) outputPlan(ctx context.Context, corpus adr.Corpus, topics topi
 			return nil, err
 		}
 	}
-	for _, kv := range []struct {
-		kind  string
-		names []string
-	}{{"skills", p.Cfg.Skills}, {"agents", p.Cfg.Agents}} {
-		for _, name := range kv.names {
-			sc, err := p.Cfg.Sidecar(kv.kind, name)
-			if err != nil { // coverage-ignore: renderAllBase has already read this sidecar
-				return nil, err
-			}
-			if !sc.Local {
-				continue
-			}
-			for _, path := range p.localOutPaths(kv.kind, name) {
-				encoder := MarkdownAgentDialect
-				for _, target := range p.Targets {
-					if d, ok := descriptorByPlural(kv.kind); ok && d.outPath(target, p.Cfg.Prefix, name) == path {
-						encoder = target.AgentDialect
-						break
-					}
-				}
-				policy := OutputPolicy{LocalValidation: true, ValidateFrontmatter: true}
-				plan.Nodes = append(plan.Nodes, OutputNode{Path: path, Policy: policy, Recipe: OutputRecipe{Policy: policy, Encoder: encoder}, Declarers: []string{kv.kind + ":" + name}, ConsumedInputs: []OutputInput{}, Reservation: true})
-			}
-		}
-	}
 	slices.SortFunc(plan.Nodes, func(a, b OutputNode) int { return strings.Compare(a.Path, b.Path) })
 	for i := range plan.Nodes {
 		slices.Sort(plan.Nodes[i].Declarers)
@@ -737,7 +667,7 @@ func normalizeOutputInputs(inputs []OutputInput) []OutputInput {
 	return slices.Compact(out)
 }
 
-// PlannedOutputs returns plan write paths, excluding local reservations.
+// PlannedOutputs returns plan write paths.
 func (p *Project) PlannedOutputs(ctx context.Context) ([]string, error) {
 	op, err := p.OutputPlan(ctx)
 	if err != nil {
@@ -745,15 +675,11 @@ func (p *Project) PlannedOutputs(ctx context.Context) ([]string, error) {
 	}
 	var paths []string
 	for _, n := range op.Nodes {
-		if !n.Reservation {
-			paths = append(paths, n.Path)
-		}
+		paths = append(paths, n.Path)
 	}
 	return paths, nil
 }
 
-// localReservations validates plan reservation nodes rather than reconstructing
-// local output paths in lifecycle callers.
 // validateLiveTemplates verifies that every identity derived from the live
 // declaration owners resolves in the shipped embedded filesystem.
 func (p *Project) validateLiveTemplates() error {
@@ -763,20 +689,4 @@ func (p *Project) validateLiveTemplates() error {
 		}
 	}
 	return nil
-}
-
-func (p *Project) localReservations(op *OutputPlan, fail func(string, error)) {
-	for _, n := range op.Nodes {
-		if !n.Reservation || !n.Policy.LocalValidation {
-			continue
-		}
-		b, err := os.ReadFile(p.roots.ResolveOutput(n.Path))
-		if err != nil {
-			fail(n.Path, errors.New("local artifact file absent"))
-			continue
-		}
-		if err := validateArtifact(b, n.Recipe.Encoder); err != nil {
-			fail(n.Path, err)
-		}
-	}
 }

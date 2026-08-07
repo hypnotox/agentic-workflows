@@ -3,13 +3,13 @@ package project
 import (
 	"path/filepath"
 	"sort"
-	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
-// Layout is the fixed, awf-given docs layout derived from cfg.DocsDir, in typed
-// form for Go consumers. These paths are not configurable through vars.
+// Layout is the fixed, awf-given docs layout in typed form for Go consumers.
+// These paths are not configurable through the project tree.
 // templateMap projects it into the .layout template namespace (templates read a
 // map, not unexported struct fields) and into the per-file ConfigHash. The
 // mandatory-singleton paths are not struct fields: they derive from the catalog
@@ -19,18 +19,19 @@ type Layout struct {
 	ADRDir     string
 	IndexMd    string
 	PlansDir   string
-	Docs       map[string]string // name -> output path; present iff enabled (inv: layout-docs-enabled-only)
+	Docs       map[string]string // catalog name -> output path (inv: layout-docs-full-catalog)
 	DomainsDir string
 }
 
 func (p *Project) layout() Layout {
-	d := strings.TrimRight(p.Cfg.DocsDir, "/")
+	d := config.DocsDir
 	dec := d + "/decisions"
-	// Docs maps every enabled doc name to its output path. Local docs are included:
-	// the file still exists at that path and is citable.
+	// Docs maps every catalog document to its unconditional rendered output path.
 	docs := map[string]string{}
-	for _, name := range p.Cfg.Docs {
-		docs[name] = p.docOutPath(name)
+	if p.Cat != nil {
+		for name := range p.Cat.Docs {
+			docs[name] = p.docOutPath(name)
+		}
 	}
 	return Layout{
 		DocsDir:    d,
@@ -71,31 +72,36 @@ func (l Layout) templateMap() map[string]any {
 	return m
 }
 
-// docOutPath is the output path for a managed doc, rooted at docsDir.
+// docOutPath is the catalog-declared output path for a managed doc.
 func (p *Project) docOutPath(name string) string {
-	return strings.TrimRight(p.Cfg.DocsDir, "/") + "/" + name + ".md"
+	e := p.Cat.Docs[name]
+	if e.AgentsDoc {
+		return "AGENTS.md"
+	}
+	path := e.Path
+	if path == "" {
+		path = name + ".md"
+	}
+	return config.DocsDir + "/" + path
 }
 
 // decisionsDir is the absolute ADR decisions directory.
 func (p *Project) decisionsDir() string {
-	return filepath.Join(p.Root, p.Cfg.DocsDir, "decisions")
+	return filepath.Join(p.Root, config.DocsDir, "decisions")
 }
 
-// resolvedDocs builds the Document-map entries for the agents-doc template from
-// the docs declared in config, annotated with the catalog's title/desc. Local
-// docs are excluded.
-func (p *Project) resolvedDocs() ([]map[string]any, error) {
+// resolvedDocs builds the non-singleton Document-map entries for the agents-doc
+// template from the full catalog, annotated with title and description.
+func (p *Project) resolvedDocs() []map[string]any {
 	out := []map[string]any{}
-	names := append([]string(nil), p.Cfg.Docs...)
+	var names []string
+	for name, e := range p.Cat.Docs {
+		if !e.AgentsDoc && e.Path == "" {
+			names = append(names, name)
+		}
+	}
 	sort.Strings(names)
 	for _, name := range names {
-		sc, err := p.Cfg.Sidecar("docs", name)
-		if err != nil {
-			return nil, err
-		}
-		if sc.Local {
-			continue
-		}
 		spec := p.Cat.Docs[name]
 		out = append(out, map[string]any{
 			"name":  name,
@@ -104,15 +110,15 @@ func (p *Project) resolvedDocs() ([]map[string]any, error) {
 			"path":  p.docOutPath(name),
 		})
 	}
-	return out, nil
+	return out
 }
 
 // documentMapDocs builds the AGENTS.md document-map entries for the mandatory
 // DocumentMap docs from the catalog's title/desc, sorted by name (ADR-0062).
 // Unlike resolvedDocs it is UNCONDITIONAL - a mandatory doc-map line renders
-// regardless of a local: sidecar, matching the historically hardcoded lines.
+// from the complete catalog, matching the historically hardcoded lines.
 func (p *Project) documentMapDocs() []map[string]any {
-	d := strings.TrimRight(p.Cfg.DocsDir, "/")
+	d := config.DocsDir
 	var names []string
 	for name, e := range p.Cat.Docs {
 		if e.DocumentMap {

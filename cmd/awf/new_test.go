@@ -13,7 +13,6 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
-	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -430,7 +429,7 @@ func TestRunNewTopicFirstWriteAndOpenErrors(t *testing.T) {
 	}
 
 	root = topicCLIProject(t)
-	testsupport.WriteAwfConfig(t, root, minimalYAML+"domains: [rendering]\ndocs: [ghost-doc]\n")
+	testsupport.WriteAwfConfig(t, root, minimalYAML+"domains: [rendering]\n")
 	if err := runNew(ctx, root, "topic", []string{"rendering", "Failure"}, io.Discard); err == nil {
 		t.Fatal("expected project.Open error")
 	}
@@ -499,109 +498,7 @@ func TestRunNewPlanRefusesExisting(t *testing.T) {
 	}
 }
 
-func TestRunNewPlanOpenError(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t)
-	// Passes the schema/version gate but fails project.Open (a ghost enabled doc),
-	// covering newPlan's Open-error return.
-	testsupport.WriteAwfConfig(t, root, minimalYAML+"docs: [ghost-doc]\n")
-	if err := runNew(ctx, root, "plan", []string{"Some", "Plan"}, io.Discard); err == nil {
-		t.Fatal("expected project.Open error")
-	}
-}
-
-func TestRunNewScaffoldsDoc(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t)
-	if err := runNew(ctx, root, "doc", []string{"guides/ci", "How", "CI", "runs"}, io.Discard); err != nil {
-		t.Fatalf("new doc: %v", err)
-	}
-	sc := filepath.Join(root, ".awf", "docs", "guides", "ci.yaml")
-	if b, err := os.ReadFile(sc); err != nil {
-		t.Fatalf("sidecar not written: %v", err)
-	} else if !strings.Contains(string(b), "title: Ci") || !strings.Contains(string(b), "description: How CI runs") {
-		t.Errorf("sidecar content wrong:\n%s", b)
-	}
-	part := filepath.Join(root, ".awf", "docs", "parts", "guides", "ci", "content.md")
-	if b, err := os.ReadFile(part); err != nil {
-		t.Fatalf("part not written: %v", err)
-	} else if !strings.Contains(string(b), "awf:stub") {
-		t.Errorf("part missing stub marker:\n%s", b)
-	}
-	out := filepath.Join(root, "docs", "guides", "ci.md")
-	if _, err := os.Stat(out); err != nil {
-		t.Errorf("rendered doc missing: %v", err)
-	}
-}
-
-func TestRunNewDocMissingDescription(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t)
-	if err := runNew(ctx, root, "doc", []string{"ci"}, io.Discard); err == nil {
-		t.Fatal("expected usage error for missing description")
-	}
-}
-
-func TestRunNewDocEmptyDescription(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t)
-	if err := runNew(ctx, root, "doc", []string{"ci", "   "}, io.Discard); err == nil {
-		t.Fatal("expected error for empty description")
-	}
-}
-
-func TestRunNewDocInvalidName(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t)
-	if err := runNew(ctx, root, "doc", []string{"Bad", "desc"}, io.Discard); err == nil {
-		t.Fatal("expected error for invalid doc name")
-	}
-}
-
-func TestRunNewDocRefusesExisting(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t)
-	if err := runNew(ctx, root, "doc", []string{"ci", "desc"}, io.Discard); err != nil {
-		t.Fatalf("first new doc: %v", err)
-	}
-	// Disable ci in config but leave its sidecar+part on disk, so the second run's
-	// catalog-collision check misses and the authored-files guard fires (mirrors
-	// TestRunNewRefusesExistingLocalArtifactFiles).
-	cfgPath := config.ConfigPath(root)
-	src, err := os.ReadFile(cfgPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	updated, err := config.SetArrayMember(src, "docs", "ci", false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(cfgPath, updated, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := runNew(ctx, root, "doc", []string{"ci", "desc"}, io.Discard); err == nil {
-		t.Fatal("expected refusal for existing doc files")
-	}
-}
-
-func TestRunNewDocCollidesWithCatalog(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t)
-	if err := runNew(ctx, root, "doc", []string{"architecture", "desc"}, io.Discard); err == nil {
-		t.Fatal("expected collision error for a catalog doc name")
-	}
-}
-
 func TestRunNewDispatch(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
 	root := scaffoldProject(t)
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
@@ -610,253 +507,63 @@ func TestRunNewDispatch(t *testing.T) {
 	}
 }
 
-func TestRunNewMissingArgs(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
+// invariant: tooling/cli:domain-lifecycle-commands (TestRunNewDomainLifecycle)
+func TestRunNewDomainLifecycle(t *testing.T) {
 	root := scaffoldProject(t)
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
-	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "new", "adr"}, &out, &errb); code != 2 {
-		t.Fatalf("expected exit 2 for missing title, got %d", code)
-	}
-}
-
-func TestRunNewTopicDispatchAndHelp(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
-	root := topicCLIProject(t)
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
-	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "new", "topic", "rendering", "Dispatch", "Topic"}, &out, &errb); code != 0 {
-		t.Fatalf("dispatch exit = %d: %s", code, errb.String())
+	if err := runNew(ctx, root, "domain", []string{"delivery"}, io.Discard); err != nil {
+		t.Fatalf("new domain: %v", err)
 	}
-	if !strings.Contains(out.String(), "dispatch-topic.yaml") {
-		t.Errorf("dispatch output = %q", out.String())
-	}
-	out.Reset()
-	if code := run([]string{"awf", "new", "topic", "--help"}, &out, &errb); code != 0 || !strings.Contains(out.String(), "awf new topic <domain> <title>...") {
-		t.Fatalf("help exit = %d, output = %q, error = %q", code, out.String(), errb.String())
-	}
-}
-
-func TestRunNewTopicMissingArgsDispatch(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := topicCLIProject(t)
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
-	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "new", "topic", "rendering"}, &out, &errb); code != 2 {
-		t.Fatalf("expected exit 2, got %d (%s)", code, errb.String())
-	}
-}
-
-// An unrecognized `new` subcommand is not a clispec child, so resolve leaves it
-// in the positionals; the new handler reunites it as the kind and runNew reports
-// the unknown-kind usage error (exit 2).
-func TestRunNewUnknownKindDispatch(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t)
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
-	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "new", "widget", "x"}, &out, &errb); code != 2 {
-		t.Fatalf("expected exit 2 for unknown kind, got %d (%s)", code, errb.String())
-	}
-	if !strings.Contains(errb.String(), "unknown kind") {
-		t.Errorf("missing unknown-kind message: %q", errb.String())
-	}
-}
-
-func TestRunNewScaffoldsSkill(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t)
-	if err := runNew(ctx, root, "skill", []string{"deploy-check", "Verify the deploy is green."}, io.Discard); err != nil {
-		t.Fatalf("runNew skill: %v", err)
-	}
-	sc, err := os.ReadFile(filepath.Join(root, ".awf", "skills", "deploy-check.yaml"))
-	if err != nil {
-		t.Fatalf("sidecar not written: %v", err)
-	}
-	if !strings.Contains(string(sc), "Verify the deploy is green.") {
-		t.Errorf("sidecar missing description:\n%s", sc)
-	}
-	part, err := os.ReadFile(filepath.Join(root, ".awf", "skills", "parts", "deploy-check", "content.md"))
-	if err != nil {
-		t.Errorf("content part not written: %v", err)
-	}
-	if !strings.HasPrefix(string(part), "<!-- awf:stub -->\n") {
-		t.Errorf("starter part must open with the awf:stub marker (ADR-0070):\n%s", part)
-	}
-	cfg, _ := os.ReadFile(filepath.Join(root, ".awf", "config.yaml"))
-	if !strings.Contains(string(cfg), "deploy-check") {
-		t.Errorf("skill not enabled in config:\n%s", cfg)
-	}
-	rendered, err := os.ReadFile(filepath.Join(root, ".claude", "skills", "example-deploy-check", "SKILL.md"))
-	if err != nil {
-		t.Errorf("rendered skill missing: %v", err)
-	}
-	if !strings.Contains(string(rendered), "<!-- awf:stub -->") {
-		t.Errorf("stub-marked part must render verbatim, marker included:\n%s", rendered)
-	}
-	if err := runCheckRepo(ctx, root, io.Discard); err != nil {
-		t.Errorf("post-scaffold repo check not clean: %v", err)
-	}
-}
-
-// awf new must refuse when the name already has files under .awf/, even when
-// the name is not in the enable array (an enabled+declared local is caught by
-// the catalog-pool guard; a disabled one left its sidecar and authored part on
-// disk, and a re-run must not silently reset them to the stub).
-func TestRunNewRefusesExistingLocalArtifactFiles(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t)
-	if err := runNew(ctx, root, "skill", []string{"deploy-check", "Verify the deploy is green."}, io.Discard); err != nil {
-		t.Fatalf("runNew skill: %v", err)
-	}
-	partPath := filepath.Join(root, ".awf", "skills", "parts", "deploy-check", "content.md")
-	const authored = "Authored body - must survive a re-run.\n"
-	if err := os.WriteFile(partPath, []byte(authored), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	// Disable the skill but keep its authored files, as `awf disable skill` would.
-	cfgPath := filepath.Join(root, ".awf", "config.yaml")
-	cfg, err := os.ReadFile(cfgPath)
+	cfg, err := config.Load(config.RootDir(root))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(cfgPath, []byte(strings.ReplaceAll(string(cfg), "  - deploy-check\n", "")), 0o644); err != nil {
-		t.Fatal(err)
+	if !slices.Contains(cfg.Domains, "delivery") {
+		t.Fatalf("domains = %v", cfg.Domains)
 	}
-	if err := runNew(ctx, root, "skill", []string{"deploy-check", "Other description."}, io.Discard); err == nil {
-		t.Fatal("expected error re-running awf new over existing local artifact files")
-	}
-	part, err := os.ReadFile(partPath)
+	part := filepath.Join(root, ".awf", "domains", "parts", "delivery", "current-state.md")
+	before, err := os.ReadFile(part)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(part) != authored {
-		t.Errorf("authored content part was overwritten:\n%s", part)
+	if err := runNew(ctx, root, "domain", []string{"delivery"}, io.Discard); err == nil {
+		t.Fatal("duplicate domain accepted")
 	}
-	sc, err := os.ReadFile(filepath.Join(root, ".awf", "skills", "deploy-check.yaml"))
-	if err != nil {
-		t.Fatal(err)
+	after, err := os.ReadFile(part)
+	if err != nil || !bytes.Equal(after, before) {
+		t.Fatalf("existing part changed: %v", err)
 	}
-	if !strings.Contains(string(sc), "Verify the deploy is green.") {
-		t.Errorf("authored sidecar was overwritten:\n%s", sc)
+	output := filepath.Join(root, "docs", "domains", "delivery.md")
+	if _, err := os.Stat(output); err != nil {
+		t.Fatalf("rendered domain output missing: %v", err)
+	}
+	var removal bytes.Buffer
+	if err := runRemoveDomain(ctx, root, "delivery", &removal); err != nil {
+		t.Fatalf("remove domain: %v", err)
+	}
+	if _, err := os.Stat(output); !os.IsNotExist(err) {
+		t.Fatalf("rendered domain output survived removal: %v", err)
+	}
+	if got, err := os.ReadFile(part); err != nil || !bytes.Equal(got, before) {
+		t.Fatalf("authored part changed by removal: %q, %v", got, err)
+	}
+	if !strings.Contains(removal.String(), "orphaned") {
+		t.Fatalf("removal did not report surviving authored part: %q", removal.String())
 	}
 }
 
-func TestRunNewScaffoldsAgent(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
+func TestRunNewDomainRejectsInvalidNameBeforeWriting(t *testing.T) {
 	root := scaffoldProject(t)
-	if err := runNew(ctx, root, "agent", []string{"deploy-bot", "Runs the deploy checks."}, io.Discard); err != nil {
-		t.Fatalf("runNew agent: %v", err)
+	if err := runNew(testContext(t), root, "domain", []string{"../bad"}, io.Discard); err == nil {
+		t.Fatal("invalid domain accepted")
 	}
-	if _, err := os.Stat(filepath.Join(root, ".awf", "agents", "deploy-bot.yaml")); err != nil {
-		t.Errorf("agent sidecar not written: %v", err)
-	}
-	if _, err := os.Stat(filepath.Join(root, ".claude", "agents", "deploy-bot.md")); err != nil {
-		t.Errorf("rendered agent missing: %v", err)
+	if _, err := os.Stat(filepath.Join(root, ".awf", "domains", "parts")); !os.IsNotExist(err) {
+		t.Fatalf("invalid domain wrote files: %v", err)
 	}
 }
 
-func TestRunNewSkillMissingDescription(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t)
-	if err := runNew(ctx, root, "skill", []string{"lonely"}, io.Discard); err == nil {
-		t.Fatal("expected usage error when description is missing")
-	}
-}
-
-func TestRunNewSkillEmptyDescription(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t)
-	if err := runNew(ctx, root, "skill", []string{"x", "   "}, io.Discard); err == nil {
-		t.Fatal("expected error for a whitespace-only description")
-	}
-}
-
-func TestRunNewSkillReservedName(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t)
-	if err := runNew(ctx, root, "skill", []string{"_base", "desc"}, io.Discard); err == nil {
-		t.Fatal("expected reserved-name rejection")
-	}
-}
-
-func TestRunNewSkillCollision(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t)
-	if err := runNew(ctx, root, "skill", []string{"tdd", "desc"}, io.Discard); err == nil {
-		t.Fatal("expected collision with the catalog skill tdd")
-	}
-}
-
-func TestRunNewSkillOpenError(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t)
-	// Passes the schema/version gate (lock intact) but fails project.Open - an
-	// enabled doc that is not in the catalog.
-	testsupport.WriteAwfConfig(t, root, minimalYAML+"docs: [ghost-doc]\n")
-	if err := runNew(ctx, root, "skill", []string{"newone", "a description"}, io.Discard); err == nil {
-		t.Fatal("expected project.Open error")
-	}
-}
-
-func TestRunNewDocOpenError(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t)
-	// Passes the schema/version gate but fails project.Open (a ghost enabled doc),
-	// covering newLocalDoc's Open-error return.
-	testsupport.WriteAwfConfig(t, root, minimalYAML+"docs: [ghost-doc]\n")
-	if err := runNew(ctx, root, "doc", []string{"newdoc", "a description"}, io.Discard); err == nil {
-		t.Fatal("expected project.Open error")
-	}
-}
-
-// seedScaffoldVars: an absent referenced var is seeded empty, a present one is
-// untouched, and a malformed source surfaces the editor's error.
-// invariant: tooling/init-and-enablement:new-seeds-scaffold-vars (TestSeedScaffoldVars)
-func TestSeedScaffoldVars(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	src := []byte("prefix: x\nvars:\n  kept: value\n")
-	got, err := seedScaffoldVars(src, []string{"kept", "added"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, want := range []string{"kept: value", "added: \"\""} {
-		if !strings.Contains(string(got), want) {
-			t.Errorf("missing %q in:\n%s", want, got)
-		}
-	}
-	if _, err := seedScaffoldVars([]byte(":\n:"), []string{"x"}); err == nil {
-		t.Fatal("expected error on malformed config source")
-	}
-}
-
-// The shipped base templates reference no vars, so awf new seeds nothing today
-// - this pins the no-op so a future var-bearing base template consciously
-// changes it (ADR-0087 Decision 4).
-func TestRunNewSeedsNoVarsToday(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	for _, kind := range []string{"skill", "agent"} {
-		refs, err := project.ScaffoldVarRefs(kind)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(refs) != 0 {
-			t.Errorf("base %s template gained var refs %v - confirm awf new seeding and update this pin", kind, refs)
-		}
+func TestRunNewRetiredKind(t *testing.T) {
+	if err := runNew(testContext(t), t.TempDir(), "skill", []string{"x"}, io.Discard); err == nil || !strings.Contains(err.Error(), "unknown kind") {
+		t.Fatalf("retired kind error = %v", err)
 	}
 }

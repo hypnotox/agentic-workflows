@@ -4,8 +4,9 @@ How awf render and awf check detect and report drift: per-file config-hash input
 
 ### `invariant: agent-guide-size-advisory`
 
-Only the deterministic expected bytes of a managed `AGENTS.md` feed aggregate `CheckReport.Notes`: at a fixed 12 KiB threshold, an overage is a warning-only zero-exit advisory. Locally owned guides and non-aggregate consumers are excluded.
+Only the deterministic expected bytes of a managed `AGENTS.md` feed aggregate `CheckReport.Notes`: at a fixed 12 KiB threshold, an overage is a warning-only zero-exit advisory. Non-aggregate consumers are excluded.
 Origin: ADR-0241
+Revised-by: ADR-0251
 Backing: test
 
 ### `invariant: awf-bak-flagged`
@@ -42,14 +43,16 @@ Backing: test
 
 ### `invariant: drift-source-set`
 
-Each rendered file's stored ConfigHash is a per-target projection over only that file's own effective inputs (the skeleton fields it reads, its sidecar, and its consumed parts), so awf check reports a file stale only when one of its own inputs changed since the last sync and never flags unrelated targets; a sidecar or part file matching no enabled or declared target is reported as an orphan.
+Each rendered file's stored ConfigHash is a per-target projection over only that file's own effective inputs (the skeleton fields it reads, its sidecar, and its consumed parts), so awf check reports a file stale only when one of its own inputs changed since the last sync and never flags unrelated targets; a sidecar or part file matching no catalog or declared target is reported as an orphan.
 Origin: ADR-0148
+Revised-by: ADR-0251
 Backing: test
 
 ### `invariant: managed-output-attribution`
 
-A reader-injected declaration builder enumerates managed writes and local reservations before rendering, retains their sorted declarers and exact config, sidecar, convention-part, topic, and generated inputs, and supplies context artifact source/output edges; only non-reservation declarations classify a path as generated.
+A reader-injected declaration builder enumerates managed writes before rendering, retains their sorted declarers and exact config, sidecar, convention-part, topic, and generated inputs, and supplies context artifact source/output edges; managed declarations classify their paths as generated.
 Origin: ADR-0148
+Revised-by: ADR-0251
 Backing: test
 
 ### `invariant: ordinary-render-freshness`
@@ -88,12 +91,6 @@ The resolved commit-scope list folds into the config hash of every artifact whos
 Origin: ADR-0148
 Backing: test
 
-### `invariant: skills-set-in-confighash`
-
-Changing the skills enable array changes the lock config hash of every artifact whose assembled template references the skills set, so awf check flags those artifacts stale.
-Origin: ADR-0148
-Backing: test
-
 ### `invariant: staged-drift-rendered-output`
 
 `awf check staged drift` renders from the staged config and reports exactly stale and hand-edited comparisons against the staged rendered-output tree; every other drift kind is out of scope.
@@ -116,8 +113,9 @@ Backing: test
 
 ### `invariant: target-prune-ancestors`
 
-Removing a target from the config and re-syncing deletes that target's rendered files and every resulting empty ancestor directory, not only the immediate parent.
+When a rendered target-owned path disappears from the output plan and awf re-syncs, it deletes that path and every resulting empty ancestor directory, not only the immediate parent.
 Origin: ADR-0148
+Revised-by: ADR-0251
 Backing: test
 
 ### `invariant: uninstall-removes-lock-entries`

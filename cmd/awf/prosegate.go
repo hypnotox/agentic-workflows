@@ -29,11 +29,12 @@ func proseCheckFindings(cfg *config.Config, tree *snapshot.Tree) ([]presentation
 }
 
 func proseCheckFindingsWith(cfg *config.Config, tree *snapshot.Tree, dependencies proseDependencies) ([]presentation.ReportCategory, error) {
-	if cfg.ProseGate == nil || !cfg.ProseGate.Enabled {
-		return prosegate.DisabledCategory()
+	var configured []config.ProseExemption
+	if cfg.ProseGate != nil {
+		configured = cfg.ProseGate.Exemptions
 	}
-	exemptions := make([]prosegate.Exemption, 0, len(cfg.ProseGate.Exemptions))
-	for _, e := range cfg.ProseGate.Exemptions {
+	exemptions := make([]prosegate.Exemption, 0, len(configured))
+	for _, e := range configured {
 		r, err := prosegate.ParseCodepoint(e.Codepoint)
 		if err != nil {
 			return nil, fmt.Errorf("check repo prose: exemption for %s: %w", e.Path, err)

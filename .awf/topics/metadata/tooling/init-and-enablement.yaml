@@ -1,5 +1,5 @@
-title: Init and enablement
-summary: "Project scaffolding and enablement surfaces: init, add, remove, new."
+title: Initialization
+summary: "Project adoption and initialization behavior."
 paths:
   - cmd/**
   - internal/clispec/**

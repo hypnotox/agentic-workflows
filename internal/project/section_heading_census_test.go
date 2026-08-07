@@ -90,10 +90,10 @@ func (s headingCensusSite) classify() error {
 		for level < len(s.before[0]) && s.before[0][level] == '#' {
 			level++
 		}
-		// A document-level H1 remains literal for docs, domains, plans, and base
-		// artifacts. Catalog skill titles are section structure; all H2-H6 lines
-		// adjacent through blank framing are section candidates.
-		if level > 1 || (level == 1 && strings.HasPrefix(s.tid, "skills/") && s.tid != baseTID("skills")) {
+		// A document-level H1 remains literal for docs, domains, and plans.
+		// Catalog skill titles are section structure; all H2-H6 lines adjacent
+		// through blank framing are section candidates.
+		if level > 1 || (level == 1 && strings.HasPrefix(s.tid, "skills/")) {
 			return fmt.Errorf("preceding structural heading %q is not normalized into its section", s.before[0])
 		}
 	}

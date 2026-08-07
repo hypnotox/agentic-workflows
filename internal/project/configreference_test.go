@@ -20,10 +20,6 @@ integrationBranch: main
 vars:
   gateCmd: make gate
   checkCmd:
-skills:
-  - tdd
-agents:
-  - code-reviewer
 `
 
 // invariant: config/configspec-and-reference:live-state-projection-explicit (TestLiveStateAuthorityRejectsOmissionAndWrongClass)
@@ -121,7 +117,7 @@ func TestConfigReferenceEmptyStateDegrades(t *testing.T) {
 	if strings.Contains(got, "<no value>") || strings.Contains(got, "|  |  |") {
 		t.Errorf("empty-state reference degraded incoherently:\n%s", got)
 	}
-	if !strings.Contains(got, "0 keys, 0 set") || !strings.Contains(got, "accept any scope") {
+	if !strings.Contains(got, "1 keys, 1 set") || !strings.Contains(got, "accept any scope") {
 		t.Errorf("empty-state reference missing live-state prose:\n%s", got)
 	}
 	// The vars section still lists every catalog var (all absent).
@@ -247,7 +243,7 @@ commitPolicy:
 }
 
 func TestConfigReferenceListLayerStates(t *testing.T) {
-	base := "prefix: example\nintegrationBranch: main\nskills: [tdd]\n"
+	base := "prefix: example\nintegrationBranch: main\n"
 	for _, tc := range []struct {
 		name, sidecar, want string
 	}{
@@ -281,7 +277,7 @@ func TestConfigReferenceListLayerStates(t *testing.T) {
 		})
 	}
 
-	_, glossaryProject := syncedProject(t, "prefix: example\nintegrationBranch: main\ndocs: [glossary]\n", map[string]string{
+	_, glossaryProject := syncedProject(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
 		"docs/glossary.yaml": "data:\n  terms:\n    - {term: Local, meaning: Project-specific term.}\n",
 	})
 	glossaryModel, err := glossaryProject.ConfigReferenceModel(testContext(t))
@@ -320,57 +316,31 @@ func TestConfigReferenceListLayerStates(t *testing.T) {
 	}
 }
 
-// Regeneration is the drift oracle: a hand-edit reports stale, a deletion
-// missing, and a local: opt-out with a leftover lock entry orphaned.
 // invariant: config/configspec-and-reference:config-reference-regen-drift (TestConfigReferenceRegenDrift)
 func TestConfigReferenceRegenDrift(t *testing.T) {
 	root, p := syncedProject(t, crefYAML, nil)
-	rel := filepath.Join(root, "docs/config-reference.md")
-
-	if err := os.WriteFile(rel, []byte("tampered"), 0o644); err != nil {
+	path := filepath.Join(root, "docs/config-reference.md")
+	if err := os.WriteFile(path, []byte("tampered"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	assertDrift := func(kind, detail string) {
+	assertDrift := func(kind string) {
 		t.Helper()
 		drift, err := p.Check(testContext(t))
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, d := range drift {
-			if d.Path == "docs/config-reference.md" && d.Kind == kind && strings.Contains(d.Detail, detail) {
+		for _, finding := range drift {
+			if finding.Path == "docs/config-reference.md" && finding.Kind == kind {
 				return
 			}
 		}
-		t.Errorf("expected %s drift with %q for the config reference, got %v", kind, detail, drift)
+		t.Fatalf("config-reference drift = %v, want %s", drift, kind)
 	}
-	assertDrift("stale", "out of date")
-
-	if err := os.Remove(rel); err != nil {
+	assertDrift("stale")
+	if err := os.Remove(path); err != nil {
 		t.Fatal(err)
 	}
-	assertDrift("missing", "absent")
-
-	// local: after a sync - generation stops, the lock entry reports orphaned.
-	if err := os.WriteFile(filepath.Join(root, ".awf/config-reference.yaml"), []byte("local: true\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	p2, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	drift, err := p2.Check(testContext(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	found := false
-	for _, d := range drift {
-		if d.Path == "docs/config-reference.md" && d.Kind == "orphaned" {
-			found = true
-		}
-	}
-	if !found {
-		t.Errorf("local: config reference with a lock entry should report orphaned, got %v", drift)
-	}
+	assertDrift("missing")
 }
 
 // The reference template consumes only dedicated data keys - a bare .vars or
@@ -448,99 +418,6 @@ func TestConfigReferenceSidecarRules(t *testing.T) {
 // Explicit audit values render without the default marker; explicit-empty
 // lists render their accept-any/rule-off prose; a local-from-birth reference
 // (never synced, no lock entry) reports nothing.
-// invariant: config/configspec-and-reference:live-state-projection-explicit (TestConfigReferenceCurrentValues)
-func TestConfigReferenceCurrentValues(t *testing.T) {
-	auditYAML := crefYAML + `audit:
-  subjectMaxLength: 80
-  allowedTypes: []
-  dependencyManifests: []
-currentState:
-  sources:
-    - globs: ['**/*.md']
-      marker: '#'
-  testGlobs:
-    - '**/*_test.md'
-  maxTopicsPerPath: 5
-proseGate:
-  enabled: true
-  exemptions:
-    - path: docs/x.md
-      codepoint: U+2014
-      count: 1
-runner:
-  enabled: true
-memoryCite:
-  enabled: true
-  exemptions:
-    - path: docs/plans/x.md
-      count: 1
-`
-	root, p := syncedProject(t, auditYAML, nil)
-	b, err := os.ReadFile(filepath.Join(root, "docs/config-reference.md"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := string(b)
-	for _, want := range []string{
-		"| 72 | 80 |", // configured, no "(default)" marker
-		"| accept any |",
-		"| rule off |",
-		"| 1 entries |", // proseGate.exemptions live-state count
-		"`runner.enabled` | bool | false (key absent); awf init and awf upgrade seed it true | true |",
-		"`memoryCite.enabled` | bool | false (key absent) | true |",
-		"`memoryCite.exemptions` | list of {path, count} mappings | empty (nothing is exempt) | 1 entries |",
-		"`currentState.sources` | list of {globs, marker, close} mappings | none | 1 sources |",
-		"`currentState.testGlobs` | string list | none | 1 globs |",
-		"`currentState.maxTopicsPerPath` | positive int | 8 | 5 |",
-	} {
-		if !strings.Contains(got, want) {
-			t.Errorf("configured audit values render wrong, missing %q", want)
-		}
-	}
-
-	model, err := p.ConfigReferenceModel(testContext(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, tc := range []struct {
-		key       string
-		cliValues []string
-	}{
-		{"audit.subjectMaxLength", []string{"audit.subjectMaxLength | int | 72", "| 80"}},
-		{"runner.enabled", []string{"runner.enabled | bool | false (key absent); awf init and awf upgrade seed it true", "| true"}},
-		{"gateCmdFull", []string{"gateCmdFull |", "| absent, declined"}},
-	} {
-		document, err := ConfigReferencePresentation(tc.key, &model, "config reference")
-		if err != nil {
-			t.Fatal(err)
-		}
-		var cli bytes.Buffer
-		if err := presentation.Render(&cli, document); err != nil {
-			t.Fatal(err)
-		}
-		for _, want := range tc.cliValues {
-			if !strings.Contains(cli.String(), want) {
-				t.Errorf("CLI projection for %s missing %q:\n%s", tc.key, want, cli.String())
-			}
-		}
-	}
-
-	// local: from the very first sync - no lock entry, no drift, no file.
-	root2, p2 := syncedProject(t, crefYAML, map[string]string{"config-reference.yaml": "local: true\n"})
-	if _, err := os.Stat(filepath.Join(root2, "docs/config-reference.md")); err == nil {
-		t.Error("local: config reference must not render")
-	}
-	drift, err := p2.Check(testContext(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, d := range drift {
-		if d.Path == "docs/config-reference.md" {
-			t.Errorf("local-from-birth reference should report no drift, got %v", d)
-		}
-	}
-}
-
 // A part-read fault at the reference's intro (a directory where the part file
 // may sit) surfaces from every generation call site - the reference renders
 // outside renderAllBase, so these branches are reachable, not theoretical.
@@ -587,54 +464,5 @@ func TestConfigReferenceIntroOverride(t *testing.T) {
 	}
 	if !strings.Contains(got, "## config.yaml keys") || !strings.Contains(got, "## Vars") {
 		t.Errorf("generated tables lost under an intro override:\n%s", got)
-	}
-}
-
-func TestConfigReferenceSurfacesSynthesizedLocalDataKeys(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills:\n  - my-skill\nagents:\n  - my-agent\ndocs:\n  - my-doc\n", map[string]string{
-		"skills/my-skill.yaml":             "data:\n  description: d.\n",
-		"skills/parts/my-skill/content.md": "b\n",
-		"agents/my-agent.yaml":             "data:\n  description: d.\n",
-		"agents/parts/my-agent/content.md": "b\n",
-		"docs/my-doc.yaml":                 "data:\n  title: My Doc\n  description: d.\n",
-		"docs/parts/my-doc/content.md":     "b\n",
-	})
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	rows, err := p.dataKeyRowsTyped()
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := map[string]bool{}
-	for _, r := range rows {
-		got[r.Artifact+"."+r.Key] = true
-	}
-	for _, want := range []string{"local skills.description", "local agents.description", "local docs.title", "local docs.description"} {
-		if !got[want] {
-			t.Errorf("config reference missing synthesized-local data key %q; got %v", want, got)
-		}
-	}
-}
-
-func TestConfigReferenceOmitsBaseRowsWithoutSynthesizedLocal(t *testing.T) {
-	// A local:true opt-out does not render from the base template, so its _base
-	// keys must not surface.
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills:\n  - hand\n", map[string]string{
-		"skills/hand.yaml": "local: true\n",
-	})
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	rows, err := p.dataKeyRowsTyped()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, r := range rows {
-		if strings.HasPrefix(r.Artifact, "local ") {
-			t.Errorf("unexpected _base row for a local:true opt-out: %v", r)
-		}
 	}
 }

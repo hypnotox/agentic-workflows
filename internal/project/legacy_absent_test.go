@@ -12,7 +12,7 @@ import (
 // INDEX.md is. This behavioral check keeps the absence pinned independently of
 // the source denylist.
 func TestLegacyActiveMDIndexNotPlanned(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndomains: [rendering]\ntargets: [claude]\n",
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\ndomains: [rendering]\n",
 		map[string]string{"domains/rendering.yaml": "paths: ['internal/**']\n"})
 	p, err := Open(testContext(t), root)
 	if err != nil {

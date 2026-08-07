@@ -27,8 +27,6 @@ type WorkflowProfile struct {
 // default render data; sidecars override it per top-level key (ADR-0045).
 type TargetSpec struct {
 	Sections []string `yaml:"sections"`
-	// Base marks a synthesized project-local agent (ADR-0068); see SkillSpec.Base.
-	Base bool `yaml:"base"`
 	// RequiresSkills names the catalog skills this artifact's template references
 	// unconditionally - rendered into its output even when the referenced skill is
 	// not enabled (deliberate chain coupling; the agent guide's "disable them as a
@@ -46,41 +44,29 @@ type AgentSpec struct {
 	Name           string
 	Description    string
 	Sections       []string       `yaml:"sections"`
-	Base           bool           `yaml:"base"`
 	RequiresSkills []string       `yaml:"requiresSkills"`
 	Data           map[string]any `yaml:"data"`
 }
 
-// SkillSpec declares a skill's render sections plus its optional gating fields.
-// RequiresDoc is *suppression* (ADR-0013): a non-empty value gates the skill on
-// that doc being enabled - with the doc off, the skill silently drops out of
-// the effective render set. RequiresAgent is *hard validation* (ADR-0050): a
-// non-empty value names the agent each dispatching skill sends work to, and
-// enabling the skill without that agent fails every gated command at
-// project open, since a silently-dropped dispatching skill would sever the
-// workflow chain, so the pairing must be loud. Core marks a skill as part of
-// the workflow-core set awf init scaffolds by default (ADR-0022). Data carries
-// the artifact's default render data; sidecars override it per top-level key
-// (ADR-0045).
+// SkillSpec declares a skill's render sections and relationship metadata.
+// RequiresDoc and RequiresAgent preserve catalog declarations used by frozen
+// migrations and workflow-reference checks; neither selects the render set.
+// Data carries the artifact's default render data; sidecars override it per
+// top-level key (ADR-0045).
 type SkillSpec struct {
 	Sections      []string `yaml:"sections"`
 	RequiresDoc   string   `yaml:"requiresDoc"`
 	RequiresAgent string   `yaml:"requiresAgent"`
-	Core          bool     `yaml:"core"`
-	// Base marks a synthesized project-local entry (ADR-0068): render resolves its
-	// template id to the shared base template, not the name-derived catalog path.
-	// Standard skills never set it.
-	Base bool `yaml:"base"`
 	// RequiresSkills: see TargetSpec.RequiresSkills (ADR-0080).
 	RequiresSkills []string        `yaml:"requiresSkills"`
 	Data           map[string]any  `yaml:"data"`
 	Profile        WorkflowProfile `yaml:"profile"`
 }
 
-// DocEntry is one entry in the unified doc collection (ADR-0061): a toggleable
-// doc (Mandatory false) or an always-on singleton (Mandatory true). Path is the
-// docsDir-relative output suffix (empty for agents-doc, which renders to root
-// AGENTS.md); TemplateKey is its .layout camelCase key (empty when not
+// DocEntry is one entry in the unified doc collection. Every entry renders;
+// Path distinguishes structural singleton outputs from name-derived docs
+// (empty for agents-doc, which renders to root AGENTS.md). Mandatory remains
+// the sidecar-location discriminator. TemplateKey is its .layout camelCase key (empty when not
 // layout-exposed); TID is the embedded template id; DocumentMap marks entries
 // the AGENTS.md document map lists via .layout.*; AgentsDoc flags the one
 // root-output special case. Title/Desc/Sections/Data are as before.
@@ -101,14 +87,14 @@ type DocEntry struct {
 	Generated bool
 }
 
-// SingletonKinds returns every always-on singleton kind (the Mandatory doc
-// entries, agents-doc included), derived from the one doc collection - no
-// hand-maintained list (ADR-0061). internal/config.IsSingletonKind reads it for
-// sidecar/part path classification.
+// SingletonKinds returns every structural singleton kind: the root agent guide
+// and entries that declare their own output Path. It is derived from the one doc
+// collection; internal/config.IsSingletonKind reads it for sidecar and part
+// path classification.
 func SingletonKinds() []string {
 	var out []string
 	for k, e := range Standard.Docs {
-		if e.Mandatory {
+		if e.AgentsDoc || e.Path != "" {
 			out = append(out, k)
 		}
 	}
@@ -116,14 +102,11 @@ func SingletonKinds() []string {
 	return out
 }
 
-// NonMandatoryDocNames returns c's sorted toggleable-doc names (Mandatory
-// false) - the pool an adopter selects from and that `awf enable`/`disable doc`
-// operate on. Mandatory singletons are excluded (ADR-0061). It takes the catalog
-// so the kind-descriptor pool honours the catalog handed to it.
-func NonMandatoryDocNames(c *Catalog) []string {
+// NameDerivedDocNames returns c's sorted non-singleton document names.
+func NameDerivedDocNames(c *Catalog) []string {
 	var out []string
 	for k, e := range c.Docs {
-		if !e.Mandatory {
+		if !e.AgentsDoc && e.Path == "" {
 			out = append(out, k)
 		}
 	}
@@ -132,9 +115,8 @@ func NonMandatoryDocNames(c *Catalog) []string {
 }
 
 // VarDescriptor describes one fillable init value: a config var, or (via Target)
-// a non-var routing target (catalog trim, audit scopes). Kind ∈ {string, enum,
-// multiselect}. Target ∈ {"" or "var", "catalog-skills", "catalog-docs",
-// "audit-scopes"}; "" means a plain config var. Default pre-fills interactive
+// a non-var routing target for audit scopes. Kind is string or enum. Target is
+// "", "var", or "audit-scopes"; "" means a plain config var. Default pre-fills interactive
 // prompts and appears in `awf init --describe`; it is never applied on the silent
 // non-interactive path (ADR-0029).
 type VarDescriptor struct {

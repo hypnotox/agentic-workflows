@@ -11,7 +11,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/initspec"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -132,7 +131,7 @@ func TestInitErrorPaths(t *testing.T) {
 	}{
 		{name: "bad --set", args: []string{"awf", "init", "--set", "noequals"}},
 		{name: "missing --answers file", args: []string{"awf", "init", "--answers", "/nonexistent/answers.json"}},
-		{name: "invalid multiselect answer", args: []string{"awf", "init", "--set", "skills=nonexistent-skill"}},
+		{name: "retired selection answer", args: []string{"awf", "init", "--set", "skills=nonexistent-skill"}},
 		{name: "non-map answers", pre: func(root string) []string {
 			f := filepath.Join(root, "bad.yaml")
 			_ = os.WriteFile(f, []byte("- a\n- b\n"), 0o644)
@@ -168,10 +167,9 @@ func TestInitInteractivePromptWiring(t *testing.T) {
 	isInteractive = func() bool { return true }
 	t.Cleanup(func() { isInteractive = origInteractive })
 	origStdin := stdin
-	// Multiselects prompt first (ADR-0086): two empty lines keep the skills and
-	// docs core defaults, then gateCmd reads its value; every later prompt hits
-	// EOF and takes its empty default, so the invariants marker/globs stay unset.
-	stdin = strings.NewReader("\n\nmake gate\n")
+	// gateCmd reads the first value; every later prompt hits EOF and takes its
+	// empty default, so the invariants marker/globs stay unset.
+	stdin = strings.NewReader("make gate\n")
 	t.Cleanup(func() { stdin = origStdin })
 
 	var out, errb bytes.Buffer
@@ -193,7 +191,7 @@ func TestInitExistingConfigSkipsPrompts(t *testing.T) {
 	root := t.TempDir()
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	testsupport.SwapVar(t, &isInteractive, func() bool { return true })
-	testsupport.WriteAwfConfig(t, root, "prefix: ex\nintegrationBranch: main\nskills: []\nagents: []\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: ex\nintegrationBranch: main\nvars:\n  gateCmd: make gate\n")
 	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
 		t.Fatal(err)
 	}
@@ -221,60 +219,6 @@ func TestInitExistingConfigSkipsPrompts(t *testing.T) {
 	}
 	if !strings.Contains(out2.String(), "ignored") {
 		t.Errorf("init did not note that --set answers were ignored:\n%s", out2.String())
-	}
-}
-
-// TestInitCatalogTrim asserts --set skills=/docs= drive the scaffolded enable
-// arrays verbatim (full-deselectable catalog trim, ADR-0029).
-func TestInitCatalogTrim(t *testing.T) {
-	// Leaf-only trim: init derives the agent set from the selection's
-	// requirements (ADR-0081 Decision 9), so nothing pins the chain back in
-	// and core skills are genuinely deselectable.
-	root := t.TempDir()
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
-	forceNonInteractive(t)
-	var out, errb bytes.Buffer
-	code := run([]string{"awf", "init", "--set", "skills=tdd,bugfix", "--set", "docs=testing"}, &out, &errb)
-	if code != 0 {
-		t.Fatalf("init --set trim: exit %d (%s)", code, errb.String())
-	}
-	cfg := readInitConfig(t, root)
-	for _, want := range []string{"skills:", "- bugfix", "- tdd", "docs:", "- testing"} {
-		if !strings.Contains(cfg, want) {
-			t.Errorf("config missing %q:\n%s", want, cfg)
-		}
-	}
-	// A core skill not in the selection must be absent (full-deselectable),
-	// and a leaves-only selection derives zero agents.
-	if strings.Contains(cfg, "- reviewing-impl") || strings.Contains(cfg, "- code-reviewer") {
-		t.Errorf("trim should have deselected reviewing-impl and derived no agents:\n%s", cfg)
-	}
-}
-
-// A trim naming a chain skill is closure-completed with a note per addition
-// (ADR-0081 Decision 9).
-func TestInitCatalogTrimClosesChainSelection(t *testing.T) {
-	old := catalog.Standard.Skills["brainstorming"]
-	patched := old
-	patched.RequiresSkills = []string{"exploring"}
-	catalog.Standard.Skills["brainstorming"] = patched
-	t.Cleanup(func() { catalog.Standard.Skills["brainstorming"] = old })
-	root := t.TempDir()
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
-	forceNonInteractive(t)
-	var out, errb bytes.Buffer
-	code := run([]string{"awf", "init", "--set", "skills=brainstorming"}, &out, &errb)
-	if code != 0 {
-		t.Fatalf("init --set trim: exit %d (%s)", code, errb.String())
-	}
-	if !strings.Contains(out.String(), "enabled dependencies:\n") || !strings.Contains(out.String(), "      skill exploring\n") {
-		t.Errorf("expected dependency closure change, got %q", out.String())
-	}
-	cfg := readInitConfig(t, root)
-	for _, want := range []string{"- brainstorming", "- exploring"} {
-		if !strings.Contains(cfg, want) {
-			t.Errorf("closure-completed config missing %q:\n%s", want, cfg)
-		}
 	}
 }
 
@@ -383,7 +327,6 @@ func TestInitPropagatesOrdinaryPresentationWriteFailures(t *testing.T) {
 		{name: "existing config outcome", root: scaffoldProject, failAt: 1},
 		{name: "ignored answers outcome", root: scaffoldProject, sets: []string{"gateCmd=go test ./..."}, failAt: 1},
 		{name: "scaffold outcome", root: (*testing.T).TempDir, failAt: 1},
-		{name: "closure outcome", root: (*testing.T).TempDir, sets: []string{"skills=brainstorming"}, failAt: 1},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			writer := &nthInitErrorWriter{failAt: test.failAt}

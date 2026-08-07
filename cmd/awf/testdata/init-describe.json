@@ -25,7 +25,7 @@
     {
       "key": "checkCmd",
       "kind": "string",
-      "description": "Command that checks rendered output for drift. Leave empty to run through the rendered `./awf` wrapper (the generic `awf` when the runner singleton is disabled).",
+      "description": "Command that checks rendered output for drift. Leave empty to run through the always-rendered `./awf` wrapper.",
       "default": "",
       "options": [
         "./awf check",
@@ -36,7 +36,7 @@
     {
       "key": "commitGateCmd",
       "kind": "string",
-      "description": "Command that validates one commit message (the commit-msg hook payload appends the message-file argument). Leave empty to run through the rendered `./awf` wrapper (the generic `awf` when the runner singleton is disabled).",
+      "description": "Command that validates one commit message (the commit-msg hook payload appends the message-file argument). Leave empty to run through the always-rendered `./awf` wrapper.",
       "default": "",
       "options": [
         "./awf check staged commit"
@@ -95,52 +95,6 @@
         "./internal/..."
       ],
       "target": "var"
-    },
-    {
-      "key": "skills",
-      "kind": "multiselect",
-      "description": "Workflow skills to enable (core pre-selected; deselect to trim or add opt-in skills). Options/default computed from the catalog.",
-      "default": "adr-lifecycle,brainstorming,effort-workflow,executing-direct,executing-plans,exploring,grounding,orienting,proposing-adr,retrospective,reviewing-adr,reviewing-impl,reviewing-plan,subagent-driven-development,writing-plans",
-      "options": [
-        "adr-lifecycle",
-        "brainstorming",
-        "bugfix",
-        "debugging",
-        "effort-workflow",
-        "executing-direct",
-        "executing-plans",
-        "exploring",
-        "grounding",
-        "orienting",
-        "proposing-adr",
-        "refactor-coupling-audit",
-        "retrospective",
-        "reviewing-adr",
-        "reviewing-impl",
-        "reviewing-plan",
-        "roadmap-graduation",
-        "subagent-driven-development",
-        "tdd",
-        "writing-plans"
-      ],
-      "target": "catalog-skills"
-    },
-    {
-      "key": "docs",
-      "kind": "multiselect",
-      "description": "Docs to enable (core pre-selected; deselect to trim or add opt-in docs). Options/default computed from the catalog.",
-      "default": "",
-      "options": [
-        "architecture",
-        "debugging",
-        "development",
-        "glossary",
-        "pitfalls",
-        "releasing",
-        "roadmap",
-        "testing"
-      ],
-      "target": "catalog-docs"
     }
   ]
 }

@@ -15,7 +15,7 @@ func projectWithScopes(t *testing.T) *Project {
 	t.Helper()
 	root := scaffold(t, "prefix: awftest\nintegrationBranch: main\n"+
 		"vars:\n  gateCmd: ./x gate\n  checkCmd: ./x check\n"+
-		"skills: []\nagents: []\n"+
+		""+
 		"audit:\n  allowedScopes:\n"+
 		"    - {name: adr, meaning: ADR docs}\n"+
 		"    - {name: rendering, meaning: the render engine}\n")
@@ -30,7 +30,7 @@ func projectWithScopes(t *testing.T) *Project {
 // scopes) and no gate vars - the scope keys and gate keys are all absent.
 func projectAcceptAny(t *testing.T) *Project {
 	t.Helper()
-	p, err := Open(testContext(t), scaffold(t, "prefix: bare\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n"))
+	p, err := Open(testContext(t), scaffold(t, "prefix: bare\nintegrationBranch: main\nvars: {}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +49,7 @@ func TestPlaceholderRegistry(t *testing.T) {
 	if bare["prefix"] != "bare" {
 		t.Errorf("prefix = %q, want bare", bare["prefix"])
 	}
-	for _, k := range []string{"commitScopeList", "commitScopeTable", "commitScopeSentence", "gateCmd", "checkCmd"} {
+	for _, k := range []string{"commitScopeList", "commitScopeTable", "commitScopeSentence", "checkCmd"} {
 		if _, ok := bare[k]; ok {
 			t.Errorf("accept-any/no-vars registry should not carry %q", k)
 		}
@@ -169,7 +169,7 @@ func TestPlaceholderEscape(t *testing.T) {
 // invariant: rendering/inplace-and-placeholders:placeholder-value-token-free (TestPlaceholderValueTokenFree)
 func TestPlaceholderValueTokenFree(t *testing.T) {
 	// A scope meaning carrying the token taints commitScopeTable's value.
-	root := scaffold(t, "prefix: awftest\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n"+
+	root := scaffold(t, "prefix: awftest\nintegrationBranch: main\nvars: {}\n"+
 		"audit:\n  allowedScopes:\n    - {name: adr, meaning: \"see {{=awf:commitScopeList}}\"}\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -188,7 +188,7 @@ func TestPlaceholderValueTokenFree(t *testing.T) {
 // a workflow part using {{=awf:commitScopeTable}} renders the table, and a part
 // with an unknown placeholder fails Sync.
 func TestPlaceholderSubstitutionInSync(t *testing.T) {
-	cfg := "prefix: awftest\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n" +
+	cfg := "prefix: awftest\nintegrationBranch: main\nvars: {}\n" +
 		"audit:\n  allowedScopes:\n    - {name: adr, meaning: ADR docs}\n"
 
 	good := scaffoldFiles(t, cfg, map[string]string{

@@ -10,6 +10,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/configspec"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
@@ -18,7 +19,7 @@ import (
 // crefRel is the generated config reference's project-relative output path,
 // derived from its catalog entry like every doc path.
 func (p *Project) crefRel() string {
-	return strings.TrimRight(p.Cfg.DocsDir, "/") + "/" + p.Cat.Docs["config-reference"].Path
+	return config.DocsDir + "/" + p.Cat.Docs["config-reference"].Path
 }
 
 // PotentialVarConsumers inverts the full catalog's raw template sources into
@@ -69,16 +70,13 @@ func PotentialVarConsumers() (map[string][]string, error) {
 	return out, nil
 }
 
-// enabledVarConsumers unions each var's enabled consumers from the rendered
+// renderedVarConsumers unions each var's current consumers from the rendered
 // files' assembled sources and part-placeholder refs - the same consumption
 // definition the unused-var check applies (ADR-0086).
-func enabledVarConsumers(files []RenderedFile) map[string][]string {
+func renderedVarConsumers(files []RenderedFile) map[string][]string {
 	byVar := map[string]map[string]bool{}
 	for _, f := range files {
 		label := artifactLabel(f.TemplateID)
-		if f.TemplateID == baseTID("skills") || f.TemplateID == baseTID("agents") {
-			label = localLabel(f.TemplateID, f.Path)
-		}
 		if f.TemplateID == "" { // generated domain docs carry no template id
 			label = "domain doc " + f.Path
 		}
@@ -99,18 +97,14 @@ func enabledVarConsumers(files []RenderedFile) map[string][]string {
 // currentValueResolvers couples each live classification to the function that
 // computes its project value. Static keys have no resolver.
 func (p *Project) currentValueResolvers() map[string]func() string {
-	res := audit.Resolve(p.Cfg.Audit)
-	a := p.Cfg.Audit
-	withDefault := func(s string, isDefault bool) string {
-		if isDefault {
-			return s + " (default)"
-		}
-		return s
+	var scopes []config.ScopeSpec
+	if p.Cfg.Audit != nil {
+		scopes = p.Cfg.Audit.AllowedScopes
 	}
+	res := audit.Resolve(scopes)
 	return map[string]func() string{
 		"prefix":            func() string { return "`" + p.Cfg.Prefix + "`" },
 		"integrationBranch": func() string { return "`" + p.Cfg.IntegrationBranch + "`" },
-		"docsDir":           func() string { return "`" + p.Cfg.DocsDir + "`" },
 		"vars": func() string {
 			set := 0
 			for _, v := range p.Cfg.Vars {
@@ -120,11 +114,7 @@ func (p *Project) currentValueResolvers() map[string]func() string {
 			}
 			return fmt.Sprintf("%d keys, %d set", len(p.Cfg.Vars), set)
 		},
-		"skills":  func() string { return strconv.Itoa(len(p.Cfg.Skills)) + " enabled" },
-		"agents":  func() string { return strconv.Itoa(len(p.Cfg.Agents)) + " enabled" },
-		"docs":    func() string { return strconv.Itoa(len(p.Cfg.Docs)) + " enabled" },
 		"domains": func() string { return strconv.Itoa(len(p.Cfg.Domains)) + " configured" },
-		"targets": func() string { return "`" + strings.Join(p.Cfg.Targets, "`, `") + "`" },
 		"tags": func() string {
 			if len(p.Cfg.Tags) == 0 {
 				return "(none)"
@@ -173,68 +163,20 @@ func (p *Project) currentValueResolvers() map[string]func() string {
 			}
 			return strconv.Itoa(len(p.Cfg.CurrentState.TestGlobs)) + " globs"
 		},
-		"currentState.maxTopicsPerPath": func() string {
-			return withDefault(strconv.Itoa(p.Cfg.CurrentState.EffectiveMaxTopicsPerPath()), p.Cfg.CurrentState == nil || p.Cfg.CurrentState.MaxTopicsPerPath == nil)
-		},
-		"audit.allowedTypes": func() string {
-			if len(res.AllowedTypes) == 0 {
-				return "accept any"
-			}
-			return withDefault(strconv.Itoa(len(res.AllowedTypes))+" types", a == nil || a.AllowedTypes == nil)
-		},
 		"audit.allowedScopes": func() string {
 			if len(res.AllowedScopes) == 0 {
 				return "accept any (default)"
 			}
 			return strconv.Itoa(len(res.AllowedScopes)) + " scopes"
 		},
-		"audit.subjectMaxLength": func() string {
-			return withDefault(strconv.Itoa(res.SubjectMaxLength), a == nil || a.SubjectMaxLength == nil)
-		},
-		"audit.dependencyManifests": func() string {
-			if len(res.DependencyManifests) == 0 {
-				return "rule off"
-			}
-			return withDefault(strconv.Itoa(len(res.DependencyManifests))+" globs", a == nil || a.DependencyManifests == nil)
-		},
-		"audit.diffThreshold": func() string {
-			return withDefault(strconv.Itoa(res.DiffThreshold), a == nil || a.DiffThreshold == nil)
-		},
-		"audit.domainDocStaleness": func() string {
-			return withDefault(strconv.FormatBool(res.DomainDocStaleness), a == nil || a.DomainDocStaleness == nil)
-		},
-		"audit.domainCodeStaleness": func() string {
-			return withDefault(strconv.FormatBool(res.DomainCodeStaleness), a == nil || a.DomainCodeStaleness == nil)
-		},
-		"audit.undocumentedDomain": func() string {
-			return withDefault(strconv.FormatBool(res.UndocumentedDomain), a == nil || a.UndocumentedDomain == nil)
-		},
-		"audit.plainPunctuation": func() string {
-			return withDefault(strconv.FormatBool(res.PlainPunctuation), a == nil || a.PlainPunctuation == nil)
-		},
-		"audit.uncommittedChanges": func() string {
-			return withDefault(strconv.FormatBool(res.UncommittedChanges), a == nil || a.UncommittedChanges == nil)
-		},
 		"bootstrap.enabled": func() string {
 			return strconv.FormatBool(p.Cfg.Bootstrap != nil && p.Cfg.Bootstrap.Enabled)
-		},
-		"hooks.enabled": func() string {
-			return strconv.FormatBool(p.Cfg.Hooks != nil && p.Cfg.Hooks.Enabled)
-		},
-		"runner.enabled": func() string {
-			return strconv.FormatBool(p.Cfg.Runner != nil && p.Cfg.Runner.Enabled)
-		},
-		"proseGate.enabled": func() string {
-			return strconv.FormatBool(p.Cfg.ProseGate != nil && p.Cfg.ProseGate.Enabled)
 		},
 		"proseGate.exemptions": func() string {
 			if p.Cfg.ProseGate == nil || len(p.Cfg.ProseGate.Exemptions) == 0 {
 				return "(none)"
 			}
 			return fmt.Sprintf("%d entries", len(p.Cfg.ProseGate.Exemptions))
-		},
-		"memoryCite.enabled": func() string {
-			return strconv.FormatBool(p.Cfg.MemoryCite != nil && p.Cfg.MemoryCite.Enabled)
 		},
 		"memoryCite.exemptions": func() string {
 			if p.Cfg.MemoryCite == nil || len(p.Cfg.MemoryCite.Exemptions) == 0 {
@@ -344,17 +286,17 @@ func (p *Project) configReferenceRows(files []RenderedFile) (ConfigReference, er
 		ref.ConfigKeys = append(ref.ConfigKeys, row)
 	}
 
-	enabled := enabledVarConsumers(files)
+	rendered := renderedVarConsumers(files)
 	potential, err := PotentialVarConsumers()
 	if err != nil { // coverage-ignore: PotentialVarConsumers reads only embedded templates
 		return ConfigReference{}, err
 	}
 	for _, v := range configspec.VarEntries() {
 		consumers := "No catalog artifact references it."
-		if c := enabled[v.Key]; len(c) > 0 {
+		if c := rendered[v.Key]; len(c) > 0 {
 			consumers = "Consumed by: " + strings.Join(c, ", ") + "."
 		} else if c := potential[v.Key]; len(c) > 0 {
-			consumers = "Dormant: no enabled artifact references it; enabling " + strings.Join(c, ", ") + " would."
+			consumers = "Potential catalog consumers: " + strings.Join(c, ", ") + "; no rendered output currently references it."
 		}
 		ref.VarEntries = append(ref.VarEntries, VarRow{
 			Key: v.Key, Description: v.Description, Availability: v.Availability,
@@ -417,135 +359,68 @@ func (p *Project) configReferenceData(files []RenderedFile) (map[string]any, err
 	}, nil
 }
 
-// dataKeyRowsTyped filters the described data keys to this project: enabled
-// artifacts, the local base entries when a synthesized project-local artifact
-// of that kind exists, and the always-on agents-doc.
+// dataKeyRowsTyped filters described data keys to catalog artifacts and the
+// always-on agents-doc.
 func (p *Project) dataKeyRowsTyped() ([]DataKeyRow, error) {
-	hasLocal := map[string]bool{
-		"skills": p.hasLocalArtifact("skills"),
-		"agents": p.hasLocalArtifact("agents"),
-		"docs":   p.hasLocalArtifact("docs"),
-	}
 	var rows []DataKeyRow
 	for _, d := range configspec.DataKeys() {
-		var label string
-		switch {
-		case d.Artifact == "_base":
-			if !hasLocal[d.Kind] {
-				continue
-			}
-			label = "local " + strings.TrimSuffix(d.Kind, "s") + "s"
-		case d.Kind == "docs" && d.Artifact == "agents-doc":
+		label := strings.TrimSuffix(d.Kind, "s") + " " + d.Artifact
+		if d.Kind == "docs" && d.Artifact == "agents-doc" {
 			label = "agents-doc"
-		default:
-			if !slices.Contains(p.enableArray(d.Kind), d.Artifact) {
-				continue
-			}
-			label = strings.TrimSuffix(d.Kind, "s") + " " + d.Artifact
 		}
 		state := ""
 		var declared map[string]any
-		if d.Artifact != "_base" {
-			switch d.Kind {
-			case "skills":
-				declared = p.Cat.Skills[d.Artifact].Data
-			case "agents":
-				declared = p.Cat.Agents[d.Artifact].Data
-			case "docs":
-				declared = p.Cat.Docs[d.Artifact].Data
-			}
-			sidecarKind, sidecarName := d.Kind, d.Artifact
-			if d.Artifact == "agents-doc" {
-				sidecarKind, sidecarName = "agents-doc", ""
-			}
-			sc, err := p.Cfg.Sidecar(sidecarKind, sidecarName)
-			if err != nil { // coverage-ignore: these sidecars were already read by the render pass in outputPlan
-				return nil, err
-			}
-			_, hasAuthored := sc.Data[d.Key]
-			defaultValue, hasDefault := declared[d.Key]
-			_, catalogList := defaultValue.([]any)
-			catalogList = catalogList && !slices.Contains(specializedListDataKeys(sidecarKind, sidecarName), d.Key)
+		switch d.Kind {
+		case "skills":
+			declared = p.Cat.Skills[d.Artifact].Data
+		case "agents":
+			declared = p.Cat.Agents[d.Artifact].Data
+		case "docs":
+			declared = p.Cat.Docs[d.Artifact].Data
+		}
+		sidecarKind, sidecarName := d.Kind, d.Artifact
+		if d.Artifact == "agents-doc" {
+			sidecarKind, sidecarName = "agents-doc", ""
+		}
+		sc, err := p.Cfg.Sidecar(sidecarKind, sidecarName)
+		if err != nil { // coverage-ignore: these sidecars were already read by the render pass in outputPlan
+			return nil, err
+		}
+		_, hasAuthored := sc.Data[d.Key]
+		defaultValue, hasDefault := declared[d.Key]
+		_, catalogList := defaultValue.([]any)
+		catalogList = catalogList && !slices.Contains(specializedListDataKeys(sidecarKind, sidecarName), d.Key)
+		switch {
+		case catalogList:
+			keep, configured := sc.DataDefaults[d.Key]
 			switch {
-			case catalogList:
-				keep, configured := sc.DataDefaults[d.Key]
-				switch {
-				case configured && !keep:
-					state = " (explicitly suppressed default; project entries only)"
-				case hasAuthored:
-					state = " (catalog default + project entries)"
-				case configured:
-					state = " (catalog default; dataDefaults explicitly true)"
-				default:
-					state = " (catalog default)"
-				}
+			case configured && !keep:
+				state = " (explicitly suppressed default; project entries only)"
 			case hasAuthored:
-				state = " (project-only/specialized)"
-			case hasDefault:
+				state = " (catalog default + project entries)"
+			case configured:
+				state = " (catalog default; dataDefaults explicitly true)"
+			default:
 				state = " (catalog default)"
 			}
+		case hasAuthored:
+			state = " (project-only/specialized)"
+		case hasDefault:
+			state = " (catalog default)"
 		}
 		rows = append(rows, DataKeyRow{Artifact: label, Key: d.Key, Description: d.Description, State: state})
 	}
 	return rows, nil
 }
 
-// hasLocalArtifact reports whether the project enables a synthesized
-// project-local artifact of the plural kind - one rendered from an awf-owned
-// base template, so the config reference should document that kind's `_base`
-// data keys (ADR-0068/0091). Skills and agents carry a `Base` flag; a local
-// doc's synthesized `DocEntry.TID` is the base doc template. A `local: true`
-// opt-out is hand-authored and never synthesized, so it correctly does not
-// count - its body is not rendered from the base template.
-func (p *Project) hasLocalArtifact(kind string) bool {
-	switch kind {
-	case "skills":
-		for _, n := range p.Cfg.Skills {
-			if p.Cat.Skills[n].Base {
-				return true
-			}
-		}
-	case "agents":
-		for _, n := range p.Cfg.Agents {
-			if p.Cat.Agents[n].Base {
-				return true
-			}
-		}
-	case "docs":
-		for _, n := range p.Cfg.Docs {
-			if p.Cat.Docs[n].TID == baseTID("docs") {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-// enableArray returns the enable array for a plural kind name.
-func (p *Project) enableArray(kind string) []string {
-	switch kind {
-	case "skills":
-		return p.Cfg.Skills
-	case "agents":
-		return p.Cfg.Agents
-	default:
-		return p.Cfg.Docs
-	}
-}
-
 // generateConfigReference renders the always-on generated config reference
 // (ADR-class: generated index, no template/config hashes - drift is checked
 // by regeneration). files is the consumption input (the plan write files plus
-// generated domain docs). The bool reports whether a reference was produced -
-// false when a local: sidecar opts out (the manifest.LoadOptional found-flag
-// idiom).
+// generated domain docs).
 func (p *Project) generateConfigReference(files []RenderedFile, eff map[string]bool) (*RenderedFile, bool, error) {
 	sc, err := p.Cfg.Sidecar("config-reference", "")
 	if err != nil { // coverage-ignore: validation already read this sidecar at open
 		return nil, false, err
-	}
-	if sc.Local {
-		return nil, false, nil
 	}
 	data := p.data(sc, eff)
 	collections, err := p.configReferenceData(files)

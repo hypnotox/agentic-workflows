@@ -207,7 +207,7 @@ func (p *Project) CheckStaged(ctx context.Context) (CurrentStateReport, error) {
 		Provisional: currentstate.OlderIntroductions(before.Universe(), after.Universe(), adr.CurrentFormat()),
 	}
 	report.Coverage = topic.EvaluateCoverage(after.Topics, eligiblePaths(afterTree, afterLock, afterCfg.ContextIgnore), coveragePolicy(afterCfg.CurrentState))
-	plans, planDrift, err := plansFromTree(afterTree, afterCfg.DocsDir)
+	plans, planDrift, err := plansFromTree(afterTree, config.DocsDir)
 	if err != nil { // coverage-ignore: plansFromTree converts every validated plan parse failure into plan drift
 		return CurrentStateReport{}, err
 	}
@@ -499,18 +499,9 @@ func (r configSnapshotReader) Paths(prefix string) []string {
 	return out
 }
 
-// coveragePolicy reads only the fan-out budget from a currentState config block.
-// Which checks run and the rank each reports at are fixed in code (ADR-0183). A
-// nil block is a real input at both call sites and needs no special case: since
-// ADR-0192 both checks evaluate regardless of block presence, and
-// EffectiveMaxTopicsPerPath returns the default of 8 on a nil receiver, so a tree
-// declaring no block evaluates exactly as one declaring an empty one.
-func coveragePolicy(cs *config.CurrentStateConfig) topic.CoveragePolicy {
-	return topic.CoveragePolicy{
-		Coverage:         true,
-		Fanout:           true,
-		MaxTopicsPerPath: cs.EffectiveMaxTopicsPerPath(),
-	}
+// coveragePolicy requests both checks; internal/topic owns the fixed fan-out budget.
+func coveragePolicy(_ *config.CurrentStateConfig) topic.CoveragePolicy {
+	return topic.CoveragePolicy{Coverage: true, Fanout: true}
 }
 
 // eligiblePaths returns the snapshot files that are neither a generated output (a

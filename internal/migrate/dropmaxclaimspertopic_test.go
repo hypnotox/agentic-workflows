@@ -112,7 +112,7 @@ func TestConfigForCurrentSchemaDropsHistoricalMaxClaimsPerTopic(t *testing.T) {
 	}
 	// Porting forward to the current generation also runs the later
 	// integration-branch migration, which seeds the required key.
-	want := "prefix: example\ncurrentState:\n  maxTopicsPerPath: 8\nintegrationBranch: main\n"
+	want := "prefix: example\nintegrationBranch: main\n"
 	if string(got) != want {
 		t.Fatalf("forward-ported config:\ngot  %q\nwant %q", got, want)
 	}

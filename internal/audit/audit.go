@@ -32,10 +32,7 @@ type Finding struct {
 }
 
 // Inputs are the resolved audit settings plus the project-derived layout the rules
-// need. The embedded Settings carries the resolved knobs (AllowedTypes,
-// AllowedScopes, SubjectMaxLength, DependencyManifests, DiffThreshold,
-// DomainDocStaleness, DomainCodeStaleness, UndocumentedDomain, UncommittedChanges,
-// PlainPunctuation), promoted so the rules read in.AllowedTypes etc. directly.
+// need. The embedded Settings carries the repository's allowed scope vocabulary.
 type Inputs struct {
 	Settings
 	GeneratedPaths    map[string]bool
@@ -54,10 +51,7 @@ type Inputs struct {
 // (ADR-0025). It reads live worktree state from native Git porcelain so the
 // audit uses Git's own repository, global, and system ignore semantics.
 // touches-state: tooling/audit-and-snapshots:audit-uncommitted-changes - uncommitted-changes live-state rule; proof in audit_test.go
-func ruleUncommittedChanges(ctx context.Context, repo *awfgit.Repo, in Inputs) ([]Finding, error) {
-	if !in.UncommittedChanges {
-		return nil, nil
-	}
+func ruleUncommittedChanges(ctx context.Context, repo *awfgit.Repo) ([]Finding, error) {
 	tracked, untracked, err := repo.ChangeCounts(ctx)
 	if err != nil {
 		return nil, err
@@ -89,7 +83,7 @@ func Run(ctx context.Context, repoRoot, base, head string, in Inputs) ([]Finding
 		},
 		repo.FirstParentChangedPaths,
 		func(ctx context.Context) ([]Finding, error) {
-			return ruleUncommittedChanges(ctx, repo, in)
+			return ruleUncommittedChanges(ctx, repo)
 		})
 	if err != nil {
 		return nil, 0, err
@@ -130,7 +124,7 @@ func (e *rangeEvaluator) observe(c awfgit.Commit) {
 		if isADRFile(ch.Path, e.in.ADRDir) {
 			e.adrTouched = true
 		}
-		if e.manifest == nil && matchesAny(e.in.DependencyManifests, ch.Path) {
+		if e.manifest == nil && matchesAny(defaultDependencyManifests(), ch.Path) {
 			f := finding(severity.Warn, "dependency-adr", c, "dependency manifest changed on this branch with no ADR touched: if a dependency was added, confirm an ADR covers it")
 			e.manifest = &f
 		}
@@ -179,7 +173,7 @@ func (e *rangeEvaluator) observe(c awfgit.Commit) {
 				}
 			}
 		}
-		if ch.Action != awfgit.Deleted && strings.HasSuffix(ch.Path, ".md") && underDir(ch.Path, e.in.DocsDir) && !e.in.GeneratedPaths[ch.Path] && e.in.PlainPunctuation {
+		if ch.Action != awfgit.Deleted && strings.HasSuffix(ch.Path, ".md") && underDir(ch.Path, e.in.DocsDir) && !e.in.GeneratedPaths[ch.Path] {
 			before, after := countBanned(ch.OldText), countBanned(ch.NewText)
 			var risen []string
 			for r, name := range bannedProseRunes {
@@ -203,26 +197,22 @@ func (e *rangeEvaluator) findings() []Finding {
 	if e.manifest != nil && !e.adrTouched {
 		out = append(out, *e.manifest)
 	}
-	if e.in.DiffThreshold > 0 && e.lines > e.in.DiffThreshold && !e.planTouched {
-		out = append(out, Finding{Severity: severity.Warn, Rule: "plan-for-large-change", Detail: fmt.Sprintf("branch changes %d non-generated lines (> %d) with no plan under %s", e.lines, e.in.DiffThreshold, e.in.PlansDir)})
+	if e.lines > diffThreshold && !e.planTouched {
+		out = append(out, Finding{Severity: severity.Warn, Rule: "plan-for-large-change", Detail: fmt.Sprintf("branch changes %d non-generated lines (> %d) with no plan under %s", e.lines, diffThreshold, e.in.PlansDir)})
 	}
-	if e.in.DomainDocStaleness {
-		for _, d := range slices.Sorted(maps.Keys(e.docFlagged)) {
-			if !e.refreshed[d] {
-				out = append(out, Finding{Severity: severity.Warn, Rule: "domain-doc-staleness", Detail: fmt.Sprintf("an ADR in domain %q reached Implemented but %s/%s/current-state.md was not refreshed in this range", d, e.in.DomainsPartsDir, d)})
-			}
+	for _, d := range slices.Sorted(maps.Keys(e.docFlagged)) {
+		if !e.refreshed[d] {
+			out = append(out, Finding{Severity: severity.Warn, Rule: "domain-doc-staleness", Detail: fmt.Sprintf("an ADR in domain %q reached Implemented but %s/%s/current-state.md was not refreshed in this range", d, e.in.DomainsPartsDir, d)})
 		}
 	}
-	if e.in.UndocumentedDomain && len(e.in.ConfiguredDomains) > 0 {
+	if len(e.in.ConfiguredDomains) > 0 {
 		for _, d := range slices.Sorted(maps.Keys(e.undocumented)) {
 			out = append(out, Finding{Severity: severity.Warn, Rule: "undocumented-domain", Detail: fmt.Sprintf("an ADR is tagged with domain %q, which has no domain doc: add it to config.Domains and author its current-state narrative, or drop the tag", d)})
 		}
 	}
-	if e.in.DomainCodeStaleness {
-		for _, d := range slices.Sorted(maps.Keys(e.codeChurned)) {
-			if !e.refreshed[d] {
-				out = append(out, Finding{Severity: severity.Warn, Rule: "domain-code-staleness", Detail: fmt.Sprintf("files in domain %q changed but %s/%s/current-state.md was not refreshed in this range: if anything meaningful changed, document it", d, e.in.DomainsPartsDir, d)})
-			}
+	for _, d := range slices.Sorted(maps.Keys(e.codeChurned)) {
+		if !e.refreshed[d] {
+			out = append(out, Finding{Severity: severity.Warn, Rule: "domain-code-staleness", Detail: fmt.Sprintf("files in domain %q changed but %s/%s/current-state.md was not refreshed in this range: if anything meaningful changed, document it", d, e.in.DomainsPartsDir, d)})
 		}
 	}
 	return append(out, e.punctuation...)
@@ -253,14 +243,14 @@ func checkConventionalCommit(c awfgit.Commit, s Settings, scopeSeverity severity
 		return []Finding{finding(severity.Error, "conventional-commits", c, "subject is not Conventional Commits (type(scope)?: subject)")}
 	}
 	var out []Finding
-	if len(s.AllowedTypes) > 0 && !containsFold(s.AllowedTypes, m[1]) {
+	if !containsFold(defaultAllowedTypes(), m[1]) {
 		out = append(out, finding(severity.Error, "conventional-commits", c, fmt.Sprintf("disallowed type %q", m[1])))
 	}
 	if scope := m[3]; scope != "" && len(s.AllowedScopes) > 0 && !containsFold(s.ScopeNames(), scope) {
 		out = append(out, finding(scopeSeverity, "conventional-commits", c, fmt.Sprintf("disallowed scope %q", scope)))
 	}
-	if n := utf8.RuneCountInString(c.Subject); s.SubjectMaxLength > 0 && n > s.SubjectMaxLength {
-		out = append(out, finding(severity.Error, "conventional-commits", c, fmt.Sprintf("subject %d chars > %d", n, s.SubjectMaxLength)))
+	if n := utf8.RuneCountInString(c.Subject); n > subjectMaxLength {
+		out = append(out, finding(severity.Error, "conventional-commits", c, fmt.Sprintf("subject %d chars > %d", n, subjectMaxLength)))
 	}
 	return out
 }

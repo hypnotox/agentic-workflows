@@ -93,14 +93,14 @@ func VarEntries() []VarEntry {
 // varAvailability holds the configspec-owned availability clause per config
 // var; the parity test pins its key set to the config-var descriptors.
 var varAvailability = map[string]string{
-	"gateCmd":           "Consumed while an enabled artifact's template references it, by the `{{=awf:gateCmd}}` placeholder in convention parts (including the rendered pre-push hook payload's part channel), and by divergent effort-integration guidance.",
-	"gateCmdFull":       "Consumed while an enabled artifact's template references it.",
-	"checkCmd":          "Consumed while an enabled artifact's template references it, and by the `{{=awf:checkCmd}}` placeholder in convention parts.",
-	"commitGateCmd":     "Consumed by the rendered commit-msg hook payload while the hooks singleton is enabled.",
-	"testCmd":           "Consumed while an enabled artifact's template references it.",
-	"activeMdRegenCmd":  "Consumed while an enabled artifact's template references it (the decision-index regeneration steps in the chain skills).",
-	"awfInvokeCmd":      "Consumed by the rendered runner wrapper template while the runner singleton is enabled.",
-	"invariantTestPath": "Consumed while an enabled artifact's template references it (the invariant-backing guidance in the decision docs and skills).",
+	"gateCmd":           "Consumed while a rendered artifact's template references it, by the `{{=awf:gateCmd}}` placeholder in convention parts (including the rendered pre-push hook payload's part channel), and by divergent effort-integration guidance.",
+	"gateCmdFull":       "Consumed while a rendered artifact's template references it.",
+	"checkCmd":          "Consumed while a rendered artifact's template references it, and by the `{{=awf:checkCmd}}` placeholder in convention parts.",
+	"commitGateCmd":     "Consumed by the always-rendered commit-msg hook payload.",
+	"testCmd":           "Consumed while a rendered artifact's template references it.",
+	"activeMdRegenCmd":  "Consumed while a rendered artifact's template references it (the decision-index regeneration steps in the chain skills).",
+	"awfInvokeCmd":      "Consumed by the always-rendered runner wrapper template.",
+	"invariantTestPath": "Consumed while a rendered artifact's template references it (the invariant-backing guidance in the decision docs and skills).",
 }
 
 // keys is the hand-authored description table for config.yaml and sidecar
@@ -118,38 +118,13 @@ var keys = []Entry{
 		Availability: "Always.",
 	},
 	{
-		Path: "docsDir", Type: "string", Default: "docs",
-		Description:  "Root directory for rendered documentation: managed docs render to `<docsDir>/<name>.md`, decisions to `<docsDir>/decisions/`, plans to `<docsDir>/plans/`, domain docs to `<docsDir>/domains/`. Relative, without `..`.",
-		Availability: "Always.",
-	},
-	{
 		Path: "vars", Type: "key → value map", Default: "seeded with every catalog-referenced var as an empty string at init",
 		Description:  "Freeform values templates interpolate. A key with a value renders it; a present-but-empty key is an open to-do (rendered artifacts referencing it degrade to generic prose and a non-failing note nudges you); a deleted key is the deliberate, git-auditable decline of that var; the generic prose renders silently. A non-empty key no rendered artifact references is failing drift.",
-		Availability: "Each key is consumed only while an enabled artifact's template (or a `gateCmd`/`checkCmd` part placeholder) references it, except that `gateCmd` is also consumed by divergent effort-integration guidance.",
-	},
-	{
-		Path: "skills", Type: "string list", Default: "the workflow-core set at init",
-		Description:  "Enabled skills. Catalog names render from the embedded templates; a name with a `local: true` sidecar is a hand-maintained project-local skill. The enabled set must be requirement-closed: `awf enable skill` enables a skill's full requirement closure, and `awf disable` refuses while enabled artifacts still require it.",
-		Availability: "Always.",
-	},
-	{
-		Path: "agents", Type: "string list", Default: "every catalog agent at init",
-		Description:  "Enabled agents. A skill's dispatched agent must stay enabled while the skill is: disabling refuses upfront; `awf enable skill` auto-enables the pair.",
-		Availability: "Always.",
-	},
-	{
-		Path: "docs", Type: "string list", Default: "empty at init (the always-on docs are not listed here)",
-		Description:  "Enabled toggleable docs (architecture, testing, development, ...). The always-on docs (the agent guide, workflow, this reference) render regardless and are not listed here.",
-		Availability: "Always.",
+		Availability: "Each key is consumed only while a rendered artifact's template (or a `gateCmd`/`checkCmd` part placeholder) references it, except that `gateCmd` is also consumed by divergent effort-integration guidance.",
 	},
 	{
 		Path: "domains", Type: "string list", Default: "none",
-		Description:  "Freeform domain keys. Each renders a generated `<docsDir>/domains/<name>.md` doc (a compact topic list plus your `current-state` convention part) and can declare a file territory via the domain sidecar's `paths:`.",
-		Availability: "Always.",
-	},
-	{
-		Path: "targets", Type: "string list", Default: "claude",
-		Description:  "Enabled adapter runtimes. Skills and agents render once per target into that runtime's layout; docs are runtime-neutral and render once.",
+		Description:  "Freeform domain keys. Each renders a generated `docs/domains/<name>.md` doc (a compact topic list plus your `current-state` convention part) and can declare a file territory via the domain sidecar's `paths:`.",
 		Availability: "Always.",
 	},
 	{
@@ -228,16 +203,6 @@ var keys = []Entry{
 		Availability: "Consumed by current-state topic validation, coverage, context, and the staged check.",
 	},
 	{
-		Path: "currentState.maxTopicsPerPath", Type: "positive int", Default: "8",
-		Description:  "Maximum path-scoped current-state topics permitted to match one path before the fan-out finding is emitted.",
-		Availability: "Consumed by current-state topic validation, coverage, context, and the staged check.",
-	},
-	{
-		Path: "audit.allowedTypes", Type: "string list", Default: "the Conventional Commits type set (build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test)",
-		Description:  "Commit types `awf check staged commit` and `awf audit` accept. Absent key = the default set; an explicit empty list = accept any type. (Absent and empty differ.)",
-		Availability: "Read by `awf check staged commit` and `awf audit`.",
-	},
-	{
 		Path: "audit.allowedScopes", Type: "list of scope entries (bare string, or {name, meaning})", Default: "accept any scope",
 		Description:  "The project's Conventional Commits scope taxonomy: the single home for commit scopes; rendered prose quotes it from here. Absent = accept any scope; entries are enforced by `awf check staged commit`/`awf audit` and editing them reflags referencing rendered artifacts.",
 		Availability: "Read by `awf check staged commit`, `awf audit`, and every rendered artifact quoting the scope list.",
@@ -253,104 +218,44 @@ var keys = []Entry{
 		Availability: "Within each `audit.allowedScopes` entry.",
 	},
 	{
-		Path: "audit.subjectMaxLength", Type: "int", Default: "72",
-		Description:  "Maximum commit-subject length `awf check staged commit` and `awf audit` accept.",
-		Availability: "Read by `awf check staged commit` and `awf audit`.",
-	},
-	{
-		Path: "audit.dependencyManifests", Type: "string list (anchored path globs)", Default: "a broad manifest set (**/go.mod, **/package.json, **/Cargo.toml, ...)",
-		Description:  "Globs identifying dependency manifests; `awf audit` flags a manifest change without a lockfile-style co-change. Absent = the default set; explicit empty = the rule is off.",
-		Availability: "Read by `awf audit`.",
-	},
-	{
-		Path: "audit.diffThreshold", Type: "int", Default: "400",
-		Description:  "Changed-line count above which `awf audit` advises that a commit likely bundles more than one concern.",
-		Availability: "Read by `awf audit`.",
-	},
-	{
-		Path: "audit.domainDocStaleness", Type: "bool", Default: "true",
-		Description:  "Advisory rule: warn when a domain's decisions changed in range without its generated domain doc being re-rendered.",
-		Availability: "Read by `awf audit`; inert without configured domains.",
-	},
-	{
-		Path: "audit.domainCodeStaleness", Type: "bool", Default: "true",
-		Description:  "Advisory rule: warn when a domain's declared `paths:` territory changed in range without a co-change to that domain's `current-state` convention part. Inert for a domain without `paths:`.",
-		Availability: "Read by `awf audit`; inert without configured domains.",
-	},
-	{
-		Path: "audit.undocumentedDomain", Type: "bool", Default: "true",
-		Description:  "Advisory rule: warn when decision docs tag a domain key that is not configured under `domains:`.",
-		Availability: "Read by `awf audit`.",
-	},
-	{
-		Path: "audit.plainPunctuation", Type: "bool", Default: "true",
-		Description:  "Advisory rule: warn when a commit raises the count of typographic punctuation substitutes (the em-dash U+2014, en-dash U+2013, ellipsis U+2026, and the curly quotes U+2018, U+2019, U+201C, U+201D) in an authored markdown file under `docsDir`. Existing occurrences never warn; only a net increase does. Generated files are skipped.",
-		Availability: "Read by `awf audit`.",
-	},
-	{
-		Path: "audit.uncommittedChanges", Type: "bool", Default: "true",
-		Description:  "Advisory rule: warn when the working tree carries uncommitted changes at audit time.",
-		Availability: "Read by `awf audit`.",
-	},
-	{
 		Path: "bootstrap.enabled", Type: "bool", Default: "false (key absent); awf init scaffolds it true",
 		Description:  "Renders the self-pinning `.awf/bootstrap.sh` installer (pinned to the rendering awf version, checksum-verified) and the `.awf/upgrade.sh` porcelain. Absent and false both mean: do not render.",
 		Availability: "Always.",
 	},
 	{
-		Path: "hooks.enabled", Type: "bool", Default: "false (key absent); awf init scaffolds it true",
-		Description:  "Renders the five inert git-hook payload scripts under `.awf/hooks/` (pre-commit, commit-msg, pre-merge-commit, reference-transaction, pre-push). awf never activates hooks or touches git config. Wiring the payloads into your hook setup is yours.",
-		Availability: "Always.",
-	},
-	{
-		Path: "runner.enabled", Type: "bool", Default: "false (key absent); awf init and awf upgrade seed it true",
-		Description:  "Renders the pure awf wrapper `awf` at the repo root: a fully awf-owned forwarder that execs the configured (`awfInvokeCmd`) or bootstrap-resolved awf with all arguments forwarded verbatim. Absent and false both mean: do not render.",
-		Availability: "Always.",
-	},
-	{
-		Path: "proseGate.enabled", Type: "bool", Default: "false (key absent)",
-		Description:  "Whether `awf check repo prose` scans. False, the command exits zero immediately without scanning, so a hook or a runner may invoke it unconditionally. Absent and false both mean: do not scan. Default off, because the scan blocks a commit and a tree that has never been swept would fail it on the day it lands.",
-		Availability: "Always.",
-	},
-	{
 		Path: "proseGate.exemptions", Type: "list of {path, codepoint, count} mappings", Default: "empty (nothing is exempt)",
 		Description:  "Places where a typographic punctuation substitute is permitted, typically prose that is genuinely about the character it contains, where punctuating it would make a true statement false. An entry exempts one codepoint in one path.",
-		Availability: "While `proseGate.enabled` is true.",
+		Availability: "Always.",
 	},
 	{
 		Path: "proseGate.exemptions[].path", Type: "string", Default: "required",
 		Description:  "The repo-relative path the exemption covers. A rendered file and the source it renders from each need their own entry, because each holds its own copy of the character.",
-		Availability: "While `proseGate.enabled` is true.",
+		Availability: "Always.",
 	},
 	{
 		Path: "proseGate.exemptions[].codepoint", Type: "string", Default: "required",
 		Description:  "The exempted codepoint, spelled `U+2014`, never the character itself: this file is scanned, so a typed character here would be a finding against the file that configures the exemption. Only the seven banned substitutes are accepted; anything else is an error rather than a silently wider exemption.",
-		Availability: "While `proseGate.enabled` is true.",
+		Availability: "Always.",
 	},
 	{
 		Path: "proseGate.exemptions[].count", Type: "int", Default: "unset (any number is permitted)",
 		Description:  "The exact number of occurrences expected. Set, an added occurrence in an exempt file still fails, which suits a frozen record; unset, any number is permitted, which suits a living file that may gain another depiction.",
-		Availability: "While `proseGate.enabled` is true.",
-	},
-	{
-		Path: "memoryCite.enabled", Type: "bool", Default: "false (key absent)",
-		Description:  "Whether `awf check repo memory` scans, and whether `awf check staged commit` scans the commit-message body for the same thing. False, neither scans: `awf check repo memory` exits zero, so a hook or a runner may invoke it unconditionally, and `awf check staged commit` falls through to its existing subject check. Absent and false both mean: do not scan. Default off, because the scan blocks a commit and a corpus that has never been swept would fail it on the day it lands.",
 		Availability: "Always.",
 	},
 	{
 		Path: "memoryCite.exemptions", Type: "list of {path, count} mappings", Default: "empty (nothing is exempt)",
 		Description:  "Decision records permitted to name a specific working-memory file, typically prose that is genuinely about one particular file. An entry exempts one path. Prefer rewording to the placeholder form over adding an entry.",
-		Availability: "While `memoryCite.enabled` is true.",
+		Availability: "Always.",
 	},
 	{
 		Path: "memoryCite.exemptions[].path", Type: "string", Default: "required",
 		Description:  "The repo-relative path the exemption covers. Only a path under the decisions or plans directory can carry a finding, so only such a path is worth exempting.",
-		Availability: "While `memoryCite.enabled` is true.",
+		Availability: "Always.",
 	},
 	{
 		Path: "memoryCite.exemptions[].count", Type: "int", Default: "unset (any number is permitted)",
 		Description:  "The exact number of citations expected. Set, an added citation in an exempt file still fails, which suits a frozen record; unset, any number is permitted, which suits a living file that may gain another mention.",
-		Availability: "While `memoryCite.enabled` is true.",
+		Availability: "Always.",
 	},
 	{
 		Path: "sidecar.data", Type: "key → value map", Default: "empty: catalog defaults apply",
@@ -373,11 +278,6 @@ var keys = []Entry{
 		Availability: "Within a declared section's override entry.",
 	},
 	{
-		Path: "sidecar.local", Type: "bool", Default: "false",
-		Description:  "Marks the artifact project-local: awf renders nothing for it and treats your hand-maintained file at the conventional output path as authoritative (frontmatter still validated for skills/agents). A local artifact's convention parts and data keys are unconsumed by construction.",
-		Availability: "Skills, agents, docs, and the always-on singletons; rejected on domain sidecars.",
-	},
-	{
 		Path: "sidecar.paths", Type: "string list (anchored path globs)", Default: "none",
 		Description:  "A domain's file territory, matched against slash-separated repo-relative paths. Powers the domain-code-staleness audit advisory: territory changes expect a co-change to the domain's `current-state` part.",
 		Availability: "Domain sidecars only; rejected at open on any other kind.",
@@ -395,12 +295,6 @@ var dataKeys = []DataKey{
 	{Kind: "skills", Artifact: "proposing-adr", Key: "adrSections", Description: "The required decision-record section names, in order (list); the default is Context through Alternatives Considered."},
 	{Kind: "skills", Artifact: "proposing-adr", Key: "adrTriggers", Description: "The project's load-bearing triggers that warrant a decision record (list); the default names the generic boundary/dependency/format/workflow triggers."},
 	{Kind: "skills", Artifact: "executing-plans", Key: "e2eSuitePaths", Description: "Where the project's end-to-end suites live (prose or list) for the gate-tier guidance; unset, the generic tier prose renders."},
-	{Kind: "skills", Artifact: "_base", Key: "slug", Description: "The local skill's name identifier interpolated into its frontmatter; synthesized from the artifact name at declaration; override only to diverge the rendered name token."},
-	{Kind: "skills", Artifact: "_base", Key: "description", Description: "The local skill's frontmatter description: the when-to-use line agent runtimes surface. `awf new skill` seeds it; keep it current."},
-	{Kind: "agents", Artifact: "_base", Key: "slug", Description: "The local agent's name identifier interpolated into its frontmatter; synthesized from the artifact name at declaration; override only to diverge the rendered name token."},
-	{Kind: "agents", Artifact: "_base", Key: "description", Description: "The local agent's frontmatter description: the dispatch-time summary agent runtimes surface. `awf new agent` seeds it; keep it current."},
-	{Kind: "docs", Artifact: "_base", Key: "title", Description: "The local doc's display title: its H1 and document-map label. `awf new doc` seeds it from the name; override to set a custom title."},
-	{Kind: "docs", Artifact: "_base", Key: "description", Description: "The local doc's one-line summary: the document-map description and the lede under its H1. `awf new doc` seeds it; keep it current."},
 	{Kind: "agents", Artifact: "adr-reviewer", Key: "focusItems", Description: "The reviewer's project-focus lens items (list of {name, description}); the default focuses decision clarity and consequences honesty."},
 	{Kind: "agents", Artifact: "adr-reviewer", Key: "reviewSubject", Description: "The one-word subject label the review spine addresses (default: the decision record)."},
 	{Kind: "agents", Artifact: "adr-reviewer", Key: "readStep", Description: "The reviewer's opening read instruction: what to read in full before applying lenses."},

@@ -10,6 +10,10 @@ query a single version or a range.
 
 ### Breaking changes
 
+- Rendering unconditionally emits the complete standard catalog for fixed Claude Code and Pi targets beneath the fixed `docs` root. Schema generation 39 retires the `skills`, `agents`, `docs`, `targets`, and `docsDir` selection keys and the artifact-sidecar `local` field; `bootstrap.enabled` remains conditional.
+
+- The complete `awf enable`, `awf disable`, and target command surfaces are removed. Domains now use `awf new domain` and `awf remove domain`; `awf list` is inventory-only.
+
 - The owner-free `awf effort memory edit` and `awf effort memory update` commands now report the same bounded contextual diff the owner-scoped protocol carries: numbered removed, added, and surrounding context rows with omission markers, instead of the previous `before:`/`after:` whole-body pair. The reported first changed line and truncation flag are unchanged in meaning. Adopters reading that field expecting complete before-and-after bodies must read the resident itself.
 
 ### Features

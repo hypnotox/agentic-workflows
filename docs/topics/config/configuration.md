@@ -10,6 +10,23 @@ These packages load, validate, and describe the .awf config tree and the anchore
 
 ## Claims
 
+### `rule: config-expresses-repo-facts-only`
+
+A configuration key exists only for a fact whose steady-state value differs between the repositories awf serves. Preferences about awf behavior and transitional adoption differences are fixed in awf rather than exposed as configuration.
+Origin: ADR-0251
+
+### `invariant: no-artifact-selection-surface`
+
+The live config schema exposes no skills, agents, docs, targets, or docsDir fields and no sidecar local field; strict parsing rejects every retired field rather than honoring it.
+Origin: ADR-0251
+Backing: test
+
+### `invariant: root-sidecar-keys-rejected`
+
+The strict decoder rejects data or sections at the root of config.yaml because those keys belong only in sidecars.
+Origin: ADR-0251
+Backing: test
+
 ### `invariant: audit-no-base-branch-config`
 
 No config field, configspec entry, or resolved audit setting supplies an audit base branch; the audit range reaches the audit only from the command line.
@@ -31,9 +48,9 @@ Backing: test
 
 ### `invariant: config-serialization-owned`
 
-The live .awf/config.yaml is constructed and mutated only through internal/config via MarshalSkeleton, SetArrayMember, SetArray, the top-level scalar SetString editor, SetMappingScalar, the typed nested-integer SetMappingInteger editor, and the nested-string SetMappingString editor, which share one encoding funnel at a two-space indent, so no other package hand-rolls config.yaml serialization.
+The live .awf/config.yaml is constructed through internal/config via MarshalSkeleton and mutated through its scalar and mapping editors, while frozen migrations retain the array editors for historical shapes; all share one encoding funnel at a two-space indent, so no other package hand-rolls config.yaml serialization.
 Origin: ADR-0026
-Revised-by: ADR-0144, ADR-0159, ADR-0202
+Revised-by: ADR-0144, ADR-0159, ADR-0202, ADR-0251
 Backing: test
 
 ### `invariant: integration-branch-explicit`
@@ -41,18 +58,6 @@ Backing: test
 The config carries a required integrationBranch key with no in-code default: validation rejects an absent or empty value, a value containing whitespace, and a value starting with a hyphen while accepting a slashed branch name, its schema migration writes integrationBranch: main visibly into a config that lacks it and leaves a config that already carries one byte-identical, and a freshly scaffolded config writes the key so it validates against its own rules.
 Origin: ADR-0202
 Revised-by: ADR-0203
-Backing: test
-
-### `invariant: docsdir-default`
-
-The config carries a docsDir field; loading a config file that omits it defaults docsDir to docs, and setting an explicit value relocates the documentation tree and every path derived from it to that root.
-Origin: ADR-0005
-Backing: test
-
-### `invariant: enable-arrays`
-
-The skills, agents, and docs keys in config.yaml are plain string arrays whose entries enable targets by presence, and a data, sections, or local key placed at the root of config.yaml is rejected at load.
-Origin: ADR-0009
 Backing: test
 
 ### `invariant: no-replacewith`
@@ -82,8 +87,9 @@ Backing: test
 
 ### `invariant: sidecar-data-defaults-control`
 
-A sidecar dataDefaults map accepts only boolean controls whose keys name same-key list defaults declared by that catalog artifact. Absence or true keeps the default and false suppresses it; unknown, non-list, local-only, differently keyed specialized, and non-boolean entries are rejected, and a present catalog-backed project list value must be a list rather than null or another type.
+A sidecar dataDefaults map accepts only boolean controls whose keys name same-key list defaults declared by that catalog artifact. Absence or true keeps the default and false suppresses it; unknown, non-list, differently keyed specialized, and non-boolean entries are rejected, and a present catalog-backed project list value must be a list rather than null or another type.
 Origin: ADR-0236
+Revised-by: ADR-0251
 Backing: test
 
 ### `invariant: tag-coverage-note`
@@ -102,10 +108,4 @@ Backing: test
 
 With a non-empty tag vocabulary, awf check fails on any tag used by an ADR or a pitfall that is not a declared vocabulary member and on any vocabulary entry whose meaning is empty; with an empty or absent vocabulary the membership rule is inert.
 Origin: ADR-0103
-Backing: test
-
-### `invariant: targets-default-claude`
-
-A config with no targets key loads with targets defaulting to [claude]; Validate rejects an empty targets list and any path-separator name, while an unknown adapter name is rejected later by project open, keeping config free of the adapter registry.
-Origin: ADR-0037
 Backing: test

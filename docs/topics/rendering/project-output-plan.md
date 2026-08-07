@@ -18,44 +18,39 @@ Every target-declared bridge renders through the neutral `target-bridge` identit
 Origin: ADR-0214
 Backing: test
 
-### `invariant: catalog-trim-applied`
-
-A non-nil catalog-trim selection passed to ScaffoldConfig replaces the curated-core skills and docs enable arrays verbatim before closure completion, while a nil selection keeps exactly the curated core.
-Origin: ADR-0029
-Backing: test
-
-### `invariant: curated-init-skill-refs-clean`
-
-A default curated awf init render passes awf check with zero dead-skill-reference findings.
-Origin: ADR-0046
-Backing: test
-
-### `invariant: inert-sidecar-field-rejected`
-
-Every gated command fails at project open when a non-domain sidecar carries a non-empty paths field, or a domain sidecar carries any non-paths field such as data, sections, or local, with a message naming the file and the required edit.
-Origin: ADR-0086
-Backing: test
-
 ### `invariant: kind-dispatch-single-table`
 
-Every per-kind facet - the config enable array, catalog pool, declared sections, output path, singular and plural labels, graph membership, and freeform-domain membership - is defined once in the single ordered kind-descriptor table in the project package, and cmd/awf decides no kind fact outside the table's exported accessors; a test asserts the table's kind set equals the catalog's kinds plus the freeform domains kind, and a source-scanning test over the cmd/awf sources asserts no kind-name equality or switch-case comparison remains there.
+Every per-kind facet - the catalog collection, declared sections, output path, singular and plural labels, and freeform-domain membership - is defined once in the single ordered kind-descriptor table in the project package, and cmd/awf decides no kind fact outside the table's exported accessors; a test asserts the table's kind set equals the catalog's kinds plus the freeform domains kind, and a source-scanning test over the cmd/awf sources asserts no kind-name equality or switch-case comparison remains there.
 Origin: ADR-0027
-Revised-by: ADR-0195
+Revised-by: ADR-0195, ADR-0251
 Backing: test
 
 ### `invariant: multi-target-render`
 
-With multiple targets enabled, every enabled catalog skill and agent renders once per target to that target's descriptor-derived path, while neutral artifacts such as AGENTS.md render exactly once regardless of target count. A target-owned skill or other output renders only for its declaring target when its closed catalog-selection predicate is satisfied; configured-prefix path derivation, declaration, rendering, coalescing, hashing, pruning, provenance, and policy all use the same resolved descriptor.
-With multiple targets enabled, each adapter artifact renders once per target at that descriptor's declared paths - including Claude Code and Pi skills and agents - while neutral artifacts such as `AGENTS.md` render exactly once regardless of target count. Descriptor-specific wording, bridges, capabilities, encodings, and additional outputs remain independently customizable.
+For both built-in targets, every catalog skill and agent renders once at that target's descriptor-derived path, while neutral artifacts such as AGENTS.md render exactly once. A target-owned skill or other output renders only for its declaring target when its declared predicate is satisfied; configured-prefix path derivation, declaration, rendering, coalescing, hashing, pruning, provenance, and policy all use the same resolved descriptor.
+Each adapter artifact renders once for Claude Code and Pi at its descriptor's declared paths - including Claude Code and Pi skills and agents - while neutral artifacts such as `AGENTS.md` render exactly once. Descriptor-specific wording, bridges, capabilities, encodings, and additional outputs remain independently customizable.
 Origin: ADR-0037
-Revised-by: ADR-0214, ADR-0218
+Revised-by: ADR-0214, ADR-0218, ADR-0251
 Backing: test
 
 ### `invariant: output-plan-complete`
 
-The deterministic output plan contains catalog and local artifacts, bridge files, generated documentation, reservations, and exactly two resident-root self-ignoring outputs: efforts and worktrees. Its conditional config-tree units share their declaration facts with render dispatch. Resident dynamic descendants are not plan nodes and resolve at the primary root while tracked authority remains invoking-checkout authority.
+The deterministic output plan contains every catalog artifact, bridge files, generated documentation, reservations, and exactly two resident-root self-ignoring outputs: efforts and worktrees. Its conditional config-tree units share their declaration facts with render dispatch. Resident dynamic descendants are not plan nodes and resolve at the primary root while tracked authority remains invoking-checkout authority.
 Origin: ADR-0124
-Revised-by: ADR-0164, ADR-0167, ADR-0175, ADR-0235
+Revised-by: ADR-0164, ADR-0167, ADR-0175, ADR-0235, ADR-0251
+Backing: test
+
+### `invariant: full-catalog-render`
+
+Every output plan includes every catalog skill, agent, and document without consulting a config-derived enable selection, requirement closure, per-document suppression, or local reservation.
+Origin: ADR-0251
+Backing: test
+
+### `invariant: inert-sidecar-field-rejected`
+
+A skill, agent, document, or singleton sidecar rejects paths, and a domain sidecar rejects data, dataDefaults, and sections, so no accepted sidecar field is inert for its artifact kind.
+Origin: ADR-0086
+Revised-by: ADR-0251
 Backing: test
 
 ### `invariant: check-report-single-plan`
@@ -76,22 +71,11 @@ The resident-root table, the resident-path predicate, and anchored output-path r
 Origin: ADR-0195
 Backing: test
 
-### `invariant: reviewing-skill-agent-pairing`
-
-Opening a project fails when an enabled non-local skill declares a required agent that is absent from the agents enable array, with an error naming both the skill and the agent.
-Origin: ADR-0050
-Backing: test
-
-### `invariant: scaffold-core-only`
-
-The config generated by ScaffoldConfig enables exactly the catalog's core skills and core docs plus all agents and all hooks, and omits every non-core skill and doc.
-Origin: ADR-0022
-Backing: test
-
 ### `invariant: scaffold-seeds-all-vars`
 
-ScaffoldConfig seeds a value for every var referenced by any catalog skill, agent, hook, or doc template, whether or not that target is core, so opting a target in later renders without an unresolved value.
+ScaffoldConfig seeds a value for every var referenced by any catalog skill, agent, hook, or doc template, so every unconditional catalog render starts without an unresolved value.
 Origin: ADR-0022
+Revised-by: ADR-0251
 Backing: test
 
 ### `invariant: shared-output-coalesced`
@@ -113,12 +97,6 @@ A same-key catalog list and project list compose shallowly as catalog entries fo
 Origin: ADR-0236
 Backing: test
 
-### `invariant: skills-context-effective-set`
-
-The skills set exposed to templates equals the enabled skills minus those suppressed by a doc gate, while skills declared local are always kept.
-Origin: ADR-0046
-Backing: test
-
 ### `invariant: target-capabilities-closed`
 
 A target descriptor is validated against closed sets: unknown capabilities, unknown agent dialects, unknown output encoders, out-of-set provenance values, path traversal in output paths, and undeclared or inconsistent output policies are all rejected, both when the descriptor is validated and again when the output plan is built.
@@ -134,9 +112,11 @@ Backing: test
 
 ### `invariant: conditional-unit-single-source`
 
-Each enabled config-tree render unit derives its enablement, path, template identity, render kind,
-and fixed sections from one bounded descriptor consumed by output declarations and render dispatch.
-Unit-specific data construction, policy, encoding, and lifecycle behavior remain at their owning
-render seams.
+Each config-tree render unit derives its enablement, path, template identity, render kind, and fixed
+sections from one bounded descriptor consumed by output declarations and render dispatch. Hook
+payloads and the runner are unconditional members, while bootstrap is the only member whose
+enablement is conditional. Unit-specific data construction, policy, encoding, and lifecycle behavior
+remain at their owning render seams.
 Origin: ADR-0235
+Revised-by: ADR-0253
 Backing: test

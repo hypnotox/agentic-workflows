@@ -16,7 +16,7 @@ import (
 // body, syncs it, and returns the rendered docs/workflow.md content.
 func syncedWorkflowDoc(t *testing.T, body string) string {
 	t.Helper()
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n",
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n",
 		map[string]string{"parts/workflow/commit-discipline.md": body})
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -33,7 +33,7 @@ func syncedWorkflowDoc(t *testing.T, body string) string {
 }
 
 func TestCommitPolicyRenderDataProjection(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -91,7 +91,7 @@ func TestCommentOnlyPartRendersEmptySection(t *testing.T) {
 
 // A malformed whole-line opener in a part fails the render naming the part path.
 func TestMalformedAuthoringCommentFailsSync(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n",
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n",
 		map[string]string{"parts/workflow/commit-discipline.md": "<!-- awf:comment unclosed\n"})
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -124,7 +124,7 @@ func TestUnknownPlaceholderInsideCommentRenders(t *testing.T) {
 // leaks it into every scaffolded project's rendered README.
 // touches-state: rendering/inplace-and-placeholders:authoring-comment-stripped - the renderTarget wiring, proven end-to-end over the real embedded template
 func TestEmbeddedTemplateAuthoringCommentStripped(t *testing.T) {
-	const directive = "<!-- awf:comment touches-state: rendering/templates:local-doc-base-publication-safe - the embedded ADR README directive is source-only -->"
+	const directive = "<!-- awf:comment touches-state: rendering/templates:template-source-residue - the embedded ADR README directive is source-only -->"
 	src, err := fs.ReadFile(templates.FS, "adr-readme/README.md.tmpl")
 	if err != nil {
 		t.Fatal(err)
@@ -133,7 +133,7 @@ func TestEmbeddedTemplateAuthoringCommentStripped(t *testing.T) {
 		t.Fatalf("embedded ADR README source lacks qualified directive %q", directive)
 	}
 
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n", nil)
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n", nil)
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)

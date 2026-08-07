@@ -12,7 +12,7 @@
 - [Evaluations](evaluations.md): The golden-task evaluation suite.
 - [Filesystem access](filesystem-access.md): Single-home root-confined filesystem access and its controlled test fault source.
 - [Git access](git-access.md): The one semantic git seam - entrypoints, backends, and their pinned contracts.
-- [Init and enablement](init-and-enablement.md): Project scaffolding and enablement surfaces: init, add, remove, new.
+- [Initialization](init-and-enablement.md): Project adoption and initialization behavior.
 - [Project license](project-license.md): The repository license text, public references, and packaged-license contract.
 - [Quality gates](quality-gates.md): Coverage, prose, working-memory citations, and the command-runner gate machinery.
 - [Test infrastructure](test-infrastructure.md): Shared internal test-support infrastructure and its dependency boundary.

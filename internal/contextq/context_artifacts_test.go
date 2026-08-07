@@ -62,7 +62,6 @@ func TestArtifactNavigationCoversClosedRolesOrderingAndLookalikes(t *testing.T) 
 			{Path: "documentation/decisions/0007-real.md", Role: project.ArtifactDecisionRecord},
 		}},
 		{Path: "second.md", TemplateID: "docs/second.tmpl", Declarers: []string{"second"}, Inputs: []project.OutputInput{{Path: "templates/docs/out.tmpl", Role: project.ArtifactTemplate}}},
-		{Path: "local.md", TemplateID: "local", Declarers: []string{"local"}, Inputs: []project.OutputInput{{Path: ".awf/docs/local.yaml", Role: project.ArtifactAuthoredData}}, Reservation: true},
 	}
 	authorities := testArtifactAuthorities("documentation", parsed)
 	cases := []struct {

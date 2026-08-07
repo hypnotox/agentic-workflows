@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"os"
@@ -9,1090 +10,286 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
-// scaffoldedProject writes a curated-default scaffold (10 core skills, 3 agents,
-// 0 docs - no doc is core after ADR-0043 - no domains) and syncs it. The
-// gateCmd answer keeps the scaffold's enabled hooks singleton valid under the
-// command-wiring rule (ADR-0156 Decision 5) once ordinary syncs run.
-func scaffoldedProject(t *testing.T) string {
-	t.Helper()
-	root := t.TempDir()
-	b, _, err := project.ScaffoldConfig("example", map[string]string{"gateCmd": "make gate"}, nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	testsupport.WriteAwfConfig(t, root, string(b))
-	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
-		t.Fatalf("sync: %v", err)
-	}
-	return root
-}
-
-func readConfig(t *testing.T, root string) string {
-	t.Helper()
-	b, err := os.ReadFile(filepath.Join(root, ".awf", "config.yaml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return string(b)
-}
-
-func TestRunAddAcrossKinds(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldedProject(t)
-
-	// Catalog skill into a block-with-items array.
-	if err := runEnable(ctx, root, "skill", "tdd", false, io.Discard); err != nil {
-		t.Fatalf("add skill tdd: %v", err)
-	}
-	if !strings.Contains(readConfig(t, root), "- tdd") {
-		t.Error("tdd not added")
-	}
-	// Opt-in doc.
-	if err := runEnable(ctx, root, "doc", "pitfalls", false, io.Discard); err != nil {
-		t.Fatalf("add doc pitfalls: %v", err)
-	}
-	// Freeform domain into an absent array (scaffold omits domains:).
-	if err := runEnable(ctx, root, "domain", "payments", false, io.Discard); err != nil {
-		t.Fatalf("add domain payments: %v", err)
-	}
-	if !strings.Contains(readConfig(t, root), "domains:") {
-		t.Error("domains: block not created")
-	}
-	stubPath := filepath.Join(root, ".awf", "domains", "parts", "payments", "current-state.md")
-	stub, err := os.ReadFile(stubPath)
-	if err != nil {
-		t.Fatalf("read scaffolded current-state.md: %v", err)
-	}
-	if !strings.Contains(string(stub), `"payments" domain`) {
-		t.Errorf("stub does not name the domain: %q", stub)
-	}
-	if !strings.Contains(string(stub), "doc-standard.md") {
-		t.Errorf("stub does not point at the doc standard: %q", stub)
-	}
-
-	// Rejections.
-	if err := runEnable(ctx, root, "bogus", "x", false, io.Discard); err == nil {
-		t.Error("expected unknown-kind error")
-	}
-	if err := runEnable(ctx, root, "skill", "no-such", false, io.Discard); err == nil {
-		t.Error("expected not-in-catalog error")
-	}
-	if err := runEnable(ctx, root, "domain", "bad/name", false, io.Discard); err == nil {
-		t.Error("expected invalid-domain-name error")
-	}
-	if err := runEnable(ctx, root, "skill", "tdd", false, io.Discard); err == nil {
-		t.Error("expected already-enabled error")
-	}
-}
-
-// A project-local artifact (ADR-0068) lists under its declared kind with the
-// state "local" - not "tuned", which would hide that it is not a catalog skill.
-func TestRunListShowsLocalArtifactAsLocal(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldedProject(t)
-	if err := runNew(ctx, root, "skill", []string{"deploy-check", "Verify the deploy."}, io.Discard); err != nil {
-		t.Fatal(err)
-	}
-	var out bytes.Buffer
-	if err := runList(ctx, root, "skill", &out); err != nil {
-		t.Fatal(err)
-	}
-	for _, line := range strings.Split(out.String(), "\n") {
-		if strings.Contains(line, "deploy-check") {
-			if !strings.Contains(line, "local") {
-				t.Errorf("local skill listed as %q, want state local", strings.TrimSpace(line))
-			}
-			return
+func TestDomainCurrentStateFilesystemFailures(t *testing.T) {
+	open := func(t *testing.T) (*project.Project, string) {
+		t.Helper()
+		root := scaffoldProject(t)
+		p, err := project.Open(testContext(t), root)
+		if err != nil {
+			t.Fatal(err)
 		}
-	}
-	t.Errorf("local skill not listed at all:\n%s", out.String())
-}
-
-// The driver must refuse add/remove BEFORE the config rewrite: a stale binary
-// must not leave a modified config.yaml with nothing rendered (the half-mutated
-// state the chained sync's gate could only catch after the write). Driven
-// through run() because the gate now lives in the driver, ahead of the handler.
-func TestRunAddRemoveGateBeforeConfigWrite(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldedProject(t)
-	lockPath := filepath.Join(root, ".awf", "awf.lock")
-	lock, err := manifest.Load(lockPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	lock.AWFVersion = "99.0.0" // project rendered by a newer awf → binary is behind
-	if err := lock.Save(lockPath); err != nil {
-		t.Fatal(err)
-	}
-	before := readConfig(t, root)
-	var out, errb bytes.Buffer
-	if code := runAt(t, root, []string{"awf", "enable", "skill", "tdd"}, &out, &errb); code != 1 {
-		t.Errorf("expected exit 1 from enable on a behind binary, got %d (%s)", code, errb.String())
-	}
-	if got := readConfig(t, root); got != before {
-		t.Errorf("enable modified config.yaml despite failing the gate:\n%s", got)
-	}
-	if code := runAt(t, root, []string{"awf", "disable", "skill", "brainstorming"}, &out, &errb); code != 1 {
-		t.Errorf("expected exit 1 from disable on a behind binary, got %d (%s)", code, errb.String())
-	}
-	if got := readConfig(t, root); got != before {
-		t.Errorf("disable modified config.yaml despite failing the gate:\n%s", got)
-	}
-}
-
-// TestRunAddDomainScaffoldIdempotent confirms add domain never clobbers an
-// existing current-state.md - pre-authored content (e.g. from a prior
-// add/remove cycle, or hand-authored before the domain was ever enabled)
-// survives a fresh add.
-func TestRunAddDomainScaffoldIdempotent(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldedProject(t)
-
-	stubDir := filepath.Join(root, ".awf", "domains", "parts", "billing")
-	if err := os.MkdirAll(stubDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	const handAuthored = "Billing settled onto Stripe in 2026Q1; see ADR-0031.\n"
-	stubPath := filepath.Join(stubDir, "current-state.md")
-	if err := os.WriteFile(stubPath, []byte(handAuthored), 0o644); err != nil {
-		t.Fatal(err)
+		return p, root
 	}
 
-	if err := runEnable(ctx, root, "domain", "billing", false, io.Discard); err != nil {
-		t.Fatalf("add domain billing: %v", err)
-	}
-
-	got, err := os.ReadFile(stubPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(got) != handAuthored {
-		t.Errorf("add domain overwrote hand-authored current-state.md: got %q, want %q", got, handAuthored)
-	}
-}
-
-// TestRunAddRemoveFlowStyle confirms a hand-edited flow-style array is now edited
-// (not refused): SetArrayMember normalizes it to block style. minimalYAML uses
-// flow-style `skills: [tdd]`. brainstorming references no vars and is not
-// doc-gated, so the post-add sync renders cleanly under minimalYAML's seed.
-// invariant: tooling/cli:target-cli (TestRunTargetCLI)
-func TestRunTargetCLI(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldedProject(t) // no targets: key → defaults to claude
-
-	// list target before any change: claude enabled, pi available.
-	var buf bytes.Buffer
-	if err := runList(ctx, root, "target", &buf); err != nil {
-		t.Fatal(err)
-	}
-	if out := buf.String(); !strings.Contains(out, "claude") || !strings.Contains(out, "enabled") ||
-		!strings.Contains(out, "pi") || !strings.Contains(out, "available") {
-		t.Errorf("list target (initial):\n%s", out)
-	}
-
-	// add pi must materialize the full resolved list, not drop the defaulted claude.
-	if err := runEnable(ctx, root, "target", "pi", false, io.Discard); err != nil {
-		t.Fatalf("add target pi: %v", err)
-	}
-	if cfg := readConfig(t, root); !strings.Contains(cfg, "- claude") || !strings.Contains(cfg, "- pi") {
-		t.Errorf("expected targets [claude, pi]:\n%s", cfg)
-	}
-	if _, err := os.Stat(filepath.Join(root, ".pi", "skills")); err != nil {
-		t.Errorf("pi tree not rendered after add: %v", err)
-	}
-
-	// Rejections.
-	for _, removed := range []string{"codex", "copilot", "cursor", "gemini"} {
-		err := runEnable(ctx, root, "target", removed, false, io.Discard)
-		if err == nil || !strings.Contains(err.Error(), "known: claude, pi") {
-			t.Errorf("enable removed target %q error = %v", removed, err)
+	t.Run("existing", func(t *testing.T) {
+		p, root := open(t)
+		path := filepath.Join(root, ".awf", "domains", "parts", "payments", "current-state.md")
+		testsupport.WriteFile(t, path, "authored\n")
+		if err := scaffoldDomainCurrentState(p, "payments"); err != nil {
+			t.Fatal(err)
 		}
-	}
-	if err := runEnable(ctx, root, "target", "nope", false, io.Discard); err == nil {
-		t.Error("expected unknown-target error")
-	}
-	if err := runEnable(ctx, root, "target", "pi", false, io.Discard); err == nil {
-		t.Error("expected already-enabled error")
-	}
-	if err := runDisable(ctx, root, "target", "nope", false, false, io.Discard); err == nil {
-		t.Error("expected unknown-target error on remove")
-	}
-
-	// A known target name on a broken config surfaces the project.Open error.
-	broken := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(broken, ".awf"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(broken, ".awf", "config.yaml"), []byte("prefix: ["), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := runEnable(ctx, broken, "target", "pi", false, io.Discard); err == nil {
-		t.Error("expected project.Open error to surface from add target")
-	}
-
-	// remove claude -> [pi]; removing the last target is refused.
-	if err := runDisable(ctx, root, "target", "claude", false, false, io.Discard); err != nil {
-		t.Fatalf("remove target claude: %v", err)
-	}
-	if strings.Contains(readConfig(t, root), "- claude") {
-		t.Error("claude not removed")
-	}
-	if err := runDisable(ctx, root, "target", "claude", false, false, io.Discard); err == nil {
-		t.Error("expected not-enabled error")
-	}
-	if err := runDisable(ctx, root, "target", "pi", false, false, io.Discard); err == nil {
-		t.Error("expected cannot-remove-last-target error")
-	}
-}
-
-func TestRunBootstrapCLI(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	// scaffoldProject uses minimalYAML, which carries no bootstrap key (disabled).
-	root := scaffoldProject(t)
-
-	// list bootstrap before any change: available.
-	var buf bytes.Buffer
-	if err := runList(ctx, root, "bootstrap", &buf); err != nil {
-		t.Fatal(err)
-	}
-	if out := buf.String(); !strings.Contains(out, "bootstrap:") ||
-		!strings.Contains(out, ".awf/bootstrap.sh") || !strings.Contains(out, ".awf/upgrade.sh") ||
-		!strings.Contains(out, "available") {
-		t.Errorf("list bootstrap (initial):\n%s", out)
-	}
-
-	// remove when disabled errors.
-	if err := runDisable(ctx, root, "bootstrap", "", false, false, io.Discard); err == nil ||
-		!strings.Contains(err.Error(), "is not enabled") {
-		t.Errorf("expected is-not-enabled error, got %v", err)
-	}
-
-	// add enables it (config gains enabled: true, sync runs).
-	if err := runEnable(ctx, root, "bootstrap", "", false, io.Discard); err != nil {
-		t.Fatalf("add bootstrap: %v", err)
-	}
-	cfg := readConfig(t, root)
-	if !strings.Contains(cfg, "bootstrap:") || !strings.Contains(cfg, "enabled: true") {
-		t.Errorf("bootstrap not enabled in config:\n%s", cfg)
-	}
-	if _, err := os.Stat(filepath.Join(root, ".awf", "bootstrap.sh")); err != nil {
-		t.Errorf("bootstrap.sh not rendered after add: %v", err)
-	}
-	if _, err := os.Stat(filepath.Join(root, ".awf", "upgrade.sh")); err != nil {
-		t.Errorf("upgrade.sh not rendered after add: %v", err)
-	}
-
-	// list bootstrap now reports enabled.
-	buf.Reset()
-	if err := runList(ctx, root, "bootstrap", &buf); err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(buf.String(), "enabled") {
-		t.Errorf("list bootstrap (enabled):\n%s", buf.String())
-	}
-
-	// add when already enabled errors.
-	if err := runEnable(ctx, root, "bootstrap", "", false, io.Discard); err == nil ||
-		!strings.Contains(err.Error(), "already enabled") {
-		t.Errorf("expected already-enabled error, got %v", err)
-	}
-
-	// remove disables it and prunes the rendered file.
-	if err := runDisable(ctx, root, "bootstrap", "", false, false, io.Discard); err != nil {
-		t.Fatalf("remove bootstrap: %v", err)
-	}
-	if !strings.Contains(readConfig(t, root), "enabled: false") {
-		t.Errorf("bootstrap not disabled in config:\n%s", readConfig(t, root))
-	}
-	if _, err := os.Stat(filepath.Join(root, ".awf", "bootstrap.sh")); !os.IsNotExist(err) {
-		t.Errorf("bootstrap.sh not pruned after remove: err=%v", err)
-	}
-	if _, err := os.Stat(filepath.Join(root, ".awf", "upgrade.sh")); !os.IsNotExist(err) {
-		t.Errorf("upgrade.sh not pruned after remove: err=%v", err)
-	}
-
-	// A broken config surfaces the project.Open error from addRemoveBootstrap.
-	broken := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(broken, ".awf"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(broken, ".awf", "config.yaml"), []byte("prefix: ["), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := runEnable(ctx, broken, "bootstrap", "", false, io.Discard); err == nil {
-		t.Error("expected project.Open error to surface from add bootstrap")
-	}
-}
-
-// TestDispatchBootstrap covers run()'s nameless-bootstrap dispatch branches
-// (ADR-0040): `awf enable bootstrap` / `awf disable bootstrap` carry no <name> arg, so
-// they reach the handler via the bespoke len==3 cases rather than the len==4 path.
-func TestDispatchBootstrap(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t) // minimalYAML: no bootstrap key (disabled)
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
-
-	// add bootstrap (3 args, no name) enables it.
-	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "enable", "bootstrap"}, &out, &errb); code != 0 {
-		t.Fatalf("add bootstrap dispatch: code=%d err=%q", code, errb.String())
-	}
-	if cfg := readConfig(t, root); !strings.Contains(cfg, "enabled: true") {
-		t.Errorf("bootstrap not enabled after add dispatch:\n%s", cfg)
-	}
-
-	// remove bootstrap (3 args, no name) disables it.
-	errb.Reset()
-	if code := run([]string{"awf", "disable", "bootstrap"}, &out, &errb); code != 0 {
-		t.Fatalf("remove bootstrap dispatch: code=%d err=%q", code, errb.String())
-	}
-	if cfg := readConfig(t, root); !strings.Contains(cfg, "enabled: false") {
-		t.Errorf("bootstrap not disabled after remove dispatch:\n%s", cfg)
-	}
-}
-
-// TestRunHooksCLI mirrors TestRunBootstrapCLI for the git-hook payloads
-// singleton (ADR-0048): list state, the add/remove toggle round-trip with
-// render/prune, and the guard errors.
-func TestRunHooksCLI(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	// scaffoldProject uses minimalYAML, which carries no hooks key (disabled).
-	root := scaffoldProject(t)
-
-	// list hooks before any change: available, one row per payload.
-	var buf bytes.Buffer
-	if err := runList(ctx, root, "hooks", &buf); err != nil {
-		t.Fatal(err)
-	}
-	if out := buf.String(); !strings.Contains(out, "hooks:") ||
-		!strings.Contains(out, ".awf/hooks/pre-commit.sh") ||
-		!strings.Contains(out, ".awf/hooks/commit-msg.sh") ||
-		!strings.Contains(out, ".awf/hooks/pre-push.sh") ||
-		!strings.Contains(out, "available") {
-		t.Errorf("list hooks (initial):\n%s", out)
-	}
-
-	// remove when disabled errors.
-	if err := runDisable(ctx, root, "hooks", "", false, false, io.Discard); err == nil ||
-		!strings.Contains(err.Error(), "is not enabled") {
-		t.Errorf("expected is-not-enabled error, got %v", err)
-	}
-
-	// The runner satisfies the hooks command-wiring rule (ADR-0156 Decision 5):
-	// minimalYAML sets gateCmd but none of the awf-verb vars.
-	if err := runEnable(ctx, root, "runner", "", false, io.Discard); err != nil {
-		t.Fatalf("add runner: %v", err)
-	}
-
-	// add enables it (config gains enabled: true, sync renders the payloads).
-	if err := runEnable(ctx, root, "hooks", "", false, io.Discard); err != nil {
-		t.Fatalf("add hooks: %v", err)
-	}
-	cfg := readConfig(t, root)
-	if !strings.Contains(cfg, "hooks:") || !strings.Contains(cfg, "enabled: true") {
-		t.Errorf("hooks not enabled in config:\n%s", cfg)
-	}
-	for _, n := range []string{"pre-commit", "commit-msg", "pre-push"} {
-		if _, err := os.Stat(filepath.Join(root, ".awf", "hooks", n+".sh")); err != nil {
-			t.Errorf("%s.sh not rendered after add: %v", n, err)
+		if got, err := os.ReadFile(path); err != nil || string(got) != "authored\n" {
+			t.Fatalf("existing part = %q, %v", got, err)
 		}
-	}
-
-	// list hooks now reports enabled.
-	buf.Reset()
-	if err := runList(ctx, root, "hooks", &buf); err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(buf.String(), "enabled") {
-		t.Errorf("list hooks (enabled):\n%s", buf.String())
-	}
-
-	// add when already enabled errors.
-	if err := runEnable(ctx, root, "hooks", "", false, io.Discard); err == nil ||
-		!strings.Contains(err.Error(), "already enabled") {
-		t.Errorf("expected already-enabled error, got %v", err)
-	}
-
-	// remove disables it and prunes the rendered files and their directory.
-	if err := runDisable(ctx, root, "hooks", "", false, false, io.Discard); err != nil {
-		t.Fatalf("remove hooks: %v", err)
-	}
-	if !strings.Contains(readConfig(t, root), "enabled: false") {
-		t.Errorf("hooks not disabled in config:\n%s", readConfig(t, root))
-	}
-	if _, err := os.Stat(filepath.Join(root, ".awf", "hooks")); !os.IsNotExist(err) {
-		t.Errorf(".awf/hooks/ not pruned after remove: err=%v", err)
-	}
-}
-
-// TestDispatchHooks covers run()'s nameless-hooks dispatch branches (ADR-0048),
-// mirroring TestDispatchBootstrap.
-func TestDispatchHooks(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t) // minimalYAML: no hooks key (disabled)
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
-
-	var out, errb bytes.Buffer
-	// The runner satisfies the hooks command-wiring rule (ADR-0156 Decision 5).
-	if code := run([]string{"awf", "enable", "runner"}, &out, &errb); code != 0 {
-		t.Fatalf("add runner dispatch: code=%d err=%q", code, errb.String())
-	}
-	if code := run([]string{"awf", "enable", "hooks"}, &out, &errb); code != 0 {
-		t.Fatalf("add hooks dispatch: code=%d err=%q", code, errb.String())
-	}
-	if cfg := readConfig(t, root); !strings.Contains(cfg, "hooks:") || !strings.Contains(cfg, "enabled: true") {
-		t.Errorf("hooks not enabled after add dispatch:\n%s", cfg)
-	}
-
-	errb.Reset()
-	if code := run([]string{"awf", "disable", "hooks"}, &out, &errb); code != 0 {
-		t.Fatalf("remove hooks dispatch: code=%d err=%q", code, errb.String())
-	}
-	if cfg := readConfig(t, root); !strings.Contains(cfg, "enabled: false") {
-		t.Errorf("hooks not disabled after remove dispatch:\n%s", cfg)
-	}
-}
-
-// TestRunRunnerCLI mirrors TestRunBootstrapCLI for the awf-wrapper runner
-// singleton (ADR-0156): list state, the add/remove toggle round-trip with
-// render/prune, and the guard errors.
-func TestRunRunnerCLI(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t) // minimalYAML: no runner key (disabled)
-
-	// list runner before any change: available.
-	var buf bytes.Buffer
-	if err := runList(ctx, root, "runner", &buf); err != nil {
-		t.Fatal(err)
-	}
-	if out := buf.String(); !strings.Contains(out, "runner:") ||
-		!strings.Contains(out, "awf") || !strings.Contains(out, "available") {
-		t.Errorf("list runner (initial):\n%s", out)
-	}
-
-	// remove when disabled errors.
-	if err := runDisable(ctx, root, "runner", "", false, false, io.Discard); err == nil ||
-		!strings.Contains(err.Error(), "is not enabled") {
-		t.Errorf("expected is-not-enabled error, got %v", err)
-	}
-
-	// add enables it (config gains enabled: true, sync renders awf at the root).
-	if err := runEnable(ctx, root, "runner", "", false, io.Discard); err != nil {
-		t.Fatalf("add runner: %v", err)
-	}
-	if cfg := readConfig(t, root); !strings.Contains(cfg, "runner:") || !strings.Contains(cfg, "enabled: true") {
-		t.Errorf("runner not enabled in config:\n%s", readConfig(t, root))
-	}
-	if _, err := os.Stat(filepath.Join(root, "awf")); err != nil {
-		t.Errorf("awf not rendered after add: %v", err)
-	}
-
-	// list runner now reports enabled.
-	buf.Reset()
-	if err := runList(ctx, root, "runner", &buf); err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(buf.String(), "enabled") {
-		t.Errorf("list runner (enabled):\n%s", buf.String())
-	}
-
-	// add when already enabled errors.
-	if err := runEnable(ctx, root, "runner", "", false, io.Discard); err == nil ||
-		!strings.Contains(err.Error(), "already enabled") {
-		t.Errorf("expected already-enabled error, got %v", err)
-	}
-
-	// remove disables it and prunes the rendered wrapper.
-	if err := runDisable(ctx, root, "runner", "", false, false, io.Discard); err != nil {
-		t.Fatalf("remove runner: %v", err)
-	}
-	if !strings.Contains(readConfig(t, root), "enabled: false") {
-		t.Errorf("runner not disabled in config:\n%s", readConfig(t, root))
-	}
-	if _, err := os.Stat(filepath.Join(root, "awf")); !os.IsNotExist(err) {
-		t.Errorf("awf not pruned after remove: err=%v", err)
-	}
-}
-
-// TestDispatchRunner mirrors TestDispatchBootstrap: the runner is a nameless
-// singleton reached through the enable/disable dispatch, and handing it a name is
-// a usage error.
-func TestDispatchRunner(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t) // minimalYAML: no runner key (disabled)
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
-
-	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "enable", "runner"}, &out, &errb); code != 0 {
-		t.Fatalf("add runner dispatch: code=%d err=%q", code, errb.String())
-	}
-	if cfg := readConfig(t, root); !strings.Contains(cfg, "runner:") || !strings.Contains(cfg, "enabled: true") {
-		t.Errorf("runner not enabled after add dispatch:\n%s", cfg)
-	}
-
-	// A name is a usage error - the runner is a nameless singleton.
-	errb.Reset()
-	if code := run([]string{"awf", "enable", "runner", "x"}, &out, &errb); code == 0 ||
-		!strings.Contains(errb.String(), "takes no name") {
-		t.Errorf("expected takes-no-name usage error, got code=%d err=%q", code, errb.String())
-	}
-
-	errb.Reset()
-	if code := run([]string{"awf", "disable", "runner"}, &out, &errb); code != 0 {
-		t.Fatalf("remove runner dispatch: code=%d err=%q", code, errb.String())
-	}
-	if cfg := readConfig(t, root); !strings.Contains(cfg, "enabled: false") {
-		t.Errorf("runner not disabled after remove dispatch:\n%s", cfg)
-	}
-}
-
-func TestRunAddRemoveFlowStyle(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t)
-	if err := runEnable(ctx, root, "skill", "bugfix", false, io.Discard); err != nil {
-		t.Fatalf("add to flow-style array: %v", err)
-	}
-	cfg := readConfig(t, root)
-	if !strings.Contains(cfg, "- bugfix") || !strings.Contains(cfg, "- tdd") {
-		t.Errorf("expected block-style skills with both members:\n%s", cfg)
-	}
-	if err := runDisable(ctx, root, "skill", "tdd", false, false, io.Discard); err != nil {
-		t.Fatalf("remove from (now block) array: %v", err)
-	}
-	if strings.Contains(readConfig(t, root), "- tdd") {
-		t.Error("tdd not removed")
-	}
-}
-
-func TestTogglePropagatesLoaderAndPostRewriteSyncFailures(t *testing.T) {
-	malformedRepo := t.TempDir()
-	testsupport.WriteAwfConfig(t, malformedRepo, minimalYAML)
-	if err := os.WriteFile(filepath.Join(malformedRepo, ".git"), []byte("not a gitdir pointer"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := runEnable(testContext(t), malformedRepo, "domain", "payments", false, io.Discard); err == nil {
-		t.Fatal("malformed repository loader error was not propagated")
-	}
-
-	loaderRoot := scaffoldedProject(t)
-	want := errors.New("loader failed")
-	err := toggleWithProjectLoader(testContext(t), loaderRoot, "domain", "payments", enableDir, toggleFlags{}, io.Discard, func(string) (*project.Loader, error) {
-		return nil, want
 	})
-	if !errors.Is(err, want) {
-		t.Fatalf("injected loader error = %v, want %v", err, want)
-	}
-
-	root := scaffoldedProject(t)
-	if err := os.MkdirAll(filepath.Join(root, ".awf", "domains"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(root, ".awf", "domains", "payments.yaml"), []byte("local: [invalid\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := runEnable(testContext(t), root, "domain", "payments", false, io.Discard); err == nil {
-		t.Fatal("post-rewrite sync error was not propagated")
-	}
-}
-
-func TestEnablementAndListPresentationWriteFailures(t *testing.T) {
-	plan := []project.PlanOp{{Node: catalog.Node{Kind: "skill", Name: "reviewing-impl"}, Enable: true}}
-	if err := printPlan(io.Discard, []project.PlanOp{{Node: catalog.Node{Kind: "skill", Name: "bad\nname"}, Enable: true}}); err == nil {
-		t.Fatal("invalid plan presentation accepted")
-	}
-	if err := printPlan(errorWriter{}, plan); err == nil || !strings.Contains(err.Error(), "write failed") {
-		t.Fatalf("plan writer error = %v", err)
-	}
-	if err := printEnablementNotes(io.Discard, []project.EnablementNote{{Reason: project.EnablementNoteReason(99)}}); err == nil {
-		t.Fatal("invalid notes presentation accepted")
-	}
-	validNote := project.EnablementNote{Reason: project.EnablementNoteAgentNoLongerRequired, Kind: "agent", Name: "code-reviewer"}
-	if err := printEnablementNotes(errorWriter{}, []project.EnablementNote{validNote}); err == nil || !strings.Contains(err.Error(), "write failed") {
-		t.Fatalf("notes writer error = %v", err)
-	}
-	if err := runList(testContext(t), scaffoldedProject(t), "skill", errorWriter{}); err == nil || !strings.Contains(err.Error(), "write failed") {
-		t.Fatalf("list writer error = %v", err)
-	}
-}
-
-// Adding an unclosed skill enables its full missing forward closure in one
-// rewrite, printing a provenance plan (ADR-0081 Decision 4). This replaces
-// the ADR-0050 pairing note and the ADR-0013 doc advisory.
-// invariant: tooling/init-and-enablement:add-applies-closure-plan (TestRunAddAppliesClosurePlan)
-func TestRunAddAppliesClosurePlan(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t) // minimalYAML: skills [tdd], agents []
-	var out bytes.Buffer
-	if err := runEnable(ctx, root, "skill", "reviewing-impl", false, &out); err != nil {
-		t.Fatalf("add skill reviewing-impl: %v", err)
-	}
-	// invariant: tooling/init-and-enablement:add-skill-pairs-agent (TestRunAddAppliesClosurePlan)
-	for _, line := range []string{
-		"    + skill reviewing-impl\n",
-		"    + agent code-reviewer (required by reviewing-impl)\n",
-	} {
-		if !strings.Contains(out.String(), line) {
-			t.Errorf("plan output missing %q, got:\n%s", line, out.String())
+	t.Run("stat", func(t *testing.T) {
+		p, root := open(t)
+		dir := filepath.Join(root, ".awf", "domains", "parts", "payments")
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
 		}
-	}
-	cfg := readConfig(t, root)
-	for _, want := range []string{"- reviewing-impl", "- code-reviewer"} {
-		if !strings.Contains(cfg, want) {
-			t.Errorf("closure member %q missing from config:\n%s", want, cfg)
+		if err := os.Symlink("current-state.md", filepath.Join(dir, "current-state.md")); err != nil {
+			t.Fatal(err)
 		}
-	}
-	if _, err := os.Stat(filepath.Join(root, ".claude", "agents", "code-reviewer.md")); err != nil {
-		t.Errorf("code-reviewer not rendered after closure add: %v", err)
-	}
-
-	// Adding a doc-gated skill enables its doc as a plan op.
-	out.Reset()
-	if err := runEnable(ctx, root, "skill", "roadmap-graduation", false, &out); err != nil {
-		t.Fatalf("add roadmap-graduation: %v", err)
-	}
-	if !strings.Contains(out.String(), "    + doc roadmap (required by roadmap-graduation)") {
-		t.Errorf("expected the doc plan op, got %q", out.String())
-	}
-	if cfg := readConfig(t, root); !strings.Contains(cfg, "- roadmap") {
-		t.Errorf("roadmap doc missing from config:\n%s", cfg)
-	}
-}
-
-// --dry-run prints the plan and leaves the config byte-identical (ADR-0081
-// Decision 6); a graph-only flag on a non-graph kind is a usage error.
-func TestRunAddRemoveDryRunAndFlagGuard(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldedProject(t)
-	before := readConfig(t, root)
-	var out bytes.Buffer
-	if err := runEnable(ctx, root, "skill", "roadmap-graduation", true, &out); err != nil {
-		t.Fatalf("add --dry-run: %v", err)
-	}
-	if !strings.Contains(out.String(), "    + skill roadmap-graduation") {
-		t.Errorf("dry-run should print the plan, got %q", out.String())
-	}
-	if got := readConfig(t, root); got != before {
-		t.Errorf("dry-run must not touch the config:\n%s", got)
-	}
-	out.Reset()
-	if err := runDisable(ctx, root, "skill", "retrospective", false, true, &out); err != nil {
-		t.Fatalf("remove --dry-run: %v", err)
-	}
-	if !strings.Contains(out.String(), "    - skill retrospective") {
-		t.Errorf("remove dry-run should print the plan, got %q", out.String())
-	}
-	if got := readConfig(t, root); got != before {
-		t.Errorf("remove dry-run must not touch the config:\n%s", got)
-	}
-	if err := runEnable(ctx, root, "domain", "payments", true, io.Discard); err == nil || !strings.Contains(err.Error(), "graph flags") {
-		t.Errorf("expected graph-flag usage error for domain, got %v", err)
-	}
-	if err := runDisable(ctx, root, "hooks", "", true, false, io.Discard); err == nil || !strings.Contains(err.Error(), "graph flags") {
-		t.Errorf("expected graph-flag usage error for hooks, got %v", err)
-	}
-}
-
-// A cascade removal prints the plan, notes orphaned sidecars per removed
-// node, and notes still-enabled agents nothing requires anymore (ADR-0081
-// Decision 5); local-sidecar skills are outside the requirement scan.
-func TestRunRemoveCascade(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldedProject(t)
-	if err := os.MkdirAll(filepath.Join(root, ".awf", "skills"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	// adr-lifecycle survives the cascade; its local sidecar exercises the
-	// requirement scan's local skip (its rendered file already exists and
-	// carries valid frontmatter from the scaffold sync).
-	if err := os.WriteFile(filepath.Join(root, ".awf", "skills", "adr-lifecycle.yaml"), []byte("local: true\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	// writing-plans is cascade-removed; its sidecar triggers the orphan note.
-	if err := os.WriteFile(filepath.Join(root, ".awf", "skills", "writing-plans.yaml"), []byte("data: {x: 1}\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	var out bytes.Buffer
-	if err := runDisable(ctx, root, "skill", "executing-plans", true, false, &out); err != nil {
-		t.Fatalf("cascade remove: %v", err)
-	}
-	got := out.String()
-	for _, want := range []string{
-		"    - skill executing-plans\n",
-	} {
-		if !strings.Contains(got, want) {
-			t.Errorf("cascade output missing %q:\n%s", want, got)
+		if err := scaffoldDomainCurrentState(p, "payments"); err == nil {
+			t.Fatal("symlink loop stat error was not propagated")
 		}
-	}
-	cfg := readConfig(t, root)
-	for _, gone := range []string{"- executing-plans"} {
-		if strings.Contains(cfg, gone) {
-			t.Errorf("cascade should have removed %q:\n%s", gone, cfg)
+	})
+	t.Run("mkdir", func(t *testing.T) {
+		p, root := open(t)
+		parts := filepath.Join(root, ".awf", "domains", "parts")
+		testsupport.WriteFile(t, parts, "collision\n")
+		if err := scaffoldDomainCurrentState(p, "payments"); err == nil {
+			t.Fatal("directory collision was not propagated")
 		}
-	}
-	for _, kept := range []string{"- retrospective", "- adr-lifecycle", "- adr-reviewer", "- code-reviewer", "- reviewing-impl", "- brainstorming", "- plan-reviewer"} {
-		if !strings.Contains(cfg, kept) {
-			t.Errorf("cascade should have kept %q:\n%s", kept, cfg)
+	})
+	t.Run("write", func(t *testing.T) {
+		p, root := open(t)
+		dir := filepath.Join(root, ".awf", "domains", "parts", "payments")
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
 		}
-	}
-}
-
-func TestRunRemoveNoteWriteFailureLeavesGeneratedStateSynchronized(t *testing.T) {
-	ctx := testContext(t)
-	root := scaffoldedProject(t)
-	if err := runEnable(ctx, root, "domain", "payments", false, io.Discard); err != nil {
-		t.Fatalf("add domain: %v", err)
-	}
-	rendered := filepath.Join(root, "docs", "domains", "payments.md")
-	if _, err := os.Stat(rendered); err != nil {
-		t.Fatalf("rendered domain before removal: %v", err)
-	}
-	if err := runDisable(ctx, root, "domain", "payments", false, false, errorWriter{}); err == nil || !strings.Contains(err.Error(), "write failed") {
-		t.Fatalf("note writer error = %v", err)
-	}
-	if strings.Contains(readConfig(t, root), "- payments") {
-		t.Fatal("domain remained enabled after synchronized removal")
-	}
-	if _, err := os.Stat(rendered); !os.IsNotExist(err) {
-		t.Fatalf("generated domain survived synchronized removal: %v", err)
-	}
-}
-
-// Removing a domain with authored parts prints the orphan note (the domain
-// path is outside the graph plan loop).
-func TestRunRemoveDomainNotesOrphan(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldedProject(t)
-	if err := runEnable(ctx, root, "domain", "payments", false, io.Discard); err != nil {
-		t.Fatalf("add domain: %v", err)
-	}
-	var out bytes.Buffer
-	if err := runDisable(ctx, root, "domain", "payments", false, false, &out); err != nil {
-		t.Fatalf("remove domain: %v", err)
-	}
-	if !strings.Contains(out.String(), `    domain "payments" still has a sidecar`) {
-		t.Errorf("expected the domain orphan note, got %q", out.String())
-	}
-}
-
-// Removing a doc refuses while a doc-gated skill requires it (ADR-0081
-// Decision 5 covers docs).
-func TestRunRemoveDocRefusesWithDependentSkill(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldedProject(t)
-	if err := runEnable(ctx, root, "skill", "roadmap-graduation", false, io.Discard); err != nil {
-		t.Fatalf("add roadmap-graduation: %v", err)
-	}
-	err := runDisable(ctx, root, "doc", "roadmap", false, false, io.Discard)
-	if err == nil || !strings.Contains(err.Error(), "re-run with --with-dependents") {
-		t.Fatalf("expected dependent refusal removing the doc, got %v", err)
-	}
-	if err := runDisable(ctx, root, "doc", "roadmap", true, false, io.Discard); err != nil {
-		t.Fatalf("remove doc --with-dependents: %v", err)
-	}
-	cfg := readConfig(t, root)
-	if strings.Contains(cfg, "- roadmap-graduation") || strings.Contains(cfg, "- roadmap") {
-		t.Errorf("cascade should remove the doc and its dependent skill:\n%s", cfg)
-	}
-}
-
-func TestRunRemove(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldedProject(t)
-
-	// Remove a core skill.
-	if err := runDisable(ctx, root, "skill", "brainstorming", false, false, io.Discard); err != nil {
-		t.Fatalf("remove brainstorming: %v", err)
-	}
-	if strings.Contains(readConfig(t, root), "- brainstorming") {
-		t.Error("brainstorming not removed")
-	}
-	// Rejections.
-	if err := runDisable(ctx, root, "bogus", "x", false, false, io.Discard); err == nil {
-		t.Error("expected unknown-kind error")
-	}
-	if err := runDisable(ctx, root, "skill", "brainstorming", false, false, io.Discard); err == nil {
-		t.Error("expected not-enabled error")
-	}
-}
-
-func TestRunRemoveNotesOrphan(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldedProject(t)
-	// Give an enabled skill a sidecar, then remove it. brainstorming is the
-	// chain's pure source (ADR-0081): nothing requires it, so its removal
-	// leaves the enabled set closed.
-	if err := os.MkdirAll(filepath.Join(root, ".awf", "skills"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(root, ".awf", "skills", "brainstorming.yaml"), []byte("data: {x: 1}\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	var out bytes.Buffer
-	if err := runDisable(ctx, root, "skill", "brainstorming", false, false, &out); err != nil {
-		t.Fatalf("remove brainstorming: %v", err)
-	}
-	if !strings.Contains(out.String(), "orphaned") {
-		t.Errorf("expected orphan note, got %q", out.String())
-	}
-}
-
-func TestRunListStatesAndKinds(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldedProject(t)
-	// Craft a local and a tuned sidecar on two enabled skills.
-	if err := os.MkdirAll(filepath.Join(root, ".awf", "skills"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(root, ".awf", "skills", "adr-lifecycle.yaml"), []byte("local: true\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(root, ".awf", "skills", "proposing-adr.yaml"), []byte("data: {x: 1}\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	// A configured domain exercises the freeform list path.
-	if err := runEnable(ctx, root, "domain", "payments", false, io.Discard); err != nil {
-		t.Fatalf("add domain: %v", err)
-	}
-
-	var all bytes.Buffer
-	if err := runList(ctx, root, "", &all); err != nil {
-		t.Fatalf("list: %v", err)
-	}
-	for _, want := range []string{"skills:", "agents:", "docs:", "domains:", "available", "enabled", "local", "tuned", "payments", "configured"} {
-		if !strings.Contains(all.String(), want) {
-			t.Errorf("list output missing %q:\n%s", want, all.String())
+		if err := os.Symlink(filepath.Join(root, "missing", "part.md"), filepath.Join(dir, "current-state.md")); err != nil {
+			t.Fatal(err)
 		}
-	}
-
-	// Single-kind filter.
-	var one bytes.Buffer
-	if err := runList(ctx, root, "doc", &one); err != nil {
-		t.Fatalf("list doc: %v", err)
-	}
-	if strings.Contains(one.String(), "skills:") {
-		t.Errorf("list doc should not show skills:\n%s", one.String())
-	}
-	if err := runList(ctx, root, "bogus", io.Discard); err == nil {
-		t.Error("expected unknown-kind error from list")
-	}
-}
-
-// `awf disable agent` refuses upfront - before any config rewrite - while an
-// enabled, non-local skill requires the agent (ADR-0050).
-// invariant: tooling/init-and-enablement:remove-agent-pairing-guard (TestRunRemoveAgentPairingGuard)
-func TestRunRemoveAgentPairingGuard(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldedProject(t) // 10 core skills incl. the reviewing four; all 3 agents
-	before := readConfig(t, root)
-	var out bytes.Buffer
-	err := runDisable(ctx, root, "agent", "code-reviewer", false, false, &out)
-	if err == nil || !strings.Contains(err.Error(), "re-run with --with-dependents") {
-		t.Fatalf("expected dependent-plan refusal, got %v", err)
-	}
-	if !strings.Contains(out.String(), "    - agent code-reviewer\n") ||
-		!strings.Contains(out.String(), "    - skill reviewing-impl (required by code-reviewer)") {
-		t.Errorf("expected the dependent plan printed before the refusal, got:\n%s", out.String())
-	}
-	if got := readConfig(t, root); got != before {
-		t.Errorf("config must be untouched on refusal:\n%s", got)
-	}
-
-	// A local sidecar takes the requiring skill out of the pairing's scope,
-	// mirroring the validator exactly.
-	if err := os.MkdirAll(filepath.Join(root, ".awf", "skills"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(root, ".awf", "skills", "reviewing-adr.yaml"), []byte("local: true\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := runDisable(ctx, root, "agent", "adr-reviewer", false, false, io.Discard); err != nil {
-		t.Fatalf("remove agent with only a local requirer: %v", err)
-	}
-	// The sync inside that removal pruned the formerly-managed rendered file
-	// (no longer produced once the skill is local); restore it so later syncs
-	// pass the local-frontmatter contract (inv: local-frontmatter, ADR-0037).
-	testsupport.WriteFile(t, filepath.Join(root, ".claude", "skills", "example-reviewing-adr", "SKILL.md"),
-		"---\nname: example-reviewing-adr\ndescription: local reviewing skill\n---\nbody\n")
-
-	// Local-declaring the requiring skill unblocks the removal too - removing
-	// the skill outright is impossible one-at-a-time inside the chain's
-	// mutually-requiring core (ADR-0081; Phase 2's cascade flag covers it).
-	if err := os.WriteFile(filepath.Join(root, ".awf", "skills", "reviewing-impl.yaml"), []byte("local: true\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	testsupport.WriteFile(t, filepath.Join(root, ".claude", "skills", "example-reviewing-impl", "SKILL.md"),
-		"---\nname: example-reviewing-impl\ndescription: local reviewing skill\n---\nbody\n")
-	if err := runDisable(ctx, root, "agent", "code-reviewer", false, false, io.Discard); err != nil {
-		t.Fatalf("remove agent after local-declaring its skill: %v", err)
-	}
-}
-
-func TestDispatchAddRemoveList(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldedProject(t)
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
-
-	// add with kind.
-	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "enable", "skill", "tdd"}, &out, &errb); code != 0 {
-		t.Fatalf("add dispatch: %s", errb.String())
-	}
-	// add with a single non-kind arg → "requires a kind" (pos[0] is the name).
-	errb.Reset()
-	if code := run([]string{"awf", "enable", "tdd"}, &out, &errb); code != 2 || !strings.Contains(errb.String(), "requires a kind") {
-		t.Fatalf("expected migration hint, code=%d err=%q", code, errb.String())
-	}
-	// add with a lone kind token → "requires a name", not "requires a kind".
-	errb.Reset()
-	if code := run([]string{"awf", "enable", "skill"}, &out, &errb); code != 2 || !strings.Contains(errb.String(), "requires a name") {
-		t.Fatalf("expected enable-kind name hint, code=%d err=%q", code, errb.String())
-	}
-	// add a singleton with an extra name → rejected, not silently dropped.
-	errb.Reset()
-	if code := run([]string{"awf", "enable", "bootstrap", "extra"}, &out, &errb); code != 2 || !strings.Contains(errb.String(), "takes no name") {
-		t.Fatalf("expected singleton-name rejection, code=%d err=%q", code, errb.String())
-	}
-	// lone `target` (the non-descriptor kind) → "requires a name" too.
-	errb.Reset()
-	if code := run([]string{"awf", "enable", "target"}, &out, &errb); code != 2 || !strings.Contains(errb.String(), "requires a name") {
-		t.Fatalf("expected enable-target name hint, code=%d err=%q", code, errb.String())
-	}
-	// add with no args → usage.
-	errb.Reset()
-	if code := run([]string{"awf", "enable"}, &out, &errb); code != 2 {
-		t.Fatalf("expected usage error, code=%d", code)
-	}
-	// remove with kind.
-	errb.Reset()
-	if code := run([]string{"awf", "disable", "skill", "tdd"}, &out, &errb); code != 0 {
-		t.Fatalf("remove dispatch: %s", errb.String())
-	}
-	// remove with a lone kind token → "requires a name" (mirrors enable).
-	errb.Reset()
-	if code := run([]string{"awf", "disable", "skill"}, &out, &errb); code != 2 || !strings.Contains(errb.String(), "requires a name") {
-		t.Fatalf("expected remove name hint, code=%d err=%q", code, errb.String())
-	}
-	// remove a non-kind single token → generic disable usage.
-	errb.Reset()
-	if code := run([]string{"awf", "disable", "tdd"}, &out, &errb); code != 2 || !strings.Contains(errb.String(), "usage: awf disable") {
-		t.Fatalf("expected disable usage, code=%d err=%q", code, errb.String())
-	}
-	// remove with extra positionals → usage (Phase 3: not silently ignored).
-	errb.Reset()
-	if code := run([]string{"awf", "disable", "skill", "tdd", "extra"}, &out, &errb); code != 2 {
-		t.Fatalf("expected remove extra-positional usage error, code=%d", code)
-	}
-	// list with kind.
-	errb.Reset()
-	if code := run([]string{"awf", "list", "skill"}, &out, &errb); code != 0 {
-		t.Fatalf("list dispatch: %s", errb.String())
-	}
-}
-
-// Bare `awf list` covers every kind - the four catalog/domain kinds plus
-// target, bootstrap, and hooks - and an empty kind prints (none) under its
-// header. A single-kind filter still prints only that kind.
-func TestRunListBareShowsAllKinds(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldedProject(t)
-	var out bytes.Buffer
-	if err := runList(ctx, root, "", &out); err != nil {
-		t.Fatalf("list: %v", err)
-	}
-	for _, want := range []string{
-		"collection:", "skills:", "agents:", "docs:", "domains:\n    none",
-		"targets:", "bootstrap:", ".awf/bootstrap.sh", ".awf/upgrade.sh",
-		"hooks:", ".awf/hooks/pre-commit.sh",
-	} {
-		if !strings.Contains(out.String(), want) {
-			t.Errorf("bare list missing %q:\n%s", want, out.String())
+		if err := scaffoldDomainCurrentState(p, "payments"); err == nil {
+			t.Fatal("part write error was not propagated")
 		}
+	})
+}
+
+func TestDomainLifecyclePropagatesDependencies(t *testing.T) {
+	failure := errors.New("injected failure")
+	newCases := []struct {
+		name   string
+		mutate func(*domainDependencies)
+	}{
+		{"open", func(d *domainDependencies) {
+			d.open = func(context.Context, string) (*project.Project, error) { return nil, failure }
+		}},
+		{"edit", func(d *domainDependencies) {
+			d.edit = func([]byte, string, string, bool) ([]byte, error) { return nil, failure }
+		}},
+		{"write", func(d *domainDependencies) { d.write = func(string, []byte, os.FileMode) error { return failure } }},
+		{"scaffold", func(d *domainDependencies) { d.scaffold = func(*project.Project, string) error { return failure } }},
+		{"sync", func(d *domainDependencies) {
+			d.synchronize = func(context.Context, string, io.Writer) error { return failure }
+		}},
 	}
-	out.Reset()
-	if err := runList(ctx, root, "skill", &out); err != nil {
-		t.Fatalf("list skill: %v", err)
+	for _, test := range newCases {
+		t.Run("new "+test.name, func(t *testing.T) {
+			dependencies := productionDomainDependencies()
+			test.mutate(&dependencies)
+			if err := runNewDomainWith(testContext(t), scaffoldProject(t), "payments", io.Discard, dependencies); !errors.Is(err, failure) {
+				t.Fatalf("error = %v, want injected failure", err)
+			}
+		})
 	}
-	if strings.Contains(out.String(), "targets:") || strings.Contains(out.String(), "hooks:") {
-		t.Errorf("filtered list must not append the singleton kinds:\n%s", out.String())
+	removeCases := newCases[:3]
+	removeCases = append(removeCases, newCases[4])
+	for _, test := range removeCases {
+		t.Run("remove "+test.name, func(t *testing.T) {
+			root := scaffoldProject(t)
+			if err := runNewDomain(testContext(t), root, "payments", io.Discard); err != nil {
+				t.Fatal(err)
+			}
+			dependencies := productionDomainDependencies()
+			test.mutate(&dependencies)
+			if err := runRemoveDomainWith(testContext(t), root, "payments", io.Discard, dependencies); !errors.Is(err, failure) {
+				t.Fatalf("error = %v, want injected failure", err)
+			}
+		})
 	}
 }
 
-// unrequiredAgentNotes derives retention from the surviving reviewing skills:
-// removing the sole surviving plan-review skill releases its reviewer agent,
-// while a local-sidecar agent remains outside the scan.
-func TestNoteUnrequiredAgentsEdgeCases(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldedProject(t)
-	if err := os.MkdirAll(filepath.Join(root, ".awf", "agents"), 0o755); err != nil {
+func TestHasSidecarOrParts(t *testing.T) {
+	root := t.TempDir()
+	if found, err := hasDomainSidecarOrParts(root, "payments"); err != nil || found {
+		t.Fatalf("absent authored domain = %t, %v", found, err)
+	}
+	sidecar := filepath.Join(root, ".awf", "domains", "payments.yaml")
+	testsupport.WriteFile(t, sidecar, "paths: []\n")
+	if found, err := hasDomainSidecarOrParts(root, "payments"); err != nil || !found {
+		t.Fatalf("sidecar = %t, %v", found, err)
+	}
+	if err := os.Remove(sidecar); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".awf", "agents", "adr-reviewer.yaml"), []byte("local: true\n"), 0o644); err != nil {
+	parts := filepath.Join(root, ".awf", "domains", "parts", "payments")
+	if err := os.MkdirAll(parts, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	p, err := project.Open(testContext(t), root)
+	if found, err := hasDomainSidecarOrParts(root, "payments"); err != nil || !found {
+		t.Fatalf("parts = %t, %v", found, err)
+	}
+	if err := os.RemoveAll(parts); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Dir(sidecar), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("payments.yaml", sidecar); err != nil {
+		t.Fatal(err)
+	}
+	if found, err := hasDomainSidecarOrParts(root, "payments"); err == nil || found || !strings.Contains(err.Error(), "payments.yaml") {
+		t.Fatalf("stat failure = %t, %v", found, err)
+	}
+}
+
+func TestRemoveDomainOrphanAndCleanCompletion(t *testing.T) {
+	failureWriterRoot := scaffoldProject(t)
+	if err := runNewDomain(testContext(t), failureWriterRoot, "payments", io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	dependencies := productionDomainDependencies()
+	dependencies.synchronize = func(context.Context, string, io.Writer) error { return nil }
+	if err := runRemoveDomainWith(testContext(t), failureWriterRoot, "payments", errorWriter{}, dependencies); err == nil || !strings.Contains(err.Error(), "write failed") {
+		t.Fatalf("orphan note error = %v", err)
+	}
+
+	statFailureRoot := scaffoldProject(t)
+	if err := runNewDomain(testContext(t), statFailureRoot, "payments", io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	dependencies.authored = func(string, string) (bool, error) { return false, errors.New("injected inspection failure") }
+	if err := runRemoveDomainWith(testContext(t), statFailureRoot, "payments", io.Discard, dependencies); err == nil || !strings.Contains(err.Error(), "injected inspection failure") {
+		t.Fatalf("orphan inspection error = %v", err)
+	}
+	dependencies.authored = hasDomainSidecarOrParts
+
+	cleanRoot := scaffoldProject(t)
+	cfgPath := config.ConfigPath(cleanRoot)
+	src, err := os.ReadFile(cfgPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan := []project.PlanOp{
-		{Node: catalog.Node{Kind: "skill", Name: "reviewing-adr"}, Enable: false},
-		{Node: catalog.Node{Kind: "skill", Name: "reviewing-plan"}, Enable: false, RequiredBy: "reviewing-adr"},
+	updated, err := config.SetArrayMember(src, "domains", "clean", true)
+	if err != nil {
+		t.Fatal(err)
 	}
-	notes := unrequiredAgentNotes(p, plan)
-	// adr-reviewer is local and skipped. With every surviving reviewing skill
-	// considered, no selected skill retains plan-reviewer after reviewing-plan
-	// is removed, so the agent is now correctly reported as unrequired.
-	if len(notes) != 1 || notes[0].Reason != project.EnablementNoteAgentNoLongerRequired || notes[0].Name != "plan-reviewer" {
-		t.Errorf("expected plan-reviewer release note, got %#v", notes)
+	if err := os.WriteFile(cfgPath, updated, 0o644); err != nil {
+		t.Fatal(err)
 	}
+	if err := runRemoveDomainWith(testContext(t), cleanRoot, "clean", io.Discard, dependencies); err != nil {
+		t.Fatalf("clean removal = %v", err)
+	}
+}
 
-	// A remaining local skill is skipped rather than treated as a requirer.
-	if err := os.MkdirAll(filepath.Join(root, ".awf", "skills"), 0o755); err != nil {
-		t.Fatal(err)
+func TestRetainedNewUsageAndProjectErrors(t *testing.T) {
+	if err := runNew(testContext(t), t.TempDir(), "domain", nil, io.Discard); err == nil {
+		t.Fatal("domain without name accepted")
 	}
-	if err := os.WriteFile(filepath.Join(root, ".awf", "skills", "local.yaml"), []byte("local: true\n"), 0o644); err != nil {
-		t.Fatal(err)
+	if err := newPlan(testContext(t), t.TempDir(), []string{"title"}, io.Discard); err == nil {
+		t.Fatal("plan without project accepted")
 	}
-	p.Cfg.Agents = []string{"plan-reviewer"}
-	p.Cfg.Skills = []string{"removed", "local", "reviewing-plan"}
-	p.Cat.Skills["removed"] = catalog.SkillSpec{RequiresAgent: "plan-reviewer"}
-	p.Cat.Skills["local"] = catalog.SkillSpec{RequiresAgent: "plan-reviewer"}
-	removal := []project.PlanOp{{Node: catalog.Node{Kind: "skill", Name: "removed"}}, {Node: catalog.Node{Kind: "skill", Name: "other"}}}
-	if notes = unrequiredAgentNotes(p, removal); len(notes) != 0 {
-		t.Fatalf("surviving reviewing-plan must retain plan-reviewer: %#v", notes)
-	}
-	p.Cfg.Skills = []string{"removed", "local"}
-	notes = unrequiredAgentNotes(p, removal)
-	if len(notes) != 1 || notes[0].Reason != project.EnablementNoteAgentNoLongerRequired || notes[0].Name != "plan-reviewer" {
-		t.Fatalf("local skill should be skipped, allowing note: %#v", notes)
-	}
+}
+
+// invariant: tooling/cli:cli-creation-and-inventory (TestRetainedDomainAndListCLIPaths)
+func TestRetainedDomainAndListCLIPaths(t *testing.T) {
+	ctx := testContext(t)
+
+	t.Run("dispatch usage", func(t *testing.T) {
+		root := scaffoldProject(t)
+		testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+		for _, args := range [][]string{{"awf", "new", "retired"}, {"awf", "new", "domain"}, {"awf", "remove"}, {"awf", "remove", "domain"}} {
+			var out, errOut bytes.Buffer
+			if code := run(args, &out, &errOut); code != 2 {
+				t.Fatalf("%v exit = %d, stderr = %q", args, code, errOut.String())
+			}
+		}
+	})
+
+	t.Run("version gate", func(t *testing.T) {
+		root := scaffoldProject(t)
+		lockPath := filepath.Join(root, ".awf", "awf.lock")
+		lock, err := manifest.Load(lockPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		lock.AWFVersion = "99.0.0"
+		if err := lock.Save(lockPath); err != nil {
+			t.Fatal(err)
+		}
+		if err := runNewDomain(ctx, root, "payments", io.Discard); err == nil {
+			t.Fatal("new domain bypassed the version gate")
+		}
+		if err := runRemoveDomain(ctx, root, "payments", io.Discard); err == nil {
+			t.Fatal("remove domain bypassed the version gate")
+		}
+	})
+
+	t.Run("remove absence and validation", func(t *testing.T) {
+		root := scaffoldProject(t)
+		if err := runRemoveDomain(ctx, root, "../bad", io.Discard); err == nil {
+			t.Fatal("invalid domain accepted")
+		}
+		if err := runRemoveDomain(ctx, root, "payments", io.Discard); err == nil || !strings.Contains(err.Error(), "not configured") {
+			t.Fatalf("absent domain error = %v", err)
+		}
+	})
+
+	t.Run("orphan note writer", func(t *testing.T) {
+		root := scaffoldProject(t)
+		if err := runNewDomain(ctx, root, "payments", io.Discard); err != nil {
+			t.Fatal(err)
+		}
+		if err := runRemoveDomain(ctx, root, "payments", errorWriter{}); err == nil || !strings.Contains(err.Error(), "write failed") {
+			t.Fatalf("orphan note writer error = %v", err)
+		}
+	})
+
+	t.Run("inventory", func(t *testing.T) {
+		root := scaffoldProject(t)
+		testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "tdd.yaml"), "data:\n  testSurfaces: []\n")
+		for _, kind := range []string{"", "target", "domain", "skill", "agent", "doc"} {
+			var out bytes.Buffer
+			if err := runList(ctx, root, kind, &out); err != nil {
+				t.Fatalf("list %q: %v", kind, err)
+			}
+			if !strings.Contains(out.String(), "status: artifact inventory") {
+				t.Fatalf("list %q = %q", kind, out.String())
+			}
+		}
+		var targets bytes.Buffer
+		if err := runList(ctx, root, "target", &targets); err != nil {
+			t.Fatal(err)
+		}
+		for _, name := range []string{"claude", "pi"} {
+			if !strings.Contains(targets.String(), name) {
+				t.Errorf("fixed target inventory missing %q: %q", name, targets.String())
+			}
+		}
+		for _, retired := range []string{"enabled", "available", "local"} {
+			if strings.Contains(strings.ToLower(targets.String()), retired) {
+				t.Errorf("target inventory retains enablement vocabulary %q: %q", retired, targets.String())
+			}
+		}
+		if err := runList(ctx, root, "bogus", io.Discard); err == nil {
+			t.Fatal("unknown list kind accepted")
+		}
+		if err := runList(ctx, root, "skill", errorWriter{}); err == nil {
+			t.Fatal("list writer error was not propagated")
+		}
+		bad := t.TempDir()
+		testsupport.WriteFile(t, config.ConfigPath(bad), "not: [valid\n")
+		if err := runList(ctx, bad, "", io.Discard); err == nil {
+			t.Fatal("list project-open error was not propagated")
+		}
+	})
 }

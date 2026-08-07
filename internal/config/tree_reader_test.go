@@ -16,25 +16,25 @@ func (r memoryTreeReader) ReadFile(path string) ([]byte, bool) {
 func (r memoryTreeReader) Paths(prefix string) []string { return []string{"x"} }
 
 func TestParseTreeReaderSidecarsAndParts(t *testing.T) {
-	r := memoryTreeReader{"skills/s.yaml": []byte("local: true\n"), "skills/parts/s/content.md": []byte("part"), "parts/agents-doc/commands.md": []byte("commands")}
-	cfg, err := ParseTree(".awf", []byte("prefix: x\nskills: [s]\n"), r)
+	r := memoryTreeReader{"skills/s.yaml": []byte("data:\n  description: x\n"), "skills/parts/s/content.md": []byte("part"), "parts/agents-doc/commands.md": []byte("commands")}
+	cfg, err := ParseTree(".awf", []byte("prefix: x\n"), r)
 	if err != nil {
 		t.Fatal(err)
 	}
 	sc, err := cfg.Sidecar("skills", "s")
-	if err != nil || !sc.Local {
+	if err != nil || sc.Data["description"] != "x" {
 		t.Fatalf("sidecar=%#v err=%v", sc, err)
 	}
 	if _, err := cfg.Sidecar("skills", "missing"); err != nil {
 		t.Fatal(err)
 	}
 	b, ok := cfg.ReadSidecar("skills/s.yaml")
-	if !ok || string(b) != "local: true\n" {
+	if !ok || string(b) != "data:\n  description: x\n" {
 		t.Fatal("read sidecar")
 	}
 	b[0] = 'X'
 	again, _ := cfg.ReadSidecar("skills/s.yaml")
-	if string(again) != "local: true\n" {
+	if string(again) != "data:\n  description: x\n" {
 		t.Fatal("aliased")
 	}
 	part, ok, err := cfg.ReadPart("skills", "s", "content")

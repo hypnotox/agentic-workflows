@@ -28,8 +28,6 @@ import (
 const checkYAML = `prefix: example
 integrationBranch: main
 vars: {testCmd: go test ./..., gateCmd: make gate}
-skills: [tdd]
-agents: []
 `
 
 type mutatingWriter struct {
@@ -84,7 +82,7 @@ func TestRunCheckPropagatesOperationalGitAndStagedDriftFailures(t *testing.T) {
 func TestRunCheckCleanThenDirty(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	root := syncedGitProject(t, checkYAML+"proseGate:\n  enabled: true\nmemoryCite:\n  enabled: true\n")
+	root := syncedGitProject(t, checkYAML+"")
 	var clean bytes.Buffer
 	if err := runCheck(ctx, root, &clean); err != nil {
 		t.Errorf("expected clean check, got %v", err)
@@ -180,7 +178,7 @@ func TestProseCheckFindingsPropagatesScannerFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := proseCheckFindingsWith(&config.Config{ProseGate: &config.ProseGateConfig{Enabled: true}}, tree, dependencies); !errors.Is(err, failure) {
+	if _, err := proseCheckFindingsWith(&config.Config{ProseGate: &config.ProseGateConfig{}}, tree, dependencies); !errors.Is(err, failure) {
 		t.Fatalf("scanner failure = %v, want %v", err, failure)
 	}
 }
@@ -197,7 +195,7 @@ func TestRunCheckRepoScannerErrors(t *testing.T) {
 		}
 	})
 	t.Run("prose", func(t *testing.T) {
-		root := syncedGitProject(t, checkYAML+"proseGate:\n  enabled: true\n")
+		root := syncedGitProject(t, checkYAML+"")
 		repo := gitfixture.At(root)
 		gitfixture.Stage(t, repo, map[string]string{"bad.txt": "banned \u2014 punctuation\n"})
 		if err := runCheckRepo(ctx, root, io.Discard); err == nil || !strings.Contains(err.Error(), "plain punctuation") {
@@ -205,7 +203,7 @@ func TestRunCheckRepoScannerErrors(t *testing.T) {
 		}
 	})
 	t.Run("memory", func(t *testing.T) {
-		root := syncedGitProject(t, checkYAML+"memoryCite:\n  enabled: true\n")
+		root := syncedGitProject(t, checkYAML+"")
 		repo := gitfixture.At(root)
 		gitfixture.Stage(t, repo, map[string]string{"docs/plans/citation.txt": cite() + "\n"})
 		if err := runCheckRepo(ctx, root, io.Discard); err == nil || !strings.Contains(err.Error(), "memoryCite.exemptions") {
@@ -286,11 +284,8 @@ func TestRunCheckOutsideGitDegrades(t *testing.T) {
 		t.Fatalf("runSync: %v", err)
 	}
 	var out bytes.Buffer
-	if err := runCheck(ctx, root, &out); err != nil {
-		t.Fatalf("bare check outside git: %v", err)
-	}
-	if !strings.Contains(out.String(), "status: warnings") || !strings.Contains(out.String(), "staged check universe unavailable outside a git repository") {
-		t.Fatalf("outside-git output omitted repo execution or staged disclosure:\n%s", out.String())
+	if err := runCheck(ctx, root, &out); err == nil || !strings.Contains(err.Error(), "cannot read staged files") {
+		t.Fatalf("bare check outside git = %v, want unconditional scanner refusal", err)
 	}
 }
 
@@ -357,8 +352,8 @@ func TestRunCheckAheadNotice(t *testing.T) {
 // switches coverage on: ADR-0192 made coverage and fan-out evaluate whether or
 // not the config declares the block.
 func coverageYAML() string {
-	return "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\ndomains: [alpha]\n" +
-		"currentState:\n  maxTopicsPerPath: 1\n"
+	return "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\ndomains: [alpha]\n" +
+		"currentState:\n"
 }
 
 // coverageFiles owns internal/** but declares no scoped topic, so internal/bar.go
@@ -422,8 +417,8 @@ func TestRunCheckCurrentStateWarnNote(t *testing.T) {
 	if err := runCheck(ctx, root, &out); err != nil {
 		t.Fatalf("a warn-ranked finding must not fail runCheck, got: %v", err)
 	}
-	if !strings.Contains(out.String(), "warnings:") || !strings.Contains(out.String(), "internal/bar.go") {
-		t.Errorf("expected a structured fan-out warning, got: %q", out.String())
+	if strings.Contains(out.String(), "internal/bar.go") {
+		t.Errorf("fixed fan-out budget should leave two topics clean, got: %q", out.String())
 	}
 	if strings.Contains(out.String(), "note:") {
 		t.Errorf("ordinary check report must not contain legacy notes, got: %q", out.String())
@@ -589,8 +584,8 @@ func TestRunCheckStagedWarnNote(t *testing.T) {
 	if err := runCheckStaged(ctx, root, &out); err != nil {
 		t.Fatalf("a warn-ranked finding must not fail the staged check, got: %v", err)
 	}
-	if !strings.Contains(out.String(), "warnings:") || !strings.Contains(out.String(), "internal/bar.go") {
-		t.Errorf("expected a structured fan-out warning, got: %q", out.String())
+	if !strings.Contains(out.String(), "findings: 0 errors, 0 warnings") {
+		t.Errorf("fixed fan-out budget should leave two topics clean, got: %q", out.String())
 	}
 	if strings.Contains(out.String(), "note:") {
 		t.Errorf("staged report must not contain legacy notes, got: %q", out.String())
@@ -609,7 +604,7 @@ func TestCheckStagedCommandUsesIndexLockForGateAndAheadNote(t *testing.T) {
 		}
 		return string(b)
 	}
-	configText := "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n"
+	configText := "prefix: example\nintegrationBranch: main\n"
 
 	t.Run("working lock cannot fail staged gate or suppress staged ahead note", func(t *testing.T) {
 		root := stagedCheckProject(t, map[string]string{
@@ -662,7 +657,7 @@ func TestCheckStagedCommandUsesStagedProjectStateWhenWorkingConfigIsAbsent(t *te
 		}
 		return string(b)
 	}
-	configText := "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n"
+	configText := "prefix: example\nintegrationBranch: main\n"
 
 	t.Run("missing repository refuses", func(t *testing.T) {
 		t.Chdir(t.TempDir())
@@ -837,7 +832,7 @@ func TestRunCheckStagedError(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-	testsupport.WriteAwfConfig(t, dir, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n")
+	testsupport.WriteAwfConfig(t, dir, "prefix: example\nintegrationBranch: main\n")
 	lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
 	lockBytes, err := lock.Marshal()
 	if err != nil {

@@ -31,7 +31,7 @@ func TestOpenMissingConfigFails(t *testing.T) {
 }
 
 func TestOpenRejectsEmptyPrefix(t *testing.T) {
-	root := scaffold(t, "prefix: \"\"\nskills: []\nagents: []\n")
+	root := scaffold(t, "prefix: \"\"\n")
 	_, err := Open(testContext(t), root)
 	if err == nil {
 		t.Fatal("expected Open to fail validation on empty prefix")
@@ -42,7 +42,7 @@ func TestOpenRejectsEmptyPrefix(t *testing.T) {
 }
 
 func TestOpenRejectsMalformedSkillSidecar(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
 		"skills/tdd.yaml": "bogusUnknownField: true\n",
 	})
 	_, err := Open(testContext(t), root)
@@ -52,7 +52,7 @@ func TestOpenRejectsMalformedSkillSidecar(t *testing.T) {
 }
 
 func TestOpenRejectsMalformedAgentsDocSidecar(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
 		"agents-doc.yaml": "bogusUnknownField: true\n",
 	})
 	_, err := Open(testContext(t), root)
@@ -62,7 +62,7 @@ func TestOpenRejectsMalformedAgentsDocSidecar(t *testing.T) {
 }
 
 func TestOpenRejectsUnknownAgentsDocSection(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
 		"agents-doc.yaml": "sections:\n  not-a-real-section:\n    drop: true\n",
 	})
 	_, err := Open(testContext(t), root)
@@ -75,7 +75,7 @@ func TestOpenRejectsUnknownAgentsDocSection(t *testing.T) {
 }
 
 func TestOpenRejectsMalformedAdrReadmeSidecar(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
 		"adr-readme.yaml": "bogusUnknownField: true\n",
 	})
 	if _, err := Open(testContext(t), root); err == nil {
@@ -84,7 +84,7 @@ func TestOpenRejectsMalformedAdrReadmeSidecar(t *testing.T) {
 }
 
 func TestOpenRejectsUnknownAdrReadmeSection(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
 		"adr-readme.yaml": "sections:\n  not-a-real-section:\n    drop: true\n",
 	})
 	_, err := Open(testContext(t), root)
@@ -129,28 +129,10 @@ func TestValidateFrontmatter(t *testing.T) {
 	}
 }
 
-// --- localOutPaths direct cases ---
-
-func TestLocalOutPaths(t *testing.T) {
-	// One path per enabled target; neutral kinds yield nil.
-	p := &Project{Cfg: &config.Config{Prefix: "ex"}, Targets: []Target{claudeTarget, piTarget}}
-	if got := p.localOutPaths("skills", "foo"); len(got) != 2 ||
-		got[0] != ".claude/skills/ex-foo/SKILL.md" || got[1] != ".pi/skills/ex-foo/SKILL.md" {
-		t.Errorf("skills localOutPaths = %q", got)
-	}
-	if got := p.localOutPaths("agents", "bar"); len(got) != 2 ||
-		got[0] != ".claude/agents/bar.md" || got[1] != ".pi/agents/bar.md" {
-		t.Errorf("agents localOutPaths = %q", got)
-	}
-	if got := p.localOutPaths("docs", "x"); got != nil {
-		t.Errorf("neutral kind localOutPaths should be nil, got %q", got)
-	}
-}
-
 // --- declaredSections direct cases ---
 
 func TestDeclaredSections(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -172,7 +154,7 @@ func TestDeclaredSections(t *testing.T) {
 // --- RenderAll: local agent skip + malformed-sidecar error branches ---
 
 func TestRenderAllSkipsLocalAgent(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: [my-local-agent]\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
 		"agents/my-local-agent.yaml": "local: true\n",
 	})
 	p, err := Open(testContext(t), root)
@@ -196,11 +178,11 @@ func TestRenderAllSurfacesMalformedSidecars(t *testing.T) {
 		cfg        string
 		corruptRel string
 	}{
-		{"skills", "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n", "skills/tdd.yaml"},
-		{"agents", "prefix: example\nintegrationBranch: main\nskills: []\nagents: [code-reviewer]\n", "agents/code-reviewer.yaml"},
-		{"docs", "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndocs: [architecture]\n", "docs/architecture.yaml"},
-		{"agents-doc", "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n", "agents-doc.yaml"},
-		{"adr-readme", "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n", "adr-readme.yaml"},
+		{"skills", "prefix: example\nintegrationBranch: main\n", "skills/tdd.yaml"},
+		{"agents", "prefix: example\nintegrationBranch: main\n", "agents/code-reviewer.yaml"},
+		{"docs", "prefix: example\nintegrationBranch: main\n", "docs/architecture.yaml"},
+		{"agents-doc", "prefix: example\nintegrationBranch: main\n", "agents-doc.yaml"},
+		{"adr-readme", "prefix: example\nintegrationBranch: main\n", "adr-readme.yaml"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -229,10 +211,10 @@ func TestRenderAllAssembleErrorOnUnreadablePart(t *testing.T) {
 	cases := []struct {
 		name, cfg, partDir string
 	}{
-		{"agent", "prefix: example\nintegrationBranch: main\nskills: []\nagents: [code-reviewer]\n", ".awf/agents/parts/code-reviewer/doc-currency.md"},
-		{"doc", "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndocs: [architecture]\n", ".awf/docs/parts/architecture/overview.md"},
-		{"agents-doc", "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n", ".awf/parts/agents-doc/identity.md"},
-		{"adr-readme", "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n", ".awf/parts/adr-readme/intro.md"},
+		{"agent", "prefix: example\nintegrationBranch: main\n", ".awf/agents/parts/code-reviewer/doc-currency.md"},
+		{"doc", "prefix: example\nintegrationBranch: main\n", ".awf/docs/parts/architecture/overview.md"},
+		{"agents-doc", "prefix: example\nintegrationBranch: main\n", ".awf/parts/agents-doc/identity.md"},
+		{"adr-readme", "prefix: example\nintegrationBranch: main\n", ".awf/parts/adr-readme/intro.md"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -258,7 +240,7 @@ func TestRenderAllAssembleErrorOnUnreadablePart(t *testing.T) {
 // --- renderTarget: template-read error (direct) ---
 
 func TestRenderTargetEncoderError(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -272,7 +254,7 @@ func TestRenderTargetEncoderError(t *testing.T) {
 }
 
 func TestRenderTargetMissingTemplate(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -286,7 +268,7 @@ func TestRenderTargetMissingTemplate(t *testing.T) {
 // --- artifactConfigHash: unreadable part (direct) ---
 
 func TestArtifactConfigHashUnreadablePart(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -298,22 +280,8 @@ func TestArtifactConfigHashUnreadablePart(t *testing.T) {
 
 // --- resolvedDocs: malformed docs sidecar (direct) ---
 
-func TestResolvedDocsSurfacesMalformedSidecar(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndocs: [architecture]\n")
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	corruptSidecar(t, root, "docs/architecture.yaml")
-	if _, err := p.resolvedDocs(); err == nil {
-		t.Fatal("expected resolvedDocs to surface a malformed docs sidecar")
-	}
-}
-
-// --- Sync: ADR-index generation failure ---
-
 func TestSyncFailsOnMalformedADR(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-bad.md"),
 		"---\nstatus: [unterminated\n---\n# ADR-0001: Bad\n")
 	p, err := Open(testContext(t), root)
@@ -412,7 +380,8 @@ func TestCheckFlagsFileWhereKindDirBelongs(t *testing.T) {
 	t.Fatalf("expected unclaimed drift for the .awf/domains file, got %#v", drift)
 }
 
-func TestCheckReportsLockEntryNoLongerProduced(t *testing.T) {
+// invariant: rendering/sync-and-drift:target-prune-ancestors (TestSyncPrunesRemovedTargetTree)
+func TestSyncPrunesRemovedTargetTree(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -421,28 +390,26 @@ func TestCheckReportsLockEntryNoLongerProduced(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	// Drop tdd from config but keep the lock (no re-sync): its lock entry is now
-	// orphaned because RenderAll no longer produces it.
-	noTDD := strings.Replace(sampleYAML, "skills:\n  - tdd\n", "skills: []\n", 1)
-	if err := os.WriteFile(configPath(root), []byte(noTDD), 0o644); err != nil {
+	// Remove a real rendered target surface from the next output plan. Selection
+	// edits no longer remove catalog paths in Phase 2, so they cannot prove prune.
+	if err := os.WriteFile(filepath.Join(root, ".claude", "unrelated.txt"), []byte("keep\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	p2, err := Open(testContext(t), root)
-	if err != nil {
+	p.Targets = nil
+	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p2.Check(testContext(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	found := false
-	for _, d := range drift {
-		if d.Path == ".claude/skills/example-tdd/SKILL.md" && d.Kind == "orphaned" {
-			found = true
+	for _, path := range []string{
+		filepath.Join(root, ".claude", "skills", "example-tdd", "SKILL.md"),
+		filepath.Join(root, ".claude", "skills"),
+		filepath.Join(root, ".claude", "agents"),
+	} {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Errorf("removed target path %s remains: %v", path, err)
 		}
 	}
-	if !found {
-		t.Errorf("expected orphaned drift for the unproduced lock entry, got %#v", drift)
+	if got, err := os.ReadFile(filepath.Join(root, ".claude", "unrelated.txt")); err != nil || string(got) != "keep\n" {
+		t.Errorf("unrelated target ancestor content = %q, %v; want preserved", got, err)
 	}
 }
 
@@ -474,36 +441,6 @@ func TestCheckReportsMissingRenderedFile(t *testing.T) {
 	}
 }
 
-func TestCheckReportsLocalFrontmatterDrift(t *testing.T) {
-	cfg := "prefix: example\nintegrationBranch: main\nskills: [my-local]\nagents: []\n"
-	root := scaffoldFiles(t, cfg, map[string]string{"skills/my-local.yaml": "local: true\n"})
-	writeLocalSkill(t, root, ".claude/skills/example-my-local/SKILL.md")
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.Sync(); err != nil {
-		t.Fatal(err)
-	}
-	// Delete the local file: Check's local-frontmatter pass appends drift.
-	if err := os.Remove(filepath.Join(root, ".claude", "skills", "example-my-local", "SKILL.md")); err != nil {
-		t.Fatal(err)
-	}
-	drift, err := p.Check(testContext(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	found := false
-	for _, d := range drift {
-		if d.Path == ".claude/skills/example-my-local/SKILL.md" && d.Kind == "invalid-frontmatter" {
-			found = true
-		}
-	}
-	if !found {
-		t.Errorf("expected invalid-frontmatter drift for the absent local file, got %#v", drift)
-	}
-}
-
 func TestCheckFailsOnMalformedADRIndex(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(testContext(t), root)
@@ -522,7 +459,7 @@ func TestCheckFailsOnMalformedADRIndex(t *testing.T) {
 }
 
 func TestCheckReportsMissingActiveMD(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	adrBody := testsupport.ADR("Accepted", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
 		testsupport.WithTitle("0001: First"), testsupport.WithBody("## Context\nx\n"))
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-first.md"), adrBody)
@@ -562,7 +499,7 @@ func TestCollectVarsReadError(t *testing.T) {
 
 // invariant: rendering/render-engine:dead-reference-gated (TestCheckDetectsDeadReference)
 func TestCheckDetectsDeadReference(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
 		"parts/agents-doc/identity.md": "See [missing](no/such/file.md).\n",
 	})
 	p, err := Open(testContext(t), root)
@@ -591,7 +528,7 @@ func TestCheckDetectsDeadReference(t *testing.T) {
 // file's directory), and a target escaping the repo root is dead by
 // definition - never validated against host paths outside the repo.
 func TestCheckDeadRefsAbsoluteAndEscapingTargets(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
 		// agents-doc renders at the repo root; workflow doc at docs/workflow.md.
 		// /docs/workflow.md from inside docs/ must resolve to the repo root copy,
 		// not docs/docs/workflow.md.

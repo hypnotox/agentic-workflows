@@ -74,74 +74,48 @@ func TestCheckStatePathsDispatchDistinctly(t *testing.T) {
 	}
 }
 
-// invariant: tooling/cli:check-disabled-child-disclosure (TestCheckDisabledChildDisclosure)
-func TestCheckDisabledChildDisclosure(t *testing.T) {
-	const proseNote = "prose | disabled (proseGate.enabled)\n"
-	const memoryNote = "memory | disabled (memoryCite.enabled)\n"
+// invariant: tooling/quality-gates:gates-always-run (TestCheckScannersAlwaysRun)
+func TestCheckScannersAlwaysRun(t *testing.T) {
+	const prosePath = "docs/prose.md"
+	const memoryPath = "docs/plans/memory.md"
+	violations := map[string]string{
+		prosePath:  "an em dash \u2014 here\n",
+		memoryPath: cite() + "\n",
+	}
+	root := syncedGitProject(t, checkYAML)
+	gitfixture.Stage(t, gitfixture.At(root), violations)
+	for _, tc := range []struct {
+		args  []string
+		paths []string
+	}{
+		{[]string{"awf", "check", "repo"}, []string{prosePath, memoryPath}},
+		{[]string{"awf", "check", "repo", "prose"}, []string{prosePath}},
+		{[]string{"awf", "check", "repo", "memory"}, []string{memoryPath}},
+	} {
+		var out, errb bytes.Buffer
+		if code := runAt(t, root, tc.args, &out, &errb); code == 0 {
+			t.Fatalf("%v skipped its unconfigured scanner:\n%s", tc.args, out.String())
+		}
+		report := out.String() + errb.String()
+		for _, path := range tc.paths {
+			if !strings.Contains(report, path) {
+				t.Fatalf("%v did not report %s:\n%s", tc.args, path, report)
+			}
+		}
+		if strings.Contains(out.String(), "disabled") {
+			t.Fatalf("%v exposed a retired disabled state:\n%s", tc.args, out.String())
+		}
+	}
 
-	t.Run("aggregate discloses disabled children", func(t *testing.T) {
-		root := syncedGitProject(t, checkYAML)
-		var out bytes.Buffer
-		if err := runCheckRepo(testContext(t), root, &out); err != nil {
-			t.Fatalf("check repo: %v", err)
+	exemptYAML := checkYAML + "proseGate:\n  exemptions:\n    - path: " + prosePath + "\n      codepoint: U+2014\n      count: 1\nmemoryCite:\n  exemptions:\n    - path: " + memoryPath + "\n      count: 1\n"
+	exemptRoot := syncedGitProject(t, exemptYAML)
+	gitfixture.Stage(t, gitfixture.At(exemptRoot), violations)
+	for _, args := range [][]string{{"awf", "check", "repo"}, {"awf", "check", "repo", "prose"}, {"awf", "check", "repo", "memory"}} {
+		var out, errb bytes.Buffer
+		if code := runAt(t, exemptRoot, args, &out, &errb); code != 0 {
+			t.Fatalf("%v ignored its exemption list (exit %d): %s", args, code, errb.String())
 		}
-		for _, want := range []string{proseNote, memoryNote} {
-			if got := strings.Count(out.String(), want); got != 1 {
-				t.Errorf("check repo output contains %q %d times, want once:\n%s", strings.TrimSpace(want), got, out.String())
-			}
-		}
-	})
-
-	t.Run("aggregate omits notes for enabled children", func(t *testing.T) {
-		root := syncedGitProject(t, checkYAML+"proseGate:\n  enabled: true\nmemoryCite:\n  enabled: true\n")
-		var out bytes.Buffer
-		if err := runCheckRepo(testContext(t), root, &out); err != nil {
-			t.Fatalf("check repo: %v", err)
-		}
-		for _, unwanted := range []string{proseNote, memoryNote} {
-			if strings.Contains(out.String(), unwanted) {
-				t.Errorf("check repo output contains %q:\n%s", strings.TrimSpace(unwanted), out.String())
-			}
-		}
-	})
-
-	t.Run("direct child uses the same disclosure", func(t *testing.T) {
-		root := syncedGitProject(t, checkYAML)
-		for _, tc := range []struct {
-			child string
-			want  string
-		}{
-			{child: "prose", want: proseNote},
-			{child: "memory", want: memoryNote},
-		} {
-			var out, errb bytes.Buffer
-			if code := runAt(t, root, []string{"awf", "check", "repo", tc.child}, &out, &errb); code != 0 {
-				t.Fatalf("check repo %s exited %d: %s", tc.child, code, errb.String())
-			}
-			if got := out.String(); !strings.Contains(got, "status: warnings") || !strings.Contains(got, tc.want) {
-				t.Errorf("check repo %s output = %q, want structured disclosure %q", tc.child, got, tc.want)
-			}
-		}
-	})
-
-	t.Run("direct enabled child omits the disclosure", func(t *testing.T) {
-		root := syncedGitProject(t, checkYAML+"proseGate:\n  enabled: true\nmemoryCite:\n  enabled: true\n")
-		for _, tc := range []struct {
-			child    string
-			unwanted string
-		}{
-			{child: "prose", unwanted: proseNote},
-			{child: "memory", unwanted: memoryNote},
-		} {
-			var out, errb bytes.Buffer
-			if code := runAt(t, root, []string{"awf", "check", "repo", tc.child}, &out, &errb); code != 0 {
-				t.Fatalf("check repo %s exited %d: %s", tc.child, code, errb.String())
-			}
-			if strings.Contains(out.String(), tc.unwanted) {
-				t.Errorf("check repo %s output contains %q:\n%s", tc.child, strings.TrimSpace(tc.unwanted), out.String())
-			}
-		}
-	})
+	}
 }
 
 // An unrecognized positional lists the valid subcommands. MaxPos is -1 so the
@@ -234,7 +208,7 @@ func TestCheckExemptChildrenRunUnderGuardedProjectState(t *testing.T) {
 		return string(b)
 	}
 	const journal = `{"version":1,"phase":"prepared","finalLockSHA256":"sha256:x","operations":[{"path":".awf/awf.lock","prior":{"present":false,"mode":0,"content":null},"replacement":{"present":false,"mode":0,"content":null}}]}`
-	configText := "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n"
+	configText := "prefix: example\nintegrationBranch: main\n"
 
 	// guarded builds a git-backed project in the named guarded state.
 	guarded := func(t *testing.T, journaled bool) string {
@@ -362,7 +336,7 @@ func TestCheckChildrenErrorPaths(t *testing.T) {
 		// A data value spelling the no-value token makes the in-memory re-render
 		// fail, so p.Check() returns an error rather than a drift list.
 		root := t.TempDir()
-		testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: [tdd]\nagents: []\n")
+		testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {}\n")
 		testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "tdd.yaml"),
 			"data:\n  testSurfaces:\n    - {name: \"<no value>\", kind: k, location: l}\n")
 		if err := runCheckDrift(ctx, root, io.Discard); err == nil {
@@ -387,15 +361,14 @@ func TestCheckChildrenErrorPaths(t *testing.T) {
 	})
 
 	t.Run("state prints warn notes", func(t *testing.T) {
-		// A warn-ranked fan-out finding rides the non-failing note: channel, so the
-		// command stays clean while still printing the note.
+		// The fixed fan-out budget is eight, so this two-topic fixture stays clean.
 		root := syncedGitProjectFiles(t, coverageYAML(), fanoutFiles())
 		var out bytes.Buffer
 		if err := runCheckState(ctx, root, &out); err != nil {
 			t.Fatalf("a warn-ranked finding must not fail check repo state: %v", err)
 		}
-		if !strings.Contains(out.String(), "warnings:\n") {
-			t.Errorf("expected a structured warning on stdout:\n%s", out.String())
+		if !strings.Contains(out.String(), "findings: 0 errors, 0 warnings") {
+			t.Errorf("expected a clean fixed-budget report:\n%s", out.String())
 		}
 	})
 }

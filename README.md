@@ -12,7 +12,7 @@ skills that walk an agent from brainstorm through ADR, plan, implementation, rev
 retrospective; dispatched agents that read or implement with fresh context, reviewers among them; a
 contract for dispatched implementation work; and the project docs they all rely on. All of it
 is generated from a small `.awf/` config tree
-you commit, rendered into the native layout of every coding-agent runtime you enable, and
+you commit, rendered into the native layout of both built-in coding-agent runtimes, and
 `awf check` fails the moment a rendered file drifts from the config that produced it.
 
 The tool is a single Go binary. The standard it renders is language-agnostic. Both are
@@ -30,19 +30,19 @@ config tree, so a change to how your agents work is a diff someone reviews, like
 other change. Rendering is deterministic, so every contributor and every agent session
 reads the same skills and docs, with nothing to retype per session. And a set of
 mechanical checks guards what the agent produces, not how it reasons: stale or
-hand-edited output, invalid skill frontmatter, dead internal links, references to disabled
-skills, and invariant claims with no backing marker in source all fail loudly
+hand-edited output, invalid skill frontmatter, dead internal links, invalid skill references,
+and invariant claims with no backing marker in source all fail loudly
 instead of rotting.
 
 ## What gets rendered
 
-- **Workflow skills** (one tree per enabled runtime: `.pi/skills/<prefix>-*/`,
-  `.claude/skills/<prefix>-*/`, and so on). The core chain: brainstorming,
-  ADR proposal and review, planning and ordinary linked-authority plan review, two
-  execution styles (inline or subagent-per-phase), implementation review, and a closing
-  retrospective that promotes recurring findings toward deterministic checks. Task
-  skills are opt-in (TDD, bugfix, debugging, a refactor coupling audit, a
-  roadmap-graduation pass), except `adr-lifecycle`, which is scaffolded on with the chain.
+- **Workflow skills** (one complete catalog tree per built-in runtime:
+  `.pi/skills/<prefix>-*/` and `.claude/skills/<prefix>-*/`). The core chain:
+  brainstorming, ADR proposal and review, planning and plan review, a plan↔ADR resync,
+  two execution styles (inline or subagent-per-task), implementation review, and a
+  closing retrospective that promotes recurring findings toward deterministic checks.
+  The same catalog also includes task skills such as TDD, bugfix, debugging, a refactor
+  coupling audit, and a roadmap-graduation pass.
 - **Agents**, likewise per runtime. The review agents (`adr-reviewer`, `plan-reviewer`,
   `code-reviewer`) are each dispatched with fresh context, so the author never grades
   its own work, and are report-only. The `explorer` and `grounding-checker` agents are
@@ -51,10 +51,10 @@ instead of rotting.
   commit-disabled path-confined helper. Agents are format-neutral before each target
   emits them in its declared native representation; both built-in targets use Markdown.
 - **Docs**. An `AGENTS.md` agent guide (with a `CLAUDE.md` bridge for Claude Code),
-  workflow and documentation standards, plus opt-in project docs:
-  architecture, testing, development, debugging, pitfalls, releasing, glossary, roadmap.
+  workflow and documentation standards, and the full catalog of project docs:
+  architecture, testing, development, debugging, pitfalls, releasing, glossary, and roadmap.
 - **Domain docs** (`docs/domains/<name>.md`). One page per freeform domain you
-  declare (`awf enable domain rendering`): your hand-authored current-state narrative
+  create (`awf new domain rendering`): your hand-authored current-state narrative
   plus a generated compact list of that domain's current-state topics. A domain's sidecar can declare
   `paths` globs (its code territory), and `awf audit` then warns when code in that
   territory changes without the narrative being refreshed.
@@ -65,18 +65,17 @@ instead of rotting.
   pre-merge-commit, reference-transaction, and pre-push scripts. You wire them up;
   awf never touches your Git configuration. Optional commit policy lets the last two
   reject disallowed identities or SSH signatures before local ref movement or push.
-- **A command runner** (`x`, opt-in via `awf enable runner`): an executable dispatch
-  script giving every repo the same `./x <verb>` entry point. It is co-owned: one section
-  is marked edit-in-place, so the verbs you add there survive every `awf render` while awf
-  keeps the rest current. awf itself keeps a from-source runner instead.
+- **An awf wrapper** (`awf`, always rendered): a pure executable forwarder that resolves
+  the configured awf invocation, then the bootstrap-pinned binary, then `awf` on `PATH`,
+  and passes every argument through unchanged. Projects may separately keep their own
+  command runner, such as this repository's `x`.
 - **A pinned bootstrap** (`.awf/bootstrap.sh`): an optional installer that fetches the
   exact awf version the repo was rendered with, for hooks and CI.
 - **Effort residents** (`.awf/efforts/<slug>/`, `.awf/worktrees/<slug>/`): one concrete non-minimal outcome owns immutable schema-2 state, `memory.md`, and optional mutable protocol-2 `activity.json`; optional managed worktrees use Git-authoritative path, registration, and branch topology. Activity is fallible Pi presence, never authority or a lock, and older binaries need not read an effort after it exists. These two are the only resident roots awf owns; schema generation 22 reset the legacy standalone memory root, and no render recreates it.
 
 awf renders for Pi and [Claude Code](https://www.anthropic.com/claude-code). Each gets
-skills and agents at descriptor-owned paths; Claude Code also receives its `CLAUDE.md`
-bridge, while Pi owns its runtime extensions. `targets` defaults to `[claude]`; select
-one or both built-in runtimes for the project.
+every catalog skill and agent at descriptor-owned paths; Claude Code also receives its
+`CLAUDE.md` bridge, while Pi owns its runtime extensions. Both built-in runtimes always render.
 
 A compatible Pi 0.81.1+ build exposing the required queued-command and persisted-session APIs receives trusted project-extension factories for subagents and handoff. The subagent extension registers `subagent_grounding`,
 `subagent_explore`, `subagent_review`, and `subagent_implement`. Every role accepts an optional exact
@@ -86,19 +85,16 @@ independent calls run through a ten-active FIFO queue. Grounding, exploration, a
 no-mutation prompt policy, not an OS sandbox. Implementation shares the checkout, runs alone and
 sequentially, and mixed parent batches are mechanically blocked; it commits only when its
 orchestrator sets `allowCommits`. Every role shows bounded inline child progress while intermediate
-activity stays outside parent model content. Selecting core `effort-workflow` renders a target-neutral guide for entering the exact existing awf-managed worktree through native persistent checkout tooling. Pi additionally derives the `using_effort` tool and companion skill: direct attach or detach leaves the runtime at repository root, heartbeats after turns, and injects fixed relative memory and optional managed-worktree paths before model calls. It publishes complete advisory Remote Pi metadata independently from a capability-gated display-only effort suffix, answers replay requests, and clears the suffix on lifecycle boundaries without reading or changing routing identity. Missing or withdrawn suffix support degrades to metadata-only behavior. No checkout validation, CWD replacement, queue, or local TUI presentation is involved. Non-Pi targets never receive this tool, claim activity, or create a parallel harness-owned worktree. Existing adopters opt in with `awf enable skill effort-workflow`.
+activity stays outside parent model content. The catalog `effort-workflow` renders a target-neutral guide for entering the exact existing awf-managed worktree through native persistent checkout tooling. Pi additionally derives the `using_effort` tool and companion skill: direct attach or detach leaves the runtime at repository root, heartbeats after turns, and injects fixed relative memory and optional managed-worktree paths before model calls. It publishes complete advisory Remote Pi metadata independently from a capability-gated display-only effort suffix, answers replay requests, and clears the suffix on lifecycle boundaries without reading or changing routing identity. Missing or withdrawn suffix support degrades to metadata-only behavior. No checkout validation, CWD replacement, queue, or local TUI presentation is involved. Non-Pi targets never receive this tool, claim activity, or create a parallel harness-owned worktree.
 
 A separate `handoff_session` tool accepts only exact bounded `{kickoff}` prose for a parent-linked fresh persisted TUI session. Workflow checkpoints stay durable and visible first; the handoff runs alone afterward, waits five cancellable seconds, preserves old history, and submits one visible default-rendered `agent-handoff` custom message whose content is `Agent-authored handoff context; this is not user input:` followed by two newlines and the unchanged kickoff. Replacement-bound `sendMessage` triggers the turn; Pi's current provider adapter still converts custom content to a user-role request. Unsupported modes reject, cleanup is manual, and automatic or replacement failure leaves that same envelope in the editor.
 
 ## The workflow it renders
 
-The rendered skills and agents provide one workflow, without profiles, depth controls, routers,
-classifiers, or runtime policy knobs. Brainstorming runs when a material choice needs settling;
-an ADR is added only when a decision is load-bearing, and a plan only when sequencing,
-coordination, or resumability materially helps. Ordinary full plan review verifies every ADR
-from parsed plan-level `adrs:` links. A substantive ADR correction is reviewed first, then every
-deterministically linked Proposed plan receives ordinary review; completed affected phases are
-reassessed and assurance renewed where needed. A closing retrospective promotes recurring
+The rendered skills and agents walk an agent through one canonical chain. Brainstorming is
+the hard prerequisite; an ADR is added only when a decision is load-bearing, a plan only when
+the work is complex, and a plan-ADR resync runs only when both exist. Every written artifact
+gets an independent fresh-context review, and a closing retrospective promotes recurring
 findings toward deterministic checks.
 
 ```mermaid
@@ -109,7 +105,10 @@ flowchart LR
     ADR --> Q2
     Q2 -->|yes| PLAN["plan:<br/>write + review"]
     Q2 -->|no| IMPL[implementation]
-    PLAN --> IMPL
+    PLAN --> Q3{ADR too?}
+    Q3 -->|yes| RS[plan-ADR resync]
+    Q3 -->|no| IMPL
+    RS --> IMPL
     IMPL --> REV["implementation<br/>review"]
     REV --> RETRO([retrospective])
 ```
@@ -121,7 +120,7 @@ See [`docs/workflow.md`](docs/workflow.md) for the full rules.
 
 ```
 .awf/  (you commit this)            rendered output (awf writes & tracks this)
-├── config.yaml   enable arrays     ├── AGENTS.md            agent guide
+├── config.yaml   repo facts        ├── AGENTS.md            agent guide
 │                 + vars            ├── bridge file          imports AGENTS.md
 ├── <kind>/<name>.yaml  sidecars    ├── .claude/skills/...   workflow skills
 ├── <kind>/parts/.../...  overrides ├── .claude/agents/...   agents
@@ -191,22 +190,20 @@ Adopting this release from an older awf is a one-time sealed cutover handled by 
 upgrade` (with `awf upgrade --recover` for an interrupted one); the mechanics live in
 [`AGENTS.md`](AGENTS.md).
 
-The rendered paths above show the default `claude` target; each enabled runtime keeps
-its descriptor-owned layout, and Pi places its artifacts and extensions under `.pi/`.
-`awf list target` shows the roster.
+The rendered paths above show the Claude Code layout; both built-in runtimes keep their
+descriptor-owned layouts, and Pi places its artifacts and extensions under `.pi/`.
+`awf list target` shows the fixed roster.
 
 You change the config and run `awf render`; you never hand-edit a rendered file.
 `awf check` fails when a rendered file is stale or was edited by hand, so the two can't
 silently diverge. Rendered sections use `awf:edit`, opaque regenerated outputs may carry an
-informational `awf:source`, and authored ADRs, plans, and `local: true` documents are banner-free. A topic
-pairs `.awf/topics/metadata/<domain>/<topic>.yaml` with
+informational `awf:source`, and authored ADRs and plans are banner-free. A topic pairs
+`.awf/topics/metadata/<domain>/<topic>.yaml` with
 `.awf/topics/parts/<domain>/<topic>/current-state.md`; source markers identify reader guidance,
 not exhaustive dependencies. For detailed source-editing guidance, see
-[`docs/working-with-awf.md`](docs/working-with-awf.md). To customise one section of an artifact, drop a *convention part*
-under `.awf/`; it replaces that section's body and inherits the rest of the template.
-For skills and agents the catalog doesn't have, `awf new skill <name> "<desc>"` (or
-`agent`) scaffolds a project-local artifact that gets the same rendering, validation,
-and drift tracking as the built-in ones.
+[`docs/working-with-awf.md`](docs/working-with-awf.md). To customise one section of a catalog
+artifact, drop a *convention part* under `.awf/`; it replaces that section's body and inherits
+the rest of the template.
 
 ## Install
 
@@ -226,9 +223,8 @@ Requires Go 1.26+.
 
 ### Pinning with `.awf/bootstrap.sh`
 
-Projects that enable the `bootstrap` artifact (on by default from `awf init`, or
-`awf enable bootstrap`) get a small rendered shell script that resolves the exact awf
-version the repo was rendered with: it uses an
+Projects with `bootstrap.enabled: true` (the `awf init` default) get a small rendered
+shell script that resolves the exact awf version the repo was rendered with: it uses an
 already-matching `awf` from `PATH` when one exists, otherwise downloads the release
 archive, verifies its SHA-256 against the release checksums, caches the binary under
 `$XDG_CACHE_HOME/awf/<version>/` (defaulting to `~/.cache`), and prints its path. Hooks
@@ -236,47 +232,41 @@ and CI can then run the pinned version without anyone installing awf by hand:
 
     "$(bash .awf/bootstrap.sh)" check
 
-It touches nothing outside its cache directory, and `awf disable bootstrap` deletes it.
-The bootstrap and hook payloads are bash scripts targeting the linux/darwin archives; on
+It touches nothing outside its cache directory. Set `bootstrap.enabled: false` and render
+to remove it. The bootstrap and hook payloads are bash scripts targeting the linux/darwin archives; on
 Windows, put `awf` on `PATH` and call it directly.
 
 ## Quickstart
 
     cd your-project
-    awf init             # scaffold .awf/, render the workflow core
+    awf init             # scaffold .awf/ and render the full catalog
     awf check            # verify rendered output is in sync
-    awf list             # see what's enabled vs available
-    awf enable skill tdd    # opt a skill in
-    awf enable doc pitfalls # opt a doc in
-    awf enable target pi    # render compatible Pi 0.81.1+ skills and trusted extensions
+    awf list             # inventory the catalog and configured domains
 
 The Pi extension is executable project code loaded behind Pi's project-trust prompt. Its generated
 files are drift-checked; use `awf render` to restore missing or modified copies.
 
-`awf init` enables a curated core by default: twelve core skills (the ten-step workflow chain,
-`adr-lifecycle`, and `exploring`) and every catalog agent. The workflow, documentation, and agent-guide standards sit outside
-the toggleable catalog and always render. Everything else is opt-in via
-`awf enable <kind> <name>`, and `awf disable` opts back out.
+`awf init` renders every catalog skill, agent, and document for both built-in targets.
+`bootstrap.enabled` remains a live, repository-specific toggle.
 
 ## Commands
 
 <!-- awf:clispec-commands:start -->
 | Command | Purpose |
 |---|---|
-| `awf init [flags]` | Scaffold .awf/ and render the workflow-core set |
+| `awf init [flags]` | Scaffold .awf/ and render the full catalog |
 | `awf render` | Re-render after a template or config change |
 | `awf check` | Verify the repository and staged universes |
 | `awf read <subcommand>` | Read an executable projection from a parsed artifact |
 | `awf audit <base>\|<a>..<b>` | Report workflow-conformance findings over a commit range (advisory) |
 | `awf effort <subcommand>` | Manage slugged repository-local efforts |
 | `awf adr <subcommand>` | ADR lifecycle operations |
-| `awf list [<kind>]` | Show targets and their per-project state (all kinds, or one) |
+| `awf list [<kind>]` | Show the catalog and configured domain inventory |
 | `awf config [<key-or-var>]` | Describe config keys and vars (live state inside a project) |
 | `awf context [<path>...] [--show <facet>]... [--full] [--staged] [--range <a>..<b>] [--uncovered]` | Orient by request with compact current-state impact reports |
 | `awf topic <domain>/<topic>[:<claim>] [flags]` | Query current claims, history, references, and applicability |
-| `awf new <kind> <args>` | Scaffold a new artifact: kind ∈ {adr, plan, topic, skill, agent, doc} |
-| `awf enable <kind> <name> [--dry-run]` | Enable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap, hooks, runner} |
-| `awf disable <kind> <name> [--with-dependents] [--dry-run]` | Disable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap, hooks, runner} |
+| `awf new <kind> <args>` | Scaffold a new artifact: kind ∈ {adr, plan, topic, domain} |
+| `awf remove domain <name>` | Remove a configured domain |
 | `awf upgrade [--recover]` | Migrate the .awf/ config tree or consume a current-state attestation |
 | `awf uninstall` | Remove awf's generated files (keeps .awf/) |
 | `awf changelog [--version <v> \| --since <v> \| --range <from>..<to>]` | Print the embedded changelog, or one version/range of it |
@@ -296,14 +286,13 @@ basename; change it via `prefix` in `.awf/config.yaml`. You can back out anytime
 removes everything awf generated, leaving your config in place.
 
 awf renders git-hook *content* but never installs or activates hooks; the wiring is
-yours. With the `hooks` artifact enabled (default on init), five inert payload scripts
-land under `.awf/hooks/`: `pre-commit.sh` (the configured aggregate check followed by
+yours. Five inert payload scripts render unconditionally under `.awf/hooks/`: `pre-commit.sh` (the configured aggregate check followed by
 the project gate), `commit-msg.sh` (`awf check staged commit`), `pre-merge-commit.sh`
 (the staged evidence available before the final message and parents),
 `reference-transaction.sh` (optional commit-policy enforcement before branch refs move),
 and `pre-push.sh` (commit policy before the configured push gate). Preview intended
 history with `awf check commit-policy <revision-or-range>...` before enabling a policy.
-Invoke payloads from wiring you own. A tracked stub should resolve
+Adopter-owned wiring activates the otherwise inert payloads. Invoke them from wiring you own. A tracked stub should resolve
 `git rev-parse --show-toplevel` and delegate to that worktree's payload so linked
 worktrees remain correct with absolute or relative `core.hooksPath`. If you adopted an
 earlier awf that ran `awf setup`, your repo's `core.hooksPath` may still point at the

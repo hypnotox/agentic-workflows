@@ -26,12 +26,15 @@ import (
 func TestDocsSectionParity(t *testing.T) {
 	cat := catalog.Standard
 	for name, spec := range cat.Docs {
-		if spec.Mandatory {
-			// Singletons render from non-docs/ templates through the full layout;
-			// covered by TestAdrSingletonSectionParity.
+		if spec.AgentsDoc || spec.Path != "" {
+			// Root and structural docs have their own output shape and are covered
+			// by their singleton parity tests. Mandatory is sidecar location only.
 			continue
 		}
-		tid := fmt.Sprintf("docs/%s.md.tmpl", name)
+		tid := spec.TID
+		if tid == "" {
+			tid = fmt.Sprintf("docs/%s.md.tmpl", name)
+		}
 		src, err := fs.ReadFile(templates.FS, tid)
 		if err != nil {
 			t.Fatalf("read %s: %v", tid, err)
@@ -62,18 +65,33 @@ func TestDocsSectionParity(t *testing.T) {
 	}
 }
 
-// TestSectionOrphanDetection asserts that a convention part whose section is not
-// in the target's catalog-declared set is reported as drift, while a part at a
-// genuinely declared section is not. The valid section is read from the live
-// catalog so the test stays correct as the taxonomy evolves.
+// TestDocsSectionParityMembershipUsesOutputShape prevents Mandatory from
+// becoming a hidden membership oracle: name-derived docs participate regardless
+// of sidecar location, while root and structural docs do not.
+func TestDocsSectionParityMembershipUsesOutputShape(t *testing.T) {
+	entries := map[string]catalog.DocEntry{
+		"root":       {AgentsDoc: true, Mandatory: false},
+		"structural": {Path: "structural.md", Mandatory: false},
+		"named-root": {Mandatory: true},
+		"named-docs": {Mandatory: false},
+	}
+	got := map[string]bool{}
+	for name, entry := range entries {
+		if !entry.AgentsDoc && entry.Path == "" {
+			got[name] = true
+		}
+	}
+	want := map[string]bool{"named-root": true, "named-docs": true}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("name-derived parity membership = %v, want %v", got, want)
+	}
+}
+
 // invariant: rendering/inplace-and-placeholders:section-orphan-flagged (TestSectionOrphanDetection)
 func TestSectionOrphanDetection(t *testing.T) {
-	cat := catalog.Standard
-	valid := cat.Docs["architecture"].Sections[0]
+	valid := catalog.Standard.Docs["architecture"].Sections[0]
 	const orphan = "definitely-not-a-section"
-	cfg := "prefix: example\nintegrationBranch: main\n" + sprintfVars("") +
-		"skills: []\nagents: []\ndocs:\n  - architecture\n"
-	root := scaffoldFiles(t, cfg, map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n"+sprintfVars(""), map[string]string{
 		"docs/parts/architecture/" + valid + ".md":  "## Valid\n\noverride body\n",
 		"docs/parts/architecture/" + orphan + ".md": "## Bogus\n\nstray\n",
 	})
@@ -89,30 +107,22 @@ func TestSectionOrphanDetection(t *testing.T) {
 		t.Fatal(err)
 	}
 	var sawOrphan, sawValid bool
-	for _, d := range drift {
-		if d.Kind != "orphaned" {
+	for _, finding := range drift {
+		if finding.Kind != "orphaned" {
 			continue
 		}
-		switch d.Path {
+		switch finding.Path {
 		case ".awf/docs/parts/architecture/" + orphan + ".md":
 			sawOrphan = true
 		case ".awf/docs/parts/architecture/" + valid + ".md":
 			sawValid = true
 		}
 	}
-	if !sawOrphan {
-		t.Errorf("expected orphan drift for undeclared section part %q, got %#v", orphan, drift)
-	}
-	if sawValid {
-		t.Errorf("declared section part %q must not be flagged as orphan, got %#v", valid, drift)
+	if !sawOrphan || sawValid {
+		t.Fatalf("section drift = %#v", drift)
 	}
 }
 
-// TestAgentsDocSectionParity asserts the agents-doc template's marker-block set
-// matches its catalog-declared sections, order-exact. The AgentsDoc entry is
-// excluded from both TestDocsSectionParity (Mandatory skip) and
-// TestAdrSingletonSectionParity (plainSingletons excludes it), so without this
-// test a guide section could half-land with a broken override path (ADR-0069).
 // invariant: rendering/guide-and-doc-templates:agents-doc-section-parity (TestAgentsDocSectionParity)
 func TestAgentsDocSectionParity(t *testing.T) {
 	cat := catalog.Standard
@@ -410,7 +420,7 @@ func TestMaintainableCodeDesignGuide(t *testing.T) {
 		}
 	}
 
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndocs: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)

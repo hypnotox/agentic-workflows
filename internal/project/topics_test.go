@@ -15,7 +15,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-const topicProjectConfig = "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndomains: [rendering]\n"
+const topicProjectConfig = "prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: ./x gate\ndomains: [rendering]\n"
 
 func writeProjectTopic(t *testing.T, root, slug, title, applies string) {
 	t.Helper()
@@ -386,19 +386,6 @@ func TestTopicOutputCollisions(t *testing.T) {
 			t.Fatalf("collision %v", err)
 		}
 	})
-	t.Run("local doc", func(t *testing.T) {
-		root := topicProject(t)
-		testsupport.WriteFile(t, configPath(root), topicProjectConfig+"docs: [topics/rendering/index]\n")
-		testsupport.WriteFile(t, filepath.Join(root, ".awf/docs/topics/rendering/index.yaml"), "local: true\n")
-		writeProjectTopic(t, root, "x", "X", "paths: [\"internal/**\"]\n")
-		p, err := Open(testContext(t), root)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := p.OutputPlan(testContext(t)); err == nil || !strings.Contains(err.Error(), "local document") {
-			t.Fatalf("collision %v", err)
-		}
-	})
 }
 func TestTopicRenderRejectsMalformedAuthoringComment(t *testing.T) {
 	root := topicProject(t)
@@ -523,7 +510,7 @@ func TestQueryTopicRejectsInvalidHistoricalInterpretation(t *testing.T) {
 }
 
 func TestQueryTopicLoadErrors(t *testing.T) {
-	badADRRoot := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndomains: []\n", nil)
+	badADRRoot := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\ndomains: []\n", nil)
 	testsupport.WriteFile(t, filepath.Join(badADRRoot, "docs/decisions/0001-bad.md"), "---\nstatus: [\n---\n")
 	p, err := Open(testContext(t), badADRRoot)
 	if err != nil {
@@ -533,7 +520,7 @@ func TestQueryTopicLoadErrors(t *testing.T) {
 		t.Fatal("QueryTopic accepted malformed ADR corpus")
 	}
 
-	badTopicRoot := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndomains: [schedule]\n", map[string]string{"domains/schedule.yaml": "paths: [\"internal/**\"]\n"})
+	badTopicRoot := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\ndomains: [schedule]\n", map[string]string{"domains/schedule.yaml": "paths: [\"internal/**\"]\n"})
 	writeADR(t, badTopicRoot, "0001-scheduling.md", testsupport.ADR("Implemented", testsupport.WithDomains("schedule")))
 	testsupport.WriteFile(t, filepath.Join(badTopicRoot, ".awf/topics/metadata/schedule/contracts.yaml"), "title: Contracts\n")
 	p, err = Open(testContext(t), badTopicRoot)
@@ -548,8 +535,6 @@ func TestQueryTopicLoadErrors(t *testing.T) {
 func TestTopicSubstrateEndToEnd(t *testing.T) {
 	root := scaffoldFiles(t, `prefix: example
 integrationBranch: main
-skills: []
-agents: []
 domains: [schedule]
 currentState:
   sources:

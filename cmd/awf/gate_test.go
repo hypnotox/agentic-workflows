@@ -256,11 +256,9 @@ var gatedProbes = map[string][]string{
 	"new adr":                   {"awf", "new", "adr", "Gate probe"},
 	"new plan":                  {"awf", "new", "plan", "Gate probe"},
 	"new topic":                 {"awf", "new", "topic", "rendering", "gate-probe"},
-	"new skill":                 {"awf", "new", "skill", "gate-probe", "desc"},
-	"new agent":                 {"awf", "new", "agent", "gate-probe", "desc"},
-	"new doc":                   {"awf", "new", "doc", "gate-probe", "desc"},
-	"enable":                    {"awf", "enable", "skill", "tdd"},
-	"disable":                   {"awf", "disable", "skill", "tdd"},
+	"new domain":                {"awf", "new", "domain", "gate-probe"},
+	"remove":                    {"awf", "remove", "domain", "gate-probe"},
+	"remove domain":             {"awf", "remove", "domain", "gate-probe"},
 }
 
 // gatedCommandKeys derives, from clispec alone, the key of every command whose

@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
-	"gopkg.in/yaml.v3"
 )
 
 // writeConfig writes config.yaml into a fresh awf dir and returns that dir.
@@ -22,58 +21,34 @@ func writeConfig(t *testing.T, body string) string {
 	return dir
 }
 
-// invariant: config/validation:duplicate-target-rejected (TestConfigRejectsDuplicateTargets)
-func TestConfigRejectsDuplicateTargets(t *testing.T) {
-	cfg, err := Load(writeConfig(t, "prefix: awf\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [claude, claude]\n"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "duplicate target") {
-		t.Fatalf("Validate = %v", err)
+// invariant: config/configuration:no-artifact-selection-surface (TestConfigRejectsSelectionKeys)
+func TestConfigRejectsSelectionKeys(t *testing.T) {
+	for _, key := range []string{"skills", "agents", "docs", "targets", "docsDir"} {
+		if _, err := Load(writeConfig(t, "prefix: awf\nintegrationBranch: main\n"+key+": []\n")); err == nil {
+			t.Fatalf("Load accepted retired %s key", key)
+		}
 	}
 }
 
-func TestLoadParsesSkeletonFields(t *testing.T) {
-	dir := writeConfig(t, `prefix: example
-vars:
-  testCmd: go test ./...
-skills:
-  - tdd
-  - bugfix
-agents:
-  - code-reviewer
-docs:
-  - architecture
-`)
+func TestLoadParsesRepositoryFacts(t *testing.T) {
+	dir := writeConfig(t, "prefix: example\nintegrationBranch: main\nvars:\n  testCmd: go test ./...\ndomains: [rendering]\n")
 	c, err := Load(dir)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if c.Prefix != "example" {
-		t.Errorf("prefix = %q", c.Prefix)
-	}
-	if c.Vars["testCmd"] != "go test ./..." {
-		t.Errorf("vars.testCmd = %v", c.Vars["testCmd"])
-	}
-	if strings.Join(c.Skills, ",") != "tdd,bugfix" {
-		t.Errorf("skills = %v", c.Skills)
-	}
-	if strings.Join(c.Agents, ",") != "code-reviewer" {
-		t.Errorf("agents = %v", c.Agents)
-	}
-	if strings.Join(c.Docs, ",") != "architecture" {
-		t.Errorf("docs = %v", c.Docs)
+	if c.Prefix != "example" || c.Vars["testCmd"] != "go test ./..." || len(c.Domains) != 1 || c.Domains[0] != "rendering" {
+		t.Errorf("Config = %#v", c)
 	}
 }
 
-func TestParseRetainsSuppliedSourceAndDefaults(t *testing.T) {
-	body := []byte("prefix: example\nskills: []\n")
+func TestParseRetainsSuppliedSourceAndStrictness(t *testing.T) {
+	body := []byte("prefix: example\n")
 	c, err := Parse("staged/.awf", body)
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
-	if string(c.Source()) != string(body) || c.DocsDir != "docs" || strings.Join(c.Targets, ",") != "claude" {
-		t.Errorf("Parse = %+v, source %q", c, c.Source())
+	if string(c.Source()) != string(body) {
+		t.Errorf("Parse source = %q", c.Source())
 	}
 	if _, err := Parse("staged/.awf", []byte("unknown: true\n")); err == nil {
 		t.Error("Parse must retain strict decoding")
@@ -84,7 +59,7 @@ func TestLoadRetainsSource(t *testing.T) {
 	// Load keeps the exact bytes it read, so a byte-level editor can reuse them
 	// instead of re-reading config.yaml (and defending against a read that cannot
 	// fail after Load already succeeded).
-	body := "prefix: example\nskills:\n  - tdd\n"
+	body := "prefix: example\n"
 	dir := writeConfig(t, body)
 	c, err := Load(dir)
 	if err != nil {
@@ -95,27 +70,24 @@ func TestLoadRetainsSource(t *testing.T) {
 	}
 }
 
-// invariant: config/configuration:enable-arrays (TestEnableListsAreArrays)
-func TestEnableListsAreArrays(t *testing.T) {
-	dir := writeConfig(t, "prefix: example\nskills:\n  - tdd\n  - bugfix\n")
-	c, err := Load(dir)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
-	if len(c.Skills) != 2 || c.Skills[0] != "tdd" || c.Skills[1] != "bugfix" {
-		t.Errorf("skills did not parse to []string{tdd,bugfix}: %v", c.Skills)
-	}
-	// A per-target data/sections/local key at the root is rejected (KnownFields).
+// invariant: config/configuration:root-sidecar-keys-rejected (TestRootAndSidecarRetiredKeysAreRejected)
+func TestRootAndSidecarRetiredKeysAreRejected(t *testing.T) {
 	for _, bad := range []string{"data", "sections", "local"} {
 		d := writeConfig(t, "prefix: example\n"+bad+": {}\n")
 		if _, err := Load(d); err == nil {
-			t.Errorf("expected a root %q key to be rejected", bad)
+			t.Errorf("expected root %q to be rejected", bad)
 		}
 	}
-	// The map enable shape (name: {}) no longer parses as a string array.
-	d := writeConfig(t, "prefix: example\nskills:\n  tdd: {}\n")
-	if _, err := Load(d); err == nil {
-		t.Error("expected map-shaped skills to be rejected (must be a string array)")
+	dir := writeConfig(t, "prefix: example\n")
+	if err := os.MkdirAll(filepath.Join(dir, "skills"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "skills", "tdd.yaml"), []byte("local: false\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c, _ := Load(dir)
+	if _, err := c.Sidecar("skills", "tdd"); err == nil {
+		t.Fatal("sidecar local must be rejected")
 	}
 }
 
@@ -173,12 +145,12 @@ func scanLegacyRefs(t *testing.T, repo string) []string {
 	return hits
 }
 
-func TestSidecarReadsDataSectionsLocal(t *testing.T) {
-	dir := writeConfig(t, "prefix: example\nskills:\n  - tdd\n")
+func TestSidecarReadsDataSections(t *testing.T) {
+	dir := writeConfig(t, "prefix: example\n")
 	if err := os.MkdirAll(filepath.Join(dir, "skills"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	sidecar := "data:\n  foo: bar\nsections:\n  notes:\n    drop: true\nlocal: false\n"
+	sidecar := "data:\n  foo: bar\nsections:\n  notes:\n    drop: true\n"
 	if err := os.WriteFile(filepath.Join(dir, "skills", "tdd.yaml"), []byte(sidecar), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -221,7 +193,7 @@ func TestSidecarReadsDomainPaths(t *testing.T) {
 
 // invariant: rendering/render-engine:sidecar-optional (TestSidecarAbsentIsEmpty)
 func TestSidecarAbsentIsEmpty(t *testing.T) {
-	dir := writeConfig(t, "prefix: example\nskills:\n  - tdd\n")
+	dir := writeConfig(t, "prefix: example\n")
 	c, err := Load(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -230,7 +202,7 @@ func TestSidecarAbsentIsEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("absent sidecar should be empty, not an error: %v", err)
 	}
-	if sc.Data != nil || sc.Sections != nil || sc.Local {
+	if sc.Data != nil || sc.Sections != nil {
 		t.Errorf("absent sidecar should be the zero Sidecar, got %#v", sc)
 	}
 }
@@ -238,7 +210,7 @@ func TestSidecarAbsentIsEmpty(t *testing.T) {
 // A stale schema-1 sidecar carrying replaceWith fails closed at the strict
 // decoder (the migration converts it before load); see ADR-0015.
 func TestSidecarRejectsReplaceWith(t *testing.T) {
-	dir := writeConfig(t, "prefix: example\nskills:\n  - tdd\n")
+	dir := writeConfig(t, "prefix: example\n")
 	if err := os.MkdirAll(filepath.Join(dir, "skills"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -255,7 +227,7 @@ func TestSidecarRejectsReplaceWith(t *testing.T) {
 }
 
 func TestSidecarRejectsUnknownKey(t *testing.T) {
-	dir := writeConfig(t, "prefix: example\nskills:\n  - tdd\n")
+	dir := writeConfig(t, "prefix: example\n")
 	if err := os.MkdirAll(filepath.Join(dir, "skills"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -295,24 +267,19 @@ func TestSidecarAgentsDocSingleton(t *testing.T) {
 	if err != nil {
 		t.Fatalf("absent agents-doc sidecar should be empty, not an error: %v", err)
 	}
-	if sc.Data != nil || sc.Sections != nil || sc.Local {
+	if sc.Data != nil || sc.Sections != nil {
 		t.Errorf("absent agents-doc sidecar should be the zero Sidecar, got %#v", sc)
 	}
-	// Present singleton is read from <root>/agents-doc.yaml (not a kind subdir).
 	if err := os.WriteFile(filepath.Join(dir, "agents-doc.yaml"), []byte("local: true\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	sc, err = c.Sidecar("agents-doc", "")
-	if err != nil {
-		t.Fatalf("Sidecar agents-doc: %v", err)
-	}
-	if !sc.Local {
-		t.Errorf("agents-doc sidecar local = %v, want true", sc.Local)
+	if _, err = c.Sidecar("agents-doc", ""); err == nil {
+		t.Fatal("agents-doc local must be rejected")
 	}
 }
 
 func TestSidecarReadErrorWhenPathIsDir(t *testing.T) {
-	dir := writeConfig(t, "prefix: example\nskills:\n  - tdd\n")
+	dir := writeConfig(t, "prefix: example\n")
 	c, err := Load(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -341,7 +308,7 @@ func TestPartPath(t *testing.T) {
 }
 
 func TestValidateRejectsEmptyPrefix(t *testing.T) {
-	dir := writeConfig(t, "prefix: \"\"\nskills: []\n")
+	dir := writeConfig(t, "prefix: \"\"\n")
 	c, err := Load(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -354,7 +321,7 @@ func TestValidateRejectsEmptyPrefix(t *testing.T) {
 func TestValidateRejectsPathInPrefix(t *testing.T) {
 	cases := []string{"../evil", "foo/bar", "a\\b"}
 	for _, prefix := range cases {
-		dir := writeConfig(t, "prefix: "+prefix+"\nskills: []\n")
+		dir := writeConfig(t, "prefix: "+prefix+"\n")
 		c, err := Load(dir)
 		if err != nil {
 			t.Fatalf("Load: %v", err)
@@ -368,12 +335,12 @@ func TestValidateRejectsPathInPrefix(t *testing.T) {
 // invariant: config/validation:domain-name-validated (TestValidateRejectsBadDomainName)
 func TestValidateRejectsBadDomainName(t *testing.T) {
 	for _, bad := range []string{"", "../evil", "foo/bar", "a\\b"} {
-		c := &Config{Prefix: "x", IntegrationBranch: "main", DocsDir: "docs", Domains: []string{bad}}
+		c := &Config{Prefix: "x", IntegrationBranch: "main", Domains: []string{bad}}
 		if err := c.Validate(); err == nil {
 			t.Errorf("expected error for domain name %q", bad)
 		}
 	}
-	ok := &Config{Prefix: "x", IntegrationBranch: "main", DocsDir: "docs", Targets: []string{"claude"}, Domains: []string{"rendering", "config"}}
+	ok := &Config{Prefix: "x", IntegrationBranch: "main", Domains: []string{"rendering", "config"}}
 	if err := ok.Validate(); err != nil {
 		t.Errorf("clean domain names should validate, got: %v", err)
 	}
@@ -386,90 +353,28 @@ func TestLoadRejectsUnknownTopLevelKey(t *testing.T) {
 	}
 }
 
-// invariant: config/configuration:targets-default-claude (TestTargetsDefaultAndValidation)
-func TestTargetsDefaultAndValidation(t *testing.T) {
-	// An absent targets: key loads as ["claude"] (the unknown-name check itself
-	// lives in project.Open/resolveTargets - config stays registry-free).
-	dir := writeConfig(t, "prefix: example\nskills: []\n")
-	c, err := Load(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(c.Targets) != 1 || c.Targets[0] != "claude" {
-		t.Errorf("absent targets should default to [claude], got %v", c.Targets)
-	}
-	// An explicitly-empty list is rejected by Validate.
-	empty := &Config{Prefix: "x", IntegrationBranch: "main", DocsDir: "docs", Targets: []string{}}
-	if err := empty.Validate(); err == nil || !strings.Contains(err.Error(), "targets must not be empty") {
-		t.Errorf("expected empty targets list to be rejected, got %v", err)
-	}
-	// A path-separator name is rejected by Validate.
-	bad := &Config{Prefix: "x", IntegrationBranch: "main", DocsDir: "docs", Targets: []string{"a/b"}}
-	if err := bad.Validate(); err == nil || !strings.Contains(err.Error(), "without path separators") {
-		t.Errorf("expected path-separator target name to be rejected, got %v", err)
+func TestRetiredTargetsAndDocsDirAreRejected(t *testing.T) {
+	for _, body := range []string{"prefix: example\ntargets: [claude]\n", "prefix: example\ndocsDir: docs\n"} {
+		if _, err := Parse("staged/.awf", []byte(body)); err == nil {
+			t.Fatalf("retired key accepted: %q", body)
+		}
 	}
 }
 
-// invariant: config/configuration:docsdir-default (TestDocsDirDefaultsToDocs)
-func TestDocsDirDefaultsToDocs(t *testing.T) {
-	dir := writeConfig(t, "prefix: example\n")
-	c, err := Load(dir)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
-	if c.DocsDir != "docs" {
-		t.Errorf("DocsDir = %q, want \"docs\"", c.DocsDir)
-	}
-}
-
-func TestDocsDirExplicitValue(t *testing.T) {
-	dir := writeConfig(t, "prefix: example\ndocsDir: documentation\n")
-	c, err := Load(dir)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
-	if c.DocsDir != "documentation" {
-		t.Errorf("DocsDir = %q, want \"documentation\"", c.DocsDir)
-	}
-}
-
-func TestDocsDirRejectsEscapingPath(t *testing.T) {
-	c := &Config{Prefix: "example", DocsDir: "../escape"}
-	if err := c.Validate(); err == nil {
-		t.Fatal("expected error for escaping docsDir")
-	}
-}
-
-func TestCurrentStateDefaultsAndPresence(t *testing.T) {
+func TestCurrentStatePresence(t *testing.T) {
 	absent, err := Parse("staged/.awf", []byte("prefix: x\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if absent.CurrentState != nil || absent.CurrentState.EffectiveMaxTopicsPerPath() != 8 {
-		t.Fatalf("absent currentState = %#v, effective topic max = %d", absent.CurrentState, absent.CurrentState.EffectiveMaxTopicsPerPath())
+	if absent.CurrentState != nil {
+		t.Fatalf("absent currentState = %#v", absent.CurrentState)
 	}
-
 	cfg, err := Parse("staged/.awf", []byte("prefix: x\nintegrationBranch: main\ncurrentState: {}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if cfg.CurrentState == nil {
 		t.Fatal("present currentState decoded as nil")
-	}
-	if err := cfg.Validate(); err != nil {
-		t.Fatal(err)
-	}
-	if cfg.CurrentState.MaxTopicsPerPath != nil || cfg.CurrentState.EffectiveMaxTopicsPerPath() != 8 {
-		t.Errorf("defaults = %#v, effective topic max = %d", cfg.CurrentState, cfg.CurrentState.EffectiveMaxTopicsPerPath())
-	}
-
-	max := 3
-	direct := &Config{Prefix: "x", IntegrationBranch: "main", DocsDir: "docs", Targets: []string{"claude"}, CurrentState: &CurrentStateConfig{MaxTopicsPerPath: &max}}
-	if err := direct.Validate(); err != nil {
-		t.Fatal(err)
-	}
-	if direct.CurrentState.MaxTopicsPerPath != &max || direct.CurrentState.EffectiveMaxTopicsPerPath() != 3 {
-		t.Errorf("explicit maximum was replaced: topics=%#v", direct.CurrentState.MaxTopicsPerPath)
 	}
 }
 
@@ -484,7 +389,6 @@ currentState:
       marker: '//'
       close: '*/'
   testGlobs: ['**/*_test.go']
-  maxTopicsPerPath: 4
 `
 	cfg, err := Parse("staged/.awf", []byte(valid))
 	if err != nil {
@@ -497,8 +401,6 @@ currentState:
 	for _, tc := range []struct {
 		name, fragment, want string
 	}{
-		{"zero maximum", "  maxTopicsPerPath: 0\n", "must be positive"},
-		{"negative maximum", "  maxTopicsPerPath: -1\n", "must be positive"},
 		{"empty source globs", "  sources:\n    - globs: []\n      marker: '//'\n", "has no globs"},
 		{"duplicate source glob", "  sources:\n    - globs: ['**/*.go', '**/*.go']\n      marker: '//'\n", "duplicate glob"},
 		{"empty source glob", "  sources:\n    - globs: ['']\n      marker: '//'\n", "empty"},
@@ -527,24 +429,12 @@ currentState:
 		{"prefix: x\ncurrentState:\n  topicCoverage: error\n", "topicCoverage"},
 		{"prefix: x\ncurrentState:\n  topicFanout: warn\n", "topicFanout"},
 		{"prefix: x\ncurrentState:\n  sources:\n    - globs: ['**/*.go']\n      marker: '//'\n      unknown: true\n", "unknown"},
-		{"prefix: x\ncurrentState:\n  maxTopicsPerPath: 20\n  maxTopicsPerPath: 21\n", "already set"},
+		{"prefix: x\ncurrentState:\n  maxTopicsPerPath: 20\n", "maxTopicsPerPath"},
+		{"prefix: x\ncurrentState:\n  testGlobs: ['**/*.go']\n  testGlobs: ['**/*.md']\n", "already set"},
 		{"prefix: x\ncurrentState:\n  sources:\n    - globs: ['**/*.go']\n      marker: '//'\n      marker: '#'\n", "already set"},
 	} {
 		if _, err := Parse("staged/.awf", []byte(tc.body)); err == nil || !strings.Contains(err.Error(), tc.want) {
 			t.Errorf("strict nested field was accepted: %v", err)
-		}
-	}
-}
-
-func TestCurrentStateMaximumIntegerOverflow(t *testing.T) {
-	for _, field := range []string{"maxTopicsPerPath"} {
-		node := &yaml.Node{Kind: yaml.MappingNode, Content: []*yaml.Node{
-			{Kind: yaml.ScalarNode, Tag: "!!str", Value: field},
-			{Kind: yaml.ScalarNode, Tag: "!!int", Value: "999999999999999999999999999999999999"},
-		}}
-		var cfg CurrentStateConfig
-		if err := cfg.UnmarshalYAML(node); err == nil || !strings.Contains(err.Error(), "integer scalar") {
-			t.Fatalf("UnmarshalYAML(%s) = %v", field, err)
 		}
 	}
 }
@@ -590,11 +480,7 @@ func TestCurrentStateRejectsNonStringScalars(t *testing.T) {
 func TestCurrentStateRejectsWrongValueTypes(t *testing.T) {
 	for _, body := range []string{
 		"prefix: x\ncurrentState:\n  testGlobs: {}\n",
-		"prefix: x\ncurrentState:\n  maxTopicsPerPath: null\n",
-		"prefix: x\ncurrentState:\n  maxTopicsPerPath: nope\n",
-		"prefix: x\ncurrentState:\n  maxTopicsPerPath: true\n",
-		"prefix: x\ncurrentState:\n  maxTopicsPerPath: 1.5\n",
-		"prefix: x\ncurrentState:\n  maxTopicsPerPath: 999999999999999999999999999999999999\n",
+		"prefix: x\ncurrentState:\n  maxTopicsPerPath: 8\n",
 		"prefix: x\ncurrentState:\n  sources:\n    - globs: {}\n",
 		"prefix: x\ncurrentState:\n  sources:\n    - marker: []\n",
 		"prefix: x\ncurrentState:\n  sources:\n    - close: []\n",
@@ -619,14 +505,14 @@ func TestIntegrationBranchValidation(t *testing.T) {
 		{"leading dash", "-force", `must not start with "-"`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			c := &Config{Prefix: "x", IntegrationBranch: tc.branch, DocsDir: "docs", Targets: []string{"claude"}}
+			c := &Config{Prefix: "x", IntegrationBranch: tc.branch}
 			if err := c.Validate(); err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("Validate = %v, want error containing %q", err, tc.want)
 			}
 		})
 	}
 	for _, branch := range []string{"main", "master", "release/1.0"} {
-		c := &Config{Prefix: "x", IntegrationBranch: branch, DocsDir: "docs", Targets: []string{"claude"}}
+		c := &Config{Prefix: "x", IntegrationBranch: branch}
 		if err := c.Validate(); err != nil {
 			t.Errorf("branch %q rejected: %v", branch, err)
 		}
@@ -638,21 +524,6 @@ func TestIntegrationBranchValidation(t *testing.T) {
 	}
 	if parsed.IntegrationBranch != "" {
 		t.Errorf("ParseTree materialized an in-code default %q", parsed.IntegrationBranch)
-	}
-}
-
-func TestAuditDependencyManifestValidation(t *testing.T) {
-	ok := &Config{Prefix: "x", IntegrationBranch: "main", DocsDir: "docs", Targets: []string{"claude"}, Audit: &AuditConfig{
-		DependencyManifests: []string{"go.mod", "**/*.csproj", "src/go.mod"},
-	}}
-	if err := ok.Validate(); err != nil {
-		t.Errorf("valid manifest globs (path globs included, ADR-0077) rejected: %v", err)
-	}
-	bad := &Config{Prefix: "x", IntegrationBranch: "main", DocsDir: "docs", Audit: &AuditConfig{
-		DependencyManifests: []string{"["},
-	}}
-	if err := bad.Validate(); err == nil {
-		t.Error("expected malformed manifest glob to be rejected")
 	}
 }
 
@@ -676,33 +547,6 @@ func TestBootstrapConfigDecode(t *testing.T) {
 	}
 }
 
-func TestHooksConfigDecode(t *testing.T) {
-	dir := writeConfig(t, "prefix: example\nhooks:\n  enabled: true\n")
-	c, err := Load(dir)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
-	if c.Hooks == nil || !c.Hooks.Enabled {
-		t.Errorf("hooks = %+v, want enabled true", c.Hooks)
-	}
-
-	absent := writeConfig(t, "prefix: example\n")
-	c2, err := Load(absent)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
-	if c2.Hooks != nil {
-		t.Errorf("hooks = %+v, want nil when key absent", c2.Hooks)
-	}
-
-	// The legacy pre-ADR-0032 array shape must fail loudly on the strict
-	// parser, never silently misparse (ADR-0048).
-	legacy := writeConfig(t, "prefix: example\nhooks:\n  - pre-commit\n")
-	if _, err := Load(legacy); err == nil {
-		t.Error("expected legacy hooks array shape to be rejected")
-	}
-}
-
 // invariant: config/validation:commit-policy (TestCommitPolicyValidation)
 func TestCommitPolicyValidation(t *testing.T) {
 	validKey := "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFSyHgjX4Y74rFN//IDMW2HBGkTMn5JF1Ls6VJr4pojt"
@@ -715,7 +559,7 @@ func TestCommitPolicyValidation(t *testing.T) {
 	if err := validateCommitPolicy(valid, validateOpenSSHPublicKey); err != nil {
 		t.Fatalf("valid commit policy rejected: %v", err)
 	}
-	cfg := &Config{Prefix: "x", IntegrationBranch: "main", DocsDir: "docs", Targets: []string{"pi"}, CommitPolicy: valid}
+	cfg := &Config{Prefix: "x", IntegrationBranch: "main", CommitPolicy: valid}
 	if err := cfg.Validate(); err != nil {
 		t.Fatalf("config rejected valid commit policy: %v", err)
 	}
@@ -856,7 +700,6 @@ func TestValidateArtifactName(t *testing.T) {
 	if err := ValidateArtifactName("skill", "good-name"); err != nil {
 		t.Errorf("valid name rejected: %v", err)
 	}
-	// invariant: config/validation:local-name-validated (TestValidateArtifactName)
 	for _, bad := range []string{"", "a/b", "a\\b", "..", "a..b", "_reserved", "Foo", "foo bar", "foo: bar", "foo.bar", "über"} {
 		if err := ValidateArtifactName("skill", bad); err == nil {
 			t.Errorf("expected %q rejected", bad)
@@ -931,7 +774,6 @@ func TestConfigSerializationFunnelOwnsEncoding(t *testing.T) {
 		wrote string
 	}{
 		{"SetArrayMember", func() ([]byte, error) { return SetArrayMember([]byte(src), "skills", "tdd", true) }, "skills:\n  - tdd\n"},
-		{"SetArray", func() ([]byte, error) { return SetArray([]byte(src), "targets", []string{"claude"}) }, "targets:\n  - claude\n"},
 		{"SetMappingScalar", func() ([]byte, error) { return SetMappingScalar([]byte(src), "bootstrap", "enabled", true) }, "bootstrap:\n  enabled: true\n"},
 		{"SetMappingInteger", func() ([]byte, error) { return SetMappingInteger([]byte(src), "currentState", "maxTopicsPerPath", 8) }, "currentState:\n  maxTopicsPerPath: 8\n"},
 		{"SetMappingString", func() ([]byte, error) { return SetMappingString([]byte(src), "runner", "awfInvokeCmd", "./awf") }, "runner:\n  awfInvokeCmd: ./awf\n"},

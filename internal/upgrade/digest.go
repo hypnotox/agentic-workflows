@@ -49,7 +49,7 @@ func treeDigest(root string, tree attestationTree) (string, error) {
 			return "", err
 		}
 	}
-	decisions := strings.TrimRight(cfg.DocsDir, "/") + "/decisions"
+	decisions := config.DocsDir + "/decisions"
 	if err := collectADRs(tree, decisions, universe); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return "", err
 	}

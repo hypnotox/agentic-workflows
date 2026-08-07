@@ -31,8 +31,6 @@ import (
 const minimalYAML = `prefix: example
 integrationBranch: master
 vars: {testCmd: go test ./..., gateCmd: make gate}
-skills: [tdd]
-agents: []
 `
 
 // scaffoldProject writes a minimal tree config under a git-backed root and syncs
@@ -267,10 +265,6 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 		{file: "dispatch.go", owner: "", name: "runSync"}:                                                                 1,
 		{file: "init.go", owner: "runInitWithProjectLoader", name: "initProjectLoader"}:                                   1,
 		{file: "init.go", owner: "runInitWithProjectLoader", name: "syncMutation"}:                                        1,
-		{file: "list_add.go", owner: "enableDisableSingleton", name: "runSync"}:                                           1,
-		{file: "list_add.go", owner: "enableDisableTarget", name: "runSync"}:                                              1,
-		{file: "list_add.go", owner: "toggleWithProjectLoader", name: "syncMutation"}:                                     1,
-		{file: "new.go", owner: "newLocal", name: "runSync"}:                                                              1,
 		{file: "upgrade_presentation.go", owner: "upgradeSyncMutationWith", name: "newProjectLoader"}:                     1,
 		{file: "upgrade_presentation.go", owner: "upgradeSyncMutationWith", name: "loader.Open"}:                          1,
 		{file: "adr.go", owner: "runADR", name: "project.Open"}:                                                           1,
@@ -286,12 +280,10 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 		{file: "context.go", owner: "runUncovered", name: "project.Open"}:                                                 1,
 		{file: "init.go", owner: "probeCollisions", name: "project.Open"}:                                                 2,
 		{file: "init.go", owner: "runInitWithProjectLoader", name: "project.Open"}:                                        1,
-		{file: "list_add.go", owner: "enableDisableSingleton", name: "project.Open"}:                                      1,
-		{file: "list_add.go", owner: "enableDisableTarget", name: "project.Open"}:                                         1,
 		{file: "list_add.go", owner: "runList", name: "project.Open"}:                                                     1,
-		{file: "list_add.go", owner: "toggleWithProjectLoader", name: "project.Open"}:                                     1,
+		{file: "list_add.go", owner: "openDomainProject", name: "project.Open"}:                                           1,
+		{file: "list_add.go", owner: "syncDomainProject", name: "runSync"}:                                                1,
 		{file: "new.go", owner: "newADR", name: "project.Open"}:                                                           1,
-		{file: "new.go", owner: "newLocal", name: "project.Open"}:                                                         1,
 		{file: "new.go", owner: "newPlan", name: "project.Open"}:                                                          1,
 		{file: "new.go", owner: "newTopic", name: "project.Open"}:                                                         1,
 		{file: "read.go", owner: "runReadPlan", name: "project.Open"}:                                                     1,
@@ -484,18 +476,21 @@ func testInitFirstADRChecksClean(t *testing.T) {
 	}
 }
 
-func TestRunSyncPrintsPrunedFiles(t *testing.T) {
+func TestRunSyncIgnoresSkillSelection(t *testing.T) {
 	ctx := testContext(t)
 	root := scaffoldProject(t)
-	// Disable the only skill; the re-sync prunes its rendered file and says so.
+	// Phase 2 retains parsing of the selection field but renders the full catalog.
 	testsupport.WriteAwfConfig(t, root, strings.Replace(minimalYAML, "skills: [tdd]", "skills: []", 1))
 	var out bytes.Buffer
 	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
-	const pruned = "status: completed\n\nmutation:\n  changes:\n    outputs:\n      changed docs/config-reference.md (regenerated)\n    pruned:\n      .claude/skills/example-tdd/SKILL.md\n  next actions:\n    step 1: continue with the rendered project state\n"
-	if out.String() != pruned {
-		t.Errorf("pruned sync bytes = %q, want %q", out.String(), pruned)
+	const expected = "status: completed\n\nmutation:\n  next actions:\n    step 1: continue with the rendered project state\n"
+	if out.String() != expected {
+		t.Errorf("selection-free sync bytes = %q, want %q", out.String(), expected)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".claude", "skills", "example-tdd", "SKILL.md")); err != nil {
+		t.Fatalf("full-catalog skill was pruned after selection edit: %v", err)
 	}
 	// A drift-clean re-sync emits the complete empty-success document.
 	out.Reset()
@@ -517,9 +512,17 @@ func TestRunSyncPrintsChangedFiles(t *testing.T) {
 	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
-	const changed = "status: completed\n\nmutation:\n  changes:\n    outputs:\n      changed .claude/skills/example-tdd/SKILL.md (config)\n      changed AGENTS.md (config)\n      changed docs/config-reference.md (regenerated)\n      changed docs/workflow.md (config)\n  next actions:\n    step 1: continue with the rendered project state\n"
-	if out.String() != changed {
-		t.Errorf("changed sync bytes = %q, want %q", out.String(), changed)
+	for _, want := range []string{
+		"changed .claude/agents/implementer.md (config)",
+		"changed .claude/skills/example-tdd/SKILL.md (config)",
+		"changed .pi/agents/implementer.md (config)",
+		"changed .pi/skills/example-tdd/SKILL.md (config)",
+		"changed AGENTS.md (config)",
+		"changed docs/workflow.md (config)",
+	} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("config change did not update full-catalog output %q:\n%s", want, out.String())
+		}
 	}
 	// A drift-clean re-sync emits the complete empty-success document.
 	out.Reset()
@@ -530,14 +533,14 @@ func TestRunSyncPrintsChangedFiles(t *testing.T) {
 		t.Errorf("empty sync bytes = %q", got)
 	}
 	// Enabling an artifact reports its files as added.
-	testsupport.WriteAwfConfig(t, root, strings.Replace(minimalYAML, "gateCmd: make gate", "gateCmd: ./x gate", 1)+"docs: [pitfalls]\n")
+	testsupport.WriteAwfConfig(t, root, strings.Replace(minimalYAML, "gateCmd: make gate", "gateCmd: ./x gate", 1)+"")
 	out.Reset()
 	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
-	const added = "status: completed\n\nmutation:\n  changes:\n    outputs:\n      changed AGENTS.md (config)\n      changed docs/config-reference.md (regenerated)\n      added docs/pitfalls.md\n  next actions:\n    step 1: continue with the rendered project state\n"
-	if out.String() != added {
-		t.Errorf("added sync bytes = %q, want %q", out.String(), added)
+	const selectionIgnored = "status: completed\n\nmutation:\n  next actions:\n    step 1: continue with the rendered project state\n"
+	if out.String() != selectionIgnored {
+		t.Errorf("docs selection-free sync bytes = %q, want %q", out.String(), selectionIgnored)
 	}
 }
 
@@ -578,13 +581,12 @@ func TestTopLevelCommandFamiliesUseStructuredHelpAndUsageFailures(t *testing.T) 
 		"audit":     "TestRunAuditDispatch",
 		"effort":    "TestEffortPublicTextProtocol",
 		"adr":       "TestRunADRNumberThroughTheDriver",
-		"list":      "TestRunListBareShowsAllKinds",
+		"list":      "TestRunListPrintsSkills",
 		"config":    "TestRunConfigDispatch",
 		"context":   "TestRunContextModesShareDeliveryIncludingOversize",
 		"topic":     "TestRunTopicHumanTextAndFlags",
 		"new":       "TestRunNewDispatch",
-		"enable":    "TestDispatchAddRemoveList",
-		"disable":   "TestDispatchAddRemoveList",
+		"remove":    "TestRunNewDomainLifecycle",
 		"upgrade":   "TestRunUpgradeRendersSuccessfulFinalJournalMutation",
 		"uninstall": "TestRunUninstallDispatch",
 		"changelog": "TestChangelogPublicPayloadContracts",
@@ -744,26 +746,6 @@ func TestRunDispatchArms(t *testing.T) {
 			}
 		})
 	}
-	t.Run("enable", func(t *testing.T) {
-		root := t.TempDir()
-		awf := filepath.Join(root, ".awf")
-		if err := os.MkdirAll(awf, 0o755); err != nil {
-			t.Fatal(err)
-		}
-		// skills: [] so a fresh skill can be added.
-		cfg := strings.Replace(minimalYAML, "skills: [tdd]", "skills: []", 1)
-		if err := os.WriteFile(filepath.Join(awf, "config.yaml"), []byte(cfg), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		if err := initializeProject(testContext(t), root, io.Discard); err != nil {
-			t.Fatal(err)
-		}
-		testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
-		var out, errb bytes.Buffer
-		if code := run([]string{"awf", "enable", "skill", "tdd"}, &out, &errb); code != 0 {
-			t.Fatalf("add: expected exit 0, got %d (%s)", code, errb.String())
-		}
-	})
 	t.Run("init", func(t *testing.T) {
 		root := t.TempDir()
 		testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
@@ -790,16 +772,6 @@ func TestHandlersOnBareDirError(t *testing.T) {
 	})
 	t.Run("new", func(t *testing.T) {
 		if err := runNew(ctx, bare(t), "adr", []string{"x"}, io.Discard); err == nil {
-			t.Error("expected Open error")
-		}
-	})
-	t.Run("enable", func(t *testing.T) {
-		if err := runEnable(ctx, bare(t), "skill", "tdd", false, io.Discard); err == nil {
-			t.Error("expected Open error")
-		}
-	})
-	t.Run("disable", func(t *testing.T) {
-		if err := runDisable(ctx, bare(t), "skill", "tdd", false, false, io.Discard); err == nil {
 			t.Error("expected Open error")
 		}
 	})
@@ -896,7 +868,7 @@ func TestRunUpgradeLegacyAdopterRendersAndChecksClean(t *testing.T) {
 	if err := os.MkdirAll(claude, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	legacy := "prefix: example\nvars:\n  testCmd: go test ./...\n  gateCmd: make gate\nskills: {}\nagents: {}\n"
+	legacy := "prefix: example\nvars:\n  testCmd: go test ./...\n  gateCmd: make gate\n"
 	if err := os.WriteFile(filepath.Join(claude, "awf.yaml"), []byte(legacy), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -935,7 +907,7 @@ func TestRunUpgradeRepairsUnclosedConfig(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	root := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {}\nskills: [brainstorming]\nagents: [grounding-checker]\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {gateCmd: make gate}\n")
 	lock := &manifest.Lock{SchemaVersion: 7, Files: map[string]manifest.Entry{}}
 	if err := lock.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
 		t.Fatal(err)
@@ -1112,9 +1084,20 @@ func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
 	if b, _ := os.ReadFile(filepath.Join(root, "CLAUDE.md")); string(b) == "mine\n" {
 		t.Fatalf("CLAUDE.md should have been overwritten, still %q", b)
 	}
-	initForceMutation := fmt.Sprintf("status: initialization completed\n\nmutation:\n  identity:\n    config: %s/.awf/config.yaml\n    config action: scaffolded\n  changes:\n    backups:\n      CLAUDE.md to CLAUDE.md.awf-bak\n  notes:\n    agent adr-reviewer references unset vars: invariantTestPath; set a value, or delete the key to accept the generic prose\n    agent implementer references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    agents-doc references unset vars: checkCmd, gateCmd, testCmd; set a value, or delete the key to accept the generic prose\n    doc workflow references unset vars: checkCmd, gateCmd, gateCmdFull, testCmd; set a value, or delete the key to accept the generic prose\n    hooks commit-msg references unset vars: commitGateCmd; set a value, or delete the key to accept the generic prose\n    hooks pre-commit references unset vars: checkCmd, gateCmd; set a value, or delete the key to accept the generic prose\n    hooks pre-merge-commit references unset vars: checkCmd; set a value, or delete the key to accept the generic prose\n    hooks pre-push references unset vars: checkCmd, gateCmd, gateCmdFull; set a value, or delete the key to accept the generic prose\n    skill adr-lifecycle references unset vars: activeMdRegenCmd, gateCmd; set a value, or delete the key to accept the generic prose\n    skill executing-plans references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    skill proposing-adr references unset vars: activeMdRegenCmd; set a value, or delete the key to accept the generic prose\n    skill retrospective references unset vars: gateCmd, invariantTestPath; set a value, or delete the key to accept the generic prose\n    skill reviewing-impl references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    skill subagent-driven-development references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    skill writing-plans references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    AGENTS.md has unauthored stub content: sections at stub default: identity\n  next actions:\n    step 1: continue with the rendered project state\n    step 2: fill the Identity section at .awf/parts/agents-doc/identity.md, then run awf render\n    step 3: set still-empty vars in .awf/config.yaml (the notes above list what each artifact misses), then run awf render\n    step 4: wire rendered hook payloads under .awf/hooks/ into git hooks you own (see the workflow doc's local-hooks section); awf never activates hooks itself\n    step 5: commit .awf/ and the rendered files together\n", root)
-	if out.String() != initForceMutation {
-		t.Errorf("init --force output = %q, want exact %q", out.String(), initForceMutation)
+	initForceMutation := fmt.Sprintf("status: initialization completed\n\nmutation:\n  identity:\n    config: %s/.awf/config.yaml\n    config action: scaffolded\n  changes:\n    backups:\n      CLAUDE.md to CLAUDE.md.awf-bak\n  notes:\n    agent adr-reviewer references unset vars: invariantTestPath; set a value, or delete the key to accept the generic prose\n    agent implementer references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    agents-doc references unset vars: checkCmd, gateCmd, testCmd; set a value, or delete the key to accept the generic prose\n    doc workflow references unset vars: checkCmd, gateCmd, gateCmdFull, testCmd; set a value, or delete the key to accept the generic prose\n    hooks commit-msg references unset vars: commitGateCmd; set a value, or delete the key to accept the generic prose\n    hooks pre-commit references unset vars: checkCmd, gateCmd; set a value, or delete the key to accept the generic prose\n    hooks pre-merge-commit references unset vars: checkCmd; set a value, or delete the key to accept the generic prose\n    hooks pre-push references unset vars: checkCmd, gateCmd, gateCmdFull; set a value, or delete the key to accept the generic prose\n    plans-template references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    skill adr-lifecycle references unset vars: activeMdRegenCmd, gateCmd; set a value, or delete the key to accept the generic prose\n    skill executing-plans references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    skill proposing-adr references unset vars: activeMdRegenCmd; set a value, or delete the key to accept the generic prose\n    skill retrospective references unset vars: gateCmd, invariantTestPath; set a value, or delete the key to accept the generic prose\n    skill reviewing-impl references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    skill subagent-driven-development references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    skill writing-plans references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    AGENTS.md has unauthored stub content: sections at stub default: identity\n  next actions:\n    step 1: continue with the rendered project state\n    step 2: fill the Identity section at .awf/parts/agents-doc/identity.md, then run awf render\n    step 3: set still-empty vars in .awf/config.yaml (the notes above list what each artifact misses), then run awf render\n    step 4: wire rendered hook payloads under .awf/hooks/ into git hooks you own (see the workflow doc's local-hooks section); awf never activates hooks itself\n    step 5: commit .awf/ and the rendered files together\n", root)
+	if !strings.HasPrefix(out.String(), strings.Split(initForceMutation, "  notes:\n")[0]) {
+		t.Errorf("init --force lost its scaffold identity or backup report:\n%s", out.String())
+	}
+	for _, want := range []string{
+		"skill bugfix references unset vars",
+		"skill tdd references unset vars",
+		".pi/skills/001-roadmap-graduation/SKILL.md has unauthored stub content",
+		"docs/architecture.md has unauthored stub content",
+		"step 5: commit .awf/ and the rendered files together",
+	} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("init --force full-catalog report missing %q:\n%s", want, out.String())
+		}
 	}
 	// Regression: init delegates its backup to the chained sync (one BackupFile path,
 	// ADR-0035), so the colliding file is backed up exactly once - no double-backup.
@@ -1263,9 +1246,22 @@ func TestSyncReportsIndexOwnershipTakeover(t *testing.T) {
 	if code := run([]string{"awf", "render"}, &out, &errb); code != 0 {
 		t.Fatalf("sync: %s", errb.String())
 	}
-	const indexTakeoverOutput = "status: completed\n\nmutation:\n  changes:\n    backups:\n      docs/decisions/INDEX.md to docs/decisions/INDEX.md.awf-bak\n    outputs:\n      added .awf/efforts/.gitignore\n      added .awf/worktrees/.gitignore\n      added .claude/skills/example-tdd/SKILL.md\n      added AGENTS.md\n      added CLAUDE.md\n      added docs/agents-md-standard.md\n      added docs/config-reference.md\n      added docs/decisions/INDEX.md\n      added docs/decisions/README.md\n      added docs/decisions/template.md\n      added docs/doc-standard.md\n      added docs/maintainable-code-design.md\n      added docs/plans/README.md\n      added docs/plans/template.md\n      added docs/workflow.md\n      added docs/working-with-awf.md\n  notes:\n    awf now generates docs/decisions/INDEX.md; retire any external generator for it\n  next actions:\n    step 1: continue with the rendered project state\n"
-	if out.String() != indexTakeoverOutput {
-		t.Errorf("index takeover stdout = %q, want %q", out.String(), indexTakeoverOutput)
+	const indexTakeoverOutput = "status: completed\n\nmutation:\n  changes:\n    backups:\n      docs/decisions/INDEX.md to docs/decisions/INDEX.md.awf-bak\n    outputs:\n      added .awf/efforts/.gitignore\n      added .awf/hooks/commit-msg.sh\n      added .awf/hooks/pre-commit.sh\n      added .awf/hooks/pre-merge-commit.sh\n      added .awf/hooks/pre-push.sh\n      added .awf/hooks/reference-transaction.sh\n      added .awf/worktrees/.gitignore\n      added .claude/skills/example-tdd/SKILL.md\n      added AGENTS.md\n      added CLAUDE.md\n      added awf\n      added docs/agents-md-standard.md\n      added docs/config-reference.md\n      added docs/decisions/INDEX.md\n      added docs/decisions/README.md\n      added docs/decisions/template.md\n      added docs/doc-standard.md\n      added docs/maintainable-code-design.md\n      added docs/plans/README.md\n      added docs/plans/template.md\n      added docs/workflow.md\n      added docs/working-with-awf.md\n  notes:\n    awf now generates docs/decisions/INDEX.md; retire any external generator for it\n  next actions:\n    step 1: continue with the rendered project state\n"
+	if !strings.HasPrefix(out.String(), strings.Split(indexTakeoverOutput, "    outputs:\n")[0]) {
+		t.Errorf("index takeover lost its backup report:\n%s", out.String())
+	}
+	for _, want := range []string{
+		"added .claude/agents/implementer.md",
+		"added .claude/skills/example-tdd/SKILL.md",
+		"added .pi/agents/implementer.md",
+		"added .pi/skills/example-tdd/SKILL.md",
+		"added docs/architecture.md",
+		"added docs/pitfalls.md",
+		"awf now generates docs/decisions/INDEX.md",
+	} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("index takeover full-catalog output missing %q:\n%s", want, out.String())
+		}
 	}
 }
 

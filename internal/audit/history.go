@@ -641,7 +641,7 @@ func (s *revisionState) committedDocsDir() (string, error) {
 	if err != nil || cfg == nil {
 		return "", err
 	}
-	return cfg.DocsDir, nil
+	return config.DocsDir, nil
 }
 
 // loadSelectedRevision reads only the committed authority needed by historical
@@ -692,7 +692,7 @@ func loadSelectedRevision(ctx context.Context, root, revision string, entryRead 
 	if configErr != nil {
 		return revisionStateFromControlOutcome(lock, lockFound, nil, configErr), nil
 	}
-	authorityPaths := selectedAuthorityPaths(entries, cfg.DocsDir)
+	authorityPaths := selectedAuthorityPaths(entries, config.DocsDir)
 	// Authority bytes are deliberately not read with controls. Keep only the
 	// exact path selection in this light state; the one-shot heavy loader drops
 	// it immediately after materialization.

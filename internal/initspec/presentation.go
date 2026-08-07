@@ -3,13 +3,12 @@ package initspec
 import "github.com/hypnotox/agentic-workflows/internal/presentation"
 
 // Outcome is the complete ordinary result of one successful initialization.
-// It combines config adoption, dependency closure, sync mutation, advisories,
-// and ordered next actions without owning any mutation behavior.
+// It combines config adoption, sync mutation, advisories, and ordered next
+// actions without owning any mutation behavior.
 type Outcome struct {
 	ConfigPath     string
 	ExistingConfig bool
 	IgnoredAnswers bool
-	Added          []string
 	Sync           presentation.Mutation
 	Advisories     []string
 	NextActions    []string
@@ -39,13 +38,6 @@ func (o Outcome) Document() (presentation.Document, error) {
 	}
 	identity := append([]presentation.Field{pathField, actionField}, o.Sync.Identity...)
 	changes := append([]presentation.MutationChange(nil), o.Sync.Changes...)
-	if len(o.Added) > 0 {
-		values, valuesErr := proseValues(o.Added)
-		if valuesErr != nil {
-			return presentation.Document{}, valuesErr
-		}
-		changes = append(changes, presentation.MutationChange{Label: "enabled dependencies", Values: values})
-	}
 	notes := append([]presentation.Value(nil), o.Sync.Notes...)
 	if o.IgnoredAnswers {
 		value, valueErr := presentation.Prose("--set/--answers values were ignored; edit .awf/config.yaml instead")

@@ -16,7 +16,7 @@ phase, or transfers the complete revised phase with completed and remaining work
 verification. Heading-identified tasks, executable projections, and helper returns are not transaction or checkpoint boundaries, and a
 blind task-level successor is forbidden. See this document's Model selection section for the full model-tier definitions. In Pi, omission uses the configured role default and an exact tier reference is supplied only for a deliberate override.
 
-Core `effort-workflow` is selected only by new untrimmed scaffolds. Existing adopter selections remain byte-for-byte stable until their owner explicitly runs `awf enable skill effort-workflow`. The selected core guide renders for every enabled target and directs native persistent checkout or context tooling to the exact existing `.awf/worktrees/<slug>` checkout. Pi additionally derives, rather than selects, `using-effort` and the `awf-effort` extension; non-Pi targets never receive or invoke them, claim activity, or create a parallel harness-owned worktree.
+Core `effort-workflow` renders for both built-in targets and directs native persistent checkout or context tooling to the exact existing `.awf/worktrees/<slug>` checkout. Pi additionally derives `using-effort` and the `awf-effort` extension; non-Pi targets never receive or invoke them, claim activity, or create a parallel harness-owned worktree.
 
 Pi association stays at repository root. `using_effort` directly attaches with an effort slug or detaches with `{detach:true}` and never changes CWD or transfers a conversation. Attached model calls receive the relative owned memory path and, when the fixed directory exists, the managed-worktree path. While associated, prefer the pathless memory tools for complete-document reads, exact Markdown-body edits, and separate `phase` or `next` updates with automatic timestamps; they are a convenience, not workflow authority, so direct file access and ordinary awf commands remain available. Activity and complete Remote Pi metadata are advisory only, never authority or a lock. Optional display suffix publication carries only the effort slug or null, never a routing input or composed name; restart begins detached and local lifecycle degradation is silent.
 
@@ -31,11 +31,10 @@ dependency list. For a topic page, edit both `.awf/topics/metadata/<domain>/<top
 `.awf/topics/parts/<domain>/<topic>/current-state.md`; a topic index instead names the family globs
 `.awf/topics/metadata/<domain>/*.yaml` and `.awf/topics/parts/<domain>/*/current-state.md`. The
 output plan remains the authority for machine render dependencies; `.awf/awf.lock` remains the
-drift authority. **Source map.** Ordinary docs and `AGENTS.md` use `awf:edit`; generated local
-docs use `.awf/docs/<name>.yaml` for title and description metadata and
-`.awf/docs/parts/<name>/content.md` for the body. Topic pages name their pair, while indexes and domain navigation name
-the globs. Glossary and pitfalls name their sidecars (glossary also names
+drift authority. **Source map.** Section-overridable catalog docs and `AGENTS.md` use `awf:edit`.
+Topic pages name their metadata-and-claim-part pair, while indexes and domain navigation name the
+family globs. Glossary and pitfalls name their sidecars (glossary also names
 `derived:awf-standard-vocabulary`); the ADR index names `derived:authored-adr-corpus`; config
 reference names `derived:configspec` and `derived:project-configuration`; target bridges name
-`AGENTS.md`. Authored ADRs, plans, and `local: true` docs are banner-free. Edit the authority, run
-`awf render`, run `awf check`, and commit regenerated outputs and lock together.
+`AGENTS.md`. Authored ADRs and plans are banner-free. Edit the authority, run `awf render`, run
+`awf check`, and commit regenerated outputs and lock together.

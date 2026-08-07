@@ -21,6 +21,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// DocsDir is the fixed root for awf-managed documentation.
+const DocsDir = "docs"
+
 // SectionOverride is a sidecar's per-section override. Body replacement is by
 // convention part only; the field set is deliberately just Drop.
 // touches-state: config/configuration:no-replacewith - SectionOverride field set omits replaceWith; proof in config_test.go
@@ -29,26 +32,21 @@ type SectionOverride struct {
 }
 
 // Sidecar holds a single target's non-prose configuration: structured render
-// data, per-section overrides, and the local flag. It lives at
-// <awfDir>/<kind>/<name>.yaml (agents-doc: <awfDir>/agents-doc.yaml). An absent
-// sidecar is the zero Sidecar (publication-safe: empty data/sections).
+// data and per-section overrides. It lives at <awfDir>/<kind>/<name>.yaml
+// (agents-doc: <awfDir>/agents-doc.yaml). An absent sidecar is the zero Sidecar
+// (publication-safe: empty data/sections).
 type Sidecar struct {
 	Data         map[string]any             `yaml:"data"`
 	DataDefaults map[string]bool            `yaml:"dataDefaults"`
 	Sections     map[string]SectionOverride `yaml:"sections"`
-	Local        bool                       `yaml:"local"`
 	// Paths declares a domain's file territory as anchored path globs
 	// (ADR-0077); read only from domain sidecars, inert on other kinds.
 	Paths []string `yaml:"paths"`
 }
 
-// Config is the skeleton config.yaml: global fields plus flat enable arrays.
-// Presence of a name in Skills/Agents/Docs enables that artifact; per-artifact
-// data/sections/local live in sidecars, not here. Targets is the adapter-runtime
-// enable array (default ["claude"]); adapter artifacts render once per entry.
+// Config is the skeleton config.yaml: repository facts and render shaping.
 type Config struct {
-	Prefix  string `yaml:"prefix"`
-	DocsDir string `yaml:"docsDir"`
+	Prefix string `yaml:"prefix"`
 	// IntegrationBranch names the branch effort work integrates into. It is
 	// required-explicit and carries no in-code default (the Prefix precedent,
 	// not the DocsDir one): the schema migration writes `integrationBranch:
@@ -56,18 +54,12 @@ type Config struct {
 	// chose (ADR-0202 Decision 6, keeping ADR-0127's silent-default removal).
 	IntegrationBranch string              `yaml:"integrationBranch"`
 	Vars              map[string]any      `yaml:"vars"`
-	Skills            []string            `yaml:"skills"`
-	Agents            []string            `yaml:"agents"`
-	Docs              []string            `yaml:"docs"`
 	Domains           []string            `yaml:"domains"`
 	Tags              map[string]string   `yaml:"tags"`
 	ContextIgnore     []string            `yaml:"contextIgnore"`
-	Targets           []string            `yaml:"targets"`
 	CurrentState      *CurrentStateConfig `yaml:"currentState"`
 	Audit             *AuditConfig        `yaml:"audit"`
 	Bootstrap         *BootstrapConfig    `yaml:"bootstrap"`
-	Hooks             *HooksConfig        `yaml:"hooks"`
-	Runner            *RunnerConfig       `yaml:"runner"`
 	ProseGate         *ProseGateConfig    `yaml:"proseGate"`
 	MemoryCite        *MemoryCiteConfig   `yaml:"memoryCite"`
 	CommitPolicy      *CommitPolicyConfig `yaml:"commitPolicy"`
@@ -238,9 +230,8 @@ func (c *Config) Source() []byte { return c.raw }
 // current-state topics. It is deliberately separate from the legacy invariant
 // authority, which remains active throughout the bridge tranche.
 type CurrentStateConfig struct {
-	Sources          []CurrentStateSource `yaml:"sources"`
-	TestGlobs        []string             `yaml:"testGlobs"`
-	MaxTopicsPerPath *int                 `yaml:"maxTopicsPerPath"`
+	Sources   []CurrentStateSource `yaml:"sources"`
+	TestGlobs []string             `yaml:"testGlobs"`
 }
 
 // UnmarshalYAML preserves strict nested field validation for the custom-decoded
@@ -265,37 +256,11 @@ func (c *CurrentStateConfig) UnmarshalYAML(node *yaml.Node) error {
 			if err := decodeStringScalars(value, &c.TestGlobs, "currentState.testGlobs"); err != nil {
 				return err
 			}
-		case "maxTopicsPerPath":
-			maximum, err := decodeIntegerScalar(value, "currentState.maxTopicsPerPath")
-			if err != nil {
-				return err
-			}
-			c.MaxTopicsPerPath = &maximum
 		default:
 			return fmt.Errorf("field %s not found in type config.CurrentStateConfig", key)
 		}
 	}
 	return nil
-}
-
-// EffectiveMaxTopicsPerPath returns the configured fan-out budget, defaulting
-// to eight without materializing that default into the decoded config.
-func (c *CurrentStateConfig) EffectiveMaxTopicsPerPath() int {
-	if c == nil || c.MaxTopicsPerPath == nil {
-		return 8
-	}
-	return *c.MaxTopicsPerPath
-}
-
-func decodeIntegerScalar(node *yaml.Node, field string) (int, error) {
-	if node.Kind != yaml.ScalarNode || node.Tag != "!!int" {
-		return 0, fmt.Errorf("%s must be an integer scalar", field)
-	}
-	var value int
-	if err := node.Decode(&value); err != nil {
-		return 0, fmt.Errorf("%s must be an integer scalar: %w", field, err)
-	}
-	return value, nil
 }
 
 // CurrentStateSource describes one marker-bearing source family. closeSet
@@ -372,38 +337,11 @@ type BootstrapConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 
-// HooksConfig configures the rendered .awf/hooks/ payload singleton (ADR-0048):
-// three inert git-hook payload scripts adopters wire into hook setups they own.
-// BootstrapConfig semantics: a nil *HooksConfig (key absent) and Enabled false
-// both mean "do not render"; only Enabled true renders the payloads. The key
-// reuses the name the schema-4 drop-hooks migration stripped (ADR-0032); the
-// legacy array shape never reaches this struct - gated commands migrate first,
-// ungated ones fail loudly on the strict parser's type error.
-type HooksConfig struct {
-	Enabled bool `yaml:"enabled"`
-}
-
-// RunnerConfig configures the rendered runner singleton (ADR-0156): a pure,
-// fully awf-owned wrapper `awf` at the repo root that resolves one awf
-// invocation (vars.awfInvokeCmd, else bootstrap-pinned, else PATH awf) and
-// execs it with all arguments forwarded verbatim. Like the bootstrap/hooks
-// toggles, a nil *RunnerConfig (key absent) and Enabled false both mean "do
-// not render"; only Enabled true renders the wrapper. Default-on by seeding:
-// `awf init` scaffolds the key true and the schema-18 enable-runner migration
-// seeds an absent key to enabled on `awf upgrade` (an explicit false is
-// respected); at render time an absent key still renders nothing.
-type RunnerConfig struct {
-	Enabled bool `yaml:"enabled"`
-}
-
-// ProseGateConfig configures `awf check repo prose` (ADR-0119): a presence-level scan
-// of every tracked text file for the seven banned typographic punctuation
-// substitutes. BootstrapConfig semantics: a nil *ProseGateConfig (key absent)
-// and Enabled false both mean "the command exits zero without scanning". The
-// default is off because the scan blocks a commit, and a tree that has never
-// been swept would fail it on the day it lands.
+// ProseGateConfig configures exemptions for `awf check repo prose` (ADR-0119),
+// which always scans every tracked text file for the seven banned typographic
+// punctuation substitutes. A nil *ProseGateConfig means no paths or codepoints
+// are exempt.
 type ProseGateConfig struct {
-	Enabled    bool             `yaml:"enabled"`
 	Exemptions []ProseExemption `yaml:"exemptions"`
 }
 
@@ -419,14 +357,11 @@ type ProseExemption struct {
 	Count     *int   `yaml:"count"`
 }
 
-// MemoryCiteConfig configures `awf check repo memory` (ADR-0158): a scan of the
-// staged decision-record directories, and of the commit-message body, for a
-// citation of a specific working-memory file. ProseGateConfig semantics: a nil
-// *MemoryCiteConfig (key absent) and Enabled false both mean "the scan does not
-// run". The default is off because the scan blocks a commit, and a corpus that
-// has never been swept would fail it on the day it lands.
+// MemoryCiteConfig configures exemptions for `awf check repo memory`
+// (ADR-0158), which always scans the staged decision-record directories and
+// every cleaned commit-message body for a citation of a specific working-memory
+// file. A nil *MemoryCiteConfig means no paths are exempt.
 type MemoryCiteConfig struct {
-	Enabled    bool              `yaml:"enabled"`
 	Exemptions []MemoryExemption `yaml:"exemptions"`
 }
 
@@ -438,25 +373,24 @@ type MemoryExemption struct {
 	Count *int   `yaml:"count"`
 }
 
-// AuditConfig tunes `awf audit` (ADR-0017). A nil *AuditConfig means all
-// defaults; within it, a nil slice means "use the default", an explicit empty
-// slice means "accept any / disabled" per field. Resolution and defaults live in
-// internal/audit (audit.Resolve), which owns the audit domain semantics.
+// AuditConfig carries the repository-specific Conventional Commits scope
+// vocabulary for `awf audit` (ADR-0017). Every audit rule and threshold is fixed
+// in internal/audit; a nil *AuditConfig or an empty AllowedScopes accepts any
+// scope.
 type AuditConfig struct {
-	AllowedTypes        []string    `yaml:"allowedTypes"`
-	AllowedScopes       []ScopeSpec `yaml:"allowedScopes"`
-	SubjectMaxLength    *int        `yaml:"subjectMaxLength"`
-	DependencyManifests []string    `yaml:"dependencyManifests"`
-	DiffThreshold       *int        `yaml:"diffThreshold"`
-	DomainDocStaleness  *bool       `yaml:"domainDocStaleness"`
-	DomainCodeStaleness *bool       `yaml:"domainCodeStaleness"`
-	UndocumentedDomain  *bool       `yaml:"undocumentedDomain"`
-	PlainPunctuation    *bool       `yaml:"plainPunctuation"`
-	UncommittedChanges  *bool       `yaml:"uncommittedChanges"`
+	AllowedScopes []ScopeSpec `yaml:"allowedScopes"`
 }
 
-// Load reads <awfDir>/config.yaml with the strict decoder, records awfDir as the
-// sidecar/part resolution root, and defaults DocsDir.
+// AuditScopes returns the configured scope vocabulary, if the audit block exists.
+func AuditScopes(a *AuditConfig) []ScopeSpec {
+	if a == nil {
+		return nil
+	}
+	return a.AllowedScopes
+}
+
+// Load reads <awfDir>/config.yaml with the strict decoder and records awfDir as
+// the sidecar/part resolution root.
 func Load(awfDir string) (*Config, error) {
 	b, err := os.ReadFile(filepath.Join(awfDir, "config.yaml"))
 	if err != nil {
@@ -498,12 +432,6 @@ func ParseTree(awfDir string, b []byte, read TreeReader) (*Config, error) {
 	c.root = awfDir
 	c.raw = slices.Clone(b)
 	c.read = read
-	if c.DocsDir == "" {
-		c.DocsDir = "docs"
-	}
-	if len(c.Targets) == 0 {
-		c.Targets = []string{"claude"}
-	}
 	return &c, nil
 }
 
@@ -647,9 +575,6 @@ func (c *Config) Validate() error {
 	if hasPathSep(c.Prefix) {
 		return fmt.Errorf("prefix %q must not contain path separators", c.Prefix)
 	}
-	if strings.HasPrefix(c.DocsDir, "/") || strings.Contains(c.DocsDir, "..") {
-		return fmt.Errorf("docsDir %q must be a relative path without \"..\"", c.DocsDir)
-	}
 	if err := validateIntegrationBranch(c.IntegrationBranch); err != nil {
 		return err
 	}
@@ -659,16 +584,6 @@ func (c *Config) Validate() error {
 		}
 	}
 	if c.CurrentState != nil {
-		for _, maximum := range []struct {
-			name  string
-			value *int
-		}{
-			{"maxTopicsPerPath", c.CurrentState.MaxTopicsPerPath},
-		} {
-			if maximum.value != nil && *maximum.value <= 0 {
-				return fmt.Errorf("currentState.%s must be positive; got %d", maximum.name, *maximum.value)
-			}
-		}
 		for i, src := range c.CurrentState.Sources {
 			if len(src.Globs) == 0 {
 				return fmt.Errorf("currentState.sources[%d] has no globs; list at least one path glob", i)
@@ -693,35 +608,11 @@ func (c *Config) Validate() error {
 			return err
 		}
 	}
-	if c.Audit != nil {
-		for _, g := range c.Audit.DependencyManifests {
-			if err := validatePathGlob(g); err != nil {
-				return fmt.Errorf("audit.dependencyManifests: %w", err)
-			}
-		}
-	}
-	// Targets: sanity only - the unknown-adapter-name check lives in project.Open
-	// (resolveTargets), where the adapter registry is, to keep config free of a
-	// project import cycle (ADR-0037).
-	if len(c.Targets) == 0 {
-		return errors.New("targets must not be empty")
-	}
-	seenTargets := map[string]bool{}
-	for _, t := range c.Targets {
-		if t == "" || hasPathSep(t) {
-			return fmt.Errorf("target %q must be a non-empty name without path separators", t)
-		}
-		if seenTargets[t] {
-			return fmt.Errorf("duplicate target %q", t)
-		}
-		seenTargets[t] = true
-	}
 	return nil
 }
 
 // ValidateDomainName reports whether name is a usable domain key: non-empty and
-// free of path separators or "..". Shared by Validate and the `awf enable domain`
-// path so a freeform domain name is rejected the same way in both.
+// free of path separators or "..".
 func ValidateDomainName(name string) error {
 	if name == "" {
 		return errors.New("domain name must not be empty")
@@ -732,13 +623,11 @@ func ValidateDomainName(name string) error {
 	return nil
 }
 
-// ValidateArtifactName reports whether name is usable as a local skill/agent
-// name (ADR-0068): non-empty lowercase kebab-case (letters, digits, hyphens).
-// The charset is frontmatter-safe - it excludes the path separators and ".." the
-// invariant requires, awf's reserved "_" namespace, and the colon/space/quote
-// characters that would otherwise interpolate into the base template's name: line
-// and break its YAML frontmatter. It mirrors every catalog artifact's naming.
-// touches-state: config/validation:local-name-validated - local skill/agent name charset validation; proof in config_test.go
+// ValidateArtifactName reports whether a flat artifact name uses the catalog's
+// lowercase kebab-case grammar. The charset is frontmatter-safe: it excludes path
+// separators, awf's reserved "_" namespace, and punctuation that would break a
+// generated skill's YAML frontmatter. Migration also uses it to recognize the
+// historical flat skill and agent sidecar surface.
 func ValidateArtifactName(kind, name string) error {
 	if name == "" {
 		return fmt.Errorf("%s name must not be empty", kind)
@@ -753,49 +642,6 @@ func ValidateArtifactName(kind, name string) error {
 	return nil
 }
 
-// ValidateDocName validates a path-aware local doc name (ADR-0091): one or more
-// lowercase-kebab segments joined by "/", rejecting a path escape, an empty or
-// leading/trailing segment, a ".md" suffix, and any segment (e.g. the reserved
-// "_base" stem) carrying a non-kebab character. Skill/agent names stay flat.
-// touches-state: config/validation:local-doc-name-path-validated - path-aware local doc name validation; proof in docname_test.go
-func ValidateDocName(name string) error {
-	if name == "" {
-		return errors.New("doc name must not be empty")
-	}
-	if strings.HasSuffix(name, ".md") {
-		return fmt.Errorf("doc %q must not end in .md", name)
-	}
-	if strings.Contains(name, "..") {
-		return fmt.Errorf("doc %q must not contain a .. path escape", name)
-	}
-	if strings.HasPrefix(name, "/") || strings.HasSuffix(name, "/") {
-		return fmt.Errorf("doc %q must not have a leading or trailing slash", name)
-	}
-	for _, seg := range strings.Split(name, "/") {
-		if seg == "" {
-			return fmt.Errorf("doc %q must not have an empty path segment", name)
-		}
-		alnum := false
-		for _, r := range seg {
-			switch {
-			case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
-				alnum = true
-			case r == '-':
-			default:
-				return fmt.Errorf("doc %q segment %q must be lowercase kebab-case (the reserved _base stem is rejected here)", name, seg)
-			}
-		}
-		// An all-hyphen segment derives an empty title, which would breach
-		// inv: local-doc-map-fields (a non-empty document-map label).
-		if !alnum {
-			return fmt.Errorf("doc %q segment %q must contain a letter or digit", name, seg)
-		}
-	}
-	return nil
-}
-
-// hasPathSep reports whether s contains a path separator or a ".." segment - the
-// shared reject condition for prefix/target/domain names.
 func hasPathSep(s string) bool {
 	return strings.ContainsAny(s, "/\\") || strings.Contains(s, "..")
 }

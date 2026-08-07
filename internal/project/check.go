@@ -32,7 +32,7 @@ func (p *Project) AdvisoryNotes(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	plans, err := plan.ParseDir(filepath.Join(p.Root, p.Cfg.DocsDir, "plans"))
+	plans, err := plan.ParseDir(filepath.Join(p.Root, config.DocsDir, "plans"))
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func advisoryCompatibilityFiles(op *OutputPlan) []RenderedFile {
 	files := op.writeFiles()
 	all := slices.Clone(files)
 	for _, node := range op.Nodes {
-		if node.Reservation || node.file == nil {
+		if node.file == nil {
 			continue
 		}
 		if slices.Contains(node.Declarers, "generated-domain") || slices.Contains(node.Declarers, "generated-config-reference") {
@@ -91,9 +91,6 @@ func advisoryCompatibilityFiles(op *OutputPlan) []RenderedFile {
 // so the threshold bounds the vocabulary awf ships as well as the project's own
 // terms (ADR-0207 decision 10). Inert when the glossary doc is disabled.
 func (p *Project) glossaryTersenessNotes() ([]string, error) {
-	if !slices.Contains(p.Cfg.Docs, "glossary") {
-		return nil, nil
-	}
 	sc, err := p.Cfg.Sidecar("docs", "glossary")
 	if err != nil { // coverage-ignore: the glossary sidecar's YAML was already parsed and validated at Open, so this re-read cannot fail
 		return nil, err
@@ -146,7 +143,7 @@ func (p *Project) tagHealthNotes(corpus adr.Corpus) ([]string, error) {
 		tags  []string
 	}
 	var arts []artifact
-	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "decisions"))
+	rel := filepath.ToSlash(filepath.Join(config.DocsDir, "decisions"))
 	for _, a := range adrs {
 		if a.IsGoverned() {
 			continue // governed current-state frontmatter deliberately has no tags
@@ -199,10 +196,7 @@ func (p *Project) tagHealthNotes(corpus adr.Corpus) ([]string, error) {
 // non-failing render-completeness advisory (ADR-0045 item 4, narrowed by
 // ADR-0087: an absent key is the deliberate, git-auditable decline and produces
 // no note; deleting the key is the acknowledgement). One line per artifact with
-// at least one hit, sorted. Duplicates collapse by the note itself: adapter
-// duplicates produce identical notes, while base-shared artifacts (project-local
-// skills all render from one base template id) each report their own vars under
-// a path-derived label (see localLabel).
+// at least one hit, sorted. Adapter duplicates collapse by the note itself.
 func (p *Project) unsetVarNotes(files []RenderedFile) []string {
 	seen := map[string]bool{}
 	var notes []string
@@ -217,9 +211,6 @@ func (p *Project) unsetVarNotes(files []RenderedFile) []string {
 			continue
 		}
 		label := artifactLabel(f.TemplateID)
-		if f.TemplateID == baseTID("skills") || f.TemplateID == baseTID("agents") {
-			label = localLabel(f.TemplateID, f.Path)
-		}
 		note := fmt.Sprintf("%s references unset vars: %s; set a value, or delete the key to accept the generic prose",
 			label, strings.Join(unset, ", "))
 		if seen[note] {
@@ -360,9 +351,6 @@ func (p *Project) unusedDataDrift(files []RenderedFile) ([]manifest.Drift, error
 			return nil
 		}
 		detail := "data keys referenced by no rendered section: " + strings.Join(unused, ", ") + "; a key referenced only inside a dropped section counts as unused; remove the key or the drop"
-		if sc.Local {
-			detail = "local: true renders nothing, so no data key is consumed; remove the data block: " + strings.Join(unused, ", ")
-		}
 		drift = append(drift, manifest.Drift{Path: sidecarRel, Kind: "unused-data", Detail: detail})
 		return nil
 	}
@@ -370,7 +358,7 @@ func (p *Project) unusedDataDrift(files []RenderedFile) ([]manifest.Drift, error
 		if d.Plural == "domains" {
 			continue
 		}
-		for _, name := range d.enable(p.Cfg) {
+		for _, name := range d.poolNames(p.Cat) {
 			if err := check(d.Plural, name, config.DirName+"/"+d.Plural+"/"+name+".yaml"); err != nil { // coverage-ignore: see check's coverage-ignore
 				return nil, err
 			}
@@ -402,19 +390,6 @@ func artifactLabel(tid string) string {
 	default:
 		return segs[0]
 	}
-}
-
-// localLabel labels a base-shared project-local artifact (ADR-0068) by its
-// output path: every local skill/agent renders from the same base template id,
-// so the template-derived label ("skill _base") cannot say which artifact a
-// note is about. The name keeps its on-disk form (skill directories keep the
-// "<prefix>-" prefix); adapter duplicates share one path-derived name, so note
-// dedup still collapses them.
-func localLabel(tid, path string) string {
-	if tid == baseTID("skills") {
-		return "skill " + filepath.Base(filepath.Dir(path))
-	}
-	return "agent " + strings.TrimSuffix(filepath.Base(path), ".md")
 }
 
 // declaredSections returns the catalog-declared section names for a target.
@@ -458,14 +433,14 @@ func (p *Project) CheckReport(ctx context.Context) (CheckReport, error) {
 	if err != nil {
 		return CheckReport{}, err
 	}
-	plans, parseErr := plan.ParseDir(filepath.Join(p.Root, p.Cfg.DocsDir, "plans"))
+	plans, parseErr := plan.ParseDir(filepath.Join(p.Root, config.DocsDir, "plans"))
 	var planDrift []manifest.Drift
 	if parseErr != nil {
 		var diagnostics *plan.DiagnosticsError
 		if !errors.As(parseErr, &diagnostics) {
 			return CheckReport{}, parseErr
 		}
-		rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "plans"))
+		rel := filepath.ToSlash(filepath.Join(config.DocsDir, "plans"))
 		for _, diagnostic := range diagnostics.Diagnostics {
 			planDrift = append(planDrift, manifest.Drift{
 				Path: rel + "/" + diagnostic.Path, Kind: "plan-" + diagnostic.Category, Detail: diagnostic.Detail,
@@ -483,6 +458,10 @@ func (p *Project) CheckReport(ctx context.Context) (CheckReport, error) {
 	contextDrift, contextNotes := planArtifactReport(plans, corpus)
 	planDrift = append(planDrift, contextDrift...)
 	notes, err := p.advisoryNotesWithState(corpus, plans, op)
+	return finishCheckReport(drift, planDrift, contextNotes, notes, op, err)
+}
+
+func finishCheckReport(drift, planDrift []manifest.Drift, contextNotes, notes []string, op *OutputPlan, err error) (CheckReport, error) {
 	if err != nil {
 		return CheckReport{}, err
 	}
@@ -511,10 +490,6 @@ func (p *Project) checkWithState(ctx context.Context, corpus adr.Corpus, topics 
 	}
 	var drift []manifest.Drift
 	drift = append(drift, p.checkLockedFiles(lock, rendered)...)
-	// Local reservations are validated from their declared node policy.
-	p.localReservations(op, func(path string, e error) {
-		drift = append(drift, manifest.Drift{Path: path, Kind: "invalid-frontmatter", Detail: e.Error()})
-	})
 	// Closed-tree sweep: orphans, strays, backups (ADR-0086 Decision 1).
 	od, err := p.sweepConfigTree(files, topics)
 	if err != nil { // coverage-ignore: the sweep errors only on faults the outputPlan render above would have surfaced first (see its coverage-ignores)
@@ -571,7 +546,7 @@ func (p *Project) checkPendingADRs(ctx context.Context, corpus adr.Corpus) []man
 	if !p.onIntegrationBranch(ctx) {
 		return nil
 	}
-	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "decisions"))
+	rel := filepath.ToSlash(filepath.Join(config.DocsDir, "decisions"))
 	var drift []manifest.Drift
 	for _, a := range corpus.All() {
 		if a.Number != "" {
@@ -655,8 +630,8 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 }
 
 // checkDeadSkillRefs scans managed rendered markdown for <prefix>-<name> tokens
-// whose <name> is a catalog-known skill outside the effective rendered set
-// (inv: skill-ref-dead-fails). Names matching no known skill are ignored
+// whose <name> is a catalog-known skill outside the effective rendered set.
+// Names matching no known skill are ignored
 // (inv: skill-ref-unknown-ignored); fenced code blocks are skipped like the
 // dead-link scan. Matching is whole-token (ADR-0046 item 3): the token must not
 // start mid-word (no word-ish rune before the prefix) and the regex captures
@@ -726,8 +701,8 @@ func (p *Project) checkDeadRefs(files []RenderedFile) []manifest.Drift {
 // An adrs: entry resolves by identity, so a number and a pending record's slug
 // resolve through one lookup and a link survives numbering (ADR-0202 item 14).
 func (p *Project) checkPlans(corpus adr.Corpus, plans []plan.Plan) []manifest.Drift {
-	aset := audit.Resolve(p.Cfg.Audit)
-	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "plans"))
+	aset := audit.Resolve(config.AuditScopes(p.Cfg.Audit))
+	rel := filepath.ToSlash(filepath.Join(config.DocsDir, "plans"))
 	var drift []manifest.Drift
 	for _, pl := range plans {
 		if !pl.HasFrontmatter {
@@ -760,8 +735,8 @@ func (p *Project) checkPlans(corpus adr.Corpus, plans []plan.Plan) []manifest.Dr
 // may be the change that adds the scope (ADR-0111). Mirrors checkPlans' scan; a
 // frontmatter-less plan is skipped.
 func (p *Project) planCommitScopeNotes(plans []plan.Plan) []string {
-	aset := audit.Resolve(p.Cfg.Audit)
-	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "plans"))
+	aset := audit.Resolve(config.AuditScopes(p.Cfg.Audit))
+	rel := filepath.ToSlash(filepath.Join(config.DocsDir, "plans"))
 	var notes []string
 	for _, pl := range plans {
 		if !pl.HasFrontmatter {
@@ -784,9 +759,6 @@ func (p *Project) planCommitScopeNotes(plans []plan.Plan) []string {
 // resolves the links the transform cannot see. A disabled pitfalls doc, or a sidecar
 // with no data.pitfalls, yields no drift.
 func (p *Project) checkPitfalls(corpus adr.Corpus) ([]manifest.Drift, error) {
-	if !slices.Contains(p.Cfg.Docs, "pitfalls") {
-		return nil, nil
-	}
 	sc, err := p.Cfg.Sidecar("docs", "pitfalls")
 	if err != nil { // coverage-ignore: the pitfalls sidecar's YAML was already parsed and validated at Open, so this re-read cannot fail
 		return nil, err
@@ -821,9 +793,6 @@ func (p *Project) checkPitfalls(corpus adr.Corpus) ([]manifest.Drift, error) {
 // domains the transform cannot see. A disabled glossary doc, or a sidecar with no
 // data.terms, yields no drift.
 func (p *Project) checkGlossary() ([]manifest.Drift, error) {
-	if !slices.Contains(p.Cfg.Docs, "glossary") {
-		return nil, nil
-	}
 	sc, err := p.Cfg.Sidecar("docs", "glossary")
 	if err != nil { // coverage-ignore: the glossary sidecar's YAML was already parsed and validated at Open, so this re-read cannot fail
 		return nil, err
@@ -874,7 +843,7 @@ func (p *Project) checkTagVocabulary(corpus adr.Corpus) ([]manifest.Drift, error
 		}
 	}
 	adrs := corpus.All()
-	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "decisions"))
+	rel := filepath.ToSlash(filepath.Join(config.DocsDir, "decisions"))
 	for _, a := range adrs {
 		for _, tag := range a.Tags {
 			if _, ok := p.Cfg.Tags[tag]; !ok {
@@ -900,9 +869,6 @@ func (p *Project) checkTagVocabulary(corpus adr.Corpus) ([]manifest.Drift, error
 // enabled, else nil - factored so checkTagVocabulary reads tags without
 // duplicating checkPitfalls' sidecar plumbing.
 func (p *Project) pitfallTagEntries() ([]pitfallEntry, error) {
-	if !slices.Contains(p.Cfg.Docs, "pitfalls") {
-		return nil, nil
-	}
 	sc, err := p.Cfg.Sidecar("docs", "pitfalls")
 	if err != nil { // coverage-ignore: the pitfalls sidecar's YAML was validated at Open, so this re-read cannot fail
 		return nil, err
@@ -915,7 +881,7 @@ func (p *Project) pitfallTagEntries() ([]pitfallEntry, error) {
 // pitfall/plan link checks. Unconditional (independent of the tag vocabulary).
 func (p *Project) checkADRRelatedLinks(corpus adr.Corpus) []manifest.Drift {
 	adrs := corpus.All()
-	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "decisions"))
+	rel := filepath.ToSlash(filepath.Join(config.DocsDir, "decisions"))
 	var drift []manifest.Drift
 	for _, a := range adrs {
 		for _, n := range a.Related {

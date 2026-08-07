@@ -13,7 +13,7 @@ import (
 // and Check errors for that same config.
 func commandWiringErrs(t *testing.T, configYAML string) (syncErr, checkErr error) {
 	t.Helper()
-	root := scaffold(t, configYAML)
+	root := scaffoldFilesRaw(t, configYAML, nil)
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -28,7 +28,7 @@ func commandWiringErrs(t *testing.T, configYAML string) (syncErr, checkErr error
 
 // invariant: config/configuration:sidecar-data-defaults-control (TestCatalogListSidecarValidation)
 func TestCatalogListSidecarValidation(t *testing.T) {
-	base := "prefix: example\nintegrationBranch: main\nskills: [tdd]\ndocs: [glossary]\n"
+	base := "prefix: example\nintegrationBranch: main\n"
 	for _, tc := range []struct {
 		name, path, sidecar, want string
 	}{
@@ -58,7 +58,6 @@ func TestCatalogListSidecarValidation(t *testing.T) {
 	}{
 		{"agents-doc singleton", "prefix: example\nintegrationBranch: main\n", "agents-doc.yaml", "dataDefaults:\n  any: false\n", "agents-doc.yaml dataDefaults.any"},
 		{"plain singleton", "prefix: example\nintegrationBranch: main\n", "adr-readme.yaml", "dataDefaults:\n  any: false\n", "adr-readme.yaml dataDefaults.any"},
-		{"local-only artifact", "prefix: example\nintegrationBranch: main\nskills: [custom]\n", "skills/custom.yaml", "local: true\ndataDefaults:\n  testSurfaces: false\n", "local-only artifact"},
 		{"domain sidecar", "prefix: example\nintegrationBranch: main\ndomains: [config]\n", "domains/config.yaml", "dataDefaults:\n  any: false\n", "domain sidecar is paths-only"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -78,13 +77,10 @@ func TestCatalogListSidecarValidation(t *testing.T) {
 	}
 }
 
-// Sync and check refuse an enabled hooks singleton whose rendered payloads
-// could not resolve their commands: a missing project gate command, and - with
-// the runner singleton disabled - a missing hook-referenced awf-verb var,
-// checked in a fixed order that names the exact var to set. A resolvable
-// wiring (gateCmd plus either the runner or the three vars) and a
-// hooks-disabled config both stay valid, and first-adoption init never runs
-// the rule.
+// Sync and check refuse an unset project gate command because the hook
+// payloads always render. The always-rendered runner resolves every awf verb,
+// so checkCmd and commitGateCmd require no separate validation. First-adoption
+// init never runs the rule.
 // invariant: config/validation:hooks-commands-resolvable (TestValidateCommandWiring)
 func TestValidateCommandWiring(t *testing.T) {
 	fixtures := []struct {
@@ -92,35 +88,12 @@ func TestValidateCommandWiring(t *testing.T) {
 	}{
 		{
 			"gateCmd unset",
-			"prefix: example\nintegrationBranch: main\nhooks:\n  enabled: true\nrunner:\n  enabled: true\n",
-			"hooks.enabled requires vars.gateCmd: the rendered hook payloads run the project gate; set vars.gateCmd in .awf/config.yaml",
+			"prefix: example\nintegrationBranch: main\n",
+			"rendered hook payloads require vars.gateCmd: set it in .awf/config.yaml",
 		},
 		{
-			"runner disabled, checkCmd first",
-			"prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: make gate\nhooks:\n  enabled: true\n",
-			"hooks.enabled without the runner singleton requires vars.checkCmd: set it in .awf/config.yaml or enable the runner (awf enable runner)",
-		},
-		{
-			"runner disabled, commitGateCmd second",
-			"prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: make gate\n  checkCmd: make check\nhooks:\n  enabled: true\nrunner:\n  enabled: false\n",
-			"hooks.enabled without the runner singleton requires vars.commitGateCmd: set it in .awf/config.yaml or enable the runner (awf enable runner)",
-		},
-
-		{
-			"runner satisfies the awf-verb vars",
-			"prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: make gate\nhooks:\n  enabled: true\nrunner:\n  enabled: true\n", "",
-		},
-		{
-			"explicit vars satisfy a runner-less config",
-			"prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: make gate\n  checkCmd: make check\n  commitGateCmd: make commit-gate\nhooks:\n  enabled: true\n", "",
-		},
-		{
-			"hooks disabled needs nothing",
-			"prefix: example\nintegrationBranch: main\nhooks:\n  enabled: false\n", "",
-		},
-		{
-			"hooks absent needs nothing",
-			"prefix: example\nintegrationBranch: main\n", "",
+			"gateCmd set",
+			"prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: make gate\n", "",
 		},
 	}
 	for _, tc := range fixtures {

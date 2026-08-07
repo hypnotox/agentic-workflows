@@ -22,10 +22,9 @@ func orphanedByPath(drift []manifest.Drift) map[string]string {
 
 const unclaimedDetail = "unclaimed file or directory: not part of the .awf config tree; delete it or move it out"
 const bakDetail = "stale awf-bak backup: review and delete"
-const localPartsDetail = "convention parts for a local-managed artifact (local: true renders nothing)"
 
 func TestSweepClaimsOnlyUpgradeJournalAfterCutover(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [claude]\n", map[string]string{"current-state-migration.yaml": "version: 1\ninvariantApprovals: []\n", "current-state-upgrade.journal": "{}\n"})
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{"current-state-migration.yaml": "version: 1\ninvariantApprovals: []\n", "current-state-upgrade.journal": "{}\n"})
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -49,7 +48,7 @@ func TestSweepClaimsOnlyUpgradeJournalAfterCutover(t *testing.T) {
 
 // invariant: rendering/sync-and-drift:closed-config-tree (TestSweepFlagsUnclaimedEntries)
 func TestSweepFlagsUnclaimedEntries(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills:\n  - tdd\nagents: []\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
 		"notes.md":                        "stray\n",
 		"scratch/a.txt":                   "stray\n",
 		"scratch/b/c.txt":                 "stray\n",
@@ -60,14 +59,14 @@ func TestSweepFlagsUnclaimedEntries(t *testing.T) {
 		"efforts/deep/file.awf-bak":       "exempt too\n",
 		"config.yaml.awf-bak.2":           "numbered backup\n",
 		"hooks/pre-commit.sh.awf-bak":     "backup beside a claimed unit\n",
-		"skills/debugging.yaml":           "data: {}\n", // debugging not enabled
-		"skills/parts/orphan-target/x.md": "stray\n",    // orphan-target not enabled
+		"skills/unknown.yaml":             "data: {}\n", // unknown catalog artifact
+		"skills/parts/orphan-target/x.md": "stray\n",    // unknown catalog artifact
 		"parts/bogus-kind/x.md":           "unknown singleton\n",
 		"parts/workflow/bogus.md":         "undeclared singleton section\n",
 	})
 	// hooks enabled so .awf/hooks/*.sh are claimed render units; gateCmd and
 	// the runner keep the enabled hooks command-wiring valid (ADR-0156).
-	testsupport.WriteFile(t, configPath(root), "prefix: example\nintegrationBranch: main\nskills:\n  - tdd\nagents: []\nvars:\n  gateCmd: make gate\nhooks:\n  enabled: true\nrunner:\n  enabled: true\n")
+	testsupport.WriteFile(t, configPath(root), "prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: make gate\n")
 	drift := checkDrift(t, root)
 	got := orphanedByPath(drift)
 
@@ -77,11 +76,11 @@ func TestSweepFlagsUnclaimedEntries(t *testing.T) {
 		".awf/skills/readme.txt":          unclaimedDetail,
 		".awf/skills/parts/tdd/stray.txt": unclaimedDetail,
 		".awf/skills/parts/tdd/bogus.md":  "convention part for a section not in the target's declared set",
+		".awf/skills/unknown.yaml":        "sidecar for an artifact not in the catalog",
 		// invariant: rendering/sync-and-drift:awf-bak-flagged (.awf/config.yaml.awf-bak.2)
 		".awf/config.yaml.awf-bak.2":       bakDetail,
 		".awf/hooks/pre-commit.sh.awf-bak": bakDetail,
-		".awf/skills/debugging.yaml":       "sidecar for an artifact not in the enable list",
-		".awf/skills/parts/orphan-target":  "convention parts for an artifact not in the enable list",
+		".awf/skills/parts/orphan-target":  "convention parts for an artifact not in the catalog",
 		".awf/parts/bogus-kind":            "convention parts for an unknown singleton kind",
 		".awf/parts/workflow/bogus.md":     "convention part for a section not in the singleton's declared set",
 	}
@@ -100,7 +99,7 @@ func TestSweepFlagsUnclaimedEntries(t *testing.T) {
 // Sweep never recurses into an owned resident root: every descendant is dynamic
 // local authority, including one shaped like a nested adopter or a stale backup.
 func TestSweepExemptsResidentRoots(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills:\n  - tdd\nagents: []\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
 		"efforts/e/memory.md":         "scratch\n",
 		"efforts/e/deep/file.awf-bak": "scratch\n",
 		"efforts/e/sessions/s":        "resident\n",
@@ -112,44 +111,12 @@ func TestSweepExemptsResidentRoots(t *testing.T) {
 	}
 }
 
-func TestSweepFlagsLocalArtifactParts(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills:\n  - tdd\nagents: []\n", map[string]string{
-		"skills/tdd.yaml":            "local: true\n",
-		"skills/parts/tdd/notes.md":  "dead weight\n",
-		"workflow.yaml":              "local: true\n",
-		"parts/workflow/overview.md": "dead weight too\n",
-	})
-	testsupport.WriteFile(t, filepath.Join(root, ".claude/skills/example-tdd/SKILL.md"),
-		"---\nname: example-tdd\ndescription: hand-maintained\n---\nbody\n")
-	got := orphanedByPath(checkDrift(t, root))
-	for _, path := range []string{".awf/skills/parts/tdd", ".awf/parts/workflow"} {
-		if got[path] != localPartsDetail {
-			t.Errorf("%s: got %q, want the local-managed detail", path, got[path])
-		}
-	}
-}
-
 // The ADR-0068 effective-catalog pin: a synthesized local artifact's declared
 // content section resolves against the effective catalog, so its part is
 // claimed - a future declaredSections change to catalog.Standard would
 // otherwise silently flag every local artifact's parts.
-func TestSweepClaimsSynthesizedLocalParts(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills:\n  - my-local\nagents: []\n", map[string]string{
-		"skills/my-local.yaml":             "data:\n  description: A local skill.\n",
-		"skills/parts/my-local/content.md": "Body here.\n",
-		"skills/parts/my-local/bogus.md":   "undeclared\n",
-	})
-	got := orphanedByPath(checkDrift(t, root))
-	if detail, ok := got[".awf/skills/parts/my-local/content.md"]; ok {
-		t.Errorf("the synthesized content section must be claimed, got %q", detail)
-	}
-	if got[".awf/skills/parts/my-local/bogus.md"] != "convention part for a section not in the target's declared set" {
-		t.Errorf("undeclared local section: got %q", got[".awf/skills/parts/my-local/bogus.md"])
-	}
-}
-
 func TestSweepBaselineClean(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills:\n  - tdd\nagents: []\nvars:\n  gateCmd: make gate\nbootstrap:\n  enabled: true\nhooks:\n  enabled: true\nrunner:\n  enabled: true\n", nil)
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: make gate\nbootstrap:\n  enabled: true\n", nil)
 	if got := orphanedByPath(checkDrift(t, root)); len(got) != 0 {
 		t.Fatalf("a hygienic tree with all render units enabled must sweep clean, got %#v", got)
 	}

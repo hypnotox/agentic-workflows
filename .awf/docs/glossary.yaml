@@ -22,7 +22,7 @@ data:
       meaning: "The `internal/resident` package as the single home of the resident-root table, the path and kind predicates, anchoring, collisions, and uninstall. Nothing elsewhere re-derives the table; the git seam's own spelling is the recorded tolerated parallel."
       domains: [rendering]
     - term: trigger table
-      meaning: "The guide's workflow section: a catalog-derived row per enabled skill, pairing its prefixed name with its one-line trigger. Rendered from a data key so a new skill cannot be dropped by a forgotten template edit."
+      meaning: "The guide's workflow section: a catalog-derived row per skill, pairing its prefixed name with its one-line trigger. Rendered from a data key so a new skill cannot be dropped by a forgotten template edit."
       domains: [rendering]
     - term: handoff kickoff
       meaning: "The exact bounded `{kickoff}` prose passed to Pi session replacement. Workflow guidance supplies checkpoint reorientation; the runtime carries the text unchanged and owns replacement mechanics only."
@@ -107,12 +107,6 @@ data:
     - term: domain paths
       meaning: "A domain's file territory: anchored globs under `paths:` in its domain sidecar. Input to the `domain-code-staleness` audit rule, which warns on territory churn without a current-state co-change; a domain without `paths` opts out."
       domains: [config]
-    - term: dormant doc-gated skill
-      meaning: "A skill enabled while its required doc is disabled, a legacy state that silently rendered nothing. The `close-enabled-set` migration drops it, preserving observed output; the state is now refused at open."
-      domains: [rendering]
-    - term: plan op
-      meaning: "A single enable-array change in an `awf enable` or `awf disable` resolver plan: one artifact node, a direction, and required-by provenance. Printed one per line before any config change; a whole plan lands in one rewrite."
-      domains: [tooling]
     - term: invariant backing
       meaning: "The ledger-not-proof model: a `Backing: test` claim is satisfied by a matching proof-marker comment in a test file, a textual match blind to whether that test asserts the invariant. `Backing: unbacked` forbids a marker and requires a `Verify:` line."
       domains: [invariants]

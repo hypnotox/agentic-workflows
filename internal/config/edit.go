@@ -23,13 +23,8 @@ type Skeleton struct {
 	// would emit a config that fails its own validation on the next open.
 	IntegrationBranch string            `yaml:"integrationBranch"`
 	Vars              map[string]string `yaml:"vars"`
-	Skills            []string          `yaml:"skills"`
-	Agents            []string          `yaml:"agents"`
-	Docs              []string          `yaml:"docs"`
 	Audit             *SkeletonAudit    `yaml:"audit,omitempty"`
 	Bootstrap         *BootstrapConfig  `yaml:"bootstrap,omitempty"`
-	Hooks             *HooksConfig      `yaml:"hooks,omitempty"`
-	Runner            *RunnerConfig     `yaml:"runner,omitempty"`
 }
 
 // SkeletonAudit is the audit block a scaffold can seed (ADR-0051): only
@@ -37,15 +32,6 @@ type Skeleton struct {
 // *AuditConfig, whose zero-value fields would serialize as explicit settings.
 type SkeletonAudit struct {
 	AllowedScopes []string `yaml:"allowedScopes"`
-}
-
-// CatalogTrim optionally overrides which catalog skills/docs a scaffolded config
-// enables (ADR-0029 catalog trim). A nil *CatalogTrim - or a nil dimension within
-// it - means "no selection: keep the curated-core default"; a non-nil dimension is
-// the verbatim, fully-deselectable enable set (an empty slice deselects all).
-type CatalogTrim struct {
-	Skills *[]string
-	Docs   *[]string
 }
 
 // MarshalSkeleton renders a fresh config.yaml from s in the canonical awf format
@@ -139,36 +125,12 @@ func RemoveArrayMember(src []byte, key, name string) ([]byte, bool, error) {
 	return out, true, nil
 }
 
-// SetArray sets the sequence under key to exactly values, creating the key if it
-// is absent and replacing it otherwise, via a yaml.Node round-trip that preserves
-// comments and every untouched key (ADR-0026). Used where the whole list is
-// computed rather than edited member-by-member - the targets array carries a Load
-// default, so an absent on-disk key must be materialized as the full resolved list,
-// not appended to (ADR-0037).
-func SetArray(src []byte, key string, values []string) ([]byte, error) {
-	doc, root, err := parseMapping(src)
-	if err != nil {
-		return nil, err
-	}
-	seq := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
-	for _, v := range values {
-		seq.Content = append(seq.Content, strScalar(v))
-	}
-	if _, vi := mapValue(root, key); vi >= 0 {
-		root.Content[vi] = seq
-	} else {
-		root.Content = append(root.Content, strScalar(key), seq)
-	}
-	return encode(doc)
-}
-
 // SetString sets the top-level scalar entry under key to value, creating the
 // key if it is absent and replacing whatever is there otherwise, via a
 // yaml.Node round-trip that preserves comments and every untouched key
-// (ADR-0026). It is the top-level string sibling of SetArray (sequence):
-// the required-explicit integrationBranch key has no in-code default, so its
-// schema migration must materialize a visible scalar line rather than append
-// to or seed a nested block (ADR-0202 Decision 6).
+// (ADR-0026). The required-explicit integrationBranch key has no in-code
+// default, so its schema migration must materialize a visible scalar line
+// rather than append to or seed a nested block (ADR-0202 Decision 6).
 func SetString(src []byte, key, value string) ([]byte, error) {
 	doc, root, err := parseMapping(src)
 	if err != nil {

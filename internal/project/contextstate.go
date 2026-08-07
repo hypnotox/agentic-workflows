@@ -53,19 +53,16 @@ func (p *Project) ContextState(ctx context.Context) (ContextState, error) {
 		return ContextState{}, err
 	}
 	universe := &Project{Root: p.Root, Cfg: ws.Cfg, standard: p.standard, repo: p.repo}
-	universe.Targets, err = resolveTargets(ws.Cfg.Targets)
-	if err != nil {
+	universe.Targets, err = resolveTargets(KnownTargets())
+	if err != nil { // coverage-ignore: configured-target validation succeeded and KnownTargets is exhaustively backed by built-in descriptor tests
 		return ContextState{}, err
 	}
-	universe.Cat, err = universe.effectiveCatalog()
-	if err != nil {
-		return ContextState{}, err
-	}
+	universe.Cat = universe.standard
 	declarations, err := BuildOutputDeclarations(ws.Cfg, universe.Cat, universe.Targets, snapshotTreeReader{tree: ws.Tree}, ws.Loaded.Corpus)
 	if err != nil { // coverage-ignore: the snapshot-local catalog and every declaration input were already parsed from this immutable tree
 		return ContextState{}, err
 	}
-	plans, err := planContextFromTree(ws.Tree, ws.Cfg.DocsDir, ws.Loaded.Corpus)
+	plans, err := planContextFromTree(ws.Tree, config.DocsDir, ws.Loaded.Corpus)
 	if err != nil { // coverage-ignore: planContextFromTree converts plan parse failures into drift before context construction
 		return ContextState{}, err
 	}
@@ -84,20 +81,17 @@ func StagedContextState(ctx context.Context, root string) (ContextState, error) 
 	if err != nil {
 		return ContextState{}, err
 	}
-	targets, err := resolveTargets(state.Cfg.Targets)
-	if err != nil {
+	targets, err := resolveTargets(KnownTargets())
+	if err != nil { // coverage-ignore: configured-target validation succeeded and KnownTargets is exhaustively backed by built-in descriptor tests
 		return ContextState{}, err
 	}
 	universe := &Project{Root: root, Cfg: state.Cfg, Targets: targets, standard: catalog.Standard, repo: p.repo}
-	universe.Cat, err = universe.effectiveCatalog()
-	if err != nil {
-		return ContextState{}, err
-	}
+	universe.Cat = universe.standard
 	declarations, err := BuildOutputDeclarations(state.Cfg, universe.Cat, universe.Targets, snapshotTreeReader{tree: state.Tree}, state.Loaded.Corpus)
 	if err != nil { // coverage-ignore: the staged snapshot-local catalog and every declaration input were already parsed from this immutable tree
 		return ContextState{}, err
 	}
-	plans, err := planContextFromTree(state.Tree, state.Cfg.DocsDir, state.Loaded.Corpus)
+	plans, err := planContextFromTree(state.Tree, config.DocsDir, state.Loaded.Corpus)
 	if err != nil { // coverage-ignore: planContextFromTree converts plan parse failures into drift before context construction
 		return ContextState{}, err
 	}

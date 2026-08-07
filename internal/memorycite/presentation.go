@@ -44,15 +44,6 @@ func CommitGateDocument(findings []Reference) (presentation.Document, error) {
 	return presentation.NewDocument(section)
 }
 
-// DisabledCategory describes an explicitly disabled memory-citation gate.
-func DisabledCategory() ([]presentation.ReportCategory, error) {
-	record, err := record("disabled (memoryCite.enabled)")
-	if err != nil { // coverage-ignore: the fixed nonempty disabled diagnostic always validates as prose
-		return nil, err
-	}
-	return []presentation.ReportCategory{{Label: "warnings", Schema: []string{"check", "detail"}, Records: []presentation.Record{record}}}, nil
-}
-
 func record(detail string) (presentation.Record, error) {
 	check, err := presentation.Prose("memory")
 	if err != nil { // coverage-ignore: the fixed nonempty memory label is normalized by Prose before validation

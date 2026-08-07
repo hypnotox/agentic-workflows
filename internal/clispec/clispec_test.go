@@ -76,6 +76,26 @@ func TestContextHumanOnlyFacetSpec(t *testing.T) {
 
 // Every command and child carries non-empty identifying metadata, and top-level
 // names are unique.
+// invariant: tooling/cli:cli-creation-and-inventory (TestConfigurationSurfaceGrammar)
+func TestConfigurationSurfaceGrammar(t *testing.T) {
+	for _, retired := range []string{"enable", "disable", "target"} {
+		if _, ok := Lookup(retired); ok {
+			t.Errorf("retired top-level command %q remains declared", retired)
+		}
+	}
+	newCommand, ok := Lookup("new")
+	if !ok {
+		t.Fatal("new command is missing")
+	}
+	var children []string
+	for _, child := range newCommand.Children {
+		children = append(children, child.Name)
+	}
+	if got, want := strings.Join(children, ","), "adr,plan,topic,domain"; got != want {
+		t.Fatalf("new children = %q, want %q", got, want)
+	}
+}
+
 func TestCommandsWellFormed(t *testing.T) {
 	seen := map[string]bool{}
 	for _, c := range Commands {
@@ -417,8 +437,8 @@ func TestLookup(t *testing.T) {
 	if !ok {
 		t.Fatal("Lookup(new) missing")
 	}
-	if len(newCmd.Children) != 6 {
-		t.Errorf("new has %d children, want 6", len(newCmd.Children))
+	if len(newCmd.Children) != 4 {
+		t.Errorf("new has %d children, want 4", len(newCmd.Children))
 	}
 	if _, ok := newCmd.Child("adr"); !ok {
 		t.Error("new.Child(adr) missing")
@@ -489,7 +509,7 @@ func TestLookup(t *testing.T) {
 // GatedCommandNames is the exact published gated set, in table order - the
 // non-Ungated commands, a group contributing only its own token.
 func TestGatedCommandNames(t *testing.T) {
-	want := []string{"render", "check", "read", "audit", "effort", "adr", "list", "config", "context", "topic", "new", "enable", "disable"}
+	want := []string{"render", "check", "read", "audit", "effort", "adr", "list", "config", "context", "topic", "new", "remove"}
 	got := GatedCommandNames()
 	if len(got) != len(want) {
 		t.Fatalf("GatedCommandNames() = %v, want %v", got, want)

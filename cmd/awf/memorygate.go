@@ -19,15 +19,15 @@ func runMemoryGate(ctx context.Context, root string, stdout io.Writer) error {
 }
 
 func memoryCheckFindings(cfg *config.Config, tree *snapshot.Tree) ([]presentation.ReportCategory, error) {
-	if cfg.MemoryCite == nil || !cfg.MemoryCite.Enabled {
-		return memorycite.DisabledCategory()
+	var configured []config.MemoryExemption
+	if cfg.MemoryCite != nil {
+		configured = cfg.MemoryCite.Exemptions
 	}
-	exemptions := make([]memorycite.Exemption, 0, len(cfg.MemoryCite.Exemptions))
-	for _, e := range cfg.MemoryCite.Exemptions {
+	exemptions := make([]memorycite.Exemption, 0, len(configured))
+	for _, e := range configured {
 		exemptions = append(exemptions, memorycite.Exemption{Path: e.Path, Count: e.Count})
 	}
-	d := strings.TrimRight(cfg.DocsDir, "/")
-	prefixes := []string{d + "/decisions/", d + "/plans/"}
+	prefixes := []string{config.DocsDir + "/decisions/", config.DocsDir + "/plans/"}
 	var files []memorycite.File
 	for _, blob := range tree.List() {
 		if !blob.Scannable() {

@@ -10,8 +10,9 @@ Backing: test
 
 ### `invariant: built-in-runtime-targets`
 
-The built-in runtime target registry contains exactly `claude` and `pi` in deterministic `KnownTargets` order. Configured names outside that set fail through unknown-target validation, and descriptor-driven rendering and enablement remain generic rather than branching on the two names.
+The built-in runtime target registry contains exactly `claude` and `pi` in deterministic `KnownTargets` order. Descriptor-driven rendering remains generic rather than branching on the two names.
 Origin: ADR-0214
+Revised-by: ADR-0251
 Backing: test
 
 ### `invariant: catalog-defaults-generic-denylist`
@@ -32,19 +33,6 @@ The claude target's bridge file is `CLAUDE.md`: the adapter emits an awf-owned r
 Origin: ADR-0016
 Backing: test
 
-### `invariant: enabled-set-closed`
-
-Every enabled non-local artifact's direct structural catalog requirements (required skills, agents, and docs) must themselves be enabled; advisory workflow-profile neighbors do not create enablement edges, and an unmet structural requirement fails project open with a repair hint.
-Origin: ADR-0081
-Revised-by: ADR-0167
-Backing: test
-
-### `invariant: mandatory-doc-pool-exclusion`
-
-Documents flagged as mandatory never appear in the toggleable doc pool that enable and disable operate on. The pool of addable and removable doc names is disjoint from both the mandatory docs and the singleton kinds.
-Origin: ADR-0061
-Backing: test
-
 ### `invariant: no-single-marker-init-descriptor`
 
 The catalog exposes no invariants-marker or invariants-globs var descriptor; the comment-marker mapping reaches configuration only through currentState.sources.
@@ -54,9 +42,9 @@ Backing: test
 
 ### `invariant: requires-skills-exact`
 
-Every standard skill has an empty `RequiresSkills`; workflow-profile neighbors are advisory only. Artifact requirements, including reviewing agents' structural `RequiresSkills`, remain exact declared dependencies rather than workflow edges.
+Every standard skill has an empty `RequiresSkills`; workflow-profile neighbors are advisory only. Artifact requirements, including reviewing agents' structural `RequiresSkills`, remain exact catalog declarations rather than workflow edges.
 Origin: ADR-0080
-Revised-by: ADR-0167
+Revised-by: ADR-0167, ADR-0251
 Backing: test
 
 ### `invariant: reviewing-skill-specs-paired`
@@ -80,16 +68,17 @@ Backing: test
 
 ### `invariant: target-dialect-render`
 
-Each enabled target renders every selected catalog skill and agent exactly once at that target's declared path and dialect, and the emitted artifact parses under that runtime's native format. A closed target descriptor may additionally declare a target-owned skill with a catalog-selection predicate; it uses the same target path, prefix, dialect, provenance, and policy machinery, is absent from every other target, and is planned and rendered by one resolved declaration path.
-Each enabled target renders every skill and agent exactly once at that descriptor's declared path and encoding, and the emitted artifact parses under the runtime's native format. The built-in Claude Code and Pi targets emit Markdown agents while retaining independent descriptor-owned paths, suffixes, capabilities, bridges, wording, and additional outputs.
+Each built-in target renders every catalog skill and agent exactly once at that target's declared path and dialect, and the emitted artifact parses under that runtime's native format. A closed target descriptor may additionally declare a target-owned skill with a catalog predicate; it uses the same target path, prefix, dialect, provenance, and policy machinery, is absent from every other target, and is planned and rendered by one resolved declaration path.
+Claude Code and Pi each render every skill and agent exactly once at that descriptor's declared path and encoding, and the emitted artifact parses under that runtime's native format. The built-in Claude Code and Pi targets emit Markdown agents while retaining independent descriptor-owned paths, suffixes, capabilities, bridges, wording, and additional outputs.
 Origin: ADR-0122
-Revised-by: ADR-0214, ADR-0218
+Revised-by: ADR-0214, ADR-0218, ADR-0251
 Backing: test
 
 ### `invariant: unified-doc-model`
 
-Every doc and singleton projection is derived from the single catalog document collection rather than a separate hand-maintained list. The singleton kinds equal exactly the mandatory catalog entries, the plain singletons equal the mandatory non-agents-doc non-generated entries, and each mandatory non-agents-doc entry renders under the documentation directory at its declared path.
+Every doc and singleton projection is derived from the single catalog document collection rather than a separate hand-maintained list. The singleton kinds equal exactly the catalog entries declaring their own output paths, the plain singletons equal those non-agents-doc non-generated entries, and each such entry renders under the documentation root at its declared path.
 Origin: ADR-0061
+Revised-by: ADR-0251
 Backing: test
 
 ### `invariant: var-descriptor-parity`
@@ -100,7 +89,7 @@ Backing: test
 
 ### `invariant: var-descriptor-set-pinned`
 
-The catalog's value-carrying string var descriptor keys are exactly the pinned functional set (gateCmd, gateCmdFull, checkCmd, commitGateCmd, testCmd, commitScopes, activeMdRegenCmd, awfInvokeCmd, invariantTestPath), and the only multiselect descriptors are the two catalog trims docs and skills.
+The catalog's value-carrying string var descriptor keys are exactly the pinned functional set (gateCmd, gateCmdFull, checkCmd, commitGateCmd, testCmd, commitScopes, activeMdRegenCmd, awfInvokeCmd, invariantTestPath); no multiselect descriptor controls catalog rendering.
 Origin: ADR-0084
-Revised-by: ADR-0156, ADR-0158, ADR-0210
+Revised-by: ADR-0156, ADR-0158, ADR-0210, ADR-0251
 Backing: test

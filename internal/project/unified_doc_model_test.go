@@ -5,28 +5,27 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
-	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
-// The whole doc surface derives from the single catalog doc collection: every
-// projection is a function of the Mandatory/AgentsDoc/TemplateKey/Path metadata,
-// with no independent hand-maintained list (ADR-0061).
+// The whole doc surface derives from the single catalog doc collection: output
+// projections use AgentsDoc/Path/TemplateKey metadata while Mandatory chooses
+// only the sidecar location, with no independent hand-maintained list (ADR-0061).
 // invariant: rendering/catalog-and-targets:unified-doc-model (TestUnifiedDocModelProjections)
 // invariant: rendering/singletons-and-payloads:plain-singleton-via-renderkind (TestUnifiedDocModelProjections)
 func TestUnifiedDocModelProjections(t *testing.T) {
-	// (a) SingletonKinds == exactly the Mandatory entries.
+	// (a) SingletonKinds == exactly root and structural output entries.
 	var wantSK []string
 	for k, e := range catalog.Standard.Docs {
-		if e.Mandatory {
+		if e.AgentsDoc || e.Path != "" {
 			wantSK = append(wantSK, k)
 		}
 	}
 	slices.Sort(wantSK)
 	if sk := catalog.SingletonKinds(); !slices.Equal(sk, wantSK) {
-		t.Errorf("SingletonKinds()=%v, want Mandatory entries %v", sk, wantSK)
+		t.Errorf("SingletonKinds()=%v, want root/structural entries %v", sk, wantSK)
 	}
 
-	// (b) plainSingletons == exactly Mandatory && !AgentsDoc && !Generated, and
+	// (b) plainSingletons == exactly structural non-generated entries, and
 	// no other kind (the generated config reference renders outside RenderAll).
 	var got []string
 	for _, s := range plainSingletons {
@@ -35,7 +34,7 @@ func TestUnifiedDocModelProjections(t *testing.T) {
 	slices.Sort(got)
 	var wantPS []string
 	for k, e := range catalog.Standard.Docs {
-		if e.Mandatory && !e.AgentsDoc && !e.Generated {
+		if e.Path != "" && !e.AgentsDoc && !e.Generated {
 			wantPS = append(wantPS, k)
 		}
 	}
@@ -44,36 +43,37 @@ func TestUnifiedDocModelProjections(t *testing.T) {
 		t.Errorf("plainSingletons kinds=%v, want %v", got, wantPS)
 	}
 
-	// (c) every mandatory non-agents-doc entry's TemplateKey/Path lands in
-	// templateMap at the derived docsDir path.
-	tm := (&Project{Cfg: &config.Config{DocsDir: "documentation"}}).layout().templateMap()
+	// (c) every structural non-root entry's TemplateKey/Path lands in templateMap
+	// at the derived docsDir path.
+	tm := (&Project{}).layout().templateMap()
 	for _, e := range catalog.Standard.Docs {
-		if !e.Mandatory || e.AgentsDoc {
+		if e.Path == "" || e.AgentsDoc {
 			continue
 		}
-		if v := tm[e.TemplateKey]; v != "documentation/"+e.Path {
-			t.Errorf("templateMap[%q]=%v, want %q", e.TemplateKey, v, "documentation/"+e.Path)
+		if v := tm[e.TemplateKey]; v != "docs/"+e.Path {
+			t.Errorf("templateMap[%q]=%v, want %q", e.TemplateKey, v, "docs/"+e.Path)
 		}
 	}
 }
 
-// No Mandatory entry appears in the toggleable-doc pool, so a singleton is never
-// addable/removable via the doc CLI or validated as a toggleable doc (ADR-0061).
-// invariant: rendering/catalog-and-targets:mandatory-doc-pool-exclusion (TestMandatoryDocsExcludedFromPool)
-func TestMandatoryDocsExcludedFromPool(t *testing.T) {
-	pool, ok := CatalogNames(catalog.Standard, "doc")
-	if !ok {
-		t.Fatal("doc pool absent")
+// TestSingletonShapeIgnoresMandatory uses deliberately heterogeneous metadata
+// so a future Mandatory-based membership shortcut fails even if the standard
+// catalog happens to keep those attributes correlated.
+func TestSingletonShapeIgnoresMandatory(t *testing.T) {
+	entries := map[string]catalog.DocEntry{
+		"root":               {AgentsDoc: true, Mandatory: false},
+		"structural":         {Path: "structural.md", Mandatory: false},
+		"named-with-root-sc": {Mandatory: true},
+		"named-with-doc-sc":  {Mandatory: false},
 	}
-	for _, n := range pool {
-		if catalog.Standard.Docs[n].Mandatory {
-			t.Errorf("mandatory doc %q leaked into the toggleable pool", n)
-		}
+	got := map[string]bool{}
+	for name, entry := range entries {
+		got[name] = entry.AgentsDoc || entry.Path != ""
 	}
-	sk := catalog.SingletonKinds()
-	for _, n := range catalog.NonMandatoryDocNames(catalog.Standard) {
-		if slices.Contains(sk, n) {
-			t.Errorf("%q is both non-mandatory and a singleton kind", n)
+	want := map[string]bool{"root": true, "structural": true, "named-with-root-sc": false, "named-with-doc-sc": false}
+	for name, expected := range want {
+		if got[name] != expected {
+			t.Errorf("singleton(%s) = %t, want %t", name, got[name], expected)
 		}
 	}
 }

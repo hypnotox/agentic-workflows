@@ -75,13 +75,14 @@ type CoverageFinding struct {
 	Topics   int           `json:"topics,omitempty"`
 }
 
-// CoveragePolicy carries which coverage checks a caller wants evaluated and the
-// per-path fan-out budget. A caller that does not want a finding class does not
-// request it; no value suppresses a requested check (ADR-0183 items 2 and 8).
+// CoveragePolicy carries which coverage checks a caller wants evaluated. A
+// caller that does not want a finding class does not request it; no value
+// suppresses a requested check (ADR-0183 items 2 and 8).
 type CoveragePolicy struct {
 	Coverage, Fanout bool
-	MaxTopicsPerPath int
 }
+
+const maxTopicsPerPath = 8
 
 // EvaluateCoverage returns the sorted coverage and fan-out findings for the
 // eligible paths (ADR-0134 item 11). Every domain owning a path is evaluated
@@ -114,7 +115,7 @@ func EvaluateCoverage(c Corpus, paths []string, policy CoveragePolicy) []Coverag
 			}
 		}
 		if policy.Fanout {
-			if count := matchingScopedTopics(c, path); count > policy.MaxTopicsPerPath {
+			if count := matchingScopedTopics(c, path); count > maxTopicsPerPath {
 				findings = append(findings, CoverageFinding{Path: path, Kind: Fanout, Severity: severity.Warn, Topics: count})
 			}
 		}

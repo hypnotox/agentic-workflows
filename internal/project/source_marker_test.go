@@ -14,15 +14,11 @@ import (
 // inputs: markers are informational and never alter machine dependencies.
 // invariant: rendering/doc-outputs:opaque-doc-source-guidance (TestSourceMarkerFamilyMatrix)
 func TestSourceMarkerFamilyMatrix(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: [code-reviewer]\ndocs: [glossary, pitfalls, my-doc, authored]\ndomains: [rendering]\ntargets: [claude, pi]\nhooks:\n  enabled: true\n", map[string]string{
-		"domains/rendering.yaml":       "paths: ['internal/**']\n",
-		"docs/glossary.yaml":           "data:\n  standardTerms:\n  terms:\n",
-		"docs/pitfalls.yaml":           "data:\n  pitfalls:\n",
-		"docs/my-doc.yaml":             "data:\n  title: My Doc\n  description: Local fixture.\n",
-		"docs/parts/my-doc/content.md": "Local body.\n",
-		"docs/authored.yaml":           "local: true\n",
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: ./x gate\ndomains: [rendering]\n", map[string]string{
+		"domains/rendering.yaml": "paths: ['internal/**']\n",
+		"docs/glossary.yaml":     "data:\n  standardTerms:\n  terms:\n",
+		"docs/pitfalls.yaml":     "data:\n  pitfalls:\n",
 	})
-	testsupport.WriteFile(t, filepath.Join(root, "docs", "authored.md"), "# Authored local document\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "plans", "2026-08-07-fixture.md"), "---\nformat: plan-v2\ndate: 2026-08-07\nadrs: []\nstatus: Proposed\n---\n# Plan: Fixture\n")
 	writeProjectTopic(t, root, "opaque", "Opaque", "applies: global\n")
 	writeADR(t, root, "0001-fixture.md", testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Fixture"), testsupport.WithBody("## Decision\n\n1. Fixture.\n")))
@@ -63,7 +59,7 @@ func TestSourceMarkerFamilyMatrix(t *testing.T) {
 			t.Errorf("%s contains unresolved value", path)
 		}
 	}
-	for _, path := range []string{"AGENTS.md", "docs/working-with-awf.md", "docs/my-doc.md"} {
+	for _, path := range []string{"AGENTS.md", "docs/working-with-awf.md"} {
 		if !strings.Contains(byPath[path], "<!-- awf:edit ") {
 			t.Errorf("actionable output %s lost its awf:edit guidance", path)
 		}
@@ -71,7 +67,6 @@ func TestSourceMarkerFamilyMatrix(t *testing.T) {
 	for _, path := range []string{
 		"AGENTS.md",
 		"docs/working-with-awf.md",
-		"docs/my-doc.md",
 		"docs/decisions/README.md",
 		"docs/decisions/template.md",
 		"docs/plans/README.md",
@@ -95,7 +90,6 @@ func TestSourceMarkerFamilyMatrix(t *testing.T) {
 	for _, path := range []string{
 		"docs/decisions/0001-fixture.md",
 		"docs/plans/2026-08-07-fixture.md",
-		"docs/authored.md",
 	} {
 		if _, ok := byPath[path]; ok {
 			t.Errorf("authored artifact %s was rendered", path)

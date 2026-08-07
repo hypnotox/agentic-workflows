@@ -1,4 +1,4 @@
-Rendered companion script contracts: the bootstrap and upgrade scripts, the command runner, and hook payload fallback behaviour. When hooks are enabled, awf renders five inert payloads: pre-commit, commit-msg, pre-merge-commit, reference-transaction, and pre-push. An adopter may preview commit provenance with `awf check commit-policy <revision-or-range>...` before configuring policy and wiring its own stubs; the payloads do not activate themselves. Worktree-aware stubs must resolve the invoking worktree before delegating, and local hooks remain a preflight rather than a substitute for the remote's final branch policy.
+Rendered companion script contracts: the bootstrap and upgrade scripts, the command runner, and hook payload fallback behaviour. awf always renders five inert payloads: pre-commit, commit-msg, pre-merge-commit, reference-transaction, and pre-push. An adopter may preview commit provenance with `awf check commit-policy <revision-or-range>...` before configuring policy and wiring its own stubs; the payloads do not activate themselves. Worktree-aware stubs must resolve the invoking worktree before delegating, and local hooks remain a preflight rather than a substitute for the remote's final branch policy.
 
 ## Claims
 
@@ -28,9 +28,9 @@ Backing: test
 
 ### `invariant: hook-payloads-fallback-safe`
 
-With checkCmd, gateCmd, gateCmdFull, and commitGateCmd all unset, every rendered hook payload is a runnable script whose awf-verb commands resolve to `./awf` forms when the runner singleton is enabled and to the generic `awf` forms otherwise, carrying no inline resolution shim and no unresolved-value token; the pre-commit payload consumes only the configured aggregate check and project gate.
+With checkCmd, gateCmdFull, and commitGateCmd all unset, every rendered hook payload is a runnable script whose awf-verb commands resolve through the always-rendered `./awf` wrapper, carrying no inline resolution shim and no unresolved-value token; the pre-commit payload consumes only the configured aggregate check and required project gate.
 Origin: ADR-0148
-Revised-by: ADR-0156, ADR-0158, ADR-0210
+Revised-by: ADR-0156, ADR-0158, ADR-0210, ADR-0253
 Backing: test
 
 ### `invariant: runner-prune-backup`
@@ -41,8 +41,9 @@ Backing: test
 
 ### `invariant: runner-pure-forwarder`
 
-With the runner singleton enabled, the rendered wrapper at the repo-root path `awf` contains no per-verb dispatch and no in-place-editable region: it resolves one awf invocation and execs it with all arguments forwarded verbatim.
+The always-rendered wrapper at the repo-root path `awf` contains no per-verb dispatch and no in-place-editable region: it resolves one awf invocation and execs it with all arguments forwarded verbatim.
 Origin: ADR-0156
+Revised-by: ADR-0253
 Backing: test
 
 ### `invariant: runner-render-publication-safe`
@@ -57,11 +58,10 @@ With `vars.awfInvokeCmd` set, the rendered wrapper execs exactly that command; w
 Origin: ADR-0156
 Backing: test
 
-### `invariant: runner-singleton-toggle`
+### `invariant: runner-wrapper-rendered`
 
-With the runner singleton enabled, `awf render` renders exactly one wrapper file at the repo-root path `awf`; with it disabled or absent, it renders none. `awf init` scaffolding seeds `runner.enabled: true` and the enable-runner migration seeds an absent key to enabled on `awf upgrade`, respecting an explicit false.
-Origin: ADR-0148
-Revised-by: ADR-0156, ADR-0159
+A full render emits exactly one wrapper file at the repo-root path `awf`.
+Origin: ADR-0253
 Backing: test
 
 ### `invariant: upgrade-delegates-fetch`

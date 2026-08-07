@@ -21,7 +21,7 @@ func TestAuditBuildsDomainPathsFromSidecars(t *testing.T) {
 		t.Fatal(err)
 	}
 	base := gitfixture.Commit(t, repo, "base", map[string]string{
-		".awf/config.yaml":          "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndomains:\n  - tooling\n  - rendering\n",
+		".awf/config.yaml":          "prefix: example\nintegrationBranch: main\ndomains:\n  - tooling\n  - rendering\n",
 		".awf/domains/tooling.yaml": "paths:\n  - cmd/**\n",
 		"base.txt":                  "x\n",
 	})
@@ -53,7 +53,7 @@ func TestAuditBuildsDomainPathsFromSidecars(t *testing.T) {
 
 func TestAuditRejectsMalformedDomainPaths(t *testing.T) {
 	t.Parallel()
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndomains:\n  - tooling\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\ndomains:\n  - tooling\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "domains", "tooling.yaml"), "paths:\n  - '['\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -66,7 +66,7 @@ func TestAuditRejectsMalformedDomainPaths(t *testing.T) {
 
 func TestAuditPropagatesDomainSidecarReadError(t *testing.T) {
 	t.Parallel()
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndomains:\n  - tooling\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\ndomains:\n  - tooling\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)

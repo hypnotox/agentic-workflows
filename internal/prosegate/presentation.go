@@ -30,15 +30,6 @@ func Categories(findings []Finding, skipped []string) ([]presentation.ReportCate
 	return categories, nil
 }
 
-// DisabledCategory describes an explicitly disabled prose gate.
-func DisabledCategory() ([]presentation.ReportCategory, error) {
-	record, err := record("disabled (proseGate.enabled)")
-	if err != nil { // coverage-ignore: the fixed nonempty disabled diagnostic always validates as prose
-		return nil, err
-	}
-	return []presentation.ReportCategory{{Label: "warnings", Schema: []string{"check", "detail"}, Records: []presentation.Record{record}}}, nil
-}
-
 func record(detail string) (presentation.Record, error) {
 	check, err := presentation.Prose("prose")
 	if err != nil { // coverage-ignore: the fixed nonempty prose label is normalized by Prose before validation

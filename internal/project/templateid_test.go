@@ -259,8 +259,6 @@ func fixtureSuffixTrim(name string) string { return strings.TrimSuffix(name, ".s
 	_, conforming := loadTemplateIDPackages(t, map[string][]byte{fixture: []byte(`package project
 
 func fixtureConformingTID(name string) string { return mustDescriptor("skills").tid(name) }
-
-func fixtureConformingBase() string { return baseTID("agents") }
 `)})
 	conformingFindings, _ := templateIDFindings(root, conforming)
 	for _, f := range conformingFindings {
@@ -285,9 +283,6 @@ func TestLiveTemplateIDsResolve(t *testing.T) {
 	}
 	ids := p.liveTemplateIDs()
 	for _, descriptor := range kindDescriptors {
-		if descriptor.baseTID != "" && !ids[descriptor.baseTID] {
-			t.Errorf("kind-derived base template %q is not live", descriptor.baseTID)
-		}
 		if descriptor.freeformDomain && !ids[descriptor.tid("")] {
 			t.Errorf("kind-derived domain template %q is not live", descriptor.tid(""))
 		}
@@ -299,17 +294,6 @@ func TestLiveTemplateIDsResolve(t *testing.T) {
 		if _, err := fs.ReadFile(templates.FS, tid); err != nil {
 			t.Errorf("live template %q does not resolve: %v", tid, err)
 		}
-	}
-
-	originalBase := kindDescriptors[0].baseTID
-	kindDescriptors[0].baseTID = "missing/kind-base.tmpl"
-	baseIDs := p.liveTemplateIDs()
-	kindDescriptors[0].baseTID = originalBase
-	if !baseIDs["missing/kind-base.tmpl"] {
-		t.Error("a missing kind-derived base identity escaped the live population")
-	}
-	if _, err := fs.ReadFile(templates.FS, "missing/kind-base.tmpl"); err == nil {
-		t.Error("missing kind-derived base fixture unexpectedly resolves")
 	}
 
 	domainIndex := -1
@@ -336,6 +320,7 @@ func TestLiveTemplateIDsResolve(t *testing.T) {
 	missing := p.Cat.Docs["architecture"]
 	missing.TID = "missing/live-template.tmpl"
 	p.Cat.Docs["missing-live-fixture"] = missing
+	defer delete(p.Cat.Docs, "missing-live-fixture")
 	if _, err := p.OutputPlan(testContext(t)); err == nil || !strings.Contains(err.Error(), "missing/live-template.tmpl") {
 		t.Fatalf("missing live template error = %v", err)
 	}

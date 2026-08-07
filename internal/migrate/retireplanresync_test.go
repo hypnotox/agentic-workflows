@@ -13,11 +13,11 @@ import (
 )
 
 func TestRetirePlanResyncGenerationRegistration(t *testing.T) {
-	if Current() != 38 {
-		t.Fatalf("Current() = %d, want 38", Current())
+	if Current() != 40 {
+		t.Fatalf("Current() = %d, want 40", Current())
 	}
 	last := registry[len(registry)-1]
-	if last.To != 38 || last.Name != "retire-plan-resync-selection" {
+	if last.To != 40 || last.Name != "retire-plan-resync-selection" {
 		t.Fatalf("last migration = %#v", last)
 	}
 }
@@ -92,7 +92,7 @@ func TestRemovePlanResyncSelectionResolvesAliases(t *testing.T) {
 func TestRetirePlanResyncMigrationReportsAndStamps(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "prefix: ex\nintegrationBranch: main\nskills: [reviewing-plan-resync, reviewing-plan, reviewing-plan-resync]\nagents: [plan-reviewer]\n")
-	stampLockAt(t, filepath.Join(root, ".awf", "awf.lock"), 37)
+	stampLockAt(t, filepath.Join(root, ".awf", "awf.lock"), 39)
 	applied, changes, err := Upgrade(context.Background(), root)
 	if err != nil {
 		t.Fatal(err)
@@ -162,7 +162,7 @@ func TestConfigForCurrentSchemaAlwaysRetiresPlanResync(t *testing.T) {
 	if err := yaml.Unmarshal(got, &decoded); err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(decoded.Skills, []string{"reviewing-plan"}) || decoded.Vars["literal"] != retiredPlanResyncSkill {
+	if decoded.Skills != nil || decoded.Vars["literal"] != retiredPlanResyncSkill {
 		t.Fatalf("aliased forward port = %#v", decoded)
 	}
 }

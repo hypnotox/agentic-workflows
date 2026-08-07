@@ -10,6 +10,18 @@ These packages read git history, build immutable tree snapshots, and audit workf
 
 ## Claims
 
+### `invariant: audit-advisories-always-run`
+
+The domain-document staleness, domain-code staleness, undocumented-domain, plain-punctuation, and uncommitted-changes rules always evaluate; the first four emit Warning findings and uncommitted-changes emits an Error.
+Origin: ADR-0253
+Backing: test
+
+### `invariant: audit-thresholds-fixed`
+
+Audit fixes the Conventional Commits subject limit at 72, the plan diff threshold at 400, the accepted type set at build, chore, ci, docs, feat, fix, perf, refactor, revert, style, and test, and the dependency-manifest set at the nineteen built-in language-agnostic globs.
+Origin: ADR-0253
+Backing: test
+
 ### `invariant: audit-history-operation-owned`
 
 One `awf audit` invocation walks its requested commit range exactly once, feeds each rich commit through audit-owned incremental rule accumulators, and retains only grouped findings and compact graph metadata after the visitor returns. Deterministic interleaved transition and stale-merge replay shares alias-aware revision entries and cached load errors; each required revision outcome derives at most once, source evidence and parsed universes are released after their final scheduled consumers, and logical heavy-state high-water is bounded by the live unique dependency frontier. No cache survives the invocation or lives on Project.
@@ -44,8 +56,9 @@ Backing: test
 
 ### `invariant: audit-conventional-commits`
 
-awf audit raises an Error finding for a range commit whose subject is not a well-formed Conventional Commit, carries a type or scope outside the configured allow lists, or exceeds the configured subject length limit; a conforming commit raises none.
+awf audit raises an Error finding for a range commit whose subject is not a well-formed Conventional Commit, carries a type outside the fixed Conventional Commits set or a scope outside the configured scope list, or exceeds the fixed 72-character subject limit; a conforming commit raises none.
 Origin: ADR-0017
+Revised-by: ADR-0253
 Backing: test
 
 ### `invariant: audit-dependency-warn`
@@ -56,8 +69,9 @@ Backing: test
 
 ### `invariant: audit-domain-code-staleness`
 
-The domain-code-staleness rule emits a Warning for a domain exactly when it is configured with non-empty sidecar paths, an in-range commit changed a non-generated file matching those patterns, and no in-range commit changed that domain's current-state part; it is silent when the part is co-changed, when only generated paths matched, when the domain declares no paths, and when the rule is disabled.
+The domain-code-staleness rule emits a Warning for a domain exactly when it is configured with non-empty sidecar paths, an in-range commit changed a non-generated file matching those patterns, and no in-range commit changed that domain's current-state part; it is silent when the part is co-changed, when only generated paths matched, or when the domain declares no paths.
 Origin: ADR-0077
+Revised-by: ADR-0253
 Backing: test
 
 ### `invariant: audit-domain-doc-staleness`
@@ -74,20 +88,23 @@ Backing: test
 
 ### `invariant: audit-plain-punctuation`
 
-With audit.plainPunctuation enabled, awf audit emits a Warning for each commit in which a non-generated markdown file under docsDir has a rising banned-codepoint count, naming the file and the risen codepoints in sorted order, and emits nothing when the count is unchanged or falls, when the path is generated, when the file lies outside docsDir, or when the knob is false.
+awf audit emits a Warning for each commit in which a non-generated markdown file under the documentation root has a rising banned-codepoint count, naming the file and the risen codepoints in sorted order, and emits nothing when the count is unchanged or falls, when the path is generated, or when the file lies outside the documentation root.
 Origin: ADR-0117
+Revised-by: ADR-0253
 Backing: test
 
 ### `invariant: audit-plan-threshold-warn`
 
-awf audit raises a Warning finding when the branch-aggregate count of non-generated changed lines exceeds the configured threshold but no file under the plans directory was touched.
+awf audit raises a Warning finding when the branch-aggregate count of non-generated changed lines exceeds the fixed threshold of 400 but no file under the plans directory was touched.
 Origin: ADR-0017
+Revised-by: ADR-0253
 Backing: test
 
 ### `invariant: audit-uncommitted-changes`
 
-When the uncommitted-changes rule is enabled and the working tree is dirty, audit emits a single Error finding whose detail tallies the tracked-change and untracked-file counts; when the rule is disabled it emits no finding even on a dirty tree.
+When the working tree is dirty, audit always emits a single Error finding whose detail tallies the tracked-change and untracked-file counts.
 Origin: ADR-0025
+Revised-by: ADR-0253
 Backing: test
 
 ### `invariant: audit-undocumented-domain`

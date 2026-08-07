@@ -86,14 +86,14 @@ func benchmarkAuditRun(ctx context.Context, fixture auditHistoryBenchmarkFixture
 	if err != nil {
 		return nil, 0, 0, err
 	}
-	op, err := newStreamingHistoryOperation(ctx, fixture.base, fixture.head, Inputs{Settings: Settings{UncommittedChanges: true}},
+	op, err := newStreamingHistoryOperation(ctx, fixture.base, fixture.head, Inputs{Settings: Settings{}},
 		repo.WalkRangeCommits,
 		func(ctx context.Context, revision string) (*revisionState, error) {
 			return loadSelectedRevision(ctx, fixture.root, revision, repo.CommitEntries, repo.CommitBlobsAt)
 		},
 		repo.FirstParentChangedPaths,
 		func(ctx context.Context) ([]Finding, error) {
-			return ruleUncommittedChanges(ctx, repo, Inputs{Settings: Settings{UncommittedChanges: true}})
+			return ruleUncommittedChanges(ctx, repo)
 		})
 	if err != nil {
 		return nil, 0, 0, err

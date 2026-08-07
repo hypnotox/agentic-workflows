@@ -398,7 +398,7 @@ data:
       domains: [rendering]
       tags: [render-completeness, multi-target]
       body: |
-        Enumerate every enabled target, the root lock, generated outputs, and the changelog obligation for the one adopted root.
+        Enumerate both targets, the root lock, generated outputs, and the changelog obligation for the one adopted root.
     - title: "GoReleaser aborts on a dirty git tree; pre-release artifacts belong outside the worktree"
       domains: [tooling]
       tags: [release-pipeline]

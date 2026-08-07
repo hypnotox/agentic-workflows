@@ -2,6 +2,12 @@ The topic package parses topic metadata and claim inputs, builds the claim corpu
 
 ## Claims
 
+### `invariant: fan-out-budget-fixed`
+
+Path-scoped current-state topic fan-out emits a Warning when more than eight topics match one path; the fixed budget is 8 and is not configurable.
+Origin: ADR-0253
+Backing: test
+
 ### `invariant: backed-requires-proof`
 
 Building the current-state marker index fails when a test-backed invariant claim has no proof marker in backing scope.

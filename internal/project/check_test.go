@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -54,20 +55,20 @@ func mustDeriveSkills(t *testing.T, p *Project) map[string]bool {
 
 func mustParsePlans(t *testing.T, p *Project) []plan.Plan {
 	t.Helper()
-	plans, err := plan.ParseDir(filepath.Join(p.Root, p.Cfg.DocsDir, "plans"))
+	plans, err := plan.ParseDir(filepath.Join(p.Root, config.DocsDir, "plans"))
 	if err != nil {
 		t.Fatalf("parse plans: %v", err)
 	}
 	return plans
 }
 
-const pitfallsCheckCfg = "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: [rendering]\n"
+const pitfallsCheckCfg = "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: [rendering]\n"
 
-const commitSubjectCfg = "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\naudit:\n  allowedScopes:\n    - name: awf\n"
+const commitSubjectCfg = "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: []\naudit:\n  allowedScopes:\n    - name: awf\n"
 
 // A disabled pitfalls doc yields no drift and never reads the sidecar.
 func TestCheckPitfallsDisabled(t *testing.T) {
-	p, err := Open(testContext(t), scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: []\n"))
+	p, err := Open(testContext(t), scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,11 +122,11 @@ func TestCheckPitfallsStructuralError(t *testing.T) {
 	}
 }
 
-const glossaryCheckCfg = "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: [glossary]\ndomains: [rendering]\n"
+const glossaryCheckCfg = "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: [rendering]\n"
 
 // A disabled glossary doc is never read, so it can yield no drift.
 func TestCheckGlossaryDisabled(t *testing.T) {
-	p, err := Open(testContext(t), scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: []\n"))
+	p, err := Open(testContext(t), scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +207,7 @@ func TestDeriveOperationStateSurfacesMalformedADR(t *testing.T) {
 // member yields tag-vocabulary drift; a fully-conforming corpus yields none.
 // invariant: config/configuration:tag-vocabulary-governed (TestCheckTagVocabulary)
 func TestCheckTagVocabulary(t *testing.T) {
-	cfg := "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: [rendering]\n" +
+	cfg := "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: [rendering]\n" +
 		"tags:\n  render-engine: the render engine\n  empty: \"\"\n"
 	root := scaffoldFiles(t, cfg, map[string]string{
 		"docs/pitfalls.yaml": "data:\n  pitfalls:\n    - title: P\n      tags: [render-engine, ghost]\n      body: ok\n",
@@ -235,7 +236,7 @@ func TestCheckTagVocabulary(t *testing.T) {
 
 // An empty/absent vocabulary makes the membership rule inert.
 func TestCheckTagVocabularyInert(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: []\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
 		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
 			testsupport.WithTags("anything"), testsupport.WithTitle("0001: A"),
@@ -254,7 +255,7 @@ func TestCheckTagVocabularyInert(t *testing.T) {
 // proceeds past the ADR loop and pitfallTagEntries short-circuits to no entries;
 // a conforming ADR yields no drift.
 func TestCheckTagVocabularyPitfallsDisabled(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\ntags:\n  rendering: the render engine\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: []\ntags:\n  rendering: the render engine\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
 		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
 			testsupport.WithTags("rendering"), testsupport.WithTitle("0001: A"),
@@ -273,7 +274,7 @@ func TestCheckTagVocabularyPitfallsDisabled(t *testing.T) {
 // yields none. Unconditional (no vocabulary configured here).
 // invariant: adr-system/adr-lifecycle:adr-related-link-resolved (TestCheckADRRelatedLinks)
 func TestCheckADRRelatedLinks(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: []\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
 		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
 			testsupport.WithRelated(1, 42), testsupport.WithTitle("0001: A"),
@@ -297,7 +298,7 @@ func TestCheckADRRelatedLinks(t *testing.T) {
 // that only checks the simple case.
 // invariant: adr-system/adr-lifecycle:adr-related-ascending (TestCheckADRRelatedAscending)
 func TestCheckADRRelatedAscending(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: []\n")
 	write := func(name, title string, related ...int) {
 		opts := []testsupport.ADROption{testsupport.WithDate("2026-07-13"),
 			testsupport.WithTitle(title), testsupport.WithBody("## Context\nx\n")}
@@ -364,7 +365,7 @@ func TestCheckADRRelatedAscending(t *testing.T) {
 // sidecar (valid ADRs so ParseDir succeeds first; non-empty vocabulary so the
 // method proceeds past the len==0 guard) - reachable, tested not ignored.
 func TestCheckTagVocabularyPitfallStructuralError(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: []\ntags:\n  rendering: x\n",
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: []\ntags:\n  rendering: x\n",
 		map[string]string{"docs/pitfalls.yaml": "data:\n  pitfalls: just a string\n"})
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
 		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
@@ -783,7 +784,7 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 	}
 
 	root := scaffoldFiles(t,
-		"prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndomains: [config]\n",
+		"prefix: example\nintegrationBranch: main\nvars: {}\ndomains: [config]\n",
 		map[string]string{
 			"parts/config-reference/intro.md": "<!-- awf:stub -->\nConfig intro.\n<!-- awf:section bogus -->\n",
 		})
@@ -955,7 +956,7 @@ func TestPlanCommitScopeNotes(t *testing.T) {
 // propagation wired into AdvisoryNotes. Empty tags keep tagHealthNotes inert (so it
 // does not error first); a malformed plan makes planCommitScopeNotes' ParseDir fail.
 func TestAdvisoryNotesSurfacesPlanCommitError(t *testing.T) {
-	root := scaffold(t, "prefix: awf\nintegrationBranch: main\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
+	root := scaffold(t, "prefix: awf\nintegrationBranch: main\ndomains: []\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs/plans/2026-07-14-broken.md"),
 		"---\nstatus: [unterminated\n---\n# Plan: Broken\n")
 	p, err := Open(testContext(t), root)
@@ -993,7 +994,7 @@ func TestCheckProjectsPlanDiagnostics(t *testing.T) {
 // regression, gated exactly; inert when no domains are configured.
 // invariant: config/validation:tag-not-domain-name (TestCheckTagVocabularyDomainCollision)
 func TestCheckTagVocabularyDomainCollision(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: [rendering]\n"+
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: [rendering]\n"+
 		"tags:\n  rendering: coarse\n  narrow: a narrow topic\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -1013,7 +1014,7 @@ func TestCheckTagVocabularyDomainCollision(t *testing.T) {
 		t.Fatalf("want tag-domain-collision for rendering, got %+v", drift)
 	}
 	// No domains configured: the collision rule is inert.
-	root2 := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\n"+
+	root2 := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: []\n"+
 		"tags:\n  rendering: fine when no domains\n")
 	p2, err := Open(testContext(t), root2)
 	if err != nil {
@@ -1034,75 +1035,14 @@ func TestCheckTagVocabularyDomainCollision(t *testing.T) {
 // glossary sidecar is skipped by the render pass before its data.terms transform
 // runs, so a structurally invalid record list reaches Check's checkGlossary
 // wiring branch rather than failing earlier in the render.
-func TestCheckPropagatesLocalGlossaryError(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: [glossary]\ndomains: []\n",
-		map[string]string{"docs/glossary.yaml": "data:\n  terms:\n    - term: t\n      meaning: m\n"})
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.Sync(); err != nil {
-		t.Fatal(err)
-	}
-	testsupport.WriteFile(t, filepath.Join(root, ".awf/docs/glossary.yaml"), "local: true\ndata:\n  terms: just a string\n")
-	reopened, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := reopened.Check(testContext(t)); err == nil || !strings.Contains(err.Error(), "must be a list") {
-		t.Fatalf("expected Check to propagate the local glossary structural error, got %v", err)
-	}
-}
-
 // A local glossary with valid authored terms passes the blocking glossary check,
 // while malformed standardTerms remains an advisory-only merged-layer fault.
 // CheckReport must propagate that later failure rather than treating its shared
 // output plan as proof that every advisory input was validated.
-func TestCheckReportPropagatesAdvisoryOnlyGlossaryError(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: [glossary]\ndomains: []\n",
-		map[string]string{"docs/glossary.yaml": "data:\n  terms:\n    - term: t\n      meaning: m\n"})
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.Sync(); err != nil {
-		t.Fatal(err)
-	}
-	testsupport.WriteFile(t, filepath.Join(root, ".awf/docs/glossary.yaml"),
-		"local: true\ndata:\n  terms:\n    - term: t\n      meaning: m\n  standardTerms: just a string\n")
-	reopened, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := reopened.CheckReport(testContext(t)); err == nil || !strings.Contains(err.Error(), "standard vocabulary is malformed") || !strings.Contains(err.Error(), "must be a list") {
-		t.Fatalf("expected CheckReport to propagate the advisory standardTerms error, got %v", err)
-	}
-}
-
 // A local: true pitfalls sidecar is skipped by the render pass before its
 // data.pitfalls transform runs, but checkPitfalls reads it regardless, so a
 // structurally invalid entry list reaches Check's wiring branch rather than
 // failing earlier in the render.
-func TestCheckPropagatesLocalPitfallsError(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: []\n",
-		map[string]string{"docs/pitfalls.yaml": "data:\n  pitfalls:\n    - title: T\n      body: B\n"})
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.Sync(); err != nil {
-		t.Fatal(err)
-	}
-	testsupport.WriteFile(t, filepath.Join(root, ".awf/docs/pitfalls.yaml"), "local: true\ndata:\n  pitfalls: just a string\n")
-	reopened, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := reopened.Check(testContext(t)); err == nil || !strings.Contains(err.Error(), "must be a list") {
-		t.Fatalf("expected Check to propagate the local pitfalls structural error, got %v", err)
-	}
-}
-
 // AdvisoryNotes and ConfigReferenceModel both forward the operation
 // derivation's fault; a malformed ADR reaches each one's wiring branch.
 func TestAdvisoryNotesAndConfigReferenceSurfaceMalformedADR(t *testing.T) {
@@ -1429,7 +1369,7 @@ func TestAgentGuideSizeAdvisoryBoundary(t *testing.T) {
 		{name: "over", bytes: 12*1024 + 1, want: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\naudit:\n  allowedScopes:\n    - name: awf\n", map[string]string{"parts/agents-doc/identity.md": "x"})
+			root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\naudit:\n  allowedScopes:\n    - name: awf\n", map[string]string{"parts/agents-doc/identity.md": "x"})
 			p, err := Open(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)

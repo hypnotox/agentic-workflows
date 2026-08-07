@@ -2,19 +2,15 @@ package audit
 
 import "github.com/hypnotox/agentic-workflows/internal/config"
 
-// Settings is the resolved, default-applied audit configuration the rules consume.
+// Settings is the fixed audit policy plus the repository's scope vocabulary.
 type Settings struct {
-	AllowedTypes        []string
-	AllowedScopes       []config.ScopeSpec
-	DependencyManifests []string
-	SubjectMaxLength    int
-	DiffThreshold       int
-	DomainDocStaleness  bool
-	DomainCodeStaleness bool
-	UndocumentedDomain  bool
-	PlainPunctuation    bool
-	UncommittedChanges  bool
+	AllowedScopes []config.ScopeSpec
 }
+
+const (
+	subjectMaxLength = 72
+	diffThreshold    = 400
+)
 
 // ScopeNames returns just the allowed scope names, for gate matching.
 func (s Settings) ScopeNames() []string {
@@ -25,52 +21,9 @@ func (s Settings) ScopeNames() []string {
 	return names
 }
 
-// Resolve resolves the effective audit settings from the raw config, applying
-// defaults. A nil AuditConfig yields the full default set.
-func Resolve(a *config.AuditConfig) Settings {
-	s := Settings{
-		AllowedTypes:        defaultAllowedTypes(),
-		DependencyManifests: defaultDependencyManifests(),
-		SubjectMaxLength:    72,
-		DiffThreshold:       400,
-		DomainDocStaleness:  true,
-		DomainCodeStaleness: true,
-		UndocumentedDomain:  true,
-		PlainPunctuation:    true,
-		UncommittedChanges:  true,
-	}
-	if a == nil {
-		return s
-	}
-	if a.AllowedTypes != nil { // explicit (incl. empty = accept any)
-		s.AllowedTypes = a.AllowedTypes
-	}
-	s.AllowedScopes = a.AllowedScopes // nil default = accept any
-	if a.DependencyManifests != nil {
-		s.DependencyManifests = a.DependencyManifests
-	}
-	if a.SubjectMaxLength != nil {
-		s.SubjectMaxLength = *a.SubjectMaxLength
-	}
-	if a.DiffThreshold != nil {
-		s.DiffThreshold = *a.DiffThreshold
-	}
-	if a.DomainDocStaleness != nil {
-		s.DomainDocStaleness = *a.DomainDocStaleness
-	}
-	if a.DomainCodeStaleness != nil {
-		s.DomainCodeStaleness = *a.DomainCodeStaleness
-	}
-	if a.UndocumentedDomain != nil {
-		s.UndocumentedDomain = *a.UndocumentedDomain
-	}
-	if a.PlainPunctuation != nil {
-		s.PlainPunctuation = *a.PlainPunctuation
-	}
-	if a.UncommittedChanges != nil {
-		s.UncommittedChanges = *a.UncommittedChanges
-	}
-	return s
+// Resolve preserves the one repository-specific audit fact: allowed scopes.
+func Resolve(scopes []config.ScopeSpec) Settings {
+	return Settings{AllowedScopes: scopes}
 }
 
 func defaultAllowedTypes() []string {

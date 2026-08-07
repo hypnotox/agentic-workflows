@@ -2,6 +2,36 @@ These packages migrate the config tree across schema generations and read and wr
 
 ## Claims
 
+### `invariant: selection-keys-dropped`
+
+Schema generation 39 removes skills, agents, docs, targets, and docsDir from config.yaml, announces each removal actually performed, and preserves surviving bytes and key order.
+Origin: ADR-0251
+Backing: test
+
+### `invariant: sidecar-local-field-dropped`
+
+Schema generation 39 preflights every sidecar before mutation, refuses with an actionable path when local is true, otherwise removes local from every sidecar while preserving other bytes and modes and announcing each changed file.
+Origin: ADR-0251
+Backing: test
+
+### `invariant: retired-keys-forward-ported`
+
+Historical config bytes have every retired selection key stripped before strict current-schema decoding for every historical generation, so audit and staged checks can read revisions predating schema generation 39.
+Origin: ADR-0251
+Backing: test
+
+### `invariant: toggle-keys-dropped`
+
+Schema generation 38 removes hooks, runner, the proseGate.enabled and memoryCite.enabled children, nine audit tuning children, and currentState.maxTopicsPerPath, announces each removal it performs, drops a block emptied by removal, and preserves every surviving key, value, comment, and key order.
+Origin: ADR-0253
+Backing: test
+
+### `invariant: toggle-keys-forward-ported`
+
+Historical config bytes have every generation-38 retired key stripped before strict current-schema decoding, so audit and staged checks can read revisions that predate the retirement.
+Origin: ADR-0253
+Backing: test
+
 ### `invariant: grounding-skill-backfill`
 
 Schema generation 37 enables standard grounding only when selected standard brainstorming is enabled. It leaves project-local brainstorming untouched, refuses a project-local grounding collision before mutation with actionable recovery, and is atomic and idempotent.
@@ -85,7 +115,7 @@ Backing: test
 
 ### `invariant: retired-plan-resync-selection-migration`
 
-Schema generation 38 removes exactly the retired plan reconciliation skill item from the top-level `skills` sequence before current catalog validation. The config-editor-backed migration is idempotent, reports one removal when performed, preserves sequence order and every unrelated editor-supported config value, and leaves absence unchanged; historical config bytes receive the same unconditional forward port before current catalog consumption.
+Schema generation 40 removes exactly the retired plan reconciliation skill item from the top-level `skills` sequence of a generation-39-stamped tree before current catalog validation. The config-editor-backed migration is idempotent, reports one removal when performed, preserves sequence order and every unrelated editor-supported config value, and leaves absence unchanged. Historical config bytes receive an unconditional forward port before current catalog consumption: generation 39 removes the whole retired selection surface for older trees, while generation 40 handles a generation-39 tree that still carries the independently retired item.
 Origin: ADR-deduplicate-plan-authoring-and-execution-workflow
 Backing: test
 
@@ -135,14 +165,16 @@ Backing: test
 
 ### `invariant: upgrade-migrates-retirements`
 
-The generation-10 migration strips the retires_invariants key from every ADR under the configured docs dir and, for each ADR that had a non-empty list, appends one bookkeeping Decision item whose tokens name each retired slug's declaring ADR, inserts the carrier's number into each target's related list when absent, and fails naming the carrier and slug when a retired slug resolves to no declaring ADR.
+The generation-10 migration strips the retires_invariants key from every ADR under the historical config's docs dir and, for each ADR that had a non-empty list, appends one bookkeeping Decision item whose tokens name each retired slug's declaring ADR, inserts the carrier's number into each target's related list when absent, and fails naming the carrier and slug when a retired slug resolves to no declaring ADR.
 Origin: ADR-0120
+Revised-by: ADR-0251
 Backing: test
 
 ### `invariant: upgrade-migrates-supersession-keys`
 
-The generation-12 upgrade migration strips supersedes and superseded_by from every ADR under the configured docs directory, appends to each former full-supersession carrier one bookkeeping Decision item whose supersedes tokens claim each predecessor anchor, inserts the carrier number into each target's related list when absent, rewrites each predecessor's status to bare Superseded, and rewrites every pre-existing inline item token to refines while leaving slug tokens untouched.
+The generation-12 upgrade migration strips supersedes and superseded_by from every ADR under the historical config's docs directory, appends to each former full-supersession carrier one bookkeeping Decision item whose supersedes tokens claim each predecessor anchor, inserts the carrier number into each target's related list when absent, rewrites each predecessor's status to bare Superseded, and rewrites every pre-existing inline item token to refines while leaving slug tokens untouched.
 Origin: ADR-0128
+Revised-by: ADR-0251
 Backing: test
 
 ### `invariant: workflow-telemetry-config-migration`

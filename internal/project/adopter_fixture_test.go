@@ -14,21 +14,12 @@ func temporaryAuthoredAdopter(t *testing.T) string {
 	t.Helper()
 	root := scaffoldFiles(t, `prefix: fixture
 integrationBranch: main
-targets: [claude, pi]
-skills: [tdd, exploring]
-agents: [explorer]
-docs: []
 vars:
   testCmd: go test ./...
   gateCmd: ./x gate
 domains: [alpha]
 currentState:
-  maxTopicsPerPath: 8
 bootstrap:
-  enabled: true
-hooks:
-  enabled: true
-runner:
   enabled: true
 `, map[string]string{
 		"skills/tdd.yaml":                           "data:\n  testSurfaces:\n    - name: Unit\n      kind: isolated\n      location: internal\n",

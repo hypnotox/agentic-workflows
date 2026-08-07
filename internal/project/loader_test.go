@@ -89,80 +89,9 @@ func TestLoaderOpenValidatesBeforeResolvingResidentRoot(t *testing.T) {
 	}
 }
 
-func TestLoaderOpenResolvesTargetsBeforeResidentRoot(t *testing.T) {
-	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [unknown]\n")
-	loader := NewLoaderWithoutRepository(config.Load, catalog.Standard, func(context.Context, string) string {
-		t.Fatal("resident resolver called before target resolution")
-		return ""
-	})
-	_, err := loader.Open(testContext(t), root)
-	if err == nil || !strings.Contains(err.Error(), "unknown") {
-		t.Fatalf("error = %v, want unknown target", err)
-	}
-}
-
-// invariant: code-design/dependency-composition:sync-project-loader-wiring (TestLoaderOpenUsesSemanticResidentRoot)
-func TestLoaderOpenUsesSemanticResidentRoot(t *testing.T) {
-	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [claude]\n")
-	resident := filepath.Join(root, "resident")
-	var resolved string
-	injectedStandard := catalog.Standard
-	loader := NewLoaderWithoutRepository(config.Load, injectedStandard, func(_ context.Context, got string) string {
-		resolved = got
-		return resident
-	})
-	p, err := loader.Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resolved != root || p.Root != root || p.roots.Resident != resident {
-		t.Fatalf("roots: resolved=%q root=%q resident=%q", resolved, p.Root, p.roots.Resident)
-	}
-	if len(p.Targets) != 1 || p.Targets[0].Name != "claude" {
-		t.Fatalf("targets = %#v", p.Targets)
-	}
-	if p.Cat == injectedStandard {
-		t.Fatal("effective catalog aliases injected standard")
-	}
-	if !reflect.DeepEqual(p.Cat.Skills["tdd"], injectedStandard.Skills["tdd"]) {
-		t.Fatal("effective catalog did not retain standard tdd skill")
-	}
-}
-
-func TestLoaderOpenReturnsEffectiveCatalogError(t *testing.T) {
-	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: [local]\nagents: []\n")
-	testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "local.yaml"), "local: [bad\n")
-	loader := NewLoaderWithoutRepository(config.Load, catalog.Standard, func(_ context.Context, root string) string { return root })
-	_, err := loader.Open(testContext(t), root)
-	if err == nil || !strings.Contains(err.Error(), "skills/local.yaml") {
-		t.Fatalf("error = %v, want skills/local.yaml", err)
-	}
-}
-
-func TestLoaderOpenUsesInjectedStandardCatalog(t *testing.T) {
-	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n")
-	injectedValue := *catalog.Standard
-	injectedValue.Skills = maps.Clone(catalog.Standard.Skills)
-	delete(injectedValue.Skills, "tdd")
-	loader := NewLoaderWithoutRepository(config.Load, &injectedValue, func(_ context.Context, root string) string { return root })
-	_, err := loader.Open(testContext(t), root)
-	if err == nil || !strings.Contains(err.Error(), "tdd") {
-		t.Fatalf("error = %v, want injected catalog to reject tdd", err)
-	}
-}
-
-// TestLoaderOpenValidatesInjectedStandardWorkflowProfiles pins that the workflow
-// profile check reads the injected catalog rather than the package global. With
-// the global as its subject the check passed unconditionally in production and
-// in every test, so an injected catalog reached Project.standard unvalidated.
-// invariant: code-design/dependency-composition:sync-project-loader-wiring (TestLoaderOpenValidatesInjectedStandardWorkflowProfiles)
 func TestLoaderOpenValidatesInjectedStandardWorkflowProfiles(t *testing.T) {
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\n")
 	injectedValue := *catalog.Standard
 	injectedValue.Skills = maps.Clone(catalog.Standard.Skills)
 	broken := injectedValue.Skills["tdd"]
@@ -175,23 +104,13 @@ func TestLoaderOpenValidatesInjectedStandardWorkflowProfiles(t *testing.T) {
 	}
 }
 
-func TestLoaderOpenReturnsConformanceError(t *testing.T) {
-	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: [unknown]\nagents: []\n")
-	loader := NewLoaderWithoutRepository(config.Load, catalog.Standard, func(_ context.Context, root string) string { return root })
-	_, err := loader.Open(testContext(t), root)
-	if err == nil || !strings.Contains(err.Error(), "unknown") {
-		t.Fatalf("error = %v, want unknown skill", err)
-	}
-}
-
 func TestOpenFallsBackOnUnsafeResidentRoot(t *testing.T) {
 	root := gitfixture.InitRepo(t).Root()
 	external := t.TempDir()
 	if err := os.Symlink(external, filepath.Join(root, ".awf")); err != nil {
 		t.Fatal(err)
 	}
-	testsupport.WriteFile(t, filepath.Join(external, "config.yaml"), "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
+	testsupport.WriteFile(t, filepath.Join(external, "config.yaml"), "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -203,7 +122,7 @@ func TestOpenFallsBackOnUnsafeResidentRoot(t *testing.T) {
 
 func TestLoaderOpenDoesNotMutateStandardCatalog(t *testing.T) {
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\n")
 	injectedValue := *catalog.Standard
 	injectedValue.Skills = maps.Clone(catalog.Standard.Skills)
 	injectedValue.Agents = maps.Clone(catalog.Standard.Agents)

@@ -10,6 +10,18 @@ The cmd packages and their spec helpers implement the awf command surfaces and t
 
 ## Claims
 
+### `invariant: cli-creation-and-inventory`
+
+The CLI creates authored ADRs, plans, topics, and domains and lists fixed catalog inventory; no command selects catalog render membership.
+Origin: ADR-0254
+Backing: test
+
+### `invariant: domain-lifecycle-commands`
+
+`awf new domain` validates and scaffolds a configured domain without clobbering authored parts; `awf remove domain` prunes rendered output and reports authored residue as orphaned.
+Origin: ADR-0254
+Backing: test
+
 ### `invariant: adr-new-version-gated`
 
 awf new adr runs the binary-version compatibility gate before it reads or writes any project file.
@@ -28,12 +40,6 @@ Backing: test
 The awf help overview lists every group command's descendants at every depth beneath their parent with successively deeper indentation, so no command is reachable only by knowing to ask a parent for help.
 Origin: ADR-0159
 Revised-by: ADR-0210
-Backing: test
-
-### `invariant: cli-config-kinds`
-
-The enable and disable commands operate on exactly four kinds, skill, agent, doc, and domain, each mapping to its plural enable array in the config. The three catalog-backed kinds are validated against the catalog pool, while the freeform domain kind is validated through the config path-safety rule.
-Origin: ADR-0024
 Backing: test
 
 ### `invariant: completeness-advisory-nonfailing`
@@ -83,12 +89,6 @@ Origin: ADR-0210
 Revised-by: ADR-0217
 Backing: test
 
-### `invariant: check-disabled-child-disclosure`
-
-A disabled prose or memory child prints one non-failing note naming the child and its enablement knob, both through the repo aggregate and when invoked directly; an enabled child prints no disabled note.
-Origin: ADR-0210
-Backing: test
-
 ### `invariant: plan-read-command`
 
 The gated `awf read plan <plan> <P[.T]>` command resolves only an exact plan filename or stem under the configured plans directory and only canonical positive numeric phase or task selectors. Failures retain plan-owned selector identities and available exact values. Plan-v2 success writes the internal/plan-rendered ordered Applying then Context Decision and phase-owner outcome closure unchanged, with first-authored resolved-key deduplication, Applying precedence, task scope safety, whole-plan Definition-of-done exclusion, and preserved source; plan-v1 bytes remain unchanged. Blocking references fail while assignment notes remain non-blocking. It neither includes other phases nor mutates source.
@@ -104,9 +104,9 @@ Backing: test
 
 ### `invariant: repo-check-capability-plan`
 
-The direct drift, state, prose, and memory repository checks and their aggregate select from one closed capability plan. One operation loads working config once, conditionally opens one Project from that prepared config, derives one complete CheckReport and one working CurrentStateReport when selected, and captures one shared stage-0 index for enabled scanners; disabled or scanner-only selections acquire no unrelated capability. The aggregate preserves version and advisory order, executes selected steps in capability-plan order, and presents their findings in deterministic `errors` then `warnings` categories with source order preserved within each category rather than across categories. It continues after action errors and returns the first, while any preparation failure executes no step; the three working, current-state, and index universes never substitute for one another.
+The direct drift, state, prose, and memory repository checks and their aggregate select from one closed capability plan. One operation loads working config once, conditionally opens one Project from that prepared config, derives one complete CheckReport and one working CurrentStateReport when selected, and captures one shared stage-0 index whenever either always-on scanner is selected; scanner-only selections acquire no unrelated capability. The aggregate preserves version and advisory order, executes selected steps in capability-plan order, and presents their findings in deterministic `errors` then `warnings` categories with source order preserved within each category rather than across categories. It continues after action errors and returns the first, while any preparation failure executes no step; the three working, current-state, and index universes never substitute for one another.
 Origin: ADR-0223
-Revised-by: ADR-0234
+Revised-by: ADR-0234, ADR-0253
 Backing: test
 
 ### `invariant: single-os-exit`
@@ -131,12 +131,6 @@ Backing: test
 
 The glossary terseness notes that `awf check` prints for over-long term meanings are informational only and never change the command's exit code.
 Origin: ADR-0207
-Backing: test
-
-### `invariant: target-cli`
-
-The add, remove, and list target commands mutate and read the config targets array against the known-adapter set without routing through the kind/catalog/parts/orphan machinery, and enabling a target renders its output tree.
-Origin: ADR-0037
 Backing: test
 
 ### `invariant: typed-command-output-boundary`

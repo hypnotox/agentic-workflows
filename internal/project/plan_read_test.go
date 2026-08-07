@@ -47,9 +47,9 @@ Run the gate.
 - The configured plan reads exactly.
 `
 
-func TestProjectReadPlanUsesConfiguredDocsDirectory(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\ndocsDir: guide\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
-	path := filepath.Join(root, "guide/plans/2026-08-02-project-seam.md")
+func TestProjectReadPlanUsesFixedDocsDirectory(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: []\n")
+	path := filepath.Join(root, "docs/plans/2026-08-02-project-seam.md")
 	testsupport.WriteFile(t, path, projectPlanV1)
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -178,7 +178,7 @@ func TestProjectReadPlanV2SurfacesCorpusFailureBeforeProjection(t *testing.T) {
 }
 
 func TestProjectReadPlanPreservesTypedErrors(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: []\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs/plans/2026-08-02-project-seam.md"), projectPlanV1)
 	p, err := Open(testContext(t), root)
 	if err != nil {

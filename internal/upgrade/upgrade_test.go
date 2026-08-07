@@ -17,8 +17,6 @@ import (
 const sealedConfig = `prefix: example
 domains:
   - alpha
-currentState:
-  maxTopicsPerPath: 8
 `
 
 // sealedRepo builds a prepared-tree fixture: a git repo whose committed HEAD

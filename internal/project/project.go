@@ -75,6 +75,8 @@ var minVersionBySchema = map[int]string{
 	36: "0.31.0",
 	37: "0.31.0",
 	38: "0.31.0",
+	39: "0.31.0",
+	40: "0.31.0",
 }
 
 // ValidateSchemaMinimumVersion confirms that version is new enough to render a
@@ -196,8 +198,8 @@ func (l *Loader) Open(ctx context.Context, root string) (*Project, error) {
 	if err := catalog.ValidateWorkflowProfiles(l.standard); err != nil {
 		return nil, err
 	}
-	targets, err := resolveTargets(cfg.Targets)
-	if err != nil {
+	targets, err := resolveTargets(KnownTargets())
+	if err != nil { // coverage-ignore: configured-target validation succeeded and KnownTargets is exhaustively backed by built-in descriptor tests
 		return nil, err
 	}
 	p := &Project{
@@ -208,11 +210,7 @@ func (l *Loader) Open(ctx context.Context, root string) (*Project, error) {
 		standard: l.standard,
 		repo:     l.repo,
 	}
-	cat, err := p.effectiveCatalog()
-	if err != nil {
-		return nil, err
-	}
-	p.Cat = cat
+	p.Cat = l.standard
 	if err := p.validateAgainstCatalog(); err != nil {
 		return nil, err
 	}
@@ -355,16 +353,6 @@ func (p *Project) syncReportWith(ctx context.Context, seed *InitAuthority, opera
 			}
 		}
 	}
-	var localErr error
-	p.localReservations(op, func(path string, e error) {
-		if localErr == nil {
-			localErr = fmt.Errorf("local target %s: %w", path, e)
-		}
-	})
-	if localErr != nil {
-		return nil, nil, nil, localErr
-	}
-
 	// Prior lock, read before any write (top of this func): membership decides
 	// foreign (back up) vs awf-managed (overwrite silently), and drives pruning.
 	prior := map[string]bool{}
@@ -468,13 +456,6 @@ func (p *Project) syncReportWith(ctx context.Context, seed *InitAuthority, opera
 		}
 		want[f.Path] = true
 	}
-	// Plan reservations are non-writing local artifacts. They remain wanted so a
-	// managed-to-local transition cannot be pruned.
-	for _, node := range op.Nodes {
-		if node.Reservation {
-			want[node.Path] = true
-		}
-	}
 	// Prune files from the previous lock that are no longer produced, then remove
 	// every directory left empty - walking all ancestors deepest-first, not just the
 	// immediate parent, so dropping a target clears its whole tree (inv:
@@ -561,7 +542,7 @@ func (p *Project) deriveOperationState() (adr.Corpus, topic.Corpus, map[string]b
 // commit range. No config key supplies a base: the range is always explicit
 // (ADR-0127 Decision 3).
 func (p *Project) Audit(ctx context.Context, base, head string) ([]audit.Finding, int, error) {
-	s := audit.Resolve(p.Cfg.Audit)
+	s := audit.Resolve(config.AuditScopes(p.Cfg.Audit))
 	lay := p.layout()
 	generated := map[string]bool{}
 	lock, _, err := manifest.LoadOptional(p.lockPath())
@@ -640,5 +621,5 @@ func (p *Project) NewADR(ctx context.Context, title string) (string, error) {
 // NewPlan scaffolds a new plan under docsDir/plans from the rendered plans
 // template. Mirrors NewADR minus sequential numbering (ADR-0098).
 func (p *Project) NewPlan(title string) (string, error) {
-	return plan.NewFile(filepath.Join(p.Root, p.Cfg.DocsDir, "plans"), title)
+	return plan.NewFile(filepath.Join(p.Root, config.DocsDir, "plans"), title)
 }

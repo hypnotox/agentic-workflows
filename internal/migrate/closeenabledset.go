@@ -45,29 +45,29 @@ func closeEnabledSetWithEditor(root string, cat *catalog.Catalog, out *Changes, 
 		return err == nil && sc.Local
 	}
 
-	enabled := map[catalog.Node]bool{}
+	enabled := map[historicalNode]bool{}
 	for _, s := range cfg.Skills {
-		enabled[catalog.Node{Kind: "skill", Name: s}] = true
+		enabled[historicalNode{Kind: "skill", Name: s}] = true
 	}
 	for _, a := range cfg.Agents {
-		enabled[catalog.Node{Kind: "agent", Name: a}] = true
+		enabled[historicalNode{Kind: "agent", Name: a}] = true
 	}
 	for _, d := range cfg.Docs { // coverage-ignore: close-enabled-set test fixtures exercise skill/agent closure; docs are inert in this migration's enabled map
-		enabled[catalog.Node{Kind: "doc", Name: d}] = true
+		enabled[historicalNode{Kind: "doc", Name: d}] = true
 	}
 
 	// Step 1: drop dormant non-local doc-gated skills. Facts stay local until
 	// the atomic config edit proves that the planned changes took effect.
 	var (
-		drops   []catalog.Node
+		drops   []historicalNode
 		planned Changes
 	)
 	for _, s := range slices.Sorted(slices.Values(cfg.Skills)) {
 		req := cat.Skills[s].RequiresDoc
-		if req == "" || local("skills", s) || enabled[catalog.Node{Kind: "doc", Name: req}] {
+		if req == "" || local("skills", s) || enabled[historicalNode{Kind: "doc", Name: req}] {
 			continue
 		}
-		n := catalog.Node{Kind: "skill", Name: s}
+		n := historicalNode{Kind: "skill", Name: s}
 		delete(enabled, n)
 		drops = append(drops, n)
 		planned.Add(fmt.Sprintf("close-enabled-set: dropped dormant skill %q (its %q doc is disabled)\n", s, req))
@@ -76,10 +76,10 @@ func closeEnabledSetWithEditor(root string, cat *catalog.Catalog, out *Changes, 
 	// Step 2: additive fixed point over the direct requirement edges of every
 	// enabled, non-local skill and agent. Iteration is sorted so the collected
 	// change facts and resulting enable arrays are deterministic.
-	var adds []catalog.Node
+	var adds []historicalNode
 	for changed := true; changed; {
 		changed = false
-		nodes := slices.SortedFunc(maps.Keys(enabled), func(a, b catalog.Node) int {
+		nodes := slices.SortedFunc(maps.Keys(enabled), func(a, b historicalNode) int {
 			if a.Kind != b.Kind {
 				return strings.Compare(a.Kind, b.Kind)
 			}
@@ -89,7 +89,7 @@ func closeEnabledSetWithEditor(root string, cat *catalog.Catalog, out *Changes, 
 			if n.Kind == "doc" || local(n.Kind+"s", n.Name) {
 				continue
 			}
-			for _, r := range catalog.RequiresOf(cat, n) {
+			for _, r := range historicalRequiresOf(cat, n) {
 				if enabled[r] {
 					continue
 				}

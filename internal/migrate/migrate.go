@@ -73,7 +73,9 @@ var registry = []Migration{
 	{To: layerCatalogListsGeneration, Name: "layer-catalog-lists", Apply: treeOnly(applyLayerCatalogLists)},
 	{To: structuralHeadingsGeneration, Name: "structural-headings", Apply: treeOnly(applyStructuralHeadings)},
 	{To: 37, Name: "grounding-skill-backfill", Apply: treeOnly(applyGroundingSkillBackfill)},
-	{To: 38, Name: "retire-plan-resync-selection", Apply: treeOnly(applyRetirePlanResync)},
+	{To: 38, Name: "drop-gate-audit-settings", Apply: treeOnly(applyDropGateAuditSettings)},
+	{To: 39, Name: "drop-selection", Apply: treeOnly(applyDropSelection)},
+	{To: 40, Name: "retire-plan-resync-selection", Apply: treeOnly(applyRetirePlanResync)},
 }
 
 // treeOnly adapts a migration that only rewrites the config tree to the
@@ -116,6 +118,13 @@ var retiredKeyRemovals = []struct{ parent, key string }{
 	{"currentState", "topicCoverage"},
 	{"currentState", "topicFanout"},
 	{"currentState", "maxClaimsPerTopic"},
+	{"", "hooks"}, {"", "runner"},
+	{"proseGate", "enabled"}, {"memoryCite", "enabled"},
+	{"audit", "allowedTypes"}, {"audit", "subjectMaxLength"}, {"audit", "diffThreshold"},
+	{"audit", "dependencyManifests"}, {"audit", "domainDocStaleness"}, {"audit", "domainCodeStaleness"},
+	{"audit", "undocumentedDomain"}, {"audit", "plainPunctuation"}, {"audit", "uncommittedChanges"},
+	{"currentState", "maxTopicsPerPath"},
+	{"", "skills"}, {"", "agents"}, {"", "docs"}, {"", "targets"}, {"", "docsDir"},
 }
 
 // ConfigForCurrentSchema applies the config-byte portions of registered

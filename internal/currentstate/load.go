@@ -35,7 +35,7 @@ type Loaded struct {
 // single-universe load. It does not run Check or EvaluateCoverage; the command
 // layer applies eligibility filters and routes findings.
 func LoadFromTree(tree *snapshot.Tree, cfg *config.Config) (Loaded, error) {
-	records, sources, corpus, err := authorityFromTree(tree, cfg)
+	records, sources, corpus, err := authorityFromTree(tree)
 	if err != nil {
 		return Loaded{}, err
 	}
@@ -53,7 +53,7 @@ func LoadUniverseFromSelection(selection *snapshot.Selection, cfg *config.Config
 }
 
 func loadUniverseFromFiles(files []snapshot.File, cfg *config.Config) (Universe, error) {
-	records, sources, corpus, err := authorityFromFiles(files, cfg)
+	records, sources, corpus, err := authorityFromFiles(files)
 	if err != nil {
 		return Universe{}, err
 	}
@@ -64,12 +64,12 @@ func loadUniverseFromFiles(files []snapshot.File, cfg *config.Config) (Universe,
 	return Universe{ADRs: records, Sources: sources, Topics: topics.All()}, nil
 }
 
-func authorityFromTree(tree *snapshot.Tree, cfg *config.Config) ([]adr.ADR, map[string][]byte, adr.Corpus, error) {
-	return authorityFromFiles(tree.List(), cfg)
+func authorityFromTree(tree *snapshot.Tree) ([]adr.ADR, map[string][]byte, adr.Corpus, error) {
+	return authorityFromFiles(tree.List())
 }
 
-func authorityFromFiles(files []snapshot.File, cfg *config.Config) ([]adr.ADR, map[string][]byte, adr.Corpus, error) {
-	records, sources, err := adrsFromFiles(files, cfg.DocsDir)
+func authorityFromFiles(files []snapshot.File) ([]adr.ADR, map[string][]byte, adr.Corpus, error) {
+	records, sources, err := adrsFromFiles(files, config.DocsDir)
 	if err != nil {
 		return nil, nil, adr.Corpus{}, err
 	}

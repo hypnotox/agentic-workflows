@@ -22,12 +22,6 @@ Config validation rejects a domain name that contains a path separator (a forwar
 Origin: ADR-0148
 Backing: test
 
-### `invariant: duplicate-target-rejected`
-
-Configuration validation rejects a targets list that names the same target more than once, failing with a duplicate-target error.
-Origin: ADR-0148
-Backing: test
-
 ### `invariant: glob-migration-anchored`
 
 AnchorNoSlashGlobs rewrites every no-slash pattern in invariants.sources globs and audit.dependencyManifests to a leading double-star form, leaves already-slashed patterns untouched, and is idempotent.
@@ -36,21 +30,9 @@ Backing: test
 
 ### `invariant: hooks-commands-resolvable`
 
-Config validation for sync and check fails when the hooks singleton is enabled and `vars.gateCmd` is unset, and when the hooks singleton is enabled, the runner singleton is disabled, and either `vars.checkCmd` or `vars.commitGateCmd` is unset; each error names the exact var to set.
+Config validation for sync and check fails when `vars.gateCmd` is unset because the always-rendered hook payloads run the project gate; the error names the exact var to set. The always-rendered runner supplies every awf-verb fallback, so checkCmd and commitGateCmd carry no separate validation arm.
 Origin: ADR-0156
-Revised-by: ADR-0158, ADR-0210
-Backing: test
-
-### `invariant: local-doc-name-path-validated`
-
-A local doc name is accepted only as one or more lowercase-kebab segments separated by slashes, and is rejected for a parent-directory path escape, a leading, trailing, or empty segment, a .md suffix, or the reserved _base stem; skill and agent names remain flat.
-Origin: ADR-0148
-Backing: test
-
-### `invariant: local-name-validated`
-
-A local skill or agent name is rejected when it contains a path separator or a .. segment.
-Origin: ADR-0148
+Revised-by: ADR-0158, ADR-0210, ADR-0253
 Backing: test
 
 ### `invariant: pathglob-anchored`

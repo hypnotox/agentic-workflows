@@ -25,7 +25,6 @@ func loadCatalog(t *testing.T) *catalog.Catalog {
 	return cat
 }
 
-// sortedKeys returns m's keys in deterministic order.
 func sortedKeys[V any](m map[string]V) []string {
 	ks := make([]string, 0, len(m))
 	for k := range m {
@@ -35,35 +34,38 @@ func sortedKeys[V any](m map[string]V) []string {
 	return ks
 }
 
-// writeList appends a "key:\n  - v\n" YAML block to b.
-func writeList(b *strings.Builder, key string, vals []string) {
-	b.WriteString(key + ":\n")
-	for _, v := range vals {
-		b.WriteString("  - " + v + "\n")
-	}
+// fullCatalogConfigForTarget builds the fixed-target, full-catalog eval config.
+// The target argument remains at this test seam so callers can select which of
+// the two unconditionally rendered outputs they inspect.
+func fullCatalogConfigForTarget(_ *catalog.Catalog, _ string) string {
+	return "prefix: " + evalPrefix + "\nintegrationBranch: main\nvars:\n  gateCmd: the project's gate\n"
 }
 
-// fullCatalogConfig builds a .awf/config.yaml enabling every catalog skill,
-// agent, and doc - the deliberate inverse of the curated awf init default
-// (ADR-0022) - so the rendered set exercises every workflow-chain seam. The
-// enabled set is derived from the catalog (never hand-listed) so it cannot
-// silently rot as the catalog grows (ADR-0053).
-func fullCatalogConfigForTarget(cat *catalog.Catalog, target string) string {
-	var b strings.Builder
-	b.WriteString("prefix: " + evalPrefix + "\n")
-	b.WriteString("integrationBranch: main\n")
-	b.WriteString("targets:\n  - " + target + "\n")
-	writeList(&b, "skills", sortedKeys(cat.Skills))
-	writeList(&b, "agents", sortedKeys(cat.Agents))
-	// Only toggleable docs go in the docs: enable array; Mandatory singletons
-	// render unconditionally and must not be listed (ADR-0061).
-	writeList(&b, "docs", catalog.NonMandatoryDocNames(cat))
-	return b.String()
-}
-
-// syncFullCatalog scaffolds the Claude full-catalog fixture for focused evals.
+// syncFullCatalog scaffolds the full-catalog fixture for focused Claude evals.
 func syncFullCatalog(t *testing.T, cat *catalog.Catalog) string {
 	return syncFullCatalogForTarget(t, cat, "claude")
+}
+
+func targetNamed(t *testing.T, targets []project.Target, name string) project.Target {
+	t.Helper()
+	for _, target := range targets {
+		if target.Name == name {
+			return target
+		}
+	}
+	t.Fatalf("requested target %q not rendered in %#v", name, targets)
+	return project.Target{}
+}
+
+func catalogDocPath(root, name string, entry catalog.DocEntry) string {
+	if entry.AgentsDoc {
+		return filepath.Join(root, "AGENTS.md")
+	}
+	path := entry.Path
+	if path == "" {
+		path = name + ".md"
+	}
+	return filepath.Join(root, "docs", filepath.FromSlash(path))
 }
 
 // syncFullCatalogForTarget scaffolds a temp project with the full-catalog
@@ -109,20 +111,28 @@ func TestFullCatalogCoverage(t *testing.T) {
 			if err != nil {
 				t.Fatalf("open initialized project: %v", err)
 			}
-			if len(p.Targets) != 1 {
-				t.Fatalf("targets = %d, want one", len(p.Targets))
+			if len(p.Targets) != 2 {
+				t.Fatalf("targets = %d, want both built-in targets", len(p.Targets))
 			}
-			target := p.Targets[0]
-			for _, s := range sortedKeys(cat.Skills) {
-				path := filepath.Join(root, filepath.FromSlash(target.SkillPath(evalPrefix, s)))
-				if _, err := os.Stat(path); err != nil {
-					t.Errorf("catalog skill %q not rendered: %v", s, err)
+			for _, target := range p.Targets {
+				for _, s := range sortedKeys(cat.Skills) {
+					path := filepath.Join(root, filepath.FromSlash(target.SkillPath(evalPrefix, s)))
+					if _, err := os.Stat(path); err != nil {
+						t.Errorf("%s catalog skill %q not rendered: %v", target.Name, s, err)
+					}
+				}
+				for _, a := range sortedKeys(cat.Agents) {
+					path := filepath.Join(root, filepath.FromSlash(target.AgentPath(a)))
+					if _, err := os.Stat(path); err != nil {
+						t.Errorf("%s catalog agent %q not rendered: %v", target.Name, a, err)
+					}
 				}
 			}
-			for _, a := range sortedKeys(cat.Agents) {
-				path := filepath.Join(root, filepath.FromSlash(target.AgentPath(a)))
+			target := targetNamed(t, p.Targets, targetName)
+			for name, entry := range cat.Docs {
+				path := catalogDocPath(root, name, entry)
 				if _, err := os.Stat(path); err != nil {
-					t.Errorf("catalog agent %q not rendered: %v", a, err)
+					t.Errorf("catalog doc %q not rendered at %s: %v", name, path, err)
 				}
 			}
 			if drift, err := p.Check(testsupport.Context(t)); err != nil || len(drift) != 0 {

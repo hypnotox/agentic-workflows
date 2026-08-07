@@ -3,7 +3,7 @@
 <!-- awf:section gate -->
 ## The gate
 
-A single gate command runs the project's checks (tests, vet/lint, rendered-file drift, and any generated executable-extension lanes) and must be green before every commit. A red gate blocks the commit: fix the cause or revert. When Pi is enabled, keep strict TypeScript, protocol-parity, coverage, and minimum-runtime smoke tests in the same deterministic gate. If the project configures commit provenance, first preview intended history with `awf check commit-policy <revision-or-range>...`, then test the reference-transaction and pre-push payloads against disposable refs before adopting their stubs. Exercise stubs from linked worktrees with both absolute and relative `core.hooksPath`; local hooks are preflight, while remote policy remains the final boundary.
+A single gate command runs the project's checks (tests, vet/lint, rendered-file drift, and any generated executable-extension lanes) and must be green before every commit. A red gate blocks the commit: fix the cause or revert. For the always-rendered Pi target, keep strict TypeScript, protocol-parity, coverage, and minimum-runtime smoke tests in the same deterministic gate. If the project configures commit provenance, first preview intended history with `awf check commit-policy <revision-or-range>...`, then test the reference-transaction and pre-push payloads against disposable refs before adopting their stubs. Exercise stubs from linked worktrees with both absolute and relative `core.hooksPath`; local hooks are preflight, while remote policy remains the final boundary.
 <!-- awf:end -->
 
 <!-- awf:section tiers -->

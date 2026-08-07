@@ -12,8 +12,9 @@ Always-on and toggleable singleton outputs: ADR-system files, bootstrap and hook
 
 ### `invariant: adr-system-singletons-rendered`
 
-A full render emits docs/decisions/README.md and docs/decisions/template.md from their always-on singletons, and omits either one when its sidecar sets local: true.
+A full render emits docs/decisions/README.md and docs/decisions/template.md from their always-on singletons.
 Origin: ADR-0148
+Revised-by: ADR-0251
 Backing: test
 
 ### `invariant: bootstrap-config-tree-path`
@@ -30,9 +31,9 @@ Backing: test
 
 ### `invariant: hook-payloads-rendered`
 
-With the hooks singleton enabled, exactly five payloads render at .awf/hooks/pre-commit.sh, .awf/hooks/commit-msg.sh, .awf/hooks/pre-push.sh, .awf/hooks/pre-merge-commit.sh, and .awf/hooks/reference-transaction.sh; with it absent or disabled, no path under .awf/hooks/ renders.
+Exactly five payloads always render at .awf/hooks/pre-commit.sh, .awf/hooks/commit-msg.sh, .awf/hooks/pre-push.sh, .awf/hooks/pre-merge-commit.sh, and .awf/hooks/reference-transaction.sh.
 Origin: ADR-0148
-Revised-by: ADR-0202, ADR-0228
+Revised-by: ADR-0202, ADR-0228, ADR-0253
 Backing: test
 
 ### `invariant: commit-policy-hook-payloads`
@@ -50,9 +51,9 @@ Backing: test
 
 ### `invariant: plain-singleton-via-renderkind`
 
-Unless its sidecar sets `local: true`, every catalog document marked Mandatory that is neither the agents document nor generated output renders once to its catalog-derived fixed path with its catalog TemplateID and nonempty content through the shared plainSingletons table and the common renderKind path rather than a hand-rolled per-kind loop.
+Every catalog document that declares its own output path and is neither the agents document nor generated output renders once to its catalog-derived fixed path with its catalog TemplateID and nonempty content through the shared plainSingletons table and the common renderKind path rather than a hand-rolled per-kind loop.
 Origin: ADR-0148
-Revised-by: ADR-0169, ADR-0170, ADR-0171, ADR-0172
+Revised-by: ADR-0169, ADR-0170, ADR-0171, ADR-0172, ADR-0251
 Backing: test
 
 ### `invariant: shebang-rendered-executable`
@@ -63,8 +64,9 @@ Backing: test
 
 ### `invariant: singleton-kinds-complete`
 
-The runner is a dedicated config-tree render block rather than a catalog docs entry, so it is excluded from the singleton-kind set, and the unified-doc-model completeness check asserts that set equals exactly the mandatory doc entries.
+The runner is a dedicated config-tree render block rather than a catalog docs entry, so it is excluded from the singleton-kind set, and the unified-doc-model completeness check asserts that set equals exactly the catalog documents declaring their own output paths.
 Origin: ADR-0148
+Revised-by: ADR-0251
 Backing: test
 
 ### `invariant: resident-output-preservation`

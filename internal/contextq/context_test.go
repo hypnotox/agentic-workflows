@@ -19,8 +19,6 @@ func testContext(t *testing.T) context.Context { return testsupport.Context(t) }
 
 const ctxConfig = `prefix: example
 integrationBranch: main
-skills: [tdd]
-agents: [code-reviewer]
 domains: [alpha, core]
 currentState:
   sources:
@@ -189,7 +187,7 @@ func TestStagedContextInputErrors(t *testing.T) {
 	for _, tc := range []struct {
 		name, cfg string
 		extra     map[string]string
-	}{{"unknown-target", ctxConfig + "targets: [unknown]\n", nil}, {"bad-local", strings.Replace(ctxConfig, "skills: [tdd]", "skills: [mine]", 1), map[string]string{".awf/skills/mine.yaml": "local: [bad"}}, {"bad-topic", ctxConfig, map[string]string{".awf/topics/parts/alpha/one/current-state.md": "broken"}}} {
+	}{{"unknown-config-key", ctxConfig + "unknown: true\n", nil}, {"bad-sidecar", ctxConfig, map[string]string{".awf/skills/tdd.yaml": "data: [bad"}}, {"bad-topic", ctxConfig, map[string]string{".awf/topics/parts/alpha/one/current-state.md": "broken"}}} {
 		t.Run(tc.name, func(t *testing.T) {
 			p := ctxRepo(t, ctxConfig, ctxFiles())
 			if err := os.WriteFile(filepath.Join(p.Root, ".awf", "config.yaml"), []byte(tc.cfg), 0o644); err != nil {
@@ -247,19 +245,16 @@ func TestContextStatePropagatesWorkingSnapshotFailure(t *testing.T) {
 func TestContextUniverseSetupErrors(t *testing.T) {
 	t.Parallel()
 	bad := ctxRepo(t, ctxConfig, ctxFiles())
-	if err := os.WriteFile(filepath.Join(bad.Root, ".awf", "config.yaml"), []byte(strings.Replace(ctxConfig, "skills: [tdd]", "skills: [mine]", 1)), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	testsupport.WriteFile(t, filepath.Join(bad.Root, ".awf", "skills", "mine.yaml"), "local: [bad")
+	testsupport.WriteFile(t, filepath.Join(bad.Root, ".awf", "skills", "tdd.yaml"), "data: [bad")
 	if _, err := bad.ContextState(testContext(t)); err == nil {
-		t.Fatal("malformed catalog accepted")
+		t.Fatal("malformed sidecar accepted")
 	}
 	p := ctxRepo(t, ctxConfig, ctxFiles())
-	if err := os.WriteFile(filepath.Join(p.Root, ".awf/config.yaml"), []byte(ctxConfig+"targets: [unknown]\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(p.Root, ".awf/config.yaml"), []byte(ctxConfig+"unknown: true\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := p.ContextState(testContext(t)); err == nil {
-		t.Fatal("invalid target accepted")
+		t.Fatal("unknown config key accepted")
 	}
 }
 
@@ -297,16 +292,10 @@ func snapshotTreeForContext(t *testing.T, root string) string {
 
 const uncoveredConfig = `prefix: example
 integrationBranch: main
-skills:
-  - tdd
-agents:
-  - code-reviewer
 domains:
   - alpha
 contextIgnore:
   - .awf/**
-currentState:
-  maxTopicsPerPath: 8
 `
 
 func uncoveredFiles() map[string]string {
@@ -362,7 +351,7 @@ func TestUncovered(t *testing.T) {
 // whole-repo scan folds every unowned path up to ".".
 func TestUncoveredCollapsesToRoot(t *testing.T) {
 	t.Parallel()
-	cfg := "prefix: example\nintegrationBranch: main\ndomains:\n  - alpha\ncontextIgnore:\n  - .awf/**\ncurrentState:\n  maxTopicsPerPath: 8\n"
+	cfg := "prefix: example\nintegrationBranch: main\ndomains:\n  - alpha\ncontextIgnore:\n  - .awf/**\n"
 	files := map[string]string{
 		".awf/domains/alpha.yaml": "paths:\n  - nonexistent/**\n",
 		"top.txt":                 "x\n",
