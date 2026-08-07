@@ -4,7 +4,7 @@ slug: unconditional-gates-and-audit-rules
 status: Implementing
 date: 2026-08-06
 ---
-# ADR-unconditional-gates-and-audit-rules: Unconditional Gates And Audit Rules
+# ADR-0253: Unconditional Gates And Audit Rules
 
 
 ## Context

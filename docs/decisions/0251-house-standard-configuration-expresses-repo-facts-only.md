@@ -4,7 +4,7 @@ slug: house-standard-configuration-expresses-repo-facts-only
 status: Implementing
 date: 2026-08-06
 ---
-# ADR-house-standard-configuration-expresses-repo-facts-only: House Standard: Configuration Expresses Repo Facts Only
+# ADR-0251: House Standard: Configuration Expresses Repo Facts Only
 
 
 ## Context

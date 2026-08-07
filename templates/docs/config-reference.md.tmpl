@@ -5,7 +5,9 @@ Every key an adopter can set in `.awf/config.yaml`, artifact sidecars, and `vars
 meaning, default, availability, and this project's current state. This file is
 generated per-project by `awf render`: edit `.awf/` and re-render; never edit this file.
 For how to apply overrides, see the working-with-awf guide; for ad-hoc queries, run
-`awf config [<key-or-var>]`.
+`awf config [<key-or-var>]`. Configspec and catalog descriptions, `.awf/config.yaml`, relevant
+sidecars, and effective output state are distinct authority layers. Only this declared intro
+section is convention-part editable; field semantics remain in this generated reference.
 <!-- awf:end -->
 
 {{ with .commitPolicy }}This checkout currently authors the optional `commitPolicy` block. Its values are

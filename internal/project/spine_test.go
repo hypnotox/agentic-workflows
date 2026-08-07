@@ -361,6 +361,10 @@ func TestImplementerAgent(t *testing.T) {
 		"commits disabled",
 		"act as a helper and say so in your report",
 		"Your brief is the whole job",
+		"In phase-owner mode, an omitted path alone is not a reason to stop",
+		"report every added path as a deviation",
+		"In helper mode, never modify an unassigned path",
+		"necessity to the parent so it can preserve the ownership partition",
 		"adding an abstraction with no current call site",
 		"Its skill catalog and workflow-chain routing do not bind you",
 		"no workflow skill, create or resume no effort, and write to no working-memory file",
@@ -617,6 +621,10 @@ func TestAuthorityGuidedImplementationAutonomy(t *testing.T) {
 		"approved outcome, material scope, settled durable boundaries, and required verification",
 		"Diagnose a source contradiction, correctness or safety concern, review finding, blocker symptom, or failed check",
 		"reasoned non-mechanical deviation records its changed detail, rationale, governing authority, and verification",
+		"commit-capable phase owner may add an omitted path",
+		"necessary to complete the approved outcome",
+		"reports every added path as a reasoned deviation",
+		"An omitted path alone is not a reason to stop",
 		"Do not replan the approved outcome, broaden material scope, overturn settled structural choices, weaken an oracle, or perform unrelated cleanup",
 		"authorities conflict or must change",
 		"approved outcome or material scope must change",
@@ -821,6 +829,12 @@ func TestMaintainableCodeSubagentContract(t *testing.T) {
 		"Resolve implementation findings autonomously",
 		"applicable ADRs, current-state claims, and repository authority",
 		"reasoned non-mechanical deviation records its changed detail, rationale, governing authority, and verification",
+		"commit-capable phase owner may add an omitted path",
+		"reports every added path as a reasoned deviation",
+		"An omitted path alone is not a reason to stop",
+		"report every added path as a deviation",
+		"In helper mode, never modify an unassigned path",
+		"necessity to the parent so it can preserve the ownership partition",
 		"Do not replan the approved outcome, broaden material scope",
 		"or perform unrelated cleanup",
 		"`deviations: none` or each deviation with changed detail, rationale, governing authority, and verification",
@@ -980,6 +994,7 @@ func TestManagedContextCallersChooseProjection(t *testing.T) {
 }
 
 // invariant: rendering/workflow-skill-templates:authority-guided-implementation-autonomy (TestConditionalVerifyPass)
+// invariant: rendering/workflow-skill-templates:authority-guided-review-remediation (TestConditionalVerifyPass)
 // TestConditionalVerifyPass pins ADR-0197 item 3: the four reviewing skills
 // dispatch the verify pass only for reasoned or user-decision fixes, a
 // solely-mechanical round records the skip, and a fix-free round dispatches
@@ -2550,5 +2565,256 @@ func TestGlossaryTemplate(t *testing.T) {
 	}
 	if strings.Contains(out, "No terms recorded yet") {
 		t.Errorf("placeholder must not render alongside a populated table:\n%s", out)
+	}
+}
+
+// invariant: rendering/workflow-skill-templates:authority-guided-review-remediation (TestAuthorityGuidedReviewRemediation)
+// TestAuthorityGuidedReviewRemediation pins the authority-guided review
+// remediation boundary: the shared review spine stays the single semantic home
+// of finding classification, one variable-free partial carries the
+// dispatcher-side routing obligation into all four reviewing skills, plan
+// resync's ADR return edge covers residual findings, and the retired automatic
+// residual escalation is gone from every source and projection.
+func TestAuthorityGuidedReviewRemediation(t *testing.T) {
+	const (
+		stopCriterion   = "every viable correct remediation would contradict or change a settled user-approved design or decision, or would require an unauthorized change to an active current-state claim"
+		nonTriggers     = "competing clean options, severity, structural character, and the fact that a finding survived a prior correction"
+		noLoopException = "sole exception to the same-artifact no-loop rule"
+		residualOpening = "Diagnose every residual finding under the authority-guided remediation boundary above"
+	)
+
+	partial, err := fs.ReadFile(templates.FS, "partials/review-remediation-autonomy.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(partial), "{{") {
+		t.Errorf("shared review-remediation partial must remain variable-free:\n%s", partial)
+	}
+	for _, line := range strings.Split(string(partial), "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "#") {
+			t.Errorf("shared review-remediation partial must not interrupt consumer structure with heading %q", line)
+		}
+	}
+	// Exactly the three tokens ExpandIncludes rejects inside a partial.
+	for _, token := range []string{"awf:section", "awf:end", "awf:include"} {
+		if strings.Contains(string(partial), token) {
+			t.Errorf("shared review-remediation partial carries the rejected token %q", token)
+		}
+	}
+
+	retired := []string{
+		"Escalate any residual structural findings as `user-decision` items",
+		"the step-2 return edge applies to initial-dispatch findings only",
+		// Pinned from the second character: lowercase in the plan and ADR
+		// skills, capitalized in resync.
+		"o not loop further without explicit user direction",
+		"a genuine design fork or unresolved ambiguity that should not be decided unilaterally",
+		"present a genuine unresolved `user-decision` fork or consensus deviation and stop",
+		"(return edge, step 2)",
+	}
+
+	dispatcherWants := []string{
+		"Apply mechanical corrections directly and reasoned corrections with a concise rationale, autonomously",
+		"single semantic home",
+		"routes it rather than redefining it",
+		"route it through the existing grounded-design or ADR workflow",
+		"pauses only at that workflow's mandatory approval boundary",
+		"Exactly one fresh verify-pass dispatch is retained",
+		"without dispatching another same-artifact review loop",
+		"A consensus deviation remains a user decision.",
+		"A review finding stops the workflow only when",
+		// The reconciling clause that keeps this partial from reading as a
+		// rival to an implementation stop list. Pinned with its full referent:
+		// a positional "adjacent list" wording dangles in the six skill
+		// outputs that never render implementation-autonomy beside it.
+		"is not the unresolved design fork that an implementation stop list names",
+		stopCriterion,
+		nonTriggers,
+		noLoopException,
+		// The stop criterion literal ends before the citation directive, so
+		// pin the directive with enough of its left context to bind it to the
+		// stop sentence rather than to any other authority mention.
+		"active current-state claim; cite the affected authority",
+	}
+
+	// The pinned non-trigger enumeration deliberately starts at "competing
+	// clean options" because the leading word's case differs between the two
+	// prose homes, so assert the dropped word separately rather than leaving
+	// the claim's ambiguity clause proven by nothing.
+	assertNamesAmbiguity := func(t *testing.T, label, out string) {
+		t.Helper()
+		if !strings.Contains(strings.ToLower(out), "ambiguity") {
+			t.Errorf("%s never names ambiguity as a non-trigger", label)
+		}
+	}
+
+	// Every Latitude: exact routing replacement needs a positive pin. Absence
+	// of the retired predecessor alone lets the replacement be degraded back
+	// toward an unconditioned escalation without turning the suite red.
+	routingWants := map[string]string{
+		"reviewing-plan":        "present to the user with the cited affected authority and wait",
+		"reviewing-adr":         "present to the user with the cited affected authority and wait",
+		"reviewing-plan-resync": "present to the user with the cited affected authority and wait",
+		"reviewing-impl":        "present a `user-decision` finding with the cited affected authority, or a consensus deviation, and stop",
+	}
+
+	skillVariants := map[string]map[string]any{
+		"configured": {
+			"prefix": "example", "vars": map[string]any{"gateCmd": "./x gate"}, "layout": testLayout(),
+			"commitScopes":        "`docs(plans)`",
+			"skills":              map[string]bool{"effort-workflow": true, "adr-lifecycle": true, "reviewing-impl": true},
+			"targetSubagentTools": true,
+		},
+		"empty": {
+			"prefix": "example", "vars": map[string]any{}, "layout": testLayout(),
+			"data": map[string]any{}, "skills": map[string]bool{},
+		},
+	}
+
+	for _, skill := range []string{"reviewing-plan", "reviewing-adr", "reviewing-plan-resync", "reviewing-impl"} {
+		raw, err := fs.ReadFile(templates.FS, "skills/"+skill+"/SKILL.md.tmpl")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := strings.Count(string(raw), "<!-- awf:include review-remediation-autonomy -->"); got != 1 {
+			t.Errorf("skills/%s has %d review-remediation includes, want 1", skill, got)
+		}
+		for _, reject := range retired {
+			if strings.Contains(string(raw), reject) {
+				t.Errorf("skills/%s source retains retired escalation phrase %q", skill, reject)
+			}
+		}
+		for variant, data := range skillVariants {
+			out := renderSkillGolden(t, skill, data)
+			assertNoLeaks(t, out)
+			for _, want := range dispatcherWants {
+				if !strings.Contains(out, want) {
+					t.Errorf("%s/%s missing dispatcher clause %q", variant, skill, want)
+				}
+			}
+			for _, reject := range retired {
+				if strings.Contains(out, reject) {
+					t.Errorf("%s/%s retains retired escalation phrase %q", variant, skill, reject)
+				}
+			}
+			assertNamesAmbiguity(t, variant+"/"+skill, out)
+			// The resync step-4 sentence carries this same opening, so the
+			// pin applies to all four skills without an exclusion.
+			if !strings.Contains(out, residualOpening) {
+				t.Errorf("%s/%s missing residual re-review replacement %q", variant, skill, residualOpening)
+			}
+			if want := routingWants[skill]; !strings.Contains(out, want) {
+				t.Errorf("%s/%s missing routing replacement %q", variant, skill, want)
+			}
+			if skill == "reviewing-plan-resync" {
+				for _, want := range []string{
+					"a finding, initial or residual, implicates the ADR itself",
+					"the amendable decision text is wrong",
+					"while the implicated ADR remains amendable",
+					"a new resync invocation follows under its own one-verify-pass bound",
+					"whether it surfaces on initial dispatch or in the verify pass",
+				} {
+					if !strings.Contains(out, want) {
+						t.Errorf("%s/%s missing widened resync return edge %q", variant, skill, want)
+					}
+				}
+			}
+		}
+	}
+
+	reviewerData := map[string]map[string]any{
+		"adr-reviewer": {
+			"prefix": "example",
+			"vars": map[string]any{
+				"invariantTestPath": "internal/adrtools/invariants_test.go",
+				"activeMdRegenCmd":  "go test ./internal/adrtools/",
+			},
+			"layout": map[string]any{"adrDir": "docs/decisions", "indexMd": "docs/decisions/INDEX.md"},
+			"data": map[string]any{
+				"focusItems": []map[string]any{
+					{
+						"name":        "context-grounding",
+						"description": "Verify factual claims in the Context section against named files, ADRs, and state docs; flag stale claims and drift since brainstorm.",
+					},
+				},
+			},
+		},
+		"plan-reviewer": {
+			"prefix": "example",
+			"vars":   map[string]any{},
+			"layout": map[string]any{"plansDir": "docs/plans"},
+			"data": map[string]any{
+				"focusItems": []map[string]any{
+					{
+						"name":        "convention-alignment-extra",
+						"description": "Verify commit subjects follow Conventional Commits; flag subjects over 72 chars or missing scope.",
+					},
+				},
+				"docCurrencyItems": []map[string]any{
+					{"check": ".awf/topics/parts/<domain>/<topic>/current-state.md - update when plan shifts current authority"},
+					{"check": "docs/workflow.md - update when plan changes a workflow rule"},
+					{"check": "AGENTS.md - update when plan changes chain, principles, or invariants"},
+					{"check": "docs/decisions/INDEX.md - regenerate when plan flips an ADR status"},
+				},
+			},
+		},
+		"code-reviewer": {
+			"prefix": "example",
+			"vars":   map[string]any{},
+			"data": map[string]any{
+				"correctnessTraps": []map[string]any{
+					{"description": "Check that error return paths use %w wrapping so callers can inspect the error chain."},
+					{"description": "Flag nil pointer dereferences in struct methods where the receiver may be nil."},
+				},
+				"docCurrencyItems": []map[string]any{
+					{"check": ".awf/topics/parts/<domain>/<topic>/current-state.md - update when the implementation shifts current authority"},
+					{"check": "docs/decisions/INDEX.md - regenerate when ADR status flips to Implemented"},
+				},
+			},
+		},
+	}
+	reviewerWants := []string{
+		stopCriterion,
+		nonTriggers,
+		"cite the affected authority and name the deviation it would require",
+		"is not an unauthorized deviation merely because its proposed future state differs from current state",
+		"would make a new load-bearing choice material outside approved durable boundaries",
+		"a consensus deviation is a `user-decision` under the Consensus adherence rule below",
+		// Pin the surviving classification bullets by their own text. The
+		// bare tokens `mechanical` and `reasoned` also occur in the finding
+		// schema, so asserting those alone lets a whole bullet be deleted
+		// while the suite stays green.
+		"- **mechanical**: the answer is unambiguous from existing rules, docs, or code",
+		"- **reasoned**: a good answer can be reached by reading the relevant code or docs",
+		"user-decision",
+		"suggested_fix",
+	}
+	for _, name := range []string{"adr-reviewer", "plan-reviewer", "code-reviewer"} {
+		outs := map[string]string{
+			"populated": renderAgentGolden(t, name, reviewerData[name]),
+			"empty": renderAgentGolden(t, name, map[string]any{
+				"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{},
+			}),
+		}
+		for variant, out := range outs {
+			assertNoLeaks(t, out)
+			// The claim predicates the ambiguity non-trigger on the shared
+			// spine, whose leading "Ambiguity," reaches only these agent
+			// bodies. A bare token is not enough here: code-reviewer names
+			// ambiguity elsewhere, so pin the spine sentence's own opening.
+			if !strings.Contains(out, "Ambiguity, competing clean options") {
+				t.Errorf("%s/%s spine paragraph no longer opens the non-trigger list with ambiguity", variant, name)
+			}
+			for _, want := range reviewerWants {
+				if !strings.Contains(out, want) {
+					t.Errorf("%s/%s missing spine clause %q", variant, name, want)
+				}
+			}
+			for _, reject := range retired {
+				if strings.Contains(out, reject) {
+					t.Errorf("%s/%s retains retired escalation phrase %q", variant, name, reject)
+				}
+			}
+		}
 	}
 }

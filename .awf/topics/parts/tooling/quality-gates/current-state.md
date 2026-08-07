@@ -7,7 +7,7 @@ The Pi container lane enforces 100% line, function, and branch coverage for ever
 ### `invariant: gates-always-run`
 
 The prose and memory-citation repository checks always scan, retain their configured exemption lists, and expose no disabled state or enablement key.
-Origin: ADR-unconditional-gates-and-audit-rules
+Origin: ADR-0253
 Backing: test
 
 ### `invariant: coverage-gate-100`
@@ -44,7 +44,7 @@ Backing: test
 
 The check repo memory command reports every concrete `.awf/efforts/<slug>/memory.md` reference in scannable staged decision and plan text and exits non-zero on any finding outside memoryCite.exemptions; check staged commit applies the same slash-or-backslash detector to the git-cleaned message body without exemptions. Prose, links, code spans, and normalized relative spellings are detected without reading resident files, while the bare `.awf/efforts/` directory and an angle-bracket slug placeholder pass.
 Origin: ADR-0158
-Revised-by: ADR-0159, ADR-0175, ADR-0210, ADR-unconditional-gates-and-audit-rules
+Revised-by: ADR-0159, ADR-0175, ADR-0210, ADR-0253
 Backing: test
 
 ### `invariant: mutants-timeout-untrusted`
@@ -64,7 +64,7 @@ Backing: test
 
 In an adopted tree that is not a git repository, the check repo prose command always scans and refuses with an error about being unable to read staged files.
 Origin: ADR-0119
-Revised-by: ADR-0159, ADR-0210, ADR-unconditional-gates-and-audit-rules
+Revised-by: ADR-0159, ADR-0210, ADR-0253
 Backing: test
 
 ### `invariant: prose-gate-tracked-file-scan`

@@ -5,18 +5,18 @@ These packages load, validate, and describe the .awf config tree and the anchore
 ### `rule: config-expresses-repo-facts-only`
 
 A configuration key exists only for a fact whose steady-state value differs between the repositories awf serves. Preferences about awf behavior and transitional adoption differences are fixed in awf rather than exposed as configuration.
-Origin: ADR-house-standard-configuration-expresses-repo-facts-only
+Origin: ADR-0251
 
 ### `invariant: no-artifact-selection-surface`
 
 The live config schema exposes no skills, agents, docs, targets, or docsDir fields and no sidecar local field; strict parsing rejects every retired field rather than honoring it.
-Origin: ADR-house-standard-configuration-expresses-repo-facts-only
+Origin: ADR-0251
 Backing: test
 
 ### `invariant: root-sidecar-keys-rejected`
 
 The strict decoder rejects data or sections at the root of config.yaml because those keys belong only in sidecars.
-Origin: ADR-house-standard-configuration-expresses-repo-facts-only
+Origin: ADR-0251
 Backing: test
 
 ### `invariant: audit-no-base-branch-config`
@@ -42,7 +42,7 @@ Backing: test
 
 The live .awf/config.yaml is constructed through internal/config via MarshalSkeleton and mutated through its scalar and mapping editors, while frozen migrations retain the array editors for historical shapes; all share one encoding funnel at a two-space indent, so no other package hand-rolls config.yaml serialization.
 Origin: ADR-0026
-Revised-by: ADR-0144, ADR-0159, ADR-0202, ADR-house-standard-configuration-expresses-repo-facts-only
+Revised-by: ADR-0144, ADR-0159, ADR-0202, ADR-0251
 Backing: test
 
 ### `invariant: integration-branch-explicit`
@@ -81,7 +81,7 @@ Backing: test
 
 A sidecar dataDefaults map accepts only boolean controls whose keys name same-key list defaults declared by that catalog artifact. Absence or true keeps the default and false suppresses it; unknown, non-list, differently keyed specialized, and non-boolean entries are rejected, and a present catalog-backed project list value must be a list rather than null or another type.
 Origin: ADR-0236
-Revised-by: ADR-house-standard-configuration-expresses-repo-facts-only
+Revised-by: ADR-0251
 Backing: test
 
 ### `invariant: tag-coverage-note`

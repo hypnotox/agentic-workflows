@@ -48,8 +48,14 @@ data:
       meaning: "An ADR's operation declaration, each operation frozen once an Applied event references it: `None.` or a list of add, update, and remove entries naming qualified claim ids. Each appended batch travels with exactly its claim mutations."
       domains: [adr-system]
     - term: current-state topic
-      meaning: "A domain-owned document of prose plus a final claims section, authored under `.awf/topics/parts/` and rendered under the docs tree. Its claims, not the ADR corpus, are what `awf context`, `awf check`, and `awf topic` read."
+      meaning: "A domain-owned document whose strict metadata and authored current-state part are paired authorities, rendered under the docs tree. Its claims, not the ADR corpus, are what `awf context`, `awf check`, and `awf topic` read."
       domains: [invariants]
+    - term: source marker
+      meaning: "An informational `awf:source` comment on generated documentation that points to concise reader-facing authorities without acting as an edit boundary or exhaustive dependency list."
+      domains: [rendering]
+    - term: regeneration-derived document
+      meaning: "A managed document recomputed from repository or catalog state rather than only its template and sidecar; drift is checked by regeneration."
+      domains: [rendering]
     - term: context relationship
       meaning: "A marker-kind association between a selected file or directory and a qualified claim: `State`, `Touches`, or `Proofs`. A file's relationships come only from its own markers; a directory keeps a separate union across included descendants."
       domains: [tooling]

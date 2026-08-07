@@ -7,11 +7,449 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
 	"unicode/utf8"
 )
+
+// invariant: tooling/effort-management:memory-skeleton-purpose-partition (TestMemoryDisplayDiffUsesPiRows)
+func TestMemoryDisplayDiffUsesPiRows(t *testing.T) {
+	diff := memoryDiff([]byte("one\ntwo\nthree\n"), []byte("one\nTWO\nthree\n"), 6)
+	if diff.Text != " 7 one\n-8 two\n+8 TWO\n 9 three\n" || diff.FirstChangedLine == nil || *diff.FirstChangedLine != 8 || diff.Truncated {
+		t.Fatalf("diff = %#v", diff)
+	}
+	for _, change := range []struct{ before, after string }{
+		{"one\n", "one\ntwo\n"},
+		{"one\ntwo\n", "one\n"},
+		{"a\nold\nz\n", "a\nnew\nz\n"},
+		{"a\r\nold\r\nz", "a\r\nnew\r\nz"},
+		{"final", "final\n"},
+		{"final\n", "final"},
+	} {
+		got := memoryDiff([]byte(change.before), []byte(change.after), 0)
+		if got.Text == "" || got.FirstChangedLine == nil || *got.FirstChangedLine < 1 || strings.Contains(got.Text, "\r") {
+			t.Fatalf("display diff=%#v", got)
+		}
+	}
+
+	// Pi parses each row with /^([+-\s])(\s*\d*)\s(.*)$/, so the omission row is
+	// spelled out here rather than read back from the helper under test: a kind
+	// byte, an empty right-aligned number field, one space, and an ellipsis.
+	for _, want := range []struct {
+		width int
+		row   string
+	}{{1, "   ..."}, {2, "    ..."}, {5, "       ..."}} {
+		if got := omissionDisplayRow(want.width); got != want.row || !piDisplayRow.MatchString(got) {
+			t.Fatalf("omission row width %d = %q, want %q matching %s", want.width, got, want.row, piDisplayRow)
+		}
+	}
+
+	before := "old\n" + strings.Repeat("context\n", 12) + "tail old\n"
+	after := "new\n" + strings.Repeat("context\n", 12) + "tail new\n"
+	separated := memoryDiff([]byte(before), []byte(after), 0)
+	// Unjoinable hunks drop only context the fixed window never selected, so the
+	// complete diff must not claim the bounding loss truncated reports.
+	if strings.Count(separated.Text, "    ...\n") != 1 || separated.Truncated {
+		t.Fatalf("separated diff=%#v", separated)
+	}
+
+	// The context window is pinned from below as well as above: exactly four
+	// unchanged rows surround a lone change in a document with ample context.
+	window := strings.Repeat("ctx\n", 20)
+	var want strings.Builder
+	for line := 17; line <= 20; line++ {
+		fmt.Fprintf(&want, " %d ctx\n", line)
+	}
+	want.WriteString("-21 old\n+21 new\n")
+	for line := 22; line <= 25; line++ {
+		fmt.Fprintf(&want, " %d ctx\n", line)
+	}
+	single := memoryDiff([]byte(window+"old\n"+window), []byte(window+"new\n"+window), 0)
+	if single.Text != want.String() || single.Truncated {
+		t.Fatalf("context window=%q, want %q", single.Text, want.String())
+	}
+}
+
+// piDisplayRow is Pi's own parseDiffLine grammar, transcribed.
+var piDisplayRow = regexp.MustCompile(`^([-+\s])(\s*\d*)\s(.*)$`)
+
+func TestMemoryDisplayDiffBoundsCompleteRows(t *testing.T) {
+	long := strings.Repeat("é", maxMemoryDiffBytes)
+	diff := memoryDiff([]byte(long+"\n"), []byte("changed "+long+"\n"), 0)
+	if !diff.Truncated || len(diff.Text) > maxMemoryDiffBytes || !utf8.ValidString(diff.Text) || !strings.Contains(diff.Text, "-1 [content elided]\n") || !strings.Contains(diff.Text, "+1 [content elided]\n") {
+		t.Fatalf("long-line diff=%#v bytes=%d", diff, len(diff.Text))
+	}
+
+	rows := make([]displayDiffRow, 12001)
+	for i := range rows {
+		kind := byte(' ')
+		changed := i%2 == 0
+		if changed {
+			kind = '+'
+		}
+		rows[i] = displayDiffRow{text: displayRow(kind, i+1, 5, strings.Repeat("x", 16)), changed: changed}
+	}
+	text, truncated := boundedDisplayRows(rows, 5)
+	if !truncated || len(text) > maxMemoryDiffBytes || !utf8.ValidString(text) || !strings.Contains(text, "+    1 ") || !strings.Contains(text, "+12001 ") || !strings.Contains(text, "       ...\n") {
+		t.Fatalf("aggregate diff truncated=%t bytes=%d head/tail/omission=%t/%t/%t", truncated, len(text), strings.Contains(text, "+    1 "), strings.Contains(text, "+12001 "), strings.Contains(text, "       ...\n"))
+	}
+	for _, line := range strings.Split(strings.TrimSuffix(text, "\n"), "\n") {
+		if line == "       ..." {
+			continue
+		}
+		if len(line) < 8 || (line[0] != '+' && line[0] != '-' && line[0] != ' ') {
+			t.Fatalf("incomplete display row %q", line)
+		}
+	}
+
+	oversizedContext := []displayDiffRow{{text: strings.Repeat("x", maxMemoryDiffBytes+1)}, {text: "+1 changed", changed: true}}
+	if got, cut := boundedDisplayRows(oversizedContext, 1); !cut || !strings.Contains(got, "+1 changed") || !strings.Contains(got, "   ...") {
+		t.Fatalf("oversized context text=%q truncated=%t", got, cut)
+	}
+	nearLimit := strings.Repeat("x", maxMemoryDiffBytes-1)
+	if _, ok := renderSelectedDisplayRows([]displayDiffRow{{text: nearLimit}, {text: "omitted"}, {text: "selected"}}, []bool{true, false, true}, 1); ok {
+		t.Fatal("interior omission overflow accepted")
+	}
+	if _, ok := renderSelectedDisplayRows([]displayDiffRow{{text: nearLimit}, {text: "omitted"}}, []bool{true, false}, 1); ok {
+		t.Fatal("trailing omission overflow accepted")
+	}
+}
+
+// referenceBoundedDisplayRows is the per-candidate selection the incremental
+// byte accounting replaced: it re-rendered every row for every candidate. It
+// stays here as the oracle for byte-identical output.
+func referenceBoundedDisplayRows(rows []displayDiffRow, width int) (string, bool) {
+	const marker = "[content elided]"
+	normalized := append([]displayDiffRow(nil), rows...)
+	available := make([]bool, len(rows))
+	truncated := false
+	for i, row := range normalized {
+		available[i] = true
+		if len(row.text)+1 <= maxMemoryDiffBytes {
+			continue
+		}
+		truncated = true
+		if row.changed {
+			normalized[i].text = row.text[:width+2] + marker
+		} else {
+			available[i] = false
+		}
+	}
+	if text, ok := renderSelectedDisplayRows(normalized, available, width); ok {
+		return text, truncated
+	}
+	selected := make([]bool, len(rows))
+	var changed []int
+	for i, row := range normalized {
+		if row.changed {
+			changed = append(changed, i)
+		}
+	}
+	for left, right := 0, len(changed)-1; left <= right; left, right = left+1, right-1 {
+		indexes := []int{changed[left]}
+		if left != right {
+			indexes = append(indexes, changed[right])
+		}
+		for _, index := range indexes {
+			selected[index] = true
+			if _, ok := renderSelectedDisplayRows(normalized, selected, width); ok {
+				continue
+			}
+			selected[index] = false
+		}
+	}
+	for distance := 1; distance <= 4; distance++ {
+		for _, index := range changed {
+			for _, contextIndex := range []int{index - distance, index + distance} {
+				if contextIndex < 0 || contextIndex >= len(rows) || selected[contextIndex] || normalized[contextIndex].changed || normalized[contextIndex].text == omissionDisplayRow(width) {
+					continue
+				}
+				selected[contextIndex] = true
+				if _, ok := renderSelectedDisplayRows(normalized, selected, width); !ok {
+					selected[contextIndex] = false
+				}
+			}
+		}
+	}
+	text, ok := renderSelectedDisplayRows(normalized, selected, width)
+	if !ok || text == "" {
+		return omissionDisplayRow(width) + "\n", true
+	}
+	return text, true
+}
+
+func TestBoundedDisplayRowsSelectExactlyThePerCandidateRows(t *testing.T) {
+	build := func(count, size int, changedAt func(int) bool, omissionAt func(int) bool, width int) []displayDiffRow {
+		rows := make([]displayDiffRow, count)
+		for i := range rows {
+			switch {
+			case omissionAt(i):
+				rows[i] = displayDiffRow{text: omissionDisplayRow(width)}
+			case changedAt(i):
+				rows[i] = displayDiffRow{text: displayRow('+', i+1, width, strings.Repeat("y", size)), changed: true}
+			default:
+				rows[i] = displayDiffRow{text: displayRow(' ', i+1, width, strings.Repeat("x", size)), changed: false}
+			}
+		}
+		return rows
+	}
+	never := func(int) bool { return false }
+	all := func(int) bool { return true }
+	every := func(n int) func(int) bool { return func(i int) bool { return i%n == 0 } }
+	type rowShape struct {
+		name  string
+		rows  []displayDiffRow
+		width int
+	}
+	shapes := []rowShape{
+		{name: "whole-body replacement", rows: build(12001, 16, all, never, 5), width: 5},
+		{name: "alternating context", rows: build(12001, 16, every(2), never, 5), width: 5},
+		{name: "sparse changes with wide context", rows: build(9000, 24, every(37), never, 4), width: 4},
+		{name: "group separators between changes", rows: build(6000, 40, every(11), every(53), 4), width: 4},
+		{name: "everything fits", rows: build(60, 12, every(5), never, 2), width: 2},
+		{name: "single change", rows: build(9, 12, func(i int) bool { return i == 4 }, never, 1), width: 1},
+		{name: "oversized rows", rows: append(build(30, 8, every(4), never, 2), displayDiffRow{text: strings.Repeat("z", maxMemoryDiffBytes+1), changed: true}, displayDiffRow{text: strings.Repeat("w", maxMemoryDiffBytes+1)}), width: 2},
+		// One change in an overflowing body of context: the fallback selects four
+		// context rows either side of it, a count no other shape can distinguish
+		// from three or five because every other selection stops on the byte bound
+		// before the distance loop runs out.
+		{name: "lone change in overflowing context", rows: build(20000, 12, func(i int) bool { return i == 10000 }, never, 5), width: 5},
+	}
+	// Accepting a row is an exact byte comparison, so these widths bracket it:
+	// with a leading omission row of 8 bytes and rows of size+5, the second
+	// accepted row puts the running total on 50 KiB exactly at delta 0, and one
+	// row either side of the bound for the rest.
+	for delta := -2; delta <= 2; delta++ {
+		shapes = append(shapes, rowShape{name: fmt.Sprintf("few wide rows %+d", delta), rows: build(40, 25591+delta, every(3), never, 2), width: 2})
+	}
+	for _, shape := range shapes {
+		t.Run(shape.name, func(t *testing.T) {
+			wantText, wantTruncated := referenceBoundedDisplayRows(shape.rows, shape.width)
+			gotText, gotTruncated := boundedDisplayRows(shape.rows, shape.width)
+			if gotText != wantText || gotTruncated != wantTruncated {
+				t.Fatalf("bounded rows truncated=%t/%t bytes=%d/%d first difference at %d", gotTruncated, wantTruncated, len(gotText), len(wantText), commonPrefixLen(gotText, wantText))
+			}
+		})
+	}
+}
+
+func commonPrefixLen(a, b string) int {
+	i := 0
+	for i < len(a) && i < len(b) && a[i] == b[i] {
+		i++
+	}
+	return i
+}
+
+// invariant: tooling/effort-management:memory-skeleton-purpose-partition (TestMemoryEditDiffOfALargeResidentStaysWellInsideTheClientTimeout)
+func TestMemoryEditDiffOfALargeResidentStaysWellInsideTheClientTimeout(t *testing.T) {
+	root := initEffortRepo(t)
+	service := openTestService(t, root, nil)
+	if _, err := service.New(testContext(t), NewInput{Slug: "wide-edit", Title: "Wide edit"}); err != nil {
+		t.Fatal(err)
+	}
+	path := service.paths.memoryFile("wide-edit")
+	// Short lines maximise the display-row count a near-1-MiB resident yields,
+	// and the diff is computed before publication, so a per-candidate re-render
+	// makes this in-bounds edit impossible rather than merely slow.
+	body := strings.Repeat("a\n", 500000)
+	writeMemoryFixture(t, path, "wide-edit", []byte(body))
+	start := time.Now()
+	got, err := service.Memory(MemoryEditInput{Slug: "wide-edit", Edits: []MemoryReplacement{{OldText: body, NewText: strings.Repeat("b\n", 500000)}}})
+	elapsed := time.Since(start)
+	if err != nil || got.Condition != MemoryEdited || !got.Diff.Truncated || len(got.Diff.Text) > maxMemoryDiffBytes {
+		t.Fatalf("wide edit=%#v err=%v", got, err)
+	}
+	// The generated Pi client abandons a memory invocation after 15 seconds.
+	if elapsed > 5*time.Second {
+		t.Fatalf("bounded display rows took %s for %d lines", elapsed, 500000)
+	}
+}
+
+// invariant: tooling/effort-management:memory-skeleton-purpose-partition (TestMemoryPreviewDoesNotPublishOrClock)
+func TestMemoryPreviewDoesNotPublishOrClock(t *testing.T) {
+	root := initEffortRepo(t)
+	calls := 0
+	service := openTestService(t, root, func(deps *Dependencies) { deps.Clock = func() time.Time { calls++; return time.Now().UTC() } })
+	if _, err := service.New(testContext(t), NewInput{Slug: "preview", Title: "Preview"}); err != nil {
+		t.Fatal(err)
+	}
+	path := service.paths.memoryFile("preview")
+	writeMemoryFixture(t, path, "preview", []byte("old body\n"))
+	before, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	edit, err := service.Memory(MemoryEditInput{Slug: "preview", Edits: []MemoryReplacement{{OldText: "old", NewText: "new"}}, Preview: true})
+	if err != nil || edit.Condition != MemoryPreviewed || edit.Memory != nil || edit.ReplacementCount != 1 || edit.Diff == nil || edit.Diff.Text == "" {
+		t.Fatalf("edit preview=%#v err=%v", edit, err)
+	}
+	phase, next := "next phase", "next action"
+	update, err := service.Memory(MemoryUpdateInput{Slug: "preview", Update: MemoryUpdate{Phase: &phase, Next: &next}, Preview: true})
+	if err != nil || update.Condition != MemoryPreviewed || update.Memory != nil || update.ReplacementCount != 0 || update.Diff == nil || !strings.Contains(update.Diff.Text, "phase:") || strings.Contains(update.Diff.Text, "+5 updated:") || strings.Contains(update.Diff.Text, "-5 updated:") {
+		t.Fatalf("update preview=%#v err=%v", update, err)
+	}
+	after, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(before, after) || calls != 1 {
+		t.Fatalf("preview published=%t clock calls=%d", !bytes.Equal(before, after), calls)
+	}
+	// previewUpdateOf runs one update preview against exact resident bytes
+	// through the entrypoint Pi uses, so the preview under test is the shipped
+	// one and its read-only promise is checked on every case.
+	previewUpdateOf := func(raw []byte, update MemoryUpdate) MemoryDiff {
+		t.Helper()
+		if writeErr := os.WriteFile(path, raw, 0o600); writeErr != nil {
+			t.Fatal(writeErr)
+		}
+		result, previewErr := service.Memory(MemoryUpdateInput{Slug: "preview", Update: update, Preview: true})
+		if previewErr != nil || result.Condition != MemoryPreviewed || result.Diff == nil {
+			t.Fatalf("preview=%#v err=%v", result, previewErr)
+		}
+		unchanged, readErr := os.ReadFile(path)
+		if readErr != nil || !bytes.Equal(raw, unchanged) {
+			t.Fatalf("preview published bytes err=%v", readErr)
+		}
+		return *result.Diff
+	}
+
+	currentPhase := beforePhase(before)
+	noChange := previewUpdateOf(before, MemoryUpdate{Phase: &currentPhase})
+	if noChange.Text != "" || noChange.FirstChangedLine != nil {
+		t.Fatalf("no change diff=%#v", noChange)
+	}
+	canonicalWithMetadataLikeBody := []byte("---\neffort: preview\nphase: old phase\nnext: old next\nupdated: \"2026-08-06T12:00:00Z\"\n---\nphase: body phase\nnext: body next\n")
+	bodySafe := previewUpdateOf(canonicalWithMetadataLikeBody, MemoryUpdate{Phase: &phase, Next: &next})
+	if !strings.Contains(bodySafe.Text, "+3 phase: next phase") || !strings.Contains(bodySafe.Text, "+4 next: next action") || strings.Contains(bodySafe.Text, "+7 phase: next phase") || strings.Contains(bodySafe.Text, "+8 next: next action") {
+		t.Fatalf("preview rewrote body metadata lookalikes: %#v", bodySafe)
+	}
+
+	// inspectCanonical constrains duplicates and unknown keys but never key
+	// order, and safe repair inserts an absent key, so a preview located by
+	// fixed line index silently shows nothing for either shape.
+	reordered := []byte("---\neffort: preview\nupdated: \"2026-08-06T12:00:00Z\"\nphase: old phase\nnext: old next\n---\nbody\n")
+	shape := previewUpdateOf(reordered, MemoryUpdate{Phase: &phase, Next: &next})
+	if !strings.Contains(shape.Text, "+3 phase: next phase") || !strings.Contains(shape.Text, "+4 next: next action") || strings.Contains(changedDiffRows(shape.Text), "updated:") {
+		t.Fatalf("reordered-key preview=%#v", shape)
+	}
+	absentPhase := []byte("---\neffort: preview\nnext: old next\nupdated: \"2026-08-06T12:00:00Z\"\n---\nbody\n")
+	shape = previewUpdateOf(absentPhase, MemoryUpdate{Phase: &phase})
+	if !strings.Contains(shape.Text, "+3 phase: next phase") || strings.Contains(changedDiffRows(shape.Text), "updated:") {
+		t.Fatalf("absent-phase repair preview=%#v", shape)
+	}
+	// Inspection carries no value for an updated key it cannot read, so a preview
+	// encoded from the inspected value writes the empty string over whatever the
+	// resident holds. Safe repair still previews these residents, and none of
+	// them may show an updated row: the key is the preview's one omission.
+	for _, resident := range []string{
+		"---\neffort: preview\nphase: old phase\nnext: old next\n---\nbody\n",
+		"---\neffort: preview\nphase: old phase\nnext: old next\nupdated: 2026-08-06T12:00:00Z\n---\nbody\n",
+		"---\neffort: preview\nphase: old phase\nnext: old next\nupdated: 12345\n---\nbody\n",
+	} {
+		shape = previewUpdateOf([]byte(resident), MemoryUpdate{Phase: &phase})
+		if !strings.Contains(shape.Text, "+3 phase: next phase") || strings.Contains(changedDiffRows(shape.Text), "updated:") {
+			t.Fatalf("unreadable-updated preview of %q = %#v", resident, shape)
+		}
+	}
+
+	// A previewed metadata line must carry the quoting publication applies, or
+	// the reader is shown a line the resident will never contain.
+	quoted := "weird: value"
+	shape = previewUpdateOf(before, MemoryUpdate{Phase: &quoted})
+	published, err := service.Memory(MemoryUpdateInput{Slug: "preview", Update: MemoryUpdate{Phase: &quoted}})
+	if err != nil || published.Condition != MemoryUpdated {
+		t.Fatalf("quoted publication=%#v err=%v", published, err)
+	}
+	quotedRaw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(shape.Text, "+3 phase: 'weird: value'") || !strings.Contains(string(quotedRaw), "phase: 'weird: value'\n") {
+		t.Fatalf("quoted preview=%q published=%q", shape.Text, quotedRaw)
+	}
+
+	legacyRaw := []byte("Effort: preview\nPhase: old phase\nNext: old next\nUpdated: Not yet updated.\n\nold body")
+	legacy := previewUpdateOf(legacyRaw, MemoryUpdate{Next: &next})
+	if legacy.FirstChangedLine == nil || *legacy.FirstChangedLine != 3 || !strings.Contains(legacy.Text, "-3 Next: old next") || !strings.Contains(legacy.Text, "+3 Next: next action") || strings.Contains(legacy.Text, "+4 Updated:") || strings.Contains(legacy.Text, "-4 Updated:") {
+		t.Fatalf("legacy preview=%#v", legacy)
+	}
+	legacyPhase := previewUpdateOf(legacyRaw, MemoryUpdate{Phase: &phase})
+	if !strings.Contains(legacyPhase.Text, "-2 Phase: old phase") || !strings.Contains(legacyPhase.Text, "+2 Phase: next phase") || strings.Contains(changedDiffRows(legacyPhase.Text), "Next:") {
+		t.Fatalf("legacy phase preview=%#v", legacyPhase)
+	}
+	if err := os.WriteFile(path, legacyRaw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	legacyEdit, err := service.Memory(MemoryEditInput{Slug: "preview", Edits: []MemoryReplacement{{OldText: "old", NewText: "new"}}, Preview: true})
+	if err != nil || legacyEdit.Diff == nil || legacyEdit.Diff.FirstChangedLine == nil || *legacyEdit.Diff.FirstChangedLine != 6 {
+		t.Fatalf("legacy edit preview=%#v err=%v", legacyEdit, err)
+	}
+	publishedEdit, err := service.Memory(MemoryEditInput{Slug: "preview", Edits: []MemoryReplacement{{OldText: "old", NewText: "new"}}})
+	if err != nil || publishedEdit.Diff == nil || publishedEdit.Diff.FirstChangedLine == nil || *publishedEdit.Diff.FirstChangedLine != 7 {
+		t.Fatalf("canonical edit result=%#v err=%v", publishedEdit, err)
+	}
+
+	largeBody := []byte("OLD" + strings.Repeat("x", maxMemoryBytes-200))
+	writeMemoryFixture(t, path, "preview", largeBody)
+	largeReplacement := strings.Repeat("y", 1000)
+	largePreview, err := service.Memory(MemoryEditInput{Slug: "preview", Edits: []MemoryReplacement{{OldText: "OLD", NewText: largeReplacement}}, Preview: true})
+	if err != nil || largePreview.Condition != MemoryPreviewed {
+		t.Fatalf("oversized result preview=%#v err=%v", largePreview, err)
+	}
+	largeResult, err := service.Memory(MemoryEditInput{Slug: "preview", Edits: []MemoryReplacement{{OldText: "OLD", NewText: largeReplacement}}})
+	if err != nil || largeResult.Condition != MemoryResultTooLarge {
+		t.Fatalf("oversized normal result=%#v err=%v", largeResult, err)
+	}
+
+	invalidRaw := []byte("---\neffort: preview\nphase: \"\"\nnext: \"\"\nupdated: \"2026-08-06T12:00:00Z\"\n---\nbody")
+	if err := os.WriteFile(path, invalidRaw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := service.Memory(MemoryUpdateInput{Slug: "preview", Update: MemoryUpdate{Phase: &phase}, Preview: true})
+	if err != nil || got.Condition != MemoryInvalid {
+		t.Fatalf("unsafe repair preview=%#v err=%v", got, err)
+	}
+	beforeRepair, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	clockBeforeRepair := calls
+	repairPreview, err := service.Memory(MemoryUpdateInput{Slug: "preview", Update: MemoryUpdate{Phase: &phase, Next: &next}, Preview: true})
+	afterRepairPreview, readErr := os.ReadFile(path)
+	if err != nil || readErr != nil || repairPreview.Condition != MemoryPreviewed || !bytes.Equal(beforeRepair, afterRepairPreview) || calls != clockBeforeRepair || !strings.Contains(repairPreview.Diff.Text, "+3 phase: next phase") || !strings.Contains(repairPreview.Diff.Text, "+4 next: next action") {
+		t.Fatalf("safe repair preview=%#v err=%v readErr=%v published=%t clocks=%d", repairPreview, err, readErr, !bytes.Equal(beforeRepair, afterRepairPreview), calls-clockBeforeRepair)
+	}
+	repaired, err := service.Memory(MemoryUpdateInput{Slug: "preview", Update: MemoryUpdate{Phase: &phase, Next: &next}})
+	if err != nil || repaired.Condition != MemoryUpdated || !strings.Contains(repaired.Diff.Text, "+3 phase: next phase") || !strings.Contains(repaired.Diff.Text, "+4 next: next action") || !strings.Contains(repaired.Diff.Text, "updated:") {
+		t.Fatalf("safe repair result=%#v diff=%q err=%v", repaired, repaired.Diff.Text, err)
+	}
+}
+
+// changedDiffRows keeps only the added and removed rows, so an assertion about
+// a rewritten line cannot be satisfied by an unchanged context row.
+func changedDiffRows(text string) string {
+	var rows []string
+	for _, line := range strings.Split(text, "\n") {
+		if strings.HasPrefix(line, "+") || strings.HasPrefix(line, "-") {
+			rows = append(rows, line)
+		}
+	}
+	return strings.Join(rows, "\n")
+}
+
+func beforePhase(raw []byte) string {
+	for _, rawLine := range diffLines(raw) {
+		line := displayLine(rawLine)
+		if strings.HasPrefix(line, "phase: ") {
+			return strings.TrimPrefix(line, "phase: ")
+		}
+	}
+	return ""
+}
 
 // invariant: tooling/effort-management:memory-skeleton-purpose-partition (TestMemoryOperationsReadEditAndUpdateCanonicalResident)
 func TestMemoryOperationsReadEditAndUpdateCanonicalResident(t *testing.T) {
@@ -19,7 +457,10 @@ func TestMemoryOperationsReadEditAndUpdateCanonicalResident(t *testing.T) {
 	now := time.Date(2026, 8, 5, 14, 15, 16, 123456789, time.UTC)
 	clockCalls := 0
 	service := openTestService(t, root, func(deps *Dependencies) {
-		deps.Clock = func() time.Time { clockCalls++; return now }
+		deps.Clock = func() time.Time {
+			clockCalls++
+			return now.Add(time.Duration(clockCalls-1) * time.Second)
+		}
 	})
 	if _, err := service.New(testContext(t), NewInput{Slug: "memory-ops", Title: "Memory operations"}); err != nil {
 		t.Fatal(err)
@@ -66,9 +507,10 @@ func TestMemoryOperationsReadEditAndUpdateCanonicalResident(t *testing.T) {
 	}
 
 	phase, next := "repaired phase", "repaired next"
+	updateTime := now.Add(time.Second)
 	updated, err := service.Memory(MemoryUpdateInput{Slug: "memory-ops", Update: MemoryUpdate{Phase: &phase, Next: &next}})
-	if err != nil || updated.Condition != MemoryUpdated || updated.Memory.Phase != phase || updated.Memory.Next != next || updated.Memory.Updated != now.Format(time.RFC3339Nano) {
-		t.Fatalf("updated=%#v err=%v", updated, err)
+	if err != nil || updated.Condition != MemoryUpdated || updated.Memory.Phase != phase || updated.Memory.Next != next || updated.Memory.Updated != updateTime.Format(time.RFC3339Nano) || updated.Diff == nil || !strings.Contains(updated.Diff.Text, "-5 updated:") || !strings.Contains(updated.Diff.Text, "+5 updated:") || !strings.Contains(updated.Diff.Text, updateTime.Format(time.RFC3339Nano)) {
+		t.Fatalf("updated=%#v diff=%q err=%v", updated, updated.Diff.Text, err)
 	}
 	if clockCalls != 2 {
 		t.Fatalf("total clock calls = %d", clockCalls)
@@ -332,24 +774,28 @@ func TestMemoryEditResultBoundsAndDiffBounds(t *testing.T) {
 	largeBody := strings.Repeat("a", 25600) + "OLD" + strings.Repeat("b", 25600)
 	writeMemoryFixture(t, path, "bounded-edit", []byte(largeBody))
 	got, err = service.Memory(MemoryEditInput{Slug: "bounded-edit", Edits: []MemoryReplacement{{OldText: "OLD", NewText: "NEW"}}})
-	if err != nil || got.Condition != MemoryEdited || !got.Diff.Truncated || len(got.Diff.Text) != 51200 {
+	if err != nil || got.Condition != MemoryEdited || !got.Diff.Truncated || len(got.Diff.Text) > 51200 {
 		t.Fatalf("bounded diff=%#v err=%v", got, err)
 	}
 
-	// These literal fixture sizes make the complete diff exactly 50 KiB, then
-	// one byte over it, without relying on the production bound.
-	exactDiffBody := strings.Repeat("a", 25589) + "OLD"
+	// One removed and one added row, each a kind byte, a one-digit line number,
+	// a space, its content, and a terminator. These literal fixture sizes make
+	// the complete diff exactly 50 KiB, then one byte over it, without relying
+	// on the production bound.
+	exactDiffBody := strings.Repeat("a", 25593) + "OLD"
 	writeMemoryFixture(t, path, "bounded-edit", []byte(exactDiffBody))
 	got, err = service.Memory(MemoryEditInput{Slug: "bounded-edit", Edits: []MemoryReplacement{{OldText: "OLD", NewText: "NEW"}}})
 	if err != nil || got.Condition != MemoryEdited || got.Diff.Truncated || len(got.Diff.Text) != 51200 {
-		t.Fatalf("literal exact diff=%#v err=%v", got, err)
+		t.Fatalf("exactly bounded contextual diff=%#v bytes=%d err=%v", got, len(got.Diff.Text), err)
 	}
 
-	overDiffBody := strings.Repeat("b", 25591) + "X"
+	// One byte over, so the added row is dropped for an omission row and the
+	// result reports the bounding loss.
+	overDiffBody := strings.Repeat("b", 25595) + "X"
 	writeMemoryFixture(t, path, "bounded-edit", []byte(overDiffBody))
 	got, err = service.Memory(MemoryEditInput{Slug: "bounded-edit", Edits: []MemoryReplacement{{OldText: "X", NewText: "XY"}}})
-	if err != nil || got.Condition != MemoryEdited || !got.Diff.Truncated || len(got.Diff.Text) != 51200 {
-		t.Fatalf("literal over-limit diff=%#v err=%v", got, err)
+	if err != nil || got.Condition != MemoryEdited || !got.Diff.Truncated || len(got.Diff.Text) > 51200 || !strings.HasPrefix(got.Diff.Text, "-7 b") || !strings.HasSuffix(got.Diff.Text, "\n   ...\n") {
+		t.Fatalf("over-bound contextual diff truncated=%t bytes=%d err=%v", got.Diff.Truncated, len(got.Diff.Text), err)
 	}
 }
 

@@ -3,3 +3,5 @@ summary: The template overlay render engine and its reference resolution.
 paths:
   - internal/render/**
   - internal/refs/**
+  - internal/project/banner*.go
+  - internal/project/topics*.go

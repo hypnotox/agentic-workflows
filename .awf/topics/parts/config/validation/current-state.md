@@ -24,7 +24,7 @@ Backing: test
 
 Config validation for sync and check fails when `vars.gateCmd` is unset because the always-rendered hook payloads run the project gate; the error names the exact var to set. The always-rendered runner supplies every awf-verb fallback, so checkCmd and commitGateCmd carry no separate validation arm.
 Origin: ADR-0156
-Revised-by: ADR-0158, ADR-0210, ADR-unconditional-gates-and-audit-rules
+Revised-by: ADR-0158, ADR-0210, ADR-0253
 Backing: test
 
 ### `invariant: pathglob-anchored`

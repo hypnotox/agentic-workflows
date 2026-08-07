@@ -4,7 +4,7 @@ slug: cli-grammar-expresses-creation-and-inventory
 status: Implementing
 date: 2026-08-06
 ---
-# ADR-cli-grammar-expresses-creation-and-inventory: CLI Grammar Expresses Creation And Inventory
+# ADR-0254: CLI Grammar Expresses Creation And Inventory
 
 
 ## Context

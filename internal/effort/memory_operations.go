@@ -6,8 +6,12 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/pmezard/go-difflib/difflib"
+	"gopkg.in/yaml.v3"
 
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
@@ -26,6 +30,7 @@ const (
 	MemoryRead             MemoryCondition = "read"
 	MemoryEdited           MemoryCondition = "edited"
 	MemoryUpdated          MemoryCondition = "updated"
+	MemoryPreviewed        MemoryCondition = "previewed"
 	MemoryNotOwner         MemoryCondition = "not-owner"
 	MemoryMissing          MemoryCondition = "missing"
 	MemoryUnsafeActivity   MemoryCondition = "unsafe-activity"
@@ -58,16 +63,18 @@ type MemoryReplacement struct {
 
 // MemoryEditInput carries one atomic exact-replacement batch.
 type MemoryEditInput struct {
-	Slug  string
-	Owner string
-	Edits []MemoryReplacement
+	Slug    string
+	Owner   string
+	Edits   []MemoryReplacement
+	Preview bool
 }
 
 // MemoryUpdateInput carries a structured metadata update and optional advisory owner.
 type MemoryUpdateInput struct {
-	Slug   string
-	Owner  string
-	Update MemoryUpdate
+	Slug    string
+	Owner   string
+	Update  MemoryUpdate
+	Preview bool
 }
 
 func (MemoryReadInput) memoryOperation()   {}
@@ -242,7 +249,7 @@ func (s *Service) editMemory(input MemoryEditInput) (MemoryOperationResult, erro
 			return MemoryOperationResult{}, fmt.Errorf("memory edit %d strings must be valid UTF-8, oldText must be nonempty, and each string must be at most 1 MiB", i)
 		}
 	}
-	_, doc, refused, err := s.inspectMemoryOperation(input.Slug, input.Owner)
+	raw, doc, refused, err := s.inspectMemoryOperation(input.Slug, input.Owner)
 	if err != nil || refused != nil {
 		if refused != nil {
 			return *refused, nil
@@ -293,6 +300,11 @@ func (s *Service) editMemory(input MemoryEditInput) (MemoryOperationResult, erro
 		cursor = found.end
 	}
 	newBody = append(newBody, doc.body[cursor:]...)
+	if input.Preview {
+		bodyOffset := bytes.Count(raw[:len(raw)-len(doc.body)], []byte("\n"))
+		diff := memoryDiff(doc.body, newBody, bodyOffset)
+		return MemoryOperationResult{Condition: MemoryPreviewed, ReplacementCount: len(input.Edits), Diff: &diff}, nil
+	}
 	metadata := doc.metadata
 	metadata.Effort = input.Slug
 	metadata.Updated = formatMemoryTime(s.now())
@@ -305,7 +317,7 @@ func (s *Service) editMemory(input MemoryEditInput) (MemoryOperationResult, erro
 		result.Size = &MemorySizeFact{Bytes: len(encoded), MaxBytes: maxMemoryBytes}
 		return result, nil
 	}
-	diff := memoryDiff(doc.body, newBody)
+	diff := memoryDiff(doc.body, newBody, 6)
 	if err := s.store.replaceMemory(s.paths.memoryFile(input.Slug), encoded); err != nil {
 		return memoryFailure(err), nil
 	}
@@ -317,17 +329,30 @@ func (s *Service) UpdateMemory(input MemoryUpdateInput) (MemoryOperationResult, 
 	if err := validateMemoryUpdate(input.Update); err != nil {
 		return MemoryOperationResult{}, err
 	}
-	_, doc, refused, err := s.inspectMemoryOperation(input.Slug, input.Owner)
+	raw, doc, refused, err := s.inspectMemoryOperation(input.Slug, input.Owner)
 	if err != nil || refused != nil {
 		if refused != nil {
 			return *refused, nil
 		}
 		return MemoryOperationResult{}, err
 	}
-	metadata, encoded, invalid := s.prepareMemoryUpdate(input.Slug, doc, input.Update)
+	// A preview reuses the publication machinery with the timestamp held at the
+	// resident's own value node, so what it shows is what publication will write
+	// apart from the deliberately omitted clock read. The node rather than the
+	// inspected value is what holds that omission for a resident whose updated
+	// key is absent or not a string, which inspection reports as empty.
+	updated := doc.updated
+	if !input.Preview {
+		updated = memoryScalar(formatMemoryTime(s.now()))
+	}
+	metadata, encoded, invalid := prepareMemoryUpdate(input.Slug, doc, input.Update, updated)
 	if invalid != nil {
 		result := memoryRefusal(MemoryInvalid, "the effort memory metadata cannot be safely repaired by this update", "inspect the effort memory metadata", invalid.NextAction)
 		return result, nil //nolint:nilerr // unsafe repair is a typed handled refusal
+	}
+	if input.Preview {
+		diff := updatePreviewDiff(raw, encoded, doc, input.Update)
+		return MemoryOperationResult{Condition: MemoryPreviewed, Diff: &diff}, nil
 	}
 	if len(encoded) > maxMemoryBytes {
 		result := memoryRefusal(MemoryResultTooLarge, "the updated memory would exceed the resident size bound", "reduce the replacement metadata size")
@@ -337,7 +362,8 @@ func (s *Service) UpdateMemory(input MemoryUpdateInput) (MemoryOperationResult, 
 	if err := s.store.replaceMemory(s.paths.memoryFile(input.Slug), encoded); err != nil {
 		return memoryFailure(err), nil
 	}
-	return MemoryOperationResult{Condition: MemoryUpdated, Memory: &metadata}, nil
+	diff := memoryDiff(raw, encoded, 0)
+	return MemoryOperationResult{Condition: MemoryUpdated, Memory: &metadata, Diff: &diff}, nil
 }
 
 func validateMemoryUpdate(update MemoryUpdate) error {
@@ -407,14 +433,23 @@ func (s *Service) inspectMemoryOperation(slug, owner string) ([]byte, memoryDocu
 	return raw, inspectMemory(raw, slug), nil, nil
 }
 
-func (s *Service) prepareMemoryUpdate(slug string, doc memoryDocument, update MemoryUpdate) (MemoryMetadata, []byte, *invalidMemoryUpdate) {
+func invalidMemoryUpdateFor(slug string, doc memoryDocument, update MemoryUpdate) *invalidMemoryUpdate {
 	if !doc.boundary || doc.identity != slug {
-		return MemoryMetadata{}, nil, &invalidMemoryUpdate{NextAction: "repair memory.md manually with a matching bounded canonical or legacy identity"}
+		return &invalidMemoryUpdate{NextAction: "repair memory.md manually with a matching bounded canonical or legacy identity"}
 	}
-	if doc.err != nil {
-		if doc.invalid["phase"] && update.Phase == nil || doc.invalid["next"] && update.Next == nil || len(doc.invalid) == 0 {
-			return MemoryMetadata{}, nil, &invalidMemoryUpdate{NextAction: memoryUpdateCommand(slug, doc.invalid)}
-		}
+	if doc.err != nil && (doc.invalid["phase"] && update.Phase == nil || doc.invalid["next"] && update.Next == nil || len(doc.invalid) == 0) {
+		return &invalidMemoryUpdate{NextAction: memoryUpdateCommand(slug, doc.invalid)}
+	}
+	return nil
+}
+
+// prepareMemoryUpdate builds the document an update would write. updated is the
+// value node its updated key takes, or nil to omit the key; the returned
+// metadata reports that node's value, so it describes the written document only
+// where a node was supplied.
+func prepareMemoryUpdate(slug string, doc memoryDocument, update MemoryUpdate, updated *yaml.Node) (MemoryMetadata, []byte, *invalidMemoryUpdate) {
+	if invalid := invalidMemoryUpdateFor(slug, doc, update); invalid != nil {
+		return MemoryMetadata{}, nil, invalid
 	}
 	metadata := doc.metadata
 	metadata.Effort = slug
@@ -424,11 +459,14 @@ func (s *Service) prepareMemoryUpdate(slug string, doc memoryDocument, update Me
 	if update.Next != nil {
 		metadata.Next = *update.Next
 	}
-	metadata.Updated = formatMemoryTime(s.now())
+	metadata.Updated = ""
+	if updated != nil {
+		metadata.Updated = updated.Value
+	}
 	if validateMemoryMutable(metadata.Phase) != nil || validateMemoryMutable(metadata.Next) != nil { // coverage-ignore: supplied fields are validated and every unrepaired invalid field returned above
 		return MemoryMetadata{}, nil, &invalidMemoryUpdate{NextAction: memoryUpdateCommand(slug, doc.invalid)}
 	}
-	encoded, err := encodeMemory(metadata, doc.body)
+	encoded, err := encodeMemoryDocument(metadata, updated, doc.body)
 	if err != nil { // coverage-ignore: fixed scalar-only metadata was validated before encoding
 		return MemoryMetadata{}, nil, &invalidMemoryUpdate{NextAction: "inspect the effort memory metadata"}
 	}
@@ -473,22 +511,249 @@ func overlappingIndexes(body, old []byte) []int {
 	return indexes
 }
 
-func memoryDiff(before, after []byte) MemoryDiff {
+type displayDiffRow struct {
+	text    string
+	changed bool
+}
+
+func memoryDiff(before, after []byte, lineOffset int) MemoryDiff {
 	if bytes.Equal(before, after) {
 		return MemoryDiff{}
 	}
-	prefix := 0
-	for prefix < len(before) && prefix < len(after) && before[prefix] == after[prefix] {
-		prefix++
+	oldLines, newLines := diffLines(before), diffLines(after)
+	groups := difflib.NewMatcher(oldLines, newLines).GetGroupedOpCodes(4)
+	width := len(strconv.Itoa(max(len(oldLines), len(newLines)) + lineOffset))
+	var rows []displayDiffRow
+	first := 0
+	for groupIndex, group := range groups {
+		if groupIndex > 0 {
+			rows = append(rows, displayDiffRow{text: omissionDisplayRow(width)})
+		}
+		for _, code := range group {
+			switch code.Tag {
+			case 'e':
+				for i := code.I1; i < code.I2; i++ {
+					rows = append(rows, displayDiffRow{text: displayRow(' ', i+lineOffset+1, width, displayLine(oldLines[i]))})
+				}
+			case 'd':
+				for i := code.I1; i < code.I2; i++ {
+					n := i + lineOffset + 1
+					if first == 0 {
+						first = n
+					}
+					rows = append(rows, displayDiffRow{text: displayRow('-', n, width, displayLine(oldLines[i])), changed: true})
+				}
+			case 'i':
+				for i := code.J1; i < code.J2; i++ {
+					n := i + lineOffset + 1
+					if first == 0 {
+						first = n
+					}
+					rows = append(rows, displayDiffRow{text: displayRow('+', n, width, displayLine(newLines[i])), changed: true})
+				}
+			case 'r':
+				for i := code.I1; i < code.I2; i++ {
+					n := i + lineOffset + 1
+					if first == 0 {
+						first = n
+					}
+					rows = append(rows, displayDiffRow{text: displayRow('-', n, width, displayLine(oldLines[i])), changed: true})
+				}
+				for i := code.J1; i < code.J2; i++ {
+					n := i + lineOffset + 1
+					rows = append(rows, displayDiffRow{text: displayRow('+', n, width, displayLine(newLines[i])), changed: true})
+				}
+			}
+		}
 	}
-	// Canonical memory has six header lines, so the first body line is line 7.
-	line := 7 + bytes.Count(before[:prefix], []byte("\n"))
-	text := append([]byte("before:\n"), before...)
-	text = append(text, []byte("\nafter:\n")...)
-	text = append(text, after...)
-	truncated := len(text) > maxMemoryDiffBytes
-	if truncated {
-		text = validUTF8Prefix(text, maxMemoryDiffBytes)
+	// Truncated reports bounding loss alone. Unchanged context that the fixed
+	// four-line window never selected is not loss: the diff still carries every
+	// changed row, and marking it truncated would warn about complete diffs.
+	text, truncated := boundedDisplayRows(rows, width)
+	return MemoryDiff{Text: text, FirstChangedLine: &first, Truncated: truncated}
+}
+
+func diffLines(raw []byte) []string {
+	lines := completeLines(raw)
+	out := make([]string, len(lines))
+	for i, line := range lines {
+		out[i] = string(line)
 	}
-	return MemoryDiff{Text: string(text), FirstChangedLine: &line, Truncated: truncated}
+	return out
+}
+
+func displayLine(line string) string {
+	text := strings.TrimSuffix(line, "\n")
+	if len(line) > 0 && line[len(line)-1] == '\n' {
+		text = strings.TrimSuffix(text, "\r")
+	}
+	return text
+}
+
+func displayRow(kind byte, line, width int, content string) string {
+	return fmt.Sprintf("%c%*d %s", kind, width, line, content)
+}
+
+func omissionDisplayRow(width int) string {
+	return " " + strings.Repeat(" ", width) + " ..."
+}
+
+func boundedDisplayRows(rows []displayDiffRow, width int) (string, bool) {
+	const marker = "[content elided]"
+	normalized := append([]displayDiffRow(nil), rows...)
+	available := make([]bool, len(rows))
+	truncated := false
+	for i, row := range normalized {
+		available[i] = true
+		if len(row.text)+1 <= maxMemoryDiffBytes {
+			continue
+		}
+		truncated = true
+		if row.changed {
+			normalized[i].text = row.text[:width+2] + marker
+		} else {
+			available[i] = false
+		}
+	}
+	if text, ok := renderSelectedDisplayRows(normalized, available, width); ok {
+		return text, truncated
+	}
+
+	selection := newDisplayRowSelection(normalized, width)
+	var changed []int
+	for i, row := range normalized {
+		if row.changed {
+			changed = append(changed, i)
+		}
+	}
+	for left, right := 0, len(changed)-1; left <= right; left, right = left+1, right-1 {
+		selection.accept(changed[left])
+		if left != right {
+			selection.accept(changed[right])
+		}
+	}
+	omission := omissionDisplayRow(width)
+	for distance := 1; distance <= 4; distance++ {
+		for _, index := range changed {
+			for _, contextIndex := range []int{index - distance, index + distance} {
+				if contextIndex < 0 || contextIndex >= len(rows) || selection.selected[contextIndex] || normalized[contextIndex].changed || normalized[contextIndex].text == omission {
+					continue
+				}
+				selection.accept(contextIndex)
+			}
+		}
+	}
+	text, ok := renderSelectedDisplayRows(normalized, selection.selected, width)
+	// Every selection above is reverted unless it already rendered within the bound, so the final
+	// set is one that fit when it was last extended.
+	if !ok || text == "" { // coverage-ignore: the selection is validated as it grows, and one elided changed-row prefix plus omission rows fit far below the fixed 50-KiB bound
+		return omissionDisplayRow(width) + "\n", true
+	}
+	return text, true
+}
+
+// displayRowSelection grows a bounded row selection while tracking the exact
+// byte length renderSelectedDisplayRows would produce for it, so testing one
+// more candidate costs constant time rather than another walk of every row.
+type displayRowSelection struct {
+	rows     []displayDiffRow
+	selected []bool
+	omission int
+	total    int
+}
+
+// The empty selection already renders one omission row, because the fallback is
+// only reached with rows present and every unselected run contributes exactly
+// one omission row - leading, interior, and trailing alike.
+func newDisplayRowSelection(rows []displayDiffRow, width int) *displayRowSelection {
+	omission := len(omissionDisplayRow(width)) + 1
+	return &displayRowSelection{rows: rows, selected: make([]bool, len(rows)), omission: omission, total: omission}
+}
+
+// accept selects an unselected index when the rendered result still fits the
+// diff bound, and otherwise leaves the selection untouched.
+func (s *displayRowSelection) accept(index int) {
+	total := s.total + len(s.rows[index].text) + 1 + s.omissionDelta(index)*s.omission
+	if total > maxMemoryDiffBytes {
+		return
+	}
+	s.selected[index] = true
+	s.total = total
+}
+
+// omissionDelta reports how the count of omission rows changes when index joins
+// the selection: its unselected run either splits in two, shortens on one side,
+// or disappears entirely.
+func (s *displayRowSelection) omissionDelta(index int) int {
+	remaining := 0
+	if index > 0 && !s.selected[index-1] {
+		remaining++
+	}
+	if index+1 < len(s.rows) && !s.selected[index+1] {
+		remaining++
+	}
+	return remaining - 1
+}
+
+func renderSelectedDisplayRows(rows []displayDiffRow, selected []bool, width int) (string, bool) {
+	out := make([]byte, 0, min(maxMemoryDiffBytes, len(rows)*32))
+	omitted := false
+	for index, row := range rows {
+		if !selected[index] {
+			omitted = true
+			continue
+		}
+		if omitted {
+			omission := omissionDisplayRow(width) + "\n"
+			if len(out)+len(omission) > maxMemoryDiffBytes {
+				return "", false
+			}
+			out = append(out, omission...)
+			omitted = false
+		}
+		if len(out)+len(row.text)+1 > maxMemoryDiffBytes {
+			return "", false
+		}
+		out = append(out, row.text...)
+		out = append(out, '\n')
+	}
+	if omitted {
+		omission := omissionDisplayRow(width) + "\n"
+		if len(out)+len(omission) > maxMemoryDiffBytes {
+			return "", false
+		}
+		out = append(out, omission...)
+	}
+	return string(out), true
+}
+
+// updatePreviewDiff compares the current document against the one the update
+// would produce. A canonical resident is previewed through the publication
+// encoding itself, so reordered keys, an absent key that safe repair inserts,
+// and YAML quoting all appear exactly as they will be written. A legacy
+// resident promises no such publication equivalence: publication rewrites it
+// into canonical form wholesale, and legacyPreviewDocument deliberately shows
+// the in-place rewrite at the line offsets its reader is looking at instead.
+func updatePreviewDiff(raw, encoded []byte, doc memoryDocument, update MemoryUpdate) MemoryDiff {
+	if doc.legacy {
+		return memoryDiff(raw, legacyPreviewDocument(doc, update), 0)
+	}
+	return memoryDiff(raw, encoded, 0)
+}
+
+// A legacy resident is accepted only as exactly four "Key: value" lines before
+// a blank separator, so reconstructing that grammar reproduces the original
+// bytes wherever the update changes nothing. Publication rewrites a legacy
+// resident into canonical form; the preview keeps the legacy line offsets the
+// reader is looking at.
+func legacyPreviewDocument(doc memoryDocument, update MemoryUpdate) []byte {
+	metadata := doc.metadata
+	if update.Phase != nil {
+		metadata.Phase = *update.Phase
+	}
+	if update.Next != nil {
+		metadata.Next = *update.Next
+	}
+	header := fmt.Sprintf("Effort: %s\nPhase: %s\nNext: %s\nUpdated: %s\n\n", metadata.Effort, metadata.Phase, metadata.Next, metadata.Updated)
+	return append([]byte(header), doc.body...)
 }

@@ -30,7 +30,7 @@ Backing: test
 
 With checkCmd, gateCmdFull, and commitGateCmd all unset, every rendered hook payload is a runnable script whose awf-verb commands resolve through the always-rendered `./awf` wrapper, carrying no inline resolution shim and no unresolved-value token; the pre-commit payload consumes only the configured aggregate check and required project gate.
 Origin: ADR-0148
-Revised-by: ADR-0156, ADR-0158, ADR-0210, ADR-unconditional-gates-and-audit-rules
+Revised-by: ADR-0156, ADR-0158, ADR-0210, ADR-0253
 Backing: test
 
 ### `invariant: runner-prune-backup`
@@ -43,7 +43,7 @@ Backing: test
 
 The always-rendered wrapper at the repo-root path `awf` contains no per-verb dispatch and no in-place-editable region: it resolves one awf invocation and execs it with all arguments forwarded verbatim.
 Origin: ADR-0156
-Revised-by: ADR-unconditional-gates-and-audit-rules
+Revised-by: ADR-0253
 Backing: test
 
 ### `invariant: runner-render-publication-safe`
@@ -61,7 +61,7 @@ Backing: test
 ### `invariant: runner-wrapper-rendered`
 
 A full render emits exactly one wrapper file at the repo-root path `awf`.
-Origin: ADR-unconditional-gates-and-audit-rules
+Origin: ADR-0253
 Backing: test
 
 ### `invariant: upgrade-delegates-fetch`

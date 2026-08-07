@@ -4,7 +4,7 @@ Discovery creates no effort. When durable continuity materially helps, `effort-w
 
 Full-replacement workflow, guide, checkpoint, or affected skill parts must re-derive this confirmation boundary; default-template projection tests cannot inspect replacement prose.
 
-New plan scaffolds carry `format: plan-v1`, sequential phase and task headings, one final Phase close per phase, and required Definition of done bullets. Marker-absent historical plans retain legacy checks and are not projected. `awf read plan <plan> <P[.T]>` accepts an exact filename or stem and canonical positive numeric selector, then prints the source-ordered executable closure: frontmatter, title, Goal, Architecture summary, owning phase and execution mode, selected content, Phase close, Definition of done, and Notes when present.
+New plan scaffolds carry `format: plan-v2`, sequential phase and task headings, one final Phase close per phase, task-scoped decisions, and required Definition of done outcomes. Marker-absent historical plans retain legacy checks and are not projected. `awf read plan <plan> <P[.T]>` accepts an exact filename or stem and canonical positive numeric selector, then prints the source-ordered executable closure.
 
 Plan execution selects `inline` or `subagent-driven` ownership independently per phase. One
 commit-capable owner takes a complete subagent-driven phase from a clean green baseline through its
@@ -21,3 +21,21 @@ Core `effort-workflow` renders for both built-in targets and directs native pers
 Pi association stays at repository root. `using_effort` directly attaches with an effort slug or detaches with `{detach:true}` and never changes CWD or transfers a conversation. Attached model calls receive the relative owned memory path and, when the fixed directory exists, the managed-worktree path. While associated, prefer the pathless memory tools for complete-document reads, exact Markdown-body edits, and separate `phase` or `next` updates with automatic timestamps; they are a convenience, not workflow authority, so direct file access and ordinary awf commands remain available. Activity and complete Remote Pi metadata are advisory only, never authority or a lock. Optional display suffix publication carries only the effort slug or null, never a routing input or composed name; restart begins detached and local lifecycle degradation is silent.
 
 A convention part replaces only its section body. A declared Markdown structural heading is awf-owned, excluded from part replacement and in-place read-back, and disappears only when the complete section is dropped.
+
+**Reading generated source guidance.** The generated-by banner says that awf owns the rendered
+file; it is not an editing instruction. An `awf:edit` pointer identifies the convention part that
+owns one rendered section. An informational `awf:source` comment, when present immediately after
+the banner, identifies the compact reader-facing authority for an otherwise opaque generated
+document. It is neither an `awf:edit` pointer nor a read-back boundary, and it is not an exhaustive
+dependency list. For a topic page, edit both `.awf/topics/metadata/<domain>/<topic>.yaml` and
+`.awf/topics/parts/<domain>/<topic>/current-state.md`; a topic index instead names the family globs
+`.awf/topics/metadata/<domain>/*.yaml` and `.awf/topics/parts/<domain>/*/current-state.md`. The
+output plan remains the authority for machine render dependencies; `.awf/awf.lock` remains the
+drift authority. **Source map.** Ordinary docs and `AGENTS.md` use `awf:edit`; generated local
+docs use `.awf/docs/<name>.yaml` for title and description metadata and
+`.awf/docs/parts/<name>/content.md` for the body. Topic pages name their pair, while indexes and domain navigation name
+the globs. Glossary and pitfalls name their sidecars (glossary also names
+`derived:awf-standard-vocabulary`); the ADR index names `derived:authored-adr-corpus`; config
+reference names `derived:configspec` and `derived:project-configuration`; target bridges name
+`AGENTS.md`. Authored ADRs, plans, and `local: true` docs are banner-free. Edit the authority, run
+`awf render`, run `awf check`, and commit regenerated outputs and lock together.

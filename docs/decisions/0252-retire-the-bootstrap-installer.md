@@ -4,7 +4,7 @@ slug: retire-the-bootstrap-installer
 status: Abandoned
 date: 2026-08-06
 ---
-# ADR-retire-the-bootstrap-installer: Retire The Bootstrap Installer
+# ADR-0252: Retire The Bootstrap Installer
 
 
 ## Context

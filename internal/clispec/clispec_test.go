@@ -478,9 +478,12 @@ func TestLookup(t *testing.T) {
 	if !found || len(memory.Children) != 3 || memory.Children[0].Name != "read" || memory.Children[1].Name != "edit" || memory.Children[2].Name != "update" || strings.Join(memory.Children[0].ValueFlags, ",") != "--offset,--limit,--owner" || strings.Join(memory.Children[2].ValueFlags, ",") != "--phase,--next,--owner" {
 		t.Fatalf("effort memory spec = %#v, found %v", memory, found)
 	}
-	for _, command := range memory.Children {
-		if strings.Join(command.BoolFlags, ",") != "--json" || !strings.Contains(helpText(command), "--owner") {
-			t.Errorf("memory %s does not declare owner-scoped grammar: %#v", command.Name, command)
+	// Only a mutation may declare --preview: a read has nothing to preview, and
+	// an accepted but ignored flag is a silently wrong surface.
+	for index, wantBoolFlags := range []string{"--json", "--json,--preview", "--json,--preview"} {
+		command := memory.Children[index]
+		if got := strings.Join(command.BoolFlags, ","); got != wantBoolFlags || !strings.Contains(helpText(command), "--owner") {
+			t.Errorf("memory %s bool flags = %q, want %q: %#v", command.Name, got, wantBoolFlags, command)
 		}
 	}
 	activity, found := effort.Child("activity")

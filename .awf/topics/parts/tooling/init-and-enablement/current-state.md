@@ -11,7 +11,7 @@ Backing: test
 ### `invariant: init-bootstrap-default-on`
 
 `awf init` scaffolds `bootstrap.enabled: true`; no CLI command changes that repository fact.
-Origin: ADR-cli-grammar-expresses-creation-and-inventory
+Origin: ADR-0254
 Backing: test
 
 ### `invariant: init-collision-guard`
@@ -36,7 +36,7 @@ Backing: test
 
 Interactive awf init prompts for the vars referenced by the unconditional catalog and singleton templates, while the seeded config carries that full var union as empty keys.
 Origin: ADR-0148
-Revised-by: ADR-house-standard-configuration-expresses-repo-facts-only
+Revised-by: ADR-0251
 Backing: test
 
 ### `invariant: init-unborn-head-supported`

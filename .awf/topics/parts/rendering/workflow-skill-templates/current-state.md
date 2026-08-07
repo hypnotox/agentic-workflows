@@ -41,8 +41,15 @@ Backing: test
 
 ### `invariant: authority-guided-implementation-autonomy`
 
-One variable-free shared prose partial is directly included once by every named implementation consumer. It requires authority-preserving reasoned correction and diagnosis before escalation, preserves the approved outcome, material scope, settled durable boundaries, and required verification, and forbids weakened oracles and unrelated cleanup. Inline owners amend stale mutable instructions and Notes; delegated owners report deviations for report-only review and focused parent reconciliation before checkpointing or later execution. Implementation review routes authority-determined remedies by classification and keeps one verify pass. Empty-data rendering remains coherent.
+One variable-free shared prose partial is directly included once by every named implementation consumer. It requires authority-preserving reasoned correction and diagnosis before escalation, preserves the approved outcome, material scope, settled durable boundaries, and required verification, and forbids weakened oracles and unrelated cleanup. A commit-capable phase owner may add a necessary omitted path inside those limits, reports each added path as a reasoned deviation, and treats path omission alone as no reason to stop. Inline owners amend stale mutable instructions and Notes; delegated owners report deviations for report-only review and focused parent reconciliation before checkpointing or later execution. Implementation review routes authority-determined remedies by classification and keeps one verify pass. Empty-data rendering remains coherent.
 Origin: ADR-0240
+Revised-by: ADR-0248, ADR-0249
+Backing: test
+
+### `invariant: authority-guided-review-remediation`
+
+The shared review spine is the single semantic home of finding classification and reserves `user-decision` for a finding where every viable correct remediation would contradict or change a settled user-approved design or decision or require an unauthorized change to an active current-state claim, with the affected authority cited; ambiguity, competing clean options, severity, structural character, and survival of a prior correction do not transfer the choice, and an ADR intentionally declaring an active-claim change is not an unauthorized deviation. One variable-free shared prose partial is directly included exactly once by plan review, ADR review, plan resync, and implementation review; it applies mechanical and reasoned corrections autonomously, scopes its stop rule to review findings, and routes a newly material load-bearing choice through the existing grounded-design or ADR workflow, pausing at that workflow's mandatory approval boundary. Exactly one fresh verify pass is retained, and every residual finding is diagnosed under the same boundary without another same-artifact review loop apart from one governed exception: plan resync's ADR amendment and review return edge, available to an initial or residual finding while the implicated ADR remains amendable, which ends the resync and is followed by a new invocation under its own one-verify-pass bound. Every affected skill and reviewer template renders coherently under empty variables.
+Origin: ADR-0245
 Backing: test
 
 ### `invariant: memory-checkpoint-chain-coverage`
@@ -82,7 +89,7 @@ Backing: test
 Rendered workflow skills describe catalog relationships only as recommendations. Any catalog skill may be used when its purpose fits, while controls within a selected skill remain mandatory.
 This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0167
-Revised-by: ADR-0243, ADR-house-standard-configuration-expresses-repo-facts-only
+Revised-by: ADR-0243, ADR-0251
 Backing: test
 
 ### `invariant: phase-transaction-ownership`
@@ -134,9 +141,9 @@ Backing: test
 
 ### `invariant: maintainable-code-subagent-contract`
 
-Every scoped implementation brief carries only the task-relevant semantic boundaries and ownership, representations and translation points, dependency direction, preparatory-refactor decision, prohibited bolt-on shortcuts, and validation expectations; the implementer makes authority-preserving reasoned detail deviations with a structured completed report without becoming a second planner, broadening scope, or performing unrelated cleanup, and inline plan execution extracts the same context for its current task.
+Every scoped implementation brief carries only the task-relevant semantic boundaries and ownership, representations and translation points, dependency direction, preparatory-refactor decision, prohibited bolt-on shortcuts, and validation expectations; the implementer makes authority-preserving reasoned detail deviations with a structured completed report without becoming a second planner, broadening scope, or performing unrelated cleanup. A phase owner may add a necessary omitted path and report it as a deviation, while a helper reports but never modifies an unassigned path. Inline plan execution extracts the same context for its current task.
 Origin: ADR-0168
-Revised-by: ADR-0240
+Revised-by: ADR-0240, ADR-0248
 Backing: test
 
 ### `invariant: deliberate-subagent-model-selection`
@@ -148,9 +155,9 @@ Backing: test
 
 ### `invariant: implementer-role-contract`
 
-The rendered implementer agent body states its two authority modes, that the dispatched task is the complete scope, that the agent guide's invariants and commands bind while its skill catalog and chain routing do not, that reaching green is the job and no assertion or golden may be weakened to hide a failure, that no interactive channel exists so escalation is a returned inventory, the commit-capable owner's explicit-stage, staged-check, gate, single-commit procedure, and a closed two-outcome return whose stopped outcome requires working-tree status, work completed, work remaining, the named failing check with its actual output, and what was already tried. The completed outcome inventories deviations or `none`; stopped reserves persistent verification failure or a narrow authority, outcome, scope, ambiguity, or safety boundary while retaining the shared inventory and closed two-outcome contract. The subagent-driven-development and executing-plans skills name that agent in every dispatch branch, and their parent-facing imperatives for raising concerns, preserving the plan's settled design, running the context command, and inventorying batch returns each carry an explicit subject. The body renders coherently with unset data and carries no runtime tool-name token.
+The rendered implementer agent body states its two authority modes, that the dispatched task is the complete scope, that the agent guide's invariants and commands bind while its skill catalog and chain routing do not, that reaching green is the job and no assertion or golden may be weakened to hide a failure, that no interactive channel exists so escalation is a returned inventory, the commit-capable owner's explicit-stage, staged-check, gate, single-commit procedure, and a closed two-outcome return whose stopped outcome requires working-tree status, work completed, work remaining, the named failing check with its actual output, and what was already tried. A phase owner may add and report a necessary omitted path inside the authority-guided boundary instead of stopping for path omission alone; a helper never modifies an unassigned path and reports the need for parent resolution. The completed outcome inventories deviations or `none`; stopped reserves persistent verification failure or a narrow authority, outcome, scope, ambiguity, or safety boundary while retaining the shared inventory and closed two-outcome contract. The subagent-driven-development and executing-plans skills name that agent in every dispatch branch, and their parent-facing imperatives for raising concerns, preserving the plan's settled design, running the context command, and inventorying batch returns each carry an explicit subject. The body renders coherently with unset data and carries no runtime tool-name token.
 Origin: ADR-0177
-Revised-by: ADR-0179, ADR-0232, ADR-0240
+Revised-by: ADR-0179, ADR-0232, ADR-0240, ADR-0248
 Backing: test
 
 ### `invariant: maintainable-code-review-lenses`

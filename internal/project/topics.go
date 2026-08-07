@@ -37,6 +37,7 @@ func (p *Project) QueryTopic(ctx context.Context, selector string, opts topic.Qu
 	return topic.Query(ws.Loaded.Topics, ws.Loaded.Corpus, selector, opts, safelyMatchablePaths(ws.Tree))
 }
 
+// touches-state: rendering/render-engine:source-marker-informational - topic producer supplies reader-facing page pairs and index globs
 func (p *Project) generateTopicDocs(ctx context.Context, corpus topic.Corpus) (files []RenderedFile, deps map[string][]string, err error) {
 	deps = map[string][]string{}
 	topicTemplate, err := fs.ReadFile(templates.FS, topicTID)
@@ -76,13 +77,13 @@ func (p *Project) generateTopicDocs(ctx context.Context, corpus topic.Corpus) (f
 		if err != nil { // coverage-ignore: ParsePart already validated authoring comments and the typed model is always executable
 			return nil, nil, fmt.Errorf("render topic %s: %w", t.ID.String(), err)
 		}
-		content = injectBanner(content, topicTID)
+		metadataPath, partPath := relSlash(p.Root, t.MetadataPath), relSlash(p.Root, t.PartPath)
+		content = injectSourceMarker(injectBanner(content, topicTID), []string{metadataPath, partPath})
 		cfgHash, err := topicHash(p.Root, p.projectTreeReader(), model, t.MetadataPath, t.PartPath)
 		if err != nil { // coverage-ignore: topic loading just read both inputs; failure requires a concurrent filesystem race
 			return nil, nil, err
 		}
 		path := base + "/" + t.ID.Domain + "/" + t.ID.Slug + ".md"
-		metadataPath, partPath := relSlash(p.Root, t.MetadataPath), relSlash(p.Root, t.PartPath)
 		observed := normalizeOutputInputs([]OutputInput{{Path: config.DirName + "/config.yaml", Role: ArtifactConfig}, {Path: "templates/" + topicTID, Role: ArtifactTemplate}, {Path: metadataPath, Role: ArtifactTopicMetadata}, {Path: partPath, Role: ArtifactClaimPart}})
 		files = append(files, RenderedFile{Path: path, Content: content, TemplateID: topicTID, TemplateHash: manifest.Hash(topicTemplate), ConfigHash: cfgHash, Policy: declaredPolicy("topics", false), Declarer: "topic:" + t.ID.String(), DeclarerProjection: t.ID.String() + "\x00" + strings.Join(referenceProjection, "\x00"), Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, ConsumedInputs: observed, ObservedTemplateID: topicTID})
 		deps[path] = []string{metadataPath, partPath}
@@ -97,7 +98,10 @@ func (p *Project) generateTopicDocs(ctx context.Context, corpus topic.Corpus) (f
 		if err != nil { // coverage-ignore: the embedded index template and typed model are always executable
 			return nil, nil, fmt.Errorf("render topic index %s: %w", domain, err)
 		}
-		content = injectBanner(content, topicIndexTID)
+		content = injectSourceMarker(injectBanner(content, topicIndexTID), []string{
+			config.DirName + "/topics/metadata/" + domain + "/*.yaml",
+			config.DirName + "/topics/parts/" + domain + "/*/current-state.md",
+		})
 		enc, _ := yaml.Marshal(model)
 		path := base + "/" + domain + "/index.md"
 		observed := []OutputInput{{Path: config.DirName + "/config.yaml", Role: ArtifactConfig}, {Path: "templates/" + topicIndexTID, Role: ArtifactTemplate}}

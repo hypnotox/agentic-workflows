@@ -18,14 +18,14 @@ Backing: test
 
 For every name-derived catalog doc (neither the root agent guide nor a document declaring `Path`), the section names declared in the catalog exactly match the set of awf:section marker blocks in that doc's template, and each doc renders from its template defaults with no leaked no-value token.
 Origin: ADR-0148
-Revised-by: ADR-house-standard-configuration-expresses-repo-facts-only
+Revised-by: ADR-0251
 Backing: test
 
 ### `invariant: document-map-lists-mandatory-docs`
 
 The document-map section of the rendered `AGENTS.md` always cites every catalog document-map doc (including the workflow guide, the documentation standard, and the agent-guide authoring standard) with its full title, link, and catalog description.
 Origin: ADR-0148
-Revised-by: ADR-house-standard-configuration-expresses-repo-facts-only
+Revised-by: ADR-0251
 Backing: test
 
 ### `invariant: glossary-table-forced`
@@ -76,7 +76,7 @@ Backing: test
 
 The rendered guide routes agents to native catalog skills whose exposed descriptions fit the work, without duplicating standard or local skill names, purposes, triggers, kinds, relationships, or a fallback catalog. Empty and missing render data remains coherent, and skill selection stays advisory.
 Origin: ADR-0157
-Revised-by: ADR-0167, ADR-0241, ADR-house-standard-configuration-expresses-repo-facts-only
+Revised-by: ADR-0167, ADR-0241, ADR-0251
 Backing: test
 
 ### `invariant: working-memory-single-home`

@@ -86,6 +86,18 @@ func TestReadBackInPlaceBody(t *testing.T) {
 		}
 	})
 
+	t.Run("source marker is body content, not a read-back boundary", func(t *testing.T) {
+		// invariant: rendering/render-engine:source-marker-informational (TestReadBackInPlaceBody)
+		out := "<!-- awf:edit-in-place body: x -->\n" +
+			"before\n<!-- awf:source .awf/source.yaml -->\nafter\n" +
+			"<!-- awf:edit next: default -->\ntail\n"
+		got, _ := readBackInPlaceBody(out, "body", []string{"body", "next"}, render.HTMLComment)
+		want := "before\n<!-- awf:source .awf/source.yaml -->\nafter"
+		if got != want {
+			t.Errorf("source marker became a read-back boundary\ngot  %q\nwant %q", got, want)
+		}
+	})
+
 	// invariant: rendering/inplace-and-placeholders:in-place-spacing-owned (leading and trailing blank framing trimmed)
 	t.Run("leading and trailing blank framing trimmed", func(t *testing.T) {
 		out := "<!-- awf:edit-in-place body: x -->\n\n \nCONTENT\n\n\n<!-- awf:edit next: d -->\ntail\n"

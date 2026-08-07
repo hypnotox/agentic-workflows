@@ -25,7 +25,7 @@ Backing: test
 
 The fixed Pi target renders the standalone context-usage and handoff entrypoints plus the subagent index, bounded model-routing module, and runner with provenance; `effort-workflow` additionally renders the Pi-target-owned `using-effort` skill and `awf-effort` index/client pair through the same output predicate. The effort client alone strictly invokes and decodes activity protocol v2 and owner-scoped memory protocol v1 through bounded transport; its index owns direct serialized association, fixed-path transient context, dynamic memory-tool activation, Pi file-queue participation, heartbeat/shutdown lifecycle, and Remote Pi translation. Context usage owns transient per-model-call usage facts, handoff owns parent-linked main-session replacement, model routing owns pure preference policy, and the subagent entrypoint retains tool registration, queueing, process lifecycle, and runtime integration. No telemetry or workflow-router output renders, and every file follows normal output-plan, drift, cleanup, target-sensitive hash, generated-checkout, adopter-example, editor-quiet, and container-coverage semantics.
 Origin: ADR-0148
-Revised-by: ADR-0162, ADR-0164, ADR-0167, ADR-0173, ADR-0209, ADR-0218, ADR-0225, ADR-0239, ADR-house-standard-configuration-expresses-repo-facts-only
+Revised-by: ADR-0162, ADR-0164, ADR-0167, ADR-0173, ADR-0209, ADR-0218, ADR-0225, ADR-0239, ADR-0251
 Backing: test
 
 ### `invariant: pi-implementation-state-boundary`

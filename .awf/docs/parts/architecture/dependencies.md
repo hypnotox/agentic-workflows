@@ -20,6 +20,7 @@
   populate ordinary commit changes; current and staged checks retain complete snapshots and their full
   marker, coverage, and domain-sidecar projection.
 - **`golang.org/x/mod`**: semver comparison for the binary-version gate (ADR-0039).
+- **`github.com/pmezard/go-difflib`**: direct line change model for effort-owned Pi-compatible bounded memory display diffs; awf retains row formatting, offsets, context, and bounds.
 - **`github.com/bmatcuk/doublestar/v4`**: the matcher behind `internal/pathglob`'s anchored
   full-path glob dialect: invariant source globs, dependency manifests, and domain `paths`
   all match through it (ADR-0077).

@@ -5,7 +5,7 @@ The topic package parses topic metadata and claim inputs, builds the claim corpu
 ### `invariant: fan-out-budget-fixed`
 
 Path-scoped current-state topic fan-out emits a Warning when more than eight topics match one path; the fixed budget is 8 and is not configurable.
-Origin: ADR-unconditional-gates-and-audit-rules
+Origin: ADR-0253
 Backing: test
 
 ### `invariant: backed-requires-proof`

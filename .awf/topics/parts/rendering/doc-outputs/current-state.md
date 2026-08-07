@@ -12,26 +12,26 @@ Backing: test
 
 The layout's domains directory is computed as `docs/domains` beneath the fixed documentation root.
 Origin: ADR-0148
-Revised-by: ADR-house-standard-configuration-expresses-repo-facts-only
+Revised-by: ADR-0251
 Backing: test
 
 ### `invariant: layout-derivation`
 
 The decisions directory, ADR index file, and plans directory derive structurally from the fixed `docs` root as `docs/decisions`, `docs/decisions/INDEX.md`, and `docs/plans`, rather than being independently configurable.
 Origin: ADR-0148
-Revised-by: ADR-house-standard-configuration-expresses-repo-facts-only
+Revised-by: ADR-0251
 Backing: test
 
 ### `invariant: docs-root-fixed`
 
 The documentation root is exactly `docs`, fixed in the binary rather than read from configuration.
-Origin: ADR-house-standard-configuration-expresses-repo-facts-only
+Origin: ADR-0251
 Backing: test
 
 ### `invariant: layout-docs-full-catalog`
 
 The layout docs map contains exactly every catalog document name and no other keys: the agent guide maps to `AGENTS.md`, a document declaring `Path` maps to `docs/<Path>`, and every other document maps to `docs/<name>.md`.
-Origin: ADR-house-standard-configuration-expresses-repo-facts-only
+Origin: ADR-0251
 Backing: test
 
 ### `invariant: pitfall-adr-link-resolved`
@@ -69,14 +69,14 @@ Backing: test
 
 A prefix-anchored token whose trailing word matches no catalog skill name produces no dead-skill-reference finding.
 Origin: ADR-0148
-Revised-by: ADR-house-standard-configuration-expresses-repo-facts-only
+Revised-by: ADR-0251
 Backing: test
 
 ### `invariant: stub-notes-path-keyed`
 
 The unauthored-content advisory reports one entry per rendered output path, so artifacts that share a template id, including per-target artifacts and domain docs, each report independently.
 Origin: ADR-0148
-Revised-by: ADR-house-standard-configuration-expresses-repo-facts-only
+Revised-by: ADR-0251
 Backing: test
 
 ### `invariant: topic-output-complete`
@@ -90,5 +90,11 @@ Verify: Creating and removing a topic in a render fixture changes awf render, aw
 
 The working-with-awf doc renders as an always-on singleton for every project, present in the plain-singleton set and the catalog's singleton kinds.
 Origin: ADR-0148
-Revised-by: ADR-house-standard-configuration-expresses-repo-facts-only
+Revised-by: ADR-0251
+Backing: test
+
+### `invariant: opaque-doc-source-guidance`
+
+Opaque generated documentation carries one compact reader-facing `awf:source` marker for topic pages and indexes, domain navigation, glossary, pitfalls, the ADR index, config reference, and target bridges. Section-overridable standard docs and AGENTS.md retain their `awf:edit` guidance without duplication; authored ADRs, plans, and `local: true` artifacts remain banner-free. Marker payloads guide readers and are not exhaustive machine dependencies.
+Origin: ADR-0250
 Backing: test

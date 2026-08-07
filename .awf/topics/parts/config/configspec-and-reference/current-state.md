@@ -6,7 +6,7 @@ The config-spec model and the generated configuration reference document.
 
 Because the config-reference doc's data namespace is injected at generation time, an authored data section in the config-reference sidecar is rejected when the sidecar is opened. An authored paths section and any unknown section name are rejected as well, keeping the sidecar limited to section bodies.
 Origin: ADR-0148
-Revised-by: ADR-house-standard-configuration-expresses-repo-facts-only
+Revised-by: ADR-0251
 Backing: test
 
 ### `invariant: live-state-projection-explicit`
@@ -30,7 +30,7 @@ Backing: test
 
 Regeneration is the drift oracle for the config-reference doc: a hand-edited file reports stale and a deleted file reports missing.
 Origin: ADR-0148
-Revised-by: ADR-house-standard-configuration-expresses-repo-facts-only
+Revised-by: ADR-0251
 Backing: test
 
 ### `invariant: configspec-data-parity`
