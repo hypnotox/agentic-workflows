@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"sort"
 	"strings"
 	"testing"
@@ -14,6 +15,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/render"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
@@ -190,28 +192,42 @@ func TestSingleWorkflowHasNoDepthControls(t *testing.T) {
 		}
 	}
 	collectConfig(reflect.TypeOf(config.Config{}))
-
-	var codeSurface []string
-	for _, root := range []string{"cmd/awf", "internal/config", "internal/catalog", "internal/execution", "internal/project", "internal/render"} {
-		err := filepath.WalkDir(filepath.Join(repoRootDir(t), root), func(path string, entry os.DirEntry, walkErr error) error {
-			if walkErr != nil {
-				return walkErr
-			}
-			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") {
-				return nil
-			}
-			body, err := os.ReadFile(path)
-			if err != nil {
-				return err
-			}
-			codeSurface = append(codeSurface, string(body))
-			return nil
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
+	liveConfig, err := os.ReadFile(filepath.Join(repoRootDir(t), ".awf", "config.yaml"))
+	if err != nil {
+		t.Fatal(err)
 	}
-	var templateActions []string
+	configSurface = append(configSurface, string(liveConfig))
+
+	production := map[string]string{}
+	legacyAdvisoryProfileCounts := map[string]struct {
+		symbol int
+		phrase int
+	}{
+		"internal/catalog/catalog.go":  {symbol: 3},
+		"internal/catalog/standard.go": {symbol: 20},
+		"internal/catalog/workflow.go": {symbol: 2, phrase: 1},
+		"internal/project/local.go":    {symbol: 1},
+		"internal/project/project.go":  {symbol: 1},
+	}
+	testsupport.WalkRepoSources(t, repoRootDir(t), func(path string, body []byte) {
+		source := string(body)
+		if counts, ok := legacyAdvisoryProfileCounts[path]; ok {
+			// WorkflowProfile is the pre-existing advisory skill-selection metadata,
+			// not a selectable workflow operating profile. Pin and remove only these
+			// known occurrences so a new use anywhere, including these files, fails.
+			if got := strings.Count(source, "WorkflowProfile"); got != counts.symbol {
+				t.Errorf("%s WorkflowProfile occurrence count = %d, want %d", path, got, counts.symbol)
+			}
+			if got := strings.Count(strings.ToLower(source), "workflow profile"); got != counts.phrase {
+				t.Errorf("%s workflow profile phrase count = %d, want %d", path, got, counts.phrase)
+			}
+			source = strings.ReplaceAll(source, "WorkflowProfile", "")
+			source = strings.ReplaceAll(strings.ToLower(source), "workflow profile", "")
+		}
+		production[path] = source
+	})
+
+	templateRuntime := map[string]string{}
 	if err := fs.WalkDir(templates.FS, ".", func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -223,32 +239,43 @@ func TestSingleWorkflowHasNoDepthControls(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		templateActions = append(templateActions, templateActionText(string(body))...)
+		templateRuntime[path+" actions"] = strings.Join(templateActionText(string(body)), "\n")
+		if executableTemplate(path) {
+			templateRuntime[path+" body"] = string(body)
+		}
 		return nil
 	}); err != nil {
 		t.Fatal(err)
 	}
-	liveConfig, err := os.ReadFile(filepath.Join(repoRootDir(t), ".awf", "config.yaml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	configSurface = append(configSurface, string(liveConfig))
 
-	for name, surface := range map[string]string{
-		"configuration fields and live config": strings.Join(configSurface, "\n"),
-		"catalog and runtime production code":  strings.Join(codeSurface, "\n"),
-		"template runtime inputs":              strings.Join(templateActions, "\n"),
+	surfaces := workflowControlSurfaces{
+		configuration: strings.Join(configSurface, "\n"),
+		production:    production,
+		templates:     templateRuntime,
+	}
+	if violations := workflowControlCensus(surfaces); len(violations) != 0 {
+		t.Errorf("workflow control census found prohibited controls: %v", violations)
+	}
+
+	for name, mutation := range map[string]workflowControlSurfaces{
+		"configuration": {configuration: "workflowProfile: governed"},
+		"production":    {production: map[string]string{"internal/plan/control.go": "type WorkflowProfile struct{}"}},
+		"template runtime": {templates: map[string]string{
+			"pi/control.ts.tmpl body": "const runtimePolicy = true",
+		}},
 	} {
-		if violations := prohibitedWorkflowControlTokens(surface); len(violations) != 0 {
-			t.Errorf("%s exposes prohibited workflow controls: %v", name, violations)
-		}
+		t.Run("rejects "+name+" control", func(t *testing.T) {
+			if violations := workflowControlCensus(mutation); len(violations) != 1 {
+				t.Fatalf("mutation produced violations %v, want one", violations)
+			}
+		})
 	}
 	for class, mutations := range map[string][]string{
-		"profile":        {"governance profile", "WorkflowProfileSelection"},
+		"profile":        {"governance profile", "WorkflowProfile", "WorkflowProfileSelection"},
 		"depth control":  {"review depth", "DepthControl"},
 		"router":         {"workflow router", "ReviewRouter"},
 		"classifier":     {"workflow classifier", "ReviewClassifier"},
-		"runtime policy": {"runtime policy knob", "RuntimeWorkflowPolicy"},
+		"runtime policy": {"runtime policy", "runtime policy knob", "RuntimePolicy", "RuntimeWorkflowPolicy"},
 	} {
 		for _, mutation := range mutations {
 			if violations := prohibitedWorkflowControlTokens(mutation); len(violations) != 1 {
@@ -256,6 +283,39 @@ func TestSingleWorkflowHasNoDepthControls(t *testing.T) {
 			}
 		}
 	}
+}
+
+type workflowControlSurfaces struct {
+	configuration string
+	production    map[string]string
+	templates     map[string]string
+}
+
+func workflowControlCensus(surfaces workflowControlSurfaces) []string {
+	var out []string
+	collect := func(surface, body string) {
+		for _, token := range prohibitedWorkflowControlTokens(body) {
+			out = append(out, surface+": "+token)
+		}
+	}
+	collect("configuration", surfaces.configuration)
+	for path, body := range surfaces.production {
+		collect("production "+path, body)
+	}
+	for path, body := range surfaces.templates {
+		collect("template "+path, body)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func executableTemplate(path string) bool {
+	for _, prefix := range []string{"bootstrap/", "hooks/", "pi/", "runner/"} {
+		if strings.HasPrefix(path, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 func templateActionText(body string) []string {
@@ -276,18 +336,39 @@ func templateActionText(body string) []string {
 }
 
 func prohibitedWorkflowControlTokens(surface string) []string {
-	normalized := strings.Map(func(r rune) rune {
-		if unicode.IsLetter(r) || unicode.IsDigit(r) {
-			return unicode.ToLower(r)
-		}
-		return -1
-	}, surface)
-	var out []string
-	for _, token := range []string{"governanceprofile", "workflowprofileselection", "reviewdepth", "workflowdepth", "depthcontrol", "workflowrouter", "reviewrouter", "workflowclassifier", "reviewclassifier", "runtimepolicyknob", "runtimeworkflowpolicy"} {
-		if strings.Contains(normalized, token) {
-			out = append(out, token)
+	words := strings.FieldsFunc(surface, func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+	})
+	seen := map[string]bool{}
+	for _, word := range words {
+		word = strings.ToLower(word)
+		for _, token := range []string{"governanceprofile", "workflowprofile", "reviewdepth", "workflowdepth", "depthcontrol", "workflowrouter", "reviewrouter", "workflowclassifier", "reviewclassifier", "runtimepolicy", "runtimeworkflowpolicy"} {
+			if strings.Contains(word, token) {
+				seen[token] = true
+			}
 		}
 	}
+	for token, pattern := range map[string]string{
+		"governanceprofile":  `(?i)\bgovernance[\s_-]+profiles?\b`,
+		"workflowprofile":    `(?i)\bworkflow[\s_-]+profiles?\b`,
+		"reviewdepth":        `(?i)\breview[\s_-]+depth\b`,
+		"workflowdepth":      `(?i)\bworkflow[\s_-]+depth\b`,
+		"depthcontrol":       `(?i)\bdepth[\s_-]+controls?\b`,
+		"workflowrouter":     `(?i)\bworkflow[\s_-]+routers?\b`,
+		"reviewrouter":       `(?i)\breview[\s_-]+routers?\b`,
+		"workflowclassifier": `(?i)\bworkflow[\s_-]+classifiers?\b`,
+		"reviewclassifier":   `(?i)\breview[\s_-]+classifiers?\b`,
+		"runtimepolicy":      `(?i)\bruntime[\s_-]+polic(?:y|ies)\b`,
+	} {
+		if regexp.MustCompile(pattern).MatchString(surface) {
+			seen[token] = true
+		}
+	}
+	out := make([]string, 0, len(seen))
+	for token := range seen {
+		out = append(out, token)
+	}
+	sort.Strings(out)
 	return out
 }
 
