@@ -2,6 +2,7 @@
 ## In flight
 
 - [ADR-0246: Ship thin support skills for awf's own mechanisms](0246-ship-thin-support-skills-for-awf-s-own-mechanisms.md) (Proposed)
+- [ADR-0247: Scope Memory Diff Truncation To Bounding Loss](0247-scope-memory-diff-truncation-to-bounding-loss.md) (Proposed)
 
 ## History
 
