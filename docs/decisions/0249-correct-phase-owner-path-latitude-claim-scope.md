@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: correct-phase-owner-path-latitude-claim-scope
-status: Proposed
+status: Implemented
 date: 2026-08-07
 ---
 # ADR-0249: Correct Phase-Owner Path-Latitude Claim Scope
@@ -51,3 +51,4 @@ authority broader than the approved decision.
 ## Status history
 
 - 2026-08-07: Proposed
+- 2026-08-07: Implemented; content-sha256: e3c5d35d0563b2d2ffa068c78dcb88629fcce27ac0ff0a9c3a2f29cdf0ab2190

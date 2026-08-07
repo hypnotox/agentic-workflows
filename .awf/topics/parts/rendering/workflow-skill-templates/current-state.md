@@ -41,9 +41,9 @@ Backing: test
 
 ### `invariant: authority-guided-implementation-autonomy`
 
-One variable-free shared prose partial is directly included once by every named implementation consumer. It requires authority-preserving reasoned correction and diagnosis before escalation, preserves the approved outcome, material scope, settled durable boundaries, and required verification, and forbids weakened oracles and unrelated cleanup. A complete-transaction owner may add a necessary omitted path inside those limits and treats path omission alone as no reason to stop. Inline owners amend stale mutable instructions and Notes; delegated owners report deviations for report-only review and focused parent reconciliation before checkpointing or later execution. Implementation review routes authority-determined remedies by classification and keeps one verify pass. Empty-data rendering remains coherent.
+One variable-free shared prose partial is directly included once by every named implementation consumer. It requires authority-preserving reasoned correction and diagnosis before escalation, preserves the approved outcome, material scope, settled durable boundaries, and required verification, and forbids weakened oracles and unrelated cleanup. A commit-capable phase owner may add a necessary omitted path inside those limits, reports each added path as a reasoned deviation, and treats path omission alone as no reason to stop. Inline owners amend stale mutable instructions and Notes; delegated owners report deviations for report-only review and focused parent reconciliation before checkpointing or later execution. Implementation review routes authority-determined remedies by classification and keeps one verify pass. Empty-data rendering remains coherent.
 Origin: ADR-0240
-Revised-by: ADR-0248
+Revised-by: ADR-0248, ADR-0249
 Backing: test
 
 ### `invariant: authority-guided-review-remediation`
