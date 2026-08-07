@@ -99,7 +99,7 @@ func (q *Query) ContextForOptions(queries []string, options ContextOptions) Cont
 		if explicit {
 			identity := adr.FileIdentity(path.Base(filePath))
 			linkedPlans := []string{}
-			if record, ok := selectedADRs.ByIdentity(identity); ok { // coverage-ignore: explicit non-ADR requests retain the initialized empty set
+			if record, ok := selectedADRs.ByIdentity(identity); ok {
 				linkedPlans = state.PlanState.LinkedPlans(record.Identity())
 			}
 			impact.ADR = projectADRArtifact(filePath, lay.ADRDir, selectedADRs, state.Loaded.Topics, linkedPlans, options.Facets)

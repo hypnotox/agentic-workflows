@@ -210,4 +210,6 @@ feat(rendering): retire plan resync workflow
 
 ## Notes
 
+- Phase 1 required `internal/contextq/context.go`, omitted from the exact task paths, to consume the project-owned `PlanState` at the existing query boundary. The phase review confirmed this as an authority-preserving local path addition; settlement added snapshot-to-render proof coverage and removed an inaccurate coverage exclusion.
+
 Inline owners immediately correct stale instructions and record reasoned deviations here. Delegated owners report deviations; the parent supplies each report to phase review and reconciles findings in one focused settlement commit before checkpointing or later execution. Record review findings, implementation deviations, and freshness invalidations here. After assurance settles, `effort-workflow` reconciles final Notes and owns numbering, integration, and the status-only terminal transaction.

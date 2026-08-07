@@ -1,9 +1,16 @@
 package contextq
 
 import (
+	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/migrate"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
 // invariant: tooling/context-and-topic:context-adr-operation-projection (TestContextADRProjection)
@@ -152,6 +159,56 @@ None.
 			t.Errorf("%s mutability = %#v, want %q", tc.name, got, tc.want)
 		}
 	}
+}
+
+// invariant: tooling/context-and-topic:adr-linked-plan-references (TestContextADRLinkedPlansUseResolvedSnapshotReferences)
+func TestContextADRLinkedPlansUseResolvedSnapshotReferences(t *testing.T) {
+	files := ctxFiles()
+	files["docs/decisions/0007-numbered.md"] = testsupport.ADR("Implemented", testsupport.WithDate("2026-08-07"), testsupport.WithTitle("0007: Numbered"), testsupport.WithBody("## Context\n\nContext.\n\n## Decision\n\n1. Decision.\n\n## State changes\n\nNone.\n\n## Consequences\n\nNone.\n\n## Alternatives Considered\n\nNone.\n\n## Status history\n\n- 2026-08-07: Implemented\n"))
+	files["docs/decisions/still-pending.md"] = linkedPlanADRFixture("still-pending")
+	files["docs/plans/2026-08-01-a.md"] = linkedPlanFixture("[7]", "Implemented")
+	files["docs/plans/2026-08-02-z.md"] = linkedPlanFixture("[7, still-pending]", "Proposed")
+	p := ctxRepo(t, ctxConfig, files)
+	lock := &manifest.Lock{AWFVersion: "0.0.0", SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
+	if err := lock.Save(lockFile(p.Root)); err != nil {
+		t.Fatal(err)
+	}
+	gitfixture.AddAll(t, gitfixture.At(p.Root))
+
+	wantNumbered := []string{"docs/plans/2026-08-01-a.md", "docs/plans/2026-08-02-z.md"}
+	working := queryFor(t, p).ContextForOptions([]string{"docs/decisions/0007-numbered.md", "docs/decisions/still-pending.md", "internal/foo/x.go"}, ContextOptions{Selection: SelectionExplicit, Facets: []ContextFacet{FacetReferences}})
+	if got := working.Requests[0].Exact.Context.ADR.LinkedPlans; !slices.Equal(got, wantNumbered) {
+		t.Fatalf("numbered linked plans = %#v, want %#v", got, wantNumbered)
+	}
+	if got, want := working.Requests[1].Exact.Context.ADR.LinkedPlans, []string{"docs/plans/2026-08-02-z.md"}; !slices.Equal(got, want) {
+		t.Fatalf("pending linked plans = %#v, want %#v", got, want)
+	}
+	if working.Requests[2].Exact.Context.ADR != nil {
+		t.Fatalf("unrelated request gained ADR context: %#v", working.Requests[2].Exact.Context.ADR)
+	}
+	if rendered := RenderContextText(working, "header", []ContextFacet{FacetReferences}); !strings.Contains(rendered, "linked-plans: docs/plans/2026-08-01-a.md, docs/plans/2026-08-02-z.md") {
+		t.Fatalf("deterministic linked plans missing from output:\n%s", rendered)
+	}
+
+	// The working tree drops the pending link while the index keeps the staged
+	// parsed-plan association, proving both constructors use their own snapshot.
+	testsupport.WriteFile(t, filepath.Join(p.Root, "docs/plans/2026-08-02-z.md"), linkedPlanFixture("[7]", "Proposed"))
+	working = queryFor(t, p).ContextForOptions([]string{"docs/decisions/still-pending.md"}, ContextOptions{Selection: SelectionExplicit, Facets: []ContextFacet{FacetReferences}})
+	staged := stagedQueryFor(t, p.Root).ContextForOptions([]string{"docs/decisions/still-pending.md"}, ContextOptions{Selection: SelectionExplicit, Facets: []ContextFacet{FacetReferences}})
+	if got := working.Requests[0].Exact.Context.ADR.LinkedPlans; len(got) != 0 {
+		t.Fatalf("working linked plans = %#v, want none", got)
+	}
+	if got, want := staged.Requests[0].Exact.Context.ADR.LinkedPlans, []string{"docs/plans/2026-08-02-z.md"}; !slices.Equal(got, want) {
+		t.Fatalf("staged linked plans = %#v, want %#v", got, want)
+	}
+}
+
+func linkedPlanADRFixture(slug string) string {
+	return "---\nformat: current-state-v4\nstatus: Proposed\ndate: 2026-08-07\nslug: " + slug + "\n---\n# ADR-" + slug + ": Linked plan fixture\n\n## Context\n\nContext.\n\n## Decision\n\n1. `decision: fixture` Fixture.\n\n## State changes\n\nNone.\n\n## Consequences\n\nNone.\n\n## Alternatives Considered\n\nNone.\n\n## Status history\n\n- 2026-08-07: Proposed\n"
+}
+
+func linkedPlanFixture(adrs, status string) string {
+	return "---\nformat: plan-v2\ndate: 2026-08-07\nadrs: " + adrs + "\nstatus: " + status + "\n---\n# Plan: Linked plan fixture\n\n## Goal\n\nExercise linked plans.\n\n## Architecture summary\n\nUse parsed links.\n\n## Phase 1: Expose\n\n**Execution mode: inline.**\n\nCompletes: [\"complete\"]\n\n### Task 1.1: Render\n\nQuery the ADR.\n\n### Phase close\n\n```commit\ntest(tooling): query linked plans\n```\n\n## Definition of done\n\n- `dod: complete` Linked plans render.\n"
 }
 
 // mustCorpus builds a corpus from fixture records that carry no duplicate
