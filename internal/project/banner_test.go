@@ -98,6 +98,12 @@ func TestInjectSourceMarker(t *testing.T) {
 			content: injectBanner("body\n", ""),
 			want:    "<!-- " + bannerText + " -->\nbody\n",
 		},
+		{
+			name:    "non-HTML banner preserves executable syntax",
+			content: injectBanner("#!/usr/bin/env bash\nexec awf \"$@\"\n", ""),
+			sources: []string{"AGENTS.md"},
+			want:    "#!/usr/bin/env bash\n# " + bannerText + "\nexec awf \"$@\"\n",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := injectSourceMarker(tc.content, tc.sources)

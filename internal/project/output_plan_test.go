@@ -176,7 +176,7 @@ func TestBridgeRenderIdentity(t *testing.T) {
 		AgentSuffix:    ".agent.md",
 		AgentDialect:   MarkdownAgentDialect,
 		BridgeFile:     "CUSTOM.md",
-		BridgeTemplate: runnerTID,
+		BridgeTemplate: bridgeTID,
 		Capabilities:   []Capability{CapabilitySubagentTools, CapabilitySessionHandoff},
 		Outputs: []TargetOutput{{
 			Path: ".custom/extension.ts", TemplateID: "pi/awf-context-usage/index.ts.tmpl",
@@ -193,7 +193,7 @@ func TestBridgeRenderIdentity(t *testing.T) {
 	for _, node := range plan.Nodes {
 		byPath[node.Path] = node
 	}
-	for path, templateID := range map[string]string{"CLAUDE.md": bridgeTID, "CUSTOM.md": runnerTID} {
+	for path, templateID := range map[string]string{"CLAUDE.md": bridgeTID, "CUSTOM.md": bridgeTID} {
 		node, ok := byPath[path]
 		if !ok || node.file == nil {
 			t.Fatalf("missing rendered bridge node %s", path)
@@ -215,13 +215,13 @@ func TestBridgeRenderIdentity(t *testing.T) {
 		marker := "<!-- awf:source AGENTS.md -->\n"
 		at := strings.Index(node.file.Content, marker)
 		prefix := node.file.Content[:max(at, 0)]
-		adjacent := strings.HasSuffix(prefix, "<!-- "+bannerText+" -->\n") || strings.HasSuffix(prefix, "# "+bannerText+"\n")
+		adjacent := strings.HasSuffix(prefix, "<!-- "+bannerText+" -->\n")
 		if at < 0 || strings.Count(node.file.Content, marker) != 1 || !adjacent {
 			t.Errorf("%s headingless bridge marker is absent, duplicated, or misplaced:\n%s", path, node.file.Content)
 		}
 	}
-	if got := byPath["CUSTOM.md"].file.Content; !strings.Contains(got, `exec awf "$@"`) {
-		t.Errorf("custom bridge did not use its descriptor template with empty vars:\n%s", got)
+	if got := byPath["CUSTOM.md"].file.Content; !strings.Contains(got, "@AGENTS.md") {
+		t.Errorf("custom bridge did not use its descriptor-owned Markdown template with empty vars:\n%s", got)
 	}
 	for _, path := range []string{
 		".custom/workflows/example-tdd/SKILL.md",

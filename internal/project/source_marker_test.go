@@ -12,10 +12,12 @@ import (
 // inputs: markers are informational and never alter machine dependencies.
 // invariant: rendering/doc-outputs:opaque-doc-source-guidance (TestSourceMarkerFamilyMatrix)
 func TestSourceMarkerFamilyMatrix(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndocs: [glossary, pitfalls]\ndomains: [rendering]\ntargets: [claude]\n", map[string]string{
-		"domains/rendering.yaml": "paths: ['internal/**']\n",
-		"docs/glossary.yaml":     "data:\n  standardTerms:\n  terms:\n",
-		"docs/pitfalls.yaml":     "data:\n  pitfalls:\n",
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: [code-reviewer]\ndocs: [glossary, pitfalls, my-doc]\ndomains: [rendering]\ntargets: [claude, pi]\nhooks:\n  enabled: true\n", map[string]string{
+		"domains/rendering.yaml":       "paths: ['internal/**']\n",
+		"docs/glossary.yaml":           "data:\n  standardTerms:\n  terms:\n",
+		"docs/pitfalls.yaml":           "data:\n  pitfalls:\n",
+		"docs/my-doc.yaml":             "data:\n  title: My Doc\n  description: Local fixture.\n",
+		"docs/parts/my-doc/content.md": "Local body.\n",
 	})
 	writeProjectTopic(t, root, "opaque", "Opaque", "applies: global\n")
 	writeADR(t, root, "0001-fixture.md", testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Fixture"), testsupport.WithBody("## Decision\n\n1. Fixture.\n")))
@@ -56,8 +58,27 @@ func TestSourceMarkerFamilyMatrix(t *testing.T) {
 			t.Errorf("%s contains unresolved value", path)
 		}
 	}
-	for _, path := range []string{"AGENTS.md", "docs/working-with-awf.md", "docs/decisions/README.md", "docs/plans/README.md", ".awf/hooks/pre-commit.sh"} {
-		if content, ok := byPath[path]; ok && strings.Contains(content, "<!-- awf:source ") {
+	for _, path := range []string{
+		"AGENTS.md",
+		"docs/working-with-awf.md",
+		"docs/my-doc.md",
+		"docs/decisions/README.md",
+		"docs/decisions/template.md",
+		"docs/plans/README.md",
+		"docs/plans/template.md",
+		".claude/skills/example-tdd/SKILL.md",
+		".pi/skills/example-tdd/SKILL.md",
+		".claude/agents/code-reviewer.md",
+		".pi/agents/code-reviewer.md",
+		".pi/extensions/awf-context-usage/index.ts",
+		".awf/hooks/pre-commit.sh",
+	} {
+		content, ok := byPath[path]
+		if !ok {
+			t.Errorf("missing representative unmarked output %s", path)
+			continue
+		}
+		if strings.Contains(content, "<!-- awf:source ") {
 			t.Errorf("unapproved family %s gained a source marker", path)
 		}
 	}

@@ -103,7 +103,8 @@ dependency list. For a topic page, edit both `.awf/topics/metadata/<domain>/<top
 `.awf/topics/metadata/<domain>/*.yaml` and `.awf/topics/parts/<domain>/*/current-state.md`. The
 output plan remains the authority for machine render dependencies; `.awf/awf.lock` remains the
 drift authority. **Source map.** Ordinary docs and `AGENTS.md` use `awf:edit`; generated local
-docs use their content part. Topic pages name their pair, while indexes and domain navigation name
+docs use `.awf/docs/<name>.yaml` for title and description metadata and
+`.awf/docs/parts/<name>/content.md` for the body. Topic pages name their pair, while indexes and domain navigation name
 the globs. Glossary and pitfalls name their sidecars (glossary also names
 `derived:awf-standard-vocabulary`); the ADR index names `derived:authored-adr-corpus`; config
 reference names `derived:configspec` and `derived:project-configuration`; target bridges name

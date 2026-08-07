@@ -24,17 +24,13 @@ func injectSourceMarker(content string, sources []string) string {
 	if len(sources) == 0 {
 		return content
 	}
-	marker := "<!-- awf:source " + strings.Join(sources, " ") + " -->\n"
-	for _, banner := range []string{
-		"<!-- " + bannerText + " -->\n",
-		"# " + bannerText + "\n",
-		"// " + bannerText + "\n",
-	} {
-		if at := strings.Index(content, banner); at >= 0 {
-			return content[:at+len(banner)] + marker + content[at+len(banner):]
-		}
+	banner := "<!-- " + bannerText + " -->\n"
+	at := strings.Index(content, banner)
+	if at < 0 { // coverage-ignore: source markers are only applied after an HTML banner
+		return content
 	}
-	return content // coverage-ignore: source markers are only applied after a banner
+	marker := "<!-- awf:source " + strings.Join(sources, " ") + " -->\n"
+	return content[:at+len(banner)] + marker + content[at+len(banner):]
 }
 
 func injectBanner(content, tid string, styles ...render.CommentStyle) string {
