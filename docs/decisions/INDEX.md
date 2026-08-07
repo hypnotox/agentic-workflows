@@ -2,6 +2,7 @@
 ## In flight
 
 - [ADR-0246: Ship thin support skills for awf's own mechanisms](0246-ship-thin-support-skills-for-awf-s-own-mechanisms.md) (Proposed)
+- [ADR-0249: Correct Phase-Owner Path-Latitude Claim Scope](0249-correct-phase-owner-path-latitude-claim-scope.md) (Proposed)
 
 ## History
 
