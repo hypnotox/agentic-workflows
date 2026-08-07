@@ -197,7 +197,11 @@ its descriptor-owned layout, and Pi places its artifacts and extensions under `.
 
 You change the config and run `awf render`; you never hand-edit a rendered file.
 `awf check` fails when a rendered file is stale or was edited by hand, so the two can't
-silently diverge. For detailed source-editing guidance for generated documents, see
+silently diverge. Rendered sections use `awf:edit`, opaque regenerated outputs may carry an
+informational `awf:source`, and authored ADRs, plans, and local artifacts are banner-free. A topic
+pairs `.awf/topics/metadata/<domain>/<topic>.yaml` with
+`.awf/topics/parts/<domain>/<topic>/current-state.md`; source markers identify reader guidance,
+not exhaustive dependencies. For detailed source-editing guidance, see
 [`docs/working-with-awf.md`](docs/working-with-awf.md). To customise one section of an artifact, drop a *convention part*
 under `.awf/`; it replaces that section's body and inherits the rest of the template.
 For skills and agents the catalog doesn't have, `awf new skill <name> "<desc>"` (or

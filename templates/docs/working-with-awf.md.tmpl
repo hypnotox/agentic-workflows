@@ -109,6 +109,16 @@ family globs `.awf/topics/metadata/<domain>/*.yaml` and
 `.awf/topics/parts/<domain>/*/current-state.md`. The output plan remains the authority
 for machine render dependencies; `.awf/awf.lock` remains the drift authority.
 
+**Source map.** Ordinary docs and `AGENTS.md` use their `awf:edit` pointers; generated local docs
+use their content part. Topic pages name their metadata/part pair, while indexes and domain
+navigation name those family globs. Glossary and pitfalls name their sidecars (glossary also names
+`derived:awf-standard-vocabulary`); the ADR index names `derived:authored-adr-corpus`; the config
+reference names `derived:configspec` and `derived:project-configuration`; target bridges name
+`AGENTS.md`. Generated local docs and section-overridable outputs do not need duplicate markers.
+Authored ADRs, plans, and `local: true` docs are banner-free and remain directly authored. For any
+source change, edit the authority, run `awf render`, run `awf check`, and commit the regenerated
+outputs and lock together.
+
 Query a topic as
 `awf topic <domain>/<topic>` or one claim as `awf topic <domain>/<topic>:<claim>`. Defaults return
 active state and hide provenance and reference edges; `--history`, `--references`, and `--coverage`

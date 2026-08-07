@@ -349,7 +349,9 @@ func nonNil(m map[string]any) map[string]any {
 type renderOutputOptions struct {
 	encode      func(string) (string, error)
 	bannerStyle render.CommentStyle
-	target      *Target
+	// sources are producer-selected reader guidance, separate from machine inputs.
+	sources []string
+	target  *Target
 	// encoder is the output node's declared representation policy. Structural
 	// heading parsing follows it rather than target identity or filename shape.
 	encoder AgentDialect
@@ -371,6 +373,8 @@ type renderKindSpec struct {
 	// encode projects the rendered instruction body into an output dialect before
 	// provenance injection (nil leaves ordinary skill/doc rendering unchanged).
 	encode func(name, body string, data map[string]any) (string, error)
+	// sources supplies compact reader-facing provenance for this producer only.
+	sources func(name string) []string
 }
 
 // skillTID resolves a skill's template id: the shared base template for a
@@ -420,12 +424,20 @@ func (p *Project) renderKind(spec renderKindSpec, eff map[string]bool) ([]Render
 		}
 		data := p.data(sc, eff)
 		var options *renderOutputOptions
+		if spec.target.Name != "" || spec.sources != nil {
+			options = &renderOutputOptions{}
+		}
+		if spec.sources != nil {
+			options.sources = spec.sources(name)
+		}
 		if spec.target.Name != "" {
 			for key, value := range spec.target.targetTemplateData() {
 				data[key] = value
 			}
 			target := spec.target
+			sources := options.sources
 			options = &renderOutputOptions{bannerStyle: render.HTMLComment, target: &target, encoder: MarkdownAgentDialect}
+			options.sources = sources
 		}
 		if spec.encode != nil {
 			options.bannerStyle = spec.target.agentCommentStyle()
@@ -465,6 +477,15 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 		outPath:   func(_ Target, n string) string { return p.docOutPath(n) },
 		defaults:  func(n string) map[string]any { return p.Cat.Docs[n].Data },
 		transform: docDataTransform,
+		sources: func(n string) []string {
+			switch n {
+			case "glossary":
+				return []string{".awf/docs/glossary.yaml", "derived:awf-standard-vocabulary"}
+			case "pitfalls":
+				return []string{".awf/docs/pitfalls.yaml"}
+			}
+			return nil
+		},
 	}, eff)
 	if err != nil {
 		return nil, err
@@ -568,7 +589,8 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 				continue
 			}
 			brf, err := p.renderTarget(targetBridgeKind, "", t.BridgeTemplate,
-				nil, config.Sidecar{}, p.data(config.Sidecar{}, eff), t.BridgeFile, eff)
+				nil, config.Sidecar{}, p.data(config.Sidecar{}, eff), t.BridgeFile, eff,
+				&renderOutputOptions{sources: []string{"AGENTS.md"}})
 			if err != nil {
 				return nil, err
 			}
@@ -690,6 +712,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	}
 	if options != nil {
 		content = injectBanner(content, tid, options.bannerStyle)
+		content = injectSourceMarker(content, options.sources)
 	} else {
 		content = injectBanner(content, tid)
 	}
@@ -791,7 +814,7 @@ func (p *Project) encodeAgent(t Target, name, body string, data map[string]any) 
 // resolves (ADR-0020 Decision 6 - partial-item supersedence of ADR-0005/ADR-0006).
 func (p *Project) generateIndexMD(corpus adr.Corpus) RenderedFile {
 	content := adr.RenderIndexMD(corpus)
-	content = injectBanner(content, "")
+	content = injectSourceMarker(injectBanner(content, ""), []string{"derived:authored-adr-corpus"})
 	inputs := []OutputInput{{Path: config.DirName + "/config.yaml", Role: ArtifactConfig}}
 	for _, record := range corpus.All() {
 		inputs = append(inputs, OutputInput{Path: p.layout().ADRDir + "/" + record.Filename, Role: ArtifactDecisionRecord})
@@ -813,7 +836,10 @@ func (p *Project) generateDomainDocs(topics topic.Corpus, eff map[string]bool) (
 		data["data"] = map[string]any{"domain": name, "topics": topic.BuildNavigationModel(name, topics.ForDomain(name))}
 		rf, err := p.renderTarget("domains", name, mustDescriptor("domains").tid(name),
 			p.Cat.DomainDoc.Sections, config.Sidecar{}, data,
-			lay.DomainsDir+"/"+name+".md", eff)
+			lay.DomainsDir+"/"+name+".md", eff, &renderOutputOptions{sources: []string{
+				".awf/topics/metadata/" + name + "/*.yaml",
+				".awf/topics/parts/" + name + "/*/current-state.md",
+			}})
 		if err != nil { // coverage-ignore: .data.domain/.data.topics are always set and the template is embedded, so renderTarget cannot produce <no value> or a read error here
 			return nil, err
 		}

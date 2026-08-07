@@ -185,6 +185,9 @@ func TestPitfallsRenderDegradesAndRenders(t *testing.T) {
 			if !strings.Contains(out, "No pitfalls recorded yet") || !strings.Contains(out, "data.pitfalls") {
 				t.Errorf("missing placeholder line:\n%s", out)
 			}
+			if !strings.Contains(out, "<!-- "+bannerText+" -->\n<!-- awf:source .awf/docs/pitfalls.yaml -->\n") || strings.Contains(out, "<no value>") {
+				t.Errorf("pitfalls marker must follow the banner with empty data safely:\n%s", out)
+			}
 		})
 	}
 	out := renderPitfalls(t, scaffoldFiles(t, pitfallsCfg, map[string]string{

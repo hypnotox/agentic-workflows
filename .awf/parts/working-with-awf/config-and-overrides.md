@@ -4,7 +4,7 @@ Discovery creates no effort. When durable continuity materially helps, `effort-w
 
 Full-replacement workflow, guide, checkpoint, or affected skill parts must re-derive this confirmation boundary; default-template projection tests cannot inspect replacement prose.
 
-New plan scaffolds carry `format: plan-v1`, sequential phase and task headings, one final Phase close per phase, and required Definition of done bullets. Marker-absent historical plans retain legacy checks and are not projected. `awf read plan <plan> <P[.T]>` accepts an exact filename or stem and canonical positive numeric selector, then prints the source-ordered executable closure: frontmatter, title, Goal, Architecture summary, owning phase and execution mode, selected content, Phase close, Definition of done, and Notes when present.
+New plan scaffolds carry `format: plan-v2`, sequential phase and task headings, one final Phase close per phase, task-scoped decisions, and required Definition of done outcomes. Marker-absent historical plans retain legacy checks and are not projected. `awf read plan <plan> <P[.T]>` accepts an exact filename or stem and canonical positive numeric selector, then prints the source-ordered executable closure.
 
 Plan execution selects `inline` or `subagent-driven` ownership independently per phase. One
 commit-capable owner takes a complete subagent-driven phase from a clean green baseline through its
@@ -31,4 +31,10 @@ dependency list. For a topic page, edit both `.awf/topics/metadata/<domain>/<top
 `.awf/topics/parts/<domain>/<topic>/current-state.md`; a topic index instead names the family globs
 `.awf/topics/metadata/<domain>/*.yaml` and `.awf/topics/parts/<domain>/*/current-state.md`. The
 output plan remains the authority for machine render dependencies; `.awf/awf.lock` remains the
-drift authority.
+drift authority. **Source map.** Ordinary docs and `AGENTS.md` use `awf:edit`; generated local
+docs use their content part. Topic pages name their pair, while indexes and domain navigation name
+the globs. Glossary and pitfalls name their sidecars (glossary also names
+`derived:awf-standard-vocabulary`); the ADR index names `derived:authored-adr-corpus`; config
+reference names `derived:configspec` and `derived:project-configuration`; target bridges name
+`AGENTS.md`. Authored ADRs, plans, and `local: true` docs are banner-free. Edit the authority, run
+`awf render`, run `awf check`, and commit regenerated outputs and lock together.

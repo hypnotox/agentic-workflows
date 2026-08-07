@@ -95,3 +95,9 @@ Verify: Creating and removing a topic in a render fixture changes awf render, aw
 The working-with-awf doc renders as an always-on singleton for every project, present in the plain-singleton set and the catalog's singleton kinds, and is suppressible only by a local: true sidecar.
 Origin: ADR-0148
 Backing: test
+
+### `invariant: opaque-doc-source-guidance`
+
+Opaque generated documentation carries one compact reader-facing `awf:source` marker for topic pages and indexes, domain navigation, glossary, pitfalls, the ADR index, config reference, and target bridges. Section-overridable standard docs and AGENTS.md retain their `awf:edit` guidance without duplication; authored ADRs, plans, and local artifacts remain banner-free. Marker payloads guide readers and are not exhaustive machine dependencies.
+Origin: ADR-compact-source-provenance-for-generated-documents
+Backing: test

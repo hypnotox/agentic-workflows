@@ -554,7 +554,8 @@ func (p *Project) generateConfigReference(files []RenderedFile, eff map[string]b
 	}
 	data["data"] = collections
 	rf, err := p.renderTarget("config-reference", "", p.Cat.Docs["config-reference"].TID,
-		p.Cat.Docs["config-reference"].Sections, sc, data, p.crefRel(), eff)
+		p.Cat.Docs["config-reference"].Sections, sc, data, p.crefRel(), eff,
+		&renderOutputOptions{sources: []string{"derived:configspec", "derived:project-configuration"}})
 	if err != nil { // reachable: an unreadable intro part fails the read here - this is its first render
 		return nil, false, err
 	}

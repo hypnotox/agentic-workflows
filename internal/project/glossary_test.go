@@ -124,6 +124,9 @@ func TestGlossaryDegradesWhenBothLayersEmpty(t *testing.T) {
 			if strings.Contains(out, "| Term | Meaning |") {
 				t.Errorf("zero-row table must not render:\n%s", out)
 			}
+			if !strings.Contains(out, "<!-- "+bannerText+" -->\n<!-- awf:source .awf/docs/glossary.yaml derived:awf-standard-vocabulary -->\n") || strings.Contains(out, "<no value>") {
+				t.Errorf("glossary marker must follow the banner with null data safely:\n%s", out)
+			}
 		})
 	}
 }

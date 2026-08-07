@@ -212,6 +212,13 @@ func TestBridgeRenderIdentity(t *testing.T) {
 		if strings.Contains(node.file.Content, "<no value>") {
 			t.Errorf("%s rendered an unset template value: %s", path, node.file.Content)
 		}
+		marker := "<!-- awf:source AGENTS.md -->\n"
+		at := strings.Index(node.file.Content, marker)
+		prefix := node.file.Content[:max(at, 0)]
+		adjacent := strings.HasSuffix(prefix, "<!-- "+bannerText+" -->\n") || strings.HasSuffix(prefix, "# "+bannerText+"\n")
+		if at < 0 || strings.Count(node.file.Content, marker) != 1 || !adjacent {
+			t.Errorf("%s headingless bridge marker is absent, duplicated, or misplaced:\n%s", path, node.file.Content)
+		}
 	}
 	if got := byPath["CUSTOM.md"].file.Content; !strings.Contains(got, `exec awf "$@"`) {
 		t.Errorf("custom bridge did not use its descriptor template with empty vars:\n%s", got)
