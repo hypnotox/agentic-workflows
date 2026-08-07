@@ -74,7 +74,7 @@ func TestRevisionStoreTracksLogicalHeavyHighWater(t *testing.T) {
 
 func TestHistoryOperationReleasesAliasedHeavyStateAtFinalUse(t *testing.T) {
 	loads := map[string]int{}
-	parent := &revisionState{lockReady: true, configReady: true, config: &config.Config{DocsDir: "docs"}}
+	parent := &revisionState{lockReady: true, configReady: true, config: &config.Config{}}
 	parent.loadUniverse = func() (currentstate.Universe, error) { return currentstate.Universe{}, nil }
 	op := newHistoryOperationFromCompact([]replayCommit{
 		{Hash: "child", Revision: "child", Parents: []string{"parent"}, Paths: []string{"internal/code.go"}},
@@ -110,7 +110,7 @@ func TestHistoryOperationPreResolvesRecursiveAliasesAndFrontier(t *testing.T) {
 	states := map[string]*revisionState{}
 	op := newHistoryOperationFromCompact(commits, nil, len(commits), func(_ context.Context, revision string) (*revisionState, error) {
 		lightLoads[revision]++
-		state := &revisionState{lockReady: true, configReady: true, config: &config.Config{DocsDir: "docs"}}
+		state := &revisionState{lockReady: true, configReady: true, config: &config.Config{}}
 		state.loadUniverse = func() (currentstate.Universe, error) {
 			heavyLoads[revision]++
 			return currentstate.Universe{}, nil
@@ -140,7 +140,7 @@ func TestHistoryOperationPreResolvesRecursiveAliasesAndFrontier(t *testing.T) {
 func TestHistoryOperationAliasHistoryLengthKeepsTheSameHeavyFrontier(t *testing.T) {
 	for _, length := range []int{1, 32} {
 		t.Run(strconv.Itoa(length), func(t *testing.T) {
-			root := &revisionState{lockReady: true, configReady: true, config: &config.Config{DocsDir: "docs"}}
+			root := &revisionState{lockReady: true, configReady: true, config: &config.Config{}}
 			root.loadUniverse = func() (currentstate.Universe, error) { return currentstate.Universe{}, nil }
 			commits := make([]replayCommit, 0, length+1)
 			commits = append(commits, replayCommit{Hash: "root", Revision: "00-root"})
@@ -183,7 +183,7 @@ func TestHistoryOwnershipPlanningPropagatesNestedMergeCancellation(t *testing.T)
 				{Hash: "nested", Revision: "nested", IsMerge: true, Parents: []string{"nested-first", "nested-incoming"}},
 			}
 			op := newHistoryOperationFromCompact(commits, nil, len(commits), func(context.Context, string) (*revisionState, error) {
-				return &revisionState{lockReady: true, configReady: true, config: &config.Config{DocsDir: "docs"}, universeReady: true}, nil
+				return &revisionState{lockReady: true, configReady: true, config: &config.Config{}, universeReady: true}, nil
 			}, func(_ context.Context, revision string) ([]string, error) {
 				if revision == "nested" {
 					return nil, boom
@@ -215,7 +215,7 @@ func TestHistoryOwnershipPlanningStopsAfterAliasResolutionCancellation(t *testin
 		if revision == "c-root" {
 			cancel()
 		}
-		return &revisionState{lockReady: true, configReady: true, config: &config.Config{DocsDir: "docs"}, universeReady: true}, nil
+		return &revisionState{lockReady: true, configReady: true, config: &config.Config{}, universeReady: true}, nil
 	}, func(context.Context, string) ([]string, error) { return nil, nil }, func(context.Context) ([]Finding, error) { return nil, nil })
 	graph, err := newReplayGraph(testContext(t), commits)
 	if err != nil {
@@ -233,7 +233,7 @@ func TestHistoryOwnershipPlanningObservesEachCancellationCheckpoint(t *testing.T
 	commits := []replayCommit{{Hash: "child", Revision: "child", Parents: []string{"parent"}}}
 	run := func(ctx context.Context) error {
 		op := newHistoryOperationFromCompact(commits, nil, len(commits), func(context.Context, string) (*revisionState, error) {
-			return &revisionState{lockReady: true, configReady: true, config: &config.Config{DocsDir: "docs"}, universeReady: true}, nil
+			return &revisionState{lockReady: true, configReady: true, config: &config.Config{}, universeReady: true}, nil
 		}, nil, func(context.Context) ([]Finding, error) { return nil, nil })
 		return op.planRevisionOwnership(ctx, commits)
 	}
@@ -257,7 +257,7 @@ func TestHistoryOperationKeepsBoundaryRevisionsDistinct(t *testing.T) {
 	loads := map[string]int{}
 	op := newHistoryOperationFromCompact(commits, nil, len(commits), func(_ context.Context, revision string) (*revisionState, error) {
 		loads[revision]++
-		state := &revisionState{lockReady: true, configReady: true, config: &config.Config{DocsDir: "docs"}}
+		state := &revisionState{lockReady: true, configReady: true, config: &config.Config{}}
 		state.loadUniverse = func() (currentstate.Universe, error) { return currentstate.Universe{}, nil }
 		return state, nil
 	}, func(context.Context, string) ([]string, error) { return nil, nil }, func(context.Context) ([]Finding, error) { return nil, nil })
@@ -277,7 +277,7 @@ func TestHistoryOperationDischargesSkippedAndFailedConsumers(t *testing.T) {
 		commits := []replayCommit{{Hash: "merge", Revision: "result", IsMerge: true, Parents: []string{"first", "incoming"}}}
 		heavyLoads := map[string]int{}
 		op := newHistoryOperationFromCompact(commits, nil, 1, func(_ context.Context, revision string) (*revisionState, error) {
-			state := &revisionState{lockReady: true, lock: &manifest.Lock{SchemaVersion: 30}, lockFound: true, configReady: true, config: &config.Config{DocsDir: "docs"}}
+			state := &revisionState{lockReady: true, lock: &manifest.Lock{SchemaVersion: 30}, lockFound: true, configReady: true, config: &config.Config{}}
 			state.loadUniverse = func() (currentstate.Universe, error) {
 				heavyLoads[revision]++
 				return currentstate.Universe{Sources: map[string][]byte{revision: []byte(revision)}}, nil
@@ -325,7 +325,7 @@ func TestHistoryOperationDischargesSkippedAndFailedConsumers(t *testing.T) {
 	t.Run("cached heavy error", func(t *testing.T) {
 		boom := errors.New("heavy failure")
 		heavyLoads := 0
-		state := &revisionState{lockReady: true, configReady: true, config: &config.Config{DocsDir: "docs"}}
+		state := &revisionState{lockReady: true, configReady: true, config: &config.Config{}}
 		state.loadUniverse = func() (currentstate.Universe, error) { heavyLoads++; return currentstate.Universe{}, boom }
 		op := newHistoryOperationFromCompact([]replayCommit{{Hash: "ordinary", Revision: "ordinary"}}, nil, 1,
 			func(context.Context, string) (*revisionState, error) { return state, nil }, nil,
@@ -377,7 +377,7 @@ func TestHistoryOperationTracksHeterogeneousOctopusFrontier(t *testing.T) {
 	commit := replayCommit{Hash: "octopus", Revision: "result", IsMerge: true, Message: "Merge", Parents: []string{"first", "incoming-one", "incoming-two", "incoming-three"}}
 	states := map[string]*revisionState{}
 	op := newHistoryOperationFromCompact([]replayCommit{commit}, nil, 1, func(_ context.Context, revision string) (*revisionState, error) {
-		state := &revisionState{lockReady: true, lock: &manifest.Lock{SchemaVersion: 31}, lockFound: true, configReady: true, config: &config.Config{DocsDir: "docs"}}
+		state := &revisionState{lockReady: true, lock: &manifest.Lock{SchemaVersion: 31}, lockFound: true, configReady: true, config: &config.Config{}}
 		state.loadUniverse = func() (currentstate.Universe, error) {
 			return currentstate.Universe{Sources: map[string][]byte{revision: []byte(revision)}}, nil
 		}
@@ -1057,7 +1057,7 @@ func TestAuditPropagatesHistoricalCancellation(t *testing.T) {
 			var events []string
 			parent := fixedRevisionState(nil, false, currentstate.Universe{})
 			parent.configReady = true
-			parent.config = &config.Config{DocsDir: "docs"}
+			parent.config = &config.Config{}
 			op := newHistoryOperationWithRelevance(
 				[]awfgit.Commit{{Hash: "merge", Revision: "merge", Parents: []string{"parent", "incoming"}, IsMerge: true}}, Inputs{},
 				func(_ context.Context, revision string) (*revisionState, error) {
@@ -1355,7 +1355,7 @@ func TestHistoryOperationStreamsAndReleasesFinalConsumers(t *testing.T) {
 		"incoming": fixedRevisionState(&manifest.Lock{SchemaVersion: 31}, true, withRecord),
 	}
 	states["first"].configReady = true
-	states["first"].config = &config.Config{DocsDir: "docs"}
+	states["first"].config = &config.Config{}
 	heavyLoads := map[string]int{}
 	for revision, state := range states {
 		revision, universe := revision, state.universe
@@ -1726,11 +1726,7 @@ func TestHistoricalStateUsesPolicyProjectionAndReusesIrrelevantCommits(t *testin
 		loads[revision]++
 		state := fixedRevisionState(nil, false, currentstate.Universe{})
 		state.configReady = true
-		state.config = &config.Config{DocsDir: "docs"}
-		switch revision {
-		case "custom-config", "custom-adr", "delete", "rename", "merge":
-			state.config.DocsDir = "records"
-		}
+		state.config = &config.Config{}
 		return state, nil
 	}
 	firstParentPaths := func(_ context.Context, revision string) ([]string, error) {
@@ -1772,7 +1768,7 @@ func TestHistoricalStateUsesPolicyProjectionAndReusesIrrelevantCommits(t *testin
 	canonicalLoads := map[string]int{}
 	parent := fixedRevisionState(nil, false, currentstate.Universe{})
 	parent.configReady = true
-	parent.config = &config.Config{DocsDir: "./docs/"}
+	parent.config = &config.Config{}
 	canonical := newHistoryOperationWithRelevance(
 		[]awfgit.Commit{{Revision: "canonical-child", Parents: []string{"canonical-parent"}, Changes: []awfgit.FileChange{{Path: "docs/decisions/0001-one.md"}}}},
 		Inputs{},

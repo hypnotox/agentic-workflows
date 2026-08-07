@@ -14,11 +14,12 @@ import (
 // must still read; the current-state-topic-substrate migration (schema 14) removes
 // the block from the file itself. Callers os.Stat the config first, so a missing
 // file never reaches here.
-func loadForMigration(root string) (*config.Config, error) {
+func loadForMigration(root string) (*historicalConfig, error) {
 	src, err := os.ReadFile(config.ConfigPath(root))
 	if err != nil { // coverage-ignore: every caller os.Stats the config first; only a race between the stat and this read faults
 		return nil, err
 	}
+	historicalSrc := append([]byte(nil), src...)
 	src, err = config.RemoveKey(src, "invariants")
 	if err != nil {
 		return nil, err
@@ -38,7 +39,7 @@ func loadForMigration(root string) (*config.Config, error) {
 	// while older frozen steps can still create or inspect their historical
 	// representation. Strip them only from this typed analysis view; the bytes
 	// the frozen step edits remain unchanged until generation 38 applies.
-	for _, retired := range gateAuditRetiredKeys {
+	for _, retired := range append(gateAuditRetiredKeys, []struct{ parent, key string }{{"", "skills"}, {"", "agents"}, {"", "docs"}, {"", "targets"}, {"", "docsDir"}}...) {
 		if retired.parent == "" {
 			src, err = config.RemoveKey(src, retired.key)
 		} else {
@@ -48,11 +49,10 @@ func loadForMigration(root string) (*config.Config, error) {
 			return nil, err
 		}
 	}
-	cfg, err := config.Parse(config.RootDir(root), src)
-	if err != nil { // coverage-ignore: RemoveKey's parse above already rejected any non-mapping YAML, and no schema-valid mapping reaching a migration fails strict decode
+	if _, err := config.Parse(config.RootDir(root), src); err != nil {
 		return nil, err
 	}
-	return cfg, nil
+	return loadHistoricalConfig(root, historicalSrc)
 }
 
 // configEditor owns one config edit's volatile write dependency. Each migration

@@ -31,8 +31,6 @@ import (
 const minimalYAML = `prefix: example
 integrationBranch: master
 vars: {testCmd: go test ./..., gateCmd: make gate}
-skills: [tdd]
-agents: []
 `
 
 // scaffoldProject writes a minimal tree config under a git-backed root and syncs
@@ -267,10 +265,6 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 		{file: "dispatch.go", owner: "", name: "runSync"}:                                                                 1,
 		{file: "init.go", owner: "runInitWithProjectLoader", name: "initProjectLoader"}:                                   1,
 		{file: "init.go", owner: "runInitWithProjectLoader", name: "syncMutation"}:                                        1,
-		{file: "list_add.go", owner: "enableDisableSingleton", name: "runSync"}:                                           1,
-		{file: "list_add.go", owner: "enableDisableTarget", name: "runSync"}:                                              1,
-		{file: "list_add.go", owner: "toggleWithProjectLoader", name: "syncMutation"}:                                     1,
-		{file: "new.go", owner: "newLocal", name: "runSync"}:                                                              1,
 		{file: "upgrade_presentation.go", owner: "upgradeSyncMutationWith", name: "newProjectLoader"}:                     1,
 		{file: "upgrade_presentation.go", owner: "upgradeSyncMutationWith", name: "loader.Open"}:                          1,
 		{file: "adr.go", owner: "runADR", name: "project.Open"}:                                                           1,
@@ -286,12 +280,10 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 		{file: "context.go", owner: "runUncovered", name: "project.Open"}:                                                 1,
 		{file: "init.go", owner: "probeCollisions", name: "project.Open"}:                                                 2,
 		{file: "init.go", owner: "runInitWithProjectLoader", name: "project.Open"}:                                        1,
-		{file: "list_add.go", owner: "enableDisableSingleton", name: "project.Open"}:                                      1,
-		{file: "list_add.go", owner: "enableDisableTarget", name: "project.Open"}:                                         1,
 		{file: "list_add.go", owner: "runList", name: "project.Open"}:                                                     1,
-		{file: "list_add.go", owner: "toggleWithProjectLoader", name: "project.Open"}:                                     1,
+		{file: "list_add.go", owner: "openDomainProject", name: "project.Open"}:                                           1,
+		{file: "list_add.go", owner: "syncDomainProject", name: "runSync"}:                                                1,
 		{file: "new.go", owner: "newADR", name: "project.Open"}:                                                           1,
-		{file: "new.go", owner: "newLocal", name: "project.Open"}:                                                         1,
 		{file: "new.go", owner: "newPlan", name: "project.Open"}:                                                          1,
 		{file: "new.go", owner: "newTopic", name: "project.Open"}:                                                         1,
 		{file: "read.go", owner: "runReadPlan", name: "project.Open"}:                                                     1,
@@ -493,7 +485,7 @@ func TestRunSyncIgnoresSkillSelection(t *testing.T) {
 	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
-	const expected = "status: completed\n\nmutation:\n  changes:\n    outputs:\n      changed docs/config-reference.md (regenerated)\n  next actions:\n    step 1: continue with the rendered project state\n"
+	const expected = "status: completed\n\nmutation:\n  next actions:\n    step 1: continue with the rendered project state\n"
 	if out.String() != expected {
 		t.Errorf("selection-free sync bytes = %q, want %q", out.String(), expected)
 	}
@@ -541,12 +533,12 @@ func TestRunSyncPrintsChangedFiles(t *testing.T) {
 		t.Errorf("empty sync bytes = %q", got)
 	}
 	// Enabling an artifact reports its files as added.
-	testsupport.WriteAwfConfig(t, root, strings.Replace(minimalYAML, "gateCmd: make gate", "gateCmd: ./x gate", 1)+"docs: [pitfalls]\n")
+	testsupport.WriteAwfConfig(t, root, strings.Replace(minimalYAML, "gateCmd: make gate", "gateCmd: ./x gate", 1)+"")
 	out.Reset()
 	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
-	const selectionIgnored = "status: completed\n\nmutation:\n  changes:\n    outputs:\n      changed docs/config-reference.md (regenerated)\n  next actions:\n    step 1: continue with the rendered project state\n"
+	const selectionIgnored = "status: completed\n\nmutation:\n  next actions:\n    step 1: continue with the rendered project state\n"
 	if out.String() != selectionIgnored {
 		t.Errorf("docs selection-free sync bytes = %q, want %q", out.String(), selectionIgnored)
 	}
@@ -589,13 +581,12 @@ func TestTopLevelCommandFamiliesUseStructuredHelpAndUsageFailures(t *testing.T) 
 		"audit":     "TestRunAuditDispatch",
 		"effort":    "TestEffortPublicTextProtocol",
 		"adr":       "TestRunADRNumberThroughTheDriver",
-		"list":      "TestRunListBareShowsAllKinds",
+		"list":      "TestRunListPrintsSkills",
 		"config":    "TestRunConfigDispatch",
 		"context":   "TestRunContextModesShareDeliveryIncludingOversize",
 		"topic":     "TestRunTopicHumanTextAndFlags",
 		"new":       "TestRunNewDispatch",
-		"enable":    "TestDispatchAddRemoveList",
-		"disable":   "TestDispatchAddRemoveList",
+		"remove":    "TestRunNewDomainLifecycle",
 		"upgrade":   "TestRunUpgradeRendersSuccessfulFinalJournalMutation",
 		"uninstall": "TestRunUninstallDispatch",
 		"changelog": "TestChangelogPublicPayloadContracts",
@@ -755,26 +746,6 @@ func TestRunDispatchArms(t *testing.T) {
 			}
 		})
 	}
-	t.Run("enable", func(t *testing.T) {
-		root := t.TempDir()
-		awf := filepath.Join(root, ".awf")
-		if err := os.MkdirAll(awf, 0o755); err != nil {
-			t.Fatal(err)
-		}
-		// skills: [] so a fresh skill can be added.
-		cfg := strings.Replace(minimalYAML, "skills: [tdd]", "skills: []", 1)
-		if err := os.WriteFile(filepath.Join(awf, "config.yaml"), []byte(cfg), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		if err := initializeProject(testContext(t), root, io.Discard); err != nil {
-			t.Fatal(err)
-		}
-		testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
-		var out, errb bytes.Buffer
-		if code := run([]string{"awf", "enable", "skill", "tdd"}, &out, &errb); code != 0 {
-			t.Fatalf("add: expected exit 0, got %d (%s)", code, errb.String())
-		}
-	})
 	t.Run("init", func(t *testing.T) {
 		root := t.TempDir()
 		testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
@@ -801,16 +772,6 @@ func TestHandlersOnBareDirError(t *testing.T) {
 	})
 	t.Run("new", func(t *testing.T) {
 		if err := runNew(ctx, bare(t), "adr", []string{"x"}, io.Discard); err == nil {
-			t.Error("expected Open error")
-		}
-	})
-	t.Run("enable", func(t *testing.T) {
-		if err := runEnable(ctx, bare(t), "skill", "tdd", false, io.Discard); err == nil {
-			t.Error("expected Open error")
-		}
-	})
-	t.Run("disable", func(t *testing.T) {
-		if err := runDisable(ctx, bare(t), "skill", "tdd", false, false, io.Discard); err == nil {
 			t.Error("expected Open error")
 		}
 	})
@@ -907,7 +868,7 @@ func TestRunUpgradeLegacyAdopterRendersAndChecksClean(t *testing.T) {
 	if err := os.MkdirAll(claude, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	legacy := "prefix: example\nvars:\n  testCmd: go test ./...\n  gateCmd: make gate\nskills: {}\nagents: {}\n"
+	legacy := "prefix: example\nvars:\n  testCmd: go test ./...\n  gateCmd: make gate\n"
 	if err := os.WriteFile(filepath.Join(claude, "awf.yaml"), []byte(legacy), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -946,7 +907,7 @@ func TestRunUpgradeRepairsUnclosedConfig(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	root := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {gateCmd: make gate}\nskills: [brainstorming]\nagents: [grounding-checker]\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {gateCmd: make gate}\n")
 	lock := &manifest.Lock{SchemaVersion: 7, Files: map[string]manifest.Entry{}}
 	if err := lock.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
 		t.Fatal(err)

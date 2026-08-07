@@ -12,20 +12,9 @@ import (
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
-// ScaffoldConfig generates the bytes of a .awf/config.yaml that enables the
-// workflow-core skills and docs (ADR-0022) and every agent in the embedded
-// catalog (as flat name arrays), and pre-populates the vars block with
-// the union of all {{ .vars.X }} names referenced by every catalog template. Each
-// var is seeded with an empty string so that strict render (missingkey=zero +
-// <no value> check) does not fail on sync, and so a later `awf enable` of an opt-in
-// skill renders cleanly. It also seeds the self-pinning bootstrap (ADR-0040),
-// the git-hook payloads (ADR-0048), and the pure awf wrapper runner (ADR-0156)
-// enabled by default, and writes a resolved commit-scope list to
-// audit.allowedScopes (ADR-0051).
-// The second return value lists the closure additions beyond a trim's
-// explicit selection (kind-prefixed, e.g. "skill reviewing-plan-resync"),
-// empty for the untrimmed default.
-func ScaffoldConfig(prefix string, vars map[string]string, trim *config.CatalogTrim, scopes []string) ([]byte, []string, error) {
+// ScaffoldConfig generates a .awf/config.yaml with every catalog template's
+// referenced vars, the self-pinning bootstrap, and the resolved commit scopes.
+func ScaffoldConfig(prefix string, vars map[string]string, scopes []string) ([]byte, error) {
 	cat := catalog.Standard
 
 	// Collect referenced var names from every catalog template family - not only
@@ -36,7 +25,7 @@ func ScaffoldConfig(prefix string, vars map[string]string, trim *config.CatalogT
 		d, _ := descriptorByPlural(kind)
 		for _, name := range d.poolNames(cat) {
 			if err := collectVars(templates.FS, d.tid(name), varSet); err != nil { // coverage-ignore: every catalog name has a backing template in the embedded FS, so collectVars cannot fail
-				return nil, nil, err
+				return nil, err
 			}
 		}
 	}
@@ -44,19 +33,17 @@ func ScaffoldConfig(prefix string, vars map[string]string, trim *config.CatalogT
 	// render - their vars must be seeded even though they left cat.Docs (ADR-0043).
 	for _, sg := range plainSingletons {
 		if err := collectVars(templates.FS, sg.tid, varSet); err != nil { // coverage-ignore: every plainSingletons entry has a backing template in the embedded FS, so collectVars cannot fail
-			return nil, nil, err
+			return nil, err
 		}
 	}
 	// Hook payloads render by default (ADR-0048) - seed their vars (commitGateCmd)
 	// so an init prompt answer is not silently dropped.
 	for _, name := range hookNames {
 		if err := collectVars(templates.FS, hookTID(name), varSet); err != nil { // coverage-ignore: every hookNames entry has a backing template in the embedded FS, so collectVars cannot fail
-			return nil, nil, err
+			return nil, err
 		}
 	}
 	varNames := slices.Sorted(maps.Keys(varSet))
-
-	skillNames, agentNames, docNames, added := scaffoldSelection(cat, trim)
 
 	seeded := make(map[string]string, len(varNames))
 	for _, v := range varNames {
@@ -77,109 +64,41 @@ func ScaffoldConfig(prefix string, vars map[string]string, trim *config.CatalogT
 		// off (ADR-0202 Decision 6).
 		IntegrationBranch: "main",
 		Vars:              seeded,
-		Skills:            skillNames,
-		Agents:            agentNames,
-		Docs:              docNames,
 		Audit:             auditBlk,
 		Bootstrap:         &config.BootstrapConfig{Enabled: true},
 	})
 	if err != nil { // coverage-ignore: MarshalSkeleton serializes an in-memory struct; it cannot fail on this input
-		return nil, nil, err
+		return nil, err
 	}
-	return out, added, nil
+	return out, nil
 }
 
-// scaffoldSelection derives the scaffolded enable arrays from an optional
-// trim: the curated-core default, or the closure-completed trim with agents
-// derived from the selection's requirements (ADR-0081 Decision 9). added
-// lists closure additions beyond the explicit selection.
-func scaffoldSelection(cat *catalog.Catalog, trim *config.CatalogTrim) (skillNames, agentNames, docNames, added []string) {
-	// Enable the core skills; under the untrimmed default agents are all
-	// enabled (every one is workflow-essential). No core docs remain -
-	// workflow/doc-standard/agents-md-standard are mandatory singletons
-	// (ADR-0043), not toggleable.
-	for name, spec := range cat.Skills {
-		if spec.Core {
-			skillNames = append(skillNames, name)
-		}
-	}
-	agentNames = slices.Sorted(maps.Keys(cat.Agents))
-	// A non-nil trim dimension (ADR-0029 full-deselectable catalog trim) replaces
-	// the curated-core default, then is closure-completed and its agents derived
-	// from the selection's requirements (ADR-0081 Decision 9) - without the
-	// derivation, the always-enabled plan-reviewer's edge would silently
-	// re-complete any planning-core trim. Additions beyond the selection are
-	// returned so init can note each one.
-	if trim != nil && trim.Docs != nil {
-		docNames = slices.Clone(*trim.Docs)
-	}
-	if trim != nil && trim.Skills != nil {
-		selected := map[catalog.Node]bool{}
-		seeds := make([]catalog.Node, 0, len(*trim.Skills))
-		for _, s := range *trim.Skills {
-			n := catalog.Node{Kind: "skill", Name: s}
-			selected[n] = true
-			seeds = append(seeds, n)
-		}
-		for _, d := range docNames {
-			selected[catalog.Node{Kind: "doc", Name: d}] = true
-		}
-		skillNames, agentNames = nil, nil
-		for _, n := range catalog.Closure(cat, seeds) {
-			switch n.Kind {
-			case "skill":
-				skillNames = append(skillNames, n.Name)
-			case "agent":
-				agentNames = append(agentNames, n.Name)
-			case "doc":
-				if !selected[n] {
-					docNames = append(docNames, n.Name)
-				}
-			}
-			if !selected[n] {
-				added = append(added, n.Kind+" "+n.Name)
-			}
-		}
-	}
-	slices.Sort(skillNames)
-	slices.Sort(docNames)
-	slices.Sort(agentNames)
-	slices.Sort(added)
-	return skillNames, agentNames, docNames, added
+// NeededVars returns the var names referenced by the full rendered catalog.
+func NeededVars() (map[string]bool, error) {
+	return neededVarsFromFS(templates.FS)
 }
 
-// NeededVars returns the var names referenced by the templates the
-// scaffolded enabled set will render: the enable arrays scaffoldSelection
-// derives, the always-on singletons (agents-doc + plain), and the
-// always-rendered hook payloads. Init's interactive path prompts only for
-// these (ADR-0086 Decision 6); the scaffold still seeds the full catalog
-// union as empty keys (ADR-0022 unchanged), and an explicit --set/answers
-// value is honored regardless.
-func NeededVars(trim *config.CatalogTrim) (map[string]bool, error) {
+func neededVarsFromFS(fsys fs.FS) (map[string]bool, error) {
 	cat := catalog.Standard
-	skills, agents, docs, _ := scaffoldSelection(cat, trim)
 	varSet := map[string]bool{}
-	for _, c := range []struct {
-		kind  string
-		names []string
-	}{{"skills", skills}, {"agents", agents}, {"docs", docs}} {
-		d, _ := descriptorByPlural(c.kind)
-		for _, n := range c.names {
-			if err := collectVars(templates.FS, d.tid(n), varSet); err != nil { // coverage-ignore: every scaffoldSelection name has a backing embedded template
+	for _, kind := range []string{"skills", "agents", "docs"} {
+		d, _ := descriptorByPlural(kind)
+		for _, n := range d.poolNames(cat) {
+			if err := collectVars(fsys, d.tid(n), varSet); err != nil {
 				return nil, err
 			}
 		}
 	}
-	if err := collectVars(templates.FS, cat.Docs["agents-doc"].TID, varSet); err != nil { // coverage-ignore: the agents-doc template is always embedded
+	if err := collectVars(fsys, cat.Docs["agents-doc"].TID, varSet); err != nil { // coverage-ignore: the agents-doc template is always embedded
 		return nil, err
 	}
 	for _, sg := range plainSingletons {
-		if err := collectVars(templates.FS, sg.tid, varSet); err != nil { // coverage-ignore: every plainSingletons entry has a backing embedded template
+		if err := collectVars(fsys, sg.tid, varSet); err != nil { // coverage-ignore: every plainSingletons entry has a backing embedded template
 			return nil, err
 		}
 	}
 	for _, name := range hookNames {
-		if err := collectVars(templates.FS, hookTID(name), varSet); err != nil { // coverage-ignore: every hookNames entry has a backing embedded template
+		if err := collectVars(fsys, hookTID(name), varSet); err != nil { // coverage-ignore: every hookNames entry has a backing embedded template
 			return nil, err
 		}
 	}
@@ -196,24 +115,4 @@ func collectVars(fsys fs.FS, path string, varSet map[string]bool) error {
 		varSet[v] = true
 	}
 	return nil
-}
-
-// ScaffoldVarRefs returns the vars referenced by the base template a new local
-// artifact of kind ("skill"/"agent") renders from - `awf new`'s seeding surface
-// (ADR-0087 Decision 4). Parts are raw (ADR-0034), so the base template is a
-// local artifact's only var channel; today both bases are varless and this
-// returns empty, but a future base gaining a var reference is seeded correct
-// by construction.
-func ScaffoldVarRefs(kind string) ([]string, error) {
-	plural, _ := PluralKind(kind)
-	tid := baseTID(plural)
-	src, err := fs.ReadFile(templates.FS, tid)
-	if err != nil { // coverage-ignore: awf new validates the kind before asking, so baseTID always resolves an embedded base template
-		return nil, err
-	}
-	expanded, err := render.ExpandIncludes(string(src), templates.FS)
-	if err != nil { // coverage-ignore: shipped base templates always expand
-		return nil, err
-	}
-	return render.ReferencedVars(expanded), nil
 }

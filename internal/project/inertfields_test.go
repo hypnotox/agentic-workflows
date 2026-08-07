@@ -17,43 +17,31 @@ func TestOpenRejectsInertSidecarFields(t *testing.T) {
 	}{
 		{
 			name:    "paths on a skill sidecar",
-			cfg:     "prefix: example\nintegrationBranch: main\nskills:\n  - tdd\nagents: []\n",
+			cfg:     "prefix: example\nintegrationBranch: main\n",
 			files:   map[string]string{"skills/tdd.yaml": "paths:\n  - '**/*.go'\n"},
 			wantErr: "paths: is read only from domain sidecars",
 		},
 		{
-			name:    "paths on a local skill sidecar",
-			cfg:     "prefix: example\nintegrationBranch: main\nskills:\n  - tdd\nagents: []\n",
-			files:   map[string]string{"skills/tdd.yaml": "local: true\npaths:\n  - '**/*.go'\n"},
-			wantErr: "paths: is read only from domain sidecars",
-		},
-		{
 			name:    "data on a domain sidecar",
-			cfg:     "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndomains:\n  - config\n",
+			cfg:     "prefix: example\nintegrationBranch: main\ndomains:\n  - config\n",
 			files:   map[string]string{"domains/config.yaml": "data:\n  k: v\n"},
 			wantErr: "a domain sidecar is paths-only",
 		},
 		{
 			name:    "sections on a domain sidecar",
-			cfg:     "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndomains:\n  - config\n",
+			cfg:     "prefix: example\nintegrationBranch: main\ndomains:\n  - config\n",
 			files:   map[string]string{"domains/config.yaml": "sections:\n  current-state:\n    drop: true\n"},
 			wantErr: "a domain sidecar is paths-only",
 		},
 		{
-			name:    "local on a domain sidecar",
-			cfg:     "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndomains:\n  - config\n",
-			files:   map[string]string{"domains/config.yaml": "local: true\n"},
-			wantErr: "a domain sidecar is paths-only",
-		},
-		{
 			name:    "paths on the agents-doc sidecar",
-			cfg:     "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n",
+			cfg:     "prefix: example\nintegrationBranch: main\n",
 			files:   map[string]string{"agents-doc.yaml": "paths:\n  - '**/*.go'\n"},
 			wantErr: ".awf/agents-doc.yaml",
 		},
 		{
 			name:    "paths on a plain singleton sidecar",
-			cfg:     "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n",
+			cfg:     "prefix: example\nintegrationBranch: main\n",
 			files:   map[string]string{"workflow.yaml": "paths:\n  - '**/*.go'\n"},
 			wantErr: ".awf/workflow.yaml",
 		},
@@ -73,7 +61,7 @@ func TestOpenRejectsInertSidecarFields(t *testing.T) {
 }
 
 func TestOpenPropagatesDomainSidecarReadError(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndomains:\n  - config\n", nil)
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\ndomains:\n  - config\n", nil)
 	if err := os.MkdirAll(filepath.Join(root, ".awf", "domains", "config.yaml"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +71,7 @@ func TestOpenPropagatesDomainSidecarReadError(t *testing.T) {
 }
 
 func TestOpenAcceptsPathsOnlyDomainSidecar(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndomains:\n  - config\n",
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\ndomains:\n  - config\n",
 		map[string]string{"domains/config.yaml": "paths:\n  - internal/config/**\n"})
 	if _, err := Open(testContext(t), root); err != nil {
 		t.Fatalf("Open should accept a paths-only domain sidecar: %v", err)

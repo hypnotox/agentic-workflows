@@ -89,7 +89,7 @@ func TestConfigForCurrentSchemaSeedsHistoricalIntegrationBranch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "prefix: example\nskills: []\nintegrationBranch: main\n"
+	want := "prefix: example\nintegrationBranch: main\n"
 	if string(got) != want {
 		t.Fatalf("forward-ported config:\ngot  %q\nwant %q", got, want)
 	}
@@ -114,8 +114,8 @@ func TestConfigForCurrentSchemaSeedsHistoricalIntegrationBranch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(atGen) != string(src) {
-		t.Fatalf("generation %d must not re-apply the seed, got %q", integrationBranchGeneration, atGen)
+	if string(atGen) != "prefix: example\n" {
+		t.Fatalf("generation %d must not re-apply the seed and must forward-port retired keys, got %q", integrationBranchGeneration, atGen)
 	}
 }
 

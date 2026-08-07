@@ -23,10 +23,6 @@ const ctxCmdYAML = `prefix: example
 integrationBranch: main
 vars:
   gateCmd: make gate
-skills:
-  - tdd
-agents:
-  - code-reviewer
 domains:
   - alpha
   - core
@@ -340,12 +336,6 @@ func TestRunContextSelectionAndProjectErrors(t *testing.T) {
 	gitfixture.AddAll(t, gitfixture.At(stagedRoot))
 	_ = runContext(ctx, stagedRoot, []string{"internal/foo/x.go"}, true, "", false, false, nil, io.Discard)
 	_ = runContext(ctx, stagedRoot, nil, true, "", true, false, nil, io.Discard)
-	if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte(ctxCmdYAML+"targets: [unknown]\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := runContext(ctx, root, []string{"x"}, false, "", false, false, nil, io.Discard); err == nil {
-		t.Fatal("invalid target accepted")
-	}
 	if err := os.WriteFile(filepath.Join(root, ".awf", "awf.lock"), []byte("bad"), 0o644); err != nil {
 		t.Fatal(err)
 	}

@@ -91,7 +91,7 @@ func TestProjectTreeReaders(t *testing.T) {
 // and exited 0.
 func TestBuildOutputDeclarationsPropagatesEnumerationFaults(t *testing.T) {
 	read := memoryProjectReader{".awf/topics/metadata/d/t.yaml": []byte("x")}
-	cfg, err := config.ParseTree(".awf", []byte("prefix: p\ndocsDir: docs\nskills: []\nagents: []\ndomains: [d]\n"), configReaderAdapter{read})
+	cfg, err := config.ParseTree(".awf", []byte("prefix: p\ndomains: [d]\n"), configReaderAdapter{read})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +103,7 @@ func TestBuildOutputDeclarationsPropagatesEnumerationFaults(t *testing.T) {
 		t.Run("site"+strconv.Itoa(site), func(t *testing.T) {
 			calls := 0
 			faulting := failingPathsReader{memoryProjectReader: read, failAt: site, calls: &calls}
-			if _, err := BuildOutputDeclarations(cfg, cat, nil, faulting, mustCorpus(nil)); err == nil || !strings.Contains(err.Error(), "enumeration fault") {
+			if _, err := BuildOutputDeclarations(cfg, cat, nil, faulting, mustCorpus()); err == nil || !strings.Contains(err.Error(), "enumeration fault") {
 				t.Fatalf("site %d: error = %v, want the enumeration fault", site, err)
 			}
 		})
@@ -112,119 +112,16 @@ func TestBuildOutputDeclarationsPropagatesEnumerationFaults(t *testing.T) {
 
 func TestBuildOutputDeclarationsPropagatesReadFaults(t *testing.T) {
 	read := failingReadReader{memoryProjectReader: memoryProjectReader{".awf/topics/metadata/d/t.yaml": []byte("x")}}
-	cfg, err := config.ParseTree(".awf", []byte("prefix: p\ndocsDir: docs\nskills: []\nagents: []\ndomains: [d]\n"), configReaderAdapter(read))
+	cfg, err := config.ParseTree(".awf", []byte("prefix: p\ndomains: [d]\n"), configReaderAdapter(read))
 	if err != nil {
 		t.Fatal(err)
 	}
 	cat := &catalog.Catalog{Skills: map[string]catalog.SkillSpec{}, Agents: map[string]catalog.AgentSpec{}, Docs: map[string]catalog.DocEntry{}}
-	if _, err := BuildOutputDeclarations(cfg, cat, nil, read, mustCorpus(nil)); err == nil || !strings.Contains(err.Error(), "read fault") {
+	if _, err := BuildOutputDeclarations(cfg, cat, nil, read, mustCorpus()); err == nil || !strings.Contains(err.Error(), "read fault") {
 		t.Fatalf("error = %v, want the project-tree read fault", err)
 	}
 }
 
-func TestBuildOutputDeclarationsFamiliesAndReservations(t *testing.T) {
-	read := memoryProjectReader{".awf/topics/metadata/d/t.yaml": []byte("x"), ".awf/topics/metadata/d/readme.txt": []byte("x"), ".awf/docs/architecture.yaml": []byte("local: true\n"), ".awf/name-derived.yaml": []byte("data: {}\n"), ".awf/docs/structural.yaml": []byte("data: {}\n"), ".awf/skills/local.yaml": []byte("local: true\n"), ".awf/skills/parts/local/content.md": []byte("part"), ".awf/agents/agent.yaml": []byte("local: true\n"), ".awf/agents/parts/agent/content.md": []byte("part"), "docs/decisions/0001-real.md": []byte("parsed"), "docs/decisions/0002-malformed.md": []byte("not parsed"), "docs/decisions/INDEX.md": []byte("generated"), "docs/decisions/README.md": []byte("navigation")}
-	cfg, err := config.ParseTree(".awf", []byte("prefix: p\ndocsDir: docs\nskills: [local]\nagents: [agent]\ndocs: [enabled, architecture]\ndomains: [d]\nbootstrap: {enabled: true}\nvars: {gateCmd: test-gate}\n"), configReaderAdapter{read})
-	if err != nil {
-		t.Fatal(err)
-	}
-	// Mandatory deliberately varies independently from output shape: it chooses
-	// only the sidecar location, never root, structural, or name-derived output.
-	cat := &catalog.Catalog{Skills: map[string]catalog.SkillSpec{"local": {Base: true, Sections: []string{"content"}}}, Agents: map[string]catalog.AgentSpec{"agent": {Base: true, Sections: []string{"content"}}}, Docs: map[string]catalog.DocEntry{"agents-doc": {AgentsDoc: true, TID: "agents-doc/AGENTS.md.tmpl"}, "architecture": {Path: "architecture.md", TID: "docs/architecture.md.tmpl"}, "disabled": {Path: "disabled.md", TID: "docs/disabled.md.tmpl"}, "enabled": {Path: "enabled.md", TID: "docs/enabled.md.tmpl"}, "name-derived": {Mandatory: true, TID: "docs/name-derived.md.tmpl"}, "structural": {Path: "structural.md", TID: "docs/structural.md.tmpl"}}}
-	target := Target{Name: "one", SkillDir: ".one/skills", Outputs: []TargetOutput{{Path: "shared", TemplateID: "target.tmpl", Producer: TargetOutputTemplate}}}
-	other := target
-	other.Name = "two"
-	// A target output may declare its own producer inputs; the declaration pass
-	// carries them through verbatim (target validation rejects the shape later,
-	// so only this pass ever sees them).
-	withInputs := Target{Name: "three", SkillDir: ".three/skills", Outputs: []TargetOutput{{Path: "declared-inputs", TemplateID: "target.tmpl", Producer: TargetOutputTemplate, Inputs: []TargetOutputInput{{Path: ".awf/extension.json", Role: ArtifactProtocolDescriptor}}}}}
-	parsedADRs := mustCorpus([]adr.ADR{{Number: "0001", Filename: "0001-real.md"}})
-	badRequirement := target
-	badRequirement.Outputs = []TargetOutput{{Path: "gated", TemplateID: "target.tmpl", Producer: TargetOutputTemplate, RequiresSkill: "missing"}}
-	if _, err := BuildOutputDeclarations(cfg, cat, []Target{badRequirement}, read, parsedADRs); err == nil || !strings.Contains(err.Error(), "unknown catalog skill") {
-		t.Fatalf("declaration accepted unknown target-output requirement: %v", err)
-	}
-	decls, err := BuildOutputDeclarations(cfg, cat, []Target{target, other, withInputs}, read, parsedADRs)
-	if err != nil {
-		t.Fatal(err)
-	}
-	byPath := map[string]OutputDeclaration{}
-	for _, d := range decls {
-		byPath[d.Path] = d
-	}
-	for _, p := range []string{".one/skills/p-local/SKILL.md", "shared", "AGENTS.md", "docs/name-derived.md", "docs/structural.md", "docs/domains/d.md", "docs/topics/d/t.md", "docs/decisions/INDEX.md", "awf", ".awf/bootstrap.sh", ".awf/upgrade.sh", ".awf/hooks/pre-commit.sh", ".awf/hooks/reference-transaction.sh", ".awf/efforts/.gitignore", ".awf/worktrees/.gitignore"} {
-		if _, ok := byPath[p]; !ok {
-			t.Errorf("missing %s", p)
-		}
-	}
-	for _, tc := range []struct {
-		read memoryProjectReader
-		body string
-	}{{memoryProjectReader{".awf/agents-doc.yaml": []byte("local: [bad")}, "prefix: p\n"}, {memoryProjectReader{".awf/docs/enabled.yaml": []byte("local: [bad")}, "prefix: p\ndocs: [enabled]\n"}} {
-		badCfg, _ := config.ParseTree(".awf", []byte(tc.body), configReaderAdapter{tc.read})
-		if _, err := BuildOutputDeclarations(badCfg, cat, []Target{target}, tc.read, mustCorpus(nil)); err == nil {
-			t.Fatal("malformed document declaration accepted")
-		}
-	}
-	badSkillRead := memoryProjectReader{".awf/skills/bad.yaml": []byte("local: [bad")}
-	badSkillCfg, _ := config.ParseTree(".awf", []byte("prefix: p\nskills: [bad]\n"), configReaderAdapter{badSkillRead})
-	if _, err := BuildOutputDeclarations(badSkillCfg, cat, []Target{target}, badSkillRead, mustCorpus(nil)); err == nil {
-		t.Fatal("malformed skill declaration accepted")
-	}
-	badRead := memoryProjectReader{".awf/agents/bad.yaml": []byte("local: [bad")}
-	badCfg, _ := config.ParseTree(".awf", []byte("prefix: p\nagents: [bad]\n"), configReaderAdapter{badRead})
-	if _, err := BuildOutputDeclarations(badCfg, cat, []Target{target}, badRead, mustCorpus(nil)); err == nil {
-		t.Fatal("malformed agent declaration accepted")
-	}
-	badDomainRead := memoryProjectReader{".awf/domains/d.yaml": []byte("paths: [bad")}
-	badDomainCfg, _ := config.ParseTree(".awf", []byte("prefix: p\ndomains: [d]\n"), configReaderAdapter{badDomainRead})
-	if _, err := BuildOutputDeclarations(badDomainCfg, cat, []Target{target}, badDomainRead, mustCorpus(nil)); err == nil {
-		t.Fatal("malformed domain declaration accepted")
-	}
-	if !byPath[".one/skills/p-local/SKILL.md"].Reservation || !reflect.DeepEqual(byPath["shared"].Declarers, []string{"one", "two"}) {
-		t.Fatalf("declarations=%#v", decls)
-	}
-	if !slices.Contains(byPath["declared-inputs"].Inputs, OutputInput{Path: ".awf/extension.json", Role: ArtifactProtocolDescriptor}) {
-		t.Errorf("target-declared output inputs dropped: %#v", byPath["declared-inputs"])
-	}
-	// A standard catalog doc whose sidecar declares it local is hand-maintained:
-	// it must produce no declaration at all, not a managed output.
-	if _, declared := byPath["docs/architecture.md"]; declared {
-		t.Errorf("a local standard doc was still declared: %#v", byPath["docs/architecture.md"])
-	}
-	// The Mandatory name-derived doc retains its root sidecar, while the
-	// non-Mandatory structural doc retains its docs sidecar; their output shapes
-	// remain determined only by AgentsDoc/Path.
-	for _, tc := range []struct{ path, sidecar string }{
-		{"docs/name-derived.md", ".awf/name-derived.yaml"},
-		{"docs/structural.md", ".awf/docs/structural.yaml"},
-	} {
-		if !slices.Contains(byPath[tc.path].Inputs, OutputInput{Path: tc.sidecar, Role: ArtifactAuthoredData}) {
-			t.Errorf("%s lacks its Mandatory-selected sidecar %s: %#v", tc.path, tc.sidecar, byPath[tc.path])
-		}
-	}
-	index := byPath["docs/decisions/INDEX.md"]
-	decisionInputs := []string{}
-	for _, input := range index.Inputs {
-		if input.Role == ArtifactDecisionRecord {
-			decisionInputs = append(decisionInputs, input.Path)
-		}
-	}
-	if !reflect.DeepEqual(decisionInputs, []string{"docs/decisions/0001-real.md"}) {
-		t.Fatalf("decision inputs include unparsed lookalikes: %v", decisionInputs)
-	}
-}
-
-// TestOutputDeclarationsMatchThePlan reinstates the retired
-// validateDeclarationPlanParity guard as a structural test over this
-// repository: BuildOutputDeclarations and the output plan remain two
-// independent enumerations of the same producer set, and a producer added to
-// one but not the other silently corrupts contextq's generated-output
-// classification, whose only feed is the declarations. Template identity is
-// deliberately excluded from the comparison: both sides derive it from the
-// same declaration tables (ADR-0195 item 5), so that axis would compare the
-// derivation with itself. The other five axes are compared exactly as the
-// runtime check did.
 func outputDeclarationParityError(nodes []OutputNode, declarations []OutputDeclaration) error {
 	if len(nodes) != len(declarations) {
 		planPaths, declPaths := map[string]bool{}, map[string]bool{}
@@ -251,13 +148,13 @@ func outputDeclarationParityError(nodes []OutputNode, declarations []OutputDecla
 	}
 	for i := range nodes {
 		node, declaration := nodes[i], declarations[i]
-		if node.Path != declaration.Path || node.Reservation != declaration.Reservation ||
+		if node.Path != declaration.Path ||
 			!slices.Equal(node.Declarers, declaration.Declarers) ||
 			!slices.Equal(node.ConsumedInputs, normalizeOutputInputs(declaration.Inputs)) ||
 			!slices.Equal(node.DependsOn, declaration.Dependencies) {
-			return fmt.Errorf("declaration parity at %q: plan declarers=%v consumed=%v dependencies=%v reservation=%t; declaration declarers=%v inputs=%v dependencies=%v reservation=%t",
-				node.Path, node.Declarers, node.ConsumedInputs, node.DependsOn, node.Reservation,
-				declaration.Declarers, declaration.Inputs, declaration.Dependencies, declaration.Reservation)
+			return fmt.Errorf("declaration parity at %q: plan declarers=%v consumed=%v dependencies=%v; declaration declarers=%v inputs=%v dependencies=%v",
+				node.Path, node.Declarers, node.ConsumedInputs, node.DependsOn,
+				declaration.Declarers, declaration.Inputs, declaration.Dependencies)
 		}
 	}
 	return nil
@@ -306,7 +203,7 @@ func TestOutputDeclarationsMatchThePlan(t *testing.T) {
 }
 
 func TestOutputPlanObservesConsumedInputsIndependently(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n"+debuggingVars+"skills: [debugging, exploring]\nagents: [explorer]\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n"+debuggingVars+"", map[string]string{
 		"skills/debugging.yaml":                        "data: {}\n",
 		"skills/parts/debugging/debugging-surfaces.md": "Observed part.\n",
 	})
@@ -350,9 +247,9 @@ func TestBuildOutputDeclarationsRejectsMalformedFullCatalogSidecars(t *testing.T
 	for _, tc := range []struct {
 		name, kind, artifact, config, sidecar string
 	}{
-		{"skill", "skills", "tdd", "skills: []\n", ".awf/skills/tdd.yaml"},
-		{"agent", "agents", "code-reviewer", "agents: []\n", ".awf/agents/code-reviewer.yaml"},
-		{"doc", "docs", "architecture", "docs: []\n", ".awf/docs/architecture.yaml"},
+		{"skill", "skills", "tdd", "", ".awf/skills/tdd.yaml"},
+		{"agent", "agents", "code-reviewer", "", ".awf/agents/code-reviewer.yaml"},
+		{"doc", "docs", "architecture", "", ".awf/docs/architecture.yaml"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			read := memoryProjectReader{tc.sidecar: []byte("local: [bad")}
@@ -363,7 +260,7 @@ func TestBuildOutputDeclarationsRejectsMalformedFullCatalogSidecars(t *testing.T
 			if _, err := cfg.Sidecar(tc.kind, tc.artifact); err == nil {
 				t.Fatalf("test fixture did not corrupt %s sidecar", tc.name)
 			}
-			if _, err := BuildOutputDeclarations(cfg, catalog.Standard, []Target{{Name: "test"}}, read, mustCorpus(nil)); err == nil || !strings.Contains(err.Error(), tc.sidecar[5:]) {
+			if _, err := BuildOutputDeclarations(cfg, catalog.Standard, []Target{{Name: "test"}}, read, mustCorpus()); err == nil || !strings.Contains(err.Error(), tc.sidecar[5:]) {
 				t.Fatalf("full-catalog malformed %s sidecar error = %v", tc.name, err)
 			}
 		})
@@ -431,8 +328,8 @@ func (r configReaderAdapter) Paths(prefix string) []string { return nil }
 
 // mustCorpus builds a corpus from fixture records that carry no duplicate
 // identity, so the construction error the seam returns cannot occur here.
-func mustCorpus(records []adr.ADR) adr.Corpus {
-	c, err := adr.NewCorpus(records)
+func mustCorpus() adr.Corpus {
+	c, err := adr.NewCorpus(nil)
 	if err != nil { // coverage-ignore: fixture records are duplicate-free by construction
 		panic(err)
 	}

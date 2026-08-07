@@ -27,8 +27,6 @@ func topicCmdFixture(t *testing.T) string {
 	gitfixture.InitNativeAt(t, root)
 	testsupport.WriteAwfConfig(t, root, `prefix: example
 integrationBranch: main
-skills: []
-agents: []
 domains: [schedule]
 currentState:
   sources:

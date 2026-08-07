@@ -170,19 +170,11 @@ var handlers = map[string]handler{
 		}
 		return handlerFailure(runNew(c.ctx, c.root, kind, args, c.stdout))
 	},
-	"enable": func(c *cmdCtx) handlerResult {
-		kind, name, err := enableDisableArgs(c.inv.positionals, true)
-		if err != nil {
-			return handlerFailure(err)
+	"remove": func(c *cmdCtx) handlerResult {
+		if !project.IsFreeformDomainKind(c.sub) || len(c.inv.positionals) != 1 {
+			return handlerFailure(&usageErr{"usage: awf remove domain <name>"})
 		}
-		return handlerFailure(runEnable(c.ctx, c.root, kind, name, c.inv.bools["--dry-run"], c.stdout))
-	},
-	"disable": func(c *cmdCtx) handlerResult {
-		kind, name, err := enableDisableArgs(c.inv.positionals, false)
-		if err != nil {
-			return handlerFailure(err)
-		}
-		return handlerFailure(runDisable(c.ctx, c.root, kind, name, c.inv.bools["--with-dependents"], c.inv.bools["--dry-run"], c.stdout))
+		return handlerFailure(runRemoveDomain(c.ctx, c.root, c.inv.positionals[0], c.stdout))
 	},
 	"upgrade": func(c *cmdCtx) handlerResult {
 		return handlerFailure(runUpgradeFlags(c.ctx, c.root, c.inv.bools["--recover"], c.stdout))
@@ -192,49 +184,6 @@ var handlers = map[string]handler{
 		return handlerFailure(runChangelog(c.inv.values["--version"], c.inv.values["--since"], c.inv.values["--range"], c.stdout))
 	},
 	"version": func(c *cmdCtx) handlerResult { return handlerFailure(runVersion(c.stdout)) },
-}
-
-// enableDisableArgs resolves the shared positional forms of enable/disable -
-// `<kind> <name>` or a nameless singleton (bootstrap/hooks) - into a kind and
-// name, or a usage error. isEnable selects the verb, the enable-only "requires a
-// kind" hint, and the per-command usage line. A singleton handed a name, and a
-// lone kind token missing its name, are distinct usage errors - not silently
-// dropped input (the singleton) or a misattributed "requires a kind" hint (the
-// kind token).
-func enableDisableArgs(pos []string, isEnable bool) (kind, name string, err error) {
-	verb, usage := "disable", "usage: awf disable <kind> <name> [--with-dependents] [--dry-run]"
-	if isEnable {
-		verb, usage = "enable", "usage: awf enable <kind> <name> [--dry-run]"
-	}
-	isSingleton := len(pos) >= 1 && pos[0] == "bootstrap" // nameless bootstrap form
-	switch {
-	case len(pos) == 1 && isSingleton:
-		return pos[0], "", nil
-	case len(pos) == 2 && isSingleton:
-		return "", "", &usageErr{fmt.Sprintf("awf %s %s takes no name: it is a singleton toggle", verb, pos[0])}
-	case len(pos) == 2:
-		return pos[0], pos[1], nil
-	case len(pos) == 1 && isKindToken(pos[0]):
-		return "", "", &usageErr{fmt.Sprintf("awf %s %s requires a name: awf %s %s <name>", verb, pos[0], verb, pos[0])}
-	case len(pos) == 1 && isEnable:
-		return "", "", &usageErr{fmt.Sprintf("awf enable requires a kind: awf enable <kind> <name> (e.g. awf enable skill %s)", pos[0])}
-	default:
-		return "", "", &usageErr{usage}
-	}
-}
-
-// isKindToken reports whether s names a CLI kind that takes a <name> - a
-// descriptor kind (skill/agent/doc/domain, via the one kind table that
-// kind-dispatch-single-table guards) or the target adapter (which has no
-// descriptor). It lets enableDisableArgs tell "forgot the name" from "forgot the
-// kind". bootstrap/hooks/runner are excluded - they are nameless singletons
-// handled before this check.
-func isKindToken(s string) bool {
-	if s == "target" {
-		return true
-	}
-	_, ok := project.PluralKind(s)
-	return ok
 }
 
 // resolve descends through named children, returning the deepest leaf and its

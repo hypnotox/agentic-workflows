@@ -28,7 +28,7 @@ func commandWiringErrs(t *testing.T, configYAML string) (syncErr, checkErr error
 
 // invariant: config/configuration:sidecar-data-defaults-control (TestCatalogListSidecarValidation)
 func TestCatalogListSidecarValidation(t *testing.T) {
-	base := "prefix: example\nintegrationBranch: main\nskills: [tdd]\ndocs: [glossary]\n"
+	base := "prefix: example\nintegrationBranch: main\n"
 	for _, tc := range []struct {
 		name, path, sidecar, want string
 	}{
@@ -58,7 +58,6 @@ func TestCatalogListSidecarValidation(t *testing.T) {
 	}{
 		{"agents-doc singleton", "prefix: example\nintegrationBranch: main\n", "agents-doc.yaml", "dataDefaults:\n  any: false\n", "agents-doc.yaml dataDefaults.any"},
 		{"plain singleton", "prefix: example\nintegrationBranch: main\n", "adr-readme.yaml", "dataDefaults:\n  any: false\n", "adr-readme.yaml dataDefaults.any"},
-		{"local-only artifact", "prefix: example\nintegrationBranch: main\nskills: [custom]\n", "skills/custom.yaml", "local: true\ndataDefaults:\n  testSurfaces: false\n", "local-only artifact"},
 		{"domain sidecar", "prefix: example\nintegrationBranch: main\ndomains: [config]\n", "domains/config.yaml", "dataDefaults:\n  any: false\n", "domain sidecar is paths-only"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

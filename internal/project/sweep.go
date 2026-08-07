@@ -17,14 +17,12 @@ import (
 // claimedModel is the ADR-0086 Decision 1 allowlist: every path under .awf/
 // is either claimed here or drift. files holds claimed file paths
 // (project-relative, slash-separated); dirs holds structural directories
-// legal even when empty; enabled/singletons index the artifact facts the
-// classifier needs to keep the pre-ADR-0086 detail strings - locality is
-// never stored, because an enabled-but-unclaimed parts dir already implies
-// local: true (buildClaimedModel claims every non-local artifact's parts).
+// legal even when empty; artifacts/singletons index the catalog facts needed
+// to classify unknown sidecars and convention-part directories.
 type claimedModel struct {
 	files      map[string]bool
 	dirs       map[string]bool
-	enabled    map[string]map[string]bool // kind → name → enabled
+	artifacts  map[string]map[string]bool // kind -> name -> catalog member
 	singletons map[string]bool            // known singleton kinds
 }
 
@@ -47,7 +45,7 @@ func (m *claimedModel) claimedDir(dir string) bool {
 // and the plan write files (whose .awf/-prefixed paths are exactly the
 // enabled config-tree render units - the model derives from the same code
 // path that writes them, per the ADR's dual-bookkeeping consequence).
-func (p *Project) buildClaimedModel(files []RenderedFile, topics topic.Corpus) (*claimedModel, error) {
+func (p *Project) buildClaimedModel(files []RenderedFile, topics topic.Corpus) *claimedModel {
 	m := &claimedModel{
 		files: map[string]bool{
 			config.DirName + "/config.yaml":                   true,
@@ -59,7 +57,7 @@ func (p *Project) buildClaimedModel(files []RenderedFile, topics topic.Corpus) (
 			config.DirName + "/parts":  true,
 			config.DirName + "/memory": true,
 		},
-		enabled:    map[string]map[string]bool{},
+		artifacts:  map[string]map[string]bool{},
 		singletons: map[string]bool{},
 	}
 	// A resident root is a structural directory even when its dynamic tree is
@@ -76,21 +74,14 @@ func (p *Project) buildClaimedModel(files []RenderedFile, topics topic.Corpus) (
 		kind := d.Plural
 		m.dirs[config.DirName+"/"+kind] = true
 		m.dirs[config.DirName+"/"+kind+"/parts"] = true
-		m.enabled[kind] = map[string]bool{}
-		for _, name := range d.enable(p.Cfg) {
-			m.enabled[kind][name] = true
+		m.artifacts[kind] = map[string]bool{}
+		names := p.Cfg.Domains
+		if d.poolNames != nil {
+			names = d.poolNames(p.Cat)
+		}
+		for _, name := range names {
+			m.artifacts[kind][name] = true
 			m.files[config.DirName+"/"+kind+"/"+name+".yaml"] = true
-			sc, err := p.Cfg.Sidecar(kind, name)
-			if err != nil { // coverage-ignore: the render pass in outputPlan read this sidecar earlier in the same Check
-				return nil, err
-			}
-			// A local: true artifact renders nothing, so its parts are
-			// dead weight - deliberately unclaimed (ADR-0086 Decision 1).
-			// A local: true domain sidecar cannot reach here: open-time
-			// validation rejects any non-paths: domain field (Decision 5).
-			if sc.Local {
-				continue
-			}
 			m.dirs[config.DirName+"/"+kind+"/parts/"+name] = true
 			for _, sec := range p.declaredSections(kind, name) {
 				m.files[config.DirName+"/"+kind+"/parts/"+name+"/"+sec+".md"] = true
@@ -100,13 +91,6 @@ func (p *Project) buildClaimedModel(files []RenderedFile, topics topic.Corpus) (
 	for _, kind := range catalog.SingletonKinds() {
 		m.files[config.DirName+"/"+kind+".yaml"] = true
 		m.singletons[kind] = true
-		sc, err := p.Cfg.Sidecar(kind, "")
-		if err != nil { // coverage-ignore: the render pass in outputPlan read the singleton sidecars earlier in the same Check
-			return nil, err
-		}
-		if sc.Local {
-			continue
-		}
 		m.dirs[config.DirName+"/parts/"+kind] = true
 		for _, sec := range p.Cat.Docs[kind].Sections {
 			m.files[config.DirName+"/parts/"+kind+"/"+sec+".md"] = true
@@ -137,18 +121,16 @@ func (p *Project) buildClaimedModel(files []RenderedFile, topics topic.Corpus) (
 	for _, sec := range runnerSections {
 		m.files[config.DirName+"/runner/parts/"+sec+".md"] = true
 	}
-	return m, nil
+	return m
 }
 
 var awfBakRE = regexp.MustCompile(`\.awf-bak(\.\d+)?$`)
 
 // classify labels one unclaimed entry: the pre-ADR-0086 orphan shapes keep
-// their ADR-0011 detail strings byte-identical, sync-written backups get
-// the stale-backup detail (inv: awf-bak-flagged), local-managed artifacts'
-// parts their own, and everything else is unclaimed.
+// specific repair hints, sync-written backups get the stale-backup detail
+// (inv: awf-bak-flagged), and everything else is unclaimed.
 // touches-state: rendering/sync-and-drift:awf-bak-flagged - stale awf-bak backup classification; proof in sweep_test.go
 func (m *claimedModel) classify(rel string, isDir bool) manifest.Drift {
-	const localDetail = "convention parts for a local-managed artifact (local: true renders nothing)"
 	d := manifest.Drift{Path: rel, Kind: "orphaned"}
 	segs := strings.Split(rel, "/") // segs[0] is always ".awf"
 	switch {
@@ -157,18 +139,14 @@ func (m *claimedModel) classify(rel string, isDir bool) manifest.Drift {
 	// Singleton parts tree: .awf/parts/<kind>[/<section>.md].
 	case len(segs) == 3 && segs[1] == "parts" && isDir && !m.singletons[segs[2]]:
 		d.Detail = "convention parts for an unknown singleton kind"
-	case len(segs) == 3 && segs[1] == "parts" && isDir:
-		d.Detail = localDetail // known singleton, unclaimed dir ⇒ local: true
 	case len(segs) == 4 && segs[1] == "parts" && !isDir && strings.HasSuffix(segs[3], ".md"):
 		d.Detail = "convention part for a section not in the singleton's declared set"
 	// Kind trees: .awf/<kind>/<name>.yaml and .awf/<kind>/parts/<name>[/<sec>.md].
-	case len(segs) == 3 && !isDir && strings.HasSuffix(segs[2], ".yaml") && m.enabled[segs[1]] != nil:
-		d.Detail = "sidecar for an artifact not in the enable list"
-	case len(segs) == 4 && segs[2] == "parts" && isDir && m.enabled[segs[1]] != nil && !m.enabled[segs[1]][segs[3]]:
-		d.Detail = "convention parts for an artifact not in the enable list"
-	case len(segs) == 4 && segs[2] == "parts" && isDir && m.enabled[segs[1]] != nil:
-		d.Detail = localDetail // enabled name, unclaimed dir ⇒ local: true
-	case len(segs) == 5 && segs[2] == "parts" && !isDir && strings.HasSuffix(segs[4], ".md") && m.enabled[segs[1]] != nil && m.enabled[segs[1]][segs[3]]:
+	case len(segs) == 3 && !isDir && strings.HasSuffix(segs[2], ".yaml") && m.artifacts[segs[1]] != nil:
+		d.Detail = "sidecar for an artifact not in the catalog"
+	case len(segs) == 4 && segs[2] == "parts" && isDir && m.artifacts[segs[1]] != nil && !m.artifacts[segs[1]][segs[3]]:
+		d.Detail = "convention parts for an artifact not in the catalog"
+	case len(segs) == 5 && segs[2] == "parts" && !isDir && strings.HasSuffix(segs[4], ".md") && m.artifacts[segs[1]] != nil && m.artifacts[segs[1]][segs[3]]:
 		d.Detail = "convention part for a section not in the target's declared set"
 	default:
 		d.Detail = "unclaimed file or directory: not part of the .awf config tree; delete it or move it out"
@@ -183,10 +161,7 @@ func (m *claimedModel) classify(rel string, isDir bool) manifest.Drift {
 // sidecars/parts and undeclared sections keep their detail strings
 // (inv: drift-source-set; ADR-0011 section-orphan-flagged).
 func (p *Project) sweepConfigTree(files []RenderedFile, topics topic.Corpus) ([]manifest.Drift, error) {
-	m, err := p.buildClaimedModel(files, topics)
-	if err != nil { // coverage-ignore: see buildClaimedModel's sidecar coverage-ignores
-		return nil, err
-	}
+	m := p.buildClaimedModel(files, topics)
 	var drift []manifest.Drift
 	walkErr := filepath.WalkDir(filepath.Join(p.Root, config.DirName), func(path string, de fs.DirEntry, err error) error {
 		if err != nil { // coverage-ignore: Check requires the lock inside .awf, so the tree exists; a mid-walk error is a permission fault a test cannot trigger

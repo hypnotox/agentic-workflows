@@ -35,6 +35,9 @@ func TestDecisionItemSlugsMigrationPreservesAuthoredBytes(t *testing.T) {
 		t.Fatalf("upgrade = %v, output %q; want %v", applied, out.String(), wantApplied)
 	}
 	for path, want := range fixtures {
+		if path == ".awf/config.yaml" {
+			want = []byte("prefix: fixture\n")
+		}
 		got, err := os.ReadFile(filepath.Join(root, path))
 		if err != nil || !bytes.Equal(got, want) {
 			t.Fatalf("%s after upgrade = %q, %v; want %q", path, got, err, want)

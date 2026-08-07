@@ -77,9 +77,6 @@ func renderedVarConsumers(files []RenderedFile) map[string][]string {
 	byVar := map[string]map[string]bool{}
 	for _, f := range files {
 		label := artifactLabel(f.TemplateID)
-		if f.TemplateID == baseTID("skills") || f.TemplateID == baseTID("agents") {
-			label = localLabel(f.TemplateID, f.Path)
-		}
 		if f.TemplateID == "" { // generated domain docs carry no template id
 			label = "domain doc " + f.Path
 		}
@@ -108,7 +105,6 @@ func (p *Project) currentValueResolvers() map[string]func() string {
 	return map[string]func() string{
 		"prefix":            func() string { return "`" + p.Cfg.Prefix + "`" },
 		"integrationBranch": func() string { return "`" + p.Cfg.IntegrationBranch + "`" },
-		"docsDir":           func() string { return "`" + p.Cfg.DocsDir + "`" },
 		"vars": func() string {
 			set := 0
 			for _, v := range p.Cfg.Vars {
@@ -118,11 +114,7 @@ func (p *Project) currentValueResolvers() map[string]func() string {
 			}
 			return fmt.Sprintf("%d keys, %d set", len(p.Cfg.Vars), set)
 		},
-		"skills":  func() string { return strconv.Itoa(len(p.Cfg.Skills)) + " compatibility selections" },
-		"agents":  func() string { return strconv.Itoa(len(p.Cfg.Agents)) + " compatibility selections" },
-		"docs":    func() string { return strconv.Itoa(len(p.Cfg.Docs)) + " compatibility selections" },
 		"domains": func() string { return strconv.Itoa(len(p.Cfg.Domains)) + " configured" },
-		"targets": func() string { return "compatibility selection: `" + strings.Join(p.Cfg.Targets, "`, `") + "`" },
 		"tags": func() string {
 			if len(p.Cfg.Tags) == 0 {
 				return "(none)"
@@ -367,135 +359,68 @@ func (p *Project) configReferenceData(files []RenderedFile) (map[string]any, err
 	}, nil
 }
 
-// dataKeyRowsTyped filters the described data keys to this project: enabled
-// artifacts, the local base entries when a synthesized project-local artifact
-// of that kind exists, and the always-on agents-doc.
+// dataKeyRowsTyped filters described data keys to catalog artifacts and the
+// always-on agents-doc.
 func (p *Project) dataKeyRowsTyped() ([]DataKeyRow, error) {
-	hasLocal := map[string]bool{
-		"skills": p.hasLocalArtifact("skills"),
-		"agents": p.hasLocalArtifact("agents"),
-		"docs":   p.hasLocalArtifact("docs"),
-	}
 	var rows []DataKeyRow
 	for _, d := range configspec.DataKeys() {
-		var label string
-		switch {
-		case d.Artifact == "_base":
-			if !hasLocal[d.Kind] {
-				continue
-			}
-			label = "local " + strings.TrimSuffix(d.Kind, "s") + "s"
-		case d.Kind == "docs" && d.Artifact == "agents-doc":
+		label := strings.TrimSuffix(d.Kind, "s") + " " + d.Artifact
+		if d.Kind == "docs" && d.Artifact == "agents-doc" {
 			label = "agents-doc"
-		default:
-			if !slices.Contains(p.enableArray(d.Kind), d.Artifact) {
-				continue
-			}
-			label = strings.TrimSuffix(d.Kind, "s") + " " + d.Artifact
 		}
 		state := ""
 		var declared map[string]any
-		if d.Artifact != "_base" {
-			switch d.Kind {
-			case "skills":
-				declared = p.Cat.Skills[d.Artifact].Data
-			case "agents":
-				declared = p.Cat.Agents[d.Artifact].Data
-			case "docs":
-				declared = p.Cat.Docs[d.Artifact].Data
-			}
-			sidecarKind, sidecarName := d.Kind, d.Artifact
-			if d.Artifact == "agents-doc" {
-				sidecarKind, sidecarName = "agents-doc", ""
-			}
-			sc, err := p.Cfg.Sidecar(sidecarKind, sidecarName)
-			if err != nil { // coverage-ignore: these sidecars were already read by the render pass in outputPlan
-				return nil, err
-			}
-			_, hasAuthored := sc.Data[d.Key]
-			defaultValue, hasDefault := declared[d.Key]
-			_, catalogList := defaultValue.([]any)
-			catalogList = catalogList && !slices.Contains(specializedListDataKeys(sidecarKind, sidecarName), d.Key)
+		switch d.Kind {
+		case "skills":
+			declared = p.Cat.Skills[d.Artifact].Data
+		case "agents":
+			declared = p.Cat.Agents[d.Artifact].Data
+		case "docs":
+			declared = p.Cat.Docs[d.Artifact].Data
+		}
+		sidecarKind, sidecarName := d.Kind, d.Artifact
+		if d.Artifact == "agents-doc" {
+			sidecarKind, sidecarName = "agents-doc", ""
+		}
+		sc, err := p.Cfg.Sidecar(sidecarKind, sidecarName)
+		if err != nil { // coverage-ignore: these sidecars were already read by the render pass in outputPlan
+			return nil, err
+		}
+		_, hasAuthored := sc.Data[d.Key]
+		defaultValue, hasDefault := declared[d.Key]
+		_, catalogList := defaultValue.([]any)
+		catalogList = catalogList && !slices.Contains(specializedListDataKeys(sidecarKind, sidecarName), d.Key)
+		switch {
+		case catalogList:
+			keep, configured := sc.DataDefaults[d.Key]
 			switch {
-			case catalogList:
-				keep, configured := sc.DataDefaults[d.Key]
-				switch {
-				case configured && !keep:
-					state = " (explicitly suppressed default; project entries only)"
-				case hasAuthored:
-					state = " (catalog default + project entries)"
-				case configured:
-					state = " (catalog default; dataDefaults explicitly true)"
-				default:
-					state = " (catalog default)"
-				}
+			case configured && !keep:
+				state = " (explicitly suppressed default; project entries only)"
 			case hasAuthored:
-				state = " (project-only/specialized)"
-			case hasDefault:
+				state = " (catalog default + project entries)"
+			case configured:
+				state = " (catalog default; dataDefaults explicitly true)"
+			default:
 				state = " (catalog default)"
 			}
+		case hasAuthored:
+			state = " (project-only/specialized)"
+		case hasDefault:
+			state = " (catalog default)"
 		}
 		rows = append(rows, DataKeyRow{Artifact: label, Key: d.Key, Description: d.Description, State: state})
 	}
 	return rows, nil
 }
 
-// hasLocalArtifact reports whether the project enables a synthesized
-// project-local artifact of the plural kind - one rendered from an awf-owned
-// base template, so the config reference should document that kind's `_base`
-// data keys (ADR-0068/0091). Skills and agents carry a `Base` flag; a local
-// doc's synthesized `DocEntry.TID` is the base doc template. A `local: true`
-// opt-out is hand-authored and never synthesized, so it correctly does not
-// count - its body is not rendered from the base template.
-func (p *Project) hasLocalArtifact(kind string) bool {
-	switch kind {
-	case "skills":
-		for _, n := range p.Cfg.Skills {
-			if p.Cat.Skills[n].Base {
-				return true
-			}
-		}
-	case "agents":
-		for _, n := range p.Cfg.Agents {
-			if p.Cat.Agents[n].Base {
-				return true
-			}
-		}
-	case "docs":
-		for _, n := range p.Cfg.Docs {
-			if p.Cat.Docs[n].TID == baseTID("docs") {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-// enableArray returns the enable array for a plural kind name.
-func (p *Project) enableArray(kind string) []string {
-	switch kind {
-	case "skills":
-		return p.Cfg.Skills
-	case "agents":
-		return p.Cfg.Agents
-	default:
-		return p.Cfg.Docs
-	}
-}
-
 // generateConfigReference renders the always-on generated config reference
 // (ADR-class: generated index, no template/config hashes - drift is checked
 // by regeneration). files is the consumption input (the plan write files plus
-// generated domain docs). The bool reports whether a reference was produced -
-// false when a local: sidecar opts out (the manifest.LoadOptional found-flag
-// idiom).
+// generated domain docs).
 func (p *Project) generateConfigReference(files []RenderedFile, eff map[string]bool) (*RenderedFile, bool, error) {
 	sc, err := p.Cfg.Sidecar("config-reference", "")
 	if err != nil { // coverage-ignore: validation already read this sidecar at open
 		return nil, false, err
-	}
-	if sc.Local {
-		return nil, false, nil
 	}
 	data := p.data(sc, eff)
 	collections, err := p.configReferenceData(files)

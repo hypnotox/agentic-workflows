@@ -26,7 +26,7 @@ func runInit(ctx context.Context, root string, force, describe bool, sets []stri
 
 func runInitWithProjectLoader(ctx context.Context, root string, force, describe bool, sets []string, answersFile string, stdout io.Writer, loadProject func(string) (*project.Loader, error)) error {
 	cat := catalog.Standard
-	descs := initspec.CatalogVars(cat)
+	descs := cat.Vars
 	if describe {
 		out, err := initspec.Describe(descs)
 		if err != nil { // coverage-ignore: descriptors marshal to JSON; cannot fail
@@ -58,10 +58,9 @@ func runInitWithProjectLoader(ctx context.Context, root string, force, describe 
 	if err := initspec.MergeSetFlags(answers, sets); err != nil {
 		return err
 	}
-	// Pre-prompt probe (conservative): refuse collisions before asking a single
-	// question or writing anything. The post-answer InitCollisions below stays
-	// as the accurate second line - a trim answer can enable non-core artifacts
-	// this curated-core probe set does not cover. --force skips the probe.
+	// Pre-prompt probe: refuse collisions before asking a single question or
+	// writing anything. The post-answer InitCollisions below remains the
+	// authoritative second check. --force skips the probe.
 	if !force {
 		collisions, err := probeCollisions(ctx, root)
 		if err != nil {
@@ -88,7 +87,6 @@ func runInitWithProjectLoader(ctx context.Context, root string, force, describe 
 		}
 	}
 	var vars map[string]string
-	var trim *config.CatalogTrim
 	var scopes []string
 	ignoredAnswers := configExists && len(answers) > 0
 	if configExists {
@@ -96,23 +94,21 @@ func runInitWithProjectLoader(ctx context.Context, root string, force, describe 
 		// prompt for (or silently accept) values init then discards.
 	} else {
 		var rerr error
-		vars, trim, scopes, rerr = initspec.Resolve(descs, answers, stdin, stdout, isInteractive(), project.NeededVars)
+		vars, scopes, rerr = initspec.Resolve(descs, answers, stdin, stdout, isInteractive(), project.NeededVars)
 		if rerr != nil {
 			return rerr
 		}
 	}
 
 	scaffolded := false
-	var added []string
 	if !configExists {
 		if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil { // coverage-ignore: entering this block needs cfgPath absent, which precludes a parent collision making MkdirAll fail
 			return err
 		}
-		scaffold, scaffoldAdded, err := project.ScaffoldConfig(filepath.Base(root), vars, trim, scopes)
+		scaffold, err := project.ScaffoldConfig(filepath.Base(root), vars, scopes)
 		if err != nil { // coverage-ignore: ScaffoldConfig renders a static template over a dir basename; cannot fail in practice
 			return err
 		}
-		added = scaffoldAdded
 		if err := os.WriteFile(cfgPath, scaffold, 0o644); err != nil { // coverage-ignore: post-MkdirAll write; fails only on a permission fault that root bypasses
 			return err
 		}
@@ -162,7 +158,7 @@ func runInitWithProjectLoader(ctx context.Context, root string, force, describe 
 	}
 	// Post-init orientation: the same advisory notes awf check prints
 	// (ADR-0045, ADR-0070), then a fixed next-steps block.
-	return renderInitOutcome(ctx, syncedProject, initspec.Outcome{ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers, Added: added, Sync: syncResult, NextActions: initNextActions}, stdout, func(ctx context.Context, p *project.Project) ([]string, error) {
+	return renderInitOutcome(ctx, syncedProject, initspec.Outcome{ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers, Sync: syncResult, NextActions: initNextActions}, stdout, func(ctx context.Context, p *project.Project) ([]string, error) {
 		return p.AdvisoryNotes(ctx)
 	})
 }
@@ -216,7 +212,7 @@ func probeCollisions(ctx context.Context, root string) ([]string, error) {
 		return nil, err
 	}
 	defer os.RemoveAll(tmp)
-	scaffold, _, err := project.ScaffoldConfig(filepath.Base(root), nil, nil, nil)
+	scaffold, err := project.ScaffoldConfig(filepath.Base(root), nil, nil)
 	if err != nil { // coverage-ignore: ScaffoldConfig over the embedded catalog cannot fail at runtime
 		return nil, err
 	}

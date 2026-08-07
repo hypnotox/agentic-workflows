@@ -5,11 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"sort"
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
@@ -20,7 +18,7 @@ import (
 // rendered file at rel.
 // invariant: rendering/project-output-plan:output-policy-explicit (TestOutputPolicyRoutesMisleadingPathsEndToEnd)
 func TestOutputPolicyRoutesMisleadingPathsEndToEnd(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -53,19 +51,13 @@ func TestOutputPolicyRoutesMisleadingPathsEndToEnd(t *testing.T) {
 		t.Fatalf("unscanned skill drift = %#v", drift)
 	}
 
-	// Regeneration and local validation likewise follow policy, not a generated
-	// template ID or conventional skill location.
+	// Regeneration likewise follows policy, not a generated template ID or
+	// conventional skill location.
 	testsupport.WriteFile(t, filepath.Join(root, "misleading/SKILL.md"), "old\n")
 	regen := RenderedFile{Path: "misleading/SKILL.md", Content: "new\n", Policy: OutputPolicy{Regenerate: true}}
 	lock = &manifest.Lock{Files: map[string]manifest.Entry{regen.Path: {}}}
 	if drift := p.checkLockedFiles(lock, map[string]RenderedFile{regen.Path: regen}); len(drift) != 1 || drift[0].Kind != "stale" {
 		t.Fatalf("regeneration policy drift = %#v", drift)
-	}
-	reservation := &OutputPlan{Nodes: []OutputNode{{Path: "local.unknown", Reservation: true, Policy: OutputPolicy{LocalValidation: true, ValidateFrontmatter: true}, Recipe: OutputRecipe{Encoder: MarkdownAgentDialect}}}}
-	var localErr error
-	p.localReservations(reservation, func(_ string, err error) { localErr = err })
-	if localErr == nil || !strings.Contains(localErr.Error(), "absent") {
-		t.Fatalf("local validation policy error = %v", localErr)
 	}
 }
 
@@ -129,7 +121,7 @@ func TestCheckLockedFilesClassifiesOrdinaryFreshnessBeforeObservation(t *testing
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
+			root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 			p, err := Open(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
@@ -167,7 +159,7 @@ func configHashOf(t *testing.T, root, rel string) string {
 
 func TestRetiredTopicMaximumDoesNotAffectProjection(t *testing.T) {
 	const unrelated = ".claude/skills/example-tdd/SKILL.md"
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\nskills: [tdd]\nagents: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\n")
 	before := configHashOf(t, root, unrelated)
 	if after := configHashOf(t, root, unrelated); after != before {
 		t.Fatal("fixed topic fan-out budget changed unrelated skill guidance")
@@ -177,118 +169,36 @@ func TestRetiredTopicMaximumDoesNotAffectProjection(t *testing.T) {
 // invariant: rendering/sync-and-drift:drift-source-set (TestPerTargetDriftProjection)
 func TestPerTargetDriftProjection(t *testing.T) {
 	const (
-		A = ".claude/skills/example-tdd/SKILL.md"
-		B = ".claude/skills/example-bugfix/SKILL.md"
+		tdd    = ".claude/skills/example-tdd/SKILL.md"
+		bugfix = ".claude/skills/example-bugfix/SKILL.md"
 	)
 	cfg := func(pitfalls string) string {
-		return "prefix: example\nintegrationBranch: main\n" + sprintfVars(pitfalls) + "skills:\n  - tdd\n  - bugfix\nagents: []\n"
+		return "prefix: example\nintegrationBranch: main\n" + sprintfVars(pitfalls)
 	}
 	root := scaffoldFiles(t, cfg(""), map[string]string{
 		"skills/tdd.yaml":           "data:\n  testSurfaces:\n    - {name: One, location: a, kind: b}\n",
 		"skills/bugfix.yaml":        "data:\n  k: v\n",
 		"skills/parts/tdd/notes.md": "ORIGINAL NOTES\n",
 	})
-
-	a0 := configHashOf(t, root, A)
-	b0 := configHashOf(t, root, B)
-
-	// (1) Editing target A's sidecar changes A's hash but not B's.
+	tdd0, bugfix0 := configHashOf(t, root, tdd), configHashOf(t, root, bugfix)
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/skills/tdd.yaml"), "data:\n  testSurfaces:\n    - {name: Changed, location: x, kind: y}\n")
-	a1 := configHashOf(t, root, A)
-	b1 := configHashOf(t, root, B)
-	if a1 == a0 {
-		t.Error("editing A's sidecar should change A's ConfigHash")
+	tdd1, bugfix1 := configHashOf(t, root, tdd), configHashOf(t, root, bugfix)
+	if tdd1 == tdd0 || bugfix1 != bugfix0 {
+		t.Fatalf("sidecar projection: tdd %q -> %q, bugfix %q -> %q", tdd0, tdd1, bugfix0, bugfix1)
 	}
-	if b1 != b0 {
-		t.Error("editing A's sidecar must not change B's ConfigHash")
-	}
-
-	// (2) Editing a part A consumes changes A.
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/skills/parts/tdd/notes.md"), "NEW NOTES BODY\n")
-	a2 := configHashOf(t, root, A)
-	if a2 == a1 {
-		t.Error("editing a part A consumes should change A's ConfigHash")
+	tdd2 := configHashOf(t, root, tdd)
+	if tdd2 == tdd1 {
+		t.Fatal("consumed part did not change target hash")
 	}
-
-	// (3) An unrelated vars edit (a var A does not reference) does not change A's hash.
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/config.yaml"), cfg("now-set"))
-	a3 := configHashOf(t, root, A)
-	if a3 != a2 {
-		t.Errorf("a var A does not reference (pitfallsDoc) must not change A's ConfigHash:\n%s\n%s", a2, a3)
-	}
-
-	// (4) A sidecar/part for a target absent from the enable list is an orphan.
-	orphRoot := scaffoldFiles(t, cfg(""), map[string]string{
-		"skills/tdd.yaml":                 "data:\n  k: v\n",
-		"skills/bugfix.yaml":              "data:\n  k: v\n",
-		"skills/debugging.yaml":           "data:\n  k: v\n", // debugging not enabled
-		"skills/parts/orphan-target/x.md": "stray\n",         // orphan-target not enabled
-	})
-	p, err := Open(testContext(t), orphRoot)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.Sync(); err != nil {
-		t.Fatal(err)
-	}
-	drift, err := p.Check(testContext(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	wantOrphans := map[string]bool{
-		".awf/skills/debugging.yaml":      false,
-		".awf/skills/parts/orphan-target": false,
-	}
-	for _, d := range drift {
-		if d.Kind == "orphaned" {
-			if _, ok := wantOrphans[d.Path]; ok {
-				wantOrphans[d.Path] = true
-			}
-		}
-	}
-	for path, seen := range wantOrphans {
-		if !seen {
-			t.Errorf("expected orphan drift for %s, got %#v", path, drift)
-		}
+	if got := configHashOf(t, root, tdd); got != tdd2 {
+		t.Fatalf("unrelated var changed target hash: %s -> %s", tdd2, got)
 	}
 }
 
-// An artifact enabled after the last sync has a rendered output but no lock
-// entry; Check must flag it instead of passing clean while the file is absent
-// from disk.
-func TestCheckIgnoresUnsyncedSelectionChanges(t *testing.T) {
-	cfg := func(agents string) string {
-		return "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\nskills:\n  - tdd\nagents:" + agents + "\n"
-	}
-	root := scaffold(t, cfg(" []"))
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.Sync(); err != nil {
-		t.Fatal(err)
-	}
-	testsupport.WriteAwfConfig(t, root, cfg("\n  - code-reviewer"))
-	p, err = Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	drift, err := p.Check(testContext(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, d := range drift {
-		if d.Path == ".claude/agents/code-reviewer.md" && d.Kind == "unsynced" {
-			t.Fatalf("selection change produced unsynced drift: %#v", drift)
-		}
-	}
-}
-
-// The sync prune walks old lock entries no longer produced; an entry escaping
-// the repo root must be skipped, not deleted out-of-tree (and the ancestor
-// walk must terminate).
 func TestSyncPruneSkipsEscapingLockPaths(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	victim := filepath.Join(root, "..", "victim.txt")
 	testsupport.WriteFile(t, victim, "keep me\n")
 	p, err := Open(testContext(t), root)
@@ -322,7 +232,7 @@ func TestSyncPruneSkipsEscapingLockPaths(t *testing.T) {
 // the same orphan scan as per-artifact parts: a typo'd section or an unknown
 // kind must be flagged instead of silently never rendering.
 func TestCheckFlagsOrphanedSingletonParts(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
 		"parts/workflow/typo-section.md": "stray\n",
 		"parts/nonsense/x.md":            "stray\n",
 		"parts/workflow/principles.md":   "## Principles\n\nLegit override.\n",
@@ -362,7 +272,7 @@ func sprintfVars(pitfalls string) string {
 
 // invariant: config/migrations-and-locks:schema-version-lock (TestSyncStampsSchemaVersion)
 func TestSyncStampsSchemaVersion(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -382,39 +292,8 @@ func TestSyncStampsSchemaVersion(t *testing.T) {
 	}
 }
 
-// chainClosureConfig derives the chain-unit enabled set from the catalog via
-// the production forward walk: the Chain-flagged skills' full closure (ADR-0080
-// Decision 5, walk unified by ADR-0081) - never a hand list.
 func chainClosureConfig(scope string) string {
-	var seeds []catalog.Node
-	for name, spec := range catalog.Standard.Skills {
-		if spec.Profile.Kind == catalog.WorkflowChain {
-			seeds = append(seeds, catalog.Node{Kind: "skill", Name: name})
-		}
-	}
-	sort.Slice(seeds, func(i, j int) bool { return seeds[i].Name < seeds[j].Name })
-	var skills, agentList []string
-	for _, n := range catalog.Closure(catalog.Standard, seeds) {
-		switch n.Kind {
-		case "skill":
-			skills = append(skills, n.Name)
-		case "agent":
-			agentList = append(agentList, n.Name)
-		}
-	}
-	sort.Strings(skills)
-	sort.Strings(agentList)
-	var b strings.Builder
-	b.WriteString("prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\nskills:\n")
-	for _, s := range skills {
-		b.WriteString("  - " + s + "\n")
-	}
-	b.WriteString("agents:\n")
-	for _, a := range agentList {
-		b.WriteString("  - " + a + "\n")
-	}
-	b.WriteString("audit:\n  allowedScopes:\n    - " + scope + "\n")
-	return b.String()
+	return "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\naudit:\n  allowedScopes:\n    - " + scope + "\n"
 }
 
 // Editing audit.allowedScopes reflags exactly the artifacts whose assembled
@@ -463,52 +342,10 @@ func TestScopesEditReflagsReferencingArtifacts(t *testing.T) {
 // Editing the skills enable array leaves the neutral guide fresh because native
 // target frontmatter owns the catalog, while a skill template that reads .skills
 // receives the configured set in its config hash and is therefore stale.
-// invariant: rendering/sync-and-drift:skills-set-in-confighash (TestSkillsEditLeavesNeutralGuideFreshAndReflagsSkill)
-func TestSkillsEditLeavesNeutralGuideFreshAndReflagsSkill(t *testing.T) {
-	cfg := func(skills string) string {
-		return "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\nskills:" + skills + "\nagents: []\n"
-	}
-	root := scaffoldFiles(t, cfg("\n  - debugging\n  - bugfix"), map[string]string{
-		"skills/parts/debugging/debugging-surfaces.md": "Configured skills: {{ range .skills }}{{ . }} {{ end }}\n",
-	})
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.Sync(); err != nil {
-		t.Fatal(err)
-	}
-	testsupport.WriteAwfConfig(t, root, cfg("\n  - debugging"))
-	p, err = Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	drift, err := p.Check(testContext(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	flagged := map[string]bool{}
-	for _, finding := range drift {
-		if finding.Kind == "stale" {
-			flagged[finding.Path] = true
-		}
-	}
-	if flagged["AGENTS.md"] {
-		t.Errorf("editing enabled skills staled neutral AGENTS.md: %v", drift)
-	}
-	if !flagged[".claude/skills/example-debugging/SKILL.md"] {
-		t.Errorf("editing enabled skills did not stale the .skills-consuming skill: %v", drift)
-	}
-}
-
-// Editing audit.allowedScopes reflags an artifact whose raw convention part uses
-// a {{=awf:commitScope*}} placeholder - the config-hash folds scope data via the
-// part-body scan, not the template-source scan - while a non-referencing
-// artifact stays in sync (ADR-0057).
 // invariant: rendering/sync-and-drift:part-scopes-in-confighash (TestScopesEditReflagsPlaceholderPart)
 func TestScopesEditReflagsPlaceholderPart(t *testing.T) {
 	cfg := func(meaning string) string {
-		return "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\nskills: []\nagents: []\n" +
+		return "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\n" +
 			"audit:\n  allowedScopes:\n    - {name: adr, meaning: " + meaning + "}\n"
 	}
 	root := scaffoldFiles(t, cfg("ADR docs"), map[string]string{
@@ -633,7 +470,7 @@ func TestAuditAndCollisionsRefuseCorruptLock(t *testing.T) {
 // TestScopesEditReflagsPlaceholderPart).
 func TestCommentWrappedScopePlaceholderDoesNotFold(t *testing.T) {
 	cfg := func(meaning string) string {
-		return "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\nskills: []\nagents: []\n" +
+		return "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\n" +
 			"audit:\n  allowedScopes:\n    - {name: adr, meaning: " + meaning + "}\n"
 	}
 	root := scaffoldFiles(t, cfg("ADR docs"), map[string]string{

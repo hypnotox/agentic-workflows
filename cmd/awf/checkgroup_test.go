@@ -208,7 +208,7 @@ func TestCheckExemptChildrenRunUnderGuardedProjectState(t *testing.T) {
 		return string(b)
 	}
 	const journal = `{"version":1,"phase":"prepared","finalLockSHA256":"sha256:x","operations":[{"path":".awf/awf.lock","prior":{"present":false,"mode":0,"content":null},"replacement":{"present":false,"mode":0,"content":null}}]}`
-	configText := "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n"
+	configText := "prefix: example\nintegrationBranch: main\n"
 
 	// guarded builds a git-backed project in the named guarded state.
 	guarded := func(t *testing.T, journaled bool) string {
@@ -336,7 +336,7 @@ func TestCheckChildrenErrorPaths(t *testing.T) {
 		// A data value spelling the no-value token makes the in-memory re-render
 		// fail, so p.Check() returns an error rather than a drift list.
 		root := t.TempDir()
-		testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: [tdd]\nagents: []\n")
+		testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {}\n")
 		testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "tdd.yaml"),
 			"data:\n  testSurfaces:\n    - {name: \"<no value>\", kind: k, location: l}\n")
 		if err := runCheckDrift(ctx, root, io.Discard); err == nil {

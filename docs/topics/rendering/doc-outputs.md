@@ -95,7 +95,7 @@ Backing: unbacked
 Verify: Creating and removing a topic in a render fixture changes awf render, awf check, the output plan, the lock, the index, and stale-output pruning consistently.
 ### `invariant: working-with-awf-mandatory`
 
-The working-with-awf doc renders as an always-on singleton for every project, present in the plain-singleton set and the catalog's singleton kinds; during the schema-compatible intermediate it remains suppressible only by a local: true sidecar.
+The working-with-awf doc renders as an always-on singleton for every project, present in the plain-singleton set and the catalog's singleton kinds.
 Origin: ADR-0148
 Revised-by: ADR-house-standard-configuration-expresses-repo-facts-only
 Backing: test

@@ -30,38 +30,14 @@ func TestClaudeTargetPaths(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-workflows:pi-native-workflow-skills (TestNativePiSkillsAreDiscoverableAndPruned)
-func TestNativePiSkillsAreDiscoverableAndPruned(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: [local]\nagents: []\ntargets: [claude]\n", map[string]string{
-		"skills/local.yaml":             "data:\n  description: Local Pi workflow guidance.\n",
-		"skills/parts/local/content.md": "Use this local skill when it fits.\n",
-	})
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	files, err := p.RenderAll()
-	if err != nil {
-		t.Fatal(err)
-	}
-	paths := map[string]bool{}
-	for _, f := range files {
-		paths[f.Path] = true
-	}
-	for _, path := range []string{".claude/skills/example-local/SKILL.md", ".pi/skills/example-local/SKILL.md", ".pi/skills/example-tdd/SKILL.md"} {
-		if !paths[path] {
-			t.Errorf("full catalog missing %s", path)
-		}
-	}
-}
-
+// invariant: rendering/pi-workflows:pi-native-workflow-skills (TestPiRuntimeTargetRender)
 // invariant: rendering/pi-runtime:pi-extension-target-render (TestPiRuntimeTargetRender)
 // invariant: rendering/pi-workflows:using-effort-skill (TestPiRuntimeTargetRender)
 func TestPiRuntimeTargetRender(t *testing.T) {
 	if _, independentlySelectable := catalog.Standard.Skills["using-effort"]; independentlySelectable {
 		t.Fatal("using-effort companion became independently selectable")
 	}
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [effort-workflow]\nagents: []\ntargets: [pi]\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -164,7 +140,7 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 
 // invariant: rendering/pi-workflows:pi-effort-memory-tools (TestPiEffortMemoryToolContract)
 func TestPiEffortMemoryToolContract(t *testing.T) {
-	selected := explorationRenderedByPath(t, "prefix: example\nintegrationBranch: main\nskills: [effort-workflow]\nagents: []\ntargets: [pi]\n")
+	selected := explorationRenderedByPath(t, "prefix: example\nintegrationBranch: main\n")
 	index := selected[".pi/extensions/awf-effort/index.ts"]
 	client := selected[".pi/extensions/awf-effort/client.ts"]
 	guidance := selected[".pi/skills/example-using-effort/SKILL.md"]
@@ -261,7 +237,7 @@ func TestPiRealRuntimeSmoke(t *testing.T) {
 }
 
 func TestTargetOutputRenderError(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -367,7 +343,7 @@ func TestPiSubagentModelWizardRender(t *testing.T) {
 }
 
 func explorationFixtureConfig(target string) string {
-	return "prefix: example\nintegrationBranch: main\nskills: [adr-lifecycle, brainstorming, debugging, executing-direct, executing-plans, exploring, grounding, orienting, proposing-adr, refactor-coupling-audit, retrospective, reviewing-adr, reviewing-impl, reviewing-plan, reviewing-plan-resync, subagent-driven-development, writing-plans]\nagents: [adr-reviewer, code-reviewer, explorer, grounding-checker, implementer, plan-reviewer]\ntargets: [" + target + "]\n"
+	return "prefix: example\nintegrationBranch: main\n"
 }
 
 func explorationRenderedByPath(t *testing.T, config string) map[string]string {
@@ -390,9 +366,6 @@ func explorationRenderedByPath(t *testing.T, config string) map[string]string {
 // invariant: rendering/workflow-skill-templates:cross-runtime-exploration-dispatch (TestCrossRuntimeExplorationDispatch)
 // invariant: rendering/workflow-skill-templates:explorer-and-grounding-role-contracts (TestCrossRuntimeExplorationDispatch)
 func TestCrossRuntimeExplorationDispatch(t *testing.T) {
-	if !catalog.Standard.Skills["exploring"].Core {
-		t.Fatal("exploring is not a core skill")
-	}
 	dirs := map[string]string{
 		"claude": ".claude/skills",
 		"pi":     ".pi/skills",
@@ -471,7 +444,7 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 
 // invariant: rendering/workflow-skill-templates:bounded-exploration-reporting (TestBoundedExplorationReporting)
 func TestBoundedExplorationReporting(t *testing.T) {
-	files := explorationRenderedByPath(t, "prefix: example\nintegrationBranch: main\nskills: [exploring]\nagents: [explorer]\ntargets: [pi]\n")
+	files := explorationRenderedByPath(t, "prefix: example\nintegrationBranch: main\n")
 	guidance := files[".pi/skills/example-exploring/SKILL.md"]
 	prompt := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	explorer := renderAgentGolden(t, "explorer", map[string]any{
@@ -521,7 +494,7 @@ func TestBoundedExplorationReporting(t *testing.T) {
 
 func renderPiExtensionFile(t *testing.T, name string) string {
 	t.Helper()
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -540,43 +513,7 @@ func renderPiExtensionFile(t *testing.T, name string) string {
 	return ""
 }
 
-// invariant: rendering/catalog-and-targets:built-in-runtime-targets (TestKnownTargets)
-func TestKnownTargets(t *testing.T) {
-	if got := KnownTargets(); strings.Join(got, ",") != "claude,pi" {
-		t.Fatalf("KnownTargets = %v", got)
-	}
-	for _, removed := range []string{"codex", "copilot", "cursor", "gemini"} {
-		_, err := resolveTargets([]string{removed})
-		if err == nil || !strings.Contains(err.Error(), `known: claude, pi`) {
-			t.Errorf("resolveTargets(%q) error = %v", removed, err)
-		}
-		root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: ["+removed+"]\n")
-		if _, err := Open(testContext(t), root); err == nil || !strings.Contains(err.Error(), `known: claude, pi`) {
-			t.Errorf("Open target %q error = %v", removed, err)
-		}
-	}
-
-	synthetic := Target{Name: "synthetic", SkillDir: ".synthetic/skills", AgentDir: ".synthetic/agents", AgentDialect: MarkdownAgentDialect}
-	targetRegistry[synthetic.Name] = synthetic
-	defer delete(targetRegistry, synthetic.Name)
-	resolved, err := resolveTargets([]string{synthetic.Name})
-	if err != nil || len(resolved) != 1 || resolved[0].Name != synthetic.Name {
-		t.Fatalf("resolve synthetic target = %#v, %v", resolved, err)
-	}
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\ntargets: [synthetic]\n")
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	files, err := p.RenderAll()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !slices.ContainsFunc(files, func(file RenderedFile) bool { return file.Path == ".synthetic/skills/example-tdd/SKILL.md" }) {
-		t.Fatal("registry-added synthetic target did not render through the generic target path")
-	}
-}
-
+// invariant: rendering/catalog-and-targets:built-in-runtime-targets (TestTargetDescriptorCustomization)
 // invariant: rendering/project-output-plan:multi-target-render (TestTargetDescriptorCustomization)
 func TestTargetDescriptorCustomization(t *testing.T) {
 	custom := Target{
@@ -637,7 +574,7 @@ func TestTargetDescriptorCustomization(t *testing.T) {
 }
 
 func TestAllTargetPathsAndBridges(t *testing.T) {
-	root := scaffold(t, "prefix: awf\nintegrationBranch: main\nskills: []\nagents: []\ndocs: []\ntargets:\n  - claude\n  - pi\n")
+	root := scaffold(t, "prefix: awf\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -660,7 +597,7 @@ func TestAllTargetPathsAndBridges(t *testing.T) {
 
 // invariant: rendering/catalog-and-targets:claude-md-bridge (TestClaudeMdBridgeRendered)
 func TestClaudeMdBridgeRendered(t *testing.T) {
-	root := scaffold(t, "prefix: awf\nintegrationBranch: main\nskills: []\nagents: []\ndocs: []\n")
+	root := scaffold(t, "prefix: awf\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -690,7 +627,7 @@ func TestClaudeMdBridgeRendered(t *testing.T) {
 // at descriptor-owned paths while neutral artifacts render once.
 // invariant: rendering/catalog-and-targets:target-dialect-render (TestMultiTargetRender)
 func TestMultiTargetRender(t *testing.T) {
-	root := scaffold(t, sampleYAML+"targets:\n  - claude\n  - pi\n")
+	root := scaffold(t, sampleYAML)
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -753,7 +690,7 @@ func TestMultiTargetRender(t *testing.T) {
 
 // invariant: rendering/workflow-skill-templates:maintainable-code-subagent-contract (TestMaintainableCodeMultiTargetParity)
 func TestMaintainableCodeMultiTargetParity(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills:\n  - subagent-driven-development\nagents: [implementer]\ndocs: []\ntargets:\n  - claude\n  - pi\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -823,7 +760,7 @@ const (
 
 // invariant: rendering/workflow-skill-templates:semantic-rendering-review (TestSemanticRenderingReviewMultiTargetAuthority)
 func TestSemanticRenderingReviewMultiTargetAuthority(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [writing-plans, reviewing-impl, reviewing-plan, reviewing-plan-resync]\nagents: [plan-reviewer, code-reviewer]\ndocs: []\ntargets: [claude, pi]\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -868,16 +805,15 @@ func TestSemanticRenderingReviewMultiTargetAuthority(t *testing.T) {
 	}
 }
 
-// invariant: config/configuration:targets-default-claude (TestResolveTargetsRejectsUnknown)
 func TestResolveTargetsRejectsUnknown(t *testing.T) {
-	root := scaffold(t, "prefix: awf\nintegrationBranch: main\nskills: []\nagents: []\ntargets:\n  - nope\n")
+	root := scaffold(t, "prefix: awf\nintegrationBranch: main\n  - nope\n")
 	if _, err := Open(testContext(t), root); err == nil {
 		t.Fatal("expected Open to reject an unknown target name")
 	}
 }
 
 func TestPlannedOutputsIncludesGeneratedDocs(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: awf\nintegrationBranch: main\nskills: []\nagents: []\ndocs: []\ndomains: [rendering]\n", nil)
+	root := scaffoldFiles(t, "prefix: awf\nintegrationBranch: main\ndomains: [rendering]\n", nil)
 	writeADR(t, root, "0001-engine.md", testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Engine")))
 	p, err := Open(testContext(t), root)
 	if err != nil {

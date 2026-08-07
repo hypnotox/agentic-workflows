@@ -708,3 +708,15 @@ Record deviations, spike answers, follow-ups, and findings surfaced during imple
   The residual settlement makes the intermediate explicit in configspec, generated guides, README,
   and rendering-domain prose, and tests the fallback by locally reserving every catalog consumer of
   one var. Repository behavior and the Phase 3 demolition boundary remain unchanged.
+- Phase 3 added the omitted removals of `rendering/templates:local-base-publication-safe` and
+  `rendering/templates:local-doc-base-publication-safe` to the house-standard record and applied
+  them with their base-template deletion. The record's decision to retire project-local artifacts
+  and the complete local channel determines these removals; leaving the claims would make the
+  current-state checker require proof for templates that no longer exist. The same settlement
+  Reapplied four Phase 2 updates whose deliberately intermediate `local: true` wording became false
+  at demolition.
+- Phase 3 gate completion removed dead enable/disable argument parsing, local-reservation output-plan
+  state, enabled-skills template scanning, scaffold trim returns, init dependency-addition presentation,
+  and `_base` config-reference branches that survived the broad demolition. Focused retained-domain,
+  inventory, migration-failure, output-plan, staged-drift, and advisory tests restore 100% coverage
+  without reviving a retired surface or adding an exclusion.

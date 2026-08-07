@@ -20,7 +20,7 @@ import (
 // filesystem directly, so an unreadable directory there used to be skipped and
 // the plan, and the drift oracle computed from it, silently narrowed.
 func TestOutputPlanPropagatesPreAdoptionEnumerationFault(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndomains: [rendering]\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\ndomains: [rendering]\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -38,84 +38,9 @@ func TestOutputPlanPropagatesPreAdoptionEnumerationFault(t *testing.T) {
 	}
 }
 
-// invariant: rendering/project-output-plan:output-plan-complete (TestOutputPlanContainsWritesGeneratedNodesAndReservations)
-// invariant: rendering/pi-workflows:pi-native-workflow-skills (TestOutputPlanContainsWritesGeneratedNodesAndReservations)
-// invariant: rendering/pi-runtime:pi-extension-target-render (TestOutputPlanContainsWritesGeneratedNodesAndReservations)
-func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: [mine]\nagents: []\ndomains: [rendering]\ntargets: [pi]\n", map[string]string{"skills/mine.yaml": "local: true\n"})
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	op, err := p.OutputPlan(testContext(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	seen := map[string]bool{}
-	var reservation, cref bool
-	for _, n := range op.Nodes {
-		seen[n.Path] = true
-		if n.Reservation && n.Path == ".pi/skills/example-mine/SKILL.md" {
-			reservation = true
-		}
-		if n.Path == "docs/config-reference.md" {
-			cref = true
-			if len(n.DependsOn) == 0 {
-				t.Error("config reference has no dependencies")
-			}
-			for _, dep := range n.DependsOn {
-				if dep == n.Path {
-					t.Error("config reference has self dependency")
-				}
-			}
-		}
-	}
-	if !reservation || !cref {
-		t.Fatalf("plan missing reservation=%v config-reference=%v: %#v", reservation, cref, op.Nodes)
-	}
-	// Catalog/local, target-owned, neutral singleton, generated index/domain,
-	// and generated reference producers all appear in the one plan.
-	for _, path := range []string{".pi/extensions/awf-context-usage/index.ts", ".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/model-routing.ts", "AGENTS.md", ".awf/efforts/.gitignore", ".awf/worktrees/.gitignore", "docs/decisions/INDEX.md", "docs/domains/rendering.md", "docs/config-reference.md"} {
-		if !seen[path] {
-			t.Errorf("plan missing producer class path %q", path)
-		}
-	}
-	for _, expected := range []struct {
-		path     string
-		template string
-	}{
-		{path: ".pi/extensions/awf-context-usage/index.ts", template: "templates/pi/awf-context-usage/index.ts.tmpl"},
-		{path: ".pi/extensions/awf-handoff/index.ts", template: "templates/pi/awf-handoff/index.ts.tmpl"},
-		{path: ".pi/extensions/awf-subagents/model-routing.ts", template: "templates/pi/awf-subagents/model-routing.ts.tmpl"},
-	} {
-		var found bool
-		for _, n := range op.Nodes {
-			if n.Path != expected.path {
-				continue
-			}
-			found = true
-			templateInput := slices.Contains(n.ConsumedInputs, OutputInput{Path: expected.template, Role: ArtifactTemplate})
-			if n.Reservation || strings.Join(n.Declarers, ",") != "pi" || !templateInput || n.file.ConfigHash == "" {
-				t.Errorf("target output-plan node %s = %#v", expected.path, n)
-			}
-		}
-		if !found {
-			t.Errorf("missing target output-plan node %s", expected.path)
-		}
-	}
-	files := op.writeFiles()
-	for _, f := range files {
-		if f.Path == ".pi/skills/example-mine/SKILL.md" {
-			t.Fatal("reservation was rendered")
-		}
-	}
-}
-
 // invariant: rendering/project-output-plan:target-capabilities-closed (TestTargetDescriptorValidation)
-// invariant: rendering/pi-workflows:pi-subagent-progress-rendering (TestTargetDescriptorValidation)
-// invariant: rendering/workflow-skill-templates:mandatory-approval-boundaries (TestTargetDescriptorValidation)
 // invariant: rendering/pi-workflows:pi-subagent-progress-bounds (TestTargetDescriptorValidation)
-// invariant: config/migrations-and-locks:close-enabled-set-migration (TestTargetDescriptorValidation)
+// invariant: rendering/pi-workflows:pi-subagent-progress-rendering (TestTargetDescriptorValidation)
 func TestTargetDescriptorValidation(t *testing.T) {
 	for _, target := range []Target{
 		{Name: "bad", BridgeFile: "X"},
@@ -138,7 +63,7 @@ func TestTargetDescriptorValidation(t *testing.T) {
 		if err := target.validate(); err == nil {
 			t.Fatalf("invalid target %#v was accepted", target)
 		}
-		root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
+		root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 		p, err := Open(testContext(t), root)
 		if err != nil {
 			t.Fatal(err)
@@ -161,7 +86,7 @@ func TestTargetDescriptorValidation(t *testing.T) {
 
 // invariant: rendering/project-output-plan:bridge-render-identity (TestBridgeRenderIdentity)
 func TestBridgeRenderIdentity(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: [tdd]\nagents: [code-reviewer]\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n", map[string]string{
 		"target-bridge/.yaml": "data: {}\n",
 		"claude/.yaml":        "data: {}\n",
 	})
@@ -252,7 +177,7 @@ func TestBridgeRenderIdentity(t *testing.T) {
 // invariant: rendering/project-output-plan:shared-output-coalesced (TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering)
 // invariant: rendering/pi-runtime:pi-extension-target-render (TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering)
 func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -336,7 +261,7 @@ func TestCurrentStateOutputPlanMatchesTree(t *testing.T) {
 		if n.Path == migrationPath {
 			t.Fatal("permanent output plan still claims the deleted migration approval file")
 		}
-		if n.Reservation || n.file == nil {
+		if n.file == nil {
 			continue
 		}
 		switch {
@@ -391,7 +316,7 @@ func TestOutputPlanTopicNodesHaveLiteralPathsAndInputs(t *testing.T) {
 	}
 	for _, n := range op.Nodes {
 		if n.Path == "docs/topics/rendering/contracts.md" {
-			if len(n.DependsOn) != 2 || n.Reservation {
+			if len(n.DependsOn) != 2 {
 				t.Fatalf("topic node = %#v", n)
 			}
 			return
@@ -404,7 +329,7 @@ func TestTargetOutputDeclarationsRejectUnreadableTemplate(t *testing.T) {
 	bad := piTarget
 	bad.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
 	bad.Outputs[0].TemplateID = "missing/target-output.tmpl"
-	p := &Project{Cfg: &config.Config{Prefix: "example", Skills: []string{"effort-workflow"}}, Cat: catalog.Standard, Targets: []Target{bad}}
+	p := &Project{Cfg: &config.Config{Prefix: "example"}, Cat: catalog.Standard, Targets: []Target{bad}}
 	_, err := p.targetOutputDeclarations(nil)
 	t.Logf("target output declaration error = %v", err)
 	if err == nil || !strings.Contains(err.Error(), "read template missing/target-output.tmpl") {
@@ -423,7 +348,7 @@ func TestTargetOutputDeclarationsRejectUnknownRequiredSkill(t *testing.T) {
 }
 
 func TestValidateLiveTemplatesRejectsMissingTargetTemplate(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)

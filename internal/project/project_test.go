@@ -96,7 +96,7 @@ func withTestGateCmd(configYAML string) string {
 }
 
 func TestCommitPolicyManifestProjection(t *testing.T) {
-	const base = "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\nskills: []\nagents: []\ndocs: [architecture]\n"
+	const base = "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\n"
 	root := scaffold(t, base)
 	syncAndLoad := func() *manifest.Lock {
 		t.Helper()
@@ -202,10 +202,6 @@ vars:
   testCmd: go test ./...
   gateCmd: make gate
   gateCmdFull: make gate full
-skills:
-  - tdd
-agents:
-  - code-reviewer
 `
 
 // lockFile is the relocated lock path under the tree.
@@ -224,10 +220,6 @@ vars:
   testCmd: go test ./...
   gateCmd: make gate
   gateCmdFull: make gate full
-skills:
-  - tdd
-agents:
-  - code-reviewer
 `
 
 func TestNewADRErrors(t *testing.T) {
@@ -238,11 +230,6 @@ func TestNewADRErrors(t *testing.T) {
 	}
 	if _, err := p.NewADR(testContext(t), "Missing Lock"); err == nil {
 		t.Fatal("expected missing lock error")
-	}
-	testsupport.WriteFile(t, p.lockPath(), `{"awfVersion":"0.19.0","schemaVersion":14,"files":{}}`)
-	p.Cfg.DocsDir = "bad["
-	if _, err := p.NewADR(testContext(t), "Bad Glob"); err == nil {
-		t.Fatal("expected next-number glob error")
 	}
 }
 
@@ -315,7 +302,7 @@ func TestResidentMigrationsPreserveOwnedRootsThroughProjectSync(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte("prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\nskills: []\nagents: []\ntargets: [claude]\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte("prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	lock := &manifest.Lock{AWFVersion: "0.24.0", SchemaVersion: 20, Files: map[string]manifest.Entry{}, InitializedWithVersion: "0.24.0"}
@@ -469,128 +456,8 @@ func TestCheckStaleTakesPrecedence(t *testing.T) {
 	}
 }
 
-func TestSyncSkipsLocalSkill(t *testing.T) {
-	cfg := `prefix: example
-integrationBranch: main
-vars:
-  testCmd: go test ./...
-  gateCmd: make gate
-skills:
-  - adding-thing
-  - tdd
-agents:
-  - code-reviewer
-`
-	root := scaffoldFiles(t, cfg, map[string]string{
-		"skills/adding-thing.yaml": "local: true\n",
-	})
-	// A local skill is hand-authored; provide its on-disk file with valid frontmatter.
-	localPath := ".claude/skills/example-adding-thing/SKILL.md"
-	writeLocalSkill(t, root, localPath)
-	writeLocalSkill(t, root, ".pi/skills/example-adding-thing/SKILL.md")
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.Sync(); err != nil {
-		t.Fatal(err)
-	}
-	lock, err := manifest.Load(lockFile(root))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, ok := lock.Files[localPath]; ok {
-		t.Errorf("local skill should be absent from lock")
-	}
-	if _, ok := lock.Files[".claude/skills/example-tdd/SKILL.md"]; !ok {
-		t.Errorf("tdd skill should still be present in lock")
-	}
-}
-
-// TestSyncKeepsLocalConvertedSkill guards the managed→local prune bug: converting
-// a previously-managed skill to local must not delete its on-disk file. RenderAll
-// skips local artifacts, so without protection Sync's prune treats the (now hand-
-// authored) file as a stale managed output and removes it - breaking every later
-// sync/check with "local skill file absent".
-func TestSyncKeepsLocalConvertedSkill(t *testing.T) {
-	cfg := `prefix: example
-integrationBranch: main
-vars:
-  testCmd: go test ./...
-  gateCmd: make gate
-skills:
-  - tdd
-agents:
-  - code-reviewer
-`
-	root := scaffoldFiles(t, cfg, nil)
-	// First sync renders tdd as a managed skill and locks its output path.
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.Sync(); err != nil {
-		t.Fatal(err)
-	}
-	skillPath := filepath.Join(root, ".claude/skills/example-tdd/SKILL.md")
-	if _, err := os.Stat(skillPath); err != nil {
-		t.Fatalf("managed skill not rendered: %v", err)
-	}
-	// Convert tdd to local: its rendered file becomes the hand-authored local one.
-	testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "tdd.yaml"), "local: true\n")
-	p, err = Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.Sync(); err != nil {
-		t.Fatalf("sync after local conversion: %v", err)
-	}
-	if _, err := os.Stat(skillPath); err != nil {
-		t.Fatalf("local-converted skill file was pruned: %v", err)
-	}
-	// The follow-up sync must still find the local file (the regression symptom).
-	if err := p.Sync(); err != nil {
-		t.Fatalf("second sync after local conversion: %v", err)
-	}
-}
-
-// writeLocalSkill writes a hand-authored local skill file with valid frontmatter.
-func writeLocalSkill(t *testing.T, root, rel string) {
-	t.Helper()
-	abs := filepath.Join(root, rel)
-	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	body := "---\nname: local-skill\ndescription: a hand-authored local skill\n---\nbody\n"
-	if err := os.WriteFile(abs, []byte(body), 0o644); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestOpenRejectsUnknownAgent(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: [does-not-exist]\n")
-	_, err := Open(testContext(t), root)
-	if err == nil {
-		t.Fatal("expected error for unknown agent")
-	}
-	if !strings.Contains(err.Error(), "does-not-exist") {
-		t.Errorf("error should mention the offending agent name, got: %v", err)
-	}
-}
-
-func TestOpenRejectsUnknownDoc(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndocs: [nonexistent]\n")
-	_, err := Open(testContext(t), root)
-	if err == nil {
-		t.Fatal("expected error for unknown doc")
-	}
-	if !strings.Contains(err.Error(), "nonexistent") {
-		t.Errorf("error should mention the offending doc name, got: %v", err)
-	}
-}
-
 func TestSyncRendersDeclaredDoc(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndocs: [architecture]\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -611,54 +478,6 @@ func TestSyncRendersDeclaredDoc(t *testing.T) {
 // template golden cannot: RenderAll injects resolvedDocs() into the agents-doc
 // data map so the Document map auto-links every declared (non-local) doc with
 // its catalog title/desc. A local doc must not appear.
-func TestSyncAutoLinksDocsInAgentsDoc(t *testing.T) {
-	cfg := `prefix: example
-integrationBranch: main
-vars:
-  gateCmd: ""
-skills: []
-agents: []
-docs:
-  - architecture
-  - glossary
-`
-	root := scaffoldFiles(t, cfg, map[string]string{
-		"docs/glossary.yaml": "local: true\n",
-	})
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	if err := p.Sync(); err != nil {
-		t.Fatalf("Sync: %v", err)
-	}
-	b, err := os.ReadFile(filepath.Join(root, "AGENTS.md"))
-	if err != nil {
-		t.Fatalf("AGENTS.md not written: %v", err)
-	}
-	got := string(b)
-	if !strings.Contains(got, "[docs/architecture.md](docs/architecture.md)") {
-		t.Errorf("Document map should auto-link the declared architecture doc:\n%s", got)
-	}
-	if !strings.Contains(got, "system shape, packages, key components, dependencies") {
-		t.Errorf("Document map should carry the catalog desc for architecture:\n%s", got)
-	}
-	if strings.Contains(got, "docs/glossary.md") {
-		t.Errorf("local doc must not appear in the Document map:\n%s", got)
-	}
-}
-
-func TestOpenRejectsUnknownSkill(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [no-such-skill]\nagents: []\n")
-	_, err := Open(testContext(t), root)
-	if err == nil {
-		t.Fatal("expected error for unknown skill")
-	}
-	if !strings.Contains(err.Error(), "no-such-skill") {
-		t.Errorf("error should mention the offending skill name, got: %v", err)
-	}
-}
-
 func TestOpenRejectsMalformedRepository(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	if err := os.WriteFile(filepath.Join(root, ".git"), []byte("not a gitdir pointer"), 0o600); err != nil {
@@ -674,17 +493,6 @@ func TestOpenValidConfigSucceeds(t *testing.T) {
 	_, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("expected valid config to open cleanly, got: %v", err)
-	}
-}
-
-func TestOpenAllowsLocalSkillNotInCatalog(t *testing.T) {
-	cfg := strings.Replace(sampleYAML, "skills:\n  - tdd\n", "skills:\n  - totally-unknown-local\n  - tdd\n", 1)
-	root := scaffoldFiles(t, cfg, map[string]string{
-		"skills/totally-unknown-local.yaml": "local: true\n",
-	})
-	_, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatalf("local skill not in catalog should be allowed, got: %v", err)
 	}
 }
 
@@ -754,7 +562,7 @@ func TestSyncPruneReportSkipsAlreadyGoneFile(t *testing.T) {
 	if err := os.Remove(filepath.Join(root, ".claude/skills/example-tdd/SKILL.md")); err != nil {
 		t.Fatal(err)
 	}
-	noTDD := strings.Replace(sampleYAML, "skills:\n  - tdd\n", "skills: []\n", 1)
+	noTDD := strings.Replace(sampleYAML, "  - tdd\n", "", 1)
 	_ = os.WriteFile(configPath(root), []byte(noTDD), 0o644)
 	p2, _ := Open(testContext(t), root)
 	_, _, pruned, err := p2.SyncReport(testContext(t))
@@ -985,7 +793,7 @@ func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 
 func TestOpenRejectsUnknownSectionOverride(t *testing.T) {
 	// tdd in the catalog has sections [surfaces, notes]; "bogus" is not declared.
-	cfg := "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: [code-reviewer]\n"
+	cfg := "prefix: example\nintegrationBranch: main\n"
 	root := scaffoldFiles(t, cfg, map[string]string{
 		"skills/tdd.yaml": "sections:\n  bogus:\n    drop: true\n",
 	})
@@ -1005,7 +813,7 @@ func TestOpenRejectsUnknownSectionOverride(t *testing.T) {
 
 func TestOpenAllowsValidSectionOverride(t *testing.T) {
 	// "notes" is a declared section for tdd.
-	cfg := "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: [code-reviewer]\n"
+	cfg := "prefix: example\nintegrationBranch: main\n"
 	root := scaffoldFiles(t, cfg, map[string]string{
 		"skills/tdd.yaml": "sections:\n  notes:\n    drop: true\n",
 	})
@@ -1015,20 +823,9 @@ func TestOpenAllowsValidSectionOverride(t *testing.T) {
 	}
 }
 
-func TestOpenAllowsLocalAgentNotInCatalog(t *testing.T) {
-	cfg := "prefix: example\nintegrationBranch: main\nskills: []\nagents: [my-custom-agent]\n"
-	root := scaffoldFiles(t, cfg, map[string]string{
-		"agents/my-custom-agent.yaml": "local: true\n",
-	})
-	_, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatalf("local agent not in catalog should be allowed, got: %v", err)
-	}
-}
-
 func TestOpenRejectsUnknownAgentSectionOverride(t *testing.T) {
 	// code-reviewer in the catalog has sections universal-lenses/project-focus/doc-currency.
-	cfg := "prefix: example\nintegrationBranch: main\nskills: []\nagents: [code-reviewer]\n"
+	cfg := "prefix: example\nintegrationBranch: main\n"
 	root := scaffoldFiles(t, cfg, map[string]string{
 		"agents/code-reviewer.yaml": "sections:\n  bogus:\n    drop: true\n",
 	})
@@ -1042,7 +839,7 @@ func TestOpenRejectsUnknownAgentSectionOverride(t *testing.T) {
 }
 
 func TestSyncRendersAgentFromMap(t *testing.T) {
-	root := scaffold(t, "prefix: myproject\nintegrationBranch: main\nagents: [code-reviewer]\nskills: []\n")
+	root := scaffold(t, "prefix: myproject\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -1066,7 +863,7 @@ func TestSyncRendersAgentFromMap(t *testing.T) {
 // trigger here is content that carries the token itself (the ADR-0011/ADR-0014
 // gotcha: prose containing the literal token trips the guard).
 func TestSyncErrorsOnUnresolvedValueToken(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: [tdd]\nagents: []\n",
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n",
 		map[string]string{
 			"skills/tdd.yaml": "data:\n  testSurfaces:\n    - {name: \"<no value>\", kind: k, location: l}\n",
 		})
@@ -1085,7 +882,7 @@ func TestSyncErrorsOnUnresolvedValueToken(t *testing.T) {
 
 func TestSyncRendersAgentsDoc(t *testing.T) {
 	t.Run("always-on by default", func(t *testing.T) {
-		root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars:\n  testCmd: go test ./...\n  gateCmd: make gate\nskills: []\nagents: []\n")
+		root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars:\n  testCmd: go test ./...\n  gateCmd: make gate\n")
 		p, err := Open(testContext(t), root)
 		if err != nil {
 			t.Fatalf("Open: %v", err)
@@ -1101,22 +898,6 @@ func TestSyncRendersAgentsDoc(t *testing.T) {
 			t.Errorf("AGENTS.md should contain prefix 'example', got:\n%s", b)
 		}
 	})
-
-	t.Run("a local agents-doc sidecar suppresses it", func(t *testing.T) {
-		root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n", map[string]string{
-			"agents-doc.yaml": "local: true\n",
-		})
-		p, err := Open(testContext(t), root)
-		if err != nil {
-			t.Fatalf("Open: %v", err)
-		}
-		if err := p.Sync(); err != nil {
-			t.Fatalf("Sync: %v", err)
-		}
-		if _, err := os.Stat(filepath.Join(root, "AGENTS.md")); !os.IsNotExist(err) {
-			t.Errorf("AGENTS.md should not exist when agents-doc is local")
-		}
-	})
 }
 
 // TestSyncPrunesEmptySkillDir verifies that after a skill is removed from config
@@ -1126,7 +907,7 @@ func TestSyncRendersAgentsDoc(t *testing.T) {
 // invariant: rendering/doc-outputs:layout-derivation (TestLayoutUsesFixedDocsRootAndFullCatalog)
 // invariant: rendering/doc-outputs:docs-root-fixed (TestLayoutUsesFixedDocsRootAndFullCatalog)
 func TestLayoutUsesFixedDocsRootAndFullCatalog(t *testing.T) {
-	p := &Project{Cfg: &config.Config{DocsDir: "documentation", Docs: []string{"architecture"}}, Cat: catalog.Standard}
+	p := &Project{Cfg: &config.Config{}, Cat: catalog.Standard}
 	l := p.layout()
 	if l.DocsDir != config.DocsDir || l.ADRDir != "docs/decisions" ||
 		l.IndexMd != "docs/decisions/INDEX.md" || l.PlansDir != "docs/plans" {
@@ -1194,7 +975,7 @@ func TestLayoutUsesFixedDocsRootAndFullCatalog(t *testing.T) {
 
 // invariant: rendering/project-output-plan:full-catalog-render (TestRenderAllRendersFullCatalogForBothTargets)
 func TestRenderAllRendersFullCatalogForBothTargets(t *testing.T) {
-	cfg := "prefix: example\nintegrationBranch: main\nskills: []\ndocs: []\nagents: []\ntargets: [claude]\n"
+	cfg := "prefix: example\nintegrationBranch: main\n"
 	root := scaffold(t, cfg)
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -1255,7 +1036,7 @@ func TestRenderAllRendersFullCatalogForBothTargets(t *testing.T) {
 // invariant: rendering/sync-and-drift:sync-always-writes-active-md (TestSyncGeneratesActiveMDAndCheckDetectsStaleness)
 // invariant: rendering/sync-and-drift:check-active-md-stale (TestSyncGeneratesActiveMDAndCheckDetectsStaleness)
 func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	adrDir := filepath.Join(root, "docs", "decisions")
 	if err := os.MkdirAll(adrDir, 0o755); err != nil {
 		t.Fatal(err)
@@ -1309,7 +1090,7 @@ func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
 
 // invariant: rendering/sync-and-drift:sync-always-writes-active-md (TestSyncRendersPlaceholderIndexMDWithoutADRs)
 func TestSyncRendersPlaceholderIndexMDWithoutADRs(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -1352,90 +1133,9 @@ func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
 	}
 }
 
-// invariant: rendering/singletons-and-payloads:adr-system-singletons-rendered (TestAdrSingletonsRenderedAndSuppressible)
-// invariant: rendering/singletons-and-payloads:plain-singleton-via-renderkind (TestAdrSingletonsRenderedAndSuppressible)
-// invariant: rendering/doc-outputs:working-with-awf-mandatory (TestAdrSingletonsRenderedAndSuppressible)
-func TestAdrSingletonsRenderedAndSuppressible(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	files, err := p.RenderAll()
-	if err != nil {
-		t.Fatal(err)
-	}
-	rendered := make(map[string][]RenderedFile, len(plainSingletons))
-	layout := p.layout()
-	for _, f := range files {
-		rendered[f.Path] = append(rendered[f.Path], f)
-	}
-	for _, singleton := range plainSingletons {
-		path := singleton.outPath(layout)
-		got := rendered[path]
-		if len(got) != 1 {
-			t.Errorf("%s rendered %d times, want once", path, len(got))
-			continue
-		}
-		if got[0].TemplateID != singleton.tid {
-			t.Errorf("%s TemplateID=%q, want catalog template %q", path, got[0].TemplateID, singleton.tid)
-		}
-		if got[0].Declarer != singleton.tid {
-			t.Errorf("%s Declarer=%q, want neutral template identity %q", path, got[0].Declarer, singleton.tid)
-		}
-		if got[0].Content == "" {
-			t.Errorf("%s rendered empty content from %q", path, singleton.tid)
-		}
-	}
-
-	src, err := os.ReadFile("render.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	start := strings.Index(string(src), "for _, sg := range plainSingletons {")
-	end := strings.Index(string(src), "// .awf/bootstrap.sh")
-	if start < 0 || end <= start {
-		t.Fatalf("RenderAll plain-singleton block not found")
-	}
-	block := string(src)[start:end]
-	for _, phrase := range []string{"p.renderKind(renderKindSpec{", "return sg.tid", "return sg.outPath(lay)"} {
-		if !strings.Contains(block, phrase) {
-			t.Errorf("RenderAll plain-singleton block missing shared render contract %q:\n%s", phrase, block)
-		}
-	}
-	// local: true suppresses the README singleton.
-	if err := os.WriteFile(filepath.Join(root, ".awf", "adr-readme.yaml"), []byte("local: true\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	// local: true also suppresses a newly-mandatory singleton, matching the other four (ADR-0043
-	// Decision item 1: "not togglable" keeps the local: true escape hatch).
-	if err := os.WriteFile(filepath.Join(root, ".awf", "workflow.yaml"), []byte("local: true\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(root, ".awf", "working-with-awf.yaml"), []byte("local: true\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	p2, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	files2, err := p2.RenderAll()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, f := range files2 {
-		if f.Path == "docs/decisions/README.md" {
-			t.Error("README should be suppressed by local: true")
-		}
-		if f.Path == "docs/workflow.md" {
-			t.Error("workflow.md should be suppressed by local: true")
-		}
-		if f.Path == "docs/working-with-awf.md" {
-			t.Error("working-with-awf.md should be suppressed by local: true")
-		}
-	}
-}
-
+// invariant: rendering/singletons-and-payloads:adr-system-singletons-rendered (TestSyncReportBacksUpForeignIndexNotManaged)
+// invariant: rendering/singletons-and-payloads:plain-singleton-via-renderkind (TestSyncReportBacksUpForeignIndexNotManaged)
+// invariant: rendering/doc-outputs:working-with-awf-mandatory (TestSyncReportBacksUpForeignIndexNotManaged)
 func TestSyncReportBacksUpForeignIndexNotManaged(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(testContext(t), root)
@@ -1537,7 +1237,7 @@ func TestRegenCheckedAttribute(t *testing.T) {
 
 // invariant: rendering/guide-and-doc-templates:document-map-lists-mandatory-docs (TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally)
 func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndocs: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -1562,7 +1262,7 @@ func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.
 		// mandatory doc is cited with its data-driven title/desc, not just linked.
 		line := fmt.Sprintf("- **%s:** [docs/%s](docs/%s), %s", e.Title, e.Path, e.Path, e.Desc)
 		if !strings.Contains(got, line) {
-			t.Errorf("Document map should unconditionally cite %q (%s; docs: array is empty):\n%s", line, name, got)
+			t.Errorf("Document map should unconditionally cite %q (%s; %s", line, name, got)
 		}
 	}
 	if mapped != 6 {
@@ -1576,67 +1276,6 @@ func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.
 // declared config order, so reviewing-impl's missing code-reviewer is reported
 // rather than executing-plans' missing implementer (ADR-0050, generalized by
 // ADR-0081's closure validation).
-func TestOpenRejectsPairedSkillWithoutAgent(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [reviewing-impl, executing-plans, retrospective, subagent-driven-development]\nagents: []\n")
-	_, err := Open(testContext(t), root)
-	if err == nil {
-		t.Fatal("expected pairing error for reviewing-impl without code-reviewer")
-	}
-	want := `skill "reviewing-impl" requires agent "code-reviewer"; add it to agents: in .awf/config.yaml (or run ` + "`awf upgrade`" + ` after a binary upgrade), or remove the skill`
-	if err.Error() != want {
-		t.Errorf("error = %q, want %q", err.Error(), want)
-	}
-}
-
-func TestOpenAllowsPairedSkillWithAgent(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [reviewing-impl, executing-plans, retrospective, subagent-driven-development]\nagents: [code-reviewer, implementer]\n")
-	if _, err := Open(testContext(t), root); err != nil {
-		t.Fatalf("paired skill with its agent must open cleanly, got: %v", err)
-	}
-}
-
-// Every enabled, non-local artifact's direct catalog requirements must be
-// enabled - a violation fails open with a repair hint (ADR-0081 Decision 3).
-func TestOpenRefusesUnclosedEnabledSet(t *testing.T) {
-	cases := []struct {
-		name, cfg, wantSub string
-	}{
-		{"missing doc requirement",
-			"prefix: example\nintegrationBranch: main\nskills: [roadmap-graduation]\nagents: []\n",
-			`skill "roadmap-graduation" requires doc "roadmap"`},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			_, err := Open(testContext(t), scaffold(t, tc.cfg))
-			if err == nil {
-				t.Fatal("expected closure-validation error")
-			}
-			if !strings.Contains(err.Error(), tc.wantSub) || !strings.Contains(err.Error(), "awf upgrade") {
-				t.Errorf("error = %q, want it to contain %q and the awf upgrade hint", err.Error(), tc.wantSub)
-			}
-		})
-	}
-	// A local sidecar exempts the artifact from the closure check.
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: [brainstorming]\nagents: []\n",
-		map[string]string{"skills/brainstorming.yaml": "local: true\n"})
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatalf("local-sidecar artifact must skip closure validation, got: %v", err)
-	}
-	// An unknown node kind is never enabled (defensive default arm).
-	if p.nodeEnabled(catalog.Node{Kind: "bogus", Name: "x"}) {
-		t.Error("unknown node kind must report not enabled")
-	}
-}
-
-func TestOpenAllowsLocalPairedSkillWithoutAgent(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: [reviewing-impl]\nagents: []\n",
-		map[string]string{"skills/reviewing-impl.yaml": "local: true\n"})
-	if _, err := Open(testContext(t), root); err != nil {
-		t.Fatalf("local skill sidecar must skip the pairing check, got: %v", err)
-	}
-}
-
 func TestSyncRecordsTopicOutputsInManifest(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")

@@ -109,9 +109,6 @@ type conditionalUnit struct {
 func (p *Project) liveTemplateEncoders() map[string]AgentDialect {
 	encoders := map[string]AgentDialect{topicTID: MarkdownAgentDialect, topicIndexTID: MarkdownAgentDialect}
 	for _, descriptor := range kindDescriptors {
-		if descriptor.baseTID != "" {
-			encoders[descriptor.baseTID] = MarkdownAgentDialect
-		}
 		if descriptor.freeformDomain {
 			encoders[descriptor.tid("")] = MarkdownAgentDialect
 		}

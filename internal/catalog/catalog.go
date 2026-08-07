@@ -27,8 +27,6 @@ type WorkflowProfile struct {
 // default render data; sidecars override it per top-level key (ADR-0045).
 type TargetSpec struct {
 	Sections []string `yaml:"sections"`
-	// Base marks a synthesized project-local agent (ADR-0068); see SkillSpec.Base.
-	Base bool `yaml:"base"`
 	// RequiresSkills names the catalog skills this artifact's template references
 	// unconditionally - rendered into its output even when the referenced skill is
 	// not enabled (deliberate chain coupling; the agent guide's "disable them as a
@@ -46,31 +44,19 @@ type AgentSpec struct {
 	Name           string
 	Description    string
 	Sections       []string       `yaml:"sections"`
-	Base           bool           `yaml:"base"`
 	RequiresSkills []string       `yaml:"requiresSkills"`
 	Data           map[string]any `yaml:"data"`
 }
 
-// SkillSpec declares a skill's render sections plus its optional gating fields.
-// RequiresDoc is *suppression* (ADR-0013): a non-empty value gates the skill on
-// that doc being enabled - with the doc off, the skill silently drops out of
-// the effective render set. RequiresAgent is *hard validation* (ADR-0050): a
-// non-empty value names the agent each dispatching skill sends work to, and
-// enabling the skill without that agent fails every gated command at
-// project open, since a silently-dropped dispatching skill would sever the
-// workflow chain, so the pairing must be loud. Core marks a skill as part of
-// the workflow-core set awf init scaffolds by default (ADR-0022). Data carries
-// the artifact's default render data; sidecars override it per top-level key
-// (ADR-0045).
+// SkillSpec declares a skill's render sections and relationship metadata.
+// RequiresDoc and RequiresAgent preserve catalog declarations used by frozen
+// migrations and workflow-reference checks; neither selects the render set.
+// Data carries the artifact's default render data; sidecars override it per
+// top-level key (ADR-0045).
 type SkillSpec struct {
 	Sections      []string `yaml:"sections"`
 	RequiresDoc   string   `yaml:"requiresDoc"`
 	RequiresAgent string   `yaml:"requiresAgent"`
-	Core          bool     `yaml:"core"`
-	// Base marks a synthesized project-local entry (ADR-0068): render resolves its
-	// template id to the shared base template, not the name-derived catalog path.
-	// Standard skills never set it.
-	Base bool `yaml:"base"`
 	// RequiresSkills: see TargetSpec.RequiresSkills (ADR-0080).
 	RequiresSkills []string        `yaml:"requiresSkills"`
 	Data           map[string]any  `yaml:"data"`
@@ -116,9 +102,8 @@ func SingletonKinds() []string {
 	return out
 }
 
-// NonMandatoryDocNames returns c's sorted name-derived document names. The
-// legacy name remains until Phase 3 removes the selection command surface.
-func NonMandatoryDocNames(c *Catalog) []string {
+// NameDerivedDocNames returns c's sorted non-singleton document names.
+func NameDerivedDocNames(c *Catalog) []string {
 	var out []string
 	for k, e := range c.Docs {
 		if !e.AgentsDoc && e.Path == "" {
@@ -130,9 +115,8 @@ func NonMandatoryDocNames(c *Catalog) []string {
 }
 
 // VarDescriptor describes one fillable init value: a config var, or (via Target)
-// a non-var routing target (catalog trim, audit scopes). Kind ∈ {string, enum,
-// multiselect}. Target ∈ {"" or "var", "catalog-skills", "catalog-docs",
-// "audit-scopes"}; "" means a plain config var. Default pre-fills interactive
+// a non-var routing target for audit scopes. Kind is string or enum. Target is
+// "", "var", or "audit-scopes"; "" means a plain config var. Default pre-fills interactive
 // prompts and appears in `awf init --describe`; it is never applied on the silent
 // non-interactive path (ADR-0029).
 type VarDescriptor struct {

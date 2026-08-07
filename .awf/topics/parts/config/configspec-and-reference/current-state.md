@@ -4,8 +4,9 @@ The config-spec model and the generated configuration reference document.
 
 ### `invariant: config-reference-data-rejected`
 
-Because the config-reference doc's data namespace is injected at generation time, an authored data section in the config-reference sidecar is rejected when the sidecar is opened. An authored paths section and any unknown section name are rejected as well, keeping the sidecar limited to section bodies and the local flag.
+Because the config-reference doc's data namespace is injected at generation time, an authored data section in the config-reference sidecar is rejected when the sidecar is opened. An authored paths section and any unknown section name are rejected as well, keeping the sidecar limited to section bodies.
 Origin: ADR-0148
+Revised-by: ADR-house-standard-configuration-expresses-repo-facts-only
 Backing: test
 
 ### `invariant: live-state-projection-explicit`
@@ -27,8 +28,9 @@ Backing: test
 
 ### `invariant: config-reference-regen-drift`
 
-Regeneration is the drift oracle for the config-reference doc: a hand-edited file reports stale, a deleted file reports missing, and switching the sidecar to local while a lock entry still lists the file reports orphaned.
+Regeneration is the drift oracle for the config-reference doc: a hand-edited file reports stale and a deleted file reports missing.
 Origin: ADR-0148
+Revised-by: ADR-house-standard-configuration-expresses-repo-facts-only
 Backing: test
 
 ### `invariant: configspec-data-parity`

@@ -54,7 +54,7 @@ instead of rotting.
   workflow and documentation standards, and the full catalog of project docs:
   architecture, testing, development, debugging, pitfalls, releasing, glossary, and roadmap.
 - **Domain docs** (`docs/domains/<name>.md`). One page per freeform domain you
-  declare (`awf enable domain rendering`): your hand-authored current-state narrative
+  create (`awf new domain rendering`): your hand-authored current-state narrative
   plus a generated compact list of that domain's current-state topics. A domain's sidecar can declare
   `paths` globs (its code territory), and `awf audit` then warns when code in that
   territory changes without the narrative being refreshed.
@@ -75,8 +75,7 @@ instead of rotting.
 
 awf renders for Pi and [Claude Code](https://www.anthropic.com/claude-code). Each gets
 every catalog skill and agent at descriptor-owned paths; Claude Code also receives its
-`CLAUDE.md` bridge, while Pi owns its runtime extensions. The schema-compatible `targets`
-array remains parsed, but both built-in runtimes render regardless of its contents.
+`CLAUDE.md` bridge, while Pi owns its runtime extensions. Both built-in runtimes always render.
 
 A compatible Pi 0.81.1+ build exposing the required queued-command and persisted-session APIs receives trusted project-extension factories for subagents and handoff. The subagent extension registers `subagent_grounding`,
 `subagent_explore`, `subagent_review`, and `subagent_implement`. Every role accepts an optional exact
@@ -121,7 +120,7 @@ See [`docs/workflow.md`](docs/workflow.md) for the full rules.
 
 ```
 .awf/  (you commit this)            rendered output (awf writes & tracks this)
-├── config.yaml   enable arrays     ├── AGENTS.md            agent guide
+├── config.yaml   repo facts        ├── AGENTS.md            agent guide
 │                 + vars            ├── bridge file          imports AGENTS.md
 ├── <kind>/<name>.yaml  sidecars    ├── .claude/skills/...   workflow skills
 ├── <kind>/parts/.../...  overrides ├── .claude/agents/...   agents
@@ -193,15 +192,12 @@ upgrade` (with `awf upgrade --recover` for an interrupted one); the mechanics li
 
 The rendered paths above show the Claude Code layout; both built-in runtimes keep their
 descriptor-owned layouts, and Pi places its artifacts and extensions under `.pi/`.
-`awf list target` shows the fixed roster and retained compatibility selection.
+`awf list target` shows the fixed roster.
 
 You change the config and run `awf render`; you never hand-edit a rendered file.
 `awf check` fails when a rendered file is stale or was edited by hand, so the two can't
-silently diverge. To customise one section of an artifact, drop a *convention part*
+silently diverge. To customise one section of a catalog artifact, drop a *convention part*
 under `.awf/`; it replaces that section's body and inherits the rest of the template.
-For skills and agents the catalog doesn't have, `awf new skill <name> "<desc>"` (or
-`agent`) scaffolds a project-local artifact that gets the same rendering, validation,
-and drift tracking as the built-in ones.
 
 ## Install
 
@@ -221,9 +217,8 @@ Requires Go 1.26+.
 
 ### Pinning with `.awf/bootstrap.sh`
 
-Projects that enable the `bootstrap` artifact (on by default from `awf init`, or
-`awf enable bootstrap`) get a small rendered shell script that resolves the exact awf
-version the repo was rendered with: it uses an
+Projects with `bootstrap.enabled: true` (the `awf init` default) get a small rendered
+shell script that resolves the exact awf version the repo was rendered with: it uses an
 already-matching `awf` from `PATH` when one exists, otherwise downloads the release
 archive, verifies its SHA-256 against the release checksums, caches the binary under
 `$XDG_CACHE_HOME/awf/<version>/` (defaulting to `~/.cache`), and prints its path. Hooks
@@ -231,8 +226,8 @@ and CI can then run the pinned version without anyone installing awf by hand:
 
     "$(bash .awf/bootstrap.sh)" check
 
-It touches nothing outside its cache directory, and `awf disable bootstrap` deletes it.
-The bootstrap and hook payloads are bash scripts targeting the linux/darwin archives; on
+It touches nothing outside its cache directory. Set `bootstrap.enabled: false` and render
+to remove it. The bootstrap and hook payloads are bash scripts targeting the linux/darwin archives; on
 Windows, put `awf` on `PATH` and call it directly.
 
 ## Quickstart
@@ -240,36 +235,32 @@ Windows, put `awf` on `PATH` and call it directly.
     cd your-project
     awf init             # scaffold .awf/ and render the full catalog
     awf check            # verify rendered output is in sync
-    awf list             # inventory the catalog and retained compatibility selections
-    awf enable bootstrap # optionally render the pinned installer
+    awf list             # inventory the catalog and configured domains
 
 The Pi extension is executable project code loaded behind Pi's project-trust prompt. Its generated
 files are drift-checked; use `awf render` to restore missing or modified copies.
 
-`awf init` renders every catalog skill, agent, and document for both built-in targets. The
-schema-compatible skill, agent, doc, and target arrays and their commands remain available during
-migration, but they no longer select standard catalog output. `bootstrap.enabled` remains a live,
-repository-specific toggle.
+`awf init` renders every catalog skill, agent, and document for both built-in targets.
+`bootstrap.enabled` remains a live, repository-specific toggle.
 
 ## Commands
 
 <!-- awf:clispec-commands:start -->
 | Command | Purpose |
 |---|---|
-| `awf init [flags]` | Scaffold .awf/ and render the workflow-core set |
+| `awf init [flags]` | Scaffold .awf/ and render the full catalog |
 | `awf render` | Re-render after a template or config change |
 | `awf check` | Verify the repository and staged universes |
 | `awf read <subcommand>` | Read an executable projection from a parsed artifact |
 | `awf audit <base>\|<a>..<b>` | Report workflow-conformance findings over a commit range (advisory) |
 | `awf effort <subcommand>` | Manage slugged repository-local efforts |
 | `awf adr <subcommand>` | ADR lifecycle operations |
-| `awf list [<kind>]` | Show targets and their per-project state (all kinds, or one) |
+| `awf list [<kind>]` | Show the catalog and configured domain inventory |
 | `awf config [<key-or-var>]` | Describe config keys and vars (live state inside a project) |
 | `awf context [<path>...] [--show <facet>]... [--full] [--staged] [--range <a>..<b>] [--uncovered]` | Orient by request with compact current-state impact reports |
 | `awf topic <domain>/<topic>[:<claim>] [flags]` | Query current claims, history, references, and applicability |
-| `awf new <kind> <args>` | Scaffold a new artifact: kind ∈ {adr, plan, topic, skill, agent, doc} |
-| `awf enable <kind> [<name>] [--dry-run]` | Enable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap} |
-| `awf disable <kind> [<name>] [--with-dependents] [--dry-run]` | Disable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap} |
+| `awf new <kind> <args>` | Scaffold a new artifact: kind ∈ {adr, plan, topic, domain} |
+| `awf remove domain <name>` | Remove a configured domain |
 | `awf upgrade [--recover]` | Migrate the .awf/ config tree or consume a current-state attestation |
 | `awf uninstall` | Remove awf's generated files (keeps .awf/) |
 | `awf changelog [--version <v> \| --since <v> \| --range <from>..<to>]` | Print the embedded changelog, or one version/range of it |

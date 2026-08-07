@@ -77,23 +77,3 @@ func TestSingletonShapeIgnoresMandatory(t *testing.T) {
 		}
 	}
 }
-
-// The legacy CLI pool remains available through Phase 2, but its membership is
-// the name-derived shape rather than Mandatory.
-func TestNameDerivedDocsFormLegacyPool(t *testing.T) {
-	pool, ok := CatalogNames(catalog.Standard, "doc")
-	if !ok {
-		t.Fatal("doc pool absent")
-	}
-	for _, name := range pool {
-		entry := catalog.Standard.Docs[name]
-		if entry.AgentsDoc || entry.Path != "" {
-			t.Errorf("structural doc %q leaked into name-derived pool", name)
-		}
-	}
-	for _, name := range catalog.NonMandatoryDocNames(catalog.Standard) {
-		if slices.Contains(catalog.SingletonKinds(), name) {
-			t.Errorf("%q is both name-derived and a singleton kind", name)
-		}
-	}
-}

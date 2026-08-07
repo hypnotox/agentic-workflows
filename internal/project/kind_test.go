@@ -13,7 +13,6 @@ import (
 	"golang.org/x/tools/go/packages"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
-	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
 // invariant: rendering/project-output-plan:kind-dispatch-single-table (TestKindDescriptorsCoverAllKinds)
@@ -33,13 +32,7 @@ func TestKindDescriptorsCoverAllKinds(t *testing.T) {
 			t.Errorf("%s poolNames presence wrong (hasPool=%v)", d.Plural, hasPool)
 		}
 	}
-	// graphKind marks exactly the resolver-planned kinds (skill, agent, doc);
-	// freeformDomain marks exactly the domains kind.
 	for _, d := range kindDescriptors {
-		wantGraph := d.Plural == "skills" || d.Plural == "agents" || d.Plural == "docs"
-		if d.graphKind != wantGraph {
-			t.Errorf("%s graphKind = %v, want %v", d.Plural, d.graphKind, wantGraph)
-		}
 		wantFreeform := d.Plural == "domains"
 		if d.freeformDomain != wantFreeform {
 			t.Errorf("%s freeformDomain = %v, want %v", d.Plural, d.freeformDomain, wantFreeform)
@@ -47,26 +40,17 @@ func TestKindDescriptorsCoverAllKinds(t *testing.T) {
 	}
 	// The exported facet accessors resolve through the table, unknown kinds false.
 	for _, c := range []struct {
-		kind                       string
-		graph, freeform, doc, skil bool
+		kind                string
+		freeform, doc, skil bool
 	}{
-		{"skill", true, false, false, true},
-		{"agent", true, false, false, false},
-		{"doc", true, false, true, false},
-		{"domain", false, true, false, false},
-		{"bogus", false, false, false, false},
+		{"skill", false, false, true},
+		{"agent", false, false, false},
+		{"doc", false, true, false},
+		{"domain", true, false, false},
+		{"bogus", false, false, false},
 	} {
-		if got := IsGraphKind(c.kind); got != c.graph {
-			t.Errorf("IsGraphKind(%s) = %v, want %v", c.kind, got, c.graph)
-		}
 		if got := IsFreeformDomainKind(c.kind); got != c.freeform {
 			t.Errorf("IsFreeformDomainKind(%s) = %v, want %v", c.kind, got, c.freeform)
-		}
-		if got := IsDocKind(c.kind); got != c.doc {
-			t.Errorf("IsDocKind(%s) = %v, want %v", c.kind, got, c.doc)
-		}
-		if got := IsSkillKind(c.kind); got != c.skil {
-			t.Errorf("IsSkillKind(%s) = %v, want %v", c.kind, got, c.skil)
 		}
 	}
 }
@@ -204,7 +188,6 @@ func fixtureKindSwitch(kind string) int {
 }
 
 func TestKindLookups(t *testing.T) {
-	// invariant: tooling/cli:cli-config-kinds (TestKindLookups)
 	if got := Kinds(); !slices.Equal(got, []string{"skill", "agent", "doc", "domain"}) {
 		t.Fatalf("Kinds() = %v", got)
 	}
@@ -229,29 +212,11 @@ func descriptorMust(t *testing.T, plural string) kindDescriptor {
 }
 
 func TestKindAccessors(t *testing.T) {
-	cfg := &config.Config{
-		Prefix: "awf",
-		Skills: []string{"tdd"}, Agents: []string{"rev"}, Docs: []string{"arch"},
-		Domains: []string{"tooling"},
-	}
 	cat := &catalog.Catalog{
 		Skills:    map[string]catalog.SkillSpec{"tdd": {Sections: []string{"a"}}},
 		Agents:    map[string]catalog.AgentSpec{"rev": {Name: "rev", Description: "reviewer", Sections: []string{"b"}}},
 		Docs:      map[string]catalog.DocEntry{"arch": {Sections: []string{"c"}, TID: "docs/arch.md.tmpl"}},
 		DomainDoc: catalog.TargetSpec{Sections: []string{"d"}},
-	}
-
-	// enable facet (via EnabledNames) for every kind, plus the unknown branch.
-	for _, c := range []struct{ kind, want string }{
-		{"skill", "tdd"}, {"agent", "rev"}, {"doc", "arch"}, {"domain", "tooling"},
-	} {
-		names, ok := EnabledNames(cfg, c.kind)
-		if !ok || !slices.Equal(names, []string{c.want}) {
-			t.Errorf("EnabledNames(%s) = %v,%v", c.kind, names, ok)
-		}
-	}
-	if _, ok := EnabledNames(cfg, "bogus"); ok {
-		t.Error("EnabledNames(bogus) should be false")
 	}
 
 	// poolNames facet (via CatalogNames) for every catalog-backed kind, plus the

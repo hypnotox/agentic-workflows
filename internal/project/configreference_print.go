@@ -35,11 +35,8 @@ func StaticConfigReference() (ConfigReference, error) {
 	}
 	for _, d := range configspec.DataKeys() {
 		artifact := strings.TrimSuffix(d.Kind, "s") + " " + d.Artifact
-		switch d.Artifact {
-		case "agents-doc":
+		if d.Artifact == "agents-doc" {
 			artifact = "agents-doc"
-		case "_base":
-			artifact = "local " + d.Kind
 		}
 		ref.DataKeys = append(ref.DataKeys, DataKeyRow{Artifact: artifact, Key: d.Key, Description: d.Description})
 	}

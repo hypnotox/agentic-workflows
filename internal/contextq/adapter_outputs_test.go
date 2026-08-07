@@ -22,7 +22,6 @@ import (
 // invariant: rendering/pi-workflows:pi-dedicated-grounding-dispatch (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
 // invariant: rendering/workflow-skill-templates:cross-runtime-exploration-dispatch (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
 // invariant: rendering/pi-workflows:pi-subagent-model-wizard (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
-// invariant: tooling/init-and-enablement:add-skill-pairs-agent (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
 // invariant: rendering/workflow-skill-templates:memory-checkpoint-chain-coverage (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
 // invariant: rendering/pi-workflows:pi-structured-exploration-contract (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
 func TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion(t *testing.T) {

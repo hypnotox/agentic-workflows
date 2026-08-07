@@ -118,39 +118,14 @@ var keys = []Entry{
 		Availability: "Always.",
 	},
 	{
-		Path: "docsDir", Type: "string", Default: "docs",
-		Description:  "Schema-compatible legacy documentation-root value. It is parsed and validated, but rendered documentation uses the binary-fixed `docs/` root: managed docs render to `docs/<name>.md`, decisions to `docs/decisions/`, plans to `docs/plans/`, and domain docs to `docs/domains/`.",
-		Availability: "Retained for schema compatibility; it does not relocate outputs.",
-	},
-	{
 		Path: "vars", Type: "key → value map", Default: "seeded with every catalog-referenced var as an empty string at init",
 		Description:  "Freeform values templates interpolate. A key with a value renders it; a present-but-empty key is an open to-do (rendered artifacts referencing it degrade to generic prose and a non-failing note nudges you); a deleted key is the deliberate, git-auditable decline of that var; the generic prose renders silently. A non-empty key no rendered artifact references is failing drift.",
 		Availability: "Each key is consumed only while a rendered artifact's template (or a `gateCmd`/`checkCmd` part placeholder) references it, except that `gateCmd` is also consumed by divergent effort-integration guidance.",
 	},
 	{
-		Path: "skills", Type: "string list", Default: "the workflow-core set at init",
-		Description:  "Schema-compatible legacy skill selection. Every standard catalog skill renders regardless of membership. A listed name with a `local: true` sidecar remains a hand-maintained project-local skill, and the retained enable and disable commands still apply requirement closure to this list.",
-		Availability: "Retained for schema compatibility and local artifacts; it does not select standard catalog output.",
-	},
-	{
-		Path: "agents", Type: "string list", Default: "every catalog agent at init",
-		Description:  "Schema-compatible legacy agent selection. Every standard catalog agent renders regardless of membership. Listed local agents and the retained skill-agent pairing checks still use this list.",
-		Availability: "Retained for schema compatibility and local artifacts; it does not select standard catalog output.",
-	},
-	{
-		Path: "docs", Type: "string list", Default: "empty at init",
-		Description:  "Schema-compatible legacy document selection. Every standard catalog document renders regardless of membership; listed project-local documents remain active.",
-		Availability: "Retained for schema compatibility and local artifacts; it does not select standard catalog output.",
-	},
-	{
 		Path: "domains", Type: "string list", Default: "none",
 		Description:  "Freeform domain keys. Each renders a generated `docs/domains/<name>.md` doc (a compact topic list plus your `current-state` convention part) and can declare a file territory via the domain sidecar's `paths:`.",
 		Availability: "Always.",
-	},
-	{
-		Path: "targets", Type: "string list", Default: "claude",
-		Description:  "Schema-compatible legacy adapter selection. Skills and agents render once for each of the binary-fixed Claude Code and Pi targets; docs are runtime-neutral and render once.",
-		Availability: "Retained for schema compatibility; it does not select rendered targets.",
 	},
 	{
 		Path: "tags", Type: "key → value map", Default: "none",
@@ -303,11 +278,6 @@ var keys = []Entry{
 		Availability: "Within a declared section's override entry.",
 	},
 	{
-		Path: "sidecar.local", Type: "bool", Default: "false",
-		Description:  "Marks the artifact project-local: awf renders nothing for it and treats your hand-maintained file at the conventional output path as authoritative (frontmatter still validated for skills/agents). A local artifact's convention parts and data keys are unconsumed by construction.",
-		Availability: "Skills, agents, docs, and the always-on singletons; rejected on domain sidecars.",
-	},
-	{
 		Path: "sidecar.paths", Type: "string list (anchored path globs)", Default: "none",
 		Description:  "A domain's file territory, matched against slash-separated repo-relative paths. Powers the domain-code-staleness audit advisory: territory changes expect a co-change to the domain's `current-state` part.",
 		Availability: "Domain sidecars only; rejected at open on any other kind.",
@@ -325,12 +295,6 @@ var dataKeys = []DataKey{
 	{Kind: "skills", Artifact: "proposing-adr", Key: "adrSections", Description: "The required decision-record section names, in order (list); the default is Context through Alternatives Considered."},
 	{Kind: "skills", Artifact: "proposing-adr", Key: "adrTriggers", Description: "The project's load-bearing triggers that warrant a decision record (list); the default names the generic boundary/dependency/format/workflow triggers."},
 	{Kind: "skills", Artifact: "executing-plans", Key: "e2eSuitePaths", Description: "Where the project's end-to-end suites live (prose or list) for the gate-tier guidance; unset, the generic tier prose renders."},
-	{Kind: "skills", Artifact: "_base", Key: "slug", Description: "The local skill's name identifier interpolated into its frontmatter; synthesized from the artifact name at declaration; override only to diverge the rendered name token."},
-	{Kind: "skills", Artifact: "_base", Key: "description", Description: "The local skill's frontmatter description: the when-to-use line agent runtimes surface. `awf new skill` seeds it; keep it current."},
-	{Kind: "agents", Artifact: "_base", Key: "slug", Description: "The local agent's name identifier interpolated into its frontmatter; synthesized from the artifact name at declaration; override only to diverge the rendered name token."},
-	{Kind: "agents", Artifact: "_base", Key: "description", Description: "The local agent's frontmatter description: the dispatch-time summary agent runtimes surface. `awf new agent` seeds it; keep it current."},
-	{Kind: "docs", Artifact: "_base", Key: "title", Description: "The local doc's display title: its H1 and document-map label. `awf new doc` seeds it from the name; override to set a custom title."},
-	{Kind: "docs", Artifact: "_base", Key: "description", Description: "The local doc's one-line summary: the document-map description and the lede under its H1. `awf new doc` seeds it; keep it current."},
 	{Kind: "agents", Artifact: "adr-reviewer", Key: "focusItems", Description: "The reviewer's project-focus lens items (list of {name, description}); the default focuses decision clarity and consequences honesty."},
 	{Kind: "agents", Artifact: "adr-reviewer", Key: "reviewSubject", Description: "The one-word subject label the review spine addresses (default: the decision record)."},
 	{Kind: "agents", Artifact: "adr-reviewer", Key: "readStep", Description: "The reviewer's opening read instruction: what to read in full before applying lenses."},

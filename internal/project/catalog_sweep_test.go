@@ -197,18 +197,11 @@ func singletonTemplateContexts(t *testing.T, p *Project, eff map[string]bool) []
 		if err != nil {
 			t.Fatalf("read %s sidecar: %v", kind, err)
 		}
-		if sc.Local {
-			continue
-		}
 		sc = withDefaultData(sc, entry.Data)
 		data := p.data(sc, eff)
 		switch {
 		case entry.AgentsDoc:
-			docs, err := p.resolvedDocs()
-			if err != nil {
-				t.Fatal(err)
-			}
-			data["docs"] = docs
+			data["docs"] = p.resolvedDocs()
 			data["mandatoryDocs"] = p.documentMapDocs()
 		case entry.Generated:
 			files, err := p.RenderAll()

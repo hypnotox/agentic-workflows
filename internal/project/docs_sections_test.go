@@ -83,18 +83,11 @@ func TestDocsSectionParityMembershipUsesOutputShape(t *testing.T) {
 	}
 }
 
-// TestSectionOrphanDetection asserts that a convention part whose section is not
-// in the target's catalog-declared set is reported as drift, while a part at a
-// genuinely declared section is not. The valid section is read from the live
-// catalog so the test stays correct as the taxonomy evolves.
 // invariant: rendering/inplace-and-placeholders:section-orphan-flagged (TestSectionOrphanDetection)
 func TestSectionOrphanDetection(t *testing.T) {
-	cat := catalog.Standard
-	valid := cat.Docs["architecture"].Sections[0]
+	valid := catalog.Standard.Docs["architecture"].Sections[0]
 	const orphan = "definitely-not-a-section"
-	cfg := "prefix: example\nintegrationBranch: main\n" + sprintfVars("") +
-		"skills: []\nagents: []\ndocs:\n  - architecture\n"
-	root := scaffoldFiles(t, cfg, map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n"+sprintfVars(""), map[string]string{
 		"docs/parts/architecture/" + valid + ".md":  "## Valid\n\noverride body\n",
 		"docs/parts/architecture/" + orphan + ".md": "## Bogus\n\nstray\n",
 	})
@@ -110,30 +103,22 @@ func TestSectionOrphanDetection(t *testing.T) {
 		t.Fatal(err)
 	}
 	var sawOrphan, sawValid bool
-	for _, d := range drift {
-		if d.Kind != "orphaned" {
+	for _, finding := range drift {
+		if finding.Kind != "orphaned" {
 			continue
 		}
-		switch d.Path {
+		switch finding.Path {
 		case ".awf/docs/parts/architecture/" + orphan + ".md":
 			sawOrphan = true
 		case ".awf/docs/parts/architecture/" + valid + ".md":
 			sawValid = true
 		}
 	}
-	if !sawOrphan {
-		t.Errorf("expected orphan drift for undeclared section part %q, got %#v", orphan, drift)
-	}
-	if sawValid {
-		t.Errorf("declared section part %q must not be flagged as orphan, got %#v", valid, drift)
+	if !sawOrphan || sawValid {
+		t.Fatalf("section drift = %#v", drift)
 	}
 }
 
-// TestAgentsDocSectionParity asserts the agents-doc template's marker-block set
-// matches its catalog-declared sections, order-exact. The AgentsDoc entry is
-// excluded from both TestDocsSectionParity (Mandatory skip) and
-// TestAdrSingletonSectionParity (plainSingletons excludes it), so without this
-// test a guide section could half-land with a broken override path (ADR-0069).
 // invariant: rendering/guide-and-doc-templates:agents-doc-section-parity (TestAgentsDocSectionParity)
 func TestAgentsDocSectionParity(t *testing.T) {
 	cat := catalog.Standard
@@ -226,7 +211,7 @@ func TestMaintainableCodeDesignGuide(t *testing.T) {
 		}
 	}
 
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndocs: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)

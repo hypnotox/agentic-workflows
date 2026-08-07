@@ -287,12 +287,9 @@ func TestConfigspecDataParity(t *testing.T) {
 	for name, spec := range catalog.Standard.Skills {
 		collect("skills", name, "skills/"+name+"/SKILL.md.tmpl", spec.Data)
 	}
-	collect("skills", "_base", "skills/_base/SKILL.md.tmpl", nil)
 	for name, spec := range catalog.Standard.Agents {
 		collect("agents", name, "agents/"+name+".md.tmpl", spec.Data)
 	}
-	collect("agents", "_base", "agents/_base.md.tmpl", nil)
-	collect("docs", "_base", "docs/_base.md.tmpl", nil)
 	for name, e := range catalog.Standard.Docs {
 		if e.Generated { // the config reference's collections are injected, not adopter-settable
 			continue

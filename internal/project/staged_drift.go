@@ -26,9 +26,6 @@ func (p *Project) CheckStagedDrift(ctx context.Context) ([]manifest.Drift, error
 	if err != nil {
 		return nil, err
 	}
-	if _, err := resolveTargets(state.Cfg.Targets); err != nil {
-		return nil, err
-	}
 	targets, err := resolveTargets(KnownTargets())
 	if err != nil { // coverage-ignore: configured-target validation succeeded and KnownTargets is exhaustively backed by built-in descriptor tests
 		return nil, err
@@ -38,10 +35,7 @@ func (p *Project) CheckStagedDrift(ctx context.Context) ([]manifest.Drift, error
 		Root: p.Root, roots: p.roots, Cfg: state.Cfg, Targets: targets,
 		standard: p.standard, read: read, nested: p.nested, repo: p.repo,
 	}
-	universe.Cat, err = universe.effectiveCatalog()
-	if err != nil {
-		return nil, err
-	}
+	universe.Cat = universe.standard
 	if err := universe.validateAgainstCatalog(); err != nil {
 		return nil, err
 	}

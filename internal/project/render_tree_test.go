@@ -5,8 +5,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 // debuggingVars seeds every var the debugging skill template references so it
@@ -56,7 +54,7 @@ func syncAndReadAgents(t *testing.T, root string) string {
 
 // invariant: rendering/sync-and-drift:agent-guide-size-advisory (TestCheckReportAgentGuideSizeAdvisoryManagedOnly)
 func TestCheckReportAgentGuideSizeAdvisoryManagedOnly(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n", map[string]string{"agents-doc.yaml": "local: true\n"})
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n", nil)
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -65,10 +63,12 @@ func TestCheckReportAgentGuideSizeAdvisoryManagedOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	found := false
 	for _, file := range op.writeFiles() {
-		if file.Path == "AGENTS.md" {
-			t.Fatal("local agents document produced an expected guide")
-		}
+		found = found || file.Path == "AGENTS.md"
+	}
+	if !found {
+		t.Fatal("agents guide is absent from the output plan")
 	}
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
@@ -86,7 +86,7 @@ func TestCheckReportAgentGuideSizeAdvisoryManagedOnly(t *testing.T) {
 
 // invariant: rendering/guide-and-doc-templates:agentsdoc-parts (TestAgentsDocPartsOverride)
 func TestAgentsDocPartsOverride(t *testing.T) {
-	cfg := "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n"
+	cfg := "prefix: example\nintegrationBranch: main\n"
 
 	// Absent → the generic, adopter-neutral default renders publication-safe with
 	// empty invariants/docMap.
@@ -113,7 +113,7 @@ func TestAgentsDocPartsOverride(t *testing.T) {
 // invariant: rendering/guide-and-doc-templates:maintainable-code-design-guide (TestMaintainableCodeDesignPartOverride)
 func TestMaintainableCodeDesignPartOverride(t *testing.T) {
 	const uniqueBody = "The local decision posture owns this change."
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndocs: []\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
 		"parts/maintainable-code-design/decision-posture.md": uniqueBody + "\n",
 	})
 	p, err := Open(testContext(t), root)
@@ -142,7 +142,7 @@ func TestMaintainableCodeDesignPartOverride(t *testing.T) {
 }
 
 func TestConventionPartPrecedence(t *testing.T) {
-	cfg := "prefix: example\nintegrationBranch: main\n" + debuggingVars + "skills: [debugging, exploring]\nagents: [explorer]\n"
+	cfg := "prefix: example\nintegrationBranch: main\n" + debuggingVars + ""
 	const part = "skills/parts/debugging/debugging-surfaces.md"
 
 	// (1) A convention part present replaces the section body.
@@ -168,7 +168,7 @@ func TestConventionPartPrecedence(t *testing.T) {
 
 // invariant: rendering/render-engine:sidecar-optional (TestSidecarAbsentRendersDefault)
 func TestSidecarAbsentRendersDefault(t *testing.T) {
-	cfg := "prefix: example\nintegrationBranch: main\n" + debuggingVars + "skills: [debugging, exploring]\nagents: [explorer]\n"
+	cfg := "prefix: example\nintegrationBranch: main\n" + debuggingVars + ""
 	root := scaffold(t, cfg) // no sidecar, no parts
 	out := syncAndReadDebugging(t, root)
 	if strings.Contains(out, "<no value>") {
@@ -179,79 +179,8 @@ func TestSidecarAbsentRendersDefault(t *testing.T) {
 	}
 }
 
-// invariant: rendering/local-artifacts:local-frontmatter (TestLocalFrontmatterChecked)
-func TestLocalFrontmatterChecked(t *testing.T) {
-	cfg := "prefix: example\nintegrationBranch: main\nskills: [my-local]\nagents: []\n"
-	root := scaffoldFiles(t, cfg, map[string]string{"skills/my-local.yaml": "local: true\n"})
-	outs := []string{".claude/skills/example-my-local/SKILL.md", ".pi/skills/example-my-local/SKILL.md"}
-
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// (a) A declared local target with no on-disk file is a sync error.
-	if err := p.Sync(); err == nil {
-		t.Error("expected sync error: local skill file absent")
-	}
-	// (b) Present but with empty name/description fails identically to a rendered target.
-	for _, out := range outs {
-		testsupport.WriteFile(t, filepath.Join(root, out), "---\nname: \"\"\ndescription: \"\"\n---\nbody\n")
-	}
-	if err := p.Sync(); err == nil {
-		t.Error("expected sync error: local skill has empty frontmatter")
-	}
-	// (c) Valid frontmatter → sync succeeds and check reports no frontmatter drift.
-	for _, out := range outs {
-		testsupport.WriteFile(t, filepath.Join(root, out), "---\nname: my-local\ndescription: a local skill\n---\nbody\n")
-	}
-	if err := p.Sync(); err != nil {
-		t.Fatalf("sync should succeed with valid local frontmatter: %v", err)
-	}
-	drift, err := p.Check(testContext(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, d := range drift {
-		if d.Kind == "invalid-frontmatter" {
-			t.Errorf("unexpected invalid-frontmatter drift: %#v", d)
-		}
-	}
-}
-
 // A local skill must exist with valid frontmatter at EVERY enabled target's path
 // (ADR-0037): one present, the other absent, is a fail at the missing target.
-func TestLocalFrontmatterEveryTarget(t *testing.T) {
-	cfg := "prefix: example\nintegrationBranch: main\nskills: [my-local]\nagents: []\ntargets:\n  - claude\n  - pi\n"
-	root := scaffoldFiles(t, cfg, map[string]string{"skills/my-local.yaml": "local: true\n"})
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	valid := "---\nname: my-local\ndescription: a local skill\n---\nbody\n"
-	// Only the claude copy present -> the Pi path is flagged absent.
-	testsupport.WriteFile(t, filepath.Join(root, ".claude/skills/example-my-local/SKILL.md"), valid)
-	var fails []string
-	op, err := p.OutputPlan(testContext(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	p.localReservations(op, func(path string, _ error) { fails = append(fails, path) })
-	if len(fails) != 1 || fails[0] != ".pi/skills/example-my-local/SKILL.md" {
-		t.Errorf("expected only the Pi path flagged absent, got %v", fails)
-	}
-	// Both copies present -> clean.
-	testsupport.WriteFile(t, filepath.Join(root, ".pi/skills/example-my-local/SKILL.md"), valid)
-	fails = nil
-	op, err = p.OutputPlan(testContext(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	p.localReservations(op, func(path string, _ error) { fails = append(fails, path) })
-	if len(fails) != 0 {
-		t.Errorf("expected clean with both target copies present, got %v", fails)
-	}
-}
-
 func TestTopicPartUsesRawPublicationSafeAssembly(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")

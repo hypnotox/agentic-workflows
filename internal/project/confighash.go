@@ -57,15 +57,6 @@ func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPa
 		// outputs and adopters with no policy byte-stable.
 		proj["commitPolicy"] = p.Cfg.CommitPolicy
 	}
-	if render.ReferencesSkills(assembled) {
-		// Phase 2 renders the full catalog, but a template that reads .skills
-		// still consumes the schema-compatible configured array. Fold that input,
-		// not the now-unconditional effective catalog, so its edit flags drift.
-		// touches-state: rendering/sync-and-drift:skills-set-in-confighash - folds configured skills into ConfigHash; proof in drift_test.go
-		skills := slices.Clone(p.Cfg.Skills)
-		slices.Sort(skills)
-		proj["skills"] = skills
-	}
 	// A template that reads .commitScopes re-renders when audit.allowedScopes
 	// changes; folding the resolved list in flags it stale (ADR-0051).
 	foldScopes := render.ReferencesScopes(assembled)

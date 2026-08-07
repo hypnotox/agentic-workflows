@@ -20,10 +20,6 @@ vars:
   testCmd: go test ./...
   gateCmd: make gate
   gateCmdFull: make gate full
-skills:
-  - tdd
-agents:
-  - code-reviewer
 domains:
   - alpha
 `

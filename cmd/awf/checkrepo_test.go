@@ -93,7 +93,7 @@ func TestRepoCheckCategoryFailuresPropagate(t *testing.T) {
 // invariant: tooling/cli:repo-check-capability-plan (TestRepoCheckCapabilityPlan)
 func TestRepoCheckCapabilityPlan(t *testing.T) {
 	t.Run("aggregate prepares each capability once and preserves successful output order", func(t *testing.T) {
-		cfg := &config.Config{DocsDir: "docs", ProseGate: &config.ProseGateConfig{}, MemoryCite: &config.MemoryCiteConfig{}}
+		cfg := &config.Config{ProseGate: &config.ProseGateConfig{}, MemoryCite: &config.MemoryCiteConfig{}}
 		p := &project.Project{Root: "working-project-sentinel", Cfg: cfg}
 		tree, err := snapshot.NewTree(nil)
 		if err != nil {
@@ -116,7 +116,7 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 	})
 
 	t.Run("aggregate keeps universes distinct and continues after action errors", func(t *testing.T) {
-		cfg := &config.Config{DocsDir: "docs", ProseGate: &config.ProseGateConfig{}, MemoryCite: &config.MemoryCiteConfig{}}
+		cfg := &config.Config{ProseGate: &config.ProseGateConfig{}, MemoryCite: &config.MemoryCiteConfig{}}
 		p := &project.Project{Root: "working-project-sentinel", Cfg: cfg}
 		tree, err := snapshot.NewTree([]snapshot.File{
 			{Path: "prose-index-sentinel.txt", Bytes: []byte("bad \u2014")},

@@ -94,7 +94,7 @@ func (p *Project) decisionsDir() string {
 // resolvedDocs builds the non-singleton Document-map entries for the agents-doc
 // template from the full catalog, annotated with title and description. Local
 // docs remain suppressible during the Phase 2 intermediate.
-func (p *Project) resolvedDocs() ([]map[string]any, error) {
+func (p *Project) resolvedDocs() []map[string]any {
 	out := []map[string]any{}
 	var names []string
 	for name, e := range p.Cat.Docs {
@@ -104,13 +104,6 @@ func (p *Project) resolvedDocs() ([]map[string]any, error) {
 	}
 	sort.Strings(names)
 	for _, name := range names {
-		sc, err := p.Cfg.Sidecar("docs", name)
-		if err != nil {
-			return nil, err
-		}
-		if sc.Local {
-			continue
-		}
 		spec := p.Cat.Docs[name]
 		out = append(out, map[string]any{
 			"name":  name,
@@ -119,7 +112,7 @@ func (p *Project) resolvedDocs() ([]map[string]any, error) {
 			"path":  p.docOutPath(name),
 		})
 	}
-	return out, nil
+	return out
 }
 
 // documentMapDocs builds the AGENTS.md document-map entries for the mandatory

@@ -197,7 +197,7 @@ func TestCheckUnsetVarNotesAreNonFailing(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	root := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {testCmd: \"\", gateCmd: make gate}\nskills: [tdd]\nagents: []\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {testCmd: \"\", gateCmd: make gate}\n")
 	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
 		t.Fatalf("sync: %v", err)
 	}
@@ -220,7 +220,7 @@ func TestCheckStubNotesAreNonFailing(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	root := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {testCmd: go test ./..., gateCmd: make gate, gateCmdFull: make gate full}\nskills: [tdd]\nagents: []\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {testCmd: go test ./..., gateCmd: make gate, gateCmdFull: make gate full}\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "parts", "tdd", "notes.md"),
 		"<!-- awf:stub -->\nstarter notes\n")
 	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
@@ -246,7 +246,7 @@ func TestCheckGlossaryTersenessNotesAreNonFailing(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	root := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\nskills: []\nagents: []\ndocs: [glossary]\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "docs", "glossary.yaml"),
 		"data:\n  terms:\n    - term: bloated\n      meaning: \""+strings.Repeat("x", 400)+"\"\n")
 	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
@@ -267,7 +267,7 @@ func TestCheckSurfacesUnsetVarNoteRenderError(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\nskills: [tdd]\nagents: []\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "tdd.yaml"),
 		"data:\n  testSurfaces:\n    - {name: \"<no value>\", kind: k, location: l}\n")
 	if err := runCheck(ctx, root, io.Discard); err == nil {

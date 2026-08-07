@@ -43,7 +43,7 @@ func artifactRecords(path string, declarations []project.OutputDeclaration, auth
 	configReference := authorities.Layout.DocsDir + "/config-reference.md"
 	linkIfDeclared := func(path, label string) []artifactLink {
 		for _, declaration := range declarations {
-			if declaration.Path == path && !declaration.Reservation {
+			if declaration.Path == path {
 				return []artifactLink{{Path: path, Label: label}}
 			}
 		}
@@ -66,7 +66,7 @@ func artifactRecords(path string, declarations []project.OutputDeclaration, auth
 		}
 	}
 	for _, d := range declarations {
-		if d.Path == path && !d.Reservation {
+		if d.Path == path {
 			sources := make([]artifactLink, 0, len(d.Inputs))
 			outputs := []artifactLink{}
 			for _, in := range d.Inputs {
@@ -81,15 +81,13 @@ func artifactRecords(path string, declarations []project.OutputDeclaration, auth
 			}
 			add(project.ArtifactManagedOutput, identity, sources, outputs)
 		}
-		if !d.Reservation {
-			for _, in := range d.Inputs {
-				if in.Path == path && !canonicalArtifactInputRole(in.Role) && in.Role != project.ArtifactManagedOutput {
-					identity := path
-					if in.Role == project.ArtifactTemplate {
-						identity = strings.TrimPrefix(path, "templates/")
-					}
-					add(in.Role, identity, nil, []artifactLink{{Path: d.Path, Label: "managed output"}})
+		for _, in := range d.Inputs {
+			if in.Path == path && !canonicalArtifactInputRole(in.Role) && in.Role != project.ArtifactManagedOutput {
+				identity := path
+				if in.Role == project.ArtifactTemplate {
+					identity = strings.TrimPrefix(path, "templates/")
 				}
+				add(in.Role, identity, nil, []artifactLink{{Path: d.Path, Label: "managed output"}})
 			}
 		}
 	}
@@ -162,9 +160,6 @@ func canonicalArtifactInputRole(role project.ArtifactRole) bool {
 func declarationOutputs(path string, declarations []project.OutputDeclaration) []artifactLink {
 	out := []artifactLink{}
 	for _, d := range declarations {
-		if d.Reservation {
-			continue
-		}
 		for _, in := range d.Inputs {
 			if in.Path == path {
 				out = append(out, artifactLink{Path: d.Path, Label: "managed output"})

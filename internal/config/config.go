@@ -32,26 +32,21 @@ type SectionOverride struct {
 }
 
 // Sidecar holds a single target's non-prose configuration: structured render
-// data, per-section overrides, and the local flag. It lives at
-// <awfDir>/<kind>/<name>.yaml (agents-doc: <awfDir>/agents-doc.yaml). An absent
-// sidecar is the zero Sidecar (publication-safe: empty data/sections).
+// data and per-section overrides. It lives at <awfDir>/<kind>/<name>.yaml
+// (agents-doc: <awfDir>/agents-doc.yaml). An absent sidecar is the zero Sidecar
+// (publication-safe: empty data/sections).
 type Sidecar struct {
 	Data         map[string]any             `yaml:"data"`
 	DataDefaults map[string]bool            `yaml:"dataDefaults"`
 	Sections     map[string]SectionOverride `yaml:"sections"`
-	Local        bool                       `yaml:"local"`
 	// Paths declares a domain's file territory as anchored path globs
 	// (ADR-0077); read only from domain sidecars, inert on other kinds.
 	Paths []string `yaml:"paths"`
 }
 
-// Config is the skeleton config.yaml: global fields plus flat enable arrays.
-// Presence of a name in Skills/Agents/Docs enables that artifact; per-artifact
-// data/sections/local live in sidecars, not here. Targets is the adapter-runtime
-// enable array (default ["claude"]); adapter artifacts render once per entry.
+// Config is the skeleton config.yaml: repository facts and render shaping.
 type Config struct {
-	Prefix  string `yaml:"prefix"`
-	DocsDir string `yaml:"docsDir"`
+	Prefix string `yaml:"prefix"`
 	// IntegrationBranch names the branch effort work integrates into. It is
 	// required-explicit and carries no in-code default (the Prefix precedent,
 	// not the DocsDir one): the schema migration writes `integrationBranch:
@@ -59,13 +54,9 @@ type Config struct {
 	// chose (ADR-0202 Decision 6, keeping ADR-0127's silent-default removal).
 	IntegrationBranch string              `yaml:"integrationBranch"`
 	Vars              map[string]any      `yaml:"vars"`
-	Skills            []string            `yaml:"skills"`
-	Agents            []string            `yaml:"agents"`
-	Docs              []string            `yaml:"docs"`
 	Domains           []string            `yaml:"domains"`
 	Tags              map[string]string   `yaml:"tags"`
 	ContextIgnore     []string            `yaml:"contextIgnore"`
-	Targets           []string            `yaml:"targets"`
 	CurrentState      *CurrentStateConfig `yaml:"currentState"`
 	Audit             *AuditConfig        `yaml:"audit"`
 	Bootstrap         *BootstrapConfig    `yaml:"bootstrap"`
@@ -398,8 +389,8 @@ func AuditScopes(a *AuditConfig) []ScopeSpec {
 	return a.AllowedScopes
 }
 
-// Load reads <awfDir>/config.yaml with the strict decoder, records awfDir as the
-// sidecar/part resolution root, and defaults DocsDir.
+// Load reads <awfDir>/config.yaml with the strict decoder and records awfDir as
+// the sidecar/part resolution root.
 func Load(awfDir string) (*Config, error) {
 	b, err := os.ReadFile(filepath.Join(awfDir, "config.yaml"))
 	if err != nil {
@@ -441,12 +432,6 @@ func ParseTree(awfDir string, b []byte, read TreeReader) (*Config, error) {
 	c.root = awfDir
 	c.raw = slices.Clone(b)
 	c.read = read
-	if c.DocsDir == "" {
-		c.DocsDir = "docs"
-	}
-	if len(c.Targets) == 0 {
-		c.Targets = []string{"claude"}
-	}
 	return &c, nil
 }
 
@@ -590,9 +575,6 @@ func (c *Config) Validate() error {
 	if hasPathSep(c.Prefix) {
 		return fmt.Errorf("prefix %q must not contain path separators", c.Prefix)
 	}
-	if strings.HasPrefix(c.DocsDir, "/") || strings.Contains(c.DocsDir, "..") {
-		return fmt.Errorf("docsDir %q must be a relative path without \"..\"", c.DocsDir)
-	}
 	if err := validateIntegrationBranch(c.IntegrationBranch); err != nil {
 		return err
 	}
@@ -626,28 +608,11 @@ func (c *Config) Validate() error {
 			return err
 		}
 	}
-	// Targets: sanity only - the unknown-adapter-name check lives in project.Open
-	// (resolveTargets), where the adapter registry is, to keep config free of a
-	// project import cycle (ADR-0037).
-	if len(c.Targets) == 0 {
-		return errors.New("targets must not be empty")
-	}
-	seenTargets := map[string]bool{}
-	for _, t := range c.Targets {
-		if t == "" || hasPathSep(t) {
-			return fmt.Errorf("target %q must be a non-empty name without path separators", t)
-		}
-		if seenTargets[t] {
-			return fmt.Errorf("duplicate target %q", t)
-		}
-		seenTargets[t] = true
-	}
 	return nil
 }
 
 // ValidateDomainName reports whether name is a usable domain key: non-empty and
-// free of path separators or "..". Shared by Validate and the `awf enable domain`
-// path so a freeform domain name is rejected the same way in both.
+// free of path separators or "..".
 func ValidateDomainName(name string) error {
 	if name == "" {
 		return errors.New("domain name must not be empty")
@@ -664,7 +629,6 @@ func ValidateDomainName(name string) error {
 // invariant requires, awf's reserved "_" namespace, and the colon/space/quote
 // characters that would otherwise interpolate into the base template's name: line
 // and break its YAML frontmatter. It mirrors every catalog artifact's naming.
-// touches-state: config/validation:local-name-validated - local skill/agent name charset validation; proof in config_test.go
 func ValidateArtifactName(kind, name string) error {
 	if name == "" {
 		return fmt.Errorf("%s name must not be empty", kind)
@@ -679,49 +643,6 @@ func ValidateArtifactName(kind, name string) error {
 	return nil
 }
 
-// ValidateDocName validates a path-aware local doc name (ADR-0091): one or more
-// lowercase-kebab segments joined by "/", rejecting a path escape, an empty or
-// leading/trailing segment, a ".md" suffix, and any segment (e.g. the reserved
-// "_base" stem) carrying a non-kebab character. Skill/agent names stay flat.
-// touches-state: config/validation:local-doc-name-path-validated - path-aware local doc name validation; proof in docname_test.go
-func ValidateDocName(name string) error {
-	if name == "" {
-		return errors.New("doc name must not be empty")
-	}
-	if strings.HasSuffix(name, ".md") {
-		return fmt.Errorf("doc %q must not end in .md", name)
-	}
-	if strings.Contains(name, "..") {
-		return fmt.Errorf("doc %q must not contain a .. path escape", name)
-	}
-	if strings.HasPrefix(name, "/") || strings.HasSuffix(name, "/") {
-		return fmt.Errorf("doc %q must not have a leading or trailing slash", name)
-	}
-	for _, seg := range strings.Split(name, "/") {
-		if seg == "" {
-			return fmt.Errorf("doc %q must not have an empty path segment", name)
-		}
-		alnum := false
-		for _, r := range seg {
-			switch {
-			case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
-				alnum = true
-			case r == '-':
-			default:
-				return fmt.Errorf("doc %q segment %q must be lowercase kebab-case (the reserved _base stem is rejected here)", name, seg)
-			}
-		}
-		// An all-hyphen segment derives an empty title, which would breach
-		// inv: local-doc-map-fields (a non-empty document-map label).
-		if !alnum {
-			return fmt.Errorf("doc %q segment %q must contain a letter or digit", name, seg)
-		}
-	}
-	return nil
-}
-
-// hasPathSep reports whether s contains a path separator or a ".." segment - the
-// shared reject condition for prefix/target/domain names.
 func hasPathSep(s string) bool {
 	return strings.ContainsAny(s, "/\\") || strings.Contains(s, "..")
 }

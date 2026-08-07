@@ -320,7 +320,7 @@ func TestCheckStagedNoStagedConfig(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-	testsupport.WriteAwfConfig(t, dir, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: [code-reviewer]\n")
+	testsupport.WriteAwfConfig(t, dir, "prefix: example\nintegrationBranch: main\n")
 	gitfixture.Stage(t, repo, map[string]string{"internal/x.go": "package x\n"})
 	p := openStaged(t, dir)
 	if _, err := p.CheckStaged(testContext(t)); err == nil || !strings.Contains(err.Error(), "no staged") {
@@ -433,7 +433,7 @@ func TestCheckStagedIndexLoadError(t *testing.T) {
 // scaffolded project that is not a git repository.
 func TestCheckStagedOutsideRepo(t *testing.T) {
 	t.Parallel()
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: [code-reviewer]\n", nil)
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", nil)
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -501,9 +501,9 @@ func TestCheckStagedHeadConfigParseError(t *testing.T) {
 	t.Parallel()
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
-	gitfixture.Stage(t, repo, map[string]string{".awf/config.yaml": "prefix: example\nintegrationBranch: main\nskills: [tdd\n"})
+	gitfixture.Stage(t, repo, map[string]string{".awf/config.yaml": "prefix: example\nintegrationBranch: main\n"})
 	gitfixture.Commit(t, repo, "head", nil)
-	testsupport.WriteAwfConfig(t, dir, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n")
+	testsupport.WriteAwfConfig(t, dir, "prefix: example\nintegrationBranch: main\n")
 	p := openStaged(t, dir)
 	if _, err := p.CheckStaged(testContext(t)); err == nil {
 		t.Fatal("expected a HEAD-side config parse error")
@@ -535,7 +535,7 @@ func TestCheckCommitAuthorizationPropagatesEvidenceErrors(t *testing.T) {
 	t.Run("unborn adopted HEAD", func(t *testing.T) {
 		repo := gitfixture.InitRepo(t)
 		gitfixture.Stage(t, repo, map[string]string{
-			".awf/config.yaml": "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n",
+			".awf/config.yaml": "prefix: example\nintegrationBranch: main\n",
 			".awf/awf.lock":    `{"awfVersion":"0.18.0","schemaVersion":31,"files":{}}`,
 			"docs/decisions/0001-first.md": `---
 format: current-state-v4
@@ -770,7 +770,7 @@ func TestAuditTransitionsCollectError(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-	testsupport.WriteAwfConfig(t, dir, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: [code-reviewer]\n")
+	testsupport.WriteAwfConfig(t, dir, "prefix: example\nintegrationBranch: main\n")
 	p := openStaged(t, dir)
 	if _, _, err := p.Audit(testContext(t), "does-not-exist", "HEAD"); err == nil {
 		t.Fatal("expected an unresolvable-range error")

@@ -57,7 +57,7 @@ func TestVerifyCommitPolicyDisabledAndConfigured(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	base := gitfixture.Commit(t, repo, "base", map[string]string{"a": "a"})
 	head := gitfixture.Commit(t, repo, "head", map[string]string{"b": "b"})
-	testsupport.WriteAwfConfig(t, repo.Root(), "prefix: x\nintegrationBranch: master\ntargets: [pi]\ncommitPolicy:\n  grandfatheredThrough: "+base+"\n  allowedIdentities:\n    - name: T\n      email: t@example.com\n")
+	testsupport.WriteAwfConfig(t, repo.Root(), "prefix: x\nintegrationBranch: master\ncommitPolicy:\n  grandfatheredThrough: "+base+"\n  allowedIdentities:\n    - name: T\n      email: t@example.com\n")
 	p, err := Open(ctx, repo.Root())
 	if err != nil {
 		t.Fatal(err)
@@ -152,14 +152,14 @@ func TestExactCommitEnforcement(t *testing.T) {
 	rangeCommitOne := gitfixture.NativeSignedCommitAs(t, linked, "range-one", rangePrivate, "Range", "range@example.com")
 	rangeCommitTwo := gitfixture.NativeSignedCommitAs(t, linked, "range-two", rangePrivate, "Range", "range@example.com")
 	primaryHead := gitfixture.NativeCommitAllowEmpty(t, primary, "primary unsigned")
-	primaryConfig := "prefix: x\nintegrationBranch: master\ntargets: [pi]\ncommitPolicy:\n  grandfatheredThrough: " + base + "\n  allowedIdentities:\n    - name: Wrong\n      email: wrong@example.com\n"
+	primaryConfig := "prefix: x\nintegrationBranch: master\ncommitPolicy:\n  grandfatheredThrough: " + base + "\n  allowedIdentities:\n    - name: Wrong\n      email: wrong@example.com\n"
 	type allowedProvenance struct{ name, email, key string }
 	tagPolicy := allowedProvenance{"Tag", "tag@example.com", tagPublic}
 	directPolicy := allowedProvenance{"Direct", "direct@example.com", directPublic}
 	rangePolicy := allowedProvenance{"Range", "range@example.com", rangePublic}
 	linkedPolicy := func(values ...allowedProvenance) string {
 		var body strings.Builder
-		body.WriteString("prefix: x\nintegrationBranch: master\ntargets: [pi]\ncommitPolicy:\n  grandfatheredThrough: " + base + "\n  allowedIdentities:\n")
+		body.WriteString("prefix: x\nintegrationBranch: master\ncommitPolicy:\n  grandfatheredThrough: " + base + "\n  allowedIdentities:\n")
 		for _, value := range values {
 			body.WriteString("    - name: " + value.name + "\n      email: " + value.email + "\n")
 		}
@@ -248,7 +248,7 @@ func TestExactCommitEnforcement(t *testing.T) {
 	if outcome.Refusal == nil || outcome.Refusal.Category != commitpolicy.TagPeelFailure {
 		t.Fatalf("tag-peel refusal = %#v", outcome)
 	}
-	testsupport.WriteAwfConfig(t, linkedRoot, "prefix: x\nintegrationBranch: master\ntargets: [pi]\n")
+	testsupport.WriteAwfConfig(t, linkedRoot, "prefix: x\nintegrationBranch: master\n")
 	text, outcome = assertUnchanged([]string{directCommit})
 	if !outcome.Disabled || !outcome.OK() || !strings.Contains(text, "disabled") {
 		t.Fatalf("disabled policy = %#v, %q", outcome, text)
@@ -263,7 +263,7 @@ func TestExactCommitEnforcement(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			testsupport.WriteAwfConfig(t, fixture.Root(), "prefix: x\nintegrationBranch: master\ntargets: [pi]\ncommitPolicy:\n  grandfatheredThrough: "+formatBase+"\n  allowedIdentities:\n    - name: T\n      email: t@example.com\n")
+			testsupport.WriteAwfConfig(t, fixture.Root(), "prefix: x\nintegrationBranch: master\ncommitPolicy:\n  grandfatheredThrough: "+formatBase+"\n  allowedIdentities:\n    - name: T\n      email: t@example.com\n")
 			beforeHead := gitfixture.NativeRevParse(t, fixture, "HEAD")
 			beforeIndex := gitfixture.NativeWriteTree(t, fixture)
 			document, outcome, err := VerifyCommitPolicyAt(ctx, fixture.Root(), []string{"HEAD", formatBase + "..HEAD"})

@@ -14,10 +14,6 @@ func temporaryAuthoredAdopter(t *testing.T) string {
 	t.Helper()
 	root := scaffoldFiles(t, `prefix: fixture
 integrationBranch: main
-targets: [claude, pi]
-skills: [tdd, exploring]
-agents: [explorer]
-docs: []
 vars:
   testCmd: go test ./...
   gateCmd: ./x gate

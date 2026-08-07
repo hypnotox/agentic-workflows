@@ -17,7 +17,7 @@ import (
 func proseGateRepo(t *testing.T, proseGateYAML string, stage map[string]string) string {
 	t.Helper()
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n"+proseGateYAML)
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\n"+proseGateYAML)
 	repo := gitfixture.InitRepoAt(t, root)
 	gitfixture.Add(t, repo, ".awf/config.yaml")
 	gitfixture.Stage(t, repo, stage)
@@ -150,7 +150,7 @@ func TestProseGateUsesStagedBytesWhenWorktreeDiffers(t *testing.T) {
 func TestProseGateUsesWorkingConfigExemption(t *testing.T) {
 	ctx := testContext(t)
 	root := proseGateRepo(t, "", map[string]string{"depict.md": "staged \u2014\n"})
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\nproseGate:\n  exemptions:\n    - path: depict.md\n      codepoint: U+2014\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nproseGate:\n  exemptions:\n    - path: depict.md\n      codepoint: U+2014\n")
 	if err := runProseGate(ctx, root, io.Discard); err != nil {
 		t.Fatalf("working-config exemption must control the staged corpus: %v", err)
 	}
@@ -192,7 +192,7 @@ func TestProseGateDispatch(t *testing.T) {
 func TestProseGateRefusesOutsideAGitRepo(t *testing.T) {
 	ctx := testContext(t)
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\n")
 	err := runProseGate(ctx, root, io.Discard)
 	if err == nil || !strings.Contains(err.Error(), "cannot read staged files") {
 		t.Fatalf("unconditional gate outside git: want a refusal naming the enumeration failure, got %v", err)

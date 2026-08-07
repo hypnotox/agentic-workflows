@@ -74,6 +74,7 @@ var registry = []Migration{
 	{To: structuralHeadingsGeneration, Name: "structural-headings", Apply: treeOnly(applyStructuralHeadings)},
 	{To: 37, Name: "grounding-skill-backfill", Apply: treeOnly(applyGroundingSkillBackfill)},
 	{To: 38, Name: "drop-gate-audit-settings", Apply: treeOnly(applyDropGateAuditSettings)},
+	{To: 39, Name: "drop-selection", Apply: treeOnly(applyDropSelection)},
 }
 
 // treeOnly adapts a migration that only rewrites the config tree to the
@@ -122,6 +123,7 @@ var retiredKeyRemovals = []struct{ parent, key string }{
 	{"audit", "dependencyManifests"}, {"audit", "domainDocStaleness"}, {"audit", "domainCodeStaleness"},
 	{"audit", "undocumentedDomain"}, {"audit", "plainPunctuation"}, {"audit", "uncommittedChanges"},
 	{"currentState", "maxTopicsPerPath"},
+	{"", "skills"}, {"", "agents"}, {"", "docs"}, {"", "targets"}, {"", "docsDir"},
 }
 
 // ConfigForCurrentSchema applies the config-byte portions of registered

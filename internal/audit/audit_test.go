@@ -752,10 +752,10 @@ func TestAuditSnapshotReadersAndErrors(t *testing.T) {
 	}
 	for _, files := range [][]snapshot.File{
 		{{Path: ".awf/config.yaml", Mode: snapshot.Symlink, Bytes: []byte("config")}},
-		{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: test\nintegrationBranch: master\ntargets: 1\n")}},
-		{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: test\nintegrationBranch: master\ntargets: [claude]\n")}, {Path: "docs/decisions/0001-bad.md", Mode: snapshot.Regular, Bytes: []byte("---\nformat: unknown\n---\n")}},
-		{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: bad/test\nintegrationBranch: master\ntargets: [claude]\n")}},
-		{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: test\nintegrationBranch: master\ntargets: [claude]\n")}, {Path: ".awf/awf.lock", Mode: snapshot.Regular, Bytes: []byte("{")}},
+		{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: test\nintegrationBranch: master\nunknown: 1\n")}},
+		{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: test\nintegrationBranch: master\n")}, {Path: "docs/decisions/0001-bad.md", Mode: snapshot.Regular, Bytes: []byte("---\nformat: unknown\n---\n")}},
+		{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: bad/test\nintegrationBranch: master\n")}},
+		{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: test\nintegrationBranch: master\n")}, {Path: ".awf/awf.lock", Mode: snapshot.Regular, Bytes: []byte("{")}},
 	} {
 		if _, err := auditUniverseFromTree(t.TempDir(), auditTree(t, files)); err == nil {
 			t.Fatalf("invalid audit universe accepted: %#v", files)

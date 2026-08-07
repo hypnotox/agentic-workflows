@@ -57,63 +57,6 @@ func TestStagedDriftClassifiesFreshnessBeforeObservation(t *testing.T) {
 	})
 }
 
-func TestCheckStagedDriftErrorPaths(t *testing.T) {
-	if _, err := CheckStagedDriftRoot(testContext(t), t.TempDir()); err == nil {
-		t.Fatal("staged drift root accepted a non-repository")
-	}
-	if _, err := (&Project{Root: t.TempDir()}).CheckStagedDrift(testContext(t)); err == nil {
-		t.Fatal("staged drift accepted a project with no repository handle")
-	}
-
-	fixture := func(t *testing.T, cfg string, extra map[string]string) *Project {
-		t.Helper()
-		repo := gitfixture.InitRepo(t)
-		head := stagedHeadFiles()
-		files := map[string]string{
-			".awf/config.yaml": cfg,
-			".awf/awf.lock":    head[".awf/awf.lock"],
-		}
-		for path, body := range extra {
-			files[path] = body
-		}
-		gitfixture.Stage(t, repo, files)
-		p, err := openRootProject(repo.Root())
-		if err != nil {
-			t.Fatal(err)
-		}
-		return p
-	}
-
-	t.Run("malformed local sidecar", func(t *testing.T) {
-		p := fixture(t, "prefix: example\nintegrationBranch: main\nskills: [local]\nagents: []\n", map[string]string{
-			".awf/skills/local.yaml": "local: [bad\n",
-		})
-		if _, err := p.CheckStagedDrift(testContext(t)); err == nil {
-			t.Fatal("staged drift erased a local catalog synthesis error")
-		}
-	})
-	t.Run("unknown target", func(t *testing.T) {
-		p := fixture(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [unknown]\n", nil)
-		if _, err := p.CheckStagedDrift(testContext(t)); err == nil {
-			t.Fatal("staged drift accepted an unknown target")
-		}
-	})
-	t.Run("unknown skill", func(t *testing.T) {
-		p := fixture(t, "prefix: example\nintegrationBranch: main\nskills: [unknown]\nagents: []\n", nil)
-		if _, err := p.CheckStagedDrift(testContext(t)); err == nil {
-			t.Fatal("staged drift accepted an unknown skill")
-		}
-	})
-	t.Run("render error", func(t *testing.T) {
-		p := fixture(t, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n", map[string]string{
-			".awf/skills/tdd.yaml": "data:\n  testSurfaces:\n    - {name: \"<no value>\", kind: k, location: l}\n",
-		})
-		if _, err := p.CheckStagedDrift(testContext(t)); err == nil {
-			t.Fatal("staged drift hid a render error")
-		}
-	})
-}
-
 // invariant: rendering/sync-and-drift:staged-drift-rendered-output (TestStagedDriftRenderedOutputInvariant)
 // invariant: rendering/sync-and-drift:ordinary-render-freshness (TestStagedDriftRenderedOutputInvariant)
 func TestStagedDriftRenderedOutputInvariant(t *testing.T) {
@@ -201,7 +144,7 @@ func TestStagedDriftRenderedOutputInvariant(t *testing.T) {
 	}
 
 	// Dirty working output and config must not contaminate the staged comparison.
-	const baselineConfig = "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n"
+	const baselineConfig = "prefix: example\nintegrationBranch: main\n"
 	projectRoot := scaffold(t, baselineConfig)
 	repo := gitfixture.InitRepoAt(t, projectRoot)
 	gitfixture.AddAll(t, repo)

@@ -365,32 +365,14 @@ type renderKindSpec struct {
 	encode func(name, body string, data map[string]any) (string, error)
 }
 
-// skillTID resolves a skill's template id: the shared base template for a
-// synthesized local entry, else the name-derived catalog path (ADR-0068).
-// touches-state: rendering/local-artifacts:local-renders-from-base - skillTID resolves a local skill to the base template; proof in local_test.go
-func (p *Project) skillTID(n string) string {
-	if p.Cat.Skills[n].Base {
-		return baseTID("skills")
-	}
-	return mustDescriptor("skills").tid(n)
-}
+// skillTID resolves a catalog skill's name-derived template id.
+func (p *Project) skillTID(n string) string { return mustDescriptor("skills").tid(n) }
 
-// agentTID mirrors skillTID for agents.
-func (p *Project) agentTID(n string) string {
-	if p.Cat.Agents[n].Base {
-		return baseTID("agents")
-	}
-	return mustDescriptor("agents").tid(n)
-}
+// agentTID resolves a catalog agent's name-derived template id.
+func (p *Project) agentTID(n string) string { return mustDescriptor("agents").tid(n) }
 
-// docTID resolves a doc's template id through the effective catalog: the base
-// doc template for a synthesized local doc (its DocEntry.TID), else the Standard
-// doc's own template. Reading p.Cat (not the package global) is what lets a
-// synthesized local doc render at all (ADR-0091).
-// touches-state: rendering/local-artifacts:local-doc-renders-from-base - docTID resolves a local doc to the base template; proof in local_test.go
-func (p *Project) docTID(n string) string {
-	return p.Cat.Docs[n].TID
-}
+// docTID resolves a catalog document's declared template id.
+func (p *Project) docTID(n string) string { return p.Cat.Docs[n].TID }
 
 func (p *Project) renderKind(spec renderKindSpec, eff map[string]bool) ([]RenderedFile, error) {
 	var out []RenderedFile
@@ -398,9 +380,6 @@ func (p *Project) renderKind(spec renderKindSpec, eff map[string]bool) ([]Render
 		sc, err := p.Cfg.Sidecar(spec.kind, name)
 		if err != nil { // coverage-ignore: declaration-first planning just parsed this enabled artifact sidecar
 			return nil, err
-		}
-		if sc.Local {
-			continue
 		}
 		if spec.defaults != nil {
 			sc = withDefaultData(sc, spec.defaults(name), specializedListDataKeys(spec.kind, name)...)
@@ -451,7 +430,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	var out []RenderedFile
 	// Neutral: docs render once - the output path is docsDir-relative, not adapter-placed.
 	docsRfs, err := p.renderKind(renderKindSpec{
-		kind: "docs", names: catalog.NonMandatoryDocNames(p.Cat),
+		kind: "docs", names: catalog.NameDerivedDocNames(p.Cat),
 		tid:       p.docTID,
 		sections:  func(n string) []string { return p.Cat.Docs[n].Sections },
 		outPath:   func(_ Target, n string) string { return p.docOutPath(n) },
@@ -523,49 +502,43 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 			out = append(out, rf)
 		}
 	}
-	// agents-doc / AGENTS.md (always-on singleton unless its sidecar is local), neutral - once.
+	// agents-doc / AGENTS.md, neutral - once.
 	ad, err := p.Cfg.Sidecar("agents-doc", "")
 	if err != nil { // coverage-ignore: declaration-first planning just parsed the agents-doc sidecar
 		return nil, err
 	}
-	if !ad.Local {
-		ad = withDefaultData(ad, p.Cat.Docs["agents-doc"].Data)
-		data := p.data(ad, eff)
-		docs, err := p.resolvedDocs()
-		if err != nil { // coverage-ignore: resolvedDocs only errors on a docs-sidecar read failure, which renderAllBase's docs loop already surfaces earlier
-			return nil, err
+	ad = withDefaultData(ad, p.Cat.Docs["agents-doc"].Data)
+	data := p.data(ad, eff)
+	data["docs"] = p.resolvedDocs()
+	data["mandatoryDocs"] = p.documentMapDocs()
+	rf, err := p.renderTarget("agents-doc", "", p.Cat.Docs["agents-doc"].TID,
+		p.Cat.Docs["agents-doc"].Sections, ad, data, "AGENTS.md", eff)
+	if err != nil {
+		return nil, err
+	}
+	for _, name := range slices.Sorted(maps.Keys(p.Cat.Docs)) {
+		if ok, sidecarErr := p.Cfg.HasSidecar("docs", name); sidecarErr != nil { // coverage-ignore: declaration-first planning already read every catalog doc sidecar from the same filesystem invocation
+			return nil, sidecarErr
+		} else if ok {
+			rf.ConsumedInputs = append(rf.ConsumedInputs, OutputInput{Path: config.DirName + "/docs/" + name + ".yaml", Role: ArtifactAuthoredData})
 		}
-		data["docs"] = docs
-		data["mandatoryDocs"] = p.documentMapDocs()
-		rf, err := p.renderTarget("agents-doc", "", p.Cat.Docs["agents-doc"].TID,
-			p.Cat.Docs["agents-doc"].Sections, ad, data, "AGENTS.md", eff)
+	}
+	rf.ConsumedInputs = normalizeOutputInputs(rf.ConsumedInputs)
+	out = append(out, rf)
+	// Each descriptor-owned bridge is gated on the agents-doc render above: a
+	// local (hand-maintained) AGENTS.md emits no managed bridge. A target with an
+	// empty BridgeFile emits no bridge, so neutral instructions never point at
+	// an unrendered target-owned file.
+	for _, t := range p.Targets {
+		if t.BridgeFile == "" {
+			continue
+		}
+		brf, err := p.renderTarget(targetBridgeKind, "", t.BridgeTemplate,
+			nil, config.Sidecar{}, p.data(config.Sidecar{}, eff), t.BridgeFile, eff)
 		if err != nil {
 			return nil, err
 		}
-		for _, name := range slices.Sorted(maps.Keys(p.Cat.Docs)) {
-			if ok, sidecarErr := p.Cfg.HasSidecar("docs", name); sidecarErr != nil { // coverage-ignore: declaration-first planning already read every catalog doc sidecar from the same filesystem invocation
-				return nil, sidecarErr
-			} else if ok {
-				rf.ConsumedInputs = append(rf.ConsumedInputs, OutputInput{Path: config.DirName + "/docs/" + name + ".yaml", Role: ArtifactAuthoredData})
-			}
-		}
-		rf.ConsumedInputs = normalizeOutputInputs(rf.ConsumedInputs)
-		out = append(out, rf)
-		// Each descriptor-owned bridge is gated on the agents-doc render above: a
-		// local (hand-maintained) AGENTS.md emits no managed bridge. A target with an
-		// empty BridgeFile emits no bridge, so neutral instructions never point at
-		// an unrendered target-owned file.
-		for _, t := range p.Targets {
-			if t.BridgeFile == "" {
-				continue
-			}
-			brf, err := p.renderTarget(targetBridgeKind, "", t.BridgeTemplate,
-				nil, config.Sidecar{}, p.data(config.Sidecar{}, eff), t.BridgeFile, eff)
-			if err != nil {
-				return nil, err
-			}
-			out = append(out, brf)
-		}
+		out = append(out, brf)
 	}
 	// Plain singletons: every Mandatory non-agents-doc entry in the catalog doc
 	// collection, derived into plainSingletons (always-on unless local; ADR-0021,

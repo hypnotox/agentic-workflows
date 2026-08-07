@@ -9,7 +9,7 @@ import (
 )
 
 func TestDataDefaultsConfigurationChangesConfigHash(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -33,7 +33,7 @@ func TestDataDefaultsConfigurationChangesConfigHash(t *testing.T) {
 }
 
 func TestCommitPolicyConsumerConfigHash(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -98,7 +98,7 @@ func TestCommitPolicyConsumerConfigHash(t *testing.T) {
 }
 
 func TestRetiredTelemetryTemplateValuesDoNotAffectConfigHash(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)

@@ -2,16 +2,13 @@ package project
 
 import (
 	"io/fs"
-	"maps"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -40,74 +37,6 @@ func TestGuideRoutesNativeSkillsWithoutCatalog(t *testing.T) {
 			t.Errorf("empty-prefix guide contains malformed fallback %q", malformed)
 		}
 	}
-}
-
-// invariant: rendering/workflow-skill-templates:workflow-transitions-advisory (TestWorkflowSkillRelationshipsStayAdvisory)
-func TestWorkflowSkillRelationshipsStayAdvisory(t *testing.T) {
-	skills := slices.Sorted(maps.Keys(catalog.Standard.Skills))
-	agents := slices.Sorted(maps.Keys(catalog.Standard.Agents))
-	const advisorySelection = "Use any native skill whose exposed description fits the current work."
-	mandatoryRelationships := []string{"only legal predecessor", "only legal successor", "mandatory successor", "must follow", "must be followed by", "mandatory transition"}
-	operativeControls := []string{" must ", " never ", " requires ", "Do not ", "Stop ", "stop ", "forbidden"}
-
-	for _, target := range KnownTargets() {
-		t.Run(target, func(t *testing.T) {
-			root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: ["+strings.Join(skills, ", ")+"]\nagents: ["+strings.Join(agents, ", ")+"]\ndocs: [roadmap]\ntargets: ["+target+"]\n")
-			p, err := Open(testContext(t), root)
-			if err != nil {
-				t.Fatal(err)
-			}
-			files, err := p.RenderAll()
-			if err != nil {
-				t.Fatal(err)
-			}
-			missingSkills := make(map[string]bool, len(skills))
-			for _, skill := range skills {
-				missingSkills[skill] = true
-			}
-			for _, file := range files {
-				if file.Path == "AGENTS.md" && !strings.Contains(file.Content, advisorySelection) {
-					t.Errorf("guide does not keep skill selection advisory")
-				}
-				if !strings.HasSuffix(file.Path, "/SKILL.md") {
-					continue
-				}
-				for _, skill := range skills {
-					if strings.HasSuffix(file.Path, "/example-"+skill+"/SKILL.md") {
-						delete(missingSkills, skill)
-						break
-					}
-				}
-				for _, phrase := range mandatoryRelationships {
-					if strings.Contains(file.Content, phrase) {
-						t.Errorf("%s turns an advisory relationship into %q", file.Path, phrase)
-					}
-				}
-				if !containsAny(file.Content, operativeControls) {
-					t.Errorf("%s carries no mandatory operative control", file.Path)
-				}
-			}
-			if len(missingSkills) != 0 {
-				t.Fatalf("missing rendered standard skills: %v", slices.Sorted(maps.Keys(missingSkills)))
-			}
-		})
-	}
-
-	t.Run("mandatory relationship mutation is rejected", func(t *testing.T) {
-		mutated := "A selected skill must follow its catalog predecessor."
-		if !containsAny(mutated, mandatoryRelationships) {
-			t.Fatal("representative mandatory relationship mutation was not rejected")
-		}
-	})
-}
-
-func containsAny(value string, phrases []string) bool {
-	for _, phrase := range phrases {
-		if strings.Contains(value, phrase) {
-			return true
-		}
-	}
-	return false
 }
 
 // invariant: rendering/guide-and-doc-templates:guide-scopes-derived (TestGuideScopesDerived)

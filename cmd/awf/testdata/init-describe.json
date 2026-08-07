@@ -95,53 +95,6 @@
         "./internal/..."
       ],
       "target": "var"
-    },
-    {
-      "key": "skills",
-      "kind": "multiselect",
-      "description": "Workflow skills to enable (core pre-selected; deselect to trim or add opt-in skills). Options/default computed from the catalog.",
-      "default": "adr-lifecycle,brainstorming,effort-workflow,executing-direct,executing-plans,exploring,grounding,orienting,proposing-adr,retrospective,reviewing-adr,reviewing-impl,reviewing-plan,reviewing-plan-resync,subagent-driven-development,writing-plans",
-      "options": [
-        "adr-lifecycle",
-        "brainstorming",
-        "bugfix",
-        "debugging",
-        "effort-workflow",
-        "executing-direct",
-        "executing-plans",
-        "exploring",
-        "grounding",
-        "orienting",
-        "proposing-adr",
-        "refactor-coupling-audit",
-        "retrospective",
-        "reviewing-adr",
-        "reviewing-impl",
-        "reviewing-plan",
-        "reviewing-plan-resync",
-        "roadmap-graduation",
-        "subagent-driven-development",
-        "tdd",
-        "writing-plans"
-      ],
-      "target": "catalog-skills"
-    },
-    {
-      "key": "docs",
-      "kind": "multiselect",
-      "description": "Docs to enable (core pre-selected; deselect to trim or add opt-in docs). Options/default computed from the catalog.",
-      "default": "",
-      "options": [
-        "architecture",
-        "debugging",
-        "development",
-        "glossary",
-        "pitfalls",
-        "releasing",
-        "roadmap",
-        "testing"
-      ],
-      "target": "catalog-docs"
     }
   ]
 }

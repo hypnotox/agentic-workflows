@@ -91,12 +91,6 @@ The resolved commit-scope list folds into the config hash of every artifact whos
 Origin: ADR-0148
 Backing: test
 
-### `invariant: skills-set-in-confighash`
-
-Changing the skills enable array changes the lock config hash of every artifact whose assembled template references the skills set, so awf check flags those artifacts stale.
-Origin: ADR-0148
-Backing: test
-
 ### `invariant: staged-drift-rendered-output`
 
 `awf check staged drift` renders from the staged config and reports exactly stale and hand-edited comparisons against the staged rendered-output tree; every other drift kind is out of scope.

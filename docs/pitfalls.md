@@ -428,7 +428,7 @@ lock but not a schema- or version-behind one, which only `gate()` sees.
 
 _Domains: rendering_
 
-Enumerate every enabled target, the root lock, generated outputs, and the changelog obligation for the one adopted root.
+Enumerate both targets, the root lock, generated outputs, and the changelog obligation for the one adopted root.
 
 ## GoReleaser aborts on a dirty git tree; pre-release artifacts belong outside the worktree
 

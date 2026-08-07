@@ -1,10 +1,3 @@
-agents:
-  - adr-reviewer
-  - code-reviewer
-  - explorer
-  - grounding-checker
-  - implementer
-  - plan-reviewer
 audit:
   allowedScopes:
     - name: adr
@@ -25,14 +18,6 @@ audit:
       meaning: the render engine and templates
     - name: tooling
       meaning: CLI, audit/gate, coverage, CI, ./x, changelog, evals
-docs:
-  - architecture
-  - development
-  - glossary
-  - pitfalls
-  - releasing
-  - roadmap
-  - testing
 domains:
   - adr-system
   - config
@@ -53,27 +38,6 @@ currentState:
   testGlobs:
     - '**/*_test.go'
 prefix: awf
-skills:
-  - effort-workflow
-  - adr-lifecycle
-  - brainstorming
-  - grounding
-  - bugfix
-  - debugging
-  - executing-direct
-  - executing-plans
-  - proposing-adr
-  - refactor-coupling-audit
-  - retrospective
-  - reviewing-adr
-  - reviewing-impl
-  - reviewing-plan
-  - reviewing-plan-resync
-  - subagent-driven-development
-  - tdd
-  - writing-plans
-  - exploring
-  - orienting
 tags:
   active-md: Generated INDEX.md decision status index
   adopter-reference: The adopter-facing config reference authority
@@ -188,9 +152,6 @@ contextIgnore:
   - .golangci.yml
   - .goreleaser.yaml
   - .gremlins.yaml
-targets:
-  - claude
-  - pi
 vars:
   activeMdRegenCmd: ./x render
   awfInvokeCmd: go run ./cmd/awf

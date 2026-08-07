@@ -21,7 +21,7 @@ const dir = ".awf/efforts/"
 func memoryGateRepo(t *testing.T, memoryCiteYAML string, stage map[string]string) string {
 	t.Helper()
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n"+memoryCiteYAML)
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\n"+memoryCiteYAML)
 	repo := gitfixture.InitRepoAt(t, root)
 	gitfixture.Add(t, repo, ".awf/config.yaml")
 	gitfixture.Stage(t, repo, stage)
@@ -101,7 +101,7 @@ func TestMemoryGateScansOnlyDecisionRecords(t *testing.T) {
 func TestMemoryGateUsesFixedDocsDir(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	root := memoryGateRepo(t, "docsDir: handbook\n", map[string]string{
+	root := memoryGateRepo(t, "", map[string]string{
 		"handbook/plans/p.md": cite() + "\n",
 		"docs/plans/q.md":     dir + "other/memory.md\n",
 	})
@@ -199,7 +199,7 @@ func TestMemoryGateDispatch(t *testing.T) {
 func TestMemoryGateRefusesOutsideAGitRepo(t *testing.T) {
 	ctx := testContext(t)
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\n")
 	err := runMemoryGate(ctx, root, io.Discard)
 	if err == nil || !strings.Contains(err.Error(), "cannot read staged files") {
 		t.Fatalf("unconditional gate outside git: want a refusal naming the enumeration failure, got %v", err)

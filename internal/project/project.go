@@ -75,6 +75,7 @@ var minVersionBySchema = map[int]string{
 	36: "0.31.0",
 	37: "0.31.0",
 	38: "0.31.0",
+	39: "0.31.0",
 }
 
 // ValidateSchemaMinimumVersion confirms that version is new enough to render a
@@ -196,9 +197,6 @@ func (l *Loader) Open(ctx context.Context, root string) (*Project, error) {
 	if err := catalog.ValidateWorkflowProfiles(l.standard); err != nil {
 		return nil, err
 	}
-	if _, err := resolveTargets(cfg.Targets); err != nil {
-		return nil, err
-	}
 	targets, err := resolveTargets(KnownTargets())
 	if err != nil { // coverage-ignore: configured-target validation succeeded and KnownTargets is exhaustively backed by built-in descriptor tests
 		return nil, err
@@ -211,11 +209,7 @@ func (l *Loader) Open(ctx context.Context, root string) (*Project, error) {
 		standard: l.standard,
 		repo:     l.repo,
 	}
-	cat, err := p.effectiveCatalog()
-	if err != nil {
-		return nil, err
-	}
-	p.Cat = cat
+	p.Cat = l.standard
 	if err := p.validateAgainstCatalog(); err != nil {
 		return nil, err
 	}
@@ -358,16 +352,6 @@ func (p *Project) syncReportWith(ctx context.Context, seed *InitAuthority, opera
 			}
 		}
 	}
-	var localErr error
-	p.localReservations(op, func(path string, e error) {
-		if localErr == nil {
-			localErr = fmt.Errorf("local target %s: %w", path, e)
-		}
-	})
-	if localErr != nil {
-		return nil, nil, nil, localErr
-	}
-
 	// Prior lock, read before any write (top of this func): membership decides
 	// foreign (back up) vs awf-managed (overwrite silently), and drives pruning.
 	prior := map[string]bool{}
@@ -470,13 +454,6 @@ func (p *Project) syncReportWith(ctx context.Context, seed *InitAuthority, opera
 			RegenChecked: f.RegenChecked,
 		}
 		want[f.Path] = true
-	}
-	// Plan reservations are non-writing local artifacts. They remain wanted so a
-	// managed-to-local transition cannot be pruned.
-	for _, node := range op.Nodes {
-		if node.Reservation {
-			want[node.Path] = true
-		}
 	}
 	// Prune files from the previous lock that are no longer produced, then remove
 	// every directory left empty - walking all ancestors deepest-first, not just the

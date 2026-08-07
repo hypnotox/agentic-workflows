@@ -10,12 +10,6 @@ Every target-declared bridge renders through the neutral `target-bridge` identit
 Origin: ADR-0214
 Backing: test
 
-### `invariant: inert-sidecar-field-rejected`
-
-Every gated command fails at project open when a non-domain sidecar carries a non-empty paths field, or a domain sidecar carries any non-paths field such as data, sections, or local, with a message naming the file and the required edit.
-Origin: ADR-0086
-Backing: test
-
 ### `invariant: kind-dispatch-single-table`
 
 Every per-kind facet - the catalog collection, declared sections, output path, singular and plural labels, and freeform-domain membership - is defined once in the single ordered kind-descriptor table in the project package, and cmd/awf decides no kind fact outside the table's exported accessors; a test asserts the table's kind set equals the catalog's kinds plus the freeform domains kind, and a source-scanning test over the cmd/awf sources asserts no kind-name equality or switch-case comparison remains there.
@@ -33,15 +27,22 @@ Backing: test
 
 ### `invariant: output-plan-complete`
 
-The deterministic output plan contains every catalog artifact, local artifacts, bridge files, generated documentation, reservations, and exactly two resident-root self-ignoring outputs: efforts and worktrees. Its conditional config-tree units share their declaration facts with render dispatch. Resident dynamic descendants are not plan nodes and resolve at the primary root while tracked authority remains invoking-checkout authority.
+The deterministic output plan contains every catalog artifact, bridge files, generated documentation, reservations, and exactly two resident-root self-ignoring outputs: efforts and worktrees. Its conditional config-tree units share their declaration facts with render dispatch. Resident dynamic descendants are not plan nodes and resolve at the primary root while tracked authority remains invoking-checkout authority.
 Origin: ADR-0124
 Revised-by: ADR-0164, ADR-0167, ADR-0175, ADR-0235, ADR-house-standard-configuration-expresses-repo-facts-only
 Backing: test
 
 ### `invariant: full-catalog-render`
 
-Absent a local reservation, every output plan includes every catalog skill, agent, and document without consulting a config-derived enable selection, requirement closure, or per-document suppression; during this schema-compatible intermediate, a local sidecar may still reserve its conventional path and suppress that catalog entry.
+Every output plan includes every catalog skill, agent, and document without consulting a config-derived enable selection, requirement closure, per-document suppression, or local reservation.
 Origin: ADR-house-standard-configuration-expresses-repo-facts-only
+Backing: test
+
+### `invariant: inert-sidecar-field-rejected`
+
+A skill, agent, document, or singleton sidecar rejects paths, and a domain sidecar rejects data, dataDefaults, and sections, so no accepted sidecar field is inert for its artifact kind.
+Origin: ADR-0086
+Revised-by: ADR-house-standard-configuration-expresses-repo-facts-only
 Backing: test
 
 ### `invariant: check-report-single-plan`

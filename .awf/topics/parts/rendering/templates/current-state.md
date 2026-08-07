@@ -40,18 +40,6 @@ Every standard catalog skill has a per-artifact Test<Skill>Template function and
 Origin: ADR-0080
 Backing: test
 
-### `invariant: local-base-publication-safe`
-
-The base skill and agent templates render leak-free, with no <no value> and no marker or leak residue, under empty data and no content part.
-Origin: ADR-0068
-Backing: test
-
-### `invariant: local-doc-base-publication-safe`
-
-The base doc template renders leak-free under empty data and no content part, producing generic prose with no unresolved-value token, section marker, or leak residue.
-Origin: ADR-0091
-Backing: test
-
 ### `invariant: template-source-residue`
 
 Every file in the embedded templates tree is free of concrete ADR citations (the token ADR- followed by four digits) and free of the repo-identity literals hypnotox and agentic-workflows, except in an explicit exemption list whose each entry fails when its named file no longer carries the literal.

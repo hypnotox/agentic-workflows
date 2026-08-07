@@ -14,7 +14,6 @@ func TestOutcomeOwnsCompleteInitializationPresentation(t *testing.T) {
 		ConfigPath:     ".awf/config.yaml",
 		ExistingConfig: true,
 		IgnoredAnswers: true,
-		Added:          []string{"skill exploring"},
 		Sync:           presentation.Mutation{Notes: []presentation.Value{syncNote}, NextActions: []presentation.Value{syncAction}},
 		Advisories:     []string{"advisory"},
 		NextActions:    []string{"commit changes"},
@@ -26,7 +25,7 @@ func TestOutcomeOwnsCompleteInitializationPresentation(t *testing.T) {
 	if err := presentation.Render(&out, document); err != nil {
 		t.Fatal(err)
 	}
-	const want = "status: initialization completed\n\nmutation:\n  identity:\n    config: .awf/config.yaml\n    config action: kept and re-rendered\n  changes:\n    enabled dependencies:\n      skill exploring\n  notes:\n    sync note\n    --set/--answers values were ignored; edit .awf/config.yaml instead\n    advisory\n  next actions:\n    step 1: continue\n    step 2: commit changes\n"
+	const want = "status: initialization completed\n\nmutation:\n  identity:\n    config: .awf/config.yaml\n    config action: kept and re-rendered\n  notes:\n    sync note\n    --set/--answers values were ignored; edit .awf/config.yaml instead\n    advisory\n  next actions:\n    step 1: continue\n    step 2: commit changes\n"
 	if out.String() != want {
 		t.Fatalf("outcome = %q, want %q", out.String(), want)
 	}
@@ -38,7 +37,6 @@ func TestOutcomeRejectsInvalidOwnedValues(t *testing.T) {
 		outcome Outcome
 	}{
 		{name: "config path", outcome: Outcome{ConfigPath: "bad\npath"}},
-		{name: "dependency", outcome: Outcome{ConfigPath: "config", Added: []string{" \n\t"}}},
 		{name: "advisory", outcome: Outcome{ConfigPath: "config", Advisories: []string{" \n\t"}}},
 		{name: "next action", outcome: Outcome{ConfigPath: "config", NextActions: []string{" \n\t"}}},
 	} {

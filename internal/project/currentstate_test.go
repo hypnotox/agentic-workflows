@@ -174,10 +174,6 @@ func TestCurrentStateReportRouting(t *testing.T) {
 // in this direction has no pattern to fall out of sync.
 const csNoPolicyYAML = `prefix: example
 integrationBranch: main
-skills:
-  - tdd
-agents:
-  - code-reviewer
 domains:
   - alpha
 contextIgnore:
@@ -277,7 +273,7 @@ func TestCheckCurrentState(t *testing.T) {
 // invariant: rendering/sync-and-drift:coverage-evaluation-unconditional (TestCheckCurrentStateNoPolicy)
 // invariant: config/configuration:severity-not-configurable (TestCheckCurrentStateNoPolicy)
 func TestCheckCurrentStateNoPolicy(t *testing.T) {
-	cfg := "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: [code-reviewer]\ndomains: [alpha]\n"
+	cfg := "prefix: example\nintegrationBranch: main\ndomains: [alpha]\n"
 	files := map[string]string{
 		".awf/domains/alpha.yaml": "paths:\n  - internal/**\n",
 		"internal/bar.go":         "package internalx\n",
@@ -318,7 +314,7 @@ func TestCheckStagedRootOutsideRepo(t *testing.T) {
 }
 
 func TestCheckCurrentStateOutsideRepo(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: [code-reviewer]\n", nil)
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", nil)
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -329,7 +325,7 @@ func TestCheckCurrentStateOutsideRepo(t *testing.T) {
 }
 
 func TestCheckCurrentStateNoInvariantClaims(t *testing.T) {
-	p := csRepo(t, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: [code-reviewer]\n", map[string]string{})
+	p := csRepo(t, "prefix: example\nintegrationBranch: main\n", map[string]string{})
 	report, err := p.CheckCurrentState(testContext(t))
 	if err != nil {
 		t.Fatalf("current-state check with no invariant claims: %v", err)

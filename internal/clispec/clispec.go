@@ -170,15 +170,15 @@ func helpItems(label string, items []HelpItem) (presentation.RecordGroup, error)
 // touches-state: tooling/cli:cli-command-spec-single-source - sole command-table source; proofs in clispec_test.go and readme_test.go
 var Commands = []Command{
 	{
-		Name: "init", Summary: "Scaffold .awf/ and render the workflow-core set",
+		Name: "init", Summary: "Scaffold .awf/ and render the full catalog",
 		BoolFlags: []string{"--force", "--describe"}, ValueFlags: []string{"--set", "--answers"},
 		Repeatable: []string{"--set"}, MaxPos: 0, Gating: Ungated,
-		Help: Help{Usage: []string{"awf init [flags]"}, Description: "Scaffold a .awf/ config tree and render the workflow-core set into the project.", Options: []HelpItem{{Name: "--force", Description: "overwrite colliding files, backing each up to <path>.awf-bak"}, {Name: "--describe", Description: "print the fillable value descriptors as JSON and exit"}, {Name: "--set", Description: "k=v      set a value non-interactively (repeatable)"}, {Name: "--answers", Description: "FILE read values from a JSON/YAML answers file: a flat key→value map of descriptor keys (see --describe); multiselect answers (skills, docs) are comma-joined name lists"}}},
+		Help: Help{Usage: []string{"awf init [flags]"}, Description: "Scaffold a .awf/ config tree and render the full catalog into the project.", Options: []HelpItem{{Name: "--force", Description: "overwrite colliding files, backing each up to <path>.awf-bak"}, {Name: "--describe", Description: "print the fillable value descriptors as JSON and exit"}, {Name: "--set", Description: "k=v      set a value non-interactively (repeatable)"}, {Name: "--answers", Description: "FILE read values from a JSON/YAML answers file: a flat key→value map of descriptor keys (see --describe)"}}},
 	},
 	{
 		Name: "render", Summary: "Re-render after a template or config change",
 		MaxPos: 0, Gating: Gated,
-		Help: Help{Usage: []string{"awf render"}, Description: "Re-render every enabled target after a template or config change and update .awf/awf.lock."},
+		Help: Help{Usage: []string{"awf render"}, Description: "Re-render both targets after a template or config change and update .awf/awf.lock."},
 	},
 	{
 		Name: "check", Summary: "Verify the repository and staged universes",
@@ -280,14 +280,14 @@ var Commands = []Command{
 		},
 	},
 	{
-		Name: "list", Summary: "Show targets and their per-project state (all kinds, or one)",
+		Name: "list", Summary: "Show the catalog and configured domain inventory",
 		MaxPos: 1, Gating: Gated,
-		Help: Help{Usage: []string{"awf list [<kind>]"}, Description: "Show targets and their per-project enabled state, for all kinds or one (skill|agent|doc|domain|target|bootstrap).", Positionals: []HelpItem{{Name: "<kind>", Description: "artifact kind"}}},
+		Help: Help{Usage: []string{"awf list [<kind>]"}, Description: "Show catalog artifacts and configured domains without selection state.", Positionals: []HelpItem{{Name: "<kind>", Description: "artifact kind"}}},
 	},
 	{
 		Name: "config", Summary: "Describe config keys and vars (live state inside a project)",
 		MaxPos: 1, Gating: GatedInHandler,
-		Help: Help{Usage: []string{"awf config [<key-or-var>]"}, Description: "Print the configuration reference: every config key, var, sidecar field, and", Details: []string{"data key with descriptions, defaults, and availability. Inside an awf project", "the output adds live state (current values; which enabled artifacts consume", "each var; dormant hints). Outside one, a static catalog-wide reference prints.", "With an argument, print just that entry (a config key path like", "audit.allowedScopes, a var name like gateCmd, a sidecar field like", "sidecar.local, or a data key name)."}, Positionals: []HelpItem{{Name: "<key-or-var>", Description: "config key, var, sidecar field, or data key"}}},
+		Help: Help{Usage: []string{"awf config [<key-or-var>]"}, Description: "Print the configuration reference: every config key, var, sidecar field, and", Details: []string{"data key with descriptions, defaults, and availability. Inside an awf project", "the output adds live state (current values and which catalog artifacts consume", "each var). Outside one, a static catalog-wide reference prints.", "With an argument, print just that entry (a config key path like", "audit.allowedScopes, a var name like gateCmd, a sidecar field like", "sidecar.dataDefaults, or a data key name)."}, Positionals: []HelpItem{{Name: "<key-or-var>", Description: "config key, var, sidecar field, or data key"}}},
 	},
 	{
 		Name: "context", Summary: "Orient by request with compact current-state impact reports",
@@ -300,11 +300,11 @@ var Commands = []Command{
 		Help: Help{Usage: []string{"awf topic <domain>/<topic>[:<claim>] [flags]"}, Description: "Query one current-state topic or claim, active by default. Default output includes", Details: []string{"title and summary for a topic plus claim types, prose, and backing state. Detail", "flags are independent and direct-only. A removed claim identity resolves only", "with --history and returns operation history without an active tombstone. Outside", "an awf project, a static command reference prints without version gating."}, Positionals: []HelpItem{{Name: "<domain>/<topic>[:<claim>]", Description: "current-state topic or claim identifier"}}, Options: []HelpItem{{Name: "--history", Description: "add direct Origin, Revised-by, and Removed-by ADR details"}, {Name: "--references", Description: "add sorted direct incoming and outgoing claim IDs"}, {Name: "--coverage", Description: "add separate domain/topic scopes, current matches, and marker sites"}}},
 	},
 	{
-		Name: "new", Summary: "Scaffold a new artifact: kind ∈ {adr, plan, topic, skill, agent, doc}",
+		Name: "new", Summary: "Scaffold a new artifact: kind ∈ {adr, plan, topic, domain}",
 		MaxPos: -1, Gating: GatedInHandler,
 		Help: Help{
 			Usage:       []string{"awf new <kind> <args>"},
-			Description: "Scaffold a new artifact. The kind is adr, plan, topic, skill, agent, or doc.",
+			Description: "Scaffold a new artifact. The kind is adr, plan, topic, or domain.",
 			Positionals: []HelpItem{
 				{Name: "<kind>", Description: "artifact kind"},
 				{Name: "<args>", Description: "arguments required by the selected kind"},
@@ -313,9 +313,7 @@ var Commands = []Command{
 				"awf new adr \"Some Decision Title\"",
 				"awf new plan \"Some Plan Title\"",
 				"awf new topic <domain> \"Some Topic Title\"",
-				"awf new skill <name> \"<description>\" (a project-local skill)",
-				"awf new agent <name> \"<description>\" (a project-local agent)",
-				"awf new doc <name> \"<description>\" (a project-local doc; name may be nested, for example guides/ci)",
+				"awf new domain <name>",
 			},
 			Related: []string{"awf adr number"},
 		},
@@ -333,28 +331,17 @@ var Commands = []Command{
 				Help: Help{Usage: []string{"awf new topic <domain> <title>..."}, Description: "Scaffold paired topic metadata and authored current-state inputs without syncing.", Details: []string{"Edit the path placeholder and author reviewed claims manually."}, Positionals: []HelpItem{{Name: "<domain>", Description: "current-state domain identifier"}, {Name: "<title>", Description: "human-readable artifact title"}}},
 			},
 			{
-				Name: "skill", Summary: "Scaffold a project-local skill", MinPos: 2, MaxPos: -1,
-				Help: Help{Usage: []string{"awf new skill <name> <description>..."}, Description: "Scaffold a project-local skill: a declaring sidecar carrying the description, a", Details: []string{"starter content part, the enable, and a re-render."}, Positionals: []HelpItem{{Name: "<name>", Description: "artifact name"}, {Name: "<description>", Description: "artifact description"}}},
-			},
-			{
-				Name: "agent", Summary: "Scaffold a project-local agent", MinPos: 2, MaxPos: -1,
-				Help: Help{Usage: []string{"awf new agent <name> <description>..."}, Description: "Scaffold a project-local agent: a declaring sidecar carrying the description, a", Details: []string{"starter content part, the enable, and a re-render."}, Positionals: []HelpItem{{Name: "<name>", Description: "artifact name"}, {Name: "<description>", Description: "artifact description"}}},
-			},
-			{
-				Name: "doc", Summary: "Scaffold a project-local doc", MinPos: 2, MaxPos: -1,
-				Help: Help{Usage: []string{"awf new doc <name> <description>..."}, Description: "Scaffold a project-local doc; the name may be nested, e.g. guides/ci. Writes a", Details: []string{"declaring sidecar with a derived title and the description, a starter content", "part, the enable, and a re-render."}, Positionals: []HelpItem{{Name: "<name>", Description: "artifact name"}, {Name: "<description>", Description: "artifact description"}}},
+				Name: "domain", Summary: "Create a configured domain", MinPos: 1, MaxPos: 1,
+				Help: Help{Usage: []string{"awf new domain <name>"}, Description: "Add a domain and scaffold its current-state convention part."},
 			},
 		},
 	},
 	{
-		Name: "enable", Summary: "Enable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap}",
-		BoolFlags: []string{"--dry-run"}, MinPos: 1, MaxPos: 2, Gating: Gated,
-		Help: Help{Usage: []string{"awf enable <kind> [<name>] [--dry-run]"}, Description: "Enable an artifact in this project. <kind> is skill, agent, doc, domain, target,", Details: []string{"or bootstrap. Bootstrap takes no name. For skill/agent/doc, the full requirement closure", "is enabled in one edit, printed as a plan (ADR-0081)."}, Positionals: []HelpItem{{Name: "<kind>", Description: "artifact kind"}, {Name: "<name>", Description: "artifact name"}}, Options: []HelpItem{{Name: "--dry-run", Description: "print the closure plan without changing the config"}}},
-	},
-	{
-		Name: "disable", Summary: "Disable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap}",
-		BoolFlags: []string{"--with-dependents", "--dry-run"}, MinPos: 1, MaxPos: 2, Gating: Gated,
-		Help: Help{Usage: []string{"awf disable <kind> [<name>] [--with-dependents] [--dry-run]"}, Description: "Disable an artifact: a catalog skill/agent/doc, a freeform domain, an adapter target, or the bootstrap.", Details: []string{"Bootstrap takes no name. For skill/agent/doc, disabling refuses while enabled artifacts", "still require <name>, printing the dependent plan (ADR-0081)."}, Positionals: []HelpItem{{Name: "<kind>", Description: "artifact kind"}, {Name: "<name>", Description: "artifact name"}}, Options: []HelpItem{{Name: "--with-dependents", Description: "also disable every enabled artifact that transitively requires <name>"}, {Name: "--dry-run", Description: "print the plan without changing the config"}}},
+		Name: "remove", Summary: "Remove a configured domain",
+		MaxPos: -1, Gating: GatedInHandler,
+		Help: Help{Usage: []string{"awf remove domain <name>"}, Description: "Remove a configured domain, prune its rendered output, and report authored files left orphaned."},
+		Children: []Command{{Name: "domain", Summary: "Remove a configured domain", MinPos: 1, MaxPos: 1,
+			Help: Help{Usage: []string{"awf remove domain <name>"}, Description: "Remove a configured domain."}}},
 	},
 	{
 		Name: "upgrade", Summary: "Migrate the .awf/ config tree or consume a current-state attestation",

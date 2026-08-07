@@ -25,7 +25,6 @@ func loadCatalog(t *testing.T) *catalog.Catalog {
 	return cat
 }
 
-// sortedKeys returns m's keys in deterministic order.
 func sortedKeys[V any](m map[string]V) []string {
 	ks := make([]string, 0, len(m))
 	for k := range m {
@@ -35,30 +34,11 @@ func sortedKeys[V any](m map[string]V) []string {
 	return ks
 }
 
-// writeList appends a "key:\n  - v\n" YAML block to b.
-func writeList(b *strings.Builder, key string, vals []string) {
-	b.WriteString(key + ":\n")
-	for _, v := range vals {
-		b.WriteString("  - " + v + "\n")
-	}
-}
-
-// fullCatalogConfig builds a .awf/config.yaml enabling every catalog skill,
-// agent, and doc - the deliberate inverse of the curated awf init default
-// (ADR-0022) - so the rendered set exercises every workflow-chain seam. The
-// enabled set is derived from the catalog (never hand-listed) so it cannot
-// silently rot as the catalog grows (ADR-0053).
-func fullCatalogConfigForTarget(cat *catalog.Catalog, target string) string {
-	var b strings.Builder
-	b.WriteString("prefix: " + evalPrefix + "\n")
-	b.WriteString("integrationBranch: main\nvars:\n  gateCmd: the project's gate\n")
-	b.WriteString("targets:\n  - " + target + "\n")
-	writeList(&b, "skills", sortedKeys(cat.Skills))
-	writeList(&b, "agents", sortedKeys(cat.Agents))
-	// Only toggleable docs go in the docs: enable array; Mandatory singletons
-	// render unconditionally and must not be listed (ADR-0061).
-	writeList(&b, "docs", catalog.NonMandatoryDocNames(cat))
-	return b.String()
+// fullCatalogConfigForTarget builds the fixed-target, full-catalog eval config.
+// The target argument remains at this test seam so callers can select which of
+// the two unconditionally rendered outputs they inspect.
+func fullCatalogConfigForTarget(_ *catalog.Catalog, _ string) string {
+	return "prefix: " + evalPrefix + "\nintegrationBranch: main\nvars:\n  gateCmd: the project's gate\n"
 }
 
 // syncFullCatalog scaffolds the full-catalog fixture for focused Claude evals.

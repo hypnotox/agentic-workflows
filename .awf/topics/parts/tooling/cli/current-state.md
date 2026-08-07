@@ -2,6 +2,18 @@ The cmd packages and their spec helpers implement the awf command surfaces and t
 
 ## Claims
 
+### `invariant: cli-creation-and-inventory`
+
+The CLI creates authored ADRs, plans, topics, and domains and lists fixed catalog inventory; no command selects catalog render membership.
+Origin: ADR-cli-grammar-expresses-creation-and-inventory
+Backing: test
+
+### `invariant: domain-lifecycle-commands`
+
+`awf new domain` validates and scaffolds a configured domain without clobbering authored parts; `awf remove domain` prunes rendered output and reports authored residue as orphaned.
+Origin: ADR-cli-grammar-expresses-creation-and-inventory
+Backing: test
+
 ### `invariant: adr-new-version-gated`
 
 awf new adr runs the binary-version compatibility gate before it reads or writes any project file.
@@ -20,12 +32,6 @@ Backing: test
 The awf help overview lists every group command's descendants at every depth beneath their parent with successively deeper indentation, so no command is reachable only by knowing to ask a parent for help.
 Origin: ADR-0159
 Revised-by: ADR-0210
-Backing: test
-
-### `invariant: cli-config-kinds`
-
-The enable and disable commands operate on exactly four kinds, skill, agent, doc, and domain, each mapping to its plural enable array in the config. The three catalog-backed kinds are validated against the catalog pool, while the freeform domain kind is validated through the config path-safety rule.
-Origin: ADR-0024
 Backing: test
 
 ### `invariant: completeness-advisory-nonfailing`
@@ -117,12 +123,6 @@ Backing: test
 
 The glossary terseness notes that `awf check` prints for over-long term meanings are informational only and never change the command's exit code.
 Origin: ADR-0207
-Backing: test
-
-### `invariant: target-cli`
-
-The add, remove, and list target commands mutate and read the config targets array against the known-adapter set without routing through the kind/catalog/parts/orphan machinery, and enabling a target renders its output tree.
-Origin: ADR-0037
 Backing: test
 
 ### `invariant: typed-command-output-boundary`

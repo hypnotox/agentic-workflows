@@ -28,8 +28,6 @@ import (
 const checkYAML = `prefix: example
 integrationBranch: main
 vars: {testCmd: go test ./..., gateCmd: make gate}
-skills: [tdd]
-agents: []
 `
 
 type mutatingWriter struct {
@@ -354,7 +352,7 @@ func TestRunCheckAheadNotice(t *testing.T) {
 // switches coverage on: ADR-0192 made coverage and fan-out evaluate whether or
 // not the config declares the block.
 func coverageYAML() string {
-	return "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\nskills: [tdd]\nagents: []\ndomains: [alpha]\n" +
+	return "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\ndomains: [alpha]\n" +
 		"currentState:\n"
 }
 
@@ -606,7 +604,7 @@ func TestCheckStagedCommandUsesIndexLockForGateAndAheadNote(t *testing.T) {
 		}
 		return string(b)
 	}
-	configText := "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n"
+	configText := "prefix: example\nintegrationBranch: main\n"
 
 	t.Run("working lock cannot fail staged gate or suppress staged ahead note", func(t *testing.T) {
 		root := stagedCheckProject(t, map[string]string{
@@ -659,7 +657,7 @@ func TestCheckStagedCommandUsesStagedProjectStateWhenWorkingConfigIsAbsent(t *te
 		}
 		return string(b)
 	}
-	configText := "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n"
+	configText := "prefix: example\nintegrationBranch: main\n"
 
 	t.Run("missing repository refuses", func(t *testing.T) {
 		t.Chdir(t.TempDir())
@@ -834,7 +832,7 @@ func TestRunCheckStagedError(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-	testsupport.WriteAwfConfig(t, dir, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n")
+	testsupport.WriteAwfConfig(t, dir, "prefix: example\nintegrationBranch: main\n")
 	lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
 	lockBytes, err := lock.Marshal()
 	if err != nil {

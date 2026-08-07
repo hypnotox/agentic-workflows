@@ -29,7 +29,6 @@ Pi rendering governs five TypeScript outputs. Context usage is observational and
 - [Doc outputs](../topics/rendering/doc-outputs.md): Generated documentation outputs: domain and topic docs, layout, pitfalls, stubs, skill references.
 - [Guide and doc templates](../topics/rendering/guide-and-doc-templates.md): Agent-guide and documentation template contracts.
 - [Inplace and placeholders](../topics/rendering/inplace-and-placeholders.md): In-place sections, authoring comments, part placeholders, and var and data hygiene.
-- [Local artifacts](../topics/rendering/local-artifacts.md): Local skill, agent, and doc declarations and their catalog and render semantics.
 - [Pi runtime](../topics/rendering/pi-runtime.md): The Pi runtime floor and its boundaries.
 - [Pi workflows](../topics/rendering/pi-workflows.md): Pi workflow contracts: subagent tools, session handoff, native skills, exploration dispatch.
 - [Project output plan](../topics/rendering/project-output-plan.md): How a project assembles its render set, output plan, drift check, and prune behaviour.

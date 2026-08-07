@@ -6,9 +6,9 @@ import (
 
 // deadSkillRefs renders the project and runs the dead-skill-reference scan
 // over the rendered set (INDEX.md/domain docs are irrelevant to these fixtures).
-func deadSkillRefs(t *testing.T, configYAML string, files map[string]string) []string {
+func deadSkillRefs(t *testing.T, files map[string]string) []string {
 	t.Helper()
-	p, err := Open(testContext(t), scaffoldFiles(t, configYAML, files))
+	p, err := Open(testContext(t), scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n", files))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +30,7 @@ func deadSkillRefs(t *testing.T, configYAML string, files map[string]string) []s
 // set fails check; enabling the skill clears it.
 func TestCatalogSkillReferenceIsNeverDead(t *testing.T) {
 	part := map[string]string{"parts/agents-doc/workflow.md": "Use `example-tdd` for test-first work.\n"}
-	if got := deadSkillRefs(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n", part); len(got) != 0 {
+	if got := deadSkillRefs(t, part); len(got) != 0 {
 		t.Fatalf("full catalog reference was flagged dead: %v", got)
 	}
 }
@@ -39,7 +39,7 @@ func TestCatalogSkillReferenceIsNeverDead(t *testing.T) {
 // fenced code blocks, produce no findings.
 // invariant: rendering/doc-outputs:skill-ref-unknown-ignored (TestSkillRefScannerIgnoresUnknownAndFenced)
 func TestSkillRefScannerIgnoresUnknownAndFenced(t *testing.T) {
-	got := deadSkillRefs(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n", map[string]string{
+	got := deadSkillRefs(t, map[string]string{
 		"parts/agents-doc/workflow.md": "This is example-specific prose about example-bootstrap.sh.\n\n```\nexample-tdd\n```\n",
 	})
 	if len(got) != 0 {
@@ -50,7 +50,7 @@ func TestSkillRefScannerIgnoresUnknownAndFenced(t *testing.T) {
 // Whole-token matching: a dead reference to reviewing-plan-resync is flagged
 // as the full token, never as a substring hit on reviewing-plan.
 func TestSkillRefScannerAcceptsCatalogToken(t *testing.T) {
-	got := deadSkillRefs(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n", map[string]string{"parts/agents-doc/workflow.md": "Resync via `example-reviewing-plan-resync`.\n"})
+	got := deadSkillRefs(t, map[string]string{"parts/agents-doc/workflow.md": "Resync via `example-reviewing-plan-resync`.\n"})
 	if len(got) != 0 {
 		t.Fatalf("full catalog token was flagged dead: %v", got)
 	}
@@ -60,7 +60,6 @@ func TestSkillRefScannerAcceptsCatalogToken(t *testing.T) {
 // in a larger word (nonexample-tdd) is not a reference.
 func TestSkillRefScannerRequiresLeftBoundary(t *testing.T) {
 	got := deadSkillRefs(t,
-		"prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n",
 		map[string]string{
 			"parts/agents-doc/workflow.md": "Prose about nonexample-tdd tooling.\n",
 		})
@@ -74,34 +73,25 @@ func TestSkillRefScannerRequiresLeftBoundary(t *testing.T) {
 // generic fallback prose (ADR-0045, ADR-0046).
 func TestTaskSkillsOnlyConfigHasNoDeadRefs(t *testing.T) {
 	got := deadSkillRefs(t,
-		"prefix: example\nintegrationBranch: main\nvars: {}\nskills: [tdd, bugfix, debugging, exploring, refactor-coupling-audit, roadmap-graduation]\ndocs: [roadmap]\nagents: [explorer]\n",
 		nil)
 	if len(got) != 0 {
 		t.Fatalf("expected no dead skill references, got %v", got)
 	}
 }
 
-// The effective set is exactly the enabled set (ADR-0081 amended ADR-0046's
-// semantics: enabled means rendered - the ADR-0013 doc-gate suppression is
-// gone), local-declared skills included. Dropping the doc post-Open no longer
-// changes membership; the invalid state is refused at Open instead.
+// invariant: rendering/project-output-plan:full-catalog-render (TestEffectiveSkillsMembership)
 func TestEffectiveSkillsMembership(t *testing.T) {
-	p, err := Open(testContext(t), scaffoldFiles(t,
-		"prefix: example\nintegrationBranch: main\nvars: {}\nskills: [tdd, roadmap-graduation, brainstorming]\ndocs: [roadmap]\nagents: []\n",
-		map[string]string{
-			"skills/brainstorming.yaml": "local: true\n",
-		}))
+	p, err := Open(testContext(t), scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	p.Cfg.Docs = nil
 	eff, err := p.effectiveSkills()
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"tdd", "roadmap-graduation", "brainstorming"} {
+	for name := range p.Cat.Skills {
 		if !eff[name] {
-			t.Errorf("enabled skill %q missing from effective set (effective = enabled)", name)
+			t.Errorf("catalog skill %q missing from effective set", name)
 		}
 	}
 }
