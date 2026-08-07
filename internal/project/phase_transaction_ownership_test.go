@@ -62,7 +62,7 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 		}
 		assertAll("writer",
 			"exactly one execution mode: `inline` or `subagent-driven`", "independently", "ordered steps",
-			"clean and green starting baseline", "exact commands and expected terminal states",
+			"change-specific starting dependency", "generic clean and green baseline protocol",
 			"one independently green coherent implementation transaction", "exhaustively assigns every affected site to the parent or exactly one helper",
 			"path-disjoint", "shared files parent-owned", "mutating commands confined", "dead-code escape")
 		assertAll("reviewer",
@@ -85,22 +85,28 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 			"never transfer commit, review, checkpoint, handoff, helper, or outcome authority", "projection changes neither ownership nor checkpoint boundaries",
 			"one implementation child alone", "state commit-capable phase-owner mode in the brief", "complete phase",
 			"stages the complete transaction", "declared phase-closing commit", "awf check staged", gatePhrase,
-			"inventory the completed child report for deviations", "supply that report verbatim to report-only phase review",
+			"exact phase-closing commit", "complete phase scope", "verification results", "verbatim deviation report",
+			"correctness, plan/authority, documentation, and maintainability lenses", "structured coverage summary",
+			"reviewed scope and range", "freshness against the current branch tip", "any unreviewed settlement",
+			"parent owns this transient evidence", "Evidence loss after context loss, session replacement, or effort-free continuation", "unverifiable freshness", "falls back to ordinary terminal review",
+			"Divergence, changed authority, reasoned post-review fixes, or any material mutation invalidates affected coverage",
 			"When deviations or findings exist", "focused post-review settlement commit", "plan Notes reconciliation",
 			"before checkpointing or later execution", "never rewrites the child phase-closing commit",
 			"no-deviation, no-finding phase needs no empty settlement commit", "focused settlement commits",
-			"checkpoints only after findings resolve", "**Routine checkpoint.**", "parent completion",
+			"**Routine checkpoint.**", "parent completion",
 			"redispatch the complete revised phase", "stop for user input", "dirty-state inventory",
-			"recovery verification", "blind successor instruction")
+			"recovery verification", "blind successor instruction",
+			"single phase reviews unreviewed settlement or integration", "multiple phases focus cross-phase composition, settlements, and integration",
+			"awf audit", "./x audit-local", "complete final range", "including settlement commits")
 		assertAll("readme",
 			"exactly one execution mode: `inline` or `subagent-driven`", "one independently green coherent implementation transaction", "ordered steps",
-			"clean and green starting baseline", "exact commands and expected terminal states",
+			"change-specific dependencies", "generic baseline protocol",
 			"parent or exactly one helper", "path-disjoint", "shared files parent-owned",
 			"mutating commands confined to the assigned subset")
 		assertAll("template",
 			"format: plan-v2", "**Execution mode: inline.**", "Completes: [\"plan-outcome\"]", "### Task 1.1:",
-			"### Phase close", "Stage the complete transaction", "one closing commit",
-			"awf check staged", "```commit", "## Definition of done")
+			"### Phase close", "Name the one closing commit", "Generic staging, gate, clean-tree, checkpoint, routing, and reviewer protocol belongs to workflow owners",
+			"```commit", "## Definition of done")
 
 		for _, name := range []string{"inline", "subagent"} {
 			body := surfaces[name]
@@ -115,8 +121,10 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 		}
 		subagent := surfaces["subagent"]
 		assertOrderedPhrases(t, subagent,
-			"inventory the completed child report for deviations",
-			"supply that report verbatim to report-only phase review",
+			"inventory the completed child report",
+			"build the phase-review brief",
+			"Dispatch one report-only phase review",
+			"structured coverage summary",
 			"focused post-review settlement commit",
 			"plan Notes reconciliation",
 			"before checkpointing or later execution",
@@ -126,9 +134,11 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 			t.Errorf("%s/subagent renders %d child phase-closing commit declarations, want one", variant, got)
 		}
 		phase := surfaces["template"]
-		assertOrderedPhrases(t, phase, "Task 1.1", "Phase close", "Stage the complete transaction", "awf check staged", gatePhrase, "```commit", "Definition of done")
-		if got := strings.Count(phase, "awf check staged"); got != 1 {
-			t.Errorf("%s representative phase has %d staged-check boundaries, want one", variant, got)
+		assertOrderedPhrases(t, phase, "Task 1.1", "Phase close", "Name the one closing commit", "Generic staging", "```commit", "Definition of done")
+		for _, duplicated := range []string{"awf check staged", gatePhrase, "Stage the complete transaction"} {
+			if strings.Contains(phase, duplicated) {
+				t.Errorf("%s representative phase duplicates generic protocol %q", variant, duplicated)
+			}
 		}
 		if got := strings.Count(phase, "```commit"); got != 1 {
 			t.Errorf("%s representative multi-task phase has %d closing commit blocks, want one", variant, got)
@@ -137,4 +147,65 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 
 	assertContract("configured", renderSurfaces(configured), "./x gate")
 	assertContract("empty", renderSurfaces(empty), "the project's gate")
+}
+
+func TestFreshPhaseAssuranceReuseContract(t *testing.T) {
+	variants := map[string]map[string]any{
+		"configured": {
+			"prefix": "example", "vars": map[string]any{"gateCmd": "./x gate"},
+			"layout": testLayout(), "data": catalog.Standard.Agents["code-reviewer"].Data,
+			"skills": map[string]bool{}, "targetSubagentTools": true,
+		},
+		"empty": {
+			"prefix": "example", "vars": map[string]any{}, "layout": testLayout(),
+			"data": map[string]any{}, "skills": map[string]bool{},
+		},
+	}
+	for variant, data := range variants {
+		surfaces := map[string]string{
+			"inline executor":    renderSkillGolden(t, "executing-plans", data),
+			"delegated executor": renderSkillGolden(t, "subagent-driven-development", data),
+			"terminal assurance": renderSkillGolden(t, "reviewing-impl", data),
+			"implementer":        renderAgentGolden(t, "implementer", data),
+			"code reviewer":      renderAgentGolden(t, "code-reviewer", data),
+		}
+		for name, body := range surfaces {
+			if strings.TrimSpace(body) == "" || strings.Contains(body, "<no value>") {
+				t.Errorf("%s/%s is empty or leaks missing data", variant, name)
+			}
+		}
+		for _, name := range []string{"inline executor", "delegated executor", "code reviewer"} {
+			body := surfaces[name]
+			for _, want := range []string{
+				"exact phase-closing commit", "complete", "phase scope", "reviewed", "range",
+				"verification results", "verbatim deviation report", "freshness", "branch tip", "unreviewed settlement",
+			} {
+				if !strings.Contains(strings.ToLower(body), strings.ToLower(want)) {
+					t.Errorf("%s/%s missing structured phase evidence %q", variant, name, want)
+				}
+			}
+		}
+		for _, name := range []string{"inline executor", "delegated executor", "terminal assurance"} {
+			body := surfaces[name]
+			for _, want := range []string{"Evidence loss", "unverifiable freshness", "ordinary terminal review", "Divergence", "changed authority", "reasoned post-review fixes", "material mutation", "invalidates affected coverage"} {
+				if !strings.Contains(body, want) {
+					t.Errorf("%s/%s missing fallback or invalidation clause %q", variant, name, want)
+				}
+			}
+		}
+		for _, name := range []string{"inline executor", "delegated executor", "terminal assurance"} {
+			body := surfaces[name]
+			for _, want := range []string{"single phase", "unreviewed settlement", "multiple phases", "cross-phase", "settlement", "integration", "awf audit", "./x audit-local", "complete final", "including settlement commits"} {
+				if !strings.Contains(body, want) {
+					t.Errorf("%s/%s missing reuse or audit clause %q", variant, name, want)
+				}
+			}
+		}
+		if !strings.Contains(surfaces["implementer"], "complete phase scope performed and every changed path") {
+			t.Errorf("%s implementer lacks structured completed scope", variant)
+		}
+		if strings.Contains(surfaces["code reviewer"], "apply fixes") {
+			t.Errorf("%s code reviewer ceased to be report-only", variant)
+		}
+	}
 }

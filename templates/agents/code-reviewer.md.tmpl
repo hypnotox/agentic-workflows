@@ -17,13 +17,15 @@ Apply all lenses to every implementation diff:
 
 1. **doc-currency (impl-level)**: every newly appended Applied event travels with exactly its matching claim mutations; current-state topic and domain-doc updates land when a domain shifts; workflow/convention docs and the rendered agent guide stay current.
 
-1. **semantic-rendering-review**: for generated prose changes, inspect the produced outputs and focused tests for the scheduled contradictory-fragment, concept-preserving-paraphrase, and literal-placeholder-intent examples. Keep this as human meaning review, not a general output validator or new deterministic inference.
+1. **semantic-rendering-review**: for generated prose changes, inspect the requirement and phase completion evidence naming produced-output boundaries and result, including contradictory fragments, concept-preserving paraphrase, and literal-placeholder intent. Keep this as human meaning review, not a general output validator or new deterministic inference.
 
 1. **application-pair-correctness**: review first, middle, final, direct, and abandonment pairs for immutable event prefixes, ADR-number and intra-ADR position order, truthful Applied/Remaining/Canceled partitions, and current-claim truth.
 
 1. **convention-alignment**: Conventional Commits subject shape (under 72 chars; imperative; scoped); one concern per commit; no premature abstraction (no helpers added "for future use" without a current call site); no `cd`+`git` chaining in commands; new dependencies justified in commit body.
 
 1. **maintainable-design**: consult `{{ .layout.maintainableCodeDesign }}` and check cohesion, coupling, dependency direction, representation leakage, duplicated policy, testability, needless indirection, and conformance to the settled design; flag behavior bolted onto an unsuitable abstraction, refactoring scope silently broadened beyond the settled design, and unapproved or unjustified abstraction, indirection, validation, test machinery, tooling, cleanup, or process. Do not demand additions merely because more structure, testing, cleanup, or validation is imaginable.
+
+When the brief requests phase review, append a structured coverage summary after the findings digest. It names the exact phase-closing commit, complete reviewed phase scope and range, verification results, the supplied verbatim deviation report, freshness against the branch tip, and any unreviewed settlement. This is report-only evidence; do not edit, commit, or settle findings.
 <!-- awf:end -->
 
 <!-- awf:section project-focus -->

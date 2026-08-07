@@ -25,11 +25,11 @@ Completes: ["plan-outcome"]
 
 ### Task 1.1: <what>
 
-Supply qualifying implementation-ready instructions. Add nonempty JSON `Applying` or `Context` arrays only when an ADR applies; each reference has inert form `<adr-number-or-retained-slug>:<decision-slug-or-#N>`. Immediately below a task heading, the recognized fields are `Kind`, `Latitude`, `Question`, `Applying`, `Context`, `Paths`, `Representative`, `Edge`, and `Post-check`. `Applying` and `Context` require nonempty JSON string arrays and are omitted rather than written as `[]`. Use `Latitude: exact` for a contract-bearing task; `Kind: spike` requires `Question`, no body, and an answer in Notes; `Kind: batch` requires JSON-array `Paths`, `Representative`, `Edge`, and `Post-check`; ambiguous scope requires `Paths`; and any batch, glob, or pathspec scope requires `Post-check`. Omit fields whose contracts do not apply.
+State the change-specific observable outcome, relevant authority links, material boundary, ordering dependency, focused evidence, and any necessary confinement. Add nonempty JSON `Applying` or `Context` arrays only when an ADR applies; each reference has inert form `<adr-number-or-retained-slug>:<decision-slug-or-#N>`. Immediately below a task heading, the recognized fields are `Kind`, `Latitude`, `Question`, `Applying`, `Context`, `Paths`, `Representative`, `Edge`, and `Post-check`. `Applying` and `Context` require nonempty JSON string arrays and are omitted rather than written as `[]`. `Latitude`, `Kind: batch`, `Representative`, and `Edge` are optional aids; `Kind: spike` requires `Question`, no body, and an answer in Notes; ambiguous scope requires `Paths`; and any batch, glob, or pathspec scope requires deterministic `Post-check`. A commit-capable owner may resolve authority-determined local symbols, helper structure, tests, and necessary omitted paths within approved boundaries; helpers remain confined. Omit fields whose contracts do not apply.
 
 ### Phase close
 
-Stage the complete transaction and create its one closing commit after `awf check staged` and `./x gate` pass.
+Name the one closing commit. Generic staging, gate, clean-tree, checkpoint, routing, and reviewer protocol belongs to workflow owners.
 
 ```commit
 feat(scope): describe phase outcome

@@ -104,7 +104,7 @@ func TestEndToEndGolden(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plans-readme not rendered: %v", err)
 	}
-	if !strings.Contains(string(plansReadme), "Implementation Plans") || !strings.Contains(string(plansReadme), "implementation directives") {
+	if !strings.Contains(string(plansReadme), "Implementation Plans") || !strings.Contains(string(plansReadme), "change-specific execution record") {
 		t.Errorf("plans-readme not interpolated:\n%s", plansReadme)
 	}
 

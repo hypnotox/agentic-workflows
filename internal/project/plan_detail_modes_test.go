@@ -15,6 +15,7 @@ type planPolicySurface struct {
 }
 
 // invariant: rendering/workflow-skill-templates:plan-task-detail-modes (TestPlanTaskDetailModesStayAligned)
+// invariant: rendering/workflow-skill-templates:plan-review-before-first-commit (TestPlanTaskDetailModesStayAligned)
 func TestPlanTaskDetailModesStayAligned(t *testing.T) {
 	defaultWriter := renderSkillGolden(t, "writing-plans", map[string]any{
 		"prefix": "example",
@@ -67,14 +68,25 @@ func TestPlanTaskDetailModesStayAligned(t *testing.T) {
 }
 
 var planTaskDetailContractClauses = []string{
-	"qualifying implementation-ready instructions are the default",
-	"require `latitude: exact` for machine-consumed configuration and manifests, contract-bearing declarations, fixtures, golden output, commands, mechanical replacements, required literal prose, and batch representative and edge transformations",
-	"permit it voluntarily elsewhere",
+	"change-specific",
+	"observable outcome",
+	"authority link",
+	"material boundar",
+	"ordering dependen",
+	"focused evidence",
+	"confinement where ambiguity or helpers require",
+	"commit-capable owner",
+	"authority-determined local",
+	"helper",
+	"confined",
+	"`latitude",
+	"optional aid",
 	"directly beneath the task declaration and before prose",
 	"the vocabulary is `kind: spike`, `kind: batch`, `latitude: exact`, `question:`, `applying:`, `context:`, `paths:`, `representative:`, `edge:`, and `post-check:`",
 	"`applying:` and `context:` carry nonempty json string arrays and are omitted rather than written as `[]`",
 	"a `kind: spike` task is question-only, carries `question:`, has no implementation body, records its answer in notes, cannot own a phase, and sequences dependent work into a later phase",
-	"a `kind: batch` task carries `paths:`, `representative:`, `edge:`, and `post-check:`",
+	"`representative:` and `edge:`",
+	"deterministic `post-check:`",
 	"`paths:` is required whenever affected scope is ambiguous, including an ambiguous non-batch task; every batch is necessarily ambiguous",
 	"`post-check:` is required for every batch and whenever `paths:` contains a `glob:` or `pathspec:` entry",
 	"conditional and optional tasks are forbidden",
@@ -138,14 +150,13 @@ func assertPlanTaskDetailContract(t *testing.T, surface planPolicySurface) {
 }
 
 var planScaffoldDetailContractClauses = []string{
-	"supply qualifying implementation-ready instructions",
+	"state the change-specific observable outcome, relevant authority links, material boundary, ordering dependency, focused evidence, and any necessary confinement",
 	"recognized fields are `kind`, `latitude`, `question`, `applying`, `context`, `paths`, `representative`, `edge`, and `post-check`",
 	"`applying` and `context` require nonempty json string arrays and are omitted rather than written as `[]`",
-	"use `latitude: exact` for a contract-bearing task",
+	"`latitude`, `kind: batch`, `representative`, and `edge` are optional aids",
 	"`kind: spike` requires `question`, no body, and an answer in notes",
-	"`kind: batch` requires json-array `paths`, `representative`, `edge`, and `post-check`",
+	"any batch, glob, or pathspec scope requires deterministic `post-check`",
 	"ambiguous scope requires `paths`",
-	"any batch, glob, or pathspec scope requires `post-check`",
 	"omit fields whose contracts do not apply",
 }
 
@@ -206,14 +217,13 @@ func TestPlanTaskDetailContractRejectsInversions(t *testing.T) {
 	for _, mutation := range []struct {
 		name, from, to string
 	}{
-		{"qualifying instructions removed", "Supply qualifying implementation-ready instructions", "Supply exact instructions"},
+		{"change-specific outcome removed", "State the change-specific observable outcome", "State an implementation summary"},
 		{"field vocabulary narrowed", "recognized fields are `Kind`, `Latitude`, `Question`, `Applying`, `Context`, `Paths`, `Representative`, `Edge`, and `Post-check`", "recognized fields are `Kind` and `Latitude`"},
 		{"empty decision arrays allowed", "`Applying` and `Context` require nonempty JSON string arrays and are omitted rather than written as `[]`", "`Applying` and `Context` may be empty JSON arrays"},
-		{"exactness optional", "Use `Latitude: exact` for a contract-bearing task", "Permit `Latitude: exact` for a contract-bearing task"},
+		{"optional aids made mandatory", "`Latitude`, `Kind: batch`, `Representative`, and `Edge` are optional aids", "`Latitude`, `Kind: batch`, `Representative`, and `Edge` are mandatory"},
 		{"spike body allowed", "`Kind: spike` requires `Question`, no body, and an answer in Notes", "`Kind: spike` permits a body"},
-		{"batch edge omitted", "`Kind: batch` requires JSON-array `Paths`, `Representative`, `Edge`, and `Post-check`", "`Kind: batch` requires JSON-array `Paths`"},
 		{"ambiguous paths optional", "ambiguous scope requires `Paths`", "ambiguous scope may omit `Paths`"},
-		{"post-check optional", "any batch, glob, or pathspec scope requires `Post-check`", "batch scopes may omit `Post-check`"},
+		{"post-check optional", "any batch, glob, or pathspec scope requires deterministic `Post-check`", "batch scopes may omit `Post-check`"},
 		{"inapplicable fields retained", "Omit fields whose contracts do not apply", "Retain every field"},
 	} {
 		t.Run(mutation.name, func(t *testing.T) {
@@ -225,6 +235,58 @@ func TestPlanTaskDetailContractRejectsInversions(t *testing.T) {
 				t.Fatalf("contract accepted semantic inversion %q", mutation.to)
 			}
 		})
+	}
+}
+
+// invariant: rendering/workflow-skill-templates:plan-review-before-first-commit (TestPlanReviewBeforeFirstCommit)
+func TestPlanReviewBeforeFirstCommit(t *testing.T) {
+	variants := map[string]map[string]any{
+		"configured": {
+			"prefix": "example", "vars": map[string]any{"gateCmd": "./x gate"},
+			"layout": testLayout(), "data": map[string]any{}, "skills": map[string]bool{},
+		},
+		"empty": {
+			"prefix": "example", "vars": map[string]any{}, "layout": testLayout(),
+			"data": map[string]any{}, "skills": map[string]bool{},
+		},
+	}
+	for variant, data := range variants {
+		writer := renderSkillGolden(t, "writing-plans", data)
+		reviewer := renderSkillGolden(t, "reviewing-plan", data)
+		for surface, body := range map[string]string{"writer": writer, "reviewer": reviewer} {
+			if strings.Contains(body, "<no value>") {
+				t.Errorf("%s/%s leaks empty render data", variant, surface)
+			}
+		}
+		assertOrderedPhrases(t, writer,
+			"Review the uncommitted draft",
+			"explicit plan path and selected working-tree snapshot before its first commit",
+			"mechanical corrections without a durable ledger",
+			"substantive reasoned or user-decided findings and dispositions in Notes",
+			"one settled initial",
+			"Later substantive corrections are separate commits",
+		)
+		if strings.Contains(writer, "Commit the plan as soon as it is written") {
+			t.Errorf("%s writer creates a pre-review plan commit", variant)
+		}
+		assertOrderedPhrases(t, reviewer,
+			"explicit uncommitted plan path and selected working-tree snapshot",
+			"review that snapshot rather than HEAD",
+			"mechanical fixes directly without a durable ledger",
+			"substantive reasoned or user-decided findings and dispositions in plan Notes",
+			"one initial plan commit",
+			"Later substantive corrections remain separate commits",
+			"every actual commit uses staged checks and the full gate",
+			"exactly one fresh `plan-reviewer` verify pass",
+		)
+		for _, reportOnly := range []string{"report-only judge", "Do not ask the reviewer to edit, commit, or re-review"} {
+			if !strings.Contains(reviewer, reportOnly) {
+				t.Errorf("%s reviewer missing report-only contract %q", variant, reportOnly)
+			}
+		}
+		if strings.Contains(reviewer, "most recently-modified") || strings.Contains(reviewer, "review fixes land as new commits on top of the committed plan") {
+			t.Errorf("%s reviewer retains committed-plan detection or correction choreography", variant)
+		}
 	}
 }
 

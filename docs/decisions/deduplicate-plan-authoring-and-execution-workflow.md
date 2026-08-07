@@ -175,3 +175,4 @@ otherwise reuse would be an assurance reduction rather than deduplication.
 - 2026-08-07: Proposed
 - 2026-08-07: Implementing; content-sha256: 053c394ffd48cb926a2a125babb491a46da7bc393e88b96871e39f2e2da6ff1e
 - 2026-08-07: Applied; operations: add `tooling/context-and-topic:adr-linked-plan-references`
+- 2026-08-07: Applied; operations: update `rendering/workflow-skill-templates:phase-transaction-ownership`, update `rendering/workflow-skill-templates:plan-task-detail-modes`, update `rendering/workflow-skill-templates:semantic-rendering-review`, add `rendering/workflow-skill-templates:plan-review-before-first-commit`

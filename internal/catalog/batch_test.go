@@ -5,10 +5,10 @@ import (
 	"testing"
 )
 
-// TestPlanReviewerStepExactnessSanctionsBatch pins the ADR-0095 refinement: the
-// plan-reviewer's step-exactness focus item must accept the batch task form, not
-// only exact diffs.
-func TestPlanReviewerStepExactnessSanctionsBatch(t *testing.T) {
+// TestPlanReviewerChangeSpecificExecutabilitySanctionsBatch pins the compact
+// contract: batch metadata is optional while ambiguous populations retain
+// deterministic scope and terminal-state evidence.
+func TestPlanReviewerChangeSpecificExecutabilitySanctionsBatch(t *testing.T) {
 	items, ok := Standard.Agents["plan-reviewer"].Data["focusItems"].([]any)
 	if !ok {
 		t.Fatalf("plan-reviewer focusItems missing or not []any")
@@ -19,18 +19,23 @@ func TestPlanReviewerStepExactnessSanctionsBatch(t *testing.T) {
 		if !ok {
 			continue
 		}
-		if m["name"] == "step-exactness" {
+		if m["name"] == "change-specific-executability" {
 			desc, _ = m["description"].(string)
 		}
 	}
-	for _, clause := range []string{"batch task", "inline or subagent-driven", "green transaction", "path-disjoint", "parent-owned shared files", "command-confined"} {
+	for _, clause := range []string{
+		"inline or subagent-driven", "green transaction", "change-specific outcomes",
+		"focused evidence", "batch kind", "optional aids", "ambiguous populations",
+		"exhaustive Paths", "deterministic Post-check", "commit-capable owners",
+		"helpers remain path-confined and commit-disabled", "duplicated generic execution protocol",
+	} {
 		if !strings.Contains(desc, clause) {
-			t.Errorf("step-exactness missing %q: %q", clause, desc)
+			t.Errorf("change-specific-executability missing %q: %q", clause, desc)
 		}
 	}
-	for _, forbidden := range []string{"coupled phase", "coupled-phase", "one commit per task"} {
+	for _, forbidden := range []string{"coupled phase", "coupled-phase", "one commit per task", "exact paths, symbols, commands"} {
 		if strings.Contains(desc, forbidden) {
-			t.Errorf("step-exactness retains %q: %q", forbidden, desc)
+			t.Errorf("change-specific-executability retains %q: %q", forbidden, desc)
 		}
 	}
 }

@@ -205,7 +205,7 @@ func TestPlanReviewerAgent(t *testing.T) {
 	planPhrases := []string{
 		"scope-completeness",
 		"executability",
-		"one final `### Phase close` with a single commit fence and passes the gate on its own",
+		"one final `### Phase close` with a single commit fence and can pass focused verification on its own",
 		"maintainable-design",
 		"docs/maintainable-code-design.md",
 		"model, ownership, representations, translation boundaries, dependency direction, and test seams",
@@ -1150,16 +1150,19 @@ func TestWritingPlansTemplate(t *testing.T) {
 		"exactly one execution mode: `inline` or `subagent-driven`",
 		"one independently green coherent implementation transaction",
 		"ordered steps",
-		"exact file paths",
+		"change-specific observable outcomes",
+		"relevant authority links",
+		"focused evidence",
 		"example-reviewing-plan",
+		"selected working-tree snapshot before its first commit",
+		"mechanical corrections without a durable ledger",
 		"batch task",
 		"path-disjoint",
 		"dead-code escape",
 		"nonempty JSON `Applying:` or `Context:` array",
 		"stable `dod: <slug>` bullets",
 		"frozen `#N` only for pre-V4 Decision prose",
-		"implementation directives",
-		"paths, commands, task order, rollout batches, and ordinary test transactions",
+		"generic staging, gate, clean-tree, checkpoint, routing, and reviewer protocol belong to their workflow owners",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -1696,7 +1699,12 @@ func TestReviewingPlanTemplate(t *testing.T) {
 	loadBearing := []string{
 		"plan-reviewer",
 		"user-decision",
-		"example-reviewing-plan-resync",
+		"explicit uncommitted plan path",
+		"selected working-tree snapshot",
+		"review that snapshot rather than HEAD",
+		"mechanical fixes directly without a durable ledger",
+		"substantive reasoned or user-decided findings and dispositions in plan Notes",
+		"Later substantive corrections remain separate commits",
 		"all universal lenses",
 		"per-phase ownership",
 		"helper partitions",
@@ -2373,7 +2381,7 @@ var unsetFallbackCases = []fallbackCase{
 	},
 	{
 		tmpl: "skills/reviewing-plan/SKILL.md.tmpl",
-		want: []string{"Only the plan file is edited", "using the project's commit scope conventions"},
+		want: []string{"explicit uncommitted plan path", "selected working-tree snapshot", "mechanical fixes directly without a durable ledger", "one initial plan commit"},
 	},
 	{
 		tmpl: "skills/reviewing-plan-resync/SKILL.md.tmpl",
