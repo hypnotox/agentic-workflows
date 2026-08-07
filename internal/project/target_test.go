@@ -484,7 +484,7 @@ func TestPiSubagentModelWizardRender(t *testing.T) {
 }
 
 func explorationFixtureConfig(target string) string {
-	return "prefix: example\nintegrationBranch: main\nskills: [adr-lifecycle, brainstorming, debugging, executing-direct, executing-plans, exploring, grounding, orienting, proposing-adr, refactor-coupling-audit, retrospective, reviewing-adr, reviewing-impl, reviewing-plan, reviewing-plan-resync, subagent-driven-development, writing-plans]\nagents: [adr-reviewer, code-reviewer, explorer, grounding-checker, implementer, plan-reviewer]\ntargets: [" + target + "]\n"
+	return "prefix: example\nintegrationBranch: main\nskills: [adr-lifecycle, brainstorming, debugging, executing-direct, executing-plans, exploring, grounding, orienting, proposing-adr, refactor-coupling-audit, retrospective, reviewing-adr, reviewing-impl, reviewing-plan, subagent-driven-development, writing-plans]\nagents: [adr-reviewer, code-reviewer, explorer, grounding-checker, implementer, plan-reviewer]\ntargets: [" + target + "]\n"
 }
 
 func explorationRenderedByPath(t *testing.T, config string) map[string]string {
@@ -931,7 +931,7 @@ const (
 
 // invariant: rendering/workflow-skill-templates:semantic-rendering-review (TestSemanticRenderingReviewMultiTargetAuthority)
 func TestSemanticRenderingReviewMultiTargetAuthority(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [writing-plans, reviewing-impl, reviewing-plan, reviewing-plan-resync, executing-plans]\nagents: [plan-reviewer, code-reviewer, implementer]\ndocs: []\ntargets: [claude, pi]\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [writing-plans, reviewing-impl, reviewing-plan, executing-plans]\nagents: [plan-reviewer, code-reviewer, implementer]\ndocs: []\ntargets: [claude, pi]\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)

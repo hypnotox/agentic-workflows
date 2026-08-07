@@ -40,7 +40,7 @@ Hard rules every change must respect:
 <!-- awf:edit workflow: default; create .awf/parts/agents-doc/workflow.md to override -->
 ## Workflow
 
-Use any enabled native skill whose exposed description fits the current work. Preserve the approved design boundary; see `docs/maintainable-code-design.md`. Route settled content by authority lifetime: durable choices belong in ADRs, active rules in current-state topics, directives in plans, and transient context in effort memory. Conventional Commits; one concern per commit. See [docs/workflow.md](docs/workflow.md) for workflow procedure.
+Use any enabled native skill whose exposed description fits the current work. Preserve the approved design boundary; see `docs/maintainable-code-design.md`. Ordinary plan review owns every parsed linked ADR and freshness after ADR review; there is no separate reconciliation node. Route settled content by authority lifetime: durable choices belong in ADRs, active rules in current-state topics, directives in plans, and transient context in effort memory. Conventional Commits; one concern per commit. See [docs/workflow.md](docs/workflow.md) for workflow procedure.
 
 <!-- awf:edit working-memory: from .awf/parts/agents-doc/working-memory.md -->
 ## Working memory

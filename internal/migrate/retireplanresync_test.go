@@ -1,0 +1,121 @@
+package migrate
+
+import (
+	"context"
+	"os"
+	"path/filepath"
+	"reflect"
+	"strings"
+	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+)
+
+func TestRetirePlanResyncGenerationRegistration(t *testing.T) {
+	if Current() != 38 {
+		t.Fatalf("Current() = %d, want 38", Current())
+	}
+	last := registry[len(registry)-1]
+	if last.To != 38 || last.Name != "retire-plan-resync-selection" {
+		t.Fatalf("last migration = %#v", last)
+	}
+}
+
+// invariant: config/migrations-and-locks:retired-plan-resync-selection-migration (TestRemovePlanResyncSelection)
+func TestRemovePlanResyncSelection(t *testing.T) {
+	tests := []struct {
+		name, src, want string
+		removed         bool
+	}{
+		{"block", "prefix: ex\nskills:\n  - reviewing-plan\n  - reviewing-plan-resync\n  - writing-plans\nvars:\n  literal: keep\n", "prefix: ex\nskills:\n  - reviewing-plan\n  - writing-plans\nvars:\n  literal: keep\n", true},
+		{"flow", "prefix: ex\nskills: [reviewing-plan, reviewing-plan-resync, writing-plans]\n", "prefix: ex\nskills:\n  - reviewing-plan\n  - writing-plans\n", true},
+		{"sole", "prefix: ex\nskills: [reviewing-plan-resync]\n", "prefix: ex\nskills: []\n", true},
+		{"empty", "prefix: ex\nskills: []\n", "prefix: ex\nskills: []\n", false},
+		{"absent member", "prefix: ex\nskills: [reviewing-plan]\n", "prefix: ex\nskills: [reviewing-plan]\n", false},
+		{"absent key", "prefix: ex\nvars: {literal: keep}\n", "prefix: ex\nvars: {literal: keep}\n", false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, removed, err := removePlanResyncSelection([]byte(tc.src))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(got) != tc.want || removed != tc.removed {
+				t.Fatalf("got (%t) %q, want (%t) %q", removed, got, tc.removed, tc.want)
+			}
+			again, removed, err := removePlanResyncSelection(got)
+			if err != nil || removed || string(again) != tc.want {
+				t.Fatalf("repeat got (%t) %q, err %v", removed, again, err)
+			}
+		})
+	}
+	for _, malformed := range []string{"prefix: [\n", "prefix: ex\nskills: reviewing-plan-resync\n"} {
+		if _, _, err := removePlanResyncSelection([]byte(malformed)); err == nil {
+			t.Fatalf("malformed input accepted: %q", malformed)
+		}
+	}
+}
+
+// invariant: config/migrations-and-locks:retired-plan-resync-selection-migration (TestRetirePlanResyncMigrationReportsAndStamps)
+func TestRetirePlanResyncMigrationReportsAndStamps(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "prefix: ex\nintegrationBranch: main\nskills: [reviewing-plan-resync, reviewing-plan]\nagents: [plan-reviewer]\n")
+	stampLockAt(t, filepath.Join(root, ".awf", "awf.lock"), 37)
+	applied, changes, err := Upgrade(context.Background(), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(applied, []string{"retire-plan-resync-selection"}) {
+		t.Fatalf("applied = %v", applied)
+	}
+	texts := make([]string, len(changes))
+	for i, change := range changes {
+		texts[i] = change.Text
+	}
+	if !reflect.DeepEqual(texts, []string{"retire-plan-resync: removed reviewing-plan-resync from skills", "schema-stamp: updated awf.lock schema version"}) {
+		t.Fatalf("changes = %v", texts)
+	}
+	got, err := os.ReadFile(filepath.Join(root, ".awf", "config.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(got), retiredPlanResyncSkill) || !strings.Contains(string(got), "- reviewing-plan") {
+		t.Fatalf("config = %s", got)
+	}
+	applied, changes, err = Upgrade(context.Background(), root)
+	if err != nil || len(applied) != 0 || len(changes) != 0 {
+		t.Fatalf("repeat = %v, %v, %v", applied, changes, err)
+	}
+}
+
+func TestRetirePlanResyncMigrationMalformedIsAtomic(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, ".awf", "config.yaml")
+	src := "prefix: ex\nskills: reviewing-plan-resync\n"
+	testsupport.WriteFile(t, path, src)
+	changes := &Changes{}
+	if err := applyRetirePlanResync(root, changes); err == nil {
+		t.Fatal("malformed skills accepted")
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != src || len(changes.Items()) != 0 {
+		t.Fatalf("mutation on failure: %q, %v", got, changes.Items())
+	}
+}
+
+// invariant: config/migrations-and-locks:retired-plan-resync-selection-migration (TestConfigForCurrentSchemaAlwaysRetiresPlanResync)
+func TestConfigForCurrentSchemaAlwaysRetiresPlanResync(t *testing.T) {
+	src := []byte("prefix: ex\nintegrationBranch: main\nskills: [reviewing-plan-resync, reviewing-plan]\nagents: [plan-reviewer]\n")
+	for from := 1; from <= Current(); from++ {
+		got, err := ConfigForCurrentSchema(src, from)
+		if err != nil {
+			t.Fatalf("from %d: %v", from, err)
+		}
+		if strings.Contains(string(got), retiredPlanResyncSkill) {
+			t.Fatalf("from %d retained selection: %s", from, got)
+		}
+	}
+}

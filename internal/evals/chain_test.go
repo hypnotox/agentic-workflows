@@ -31,7 +31,7 @@ var invocationVerb = regexp.MustCompile(`(?i)(invoke|call|dispatch|hands off|cha
 // named in an actual instruction, not merely present somewhere in the prose
 // (ADR-0053 owns mere presence) and not just as an existing target (ADR-0046
 // owns that). The trailing boundary ([^-\w] or line end) stops
-// "example-reviewing-plan" from matching an "example-reviewing-plan-resync" line.
+// a shorter skill name from matching a longer hyphenated token.
 func namesOnInvocationLine(body, token string) bool {
 	tokenRe := regexp.MustCompile(regexp.QuoteMeta(token) + `([^-\w]|$)`)
 	for _, line := range strings.Split(body, "\n") {
@@ -89,7 +89,6 @@ func TestPiReviewerDispatchNamesToolAndRenderedReviewer(t *testing.T) {
 		{"reviewing-impl", "code-reviewer"},
 		{"reviewing-adr", "adr-reviewer"},
 		{"reviewing-plan", "plan-reviewer"},
-		{"reviewing-plan-resync", "plan-reviewer"},
 	} {
 		body := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-"+tc.skill, "SKILL.md"))
 		if !namesOnInvocationLine(body, "subagent_review") || !strings.Contains(extension, tc.agent+".md") {
@@ -159,7 +158,7 @@ func TestSemanticRenderingReviewReachesEnabledTargets(t *testing.T) {
 // covered by the per-edge positional check above.
 var chainNodes = []string{
 	"brainstorming", "executing-direct", "proposing-adr", "reviewing-adr", "writing-plans",
-	"reviewing-plan", "reviewing-plan-resync", "executing-plans",
+	"reviewing-plan", "executing-plans",
 	"subagent-driven-development", "reviewing-impl", "retrospective",
 }
 

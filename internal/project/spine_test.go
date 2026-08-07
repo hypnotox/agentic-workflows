@@ -862,9 +862,9 @@ func TestManagedContextCallersChooseProjection(t *testing.T) {
 		"grounding":                   "",
 		"orienting":                   "",
 		"refactor-coupling-audit":     "",
+		"reviewing-adr":               "",
 		"reviewing-impl":              "--show invariants --show all-rules --show evidence --show pending",
 		"reviewing-plan":              "--show invariants --show all-rules --show evidence --show pending",
-		"reviewing-plan-resync":       "--show invariants --show all-rules --show pending",
 		"subagent-driven-development": "",
 		"tdd":                         "",
 		"writing-plans":               "",
@@ -917,7 +917,7 @@ func TestManagedContextCallersChooseProjection(t *testing.T) {
 			}
 			commandTail := strings.SplitN(line, commandName, 2)[1]
 			commandTail = strings.SplitN(commandTail, "`", 2)[0]
-			if !strings.Contains(commandTail, "paths>") && !strings.Contains(commandTail, "$(") {
+			if !strings.Contains(commandTail, "path>") && !strings.Contains(commandTail, "paths>") && !strings.Contains(commandTail, "$(") {
 				t.Errorf("%s:%d context invocation must select explicit paths or Git-selected files: %s", templateID, lineNumber+1, line)
 			}
 			if policy == "" {
@@ -995,7 +995,7 @@ func TestManagedContextCallersChooseProjection(t *testing.T) {
 
 // invariant: rendering/workflow-skill-templates:authority-guided-implementation-autonomy (TestConditionalVerifyPass)
 // invariant: rendering/workflow-skill-templates:authority-guided-review-remediation (TestConditionalVerifyPass)
-// TestConditionalVerifyPass pins ADR-0197 item 3: the four reviewing skills
+// TestConditionalVerifyPass pins ADR-0197 item 3: the reviewing skills
 // dispatch the verify pass only for reasoned or user-decision fixes, a
 // solely-mechanical round records the skip, and a fix-free round dispatches
 // nothing.
@@ -1006,7 +1006,7 @@ func TestConditionalVerifyPass(t *testing.T) {
 		"layout": testLayout(),
 		"data":   map[string]any{},
 	}
-	for _, name := range []string{"reviewing-adr", "reviewing-plan", "reviewing-plan-resync"} {
+	for _, name := range []string{"reviewing-adr", "reviewing-plan"} {
 		t.Run(name, func(t *testing.T) {
 			out := renderSkillGolden(t, name, data)
 			assertOrderedPhrases(t, out,
@@ -1679,6 +1679,33 @@ func TestIndependentWorkflowEscalation(t *testing.T) {
 	}
 }
 
+// invariant: rendering/workflow-skill-templates:linked-plan-review-freshness (TestLinkedPlanReviewFreshness)
+func TestLinkedPlanReviewFreshness(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example", "vars": map[string]any{}, "layout": testLayout(),
+		"data": map[string]any{}, "skills": map[string]bool{},
+	}
+	plan := renderSkillGolden(t, "reviewing-plan", data)
+	for _, want := range []string{
+		"every ADR resolved from parsed plan-level `adrs:`",
+		"modification time or session implication",
+		"every linked plan whose parsed status remains `Proposed`",
+		"inventory completed phases against the changed ADR",
+		"renewed implementation assurance for affected landed work",
+		"return first to ADR amendment and ordinary ADR review",
+		"exactly one fresh `plan-reviewer` verify pass",
+	} {
+		if !strings.Contains(plan, want) {
+			t.Errorf("ordinary plan review missing %q", want)
+		}
+	}
+	adr := renderSkillGolden(t, "reviewing-adr", data)
+	assertOrderedPhrases(t, adr, "review converges", "After approval, run `awf context <explicit-ADR-path>`", "Invoke ordinary `example-reviewing-plan` separately for every linked plan")
+	if _, ok := catalog.Standard.Skills["reviewing-plan-"+"resync"]; ok {
+		t.Fatal("retired plan review skill remains in the live catalog")
+	}
+}
+
 func TestReviewingPlanTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix":       "example",
@@ -1719,40 +1746,6 @@ func TestReviewingPlanTemplate(t *testing.T) {
 	}
 }
 
-func TestReviewingPlanResyncTemplate(t *testing.T) {
-	data := map[string]any{
-		"prefix":       "example",
-		"vars":         map[string]any{},
-		"commitScopes": "`docs(plans)`",
-		"layout":       map[string]any{"plansDir": "docs/plans"},
-		"data":         map[string]any{},
-	}
-
-	out := renderSkillGolden(t, "reviewing-plan-resync", data)
-
-	// Assert frontmatter name line
-	if !strings.Contains(out, "name: example-reviewing-plan-resync") {
-		t.Errorf("expected 'name: example-reviewing-plan-resync' in output:\n%s", out)
-	}
-
-	// Assert thin-dispatcher load-bearing phrases
-	loadBearing := []string{
-		"plan-reviewer",
-		"scope-completeness",
-		"doc-currency",
-		"per-phase ownership",
-		"helper partitions",
-		"V4 `decision:` selectors",
-		"final DoD Completes ownership",
-		"historical prose do not replace current-state authority",
-	}
-	for _, phrase := range loadBearing {
-		if !strings.Contains(out, phrase) {
-			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
-		}
-	}
-}
-
 func TestReviewingAdrTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix":       "example",
@@ -1773,7 +1766,7 @@ func TestReviewingAdrTemplate(t *testing.T) {
 	loadBearing := []string{
 		"adr-reviewer",
 		"user-decision",
-		"example-reviewing-plan-resync",
+		"example-reviewing-plan",
 		"Proposed",
 	}
 	for _, phrase := range loadBearing {
@@ -2166,9 +2159,6 @@ func TestMemoryLogConsumerCoverage(t *testing.T) {
 			}
 		}
 	}
-	if out := renderSkillGolden(t, "reviewing-plan-resync", data); strings.Contains(out, "pasted verbatim") {
-		t.Errorf("reviewing-plan-resync must keep its narrowed contract:\n%s", out)
-	}
 	retrospective := renderSkillGolden(t, "retrospective", data)
 	for _, want := range []string{"`## Observations`", "`## Decision log`", "as primary input", "across the effort's sessions"} {
 		if !strings.Contains(retrospective, want) {
@@ -2382,11 +2372,6 @@ var unsetFallbackCases = []fallbackCase{
 	{
 		tmpl: "skills/reviewing-plan/SKILL.md.tmpl",
 		want: []string{"explicit uncommitted plan path", "selected working-tree snapshot", "mechanical fixes directly without a durable ledger", "one initial plan commit"},
-	},
-	{
-		tmpl: "skills/reviewing-plan-resync/SKILL.md.tmpl",
-		want: []string{"an amendment-until-terminal edit", "using the project's commit scope conventions"},
-		ban:  []string{"example-adr-lifecycle"},
 	},
 	{
 		tmpl: "skills/roadmap-graduation/SKILL.md.tmpl",
@@ -2607,14 +2592,12 @@ func TestGlossaryTemplate(t *testing.T) {
 // TestAuthorityGuidedReviewRemediation pins the authority-guided review
 // remediation boundary: the shared review spine stays the single semantic home
 // of finding classification, one variable-free partial carries the
-// dispatcher-side routing obligation into all four reviewing skills, plan
-// resync's ADR return edge covers residual findings, and the retired automatic
-// residual escalation is gone from every source and projection.
+// dispatcher-side routing obligation into all reviewing skills, routes plan
+// contradictions back through ADR review, and removes automatic residual escalation.
 func TestAuthorityGuidedReviewRemediation(t *testing.T) {
 	const (
 		stopCriterion   = "every viable correct remediation would contradict or change a settled user-approved design or decision, or would require an unauthorized change to an active current-state claim"
 		nonTriggers     = "competing clean options, severity, structural character, and the fact that a finding survived a prior correction"
-		noLoopException = "sole exception to the same-artifact no-loop rule"
 		residualOpening = "Diagnose every residual finding under the authority-guided remediation boundary above"
 	)
 
@@ -2665,7 +2648,7 @@ func TestAuthorityGuidedReviewRemediation(t *testing.T) {
 		"is not the unresolved design fork that an implementation stop list names",
 		stopCriterion,
 		nonTriggers,
-		noLoopException,
+		"A plan finding whose correction would contradict linked ADR authority returns to ADR amendment and independent review",
 		// The stop criterion literal ends before the citation directive, so
 		// pin the directive with enough of its left context to bind it to the
 		// stop sentence rather than to any other authority mention.
@@ -2687,10 +2670,9 @@ func TestAuthorityGuidedReviewRemediation(t *testing.T) {
 	// of the retired predecessor alone lets the replacement be degraded back
 	// toward an unconditioned escalation without turning the suite red.
 	routingWants := map[string]string{
-		"reviewing-plan":        "present to the user with the cited affected authority and wait",
-		"reviewing-adr":         "present to the user with the cited affected authority and wait",
-		"reviewing-plan-resync": "present to the user with the cited affected authority and wait",
-		"reviewing-impl":        "present a `user-decision` finding with the cited affected authority, or a consensus deviation, and stop",
+		"reviewing-plan": "present to the user with the cited affected authority and wait",
+		"reviewing-adr":  "present to the user with the cited affected authority and wait",
+		"reviewing-impl": "present a `user-decision` finding with the cited affected authority, or a consensus deviation, and stop",
 	}
 
 	skillVariants := map[string]map[string]any{
@@ -2706,7 +2688,7 @@ func TestAuthorityGuidedReviewRemediation(t *testing.T) {
 		},
 	}
 
-	for _, skill := range []string{"reviewing-plan", "reviewing-adr", "reviewing-plan-resync", "reviewing-impl"} {
+	for _, skill := range []string{"reviewing-plan", "reviewing-adr", "reviewing-impl"} {
 		raw, err := fs.ReadFile(templates.FS, "skills/"+skill+"/SKILL.md.tmpl")
 		if err != nil {
 			t.Fatal(err)
@@ -2733,26 +2715,12 @@ func TestAuthorityGuidedReviewRemediation(t *testing.T) {
 				}
 			}
 			assertNamesAmbiguity(t, variant+"/"+skill, out)
-			// The resync step-4 sentence carries this same opening, so the
-			// pin applies to all four skills without an exclusion.
+			// Every review skill carries the same residual-finding opening.
 			if !strings.Contains(out, residualOpening) {
 				t.Errorf("%s/%s missing residual re-review replacement %q", variant, skill, residualOpening)
 			}
 			if want := routingWants[skill]; !strings.Contains(out, want) {
 				t.Errorf("%s/%s missing routing replacement %q", variant, skill, want)
-			}
-			if skill == "reviewing-plan-resync" {
-				for _, want := range []string{
-					"a finding, initial or residual, implicates the ADR itself",
-					"the amendable decision text is wrong",
-					"while the implicated ADR remains amendable",
-					"a new resync invocation follows under its own one-verify-pass bound",
-					"whether it surfaces on initial dispatch or in the verify pass",
-				} {
-					if !strings.Contains(out, want) {
-						t.Errorf("%s/%s missing widened resync return edge %q", variant, skill, want)
-					}
-				}
 			}
 		}
 	}

@@ -73,6 +73,7 @@ var registry = []Migration{
 	{To: layerCatalogListsGeneration, Name: "layer-catalog-lists", Apply: treeOnly(applyLayerCatalogLists)},
 	{To: structuralHeadingsGeneration, Name: "structural-headings", Apply: treeOnly(applyStructuralHeadings)},
 	{To: 37, Name: "grounding-skill-backfill", Apply: treeOnly(applyGroundingSkillBackfill)},
+	{To: 38, Name: "retire-plan-resync-selection", Apply: treeOnly(applyRetirePlanResync)},
 }
 
 // treeOnly adapts a migration that only rewrites the config tree to the
@@ -127,6 +128,14 @@ func ConfigForCurrentSchema(src []byte, from int) ([]byte, error) {
 		return nil, fmt.Errorf("config schema generation %d is ahead of current %d", from, Current())
 	}
 	out := src
+	// A catalog selection that no longer exists must be stripped before the
+	// current strict catalog consumer sees historical bytes. As with retired
+	// keys below, this is unconditional because a later stamp does not prove a
+	// concurrently introduced migration ran.
+	out, _, err := removePlanResyncSelection(out)
+	if err != nil {
+		return nil, fmt.Errorf("port-forward removal of retired skill %q: %w", retiredPlanResyncSkill, err)
+	}
 	// A key whose struct field no longer exists is stripped unconditionally,
 	// not when its own generation happens to fall inside the ported range. This
 	// function exists so historical bytes PARSE under the current strict
@@ -142,7 +151,7 @@ func ConfigForCurrentSchema(src []byte, from int) ([]byte, error) {
 		} else {
 			out, err = config.RemoveMappingKey(out, retired.parent, retired.key)
 		}
-		if err != nil {
+		if err != nil { // coverage-ignore: the retired-skill editor above already parsed the same mapping bytes
 			return nil, fmt.Errorf("port-forward removal of retired key %q: %w", retired.key, err)
 		}
 	}

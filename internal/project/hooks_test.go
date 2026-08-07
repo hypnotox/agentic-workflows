@@ -367,7 +367,7 @@ func testCommitPolicyHooksNative(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte("prefix: hook-test\nintegrationBranch: master\n"), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			if err := os.WriteFile(filepath.Join(root, ".awf", "awf.lock"), []byte("{\"awfVersion\":\"0.31.0\",\"schemaVersion\":37,\"files\":{}}\n"), 0o644); err != nil {
+			if err := os.WriteFile(filepath.Join(root, ".awf", "awf.lock"), []byte("{\"awfVersion\":\"0.31.0\",\"schemaVersion\":38,\"files\":{}}\n"), 0o644); err != nil {
 				t.Fatal(err)
 			}
 			run(true, "add", ".awf/config.yaml", ".awf/awf.lock")

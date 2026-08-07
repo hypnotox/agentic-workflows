@@ -123,8 +123,8 @@ data:
     - term: prose knob
       meaning: "A catalog var descriptor whose only effect is tuning the wording of rendered prose, the category the catalog bans. Contrast a functional value: a command, an enforced identifier set, or a path the tooling executes. Prose customization uses convention parts."
       domains: [config]
-    - term: resync
-      meaning: "The plan and ADR reconciliation pass that runs before implementation when both exist; it re-runs the scope-completeness and doc-currency lenses to catch plan-versus-finalised-ADR drift and loops until they converge."
+    - term: linked-plan review freshness
+      meaning: "The rule that ordinary full plan review verifies every ADR from parsed plan-level `adrs:` links, and that a substantive ADR correction settles through ADR review first before renewing ordinary review for every linked Proposed plan and affected landed phase assurance."
     - term: seed-on-introduction
       meaning: "The convention keeping absence a reliable deletion signal: the release that adds a catalog var descriptor ships a one-time migration seed, run once via the generation gate, so a later deletion is never resurrected."
       domains: [config]

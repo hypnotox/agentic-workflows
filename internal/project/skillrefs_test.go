@@ -54,16 +54,17 @@ func TestSkillRefScannerIgnoresUnknownAndFenced(t *testing.T) {
 	}
 }
 
-// Whole-token matching: a dead reference to reviewing-plan-resync is flagged
-// as the full token, never as a substring hit on reviewing-plan.
+// Whole-token matching retains a surviving overlapping fixture: an unknown
+// longer token never degrades into a false dead hit on reviewing-plan.
 func TestSkillRefScannerWholeToken(t *testing.T) {
 	got := deadSkillRefs(t,
 		"prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n",
 		map[string]string{
-			"parts/agents-doc/workflow.md": "Resync via `example-reviewing-plan-resync`.\n",
+			"skills/reviewing-plan-extra.yaml": "local: true\n",
+			"parts/agents-doc/workflow.md":     "Review via `example-reviewing-plan-extra`.\n",
 		})
-	if len(got) != 1 || got[0] != "example-reviewing-plan-resync" {
-		t.Fatalf("expected exactly the full-token finding, got %v", got)
+	if len(got) != 0 {
+		t.Fatalf("longest token must suppress the nested reviewing-plan hit, got %v", got)
 	}
 }
 

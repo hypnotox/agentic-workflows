@@ -19,7 +19,6 @@ var deliberateSelectionDispatches = []governedDispatches{
 	{skill: "subagent-driven-development", sections: []string{"dispatch-conventions", "procedure-status-handling"}},
 	{skill: "reviewing-adr", sections: []string{"dispatch-subagent", "re-review-loop"}},
 	{skill: "reviewing-plan", sections: []string{"dispatch-subagent", "re-review-loop"}},
-	{skill: "reviewing-plan-resync", sections: []string{"dispatch-subagent-narrowed", "re-review-loop"}},
 	{skill: "reviewing-impl", sections: []string{"dispatch-subagent", "re-review-loop"}},
 }
 

@@ -3,8 +3,8 @@ name: {{ .prefix }}-reviewing-adr
 description: >
   Use after {{ .prefix }}-proposing-adr writes an ADR under {{ .layout.adrDir }}
   (status Proposed). Dispatches the adr-reviewer subagent, routes findings
-  (mechanical / reasoned / user-decision), applies fixes, and hands off to
-  {{ .prefix }}-reviewing-plan-resync when a plan exists.
+  (mechanical / reasoned / user-decision), applies fixes, and sends every linked
+  Proposed plan through ordinary {{ .prefix }}-reviewing-plan after ADR approval.
 ---
 
 <!-- awf:section when-fires -->
@@ -48,7 +48,7 @@ This skill may run without an effort. If continuity independently fired, validat
 <!-- awf:end -->
 
 <!-- awf:section apply-fixes-commit -->
-5. **Apply and commit fixes.** This skill applies the mechanical and reasoned fixes to the ADR file and commits them as new commits (never `--amend`) using the project's commit scope conventions.
+5. **Apply and commit fixes.** This skill applies the mechanical and reasoned fixes to the ADR file and commits them as new commits (never `--amend`) using the project's commit scope conventions. A substantive amendment or review correction invalidates prior review of every Proposed plan linked to this ADR.
 <!-- awf:end -->
 
 <!-- awf:section re-review-loop -->
@@ -59,8 +59,9 @@ This skill may run without an effort. If continuity independently fired, validat
 7. **Do not flip the ADR status here.** The ADR stays `Proposed` through review. A later implementation step owns any `Accepted` or `Implementing` transition and every explicit Applied batch. After assurance settles or is explicitly skipped, `effort-workflow` owns effort-backed terminal closure; for effort-free execution, the parent owns the deferred status-only flip to `Implemented`, with `{{ .prefix }}-adr-lifecycle` supplying the mechanics. "Reviewed to a settled state" means the design is review-converged, not that the status changed. After the review settles (no structural findings, or user decisions resolved), proceed to hand-off.
 <!-- awf:end -->
 
-<!-- awf:section hand-off-to-resync -->
-8. **Stop for approval, then hand off to plan resync.** Once the review converges (the ADR remains `Proposed`), the settled ADR is the second mandatory approval check-in: complete the approval protocol below, present the settled-ADR summary, and route onward only after explicit user approval; the review loop itself (dispatch, fix application, verify pass) stays autonomous. After approval, check whether a plan exists (a `{{ .layout.plansDir }}/YYYY-MM-DD-*.md` file named or implied by the ADR). If a plan exists, invoke `{{ .prefix }}-reviewing-plan-resync` against that plan. If no plan exists yet, route by the brainstorm's terminal decision (the ADR settles before the plan is written): invoke `{{ .prefix }}-writing-plans` when planning is warranted, else proceed directly to implementation.
+<!-- awf:section hand-off-to-plan-review -->
+8. **Stop for approval, then review every linked plan.** Once the review converges (the ADR remains `Proposed`), the settled ADR is the second mandatory approval check-in: complete the approval protocol below, present the settled-ADR summary, and route onward only after explicit user approval; the review loop itself (dispatch, fix application, verify pass) stays autonomous. After approval, run `awf context <explicit-ADR-path>` and consume its deterministic linked-plan references, which come from parsed plan-level `adrs:` identities rather than modification time, filename implication, or session inference. Invoke ordinary `{{ .prefix }}-reviewing-plan` separately for every linked plan whose parsed status remains `Proposed`; never omit one or start plan review before ADR review settles. If implementation has begun, each plan review inventories completed affected phases and renews assurance where the amended decision can affect landed work before progression. If no linked Proposed plan exists yet, route by the brainstorm's terminal decision: invoke `{{ .prefix }}-writing-plans` when planning is warranted, else proceed directly to implementation.
+<!-- awf:include context-spill -->
 
 <!-- awf:include checkpoint-approval -->
 <!-- awf:end -->

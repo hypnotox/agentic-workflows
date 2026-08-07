@@ -25,10 +25,10 @@ Backing: test
 
 ### `invariant: implementer-context-grounding`
 
-Every managed context-calling skill and the grounding-checker agent body carry the one-sentence spill pointer naming the exact `AWF_CONTEXT_SPILL_V1` notice and the working-with-awf doc's Context spill notices subsection, the contract's single rendered home for byte-length verification and best-effort packet deletion. Brainstorming, orientation, implementation, planning, debugging, test-first, and refactor-orientation calls start with bare `awf context`; plan and implementation review request `invariants`, `all-rules`, `evidence`, and `pending`; plan/ADR resync requests `invariants`, `all-rules`, and `pending`; and ADR lifecycle requests `pending` where lifecycle detail is needed. No managed skill prescribes `--full` or `--json`, and the projection-pinning spine test classifies every context-calling skill template and expands the shared spill pointer.
+Every managed context-calling skill and the grounding-checker agent body carry the one-sentence spill pointer naming the exact `AWF_CONTEXT_SPILL_V1` notice and the working-with-awf doc's Context spill notices subsection, the contract's single rendered home for byte-length verification and best-effort packet deletion. Brainstorming, orientation, implementation, planning, debugging, test-first, and refactor-orientation calls start with bare `awf context`; ordinary plan and implementation review request `invariants`, `all-rules`, `evidence`, and `pending`; ADR review consumes deterministic typed linked-plan references from an explicit ADR context request; and ADR lifecycle requests `pending` where lifecycle detail is needed. No managed skill prescribes `--full` or `--json`, and the projection-pinning spine test classifies every context-calling skill template and expands the shared spill pointer.
 This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0155
-Revised-by: ADR-0165, ADR-0174, ADR-0187, ADR-0197, ADR-0243
+Revised-by: ADR-0165, ADR-0174, ADR-0187, ADR-0197, ADR-0243, ADR-deduplicate-plan-authoring-and-execution-workflow
 Backing: test
 
 ### `invariant: mandatory-approval-boundaries`
@@ -48,8 +48,9 @@ Backing: test
 
 ### `invariant: authority-guided-review-remediation`
 
-The shared review spine is the single semantic home of finding classification and reserves `user-decision` for a finding where every viable correct remediation would contradict or change a settled user-approved design or decision or require an unauthorized change to an active current-state claim, with the affected authority cited; ambiguity, competing clean options, severity, structural character, and survival of a prior correction do not transfer the choice, and an ADR intentionally declaring an active-claim change is not an unauthorized deviation. One variable-free shared prose partial is directly included exactly once by plan review, ADR review, plan resync, and implementation review; it applies mechanical and reasoned corrections autonomously, scopes its stop rule to review findings, and routes a newly material load-bearing choice through the existing grounded-design or ADR workflow, pausing at that workflow's mandatory approval boundary. Exactly one fresh verify pass is retained, and every residual finding is diagnosed under the same boundary without another same-artifact review loop apart from one governed exception: plan resync's ADR amendment and review return edge, available to an initial or residual finding while the implicated ADR remains amendable, which ends the resync and is followed by a new invocation under its own one-verify-pass bound. Every affected skill and reviewer template renders coherently under empty variables.
+The shared review spine is the single semantic home of finding classification and reserves `user-decision` for a finding where every viable correct remediation would contradict or change a settled user-approved design or decision or require an unauthorized change to an active current-state claim, with the affected authority cited; ambiguity, competing clean options, severity, structural character, and survival of a prior correction do not transfer the choice, and an ADR intentionally declaring an active-claim change is not an unauthorized deviation. One variable-free shared prose partial is directly included exactly once by ordinary plan review, ADR review, and implementation review; it applies mechanical and reasoned corrections autonomously, scopes its stop rule to review findings, and routes a newly material load-bearing choice through the existing grounded-design or ADR workflow, pausing at that workflow's mandatory approval boundary. Exactly one fresh verify pass is retained, every residual finding is diagnosed under the same boundary without another same-artifact review loop, and a plan correction that would contradict linked authority returns to ADR amendment and review before a fresh ordinary plan review. Every affected skill and reviewer template renders coherently under empty variables.
 Origin: ADR-0245
+Revised-by: ADR-deduplicate-plan-authoring-and-execution-workflow
 Backing: test
 
 ### `invariant: memory-checkpoint-chain-coverage`
@@ -78,10 +79,10 @@ Backing: test
 
 ### `invariant: memory-log-consumer-coverage`
 
-The shared review spine carries the consensus-adherence check when user-provenance entries exist. Artifact and implementation review briefs paste available user entries verbatim, including `Record:` blocks; effort-free briefs omit memory evidence without fabricating consensus and still carry outcome, constraints, summary, range, and verification. Resync remains narrowed, and retrospective consumes effort observations and decisions only for effort-backed work.
+The shared review spine carries the consensus-adherence check when user-provenance entries exist. Ordinary artifact and implementation review briefs paste available user entries verbatim, including `Record:` blocks; effort-free briefs omit memory evidence without fabricating consensus and still carry outcome, constraints, summary, range, and verification. Retrospective consumes effort observations and decisions only for effort-backed work.
 This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0186
-Revised-by: ADR-0197, ADR-0243
+Revised-by: ADR-0197, ADR-0243, ADR-deduplicate-plan-authoring-and-execution-workflow
 Backing: test
 
 ### `invariant: workflow-transitions-advisory`
@@ -126,10 +127,16 @@ Origin: ADR-0148
 Revised-by: ADR-0157
 Backing: test
 
-### `invariant: workflow-chain-surfaces-resync`
+### `invariant: linked-plan-review-freshness`
 
-The rendered workflow chain names the plan-to-ADR resync step explicitly rather than hiding it from the high-level chain.
-Origin: ADR-0148
+Ordinary full plan review resolves and verifies every ADR in parsed plan-level `adrs:` and ADR review consumes the deterministic typed reverse association rather than modification time or session inference. A substantive ADR amendment or review correction invalidates every linked Proposed plan's prior review: ADR review settles first, then each affected plan receives ordinary full review. A plan correction that would contradict linked authority returns to ADR amendment and review first. After implementation starts, completed affected phases are inventoried and implementation assurance is renewed wherever the changed decision can affect landed work before progression.
+Origin: ADR-deduplicate-plan-authoring-and-execution-workflow
+Backing: test
+
+### `invariant: single-workflow-no-depth-controls`
+
+awf ships one workflow and introduces no workflow profiles, depth controls, routers, classifiers, or runtime policy knobs; universal authority, documentation, verification, commit, approval, and lifecycle obligations remain.
+Origin: ADR-deduplicate-plan-authoring-and-execution-workflow
 Backing: test
 
 ### `invariant: maintainable-code-stage-coverage`

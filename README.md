@@ -38,8 +38,8 @@ instead of rotting.
 
 - **Workflow skills** (one tree per enabled runtime: `.pi/skills/<prefix>-*/`,
   `.claude/skills/<prefix>-*/`, and so on). The core chain: brainstorming,
-  ADR proposal and review, planning and plan review, a plan↔ADR resync, two execution
-  styles (inline or subagent-per-task), implementation review, and a closing
+  ADR proposal and review, planning and ordinary linked-authority plan review, two
+  execution styles (inline or subagent-per-phase), implementation review, and a closing
   retrospective that promotes recurring findings toward deterministic checks. Task
   skills are opt-in (TDD, bugfix, debugging, a refactor coupling audit, a
   roadmap-graduation pass), except `adr-lifecycle`, which is scaffolded on with the chain.
@@ -92,10 +92,13 @@ A separate `handoff_session` tool accepts only exact bounded `{kickoff}` prose f
 
 ## The workflow it renders
 
-The rendered skills and agents walk an agent through one canonical chain. Brainstorming is
-the hard prerequisite; an ADR is added only when a decision is load-bearing, a plan only when
-the work is complex, and a plan-ADR resync runs only when both exist. Every written artifact
-gets an independent fresh-context review, and a closing retrospective promotes recurring
+The rendered skills and agents provide one workflow, without profiles, depth controls, routers,
+classifiers, or runtime policy knobs. Brainstorming runs when a material choice needs settling;
+an ADR is added only when a decision is load-bearing, and a plan only when sequencing,
+coordination, or resumability materially helps. Ordinary full plan review verifies every ADR
+from parsed plan-level `adrs:` links. A substantive ADR correction is reviewed first, then every
+deterministically linked Proposed plan receives ordinary review; completed affected phases are
+reassessed and assurance renewed where needed. A closing retrospective promotes recurring
 findings toward deterministic checks.
 
 ```mermaid
@@ -106,10 +109,7 @@ flowchart LR
     ADR --> Q2
     Q2 -->|yes| PLAN["plan:<br/>write + review"]
     Q2 -->|no| IMPL[implementation]
-    PLAN --> Q3{ADR too?}
-    Q3 -->|yes| RS[plan-ADR resync]
-    Q3 -->|no| IMPL
-    RS --> IMPL
+    PLAN --> IMPL
     IMPL --> REV["implementation<br/>review"]
     REV --> RETRO([retrospective])
 ```

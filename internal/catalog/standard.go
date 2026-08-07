@@ -19,7 +19,7 @@ var Standard = &Catalog{
 			"conventions-tasks", "conventions-no-placeholders", "gate-tier-note",
 			"conventions-test-first", "procedure-confirm-scope", "plan-template-ref",
 			"procedure-write-plan", "doc-currency-check", "self-review", "plan-commit-step",
-			"terminal-step", "plan-lifecycle", "plan-resync", "notes",
+			"terminal-step", "plan-lifecycle", "linked-authority-freshness", "notes",
 		}},
 		"executing-direct": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Implement a clear narrow change directly.", Trigger: "Use when outcome, boundary, and verification are clear and no independent design or plan need fires.", CommonFollowUps: []string{"reviewing-impl", "effort-workflow"}}, Core: true},
 		"executing-plans": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Implement an accepted plan.", Trigger: "Use when a plan is ready for implementation.", UsuallyFollows: []string{"writing-plans", "reviewing-plan"}, CommonFollowUps: []string{"reviewing-impl", "subagent-driven-development"}}, Core: true, RequiresAgent: "implementer", Sections: []string{
@@ -89,18 +89,14 @@ var Standard = &Catalog{
 			},
 		},
 		"bugfix": {Profile: WorkflowProfile{Kind: WorkflowTask, Purpose: "Apply a fix with a known root cause.", Trigger: "Use when applying a fix whose root cause is already known.", UsuallyFollows: []string{"debugging"}, CommonFollowUps: []string{"reviewing-impl"}}, Sections: []string{"test-tiers", "pitfalls-check", "oracle-note", "memory-checkpoint"}},
-		"reviewing-plan": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Independently review an implementation plan.", Trigger: "Use when a written plan needs review before execution.", UsuallyFollows: []string{"writing-plans"}, CommonFollowUps: []string{"reviewing-plan-resync", "executing-plans"}}, Core: true, RequiresAgent: "plan-reviewer", Sections: []string{
+		"reviewing-plan": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Independently review an implementation plan.", Trigger: "Use when a written plan needs review before execution or linked authority changes.", UsuallyFollows: []string{"writing-plans", "reviewing-adr"}, CommonFollowUps: []string{"executing-plans"}}, Core: true, RequiresAgent: "plan-reviewer", Sections: []string{
 			"when-fires", "procedure", "artifact-path-detection", "dispatch-subagent",
 			"classify-route-findings", "apply-fixes-commit", "re-review-loop", "hand-off", "notes",
 		}},
-		"reviewing-plan-resync": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Reconcile a plan after review findings.", Trigger: "Use when review findings require a plan revision and re-review.", UsuallyFollows: []string{"reviewing-plan", "reviewing-adr"}, CommonFollowUps: []string{"executing-plans", "subagent-driven-development"}}, Core: true, RequiresAgent: "plan-reviewer", Sections: []string{
-			"when-fires", "dispatch-subagent-narrowed", "classify-route-findings",
-			"apply-fixes-commit", "re-review-loop", "hand-off-to-impl", "notes",
-		}},
-		"reviewing-adr": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Independently review an ADR.", Trigger: "Use when a proposed ADR needs decision-quality review.", UsuallyFollows: []string{"proposing-adr"}, CommonFollowUps: []string{"reviewing-plan-resync", "writing-plans"}}, Core: true, RequiresAgent: "adr-reviewer", Sections: []string{
+		"reviewing-adr": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Independently review an ADR.", Trigger: "Use when a proposed or amended ADR needs decision-quality review.", UsuallyFollows: []string{"proposing-adr"}, CommonFollowUps: []string{"reviewing-plan", "writing-plans"}}, Core: true, RequiresAgent: "adr-reviewer", Sections: []string{
 			"when-fires", "procedure", "artifact-path-detection", "dispatch-subagent",
 			"classify-route-findings", "apply-fixes-commit", "re-review-loop", "status-flip",
-			"hand-off-to-resync", "notes",
+			"hand-off-to-plan-review", "notes",
 		}},
 		"reviewing-impl": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Independently assure an implementation.", Trigger: "Use when independent review has assurance value for the implementation.", UsuallyFollows: []string{"executing-direct", "executing-plans", "subagent-driven-development"}, CommonFollowUps: []string{"effort-workflow"}}, Core: true, RequiresAgent: "code-reviewer", Sections: []string{
 			"when-fires", "sha-range-detection", "dispatch-subagent",
@@ -138,10 +134,9 @@ var Standard = &Catalog{
 			},
 		},
 		"plan-reviewer": {
-			Name:           "plan-reviewer",
-			Description:    "Independent, lens-diverse reviewer for plans under {{ .layout.plansDir }}/ in {{ .prefix }} projects.\nReturns structured findings per the shared review-discipline spine.",
-			Sections:       []string{"universal-lenses", "project-focus", "doc-currency", "resync-note"},
-			RequiresSkills: []string{"reviewing-plan-resync"},
+			Name:        "plan-reviewer",
+			Description: "Independent, lens-diverse reviewer for plans under {{ .layout.plansDir }}/ in {{ .prefix }} projects.\nReturns structured findings per the shared review-discipline spine.",
+			Sections:    []string{"universal-lenses", "project-focus", "doc-currency"},
 			Data: map[string]any{
 				"focusItems": []any{
 					map[string]any{"name": "change-specific-executability", "description": "every phase declares independent inline or subagent-driven ownership, one coherent green transaction, and one closing subject; tasks are ordered steps with change-specific outcomes, authority, material boundaries, ordering dependencies, focused evidence, and needed confinement. Latitude, batch kind, representative, and edge examples are optional aids; ambiguous populations retain exhaustive Paths and deterministic Post-check evidence; commit-capable owners may resolve authority-determined local detail while helpers remain path-confined and commit-disabled. Reject duplicated generic execution protocol, task-level boundaries, cross-phase definitions, dead-code exceptions, plan-wide mode inference, and placeholders."},

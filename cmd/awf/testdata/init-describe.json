@@ -100,7 +100,7 @@
       "key": "skills",
       "kind": "multiselect",
       "description": "Workflow skills to enable (core pre-selected; deselect to trim or add opt-in skills). Options/default computed from the catalog.",
-      "default": "adr-lifecycle,brainstorming,effort-workflow,executing-direct,executing-plans,exploring,grounding,orienting,proposing-adr,retrospective,reviewing-adr,reviewing-impl,reviewing-plan,reviewing-plan-resync,subagent-driven-development,writing-plans",
+      "default": "adr-lifecycle,brainstorming,effort-workflow,executing-direct,executing-plans,exploring,grounding,orienting,proposing-adr,retrospective,reviewing-adr,reviewing-impl,reviewing-plan,subagent-driven-development,writing-plans",
       "options": [
         "adr-lifecycle",
         "brainstorming",
@@ -118,7 +118,6 @@
         "reviewing-adr",
         "reviewing-impl",
         "reviewing-plan",
-        "reviewing-plan-resync",
         "roadmap-graduation",
         "subagent-driven-development",
         "tdd",

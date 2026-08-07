@@ -17,9 +17,7 @@ func TestRequiresOfEdgeEnumeration(t *testing.T) {
 		{Node{Kind: "skill", Name: "roadmap-graduation"}, []Node{
 			{Kind: "doc", Name: "roadmap"},
 		}},
-		{Node{Kind: "agent", Name: "plan-reviewer"}, []Node{
-			{Kind: "skill", Name: "reviewing-plan-resync"},
-		}},
+		{Node{Kind: "agent", Name: "plan-reviewer"}, nil},
 		{Node{Kind: "skill", Name: "adr-lifecycle"}, nil},
 		{Node{Kind: "skill", Name: "my-local-skill"}, nil},
 		{Node{Kind: "agent", Name: "my-local-agent"}, nil},
@@ -29,6 +27,10 @@ func TestRequiresOfEdgeEnumeration(t *testing.T) {
 		if got := RequiresOf(Standard, tc.node); !reflect.DeepEqual(got, tc.want) {
 			t.Errorf("RequiresOf(%v) = %v, want %v", tc.node, got, tc.want)
 		}
+	}
+	custom := &Catalog{Agents: map[string]AgentSpec{"reviewer": {RequiresSkills: []string{"reviewing-plan"}}}}
+	if got := RequiresOf(custom, Node{Kind: "agent", Name: "reviewer"}); !reflect.DeepEqual(got, []Node{{Kind: "skill", Name: "reviewing-plan"}}) {
+		t.Errorf("custom agent requirements = %v", got)
 	}
 }
 

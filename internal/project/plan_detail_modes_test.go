@@ -301,12 +301,6 @@ func TestPlanContextPathsComeFromTasks(t *testing.T) {
 		"layout": map[string]any{"plansDir": "docs/plans", "workflowRef": "docs/workflow.md"},
 		"data":   map[string]any{}, "skills": map[string]bool{},
 	})
-	defaultResync := renderSkillGolden(t, "reviewing-plan-resync", map[string]any{
-		"prefix": "example", "vars": map[string]any{},
-		"layout": map[string]any{"plansDir": "docs/plans"},
-		"data":   map[string]any{}, "skills": map[string]bool{},
-	})
-
 	root := testsupport.RepoRoot(t)
 	for _, surface := range []struct {
 		name string
@@ -314,10 +308,8 @@ func TestPlanContextPathsComeFromTasks(t *testing.T) {
 	}{
 		{"default writing skill", defaultWriter},
 		{"default reviewing skill", defaultReviewer},
-		{"default resync skill", defaultResync},
 		{"rendered writing skill", readPlanPolicyFile(t, root, ".pi/skills/awf-writing-plans/SKILL.md")},
 		{"rendered reviewing skill", readPlanPolicyFile(t, root, ".pi/skills/awf-reviewing-plan/SKILL.md")},
-		{"rendered resync skill", readPlanPolicyFile(t, root, ".pi/skills/awf-reviewing-plan-resync/SKILL.md")},
 	} {
 		body := strings.Join(strings.Fields(surface.body), " ")
 		for _, clause := range []string{"every task-level `Paths:` entry", "exact repository paths named in task titles and bodies", "deduplicate", "Do not infer a path from vague prose"} {

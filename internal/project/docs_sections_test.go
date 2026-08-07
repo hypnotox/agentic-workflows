@@ -128,8 +128,8 @@ func TestAgentsDocSectionParity(t *testing.T) {
 }
 
 // TestWorkflowDocChainOrder asserts the workflow doc's default render carries
-// the canonical chain string: the ADR step precedes the plan step and the
-// resync step is surfaced explicitly.
+// the canonical chain string: ADR review precedes every affected ordinary plan
+// review and the workflow exposes no separate reconciliation node.
 // invariant: rendering/guide-and-doc-templates:maintainable-code-design-guide (TestWorkflowDocChainOrder)
 func TestWorkflowDocChainOrder(t *testing.T) {
 	out := renderGolden(t, "docs/workflow.md.tmpl", map[string]any{
@@ -141,9 +141,15 @@ func TestWorkflowDocChainOrder(t *testing.T) {
 	if strings.Index(out, "**ADR**") > strings.Index(out, "**Planning**") {
 		t.Errorf("workflow guidance must present ADR before plan:\n%s", out)
 	}
-	// invariant: rendering/workflow-skill-templates:workflow-chain-surfaces-resync (TestWorkflowDocChainOrder)
-	if !strings.Contains(out, "plan↔ADR **resync**") {
-		t.Errorf("workflow guidance must surface the resync step:\n%s", out)
+	// invariant: rendering/workflow-skill-templates:linked-plan-review-freshness (TestWorkflowDocChainOrder)
+	if !strings.Contains(out, "settle ADR review first") || !strings.Contains(out, "every linked Proposed plan") {
+		t.Errorf("workflow guidance must route ADR-first ordinary plan review:\n%s", out)
+	}
+	// invariant: rendering/workflow-skill-templates:single-workflow-no-depth-controls (TestWorkflowDocChainOrder)
+	for _, forbidden := range []string{"workflow profiles", "depth controls", "routers", "classifiers", "runtime policy knobs"} {
+		if !strings.Contains(out, "no "+forbidden) && !strings.Contains(out, "no workflow profiles, depth controls, routers, classifiers, or runtime policy knobs") {
+			t.Errorf("workflow guidance does not forbid %q:\n%s", forbidden, out)
+		}
 	}
 	planSelection := []string{"sequencing, coordination, or resumability materially helps", "records and operationalizes approved choices", "rather than inventing speculative structure, checks, or work"}
 	for _, want := range planSelection {

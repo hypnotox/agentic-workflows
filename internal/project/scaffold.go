@@ -23,7 +23,7 @@ import (
 // enabled by default, and writes a resolved commit-scope list to
 // audit.allowedScopes (ADR-0051).
 // The second return value lists the closure additions beyond a trim's
-// explicit selection (kind-prefixed, e.g. "skill reviewing-plan-resync"),
+// explicit selection (kind-prefixed, e.g. "skill reviewing-plan"),
 // empty for the untrimmed default.
 func ScaffoldConfig(prefix string, vars map[string]string, trim *config.CatalogTrim, scopes []string) ([]byte, []string, error) {
 	cat := catalog.Standard

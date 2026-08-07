@@ -179,9 +179,9 @@ func TestStandardSkillRequirementsAreEmpty(t *testing.T) {
 			t.Errorf("standard skill %q has structural workflow requirements %v", name, spec.RequiresSkills)
 		}
 	}
-	for _, name := range []string{"adr-reviewer", "code-reviewer", "plan-reviewer"} {
-		if name == "plan-reviewer" && len(Standard.Agents[name].RequiresSkills) == 0 {
-			t.Errorf("reviewing agent %q lost its structural requirement", name)
+	for name, spec := range Standard.Agents {
+		if len(spec.RequiresSkills) != 0 {
+			t.Errorf("standard agent %q has structural workflow requirements %v", name, spec.RequiresSkills)
 		}
 	}
 }

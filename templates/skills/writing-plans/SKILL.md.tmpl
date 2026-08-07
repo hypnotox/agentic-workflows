@@ -91,8 +91,8 @@ Start from the canonical skeleton rather than a blank file: run `{{ if .runnerEn
 - A plan carries its own two-state `status:` frontmatter, independent of any linked ADR's status. It is **mutable while `status: Proposed`** through review and implementation, where findings are noted as they surface, and **freezes at `status: Implemented`** only in the deferred terminal transaction after assurance settles or is explicitly skipped. `effort-workflow` owns that transaction for effort-backed work; the effort-free execution parent owns it otherwise. In {{ .prefix }}'s usual flow a plan and its ADR(s) co-flip there, but the plan's freeze keys off its own status, not the ADR's.
 <!-- awf:end -->
 
-<!-- awf:section plan-resync -->
-- If planning surfaces a new load-bearing (ADR-worthy) decision, pause: invoke `{{ .prefix }}-proposing-adr` (or amend a still-`Proposed` ADR via `{{ .prefix }}-adr-lifecycle`), let it settle, then re-review the linked plan before implementation.
+<!-- awf:section linked-authority-freshness -->
+- Full plan review reads every ADR from parsed plan-level `adrs:`. If planning surfaces a new load-bearing decision or a correction would contradict linked authority, pause: invoke `{{ .prefix }}-proposing-adr` (or amend a still-amendable ADR via `{{ .prefix }}-adr-lifecycle`), complete ordinary ADR review first, then invoke ordinary `{{ .prefix }}-reviewing-plan` for every affected linked Proposed plan. If implementation already started, reassess completed affected phases and renew their assurance before progression.
 <!-- awf:end -->
 
 <!-- awf:section notes -->

@@ -1046,11 +1046,9 @@ func TestRunListBareShowsAllKinds(t *testing.T) {
 	}
 }
 
-// unrequiredAgentNotes edge cases unreachable through the CLI with the
-// shipped catalog (the reviewing-plan/resync pair is mutually requiring, so a
-// real cascade never splits an agent's requirers): an agent still required by
-// a remaining non-local skill gets no note, and a local-sidecar agent is
-// outside the scan, mirroring the resolver's skip.
+// unrequiredAgentNotes derives retention from the surviving reviewing skills:
+// removing the sole surviving plan-review skill releases its reviewer agent,
+// while a local-sidecar agent remains outside the scan.
 func TestNoteUnrequiredAgentsEdgeCases(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
@@ -1070,11 +1068,11 @@ func TestNoteUnrequiredAgentsEdgeCases(t *testing.T) {
 		{Node: catalog.Node{Kind: "skill", Name: "reviewing-plan"}, Enable: false, RequiredBy: "reviewing-adr"},
 	}
 	notes := unrequiredAgentNotes(p, plan)
-	// adr-reviewer: required by the removed reviewing-adr, but local - skipped.
-	// plan-reviewer: required by the removed reviewing-plan, but the remaining
-	// reviewing-plan-resync still requires it - no note.
-	if len(notes) != 0 {
-		t.Errorf("expected no notes, got %#v", notes)
+	// adr-reviewer is local and skipped. With every surviving reviewing skill
+	// considered, no selected skill retains plan-reviewer after reviewing-plan
+	// is removed, so the agent is now correctly reported as unrequired.
+	if len(notes) != 1 || notes[0].Reason != project.EnablementNoteAgentNoLongerRequired || notes[0].Name != "plan-reviewer" {
+		t.Errorf("expected plan-reviewer release note, got %#v", notes)
 	}
 
 	// A remaining local skill is skipped rather than treated as a requirer.
@@ -1085,10 +1083,15 @@ func TestNoteUnrequiredAgentsEdgeCases(t *testing.T) {
 		t.Fatal(err)
 	}
 	p.Cfg.Agents = []string{"plan-reviewer"}
-	p.Cfg.Skills = []string{"removed", "local"}
+	p.Cfg.Skills = []string{"removed", "local", "reviewing-plan"}
 	p.Cat.Skills["removed"] = catalog.SkillSpec{RequiresAgent: "plan-reviewer"}
 	p.Cat.Skills["local"] = catalog.SkillSpec{RequiresAgent: "plan-reviewer"}
-	notes = unrequiredAgentNotes(p, []project.PlanOp{{Node: catalog.Node{Kind: "skill", Name: "removed"}}, {Node: catalog.Node{Kind: "skill", Name: "other"}}})
+	removal := []project.PlanOp{{Node: catalog.Node{Kind: "skill", Name: "removed"}}, {Node: catalog.Node{Kind: "skill", Name: "other"}}}
+	if notes = unrequiredAgentNotes(p, removal); len(notes) != 0 {
+		t.Fatalf("surviving reviewing-plan must retain plan-reviewer: %#v", notes)
+	}
+	p.Cfg.Skills = []string{"removed", "local"}
+	notes = unrequiredAgentNotes(p, removal)
 	if len(notes) != 1 || notes[0].Reason != project.EnablementNoteAgentNoLongerRequired || notes[0].Name != "plan-reviewer" {
 		t.Fatalf("local skill should be skipped, allowing note: %#v", notes)
 	}

@@ -1,9 +1,9 @@
 ---
 name: {{ .prefix }}-reviewing-plan
 description: >
-  Use after {{ .prefix }}-writing-plans writes an uncommitted plan draft under {{ .layout.plansDir }}.
-  Dispatches the report-only plan-reviewer against an explicit working-tree snapshot,
-  settles the draft, and creates its first plan commit.
+  Use after {{ .prefix }}-writing-plans writes an uncommitted plan draft, or after
+  a linked ADR changes. Reviews every ADR from parsed plan-level adrs, settles the
+  plan, and renews affected implementation assurance when needed.
 ---
 
 <!-- awf:section when-fires -->
@@ -11,9 +11,9 @@ description: >
 
 ## When this skill fires
 
-Terminal step of `{{ .prefix }}-writing-plans`. Invoked once the plan file is written but before its first commit, with an explicit path and selected working-tree snapshot. The `plan-reviewer` subagent is a report-only judge: it reads the plan, runs its universal lenses, classifies each finding as mechanical / reasoned / user-decision, and returns a findings digest. This skill dispatches that agent, applies the fixes, runs a single verify pass, gates on user-decision findings, and chains to the next node.
+Terminal step of `{{ .prefix }}-writing-plans`, and the ordinary freshness owner after a linked ADR changes. For a new plan it runs before the first commit against an explicit path and selected working-tree snapshot. For an existing Proposed plan it runs after the amended ADR's review settles. The `plan-reviewer` subagent is a report-only judge: it reads the plan and every ADR resolved from parsed plan-level `adrs:`, runs all universal lenses, classifies each finding as mechanical / reasoned / user-decision, and returns a findings digest. This skill dispatches that agent, applies the fixes, runs a single verify pass, gates on user-decision findings, and chains to the next node.
 
-This skill owns the post-write full plan review and linked-authority freshness; it does not substitute HEAD for the selected draft snapshot.
+This full review owns linked-authority freshness; it does not select plans or ADRs by modification time, session implication, or an assumed one-to-one relationship.
 <!-- awf:end -->
 
 <!-- awf:include review-remediation-autonomy -->
@@ -23,11 +23,11 @@ This skill owns the post-write full plan review and linked-authority freshness; 
 This skill may run without an effort. If continuity independently fired, validate the fixed effort identity and exact `.awf/efforts/<slug>/memory.md`, preserve one user-managed writer, and give the report-only reviewer that context read-only; otherwise omit effort and memory fields. If changed facts newly make continuity useful, invoke `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}` before further mutation. Repository sources, the plan, and current-state documentation remain authoritative, and standalone memory is forbidden.
 
 <!-- awf:section procedure -->
-1. **Identify the draft path and snapshot.** Require the caller's explicit uncommitted plan path and selected working-tree snapshot. Do not infer a most-recent file or silently substitute HEAD.
+1. **Identify the plan path and snapshot.** Require the caller's explicit uncommitted plan path and selected working-tree snapshot for a new draft, or an explicit existing plan path and selected snapshot for freshness. For a new draft, review the uncommitted snapshot. For freshness after ADR review, consume the deterministic linked-plan paths reported by the explicit ADR context result and invoke this workflow separately for every linked plan whose parsed status remains `Proposed`. Do not infer a most-recent file, use modification time or session implication, silently substitute HEAD, or omit a linked Proposed plan.
 <!-- awf:end -->
 
 <!-- awf:section artifact-path-detection -->
-2. **Snapshot detail.** Read that path from the selected working-tree snapshot before any plan commit. Refuse an absent path or ambiguous snapshot.
+2. **Snapshot and authority detail.** Read the plan from the selected working-tree snapshot and resolve every ADR identity in its parsed plan-level `adrs:` set. Refuse an absent path, ambiguous snapshot, unresolved ADR, or incomplete linked-ADR set. When implementation has started, inventory completed phases against the changed ADR, identify every affected phase, and require renewed implementation assurance for affected landed work before progression.
 <!-- awf:end -->
 
 <!-- awf:section dispatch-subagent -->
@@ -36,7 +36,8 @@ This skill may run without an effort. If continuity independently fired, validat
 {{ end }}   - The absolute uncommitted plan path and selected working-tree snapshot, with an explicit instruction to review that snapshot rather than HEAD; when present, effort slug and exact `.awf/efforts/<slug>/memory.md` read-only.
    - Every user-provenance decision-log entry from the effort memory pasted verbatim, including whatever `Record:` blocks exist, so the consensus-adherence check can run; a log without user entries omits the paste and leaves that check idle.
    - The declared per-phase ownership, phase context, closing subjects, and any helper partitions alongside created/modified paths, so review assesses the same phase boundary.
-   - The instruction to run in full mode (all universal lenses).
+   - The instruction to run in full mode (all universal lenses), read every ADR resolved from the plan's parsed `adrs:` set, and reject modification-time or session-inferred authority.
+   - When a linked ADR changed after implementation started, the completed-phase inventory, affected phases, and assurance that must be renewed before progression.
    - The affected context instruction: collect every task-level `Paths:` entry plus exact repository paths named in task titles and bodies, deduplicate the resolved set, and direct the reviewer to run `awf context --show invariants --show all-rules --show evidence --show pending <those paths>` itself so the doc-currency and convention-alignment lenses receive the non-direct invariant summaries, additional topic rules, backing evidence, and pending changes they need without unrelated facets. Do not infer a path from vague prose. Pass the resolved paths, not pasted packet output.
 <!-- awf:include context-spill -->
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
@@ -49,10 +50,11 @@ This skill may run without an effort. If continuity independently fired, validat
    - **mechanical**: this skill applies directly.
    - **reasoned**: this skill applies with a one-line rationale.
    - **user-decision**: present to the user with the cited affected authority and wait.
+   A correction that would contradict any linked ADR is never applied to the plan: return first to ADR amendment and ordinary ADR review, then start a fresh ordinary plan review after that authority settles.
 <!-- awf:end -->
 
 <!-- awf:section apply-fixes-commit -->
-5. **Settle the draft and commit once.** Apply mechanical fixes directly without a durable ledger. Record substantive reasoned or user-decided findings and dispositions in plan Notes. After the optional single verify pass, stage and gate the settled draft and create one initial plan commit. Later substantive corrections remain separate commits; every actual commit uses staged checks and the full gate.
+5. **Settle the plan and commit once.** Apply mechanical fixes directly without a durable ledger. Record substantive reasoned or user-decided findings and dispositions in plan Notes. For a new draft, after the optional single verify pass stage and gate the settled draft and create one initial plan commit. Later substantive corrections remain separate commits, including freshness corrections; every actual commit uses staged checks and the full gate.
 <!-- awf:end -->
 
 <!-- awf:section re-review-loop -->
@@ -60,7 +62,7 @@ This skill may run without an effort. If continuity independently fired, validat
 <!-- awf:end -->
 
 <!-- awf:section hand-off -->
-7. **Hand off after review settles.** Once the settled initial plan commit exists and review converges, proceed directly to the target-native inline or subagent-driven execution skill according to each phase's declared ownership.
+7. **Hand off after review settles.** Once the settled initial or freshness review converges, proceed directly to the target-native inline or subagent-driven execution skill according to each phase's declared ownership. If implementation had started, do not progress until every affected completed phase has renewed assurance.
 
 <!-- awf:include checkpoint-routine -->
 <!-- awf:end -->

@@ -96,6 +96,35 @@ func SetArrayMember(src []byte, key, name string, add bool) ([]byte, error) {
 	return encode(doc)
 }
 
+// RemoveArrayMember removes name from the sequence under key when present. It
+// reports whether it removed an item, leaves an absent key or member byte-identical,
+// and rejects a present non-sequence value. Schema migrations use it when an
+// obsolete catalog selection must disappear before strict catalog validation.
+func RemoveArrayMember(src []byte, key, name string) ([]byte, bool, error) {
+	doc, root, err := parseMapping(src)
+	if err != nil {
+		return nil, false, err
+	}
+	val, _ := mapValue(root, key)
+	if val == nil {
+		return src, false, nil
+	}
+	if val.Kind != yaml.SequenceNode {
+		return nil, false, fmt.Errorf("config: %q must be a sequence", key)
+	}
+	idx := seqIndex(val, name)
+	if idx < 0 {
+		return src, false, nil
+	}
+	val.Style = 0
+	val.Content = append(val.Content[:idx], val.Content[idx+1:]...)
+	out, err := encode(doc)
+	if err != nil { // coverage-ignore: the parsed node tree contains only encoder-supported YAML nodes
+		return nil, false, err
+	}
+	return out, true, nil
+}
+
 // SetArray sets the sequence under key to exactly values, creating the key if it
 // is absent and replacing it otherwise, via a yaml.Node round-trip that preserves
 // comments and every untouched key (ADR-0026). Used where the whole list is

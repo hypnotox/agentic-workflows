@@ -21,8 +21,8 @@ import (
 )
 
 // skillRefRe matches a rendered example-prefixed skill reference. Greedy, so
-// the longest hyphenated token wins ("example-reviewing-plan-resync" never
-// reports a nested "example-reviewing-plan").
+// the longest hyphenated token wins (an overlapping local fixture never
+// reports a nested shorter skill token).
 var skillRefRe = regexp.MustCompile(`example-[a-z][a-z-]*[a-z]`)
 
 // doubleBacktickRe matches a double backtick not adjacent to a third - an

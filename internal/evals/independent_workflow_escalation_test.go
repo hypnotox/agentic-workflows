@@ -60,7 +60,7 @@ func TestIndependentWorkflowEscalation(t *testing.T) {
 				}
 			}
 
-			for _, name := range []string{"proposing-adr", "adr-lifecycle", "writing-plans", "reviewing-adr", "reviewing-plan", "reviewing-plan-resync", "refactor-coupling-audit", "executing-plans", "subagent-driven-development"} {
+			for _, name := range []string{"proposing-adr", "adr-lifecycle", "writing-plans", "reviewing-adr", "reviewing-plan", "refactor-coupling-audit", "executing-plans", "subagent-driven-development"} {
 				assertContainsAll(t, target+" "+name, bodies[name], "may run without an effort", "otherwise omit effort and memory fields")
 			}
 

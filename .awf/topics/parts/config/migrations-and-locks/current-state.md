@@ -83,6 +83,12 @@ The schema-26 migration enables the orienting skill in any config that has brain
 Origin: ADR-0187
 Backing: test
 
+### `invariant: retired-plan-resync-selection-migration`
+
+Schema generation 38 removes exactly the retired plan reconciliation skill item from the top-level `skills` sequence before current catalog validation. The config-editor-backed migration is idempotent, reports one removal when performed, preserves sequence order and every unrelated editor-supported config value, and leaves absence unchanged; historical config bytes receive the same unconditional forward port before current catalog consumption.
+Origin: ADR-deduplicate-plan-authoring-and-execution-workflow
+Backing: test
+
 ### `invariant: schema-min-version`
 
 Every config-schema generation is paired with a minimum binary version in a lookup table, and the current schema generation always has an entry. The binary's own version is never below the minimum recorded for the current schema generation.

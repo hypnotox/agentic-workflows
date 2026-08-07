@@ -22,6 +22,9 @@ func TestSchemaMinimumVersionAuthority(t *testing.T) {
 	if got := minVersionBySchema[migrate.Current()]; got != Version {
 		t.Fatalf("generation-%d minimum version = %q, want %s", migrate.Current(), got, Version)
 	}
+	if got := minVersionBySchema[38]; got != "0.31.0" {
+		t.Fatalf("generation-38 minimum version = %q, want 0.31.0", got)
+	}
 	if got := minVersionBySchema[20]; got != "0.24.0" {
 		t.Fatalf("generation-20 minimum version = %q, want 0.24.0", got)
 	}
