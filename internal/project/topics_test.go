@@ -19,8 +19,13 @@ const topicProjectConfig = "prefix: example\nintegrationBranch: main\nskills: []
 
 func writeProjectTopic(t *testing.T, root, slug, title, applies string) {
 	t.Helper()
-	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/metadata/rendering", slug+".yaml"), "title: "+title+"\nsummary: Current "+title+" contracts.\n"+applies)
-	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/parts/rendering", slug, "current-state.md"), "<!-- awf:comment author note -->\nAuthored raw {{ .value }}.\n\n## Claims\n\n### `rule: stable`\nStable behavior.\nOrigin: ADR-0001\n")
+	writeProjectTopicDomain(t, root, "rendering", slug, title, applies)
+}
+
+func writeProjectTopicDomain(t *testing.T, root, domain, slug, title, applies string) {
+	t.Helper()
+	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/metadata", domain, slug+".yaml"), "title: "+title+"\nsummary: Current "+title+" contracts.\n"+applies)
+	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/parts", domain, slug, "current-state.md"), "<!-- awf:comment author note -->\nAuthored raw {{ .value }}.\n\n## Claims\n\n### `rule: stable`\nStable behavior.\nOrigin: ADR-0001\n")
 }
 func topicProject(t *testing.T) string {
 	t.Helper()
@@ -225,8 +230,11 @@ func TestTopicHashPropagatesReaderFault(t *testing.T) {
 func TestTopicRenderLifecycle(t *testing.T) {
 	// invariant: rendering/render-engine:source-marker-informational (TestTopicRenderLifecycle)
 	root := topicProject(t)
+	testsupport.WriteFile(t, filepath.Join(root, ".awf/config.yaml"), strings.Replace(topicProjectConfig, "domains: [rendering]", "domains: [rendering, tooling]", 1))
+	testsupport.WriteFile(t, filepath.Join(root, ".awf/domains/tooling.yaml"), "paths: [\"cmd/**\"]\n")
 	writeProjectTopic(t, root, "zeta", "Zeta", "paths: [\"internal/**\"]\n")
 	writeProjectTopic(t, root, "alpha", "Alpha", "applies: global\n")
+	writeProjectTopicDomain(t, root, "tooling", "beta", "Beta", "applies: global\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -235,7 +243,13 @@ func TestTopicRenderLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wanted := map[string]bool{"docs/topics/rendering/alpha.md": false, "docs/topics/rendering/zeta.md": false, "docs/topics/rendering/index.md": false}
+	wanted := map[string]bool{
+		"docs/topics/rendering/alpha.md": false,
+		"docs/topics/rendering/zeta.md":  false,
+		"docs/topics/rendering/index.md": false,
+		"docs/topics/tooling/beta.md":    false,
+		"docs/topics/tooling/index.md":   false,
+	}
 	for _, n := range op.Nodes {
 		if _, ok := wanted[n.Path]; ok {
 			wanted[n.Path] = true
@@ -260,11 +274,24 @@ func TestTopicRenderLifecycle(t *testing.T) {
 	if !strings.Contains(index, "<!-- "+bannerText+" -->\n"+indexMarker+"\n") || strings.Count(index, "awf:source") != 1 {
 		t.Fatalf("topic index marker = %s", index)
 	}
-	doc := string(mustRead(t, filepath.Join(root, "docs/topics/rendering/zeta.md")))
-	docMarker := "<!-- awf:source .awf/topics/metadata/rendering/zeta.yaml .awf/topics/parts/rendering/zeta/current-state.md -->"
-	if !strings.Contains(doc, "<!-- "+bannerText+" -->\n"+docMarker+"\n") || strings.Count(doc, "awf:source") != 1 {
-		t.Fatalf("topic marker = %s", doc)
+	for _, tc := range []struct {
+		path, marker string
+	}{
+		{"docs/topics/rendering/alpha.md", "<!-- awf:source .awf/topics/metadata/rendering/alpha.yaml .awf/topics/parts/rendering/alpha/current-state.md -->"},
+		{"docs/topics/rendering/zeta.md", "<!-- awf:source .awf/topics/metadata/rendering/zeta.yaml .awf/topics/parts/rendering/zeta/current-state.md -->"},
+		{"docs/topics/tooling/beta.md", "<!-- awf:source .awf/topics/metadata/tooling/beta.yaml .awf/topics/parts/tooling/beta/current-state.md -->"},
+	} {
+		page := string(mustRead(t, filepath.Join(root, tc.path)))
+		if !strings.Contains(page, "<!-- "+bannerText+" -->\n"+tc.marker+"\n") || strings.Count(page, "awf:source") != 1 {
+			t.Fatalf("topic marker for %s = %s", tc.path, page)
+		}
 	}
+	toolingIndex := string(mustRead(t, filepath.Join(root, "docs/topics/tooling/index.md")))
+	toolingMarker := "<!-- awf:source .awf/topics/metadata/tooling/*.yaml .awf/topics/parts/tooling/*/current-state.md -->"
+	if !strings.Contains(toolingIndex, "<!-- "+bannerText+" -->\n"+toolingMarker+"\n") || strings.Count(toolingIndex, "awf:source") != 1 {
+		t.Fatalf("tooling topic index marker = %s", toolingIndex)
+	}
+	doc := string(mustRead(t, filepath.Join(root, "docs/topics/rendering/zeta.md")))
 	bodyAt := strings.Index(doc, "# Zeta")
 	if bodyAt < 0 || strings.Contains(doc[bodyAt:], "awf:source") {
 		t.Fatalf("topic body contains source marker: %s", doc)

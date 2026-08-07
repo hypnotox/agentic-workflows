@@ -159,3 +159,5 @@ feat(rendering): mark opaque document sources
 ## Notes
 
 Inline owners immediately correct stale instructions and record reasoned deviations here. Delegated owners may report rather than edit; the parent supplies the report to phase review and reconciles it with findings in one focused post-review settlement commit before checkpointing or later execution. Record deviations, spike answers, follow-ups, and findings surfaced during implementation. After implementation review settles, `effort-workflow` reconciles the final findings here and owns the status-only transaction that flips the still-Implementing ADR and this still-Proposed plan to Implemented.
+
+- Phase 1 added `.awf/topics/metadata/rendering/render-engine.yaml` paths for `internal/project/banner.go`, `internal/project/banner_test.go`, and `internal/project/topics_test.go`. The reviewed marker proofs otherwise sat outside the render-engine topic's effective selector scope, so staged current-state validation required this bounded metadata expansion; it changes no marker behavior or approved family scope.

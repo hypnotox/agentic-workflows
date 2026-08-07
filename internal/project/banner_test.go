@@ -102,8 +102,12 @@ func TestInjectSourceMarker(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			got := injectSourceMarker(tc.content, tc.sources)
 			// invariant: rendering/render-engine:source-marker-informational (TestInjectSourceMarker)
+			// invariant: rendering/render-engine:no-section-marker-leak (TestInjectSourceMarker)
 			if got != tc.want {
 				t.Fatalf("source marker = %q, want %q", got, tc.want)
+			}
+			if strings.Contains(got, "awf:section") || strings.Contains(got, "awf:end") {
+				t.Fatalf("authoring marker leaked beside source marker: %q", got)
 			}
 		})
 	}
