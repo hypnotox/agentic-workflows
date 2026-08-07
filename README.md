@@ -198,7 +198,7 @@ its descriptor-owned layout, and Pi places its artifacts and extensions under `.
 You change the config and run `awf render`; you never hand-edit a rendered file.
 `awf check` fails when a rendered file is stale or was edited by hand, so the two can't
 silently diverge. Rendered sections use `awf:edit`, opaque regenerated outputs may carry an
-informational `awf:source`, and authored ADRs, plans, and local artifacts are banner-free. A topic
+informational `awf:source`, and authored ADRs, plans, and `local: true` documents are banner-free. A topic
 pairs `.awf/topics/metadata/<domain>/<topic>.yaml` with
 `.awf/topics/parts/<domain>/<topic>/current-state.md`; source markers identify reader guidance,
 not exhaustive dependencies. For detailed source-editing guidance, see

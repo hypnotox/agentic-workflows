@@ -209,6 +209,13 @@ func TestBridgeRenderIdentity(t *testing.T) {
 				t.Errorf("%s inherited fictitious sidecar input %s", path, sidecar)
 			}
 		}
+		wantInputs := []OutputInput{
+			{Path: ".awf/config.yaml", Role: ArtifactConfig},
+			{Path: "templates/" + templateID, Role: ArtifactTemplate},
+		}
+		if !slices.Equal(node.ConsumedInputs, wantInputs) || len(node.DependsOn) != 0 {
+			t.Errorf("%s source guidance changed machine inputs: inputs=%#v dependencies=%#v", path, node.ConsumedInputs, node.DependsOn)
+		}
 		if strings.Contains(node.file.Content, "<no value>") {
 			t.Errorf("%s rendered an unset template value: %s", path, node.file.Content)
 		}
