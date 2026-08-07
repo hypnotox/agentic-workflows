@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-07
 adrs: ["0246"]
-status: Proposed
+status: Implemented
 ---
 # Plan: Ship thin support skills
 
