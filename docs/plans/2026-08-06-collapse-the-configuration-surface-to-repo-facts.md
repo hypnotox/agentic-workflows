@@ -18,7 +18,7 @@ judgment triggers are out of scope.
 
 ## Architecture summary
 
-Four inline phases, ordered by what each one makes possible.
+Three inline phases, ordered by what each one makes possible.
 
 Phase 1 lands the gates record whole: it removes only keys whose consumers are local to the gate,
 payload and audit paths, so it needs nothing from the other records. Phases 2 and 3 split the
@@ -26,7 +26,8 @@ selection retirement, which cannot be split by compilation: removing a `Config` 
 every consumer to change in the same commit. Phase 2 therefore changes the render path to emit the
 whole catalog while the fields still exist and still parse, proving the new render behaviour under
 test; Phase 3 then deletes the fields, the commands, the resolver, the local-artifact channel and
-the requirement graph in one transaction. Phase 4 carries the prose the earlier phases invalidate.
+the requirement graph in one transaction. Each phase carries the authored and generated prose its
+behaviour change invalidates in the same closing commit.
 
 Dependency direction only loses edges. `internal/project` stops reading the enable arrays from
 `internal/config`, `internal/catalog` stops exposing a requirement graph, and `cmd/awf` stops
@@ -246,6 +247,22 @@ for contradictory fragments and concept-preserving paraphrase: confirm the refer
 a retired key, that its `bootstrap.enabled` row still describes a live toggle, and that no rewritten
 claim asserts both that a rule always runs and that a knob controls it.
 
+### Task 1.8: Carry the unconditional-gate prose with the change
+Latitude: exact
+Paths: [".awf/topics/parts/rendering/companion-scripts/current-state.md", ".awf/topics/parts/rendering/singletons-and-payloads/current-state.md", "README.md"]
+Applying: ["unconditional-gates-and-audit-rules:conditional-units-narrow-to-bootstrap"]
+
+In `.awf/topics/parts/rendering/companion-scripts/`, rewrite the narrative opening "When hooks are
+enabled, awf renders five inert payloads", which is false once the payloads are unconditional. In
+`.awf/topics/parts/rendering/singletons-and-payloads/`, keep the always-on and toggleable partition,
+which stays accurate because bootstrap survives as the toggleable one, and move the hook payloads to
+the always-on side.
+
+Update `README.md` in this transaction wherever it describes the runner, hooks, prose gate,
+memory-citation gate or audit advisories as optional or configurable. Perform a focused read of the
+regenerated prose for any adjacent sentence that still presents one of those outputs or checks as
+disabled.
+
 ### Phase close
 
 Stage the complete transaction and create its one closing commit after `awf check staged` and
@@ -384,6 +401,15 @@ rendering, the document map and the skill listing gain entries. Confirm the adde
 intended prose rather than stubs presented as finished guidance, and that the new `debugging` doc
 and `roadmap-graduation` skill outputs carry their stub advisory rather than silently empty bodies.
 
+### Task 2.6: Carry full-catalog wording with the render change
+Kind: batch
+Latitude: exact
+Applying: ["house-standard-configuration-expresses-repo-facts-only:full-catalog-render"]
+Paths: ["glob:.awf/skills/parts/**/*.md", "glob:.awf/docs/parts/**/*.md", "glob:.awf/parts/**/*.md", "glob:.awf/domains/parts/**/*.md", "glob:templates/**/*.tmpl"]
+Representative: `.awf/parts/workflow/chain.md` says "Use any enabled native skill when its purpose fits"; replace "any enabled native skill" with "any native skill", leaving the rest byte-identical. `templates/agents-doc/AGENTS.md.tmpl` carries the same construction and takes the same edit.
+Edge: Where a template says "the selectable cross-target lifecycle owner", selectability is gone rather than merely unqualified: rewrite it as "the cross-target lifecycle owner". Do not touch claim bodies under `.awf/topics/parts/**/current-state.md`: the transition check refuses a claim edit that no ADR operation declares. Residual selection wording there remains successor-record debt.
+Post-check: `grep -rn "enabled target\|enabled skill\|enabled native skill\|enabled set" .awf/skills/parts/ .awf/docs/parts/ .awf/parts/ .awf/domains/parts/ templates/` returns no output, and `./x render && ./x check` reports zero errors. `selectable` is deliberately excluded because effort resident slugs use it truthfully; inspect selection-context uses by reading.
+
 ### Phase close
 
 Stage the complete transaction and create its one closing commit after `awf check staged` and
@@ -397,7 +423,7 @@ feat(rendering): render the full catalog for every target
 
 **Execution mode: inline.**
 
-Completes: ["selection-retired", "cli-grammar", "records-applied"]
+Completes: ["selection-retired", "cli-grammar", "records-applied", "docs-current"]
 
 ### Task 3.1: Give the frozen migrations a historical view
 Latitude: exact
@@ -590,6 +616,28 @@ Phase 2 already made the render set catalog-derived. A rendered-output diff beyo
 `docs/config-reference.md` means a consumer was still reading a removed field; investigate rather
 than re-render over it.
 
+### Task 3.9: Carry selection and CLI documentation with the retirement
+Latitude: exact
+Paths: [".awf/topics/metadata/tooling/init-and-enablement.yaml", ".awf/domains/parts/rendering/current-state.md", ".awf/domains/parts/config/current-state.md", ".awf/parts/working-with-awf/commands.md", ".awf/parts/working-with-awf/config-and-overrides.md", ".awf/parts/working-with-awf/overview.md", ".awf/agents-doc.yaml", ".awf/docs/glossary.yaml", "templates/docs/working-with-awf.md.tmpl", "templates/docs/workflow.md.tmpl", "templates/skills/orienting/SKILL.md.tmpl", "templates/agents-doc/AGENTS.md.tmpl", "templates/docs/doc-standard.md.tmpl", "README.md"]
+Applying: ["house-standard-configuration-expresses-repo-facts-only:retire-local-artifacts", "cli-grammar-expresses-creation-and-inventory:cli-creation-and-inventory"]
+
+Rewrite the `tooling/init-and-enablement` topic title and description, which name `add` and
+`remove`, so the topic describes init alone. Rewrite the rendering and config domain index prose
+that describes retired subjects.
+
+Update the authored sources behind the generated adopter docs, not their rendered outputs. Drop
+`awf enable`, `awf disable` and the target commands; document `awf new domain` and
+`awf remove domain`; remove `docsDir` as a live key; and remove artifact-selection and local-artifact
+guidance. Update the agent guide's Commands section through `.awf/agents-doc.yaml` if needed. Rewrite
+the three `.awf/docs/glossary.yaml` rows for the doc-gated-skill state and the two retired resolver
+plan operations. Update `README.md` wherever it still documents enable/disable, selectable
+artifacts, target mutation, the old domain command or other retired configuration and command
+surface. Do not add a pitfalls entry here; retrospective owns that decision.
+
+Perform a focused reading of every regenerated adopter-facing doc and `README.md` for contradictory
+fragments. A sentence describing how to enable a skill beside one saying the full catalog always
+renders is the failure mode to find.
+
 ### Phase close
 
 Stage the complete transaction and create its one closing commit after `awf check staged` and
@@ -597,77 +645,6 @@ Stage the complete transaction and create its one closing commit after `awf chec
 
 ```commit
 feat(config): retire artifact selection and its command surface
-```
-
-## Phase 4: Documentation surfaces and residual wording
-
-**Execution mode: inline.**
-
-Completes: ["docs-current"]
-
-### Task 4.1: Rewrite the topic narratives the retirements invalidate
-Latitude: exact
-Paths: [".awf/topics/parts/rendering/companion-scripts/current-state.md", ".awf/topics/parts/rendering/singletons-and-payloads/current-state.md", ".awf/topics/metadata/tooling/init-and-enablement.yaml", ".awf/domains/parts/rendering/current-state.md", ".awf/domains/parts/config/current-state.md"]
-Applying: ["unconditional-gates-and-audit-rules:conditional-units-narrow-to-bootstrap", "house-standard-configuration-expresses-repo-facts-only:retire-local-artifacts"]
-
-In `.awf/topics/parts/rendering/companion-scripts/`, rewrite the narrative opening "When hooks are
-enabled, awf renders five inert payloads", which is false once the payloads are unconditional. In
-`.awf/topics/parts/rendering/singletons-and-payloads/`, keep the always-on and toggleable partition,
-which stays accurate because bootstrap survives as the toggleable one, and move the hook payloads to
-the always-on side.
-
-Rewrite the `tooling/init-and-enablement` topic title and description, which name `add` and
-`remove`: the topic is reduced to init alone. Rewrite the `rendering` and `config` domain index
-prose that describes retired subjects.
-
-### Task 4.2: Sweep the residual enablement wording
-Kind: batch
-Latitude: exact
-Applying: ["house-standard-configuration-expresses-repo-facts-only:full-catalog-render"]
-Paths: ["glob:.awf/skills/parts/**/*.md", "glob:.awf/docs/parts/**/*.md", "glob:.awf/parts/**/*.md", "glob:.awf/domains/parts/**/*.md", "glob:templates/**/*.tmpl"]
-Representative: `.awf/parts/workflow/chain.md` says "Use any enabled native skill when its purpose fits"; replace "any enabled native skill" with "any native skill", leaving the rest byte-identical. `templates/agents-doc/AGENTS.md.tmpl` carries the same construction as "Use any enabled native skill whose exposed description fits the current work" and takes the same edit, which matters because it renders into the agent guide.
-Edge: Where a template says "the selectable cross-target lifecycle owner", selectability is gone rather than merely unqualified: rewrite as "the cross-target lifecycle owner" rather than substituting a synonym for "selectable".
-Post-check: `grep -rn "enabled target\|enabled skill\|enabled native skill\|enabled set" .awf/skills/parts/ .awf/docs/parts/ .awf/parts/ .awf/domains/parts/ templates/` returns no output, and `./x render && ./x check` reports zero errors. `selectable` is deliberately excluded from the pattern: `.awf/parts/working-with-awf/commands.md` uses it for effort resident slugs, which has nothing to do with artifact selection and stays true. Sweep the selection-context uses of it by reading, not by grep.
-
-This task sweeps authored prose only: convention parts, skill and doc parts, and shipped templates.
-It must not touch a claim body under `.awf/topics/parts/**/current-state.md`. The current-state
-transition check refuses a claim edit that no ADR operation declares, comparing whitespace-trimmed
-prose, so a wording-only claim edit is a hard failure by design rather than an oversight. Residual
-"enabled target" phrasing inside claim bodies stays as it is; those claims remain substantively true
-because every target and skill is now always present, and correcting their wording is owed to a
-successor record carrying `update` operations for them. Record that debt in Notes.
-
-### Task 4.3: Update the guide and adopter documentation
-Latitude: exact
-Applying: ["cli-grammar-expresses-creation-and-inventory:cli-creation-and-inventory"]
-
-Update the authored sources behind the generated adopter docs, not the rendered outputs. The
-command reference and override guidance live in `.awf/parts/working-with-awf/commands.md`,
-`.awf/parts/working-with-awf/config-and-overrides.md` and
-`.awf/parts/working-with-awf/overview.md`; the shipped templates carrying retired-command or
-enablement wording are `templates/docs/working-with-awf.md.tmpl`, `templates/docs/workflow.md.tmpl`
-`templates/skills/orienting/SKILL.md.tmpl`, `templates/agents-doc/AGENTS.md.tmpl` and
-`templates/docs/doc-standard.md.tmpl`, the last of which names `docsDir` twice as a live key. Drop
-`awf enable`, `awf disable` and the target commands, and document `awf new domain` and
-`awf remove domain`. Update the agent guide's Commands section through `.awf/agents-doc.yaml` if it
-names a retired command.
-
-Rewrite the three `.awf/docs/glossary.yaml` rows that describe retired mechanisms as live: the
-doc-gated-skill state, and the two describing the `awf enable`/`awf disable` resolver plan
-operation. Do not add a pitfalls entry here; the retrospective owns that decision once implementation has
-surfaced what actually tripped.
-
-Perform a focused reading of every regenerated adopter-facing doc for contradictory fragments: a
-sentence describing how to enable a skill, next to one saying the full catalog always renders, is
-the failure mode to find.
-
-### Phase close
-
-Stage the complete transaction and create its one closing commit after `awf check staged` and
-`./x gate` pass.
-
-```commit
-docs(rendering): carry prose through the configuration collapse
 ```
 
 ## Definition of done
@@ -705,7 +682,7 @@ Record deviations, spike answers, follow-ups, and findings surfaced during imple
 - Owed to a successor record: the residual "enabled target" and "selectable" wording inside claim
   bodies under `.awf/topics/parts/**/current-state.md`. Those claims stay substantively true, but
   the transition check refuses a claim edit no ADR operation declares, so correcting the wording
-  needs a record carrying `update` operations for them. Task 4.2 deliberately stops at authored
+  needs a record carrying `update` operations for them. Task 2.6 deliberately stops at authored
   prose.
 - Phase 2 leaves an intentionally odd intermediate: the enable arrays are parsed and editable but no
   longer affect the render set. That is the price of a green checkpoint before Phase 3's demolition,
