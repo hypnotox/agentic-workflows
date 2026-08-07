@@ -28,7 +28,7 @@ Backing: test
 Every managed context-calling skill and the grounding-checker agent body carry the one-sentence spill pointer naming the exact `AWF_CONTEXT_SPILL_V1` notice and the working-with-awf doc's Context spill notices subsection, the contract's single rendered home for byte-length verification and best-effort packet deletion. Brainstorming, orientation, implementation, planning, debugging, test-first, and refactor-orientation calls start with bare `awf context`; ordinary plan and implementation review request `invariants`, `all-rules`, `evidence`, and `pending`; ADR review consumes deterministic typed linked-plan references from an explicit ADR context request; and ADR lifecycle requests `pending` where lifecycle detail is needed. No managed skill prescribes `--full` or `--json`, and the projection-pinning spine test classifies every context-calling skill template and expands the shared spill pointer.
 This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0155
-Revised-by: ADR-0165, ADR-0174, ADR-0187, ADR-0197, ADR-0243, ADR-deduplicate-plan-authoring-and-execution-workflow
+Revised-by: ADR-0165, ADR-0174, ADR-0187, ADR-0197, ADR-0243, ADR-0255
 Backing: test
 
 ### `invariant: mandatory-approval-boundaries`
@@ -50,7 +50,7 @@ Backing: test
 
 The shared review spine is the single semantic home of finding classification and reserves `user-decision` for a finding where every viable correct remediation would contradict or change a settled user-approved design or decision or require an unauthorized change to an active current-state claim, with the affected authority cited; ambiguity, competing clean options, severity, structural character, and survival of a prior correction do not transfer the choice, and an ADR intentionally declaring an active-claim change is not an unauthorized deviation. One variable-free shared prose partial is directly included exactly once by ordinary plan review, ADR review, and implementation review; it applies mechanical and reasoned corrections autonomously, scopes its stop rule to review findings, and routes a newly material load-bearing choice through the existing grounded-design or ADR workflow, pausing at that workflow's mandatory approval boundary. Exactly one fresh verify pass is retained, every residual finding is diagnosed under the same boundary without another same-artifact review loop, and a plan correction that would contradict linked authority returns to ADR amendment and review before a fresh ordinary plan review. Every affected skill and reviewer template renders coherently under empty variables.
 Origin: ADR-0245
-Revised-by: ADR-deduplicate-plan-authoring-and-execution-workflow
+Revised-by: ADR-0255
 Backing: test
 
 ### `invariant: memory-checkpoint-chain-coverage`
@@ -82,7 +82,7 @@ Backing: test
 The shared review spine carries the consensus-adherence check when user-provenance entries exist. Ordinary artifact and implementation review briefs paste available user entries verbatim, including `Record:` blocks; effort-free briefs omit memory evidence without fabricating consensus and still carry outcome, constraints, summary, range, and verification. Retrospective consumes effort observations and decisions only for effort-backed work.
 This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0186
-Revised-by: ADR-0197, ADR-0243, ADR-deduplicate-plan-authoring-and-execution-workflow
+Revised-by: ADR-0197, ADR-0243, ADR-0255
 Backing: test
 
 ### `invariant: workflow-transitions-advisory`
@@ -98,14 +98,14 @@ Backing: test
 A rendered plan phase is one independently green coherent implementation transaction with an explicit per-phase inline or subagent-driven owner. Delegated phase review returns structured coverage evidence: exact phase-closing commit, complete phase scope and reviewed range, verification results, verbatim deviation report, and unreviewed settlement. The parent owns transient evidence and validates branch-tip freshness; evidence loss after context loss, session replacement, or effort-free continuation, or unverifiable freshness, falls back to ordinary terminal review, while divergence, changed authority, reasoned post-review fixes, or material mutation invalidates affected coverage and requires renewed review. Fresh single-phase assurance reviews only unreviewed settlement/integration; multi-phase assurance focuses cross-phase, settlements, and integration. Complete-range `awf audit` and `./x audit-local` always remain, including settlement commits.
 This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0166
-Revised-by: ADR-0213, ADR-0217, ADR-0243, ADR-deduplicate-plan-authoring-and-execution-workflow
+Revised-by: ADR-0213, ADR-0217, ADR-0243, ADR-0255
 Backing: test
 
 ### `invariant: plan-task-detail-modes`
 
 The rendered plan-authoring skill, plan reviewer, implementation-plans README, and plan template require change-specific observable outcomes, authority links, material boundaries, ordering dependencies, focused evidence, and confinement where ambiguity or helpers require it. They retain typed Applying, Context, execution mode, phase close, Advances, Completes, and necessary Paths while treating Latitude, batch kind, Representative, and Edge as optional aids; historical grammar remains accepted. Commit-capable owners may resolve authority-determined local symbols, helper/test structure, and necessary omitted paths inside approved boundaries, while commit-disabled helpers remain confined. Their plan-v2 vocabulary defines contiguous `Applying:` and `Context:` task fields as nonempty JSON string arrays that are omitted rather than written as `[]`, uses retained pending ADR slugs with V4 stable Decision slugs or frozen pre-V4 `#N` selectors, requires slugged `dod:` Definition-of-done bullets, and assigns outcome contribution and final ownership through nonempty phase `Advances:` and `Completes:` arrays. Review checks substantive Applying coverage, Context misuse, and final Completes ownership while treating Proposed-plan coverage findings as advisory and historical Decision prose as distinct from current-state authority. Task projections keep their scope notice, Phase close, Advances, and Completes as phase-owner context without transferring task-helper authority. The surfaces also define contiguous task fields for exactness, spikes, batches, affected paths, and deterministic post-checks; require `Paths:` whenever scope is ambiguous, always including a batch; require `Post-check:` for every batch and every glob or pathspec scope; preserve the no-placeholder boundary for implementation tasks; forbid conditional and optional tasks; require one coherent green transaction and an inline or subagent-driven owner per phase; and keep any helper partition exhaustive, path-disjoint, shared-file-safe, and command-confined. A spike is question-only, records its answer in Notes, cannot own a phase, and sequences dependent work into a later phase. Every surface renders coherently with empty variables.
 Origin: ADR-0148
-Revised-by: ADR-0157, ADR-0166, ADR-0211, ADR-0217, ADR-deduplicate-plan-authoring-and-execution-workflow
+Revised-by: ADR-0157, ADR-0166, ADR-0211, ADR-0217, ADR-0255
 Backing: test
 
 ### `invariant: reviewers-report-only`
@@ -130,13 +130,13 @@ Backing: test
 ### `invariant: linked-plan-review-freshness`
 
 Ordinary full plan review resolves and verifies every ADR in parsed plan-level `adrs:` and ADR review consumes the deterministic typed reverse association rather than modification time or session inference. A substantive ADR amendment or review correction invalidates every linked Proposed plan's prior review: ADR review settles first, then each affected plan receives ordinary full review. A plan correction that would contradict linked authority returns to ADR amendment and review first. After implementation starts, completed affected phases are inventoried and implementation assurance is renewed wherever the changed decision can affect landed work before progression.
-Origin: ADR-deduplicate-plan-authoring-and-execution-workflow
+Origin: ADR-0255
 Backing: test
 
 ### `invariant: single-workflow-no-depth-controls`
 
 awf ships one workflow and introduces no workflow profiles, depth controls, routers, classifiers, or runtime policy knobs; universal authority, documentation, verification, commit, approval, and lifecycle obligations remain.
-Origin: ADR-deduplicate-plan-authoring-and-execution-workflow
+Origin: ADR-0255
 Backing: test
 
 ### `invariant: maintainable-code-stage-coverage`
@@ -192,11 +192,11 @@ Backing: test
 
 Every enabled target keeps contradictory-fragment, concept-preserving paraphrase, and intentional literal-placeholder checks without a universal language validator. The implementation phase owner owns focused generated-prose meaning review and completion evidence naming inspected output boundaries and result; plan review inspects the requirement and any evidence already available, while code review inspects the completed implementation evidence. Empty-data output remains coherent.
 Origin: ADR-0235
-Revised-by: ADR-deduplicate-plan-authoring-and-execution-workflow
+Revised-by: ADR-0255
 Backing: test
 
 ### `invariant: plan-review-before-first-commit`
 
 The report-only plan reviewer reads an explicit newly written plan path from a selected working-tree snapshot before its first commit. Mechanical corrections leave no durable ledger; substantive reasoned or user-decided findings and dispositions appear in Notes, the single verify-pass bound remains, and one settled initial plan commit follows. Later substantive corrections remain separate gated commits.
-Origin: ADR-deduplicate-plan-authoring-and-execution-workflow
+Origin: ADR-0255
 Backing: test

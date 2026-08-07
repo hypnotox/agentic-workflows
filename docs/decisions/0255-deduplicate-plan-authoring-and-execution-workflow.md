@@ -4,7 +4,7 @@ slug: deduplicate-plan-authoring-and-execution-workflow
 status: Implementing
 date: 2026-08-07
 ---
-# ADR-deduplicate-plan-authoring-and-execution-workflow: Deduplicate Plan Authoring and Execution Workflow
+# ADR-0255: Deduplicate Plan Authoring and Execution Workflow
 
 
 ## Context

@@ -20,7 +20,7 @@ Backing: test
 ### `invariant: adr-linked-plan-references`
 
 The references facet on an explicit governed ADR request reports the deterministic repository-relative set of plans whose parsed plan-level links resolve to that ADR, without Markdown scanning, modification-time inference, current-authority promotion, or output on unrelated requests.
-Origin: ADR-deduplicate-plan-authoring-and-execution-workflow
+Origin: ADR-0255
 Backing: test
 
 ### `invariant: context-applicability-navigation`

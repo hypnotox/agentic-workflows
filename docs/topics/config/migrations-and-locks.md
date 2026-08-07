@@ -124,7 +124,7 @@ Backing: test
 ### `invariant: retired-plan-resync-selection-migration`
 
 Schema generation 40 removes exactly the retired plan reconciliation skill item from the top-level `skills` sequence of a generation-39-stamped tree before current catalog validation. The config-editor-backed migration is idempotent, reports one removal when performed, preserves sequence order and every unrelated editor-supported config value, and leaves absence unchanged. Historical config bytes receive an unconditional forward port before current catalog consumption: generation 39 removes the whole retired selection surface for older trees, while generation 40 handles a generation-39 tree that still carries the independently retired item.
-Origin: ADR-deduplicate-plan-authoring-and-execution-workflow
+Origin: ADR-0255
 Backing: test
 
 ### `invariant: schema-min-version`

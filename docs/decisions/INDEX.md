@@ -3,7 +3,7 @@
 ## In flight
 
 - [ADR-0246: Ship thin support skills for awf's own mechanisms](0246-ship-thin-support-skills-for-awf-s-own-mechanisms.md) (Proposed)
-- [ADR-deduplicate-plan-authoring-and-execution-workflow: Deduplicate Plan Authoring and Execution Workflow](deduplicate-plan-authoring-and-execution-workflow.md) (Implementing)
+- [ADR-0255: Deduplicate Plan Authoring and Execution Workflow](0255-deduplicate-plan-authoring-and-execution-workflow.md) (Implementing)
 
 ## History
 
