@@ -76,7 +76,7 @@ Rendered output never contains awf:section or awf:end markers. The only awf mark
 file may carry are the generated-by banner, the awf:edit family, and informational awf:source
 comments.
 Origin: ADR-0015
-Revised-by: ADR-compact-source-provenance-for-generated-documents
+Revised-by: ADR-0250
 Backing: test
 
 ### `invariant: source-marker-informational`
@@ -84,7 +84,7 @@ Backing: test
 One renderer-owned HTML awf:source comment follows the generated-by banner when a document family
 supplies a nonempty compact source list. The marker is never parsed as an edit or read-back boundary,
 and is absent when no family policy supplies sources.
-Origin: ADR-compact-source-provenance-for-generated-documents
+Origin: ADR-0250
 Backing: test
 
 ### `invariant: part-marker-advisory`

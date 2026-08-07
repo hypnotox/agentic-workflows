@@ -4,7 +4,7 @@ slug: compact-source-provenance-for-generated-documents
 status: Implementing
 date: 2026-08-07
 ---
-# ADR-compact-source-provenance-for-generated-documents: Compact Source Provenance for Generated Documents
+# ADR-0250: Compact Source Provenance for Generated Documents
 
 
 ## Context
