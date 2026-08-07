@@ -476,11 +476,18 @@ symbol across `internal/` and `cmd/`, returning no output before the phase close
 Latitude: exact
 Applying: ["cli-grammar-expresses-creation-and-inventory:retire-selection-commands", "cli-grammar-expresses-creation-and-inventory:domain-lifecycle-under-new", "cli-grammar-expresses-creation-and-inventory:new-scaffolds-authored-artifacts", "cli-grammar-expresses-creation-and-inventory:list-is-inventory", "cli-grammar-expresses-creation-and-inventory:no-deprecation-window-for-a-retired-key"]
 
-In `internal/clispec/clispec.go` and `cmd/awf`, delete the `enable` and `disable` commands across
-all eight kinds, including the bootstrap, hooks and runner singleton arms, and delete the target
-add, remove and list commands. Delete `awf new skill`, `awf new agent` and `awf new doc` with
-`newLocal`, `seedScaffoldVars` and `project.ScaffoldVarRefs`; keep `config.SeedVarKey`, which its
-migration callers still use.
+In `internal/clispec/clispec.go` and `cmd/awf`, delete what remains of the `enable` and `disable`
+commands: the three catalog-backed arms, the domain arm, the target arm and the bootstrap singleton
+arm, together with the commands themselves. Task 1.2 already removed the hooks and runner arms with
+the fields they wrote, so six of the eight kinds retire here and the command declarations go with
+the last of them. Delete the target list command too. Delete `awf new skill`, `awf new agent` and
+`awf new doc` with `newLocal`, `seedScaffoldVars` and `project.ScaffoldVarRefs`; keep
+`config.SeedVarKey`, which its migration callers still use.
+
+The bootstrap arm is the one retiring for a different reason: `bootstrap.enabled` survives, so this
+arm writes a key the loader still accepts. It goes because a boolean setup fact is read from
+configuration rather than selected, which is the CLI record's item 1, not its strict-parsing
+argument.
 
 Add `awf new domain <name>` and `awf remove domain <name>`, the latter introducing `awf remove` as a
 new top-level verb carrying exactly one kind. Creation validates the name through the config
@@ -691,6 +698,10 @@ Record deviations, spike answers, follow-ups, and findings surfaced during imple
 - The bootstrap record is Abandoned, not implemented. `bootstrap.enabled`, `.awf/bootstrap.sh`,
   `.awf/upgrade.sh` and every bootstrap claim are untouched by this plan. A task that appears to
   require removing one is a misreading.
+- After Phase 3 there is no channel for an artifact awf does not ship. Convention parts reshape a
+  catalog artifact; they cannot introduce one, and `awf new skill|agent|doc` is gone with the local
+  channel. An executor who reaches for a project-local skill mid-implementation should land it in
+  the catalog instead, or stop and raise it.
 - Owed to a successor record: the residual "enabled target" and "selectable" wording inside claim
   bodies under `.awf/topics/parts/**/current-state.md`. Those claims stay substantively true, but
   the transition check refuses a claim edit no ADR operation declares, so correcting the wording
