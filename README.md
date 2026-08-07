@@ -280,14 +280,13 @@ basename; change it via `prefix` in `.awf/config.yaml`. You can back out anytime
 removes everything awf generated, leaving your config in place.
 
 awf renders git-hook *content* but never installs or activates hooks; the wiring is
-yours. With the `hooks` artifact enabled (default on init), five inert payload scripts
-land under `.awf/hooks/`: `pre-commit.sh` (the configured aggregate check followed by
+yours. Five inert payload scripts render unconditionally under `.awf/hooks/`: `pre-commit.sh` (the configured aggregate check followed by
 the project gate), `commit-msg.sh` (`awf check staged commit`), `pre-merge-commit.sh`
 (the staged evidence available before the final message and parents),
 `reference-transaction.sh` (optional commit-policy enforcement before branch refs move),
 and `pre-push.sh` (commit policy before the configured push gate). Preview intended
 history with `awf check commit-policy <revision-or-range>...` before enabling a policy.
-Invoke payloads from wiring you own. A tracked stub should resolve
+Adopter-owned wiring activates the otherwise inert payloads. Invoke them from wiring you own. A tracked stub should resolve
 `git rev-parse --show-toplevel` and delegate to that worktree's payload so linked
 worktrees remain correct with absolute or relative `core.hooksPath`. If you adopted an
 earlier awf that ran `awf setup`, your repo's `core.hooksPath` may still point at the

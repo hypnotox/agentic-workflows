@@ -507,7 +507,6 @@ func TestRunNewDispatch(t *testing.T) {
 	}
 }
 
-// invariant: tooling/cli:cli-creation-and-inventory (TestRunNewDomainLifecycle)
 // invariant: tooling/cli:domain-lifecycle-commands (TestRunNewDomainLifecycle)
 func TestRunNewDomainLifecycle(t *testing.T) {
 	root := scaffoldProject(t)
@@ -533,6 +532,23 @@ func TestRunNewDomainLifecycle(t *testing.T) {
 	after, err := os.ReadFile(part)
 	if err != nil || !bytes.Equal(after, before) {
 		t.Fatalf("existing part changed: %v", err)
+	}
+	output := filepath.Join(root, "docs", "domains", "delivery.md")
+	if _, err := os.Stat(output); err != nil {
+		t.Fatalf("rendered domain output missing: %v", err)
+	}
+	var removal bytes.Buffer
+	if err := runRemoveDomain(ctx, root, "delivery", &removal); err != nil {
+		t.Fatalf("remove domain: %v", err)
+	}
+	if _, err := os.Stat(output); !os.IsNotExist(err) {
+		t.Fatalf("rendered domain output survived removal: %v", err)
+	}
+	if got, err := os.ReadFile(part); err != nil || !bytes.Equal(got, before) {
+		t.Fatalf("authored part changed by removal: %q, %v", got, err)
+	}
+	if !strings.Contains(removal.String(), "orphaned") {
+		t.Fatalf("removal did not report surviving authored part: %q", removal.String())
 	}
 }
 

@@ -176,6 +176,7 @@ func TestRetainedNewUsageAndProjectErrors(t *testing.T) {
 	}
 }
 
+// invariant: tooling/cli:cli-creation-and-inventory (TestRetainedDomainAndListCLIPaths)
 func TestRetainedDomainAndListCLIPaths(t *testing.T) {
 	ctx := testContext(t)
 
@@ -239,6 +240,20 @@ func TestRetainedDomainAndListCLIPaths(t *testing.T) {
 			}
 			if !strings.Contains(out.String(), "status: artifact inventory") {
 				t.Fatalf("list %q = %q", kind, out.String())
+			}
+		}
+		var targets bytes.Buffer
+		if err := runList(ctx, root, "target", &targets); err != nil {
+			t.Fatal(err)
+		}
+		for _, name := range []string{"claude", "pi"} {
+			if !strings.Contains(targets.String(), name) {
+				t.Errorf("fixed target inventory missing %q: %q", name, targets.String())
+			}
+		}
+		for _, retired := range []string{"enabled", "available", "local"} {
+			if strings.Contains(strings.ToLower(targets.String()), retired) {
+				t.Errorf("target inventory retains enablement vocabulary %q: %q", retired, targets.String())
 			}
 		}
 		if err := runList(ctx, root, "bogus", io.Discard); err == nil {

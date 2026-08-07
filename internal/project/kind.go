@@ -23,7 +23,7 @@ type kindDescriptor struct {
 
 // kindDescriptors is the single ordered source of per-kind dispatch (inv:
 // kind-dispatch-single-table), in `awf list` display order. It is also the sole
-// enumeration of CLI-addressable kinds (ADR-0024 inv: cli-config-kinds, re-homed here).
+// enumeration of CLI-addressable artifact kinds and their dispatch facets.
 var kindDescriptors = []kindDescriptor{
 	{
 		Plural: "skills", Singular: "skill",
@@ -90,7 +90,7 @@ func Kinds() []string {
 	return out
 }
 
-// PluralKind maps a singular CLI kind token to its config enable-array key.
+// PluralKind maps a singular CLI kind token to its descriptor plural.
 func PluralKind(singular string) (string, bool) {
 	d, ok := descriptorBySingular(singular)
 	return d.Plural, ok

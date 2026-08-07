@@ -10,9 +10,9 @@ query a single version or a range.
 
 ### Breaking changes
 
-- Rendering now unconditionally emits the complete standard catalog for fixed Claude Code and Pi targets beneath the fixed `docs` root. The legacy selection keys remain schema-compatible through Phase 2 and are removed in Phase 3.
+- Rendering unconditionally emits the complete standard catalog for fixed Claude Code and Pi targets beneath the fixed `docs` root. Schema generation 39 retires the `skills`, `agents`, `docs`, `targets`, and `docsDir` selection keys and the artifact-sidecar `local` field; `bootstrap.enabled` remains conditional.
 
-- Schema generation 38 removes the hooks, runner, prose-gate, memory-citation, audit-tuning, and topic-fan-out preference keys. The prose and memory-citation scans, all five audit advisories, five inert hook payloads, and the `./awf` wrapper are now unconditional; `awf list`, `awf enable`, and `awf disable` no longer accept hooks or runner, while `bootstrap.enabled` remains conditional.
+- The complete `awf enable`, `awf disable`, and target command surfaces are removed. Domains now use `awf new domain` and `awf remove domain`; `awf list` is inventory-only.
 
 ### Features
 

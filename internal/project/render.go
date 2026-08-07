@@ -113,9 +113,7 @@ func (p *Project) commitScopesDisplay() string {
 	return strings.Join(quoted, ", ")
 }
 
-// effectiveSkills returns the full catalog skill set. Phase 2 still admits a
-// configured project-local skill into the effective catalog, including a
-// local-only hand-maintained one, so every catalog member is present.
+// effectiveSkills returns the unconditional full catalog skill set.
 func (p *Project) effectiveSkills() (map[string]bool, error) {
 	eff := map[string]bool{}
 	for name := range p.Cat.Skills {
@@ -334,7 +332,7 @@ func nonNil(m map[string]any) map[string]any {
 }
 
 // renderKindSpec drives one catalog-backed render loop (skills/agents/docs): the
-// kinds that share the sort → sidecar → skip-local → render → append shape. tid
+// kinds that share the sort → sidecar → render → append shape. tid
 // and sections derive from the artifact name; outPath also takes the adapter
 // target (ignored by neutral kinds like docs); target is the adapter this pass
 // renders for (zero for neutral kinds).
@@ -441,8 +439,8 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 		return nil, err
 	}
 	out = append(out, docsRfs...)
-	// Adapter: skills + agents render once per enabled target (inv: multi-target-render).
-	// touches-state: rendering/project-output-plan:multi-target-render - skills/agents render once per enabled target; proof in target_test.go
+	// Adapter: skills + agents render once per fixed target (inv: multi-target-render).
+	// touches-state: rendering/project-output-plan:multi-target-render - skills/agents render once per fixed target; proof in target_test.go
 	for _, t := range p.Targets {
 		skillNames := slices.Sorted(maps.Keys(p.Cat.Skills))
 		skillPath := func(t Target, n string) string { return t.SkillPath(p.Cfg.Prefix, n) }
@@ -525,10 +523,9 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	}
 	rf.ConsumedInputs = normalizeOutputInputs(rf.ConsumedInputs)
 	out = append(out, rf)
-	// Each descriptor-owned bridge is gated on the agents-doc render above: a
-	// local (hand-maintained) AGENTS.md emits no managed bridge. A target with an
-	// empty BridgeFile emits no bridge, so neutral instructions never point at
-	// an unrendered target-owned file.
+	// Each descriptor-owned bridge is gated on the agents-doc render above. A
+	// target with an empty BridgeFile emits no bridge, so neutral instructions
+	// never point at an unrendered target-owned file.
 	for _, t := range p.Targets {
 		if t.BridgeFile == "" {
 			continue
@@ -541,8 +538,8 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 		out = append(out, brf)
 	}
 	// Plain singletons: every Mandatory non-agents-doc entry in the catalog doc
-	// collection, derived into plainSingletons (always-on unless local; ADR-0021,
-	// ADR-0043, ADR-0059, ADR-0061).
+	// collection, derived into plainSingletons (ADR-0021, ADR-0043, ADR-0059,
+	// ADR-0061).
 	lay := p.layout()
 	for _, sg := range plainSingletons {
 		rfs, err := p.renderKind(renderKindSpec{

@@ -720,3 +720,6 @@ Record deviations, spike answers, follow-ups, and findings surfaced during imple
   and `_base` config-reference branches that survived the broad demolition. Focused retained-domain,
   inventory, migration-failure, output-plan, staged-drift, and advisory tests restore 100% coverage
   without reviving a retired surface or adding an exclusion.
+- Phase 3 review settlement narrows schema-39 sidecar migration discovery to the frozen historical
+  artifact-sidecar surface, preserving all-files preflight while excluding unrelated YAML. It also
+  strengthens migration, CLI lifecycle, grammar, inventory, claim, and prose proofs and corrections.

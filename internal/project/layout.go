@@ -26,8 +26,7 @@ type Layout struct {
 func (p *Project) layout() Layout {
 	d := config.DocsDir
 	dec := d + "/decisions"
-	// Docs maps every catalog document to its rendered output path. Phase 2 still
-	// includes synthesized local docs in the effective catalog.
+	// Docs maps every catalog document to its unconditional rendered output path.
 	docs := map[string]string{}
 	if p.Cat != nil {
 		for name := range p.Cat.Docs {
@@ -92,8 +91,7 @@ func (p *Project) decisionsDir() string {
 }
 
 // resolvedDocs builds the non-singleton Document-map entries for the agents-doc
-// template from the full catalog, annotated with title and description. Local
-// docs remain suppressible during the Phase 2 intermediate.
+// template from the full catalog, annotated with title and description.
 func (p *Project) resolvedDocs() []map[string]any {
 	out := []map[string]any{}
 	var names []string
@@ -118,7 +116,7 @@ func (p *Project) resolvedDocs() []map[string]any {
 // documentMapDocs builds the AGENTS.md document-map entries for the mandatory
 // DocumentMap docs from the catalog's title/desc, sorted by name (ADR-0062).
 // Unlike resolvedDocs it is UNCONDITIONAL - a mandatory doc-map line renders
-// regardless of a local: sidecar, matching the historically hardcoded lines.
+// from the complete catalog, matching the historically hardcoded lines.
 func (p *Project) documentMapDocs() []map[string]any {
 	d := config.DocsDir
 	var names []string

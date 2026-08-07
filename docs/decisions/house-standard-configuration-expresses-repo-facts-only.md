@@ -288,3 +288,4 @@ are removed, rather than here.
 - 2026-08-07: Amended; content-sha256: ab070285a7a9d6a82e220b35faaed333b20f5d3fb2eac89f6f3375bdda57be68
 - 2026-08-07: Applied; operations: remove `rendering/templates:local-base-publication-safe`, remove `rendering/templates:local-doc-base-publication-safe`
 - 2026-08-07: Reapplied; operations: add `rendering/project-output-plan:full-catalog-render`, update `rendering/project-output-plan:output-plan-complete`, update `rendering/doc-outputs:working-with-awf-mandatory`, update `rendering/singletons-and-payloads:adr-system-singletons-rendered`, update `rendering/singletons-and-payloads:plain-singleton-via-renderkind`
+- 2026-08-07: Reapplied; operations: update `rendering/sync-and-drift:agent-guide-size-advisory`, update `rendering/sync-and-drift:managed-output-attribution`

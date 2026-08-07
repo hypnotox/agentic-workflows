@@ -11,7 +11,7 @@ How awf render and awf check detect and report drift: per-file config-hash input
 
 ### `invariant: agent-guide-size-advisory`
 
-Only the deterministic expected bytes of a managed `AGENTS.md` feed aggregate `CheckReport.Notes`: at a fixed 12 KiB threshold, an overage is a warning-only zero-exit advisory. During the schema-compatible intermediate, locally owned guides and non-aggregate consumers are excluded.
+Only the deterministic expected bytes of a managed `AGENTS.md` feed aggregate `CheckReport.Notes`: at a fixed 12 KiB threshold, an overage is a warning-only zero-exit advisory. Non-aggregate consumers are excluded.
 Origin: ADR-0241
 Revised-by: ADR-house-standard-configuration-expresses-repo-facts-only
 Backing: test
@@ -57,7 +57,7 @@ Backing: test
 
 ### `invariant: managed-output-attribution`
 
-A reader-injected declaration builder enumerates managed writes and, during the schema-compatible intermediate, local reservations before rendering, retains their sorted declarers and exact config, sidecar, convention-part, topic, and generated inputs, and supplies context artifact source/output edges; only non-reservation declarations classify a path as generated.
+A reader-injected declaration builder enumerates managed writes before rendering, retains their sorted declarers and exact config, sidecar, convention-part, topic, and generated inputs, and supplies context artifact source/output edges; managed declarations classify their paths as generated.
 Origin: ADR-0148
 Revised-by: ADR-house-standard-configuration-expresses-repo-facts-only
 Backing: test
