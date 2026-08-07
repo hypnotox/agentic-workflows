@@ -16,7 +16,7 @@ awf always renders self-ignoring `.gitignore` files at `.awf/efforts/` and `.awf
 
 - `awf render`: re-render every artifact from `.awf/` and update `.awf/awf.lock`.
 - `awf check`: fail if any rendered file has drifted from the config (also gates the schema version).
-- `awf enable <kind> <name>` / `awf disable <kind> <name>`: toggle a skill, agent, doc, domain, or target artifact, or a nameless singleton (`bootstrap`, `hooks`, `runner`, given no name). For a skill/agent/doc, enable brings in the full requirement closure in one edit and disable refuses while enabled artifacts still require it; `--with-dependents` disables them together, `--dry-run` previews either plan without changing the config.
+- `awf enable <kind> <name>` / `awf disable <kind> <name>`: toggle a skill, agent, doc, domain, or target artifact, or the nameless `bootstrap` singleton (given no name). For a skill/agent/doc, enable brings in the full requirement closure in one edit and disable refuses while enabled artifacts still require it; `--with-dependents` disables them together, `--dry-run` previews either plan without changing the config.
 - `awf list`: show the catalog and what is enabled.
 - `awf config [<key-or-var>]`: describe config keys and vars, the full reference or one entry, with live state inside a project (current values, consumers, dormant hints) and a static catalog reference outside one.
 - `awf read plan <plan> <P[.T]>`: resolve an exact filename or stem under the configured plans directory and print internal/plan's executable phase or task closure. Plan-v2 composes selected Applying Decisions, then Context Decisions, selected content, phase-owned Advances and Completes outcomes, Phase close, Definition of done, and Notes; a task scope notice makes these outcomes and close constraints rather than transferred authority. Plan-v1 remains compatibility behavior, while marker-absent historical plans retain legacy checking but have no executable projection.
@@ -73,14 +73,14 @@ vars are set, what consumes them, and what enabling would activate.
 **Toggle kinds.** `target` selects an adapter runtime (e.g. `awf enable target pi`); adapter
 artifacts render once per enabled target. `bootstrap` toggles the rendered `.awf/bootstrap.sh`, a
 checksum-verified installer that prints the path of this project's pinned awf binary for hooks and
-CI (`"$(bash .awf/bootstrap.sh)" check`). `hooks` toggles five rendered git-hook payloads under
+CI (`"$(bash .awf/bootstrap.sh)" check`). awf always renders five git-hook payloads under
 `.awf/hooks/`: pre-commit, commit-msg, pre-merge-commit, reference-transaction, and pre-push. They are inert scripts you wire into hook setups you own; awf never touches Git configuration. The reference-transaction and pre-push payloads apply optional commit-policy provenance checks only when you configure that policy. Preview intended history first with `awf check commit-policy <revision-or-range>...`; an absent policy remains successful and does not need invented values. For tracked wiring, have each stub resolve `git rev-parse --show-toplevel` and delegate to that worktree's `.awf/hooks/<payload>.sh`, rather than reading a primary checkout. That is safe with either absolute or relative `core.hooksPath` and gives linked worktrees their own policy. These local checks are preflight only; the remote's receiving and protected-branch policy is the final enforcement boundary.
 
 The `commit-msg` payload is the definitive stale-format ADR merge boundary. An older-format import must match an incoming parent except for sanctioned numbering substitutions and carry adjacent `AWF-Allow-Version: <marker-or-legacy>` and `AWF-Allow-Reason: <nonempty reason>` trailers. Malformed reserved trailers refuse. The refusal preserves the index and `MERGE_HEAD`, so correct the message and run `git commit` instead of repeating the merge; `git merge --no-commit --no-ff` is an optional proactive flow. A true fast-forward needs no stamp, and neither ADR retrofit nor allowance state is permitted.
 
-`runner` toggles the rendered pure awf wrapper `awf` at the repo root, a fully awf-owned forwarder
-that execs the configured (`awfInvokeCmd`) or bootstrap-resolved awf with every argument forwarded
-verbatim; your project verbs stay in your own runner.
+awf always renders the pure wrapper `awf` at the repo root, a fully awf-owned forwarder that execs
+the configured (`awfInvokeCmd`) or bootstrap-resolved awf with every argument forwarded verbatim;
+your project verbs stay in your own runner.
 
 **Current-state topic inputs.** A topic is exactly one strict sidecar at
 `.awf/topics/metadata/<domain>/<topic>.yaml` paired with one authored part at
@@ -253,8 +253,8 @@ Pi also renders the separate `handoff_session` extension for persisted interacti
 
 ### Path globs and domain territories
 
-Every glob in awf (`currentState.sources[].globs`, `audit.dependencyManifests`, and domain
-`paths`) uses one anchored dialect: a pattern matches a file's slash-separated repo-relative
+Every configurable or built-in glob in awf (`currentState.sources[].globs`, the fixed built-in
+dependency-manifest patterns, and domain `paths`) uses one anchored dialect: a pattern matches a file's slash-separated repo-relative
 path in full. `*.ts` matches only top-level `.ts` files; write `**/*.ts` for any depth
 (this deliberately differs from gitignore, where a slash-free pattern floats). `src/**` covers
 a subtree; `src/api/*.ts` scopes one directory.
@@ -269,8 +269,8 @@ paths:
 
 When files matching a domain's `paths` change on a branch without a co-change to
 `.awf/domains/parts/<name>/current-state.md`, `awf audit` raises an advisory
-`domain-code-staleness` warning. If anything meaningful changed, document it. Domains without
-`paths` opt out; the rule is disable-able via `audit.domainCodeStaleness: false`.
+`domain-code-staleness` warning. If anything meaningful changed, document it. The rule always
+evaluates; a domain without `paths` is structurally inert.
 <!-- awf:end -->
 
 <!-- awf:section model-selection -->

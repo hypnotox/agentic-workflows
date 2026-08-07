@@ -888,13 +888,13 @@
     },
     "docs/workflow.md": {
       "templateId": "docs/workflow.md.tmpl",
-      "templateHash": "sha256:0523c2e2ac1c679d23a9dc23a1ddc9da005c5a9aee042cf0ce36f4a5f3361b92",
+      "templateHash": "sha256:7fd06c748ca85843cdfc9dcd516d11986b76d7e1b076c4e4b5f1b951eb65cb65",
       "configHash": "sha256:4471c69a780a89e055b359d737faf24d0bbb5894bf93be4022cf68ef0885b41b",
       "outputHash": "sha256:8425698b0c4dfd8a6ac174b9743977c5d4fd00bf9ace9b354d620cc6c98e6f58"
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
-      "templateHash": "sha256:8db75ec057edeece6440c7cb97fec9a7910b41e8df3b57a0a5984503de86010d",
+      "templateHash": "sha256:72e118bd55e120e0f56ac9578df5f3ec2ea38d9943e46fb613a6eb55a7caaea3",
       "configHash": "sha256:f85694c19619f583c85affe49d585bd4015550e8a6c6873a64a17601d5a220e3",
       "outputHash": "sha256:ca8d268e7be5e925532a101bf6a84887aee0c458d4ad5220fc8d0facc84f9223"
     }
