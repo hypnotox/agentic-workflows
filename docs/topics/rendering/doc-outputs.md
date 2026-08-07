@@ -103,6 +103,7 @@ Backing: test
 
 ### `invariant: opaque-doc-source-guidance`
 
-Opaque generated documentation carries one compact reader-facing `awf:source` marker for topic pages and indexes, domain navigation, glossary, pitfalls, the ADR index, config reference, and target bridges. Section-overridable standard docs and AGENTS.md retain their `awf:edit` guidance without duplication; authored ADRs, plans, and `local: true` artifacts remain banner-free. Marker payloads guide readers and are not exhaustive machine dependencies.
+Opaque generated documentation carries one compact reader-facing `awf:source` marker for topic pages and indexes, domain navigation, glossary, pitfalls, the ADR index, config reference, and target bridges. Section-overridable standard docs and AGENTS.md retain their `awf:edit` guidance without duplication; authored ADRs and plans remain banner-free. Marker payloads guide readers and are not exhaustive machine dependencies.
 Origin: ADR-0250
+Revised-by: ADR-0251
 Backing: test

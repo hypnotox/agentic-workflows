@@ -725,3 +725,7 @@ Record deviations, spike answers, follow-ups, and findings surfaced during imple
   strengthens migration, CLI lifecycle, grammar, inventory, claim, and prose proofs and corrections.
   The verify pass further made cross-sidecar preflight atomicity mutation-sensitive, finished the
   init-only topic rewrite, and propagated domain-orphan inspection failures.
+- Divergence review found that imported main added compact opaque-document source guidance whose
+  `local: true` exception became false after Phase 3 retired local artifacts. ADR-0251 was amended
+  with the missing claim update, then the claim, its generated source-map prose, and the imported
+  changelog entries were reconciled before primary integration.

@@ -18,9 +18,19 @@ query a single version or a range.
 
 ### Features
 
+- Added compact `awf:source` markers for opaque generated documents and the canonical source-editing map.
+
+- Commit-capable implementation phase owners may now add necessary paths omitted from their dispatch when the approved scope and authority remain unchanged, reporting each addition as a reasoned deviation; commit-disabled helpers remain strictly confined to their assigned path partition.
+
+- Plan, ADR, resync, and implementation review now apply authority-preserving corrections autonomously, including after the single verify pass, and ask the user only when a correction would deviate from settled user-approved design or an active current-state claim.
+
 - Added independent judgment-based workflow escalation, reusable grounding support, risk-based effort-independent implementation review, a single-home effort lifecycle, and guarded grounding backfill for compatible adopters.
 
 - README commands, embedded templates, and config-reference live state now derive completeness from their source authorities, replacing three manual pitfall reminders.
+
+- Owner-scoped Pi effort-memory edits and metadata updates now expose binary-authored read-only previews and authoritative bounded contextual diffs. Preview failures stop mutation, while normal validation and publication semantics remain unchanged.
+
+- The Pi `effort_memory_edit` and `effort_memory_update` tools now render like Pi's own edit tool: one stable row shows the previewed diff while arguments settle and then retains the authoritative colored diff, a truncated diff carries a visible warning, and model-visible output stays a compact summary with the protocol reply kept in structured details.
 
 ## [0.31.0] - 2026-08-06
 
