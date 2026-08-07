@@ -14,6 +14,8 @@ query a single version or a range.
 
 ### Features
 
+- Commit-capable implementation phase owners may now add necessary paths omitted from their dispatch when the approved scope and authority remain unchanged, reporting each addition as a reasoned deviation; commit-disabled helpers remain strictly confined to their assigned path partition.
+
 - Plan, ADR, resync, and implementation review now apply authority-preserving corrections autonomously, including after the single verify pass, and ask the user only when a correction would deviate from settled user-approved design or an active current-state claim.
 
 - Added independent judgment-based workflow escalation, reusable grounding support, risk-based effort-independent implementation review, a single-home effort lifecycle, and guarded grounding backfill for compatible adopters.
