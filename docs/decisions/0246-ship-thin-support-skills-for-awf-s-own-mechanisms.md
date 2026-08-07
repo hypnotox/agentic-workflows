@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: ship-thin-support-skills-for-awf-s-own-mechanisms
-status: Accepted
+status: Implementing
 date: 2026-08-07
 ---
 # ADR-0246: Ship thin support skills for awf's own mechanisms
@@ -120,3 +120,5 @@ entry and a template per skill.
 
 - 2026-08-07: Proposed
 - 2026-08-07: Accepted; content-sha256: 623b432bd4be0e5a91a2e2f389c79dc0cbff5616ef5f238311b2a7aa31799848
+- 2026-08-07: Implementing; content-sha256: 623b432bd4be0e5a91a2e2f389c79dc0cbff5616ef5f238311b2a7aa31799848
+- 2026-08-07: Applied; operations: add `rendering/workflow-skill-templates:using-awf-transaction-home`, add `rendering/workflow-skill-templates:writing-docs-delegation`

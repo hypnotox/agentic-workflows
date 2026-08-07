@@ -1438,6 +1438,52 @@ func TestExploringTemplate(t *testing.T) {
 	}
 }
 
+// invariant: rendering/workflow-skill-templates:using-awf-transaction-home (TestUsingAwfTemplate)
+func TestUsingAwfTemplate(t *testing.T) {
+	out := renderSkillGolden(t, "using-awf", map[string]any{
+		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{},
+	})
+	for _, want := range []string{
+		"name: example-using-awf",
+		"maintaining awf's generated tree",
+		"`.awf/` is the source", "Never hand-edit rendered outputs",
+		"Edit source, render, check", "stage the source, rendered outputs, and `.awf/awf.lock` together", "then run the gate",
+		"repair hint", "bootstrap script", "residue sweep",
+		"`docs/working-with-awf.md`", "`docs/config-reference.md`",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("using-awf render missing %q:\n%s", want, out)
+		}
+	}
+	for _, banned := range []string{"## Commands", "`awf new adr`", "initializedWithVersion"} {
+		if strings.Contains(out, banned) {
+			t.Errorf("using-awf must not carry the general command or configuration-key reference %q:\n%s", banned, out)
+		}
+	}
+}
+
+// invariant: rendering/workflow-skill-templates:writing-docs-delegation (TestWritingDocsTemplate)
+func TestWritingDocsTemplate(t *testing.T) {
+	out := renderSkillGolden(t, "writing-docs", map[string]any{
+		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{},
+	})
+	for _, want := range []string{
+		"name: example-writing-docs",
+		"authoring project documentation",
+		"single document that owns the fact", "Read `docs/doc-standard.md` before writing", "reference it rather than restating it", "travel in the commit that makes the fact true",
+		"invoke `example-using-awf`", "`docs/doc-standard.md`",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("writing-docs render missing %q:\n%s", want, out)
+		}
+	}
+	for _, banned := range []string{"Plain punctuation.", "stage the source, rendered outputs, and `.awf/awf.lock` together", "never hand-edit rendered outputs"} {
+		if strings.Contains(out, banned) {
+			t.Errorf("writing-docs must not restate delegated documentation or generated-tree content %q:\n%s", banned, out)
+		}
+	}
+}
+
 func TestOrientingTemplate(t *testing.T) {
 	out := renderSkillGolden(t, "orienting", map[string]any{
 		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "skills": map[string]bool{},

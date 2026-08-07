@@ -10,6 +10,18 @@ Workflow-chain and task-skill template contracts: chain ordering, exploration an
 
 ## Claims
 
+### `invariant: using-awf-transaction-home`
+
+The rendered `using-awf` support skill is the transaction home for generated-tree maintenance: `.awf/` is the source, rendered outputs are never hand-edited, source edits run through render and check before the source, rendered outputs, and lock are staged together and the gate runs, drift findings provide repair hints, and upgrades run the bootstrap script followed by the residue sweep. It points configuration keys to `docs/config-reference.md` and detailed commands to `docs/working-with-awf.md` without carrying either reference's content.
+Origin: ADR-0246
+Backing: test
+
+### `invariant: writing-docs-delegation`
+
+The rendered `writing-docs` support skill selects the single document that owns a fact, reads `docs/doc-standard.md` before writing, references rather than restates other owned detail, and carries the document in the commit that makes the fact true. File edits invoke `using-awf`; the skill points to but does not restate the documentation standard or generated-tree transaction.
+Origin: ADR-0246
+Backing: test
+
 ### `invariant: independent-workflow-escalation`
 
 Workflow intake independently evaluates brainstorming for material choices, continuity for durable coordination or resumability, grounding for broad or uncertain repository premises, ADRs for load-bearing decisions or changed active claims, plans for useful sequencing, and implementation review for independent assurance value. Material fact changes re-evaluate only affected triggers before further mutation without invalidating prior valid work. Effort-free and effort-backed work may each skip or receive review under the risk trigger; universal authority, documentation, verification, and commit obligations remain. No classifier, checklist, router, or new runtime mechanism is introduced.

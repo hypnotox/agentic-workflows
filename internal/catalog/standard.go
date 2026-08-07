@@ -35,6 +35,8 @@ var Standard = &Catalog{
 			"notes", "red-flags",
 		}},
 		"effort-workflow": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Own one awf effort from continuity evaluation through finish.", Trigger: "Use whenever durable continuity materially helps, or to resume or finish an effort."}},
+		"using-awf":       {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Maintain awf's generated tree from source through render, drift resolution, and upgrade.", Trigger: "Use when maintaining awf's generated tree: edit `.awf/` sources, render outputs, resolve drift, or upgrade awf."}, Sections: []string{"procedure"}},
+		"writing-docs":    {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Author project documentation at its owning surface.", Trigger: "Use when authoring project documentation: select the document that owns the fact and keep it current with the change."}, Sections: []string{"procedure"}},
 		"tdd": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Drive a change from a failing test.", Trigger: "Use when writing the failing test before the implementation change.", UsuallyFollows: []string{"bugfix", "debugging"}, CommonFollowUps: []string{"executing-direct", "executing-plans"}},
 			Sections: []string{"surfaces", "notes", "red-flags"},
 			Data: map[string]any{

@@ -1,0 +1,12 @@
+---
+name: {{ .prefix }}-writing-docs
+description: "Use when authoring project documentation: select the document that owns the fact and keep it current with the change."
+---
+
+<!-- awf:section procedure -->
+# {{ .prefix }}-writing-docs
+
+Select the single document that owns the fact. Read `docs/doc-standard.md` before writing; when another surface owns the detail, reference it rather than restating it. Let the document travel in the commit that makes the fact true.
+
+When authoring reaches a file edit, invoke `{{ .prefix }}-using-awf` for the generated-tree transaction. `docs/doc-standard.md` owns the documentation rules.
+<!-- awf:end -->

@@ -214,7 +214,7 @@ func TestSingleWorkflowHasNoDepthControls(t *testing.T) {
 		phrase int
 	}{
 		"internal/catalog/catalog.go":  {symbol: 3},
-		"internal/catalog/standard.go": {symbol: 20},
+		"internal/catalog/standard.go": {symbol: 22},
 		"internal/catalog/workflow.go": {symbol: 2, phrase: 1},
 		"internal/project/local.go":    {symbol: 1},
 		"internal/project/project.go":  {symbol: 1},
