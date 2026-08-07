@@ -129,15 +129,13 @@ func (p *Project) buildClaimedModel(files []RenderedFile, topics topic.Corpus) (
 		m.files[partsTopic+"/current-state.md"] = true
 	}
 	// The runner is a section-bearing config-tree unit but not a SingletonKind, so
-	// its convention-part territory is claimed here when enabled - the wrapper's
+	// its convention-part territory is always claimed here - the wrapper's
 	// single awf-owned section whose `awf:edit ... create <part> to override`
 	// pointer invites a part - so render and the closed-tree sweep agree
 	// (ADR-0086/0156).
-	if true {
-		m.dirs[config.DirName+"/runner/parts"] = true
-		for _, sec := range runnerSections {
-			m.files[config.DirName+"/runner/parts/"+sec+".md"] = true
-		}
+	m.dirs[config.DirName+"/runner/parts"] = true
+	for _, sec := range runnerSections {
+		m.files[config.DirName+"/runner/parts/"+sec+".md"] = true
 	}
 	return m, nil
 }

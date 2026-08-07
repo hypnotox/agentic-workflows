@@ -348,6 +348,7 @@ func adrChange(action Action, status string, domains string) FileChange {
 	return FileChange{Path: "docs/decisions/0099-x.md", Action: action, NewText: txt}
 }
 
+// invariant: tooling/audit-and-snapshots:audit-advisories-always-run (TestRuleDomainDocStaleness)
 func TestRuleDomainDocStaleness(t *testing.T) {
 	in := Inputs{ADRDir: "docs/decisions", ConfiguredDomains: []string{"tooling", "rendering"}, DomainsPartsDir: ".awf/domains/parts", Settings: Settings{}}
 	partChange := func(p string) FileChange { return FileChange{Path: p, Action: Modified} }
@@ -355,7 +356,7 @@ func TestRuleDomainDocStaleness(t *testing.T) {
 	// Implemented in a configured domain, narrative NOT refreshed -> 1 warning.
 	got := ruleDomainDocStaleness([]Commit{{Changes: []FileChange{adrChange(Added, "Implemented", "tooling")}}}, in)
 	// invariant: tooling/audit-and-snapshots:audit-domain-doc-staleness (TestRuleDomainDocStaleness)
-	if len(got) != 1 || got[0].Rule != "domain-doc-staleness" || got[0].Commit != "" {
+	if len(got) != 1 || got[0].Rule != "domain-doc-staleness" || got[0].Severity != severity.Warn || got[0].Commit != "" {
 		t.Fatalf("want 1 branch-level warning, got %v", got)
 	}
 
@@ -400,6 +401,7 @@ func TestRuleDomainDocStaleness(t *testing.T) {
 	}
 }
 
+// invariant: tooling/audit-and-snapshots:audit-advisories-always-run (TestRuleUndocumentedDomain)
 func TestRuleUndocumentedDomain(t *testing.T) {
 	in := Inputs{ADRDir: "docs/decisions", ConfiguredDomains: []string{"tooling"}, Settings: Settings{}}
 
@@ -411,7 +413,7 @@ func TestRuleUndocumentedDomain(t *testing.T) {
 	// ADR tags an unconfigured domain -> 1 warning.
 	got := ruleUndocumentedDomain([]Commit{{Changes: []FileChange{adrChange(Added, "Proposed", "ghost")}}}, in)
 	// invariant: tooling/audit-and-snapshots:audit-undocumented-domain (TestRuleUndocumentedDomain)
-	if len(got) != 1 || got[0].Rule != "undocumented-domain" {
+	if len(got) != 1 || got[0].Rule != "undocumented-domain" || got[0].Severity != severity.Warn {
 		t.Fatalf("want 1 warning, got %v", got)
 	}
 	// Configured domain -> clean.
@@ -434,6 +436,7 @@ func TestRuleUndocumentedDomain(t *testing.T) {
 }
 
 // invariant: tooling/audit-and-snapshots:audit-domain-code-staleness (TestRuleDomainCodeStaleness)
+// invariant: tooling/audit-and-snapshots:audit-advisories-always-run (TestRuleDomainCodeStaleness)
 func TestRuleDomainCodeStaleness(t *testing.T) {
 	in := Inputs{
 		Settings:        Settings{},
@@ -481,6 +484,7 @@ func TestRuleDomainCodeStaleness(t *testing.T) {
 	}
 }
 
+// invariant: tooling/audit-and-snapshots:audit-advisories-always-run (TestRulePlainPunctuation)
 func TestRulePlainPunctuation(t *testing.T) {
 	in := Inputs{DocsDir: "docs", Settings: Settings{},
 		GeneratedPaths: map[string]bool{"docs/decisions/INDEX.md": true}}

@@ -8,6 +8,10 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Breaking changes
+
+- Schema generation 38 removes the hooks, runner, prose-gate, memory-citation, audit-tuning, and topic-fan-out preference keys. The prose and memory-citation scans, all five audit advisories, five inert hook payloads, and the `./awf` wrapper are now unconditional; `awf list`, `awf enable`, and `awf disable` no longer accept hooks or runner, while `bootstrap.enabled` remains conditional.
+
 ### Features
 
 - Added independent judgment-based workflow escalation, reusable grounding support, risk-based effort-independent implementation review, a single-home effort lifecycle, and guarded grounding backfill for compatible adopters.

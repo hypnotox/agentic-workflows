@@ -22,14 +22,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-// invariant: invariants/topics-and-markers:fan-out-budget-fixed (TestCoveragePolicyFixed)
-func TestCoveragePolicyFixed(t *testing.T) {
-	got := coveragePolicy(nil)
-	if !got.Coverage || !got.Fanout || got.MaxTopicsPerPath != 8 {
-		t.Fatalf("coverage policy = %#v, want both checks with fan-out budget 8", got)
-	}
-}
-
 func TestCommitAuthorizationResultDiagnostic(t *testing.T) {
 	result := CommitAuthorizationResult{Category: "operation", Condition: "non-merge", ChangedIndex: true, NextActions: []string{"correct the message trailers", "run git commit"}}
 	diagnostic, err := result.Diagnostic()

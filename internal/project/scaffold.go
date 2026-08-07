@@ -152,7 +152,7 @@ func scaffoldSelection(cat *catalog.Catalog, trim *config.CatalogTrim) (skillNam
 // NeededVars returns the var names referenced by the templates the
 // scaffolded enabled set will render: the enable arrays scaffoldSelection
 // derives, the always-on singletons (agents-doc + plain), and the
-// default-enabled hook payloads. Init's interactive path prompts only for
+// always-rendered hook payloads. Init's interactive path prompts only for
 // these (ADR-0086 Decision 6); the scaffold still seeds the full catalog
 // union as empty keys (ADR-0022 unchanged), and an explicit --set/answers
 // value is honored regardless.

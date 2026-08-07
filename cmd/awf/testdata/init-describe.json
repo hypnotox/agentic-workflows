@@ -25,7 +25,7 @@
     {
       "key": "checkCmd",
       "kind": "string",
-      "description": "Command that checks rendered output for drift. Leave empty to run through the rendered `./awf` wrapper (the generic `awf` when the runner singleton is disabled).",
+      "description": "Command that checks rendered output for drift. Leave empty to run through the always-rendered `./awf` wrapper.",
       "default": "",
       "options": [
         "./awf check",
@@ -36,7 +36,7 @@
     {
       "key": "commitGateCmd",
       "kind": "string",
-      "description": "Command that validates one commit message (the commit-msg hook payload appends the message-file argument). Leave empty to run through the rendered `./awf` wrapper (the generic `awf` when the runner singleton is disabled).",
+      "description": "Command that validates one commit message (the commit-msg hook payload appends the message-file argument). Leave empty to run through the always-rendered `./awf` wrapper.",
       "default": "",
       "options": [
         "./awf check staged commit"

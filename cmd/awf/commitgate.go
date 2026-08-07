@@ -52,8 +52,8 @@ func openCommitGateProjectFromDisk(ctx context.Context, root string) (*project.P
 // runCommitGate validates one commit message and returns an error (mapped to a
 // non-zero exit) on any violation, so a commit-msg hook calling it blocks the
 // commit. It applies the shared Conventional Commits rule, the definitive
-// stale-merge authorization check, and, while memoryCite.enabled is true, a scan
-// for a citation of a specific working-memory file (ADR-0158). The
+// stale-merge authorization check, and a scan of every cleaned message for a
+// citation of a specific working-memory file (ADR-0158). The
 // git-generated-subject exemption scopes the Conventional Commits check alone:
 // git writes the subject, but a person may edit a merge or autosquash body, so
 // the citation and authorization checks apply to every recorded message. The

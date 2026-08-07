@@ -76,14 +76,44 @@ func TestCheckStatePathsDispatchDistinctly(t *testing.T) {
 
 // invariant: tooling/quality-gates:gates-always-run (TestCheckScannersAlwaysRun)
 func TestCheckScannersAlwaysRun(t *testing.T) {
+	const prosePath = "docs/prose.md"
+	const memoryPath = "docs/plans/memory.md"
+	violations := map[string]string{
+		prosePath:  "an em dash \u2014 here\n",
+		memoryPath: cite() + "\n",
+	}
 	root := syncedGitProject(t, checkYAML)
-	for _, args := range [][]string{{"awf", "check", "repo"}, {"awf", "check", "repo", "prose"}, {"awf", "check", "repo", "memory"}} {
+	gitfixture.Stage(t, gitfixture.At(root), violations)
+	for _, tc := range []struct {
+		args  []string
+		paths []string
+	}{
+		{[]string{"awf", "check", "repo"}, []string{prosePath, memoryPath}},
+		{[]string{"awf", "check", "repo", "prose"}, []string{prosePath}},
+		{[]string{"awf", "check", "repo", "memory"}, []string{memoryPath}},
+	} {
 		var out, errb bytes.Buffer
-		if code := runAt(t, root, args, &out, &errb); code != 0 {
-			t.Fatalf("%v exited %d: %s", args, code, errb.String())
+		if code := runAt(t, root, tc.args, &out, &errb); code == 0 {
+			t.Fatalf("%v skipped its unconfigured scanner:\n%s", tc.args, out.String())
+		}
+		report := out.String() + errb.String()
+		for _, path := range tc.paths {
+			if !strings.Contains(report, path) {
+				t.Fatalf("%v did not report %s:\n%s", tc.args, path, report)
+			}
 		}
 		if strings.Contains(out.String(), "disabled") {
-			t.Fatalf("%v exposed a retired disabled state:\n%s", args, out.String())
+			t.Fatalf("%v exposed a retired disabled state:\n%s", tc.args, out.String())
+		}
+	}
+
+	exemptYAML := checkYAML + "proseGate:\n  exemptions:\n    - path: " + prosePath + "\n      codepoint: U+2014\n      count: 1\nmemoryCite:\n  exemptions:\n    - path: " + memoryPath + "\n      count: 1\n"
+	exemptRoot := syncedGitProject(t, exemptYAML)
+	gitfixture.Stage(t, gitfixture.At(exemptRoot), violations)
+	for _, args := range [][]string{{"awf", "check", "repo"}, {"awf", "check", "repo", "prose"}, {"awf", "check", "repo", "memory"}} {
+		var out, errb bytes.Buffer
+		if code := runAt(t, exemptRoot, args, &out, &errb); code != 0 {
+			t.Fatalf("%v ignored its exemption list (exit %d): %s", args, code, errb.String())
 		}
 	}
 }

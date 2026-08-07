@@ -343,12 +343,10 @@ type BootstrapConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 
-// ProseGateConfig configures `awf check repo prose` (ADR-0119): a presence-level scan
-// of every tracked text file for the seven banned typographic punctuation
-// substitutes. BootstrapConfig semantics: a nil *ProseGateConfig (key absent)
-// and Enabled false both mean "the command exits zero without scanning". The
-// default is off because the scan blocks a commit, and a tree that has never
-// been swept would fail it on the day it lands.
+// ProseGateConfig configures exemptions for `awf check repo prose` (ADR-0119),
+// which always scans every tracked text file for the seven banned typographic
+// punctuation substitutes. A nil *ProseGateConfig means no paths or codepoints
+// are exempt.
 type ProseGateConfig struct {
 	Exemptions []ProseExemption `yaml:"exemptions"`
 }
@@ -365,12 +363,10 @@ type ProseExemption struct {
 	Count     *int   `yaml:"count"`
 }
 
-// MemoryCiteConfig configures `awf check repo memory` (ADR-0158): a scan of the
-// staged decision-record directories, and of the commit-message body, for a
-// citation of a specific working-memory file. ProseGateConfig semantics: a nil
-// *MemoryCiteConfig (key absent) and Enabled false both mean "the scan does not
-// run". The default is off because the scan blocks a commit, and a corpus that
-// has never been swept would fail it on the day it lands.
+// MemoryCiteConfig configures exemptions for `awf check repo memory`
+// (ADR-0158), which always scans the staged decision-record directories and
+// every cleaned commit-message body for a citation of a specific working-memory
+// file. A nil *MemoryCiteConfig means no paths are exempt.
 type MemoryCiteConfig struct {
 	Exemptions []MemoryExemption `yaml:"exemptions"`
 }
@@ -383,10 +379,10 @@ type MemoryExemption struct {
 	Count *int   `yaml:"count"`
 }
 
-// AuditConfig tunes `awf audit` (ADR-0017). A nil *AuditConfig means all
-// defaults; within it, a nil slice means "use the default", an explicit empty
-// slice means "accept any / disabled" per field. Resolution and defaults live in
-// internal/audit (audit.Resolve), which owns the audit domain semantics.
+// AuditConfig carries the repository-specific Conventional Commits scope
+// vocabulary for `awf audit` (ADR-0017). Every audit rule and threshold is fixed
+// in internal/audit; a nil *AuditConfig or an empty AllowedScopes accepts any
+// scope.
 type AuditConfig struct {
 	AllowedScopes []ScopeSpec `yaml:"allowedScopes"`
 }

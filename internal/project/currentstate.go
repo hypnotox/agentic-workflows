@@ -499,9 +499,9 @@ func (r configSnapshotReader) Paths(prefix string) []string {
 	return out
 }
 
-// coveragePolicy fixes both checks and their fan-out budget in the binary.
+// coveragePolicy requests both checks; internal/topic owns the fixed fan-out budget.
 func coveragePolicy(_ *config.CurrentStateConfig) topic.CoveragePolicy {
-	return topic.CoveragePolicy{Coverage: true, Fanout: true, MaxTopicsPerPath: 8}
+	return topic.CoveragePolicy{Coverage: true, Fanout: true}
 }
 
 // eligiblePaths returns the snapshot files that are neither a generated output (a

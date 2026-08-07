@@ -687,3 +687,8 @@ Record deviations, spike answers, follow-ups, and findings surfaced during imple
 - Phase 2 leaves an intentionally odd intermediate: the enable arrays are parsed and editable but no
   longer affect the render set. That is the price of a green checkpoint before Phase 3's demolition,
   and it lasts one phase.
+- Phase 1 review settlement moved the fan-out budget into `internal/topic`, its behavioral owner,
+  and replaced nominal proof markers with boundary and failure fixtures for the two scanners, all
+  five audit rules, and generation 38's empty-block and exact-announcement semantics. This preserves
+  the ADR's fixed-value and unconditional-behavior decisions while making each claim mutation-sensitive;
+  focused package tests and the full gate verify the correction.

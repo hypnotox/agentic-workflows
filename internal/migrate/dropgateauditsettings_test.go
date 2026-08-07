@@ -32,8 +32,46 @@ func TestDropGateAuditSettings(t *testing.T) {
 	if got != want {
 		t.Errorf("migration changed surviving bytes:\n got %q\nwant %q", got, want)
 	}
-	if got := strings.Count(changes.String(), "drop-gate-audit-settings: removed "); got != 14 {
-		t.Errorf("removals = %d, want 14:\n%s", got, changes.String())
+	wantChanges := "drop-gate-audit-settings: removed hooks\n" +
+		"drop-gate-audit-settings: removed runner\n" +
+		"drop-gate-audit-settings: removed proseGate.enabled\n" +
+		"drop-gate-audit-settings: removed memoryCite.enabled\n" +
+		"drop-gate-audit-settings: removed audit.allowedTypes\n" +
+		"drop-gate-audit-settings: removed audit.subjectMaxLength\n" +
+		"drop-gate-audit-settings: removed audit.diffThreshold\n" +
+		"drop-gate-audit-settings: removed audit.dependencyManifests\n" +
+		"drop-gate-audit-settings: removed audit.domainDocStaleness\n" +
+		"drop-gate-audit-settings: removed audit.domainCodeStaleness\n" +
+		"drop-gate-audit-settings: removed audit.undocumentedDomain\n" +
+		"drop-gate-audit-settings: removed audit.plainPunctuation\n" +
+		"drop-gate-audit-settings: removed audit.uncommittedChanges\n" +
+		"drop-gate-audit-settings: removed currentState.maxTopicsPerPath\n"
+	if got := changes.String(); got != wantChanges {
+		t.Errorf("announcements:\n got %q\nwant %q", got, wantChanges)
+	}
+}
+
+func TestDropGateAuditSettingsDropsEmptiedBlocks(t *testing.T) {
+	root := t.TempDir()
+	src := "prefix: example\nproseGate:\n  enabled: true\nmemoryCite:\n  enabled: false\naudit:\n  allowedTypes: [feat]\ncurrentState:\n  maxTopicsPerPath: 3\n"
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), src)
+	var changes Changes
+	if err := applyDropGateAuditSettings(root, &changes); err != nil {
+		t.Fatal(err)
+	}
+	bytes, err := os.ReadFile(filepath.Join(root, ".awf", "config.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := string(bytes), "prefix: example\n"; got != want {
+		t.Errorf("emptied blocks remain:\n got %q\nwant %q", got, want)
+	}
+	wantChanges := "drop-gate-audit-settings: removed proseGate.enabled\n" +
+		"drop-gate-audit-settings: removed memoryCite.enabled\n" +
+		"drop-gate-audit-settings: removed audit.allowedTypes\n" +
+		"drop-gate-audit-settings: removed currentState.maxTopicsPerPath\n"
+	if got := changes.String(); got != wantChanges {
+		t.Errorf("announcements:\n got %q\nwant %q", got, wantChanges)
 	}
 }
 
