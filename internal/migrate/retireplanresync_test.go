@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+	"gopkg.in/yaml.v3"
 )
 
 func TestRetirePlanResyncGenerationRegistration(t *testing.T) {
@@ -54,6 +55,36 @@ func TestRemovePlanResyncSelection(t *testing.T) {
 		if _, _, err := removePlanResyncSelection([]byte(malformed)); err == nil {
 			t.Fatalf("malformed input accepted: %q", malformed)
 		}
+	}
+}
+
+func TestRemovePlanResyncSelectionResolvesAliases(t *testing.T) {
+	for _, tc := range []struct {
+		name, src string
+	}{
+		{"anchor in skills", "prefix: ex\nskills: [&retired reviewing-plan-resync, *retired, reviewing-plan]\nvars:\n  literal: *retired\n"},
+		{"anchor outside skills", "prefix: ex\nvars: {literal: &retired reviewing-plan-resync}\nskills: [*retired, reviewing-plan]\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, removed, err := removePlanResyncSelection([]byte(tc.src))
+			if err != nil || !removed {
+				t.Fatalf("remove = %t, %v", removed, err)
+			}
+			var decoded struct {
+				Skills []string          `yaml:"skills"`
+				Vars   map[string]string `yaml:"vars"`
+			}
+			if err := yaml.Unmarshal(got, &decoded); err != nil {
+				t.Fatalf("invalid migrated YAML %q: %v", got, err)
+			}
+			if !reflect.DeepEqual(decoded.Skills, []string{"reviewing-plan"}) || decoded.Vars["literal"] != retiredPlanResyncSkill {
+				t.Fatalf("decoded = %#v", decoded)
+			}
+			again, removed, err := removePlanResyncSelection(got)
+			if err != nil || removed || !reflect.DeepEqual(again, got) {
+				t.Fatalf("repeat = %t, %q, %v", removed, again, err)
+			}
+		})
 	}
 }
 
@@ -118,5 +149,20 @@ func TestConfigForCurrentSchemaAlwaysRetiresPlanResync(t *testing.T) {
 		if strings.Contains(string(got), retiredPlanResyncSkill) {
 			t.Fatalf("from %d retained selection: %s", from, got)
 		}
+	}
+	aliased := []byte("prefix: ex\nintegrationBranch: main\nskills: [&retired reviewing-plan-resync, *retired, reviewing-plan]\nagents: [plan-reviewer]\nvars:\n  literal: *retired\n")
+	got, err := ConfigForCurrentSchema(aliased, 37)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded struct {
+		Skills []string          `yaml:"skills"`
+		Vars   map[string]string `yaml:"vars"`
+	}
+	if err := yaml.Unmarshal(got, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(decoded.Skills, []string{"reviewing-plan"}) || decoded.Vars["literal"] != retiredPlanResyncSkill {
+		t.Fatalf("aliased forward port = %#v", decoded)
 	}
 }

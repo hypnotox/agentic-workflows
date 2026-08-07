@@ -186,6 +186,10 @@ func TestContextADRLinkedPlansUseResolvedSnapshotReferences(t *testing.T) {
 	if working.Requests[2].Exact.Context.ADR != nil {
 		t.Fatalf("unrelated request gained ADR context: %#v", working.Requests[2].Exact.Context.ADR)
 	}
+	withoutReferences := queryFor(t, p).ContextForOptions([]string{"docs/decisions/0007-numbered.md"}, ContextOptions{Selection: SelectionExplicit})
+	if got := withoutReferences.Requests[0].Exact.Context.ADR.LinkedPlans; len(got) != 0 {
+		t.Fatalf("bare context exposed linked plans without references facet: %#v", got)
+	}
 	if rendered := RenderContextText(working, "header", []ContextFacet{FacetReferences}); !strings.Contains(rendered, "linked-plans: docs/plans/2026-08-01-a.md, docs/plans/2026-08-02-z.md") {
 		t.Fatalf("deterministic linked plans missing from output:\n%s", rendered)
 	}

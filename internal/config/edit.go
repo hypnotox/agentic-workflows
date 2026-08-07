@@ -112,19 +112,26 @@ func RemoveArrayMember(src []byte, key, name string) ([]byte, bool, error) {
 	if val.Kind != yaml.SequenceNode {
 		return nil, false, fmt.Errorf("config: %q must be a sequence", key)
 	}
+	removedAnchors := map[*yaml.Node]bool{}
+	kept := make([]*yaml.Node, 0, len(val.Content))
 	removed := false
-	for {
-		idx := seqIndex(val, name)
-		if idx < 0 {
-			break
+	for _, item := range val.Content {
+		resolved, ok := resolvedScalar(item)
+		if !ok || resolved.Value != name {
+			kept = append(kept, item)
+			continue
 		}
-		val.Content = append(val.Content[:idx], val.Content[idx+1:]...)
 		removed = true
+		if item.Kind == yaml.ScalarNode && item.Anchor != "" {
+			removedAnchors[item] = true
+		}
 	}
 	if !removed {
 		return src, false, nil
 	}
+	val.Content = kept
 	val.Style = 0
+	materializeAliases(doc, removedAnchors)
 	out, err := encode(doc)
 	if err != nil { // coverage-ignore: the parsed node tree contains only encoder-supported YAML nodes
 		return nil, false, err
@@ -577,6 +584,39 @@ func mapValue(m *yaml.Node, key string) (*yaml.Node, int) {
 		}
 	}
 	return nil, -1
+}
+
+func resolvedScalar(node *yaml.Node) (*yaml.Node, bool) {
+	seen := map[*yaml.Node]bool{}
+	for node != nil && node.Kind == yaml.AliasNode {
+		if seen[node] { // coverage-ignore: yaml.v3 rejects cyclic alias graphs before the editor receives a document
+			return nil, false
+		}
+		seen[node] = true
+		node = node.Alias
+	}
+	return node, node != nil && node.Kind == yaml.ScalarNode && node.Tag == "!!str"
+}
+
+func materializeAliases(node *yaml.Node, removedAnchors map[*yaml.Node]bool) {
+	if node == nil || len(removedAnchors) == 0 {
+		return
+	}
+	if node.Kind == yaml.AliasNode {
+		resolved, ok := resolvedScalar(node)
+		if ok && removedAnchors[resolved] {
+			replacement := yaml.Node{
+				Kind: yaml.ScalarNode, Tag: resolved.Tag, Value: resolved.Value, Style: resolved.Style,
+				HeadComment: node.HeadComment, LineComment: node.LineComment, FootComment: node.FootComment,
+				Line: node.Line, Column: node.Column,
+			}
+			*node = replacement
+		}
+		return
+	}
+	for _, child := range node.Content {
+		materializeAliases(child, removedAnchors)
+	}
 }
 
 func seqIndex(seq *yaml.Node, name string) int {

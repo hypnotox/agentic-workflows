@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"unicode"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -190,25 +191,42 @@ func TestSingleWorkflowHasNoDepthControls(t *testing.T) {
 	}
 	collectConfig(reflect.TypeOf(config.Config{}))
 
-	var catalogSurface []string
-	for name := range catalog.Standard.Skills {
-		catalogSurface = append(catalogSurface, name)
-	}
-	var runtimeSurface []string
-	executionDir := filepath.Join(repoRootDir(t), "internal", "execution")
-	entries, err := os.ReadDir(executionDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") {
-			continue
-		}
-		body, err := os.ReadFile(filepath.Join(executionDir, entry.Name()))
+	var codeSurface []string
+	for _, root := range []string{"cmd/awf", "internal/config", "internal/catalog", "internal/execution", "internal/project", "internal/render"} {
+		err := filepath.WalkDir(filepath.Join(repoRootDir(t), root), func(path string, entry os.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") {
+				return nil
+			}
+			body, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			codeSurface = append(codeSurface, string(body))
+			return nil
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
-		runtimeSurface = append(runtimeSurface, string(body))
+	}
+	var templateActions []string
+	if err := fs.WalkDir(templates.FS, ".", func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() || !strings.HasSuffix(path, ".tmpl") {
+			return nil
+		}
+		body, err := fs.ReadFile(templates.FS, path)
+		if err != nil {
+			return err
+		}
+		templateActions = append(templateActions, templateActionText(string(body))...)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
 	}
 	liveConfig, err := os.ReadFile(filepath.Join(repoRootDir(t), ".awf", "config.yaml"))
 	if err != nil {
@@ -217,32 +235,56 @@ func TestSingleWorkflowHasNoDepthControls(t *testing.T) {
 	configSurface = append(configSurface, string(liveConfig))
 
 	for name, surface := range map[string]string{
-		"config":  strings.Join(configSurface, "\n"),
-		"catalog": strings.Join(catalogSurface, "\n"),
-		"runtime": strings.Join(runtimeSurface, "\n"),
+		"configuration fields and live config": strings.Join(configSurface, "\n"),
+		"catalog and runtime production code":  strings.Join(codeSurface, "\n"),
+		"template runtime inputs":              strings.Join(templateActions, "\n"),
 	} {
 		if violations := prohibitedWorkflowControlTokens(surface); len(violations) != 0 {
 			t.Errorf("%s exposes prohibited workflow controls: %v", name, violations)
 		}
 	}
-	for class, mutation := range map[string]string{
-		"profile":        "GovernanceProfile",
-		"depth control":  "WorkflowDepth",
-		"router":         "WorkflowRouter",
-		"classifier":     "WorkflowClassifier",
-		"runtime policy": "RuntimePolicy",
+	for class, mutations := range map[string][]string{
+		"profile":        {"governance profile", "WorkflowProfileSelection"},
+		"depth control":  {"review depth", "DepthControl"},
+		"router":         {"workflow router", "ReviewRouter"},
+		"classifier":     {"workflow classifier", "ReviewClassifier"},
+		"runtime policy": {"runtime policy knob", "RuntimeWorkflowPolicy"},
 	} {
-		if violations := prohibitedWorkflowControlTokens(mutation); len(violations) != 1 {
-			t.Errorf("%s mutation produced violations %v", class, violations)
+		for _, mutation := range mutations {
+			if violations := prohibitedWorkflowControlTokens(mutation); len(violations) != 1 {
+				t.Errorf("%s mutation %q produced violations %v", class, mutation, violations)
+			}
 		}
 	}
 }
 
-func prohibitedWorkflowControlTokens(surface string) []string {
-	lower := strings.ToLower(surface)
+func templateActionText(body string) []string {
 	var out []string
-	for _, token := range []string{"governanceprofile", "workflowdepth", "depthcontrol", "workflowrouter", "workflowclassifier", "runtimepolicy"} {
-		if strings.Contains(lower, token) {
+	for {
+		start := strings.Index(body, "{{")
+		if start < 0 {
+			return out
+		}
+		body = body[start+2:]
+		end := strings.Index(body, "}}")
+		if end < 0 {
+			return out
+		}
+		out = append(out, body[:end])
+		body = body[end+2:]
+	}
+}
+
+func prohibitedWorkflowControlTokens(surface string) []string {
+	normalized := strings.Map(func(r rune) rune {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			return unicode.ToLower(r)
+		}
+		return -1
+	}, surface)
+	var out []string
+	for _, token := range []string{"governanceprofile", "workflowprofileselection", "reviewdepth", "workflowdepth", "depthcontrol", "workflowrouter", "reviewrouter", "workflowclassifier", "reviewclassifier", "runtimepolicyknob", "runtimeworkflowpolicy"} {
+		if strings.Contains(normalized, token) {
 			out = append(out, token)
 		}
 	}

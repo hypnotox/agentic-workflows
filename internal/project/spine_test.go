@@ -862,7 +862,7 @@ func TestManagedContextCallersChooseProjection(t *testing.T) {
 		"grounding":                   "",
 		"orienting":                   "",
 		"refactor-coupling-audit":     "",
-		"reviewing-adr":               "",
+		"reviewing-adr":               "--show references",
 		"reviewing-impl":              "--show invariants --show all-rules --show evidence --show pending",
 		"reviewing-plan":              "--show invariants --show all-rules --show evidence --show pending",
 		"subagent-driven-development": "",
@@ -1712,7 +1712,7 @@ func TestLinkedPlanReviewFreshness(t *testing.T) {
 			t.Errorf("ordinary ADR review missing %q", want)
 		}
 	}
-	assertOrderedPhrases(t, adr, "review converges", "After approval, run `awf context <explicit-ADR-path>`", "Invoke ordinary `example-reviewing-plan` separately for every linked plan")
+	assertOrderedPhrases(t, adr, "review converges", "After approval, run `awf context --show references <explicit-ADR-path>`", "Invoke ordinary `example-reviewing-plan` separately for every linked plan")
 	if _, ok := catalog.Standard.Skills["reviewing-plan-"+"resync"]; ok {
 		t.Fatal("retired plan review skill remains in the live catalog")
 	}
