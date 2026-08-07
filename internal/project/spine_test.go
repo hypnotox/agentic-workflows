@@ -1443,22 +1443,24 @@ func TestUsingAwfTemplate(t *testing.T) {
 	out := renderSkillGolden(t, "using-awf", map[string]any{
 		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{},
 	})
-	for _, want := range []string{
+	want := strings.Join([]string{
+		"---",
 		"name: example-using-awf",
-		"maintaining awf's generated tree",
-		"`.awf/` is the source", "Never hand-edit rendered outputs",
-		"Edit source, render, check", "stage the source, rendered outputs, and `.awf/awf.lock` together", "then run the gate",
-		"repair hint", "bootstrap script", "residue sweep",
-		"`docs/working-with-awf.md`", "`docs/config-reference.md`",
-	} {
-		if !strings.Contains(out, want) {
-			t.Errorf("using-awf render missing %q:\n%s", want, out)
-		}
-	}
-	for _, banned := range []string{"## Commands", "`awf new adr`", "initializedWithVersion"} {
-		if strings.Contains(out, banned) {
-			t.Errorf("using-awf must not carry the general command or configuration-key reference %q:\n%s", banned, out)
-		}
+		"description: \"Use when maintaining awf's generated tree: edit `.awf/` sources, render outputs, resolve drift, or upgrade awf.\"",
+		"---",
+		"",
+		"<!-- awf:edit procedure: default; create  to override -->",
+		"# example-using-awf",
+		"",
+		"`.awf/` is the source. Never hand-edit rendered outputs.",
+		"",
+		"Edit source, render, check, then stage the source, rendered outputs, and `.awf/awf.lock` together; then run the gate. A drift finding carries its own repair hint: follow it rather than guessing at the generated output.",
+		"",
+		"For an upgrade, run the bootstrap script and then perform the residue sweep. `docs/working-with-awf.md` owns detailed commands and generated-tree guidance; `docs/config-reference.md` owns configuration keys and their meanings.",
+		"",
+	}, "\n")
+	if out != want {
+		t.Errorf("using-awf must remain the approved thin transaction body:\n%s", out)
 	}
 }
 
@@ -1467,20 +1469,22 @@ func TestWritingDocsTemplate(t *testing.T) {
 	out := renderSkillGolden(t, "writing-docs", map[string]any{
 		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{},
 	})
-	for _, want := range []string{
+	want := strings.Join([]string{
+		"---",
 		"name: example-writing-docs",
-		"authoring project documentation",
-		"single document that owns the fact", "Read `docs/doc-standard.md` before writing", "reference it rather than restating it", "travel in the commit that makes the fact true",
-		"invoke `example-using-awf`", "`docs/doc-standard.md`",
-	} {
-		if !strings.Contains(out, want) {
-			t.Errorf("writing-docs render missing %q:\n%s", want, out)
-		}
-	}
-	for _, banned := range []string{"Plain punctuation.", "stage the source, rendered outputs, and `.awf/awf.lock` together", "never hand-edit rendered outputs"} {
-		if strings.Contains(out, banned) {
-			t.Errorf("writing-docs must not restate delegated documentation or generated-tree content %q:\n%s", banned, out)
-		}
+		"description: \"Use when authoring project documentation: select the document that owns the fact and keep it current with the change.\"",
+		"---",
+		"",
+		"<!-- awf:edit procedure: default; create  to override -->",
+		"# example-writing-docs",
+		"",
+		"Select the single document that owns the fact. Read `docs/doc-standard.md` before writing; when another surface owns the detail, reference it rather than restating it. Let the document travel in the commit that makes the fact true.",
+		"",
+		"When authoring reaches a file edit, invoke `example-using-awf` for the generated-tree transaction. `docs/doc-standard.md` owns the documentation rules.",
+		"",
+	}, "\n")
+	if out != want {
+		t.Errorf("writing-docs must remain the approved thin delegation body:\n%s", out)
 	}
 }
 

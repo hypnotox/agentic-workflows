@@ -18,6 +18,8 @@ query a single version or a range.
 
 ### Features
 
+- Added thin `using-awf` and `writing-docs` support skills for generated-tree maintenance and documentation authoring, rendered for both Claude Code and Pi with detailed rules delegated to their authoritative docs.
+
 - Plans now focus on change-specific direction while generic execution protocol stays in workflow owners. The separate plan reconciliation skill is retired; schema generation 39 removes the historical selection surface for older trees, and generation 40 completes that retirement for independently stamped generation-39 trees. Ordinary full plan review renews every typed linked Proposed plan after ADR-first corrections plus affected landed-phase assurance when implementation has started.
 
 - Added compact `awf:source` markers for opaque generated documents and the canonical source-editing map.

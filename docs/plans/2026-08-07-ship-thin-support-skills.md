@@ -54,3 +54,6 @@ feat(rendering): ship thin support skills (applies 0246 batch)
 ## Notes
 
 Inline owners immediately correct stale instructions and record reasoned deviations here. Delegated owners may report rather than edit; the parent supplies the report to phase review and reconciles it with findings in one focused post-review settlement commit before checkpointing or later execution. Record deviations, spike answers, follow-ups, and findings surfaced during implementation.
+
+- Phase 1 deviation: added `internal/project/docs_sections_test.go` because the strict catalog profile-count oracle correctly failed after the approved two entries; updating its expected count preserves rather than weakens that oracle.
+- Phase 1 review: strengthened both claim proofs from clause token checks and short denylists to exact approved rendered-body contracts, so any added canonical-content duplication fails. Added the adopter-facing skills to the Unreleased changelog.
