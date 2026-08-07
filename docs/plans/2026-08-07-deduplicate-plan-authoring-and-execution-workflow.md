@@ -22,22 +22,28 @@ Advances: ["resync-retired", "repository-green"]
 Completes: ["linked-plan-query"]
 
 ### Task 1.1: Compose reverse ADR-to-plan associations
+Latitude: exact
 Applying: ["deduplicate-plan-authoring-and-execution-workflow:linked-plan-review-freshness"]
-Paths: ["internal/project/plan_context.go", "internal/project/plan_context_test.go", "internal/plan/model.go", "internal/plan/parse.go"]
+Paths: ["internal/project/plan_context.go", "internal/project/plan_context_test.go", "internal/project/contextstate.go", "internal/project/contextstate_test.go", "internal/plan/plan.go", "internal/plan/source.go", "internal/contextq/boundary_test.go"]
 
 Start from the committed, approved ADR and reviewed plan in the managed worktree. Require `git status --short` to be empty, `./x check` to report zero findings, and `./x gate` to pass at 100% statement coverage.
 
 Add one project-owned reverse association over the already-parsed plan set and ADR corpus. Normalize each `plan-v2` frontmatter `adrs:` entry through corpus identity resolution, associate it with the plan path and filename, deduplicate aliases that resolve to the same record, and return deterministic path order. Include Proposed and Implemented plans in the typed result so the query describes repository relationships rather than guessing workflow state; the review skill decides which mutable plans require renewed review. Do not scan Markdown, infer from modification time, or make Decision-level Applying assignments substitute for the plan-level ADR link.
 
-Cover zero links, one link, several plans linked to one ADR, one plan linked to several ADRs, retained pending-slug and numbered identities resolving to the same record, unrelated plans, deterministic ordering, legacy or marker-absent plans, and unresolved links following the existing blocking plan-reference behavior. Keep parsing in `internal/plan` and corpus composition in `internal/project`; add no second parsed-plan representation.
+Carry the parsed plans and derived association through both working and staged `ContextState` construction so `internal/contextq` receives the same immutable snapshot universe as the ADR corpus. Extend the context boundary test to permit exactly the new typed field and to keep `internal/contextq` from reaching back into project internals. Cover zero links, one link, several plans linked to one ADR, one plan linked to several ADRs, retained pending-slug and numbered identities resolving to the same record, unrelated plans, deterministic ordering, legacy or marker-absent plans, staged versus working isolation, and unresolved links following the existing blocking plan-reference behavior. Keep plan bytes and `ADRLink` parsing in `internal/plan/plan.go` and `source.go`, corpus composition in `internal/project`, and add no second parsed-plan representation or speculative package split.
+
+Run `go test ./internal/project ./internal/contextq` and require a passing terminal result.
 
 ### Task 1.2: Render linked plans through awf context
+Latitude: exact
 Applying: ["deduplicate-plan-authoring-and-execution-workflow:linked-plan-review-freshness"]
-Paths: ["internal/contextq/context_adr.go", "internal/contextq/context_projection.go", "internal/contextq/context_paths.go", "internal/contextq/render.go", "internal/contextq/context_adr_test.go", "internal/contextq/context_projection_test.go", "internal/contextq/render_test.go", "cmd/awf/context.go", "cmd/awf/context_test.go"]
+Paths: ["internal/contextq/context_adr.go", "internal/contextq/context_projection.go", "internal/contextq/context_paths.go", "internal/contextq/render.go", "internal/contextq/context_adr_test.go", "internal/contextq/context_projection_test.go", "internal/contextq/render_test.go", "cmd/awf/context.go", "cmd/awf/context_test.go", ".awf/docs/parts/architecture/components.md", ".awf/docs/parts/architecture/data-flow.md", "docs/architecture.md"]
 
 Extend the existing `references` facet for an explicit governed ADR request with a compact `linked plans` collection supplied by `internal/project`. Render normalized repository-relative paths in deterministic order and omit the collection when empty. Keep tier-0 and unrelated file queries unchanged, do not make linked plans active authority, and preserve the ADR projection's pending-intent or decision-history role. Ensure spill delivery remains owned by the existing context output path.
 
-Test explicit numbered and pending ADR requests, no linked plans, multiple linked plans, unrelated plan links, references-facet omission, canonical ordering, ordinary context output stability, and command error/presentation behavior. The command layer receives typed projection data and adds no plan parsing or relationship logic.
+Test explicit numbered and pending ADR requests, no linked plans, multiple linked plans, unrelated plan links, references-facet omission, canonical ordering, ordinary context output stability, and command error/presentation behavior. The command layer receives typed projection data and adds no plan parsing or relationship logic. Update the architecture component and data-flow authorities in the same transaction to show the one parsed-plan association crossing `ContextState` into `internal/contextq`, then regenerate `docs/architecture.md`.
+
+Run `go test ./internal/contextq ./internal/project ./cmd/awf` and require a passing terminal result. Run `./x render && ./x check` and require zero drift findings before proceeding to the claim application.
 
 ### Task 1.3: Apply the linked-plan query claim
 Latitude: exact
@@ -66,6 +72,7 @@ Advances: ["repository-green"]
 Completes: ["change-specific-plans", "assurance-reuse"]
 
 ### Task 2.1: Make plan authoring change-specific
+Latitude: exact
 Applying: ["deduplicate-plan-authoring-and-execution-workflow:change-specific-plan-ownership", "deduplicate-plan-authoring-and-execution-workflow:authority-resolved-local-detail", "deduplicate-plan-authoring-and-execution-workflow:proportionate-plan-fields", "deduplicate-plan-authoring-and-execution-workflow:precommit-plan-review"]
 Paths: ["templates/skills/writing-plans/SKILL.md.tmpl", "templates/plans-template/template.md.tmpl", "templates/plans-readme/README.md.tmpl", ".awf/skills/parts/writing-plans/conventions-tasks.md", "templates/agents/plan-reviewer.md.tmpl", "internal/project/plan_detail_modes_test.go", "internal/project/docs_sections_test.go"]
 
@@ -79,7 +86,10 @@ Move focused generated-prose meaning review to the implementation phase owner. P
 
 Update the plan template and README to demonstrate the compact contract. Extend alignment tests to prove the plan surfaces keep typed fields, scope confinement, focused terminal-state checks, authority-resolved local detail, semantic-review ownership, missingkey-zero publication safety, and the absence of duplicated generic execution protocol.
 
+Run `go test ./internal/project -run 'TestPlanTaskDetailModes|TestWorkflowDoc'` and require a passing terminal result.
+
 ### Task 2.2: Review the draft before its first plan commit
+Latitude: exact
 Applying: ["deduplicate-plan-authoring-and-execution-workflow:precommit-plan-review"]
 Paths: ["templates/skills/writing-plans/SKILL.md.tmpl", "templates/skills/reviewing-plan/SKILL.md.tmpl", "internal/catalog/standard.go", "internal/project/spine_test.go", "internal/project/plan_detail_modes_test.go"]
 
@@ -87,20 +97,27 @@ Change the writing-to-review boundary so the report-only plan reviewer reads the
 
 Update catalog section declarations for the changed writing-plan and reviewing-plan sections without changing the skill set in this phase. Add rendered-contract tests for no pre-review commit, substantive Notes evidence, mechanical-no-ledger behavior, later-fix commits, report-only review, the verify-pass bound, and coherent empty-data rendering.
 
+Run `go test ./internal/project -run 'Test.*(WritingPlans|ReviewingPlan|ReviewRemediation|PlanTaskDetail)'` and require a passing terminal result.
+
 ### Task 2.3: Make phase review reusable assurance evidence
+Latitude: exact
 Applying: ["deduplicate-plan-authoring-and-execution-workflow:freshness-scoped-assurance-reuse"]
 Paths: ["templates/skills/executing-plans/SKILL.md.tmpl", "templates/skills/subagent-driven-development/SKILL.md.tmpl", "templates/skills/reviewing-impl/SKILL.md.tmpl", "templates/agents/implementer.md.tmpl", "templates/agents/code-reviewer.md.tmpl", "internal/project/phase_transaction_ownership_test.go", "internal/project/spine_test.go", "internal/evals/independent_workflow_escalation_test.go"]
 
 Define delegated phase review evidence as the exact phase-closing commit, the complete phase scope, verification results, and verbatim deviation report. Require phase review to use the code-review correctness, plan/authority adherence, documentation, and maintainability lenses needed to cover that scope. Record its covered range and freshness in the parent settlement.
 
+The phase reviewer returns a structured coverage summary in its report containing the exact phase-closing commit, reviewed scope and range, verification results, deviation report, and any unreviewed settlement. The parent owns that transient evidence and validates it against the current branch tip before reuse. Do not add a repository ledger, empty settlement commit, or second memory writer. When an effort checkpoint or handoff occurs, the parent may append a concise coverage observation, but memory is advisory rather than proof. If the structured report is unavailable after context loss or session replacement, if effort-free continuation loses it, or if its commit/range cannot be revalidated, terminal review runs normally instead of claiming reuse.
+
 At terminal assurance, reuse only still-fresh covered phase evidence. For one phase, review only unreviewed settlement or integration changes; for several phases, focus the fresh review on cross-phase composition, settlements, and integration effects. Always run `awf audit` and this repository's `./x audit-local` across the complete final implementation range. Include every post-phase settlement commit in coverage. Divergence, changed ADR authority, reasoned post-review fixes, or any other material mutation invalidates the affected coverage and triggers renewed review before finalization.
 
-Keep phase reviewers report-only, implementation fixes parent-owned, helpers confined, and every commit gated. Extend phase-ownership and shared-spine tests to prove the coverage evidence, audit retention, invalidation cases, no duplicate already-covered phase reading, and both target renderings under empty data.
+Keep phase reviewers report-only, implementation fixes parent-owned, helpers confined, and every commit gated. Extend phase-ownership and shared-spine tests to prove the structured return, opportunistic reuse, evidence-unavailable fallback, audit retention, invalidation cases, no duplicate already-covered phase reading, and both target renderings under empty data.
+
+Run `go test ./internal/project ./internal/evals` and require a passing terminal result.
 
 ### Task 2.4: Apply plan and assurance authority
 Latitude: exact
 Applying: ["deduplicate-plan-authoring-and-execution-workflow:change-specific-plan-ownership", "deduplicate-plan-authoring-and-execution-workflow:authority-resolved-local-detail", "deduplicate-plan-authoring-and-execution-workflow:proportionate-plan-fields", "deduplicate-plan-authoring-and-execution-workflow:precommit-plan-review", "deduplicate-plan-authoring-and-execution-workflow:freshness-scoped-assurance-reuse"]
-Paths: ["docs/decisions/deduplicate-plan-authoring-and-execution-workflow.md", "docs/decisions/INDEX.md", ".awf/topics/parts/rendering/workflow-skill-templates/current-state.md", "docs/topics/rendering/workflow-skill-templates.md", "docs/plans/README.md", "docs/plans/template.md", ".claude/skills/awf-writing-plans/SKILL.md", ".pi/skills/awf-writing-plans/SKILL.md", ".claude/skills/awf-executing-plans/SKILL.md", ".pi/skills/awf-executing-plans/SKILL.md", ".claude/skills/awf-subagent-driven-development/SKILL.md", ".pi/skills/awf-subagent-driven-development/SKILL.md", ".claude/skills/awf-reviewing-impl/SKILL.md", ".pi/skills/awf-reviewing-impl/SKILL.md", ".claude/agents/implementer.md", ".pi/agents/implementer.md", ".claude/agents/code-reviewer.md", ".pi/agents/code-reviewer.md", ".awf/awf.lock"]
+Paths: ["docs/decisions/deduplicate-plan-authoring-and-execution-workflow.md", "docs/decisions/INDEX.md", ".awf/topics/parts/rendering/workflow-skill-templates/current-state.md", "docs/topics/rendering/workflow-skill-templates.md", "docs/plans/README.md", "docs/plans/template.md", ".claude/skills/awf-writing-plans/SKILL.md", ".pi/skills/awf-writing-plans/SKILL.md", ".claude/skills/awf-reviewing-plan/SKILL.md", ".pi/skills/awf-reviewing-plan/SKILL.md", ".claude/skills/awf-executing-plans/SKILL.md", ".pi/skills/awf-executing-plans/SKILL.md", ".claude/skills/awf-subagent-driven-development/SKILL.md", ".pi/skills/awf-subagent-driven-development/SKILL.md", ".claude/skills/awf-reviewing-impl/SKILL.md", ".pi/skills/awf-reviewing-impl/SKILL.md", ".claude/agents/plan-reviewer.md", ".pi/agents/plan-reviewer.md", ".claude/agents/implementer.md", ".pi/agents/implementer.md", ".claude/agents/code-reviewer.md", ".pi/agents/code-reviewer.md", ".awf/awf.lock"]
 
 Update and test these current-state claims with the exact behavior implemented in Tasks 2.1 through 2.3:
 
@@ -126,29 +143,34 @@ refactor(rendering): centralize plan workflow mechanics
 Completes: ["resync-retired", "repository-green"]
 
 ### Task 3.1: Fold linked-ADR freshness into ordinary review
+Latitude: exact
 Applying: ["deduplicate-plan-authoring-and-execution-workflow:linked-plan-review-freshness", "deduplicate-plan-authoring-and-execution-workflow:one-workflow-no-depth-controls"]
-Paths: ["templates/skills/reviewing-plan/SKILL.md.tmpl", "templates/skills/reviewing-adr/SKILL.md.tmpl", "templates/skills/writing-plans/SKILL.md.tmpl", "templates/partials/review-remediation-autonomy.md", "templates/docs/workflow.md.tmpl", "templates/agents/plan-reviewer.md.tmpl", "internal/project/spine_test.go", "internal/project/docs_sections_test.go", "internal/project/plan_detail_modes_test.go", "internal/evals/chain_test.go", "internal/evals/independent_workflow_escalation_test.go"]
+Paths: ["templates/skills/reviewing-plan/SKILL.md.tmpl", "templates/skills/reviewing-adr/SKILL.md.tmpl", "templates/skills/writing-plans/SKILL.md.tmpl", "templates/partials/review-remediation-autonomy.md", "templates/docs/workflow.md.tmpl", "templates/agents-doc/AGENTS.md.tmpl", "templates/agents/plan-reviewer.md.tmpl", "AGENTS.md", "internal/project/spine_test.go", "internal/project/docs_sections_test.go", "internal/project/plan_detail_modes_test.go", "internal/project/guide_scopes_test.go", "internal/evals/chain_test.go", "internal/evals/independent_workflow_escalation_test.go"]
+
+Start only from the settled Phase 2 tip. Require `git status --short` to be empty, `./x check` to report zero findings, and `./x gate` to pass at 100% statement coverage before the phase owner edits.
 
 Make full plan review consume the deterministic linked-plan set and verify every ADR in the selected plan's parsed `adrs:` set. A substantive ADR amendment or review correction invalidates earlier review of every linked Proposed plan. Route ADR review to ordinary plan review for the affected linked plans after ADR approval; if implementation already began, inventory affected completed phases and renew their assurance before progression. A plan correction that would contradict linked authority returns to ADR amendment and review first. Remove the special resync mode, narrowed lens branch, return-edge exception, and chain presentation while preserving one fresh verify pass and authority-guided remediation in ordinary plan review.
 
-Update workflow chain and reviewer tests to prove ADR-before-plan ordering, parsed linked-plan selection rather than modification-time/session inference, post-start reassessment, no live resync dispatch, one-review freshness, and publication-safe target parity.
+Update the terse agent-guide source and generated guide only as needed to route to the one ordinary review owner; keep procedure detail in workflow and skills. Update workflow chain and reviewer tests to prove ADR-before-plan ordering, parsed linked-plan selection rather than modification-time/session inference, post-start reassessment, no live resync dispatch, one-review freshness, and publication-safe target parity.
+
+Run `go test ./internal/project ./internal/evals` and require a passing terminal result.
 
 ### Task 3.2: Remove the standard skill and migrate existing selections
 Latitude: exact
 Applying: ["deduplicate-plan-authoring-and-execution-workflow:linked-plan-review-freshness", "deduplicate-plan-authoring-and-execution-workflow:one-workflow-no-depth-controls"]
-Paths: ["internal/catalog/standard.go", "internal/catalog/graph_test.go", "internal/catalog/catalog_test.go", "internal/catalog/workflow_test.go", "internal/project/catalog_sweep_test.go", "internal/project/target_test.go", "internal/project/subagent_model_selection_test.go", "internal/project/skillrefs_test.go", "internal/project/spine_test.go", "internal/project/project_test.go", "internal/project/scaffold.go", "internal/evals/chain_test.go", "internal/evals/independent_workflow_escalation_test.go", "templates/skills/reviewing-plan-resync/SKILL.md.tmpl", ".awf/config.yaml", "cmd/awf/testdata/init-describe.json"]
+Paths: ["internal/catalog/standard.go", "internal/catalog/graph_test.go", "internal/catalog/catalog_test.go", "internal/catalog/workflow_test.go", "internal/project/catalog_sweep_test.go", "internal/project/target_test.go", "internal/project/subagent_model_selection_test.go", "internal/project/skillrefs_test.go", "internal/project/spine_test.go", "internal/project/project_test.go", "internal/project/scaffold.go", "internal/project/project.go", "internal/project/version_test.go", "internal/evals/chain_test.go", "internal/evals/independent_workflow_escalation_test.go", "internal/migrate/migrate.go", "internal/migrate/changes.go", "internal/migrate/retireplanresync.go", "internal/migrate/retireplanresync_test.go", "internal/migrate/migrate_test.go", "internal/migrate/forwardport_test.go", "templates/skills/reviewing-plan-resync/SKILL.md.tmpl", ".awf/config.yaml", "cmd/awf/testdata/init-describe.json"]
 
 Remove `reviewing-plan-resync` from the standard catalog, reviewing skill/agent structural requirements, default core selection, project configuration, target fixtures, eval chain, model-selection census, and live reference tests. Delete its template only after all consumers and section declarations no longer reference it. Preserve generic longest-token skill-reference tests using a non-retired overlapping fixture name rather than weakening their boundary. Keep historical ADRs, plans, and research documents byte-identical.
 
-Add schema generation 38 after the current generation 37 in `internal/migrate/migrate.go`. Implement an idempotent config-tree migration that removes exactly `reviewing-plan-resync` from the top-level `skills` sequence before catalog validation, reports the removal once, preserves sequence order and every unrelated byte/value allowed by the config editor, and leaves configs without the selection unchanged. Use the existing config editing owner rather than parsing YAML in the migration. Cover block and flow forms supported by the editor, sole-item/empty result, absence, repeated application, malformed input, change reporting, schema stamping, ordered registry behavior, and forward-port behavior where applicable.
+Add schema generation 38 after the current generation 37 in `internal/migrate/migrate.go` and add the exact generation-38 minimum-version entry in `internal/project/project.go`, pinned by `internal/project/version_test.go`. Implement an idempotent config-tree migration that removes exactly `reviewing-plan-resync` from the top-level `skills` sequence before catalog validation, reports the removal once, preserves sequence order and every unrelated byte/value allowed by the config editor, and leaves configs without the selection unchanged. Use the existing config editing owner rather than parsing YAML in the migration. Make `ConfigForCurrentSchema` remove the retired selection from historical config bytes before current catalog consumption. Cover block and flow forms supported by the editor, sole-item/empty result, absence, repeated application, malformed input, change reporting, schema stamping, ordered registry behavior, minimum-version mapping, and unconditional forward-port behavior. Do not remove historical structural-heading migration entries needed by projects crossing older generations before generation 38.
 
-Migration paths: `internal/migrate/migrate.go`, `internal/migrate/changes.go`, a focused `internal/migrate/retireplanresync.go` and `internal/migrate/retireplanresync_test.go`, `internal/migrate/migrate_test.go`, and `internal/migrate/forwardport_test.go`. Do not remove historical structural-heading migration entries needed by projects crossing older generations before generation 38.
+Run `go test ./internal/catalog ./internal/migrate ./internal/project ./internal/evals` and require a passing terminal result. Then run the source-built `./awf upgrade`; require its change report to name removal of `reviewing-plan-resync`, require `.awf/config.yaml` not to select it, require `.awf/awf.lock` to carry schema generation 38, and run `./awf upgrade` a second time with a no-op terminal result. Do not hand-edit the lock or remove the configured selection separately from this upgrade transaction.
 
 ### Task 3.3: Apply freshness, retirement, and migration authority
 Latitude: exact
 Applying: ["deduplicate-plan-authoring-and-execution-workflow:linked-plan-review-freshness", "deduplicate-plan-authoring-and-execution-workflow:one-workflow-no-depth-controls"]
 Paths: ["docs/decisions/deduplicate-plan-authoring-and-execution-workflow.md", "docs/decisions/INDEX.md", ".awf/topics/parts/rendering/workflow-skill-templates/current-state.md", ".awf/topics/parts/config/migrations-and-locks/current-state.md", ".awf/domains/parts/adr-system/current-state.md", "docs/topics/rendering/workflow-skill-templates.md", "docs/topics/config/migrations-and-locks.md", "docs/domains/adr-system.md", "README.md", ".awf/docs/glossary.yaml", ".awf/docs/pitfalls.yaml", "docs/glossary.md", "docs/pitfalls.md", "docs/workflow.md", "changelog/CHANGELOG.md", "glob:.claude/skills/**", "glob:.pi/skills/**", "glob:.claude/agents/**", "glob:.pi/agents/**", ".awf/awf.lock"]
-Post-check: Run `./x render`, then require `./x check` to report zero findings. Run a tracked-file search for `reviewing-plan-resync`, `plan-ADR resync`, and the Unicode plan-to-ADR resync spelling; classify every remaining result as append-only historical ADR/plan/research content or a required historical migration compatibility fixture, and require no live catalog, template, generated workflow, current-state, README, glossary, or changelog reference. Read back every mutation target reported by render and both target families.
+Post-check: Run `./x render`, then require `./x check` to report zero findings. Run `git grep -n -E 'reviewing-plan-resync|plan-ADR resync|plan↔ADR resync' -- ':!docs/decisions/*' ':!docs/plans/*' ':!docs/research/*'`; require the probe to run and every residual to be an intentional generation-38 migration compatibility fixture or historical structural-heading migration entry, with no live catalog, template, generated workflow, current-state, README, glossary, changelog, or project config reference. Read back every mutation target reported by render and both target families.
 
 Apply these remaining workflow operations in one Applied event with their matching claim mutations:
 
@@ -163,6 +185,10 @@ Apply these remaining workflow operations in one Applied event with their matchi
 The linked-plan freshness invariant names typed association, ADR-first correction, every affected Proposed plan, and post-start phase reassessment. The single-workflow invariant forbids profiles, depth controls, routers, classifiers, and runtime policy knobs. The migration invariant names pre-validation removal, idempotence, reporting, and preservation of unrelated config. Give each added invariant `Backing: test`, add or update every proof marker, and preserve provenance for updated claims.
 
 Update README, workflow, ADR-system domain prose, glossary, and pitfalls to describe the single chain and freshness rule without rewriting historical records. Add an Unreleased adopter-facing changelog entry covering shorter plans, resync retirement, automatic selection migration, and freshness-scoped assurance. Run `./x render`; confirm the retired generated Claude and Pi skill outputs are pruned, all surviving generated prose is coherent with empty variables, no unresolved token appears, and current-state proofs are complete.
+
+Perform and record a focused semantic review at these output boundaries: `.claude/skills/awf-reviewing-adr/SKILL.md` and `.pi/skills/awf-reviewing-adr/SKILL.md` must route an amended ADR to ordinary linked-plan review; both reviewing-plan outputs must make post-start ADR changes renew affected phase assurance; `docs/workflow.md`, `AGENTS.md`, README, and both target skill catalogs must present no live resync node; and literal placeholder syntax in templates and generated docs must be intentional. Record the inspected boundaries and the human meaning result in the phase completion report.
+
+Run `go test ./...`, `./x render`, `./x check`, and `git diff --check`; require passing tests, zero drift, and no whitespace errors before Phase close.
 
 Keep the ADR Implementing and this plan Proposed. After implementation assurance settles, `effort-workflow` will number and integrate the pending ADR, reconcile final deviations into Notes, apply terminal status transitions, remove the managed topology, run retrospective, and finish the effort.
 
