@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: permit-necessary-phase-owner-path-deviations
-status: Proposed
+status: Implemented
 date: 2026-08-07
 ---
 # ADR-0248: Permit Necessary Phase-Owner Path Deviations
@@ -78,3 +78,4 @@ later-assigned work.
 ## Status history
 
 - 2026-08-07: Proposed
+- 2026-08-07: Implemented; content-sha256: 99641e7a40ee9e41bd4717cb71adad4797eaac3ead22417d9600cfcc41d08480

@@ -2,7 +2,6 @@
 ## In flight
 
 - [ADR-0246: Ship thin support skills for awf's own mechanisms](0246-ship-thin-support-skills-for-awf-s-own-mechanisms.md) (Proposed)
-- [ADR-0248: Permit Necessary Phase-Owner Path Deviations](0248-permit-necessary-phase-owner-path-deviations.md) (Proposed)
 
 ## History
 
@@ -252,3 +251,4 @@
 - [ADR-0244: Render Effort Memory Mutations Like Pi](0244-render-effort-memory-edits-like-pi.md) (Implemented)
 - [ADR-0245: Authority-Guided Review Remediation](0245-authority-guided-review-remediation.md) (Implemented)
 - [ADR-0247: Scope Memory Diff Truncation To Bounding Loss](0247-scope-memory-diff-truncation-to-bounding-loss.md) (Implemented)
+- [ADR-0248: Permit Necessary Phase-Owner Path Deviations](0248-permit-necessary-phase-owner-path-deviations.md) (Implemented)

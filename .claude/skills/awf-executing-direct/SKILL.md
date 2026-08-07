@@ -34,7 +34,7 @@ Invoke when the outcome, solution shape, boundary, and verification are clear, a
 
 Resolve implementation findings autonomously when applicable ADRs, current-state claims, and repository authority determine a compliant correction that preserves the approved outcome, material scope, settled durable boundaries, and required verification. Diagnose a source contradiction, correctness or safety concern, review finding, blocker symptom, or failed check before treating it as an escalation.
 
-A reasoned non-mechanical deviation records its changed detail, rationale, governing authority, and verification. Do not replan the approved outcome, broaden material scope, overturn settled structural choices, weaken an oracle, or perform unrelated cleanup.
+A reasoned non-mechanical deviation records its changed detail, rationale, governing authority, and verification. A complete transaction owner may add an omitted path when it is necessary to complete the approved outcome and remains inside those authority, scope, boundary, and verification limits. An omitted path alone is not a reason to stop. Do not replan the approved outcome, broaden material scope, overturn settled structural choices, weaken an oracle, or perform unrelated cleanup.
 
 Stop and report through the active workflow only when authorities conflict or must change, the approved outcome or material scope must change, a genuine unresolved design fork remains, safe or correct completion inside the boundary is impossible, or required verification remains unreachable after reasonable diagnosis and remediation.
 - Re-evaluate brainstorming if implementation exposes a material choice or clarification, and return there when it fires rather than silently expanding scope or accepting a workaround.
