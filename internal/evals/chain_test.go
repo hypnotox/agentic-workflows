@@ -120,9 +120,11 @@ func TestReviewerDispatchCarriesSpine(t *testing.T) {
 
 func TestSemanticRenderingReviewReachesEnabledTargets(t *testing.T) {
 	const (
-		planningInstruction   = "- **Semantic rendering review:** plans name concrete examples and expected readings only when load-bearing. The implementation phase owner performs focused generated-prose meaning review, records inspected output boundaries and result in completion evidence, and checks contradictory fragments, concept-preserving paraphrase, and intentional literal placeholders without a universal language validator. Plan and code reviewers inspect the requirement and evidence."
-		planReviewInstruction = "1. **semantic-rendering-review**: inspect the change-specific requirement and implementation completion evidence for focused generated-prose meaning review at affected output boundaries, including contradictory fragments, concept-preserving paraphrase, and intentional literal placeholders such as `<literal-placeholder>`. Concrete examples and expected readings are required only when load-bearing; this is not a general output validator."
-		codeReviewInstruction = "1. **semantic-rendering-review**: for generated prose changes, inspect the requirement and phase completion evidence naming produced-output boundaries and result, including contradictory fragments, concept-preserving paraphrase, and literal-placeholder intent. Keep this as human meaning review, not a general output validator or new deterministic inference."
+		planningInstruction    = "- **Semantic rendering review:** plans name concrete examples and expected readings only when load-bearing. The implementation phase owner performs focused generated-prose meaning review, records inspected output boundaries and result in completion evidence, and checks contradictory fragments, concept-preserving paraphrase, and intentional literal placeholders without a universal language validator. Plan review inspects the requirement and any evidence already available; code review inspects the completed implementation evidence."
+		planReviewInstruction  = "1. **semantic-rendering-review**: inspect the change-specific requirement for focused generated-prose meaning review at affected output boundaries, including contradictory fragments, concept-preserving paraphrase, and intentional literal placeholders such as `<literal-placeholder>`. During precommit plan review, do not require future implementation completion evidence; during a later review, inspect that evidence when it exists. Concrete examples and expected readings are required only when load-bearing; this is not a general output validator."
+		codeReviewInstruction  = "1. **semantic-rendering-review**: for generated prose changes, inspect the requirement and phase completion evidence naming produced-output boundaries and result, including contradictory fragments, concept-preserving paraphrase, and literal-placeholder intent. Keep this as human meaning review, not a general output validator or new deterministic inference."
+		implementerInstruction = "For generated-prose changes, perform the focused meaning review required by the phase at the produced-output boundaries. Check contradictory fragments, concept-preserving paraphrase, and intentional literal placeholders without inventing a universal language validator; retain the inspected boundaries and result as completion evidence for your report."
+		inlineInstruction      = "For generated-prose changes, perform the focused meaning review at the produced-output boundaries and retain the inspected boundaries and result as completion evidence."
 	)
 	cat := loadCatalog(t)
 	for _, target := range []string{"claude", "pi"} {
@@ -134,6 +136,8 @@ func TestSemanticRenderingReviewReachesEnabledTargets(t *testing.T) {
 				instruction string
 			}{
 				{filepath.Join(base, "skills", evalPrefix+"-writing-plans", "SKILL.md"), planningInstruction},
+				{filepath.Join(base, "skills", evalPrefix+"-executing-plans", "SKILL.md"), inlineInstruction},
+				{filepath.Join(base, "agents", "implementer.md"), implementerInstruction},
 				{filepath.Join(base, "agents", "plan-reviewer.md"), planReviewInstruction},
 				{filepath.Join(base, "agents", "code-reviewer.md"), codeReviewInstruction},
 			} {

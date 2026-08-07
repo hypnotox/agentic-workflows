@@ -191,7 +191,7 @@ Backing: test
 
 ### `invariant: semantic-rendering-review`
 
-Every enabled target keeps contradictory-fragment, concept-preserving paraphrase, and intentional literal-placeholder checks without a universal language validator. The implementation phase owner owns focused generated-prose meaning review and completion evidence naming inspected output boundaries and result; plan and code reviewers inspect the requirement and evidence. Empty-data output remains coherent.
+Every enabled target keeps contradictory-fragment, concept-preserving paraphrase, and intentional literal-placeholder checks without a universal language validator. The implementation phase owner owns focused generated-prose meaning review and completion evidence naming inspected output boundaries and result; plan review inspects the requirement and any evidence already available, while code review inspects the completed implementation evidence. Empty-data output remains coherent.
 Origin: ADR-0235
 Revised-by: ADR-deduplicate-plan-authoring-and-execution-workflow
 Backing: test

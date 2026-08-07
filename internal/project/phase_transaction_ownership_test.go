@@ -174,6 +174,17 @@ func TestFreshPhaseAssuranceReuseContract(t *testing.T) {
 				t.Errorf("%s/%s is empty or leaks missing data", variant, name)
 			}
 		}
+		assertOrderedPhrases(t, surfaces["inline executor"],
+			"perform the focused meaning review",
+			"Stage the complete transaction",
+			"Before review, build the phase-review brief",
+			"exact phase-closing commit and range",
+			"verbatim deviation report built from the parent's inventory",
+			"Then dispatch report-only phase review",
+		)
+		if !strings.Contains(surfaces["implementer"], "retain the inspected boundaries and result as completion evidence for your report") {
+			t.Errorf("%s implementer lacks semantic-review completion evidence", variant)
+		}
 		for _, name := range []string{"inline executor", "delegated executor", "code reviewer"} {
 			body := surfaces[name]
 			for _, want := range []string{

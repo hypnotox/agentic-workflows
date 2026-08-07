@@ -922,14 +922,16 @@ func TestMaintainableCodeMultiTargetParity(t *testing.T) {
 }
 
 const (
-	semanticPlanningInstruction   = "- **Semantic rendering review:** plans name concrete examples and expected readings only when load-bearing. The implementation phase owner performs focused generated-prose meaning review, records inspected output boundaries and result in completion evidence, and checks contradictory fragments, concept-preserving paraphrase, and intentional literal placeholders without a universal language validator. Plan and code reviewers inspect the requirement and evidence."
-	semanticPlanReviewInstruction = "1. **semantic-rendering-review**: inspect the change-specific requirement and implementation completion evidence for focused generated-prose meaning review at affected output boundaries, including contradictory fragments, concept-preserving paraphrase, and intentional literal placeholders such as `<literal-placeholder>`. Concrete examples and expected readings are required only when load-bearing; this is not a general output validator."
-	semanticCodeReviewInstruction = "1. **semantic-rendering-review**: for generated prose changes, inspect the requirement and phase completion evidence naming produced-output boundaries and result, including contradictory fragments, concept-preserving paraphrase, and literal-placeholder intent. Keep this as human meaning review, not a general output validator or new deterministic inference."
+	semanticPlanningInstruction    = "- **Semantic rendering review:** plans name concrete examples and expected readings only when load-bearing. The implementation phase owner performs focused generated-prose meaning review, records inspected output boundaries and result in completion evidence, and checks contradictory fragments, concept-preserving paraphrase, and intentional literal placeholders without a universal language validator. Plan review inspects the requirement and any evidence already available; code review inspects the completed implementation evidence."
+	semanticPlanReviewInstruction  = "1. **semantic-rendering-review**: inspect the change-specific requirement for focused generated-prose meaning review at affected output boundaries, including contradictory fragments, concept-preserving paraphrase, and intentional literal placeholders such as `<literal-placeholder>`. During precommit plan review, do not require future implementation completion evidence; during a later review, inspect that evidence when it exists. Concrete examples and expected readings are required only when load-bearing; this is not a general output validator."
+	semanticCodeReviewInstruction  = "1. **semantic-rendering-review**: for generated prose changes, inspect the requirement and phase completion evidence naming produced-output boundaries and result, including contradictory fragments, concept-preserving paraphrase, and literal-placeholder intent. Keep this as human meaning review, not a general output validator or new deterministic inference."
+	semanticImplementerInstruction = "For generated-prose changes, perform the focused meaning review required by the phase at the produced-output boundaries. Check contradictory fragments, concept-preserving paraphrase, and intentional literal placeholders without inventing a universal language validator; retain the inspected boundaries and result as completion evidence for your report."
+	semanticInlineInstruction      = "For generated-prose changes, perform the focused meaning review at the produced-output boundaries and retain the inspected boundaries and result as completion evidence."
 )
 
 // invariant: rendering/workflow-skill-templates:semantic-rendering-review (TestSemanticRenderingReviewMultiTargetAuthority)
 func TestSemanticRenderingReviewMultiTargetAuthority(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [writing-plans, reviewing-impl, reviewing-plan, reviewing-plan-resync]\nagents: [plan-reviewer, code-reviewer]\ndocs: []\ntargets: [claude, pi]\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [writing-plans, reviewing-impl, reviewing-plan, reviewing-plan-resync, executing-plans]\nagents: [plan-reviewer, code-reviewer, implementer]\ndocs: []\ntargets: [claude, pi]\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -950,6 +952,8 @@ func TestSemanticRenderingReviewMultiTargetAuthority(t *testing.T) {
 			instruction string
 		}{
 			{target + "/skills/example-writing-plans/SKILL.md", semanticPlanningInstruction},
+			{target + "/skills/example-executing-plans/SKILL.md", semanticInlineInstruction},
+			{target + "/agents/implementer.md", semanticImplementerInstruction},
 			{target + "/agents/plan-reviewer.md", semanticPlanReviewInstruction},
 			{target + "/agents/code-reviewer.md", semanticCodeReviewInstruction},
 		} {
