@@ -462,23 +462,42 @@ func TestScopesEditReflagsReferencingArtifacts(t *testing.T) {
 
 // Editing the skills enable array leaves the neutral guide fresh because native
 // target frontmatter owns the catalog, while a skill template that reads .skills
-// still receives the effective set in its config hash.
+// receives the configured set in its config hash and is therefore stale.
 // invariant: rendering/sync-and-drift:skills-set-in-confighash (TestSkillsEditLeavesNeutralGuideFreshAndReflagsSkill)
 func TestSkillsEditLeavesNeutralGuideFreshAndReflagsSkill(t *testing.T) {
 	cfg := func(skills string) string {
 		return "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\nskills:" + skills + "\nagents: []\n"
 	}
-	root := scaffold(t, cfg("\n  - debugging\n  - bugfix"))
-	guide0 := configHashOf(t, root, "AGENTS.md")
-	skill0 := configHashOf(t, root, ".claude/skills/example-debugging/SKILL.md")
-	testsupport.WriteAwfConfig(t, root, cfg("\n  - debugging"))
-	guide1 := configHashOf(t, root, "AGENTS.md")
-	skill1 := configHashOf(t, root, ".claude/skills/example-debugging/SKILL.md")
-	if guide1 != guide0 {
-		t.Errorf("editing enabled skills must not stale neutral AGENTS.md solely to mirror native frontmatter: %s != %s", guide1, guide0)
+	root := scaffoldFiles(t, cfg("\n  - debugging\n  - bugfix"), map[string]string{
+		"skills/parts/debugging/debugging-surfaces.md": "Configured skills: {{ range .skills }}{{ . }} {{ end }}\n",
+	})
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if skill1 != skill0 {
-		t.Errorf("selection-only skill edits must not change full-catalog output hashes: %s != %s", skill1, skill0)
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	testsupport.WriteAwfConfig(t, root, cfg("\n  - debugging"))
+	p, err = Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	drift, err := p.Check(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	flagged := map[string]bool{}
+	for _, finding := range drift {
+		if finding.Kind == "stale" {
+			flagged[finding.Path] = true
+		}
+	}
+	if flagged["AGENTS.md"] {
+		t.Errorf("editing enabled skills staled neutral AGENTS.md: %v", drift)
+	}
+	if !flagged[".claude/skills/example-debugging/SKILL.md"] {
+		t.Errorf("editing enabled skills did not stale the .skills-consuming skill: %v", drift)
 	}
 }
 

@@ -16,7 +16,7 @@ Backing: test
 
 ### `invariant: docs-section-parity`
 
-For every catalog doc without its own output path, the section names declared in the catalog exactly match the set of awf:section marker blocks in that doc's template, and each doc renders from its template defaults with no leaked no-value token.
+For every name-derived catalog doc (neither the root agent guide nor a document declaring `Path`), the section names declared in the catalog exactly match the set of awf:section marker blocks in that doc's template, and each doc renders from its template defaults with no leaked no-value token.
 Origin: ADR-0148
 Revised-by: ADR-house-standard-configuration-expresses-repo-facts-only
 Backing: test

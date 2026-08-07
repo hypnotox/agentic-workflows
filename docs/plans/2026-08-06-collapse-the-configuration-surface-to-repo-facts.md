@@ -698,3 +698,8 @@ Record deviations, spike answers, follow-ups, and findings surfaced during imple
 - Phase 2's required roadmap-graduation stub advisory exposed that its empty `failure-modes` section
   lacked stub attribution. The template now marks that existing empty section as a stub so the newly
   unconditional output reports the non-failing advisory the plan and ADR require.
+- Phase 2 review settlement retained the skills config-hash fold until Phase 3, corrected full-catalog
+  output and parity proofs to derive root, structural, and name-derived docs from `AgentsDoc` and
+  `Path`, made target and prune proofs exercise the complete rendered surface, and removed a duplicate
+  Pi workflow-skill marker. The fixed-target, fixed-doc-root breaking change is recorded in the
+  changelog; selection keys remain schema-compatible in this phase.

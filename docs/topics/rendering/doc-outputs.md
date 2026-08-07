@@ -37,7 +37,7 @@ Backing: test
 
 ### `invariant: layout-docs-full-catalog`
 
-The layout docs map contains exactly every catalog document name, each mapping to `docs/<name>.md`, and no other keys.
+The layout docs map contains exactly every catalog document name and no other keys: the agent guide maps to `AGENTS.md`, a document declaring `Path` maps to `docs/<Path>`, and every other document maps to `docs/<name>.md`.
 Origin: ADR-house-standard-configuration-expresses-repo-facts-only
 Backing: test
 

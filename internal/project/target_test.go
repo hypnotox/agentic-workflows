@@ -1,6 +1,7 @@
 package project
 
 import (
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -29,7 +30,6 @@ func TestClaudeTargetPaths(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-workflows:pi-native-workflow-skills (TestNativePiSkillsAreDiscoverableAndPruned)
 // invariant: rendering/pi-workflows:pi-native-workflow-skills (TestNativePiSkillsAreDiscoverableAndPruned)
 func TestNativePiSkillsAreDiscoverableAndPruned(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: [local]\nagents: []\ntargets: [claude]\n", map[string]string{
@@ -699,6 +699,13 @@ func TestMultiTargetRender(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	seenTargets := map[string]bool{}
+	for _, target := range p.Targets {
+		seenTargets[target.Name] = true
+	}
+	if !slices.Equal(slices.Sorted(maps.Keys(seenTargets)), []string{"claude", "pi"}) {
+		t.Fatalf("render targets = %v, want fixed Claude and Pi targets", seenTargets)
+	}
 	byPath := map[string]string{}
 	pathCounts := map[string]int{}
 	agentsMd, bridges := 0, 0
@@ -713,19 +720,23 @@ func TestMultiTargetRender(t *testing.T) {
 		}
 	}
 	// invariant: rendering/project-output-plan:multi-target-render (TestMultiTargetRender)
-	for _, path := range []string{
-		".claude/skills/example-tdd/SKILL.md",
-		".pi/skills/example-tdd/SKILL.md",
-		".claude/agents/code-reviewer.md",
-		".pi/agents/code-reviewer.md",
-	} {
-		content := byPath[path]
-		if content == "" || pathCounts[path] != 1 {
-			t.Fatalf("render %q count = %d, content bytes = %d", path, pathCounts[path], len(content))
+	for _, target := range p.Targets {
+		for name := range catalog.Standard.Skills {
+			path := target.SkillPath("example", name)
+			content := byPath[path]
+			if content == "" || pathCounts[path] != 1 {
+				t.Errorf("skill %q for %s rendered %d times with %d bytes", name, target.Name, pathCounts[path], len(content))
+			}
 		}
-		if strings.Contains(path, "/agents/") {
-			if err := validateArtifact([]byte(content), MarkdownAgentDialect); err != nil {
-				t.Fatalf("validate %q: %v", path, err)
+		for name := range catalog.Standard.Agents {
+			path := target.AgentPath(name)
+			content := byPath[path]
+			if content == "" || pathCounts[path] != 1 {
+				t.Errorf("agent %q for %s rendered %d times with %d bytes", name, target.Name, pathCounts[path], len(content))
+				continue
+			}
+			if err := validateArtifact([]byte(content), target.AgentDialect); err != nil {
+				t.Errorf("validate %q as %s: %v", path, target.AgentDialect, err)
 			}
 		}
 	}

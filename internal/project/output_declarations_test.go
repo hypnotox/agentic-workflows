@@ -123,12 +123,14 @@ func TestBuildOutputDeclarationsPropagatesReadFaults(t *testing.T) {
 }
 
 func TestBuildOutputDeclarationsFamiliesAndReservations(t *testing.T) {
-	read := memoryProjectReader{".awf/topics/metadata/d/t.yaml": []byte("x"), ".awf/topics/metadata/d/readme.txt": []byte("x"), ".awf/docs/architecture.yaml": []byte("local: true\n"), ".awf/skills/local.yaml": []byte("local: true\n"), ".awf/skills/parts/local/content.md": []byte("part"), ".awf/agents/agent.yaml": []byte("local: true\n"), ".awf/agents/parts/agent/content.md": []byte("part"), "docs/decisions/0001-real.md": []byte("parsed"), "docs/decisions/0002-malformed.md": []byte("not parsed"), "docs/decisions/INDEX.md": []byte("generated"), "docs/decisions/README.md": []byte("navigation")}
+	read := memoryProjectReader{".awf/topics/metadata/d/t.yaml": []byte("x"), ".awf/topics/metadata/d/readme.txt": []byte("x"), ".awf/docs/architecture.yaml": []byte("local: true\n"), ".awf/name-derived.yaml": []byte("data: {}\n"), ".awf/docs/structural.yaml": []byte("data: {}\n"), ".awf/skills/local.yaml": []byte("local: true\n"), ".awf/skills/parts/local/content.md": []byte("part"), ".awf/agents/agent.yaml": []byte("local: true\n"), ".awf/agents/parts/agent/content.md": []byte("part"), "docs/decisions/0001-real.md": []byte("parsed"), "docs/decisions/0002-malformed.md": []byte("not parsed"), "docs/decisions/INDEX.md": []byte("generated"), "docs/decisions/README.md": []byte("navigation")}
 	cfg, err := config.ParseTree(".awf", []byte("prefix: p\ndocsDir: docs\nskills: [local]\nagents: [agent]\ndocs: [enabled, architecture]\ndomains: [d]\nbootstrap: {enabled: true}\nvars: {gateCmd: test-gate}\n"), configReaderAdapter{read})
 	if err != nil {
 		t.Fatal(err)
 	}
-	cat := &catalog.Catalog{Skills: map[string]catalog.SkillSpec{"local": {Base: true, Sections: []string{"content"}}}, Agents: map[string]catalog.AgentSpec{"agent": {Base: true, Sections: []string{"content"}}}, Docs: map[string]catalog.DocEntry{"agents-doc": {Mandatory: true, AgentsDoc: true, TID: "agents-doc/AGENTS.md.tmpl"}, "architecture": {Path: "architecture.md", TID: "docs/architecture.md.tmpl"}, "disabled": {Path: "disabled.md", TID: "docs/disabled.md.tmpl"}, "enabled": {Path: "enabled.md", TID: "docs/enabled.md.tmpl"}}}
+	// Mandatory deliberately varies independently from output shape: it chooses
+	// only the sidecar location, never root, structural, or name-derived output.
+	cat := &catalog.Catalog{Skills: map[string]catalog.SkillSpec{"local": {Base: true, Sections: []string{"content"}}}, Agents: map[string]catalog.AgentSpec{"agent": {Base: true, Sections: []string{"content"}}}, Docs: map[string]catalog.DocEntry{"agents-doc": {AgentsDoc: true, TID: "agents-doc/AGENTS.md.tmpl"}, "architecture": {Path: "architecture.md", TID: "docs/architecture.md.tmpl"}, "disabled": {Path: "disabled.md", TID: "docs/disabled.md.tmpl"}, "enabled": {Path: "enabled.md", TID: "docs/enabled.md.tmpl"}, "name-derived": {Mandatory: true, TID: "docs/name-derived.md.tmpl"}, "structural": {Path: "structural.md", TID: "docs/structural.md.tmpl"}}}
 	target := Target{Name: "one", SkillDir: ".one/skills", Outputs: []TargetOutput{{Path: "shared", TemplateID: "target.tmpl", Producer: TargetOutputTemplate}}}
 	other := target
 	other.Name = "two"
@@ -150,7 +152,7 @@ func TestBuildOutputDeclarationsFamiliesAndReservations(t *testing.T) {
 	for _, d := range decls {
 		byPath[d.Path] = d
 	}
-	for _, p := range []string{".one/skills/p-local/SKILL.md", "shared", "AGENTS.md", "docs/domains/d.md", "docs/topics/d/t.md", "docs/decisions/INDEX.md", "awf", ".awf/bootstrap.sh", ".awf/upgrade.sh", ".awf/hooks/pre-commit.sh", ".awf/hooks/reference-transaction.sh", ".awf/efforts/.gitignore", ".awf/worktrees/.gitignore"} {
+	for _, p := range []string{".one/skills/p-local/SKILL.md", "shared", "AGENTS.md", "docs/name-derived.md", "docs/structural.md", "docs/domains/d.md", "docs/topics/d/t.md", "docs/decisions/INDEX.md", "awf", ".awf/bootstrap.sh", ".awf/upgrade.sh", ".awf/hooks/pre-commit.sh", ".awf/hooks/reference-transaction.sh", ".awf/efforts/.gitignore", ".awf/worktrees/.gitignore"} {
 		if _, ok := byPath[p]; !ok {
 			t.Errorf("missing %s", p)
 		}
@@ -189,6 +191,17 @@ func TestBuildOutputDeclarationsFamiliesAndReservations(t *testing.T) {
 	// it must produce no declaration at all, not a managed output.
 	if _, declared := byPath["docs/architecture.md"]; declared {
 		t.Errorf("a local standard doc was still declared: %#v", byPath["docs/architecture.md"])
+	}
+	// The Mandatory name-derived doc retains its root sidecar, while the
+	// non-Mandatory structural doc retains its docs sidecar; their output shapes
+	// remain determined only by AgentsDoc/Path.
+	for _, tc := range []struct{ path, sidecar string }{
+		{"docs/name-derived.md", ".awf/name-derived.yaml"},
+		{"docs/structural.md", ".awf/docs/structural.yaml"},
+	} {
+		if !slices.Contains(byPath[tc.path].Inputs, OutputInput{Path: tc.sidecar, Role: ArtifactAuthoredData}) {
+			t.Errorf("%s lacks its Mandatory-selected sidecar %s: %#v", tc.path, tc.sidecar, byPath[tc.path])
+		}
 	}
 	index := byPath["docs/decisions/INDEX.md"]
 	decisionInputs := []string{}

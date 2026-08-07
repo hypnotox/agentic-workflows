@@ -288,13 +288,16 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		if _, standard := catalog.Standard.Docs[name]; standard && sc.Local {
 			continue
 		}
-		out := e.Path
-		if !e.Mandatory && out == "" {
-			out = name + ".md"
+		// Output shape is catalog structure, independent of Mandatory. AgentsDoc
+		// owns the root guide, Path owns a structural docs output, and an empty
+		// Path is a name-derived doc. Mandatory only selects sidecar location.
+		out := name + ".md"
+		if e.Path != "" {
+			out = e.Path
 		}
 		if e.AgentsDoc {
 			out = "AGENTS.md"
-		} else if out != "" {
+		} else {
 			out = config.DocsDir + "/" + out
 		}
 		sidecarPath := ".awf/" + name + ".yaml"

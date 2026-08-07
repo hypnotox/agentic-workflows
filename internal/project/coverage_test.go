@@ -422,22 +422,26 @@ func TestSyncPrunesRemovedTargetTree(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	noTDD := strings.Replace(sampleYAML, "skills:\n  - tdd\n", "skills: []\n", 1)
-	if err := os.WriteFile(configPath(root), []byte(noTDD), 0o644); err != nil {
+	// Remove a real rendered target surface from the next output plan. Selection
+	// edits no longer remove catalog paths in Phase 2, so they cannot prove prune.
+	if err := os.WriteFile(filepath.Join(root, ".claude", "unrelated.txt"), []byte("keep\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	p, err = Open(testContext(t), root)
-	if err != nil {
+	p.Targets = nil
+	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.Check(testContext(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, d := range drift {
-		if d.Path == ".claude/skills/example-tdd/SKILL.md" && d.Kind == "orphaned" {
-			t.Fatalf("catalog output was orphaned after selection changed: %#v", drift)
+	for _, path := range []string{
+		filepath.Join(root, ".claude", "skills", "example-tdd", "SKILL.md"),
+		filepath.Join(root, ".claude", "skills"),
+		filepath.Join(root, ".claude", "agents"),
+	} {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Errorf("removed target path %s remains: %v", path, err)
 		}
+	}
+	if got, err := os.ReadFile(filepath.Join(root, ".claude", "unrelated.txt")); err != nil || string(got) != "keep\n" {
+		t.Errorf("unrelated target ancestor content = %q, %v; want preserved", got, err)
 	}
 }
 

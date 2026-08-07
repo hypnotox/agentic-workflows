@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
@@ -21,12 +22,15 @@ import (
 func TestDocsSectionParity(t *testing.T) {
 	cat := catalog.Standard
 	for name, spec := range cat.Docs {
-		if spec.Mandatory {
-			// Singletons render from non-docs/ templates through the full layout;
-			// covered by TestAdrSingletonSectionParity.
+		if spec.AgentsDoc || spec.Path != "" {
+			// Root and structural docs have their own output shape and are covered
+			// by their singleton parity tests. Mandatory is sidecar location only.
 			continue
 		}
-		tid := fmt.Sprintf("docs/%s.md.tmpl", name)
+		tid := spec.TID
+		if tid == "" {
+			tid = fmt.Sprintf("docs/%s.md.tmpl", name)
+		}
 		src, err := fs.ReadFile(templates.FS, tid)
 		if err != nil {
 			t.Fatalf("read %s: %v", tid, err)
@@ -54,6 +58,28 @@ func TestDocsSectionParity(t *testing.T) {
 		if strings.Contains(out, "<no value>") {
 			t.Errorf("%s: <no value> leaked into rendered doc", name)
 		}
+	}
+}
+
+// TestDocsSectionParityMembershipUsesOutputShape prevents Mandatory from
+// becoming a hidden membership oracle: name-derived docs participate regardless
+// of sidecar location, while root and structural docs do not.
+func TestDocsSectionParityMembershipUsesOutputShape(t *testing.T) {
+	entries := map[string]catalog.DocEntry{
+		"root":       {AgentsDoc: true, Mandatory: false},
+		"structural": {Path: "structural.md", Mandatory: false},
+		"named-root": {Mandatory: true},
+		"named-docs": {Mandatory: false},
+	}
+	got := map[string]bool{}
+	for name, entry := range entries {
+		if !entry.AgentsDoc && entry.Path == "" {
+			got[name] = true
+		}
+	}
+	want := map[string]bool{"named-root": true, "named-docs": true}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("name-derived parity membership = %v, want %v", got, want)
 	}
 }
 

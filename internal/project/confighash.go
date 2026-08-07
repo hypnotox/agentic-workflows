@@ -1,7 +1,6 @@
 package project
 
 import (
-	"maps"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -28,7 +27,7 @@ func (p *Project) consumedParts(kind, artifact string, plan map[string]render.Se
 // artifactConfigHash projects the drift signal onto one rendered file: the prefix, the
 // subset of vars the assembled template references, the artifact's sidecar (marshalled),
 // and the bytes of every convention part it consumed - in deterministic order.
-func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPaths []string, eff map[string]bool, targets ...Target) (string, error) {
+func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPaths []string, _ map[string]bool, targets ...Target) (string, error) {
 	refs := render.ReferencedVars(assembled)
 	proj := map[string]any{
 		"prefix": p.Cfg.Prefix,
@@ -59,10 +58,13 @@ func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPa
 		proj["commitPolicy"] = p.Cfg.CommitPolicy
 	}
 	if render.ReferencesSkills(assembled) {
-		// A template that reads .skills re-renders when the enable array
-		// changes; folding the effective set in flags it stale (ADR-0046).
-		// touches-state: rendering/sync-and-drift:skills-set-in-confighash - folds the effective skills set into ConfigHash; proof in drift_test.go
-		proj["skills"] = slices.Sorted(maps.Keys(eff))
+		// Phase 2 renders the full catalog, but a template that reads .skills
+		// still consumes the schema-compatible configured array. Fold that input,
+		// not the now-unconditional effective catalog, so its edit flags drift.
+		// touches-state: rendering/sync-and-drift:skills-set-in-confighash - folds configured skills into ConfigHash; proof in drift_test.go
+		skills := slices.Clone(p.Cfg.Skills)
+		slices.Sort(skills)
+		proj["skills"] = skills
 	}
 	// A template that reads .commitScopes re-renders when audit.allowedScopes
 	// changes; folding the resolved list in flags it stale (ADR-0051).

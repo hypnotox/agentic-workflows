@@ -1140,13 +1140,17 @@ func TestLayoutUsesFixedDocsRootAndFullCatalog(t *testing.T) {
 	if len(l.Docs) != len(catalog.Standard.Docs) {
 		t.Errorf("Docs has %d entries, want full catalog of %d: %v", len(l.Docs), len(catalog.Standard.Docs), l.Docs)
 	}
-	for name := range catalog.Standard.Docs {
-		if _, ok := l.Docs[name]; !ok {
-			t.Errorf("Docs missing catalog document %q", name)
+	for name, entry := range catalog.Standard.Docs {
+		want := "docs/" + name + ".md"
+		if entry.Path != "" {
+			want = "docs/" + entry.Path
 		}
-	}
-	if l.Docs["debugging"] != "docs/debugging.md" || l.Docs["agents-doc"] != "AGENTS.md" {
-		t.Errorf("Docs has wrong fixed output paths: %v", l.Docs)
+		if entry.AgentsDoc {
+			want = "AGENTS.md"
+		}
+		if got, ok := l.Docs[name]; !ok || got != want {
+			t.Errorf("Docs[%q] = %q (present %t), want catalog-derived %q", name, got, ok, want)
+		}
 	}
 	// templateMap reproduces the historical .layout map by literal value (ConfigHash
 	// stability). The fixed directory keys are hand-built; the mandatory-singleton
@@ -1217,6 +1221,18 @@ func TestRenderAllRendersFullCatalogForBothTargets(t *testing.T) {
 			if path := target.AgentPath(name); !paths[path] {
 				t.Errorf("missing catalog agent output %q", path)
 			}
+		}
+	}
+	for name, entry := range catalog.Standard.Docs {
+		path := "docs/" + name + ".md"
+		if entry.Path != "" {
+			path = "docs/" + entry.Path
+		}
+		if entry.AgentsDoc {
+			path = "AGENTS.md"
+		}
+		if !paths[path] {
+			t.Errorf("missing catalog document %q at %q", name, path)
 		}
 	}
 	for _, path := range []string{"docs/debugging.md", ".claude/skills/example-roadmap-graduation/SKILL.md", ".pi/skills/example-roadmap-graduation/SKILL.md"} {
