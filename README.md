@@ -12,7 +12,7 @@ skills that walk an agent from brainstorm through ADR, plan, implementation, rev
 retrospective; dispatched agents that read or implement with fresh context, reviewers among them; a
 contract for dispatched implementation work; and the project docs they all rely on. All of it
 is generated from a small `.awf/` config tree
-you commit, rendered into the native layout of every coding-agent runtime you enable, and
+you commit, rendered into the native layout of both built-in coding-agent runtimes, and
 `awf check` fails the moment a rendered file drifts from the config that produced it.
 
 The tool is a single Go binary. The standard it renders is language-agnostic. Both are
@@ -30,19 +30,19 @@ config tree, so a change to how your agents work is a diff someone reviews, like
 other change. Rendering is deterministic, so every contributor and every agent session
 reads the same skills and docs, with nothing to retype per session. And a set of
 mechanical checks guards what the agent produces, not how it reasons: stale or
-hand-edited output, invalid skill frontmatter, dead internal links, references to disabled
-skills, and invariant claims with no backing marker in source all fail loudly
+hand-edited output, invalid skill frontmatter, dead internal links, invalid skill references,
+and invariant claims with no backing marker in source all fail loudly
 instead of rotting.
 
 ## What gets rendered
 
-- **Workflow skills** (one tree per enabled runtime: `.pi/skills/<prefix>-*/`,
-  `.claude/skills/<prefix>-*/`, and so on). The core chain: brainstorming,
-  ADR proposal and review, planning and plan review, a plan↔ADR resync, two execution
-  styles (inline or subagent-per-task), implementation review, and a closing
-  retrospective that promotes recurring findings toward deterministic checks. Task
-  skills are opt-in (TDD, bugfix, debugging, a refactor coupling audit, a
-  roadmap-graduation pass), except `adr-lifecycle`, which is scaffolded on with the chain.
+- **Workflow skills** (one complete catalog tree per built-in runtime:
+  `.pi/skills/<prefix>-*/` and `.claude/skills/<prefix>-*/`). The core chain:
+  brainstorming, ADR proposal and review, planning and plan review, a plan↔ADR resync,
+  two execution styles (inline or subagent-per-task), implementation review, and a
+  closing retrospective that promotes recurring findings toward deterministic checks.
+  The same catalog also includes task skills such as TDD, bugfix, debugging, a refactor
+  coupling audit, and a roadmap-graduation pass.
 - **Agents**, likewise per runtime. The review agents (`adr-reviewer`, `plan-reviewer`,
   `code-reviewer`) are each dispatched with fresh context, so the author never grades
   its own work, and are report-only. The `explorer` and `grounding-checker` agents are
@@ -51,8 +51,8 @@ instead of rotting.
   commit-disabled path-confined helper. Agents are format-neutral before each target
   emits them in its declared native representation; both built-in targets use Markdown.
 - **Docs**. An `AGENTS.md` agent guide (with a `CLAUDE.md` bridge for Claude Code),
-  workflow and documentation standards, plus opt-in project docs:
-  architecture, testing, development, debugging, pitfalls, releasing, glossary, roadmap.
+  workflow and documentation standards, and the full catalog of project docs:
+  architecture, testing, development, debugging, pitfalls, releasing, glossary, and roadmap.
 - **Domain docs** (`docs/domains/<name>.md`). One page per freeform domain you
   declare (`awf enable domain rendering`): your hand-authored current-state narrative
   plus a generated compact list of that domain's current-state topics. A domain's sidecar can declare
@@ -74,9 +74,9 @@ instead of rotting.
 - **Effort residents** (`.awf/efforts/<slug>/`, `.awf/worktrees/<slug>/`): one concrete non-minimal outcome owns immutable schema-2 state, `memory.md`, and optional mutable protocol-2 `activity.json`; optional managed worktrees use Git-authoritative path, registration, and branch topology. Activity is fallible Pi presence, never authority or a lock, and older binaries need not read an effort after it exists. These two are the only resident roots awf owns; schema generation 22 reset the legacy standalone memory root, and no render recreates it.
 
 awf renders for Pi and [Claude Code](https://www.anthropic.com/claude-code). Each gets
-skills and agents at descriptor-owned paths; Claude Code also receives its `CLAUDE.md`
-bridge, while Pi owns its runtime extensions. `targets` defaults to `[claude]`; select
-one or both built-in runtimes for the project.
+every catalog skill and agent at descriptor-owned paths; Claude Code also receives its
+`CLAUDE.md` bridge, while Pi owns its runtime extensions. The schema-compatible `targets`
+array remains parsed, but both built-in runtimes render regardless of its contents.
 
 A compatible Pi 0.81.1+ build exposing the required queued-command and persisted-session APIs receives trusted project-extension factories for subagents and handoff. The subagent extension registers `subagent_grounding`,
 `subagent_explore`, `subagent_review`, and `subagent_implement`. Every role accepts an optional exact
@@ -86,7 +86,7 @@ independent calls run through a ten-active FIFO queue. Grounding, exploration, a
 no-mutation prompt policy, not an OS sandbox. Implementation shares the checkout, runs alone and
 sequentially, and mixed parent batches are mechanically blocked; it commits only when its
 orchestrator sets `allowCommits`. Every role shows bounded inline child progress while intermediate
-activity stays outside parent model content. Selecting core `effort-workflow` renders a target-neutral guide for entering the exact existing awf-managed worktree through native persistent checkout tooling. Pi additionally derives the `using_effort` tool and companion skill: direct attach or detach leaves the runtime at repository root, heartbeats after turns, and injects fixed relative memory and optional managed-worktree paths before model calls. It publishes complete advisory Remote Pi metadata independently from a capability-gated display-only effort suffix, answers replay requests, and clears the suffix on lifecycle boundaries without reading or changing routing identity. Missing or withdrawn suffix support degrades to metadata-only behavior. No checkout validation, CWD replacement, queue, or local TUI presentation is involved. Non-Pi targets never receive this tool, claim activity, or create a parallel harness-owned worktree. Existing adopters opt in with `awf enable skill effort-workflow`.
+activity stays outside parent model content. The catalog `effort-workflow` renders a target-neutral guide for entering the exact existing awf-managed worktree through native persistent checkout tooling. Pi additionally derives the `using_effort` tool and companion skill: direct attach or detach leaves the runtime at repository root, heartbeats after turns, and injects fixed relative memory and optional managed-worktree paths before model calls. It publishes complete advisory Remote Pi metadata independently from a capability-gated display-only effort suffix, answers replay requests, and clears the suffix on lifecycle boundaries without reading or changing routing identity. Missing or withdrawn suffix support degrades to metadata-only behavior. No checkout validation, CWD replacement, queue, or local TUI presentation is involved. Non-Pi targets never receive this tool, claim activity, or create a parallel harness-owned worktree.
 
 A separate `handoff_session` tool accepts only exact bounded `{kickoff}` prose for a parent-linked fresh persisted TUI session. Workflow checkpoints stay durable and visible first; the handoff runs alone afterward, waits five cancellable seconds, preserves old history, and submits one visible default-rendered `agent-handoff` custom message whose content is `Agent-authored handoff context; this is not user input:` followed by two newlines and the unchanged kickoff. Replacement-bound `sendMessage` triggers the turn; Pi's current provider adapter still converts custom content to a user-role request. Unsupported modes reject, cleanup is manual, and automatic or replacement failure leaves that same envelope in the editor.
 
@@ -191,9 +191,9 @@ Adopting this release from an older awf is a one-time sealed cutover handled by 
 upgrade` (with `awf upgrade --recover` for an interrupted one); the mechanics live in
 [`AGENTS.md`](AGENTS.md).
 
-The rendered paths above show the default `claude` target; each enabled runtime keeps
-its descriptor-owned layout, and Pi places its artifacts and extensions under `.pi/`.
-`awf list target` shows the roster.
+The rendered paths above show the Claude Code layout; both built-in runtimes keep their
+descriptor-owned layouts, and Pi places its artifacts and extensions under `.pi/`.
+`awf list target` shows the fixed roster and retained compatibility selection.
 
 You change the config and run `awf render`; you never hand-edit a rendered file.
 `awf check` fails when a rendered file is stale or was edited by hand, so the two can't
@@ -238,20 +238,18 @@ Windows, put `awf` on `PATH` and call it directly.
 ## Quickstart
 
     cd your-project
-    awf init             # scaffold .awf/, render the workflow core
+    awf init             # scaffold .awf/ and render the full catalog
     awf check            # verify rendered output is in sync
-    awf list             # see what's enabled vs available
-    awf enable skill tdd    # opt a skill in
-    awf enable doc pitfalls # opt a doc in
-    awf enable target pi    # render compatible Pi 0.81.1+ skills and trusted extensions
+    awf list             # inventory the catalog and retained compatibility selections
+    awf enable bootstrap # optionally render the pinned installer
 
 The Pi extension is executable project code loaded behind Pi's project-trust prompt. Its generated
 files are drift-checked; use `awf render` to restore missing or modified copies.
 
-`awf init` enables a curated core by default: twelve core skills (the ten-step workflow chain,
-`adr-lifecycle`, and `exploring`) and every catalog agent. The workflow, documentation, and agent-guide standards sit outside
-the toggleable catalog and always render. Everything else is opt-in via
-`awf enable <kind> <name>`, and `awf disable` opts back out.
+`awf init` renders every catalog skill, agent, and document for both built-in targets. The
+schema-compatible skill, agent, doc, and target arrays and their commands remain available during
+migration, but they no longer select standard catalog output. `bootstrap.enabled` remains a live,
+repository-specific toggle.
 
 ## Commands
 

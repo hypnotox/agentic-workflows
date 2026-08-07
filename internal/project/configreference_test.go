@@ -525,6 +525,38 @@ memoryCite:
 	}
 }
 
+func TestConfigReferenceReportsPotentialConsumersWhenLocalReservationsSuppressReferences(t *testing.T) {
+	root := scaffoldFiles(t, `prefix: example
+integrationBranch: main
+vars:
+  invariantTestPath: internal/...
+skills: [retrospective]
+agents: [adr-reviewer]
+`, map[string]string{
+		"skills/retrospective.yaml": "local: true\n",
+		"agents/adr-reviewer.yaml":  "local: true\n",
+	})
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	model, err := p.ConfigReferenceModel(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, row := range model.VarEntries {
+		if row.Key != "invariantTestPath" {
+			continue
+		}
+		want := "Potential catalog consumers: agent adr-reviewer, skill retrospective; no rendered output currently references it."
+		if row.Consumers != want {
+			t.Fatalf("consumers = %q, want %q", row.Consumers, want)
+		}
+		return
+	}
+	t.Fatal("invariantTestPath row missing")
+}
+
 // A part-read fault at the reference's intro (a directory where the part file
 // may sit) surfaces from every generation call site - the reference renders
 // outside renderAllBase, so these branches are reachable, not theoretical.

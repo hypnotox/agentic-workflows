@@ -70,10 +70,10 @@ func PotentialVarConsumers() (map[string][]string, error) {
 	return out, nil
 }
 
-// enabledVarConsumers unions each var's enabled consumers from the rendered
+// renderedVarConsumers unions each var's current consumers from the rendered
 // files' assembled sources and part-placeholder refs - the same consumption
 // definition the unused-var check applies (ADR-0086).
-func enabledVarConsumers(files []RenderedFile) map[string][]string {
+func renderedVarConsumers(files []RenderedFile) map[string][]string {
 	byVar := map[string]map[string]bool{}
 	for _, f := range files {
 		label := artifactLabel(f.TemplateID)
@@ -118,11 +118,11 @@ func (p *Project) currentValueResolvers() map[string]func() string {
 			}
 			return fmt.Sprintf("%d keys, %d set", len(p.Cfg.Vars), set)
 		},
-		"skills":  func() string { return strconv.Itoa(len(p.Cfg.Skills)) + " enabled" },
-		"agents":  func() string { return strconv.Itoa(len(p.Cfg.Agents)) + " enabled" },
-		"docs":    func() string { return strconv.Itoa(len(p.Cfg.Docs)) + " enabled" },
+		"skills":  func() string { return strconv.Itoa(len(p.Cfg.Skills)) + " compatibility selections" },
+		"agents":  func() string { return strconv.Itoa(len(p.Cfg.Agents)) + " compatibility selections" },
+		"docs":    func() string { return strconv.Itoa(len(p.Cfg.Docs)) + " compatibility selections" },
 		"domains": func() string { return strconv.Itoa(len(p.Cfg.Domains)) + " configured" },
-		"targets": func() string { return "`" + strings.Join(p.Cfg.Targets, "`, `") + "`" },
+		"targets": func() string { return "compatibility selection: `" + strings.Join(p.Cfg.Targets, "`, `") + "`" },
 		"tags": func() string {
 			if len(p.Cfg.Tags) == 0 {
 				return "(none)"
@@ -294,17 +294,17 @@ func (p *Project) configReferenceRows(files []RenderedFile) (ConfigReference, er
 		ref.ConfigKeys = append(ref.ConfigKeys, row)
 	}
 
-	enabled := enabledVarConsumers(files)
+	rendered := renderedVarConsumers(files)
 	potential, err := PotentialVarConsumers()
-	if err != nil { // coverage-ignore: dormant consumer discovery is unreachable because every catalog artifact renders from an embedded template
+	if err != nil { // coverage-ignore: PotentialVarConsumers reads only embedded templates
 		return ConfigReference{}, err
 	}
 	for _, v := range configspec.VarEntries() {
 		consumers := "No catalog artifact references it."
-		if c := enabled[v.Key]; len(c) > 0 {
+		if c := rendered[v.Key]; len(c) > 0 {
 			consumers = "Consumed by: " + strings.Join(c, ", ") + "."
-		} else if c := potential[v.Key]; len(c) > 0 { // coverage-ignore: every catalog artifact renders, so a potential consumer is always enabled
-			consumers = "Dormant: no enabled artifact references it; enabling " + strings.Join(c, ", ") + " would."
+		} else if c := potential[v.Key]; len(c) > 0 {
+			consumers = "Potential catalog consumers: " + strings.Join(c, ", ") + "; no rendered output currently references it."
 		}
 		ref.VarEntries = append(ref.VarEntries, VarRow{
 			Key: v.Key, Description: v.Description, Availability: v.Availability,

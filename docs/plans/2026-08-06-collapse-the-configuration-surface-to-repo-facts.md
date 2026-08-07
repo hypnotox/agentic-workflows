@@ -703,3 +703,8 @@ Record deviations, spike answers, follow-ups, and findings surfaced during imple
   `Path`, made target and prune proofs exercise the complete rendered surface, and removed a duplicate
   Pi workflow-skill marker. The fixed-target, fixed-doc-root breaking change is recorded in the
   changelog; selection keys remain schema-compatible in this phase.
+- The Phase 2 verify pass found four remaining documentation surfaces describing the compatibility
+  fields as live selectors and one reachable var-consumer fallback hidden by a coverage exclusion.
+  The residual settlement makes the intermediate explicit in configspec, generated guides, README,
+  and rendering-domain prose, and tests the fallback by locally reserving every catalog consumer of
+  one var. Repository behavior and the Phase 3 demolition boundary remain unchanged.

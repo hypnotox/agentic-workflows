@@ -130,7 +130,7 @@ template and config against `.awf/awf.lock`; a mismatch is `stale` drift. Wire `
 gate into CI so drift and rule violations block a merge.
 
 `awf check` also enforces config-tree hygiene: every entry under `.awf/` must be claimed
-(an enabled artifact's sidecar or declared-section parts, a rendered unit, or the skeleton),
+(a rendered artifact's sidecar or declared-section parts, a rendered unit, or the skeleton),
 and anything else is failing drift with a repair hint, including sync-written `*.awf-bak`
 collision backups (review and delete them) and the parts of a `local: true` artifact
 (the resident roots are exempt local state). Configuration must be consumed, too: a non-empty

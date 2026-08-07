@@ -16,7 +16,7 @@ awf always renders self-ignoring `.gitignore` files at `.awf/efforts/` and `.awf
 
 - `awf render`: re-render every artifact from `.awf/` and update `.awf/awf.lock`.
 - `awf check`: fail if any rendered file has drifted from the config (also gates the schema version).
-- `awf enable <kind> <name>` / `awf disable <kind> <name>`: toggle a skill, agent, doc, domain, or target artifact, or the nameless `bootstrap` singleton (given no name). For a skill/agent/doc, enable brings in the full requirement closure in one edit and disable refuses while enabled artifacts still require it; `--with-dependents` disables them together, `--dry-run` previews either plan without changing the config.
+- `awf enable <kind> <name>` / `awf disable <kind> <name>`: mutate the schema-compatible skill, agent, doc, domain, or target lists, or toggle the nameless `bootstrap` singleton (given no name). Standard catalog artifacts and both built-in targets render regardless of those retained lists; domain membership, project-local artifacts, and bootstrap still use their values. For a skill/agent/doc, enable brings in the full requirement closure in one edit and disable refuses while listed artifacts still require it; `--with-dependents` disables them together, `--dry-run` previews either plan without changing the config.
 - `awf list`: show the catalog and what is enabled.
 - `awf config [<key-or-var>]`: describe config keys and vars, the full reference or one entry, with live state inside a project (current values, consumers, dormant hints) and a static catalog reference outside one.
 - `awf read plan <plan> <P[.T]>`: resolve an exact filename or stem under the configured plans directory and print internal/plan's executable phase or task closure. Plan-v2 composes selected Applying Decisions, then Context Decisions, selected content, phase-owned Advances and Completes outcomes, Phase close, Definition of done, and Notes; a task scope notice makes these outcomes and close constraints rather than transferred authority. Plan-v1 remains compatibility behavior, while marker-absent historical plans retain legacy checking but have no executable projection.
@@ -64,14 +64,17 @@ bodies point here.
 <!-- awf:section config-and-overrides -->
 ## Config and overrides
 
-Configuration lives in `.awf/`: a `config.yaml` skeleton (prefix, vars, enable arrays, targets,
-audit, currentState), per-artifact sidecar YAMLs, and convention parts. Every key, var, sidecar
-field, and per-artifact data key is described in the generated
-[configuration reference](config-reference.md), including this project's live state: which
-vars are set, what consumes them, and what enabling would activate.
+Configuration lives in `.awf/`: a `config.yaml` skeleton (prefix, vars, schema-compatible
+selection arrays, audit, currentState), per-artifact sidecar YAMLs, and convention parts. Every key,
+var, sidecar field, and per-artifact data key is described in the generated
+[configuration reference](config-reference.md), including this project's live state and current
+consumers. Standard catalog artifacts and both built-in targets render unconditionally; the
+retained selection arrays remain relevant only to compatibility commands and project-local
+artifacts.
 
-**Toggle kinds.** `target` selects an adapter runtime (e.g. `awf enable target pi`); adapter
-artifacts render once per built-in target. `bootstrap` toggles the rendered `.awf/bootstrap.sh`, a
+**Compatibility selections and bootstrap.** `target` still mutates its retained array (e.g.
+`awf enable target pi`), but adapter artifacts render once per built-in target regardless.
+`bootstrap` remains the live toggle for the rendered `.awf/bootstrap.sh`, a
 checksum-verified installer that prints the path of this project's pinned awf binary for hooks and
 CI (`"$(bash .awf/bootstrap.sh)" check`). awf always renders five git-hook payloads under
 `.awf/hooks/`: pre-commit, commit-msg, pre-merge-commit, reference-transaction, and pre-push. They are inert scripts you wire into hook setups you own; awf never touches Git configuration. The reference-transaction and pre-push payloads apply optional commit-policy provenance checks only when you configure that policy. Preview intended history first with `awf check commit-policy <revision-or-range>...`; an absent policy remains successful and does not need invented values. For tracked wiring, have each stub resolve `git rev-parse --show-toplevel` and delegate to that worktree's `.awf/hooks/<payload>.sh`, rather than reading a primary checkout. That is safe with either absolute or relative `core.hooksPath` and gives linked worktrees their own policy. These local checks are preflight only; the remote's receiving and protected-branch policy is the final enforcement boundary.
@@ -89,8 +92,8 @@ components. Metadata contains only a nonempty `title`, one-line `summary`, and e
 applicability form: duplicate-free anchored `paths`, or `applies: global`. The authored part ends in
 one final `## Claims`; each claim starts with exactly `` ### `rule: <slug>` `` or
 `` ### `invariant: <slug>` ``, contains prose, and ends with ordered `Origin`, optional `Revised-by`,
-optional direct `References`, and invariant-only `Backing`/conditional `Verify` lines. Provenance ADR operations must be Applied; the owner may be Implementing, Implemented, or partially Abandoned. Rendering writes `<docsDir>/topics/<domain>/<topic>.md` and a sorted
-`<docsDir>/topics/<domain>/index.md`; both join the normal lock, drift, collision, and prune lifecycle.
+optional direct `References`, and invariant-only `Backing`/conditional `Verify` lines. Provenance ADR operations must be Applied; the owner may be Implementing, Implemented, or partially Abandoned. Rendering writes `docs/topics/<domain>/<topic>.md` and a sorted
+`docs/topics/<domain>/index.md`; both join the normal lock, drift, collision, and prune lifecycle.
 Run `awf new topic <domain> "<title>"` to create the metadata and part pair. It derives a
 collision-free kebab slug, prints both repository-relative paths, and writes an empty claim shell with
 a valid anchored path placeholder. It does not run sync or mutate config, the lock, or rendered docs.
@@ -311,7 +314,7 @@ template and config against `.awf/awf.lock`; a mismatch is `stale` drift. Wire `
 gate into CI so drift and rule violations block a merge.
 
 `awf check` also enforces config-tree hygiene: every entry under `.awf/` must be claimed
-(an enabled artifact's sidecar or declared-section parts, a rendered unit, or the skeleton),
+(a rendered artifact's sidecar or declared-section parts, a rendered unit, or the skeleton),
 and anything else is failing drift with a repair hint, including sync-written `*.awf-bak`
 collision backups (review and delete them) and the parts of a `local: true` artifact
 (the resident roots are exempt local state). Configuration must be consumed, too: a non-empty

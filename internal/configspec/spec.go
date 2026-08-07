@@ -93,14 +93,14 @@ func VarEntries() []VarEntry {
 // varAvailability holds the configspec-owned availability clause per config
 // var; the parity test pins its key set to the config-var descriptors.
 var varAvailability = map[string]string{
-	"gateCmd":           "Consumed while an enabled artifact's template references it, by the `{{=awf:gateCmd}}` placeholder in convention parts (including the rendered pre-push hook payload's part channel), and by divergent effort-integration guidance.",
-	"gateCmdFull":       "Consumed while an enabled artifact's template references it.",
-	"checkCmd":          "Consumed while an enabled artifact's template references it, and by the `{{=awf:checkCmd}}` placeholder in convention parts.",
+	"gateCmd":           "Consumed while a rendered artifact's template references it, by the `{{=awf:gateCmd}}` placeholder in convention parts (including the rendered pre-push hook payload's part channel), and by divergent effort-integration guidance.",
+	"gateCmdFull":       "Consumed while a rendered artifact's template references it.",
+	"checkCmd":          "Consumed while a rendered artifact's template references it, and by the `{{=awf:checkCmd}}` placeholder in convention parts.",
 	"commitGateCmd":     "Consumed by the always-rendered commit-msg hook payload.",
-	"testCmd":           "Consumed while an enabled artifact's template references it.",
-	"activeMdRegenCmd":  "Consumed while an enabled artifact's template references it (the decision-index regeneration steps in the chain skills).",
+	"testCmd":           "Consumed while a rendered artifact's template references it.",
+	"activeMdRegenCmd":  "Consumed while a rendered artifact's template references it (the decision-index regeneration steps in the chain skills).",
 	"awfInvokeCmd":      "Consumed by the always-rendered runner wrapper template.",
-	"invariantTestPath": "Consumed while an enabled artifact's template references it (the invariant-backing guidance in the decision docs and skills).",
+	"invariantTestPath": "Consumed while a rendered artifact's template references it (the invariant-backing guidance in the decision docs and skills).",
 }
 
 // keys is the hand-authored description table for config.yaml and sidecar
@@ -119,38 +119,38 @@ var keys = []Entry{
 	},
 	{
 		Path: "docsDir", Type: "string", Default: "docs",
-		Description:  "Root directory for rendered documentation: managed docs render to `<docsDir>/<name>.md`, decisions to `<docsDir>/decisions/`, plans to `<docsDir>/plans/`, domain docs to `<docsDir>/domains/`. Relative, without `..`.",
-		Availability: "Always.",
+		Description:  "Schema-compatible legacy documentation-root value. It is parsed and validated, but rendered documentation uses the binary-fixed `docs/` root: managed docs render to `docs/<name>.md`, decisions to `docs/decisions/`, plans to `docs/plans/`, and domain docs to `docs/domains/`.",
+		Availability: "Retained for schema compatibility; it does not relocate outputs.",
 	},
 	{
 		Path: "vars", Type: "key → value map", Default: "seeded with every catalog-referenced var as an empty string at init",
 		Description:  "Freeform values templates interpolate. A key with a value renders it; a present-but-empty key is an open to-do (rendered artifacts referencing it degrade to generic prose and a non-failing note nudges you); a deleted key is the deliberate, git-auditable decline of that var; the generic prose renders silently. A non-empty key no rendered artifact references is failing drift.",
-		Availability: "Each key is consumed only while an enabled artifact's template (or a `gateCmd`/`checkCmd` part placeholder) references it, except that `gateCmd` is also consumed by divergent effort-integration guidance.",
+		Availability: "Each key is consumed only while a rendered artifact's template (or a `gateCmd`/`checkCmd` part placeholder) references it, except that `gateCmd` is also consumed by divergent effort-integration guidance.",
 	},
 	{
 		Path: "skills", Type: "string list", Default: "the workflow-core set at init",
-		Description:  "Enabled skills. Catalog names render from the embedded templates; a name with a `local: true` sidecar is a hand-maintained project-local skill. The enabled set must be requirement-closed: `awf enable skill` enables a skill's full requirement closure, and `awf disable` refuses while enabled artifacts still require it.",
-		Availability: "Always.",
+		Description:  "Schema-compatible legacy skill selection. Every standard catalog skill renders regardless of membership. A listed name with a `local: true` sidecar remains a hand-maintained project-local skill, and the retained enable and disable commands still apply requirement closure to this list.",
+		Availability: "Retained for schema compatibility and local artifacts; it does not select standard catalog output.",
 	},
 	{
 		Path: "agents", Type: "string list", Default: "every catalog agent at init",
-		Description:  "Enabled agents. A skill's dispatched agent must stay enabled while the skill is: disabling refuses upfront; `awf enable skill` auto-enables the pair.",
-		Availability: "Always.",
+		Description:  "Schema-compatible legacy agent selection. Every standard catalog agent renders regardless of membership. Listed local agents and the retained skill-agent pairing checks still use this list.",
+		Availability: "Retained for schema compatibility and local artifacts; it does not select standard catalog output.",
 	},
 	{
-		Path: "docs", Type: "string list", Default: "empty at init (the always-on docs are not listed here)",
-		Description:  "Enabled toggleable docs (architecture, testing, development, ...). The always-on docs (the agent guide, workflow, this reference) render regardless and are not listed here.",
-		Availability: "Always.",
+		Path: "docs", Type: "string list", Default: "empty at init",
+		Description:  "Schema-compatible legacy document selection. Every standard catalog document renders regardless of membership; listed project-local documents remain active.",
+		Availability: "Retained for schema compatibility and local artifacts; it does not select standard catalog output.",
 	},
 	{
 		Path: "domains", Type: "string list", Default: "none",
-		Description:  "Freeform domain keys. Each renders a generated `<docsDir>/domains/<name>.md` doc (a compact topic list plus your `current-state` convention part) and can declare a file territory via the domain sidecar's `paths:`.",
+		Description:  "Freeform domain keys. Each renders a generated `docs/domains/<name>.md` doc (a compact topic list plus your `current-state` convention part) and can declare a file territory via the domain sidecar's `paths:`.",
 		Availability: "Always.",
 	},
 	{
 		Path: "targets", Type: "string list", Default: "claude",
-		Description:  "Enabled adapter runtimes. Skills and agents render once per target into that runtime's layout; docs are runtime-neutral and render once.",
-		Availability: "Always.",
+		Description:  "Schema-compatible legacy adapter selection. Skills and agents render once for each of the binary-fixed Claude Code and Pi targets; docs are runtime-neutral and render once.",
+		Availability: "Retained for schema compatibility; it does not select rendered targets.",
 	},
 	{
 		Path: "tags", Type: "key → value map", Default: "none",
