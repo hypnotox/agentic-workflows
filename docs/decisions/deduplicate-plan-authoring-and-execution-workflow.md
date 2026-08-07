@@ -47,7 +47,9 @@ change narrows what new plans must repeat rather than invalidating historical pl
    and cross-phase outcome ownership. Workflow skills, reviewer and implementer agents, and
    repository authority own generic context loading, staging, gates, clean-tree handling, commits,
    review routing, recovery, checkpoints, and model selection. Generated authoring guidance states
-   each generic rule in its semantic home rather than requiring plans to copy it.
+   each generic rule in its semantic home rather than requiring plans to copy it. Every affected
+   template and generated target retains coherent missingkey-zero rendering under empty variables
+   without `<no value>` or another unresolved token.
 
 2. `decision: authority-resolved-local-detail` A fresh phase owner receives a self-contained
    change-specific plan projection plus repository and current-state authority, not a speculative
@@ -66,7 +68,12 @@ change narrows what new plans must repeat rather than invalidating historical pl
    prose, and generic semantic-review choreography as optional authoring aids rather than mandatory
    data for every qualifying task. Historical plan grammar remains accepted. A globbed or otherwise
    ambiguous population still carries a deterministic focused check that proves its terminal state;
-   the simplification removes duplicated protocol, not evidence needed to bound a bulk change.
+   the simplification removes duplicated protocol, not evidence needed to bound a bulk change. The
+   implementation phase owner is the single owner of focused generated-prose meaning review and
+   records the inspected output boundaries and result in its completion evidence. A plan supplies
+   change-specific examples and expected readings only when they are load-bearing; plan and code
+   reviewers inspect the requirement and its implementation evidence rather than restating the
+   execution choreography.
 
 4. `decision: precommit-plan-review` Review a newly written plan before its first commit. Apply
    mechanical findings directly without a durable review ledger; record substantive reasoned or
@@ -81,9 +88,13 @@ change narrows what new plans must repeat rather than invalidating historical pl
    review the ADR first, then review each affected plan against the updated decision. A plan finding
    that would contradict an ADR returns to ADR amendment and review before the plan changes. If
    implementation has begun, reassess completed affected phases and renew implementation assurance
-   where the changed decision can affect landed work. Selection derives from parsed links rather than
-   modification time or session implication. This freshness rule replaces always-on resync without
-   permitting plan-to-ADR drift.
+   where the changed decision can affect landed work. `internal/project` owns reverse ADR-to-plan
+   association over the already-parsed plan and ADR corpora; `awf context` exposes the deterministic
+   linked-plan set for an explicit ADR request so review workflows consume typed identities without
+   reparsing Markdown or guessing from modification time or session implication. Removing the
+   standard resync skill also adds one schema migration that removes its selection from existing
+   configs before catalog validation, reports the removal, and preserves every unrelated config
+   value. This freshness rule replaces always-on resync without permitting plan-to-ADR drift.
 
 6. `decision: freshness-scoped-assurance-reuse` Make delegated phase review explicit assurance
    evidence scoped to the reviewed phase commit and supplied deviation report. A later terminal
@@ -98,7 +109,9 @@ change narrows what new plans must repeat rather than invalidating historical pl
    not add profiles, workflow-depth configuration, classifiers, routers, or runtime policy knobs.
    Existing universal authority, documentation, verification, commit, approval, and lifecycle
    obligations remain. Every actual commit still passes its configured staged checks and full gate;
-   plans omit repeated generic gate instructions but do not weaken the gate boundary.
+   plans omit repeated generic gate instructions but do not weaken the gate boundary. Back every
+   invariant added or updated by this decision with named proof annotations in the implementing
+   transaction's tests. Every `add` operation below declares an invariant with `Backing: test`.
 
 ## State changes
 
@@ -111,7 +124,9 @@ change narrows what new plans must repeat rather than invalidating historical pl
 - update `rendering/workflow-skill-templates:semantic-rendering-review`
 - add `rendering/workflow-skill-templates:plan-review-before-first-commit`
 - add `rendering/workflow-skill-templates:linked-plan-review-freshness`
+- add `rendering/workflow-skill-templates:single-workflow-no-depth-controls`
 - add `config/migrations-and-locks:retired-plan-resync-selection-migration`
+- add `tooling/context-and-topic:adr-linked-plan-references`
 
 ## Consequences
 
@@ -130,11 +145,14 @@ Initial plan history becomes less noisy because review precedes the first commit
 corrections are no longer observable as separate commits. Substantive findings remain visible in
 Notes, and all later corrections retain ordinary commit history.
 
-Removing a standard skill affects more than its template. The catalog, agent dependency closure,
-workflow tests, generated Claude and Pi outputs, source parts, glossary and current-state prose, and
-lock manifest must move together. Existing adopter configurations may select the retired skill, so a
-schema migration removes that selection before normal catalog validation and reports the change.
-No adopter chooses between old and new workflows.
+Removing a standard skill affects more than its template. The config consumer removes an existing
+selection through the schema migration before validation and preserves unrelated values; the render
+consumer omits the retired artifact and its dependency edges; the manifest consumer prunes its
+tracked outputs through the ordinary regenerated output plan; and the migration consumer performs
+and reports the one idempotent retirement step. The catalog, workflow tests, generated Claude and Pi
+outputs, source parts, glossary and current-state prose, and lock manifest move together. Projects
+without the retired selection and all unrelated configuration remain backward compatible. No adopter
+chooses between old and new workflows.
 
 Assurance becomes freshness-scoped rather than layer-counted. Phase evidence can prevent a duplicate
 terminal reading, but audits and review of unreviewed settlement, cross-phase, integration, or
