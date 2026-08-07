@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: scope-memory-diff-truncation-to-bounding-loss
-status: Proposed
+status: Implemented
 date: 2026-08-07
 ---
 # ADR-0247: Scope Memory Diff Truncation To Bounding Loss
@@ -83,3 +83,4 @@ the ambiguous sentence.
 ## Status history
 
 - 2026-08-07: Proposed
+- 2026-08-07: Implemented; content-sha256: 703904c3314a5e0ec6cff67ae34875e8d90ba5579ca0854551557b5f3152cad0

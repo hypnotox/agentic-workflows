@@ -445,7 +445,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:4c18b7642f986b3c97b7a6331a4999e88fb3d12dcea2199169460c1fc035e66c",
+      "outputHash": "sha256:261b400cd0bb2016986920ec8ad7ea7208da9a7fff545d92daa803d5a697156f",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -829,8 +829,8 @@
     "docs/topics/tooling/effort-management.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:df16179b588ca8757a66465d88b8a545b555733e7f9a5e7e51eff82ccdb23e05",
-      "outputHash": "sha256:dc6033bbb4e4814d9becc0a15edb7708318621a10940af166e7b7c1b83040865"
+      "configHash": "sha256:3b7d30465d8b9d0414d073a04169dbc3f6983d1ad184b5debae53dd0f19ef952",
+      "outputHash": "sha256:0907f5a2a0e46b26a1597b2798edd8d44558d2f5d97ffd4d169cfb1d93213032"
     },
     "docs/topics/tooling/evaluations.md": {
       "templateId": "topics/topic.md.tmpl",
