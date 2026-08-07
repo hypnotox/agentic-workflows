@@ -11,16 +11,20 @@ import (
 
 func TestListDocumentRendersInventory(t *testing.T) {
 	p := &Project{Cfg: &config.Config{Domains: []string{"tooling"}}, Cat: catalog.Standard}
-	document, err := p.ListDocument("domain")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var out strings.Builder
-	if err := presentation.Render(&out, document); err != nil {
-		t.Fatal(err)
-	}
-	if got := out.String(); !strings.Contains(got, "status: artifact inventory") || !strings.Contains(got, "tooling") {
-		t.Fatalf("document = %q", got)
+	for _, test := range []struct {
+		kind, entry string
+	}{{"domain", "tooling"}, {"target", "claude"}} {
+		document, err := p.ListDocument(test.kind)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out strings.Builder
+		if err := presentation.Render(&out, document); err != nil {
+			t.Fatal(err)
+		}
+		if got := out.String(); !strings.Contains(got, "status: artifact inventory") || !strings.Contains(got, test.entry) {
+			t.Fatalf("%s document = %q", test.kind, got)
+		}
 	}
 }
 

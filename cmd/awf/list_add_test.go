@@ -120,21 +120,35 @@ func TestDomainLifecyclePropagatesDependencies(t *testing.T) {
 
 func TestHasSidecarOrParts(t *testing.T) {
 	root := t.TempDir()
-	if hasDomainSidecarOrParts(root, "payments") {
-		t.Fatal("absent authored domain reported present")
+	if found, err := hasDomainSidecarOrParts(root, "payments"); err != nil || found {
+		t.Fatalf("absent authored domain = %t, %v", found, err)
 	}
-	testsupport.WriteFile(t, filepath.Join(root, ".awf", "domains", "payments.yaml"), "paths: []\n")
-	if !hasDomainSidecarOrParts(root, "payments") {
-		t.Fatal("sidecar not detected")
+	sidecar := filepath.Join(root, ".awf", "domains", "payments.yaml")
+	testsupport.WriteFile(t, sidecar, "paths: []\n")
+	if found, err := hasDomainSidecarOrParts(root, "payments"); err != nil || !found {
+		t.Fatalf("sidecar = %t, %v", found, err)
 	}
-	if err := os.Remove(filepath.Join(root, ".awf", "domains", "payments.yaml")); err != nil {
+	if err := os.Remove(sidecar); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(filepath.Join(root, ".awf", "domains", "parts", "payments"), 0o755); err != nil {
+	parts := filepath.Join(root, ".awf", "domains", "parts", "payments")
+	if err := os.MkdirAll(parts, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if !hasDomainSidecarOrParts(root, "payments") {
-		t.Fatal("parts not detected")
+	if found, err := hasDomainSidecarOrParts(root, "payments"); err != nil || !found {
+		t.Fatalf("parts = %t, %v", found, err)
+	}
+	if err := os.RemoveAll(parts); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Dir(sidecar), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("payments.yaml", sidecar); err != nil {
+		t.Fatal(err)
+	}
+	if found, err := hasDomainSidecarOrParts(root, "payments"); err == nil || found || !strings.Contains(err.Error(), "payments.yaml") {
+		t.Fatalf("stat failure = %t, %v", found, err)
 	}
 }
 
@@ -148,6 +162,16 @@ func TestRemoveDomainOrphanAndCleanCompletion(t *testing.T) {
 	if err := runRemoveDomainWith(testContext(t), failureWriterRoot, "payments", errorWriter{}, dependencies); err == nil || !strings.Contains(err.Error(), "write failed") {
 		t.Fatalf("orphan note error = %v", err)
 	}
+
+	statFailureRoot := scaffoldProject(t)
+	if err := runNewDomain(testContext(t), statFailureRoot, "payments", io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	dependencies.authored = func(string, string) (bool, error) { return false, errors.New("injected inspection failure") }
+	if err := runRemoveDomainWith(testContext(t), statFailureRoot, "payments", io.Discard, dependencies); err == nil || !strings.Contains(err.Error(), "injected inspection failure") {
+		t.Fatalf("orphan inspection error = %v", err)
+	}
+	dependencies.authored = hasDomainSidecarOrParts
 
 	cleanRoot := scaffoldProject(t)
 	cfgPath := config.ConfigPath(cleanRoot)

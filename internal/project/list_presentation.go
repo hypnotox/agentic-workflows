@@ -46,6 +46,8 @@ func (p *Project) ListDocument(kindFilter string) (presentation.Document, error)
 }
 
 func listTargetDocument() (presentation.Document, error) {
+	// KnownTargets is the fixed compile-time pair "claude" and "pi", both safe
+	// presentation literals; listCategory cannot reject this closed set.
 	category, _ := listCategory("targets", KnownTargets())
 	return (presentation.Collection{Status: "artifact inventory", Categories: []presentation.CollectionCategory{category}}).Document()
 }

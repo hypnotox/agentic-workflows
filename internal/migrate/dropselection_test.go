@@ -103,20 +103,38 @@ func TestDropSelectionRemovesKeysAndSidecarLocal(t *testing.T) {
 func TestDropSelectionRefusesLocalArtifactBeforeWriting(t *testing.T) {
 	root := t.TempDir()
 	configPath := filepath.Join(root, ".awf/config.yaml")
-	src := "prefix: example\nskills: [tdd]\n"
+	src := "prefix: example\nskills: [a-first, z-last]\n"
 	testsupport.WriteFile(t, configPath, src)
-	sidecar := filepath.Join(root, ".awf/skills/tdd.yaml")
-	testsupport.WriteFile(t, sidecar, "local: true\n")
+	first := filepath.Join(root, ".awf/skills/a-first.yaml")
+	rejecting := filepath.Join(root, ".awf/skills/z-last.yaml")
+	testsupport.WriteFile(t, first, "local: false\ndata: {}\n")
+	testsupport.WriteFile(t, rejecting, "local: true\n")
+	if err := os.Chmod(first, 0o600); err != nil {
+		t.Fatal(err)
+	}
 	var changes Changes
 	err := applyDropSelection(root, &changes)
-	if err == nil || !strings.Contains(err.Error(), "local: true") || !strings.Contains(err.Error(), "skills/tdd.yaml") {
+	if err == nil || !strings.Contains(err.Error(), "local: true") || !strings.Contains(err.Error(), "skills/z-last.yaml") {
 		t.Fatalf("error = %v", err)
+	}
+	if changes.String() != "" {
+		t.Fatalf("refusal announced unapplied changes: %q", changes.String())
 	}
 	if got, readErr := os.ReadFile(configPath); readErr != nil || string(got) != src {
 		t.Fatalf("config changed before refusal: %q, %v", got, readErr)
 	}
-	if got, readErr := os.ReadFile(sidecar); readErr != nil || string(got) != "local: true\n" {
-		t.Fatalf("sidecar changed before refusal: %q, %v", got, readErr)
+	if got, readErr := os.ReadFile(first); readErr != nil || string(got) != "local: false\ndata: {}\n" {
+		t.Fatalf("earlier sidecar changed before refusal: %q, %v", got, readErr)
+	}
+	info, statErr := os.Stat(first)
+	if statErr != nil {
+		t.Fatal(statErr)
+	}
+	if info.Mode().Perm() != 0o600 {
+		t.Fatalf("earlier sidecar mode = %v, want 0600", info.Mode())
+	}
+	if got, readErr := os.ReadFile(rejecting); readErr != nil || string(got) != "local: true\n" {
+		t.Fatalf("rejecting sidecar changed before refusal: %q, %v", got, readErr)
 	}
 }
 

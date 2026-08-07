@@ -16,9 +16,8 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-// runNew scaffolds a new templated artifact: an ADR, or a project-local skill/agent
-// (ADR-0068). ADR takes a single joined title; skill/agent take a name and a
-// separate quoted description.
+// runNew scaffolds one of the surviving authored artifacts: an ADR, plan,
+// current-state topic, or domain. Each arm owns its kind-specific arguments.
 // touches-state: tooling/cli:adr-new-version-gated - new-command version gate site; proof in gate_test.go
 func runNew(ctx context.Context, root, kind string, args []string, stdout io.Writer) error {
 	switch {

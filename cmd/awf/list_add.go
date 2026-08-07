@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -118,20 +119,26 @@ func runRemoveDomainWith(ctx context.Context, root, name string, stdout io.Write
 	if err := dependencies.synchronize(ctx, root, stdout); err != nil {
 		return err
 	}
-	if hasDomainSidecarOrParts(root, name) {
+	authored, err := hasDomainSidecarOrParts(root, name)
+	if err != nil {
+		return err
+	}
+	if authored {
 		return writeStatus(stdout, fmt.Sprintf("note: domain %q still has a sidecar or convention parts under .awf/, now orphaned", name))
 	}
 	return nil
 }
 
-func hasDomainSidecarOrParts(root, name string) bool {
+func hasDomainSidecarOrParts(root, name string) (bool, error) {
 	awf := config.RootDir(root)
 	for _, path := range []string{filepath.Join(awf, "domains", name+".yaml"), filepath.Join(awf, "domains", "parts", name)} {
 		if _, err := os.Stat(path); err == nil {
-			return true
+			return true, nil
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return false, fmt.Errorf("inspect authored domain path %s: %w", filepath.ToSlash(path), err)
 		}
 	}
-	return false
+	return false, nil
 }
 
 func runList(ctx context.Context, root, kindFilter string, stdout io.Writer) error {

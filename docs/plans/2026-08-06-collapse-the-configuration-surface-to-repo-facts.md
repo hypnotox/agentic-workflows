@@ -723,3 +723,5 @@ Record deviations, spike answers, follow-ups, and findings surfaced during imple
 - Phase 3 review settlement narrows schema-39 sidecar migration discovery to the frozen historical
   artifact-sidecar surface, preserving all-files preflight while excluding unrelated YAML. It also
   strengthens migration, CLI lifecycle, grammar, inventory, claim, and prose proofs and corrections.
+  The verify pass further made cross-sidecar preflight atomicity mutation-sensitive, finished the
+  init-only topic rewrite, and propagated domain-orphan inspection failures.

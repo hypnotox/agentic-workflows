@@ -28,7 +28,7 @@ The gated `check` family is organized by subject universe. `check repo` aggregat
 - [Evaluations](../topics/tooling/evaluations.md): The golden-task evaluation suite.
 - [Filesystem access](../topics/tooling/filesystem-access.md): Single-home root-confined filesystem access and its controlled test fault source.
 - [Git access](../topics/tooling/git-access.md): The one semantic git seam - entrypoints, backends, and their pinned contracts.
-- [Init and enablement](../topics/tooling/init-and-enablement.md): Project scaffolding and enablement surfaces: init, add, remove, new.
+- [Initialization](../topics/tooling/init-and-enablement.md): Project adoption and initialization behavior.
 - [Project license](../topics/tooling/project-license.md): The repository license text, public references, and packaged-license contract.
 - [Quality gates](../topics/tooling/quality-gates.md): Coverage, prose, working-memory citations, and the command-runner gate machinery.
 - [Test infrastructure](../topics/tooling/test-infrastructure.md): Shared internal test-support infrastructure and its dependency boundary.

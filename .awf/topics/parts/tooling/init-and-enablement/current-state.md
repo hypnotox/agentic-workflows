@@ -1,4 +1,4 @@
-Project scaffolding and enablement surfaces: init, add, remove, and new.
+How awf adopts and initializes a project with explicit answers, safe collision handling, and repository-fact defaults.
 
 ## Claims
 

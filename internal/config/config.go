@@ -623,12 +623,11 @@ func ValidateDomainName(name string) error {
 	return nil
 }
 
-// ValidateArtifactName reports whether name is usable as a local skill/agent
-// name (ADR-0068): non-empty lowercase kebab-case (letters, digits, hyphens).
-// The charset is frontmatter-safe - it excludes the path separators and ".." the
-// invariant requires, awf's reserved "_" namespace, and the colon/space/quote
-// characters that would otherwise interpolate into the base template's name: line
-// and break its YAML frontmatter. It mirrors every catalog artifact's naming.
+// ValidateArtifactName reports whether a flat artifact name uses the catalog's
+// lowercase kebab-case grammar. The charset is frontmatter-safe: it excludes path
+// separators, awf's reserved "_" namespace, and punctuation that would break a
+// generated skill's YAML frontmatter. Migration also uses it to recognize the
+// historical flat skill and agent sidecar surface.
 func ValidateArtifactName(kind, name string) error {
 	if name == "" {
 		return fmt.Errorf("%s name must not be empty", kind)
