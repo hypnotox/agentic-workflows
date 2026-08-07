@@ -2,6 +2,7 @@
 ## In flight
 
 - [ADR-0246: Ship thin support skills for awf's own mechanisms](0246-ship-thin-support-skills-for-awf-s-own-mechanisms.md) (Proposed)
+- [ADR-0248: Permit Necessary Phase-Owner Path Deviations](0248-permit-necessary-phase-owner-path-deviations.md) (Proposed)
 
 ## History
 
