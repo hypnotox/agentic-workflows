@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-07
 adrs: [compact-source-provenance-for-generated-documents]
-status: Proposed
+status: Implemented
 ---
 # Plan: Compact Source Provenance for Generated Documents
 

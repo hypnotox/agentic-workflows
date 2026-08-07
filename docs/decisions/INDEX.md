@@ -3,7 +3,6 @@
 ## In flight
 
 - [ADR-0246: Ship thin support skills for awf's own mechanisms](0246-ship-thin-support-skills-for-awf-s-own-mechanisms.md) (Proposed)
-- [ADR-0250: Compact Source Provenance for Generated Documents](0250-compact-source-provenance-for-generated-documents.md) (Implementing)
 
 ## History
 
@@ -255,3 +254,4 @@
 - [ADR-0247: Scope Memory Diff Truncation To Bounding Loss](0247-scope-memory-diff-truncation-to-bounding-loss.md) (Implemented)
 - [ADR-0248: Permit Necessary Phase-Owner Path Deviations](0248-permit-necessary-phase-owner-path-deviations.md) (Implemented)
 - [ADR-0249: Correct Phase-Owner Path-Latitude Claim Scope](0249-correct-phase-owner-path-latitude-claim-scope.md) (Implemented)
+- [ADR-0250: Compact Source Provenance for Generated Documents](0250-compact-source-provenance-for-generated-documents.md) (Implemented)
