@@ -28,7 +28,7 @@ func TestRunConfigStaticFallback(t *testing.T) {
 	for _, want := range []string{
 		"status: config reference static (not inside an awf project)",
 		"config keys:",
-		"audit.diffThreshold | int",
+		"audit.allowedScopes | list of scope entries",
 		"gateCmd | Command that runs the full pre-commit gate",
 		"Catalog consumers:",
 		"sidecar.local | bool",
@@ -73,7 +73,7 @@ func TestRunConfigLiveAndSingleKey(t *testing.T) {
 	}
 
 	for key, want := range map[string]string{
-		"audit.diffThreshold": "400 (default)",
+		"audit.allowedScopes": "accept any (default)",
 		"gateCmd":             "set (`make gate`)",
 		"sidecar.local":       "renders nothing",
 		"testSurfaces":        "skill tdd | testSurfaces",

@@ -49,7 +49,7 @@ func TestNativePiSkillsAreDiscoverableAndPruned(t *testing.T) {
 			t.Fatalf("missing native Pi skill %s: %v", path, err)
 		}
 	}
-	if err := os.WriteFile(configPath(root), []byte("prefix: example\nintegrationBranch: main\nskills: [local]\nagents: []\ntargets: [pi]\n"), 0o644); err != nil {
+	if err := os.WriteFile(configPath(root), []byte("prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\nskills: [local]\nagents: []\ntargets: [pi]\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	p, err = Open(testContext(t), root)
@@ -65,7 +65,7 @@ func TestNativePiSkillsAreDiscoverableAndPruned(t *testing.T) {
 	if _, err := os.Stat(local); err != nil {
 		t.Fatalf("enabled local skill was pruned: %v", err)
 	}
-	if err := os.WriteFile(configPath(root), []byte("prefix: example\nintegrationBranch: main\nskills: [local]\nagents: []\ntargets: [claude]\n"), 0o644); err != nil {
+	if err := os.WriteFile(configPath(root), []byte("prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\nskills: [local]\nagents: []\ntargets: [claude]\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	p, err = Open(testContext(t), root)

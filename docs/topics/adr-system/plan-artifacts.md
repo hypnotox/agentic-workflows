@@ -18,8 +18,9 @@ Backing: test
 
 ### `invariant: plan-commit-subject-length-checked`
 
-awf check fails a plan under docs/plans/ that carries a validated commit fence whose first non-empty line exceeds the resolved audit.SubjectMaxLength, reporting the offending length and the limit.
+awf check fails a plan under docs/plans/ that carries a validated commit fence whose first non-empty line exceeds the fixed 72-character subject limit, reporting the offending length and the limit.
 Origin: ADR-0111
+Revised-by: ADR-unconditional-gates-and-audit-rules
 Backing: test
 
 ### `invariant: plan-commit-subject-marker-scoped`
@@ -42,8 +43,9 @@ Backing: test
 
 ### `invariant: plan-commit-subject-shape-checked`
 
-awf check fails a plan under docs/plans/ whose validated commit fence first non-empty line is malformed (not of the form type(scope)?: subject) or names a type outside a non-empty audit.allowedTypes.
+awf check fails a plan under docs/plans/ whose validated commit fence first non-empty line is malformed (not of the form type(scope)?: subject) or names a type outside the fixed Conventional Commits type set.
 Origin: ADR-0111
+Revised-by: ADR-unconditional-gates-and-audit-rules
 Backing: test
 
 ### `invariant: plan-frontmatter-validated`

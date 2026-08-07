@@ -1670,13 +1670,8 @@ func TestHistoricalStateUsesPolicyProjectionAndReusesIrrelevantCommits(t *testin
 		})
 		merge := gitfixture.Merge(t, repo, "Merge feature", main, feature)
 		findings, _, err := Run(ctx, repo.Root(), feature, merge, Inputs{
-			Settings: Settings{
-				AllowedTypes:        []string{"feat"},
-				DependencyManifests: []string{"go.mod"},
-				DiffThreshold:       1,
-				PlainPunctuation:    true,
-			},
-			ADRDir: "docs/decisions", DocsDir: "docs", PlansDir: "docs/plans",
+			Settings: Settings{},
+			ADRDir:   "docs/decisions", DocsDir: "docs", PlansDir: "docs/plans",
 		})
 		if err != nil {
 			t.Fatal(err)

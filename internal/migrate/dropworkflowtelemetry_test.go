@@ -22,7 +22,7 @@ func TestConfigForCurrentSchemaDropsHistoricalWorkflowTelemetry(t *testing.T) {
 	if bytes.Contains(got, []byte("workflowTelemetry")) {
 		t.Fatalf("retired block remains:\n%s", got)
 	}
-	for _, want := range []string{"# retained header", "prefix: example", "name: value", "runner:", "enabled: true"} {
+	for _, want := range []string{"# retained header", "prefix: example", "name: value", "integrationBranch: main"} {
 		if !strings.Contains(string(got), want) {
 			t.Errorf("migration lost unrelated YAML %q:\n%s", want, got)
 		}

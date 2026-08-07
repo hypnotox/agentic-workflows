@@ -32,12 +32,6 @@ Running init with --force copies every colliding non-managed file to <path>.awf-
 Origin: ADR-0148
 Backing: test
 
-### `invariant: init-hooks-default-on`
-
-The config scaffolded by awf init enables the hooks singleton by default.
-Origin: ADR-0148
-Backing: test
-
 ### `invariant: init-noninteractive-default`
 
 awf init with a non-terminal stdin and no --set or --answers seeds every var empty and writes no invariants config, producing output byte-identical to the plain seed-empty scaffold.

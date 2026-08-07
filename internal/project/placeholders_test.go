@@ -49,7 +49,7 @@ func TestPlaceholderRegistry(t *testing.T) {
 	if bare["prefix"] != "bare" {
 		t.Errorf("prefix = %q, want bare", bare["prefix"])
 	}
-	for _, k := range []string{"commitScopeList", "commitScopeTable", "commitScopeSentence", "gateCmd", "checkCmd"} {
+	for _, k := range []string{"commitScopeList", "commitScopeTable", "commitScopeSentence", "checkCmd"} {
 		if _, ok := bare[k]; ok {
 			t.Errorf("accept-any/no-vars registry should not carry %q", k)
 		}

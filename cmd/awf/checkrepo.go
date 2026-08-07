@@ -136,15 +136,9 @@ func repoCheckSystem(root string, aggregate bool, leadingNotes []string, planNot
 				return []execution.RequirementID{repoRequirementCurrentState}, nil
 			}},
 			{ID: repoStepProse, Requirements: func(context.Context) ([]execution.RequirementID, error) {
-				if inputs.config.ProseGate == nil || !inputs.config.ProseGate.Enabled {
-					return nil, nil
-				}
 				return []execution.RequirementID{repoRequirementIndex}, nil
 			}},
 			{ID: repoStepMemory, Requirements: func(context.Context) ([]execution.RequirementID, error) {
-				if inputs.config.MemoryCite == nil || !inputs.config.MemoryCite.Enabled {
-					return nil, nil
-				}
 				return []execution.RequirementID{repoRequirementIndex}, nil
 			}},
 		},
@@ -228,7 +222,7 @@ func collectRepoCheckSelectionWithPlanNotes(ctx context.Context, root string, se
 	if err != nil {
 		var indexErr *repoIndexPreparationError
 		if errors.As(err, &indexErr) {
-			return checkCollection{}, fmt.Errorf("%s: %w", repoScannerErrorPrefix(selected, inputs.config), indexErr)
+			return checkCollection{}, fmt.Errorf("%s: %w", repoScannerErrorPrefix(selected), indexErr)
 		}
 		return checkCollection{}, err
 	}
@@ -274,19 +268,19 @@ func renderCheckCollection(stdout io.Writer, collection checkCollection) error {
 	return nil
 }
 
-func repoScannerErrorPrefix(selected []execution.StepID, cfg *config.Config) string {
+func repoScannerErrorPrefix(selected []execution.StepID) string {
 	for _, step := range []execution.StepID{repoStepProse, repoStepMemory} {
 		if !slices.Contains(selected, step) {
 			continue
 		}
-		if step == repoStepProse && cfg.ProseGate != nil && cfg.ProseGate.Enabled {
+		if step == repoStepProse {
 			return "check repo prose"
 		}
-		if step == repoStepMemory && cfg.MemoryCite != nil && cfg.MemoryCite.Enabled {
+		if step == repoStepMemory {
 			return "check repo memory"
 		}
 	}
-	panic("repo index preparation without a selected enabled scanner") // coverage-ignore: only enabled scanner resolvers request the index requirement
+	panic("repo index preparation without a selected scanner") // coverage-ignore: only scanner resolvers request the index requirement
 }
 
 // runCheckRepo runs the repository-universe aggregate and owns its version note.

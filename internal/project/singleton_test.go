@@ -36,11 +36,11 @@ func agentsDocContent(t *testing.T, configYAML string) string {
 // enabled, the generic awf otherwise; ADR-0156 Decision 4); identical command
 // values render once.
 func TestAgentsDocCommandsDefaultAndDedupe(t *testing.T) {
-	empty := agentsDocContent(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n")
-	if !strings.Contains(empty, "- `awf check`: check rendered files for drift") {
+	empty := agentsDocContent(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\nskills: []\nagents: []\n")
+	if !strings.Contains(empty, "- `./awf check`: check rendered files for drift") {
 		t.Errorf("empty Commands section missing the generic awf check default:\n%s", empty)
 	}
-	runner := agentsDocContent(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\nrunner:\n  enabled: true\n")
+	runner := agentsDocContent(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\nskills: []\nagents: []\n")
 	if !strings.Contains(runner, "- `./awf check`: check rendered files for drift") {
 		t.Errorf("runner-enabled Commands section missing the ./awf check default:\n%s", runner)
 	}

@@ -65,10 +65,10 @@ instead of rotting.
   pre-merge-commit, reference-transaction, and pre-push scripts. You wire them up;
   awf never touches your Git configuration. Optional commit policy lets the last two
   reject disallowed identities or SSH signatures before local ref movement or push.
-- **A command runner** (`x`, opt-in via `awf enable runner`): an executable dispatch
-  script giving every repo the same `./x <verb>` entry point. It is co-owned: one section
-  is marked edit-in-place, so the verbs you add there survive every `awf render` while awf
-  keeps the rest current. awf itself keeps a from-source runner instead.
+- **An awf wrapper** (`awf`, always rendered): a pure executable forwarder that resolves
+  the configured awf invocation, then the bootstrap-pinned binary, then `awf` on `PATH`,
+  and passes every argument through unchanged. Projects may separately keep their own
+  command runner, such as this repository's `x`.
 - **A pinned bootstrap** (`.awf/bootstrap.sh`): an optional installer that fetches the
   exact awf version the repo was rendered with, for hooks and CI.
 - **Effort residents** (`.awf/efforts/<slug>/`, `.awf/worktrees/<slug>/`): one concrete non-minimal outcome owns immutable schema-2 state, `memory.md`, and optional mutable protocol-2 `activity.json`; optional managed worktrees use Git-authoritative path, registration, and branch topology. Activity is fallible Pi presence, never authority or a lock, and older binaries need not read an effort after it exists. These two are the only resident roots awf owns; schema generation 22 reset the legacy standalone memory root, and no render recreates it.
@@ -270,8 +270,8 @@ the toggleable catalog and always render. Everything else is opt-in via
 | `awf context [<path>...] [--show <facet>]... [--full] [--staged] [--range <a>..<b>] [--uncovered]` | Orient by request with compact current-state impact reports |
 | `awf topic <domain>/<topic>[:<claim>] [flags]` | Query current claims, history, references, and applicability |
 | `awf new <kind> <args>` | Scaffold a new artifact: kind ∈ {adr, plan, topic, skill, agent, doc} |
-| `awf enable <kind> <name> [--dry-run]` | Enable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap, hooks, runner} |
-| `awf disable <kind> <name> [--with-dependents] [--dry-run]` | Disable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap, hooks, runner} |
+| `awf enable <kind> [<name>] [--dry-run]` | Enable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap} |
+| `awf disable <kind> [<name>] [--with-dependents] [--dry-run]` | Disable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap} |
 | `awf upgrade [--recover]` | Migrate the .awf/ config tree or consume a current-state attestation |
 | `awf uninstall` | Remove awf's generated files (keeps .awf/) |
 | `awf changelog [--version <v> \| --since <v> \| --range <from>..<to>]` | Print the embedded changelog, or one version/range of it |

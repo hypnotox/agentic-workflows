@@ -121,7 +121,7 @@ func TestConfigReferenceEmptyStateDegrades(t *testing.T) {
 	if strings.Contains(got, "<no value>") || strings.Contains(got, "|  |  |") {
 		t.Errorf("empty-state reference degraded incoherently:\n%s", got)
 	}
-	if !strings.Contains(got, "0 keys, 0 set") || !strings.Contains(got, "accept any scope") {
+	if !strings.Contains(got, "1 keys, 1 set") || !strings.Contains(got, "accept any scope") {
 		t.Errorf("empty-state reference missing live-state prose:\n%s", got)
 	}
 	// The vars section still lists every catalog var (all absent).
@@ -450,27 +450,18 @@ func TestConfigReferenceSidecarRules(t *testing.T) {
 // (never synced, no lock entry) reports nothing.
 // invariant: config/configspec-and-reference:live-state-projection-explicit (TestConfigReferenceCurrentValues)
 func TestConfigReferenceCurrentValues(t *testing.T) {
-	auditYAML := crefYAML + `audit:
-  subjectMaxLength: 80
-  allowedTypes: []
-  dependencyManifests: []
-currentState:
+	auditYAML := crefYAML + `currentState:
   sources:
     - globs: ['**/*.md']
       marker: '#'
   testGlobs:
     - '**/*_test.md'
-  maxTopicsPerPath: 5
 proseGate:
-  enabled: true
   exemptions:
     - path: docs/x.md
       codepoint: U+2014
       count: 1
-runner:
-  enabled: true
 memoryCite:
-  enabled: true
   exemptions:
     - path: docs/plans/x.md
       count: 1
@@ -482,16 +473,10 @@ memoryCite:
 	}
 	got := string(b)
 	for _, want := range []string{
-		"| 72 | 80 |", // configured, no "(default)" marker
-		"| accept any |",
-		"| rule off |",
-		"| 1 entries |", // proseGate.exemptions live-state count
-		"`runner.enabled` | bool | false (key absent); awf init and awf upgrade seed it true | true |",
-		"`memoryCite.enabled` | bool | false (key absent) | true |",
+		"`proseGate.exemptions` | list of {path, codepoint, count} mappings | empty (nothing is exempt) | 1 entries |",
 		"`memoryCite.exemptions` | list of {path, count} mappings | empty (nothing is exempt) | 1 entries |",
 		"`currentState.sources` | list of {globs, marker, close} mappings | none | 1 sources |",
 		"`currentState.testGlobs` | string list | none | 1 globs |",
-		"`currentState.maxTopicsPerPath` | positive int | 8 | 5 |",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("configured audit values render wrong, missing %q", want)
@@ -506,8 +491,7 @@ memoryCite:
 		key       string
 		cliValues []string
 	}{
-		{"audit.subjectMaxLength", []string{"audit.subjectMaxLength | int | 72", "| 80"}},
-		{"runner.enabled", []string{"runner.enabled | bool | false (key absent); awf init and awf upgrade seed it true", "| true"}},
+		{"proseGate.exemptions", []string{"proseGate.exemptions | list of {path, codepoint, count} mappings", "| 1 entries"}},
 		{"gateCmdFull", []string{"gateCmdFull |", "| absent, declined"}},
 	} {
 		document, err := ConfigReferencePresentation(tc.key, &model, "config reference")

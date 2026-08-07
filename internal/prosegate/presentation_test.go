@@ -7,30 +7,14 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
 
-func TestDisabledCategoryAndEmptyResults(t *testing.T) {
-	empty, err := Categories(nil, nil)
+func TestEmptyResults(t *testing.T) {
+	categories, err := Categories(nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, categories := range [][]presentation.ReportCategory{mustDisabledCategories(t), empty} {
-		document, err := (presentation.Report{Status: "warnings", Categories: categories}).Document()
-		if err != nil {
-			t.Fatal(err)
-		}
-		var out strings.Builder
-		if err := presentation.Render(&out, document); err != nil {
-			t.Fatal(err)
-		}
-	}
-}
-
-func mustDisabledCategories(t *testing.T) []presentation.ReportCategory {
-	t.Helper()
-	categories, err := DisabledCategory()
-	if err != nil {
+	if _, err := (presentation.Report{Status: "completed", Categories: categories}).Document(); err != nil {
 		t.Fatal(err)
 	}
-	return categories
 }
 
 func TestCategoriesOwnExactCheckVocabularyAndOrder(t *testing.T) {

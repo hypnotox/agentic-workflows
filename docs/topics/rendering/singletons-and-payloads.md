@@ -29,9 +29,9 @@ Backing: test
 
 ### `invariant: hook-payloads-rendered`
 
-With the hooks singleton enabled, exactly five payloads render at .awf/hooks/pre-commit.sh, .awf/hooks/commit-msg.sh, .awf/hooks/pre-push.sh, .awf/hooks/pre-merge-commit.sh, and .awf/hooks/reference-transaction.sh; with it absent or disabled, no path under .awf/hooks/ renders.
+Exactly five payloads always render at .awf/hooks/pre-commit.sh, .awf/hooks/commit-msg.sh, .awf/hooks/pre-push.sh, .awf/hooks/pre-merge-commit.sh, and .awf/hooks/reference-transaction.sh.
 Origin: ADR-0148
-Revised-by: ADR-0202, ADR-0228
+Revised-by: ADR-0202, ADR-0228, ADR-unconditional-gates-and-audit-rules
 Backing: test
 
 ### `invariant: commit-policy-hook-payloads`

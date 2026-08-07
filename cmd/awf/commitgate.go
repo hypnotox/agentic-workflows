@@ -10,6 +10,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/commitmsg"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/memorycite"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
@@ -80,29 +81,25 @@ func runCommitGateWithDependencies(ctx context.Context, root, msgPath string, st
 		return fmt.Errorf("check staged commit: %w", err)
 	}
 	if msg.Subject != "" {
-		if p.Cfg.MemoryCite != nil && p.Cfg.MemoryCite.Enabled {
-			// Scan the cleaned message, never the raw bytes: `git commit -v` appends
-			// the staged diff below a scissors line, and a diff may legitimately carry
-			// text git itself discards.
-			refs := memorycite.ScanText("commit message", []byte(msg.Text))
-			if len(refs) > 0 {
-				document, documentErr := memorycite.CommitGateDocument(refs)
-				if documentErr != nil { // coverage-ignore: ScanText produces nonempty single-line reference fields and the owner mapping uses fixed grammar
-					return documentErr
-				}
-				if renderErr := dependencies.render(stdout, document); renderErr != nil {
-					return renderErr
-				}
+		// Scan the cleaned message, never the raw bytes: `git commit -v` appends
+		// the staged diff below a scissors line, and a diff may legitimately carry
+		// text git itself discards.
+		refs := memorycite.ScanText("commit message", []byte(msg.Text))
+		if len(refs) > 0 {
+			document, documentErr := memorycite.CommitGateDocument(refs)
+			if documentErr != nil { // coverage-ignore: ScanText produces nonempty single-line reference fields and the owner mapping uses fixed grammar
+				return documentErr
 			}
-			if len(refs) > 0 {
-				return errors.New("check staged commit: a commit message must not cite a concrete effort-owned memory file; name the bare .awf/efforts/ directory or use an angle-bracket slug placeholder")
+			if renderErr := dependencies.render(stdout, document); renderErr != nil {
+				return renderErr
 			}
+			return errors.New("check staged commit: a commit message must not cite a concrete effort-owned memory file; name the bare .awf/efforts/ directory or use an angle-bracket slug placeholder")
 		}
 		// A git-generated merge or autosquash subject is exempt from the Conventional
 		// Commits rule - never block what git produced or will rewrite.
 		if !isExemptSubject(msg.Subject) {
 			findings := audit.CheckConventionalCommit(
-				git.Commit{Subject: msg.Subject}, audit.Resolve(p.Cfg.Audit))
+				git.Commit{Subject: msg.Subject}, audit.Resolve(config.AuditScopes(p.Cfg.Audit)))
 			if len(findings) > 0 {
 				document, documentErr := audit.ConventionalCommitDocument(findings)
 				if documentErr != nil { // coverage-ignore: CheckConventionalCommit produces fixed single-line detail and the owner mapping uses fixed grammar

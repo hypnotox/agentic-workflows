@@ -30,14 +30,8 @@ func TestEmptyInitChecksOnUnbornHead(t *testing.T) {
 	if code := run([]string{"awf", "init"}, &initOut, &initErr); code != 0 {
 		t.Fatalf("init before first commit: exit %d (%s)", code, initErr.String())
 	}
-	// A no-answer init leaves gateCmd unset, so the first ordinary check stops
-	// at the loud command-wiring error (ADR-0156 Decision 5) - init itself must
-	// not hard-fail, the follow-up commands name the exact var to set.
-	var wiredOut, wiredErr bytes.Buffer
-	if code := run([]string{"awf", "check"}, &wiredOut, &wiredErr); code == 0 ||
-		!strings.Contains(wiredErr.String(), "hooks.enabled requires vars.gateCmd") {
-		t.Fatalf("check without gateCmd: exit %d, want the command-wiring error (%s)", code, wiredErr.String())
-	}
+	// The unconditional hook payloads require a gate command before render or
+	// check. Init remains usable with the empty scaffolded value.
 	setScaffoldGateCmd(t, root)
 	var syncOut, syncErr bytes.Buffer
 	if code := run([]string{"awf", "render"}, &syncOut, &syncErr); code != 0 {
@@ -201,7 +195,7 @@ func TestCheckUnsetVarNotesAreNonFailing(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	root := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {testCmd: go test ./..., gateCmd: \"\"}\nskills: [tdd]\nagents: []\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {testCmd: \"\", gateCmd: make gate}\nskills: [tdd]\nagents: []\n")
 	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
 		t.Fatalf("sync: %v", err)
 	}
@@ -211,7 +205,7 @@ func TestCheckUnsetVarNotesAreNonFailing(t *testing.T) {
 	if err := runCheck(ctx, root, &out); err != nil {
 		t.Fatalf("check must stay clean with unset vars, got: %v", err)
 	}
-	if !strings.Contains(out.String(), "advisory | skill tdd references unset vars: gateCmd") {
+	if !strings.Contains(out.String(), "advisory | skill tdd references unset vars: testCmd") {
 		t.Errorf("missing unset-var note, got:\n%s", out.String())
 	}
 }
@@ -250,7 +244,7 @@ func TestCheckGlossaryTersenessNotesAreNonFailing(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	root := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: [glossary]\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\nskills: []\nagents: []\ndocs: [glossary]\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "docs", "glossary.yaml"),
 		"data:\n  terms:\n    - term: bloated\n      meaning: \""+strings.Repeat("x", 400)+"\"\n")
 	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
@@ -271,7 +265,7 @@ func TestCheckSurfacesUnsetVarNoteRenderError(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: [tdd]\nagents: []\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\nskills: [tdd]\nagents: []\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "tdd.yaml"),
 		"data:\n  testSurfaces:\n    - {name: \"<no value>\", kind: k, location: l}\n")
 	if err := runCheck(ctx, root, io.Discard); err == nil {

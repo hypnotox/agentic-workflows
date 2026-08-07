@@ -56,6 +56,11 @@ func testLayout() map[string]any {
 // relative to .awf/ (e.g. "skills/tdd.yaml", "skills/parts/x/y.md").
 func scaffoldFiles(t *testing.T, configYAML string, files map[string]string) string {
 	t.Helper()
+	return scaffoldFilesRaw(t, withTestGateCmd(configYAML), files)
+}
+
+func scaffoldFilesRaw(t *testing.T, configYAML string, files map[string]string) string {
+	t.Helper()
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, configYAML)
 	for rel, body := range files {
@@ -64,8 +69,34 @@ func scaffoldFiles(t *testing.T, configYAML string, files map[string]string) str
 	return root
 }
 
+func withTestGateCmd(configYAML string) string {
+	if strings.Contains(configYAML, "gateCmd:") {
+		return configYAML
+	}
+	lines := strings.Split(strings.TrimSuffix(configYAML, "\n"), "\n")
+	for i, line := range lines {
+		if !strings.HasPrefix(line, "vars:") {
+			continue
+		}
+		rest := strings.TrimSpace(strings.TrimPrefix(line, "vars:"))
+		switch {
+		case rest == "" || rest == "{}":
+			lines[i] = "vars:"
+			lines = slices.Insert(lines, i+1, "  gateCmd: test-gate")
+		case strings.HasPrefix(rest, "{") && strings.HasSuffix(rest, "}"):
+			inside := strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(rest, "{"), "}"))
+			if inside != "" {
+				inside += ", "
+			}
+			lines[i] = "vars: {" + inside + "gateCmd: test-gate}"
+		}
+		return strings.Join(lines, "\n") + "\n"
+	}
+	return strings.Join(lines, "\n") + "\nvars:\n  gateCmd: test-gate\n"
+}
+
 func TestCommitPolicyManifestProjection(t *testing.T) {
-	const base = "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: [architecture]\n"
+	const base = "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\nskills: []\nagents: []\ndocs: [architecture]\n"
 	root := scaffold(t, base)
 	syncAndLoad := func() *manifest.Lock {
 		t.Helper()
@@ -284,7 +315,7 @@ func TestResidentMigrationsPreserveOwnedRootsThroughProjectSync(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte("prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [claude]\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte("prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\nskills: []\nagents: []\ntargets: [claude]\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	lock := &manifest.Lock{AWFVersion: "0.24.0", SchemaVersion: 20, Files: map[string]manifest.Entry{}, InitializedWithVersion: "0.24.0"}
@@ -404,7 +435,7 @@ func TestSyncPrunesRemovedTargetTree(t *testing.T) {
 
 // invariant: rendering/pi-runtime:pi-extension-target-render (TestSyncPrunesAllPiExtensionsWithoutTouchingUnrelatedContent)
 func TestSyncPrunesAllPiExtensionsWithoutTouchingUnrelatedContent(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\nskills: []\nagents: []\ntargets: [pi]\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -421,7 +452,7 @@ func TestSyncPrunesAllPiExtensionsWithoutTouchingUnrelatedContent(t *testing.T) 
 	if err := os.WriteFile(unrelated, []byte("keep"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(configPath(root), []byte("prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [claude]\n"), 0o644); err != nil {
+	if err := os.WriteFile(configPath(root), []byte("prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\nskills: []\nagents: []\ntargets: [claude]\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	p, err = Open(testContext(t), root)

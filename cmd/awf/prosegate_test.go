@@ -24,19 +24,9 @@ func proseGateRepo(t *testing.T, proseGateYAML string, stage map[string]string) 
 	return root
 }
 
-func TestProseGateKnobOff(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	// No .awf at all: config.Load fails.
-	if err := runProseGate(ctx, t.TempDir(), io.Discard); err == nil {
+func TestProseGateRequiresProjectConfig(t *testing.T) {
+	if err := runProseGate(testContext(t), t.TempDir(), io.Discard); err == nil {
 		t.Error("no .awf: want a config-load error, got nil")
-	}
-	// Knob absent and knob explicitly false both disclose the disabled child and return nil.
-	for _, y := range []string{"", "proseGate:\n  enabled: false\n"} {
-		root := proseGateRepo(t, y, nil)
-		if err := runProseGate(ctx, root, io.Discard); err != nil {
-			t.Errorf("knob off (%q): want nil, got %v", y, err)
-		}
 	}
 }
 
@@ -58,7 +48,7 @@ func TestProseGateBadExemptionCodepoint(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	root := proseGateRepo(t,
-		"proseGate:\n  enabled: true\n  exemptions:\n    - path: x.md\n      codepoint: not-a-codepoint\n",
+		"proseGate:\n  exemptions:\n    - path: x.md\n      codepoint: not-a-codepoint\n",
 		map[string]string{"x.md": "clean\n"})
 	err := runProseGate(ctx, root, io.Discard)
 	if err == nil || !strings.Contains(err.Error(), "exemption for x.md") {
@@ -69,7 +59,7 @@ func TestProseGateBadExemptionCodepoint(t *testing.T) {
 func TestProseGateClean(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	root := proseGateRepo(t, "proseGate:\n  enabled: true\n",
+	root := proseGateRepo(t, "",
 		map[string]string{"a.md": "plain ascii\n"})
 	var out strings.Builder
 	if err := runProseGate(ctx, root, &out); err != nil {
@@ -83,7 +73,7 @@ func TestProseGateClean(t *testing.T) {
 func TestProseGateReportsSkippedBinaries(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	root := proseGateRepo(t, "proseGate:\n  enabled: true\n", map[string]string{
+	root := proseGateRepo(t, "", map[string]string{
 		"z.bin":    "\xff",
 		"a.bin":    "\xfe",
 		"clean.md": "plain ascii\n",
@@ -108,7 +98,7 @@ func TestProseGateValidExemptionPermits(t *testing.T) {
 	// A file whose only banned rune is exempted scans clean, exercising the
 	// exemption-parse-and-append path.
 	root := proseGateRepo(t,
-		"proseGate:\n  enabled: true\n  exemptions:\n    - path: depict.md\n      codepoint: U+2014\n",
+		"proseGate:\n  exemptions:\n    - path: depict.md\n      codepoint: U+2014\n",
 		map[string]string{"depict.md": "the em dash \u2014 is written about here\n"})
 	var out strings.Builder
 	if err := runProseGate(ctx, root, &out); err != nil {
@@ -122,7 +112,7 @@ func TestProseGateValidExemptionPermits(t *testing.T) {
 func TestProseGateFindings(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	root := proseGateRepo(t, "proseGate:\n  enabled: true\n",
+	root := proseGateRepo(t, "",
 		map[string]string{"a.md": "an em dash \u2014 here\n"})
 	var out strings.Builder
 	err := runProseGate(ctx, root, &out)
@@ -138,7 +128,7 @@ func TestProseGateUsesStagedBytesWhenWorktreeDiffers(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	t.Run("banned content cleaned without restaging remains a finding", func(t *testing.T) {
-		root := proseGateRepo(t, "proseGate:\n  enabled: true\n", map[string]string{"a.md": "staged \u2014\n"})
+		root := proseGateRepo(t, "", map[string]string{"a.md": "staged \u2014\n"})
 		if err := os.WriteFile(filepath.Join(root, "a.md"), []byte("worktree clean\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -147,7 +137,7 @@ func TestProseGateUsesStagedBytesWhenWorktreeDiffers(t *testing.T) {
 		}
 	})
 	t.Run("staged file missing from worktree still scans", func(t *testing.T) {
-		root := proseGateRepo(t, "proseGate:\n  enabled: true\n", map[string]string{"vanish.md": "clean\n"})
+		root := proseGateRepo(t, "", map[string]string{"vanish.md": "clean\n"})
 		if err := os.Remove(filepath.Join(root, "vanish.md")); err != nil {
 			t.Fatal(err)
 		}
@@ -157,19 +147,10 @@ func TestProseGateUsesStagedBytesWhenWorktreeDiffers(t *testing.T) {
 	})
 }
 
-func TestProseGateUsesWorkingConfigKnob(t *testing.T) {
-	ctx := testContext(t)
-	root := proseGateRepo(t, "proseGate:\n  enabled: true\n", map[string]string{"a.md": "staged \u2014\n"})
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\nproseGate:\n  enabled: false\n")
-	if err := runProseGate(ctx, root, io.Discard); err != nil {
-		t.Fatalf("worktree-disabled knob must return before reading the staged corpus: %v", err)
-	}
-}
-
 func TestProseGateUsesWorkingConfigExemption(t *testing.T) {
 	ctx := testContext(t)
-	root := proseGateRepo(t, "proseGate:\n  enabled: true\n", map[string]string{"depict.md": "staged \u2014\n"})
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\nproseGate:\n  enabled: true\n  exemptions:\n    - path: depict.md\n      codepoint: U+2014\n")
+	root := proseGateRepo(t, "", map[string]string{"depict.md": "staged \u2014\n"})
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\nproseGate:\n  exemptions:\n    - path: depict.md\n      codepoint: U+2014\n")
 	if err := runProseGate(ctx, root, io.Discard); err != nil {
 		t.Fatalf("working-config exemption must control the staged corpus: %v", err)
 	}
@@ -178,7 +159,7 @@ func TestProseGateUsesWorkingConfigExemption(t *testing.T) {
 func TestProseGateSkipsStagedGitlink(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	root := proseGateRepo(t, "proseGate:\n  enabled: true\n", map[string]string{"a.md": "clean\n"})
+	root := proseGateRepo(t, "", map[string]string{"a.md": "clean\n"})
 	gitfixture.StageGitlink(t, gitfixture.At(root), "submodule")
 	if err := runProseGate(ctx, root, io.Discard); err != nil {
 		t.Fatalf("gitlink must not block regular staged files: %v", err)
@@ -190,7 +171,7 @@ func TestProseGateDispatch(t *testing.T) {
 	_ = ctx
 	// Drive the command through run() so the dispatch handler closure is
 	// exercised, not just runProseGate directly.
-	root := proseGateRepo(t, "proseGate:\n  enabled: true\n",
+	root := proseGateRepo(t, "",
 		map[string]string{"a.md": "plain ascii\n"})
 	if err := initializeProject(ctx, root, io.Discard); err != nil {
 		t.Fatal(err)
@@ -211,13 +192,9 @@ func TestProseGateDispatch(t *testing.T) {
 func TestProseGateRefusesOutsideAGitRepo(t *testing.T) {
 	ctx := testContext(t)
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\nproseGate:\n  enabled: false\n")
-	if err := runProseGate(ctx, root, io.Discard); err != nil {
-		t.Fatalf("disabled outside git must return before reading the index: %v", err)
-	}
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\nproseGate:\n  enabled: true\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
 	err := runProseGate(ctx, root, io.Discard)
 	if err == nil || !strings.Contains(err.Error(), "cannot read staged files") {
-		t.Fatalf("enabled outside git: want a refusal naming the enumeration failure, got %v", err)
+		t.Fatalf("unconditional gate outside git: want a refusal naming the enumeration failure, got %v", err)
 	}
 }

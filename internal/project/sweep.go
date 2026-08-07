@@ -133,7 +133,7 @@ func (p *Project) buildClaimedModel(files []RenderedFile, topics topic.Corpus) (
 	// single awf-owned section whose `awf:edit ... create <part> to override`
 	// pointer invites a part - so render and the closed-tree sweep agree
 	// (ADR-0086/0156).
-	if p.Cfg.Runner != nil && p.Cfg.Runner.Enabled {
+	if true {
 		m.dirs[config.DirName+"/runner/parts"] = true
 		for _, sec := range runnerSections {
 			m.files[config.DirName+"/runner/parts/"+sec+".md"] = true

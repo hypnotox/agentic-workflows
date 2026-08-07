@@ -155,10 +155,10 @@ func conditionalUnits() []conditionalUnit {
 	units := []conditionalUnit{
 		{func(c *config.Config) bool { return c.Bootstrap != nil && c.Bootstrap.Enabled }, config.DirName + "/bootstrap.sh", bootstrapTID, "bootstrap", nil},
 		{func(c *config.Config) bool { return c.Bootstrap != nil && c.Bootstrap.Enabled }, config.DirName + "/upgrade.sh", upgradeTID, "bootstrap", nil},
-		{func(c *config.Config) bool { return c.Runner != nil && c.Runner.Enabled }, "awf", runnerTID, "runner", runnerSections},
+		{func(*config.Config) bool { return true }, "awf", runnerTID, "runner", runnerSections},
 	}
 	for _, name := range hookNames {
-		units = append(units, conditionalUnit{func(c *config.Config) bool { return c.Hooks != nil && c.Hooks.Enabled }, config.DirName + "/hooks/" + name + ".sh", hookTID(name), "hooks", nil})
+		units = append(units, conditionalUnit{func(*config.Config) bool { return true }, config.DirName + "/hooks/" + name + ".sh", hookTID(name), "hooks", nil})
 	}
 	return units
 }

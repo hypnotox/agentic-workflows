@@ -195,9 +195,9 @@ var Commands = []Command{
 					{Name: "state", Summary: "Report current-state authority findings", MaxPos: 0,
 						Help: Help{Usage: []string{"awf check repo state"}, Description: "Check current-state authority over the working tree."}},
 					{Name: "prose", Summary: "Scan tracked text files for typographic punctuation, blocking", MaxPos: 0,
-						Help: Help{Usage: []string{"awf check repo prose"}, Description: "Scan the project's tracked text files when proseGate.enabled is true."}},
+						Help: Help{Usage: []string{"awf check repo prose"}, Description: "Scan the project's tracked text files for typographic punctuation."}},
 					{Name: "memory", Summary: "Scan staged decision records for working-memory citations, blocking", MaxPos: 0,
-						Help: Help{Usage: []string{"awf check repo memory"}, Description: "Scan tracked decision records when memoryCite.enabled is true."}},
+						Help: Help{Usage: []string{"awf check repo memory"}, Description: "Scan tracked decision records for working-memory citations."}},
 				},
 			},
 			{Name: "staged", Summary: "Verify staged transition properties", MaxPos: -1,
@@ -282,7 +282,7 @@ var Commands = []Command{
 	{
 		Name: "list", Summary: "Show targets and their per-project state (all kinds, or one)",
 		MaxPos: 1, Gating: Gated,
-		Help: Help{Usage: []string{"awf list [<kind>]"}, Description: "Show targets and their per-project enabled state, for all kinds or one (skill|agent|doc|domain|target|bootstrap|hooks).", Positionals: []HelpItem{{Name: "<kind>", Description: "artifact kind"}}},
+		Help: Help{Usage: []string{"awf list [<kind>]"}, Description: "Show targets and their per-project enabled state, for all kinds or one (skill|agent|doc|domain|target|bootstrap).", Positionals: []HelpItem{{Name: "<kind>", Description: "artifact kind"}}},
 	},
 	{
 		Name: "config", Summary: "Describe config keys and vars (live state inside a project)",
@@ -347,14 +347,14 @@ var Commands = []Command{
 		},
 	},
 	{
-		Name: "enable", Summary: "Enable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap, hooks, runner}",
+		Name: "enable", Summary: "Enable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap}",
 		BoolFlags: []string{"--dry-run"}, MinPos: 1, MaxPos: 2, Gating: Gated,
-		Help: Help{Usage: []string{"awf enable <kind> <name> [--dry-run]", "awf enable <bootstrap|hooks|runner> [--dry-run]"}, Description: "Enable an artifact in this project. <kind> is skill, agent, doc, domain, target,", Details: []string{"bootstrap, hooks, or runner. For skill/agent/doc, the full requirement closure is enabled", "in one edit, printed as a plan (ADR-0081)."}, Positionals: []HelpItem{{Name: "<kind>", Description: "artifact kind"}, {Name: "<name>", Description: "artifact name"}, {Name: "<bootstrap|hooks|runner>", Description: "nameless singleton kind"}}, Options: []HelpItem{{Name: "--dry-run", Description: "print the closure plan without changing the config"}}},
+		Help: Help{Usage: []string{"awf enable <kind> [<name>] [--dry-run]"}, Description: "Enable an artifact in this project. <kind> is skill, agent, doc, domain, target,", Details: []string{"or bootstrap. Bootstrap takes no name. For skill/agent/doc, the full requirement closure", "is enabled in one edit, printed as a plan (ADR-0081)."}, Positionals: []HelpItem{{Name: "<kind>", Description: "artifact kind"}, {Name: "<name>", Description: "artifact name"}}, Options: []HelpItem{{Name: "--dry-run", Description: "print the closure plan without changing the config"}}},
 	},
 	{
-		Name: "disable", Summary: "Disable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap, hooks, runner}",
+		Name: "disable", Summary: "Disable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap}",
 		BoolFlags: []string{"--with-dependents", "--dry-run"}, MinPos: 1, MaxPos: 2, Gating: Gated,
-		Help: Help{Usage: []string{"awf disable <kind> <name> [--with-dependents] [--dry-run]", "awf disable <bootstrap|hooks|runner> [--dry-run]"}, Description: "Disable an artifact: a catalog skill/agent/doc, a freeform domain, an adapter target, the bootstrap, the hooks, or the runner.", Details: []string{"For skill/agent/doc, disabling refuses while enabled artifacts still require", "<name>, printing the dependent plan (ADR-0081)."}, Positionals: []HelpItem{{Name: "<kind>", Description: "artifact kind"}, {Name: "<name>", Description: "artifact name"}, {Name: "<bootstrap|hooks|runner>", Description: "nameless singleton kind"}}, Options: []HelpItem{{Name: "--with-dependents", Description: "also disable every enabled artifact that transitively requires <name>"}, {Name: "--dry-run", Description: "print the plan without changing the config"}}},
+		Help: Help{Usage: []string{"awf disable <kind> [<name>] [--with-dependents] [--dry-run]"}, Description: "Disable an artifact: a catalog skill/agent/doc, a freeform domain, an adapter target, or the bootstrap.", Details: []string{"Bootstrap takes no name. For skill/agent/doc, disabling refuses while enabled artifacts", "still require <name>, printing the dependent plan (ADR-0081)."}, Positionals: []HelpItem{{Name: "<kind>", Description: "artifact kind"}, {Name: "<name>", Description: "artifact name"}}, Options: []HelpItem{{Name: "--with-dependents", Description: "also disable every enabled artifact that transitively requires <name>"}, {Name: "--dry-run", Description: "print the plan without changing the config"}}},
 	},
 	{
 		Name: "upgrade", Summary: "Migrate the .awf/ config tree or consume a current-state attestation",

@@ -2,6 +2,18 @@ These packages migrate the config tree across schema generations and read and wr
 
 ## Claims
 
+### `invariant: toggle-keys-dropped`
+
+Schema generation 38 removes hooks, runner, the proseGate.enabled and memoryCite.enabled children, nine audit tuning children, and currentState.maxTopicsPerPath, announces each removal it performs, drops a block emptied by removal, and preserves every surviving key, value, comment, and key order.
+Origin: ADR-unconditional-gates-and-audit-rules
+Backing: test
+
+### `invariant: toggle-keys-forward-ported`
+
+Historical config bytes have every generation-38 retired key stripped before strict current-schema decoding, so audit and staged checks can read revisions that predate the retirement.
+Origin: ADR-unconditional-gates-and-audit-rules
+Backing: test
+
 ### `invariant: grounding-skill-backfill`
 
 Schema generation 37 enables standard grounding only when selected standard brainstorming is enabled. It leaves project-local brainstorming untouched, refuses a project-local grounding collision before mutation with actionable recovery, and is atomic and idempotent.

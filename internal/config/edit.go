@@ -28,8 +28,6 @@ type Skeleton struct {
 	Docs              []string          `yaml:"docs"`
 	Audit             *SkeletonAudit    `yaml:"audit,omitempty"`
 	Bootstrap         *BootstrapConfig  `yaml:"bootstrap,omitempty"`
-	Hooks             *HooksConfig      `yaml:"hooks,omitempty"`
-	Runner            *RunnerConfig     `yaml:"runner,omitempty"`
 }
 
 // SkeletonAudit is the audit block a scaffold can seed (ADR-0051): only

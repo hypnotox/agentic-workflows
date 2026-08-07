@@ -364,202 +364,19 @@ func TestDispatchBootstrap(t *testing.T) {
 	}
 }
 
-// TestRunHooksCLI mirrors TestRunBootstrapCLI for the git-hook payloads
-// singleton (ADR-0048): list state, the add/remove toggle round-trip with
-// render/prune, and the guard errors.
-func TestRunHooksCLI(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	// scaffoldProject uses minimalYAML, which carries no hooks key (disabled).
+// Hooks and the wrapper are unconditional rendered outputs, not selectable CLI kinds.
+func TestHooksAndRunnerKindsRetired(t *testing.T) {
 	root := scaffoldProject(t)
-
-	// list hooks before any change: available, one row per payload.
-	var buf bytes.Buffer
-	if err := runList(ctx, root, "hooks", &buf); err != nil {
-		t.Fatal(err)
-	}
-	if out := buf.String(); !strings.Contains(out, "hooks:") ||
-		!strings.Contains(out, ".awf/hooks/pre-commit.sh") ||
-		!strings.Contains(out, ".awf/hooks/commit-msg.sh") ||
-		!strings.Contains(out, ".awf/hooks/pre-push.sh") ||
-		!strings.Contains(out, "available") {
-		t.Errorf("list hooks (initial):\n%s", out)
-	}
-
-	// remove when disabled errors.
-	if err := runDisable(ctx, root, "hooks", "", false, false, io.Discard); err == nil ||
-		!strings.Contains(err.Error(), "is not enabled") {
-		t.Errorf("expected is-not-enabled error, got %v", err)
-	}
-
-	// The runner satisfies the hooks command-wiring rule (ADR-0156 Decision 5):
-	// minimalYAML sets gateCmd but none of the awf-verb vars.
-	if err := runEnable(ctx, root, "runner", "", false, io.Discard); err != nil {
-		t.Fatalf("add runner: %v", err)
-	}
-
-	// add enables it (config gains enabled: true, sync renders the payloads).
-	if err := runEnable(ctx, root, "hooks", "", false, io.Discard); err != nil {
-		t.Fatalf("add hooks: %v", err)
-	}
-	cfg := readConfig(t, root)
-	if !strings.Contains(cfg, "hooks:") || !strings.Contains(cfg, "enabled: true") {
-		t.Errorf("hooks not enabled in config:\n%s", cfg)
-	}
-	for _, n := range []string{"pre-commit", "commit-msg", "pre-push"} {
-		if _, err := os.Stat(filepath.Join(root, ".awf", "hooks", n+".sh")); err != nil {
-			t.Errorf("%s.sh not rendered after add: %v", n, err)
+	for _, kind := range []string{"hooks", "runner"} {
+		if err := runList(testContext(t), root, kind, io.Discard); err == nil || !strings.Contains(err.Error(), "unknown kind") {
+			t.Errorf("list %s error = %v, want unknown kind", kind, err)
 		}
-	}
-
-	// list hooks now reports enabled.
-	buf.Reset()
-	if err := runList(ctx, root, "hooks", &buf); err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(buf.String(), "enabled") {
-		t.Errorf("list hooks (enabled):\n%s", buf.String())
-	}
-
-	// add when already enabled errors.
-	if err := runEnable(ctx, root, "hooks", "", false, io.Discard); err == nil ||
-		!strings.Contains(err.Error(), "already enabled") {
-		t.Errorf("expected already-enabled error, got %v", err)
-	}
-
-	// remove disables it and prunes the rendered files and their directory.
-	if err := runDisable(ctx, root, "hooks", "", false, false, io.Discard); err != nil {
-		t.Fatalf("remove hooks: %v", err)
-	}
-	if !strings.Contains(readConfig(t, root), "enabled: false") {
-		t.Errorf("hooks not disabled in config:\n%s", readConfig(t, root))
-	}
-	if _, err := os.Stat(filepath.Join(root, ".awf", "hooks")); !os.IsNotExist(err) {
-		t.Errorf(".awf/hooks/ not pruned after remove: err=%v", err)
-	}
-}
-
-// TestDispatchHooks covers run()'s nameless-hooks dispatch branches (ADR-0048),
-// mirroring TestDispatchBootstrap.
-func TestDispatchHooks(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t) // minimalYAML: no hooks key (disabled)
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
-
-	var out, errb bytes.Buffer
-	// The runner satisfies the hooks command-wiring rule (ADR-0156 Decision 5).
-	if code := run([]string{"awf", "enable", "runner"}, &out, &errb); code != 0 {
-		t.Fatalf("add runner dispatch: code=%d err=%q", code, errb.String())
-	}
-	if code := run([]string{"awf", "enable", "hooks"}, &out, &errb); code != 0 {
-		t.Fatalf("add hooks dispatch: code=%d err=%q", code, errb.String())
-	}
-	if cfg := readConfig(t, root); !strings.Contains(cfg, "hooks:") || !strings.Contains(cfg, "enabled: true") {
-		t.Errorf("hooks not enabled after add dispatch:\n%s", cfg)
-	}
-
-	errb.Reset()
-	if code := run([]string{"awf", "disable", "hooks"}, &out, &errb); code != 0 {
-		t.Fatalf("remove hooks dispatch: code=%d err=%q", code, errb.String())
-	}
-	if cfg := readConfig(t, root); !strings.Contains(cfg, "enabled: false") {
-		t.Errorf("hooks not disabled after remove dispatch:\n%s", cfg)
-	}
-}
-
-// TestRunRunnerCLI mirrors TestRunBootstrapCLI for the awf-wrapper runner
-// singleton (ADR-0156): list state, the add/remove toggle round-trip with
-// render/prune, and the guard errors.
-func TestRunRunnerCLI(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t) // minimalYAML: no runner key (disabled)
-
-	// list runner before any change: available.
-	var buf bytes.Buffer
-	if err := runList(ctx, root, "runner", &buf); err != nil {
-		t.Fatal(err)
-	}
-	if out := buf.String(); !strings.Contains(out, "runner:") ||
-		!strings.Contains(out, "awf") || !strings.Contains(out, "available") {
-		t.Errorf("list runner (initial):\n%s", out)
-	}
-
-	// remove when disabled errors.
-	if err := runDisable(ctx, root, "runner", "", false, false, io.Discard); err == nil ||
-		!strings.Contains(err.Error(), "is not enabled") {
-		t.Errorf("expected is-not-enabled error, got %v", err)
-	}
-
-	// add enables it (config gains enabled: true, sync renders awf at the root).
-	if err := runEnable(ctx, root, "runner", "", false, io.Discard); err != nil {
-		t.Fatalf("add runner: %v", err)
-	}
-	if cfg := readConfig(t, root); !strings.Contains(cfg, "runner:") || !strings.Contains(cfg, "enabled: true") {
-		t.Errorf("runner not enabled in config:\n%s", readConfig(t, root))
-	}
-	if _, err := os.Stat(filepath.Join(root, "awf")); err != nil {
-		t.Errorf("awf not rendered after add: %v", err)
-	}
-
-	// list runner now reports enabled.
-	buf.Reset()
-	if err := runList(ctx, root, "runner", &buf); err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(buf.String(), "enabled") {
-		t.Errorf("list runner (enabled):\n%s", buf.String())
-	}
-
-	// add when already enabled errors.
-	if err := runEnable(ctx, root, "runner", "", false, io.Discard); err == nil ||
-		!strings.Contains(err.Error(), "already enabled") {
-		t.Errorf("expected already-enabled error, got %v", err)
-	}
-
-	// remove disables it and prunes the rendered wrapper.
-	if err := runDisable(ctx, root, "runner", "", false, false, io.Discard); err != nil {
-		t.Fatalf("remove runner: %v", err)
-	}
-	if !strings.Contains(readConfig(t, root), "enabled: false") {
-		t.Errorf("runner not disabled in config:\n%s", readConfig(t, root))
-	}
-	if _, err := os.Stat(filepath.Join(root, "awf")); !os.IsNotExist(err) {
-		t.Errorf("awf not pruned after remove: err=%v", err)
-	}
-}
-
-// TestDispatchRunner mirrors TestDispatchBootstrap: the runner is a nameless
-// singleton reached through the enable/disable dispatch, and handing it a name is
-// a usage error.
-func TestDispatchRunner(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t) // minimalYAML: no runner key (disabled)
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
-
-	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "enable", "runner"}, &out, &errb); code != 0 {
-		t.Fatalf("add runner dispatch: code=%d err=%q", code, errb.String())
-	}
-	if cfg := readConfig(t, root); !strings.Contains(cfg, "runner:") || !strings.Contains(cfg, "enabled: true") {
-		t.Errorf("runner not enabled after add dispatch:\n%s", cfg)
-	}
-
-	// A name is a usage error - the runner is a nameless singleton.
-	errb.Reset()
-	if code := run([]string{"awf", "enable", "runner", "x"}, &out, &errb); code == 0 ||
-		!strings.Contains(errb.String(), "takes no name") {
-		t.Errorf("expected takes-no-name usage error, got code=%d err=%q", code, errb.String())
-	}
-
-	errb.Reset()
-	if code := run([]string{"awf", "disable", "runner"}, &out, &errb); code != 0 {
-		t.Fatalf("remove runner dispatch: code=%d err=%q", code, errb.String())
-	}
-	if cfg := readConfig(t, root); !strings.Contains(cfg, "enabled: false") {
-		t.Errorf("runner not disabled after remove dispatch:\n%s", cfg)
+		if err := runEnable(testContext(t), root, kind, "", false, io.Discard); err == nil || !strings.Contains(err.Error(), "unknown kind") {
+			t.Errorf("enable %s error = %v, want unknown kind", kind, err)
+		}
+		if err := runDisable(testContext(t), root, kind, "", false, false, io.Discard); err == nil || !strings.Contains(err.Error(), "unknown kind") {
+			t.Errorf("disable %s error = %v, want unknown kind", kind, err)
+		}
 	}
 }
 
@@ -708,7 +525,7 @@ func TestRunAddRemoveDryRunAndFlagGuard(t *testing.T) {
 		t.Errorf("expected graph-flag usage error for domain, got %v", err)
 	}
 	if err := runDisable(ctx, root, "hooks", "", true, false, io.Discard); err == nil || !strings.Contains(err.Error(), "graph flags") {
-		t.Errorf("expected graph-flag usage error for hooks, got %v", err)
+		t.Errorf("expected retired hooks error, got %v", err)
 	}
 }
 
@@ -1017,9 +834,7 @@ func TestDispatchAddRemoveList(t *testing.T) {
 	}
 }
 
-// Bare `awf list` covers every kind - the four catalog/domain kinds plus
-// target, bootstrap, and hooks - and an empty kind prints (none) under its
-// header. A single-kind filter still prints only that kind.
+// Bare `awf list` covers every surviving kind. A single-kind filter still prints only that kind.
 func TestRunListBareShowsAllKinds(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
@@ -1031,7 +846,6 @@ func TestRunListBareShowsAllKinds(t *testing.T) {
 	for _, want := range []string{
 		"collection:", "skills:", "agents:", "docs:", "domains:\n    none",
 		"targets:", "bootstrap:", ".awf/bootstrap.sh", ".awf/upgrade.sh",
-		"hooks:", ".awf/hooks/pre-commit.sh",
 	} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("bare list missing %q:\n%s", want, out.String())
@@ -1041,8 +855,8 @@ func TestRunListBareShowsAllKinds(t *testing.T) {
 	if err := runList(ctx, root, "skill", &out); err != nil {
 		t.Fatalf("list skill: %v", err)
 	}
-	if strings.Contains(out.String(), "targets:") || strings.Contains(out.String(), "hooks:") {
-		t.Errorf("filtered list must not append the singleton kinds:\n%s", out.String())
+	if strings.Contains(out.String(), "targets:") || strings.Contains(out.String(), "bootstrap:") {
+		t.Errorf("filtered list must not append other kinds:\n%s", out.String())
 	}
 }
 

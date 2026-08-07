@@ -726,7 +726,7 @@ func (p *Project) checkDeadRefs(files []RenderedFile) []manifest.Drift {
 // An adrs: entry resolves by identity, so a number and a pending record's slug
 // resolve through one lookup and a link survives numbering (ADR-0202 item 14).
 func (p *Project) checkPlans(corpus adr.Corpus, plans []plan.Plan) []manifest.Drift {
-	aset := audit.Resolve(p.Cfg.Audit)
+	aset := audit.Resolve(config.AuditScopes(p.Cfg.Audit))
 	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "plans"))
 	var drift []manifest.Drift
 	for _, pl := range plans {
@@ -760,7 +760,7 @@ func (p *Project) checkPlans(corpus adr.Corpus, plans []plan.Plan) []manifest.Dr
 // may be the change that adds the scope (ADR-0111). Mirrors checkPlans' scan; a
 // frontmatter-less plan is skipped.
 func (p *Project) planCommitScopeNotes(plans []plan.Plan) []string {
-	aset := audit.Resolve(p.Cfg.Audit)
+	aset := audit.Resolve(config.AuditScopes(p.Cfg.Audit))
 	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "plans"))
 	var notes []string
 	for _, pl := range plans {

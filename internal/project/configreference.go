@@ -10,6 +10,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/configspec"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
@@ -99,14 +100,11 @@ func enabledVarConsumers(files []RenderedFile) map[string][]string {
 // currentValueResolvers couples each live classification to the function that
 // computes its project value. Static keys have no resolver.
 func (p *Project) currentValueResolvers() map[string]func() string {
-	res := audit.Resolve(p.Cfg.Audit)
-	a := p.Cfg.Audit
-	withDefault := func(s string, isDefault bool) string {
-		if isDefault {
-			return s + " (default)"
-		}
-		return s
+	var scopes []config.ScopeSpec
+	if p.Cfg.Audit != nil {
+		scopes = p.Cfg.Audit.AllowedScopes
 	}
+	res := audit.Resolve(scopes)
 	return map[string]func() string{
 		"prefix":            func() string { return "`" + p.Cfg.Prefix + "`" },
 		"integrationBranch": func() string { return "`" + p.Cfg.IntegrationBranch + "`" },
@@ -173,68 +171,20 @@ func (p *Project) currentValueResolvers() map[string]func() string {
 			}
 			return strconv.Itoa(len(p.Cfg.CurrentState.TestGlobs)) + " globs"
 		},
-		"currentState.maxTopicsPerPath": func() string {
-			return withDefault(strconv.Itoa(p.Cfg.CurrentState.EffectiveMaxTopicsPerPath()), p.Cfg.CurrentState == nil || p.Cfg.CurrentState.MaxTopicsPerPath == nil)
-		},
-		"audit.allowedTypes": func() string {
-			if len(res.AllowedTypes) == 0 {
-				return "accept any"
-			}
-			return withDefault(strconv.Itoa(len(res.AllowedTypes))+" types", a == nil || a.AllowedTypes == nil)
-		},
 		"audit.allowedScopes": func() string {
 			if len(res.AllowedScopes) == 0 {
 				return "accept any (default)"
 			}
 			return strconv.Itoa(len(res.AllowedScopes)) + " scopes"
 		},
-		"audit.subjectMaxLength": func() string {
-			return withDefault(strconv.Itoa(res.SubjectMaxLength), a == nil || a.SubjectMaxLength == nil)
-		},
-		"audit.dependencyManifests": func() string {
-			if len(res.DependencyManifests) == 0 {
-				return "rule off"
-			}
-			return withDefault(strconv.Itoa(len(res.DependencyManifests))+" globs", a == nil || a.DependencyManifests == nil)
-		},
-		"audit.diffThreshold": func() string {
-			return withDefault(strconv.Itoa(res.DiffThreshold), a == nil || a.DiffThreshold == nil)
-		},
-		"audit.domainDocStaleness": func() string {
-			return withDefault(strconv.FormatBool(res.DomainDocStaleness), a == nil || a.DomainDocStaleness == nil)
-		},
-		"audit.domainCodeStaleness": func() string {
-			return withDefault(strconv.FormatBool(res.DomainCodeStaleness), a == nil || a.DomainCodeStaleness == nil)
-		},
-		"audit.undocumentedDomain": func() string {
-			return withDefault(strconv.FormatBool(res.UndocumentedDomain), a == nil || a.UndocumentedDomain == nil)
-		},
-		"audit.plainPunctuation": func() string {
-			return withDefault(strconv.FormatBool(res.PlainPunctuation), a == nil || a.PlainPunctuation == nil)
-		},
-		"audit.uncommittedChanges": func() string {
-			return withDefault(strconv.FormatBool(res.UncommittedChanges), a == nil || a.UncommittedChanges == nil)
-		},
 		"bootstrap.enabled": func() string {
 			return strconv.FormatBool(p.Cfg.Bootstrap != nil && p.Cfg.Bootstrap.Enabled)
-		},
-		"hooks.enabled": func() string {
-			return strconv.FormatBool(p.Cfg.Hooks != nil && p.Cfg.Hooks.Enabled)
-		},
-		"runner.enabled": func() string {
-			return strconv.FormatBool(p.Cfg.Runner != nil && p.Cfg.Runner.Enabled)
-		},
-		"proseGate.enabled": func() string {
-			return strconv.FormatBool(p.Cfg.ProseGate != nil && p.Cfg.ProseGate.Enabled)
 		},
 		"proseGate.exemptions": func() string {
 			if p.Cfg.ProseGate == nil || len(p.Cfg.ProseGate.Exemptions) == 0 {
 				return "(none)"
 			}
 			return fmt.Sprintf("%d entries", len(p.Cfg.ProseGate.Exemptions))
-		},
-		"memoryCite.enabled": func() string {
-			return strconv.FormatBool(p.Cfg.MemoryCite != nil && p.Cfg.MemoryCite.Enabled)
 		},
 		"memoryCite.exemptions": func() string {
 			if p.Cfg.MemoryCite == nil || len(p.Cfg.MemoryCite.Exemptions) == 0 {

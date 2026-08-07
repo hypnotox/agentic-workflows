@@ -72,7 +72,7 @@ func EnablementNotesDocument(notes []EnablementNote) (presentation.Document, err
 func (p *Project) ListDocument(kindFilter string) (presentation.Document, error) {
 	kinds := Kinds()
 	if kindFilter != "" {
-		if kindFilter == "target" || kindFilter == "bootstrap" || kindFilter == "hooks" || kindFilter == "runner" {
+		if kindFilter == "target" || kindFilter == "bootstrap" {
 			return listSpecialDocument(p, kindFilter)
 		}
 		if _, ok := PluralKind(kindFilter); !ok {
@@ -105,7 +105,7 @@ func (p *Project) ListDocument(kindFilter string) (presentation.Document, error)
 		categories = append(categories, category)
 	}
 	if kindFilter == "" {
-		for _, special := range []string{"targets", "bootstrap", "hooks"} {
+		for _, special := range []string{"targets", "bootstrap"} {
 			category, err := specialListCategory(p, special)
 			if err != nil { // coverage-ignore: the fixed special names synthesize only grammar-valid single-line entries
 				return presentation.Document{}, err
@@ -117,7 +117,7 @@ func (p *Project) ListDocument(kindFilter string) (presentation.Document, error)
 }
 
 func listSpecialDocument(p *Project, kind string) (presentation.Document, error) {
-	category, err := specialListCategory(p, map[string]string{"target": "targets", "bootstrap": "bootstrap", "hooks": "hooks", "runner": "runner"}[kind])
+	category, err := specialListCategory(p, map[string]string{"target": "targets", "bootstrap": "bootstrap"}[kind])
 	if err != nil { // coverage-ignore: callers admit only the four mapped special kinds, whose entries are fixed and grammar-valid
 		return presentation.Document{}, err
 	}
@@ -141,20 +141,6 @@ func specialListCategory(p *Project, kind string) (presentation.CollectionCatego
 			state = "enabled"
 		}
 		entries = []string{".awf/bootstrap.sh (" + state + ")", ".awf/upgrade.sh (" + state + ")"}
-	case "hooks":
-		state := "available"
-		if p.Cfg.Hooks != nil && p.Cfg.Hooks.Enabled {
-			state = "enabled"
-		}
-		for _, name := range HookNames() {
-			entries = append(entries, ".awf/hooks/"+name+".sh ("+state+")")
-		}
-	case "runner":
-		state := "available"
-		if p.Cfg.Runner != nil && p.Cfg.Runner.Enabled {
-			state = "enabled"
-		}
-		entries = []string{"awf (" + state + ")"}
 	}
 	return listCategory(kind, entries)
 }

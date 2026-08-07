@@ -22,6 +22,14 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
+// invariant: invariants/topics-and-markers:fan-out-budget-fixed (TestCoveragePolicyFixed)
+func TestCoveragePolicyFixed(t *testing.T) {
+	got := coveragePolicy(nil)
+	if !got.Coverage || !got.Fanout || got.MaxTopicsPerPath != 8 {
+		t.Fatalf("coverage policy = %#v, want both checks with fan-out budget 8", got)
+	}
+}
+
 func TestCommitAuthorizationResultDiagnostic(t *testing.T) {
 	result := CommitAuthorizationResult{Category: "operation", Condition: "non-merge", ChangedIndex: true, NextActions: []string{"correct the message trailers", "run git commit"}}
 	diagnostic, err := result.Diagnostic()
@@ -185,7 +193,7 @@ contextIgnore:
 `
 
 // csYAML is csNoPolicyYAML plus the currentState block.
-const csYAML = csNoPolicyYAML + "currentState:\n  maxTopicsPerPath: 8\n"
+const csYAML = csNoPolicyYAML + "currentState:\n"
 
 // csRuleTopic is a one-claim current-state part citing an Implemented Origin ADR.
 const csRuleTopic = "Intro.\n\n## Claims\n\n### `rule: r`\nRule prose.\nOrigin: ADR-0001\n"

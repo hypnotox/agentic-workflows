@@ -28,20 +28,9 @@ func memoryGateRepo(t *testing.T, memoryCiteYAML string, stage map[string]string
 	return root
 }
 
-func TestMemoryGateKnobOff(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	// A bare directory has no project config, so the knob cannot be consulted.
-	if err := runMemoryGate(ctx, t.TempDir(), io.Discard); err == nil {
+func TestMemoryGateRequiresProjectConfig(t *testing.T) {
+	if err := runMemoryGate(testContext(t), t.TempDir(), io.Discard); err == nil {
 		t.Error("bare directory: want a config-load error, got nil")
-	}
-	// Knob absent and knob explicitly false both disclose the disabled child and
-	// return nil without scanning, even with a citing file staged.
-	for _, y := range []string{"", "memoryCite:\n  enabled: false\n"} {
-		root := memoryGateRepo(t, y, map[string]string{"docs/plans/p.md": cite() + "\n"})
-		if err := runMemoryGate(ctx, root, io.Discard); err != nil {
-			t.Errorf("knob off (%q): want nil, got %v", y, err)
-		}
 	}
 }
 
@@ -62,7 +51,7 @@ func TestMemoryGateRefusesMissingOrInvalidWorkingConfig(t *testing.T) {
 func TestMemoryGateClean(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	root := memoryGateRepo(t, "memoryCite:\n  enabled: true\n", map[string]string{
+	root := memoryGateRepo(t, "", map[string]string{
 		"docs/plans/p.md":     "the file lives under " + dir + " and is named " + dir + "<effort-slug>/memory.md\n",
 		"docs/decisions/a.md": "the ignore file " + dir + ".gitignore" + " is fine\n",
 	})
@@ -80,7 +69,7 @@ func TestMemoryGateFindings(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	for _, path := range []string{"docs/decisions/0001-x.md", "docs/plans/2026-01-01-x.md"} {
-		root := memoryGateRepo(t, "memoryCite:\n  enabled: true\n",
+		root := memoryGateRepo(t, "",
 			map[string]string{path: "intro\n" + cite() + "\n"})
 		var out strings.Builder
 		err := runMemoryGate(ctx, root, &out)
@@ -96,7 +85,7 @@ func TestMemoryGateFindings(t *testing.T) {
 func TestMemoryGateScansOnlyDecisionRecords(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	root := memoryGateRepo(t, "memoryCite:\n  enabled: true\n", map[string]string{
+	root := memoryGateRepo(t, "", map[string]string{
 		"docs/guide.md": cite() + "\n",
 		"notes.md":      cite() + "\n",
 	})
@@ -112,7 +101,7 @@ func TestMemoryGateScansOnlyDecisionRecords(t *testing.T) {
 func TestMemoryGateFollowsDocsDir(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	root := memoryGateRepo(t, "docsDir: handbook\nmemoryCite:\n  enabled: true\n", map[string]string{
+	root := memoryGateRepo(t, "docsDir: handbook\n", map[string]string{
 		"handbook/plans/p.md": cite() + "\n",
 		"docs/plans/q.md":     dir + "other/memory.md\n",
 	})
@@ -130,7 +119,7 @@ func TestMemoryGateExemptionPermits(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	root := memoryGateRepo(t,
-		"memoryCite:\n  enabled: true\n  exemptions:\n    - path: docs/plans/p.md\n",
+		"memoryCite:\n  exemptions:\n    - path: docs/plans/p.md\n",
 		map[string]string{"docs/plans/p.md": cite() + "\n"})
 	var out strings.Builder
 	if err := runMemoryGate(ctx, root, &out); err != nil {
@@ -146,7 +135,7 @@ func TestMemoryGateSkipsStagedSymlink(t *testing.T) {
 	_ = ctx
 	// A staged symlink's bytes are its target path, not document text, so even a
 	// target of exactly the flagged shape is not a citation.
-	root := memoryGateRepo(t, "memoryCite:\n  enabled: true\n",
+	root := memoryGateRepo(t, "",
 		map[string]string{"docs/plans/p.md": "clean\n"})
 	if err := os.Symlink(cite(), filepath.Join(root, "docs/plans/link.md")); err != nil {
 		t.Fatal(err)
@@ -161,7 +150,7 @@ func TestMemoryGateUsesStagedBytesWhenWorktreeDiffers(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	t.Run("citation cleaned without restaging remains a finding", func(t *testing.T) {
-		root := memoryGateRepo(t, "memoryCite:\n  enabled: true\n",
+		root := memoryGateRepo(t, "",
 			map[string]string{"docs/plans/p.md": cite() + "\n"})
 		if err := os.WriteFile(filepath.Join(root, "docs/plans/p.md"), []byte("worktree clean\n"), 0o644); err != nil {
 			t.Fatal(err)
@@ -171,7 +160,7 @@ func TestMemoryGateUsesStagedBytesWhenWorktreeDiffers(t *testing.T) {
 		}
 	})
 	t.Run("citation added without staging is not a finding", func(t *testing.T) {
-		root := memoryGateRepo(t, "memoryCite:\n  enabled: true\n",
+		root := memoryGateRepo(t, "",
 			map[string]string{"docs/plans/p.md": "clean\n"})
 		if err := os.WriteFile(filepath.Join(root, "docs/plans/p.md"), []byte(cite()+"\n"), 0o644); err != nil {
 			t.Fatal(err)
@@ -182,22 +171,12 @@ func TestMemoryGateUsesStagedBytesWhenWorktreeDiffers(t *testing.T) {
 	})
 }
 
-func TestMemoryGateUsesWorkingConfigKnob(t *testing.T) {
-	ctx := testContext(t)
-	root := memoryGateRepo(t, "memoryCite:\n  enabled: true\n",
-		map[string]string{"docs/plans/p.md": cite() + "\n"})
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\nmemoryCite:\n  enabled: false\n")
-	if err := runMemoryGate(ctx, root, io.Discard); err != nil {
-		t.Fatalf("worktree-disabled knob must return before reading the staged corpus: %v", err)
-	}
-}
-
 func TestMemoryGateDispatch(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	// Drive the command through run() so the dispatch handler closure is
 	// exercised, not just runMemoryGate directly.
-	root := memoryGateRepo(t, "memoryCite:\n  enabled: true\n",
+	root := memoryGateRepo(t, "",
 		map[string]string{"docs/plans/p.md": "clean\n"})
 	if err := initializeProject(ctx, root, io.Discard); err != nil {
 		t.Fatal(err)
@@ -217,13 +196,9 @@ func TestMemoryGateDispatch(t *testing.T) {
 func TestMemoryGateRefusesOutsideAGitRepo(t *testing.T) {
 	ctx := testContext(t)
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\nmemoryCite:\n  enabled: false\n")
-	if err := runMemoryGate(ctx, root, io.Discard); err != nil {
-		t.Fatalf("disabled outside git must return before reading the index: %v", err)
-	}
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\nmemoryCite:\n  enabled: true\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
 	err := runMemoryGate(ctx, root, io.Discard)
 	if err == nil || !strings.Contains(err.Error(), "cannot read staged files") {
-		t.Fatalf("enabled outside git: want a refusal naming the enumeration failure, got %v", err)
+		t.Fatalf("unconditional gate outside git: want a refusal naming the enumeration failure, got %v", err)
 	}
 }

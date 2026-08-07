@@ -84,7 +84,7 @@ func countRule(findings []Finding, rule string, sev severity.Rank) int {
 
 // invariant: tooling/audit-and-snapshots:audit-conventional-commits (TestRuleConventionalCommits)
 func TestRuleConventionalCommits(t *testing.T) {
-	in := Inputs{Settings: Settings{AllowedTypes: []string{"feat", "fix"}, AllowedScopes: []config.ScopeSpec{{Name: "awf"}}, SubjectMaxLength: 20}}
+	in := Inputs{Settings: Settings{AllowedScopes: []config.ScopeSpec{{Name: "awf"}}}}
 	cases := []struct {
 		name    string
 		commit  Commit
@@ -93,9 +93,9 @@ func TestRuleConventionalCommits(t *testing.T) {
 		{"conforming", Commit{Subject: "feat(awf): ok"}, 0},
 		{"no scope is fine", Commit{Subject: "fix: also ok"}, 0},
 		{"malformed", Commit{Subject: "not a conventional commit"}, 1},
-		{"disallowed type", Commit{Subject: "chore(awf): nope"}, 1},
+		{"disallowed type", Commit{Subject: "unknown(awf): nope"}, 1},
 		{"disallowed scope", Commit{Subject: "feat(core): nope"}, 1},
-		{"over length", Commit{Subject: "feat(awf): this subject is definitely too long"}, 1},
+		{"over length", Commit{Subject: "feat(awf): " + strings.Repeat("x", 80)}, 1},
 		{"merge exempt", Commit{Subject: "Merge branch 'x'", IsMerge: true}, 0},
 	}
 	for _, tc := range cases {
@@ -111,7 +111,7 @@ func TestRuleConventionalCommits(t *testing.T) {
 // The subject-length limit counts characters, not bytes - a multi-byte subject
 // within the limit must not be flagged.
 func TestSubjectLengthCountsRunes(t *testing.T) {
-	s := Settings{SubjectMaxLength: 72}
+	s := Settings{}
 	// 21 runes before the umlauts + 48 'ä' runes = 69 runes, 117 bytes.
 	subject := "docs: präzisiere " + strings.Repeat("ä", 48) + " zwei"
 	if got := CheckConventionalCommit(Commit{Subject: subject}, s); len(got) != 0 {
@@ -123,30 +123,24 @@ func TestSubjectLengthCountsRunes(t *testing.T) {
 	}
 }
 
-func TestRuleConventionalCommitsAcceptAny(t *testing.T) {
-	// Empty AllowedTypes/Scopes and 0 max → only the format check applies.
-	in := Inputs{}
-	got := ruleConventionalCommits([]Commit{{Subject: "anything(weird-scope): super duper extremely long subject line here"}}, in)
-	if len(got) != 0 {
-		t.Errorf("accept-any config flagged a well-formed commit: %v", got)
+func TestRuleConventionalCommitsUsesFixedPolicy(t *testing.T) {
+	got := ruleConventionalCommits([]Commit{{Subject: "anything(weird-scope): " + strings.Repeat("x", 80)}}, Inputs{})
+	if len(got) != 2 {
+		t.Errorf("fixed policy findings = %v, want type and length errors", got)
 	}
 }
 
 func TestCheckPlannedSubject(t *testing.T) {
-	s := Settings{
-		AllowedTypes:     []string{"feat", "fix"},
-		AllowedScopes:    []config.ScopeSpec{{Name: "awf"}},
-		SubjectMaxLength: 20,
-	}
+	s := Settings{AllowedScopes: []config.ScopeSpec{{Name: "awf"}}}
 	// A disallowed scope is a warn at plan time (a plan may add the scope).
 	if got := CheckPlannedSubject("feat(newscope): x", s); len(got) != 1 || got[0].Severity != severity.Warn {
 		t.Fatalf("scope: want 1 warn, got %#v", got)
 	}
 	// Length, disallowed type, and malformed shape stay error.
-	if got := CheckPlannedSubject("feat(awf): this one is definitely over twenty", s); len(got) != 1 || got[0].Severity != severity.Error {
+	if got := CheckPlannedSubject("feat(awf): "+strings.Repeat("x", 80), s); len(got) != 1 || got[0].Severity != severity.Error {
 		t.Fatalf("length: want 1 error, got %#v", got)
 	}
-	if got := CheckPlannedSubject("chore(awf): x", s); len(got) != 1 || got[0].Severity != severity.Error {
+	if got := CheckPlannedSubject("unknown(awf): x", s); len(got) != 1 || got[0].Severity != severity.Error {
 		t.Fatalf("type: want 1 error, got %#v", got)
 	}
 	if got := CheckPlannedSubject("not conventional", s); len(got) != 1 || got[0].Severity != severity.Error {
@@ -240,8 +234,8 @@ func TestRuleADRFrontmatterUnparseable(t *testing.T) {
 
 // invariant: tooling/audit-and-snapshots:audit-dependency-warn (TestRuleDependencyADR)
 func TestRuleDependencyADR(t *testing.T) {
-	in := Inputs{ADRDir: "docs/decisions", Settings: Settings{DependencyManifests: []string{"**/go.mod", "**/*.csproj"}}}
-	defaults := Inputs{ADRDir: "docs/decisions", Settings: Settings{DependencyManifests: defaultDependencyManifests()}}
+	in := Inputs{ADRDir: "docs/decisions"}
+	defaults := Inputs{ADRDir: "docs/decisions"}
 	adr := FileChange{Path: "docs/decisions/0001-x.md", Action: Added, NewText: proposedADR}
 	gomod := FileChange{Path: "go.mod", Action: Modified}
 	cases := []struct {
@@ -253,7 +247,7 @@ func TestRuleDependencyADR(t *testing.T) {
 		{"manifest no ADR", []Commit{{Changes: []FileChange{gomod}}}, in, 1},
 		{"manifest with ADR", []Commit{{Changes: []FileChange{gomod, adr}}}, in, 0},
 		{"no manifest", []Commit{{Changes: []FileChange{{Path: "main.go", Action: Modified}}}}, in, 0},
-		{"manifests disabled", []Commit{{Changes: []FileChange{gomod}}}, Inputs{ADRDir: "docs/decisions"}, 0},
+		{"manifest rule is unconditional", []Commit{{Changes: []FileChange{gomod}}}, Inputs{ADRDir: "docs/decisions"}, 1},
 		{"nested manifest under defaults", []Commit{{Changes: []FileChange{{Path: "sub/go.mod", Action: Modified}}}}, defaults, 1},
 	}
 	for _, tc := range cases {
@@ -275,7 +269,7 @@ func TestRulePlanForLargeChange(t *testing.T) {
 	big := FileChange{Path: "src/a.go", Action: Modified, Added: 300, Deleted: 200}
 	genBig := FileChange{Path: "gen/out.txt", Action: Modified, Added: 9000, Deleted: 0}
 	plan := FileChange{Path: "docs/plans/2026-01-01-x.md", Action: Added, Added: 10}
-	base := Inputs{Settings: Settings{DiffThreshold: 400}, PlansDir: "docs/plans", GeneratedPaths: gen}
+	base := Inputs{PlansDir: "docs/plans", GeneratedPaths: gen}
 	cases := []struct {
 		name     string
 		commits  []Commit
@@ -286,7 +280,7 @@ func TestRulePlanForLargeChange(t *testing.T) {
 		{"over with plan", []Commit{{Changes: []FileChange{big, plan}}}, base, 0},
 		{"generated inflates only", []Commit{{Changes: []FileChange{genBig}}}, base, 0},
 		{"under threshold", []Commit{{Changes: []FileChange{{Path: "src/a.go", Added: 5, Deleted: 5}}}}, base, 0},
-		{"threshold disabled", []Commit{{Changes: []FileChange{big}}}, Inputs{PlansDir: "docs/plans"}, 0},
+		{"threshold is fixed", []Commit{{Changes: []FileChange{big}}}, Inputs{PlansDir: "docs/plans"}, 1},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -299,7 +293,7 @@ func TestRulePlanForLargeChange(t *testing.T) {
 }
 
 func TestEvaluateAggregates(t *testing.T) {
-	in := Inputs{Settings: Settings{AllowedTypes: []string{"feat"}, DependencyManifests: []string{"go.mod"}}, ADRDir: "docs/decisions"}
+	in := Inputs{ADRDir: "docs/decisions"}
 	commits := []Commit{
 		{Subject: "bad subject", Changes: []FileChange{{Path: "go.mod", Action: Modified}}},
 	}
@@ -354,15 +348,8 @@ func adrChange(action Action, status string, domains string) FileChange {
 	return FileChange{Path: "docs/decisions/0099-x.md", Action: action, NewText: txt}
 }
 
-func TestRuleDomainDocStalenessDisabled(t *testing.T) {
-	in := Inputs{ADRDir: "docs/decisions", ConfiguredDomains: []string{"tooling"}, DomainsPartsDir: ".awf/domains/parts"}
-	if f := ruleDomainDocStaleness([]Commit{{Changes: []FileChange{adrChange(Added, "Implemented", "tooling")}}}, in); f != nil {
-		t.Errorf("disabled rule returned %v", f)
-	}
-}
-
 func TestRuleDomainDocStaleness(t *testing.T) {
-	in := Inputs{ADRDir: "docs/decisions", ConfiguredDomains: []string{"tooling", "rendering"}, DomainsPartsDir: ".awf/domains/parts", Settings: Settings{DomainDocStaleness: true}}
+	in := Inputs{ADRDir: "docs/decisions", ConfiguredDomains: []string{"tooling", "rendering"}, DomainsPartsDir: ".awf/domains/parts", Settings: Settings{}}
 	partChange := func(p string) FileChange { return FileChange{Path: p, Action: Modified} }
 
 	// Implemented in a configured domain, narrative NOT refreshed -> 1 warning.
@@ -408,22 +395,17 @@ func TestRuleDomainDocStaleness(t *testing.T) {
 
 	// Empty ConfiguredDomains -> inert.
 	if f := ruleDomainDocStaleness([]Commit{{Changes: []FileChange{adrChange(Added, "Implemented", "tooling")}}},
-		Inputs{ADRDir: "docs/decisions", DomainsPartsDir: ".awf/domains/parts", Settings: Settings{DomainDocStaleness: true}}); len(f) != 0 {
+		Inputs{ADRDir: "docs/decisions", DomainsPartsDir: ".awf/domains/parts", Settings: Settings{}}); len(f) != 0 {
 		t.Errorf("no configured domains should be inert, got %v", f)
 	}
 }
 
 func TestRuleUndocumentedDomain(t *testing.T) {
-	in := Inputs{ADRDir: "docs/decisions", ConfiguredDomains: []string{"tooling"}, Settings: Settings{UndocumentedDomain: true}}
+	in := Inputs{ADRDir: "docs/decisions", ConfiguredDomains: []string{"tooling"}, Settings: Settings{}}
 
-	// Disabled.
-	if f := ruleUndocumentedDomain([]Commit{{Changes: []FileChange{adrChange(Added, "Proposed", "ghost")}}},
-		Inputs{ADRDir: "docs/decisions", ConfiguredDomains: []string{"tooling"}}); f != nil {
-		t.Errorf("disabled rule returned %v", f)
-	}
 	// No configured domains -> inert.
 	if f := ruleUndocumentedDomain([]Commit{{Changes: []FileChange{adrChange(Added, "Proposed", "ghost")}}},
-		Inputs{ADRDir: "docs/decisions", Settings: Settings{UndocumentedDomain: true}}); f != nil {
+		Inputs{ADRDir: "docs/decisions", Settings: Settings{}}); f != nil {
 		t.Errorf("no configured domains returned %v", f)
 	}
 	// ADR tags an unconfigured domain -> 1 warning.
@@ -454,7 +436,7 @@ func TestRuleUndocumentedDomain(t *testing.T) {
 // invariant: tooling/audit-and-snapshots:audit-domain-code-staleness (TestRuleDomainCodeStaleness)
 func TestRuleDomainCodeStaleness(t *testing.T) {
 	in := Inputs{
-		Settings:        Settings{DomainCodeStaleness: true},
+		Settings:        Settings{},
 		DomainsPartsDir: ".awf/domains/parts",
 		GeneratedPaths:  map[string]bool{"docs/domains/tooling.md": true},
 		DomainPaths:     map[string][]string{"tooling": {"cmd/**", "internal/audit/**"}},
@@ -483,13 +465,6 @@ func TestRuleDomainCodeStaleness(t *testing.T) {
 		t.Errorf("non-matching churn should be clean, got %v", f)
 	}
 
-	// Toggle off -> silent.
-	off := in
-	off.DomainCodeStaleness = false
-	if f := ruleDomainCodeStaleness([]Commit{{Changes: []FileChange{churn}}}, off); f != nil {
-		t.Errorf("disabled rule returned %v", f)
-	}
-
 	// No paths configured -> inert.
 	none := in
 	none.DomainPaths = nil
@@ -507,7 +482,7 @@ func TestRuleDomainCodeStaleness(t *testing.T) {
 }
 
 func TestRulePlainPunctuation(t *testing.T) {
-	in := Inputs{DocsDir: "docs", Settings: Settings{PlainPunctuation: true},
+	in := Inputs{DocsDir: "docs", Settings: Settings{},
 		GeneratedPaths: map[string]bool{"docs/decisions/INDEX.md": true}}
 	change := func(path, oldText, newText string) []Commit {
 		return []Commit{{Hash: "abc1234", Subject: "docs(adr): x",
@@ -563,13 +538,13 @@ func TestRulePlainPunctuation(t *testing.T) {
 	if f := rulePlainPunctuation(deleted, in); len(f) != 0 {
 		t.Errorf("deleted file should be skipped, got %v", f)
 	}
-	// Disabled.
-	if f := rulePlainPunctuation(change("docs/x.md", "", "a"+dash+"b"), Inputs{DocsDir: "docs"}); f != nil {
-		t.Errorf("disabled rule returned %v", f)
+	// No audit setting suppresses this rule.
+	if f := rulePlainPunctuation(change("docs/x.md", "", "a"+dash+"b"), Inputs{DocsDir: "docs"}); len(f) != 1 {
+		t.Errorf("unconditional rule returned %v", f)
 	}
 	// Unset DocsDir is inert.
 	if f := rulePlainPunctuation(change("docs/x.md", "", "a"+dash+"b"),
-		Inputs{Settings: Settings{PlainPunctuation: true}}); f != nil {
+		Inputs{Settings: Settings{}}); f != nil {
 		t.Errorf("unset DocsDir should be inert, got %v", f)
 	}
 }
@@ -595,7 +570,7 @@ func TestRunEmptyRangeStillEvaluatesLiveCleanliness(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("dirty\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	findings, count, err := Run(testContext(t), dir, "HEAD", "HEAD", Inputs{Settings: Settings{UncommittedChanges: true}})
+	findings, count, err := Run(testContext(t), dir, "HEAD", "HEAD", Inputs{Settings: Settings{}})
 	if err != nil || count != 0 || len(findings) != 1 || findings[0].Rule != "uncommitted-changes" {
 		t.Fatalf("findings = %#v, count = %d, err = %v", findings, count, err)
 	}
@@ -788,10 +763,10 @@ func TestAuditSnapshotReadersAndErrors(t *testing.T) {
 }
 
 func TestRangeEvaluatorStreamsEveryOrdinaryRuleState(t *testing.T) {
-	in := Inputs{Settings: Settings{DependencyManifests: []string{"go.mod"}, DiffThreshold: 1, DomainDocStaleness: true, DomainCodeStaleness: true, UndocumentedDomain: true, PlainPunctuation: true}, GeneratedPaths: map[string]bool{"docs/generated.md": true}, ADRDir: "docs/decisions", DocsDir: "docs", IndexMd: "docs/decisions/INDEX.md", PlansDir: "docs/plans", ConfiguredDomains: []string{"tooling"}, DomainsPartsDir: ".awf/domains/parts", DomainPaths: map[string][]string{"tooling": {"internal/**"}}}
+	in := Inputs{Settings: Settings{}, GeneratedPaths: map[string]bool{"docs/generated.md": true}, ADRDir: "docs/decisions", DocsDir: "docs", IndexMd: "docs/decisions/INDEX.md", PlansDir: "docs/plans", ConfiguredDomains: []string{"tooling"}, DomainsPartsDir: ".awf/domains/parts", DomainPaths: map[string][]string{"tooling": {"internal/**"}}}
 	evaluator := newRangeEvaluator(in)
 	evaluator.observe(Commit{Hash: "one", Subject: "bad", Changes: []FileChange{
-		{Path: "go.mod", Added: 2},
+		{Path: "go.mod", Added: 401},
 		{Path: "docs/decisions/bad.md", Action: Added, NewText: "---\nstatus: [\n---\n"},
 		{Path: "docs/decisions/0137-x.md", Action: Added, NewText: auditV1(t, "Accepted")},
 		adrChange(Added, "Implemented", "tooling, ghost"),
@@ -814,12 +789,12 @@ func TestRangeEvaluatorStreamsEveryOrdinaryRuleState(t *testing.T) {
 
 func TestRangeEvaluatorPreservesFrozenGroupedFindings(t *testing.T) {
 	dash := string(rune(0x2014))
-	in := Inputs{Settings: Settings{DependencyManifests: []string{"go.mod"}, DiffThreshold: 1, DomainDocStaleness: true, DomainCodeStaleness: true, UndocumentedDomain: true, PlainPunctuation: true}, GeneratedPaths: map[string]bool{"docs/generated.md": true, "internal/generated.go": true}, ADRDir: "docs/decisions", DocsDir: "docs", IndexMd: "docs/decisions/INDEX.md", PlansDir: "docs/plans", ConfiguredDomains: []string{"tooling"}, DomainsPartsDir: ".awf/domains/parts", DomainPaths: map[string][]string{"tooling": {"internal/**"}}}
+	in := Inputs{Settings: Settings{}, GeneratedPaths: map[string]bool{"docs/generated.md": true, "internal/generated.go": true}, ADRDir: "docs/decisions", DocsDir: "docs", IndexMd: "docs/decisions/INDEX.md", PlansDir: "docs/plans", ConfiguredDomains: []string{"tooling"}, DomainsPartsDir: ".awf/domains/parts", DomainPaths: map[string][]string{"tooling": {"internal/**"}}}
 	t.Run("every ordinary group in final order", func(t *testing.T) {
 		status := strings.Replace(auditV1(t, "Implemented"), "date:", "domains: [tooling, ghost]\ndate:", 1)
 		evaluator := newRangeEvaluator(in)
 		evaluator.observe(Commit{Hash: "one", Subject: "not conventional", Changes: []FileChange{
-			{Path: "go.mod", Added: 2},
+			{Path: "go.mod", Added: 401},
 			{Path: "docs/decisions/bad.md", Action: Added, NewText: "---\nstatus: [\n---\n"},
 			{Path: "docs/decisions/0137-status.md", Action: Added, NewText: status},
 			{Path: "internal/a.go", Added: 1},
@@ -833,7 +808,7 @@ func TestRangeEvaluatorPreservesFrozenGroupedFindings(t *testing.T) {
 			{Severity: severity.Error, Rule: "conventional-commits", Commit: "one", Subject: "not conventional", Detail: "subject is not Conventional Commits (type(scope)?: subject)"},
 			{Severity: severity.Error, Rule: "adr-status-cochange", Commit: "one", Subject: "not conventional", Detail: "0137-status.md status set/changed without INDEX.md in the same commit"},
 			{Severity: severity.Warn, Rule: "adr-frontmatter", Commit: "one", Subject: "not conventional", Detail: "bad.md frontmatter does not parse; ADR status rules skipped for it"},
-			{Severity: severity.Warn, Rule: "plan-for-large-change", Detail: "branch changes 3 non-generated lines (> 1) with no plan under docs/plans"},
+			{Severity: severity.Warn, Rule: "plan-for-large-change", Detail: "branch changes 402 non-generated lines (> 400) with no plan under docs/plans"},
 			{Severity: severity.Warn, Rule: "domain-doc-staleness", Detail: "an ADR in domain \"tooling\" reached Implemented but .awf/domains/parts/tooling/current-state.md was not refreshed in this range"},
 			{Severity: severity.Warn, Rule: "undocumented-domain", Detail: "an ADR is tagged with domain \"ghost\", which has no domain doc: add it to config.Domains and author its current-state narrative, or drop the tag"},
 			{Severity: severity.Warn, Rule: "domain-code-staleness", Detail: "files in domain \"tooling\" changed but .awf/domains/parts/tooling/current-state.md was not refreshed in this range: if anything meaningful changed, document it"},
@@ -879,8 +854,8 @@ func TestRangeEvaluatorPreservesFrozenGroupedFindings(t *testing.T) {
 			t.Fatalf("empty findings = %#v, want nil", got)
 		}
 		evaluator.observe(Commit{Subject: "feat: enabled", Changes: []FileChange{{Path: "go.mod", Added: 100}, {Path: "docs/rise.md", NewText: dash}, adrChange(Added, "Implemented", "ghost")}})
-		if got := evaluator.findings(); got != nil {
-			t.Fatalf("all-disabled findings = %#v, want nil", got)
+		if got := evaluator.findings(); len(got) != 1 || got[0].Rule != "dependency-adr" {
+			t.Fatalf("unconditional dependency finding = %#v", got)
 		}
 	})
 }
@@ -1016,6 +991,7 @@ func staleADR(format adr.Format, number string) string {
 		"# ADR-" + number + ": Old\n\n## Context\n\nContext.\n\n## Decision\n\n1. Decide.\n\n## State changes\n\nNone.\n\n## Consequences\n\nConsequence.\n\n## Alternatives Considered\n\nNone.\n\n## Status history\n\n- 2026-01-01: Proposed\n"
 }
 
+// invariant: tooling/audit-and-snapshots:audit-advisories-always-run (TestRuleUncommittedChanges)
 func TestRuleUncommittedChanges(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
@@ -1024,7 +1000,7 @@ func TestRuleUncommittedChanges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if findings, err := ruleUncommittedChanges(testContext(t), handle, Inputs{Settings: Settings{UncommittedChanges: true}}); err != nil || len(findings) != 0 {
+	if findings, err := ruleUncommittedChanges(testContext(t), handle); err != nil || len(findings) != 0 {
 		t.Fatalf("clean = %#v, %v", findings, err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("changed"), 0o644); err != nil {
@@ -1033,7 +1009,7 @@ func TestRuleUncommittedChanges(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "uncommitted.txt"), []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	findings, err := ruleUncommittedChanges(testContext(t), handle, Inputs{Settings: Settings{UncommittedChanges: true}})
+	findings, err := ruleUncommittedChanges(testContext(t), handle)
 	// invariant: tooling/audit-and-snapshots:audit-uncommitted-changes (TestRuleUncommittedChanges)
 	if err != nil || len(findings) != 1 || findings[0].Rule != "uncommitted-changes" || findings[0].Severity != severity.Error || findings[0].Commit != "" {
 		t.Fatalf("dirty = %#v, %v", findings, err)
@@ -1041,9 +1017,6 @@ func TestRuleUncommittedChanges(t *testing.T) {
 	wantDetail := "working tree not clean: 1 tracked change(s), 1 untracked file(s); commit or discard before concluding the implementation"
 	if findings[0].Detail != wantDetail {
 		t.Errorf("Detail mismatch:\n got %q\nwant %q", findings[0].Detail, wantDetail)
-	}
-	if disabled, err := ruleUncommittedChanges(testContext(t), handle, Inputs{}); err != nil || disabled != nil {
-		t.Fatalf("disabled dirty = %#v, %v", disabled, err)
 	}
 }
 
@@ -1054,18 +1027,12 @@ func TestRunIncludesUncommittedChanges(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "uncommitted.txt"), []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	findings, _, err := Run(testContext(t), dir, "HEAD", "HEAD", Inputs{Settings: Settings{UncommittedChanges: true}})
+	findings, _, err := Run(testContext(t), dir, "HEAD", "HEAD", Inputs{Settings: Settings{}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(findings) != 1 || findings[0].Rule != "uncommitted-changes" || findings[0].Commit != "" {
 		t.Fatalf("Run findings = %#v", findings)
-	}
-}
-
-func TestRuleUncommittedChangesDisabled(t *testing.T) {
-	if findings, err := ruleUncommittedChanges(testContext(t), nil, Inputs{}); err != nil || findings != nil {
-		t.Fatalf("disabled = %#v, %v", findings, err)
 	}
 }
 
@@ -1143,7 +1110,7 @@ func TestRuleUncommittedChangesPropagatesStatusError(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", t.TempDir())
-	if _, err := ruleUncommittedChanges(testContext(t), handle, Inputs{Settings: Settings{UncommittedChanges: true}}); err == nil {
+	if _, err := ruleUncommittedChanges(testContext(t), handle); err == nil {
 		t.Fatal("unavailable native git accepted")
 	}
 }
@@ -1153,7 +1120,7 @@ func TestRunPropagatesUncommittedStatusError(t *testing.T) {
 	dir := repo.Root()
 	gitfixture.Commit(t, repo, "init", map[string]string{"a.txt": "a"})
 	t.Setenv("PATH", t.TempDir())
-	if _, _, err := Run(testContext(t), dir, "HEAD", "HEAD", Inputs{Settings: Settings{UncommittedChanges: true}}); err == nil {
+	if _, _, err := Run(testContext(t), dir, "HEAD", "HEAD", Inputs{Settings: Settings{}}); err == nil {
 		t.Fatal("unavailable native git accepted")
 	}
 }
@@ -1174,7 +1141,7 @@ func TestRuleUncommittedChangesIgnoresManagedWorktreeResidents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	findings, err := ruleUncommittedChanges(testContext(t), handle, Inputs{Settings: Settings{UncommittedChanges: true}})
+	findings, err := ruleUncommittedChanges(testContext(t), handle)
 	if err != nil || len(findings) != 0 {
 		t.Fatalf("ignored managed-worktree residents = %#v, %v", findings, err)
 	}

@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -140,21 +139,12 @@ func TestApplyDropSeveritySettingsPreservesValuesNotLayout(t *testing.T) {
 	if err != nil { // coverage-ignore: the migration just wrote this path
 		t.Fatal(err)
 	}
-	cfg, err := config.Parse(filepath.Join(root, ".awf"), got)
-	if err != nil {
-		t.Fatalf("migrated config must parse: %v", err)
-	}
-	if cfg.CurrentState == nil {
-		t.Fatal("currentState block must survive: two siblings remain")
-	}
-	if n := len(cfg.CurrentState.TestGlobs); n != 1 || cfg.CurrentState.TestGlobs[0] != "**/*_test.go" {
-		t.Errorf("testGlobs = %#v, want the configured value intact", cfg.CurrentState.TestGlobs)
-	}
-	if cfg.CurrentState.MaxTopicsPerPath == nil || *cfg.CurrentState.MaxTopicsPerPath != 8 {
-		t.Errorf("maxTopicsPerPath = %v, want the configured 8 intact", cfg.CurrentState.MaxTopicsPerPath)
-	}
-	if cfg.Prefix != "ex" {
-		t.Errorf("prefix = %q, want the configured value intact", cfg.Prefix)
+	// This frozen generation preserves the retired setting for generation 38 to
+	// remove. Its historical bytes must remain intact, even though today's live
+	// decoder no longer exposes the field.
+	want := "prefix: ex\ncurrentState:\n  testGlobs: ['**/*_test.go']\n  maxTopicsPerPath: 8\n"
+	if string(got) != want {
+		t.Errorf("frozen migration changed surviving historical bytes:\n got %q\nwant %q", got, want)
 	}
 }
 
@@ -189,7 +179,7 @@ func TestConfigForCurrentSchemaDropsHistoricalSeveritySettings(t *testing.T) {
 	}
 	// The port-forward crosses every later generation too, so it also seeds the
 	// required integrationBranch key (ADR-0202 Decision 6).
-	want := "prefix: example\ncurrentState:\n  maxTopicsPerPath: 8\nintegrationBranch: main\n"
+	want := "prefix: example\nintegrationBranch: main\n"
 	if string(got) != want {
 		t.Fatalf("forward-ported config:\ngot  %q\nwant %q", got, want)
 	}

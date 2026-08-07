@@ -93,7 +93,7 @@ func TestRepoCheckCategoryFailuresPropagate(t *testing.T) {
 // invariant: tooling/cli:repo-check-capability-plan (TestRepoCheckCapabilityPlan)
 func TestRepoCheckCapabilityPlan(t *testing.T) {
 	t.Run("aggregate prepares each capability once and preserves successful output order", func(t *testing.T) {
-		cfg := &config.Config{DocsDir: "docs", ProseGate: &config.ProseGateConfig{Enabled: true}, MemoryCite: &config.MemoryCiteConfig{Enabled: true}}
+		cfg := &config.Config{DocsDir: "docs", ProseGate: &config.ProseGateConfig{}, MemoryCite: &config.MemoryCiteConfig{}}
 		p := &project.Project{Root: "working-project-sentinel", Cfg: cfg}
 		tree, err := snapshot.NewTree(nil)
 		if err != nil {
@@ -116,7 +116,7 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 	})
 
 	t.Run("aggregate keeps universes distinct and continues after action errors", func(t *testing.T) {
-		cfg := &config.Config{DocsDir: "docs", ProseGate: &config.ProseGateConfig{Enabled: true}, MemoryCite: &config.MemoryCiteConfig{Enabled: true}}
+		cfg := &config.Config{DocsDir: "docs", ProseGate: &config.ProseGateConfig{}, MemoryCite: &config.MemoryCiteConfig{}}
 		p := &project.Project{Root: "working-project-sentinel", Cfg: cfg}
 		tree, err := snapshot.NewTree([]snapshot.File{
 			{Path: "prose-index-sentinel.txt", Bytes: []byte("bad \u2014")},
@@ -166,7 +166,7 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 	})
 
 	t.Run("later preparation failure emits no action or advisory output", func(t *testing.T) {
-		cfg := &config.Config{ProseGate: &config.ProseGateConfig{Enabled: true}}
+		cfg := &config.Config{ProseGate: &config.ProseGateConfig{}}
 		p := &project.Project{Root: "working-project-sentinel", Cfg: cfg}
 		tree, err := snapshot.NewTree(nil)
 		if err != nil {
@@ -202,8 +202,8 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		}{
 			{name: "drift", cfg: &config.Config{}, step: repoStepDrift, want: repoCheckCounters{loads: 1, opens: 1, reports: 1}, wantText: completedCheckReport},
 			{name: "state", cfg: &config.Config{}, step: repoStepState, want: repoCheckCounters{loads: 1, opens: 1, states: 1}, wantText: completedCheckReport},
-			{name: "prose enabled", cfg: &config.Config{ProseGate: &config.ProseGateConfig{Enabled: true}}, step: repoStepProse, want: repoCheckCounters{loads: 1, indexes: 1}, wantText: completedCheckReport},
-			{name: "memory disabled", cfg: &config.Config{}, step: repoStepMemory, want: repoCheckCounters{loads: 1}, wantText: "status: warnings\n\nsummary:\n  findings: 0 errors, 1 warnings\n\nfindings:\n  warnings:\n    memory | disabled (memoryCite.enabled)\n"},
+			{name: "prose enabled", cfg: &config.Config{ProseGate: &config.ProseGateConfig{}}, step: repoStepProse, want: repoCheckCounters{loads: 1, indexes: 1}, wantText: completedCheckReport},
+			{name: "memory unconditional", cfg: &config.Config{}, step: repoStepMemory, want: repoCheckCounters{loads: 1, indexes: 1}, wantText: completedCheckReport},
 		}
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
@@ -241,11 +241,11 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		if err := runRepoCheckSelection(context.Background(), t.TempDir(), &out, []execution.StepID{repoStepDrift, repoStepState, repoStepProse, repoStepMemory}, execution.ContinueOnFailure, true, deps); err != nil {
 			t.Fatal(err)
 		}
-		if got, want := *counts, (repoCheckCounters{loads: 1, opens: 1, reports: 1, states: 1}); got != want {
+		if got, want := *counts, (repoCheckCounters{loads: 1, opens: 1, reports: 1, states: 1, indexes: 1}); got != want {
 			t.Fatalf("capability counts = %+v, want %+v", got, want)
 		}
-		if !strings.Contains(out.String(), "prose | disabled") || !strings.Contains(out.String(), "memory | disabled") {
-			t.Fatalf("disabled aggregate output = %q", out.String())
+		if !strings.Contains(out.String(), "findings: 0 errors, 0 warnings") {
+			t.Fatalf("unconditional aggregate output = %q", out.String())
 		}
 	})
 
@@ -257,9 +257,9 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 			selected []execution.StepID
 			prefix   string
 		}{
-			{"direct prose", &config.Config{ProseGate: &config.ProseGateConfig{Enabled: true}}, []execution.StepID{repoStepProse}, "check repo prose: cannot read staged files"},
-			{"direct memory", &config.Config{MemoryCite: &config.MemoryCiteConfig{Enabled: true}}, []execution.StepID{repoStepMemory}, "check repo memory: cannot read staged files"},
-			{"aggregate scanners", &config.Config{ProseGate: &config.ProseGateConfig{Enabled: true}, MemoryCite: &config.MemoryCiteConfig{Enabled: true}}, []execution.StepID{repoStepMemory, repoStepProse}, "check repo prose: cannot read staged files"},
+			{"direct prose", &config.Config{ProseGate: &config.ProseGateConfig{}}, []execution.StepID{repoStepProse}, "check repo prose: cannot read staged files"},
+			{"direct memory", &config.Config{MemoryCite: &config.MemoryCiteConfig{}}, []execution.StepID{repoStepMemory}, "check repo memory: cannot read staged files"},
+			{"aggregate scanners", &config.Config{ProseGate: &config.ProseGateConfig{}, MemoryCite: &config.MemoryCiteConfig{}}, []execution.StepID{repoStepMemory, repoStepProse}, "check repo prose: cannot read staged files"},
 		}
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {

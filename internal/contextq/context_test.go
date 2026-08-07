@@ -305,8 +305,6 @@ domains:
   - alpha
 contextIgnore:
   - .awf/**
-currentState:
-  maxTopicsPerPath: 8
 `
 
 func uncoveredFiles() map[string]string {
@@ -362,7 +360,7 @@ func TestUncovered(t *testing.T) {
 // whole-repo scan folds every unowned path up to ".".
 func TestUncoveredCollapsesToRoot(t *testing.T) {
 	t.Parallel()
-	cfg := "prefix: example\nintegrationBranch: main\ndomains:\n  - alpha\ncontextIgnore:\n  - .awf/**\ncurrentState:\n  maxTopicsPerPath: 8\n"
+	cfg := "prefix: example\nintegrationBranch: main\ndomains:\n  - alpha\ncontextIgnore:\n  - .awf/**\n"
 	files := map[string]string{
 		".awf/domains/alpha.yaml": "paths:\n  - nonexistent/**\n",
 		"top.txt":                 "x\n",

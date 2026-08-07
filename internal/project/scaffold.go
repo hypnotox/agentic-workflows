@@ -82,8 +82,6 @@ func ScaffoldConfig(prefix string, vars map[string]string, trim *config.CatalogT
 		Docs:              docNames,
 		Audit:             auditBlk,
 		Bootstrap:         &config.BootstrapConfig{Enabled: true},
-		Hooks:             &config.HooksConfig{Enabled: true},
-		Runner:            &config.RunnerConfig{Enabled: true},
 	})
 	if err != nil { // coverage-ignore: MarshalSkeleton serializes an in-memory struct; it cannot fail on this input
 		return nil, nil, err

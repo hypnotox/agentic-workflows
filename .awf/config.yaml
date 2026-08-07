@@ -52,7 +52,6 @@ currentState:
       close: '-->'
   testGlobs:
     - '**/*_test.go'
-  maxTopicsPerPath: 8
 prefix: awf
 skills:
   - effort-workflow
@@ -202,12 +201,7 @@ vars:
   testCmd: go test ./...
 bootstrap:
   enabled: false
-hooks:
-  enabled: true
-runner:
-  enabled: true
 proseGate:
-  enabled: true
   exemptions:
     - path: docs/decisions/0113-em-dash-free-shipped-templates.md
       codepoint: U+2014
@@ -215,8 +209,6 @@ proseGate:
     - path: docs/plans/2026-07-13-invariant-backing-migration-to-enforced-test-scoped-backing.md
       codepoint: U+2014
       count: 1
-memoryCite:
-  enabled: true
 commitPolicy:
   grandfatheredThrough: c8d9df789b350b055f4fd20db2cd34a418e9f0e1
   allowedIdentities:

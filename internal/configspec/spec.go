@@ -228,16 +228,6 @@ var keys = []Entry{
 		Availability: "Consumed by current-state topic validation, coverage, context, and the staged check.",
 	},
 	{
-		Path: "currentState.maxTopicsPerPath", Type: "positive int", Default: "8",
-		Description:  "Maximum path-scoped current-state topics permitted to match one path before the fan-out finding is emitted.",
-		Availability: "Consumed by current-state topic validation, coverage, context, and the staged check.",
-	},
-	{
-		Path: "audit.allowedTypes", Type: "string list", Default: "the Conventional Commits type set (build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test)",
-		Description:  "Commit types `awf check staged commit` and `awf audit` accept. Absent key = the default set; an explicit empty list = accept any type. (Absent and empty differ.)",
-		Availability: "Read by `awf check staged commit` and `awf audit`.",
-	},
-	{
 		Path: "audit.allowedScopes", Type: "list of scope entries (bare string, or {name, meaning})", Default: "accept any scope",
 		Description:  "The project's Conventional Commits scope taxonomy: the single home for commit scopes; rendered prose quotes it from here. Absent = accept any scope; entries are enforced by `awf check staged commit`/`awf audit` and editing them reflags referencing rendered artifacts.",
 		Availability: "Read by `awf check staged commit`, `awf audit`, and every rendered artifact quoting the scope list.",
@@ -253,104 +243,44 @@ var keys = []Entry{
 		Availability: "Within each `audit.allowedScopes` entry.",
 	},
 	{
-		Path: "audit.subjectMaxLength", Type: "int", Default: "72",
-		Description:  "Maximum commit-subject length `awf check staged commit` and `awf audit` accept.",
-		Availability: "Read by `awf check staged commit` and `awf audit`.",
-	},
-	{
-		Path: "audit.dependencyManifests", Type: "string list (anchored path globs)", Default: "a broad manifest set (**/go.mod, **/package.json, **/Cargo.toml, ...)",
-		Description:  "Globs identifying dependency manifests; `awf audit` flags a manifest change without a lockfile-style co-change. Absent = the default set; explicit empty = the rule is off.",
-		Availability: "Read by `awf audit`.",
-	},
-	{
-		Path: "audit.diffThreshold", Type: "int", Default: "400",
-		Description:  "Changed-line count above which `awf audit` advises that a commit likely bundles more than one concern.",
-		Availability: "Read by `awf audit`.",
-	},
-	{
-		Path: "audit.domainDocStaleness", Type: "bool", Default: "true",
-		Description:  "Advisory rule: warn when a domain's decisions changed in range without its generated domain doc being re-rendered.",
-		Availability: "Read by `awf audit`; inert without configured domains.",
-	},
-	{
-		Path: "audit.domainCodeStaleness", Type: "bool", Default: "true",
-		Description:  "Advisory rule: warn when a domain's declared `paths:` territory changed in range without a co-change to that domain's `current-state` convention part. Inert for a domain without `paths:`.",
-		Availability: "Read by `awf audit`; inert without configured domains.",
-	},
-	{
-		Path: "audit.undocumentedDomain", Type: "bool", Default: "true",
-		Description:  "Advisory rule: warn when decision docs tag a domain key that is not configured under `domains:`.",
-		Availability: "Read by `awf audit`.",
-	},
-	{
-		Path: "audit.plainPunctuation", Type: "bool", Default: "true",
-		Description:  "Advisory rule: warn when a commit raises the count of typographic punctuation substitutes (the em-dash U+2014, en-dash U+2013, ellipsis U+2026, and the curly quotes U+2018, U+2019, U+201C, U+201D) in an authored markdown file under `docsDir`. Existing occurrences never warn; only a net increase does. Generated files are skipped.",
-		Availability: "Read by `awf audit`.",
-	},
-	{
-		Path: "audit.uncommittedChanges", Type: "bool", Default: "true",
-		Description:  "Advisory rule: warn when the working tree carries uncommitted changes at audit time.",
-		Availability: "Read by `awf audit`.",
-	},
-	{
 		Path: "bootstrap.enabled", Type: "bool", Default: "false (key absent); awf init scaffolds it true",
 		Description:  "Renders the self-pinning `.awf/bootstrap.sh` installer (pinned to the rendering awf version, checksum-verified) and the `.awf/upgrade.sh` porcelain. Absent and false both mean: do not render.",
 		Availability: "Always.",
 	},
 	{
-		Path: "hooks.enabled", Type: "bool", Default: "false (key absent); awf init scaffolds it true",
-		Description:  "Renders the five inert git-hook payload scripts under `.awf/hooks/` (pre-commit, commit-msg, pre-merge-commit, reference-transaction, pre-push). awf never activates hooks or touches git config. Wiring the payloads into your hook setup is yours.",
-		Availability: "Always.",
-	},
-	{
-		Path: "runner.enabled", Type: "bool", Default: "false (key absent); awf init and awf upgrade seed it true",
-		Description:  "Renders the pure awf wrapper `awf` at the repo root: a fully awf-owned forwarder that execs the configured (`awfInvokeCmd`) or bootstrap-resolved awf with all arguments forwarded verbatim. Absent and false both mean: do not render.",
-		Availability: "Always.",
-	},
-	{
-		Path: "proseGate.enabled", Type: "bool", Default: "false (key absent)",
-		Description:  "Whether `awf check repo prose` scans. False, the command exits zero immediately without scanning, so a hook or a runner may invoke it unconditionally. Absent and false both mean: do not scan. Default off, because the scan blocks a commit and a tree that has never been swept would fail it on the day it lands.",
-		Availability: "Always.",
-	},
-	{
 		Path: "proseGate.exemptions", Type: "list of {path, codepoint, count} mappings", Default: "empty (nothing is exempt)",
 		Description:  "Places where a typographic punctuation substitute is permitted, typically prose that is genuinely about the character it contains, where punctuating it would make a true statement false. An entry exempts one codepoint in one path.",
-		Availability: "While `proseGate.enabled` is true.",
+		Availability: "Always.",
 	},
 	{
 		Path: "proseGate.exemptions[].path", Type: "string", Default: "required",
 		Description:  "The repo-relative path the exemption covers. A rendered file and the source it renders from each need their own entry, because each holds its own copy of the character.",
-		Availability: "While `proseGate.enabled` is true.",
+		Availability: "Always.",
 	},
 	{
 		Path: "proseGate.exemptions[].codepoint", Type: "string", Default: "required",
 		Description:  "The exempted codepoint, spelled `U+2014`, never the character itself: this file is scanned, so a typed character here would be a finding against the file that configures the exemption. Only the seven banned substitutes are accepted; anything else is an error rather than a silently wider exemption.",
-		Availability: "While `proseGate.enabled` is true.",
+		Availability: "Always.",
 	},
 	{
 		Path: "proseGate.exemptions[].count", Type: "int", Default: "unset (any number is permitted)",
 		Description:  "The exact number of occurrences expected. Set, an added occurrence in an exempt file still fails, which suits a frozen record; unset, any number is permitted, which suits a living file that may gain another depiction.",
-		Availability: "While `proseGate.enabled` is true.",
-	},
-	{
-		Path: "memoryCite.enabled", Type: "bool", Default: "false (key absent)",
-		Description:  "Whether `awf check repo memory` scans, and whether `awf check staged commit` scans the commit-message body for the same thing. False, neither scans: `awf check repo memory` exits zero, so a hook or a runner may invoke it unconditionally, and `awf check staged commit` falls through to its existing subject check. Absent and false both mean: do not scan. Default off, because the scan blocks a commit and a corpus that has never been swept would fail it on the day it lands.",
 		Availability: "Always.",
 	},
 	{
 		Path: "memoryCite.exemptions", Type: "list of {path, count} mappings", Default: "empty (nothing is exempt)",
 		Description:  "Decision records permitted to name a specific working-memory file, typically prose that is genuinely about one particular file. An entry exempts one path. Prefer rewording to the placeholder form over adding an entry.",
-		Availability: "While `memoryCite.enabled` is true.",
+		Availability: "Always.",
 	},
 	{
 		Path: "memoryCite.exemptions[].path", Type: "string", Default: "required",
 		Description:  "The repo-relative path the exemption covers. Only a path under the decisions or plans directory can carry a finding, so only such a path is worth exempting.",
-		Availability: "While `memoryCite.enabled` is true.",
+		Availability: "Always.",
 	},
 	{
 		Path: "memoryCite.exemptions[].count", Type: "int", Default: "unset (any number is permitted)",
 		Description:  "The exact number of citations expected. Set, an added citation in an exempt file still fails, which suits a frozen record; unset, any number is permitted, which suits a living file that may gain another mention.",
-		Availability: "While `memoryCite.enabled` is true.",
+		Availability: "Always.",
 	},
 	{
 		Path: "sidecar.data", Type: "key → value map", Default: "empty: catalog defaults apply",

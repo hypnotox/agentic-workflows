@@ -126,9 +126,11 @@ Backing: test
 
 ### `invariant: conditional-unit-single-source`
 
-Each enabled config-tree render unit derives its enablement, path, template identity, render kind,
-and fixed sections from one bounded descriptor consumed by output declarations and render dispatch.
-Unit-specific data construction, policy, encoding, and lifecycle behavior remain at their owning
-render seams.
+Each config-tree render unit derives its enablement, path, template identity, render kind, and fixed
+sections from one bounded descriptor consumed by output declarations and render dispatch. Hook
+payloads and the runner are unconditional members, while bootstrap is the only member whose
+enablement is conditional. Unit-specific data construction, policy, encoding, and lifecycle behavior
+remain at their owning render seams.
 Origin: ADR-0235
+Revised-by: ADR-unconditional-gates-and-audit-rules
 Backing: test

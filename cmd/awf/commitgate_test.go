@@ -32,7 +32,7 @@ func writeMsg(t *testing.T, content string) string {
 func citingProject(t *testing.T) string {
 	t.Helper()
 	root := scaffoldProject(t)
-	testsupport.WriteAwfConfig(t, root, minimalYAML+"memoryCite:\n  enabled: true\n")
+	testsupport.WriteAwfConfig(t, root, minimalYAML+"")
 	return root
 }
 
@@ -417,11 +417,11 @@ func cite() string { return dir + "concrete-effort/memory.md" }
 func TestRunCommitGateCitationScan(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	t.Run("knob off accepts a citing body", func(t *testing.T) {
+	t.Run("unconditional gate rejects a citing body", func(t *testing.T) {
 		root := scaffoldProject(t)
 		var out bytes.Buffer
-		if err := runCommitGate(ctx, root, writeMsg(t, "feat: a\n\nsee "+cite()+"\n"), nil, &out); err != nil {
-			t.Fatalf("knob off must not scan: %v (out=%q)", err, out.String())
+		if err := runCommitGate(ctx, root, writeMsg(t, "feat: a\n\nsee "+cite()+"\n"), nil, &out); err == nil || !strings.Contains(err.Error(), "effort-owned memory file") {
+			t.Fatalf("unconditional gate must scan: %v (out=%q)", err, out.String())
 		}
 	})
 	t.Run("knob on accepts a clean body", func(t *testing.T) {
@@ -448,7 +448,7 @@ func TestRunCommitGateCitationScan(t *testing.T) {
 		// must leave the scan blocking.
 		root := scaffoldProject(t)
 		testsupport.WriteAwfConfig(t, root,
-			minimalYAML+"memoryCite:\n  enabled: true\n  exemptions:\n    - path: commit message\n")
+			minimalYAML+"memoryCite:\n  exemptions:\n    - path: commit-message\n")
 		var out bytes.Buffer
 		// Assert the citation error specifically: a bare non-nil check would also
 		// pass if the config never parsed, which is the opposite of the point.

@@ -35,9 +35,9 @@ Backing: test
 
 ### `invariant: hooks-commands-resolvable`
 
-Config validation for sync and check fails when the hooks singleton is enabled and `vars.gateCmd` is unset, and when the hooks singleton is enabled, the runner singleton is disabled, and either `vars.checkCmd` or `vars.commitGateCmd` is unset; each error names the exact var to set.
+Config validation for sync and check fails when `vars.gateCmd` is unset because the always-rendered hook payloads run the project gate; the error names the exact var to set. The always-rendered runner supplies every awf-verb fallback, so checkCmd and commitGateCmd carry no separate validation arm.
 Origin: ADR-0156
-Revised-by: ADR-0158, ADR-0210
+Revised-by: ADR-0158, ADR-0210, ADR-unconditional-gates-and-audit-rules
 Backing: test
 
 ### `invariant: local-doc-name-path-validated`

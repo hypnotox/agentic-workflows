@@ -16,7 +16,7 @@ import (
 )
 
 func unknownKind(kind string) error {
-	return &usageErr{fmt.Sprintf("unknown kind %q (want: skill, agent, doc, domain, target, bootstrap, hooks, runner)", kind)}
+	return &usageErr{fmt.Sprintf("unknown kind %q (want: skill, agent, doc, domain, target, bootstrap)", kind)}
 }
 
 // enableDisableSingleton enables or disables a nested <key>.enabled singleton toggle
@@ -30,15 +30,7 @@ func enableDisableSingleton(ctx context.Context, root, key string, add bool, std
 	if err != nil {
 		return err
 	}
-	var enabled bool
-	switch key {
-	case "bootstrap":
-		enabled = p.Cfg.Bootstrap != nil && p.Cfg.Bootstrap.Enabled
-	case "hooks":
-		enabled = p.Cfg.Hooks != nil && p.Cfg.Hooks.Enabled
-	case "runner":
-		enabled = p.Cfg.Runner != nil && p.Cfg.Runner.Enabled
-	}
+	enabled := key == "bootstrap" && p.Cfg.Bootstrap != nil && p.Cfg.Bootstrap.Enabled
 	if add && enabled {
 		return fmt.Errorf("%s already enabled", key)
 	}
@@ -176,7 +168,7 @@ func toggleWithProjectLoader(ctx context.Context, root, kind, name string, dir d
 	if kind == "target" {
 		return enableDisableTarget(ctx, root, name, add, stdout)
 	}
-	if kind == "bootstrap" || kind == "hooks" || kind == "runner" {
+	if kind == "bootstrap" {
 		return enableDisableSingleton(ctx, root, kind, add, stdout)
 	}
 	key, ok := project.PluralKind(kind)

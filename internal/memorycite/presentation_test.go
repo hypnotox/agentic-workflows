@@ -22,24 +22,13 @@ func TestCommitGateDocumentOwnsExactFindingPresentation(t *testing.T) {
 	}
 }
 
-func TestDisabledCategoryAndEmptyResults(t *testing.T) {
-	empty, err := Categories(nil)
+func TestEmptyResults(t *testing.T) {
+	categories, err := Categories(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	disabled, err := DisabledCategory()
-	if err != nil {
+	if _, err := (presentation.Report{Status: "completed", Categories: categories}).Document(); err != nil {
 		t.Fatal(err)
-	}
-	for _, categories := range [][]presentation.ReportCategory{empty, disabled} {
-		document, err := (presentation.Report{Status: "warnings", Categories: categories}).Document()
-		if err != nil {
-			t.Fatal(err)
-		}
-		var out strings.Builder
-		if err := presentation.Render(&out, document); err != nil {
-			t.Fatal(err)
-		}
 	}
 }
 

@@ -82,12 +82,6 @@ Origin: ADR-0210
 Revised-by: ADR-0217
 Backing: test
 
-### `invariant: check-disabled-child-disclosure`
-
-A disabled prose or memory child prints one non-failing note naming the child and its enablement knob, both through the repo aggregate and when invoked directly; an enabled child prints no disabled note.
-Origin: ADR-0210
-Backing: test
-
 ### `invariant: plan-read-command`
 
 The gated `awf read plan <plan> <P[.T]>` command resolves only an exact plan filename or stem under the configured plans directory and only canonical positive numeric phase or task selectors. Failures retain plan-owned selector identities and available exact values. Plan-v2 success writes the internal/plan-rendered ordered Applying then Context Decision and phase-owner outcome closure unchanged, with first-authored resolved-key deduplication, Applying precedence, task scope safety, whole-plan Definition-of-done exclusion, and preserved source; plan-v1 bytes remain unchanged. Blocking references fail while assignment notes remain non-blocking. It neither includes other phases nor mutates source.
@@ -103,9 +97,9 @@ Backing: test
 
 ### `invariant: repo-check-capability-plan`
 
-The direct drift, state, prose, and memory repository checks and their aggregate select from one closed capability plan. One operation loads working config once, conditionally opens one Project from that prepared config, derives one complete CheckReport and one working CurrentStateReport when selected, and captures one shared stage-0 index for enabled scanners; disabled or scanner-only selections acquire no unrelated capability. The aggregate preserves version and advisory order, executes selected steps in capability-plan order, and presents their findings in deterministic `errors` then `warnings` categories with source order preserved within each category rather than across categories. It continues after action errors and returns the first, while any preparation failure executes no step; the three working, current-state, and index universes never substitute for one another.
+The direct drift, state, prose, and memory repository checks and their aggregate select from one closed capability plan. One operation loads working config once, conditionally opens one Project from that prepared config, derives one complete CheckReport and one working CurrentStateReport when selected, and captures one shared stage-0 index whenever either always-on scanner is selected; scanner-only selections acquire no unrelated capability. The aggregate preserves version and advisory order, executes selected steps in capability-plan order, and presents their findings in deterministic `errors` then `warnings` categories with source order preserved within each category rather than across categories. It continues after action errors and returns the first, while any preparation failure executes no step; the three working, current-state, and index universes never substitute for one another.
 Origin: ADR-0223
-Revised-by: ADR-0234
+Revised-by: ADR-0234, ADR-unconditional-gates-and-audit-rules
 Backing: test
 
 ### `invariant: single-os-exit`

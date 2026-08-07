@@ -206,7 +206,7 @@ func enableDisableArgs(pos []string, isEnable bool) (kind, name string, err erro
 	if isEnable {
 		verb, usage = "enable", "usage: awf enable <kind> <name> [--dry-run]"
 	}
-	isSingleton := len(pos) >= 1 && (pos[0] == "bootstrap" || pos[0] == "hooks" || pos[0] == "runner") // nameless singleton forms (ADR-0040, ADR-0048, ADR-0101)
+	isSingleton := len(pos) >= 1 && pos[0] == "bootstrap" // nameless bootstrap form
 	switch {
 	case len(pos) == 1 && isSingleton:
 		return pos[0], "", nil

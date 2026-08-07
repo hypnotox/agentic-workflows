@@ -34,6 +34,20 @@ func loadForMigration(root string) (*config.Config, error) {
 	if err != nil { // coverage-ignore: RemoveKey's parse above already rejected any non-mapping YAML, so this removal cannot reach a parse error
 		return nil, err
 	}
+	// Generation 38 removes the gate and audit settings from the live shape,
+	// while older frozen steps can still create or inspect their historical
+	// representation. Strip them only from this typed analysis view; the bytes
+	// the frozen step edits remain unchanged until generation 38 applies.
+	for _, retired := range gateAuditRetiredKeys {
+		if retired.parent == "" {
+			src, err = config.RemoveKey(src, retired.key)
+		} else {
+			src, err = config.RemoveMappingKey(src, retired.parent, retired.key)
+		}
+		if err != nil { // coverage-ignore: the first removal parses the whole mapping, and each successful removal re-encodes valid YAML before the next iteration
+			return nil, err
+		}
+	}
 	cfg, err := config.Parse(config.RootDir(root), src)
 	if err != nil { // coverage-ignore: RemoveKey's parse above already rejected any non-mapping YAML, and no schema-valid mapping reaching a migration fails strict decode
 		return nil, err

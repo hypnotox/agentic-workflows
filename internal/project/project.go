@@ -74,6 +74,7 @@ var minVersionBySchema = map[int]string{
 	35: "0.30.0",
 	36: "0.31.0",
 	37: "0.31.0",
+	38: "0.31.0",
 }
 
 // ValidateSchemaMinimumVersion confirms that version is new enough to render a
@@ -560,7 +561,7 @@ func (p *Project) deriveOperationState() (adr.Corpus, topic.Corpus, map[string]b
 // commit range. No config key supplies a base: the range is always explicit
 // (ADR-0127 Decision 3).
 func (p *Project) Audit(ctx context.Context, base, head string) ([]audit.Finding, int, error) {
-	s := audit.Resolve(p.Cfg.Audit)
+	s := audit.Resolve(config.AuditScopes(p.Cfg.Audit))
 	lay := p.layout()
 	generated := map[string]bool{}
 	lock, _, err := manifest.LoadOptional(p.lockPath())

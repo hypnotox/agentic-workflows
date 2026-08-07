@@ -165,37 +165,13 @@ func configHashOf(t *testing.T, root, rel string) string {
 	return ""
 }
 
-func TestTopicMaximumDriftIsLimitedToConsumingGuidance(t *testing.T) {
+func TestRetiredTopicMaximumDoesNotAffectProjection(t *testing.T) {
 	const unrelated = ".claude/skills/example-tdd/SKILL.md"
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\ncurrentState:\n  maxTopicsPerPath: 20\n")
-	beforeHash := configHashOf(t, root, unrelated)
-	beforeReference := renderedContentOf(t, root, "docs/config-reference.md")
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\ncurrentState:\n  maxTopicsPerPath: 21\n")
-	if after := configHashOf(t, root, unrelated); after != beforeHash {
-		t.Fatal("maxTopicsPerPath drifted unrelated skill guidance")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\nskills: [tdd]\nagents: []\n")
+	before := configHashOf(t, root, unrelated)
+	if after := configHashOf(t, root, unrelated); after != before {
+		t.Fatal("fixed topic fan-out budget changed unrelated skill guidance")
 	}
-	if after := renderedContentOf(t, root, "docs/config-reference.md"); after == beforeReference || !strings.Contains(after, "| 21 |") {
-		t.Fatal("maxTopicsPerPath did not update consuming config-reference guidance")
-	}
-}
-
-func renderedContentOf(t *testing.T, root, rel string) string {
-	t.Helper()
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	files, err := p.RenderAll()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, file := range files {
-		if file.Path == rel {
-			return file.Content
-		}
-	}
-	t.Fatalf("no rendered file %s", rel)
-	return ""
 }
 
 // invariant: rendering/sync-and-drift:drift-source-set (TestPerTargetDriftProjection)
@@ -282,7 +258,7 @@ func TestPerTargetDriftProjection(t *testing.T) {
 // from disk.
 func TestCheckFlagsEnabledButUnsyncedArtifact(t *testing.T) {
 	cfg := func(agents string) string {
-		return "prefix: example\nintegrationBranch: main\nskills:\n  - tdd\nagents:" + agents + "\n"
+		return "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\nskills:\n  - tdd\nagents:" + agents + "\n"
 	}
 	root := scaffold(t, cfg(" []"))
 	p, err := Open(testContext(t), root)
@@ -383,7 +359,7 @@ func TestCheckFlagsOrphanedSingletonParts(t *testing.T) {
 }
 
 func sprintfVars(pitfalls string) string {
-	return "vars:\n  testCmd: \"\"\n  gateCmd: \"\"\n  gateCmdFull: \"\"\n  workflowDoc: \"\"\n  pitfallsDoc: \"" + pitfalls + "\"\n"
+	return "vars:\n  testCmd: \"\"\n  gateCmd: make gate\n  gateCmdFull: \"\"\n  workflowDoc: \"\"\n  pitfallsDoc: \"" + pitfalls + "\"\n"
 }
 
 // invariant: config/migrations-and-locks:schema-version-lock (TestSyncStampsSchemaVersion)
@@ -431,7 +407,7 @@ func chainClosureConfig(scope string) string {
 	sort.Strings(skills)
 	sort.Strings(agentList)
 	var b strings.Builder
-	b.WriteString("prefix: example\nintegrationBranch: main\nvars: {}\nskills:\n")
+	b.WriteString("prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\nskills:\n")
 	for _, s := range skills {
 		b.WriteString("  - " + s + "\n")
 	}
@@ -492,7 +468,7 @@ func TestScopesEditReflagsReferencingArtifacts(t *testing.T) {
 // invariant: rendering/sync-and-drift:skills-set-in-confighash (TestSkillsEditLeavesNeutralGuideFreshAndReflagsSkill)
 func TestSkillsEditLeavesNeutralGuideFreshAndReflagsSkill(t *testing.T) {
 	cfg := func(skills string) string {
-		return "prefix: example\nintegrationBranch: main\nskills:" + skills + "\nagents: []\n"
+		return "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\nskills:" + skills + "\nagents: []\n"
 	}
 	root := scaffold(t, cfg("\n  - debugging\n  - bugfix"))
 	guide0 := configHashOf(t, root, "AGENTS.md")
@@ -515,7 +491,7 @@ func TestSkillsEditLeavesNeutralGuideFreshAndReflagsSkill(t *testing.T) {
 // invariant: rendering/sync-and-drift:part-scopes-in-confighash (TestScopesEditReflagsPlaceholderPart)
 func TestScopesEditReflagsPlaceholderPart(t *testing.T) {
 	cfg := func(meaning string) string {
-		return "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n" +
+		return "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\nskills: []\nagents: []\n" +
 			"audit:\n  allowedScopes:\n    - {name: adr, meaning: " + meaning + "}\n"
 	}
 	root := scaffoldFiles(t, cfg("ADR docs"), map[string]string{
@@ -640,7 +616,7 @@ func TestAuditAndCollisionsRefuseCorruptLock(t *testing.T) {
 // TestScopesEditReflagsPlaceholderPart).
 func TestCommentWrappedScopePlaceholderDoesNotFold(t *testing.T) {
 	cfg := func(meaning string) string {
-		return "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n" +
+		return "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\nskills: []\nagents: []\n" +
 			"audit:\n  allowedScopes:\n    - {name: adr, meaning: " + meaning + "}\n"
 	}
 	root := scaffoldFiles(t, cfg("ADR docs"), map[string]string{

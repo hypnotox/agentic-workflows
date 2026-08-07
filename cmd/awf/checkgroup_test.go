@@ -74,74 +74,18 @@ func TestCheckStatePathsDispatchDistinctly(t *testing.T) {
 	}
 }
 
-// invariant: tooling/cli:check-disabled-child-disclosure (TestCheckDisabledChildDisclosure)
-func TestCheckDisabledChildDisclosure(t *testing.T) {
-	const proseNote = "prose | disabled (proseGate.enabled)\n"
-	const memoryNote = "memory | disabled (memoryCite.enabled)\n"
-
-	t.Run("aggregate discloses disabled children", func(t *testing.T) {
-		root := syncedGitProject(t, checkYAML)
-		var out bytes.Buffer
-		if err := runCheckRepo(testContext(t), root, &out); err != nil {
-			t.Fatalf("check repo: %v", err)
+// invariant: tooling/quality-gates:gates-always-run (TestCheckScannersAlwaysRun)
+func TestCheckScannersAlwaysRun(t *testing.T) {
+	root := syncedGitProject(t, checkYAML)
+	for _, args := range [][]string{{"awf", "check", "repo"}, {"awf", "check", "repo", "prose"}, {"awf", "check", "repo", "memory"}} {
+		var out, errb bytes.Buffer
+		if code := runAt(t, root, args, &out, &errb); code != 0 {
+			t.Fatalf("%v exited %d: %s", args, code, errb.String())
 		}
-		for _, want := range []string{proseNote, memoryNote} {
-			if got := strings.Count(out.String(), want); got != 1 {
-				t.Errorf("check repo output contains %q %d times, want once:\n%s", strings.TrimSpace(want), got, out.String())
-			}
+		if strings.Contains(out.String(), "disabled") {
+			t.Fatalf("%v exposed a retired disabled state:\n%s", args, out.String())
 		}
-	})
-
-	t.Run("aggregate omits notes for enabled children", func(t *testing.T) {
-		root := syncedGitProject(t, checkYAML+"proseGate:\n  enabled: true\nmemoryCite:\n  enabled: true\n")
-		var out bytes.Buffer
-		if err := runCheckRepo(testContext(t), root, &out); err != nil {
-			t.Fatalf("check repo: %v", err)
-		}
-		for _, unwanted := range []string{proseNote, memoryNote} {
-			if strings.Contains(out.String(), unwanted) {
-				t.Errorf("check repo output contains %q:\n%s", strings.TrimSpace(unwanted), out.String())
-			}
-		}
-	})
-
-	t.Run("direct child uses the same disclosure", func(t *testing.T) {
-		root := syncedGitProject(t, checkYAML)
-		for _, tc := range []struct {
-			child string
-			want  string
-		}{
-			{child: "prose", want: proseNote},
-			{child: "memory", want: memoryNote},
-		} {
-			var out, errb bytes.Buffer
-			if code := runAt(t, root, []string{"awf", "check", "repo", tc.child}, &out, &errb); code != 0 {
-				t.Fatalf("check repo %s exited %d: %s", tc.child, code, errb.String())
-			}
-			if got := out.String(); !strings.Contains(got, "status: warnings") || !strings.Contains(got, tc.want) {
-				t.Errorf("check repo %s output = %q, want structured disclosure %q", tc.child, got, tc.want)
-			}
-		}
-	})
-
-	t.Run("direct enabled child omits the disclosure", func(t *testing.T) {
-		root := syncedGitProject(t, checkYAML+"proseGate:\n  enabled: true\nmemoryCite:\n  enabled: true\n")
-		for _, tc := range []struct {
-			child    string
-			unwanted string
-		}{
-			{child: "prose", unwanted: proseNote},
-			{child: "memory", unwanted: memoryNote},
-		} {
-			var out, errb bytes.Buffer
-			if code := runAt(t, root, []string{"awf", "check", "repo", tc.child}, &out, &errb); code != 0 {
-				t.Fatalf("check repo %s exited %d: %s", tc.child, code, errb.String())
-			}
-			if strings.Contains(out.String(), tc.unwanted) {
-				t.Errorf("check repo %s output contains %q:\n%s", tc.child, strings.TrimSpace(tc.unwanted), out.String())
-			}
-		}
-	})
+	}
 }
 
 // An unrecognized positional lists the valid subcommands. MaxPos is -1 so the
@@ -387,15 +331,14 @@ func TestCheckChildrenErrorPaths(t *testing.T) {
 	})
 
 	t.Run("state prints warn notes", func(t *testing.T) {
-		// A warn-ranked fan-out finding rides the non-failing note: channel, so the
-		// command stays clean while still printing the note.
+		// The fixed fan-out budget is eight, so this two-topic fixture stays clean.
 		root := syncedGitProjectFiles(t, coverageYAML(), fanoutFiles())
 		var out bytes.Buffer
 		if err := runCheckState(ctx, root, &out); err != nil {
 			t.Fatalf("a warn-ranked finding must not fail check repo state: %v", err)
 		}
-		if !strings.Contains(out.String(), "warnings:\n") {
-			t.Errorf("expected a structured warning on stdout:\n%s", out.String())
+		if !strings.Contains(out.String(), "findings: 0 errors, 0 warnings") {
+			t.Errorf("expected a clean fixed-budget report:\n%s", out.String())
 		}
 	})
 }

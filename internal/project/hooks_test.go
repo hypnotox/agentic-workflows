@@ -32,15 +32,14 @@ func hookFiles(t *testing.T, configYAML string) map[string]RenderedFile {
 	return found
 }
 
-// With the singleton enabled, exactly the five payloads render under
-// .awf/hooks/; absent or disabled, none do. The expected set is spelled out
+// Exactly five payloads always render under .awf/hooks/. The expected set is spelled out
 // rather than derived from hookNames, which would make the assertion agree with
 // whatever that list happens to say: the claim names these paths, so the test
 // has to name them too for a wrong set to be able to fail.
 // invariant: rendering/singletons-and-payloads:hook-payloads-rendered (TestHookPayloadsRendered)
 func TestHookPayloadsRendered(t *testing.T) {
 	want := []string{"pre-commit", "commit-msg", "pre-push", "pre-merge-commit", "reference-transaction"}
-	got := hookFiles(t, "prefix: example\nintegrationBranch: main\nhooks:\n  enabled: true\n")
+	got := hookFiles(t, "prefix: example\nintegrationBranch: main\n")
 	for _, name := range want {
 		if _, ok := got[name]; !ok {
 			t.Errorf("expected .awf/hooks/%s.sh to render when enabled", name)
@@ -49,35 +48,23 @@ func TestHookPayloadsRendered(t *testing.T) {
 	if len(got) != len(want) {
 		t.Errorf("rendered %d payloads, want exactly %d: %v", len(got), len(want), got)
 	}
-
-	for _, cfg := range []string{
-		"prefix: example\nintegrationBranch: main\n",
-		"prefix: example\nintegrationBranch: main\nhooks:\n  enabled: false\n",
-	} {
-		if got := hookFiles(t, cfg); len(got) != 0 {
-			t.Errorf("expected no hook payloads for config %q, got %v", cfg, got)
-		}
-	}
 }
 
-// With every command var unset, each payload degrades to a runnable script
-// whose awf-verb commands resolve to ./awf forms when the runner singleton is
-// enabled and to the generic awf forms otherwise, with no inline resolution
-// shim and no unresolved-value token (ADR-0156 Decision 4).
+// With optional command vars unset, each payload remains runnable through the
+// always-rendered ./awf wrapper, with no inline resolution shim or unresolved token.
 // invariant: rendering/companion-scripts:hook-payloads-fallback-safe (TestHookPayloadsFallbackSafe)
 func TestHookPayloadsFallbackSafe(t *testing.T) {
 	for _, tc := range []struct {
 		name, config, awf string
 	}{
-		{"runner enabled", "prefix: example\nintegrationBranch: main\nhooks:\n  enabled: true\nrunner:\n  enabled: true\n", "./awf"},
-		{"runner disabled", "prefix: example\nintegrationBranch: main\nhooks:\n  enabled: true\n", "awf"},
+		{"runner always rendered", "prefix: example\nintegrationBranch: main\n", "./awf"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := hookFiles(t, tc.config)
 			wantCmds := map[string][]string{
 				"pre-commit":            {tc.awf + " check\n"},
 				"commit-msg":            {tc.awf + ` check staged commit "$1"` + "\n"},
-				"pre-push":              {tc.awf + " check\n"},
+				"pre-push":              {"test-gate\n"},
 				"pre-merge-commit":      {tc.awf + " check staged\n"},
 				"reference-transaction": {"  " + tc.awf + ` check commit-policy "${targets[@]}"`},
 			}
@@ -115,15 +102,13 @@ vars:
   gateCmd: ./x gate
   gateCmdFull: ./x gate full
   commitGateCmd: ./x commit-gate
-hooks:
-  enabled: true
 `)
 	want := map[string][]string{
 		"pre-commit":            {"./x check\n./x gate\n"},
 		"commit-msg":            {"./x commit-gate \"$1\"\n"},
 		"pre-push":              {"./x gate full\n"},
 		"pre-merge-commit":      {"./x check staged\n"},
-		"reference-transaction": {"  awf check commit-policy \"${targets[@]}\""},
+		"reference-transaction": {"  ./awf check commit-policy \"${targets[@]}\""},
 	}
 	for name, f := range got {
 		for _, w := range want[name] {
@@ -136,7 +121,7 @@ hooks:
 		}
 	}
 	// pre-push falls back through the chain: gateCmd when gateCmdFull is unset.
-	chain := hookFiles(t, "prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: ./x gate\nhooks:\n  enabled: true\n")
+	chain := hookFiles(t, "prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: ./x gate\n")
 	if f := chain["pre-push"]; !strings.Contains(f.Content, "./x gate\n") {
 		t.Errorf("pre-push: want gateCmd fallback, got:\n%s", f.Content)
 	}
@@ -147,7 +132,7 @@ hooks:
 // configured pre-push gate only after policy success.
 // invariant: rendering/singletons-and-payloads:commit-policy-hook-payloads (TestCommitPolicyHookPayloads)
 func TestCommitPolicyHookPayloads(t *testing.T) {
-	got := hookFiles(t, "prefix: example\nintegrationBranch: main\nvars:\n  gateCmdFull: ./x gate full\nhooks:\n  enabled: true\n")
+	got := hookFiles(t, "prefix: example\nintegrationBranch: main\nvars:\n  gateCmdFull: ./x gate full\n")
 	transaction := got["reference-transaction"].Content
 	for _, want := range []string{
 		`[[ "${1:-}" == "prepared" ]] || exit 0`,
@@ -203,6 +188,11 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(bin, name), []byte(body), 0o755); err != nil {
 			t.Fatal(err)
 		}
+		if name == "awf" {
+			if err := os.WriteFile(filepath.Join(root, name), []byte(body), 0o755); err != nil {
+				t.Fatal(err)
+			}
+		}
 	}
 	writeHook := func(name, content string) string {
 		t.Helper()
@@ -213,7 +203,7 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 		return path
 	}
 	transactionPath := writeHook("reference-transaction", transaction)
-	pushPath := writeHook("pre-push", hookFiles(t, "prefix: example\nintegrationBranch: main\nvars:\n  gateCmdFull: gate\nhooks:\n  enabled: true\n")["pre-push"].Content)
+	pushPath := writeHook("pre-push", hookFiles(t, "prefix: example\nintegrationBranch: main\nvars:\n  gateCmdFull: gate\n")["pre-push"].Content)
 	run := func(path, input string, args ...string) (string, error) {
 		t.Helper()
 		cmd := exec.Command("bash", append([]string{path}, args...)...)
@@ -364,10 +354,14 @@ func testCommitPolicyHooksNative(t *testing.T) {
 			if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
 				t.Fatal(err)
 			}
-			if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte("prefix: hook-test\nintegrationBranch: master\n"), 0o644); err != nil {
+			wrapper := "#!/usr/bin/env bash\nexec " + shellQuote(binary) + " \"$@\"\n"
+			if err := os.WriteFile(filepath.Join(root, "awf"), []byte(wrapper), 0o755); err != nil {
 				t.Fatal(err)
 			}
-			if err := os.WriteFile(filepath.Join(root, ".awf", "awf.lock"), []byte("{\"awfVersion\":\"0.31.0\",\"schemaVersion\":37,\"files\":{}}\n"), 0o644); err != nil {
+			if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte("prefix: hook-test\nintegrationBranch: master\nvars: {gateCmd: true}\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(root, ".awf", "awf.lock"), []byte("{\"awfVersion\":\"0.31.0\",\"schemaVersion\":38,\"files\":{}}\n"), 0o644); err != nil {
 				t.Fatal(err)
 			}
 			run(true, "add", ".awf/config.yaml", ".awf/awf.lock")
@@ -380,14 +374,14 @@ func testCommitPolicyHooksNative(t *testing.T) {
 			if err := os.WriteFile(gate, []byte("#!/usr/bin/env bash\nprintf 'gate\\n' >>"+shellQuote(gateLog)+"\n"), 0o755); err != nil {
 				t.Fatal(err)
 			}
-			config := "prefix: hook-test\nintegrationBranch: master\nvars:\n  gateCmdFull: " + gate + "\nhooks:\n  enabled: true\ncommitPolicy:\n  grandfatheredThrough: " + base + "\n  allowedIdentities:\n    - name: Allowed\n      email: allowed@example.test\n  requireSignedCommits: true\n  allowedSigners:\n    - principal: allowed@example.test\n      key: " + publicKey + "\n"
+			config := "prefix: hook-test\nintegrationBranch: master\nvars:\n  gateCmd: true\n  gateCmdFull: " + gate + "\ncommitPolicy:\n  grandfatheredThrough: " + base + "\n  allowedIdentities:\n    - name: Allowed\n      email: allowed@example.test\n  requireSignedCommits: true\n  allowedSigners:\n    - principal: allowed@example.test\n      key: " + publicKey + "\n"
 			if err := os.MkdirAll(filepath.Join(root, ".awf", "hooks"), 0o755); err != nil {
 				t.Fatal(err)
 			}
 			if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte(config), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			files := hookFiles(t, "prefix: hook-test\nintegrationBranch: master\nvars:\n  gateCmdFull: "+gate+"\nhooks:\n  enabled: true\n")
+			files := hookFiles(t, "prefix: hook-test\nintegrationBranch: master\nvars:\n  gateCmdFull: "+gate+"\n")
 			for _, name := range []string{"reference-transaction", "pre-push"} {
 				if err := os.WriteFile(filepath.Join(root, ".awf", "hooks", name+".sh"), []byte(files[name].Content), 0o755); err != nil {
 					t.Fatal(err)
@@ -426,6 +420,9 @@ func testCommitPolicyHooksNative(t *testing.T) {
 				t.Fatal(err)
 			}
 			if err := os.MkdirAll(filepath.Join(linked, ".awf", "hooks"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(linked, "awf"), []byte(wrapper), 0o755); err != nil {
 				t.Fatal(err)
 			}
 			for _, name := range []string{"reference-transaction", "pre-push"} {

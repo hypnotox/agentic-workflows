@@ -23,12 +23,7 @@ vars:
   gateCmd: ./x gate
 domains: [alpha]
 currentState:
-  maxTopicsPerPath: 8
 bootstrap:
-  enabled: true
-hooks:
-  enabled: true
-runner:
   enabled: true
 `, map[string]string{
 		"skills/tdd.yaml":                           "data:\n  testSurfaces:\n    - name: Unit\n      kind: isolated\n      location: internal\n",

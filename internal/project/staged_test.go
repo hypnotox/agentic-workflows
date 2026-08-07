@@ -451,12 +451,12 @@ func TestCheckStagedMigratesHistoricalWorkflowTelemetry(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
 	gitfixture.Stage(t, repo, map[string]string{
-		".awf/config.yaml": "prefix: example\nintegrationBranch: main\nworkflowTelemetry:\n  retention: {}\nrunner:\n  enabled: true\n",
+		".awf/config.yaml": "prefix: example\nintegrationBranch: main\nworkflowTelemetry:\n  retention: {}\n",
 		".awf/awf.lock":    `{"awfVersion":"0.20.0","schemaVersion":19,"files":{}}`,
 	})
 	gitfixture.Commit(t, repo, "generation 19", nil)
 	gitfixture.Stage(t, repo, map[string]string{
-		".awf/config.yaml": "prefix: example\nintegrationBranch: main\nrunner:\n  enabled: true\n",
+		".awf/config.yaml": "prefix: example\nintegrationBranch: main\n",
 		".awf/awf.lock":    `{"awfVersion":"0.20.0","schemaVersion":20,"files":{}}`,
 	})
 	p := openStaged(t, dir)

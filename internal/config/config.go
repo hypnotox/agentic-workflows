@@ -66,8 +66,6 @@ type Config struct {
 	CurrentState      *CurrentStateConfig `yaml:"currentState"`
 	Audit             *AuditConfig        `yaml:"audit"`
 	Bootstrap         *BootstrapConfig    `yaml:"bootstrap"`
-	Hooks             *HooksConfig        `yaml:"hooks"`
-	Runner            *RunnerConfig       `yaml:"runner"`
 	ProseGate         *ProseGateConfig    `yaml:"proseGate"`
 	MemoryCite        *MemoryCiteConfig   `yaml:"memoryCite"`
 	CommitPolicy      *CommitPolicyConfig `yaml:"commitPolicy"`
@@ -238,9 +236,8 @@ func (c *Config) Source() []byte { return c.raw }
 // current-state topics. It is deliberately separate from the legacy invariant
 // authority, which remains active throughout the bridge tranche.
 type CurrentStateConfig struct {
-	Sources          []CurrentStateSource `yaml:"sources"`
-	TestGlobs        []string             `yaml:"testGlobs"`
-	MaxTopicsPerPath *int                 `yaml:"maxTopicsPerPath"`
+	Sources   []CurrentStateSource `yaml:"sources"`
+	TestGlobs []string             `yaml:"testGlobs"`
 }
 
 // UnmarshalYAML preserves strict nested field validation for the custom-decoded
@@ -265,37 +262,11 @@ func (c *CurrentStateConfig) UnmarshalYAML(node *yaml.Node) error {
 			if err := decodeStringScalars(value, &c.TestGlobs, "currentState.testGlobs"); err != nil {
 				return err
 			}
-		case "maxTopicsPerPath":
-			maximum, err := decodeIntegerScalar(value, "currentState.maxTopicsPerPath")
-			if err != nil {
-				return err
-			}
-			c.MaxTopicsPerPath = &maximum
 		default:
 			return fmt.Errorf("field %s not found in type config.CurrentStateConfig", key)
 		}
 	}
 	return nil
-}
-
-// EffectiveMaxTopicsPerPath returns the configured fan-out budget, defaulting
-// to eight without materializing that default into the decoded config.
-func (c *CurrentStateConfig) EffectiveMaxTopicsPerPath() int {
-	if c == nil || c.MaxTopicsPerPath == nil {
-		return 8
-	}
-	return *c.MaxTopicsPerPath
-}
-
-func decodeIntegerScalar(node *yaml.Node, field string) (int, error) {
-	if node.Kind != yaml.ScalarNode || node.Tag != "!!int" {
-		return 0, fmt.Errorf("%s must be an integer scalar", field)
-	}
-	var value int
-	if err := node.Decode(&value); err != nil {
-		return 0, fmt.Errorf("%s must be an integer scalar: %w", field, err)
-	}
-	return value, nil
 }
 
 // CurrentStateSource describes one marker-bearing source family. closeSet
@@ -372,30 +343,6 @@ type BootstrapConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 
-// HooksConfig configures the rendered .awf/hooks/ payload singleton (ADR-0048):
-// three inert git-hook payload scripts adopters wire into hook setups they own.
-// BootstrapConfig semantics: a nil *HooksConfig (key absent) and Enabled false
-// both mean "do not render"; only Enabled true renders the payloads. The key
-// reuses the name the schema-4 drop-hooks migration stripped (ADR-0032); the
-// legacy array shape never reaches this struct - gated commands migrate first,
-// ungated ones fail loudly on the strict parser's type error.
-type HooksConfig struct {
-	Enabled bool `yaml:"enabled"`
-}
-
-// RunnerConfig configures the rendered runner singleton (ADR-0156): a pure,
-// fully awf-owned wrapper `awf` at the repo root that resolves one awf
-// invocation (vars.awfInvokeCmd, else bootstrap-pinned, else PATH awf) and
-// execs it with all arguments forwarded verbatim. Like the bootstrap/hooks
-// toggles, a nil *RunnerConfig (key absent) and Enabled false both mean "do
-// not render"; only Enabled true renders the wrapper. Default-on by seeding:
-// `awf init` scaffolds the key true and the schema-18 enable-runner migration
-// seeds an absent key to enabled on `awf upgrade` (an explicit false is
-// respected); at render time an absent key still renders nothing.
-type RunnerConfig struct {
-	Enabled bool `yaml:"enabled"`
-}
-
 // ProseGateConfig configures `awf check repo prose` (ADR-0119): a presence-level scan
 // of every tracked text file for the seven banned typographic punctuation
 // substitutes. BootstrapConfig semantics: a nil *ProseGateConfig (key absent)
@@ -403,7 +350,6 @@ type RunnerConfig struct {
 // default is off because the scan blocks a commit, and a tree that has never
 // been swept would fail it on the day it lands.
 type ProseGateConfig struct {
-	Enabled    bool             `yaml:"enabled"`
 	Exemptions []ProseExemption `yaml:"exemptions"`
 }
 
@@ -426,7 +372,6 @@ type ProseExemption struct {
 // run". The default is off because the scan blocks a commit, and a corpus that
 // has never been swept would fail it on the day it lands.
 type MemoryCiteConfig struct {
-	Enabled    bool              `yaml:"enabled"`
 	Exemptions []MemoryExemption `yaml:"exemptions"`
 }
 
@@ -443,16 +388,15 @@ type MemoryExemption struct {
 // slice means "accept any / disabled" per field. Resolution and defaults live in
 // internal/audit (audit.Resolve), which owns the audit domain semantics.
 type AuditConfig struct {
-	AllowedTypes        []string    `yaml:"allowedTypes"`
-	AllowedScopes       []ScopeSpec `yaml:"allowedScopes"`
-	SubjectMaxLength    *int        `yaml:"subjectMaxLength"`
-	DependencyManifests []string    `yaml:"dependencyManifests"`
-	DiffThreshold       *int        `yaml:"diffThreshold"`
-	DomainDocStaleness  *bool       `yaml:"domainDocStaleness"`
-	DomainCodeStaleness *bool       `yaml:"domainCodeStaleness"`
-	UndocumentedDomain  *bool       `yaml:"undocumentedDomain"`
-	PlainPunctuation    *bool       `yaml:"plainPunctuation"`
-	UncommittedChanges  *bool       `yaml:"uncommittedChanges"`
+	AllowedScopes []ScopeSpec `yaml:"allowedScopes"`
+}
+
+// AuditScopes returns the configured scope vocabulary, if the audit block exists.
+func AuditScopes(a *AuditConfig) []ScopeSpec {
+	if a == nil {
+		return nil
+	}
+	return a.AllowedScopes
 }
 
 // Load reads <awfDir>/config.yaml with the strict decoder, records awfDir as the
@@ -659,16 +603,6 @@ func (c *Config) Validate() error {
 		}
 	}
 	if c.CurrentState != nil {
-		for _, maximum := range []struct {
-			name  string
-			value *int
-		}{
-			{"maxTopicsPerPath", c.CurrentState.MaxTopicsPerPath},
-		} {
-			if maximum.value != nil && *maximum.value <= 0 {
-				return fmt.Errorf("currentState.%s must be positive; got %d", maximum.name, *maximum.value)
-			}
-		}
 		for i, src := range c.CurrentState.Sources {
 			if len(src.Globs) == 0 {
 				return fmt.Errorf("currentState.sources[%d] has no globs; list at least one path glob", i)
@@ -691,13 +625,6 @@ func (c *Config) Validate() error {
 	if c.CommitPolicy != nil {
 		if err := validateCommitPolicy(c.CommitPolicy, validateOpenSSHPublicKey); err != nil {
 			return err
-		}
-	}
-	if c.Audit != nil {
-		for _, g := range c.Audit.DependencyManifests {
-			if err := validatePathGlob(g); err != nil {
-				return fmt.Errorf("audit.dependencyManifests: %w", err)
-			}
 		}
 	}
 	// Targets: sanity only - the unknown-adapter-name check lives in project.Open

@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
-	"gopkg.in/yaml.v3"
 )
 
 // writeConfig writes config.yaml into a fresh awf dir and returns that dir.
@@ -440,36 +439,20 @@ func TestDocsDirRejectsEscapingPath(t *testing.T) {
 	}
 }
 
-func TestCurrentStateDefaultsAndPresence(t *testing.T) {
+func TestCurrentStatePresence(t *testing.T) {
 	absent, err := Parse("staged/.awf", []byte("prefix: x\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if absent.CurrentState != nil || absent.CurrentState.EffectiveMaxTopicsPerPath() != 8 {
-		t.Fatalf("absent currentState = %#v, effective topic max = %d", absent.CurrentState, absent.CurrentState.EffectiveMaxTopicsPerPath())
+	if absent.CurrentState != nil {
+		t.Fatalf("absent currentState = %#v", absent.CurrentState)
 	}
-
 	cfg, err := Parse("staged/.awf", []byte("prefix: x\nintegrationBranch: main\ncurrentState: {}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if cfg.CurrentState == nil {
 		t.Fatal("present currentState decoded as nil")
-	}
-	if err := cfg.Validate(); err != nil {
-		t.Fatal(err)
-	}
-	if cfg.CurrentState.MaxTopicsPerPath != nil || cfg.CurrentState.EffectiveMaxTopicsPerPath() != 8 {
-		t.Errorf("defaults = %#v, effective topic max = %d", cfg.CurrentState, cfg.CurrentState.EffectiveMaxTopicsPerPath())
-	}
-
-	max := 3
-	direct := &Config{Prefix: "x", IntegrationBranch: "main", DocsDir: "docs", Targets: []string{"claude"}, CurrentState: &CurrentStateConfig{MaxTopicsPerPath: &max}}
-	if err := direct.Validate(); err != nil {
-		t.Fatal(err)
-	}
-	if direct.CurrentState.MaxTopicsPerPath != &max || direct.CurrentState.EffectiveMaxTopicsPerPath() != 3 {
-		t.Errorf("explicit maximum was replaced: topics=%#v", direct.CurrentState.MaxTopicsPerPath)
 	}
 }
 
@@ -484,7 +467,6 @@ currentState:
       marker: '//'
       close: '*/'
   testGlobs: ['**/*_test.go']
-  maxTopicsPerPath: 4
 `
 	cfg, err := Parse("staged/.awf", []byte(valid))
 	if err != nil {
@@ -497,8 +479,6 @@ currentState:
 	for _, tc := range []struct {
 		name, fragment, want string
 	}{
-		{"zero maximum", "  maxTopicsPerPath: 0\n", "must be positive"},
-		{"negative maximum", "  maxTopicsPerPath: -1\n", "must be positive"},
 		{"empty source globs", "  sources:\n    - globs: []\n      marker: '//'\n", "has no globs"},
 		{"duplicate source glob", "  sources:\n    - globs: ['**/*.go', '**/*.go']\n      marker: '//'\n", "duplicate glob"},
 		{"empty source glob", "  sources:\n    - globs: ['']\n      marker: '//'\n", "empty"},
@@ -527,24 +507,12 @@ currentState:
 		{"prefix: x\ncurrentState:\n  topicCoverage: error\n", "topicCoverage"},
 		{"prefix: x\ncurrentState:\n  topicFanout: warn\n", "topicFanout"},
 		{"prefix: x\ncurrentState:\n  sources:\n    - globs: ['**/*.go']\n      marker: '//'\n      unknown: true\n", "unknown"},
-		{"prefix: x\ncurrentState:\n  maxTopicsPerPath: 20\n  maxTopicsPerPath: 21\n", "already set"},
+		{"prefix: x\ncurrentState:\n  maxTopicsPerPath: 20\n", "maxTopicsPerPath"},
+		{"prefix: x\ncurrentState:\n  testGlobs: ['**/*.go']\n  testGlobs: ['**/*.md']\n", "already set"},
 		{"prefix: x\ncurrentState:\n  sources:\n    - globs: ['**/*.go']\n      marker: '//'\n      marker: '#'\n", "already set"},
 	} {
 		if _, err := Parse("staged/.awf", []byte(tc.body)); err == nil || !strings.Contains(err.Error(), tc.want) {
 			t.Errorf("strict nested field was accepted: %v", err)
-		}
-	}
-}
-
-func TestCurrentStateMaximumIntegerOverflow(t *testing.T) {
-	for _, field := range []string{"maxTopicsPerPath"} {
-		node := &yaml.Node{Kind: yaml.MappingNode, Content: []*yaml.Node{
-			{Kind: yaml.ScalarNode, Tag: "!!str", Value: field},
-			{Kind: yaml.ScalarNode, Tag: "!!int", Value: "999999999999999999999999999999999999"},
-		}}
-		var cfg CurrentStateConfig
-		if err := cfg.UnmarshalYAML(node); err == nil || !strings.Contains(err.Error(), "integer scalar") {
-			t.Fatalf("UnmarshalYAML(%s) = %v", field, err)
 		}
 	}
 }
@@ -590,11 +558,7 @@ func TestCurrentStateRejectsNonStringScalars(t *testing.T) {
 func TestCurrentStateRejectsWrongValueTypes(t *testing.T) {
 	for _, body := range []string{
 		"prefix: x\ncurrentState:\n  testGlobs: {}\n",
-		"prefix: x\ncurrentState:\n  maxTopicsPerPath: null\n",
-		"prefix: x\ncurrentState:\n  maxTopicsPerPath: nope\n",
-		"prefix: x\ncurrentState:\n  maxTopicsPerPath: true\n",
-		"prefix: x\ncurrentState:\n  maxTopicsPerPath: 1.5\n",
-		"prefix: x\ncurrentState:\n  maxTopicsPerPath: 999999999999999999999999999999999999\n",
+		"prefix: x\ncurrentState:\n  maxTopicsPerPath: 8\n",
 		"prefix: x\ncurrentState:\n  sources:\n    - globs: {}\n",
 		"prefix: x\ncurrentState:\n  sources:\n    - marker: []\n",
 		"prefix: x\ncurrentState:\n  sources:\n    - close: []\n",
@@ -641,21 +605,6 @@ func TestIntegrationBranchValidation(t *testing.T) {
 	}
 }
 
-func TestAuditDependencyManifestValidation(t *testing.T) {
-	ok := &Config{Prefix: "x", IntegrationBranch: "main", DocsDir: "docs", Targets: []string{"claude"}, Audit: &AuditConfig{
-		DependencyManifests: []string{"go.mod", "**/*.csproj", "src/go.mod"},
-	}}
-	if err := ok.Validate(); err != nil {
-		t.Errorf("valid manifest globs (path globs included, ADR-0077) rejected: %v", err)
-	}
-	bad := &Config{Prefix: "x", IntegrationBranch: "main", DocsDir: "docs", Audit: &AuditConfig{
-		DependencyManifests: []string{"["},
-	}}
-	if err := bad.Validate(); err == nil {
-		t.Error("expected malformed manifest glob to be rejected")
-	}
-}
-
 func TestBootstrapConfigDecode(t *testing.T) {
 	dir := writeConfig(t, "prefix: example\nbootstrap:\n  enabled: true\n")
 	c, err := Load(dir)
@@ -673,33 +622,6 @@ func TestBootstrapConfigDecode(t *testing.T) {
 	}
 	if c2.Bootstrap != nil {
 		t.Errorf("bootstrap = %+v, want nil when key absent", c2.Bootstrap)
-	}
-}
-
-func TestHooksConfigDecode(t *testing.T) {
-	dir := writeConfig(t, "prefix: example\nhooks:\n  enabled: true\n")
-	c, err := Load(dir)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
-	if c.Hooks == nil || !c.Hooks.Enabled {
-		t.Errorf("hooks = %+v, want enabled true", c.Hooks)
-	}
-
-	absent := writeConfig(t, "prefix: example\n")
-	c2, err := Load(absent)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
-	if c2.Hooks != nil {
-		t.Errorf("hooks = %+v, want nil when key absent", c2.Hooks)
-	}
-
-	// The legacy pre-ADR-0032 array shape must fail loudly on the strict
-	// parser, never silently misparse (ADR-0048).
-	legacy := writeConfig(t, "prefix: example\nhooks:\n  - pre-commit\n")
-	if _, err := Load(legacy); err == nil {
-		t.Error("expected legacy hooks array shape to be rejected")
 	}
 }
 

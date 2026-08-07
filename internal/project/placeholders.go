@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/audit"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 )
 
@@ -67,7 +68,7 @@ func (p *Project) placeholderRegistry() (map[string]string, error) {
 // commitScopeTable renders the allowed scopes as a markdown name|meaning table,
 // or "" when scopes are accept-any (ADR-0056 meanings, ADR-0057 consumer).
 func (p *Project) commitScopeTable() string {
-	scopes := audit.Resolve(p.Cfg.Audit).AllowedScopes
+	scopes := audit.Resolve(config.AuditScopes(p.Cfg.Audit)).AllowedScopes
 	if len(scopes) == 0 {
 		return ""
 	}

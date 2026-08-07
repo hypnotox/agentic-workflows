@@ -92,7 +92,7 @@ func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPa
 	}
 	proj["parts"] = parts
 	if foldScopes {
-		proj["commitScopes"] = audit.Resolve(p.Cfg.Audit).AllowedScopes
+		proj["commitScopes"] = audit.Resolve(config.AuditScopes(p.Cfg.Audit)).AllowedScopes
 	}
 	enc, err := yaml.Marshal(proj)
 	if err != nil { // coverage-ignore: proj holds only YAML-sourced, marshalable values; yaml.Marshal cannot fail here

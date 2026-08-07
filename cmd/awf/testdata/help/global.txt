@@ -17,8 +17,8 @@ help:
       context | Orient by request with compact current-state impact reports
       topic | Query current claims, history, references, and applicability
       new | Scaffold a new artifact: kind ∈ {adr, plan, topic, skill, agent, doc}
-      enable | Enable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap, hooks, runner}
-      disable | Disable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap, hooks, runner}
+      enable | Enable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap}
+      disable | Disable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap}
       upgrade | Migrate the .awf/ config tree or consume a current-state attestation
       uninstall | Remove awf's generated files (keeps .awf/)
       changelog | Print the embedded changelog, or one version/range of it

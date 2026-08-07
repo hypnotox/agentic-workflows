@@ -38,7 +38,6 @@ func writeScaffold(t *testing.T, b []byte) string {
 // TestScaffoldEnablesCoreTargets asserts that the scaffolded config enables
 // exactly the catalog's core skills and core docs (ADR-0022), with a concrete
 // negative check that a known opt-in skill is omitted.
-// invariant: tooling/init-and-enablement:init-hooks-default-on (TestScaffoldEnablesCoreTargets)
 func TestScaffoldEnablesCoreTargets(t *testing.T) {
 	b, _, err := ScaffoldConfig("myproj", nil, nil, nil)
 	if err != nil {

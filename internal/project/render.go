@@ -29,10 +29,6 @@ var runnerSections = []string{"runner-body"}
 // through hookTID.
 var hookNames = []string{"pre-commit", "commit-msg", "pre-push", "pre-merge-commit", "reference-transaction"}
 
-// HookNames returns the git-hook payload names the hooks singleton renders
-// (ADR-0048), for CLI surfaces that enumerate them (the KnownTargets pattern).
-func HookNames() []string { return slices.Clone(hookNames) }
-
 type RenderedFile struct {
 	Path         string
 	Content      string
@@ -92,10 +88,7 @@ func (p *Project) data(sc config.Sidecar, eff map[string]bool) map[string]any {
 		// safe for publication templates: `with` and `if` treat it as absent.
 		"commitPolicy":  p.Cfg.CommitPolicy,
 		"gatedCommands": gatedCommandsDisplay(),
-		// Runner-enabled state for awf-verb fallback arms (ADR-0156 Decision 4):
-		// enabled renders ./awf forms; disabled - and empty publication data -
-		// degrades to the generic awf forms.
-		"runnerEnabled": p.Cfg.Runner != nil && p.Cfg.Runner.Enabled,
+		"runnerEnabled": true,
 		// Project-level session-handoff signal for the neutral (guide/singleton
 		// doc) render; per-target renders overwrite it from targetTemplateData
 		// (ADR-0157 Decision 6).
@@ -108,7 +101,7 @@ func (p *Project) data(sc config.Sidecar, eff map[string]bool) map[string]any {
 // audit.Resolve path awf check staged commit reads, so prose and gate agree by
 // construction - or "" when scopes are accept-any (ADR-0051).
 func (p *Project) commitScopesDisplay() string {
-	scopes := audit.Resolve(p.Cfg.Audit).AllowedScopes
+	scopes := audit.Resolve(config.AuditScopes(p.Cfg.Audit)).AllowedScopes
 	if len(scopes) == 0 {
 		return ""
 	}
