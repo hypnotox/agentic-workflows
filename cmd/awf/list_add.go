@@ -34,6 +34,7 @@ type domainDependencies struct {
 	write       func(string, []byte, os.FileMode) error
 	scaffold    func(*project.Project, string) error
 	synchronize func(context.Context, string, io.Writer) error
+	authored    func(string, string) (bool, error)
 }
 
 func openDomainProject(ctx context.Context, root string) (*project.Project, error) {
@@ -51,6 +52,7 @@ func productionDomainDependencies() domainDependencies {
 		write:       os.WriteFile,
 		scaffold:    scaffoldDomainCurrentState,
 		synchronize: syncDomainProject,
+		authored:    hasDomainSidecarOrParts,
 	}
 }
 
@@ -119,7 +121,7 @@ func runRemoveDomainWith(ctx context.Context, root, name string, stdout io.Write
 	if err := dependencies.synchronize(ctx, root, stdout); err != nil {
 		return err
 	}
-	authored, err := hasDomainSidecarOrParts(root, name)
+	authored, err := dependencies.authored(root, name)
 	if err != nil {
 		return err
 	}
