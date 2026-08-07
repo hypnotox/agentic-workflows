@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-06
 adrs: [house-standard-configuration-expresses-repo-facts-only, unconditional-gates-and-audit-rules, cli-grammar-expresses-creation-and-inventory]
-status: Proposed
+status: Implemented
 ---
 # Plan: Collapse The Configuration Surface To Repo Facts
 

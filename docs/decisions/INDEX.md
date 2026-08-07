@@ -3,9 +3,6 @@
 ## In flight
 
 - [ADR-0246: Ship thin support skills for awf's own mechanisms](0246-ship-thin-support-skills-for-awf-s-own-mechanisms.md) (Proposed)
-- [ADR-0251: House Standard: Configuration Expresses Repo Facts Only](0251-house-standard-configuration-expresses-repo-facts-only.md) (Implementing)
-- [ADR-0253: Unconditional Gates And Audit Rules](0253-unconditional-gates-and-audit-rules.md) (Implementing)
-- [ADR-0254: CLI Grammar Expresses Creation And Inventory](0254-cli-grammar-expresses-creation-and-inventory.md) (Implementing)
 
 ## History
 
@@ -258,4 +255,7 @@
 - [ADR-0248: Permit Necessary Phase-Owner Path Deviations](0248-permit-necessary-phase-owner-path-deviations.md) (Implemented)
 - [ADR-0249: Correct Phase-Owner Path-Latitude Claim Scope](0249-correct-phase-owner-path-latitude-claim-scope.md) (Implemented)
 - [ADR-0250: Compact Source Provenance for Generated Documents](0250-compact-source-provenance-for-generated-documents.md) (Implemented)
+- [ADR-0251: House Standard: Configuration Expresses Repo Facts Only](0251-house-standard-configuration-expresses-repo-facts-only.md) (Implemented)
 - [ADR-0252: Retire The Bootstrap Installer](0252-retire-the-bootstrap-installer.md) (Abandoned)
+- [ADR-0253: Unconditional Gates And Audit Rules](0253-unconditional-gates-and-audit-rules.md) (Implemented)
+- [ADR-0254: CLI Grammar Expresses Creation And Inventory](0254-cli-grammar-expresses-creation-and-inventory.md) (Implemented)

@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: unconditional-gates-and-audit-rules
-status: Implementing
+status: Implemented
 date: 2026-08-06
 ---
 # ADR-0253: Unconditional Gates And Audit Rules
@@ -237,3 +237,4 @@ nothing flags the drift; the implementing plan handles both.
 - 2026-08-06: Proposed
 - 2026-08-07: Implementing; content-sha256: 373cc8954c992435147434addf0bb09f318012b530caad7fc55fd13b8c66fcd0
 - 2026-08-07: Applied; operations: add `tooling/quality-gates:gates-always-run`, add `tooling/audit-and-snapshots:audit-advisories-always-run`, add `tooling/audit-and-snapshots:audit-thresholds-fixed`, add `config/migrations-and-locks:toggle-keys-dropped`, add `invariants/topics-and-markers:fan-out-budget-fixed`, add `rendering/companion-scripts:runner-wrapper-rendered`, remove `rendering/companion-scripts:runner-singleton-toggle`, update `rendering/project-output-plan:conditional-unit-single-source`, remove `tooling/cli:check-disabled-child-disclosure`, remove `tooling/init-and-enablement:init-hooks-default-on`, update `rendering/singletons-and-payloads:hook-payloads-rendered`, update `rendering/companion-scripts:runner-pure-forwarder`, update `rendering/companion-scripts:hook-payloads-fallback-safe`, update `config/validation:hooks-commands-resolvable`, add `config/migrations-and-locks:toggle-keys-forward-ported`, update `tooling/quality-gates:memory-citation-gate`, update `tooling/quality-gates:prose-gate-refuses-without-git`, update `tooling/audit-and-snapshots:audit-conventional-commits`, update `tooling/audit-and-snapshots:audit-plain-punctuation`, update `tooling/audit-and-snapshots:audit-uncommitted-changes`, update `tooling/audit-and-snapshots:audit-domain-code-staleness`, update `tooling/audit-and-snapshots:audit-plan-threshold-warn`, update `tooling/cli:repo-check-capability-plan`, update `adr-system/plan-artifacts:plan-commit-subject-shape-checked`, update `adr-system/plan-artifacts:plan-commit-subject-length-checked`
+- 2026-08-07: Implemented; content-sha256: 373cc8954c992435147434addf0bb09f318012b530caad7fc55fd13b8c66fcd0

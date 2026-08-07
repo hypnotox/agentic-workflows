@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: cli-grammar-expresses-creation-and-inventory
-status: Implementing
+status: Implemented
 date: 2026-08-06
 ---
 # ADR-0254: CLI Grammar Expresses Creation And Inventory
@@ -179,3 +179,4 @@ as the house-standard record, per item 6.
 - 2026-08-06: Proposed
 - 2026-08-07: Implementing; content-sha256: 22e87ee29658590e5540be573fbc6b35aed70d1051a6ac8637b35e56c5d62a41
 - 2026-08-07: Applied; operations: add `tooling/cli:cli-creation-and-inventory`, add `tooling/cli:domain-lifecycle-commands`, add `tooling/init-and-enablement:init-bootstrap-default-on`, remove `tooling/cli:cli-config-kinds`, remove `tooling/cli:target-cli`, remove `tooling/init-and-enablement:add-applies-closure-plan`, remove `tooling/init-and-enablement:add-skill-pairs-agent`, remove `tooling/init-and-enablement:remove-agent-pairing-guard`, remove `tooling/init-and-enablement:remove-refuses-dependents`, remove `tooling/init-and-enablement:new-seeds-scaffold-vars`
+- 2026-08-07: Implemented; content-sha256: 22e87ee29658590e5540be573fbc6b35aed70d1051a6ac8637b35e56c5d62a41

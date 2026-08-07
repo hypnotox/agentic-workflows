@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: house-standard-configuration-expresses-repo-facts-only
-status: Implementing
+status: Implemented
 date: 2026-08-06
 ---
 # ADR-0251: House Standard: Configuration Expresses Repo Facts Only
@@ -292,3 +292,4 @@ are removed, rather than here.
 - 2026-08-07: Reapplied; operations: update `rendering/sync-and-drift:agent-guide-size-advisory`, update `rendering/sync-and-drift:managed-output-attribution`
 - 2026-08-07: Amended; content-sha256: b8506f282017cd98777bab37d877200c518ba3e6b4161792f6ddc1a49782d965
 - 2026-08-07: Applied; operations: update `rendering/doc-outputs:opaque-doc-source-guidance`
+- 2026-08-07: Implemented; content-sha256: b8506f282017cd98777bab37d877200c518ba3e6b4161792f6ddc1a49782d965
