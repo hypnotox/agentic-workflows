@@ -343,6 +343,36 @@ func TestResidentMigrationsPreserveOwnedRootsThroughProjectSync(t *testing.T) {
 	}
 }
 
+func TestRetiredPlanResyncDuplicateSelectionsUpgradeAndSync(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "prefix: example\nintegrationBranch: main\nskills: [reviewing-plan-resync, reviewing-plan-resync]\nagents: []\ntargets: [claude]\n")
+	lock := &manifest.Lock{AWFVersion: "0.31.0", SchemaVersion: 37, Files: map[string]manifest.Entry{}, InitializedWithVersion: "0.31.0"}
+	if err := lock.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := migrate.Upgrade(testContext(t), root); err != nil {
+		t.Fatal(err)
+	}
+	configBytes, err := os.ReadFile(filepath.Join(root, ".awf", "config.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(configBytes), "reviewing-plan-resync") {
+		t.Fatalf("retired duplicate survived upgrade:\n%s", configBytes)
+	}
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	applied, changes, err := migrate.Upgrade(testContext(t), root)
+	if err != nil || len(applied) != 0 || len(changes) != 0 {
+		t.Fatalf("second upgrade = %v, %v, %v", applied, changes, err)
+	}
+}
+
 func TestSyncWritesFilesAndLock(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(testContext(t), root)

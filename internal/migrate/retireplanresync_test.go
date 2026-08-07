@@ -30,6 +30,7 @@ func TestRemovePlanResyncSelection(t *testing.T) {
 		{"block", "prefix: ex\nskills:\n  - reviewing-plan\n  - reviewing-plan-resync\n  - writing-plans\nvars:\n  literal: keep\n", "prefix: ex\nskills:\n  - reviewing-plan\n  - writing-plans\nvars:\n  literal: keep\n", true},
 		{"flow", "prefix: ex\nskills: [reviewing-plan, reviewing-plan-resync, writing-plans]\n", "prefix: ex\nskills:\n  - reviewing-plan\n  - writing-plans\n", true},
 		{"sole", "prefix: ex\nskills: [reviewing-plan-resync]\n", "prefix: ex\nskills: []\n", true},
+		{"duplicates", "prefix: ex\nskills: [reviewing-plan-resync, reviewing-plan, reviewing-plan-resync]\n", "prefix: ex\nskills:\n  - reviewing-plan\n", true},
 		{"empty", "prefix: ex\nskills: []\n", "prefix: ex\nskills: []\n", false},
 		{"absent member", "prefix: ex\nskills: [reviewing-plan]\n", "prefix: ex\nskills: [reviewing-plan]\n", false},
 		{"absent key", "prefix: ex\nvars: {literal: keep}\n", "prefix: ex\nvars: {literal: keep}\n", false},
@@ -59,7 +60,7 @@ func TestRemovePlanResyncSelection(t *testing.T) {
 // invariant: config/migrations-and-locks:retired-plan-resync-selection-migration (TestRetirePlanResyncMigrationReportsAndStamps)
 func TestRetirePlanResyncMigrationReportsAndStamps(t *testing.T) {
 	root := t.TempDir()
-	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "prefix: ex\nintegrationBranch: main\nskills: [reviewing-plan-resync, reviewing-plan]\nagents: [plan-reviewer]\n")
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "prefix: ex\nintegrationBranch: main\nskills: [reviewing-plan-resync, reviewing-plan, reviewing-plan-resync]\nagents: [plan-reviewer]\n")
 	stampLockAt(t, filepath.Join(root, ".awf", "awf.lock"), 37)
 	applied, changes, err := Upgrade(context.Background(), root)
 	if err != nil {

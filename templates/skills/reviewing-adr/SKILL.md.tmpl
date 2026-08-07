@@ -1,10 +1,11 @@
 ---
 name: {{ .prefix }}-reviewing-adr
 description: >
-  Use after {{ .prefix }}-proposing-adr writes an ADR under {{ .layout.adrDir }}
-  (status Proposed). Dispatches the adr-reviewer subagent, routes findings
-  (mechanical / reasoned / user-decision), applies fixes, and sends every linked
-  Proposed plan through ordinary {{ .prefix }}-reviewing-plan after ADR approval.
+  Use after {{ .prefix }}-proposing-adr writes a Proposed ADR, or when an amendable
+  Accepted or Implementing ADR needs review. Dispatches the adr-reviewer subagent,
+  routes findings (mechanical / reasoned / user-decision), preserves the ADR's
+  nonterminal lifecycle status, and sends every linked Proposed plan through
+  ordinary {{ .prefix }}-reviewing-plan after ADR approval.
 ---
 
 <!-- awf:section when-fires -->
@@ -12,7 +13,7 @@ description: >
 
 ## When this skill fires
 
-Terminal step of `{{ .prefix }}-proposing-adr`. Invoked once the ADR file is written and committed (status `Proposed`). The `adr-reviewer` subagent is a report-only judge: it reads the ADR, runs its internal lenses, classifies each finding as mechanical / reasoned / user-decision, and returns a findings digest. This skill dispatches that agent, applies the fixes, runs a single verify pass, gates on user-decision findings, and chains to the next node.
+Terminal step of `{{ .prefix }}-proposing-adr`, and the ordinary review entry point for a substantive amendment or correction while an ADR is `Proposed`, `Accepted`, or `Implementing`. The ADR must remain nonterminal and amendable. The `adr-reviewer` subagent is a report-only judge: it reads the ADR, runs its internal lenses, classifies each finding as mechanical / reasoned / user-decision, and returns a findings digest. This skill dispatches that agent, applies the fixes, runs a single verify pass, gates on user-decision findings, and chains to the next node.
 <!-- awf:end -->
 
 <!-- awf:include review-remediation-autonomy -->
@@ -48,7 +49,7 @@ This skill may run without an effort. If continuity independently fired, validat
 <!-- awf:end -->
 
 <!-- awf:section apply-fixes-commit -->
-5. **Apply and commit fixes.** This skill applies the mechanical and reasoned fixes to the ADR file and commits them as new commits (never `--amend`) using the project's commit scope conventions. A substantive amendment or review correction invalidates prior review of every Proposed plan linked to this ADR.
+5. **Apply and commit fixes.** This skill applies the mechanical and reasoned fixes to the ADR file and commits them as new commits (never `--amend`) using the project's commit scope conventions. Preserve the ADR's entry status: a `Proposed` record remains freely mutable, while an `Accepted` or `Implementing` record uses `{{ .prefix }}-adr-lifecycle` to append the required amendment history without changing status or rewriting an already Applied operation. A substantive amendment or review correction invalidates prior review of every Proposed plan linked to this ADR.
 <!-- awf:end -->
 
 <!-- awf:section re-review-loop -->
@@ -56,11 +57,11 @@ This skill may run without an effort. If continuity independently fired, validat
 <!-- awf:end -->
 
 <!-- awf:section status-flip -->
-7. **Do not flip the ADR status here.** The ADR stays `Proposed` through review. A later implementation step owns any `Accepted` or `Implementing` transition and every explicit Applied batch. After assurance settles or is explicitly skipped, `effort-workflow` owns effort-backed terminal closure; for effort-free execution, the parent owns the deferred status-only flip to `Implemented`, with `{{ .prefix }}-adr-lifecycle` supplying the mechanics. "Reviewed to a settled state" means the design is review-converged, not that the status changed. After the review settles (no structural findings, or user decisions resolved), proceed to hand-off.
+7. **Do not flip the ADR status here.** Preserve the nonterminal status with which the ADR entered review: `Proposed`, `Accepted`, or `Implementing`. A later implementation step owns any not-yet-reached transition and every explicit Applied batch. After assurance settles or is explicitly skipped, `effort-workflow` owns effort-backed terminal closure; for effort-free execution, the parent owns the deferred status-only flip to `Implemented`, with `{{ .prefix }}-adr-lifecycle` supplying the mechanics. "Reviewed to a settled state" means the design is review-converged, not that the status changed. After the review settles (no structural findings, or user decisions resolved), proceed to hand-off.
 <!-- awf:end -->
 
 <!-- awf:section hand-off-to-plan-review -->
-8. **Stop for approval, then review every linked plan.** Once the review converges (the ADR remains `Proposed`), the settled ADR is the second mandatory approval check-in: complete the approval protocol below, present the settled-ADR summary, and route onward only after explicit user approval; the review loop itself (dispatch, fix application, verify pass) stays autonomous. After approval, run `awf context <explicit-ADR-path>` and consume its deterministic linked-plan references, which come from parsed plan-level `adrs:` identities rather than modification time, filename implication, or session inference. Invoke ordinary `{{ .prefix }}-reviewing-plan` separately for every linked plan whose parsed status remains `Proposed`; never omit one or start plan review before ADR review settles. If implementation has begun, each plan review inventories completed affected phases and renews assurance where the amended decision can affect landed work before progression. If no linked Proposed plan exists yet, route by the brainstorm's terminal decision: invoke `{{ .prefix }}-writing-plans` when planning is warranted, else proceed directly to implementation.
+8. **Stop for approval, then review every linked plan.** Once the review converges (the ADR retains its entry status), the settled ADR is the mandatory approval check-in for the reviewed decision content: complete the approval protocol below, present the settled-ADR summary, and route onward only after explicit user approval; the review loop itself (dispatch, fix application, verify pass) stays autonomous. After approval, run `awf context <explicit-ADR-path>` and consume its deterministic linked-plan references, which come from parsed plan-level `adrs:` identities rather than modification time, filename implication, or session inference. Invoke ordinary `{{ .prefix }}-reviewing-plan` separately for every linked plan whose parsed status remains `Proposed`; never omit one or start plan review before ADR review settles. If implementation has begun, each plan review inventories completed affected phases and renews assurance where the amended decision can affect landed work before progression. If no linked Proposed plan exists yet, route by the brainstorm's terminal decision: invoke `{{ .prefix }}-writing-plans` when planning is warranted, else proceed directly to implementation.
 <!-- awf:include context-spill -->
 
 <!-- awf:include checkpoint-approval -->

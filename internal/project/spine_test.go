@@ -1700,6 +1700,18 @@ func TestLinkedPlanReviewFreshness(t *testing.T) {
 		}
 	}
 	adr := renderSkillGolden(t, "reviewing-adr", data)
+	for _, want := range []string{
+		"substantive amendment or correction while an ADR is `Proposed`, `Accepted`, or `Implementing`",
+		"Preserve the ADR's entry status",
+		"an `Accepted` or `Implementing` record uses `example-adr-lifecycle`",
+		"Preserve the nonterminal status with which the ADR entered review",
+		"each plan review inventories completed affected phases",
+		"renews assurance where the amended decision can affect landed work",
+	} {
+		if !strings.Contains(adr, want) {
+			t.Errorf("ordinary ADR review missing %q", want)
+		}
+	}
 	assertOrderedPhrases(t, adr, "review converges", "After approval, run `awf context <explicit-ADR-path>`", "Invoke ordinary `example-reviewing-plan` separately for every linked plan")
 	if _, ok := catalog.Standard.Skills["reviewing-plan-"+"resync"]; ok {
 		t.Fatal("retired plan review skill remains in the live catalog")
@@ -2104,7 +2116,6 @@ func TestActiveEffortCreationSignaturesStaySynchronized(t *testing.T) {
 // TestWorkingMemorySingleHomeSurfaces asserts the workflow doc remains the
 // detailed protocol home while guides and skills carry executable routing.
 // invariant: rendering/guide-and-doc-templates:working-memory-single-home (TestWorkingMemorySingleHomeSurfaces)
-// invariant: rendering/workflow-skill-templates:memory-log-consumer-coverage (TestMemoryLogConsumerCoverage)
 func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 	data := map[string]any{"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}, "skills": map[string]bool{"effort-workflow": true}}
 	workflow := renderGolden(t, "docs/workflow.md.tmpl", data)
@@ -2129,6 +2140,7 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 	}
 }
 
+// invariant: rendering/workflow-skill-templates:memory-log-consumer-coverage (TestMemoryLogConsumerCoverage)
 func TestMemoryLogConsumerCoverage(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example", "vars": map[string]any{"gateCmd": "./x gate"},

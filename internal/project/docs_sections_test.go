@@ -5,11 +5,13 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -145,7 +147,6 @@ func TestWorkflowDocChainOrder(t *testing.T) {
 	if !strings.Contains(out, "settle ADR review first") || !strings.Contains(out, "every linked Proposed plan") {
 		t.Errorf("workflow guidance must route ADR-first ordinary plan review:\n%s", out)
 	}
-	// invariant: rendering/workflow-skill-templates:single-workflow-no-depth-controls (TestWorkflowDocChainOrder)
 	for _, forbidden := range []string{"workflow profiles", "depth controls", "routers", "classifiers", "runtime policy knobs"} {
 		if !strings.Contains(out, "no "+forbidden) && !strings.Contains(out, "no workflow profiles, depth controls, routers, classifiers, or runtime policy knobs") {
 			t.Errorf("workflow guidance does not forbid %q:\n%s", forbidden, out)
@@ -166,6 +167,86 @@ func TestWorkflowDocChainOrder(t *testing.T) {
 			t.Errorf("project workflow override missing plan selection %q:\n%s", want, override)
 		}
 	}
+}
+
+// invariant: rendering/workflow-skill-templates:single-workflow-no-depth-controls (TestSingleWorkflowHasNoDepthControls)
+func TestSingleWorkflowHasNoDepthControls(t *testing.T) {
+	var configSurface []string
+	seen := map[reflect.Type]bool{}
+	var collectConfig func(reflect.Type)
+	collectConfig = func(typ reflect.Type) {
+		for typ.Kind() == reflect.Pointer || typ.Kind() == reflect.Slice || typ.Kind() == reflect.Map {
+			typ = typ.Elem()
+		}
+		if typ.Kind() != reflect.Struct || typ.PkgPath() != reflect.TypeOf(config.Config{}).PkgPath() || seen[typ] {
+			return
+		}
+		seen[typ] = true
+		for i := range typ.NumField() {
+			field := typ.Field(i)
+			configSurface = append(configSurface, field.Name, field.Tag.Get("yaml"))
+			collectConfig(field.Type)
+		}
+	}
+	collectConfig(reflect.TypeOf(config.Config{}))
+
+	var catalogSurface []string
+	for name := range catalog.Standard.Skills {
+		catalogSurface = append(catalogSurface, name)
+	}
+	var runtimeSurface []string
+	executionDir := filepath.Join(repoRootDir(t), "internal", "execution")
+	entries, err := os.ReadDir(executionDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") {
+			continue
+		}
+		body, err := os.ReadFile(filepath.Join(executionDir, entry.Name()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		runtimeSurface = append(runtimeSurface, string(body))
+	}
+	liveConfig, err := os.ReadFile(filepath.Join(repoRootDir(t), ".awf", "config.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	configSurface = append(configSurface, string(liveConfig))
+
+	for name, surface := range map[string]string{
+		"config":  strings.Join(configSurface, "\n"),
+		"catalog": strings.Join(catalogSurface, "\n"),
+		"runtime": strings.Join(runtimeSurface, "\n"),
+	} {
+		if violations := prohibitedWorkflowControlTokens(surface); len(violations) != 0 {
+			t.Errorf("%s exposes prohibited workflow controls: %v", name, violations)
+		}
+	}
+	for class, mutation := range map[string]string{
+		"profile":        "GovernanceProfile",
+		"depth control":  "WorkflowDepth",
+		"router":         "WorkflowRouter",
+		"classifier":     "WorkflowClassifier",
+		"runtime policy": "RuntimePolicy",
+	} {
+		if violations := prohibitedWorkflowControlTokens(mutation); len(violations) != 1 {
+			t.Errorf("%s mutation produced violations %v", class, violations)
+		}
+	}
+}
+
+func prohibitedWorkflowControlTokens(surface string) []string {
+	lower := strings.ToLower(surface)
+	var out []string
+	for _, token := range []string{"governanceprofile", "workflowdepth", "depthcontrol", "workflowrouter", "workflowclassifier", "runtimepolicy"} {
+		if strings.Contains(lower, token) {
+			out = append(out, token)
+		}
+	}
+	return out
 }
 
 // invariant: rendering/guide-and-doc-templates:maintainable-code-design-guide (TestMaintainableCodeDesignGuide)
