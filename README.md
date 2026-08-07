@@ -38,9 +38,11 @@ instead of rotting.
 
 - **Workflow skills** (one complete catalog tree per built-in runtime:
   `.pi/skills/<prefix>-*/` and `.claude/skills/<prefix>-*/`). The core chain:
-  brainstorming, ADR proposal and review, planning and plan review, a plan↔ADR resync,
-  two execution styles (inline or subagent-per-task), implementation review, and a
-  closing retrospective that promotes recurring findings toward deterministic checks.
+  brainstorming when choices need clarification, ADR proposal and review for load-bearing
+  decisions, planning and plan review when sequencing helps, two execution styles (inline
+  or subagent-per-task), implementation review when assurance has value, and a closing
+  retrospective that promotes recurring findings toward deterministic checks. Ordinary
+  plan review owns freshness after a linked ADR changes; there is no separate resync node.
   The same catalog also includes task skills such as TDD, bugfix, debugging, a refactor
   coupling audit, and a roadmap-graduation pass.
 - **Agents**, likewise per runtime. The review agents (`adr-reviewer`, `plan-reviewer`,
@@ -91,29 +93,30 @@ A separate `handoff_session` tool accepts only exact bounded `{kickoff}` prose f
 
 ## The workflow it renders
 
-The rendered skills and agents walk an agent through one canonical chain. Brainstorming is
-the hard prerequisite; an ADR is added only when a decision is load-bearing, a plan only when
-the work is complex, and a plan-ADR resync runs only when both exist. Every written artifact
-gets an independent fresh-context review, and a closing retrospective promotes recurring
-findings toward deterministic checks.
+The rendered skills and agents implement one workflow whose mechanisms fire independently.
+Brainstorming is used when material choices need clarification; an ADR records a load-bearing
+decision; a plan is used when sequencing, coordination, or resumability helps. Every written
+artifact gets an independent fresh-context review. When a linked ADR changes, ordinary plan
+review revalidates each affected Proposed plan and renews affected implementation assurance.
+A closing retrospective promotes recurring findings toward deterministic checks.
 
 ```mermaid
 flowchart LR
-    B([brainstorm]) --> Q1{load-bearing?}
+    IN([intake]) --> Q0{clarification needed?}
+    Q0 -->|yes| B[brainstorm]
+    Q0 -->|no| Q1{load-bearing decision?}
+    B --> Q1
     Q1 -->|yes| ADR["ADR:<br/>propose + review"]
-    Q1 -->|no| Q2{complex?}
+    Q1 -->|no| Q2{plan useful?}
     ADR --> Q2
     Q2 -->|yes| PLAN["plan:<br/>write + review"]
     Q2 -->|no| IMPL[implementation]
-    PLAN --> Q3{ADR too?}
-    Q3 -->|yes| RS[plan-ADR resync]
-    Q3 -->|no| IMPL
-    RS --> IMPL
-    IMPL --> REV["implementation<br/>review"]
+    PLAN --> IMPL
+    IMPL --> REV["implementation<br/>review when warranted"]
     REV --> RETRO([retrospective])
 ```
 
-Many tasks need neither an ADR nor a plan and go straight from brainstorm to implementation.
+Many tasks need neither brainstorming, an ADR, nor a plan and go straight from intake to implementation.
 See [`docs/workflow.md`](docs/workflow.md) for the full rules.
 
 ## How it works
