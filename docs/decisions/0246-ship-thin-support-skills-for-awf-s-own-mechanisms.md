@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: ship-thin-support-skills-for-awf-s-own-mechanisms
-status: Proposed
+status: Accepted
 date: 2026-08-07
 ---
 # ADR-0246: Ship thin support skills for awf's own mechanisms
@@ -119,3 +119,4 @@ entry and a template per skill.
 ## Status history
 
 - 2026-08-07: Proposed
+- 2026-08-07: Accepted; content-sha256: 623b432bd4be0e5a91a2e2f389c79dc0cbff5616ef5f238311b2a7aa31799848
