@@ -179,3 +179,4 @@ otherwise reuse would be an assurance reduction rather than deduplication.
 - 2026-08-07: Reapplied; operations: update `rendering/workflow-skill-templates:semantic-rendering-review`
 - 2026-08-07: Applied; operations: update `rendering/workflow-skill-templates:implementer-context-grounding`, update `rendering/workflow-skill-templates:authority-guided-review-remediation`, update `rendering/workflow-skill-templates:memory-log-consumer-coverage`, remove `rendering/workflow-skill-templates:workflow-chain-surfaces-resync`, add `rendering/workflow-skill-templates:linked-plan-review-freshness`, add `rendering/workflow-skill-templates:single-workflow-no-depth-controls`, add `config/migrations-and-locks:retired-plan-resync-selection-migration`
 - 2026-08-07: Reapplied; operations: add `config/migrations-and-locks:retired-plan-resync-selection-migration`
+- 2026-08-07: Reapplied; operations: add `config/migrations-and-locks:retired-plan-resync-selection-migration`

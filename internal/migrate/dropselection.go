@@ -58,22 +58,26 @@ func applyDropSelectionWith(root string, out *Changes, operation dropSelectionOp
 		return err
 	}
 	if err := operation.configEditor.editConfig(root, out, func(src []byte, planned *Changes) ([]byte, error) {
-		updated := src
-		for _, key := range selectionRetiredKeys {
-			next, err := operation.removeKey(updated, key)
-			if err != nil {
-				return nil, err
-			}
-			if !bytes.Equal(next, updated) {
-				planned.Add(fmt.Sprintf("drop-selection: removed %s\n", key))
-			}
-			updated = next
-		}
-		return updated, nil
+		return removeSelectionConfig(src, planned, operation.removeKey)
 	}); err != nil {
 		return err
 	}
 	return writeSidecarLocal(edits, out, operation)
+}
+
+func removeSelectionConfig(src []byte, planned *Changes, removeKey func([]byte, string) ([]byte, error)) ([]byte, error) {
+	updated := src
+	for _, key := range selectionRetiredKeys {
+		next, err := removeKey(updated, key)
+		if err != nil {
+			return nil, err
+		}
+		if !bytes.Equal(next, updated) {
+			planned.Add(fmt.Sprintf("drop-selection: removed %s\n", key))
+		}
+		updated = next
+	}
+	return updated, nil
 }
 
 // selectionSidecarPaths is the frozen schema-39 artifact-sidecar surface. It

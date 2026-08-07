@@ -115,7 +115,7 @@ Backing: test
 
 ### `invariant: retired-plan-resync-selection-migration`
 
-Schema generation 40 removes exactly the retired plan reconciliation skill item from the top-level `skills` sequence of a generation-39-stamped tree before current catalog validation. The config-editor-backed migration is idempotent, reports one removal when performed, preserves sequence order and every unrelated editor-supported config value, and leaves absence unchanged. Historical config bytes receive an unconditional forward port before current catalog consumption: generation 39 removes the whole retired selection surface for older trees, while generation 40 handles a generation-39 tree that still carries the independently retired item.
+Schema generation 40 handles a generation-39-stamped tree that did not receive the independently landed selection retirement: it first removes and reports the retired plan reconciliation skill item, then completes generation 39's removal of all selection keys and artifact-sidecar `local` markers before strict current-config validation. The config-editor-backed targeted removal is idempotent and alias-safe, preserves sequence order and unrelated values until the complete selection surface is removed, and leaves absence unchanged. The combined migration preserves generation 39's sidecar preflight and atomic-write boundaries. Historical config bytes receive the same unconditional forward port before current catalog consumption: older trees run generation 39 normally, while a generation-39-stamped compatibility tree receives the complete retirement at generation 40.
 Origin: ADR-0255
 Backing: test
 

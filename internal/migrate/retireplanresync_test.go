@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"gopkg.in/yaml.v3"
 )
@@ -104,15 +105,23 @@ func TestRetirePlanResyncMigrationReportsAndStamps(t *testing.T) {
 	for i, change := range changes {
 		texts[i] = change.Text
 	}
-	if !reflect.DeepEqual(texts, []string{"retire-plan-resync: removed reviewing-plan-resync from skills", "schema-stamp: updated awf.lock schema version"}) {
+	if !reflect.DeepEqual(texts, []string{
+		"retire-plan-resync: removed reviewing-plan-resync from skills",
+		"drop-selection: removed skills",
+		"drop-selection: removed agents",
+		"schema-stamp: updated awf.lock schema version",
+	}) {
 		t.Fatalf("changes = %v", texts)
 	}
 	got, err := os.ReadFile(filepath.Join(root, ".awf", "config.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(got), retiredPlanResyncSkill) || !strings.Contains(string(got), "- reviewing-plan") {
+	if strings.Contains(string(got), retiredPlanResyncSkill) || strings.Contains(string(got), "skills:") || strings.Contains(string(got), "agents:") {
 		t.Fatalf("config = %s", got)
+	}
+	if _, err := config.Load(filepath.Join(root, ".awf")); err != nil {
+		t.Fatalf("strict-load generation-40 config: %v", err)
 	}
 	applied, changes, err = Upgrade(context.Background(), root)
 	if err != nil || len(applied) != 0 || len(changes) != 0 {
@@ -121,20 +130,33 @@ func TestRetirePlanResyncMigrationReportsAndStamps(t *testing.T) {
 }
 
 func TestRetirePlanResyncMigrationMalformedIsAtomic(t *testing.T) {
-	root := t.TempDir()
-	path := filepath.Join(root, ".awf", "config.yaml")
-	src := "prefix: ex\nskills: reviewing-plan-resync\n"
-	testsupport.WriteFile(t, path, src)
-	changes := &Changes{}
-	if err := applyRetirePlanResync(root, changes); err == nil {
-		t.Fatal("malformed skills accepted")
-	}
-	got, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(got) != src || len(changes.Items()) != 0 {
-		t.Fatalf("mutation on failure: %q, %v", got, changes.Items())
+	for _, tc := range []struct {
+		name    string
+		config  string
+		sidecar string
+	}{
+		{name: "config", config: "prefix: ex\nskills: reviewing-plan-resync\n"},
+		{name: "sidecar preflight", config: "prefix: ex\nskills: [reviewing-plan-resync]\n", sidecar: "local: [\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			path := filepath.Join(root, ".awf", "config.yaml")
+			testsupport.WriteFile(t, path, tc.config)
+			if tc.sidecar != "" {
+				testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "tdd.yaml"), tc.sidecar)
+			}
+			changes := &Changes{}
+			if err := applyRetirePlanResync(root, changes); err == nil {
+				t.Fatal("malformed input accepted")
+			}
+			got, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(got) != tc.config || len(changes.Items()) != 0 {
+				t.Fatalf("mutation on failure: %q, %v", got, changes.Items())
+			}
+		})
 	}
 }
 

@@ -249,10 +249,8 @@ func TestSingleWorkflowHasNoDepthControls(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		templateRuntime[path+" actions"] = strings.Join(templateActionText(string(body)), "\n")
-		if executableTemplate(path) {
-			templateRuntime[path+" body"] = string(body)
-		}
+		source := strings.ReplaceAll(string(body), "awf ships this as one workflow, with no workflow profiles, depth controls, routers, classifiers, or runtime policy knobs.", "")
+		templateRuntime[path+" body"] = source
 		return nil
 	}); err != nil {
 		t.Fatal(err)
@@ -271,7 +269,7 @@ func TestSingleWorkflowHasNoDepthControls(t *testing.T) {
 		"configuration": {configuration: "workflowProfile: governed"},
 		"production":    {production: map[string]string{"internal/plan/control.go": "type WorkflowProfile struct{}"}},
 		"template runtime": {templates: map[string]string{
-			"pi/control.ts.tmpl body": "const runtimePolicy = true",
+			"skills/control/SKILL.md.tmpl body": "Select a WorkflowRouter before execution.",
 		}},
 	} {
 		t.Run("rejects "+name+" control", func(t *testing.T) {
@@ -317,32 +315,6 @@ func workflowControlCensus(surfaces workflowControlSurfaces) []string {
 	}
 	sort.Strings(out)
 	return out
-}
-
-func executableTemplate(path string) bool {
-	for _, prefix := range []string{"bootstrap/", "hooks/", "pi/", "runner/"} {
-		if strings.HasPrefix(path, prefix) {
-			return true
-		}
-	}
-	return false
-}
-
-func templateActionText(body string) []string {
-	var out []string
-	for {
-		start := strings.Index(body, "{{")
-		if start < 0 {
-			return out
-		}
-		body = body[start+2:]
-		end := strings.Index(body, "}}")
-		if end < 0 {
-			return out
-		}
-		out = append(out, body[:end])
-		body = body[end+2:]
-	}
 }
 
 func prohibitedWorkflowControlTokens(surface string) []string {

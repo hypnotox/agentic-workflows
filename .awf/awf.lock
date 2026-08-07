@@ -172,9 +172,9 @@
     },
     ".claude/skills/awf-reviewing-plan/SKILL.md": {
       "templateId": "skills/reviewing-plan/SKILL.md.tmpl",
-      "templateHash": "sha256:476ac5c2466f867109f3e7e2db8ee639cc1e5f40a43ce6b453057f6e1bf17fd8",
+      "templateHash": "sha256:cd9152e8ebaa91e83d810955ff962ebc0667dc8f70b0b419218e3229f1515df1",
       "configHash": "sha256:6e6222b27ea62a3633d009f1eee41cb53dda546fad10982ae99cbfd9e9f6146a",
-      "outputHash": "sha256:64f6e3e780e6ada6247f94fd978a69004a8671c0c973a4ca6b2d48c4806c7691"
+      "outputHash": "sha256:a5cc718c3c0269a568a72346c96cccdceb0edc160c2366a6f7fc632ae0da65b3"
     },
     ".claude/skills/awf-roadmap-graduation/SKILL.md": {
       "templateId": "skills/roadmap-graduation/SKILL.md.tmpl",
@@ -370,9 +370,9 @@
     },
     ".pi/skills/awf-reviewing-plan/SKILL.md": {
       "templateId": "skills/reviewing-plan/SKILL.md.tmpl",
-      "templateHash": "sha256:476ac5c2466f867109f3e7e2db8ee639cc1e5f40a43ce6b453057f6e1bf17fd8",
+      "templateHash": "sha256:cd9152e8ebaa91e83d810955ff962ebc0667dc8f70b0b419218e3229f1515df1",
       "configHash": "sha256:2de15b42b029392aaa7bd2d996c9d8d910841273f3dd40695b290e66777021e4",
-      "outputHash": "sha256:e72310781d5a4b5da80529a14905c2029b0eb73bdac522e230a80630fc2341c7"
+      "outputHash": "sha256:9218d9b746b450cafd68cd9161e0074d9005fe680c2277943b4fecb4d5c9912d"
     },
     ".pi/skills/awf-roadmap-graduation/SKILL.md": {
       "templateId": "skills/roadmap-graduation/SKILL.md.tmpl",
@@ -673,8 +673,8 @@
     "docs/topics/config/migrations-and-locks.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:c405c8d6ec9c7b364a0eb1fb735e2632441edfcd94b96ed67aaf31f70c4df730",
-      "outputHash": "sha256:50842b674e9fa384eec987c7bd699083a61635012864f0753f00bfca3601ef57"
+      "configHash": "sha256:f420908029219c38c9479215a907821cbae7fc3628fcb02bbc6e4347bfb0afbf",
+      "outputHash": "sha256:8e6d2da491b288e3dde2ebc202178dcc05a9d0c6351e649f5f61baa96d8a7047"
     },
     "docs/topics/config/validation.md": {
       "templateId": "topics/topic.md.tmpl",
