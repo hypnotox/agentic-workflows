@@ -145,7 +145,7 @@ Completes: ["resync-retired", "repository-green"]
 ### Task 3.1: Fold linked-ADR freshness into ordinary review
 Latitude: exact
 Applying: ["deduplicate-plan-authoring-and-execution-workflow:linked-plan-review-freshness", "deduplicate-plan-authoring-and-execution-workflow:one-workflow-no-depth-controls"]
-Paths: ["templates/skills/reviewing-plan/SKILL.md.tmpl", "templates/skills/reviewing-adr/SKILL.md.tmpl", "templates/skills/writing-plans/SKILL.md.tmpl", "templates/partials/review-remediation-autonomy.md", "templates/docs/workflow.md.tmpl", "templates/agents-doc/AGENTS.md.tmpl", "templates/agents/plan-reviewer.md.tmpl", "AGENTS.md", "internal/project/spine_test.go", "internal/project/docs_sections_test.go", "internal/project/plan_detail_modes_test.go", "internal/project/guide_scopes_test.go", "internal/evals/chain_test.go", "internal/evals/independent_workflow_escalation_test.go"]
+Paths: ["templates/skills/reviewing-plan/SKILL.md.tmpl", "templates/skills/reviewing-adr/SKILL.md.tmpl", "templates/skills/writing-plans/SKILL.md.tmpl", "templates/partials/review-remediation-autonomy.md", "templates/docs/workflow.md.tmpl", ".awf/parts/workflow/chain.md", "templates/agents-doc/AGENTS.md.tmpl", "templates/agents/plan-reviewer.md.tmpl", "AGENTS.md", "internal/project/spine_test.go", "internal/project/docs_sections_test.go", "internal/project/plan_detail_modes_test.go", "internal/project/guide_scopes_test.go", "internal/evals/chain_test.go", "internal/evals/independent_workflow_escalation_test.go"]
 
 Start only from the settled Phase 2 tip. Require `git status --short` to be empty, `./x check` to report zero findings, and `./x gate` to pass at 100% statement coverage before the phase owner edits.
 
