@@ -44,15 +44,24 @@ minimum-binary-version mapping.
    outside those selectors contributes nothing to fan-out.
 5. `decision: distinguish-applicability-from-ownership-evidence` Matching and reporting preserve
    separate concepts for global applicability and bounded path ownership. Context and markers keep
-   using global applicability, while coverage and fan-out use ownership matches. Topic coverage and
-   context selector output expose declared ownership selectors and ownership witnesses without
-   presenting them as bounds on global authority.
+   using applicability, while coverage and fan-out use ownership matches. The machine-readable topic
+   coverage result replaces the ambiguous `matchedPaths` field with `applicablePaths` and
+   `ownedPaths`: each is a witness from the caller's selected current-path universe, global topics
+   include every selected path in the former, and only bounded selector matches appear in the latter.
+   No compatibility alias retains `matchedPaths`. Context selector output reports global declaration
+   and ownership selectors separately but continues to omit matched-path witnesses.
 6. `decision: selectors-are-the-only-ownership-declaration` Claim references, relevance markers,
    touches markers, proof markers, generated indexes, and ADR attribution neither grant nor expand
    path ownership.
-7. `decision: activate-combined-metadata-safely` The combined metadata form advances the config
-   schema generation and records the corresponding minimum binary version so an older strict parser
-   cannot govern a project using global path ownership.
+7. `decision: activate-combined-metadata-safely` The topic metadata parser accepts the combined
+   form and rendering consumes its separated applicability and ownership meanings. The config
+   generation advances with a corresponding minimum binary version; manifest and lock writing stamp
+   that generation, and upgrade migrates an older tree by advancing its generation without rewriting
+   valid path-only or global-only topic metadata. Those existing forms retain their prior meaning.
+8. `decision: back-global-ownership-invariant` Global topic path ownership is a test-backed
+   invariant with a named proof annotation under `./internal/...`; its backing covers combined-form
+   validation, domain-bounded ownership, claim-bearing coverage, fan-out, and repository-wide global
+   applicability outside owned paths.
 
 ## State changes
 
@@ -72,8 +81,10 @@ reviewable ownership evidence.
 
 The implementation needs distinct applicability and ownership matching helpers and distinct query
 witnesses; reusing the existing global applicability helper for ownership would accidentally narrow
-context and marker validity. A matching global owner consumes one fan-out slot, making overlap cost
-honest without counting every globally applicable topic on every path.
+context and marker validity. Replacing `matchedPaths` is an intentional pre-1.0 machine-output break
+that prevents either meaning from masquerading as the other. A matching global owner consumes one
+fan-out slot, making overlap cost honest without counting every globally applicable topic on every
+path.
 
 The schema advance intentionally requires adopters using the combined form to run a compatible
 binary. Existing path-only and global-only metadata remains valid. Documentation, fixtures, coverage
@@ -85,6 +96,7 @@ must distinguish applicability from ownership.
 | Alternative | Why not chosen |
 |---|---|
 | Infer ownership from claim references or source markers | Those relationships carry evidence and navigation semantics, not an explicit path-ownership commitment. |
+| Add a separate `owns` or `ownershipPaths` metadata key | It would duplicate the anchored selector vocabulary and force every consumer to reconcile two path fields; reusing `paths` keeps one declaration while explicit output fields isolate the two meanings. |
 | Make a global topic's selectors bound its applicability | That would contradict global authority and reject valid context and markers outside the owned paths. |
 | Let global ownership escape its parent domain | Topic selectors would become a second, conflicting domain-ownership registry. |
 | Exclude path-owning globals from fan-out | Selective ownership would consume no overlap budget despite participating in the same path authority set. |
