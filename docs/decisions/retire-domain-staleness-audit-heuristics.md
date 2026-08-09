@@ -37,8 +37,10 @@ that validation.
    rendered-output checks remain responsible for structural current-state integrity; none is
    rebranded as semantic staleness detection.
 3. `decision: validate-domain-selectors-structurally` Domain sidecar path selectors remain subject
-   to the shared anchored-glob validation at a structural project-loading boundary independent of
-   audit-rule input assembly.
+   to the shared anchored-glob validation whenever working-tree or staged domain sidecars are loaded.
+   The reduced historical audit projection continues to omit domain sidecars rather than acquiring a
+   new historical validation dependency. The resulting invariant is backed by tests under
+   `./internal/...` that reject malformed selectors in both current and staged structural loading.
 
 ## State changes
 
@@ -60,6 +62,11 @@ Moving domain-selector validation prevents retirement of the warnings from silen
 ownership patterns match nothing. The audit implementation and its tests become smaller, while
 historical ADRs remain available as decision history without keeping their obsolete warning model
 active.
+
+Consumers that key on the three warning identities or expect those findings will lose them. The
+configuration reference and glossary will describe domain paths through their surviving ownership,
+context, and topic-coverage roles rather than through the retired advisory. This is an intentional
+behavioral compatibility break in pre-1.0 audit output.
 
 ## Alternatives Considered
 
