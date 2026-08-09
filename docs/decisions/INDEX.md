@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-retire-domain-staleness-audit-heuristics: Retire Domain Staleness Audit Heuristics](retire-domain-staleness-audit-heuristics.md) (Proposed)
 
 ## History
 
