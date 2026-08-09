@@ -59,9 +59,10 @@ minimum-binary-version mapping.
    that generation, and upgrade migrates an older tree by advancing its generation without rewriting
    valid path-only or global-only topic metadata. Those existing forms retain their prior meaning.
 8. `decision: back-global-ownership-invariant` Global topic path ownership is a test-backed
-   invariant with a named proof annotation under `./internal/...`; its backing covers combined-form
-   validation, domain-bounded ownership, claim-bearing coverage, fan-out, and repository-wide global
-   applicability outside owned paths.
+   invariant proven in `internal/topic/coverage_test.go` by
+   `// invariant: invariants/topics-and-markers:global-topic-path-ownership (TestGlobalTopicPathOwnership)`;
+   its backing covers combined-form validation, domain-bounded ownership, claim-bearing coverage,
+   fan-out, and repository-wide global applicability outside owned paths.
 
 ## State changes
 
