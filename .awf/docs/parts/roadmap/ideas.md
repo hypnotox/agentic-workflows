@@ -5,17 +5,6 @@
 
 - Add phase-sensitive tool activation so each workflow phase exposes only its relevant tools.
 - Decide whether staged drift can acquire semantics for directory entries, untracked files, config-tree hygiene, and dead-reference probing. A snapshot tree has neither directory entries nor untracked files, so these filesystem-only checks need explicit semantics before joining the blocking staged gate; do not broaden staged drift by implication.
-- Let a global topic carry path selectors, so it can own specific paths as well as supply
-  global authority. Today `applies: global` is skipped outright by both `coveredByDomain`
-  and `matchingScopedTopics` in `internal/topic/coverage.go`, so a global topic can never
-  own a path and can never satisfy scoped coverage. That leaves a shared-pattern holder
-  with nowhere natural to live: a small package existing only to carry a cross-cutting
-  type belongs to the global topic describing that pattern, not to whichever scoped topic
-  happens to be closest. ADR-0183 hit this concretely and had to extend an unrelated
-  topic's selectors to keep a new package covered. Needs its own ADR: the coverage
-  semantics, whether a path-owning global topic satisfies scoped coverage or only
-  ownership, and what it does to the fan-out budget, which deliberately excludes global
-  topics today.
 - Pin what `internal/config`'s editors guarantee about an adopter's `config.yaml`. The `yaml.Node`
   round-trip ADR-0026 chose preserves every key, value, and comment but canonicalizes layout: a
   four-space block returns two-space, a sequence item under a surviving key re-indents, and blank
