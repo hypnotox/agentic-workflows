@@ -80,6 +80,15 @@ func publish(path string, contents []byte) error {
 	_ = temporary.Close()
 	return os.Link(temporary.Name(), path)
 }`},
+		{name: "split hard-link publisher", sourcePath: "internal/other/link.go", body: `package other
+import "os"
+func publishPrepared(temporary, destination string) error { return os.Link(temporary, destination) }`},
+		{name: "aliased hard-link primitive", sourcePath: "internal/other/link.go", body: `package other
+import "os"
+func publishPrepared(temporary, destination string) error { link := os.Link; return link(temporary, destination) }`},
+		{name: "unmarked unrelated hard link", sourcePath: "internal/other/mirror.go", body: `package other
+import "os"
+func mirror(existing, alias string) error { return os.Link(existing, alias) }`},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if got := exclusivePublicationFindings(test.sourcePath, []byte(test.body)); len(got) == 0 {
@@ -112,8 +121,9 @@ func publish() { w.MoveFileEx(a, b, replace) }`},
 		{name: "Unix replacement operations", sourcePath: "internal/other/unix.go", body: `package other
 import "golang.org/x/sys/unix"
 func replace() { unix.Renameat2(a, b, c, d, unix.RENAME_EXCHANGE); unix.RenamexNp(a, b, unix.RENAME_SWAP) }`},
-		{name: "unrelated hard link", sourcePath: "internal/other/mirror.go", body: `package other
+		{name: "explicit non-publication hard-link exception", sourcePath: "internal/other/mirror.go", body: `package other
 import "os"
+// awf:allow-hard-link: non-publication
 func mirror(existing, alias string) error { return os.Link(existing, alias) }`},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -125,7 +135,7 @@ func mirror(existing, alias string) error { return os.Link(existing, alias) }`},
 }
 
 func exclusivePublicationFindings(sourcePath string, body []byte) []string {
-	file, err := parser.ParseFile(token.NewFileSet(), sourcePath, body, 0)
+	file, err := parser.ParseFile(token.NewFileSet(), sourcePath, body, parser.ParseComments)
 	if err != nil {
 		return []string{sourcePath + ": cannot parse production source: " + err.Error()}
 	}
@@ -144,14 +154,11 @@ func exclusivePublicationFindings(sourcePath string, body []byte) []string {
 	allowedEffortMove := allowedEffortMoveCall(sourcePath, file, imports)
 	for _, declaration := range file.Decls {
 		function, ok := declaration.(*ast.FuncDecl)
-		if !ok {
+		if !ok || !functionReferencesHardLinkPrimitive(function, imports) {
 			continue
 		}
-		preparesCompleteFile := functionCallsImported(function, imports, "os", "CreateTemp", "WriteFile", "OpenFile")
-		linksWithoutReplace := functionCallsImported(function, imports, "os", "Link") ||
-			functionCallsImported(function, imports, "golang.org/x/sys/windows", "CreateHardLink")
-		if preparesCompleteFile && linksWithoutReplace {
-			findings = append(findings, sourcePath+":"+function.Name.Name+" prepares a file and publishes it through a second hard-link no-replace home")
+		if !hasNonPublicationHardLinkException(function) {
+			findings = append(findings, sourcePath+":"+function.Name.Name+" uses a hard-link no-replace primitive outside internal/filepublication")
 		}
 	}
 
@@ -185,31 +192,38 @@ func exclusivePublicationFindings(sourcePath string, body []byte) []string {
 	return findings
 }
 
-func functionCallsImported(function *ast.FuncDecl, imports map[string]string, importPath string, names ...string) bool {
-	wanted := make(map[string]bool, len(names))
-	for _, name := range names {
-		wanted[name] = true
-	}
+func functionReferencesHardLinkPrimitive(function *ast.FuncDecl, imports map[string]string) bool {
 	found := false
 	ast.Inspect(function.Body, func(node ast.Node) bool {
-		if found {
-			return false
-		}
-		call, ok := node.(*ast.CallExpr)
+		selector, ok := node.(*ast.SelectorExpr)
 		if !ok {
 			return true
 		}
-		selector, ok := call.Fun.(*ast.SelectorExpr)
-		if !ok || !wanted[selector.Sel.Name] {
+		qualifier, ok := selector.X.(*ast.Ident)
+		if !ok {
 			return true
 		}
-		qualifier, ok := selector.X.(*ast.Ident)
-		if ok && imports[qualifier.Name] == importPath {
+		importPath := imports[qualifier.Name]
+		if (importPath == "os" && selector.Sel.Name == "Link") ||
+			(importPath == "golang.org/x/sys/windows" && selector.Sel.Name == "CreateHardLink") {
 			found = true
+			return false
 		}
 		return true
 	})
 	return found
+}
+
+func hasNonPublicationHardLinkException(function *ast.FuncDecl) bool {
+	if function.Doc == nil {
+		return false
+	}
+	for _, comment := range function.Doc.List {
+		if strings.TrimSpace(strings.TrimPrefix(comment.Text, "//")) == "awf:allow-hard-link: non-publication" {
+			return true
+		}
+	}
+	return false
 }
 
 func importAliases(file *ast.File) map[string]string {

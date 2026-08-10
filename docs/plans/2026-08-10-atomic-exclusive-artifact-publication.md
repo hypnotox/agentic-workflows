@@ -242,4 +242,9 @@ implementation.
   unrelated hard-link operation. Shared publication directly proves a missing-parent error, and the
   changelog now covers plan and backup no-clobber behavior. These authority-preserving corrections
   change proof completeness and documentation only, except for the required Windows volume identity
-  correction.
+  correction. The terminal verify pass found the first hard-link detector could miss split helpers and
+  reject unrelated same-function operations, so the residual correction rejects every hard-link
+  primitive reference outside the publication home unless its function carries the exact audited
+  `awf:allow-hard-link: non-publication` exception; split and aliased mutations plus the narrow
+  exception are pinned. This reasoned detector policy closes the invariant without inferring intent
+  from function shape.
