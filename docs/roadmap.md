@@ -203,24 +203,6 @@ the authored order should instead be something the tree records explicitly, sinc
 today declares the intended numbering order until the command is invoked. Surfaced by the
 Phase 5 review of ADR-0202 on 2026-08-01.
 
-## Implementation commit verification assumes the parent checkout
-
-A commit-capable Pi implementation child can be directed through its brief to work in an existing
-managed worktree while the parent Pi session remains at the repository root. The child can commit
-successfully there, but the subagent runner snapshots and verifies `HEAD` in the parent process's
-checkout. The result is contradictory: the child's report names the real managed-worktree commit,
-then the runner says the commit-capable child left `HEAD` unchanged and demands a stopped inventory.
-The parent must inspect the intended worktree to distinguish a valid commit from a true no-commit
-failure.
-
-A follow-up should make commit verification use an explicit invocation-owned checkout identity, or
-else prohibit a child from changing checkout relative to the runner and move managed-worktree
-selection into the tool call. The test must cover a parent rooted in the primary checkout and a
-child commit in a distinct existing managed worktree; checking only one checkout preserves the
-false failure. This needs design before implementation because the current public tool schema has
-no checkout field and the rendered workflow deliberately lets explicit-path runtimes remain at the
-repository root.
-
 ## Bind effort mutations to an explicit checkout identity
 
 A Pi session associated with a managed effort deliberately remains rooted in the primary checkout
