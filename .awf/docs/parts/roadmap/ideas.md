@@ -39,11 +39,6 @@
   a pre-flip deviation sweep in the execution skills' final-commit step, which
   is where the omission actually happens; that is a shipped-template change, so it needs its own
   ADR rather than a local override, on pain of awf diverging from the standard it publishes.
-- A conditional-key consumption check: extend the ADR-0086 consumption union so a template
-  conditional keyed on a render key that no render path for that artifact sets fails loudly.
-  The 0157 effort found every `targetSessionHandoff` branch in the singleton templates had
-  been dead prose since authoring; the fix plumbed the key, but nothing today prevents the
-  next dead conditional (recorded as a rendering pitfall, 2026-07-23).
 - A mechanical check for over-broad current-state claim prose. The `claim-prose-no-broader-than-reality`
   reviewer focus item exists and works: it caught all four over-broad claims in the 2026-07-30 severity
   session. It prevented none of them, which is the signal to climb from a judgment rung to a

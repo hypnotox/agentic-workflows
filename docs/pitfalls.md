@@ -187,21 +187,6 @@ A tree layout detected by historical shape belongs to a fixed generation, not
 `Current() +/- k`. Verify the absolute mapping against the migration registry whenever the
 registry grows.
 
-## Binary-side render changes do not reflag rendered outputs
-
-_Domains: rendering_
-
-`awf check` hashes config bytes and template bytes; a change to the *Go render logic*
-(a new render key, a changed derivation like `skillRows`) alters what a fresh render
-produces while every hash still matches, so check stays clean over now-stale outputs. This
-shipped a stale AGENTS.md mid-review on 2026-07-07: the commit changed the derivation but the
-rendered guide was produced by the intermediate version, and nothing flagged it. The gap is
-deliberate (ADR-0039 keeps `.version` out of the config hash; a binary upgrade advises
-"run awf render" as a note instead of failing). The discipline: any commit that changes render
-output for unchanged config/templates must run `./x render` *after the final code state* and
-commit the refreshed outputs; verify by grepping the rendered file for the change, not by
-trusting a clean check.
-
 ## Keep literal placeholder syntax out of guide prose
 
 _Domains: rendering_
@@ -630,18 +615,6 @@ projection structure, enumerate every consumer mechanically first (grep the fiel
 the concept) and re-derive each consumer's correctness under the new semantics; the 0154
 grounding check caught this only because the dispatch brief explicitly asked who else
 reads the map (ADR-0154; 2026-07-23).
-
-## A new singleton-template conditional needs a live key and both branches pinned
-
-_Domains: rendering_
-
-ADR-0157 replaced the dead `targetSessionHandoff` branches with a real project-level
-capability key and proof-marked tests for both outcomes. The residual hazard applies to a
-future conditional in AGENTS.md or another singleton document: these artifacts render once
-through neutral project data, not through each target's derived keys. Before authoring the
-branch, locate the code that sets its key on that singleton's render path and add tests that
-render both outcomes. A coherent fallback and green neutral golden output do not prove that
-the alternate branch is reachable.
 
 ## An ordering proof written against the log proves nothing
 

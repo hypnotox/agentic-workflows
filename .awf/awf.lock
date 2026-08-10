@@ -559,8 +559,8 @@
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
       "templateHash": "sha256:ae7cad75f724728d7dcc6b042f4786cc2f199c4904223ee0c8bcc43914e870af",
-      "configHash": "sha256:bf5af80ebca416e26a8cdd9827e2e18aa5b31ee9b621fbcbddf89919286db44d",
-      "outputHash": "sha256:b8a8822208542018af88c5c5f5c2d6eb23ce1e9723f861e1a5d6cfd3cd8b4605"
+      "configHash": "sha256:e8ff4ed5b862b584785727cae87e70dd08aaea3b2beb28b4658ce96a4704c391",
+      "outputHash": "sha256:e015f52504c5ab44fc4ca03a1049702bb238a72f5a65b343d8429dc508008848"
     },
     "docs/plans/README.md": {
       "templateId": "plans-readme/README.md.tmpl",
@@ -583,8 +583,8 @@
     "docs/roadmap.md": {
       "templateId": "docs/roadmap.md.tmpl",
       "templateHash": "sha256:26c7896fbc808c909083ceedc048ea5706a9252d32642d031bd816d7ef1cd511",
-      "configHash": "sha256:0a4c88c6a7d7aa157a352a9dc5c91fbb7dd0300e7fcdff3e0459ed1c55e50ef5",
-      "outputHash": "sha256:d0c56f5c32dba55493770214c30349dc3eb5ba93275e81559d0325086a562387"
+      "configHash": "sha256:26e57a26ddf27a04a85a5d50da5e4b7dedbdeb391bb15929131171b150fa69a3",
+      "outputHash": "sha256:2b207a6847b1089d2873b80aed8accf774cd91a444ca1d5fe6df149f8ecf02b0"
     },
     "docs/testing.md": {
       "templateId": "docs/testing.md.tmpl",
