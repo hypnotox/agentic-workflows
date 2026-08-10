@@ -228,4 +228,7 @@ implementation.
   cross-process transaction with the forced no-replace winner assertion. Reachable canonicalization
   and missing-cache failures are directly covered without exclusions, and the Windows test binary
   executed its final-path, case, extended-path, contention, and publication assertions under Wine in
-  addition to released-target compilation. These corrections strengthen verification only.
+  addition to released-target compilation. A final mechanical correction exercises the deleted-CWD
+  canonicalization failure directly and binds the no-overwrite marker to the production
+  `acquireScaffoldLock` and `filepublication.Publish` composition with an AST wiring proof. These
+  corrections strengthen verification only.

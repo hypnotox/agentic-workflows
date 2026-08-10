@@ -5,6 +5,9 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"io"
 	"io/fs"
 	"os"
@@ -231,8 +234,41 @@ func provePublicationCollisionPreservesWinner(t *testing.T) {
 	}
 }
 
+func proveScaffoldRecordProductionWiring(t *testing.T) {
+	file, err := parser.ParseFile(token.NewFileSet(), "adr.go", nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wired := false
+	for _, declaration := range file.Decls {
+		function, ok := declaration.(*ast.FuncDecl)
+		if !ok || function.Name.Name != "scaffoldRecord" {
+			continue
+		}
+		ast.Inspect(function.Body, func(node ast.Node) bool {
+			call, ok := node.(*ast.CallExpr)
+			if !ok || len(call.Args) != 7 {
+				return true
+			}
+			callee, ok := call.Fun.(*ast.Ident)
+			lock, lockOK := call.Args[4].(*ast.Ident)
+			publisher, publisherOK := call.Args[6].(*ast.SelectorExpr)
+			packageName, packageOK := publisher.X.(*ast.Ident)
+			if ok && callee.Name == "scaffoldRecordWith" && lockOK && lock.Name == "acquireScaffoldLock" &&
+				publisherOK && packageOK && packageName.Name == "filepublication" && publisher.Sel.Name == "Publish" {
+				wired = true
+			}
+			return true
+		})
+	}
+	if !wired {
+		t.Fatal("scaffoldRecord must compose acquireScaffoldLock and filepublication.Publish through scaffoldRecordWith")
+	}
+}
+
 // invariant: adr-system/adr-lifecycle:adr-new-no-overwrite (TestADRNewNoOverwriteInvariant)
 func TestADRNewNoOverwriteInvariant(t *testing.T) {
+	t.Run("production-wiring", proveScaffoldRecordProductionWiring)
 	t.Run("canonical-process-transaction", proveCanonicalProcessContentionAndDeathRelease)
 	t.Run("publication-collision", provePublicationCollisionPreservesWinner)
 }
@@ -262,6 +298,18 @@ func TestScaffoldRecordLockSpansPublication(t *testing.T) {
 	}
 	if locked {
 		t.Fatal("scaffold returned while the corpus lock remained held")
+	}
+}
+
+func TestCanonicalDecisionsDirectoryRejectsDeletedWorkingDirectory(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+	if err := os.Remove(dir); err != nil {
+		t.Fatal(err)
+	}
+	_, err := canonicalDecisionsDirectory(".")
+	if err == nil || !strings.Contains(err.Error(), "make absolute") {
+		t.Fatalf("deleted working directory error = %v", err)
 	}
 }
 
