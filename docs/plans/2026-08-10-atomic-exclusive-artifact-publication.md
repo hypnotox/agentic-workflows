@@ -190,3 +190,8 @@ implementation.
   cases, and reducing the one-operation Windows test seam to direct function injection. The
   structural detector correction was reasoned from dependency-composition and test-design
   authority; it changed verification shape without changing production behavior or scope.
+- Final Phase 1 assurance settlement: the remaining structural-proof finding was settled with
+  import-identity-aware call inspection, recursive constant flag resolution, complete inward-only
+  package checks, normalized nil conditions, and explicit mutations for zero, aliased, composed,
+  unrelated-selector, and alternate-internal-import cases. The stricter proof remains confined to
+  the approved single-home invariant and does not change runtime behavior.
