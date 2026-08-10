@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-10
 adrs: [archive-finished-efforts-and-permit-effort-scratch-data]
-status: Proposed
+status: Implemented
 ---
 # Plan: Archive Finished Efforts and Add Effort Scratch Space
 

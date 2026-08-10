@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: archive-finished-efforts-and-permit-effort-scratch-data
-status: Implementing
+status: Implemented
 date: 2026-08-10
 ---
 # ADR-0259: Archive Finished Efforts and Permit Effort Scratch Data
@@ -175,3 +175,4 @@ Implementing, and settled review later appends only Implemented. For example:
 - 2026-08-10: Applied; operations: add `config/migrations-and-locks:archive-root-upgrade-boundary`, update `rendering/singletons-and-payloads:memory-gitignore-always-on`, update `rendering/singletons-and-payloads:resident-output-preservation`, update `rendering/project-output-plan:output-plan-complete`
 - 2026-08-10: Applied; operations: update `tooling/effort-management:effort-record-authority`, update `tooling/effort-management:default-worktree-creation`, update `tooling/cli:effort-command-contract`
 - 2026-08-10: Reapplied; operations: update `tooling/cli:effort-command-contract`
+- 2026-08-10: Implemented; content-sha256: 43e8e048a6a32180cc768e86e23fd5e569e68f2884272c26013a1e78336c0ace
