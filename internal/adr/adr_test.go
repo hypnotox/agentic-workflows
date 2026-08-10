@@ -1,8 +1,13 @@
 package adr_test
 
 import (
+	"bufio"
+	"encoding/json"
+	"fmt"
+	"io"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -770,4 +775,186 @@ func mustCorpus(t *testing.T, dir string) adr.Corpus {
 		t.Fatalf("LoadCorpus(%s): %v", dir, err)
 	}
 	return c
+}
+
+type scaffoldProcessResult struct {
+	Path  string
+	Error string
+}
+
+// TestADRScaffoldProcess is the subprocess half of the concurrency proofs.
+// Its stdin barrier releases both creators at one explicit boundary.
+func TestADRScaffoldProcess(t *testing.T) {
+	if os.Getenv("ADR_SCAFFOLD_PROCESS") == "" {
+		return
+	}
+	dir, title := os.Getenv("ADR_SCAFFOLD_DIR"), os.Getenv("ADR_SCAFFOLD_TITLE")
+	fmt.Fprintln(os.Stdout, "ready")
+	if _, err := bufio.NewReader(os.Stdin).ReadString('\n'); err != nil {
+		t.Fatal(err)
+	}
+	var path string
+	var err error
+	if os.Getenv("ADR_SCAFFOLD_PENDING") == "1" {
+		path, err = adr.NewPendingFile(dir, title)
+	} else {
+		path, err = adr.NewFile(dir, title)
+	}
+	result := scaffoldProcessResult{Path: path}
+	if err != nil {
+		result.Error = err.Error()
+	}
+	encoded, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(os.Getenv("ADR_SCAFFOLD_RESULT"), encoded, 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func startScaffoldProcess(t *testing.T, dir, title string, pending bool) (stdin io.WriteCloser, command *exec.Cmd, result string) {
+	t.Helper()
+	result = filepath.Join(t.TempDir(), "result.json")
+	command = exec.Command(os.Args[0], "-test.run=^TestADRScaffoldProcess$")
+	command.Env = append(os.Environ(), "ADR_SCAFFOLD_PROCESS=1", "ADR_SCAFFOLD_DIR="+dir,
+		"ADR_SCAFFOLD_TITLE="+title, "ADR_SCAFFOLD_RESULT="+result)
+	if pending {
+		command.Env = append(command.Env, "ADR_SCAFFOLD_PENDING=1")
+	}
+	var err error
+	stdin, err = command.StdinPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	stdout, err := command.StdoutPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := command.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if ready, err := bufio.NewReader(stdout).ReadString('\n'); err != nil || ready != "ready\n" {
+		t.Fatalf("scaffold process readiness = %q, %v", ready, err)
+	}
+	return stdin, command, result
+}
+
+func finishScaffoldProcesses(t *testing.T, firstIn, secondIn io.WriteCloser, first, second *exec.Cmd, firstResult, secondResult string) []scaffoldProcessResult {
+	t.Helper()
+	for _, in := range []io.WriteCloser{firstIn, secondIn} {
+		if _, err := io.WriteString(in, "release\n"); err != nil {
+			t.Fatal(err)
+		}
+		if err := in.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, command := range []*exec.Cmd{first, second} {
+		if err := command.Wait(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	results := make([]scaffoldProcessResult, 2)
+	for i, path := range []string{firstResult, secondResult} {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(data, &results[i]); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return results
+}
+
+func writeConcurrentTemplate(t *testing.T, dir string) {
+	t.Helper()
+	writeTemplateFixture(t, dir)
+	data, err := os.ReadFile(filepath.Join(dir, "template.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Make the post-corpus preparation interval long enough that the unlocked
+	// implementation exposes the allocation race without timing sleeps.
+	data = append(data, []byte(strings.Repeat("x", 4<<20))...)
+	if err := os.WriteFile(filepath.Join(dir, "template.md"), data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// invariant: adr-system/adr-lifecycle:adr-new-sequential-numbering (TestNewFileConcurrentNumberedCreators)
+func TestNewFileConcurrentNumberedCreators(t *testing.T) {
+	dir := t.TempDir()
+	writeConcurrentTemplate(t, dir)
+	firstIn, first, firstResult := startScaffoldProcess(t, dir, "First Creator", false)
+	secondIn, second, secondResult := startScaffoldProcess(t, dir, "Second Creator", false)
+	results := finishScaffoldProcesses(t, firstIn, secondIn, first, second, firstResult, secondResult)
+	for _, result := range results {
+		if result.Error != "" {
+			t.Fatalf("numbered creator refused: %s", result.Error)
+		}
+	}
+	parsed, err := adr.ParseDir(dir)
+	if err != nil {
+		t.Fatalf("concurrent corpus must parse: %v", err)
+	}
+	if len(parsed) != 2 || parsed[0].Number != "0001" || parsed[1].Number != "0002" {
+		t.Fatalf("numbered corpus = %#v, want unique sequential 0001 and 0002", parsed)
+	}
+}
+
+// invariant: adr-system/adr-lifecycle:adr-new-no-overwrite (TestNewPendingFileConcurrentCreators)
+func TestNewPendingFileConcurrentCreators(t *testing.T) {
+	dir := t.TempDir()
+	writeConcurrentTemplate(t, dir)
+	firstIn, first, firstResult := startScaffoldProcess(t, dir, "One Pending", true)
+	secondIn, second, secondResult := startScaffoldProcess(t, dir, "One Pending", true)
+	results := finishScaffoldProcesses(t, firstIn, secondIn, first, second, firstResult, secondResult)
+	successes := 0
+	for _, result := range results {
+		if result.Error == "" {
+			successes++
+		}
+	}
+	if successes != 1 {
+		t.Fatalf("pending creators had %d successes, want one: %#v", successes, results)
+	}
+	path := filepath.Join(dir, "one-pending.md")
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(got), "# ADR-one-pending: One Pending") {
+		t.Fatalf("winner bytes are not a complete pending record: %q", got[:min(len(got), 200)])
+	}
+}
+
+// TestNewFileConcurrentAliasCreators proves a symlink spelling selects the
+// same directory transaction as its resolved target.
+func TestNewFileConcurrentAliasCreators(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "decisions")
+	if err := os.Mkdir(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(filepath.Dir(dir), "decisions-alias")
+	if err := os.Symlink(dir, alias); err != nil {
+		t.Skipf("symlink aliases unavailable: %v", err)
+	}
+	writeConcurrentTemplate(t, dir)
+	firstIn, first, firstResult := startScaffoldProcess(t, dir, "Resolved Creator", false)
+	secondIn, second, secondResult := startScaffoldProcess(t, alias, "Alias Creator", false)
+	results := finishScaffoldProcesses(t, firstIn, secondIn, first, second, firstResult, secondResult)
+	for _, result := range results {
+		if result.Error != "" {
+			t.Fatalf("alias creator refused: %s", result.Error)
+		}
+	}
+	parsed, err := adr.ParseDir(dir)
+	if err != nil {
+		t.Fatalf("alias corpus must parse: %v", err)
+	}
+	if len(parsed) != 2 || parsed[0].Number != "0001" || parsed[1].Number != "0002" {
+		t.Fatalf("alias corpus = %#v, want unique sequential 0001 and 0002", parsed)
+	}
 }

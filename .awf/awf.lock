@@ -595,8 +595,8 @@
     "docs/topics/adr-system/adr-lifecycle.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:51e1c38565f0c61eddebe5625eb314aef58cedbb36b00f5552b101bc6ffa5ce7",
-      "outputHash": "sha256:176c4e03ff58d4c16d8abc2dbce7bdafce88b23b06317be33142c55c7a702afd"
+      "configHash": "sha256:f82349965a60bf787ea73e0723834c9ac0fc80eaf1fba976fae055d729585533",
+      "outputHash": "sha256:cb17aa3737d2fe8ec17bf2660946935c0250dd51bcc7130cd72923b5747bf089"
     },
     "docs/topics/adr-system/frontmatter.md": {
       "templateId": "topics/topic.md.tmpl",

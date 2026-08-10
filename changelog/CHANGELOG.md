@@ -14,6 +14,10 @@ query a single version or a range.
 
 - Schema generation 41 permits global topics to declare domain-bounded path ownership. Topic coverage output replaces `matchedPaths` and `matched-paths` with separate `applicablePaths`/`applicable-paths` and `ownedPaths`/`owned-paths` witnesses; no compatibility alias remains. Human context selector records now expose separate global-declaration and ownership-selectors columns while remaining free of matched-path witnesses.
 
+### Bug fixes
+
+- Concurrent `awf new adr` calls now publish complete records without clobbering an existing ADR and serialize numbered allocation for one decisions directory.
+
 ## [0.32.0] - 2026-08-07
 
 ### Breaking changes

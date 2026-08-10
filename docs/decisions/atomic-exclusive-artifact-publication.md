@@ -119,3 +119,4 @@ dependency is narrower than growing separate Unix and Windows lock implementatio
 - 2026-08-10: Implementing; content-sha256: 748444a3c6dab12a892cdc71e3bb9ed2c1edafd48281491c2fa99f91dd4f0b33
 - 2026-08-10: Applied; operations: add `tooling/file-publication:exclusive-file-publication-single-home`
 - 2026-08-10: Applied; operations: update `adr-system/plan-artifacts:plan-new-unnumbered`, update `rendering/sync-and-drift:sync-backs-up-foreign`, update `rendering/companion-scripts:runner-prune-backup`
+- 2026-08-10: Applied; operations: update `adr-system/adr-lifecycle:adr-new-no-overwrite`, update `adr-system/adr-lifecycle:adr-new-sequential-numbering`

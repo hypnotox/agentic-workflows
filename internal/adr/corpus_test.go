@@ -392,7 +392,10 @@ func TestCorpusParsedOnce(t *testing.T) {
 		}
 	}
 	testsupport.WalkRepoFiles(t, testsupport.RepoRoot(t), func(rel string) bool {
-		return strings.HasPrefix(rel, "internal/adr/") && strings.HasSuffix(rel, ".go") && !strings.HasSuffix(rel, "_test.go")
+		// packages.Load inspects the current build target; released-target
+		// compilation is covered by the gate, so do not demand Windows-only
+		// source from this host-target call-site proof.
+		return strings.HasPrefix(rel, "internal/adr/") && strings.HasSuffix(rel, ".go") && !strings.HasSuffix(rel, "_test.go") && !strings.HasSuffix(rel, "_windows.go")
 	}, func(rel string, _ []byte) {
 		if !inspectedADRFiles[rel] {
 			t.Errorf("production ADR source %s was not inspected", rel)
