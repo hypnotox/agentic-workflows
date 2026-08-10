@@ -139,6 +139,26 @@ func TestLoadCorpusFromTreeErrors(t *testing.T) {
 			wantErr: "parse domain sidecar alpha",
 		},
 		{
+			name: "empty domain path",
+			cfg:  "prefix: test\nintegrationBranch: main\ndomains: [alpha]\n",
+			files: map[string]string{
+				".awf/domains/alpha.yaml":                      "paths: ['']\n",
+				".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
+				".awf/topics/parts/alpha/one/current-state.md": rulePart("r", "0001", ""),
+			},
+			wantErr: "domain sidecar alpha paths",
+		},
+		{
+			name: "duplicate domain path",
+			cfg:  "prefix: test\nintegrationBranch: main\ndomains: [alpha]\n",
+			files: map[string]string{
+				".awf/domains/alpha.yaml":                      "paths: [internal/**, internal/**]\n",
+				".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
+				".awf/topics/parts/alpha/one/current-state.md": rulePart("r", "0001", ""),
+			},
+			wantErr: "domain sidecar alpha paths",
+		},
+		{
 			name: "malformed domain path",
 			cfg:  "prefix: test\nintegrationBranch: main\ndomains: [alpha]\n",
 			files: map[string]string{
@@ -264,6 +284,7 @@ func TestLoadCorpusFromTreeMatchesFilesystem(t *testing.T) {
 }
 
 // invariant: tooling/audit-and-snapshots:audit-history-policy-projection (TestLoadAuthorityCorpusFromTreeOmitsMarkersAndDomainPaths)
+// invariant: config/validation:domain-path-globs-valid (TestLoadAuthorityCorpusFromTreeOmitsMarkersAndDomainPaths)
 func TestLoadAuthorityCorpusFromTreeOmitsMarkersAndDomainPaths(t *testing.T) {
 	files := map[string]string{
 		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",

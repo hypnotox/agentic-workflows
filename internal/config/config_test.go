@@ -176,7 +176,8 @@ func TestSidecarReadsDomainPaths(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(dir, "domains"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "domains", "tooling.yaml"), []byte("paths:\n  - cmd/**\n"), 0o644); err != nil {
+	path := filepath.Join(dir, "domains", "tooling.yaml")
+	if err := os.WriteFile(path, []byte("paths:\n  - cmd/**\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	c, err := Load(dir)
@@ -190,11 +191,22 @@ func TestSidecarReadsDomainPaths(t *testing.T) {
 	if len(sc.Paths) != 1 || sc.Paths[0] != "cmd/**" {
 		t.Errorf("sidecar paths = %v, want [cmd/**]", sc.Paths)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "domains", "tooling.yaml"), []byte("paths: ['[']\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := c.Sidecar("domains", "tooling"); err == nil || !strings.Contains(err.Error(), "domain sidecar tooling paths") {
-		t.Fatalf("malformed domain path was accepted: %v", err)
+	for _, tc := range []struct {
+		name string
+		yaml string
+	}{
+		{name: "empty", yaml: "paths: ['']\n"},
+		{name: "duplicate", yaml: "paths: [cmd/**, cmd/**]\n"},
+		{name: "malformed", yaml: "paths: ['[']\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := os.WriteFile(path, []byte(tc.yaml), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := c.Sidecar("domains", "tooling"); err == nil || !strings.Contains(err.Error(), "domain sidecar tooling paths") {
+				t.Fatalf("invalid domain path was accepted: %v", err)
+			}
+		})
 	}
 }
 

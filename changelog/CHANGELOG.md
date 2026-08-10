@@ -8,6 +8,10 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Breaking changes
+
+- Removed the `domain-doc-staleness`, `domain-code-staleness`, and `undocumented-domain` audit warnings. Exact ADR operation replay and structural topic coverage, ownership, and selector validation remain the enforceable current-state checks.
+
 ## [0.32.0] - 2026-08-07
 
 ### Breaking changes
