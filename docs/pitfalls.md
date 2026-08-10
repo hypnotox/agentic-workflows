@@ -598,27 +598,6 @@ Then mutate the production order and watch the new test go red. A proof for a ti
 ordering clause is not finished until you have seen it fail; this one was proposed during
 review, built as proposed, and only mutation revealed it was inert.
 
-## A hanging test is often the fixture lane, which has no deadline
-
-_Domains: tooling_
-
-_Related: ADR-0191_
-
-`internal/git`'s runner refuses a context carrying no deadline, so a production Git
-invocation blocked on a stale `index.lock`, a credential prompt, or a slow filesystem
-fails fast with an explicit message. The `internal/testsupport/gitfixture` native lane
-deliberately does NOT match that: it runs `exec.Command` with no context and no
-deadline, because a fixture builds state rather than serving a caller who could bound
-it. The asymmetry is intentional and was accepted knowingly, but it has a debugging
-cost worth knowing in advance. When a package test hangs until the Go test timeout and
-the panic dump points into `gitfixture.runGit`, the fixture is blocked on Git, not
-deadlocked in awf: look for a stale `index.lock` under the fixture's temporary root, a
-Git that is prompting despite `nativeEnvironment` (which pins `GIT_TERMINAL_PROMPT=0`,
-`GIT_ASKPASS`, and `SSH_ASKPASS`), or a filesystem stall under `TMPDIR`. Nothing in the
-gate catches this shape, because a hang is not a failure until the timeout fires. If it
-recurs, the fix is to bound the fixture lane's invocations rather than to chase the
-individual test.
-
 ## Port a stale branch before merging a breaking marker grammar
 
 _Domains: invariants, adr-system, tooling_

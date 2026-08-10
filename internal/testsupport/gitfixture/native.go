@@ -2,11 +2,14 @@ package gitfixture
 
 import (
 	"bytes"
+	"context"
 	"errors"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
 	"testing"
+	"time"
 )
 
 // The native lane runs the git binary directly, for the repository states
@@ -288,35 +291,34 @@ func runNative(f Fixture, args ...string) (string, error) {
 }
 
 func runNativeBytes(f Fixture, stdin []byte, args ...string) ([]byte, error) {
-	args = append([]string{"-C", f.root}, args...)
-	command := exec.Command("git", args...)
-	command.Env = nativeEnvironment(os.Environ())
-	command.Stdin = bytes.NewReader(stdin)
-	return command.CombinedOutput()
+	return runGitWithTimeout(nativeGitDeadline, f.root, bytes.NewReader(stdin), args...)
 }
 
-// runGit runs git under the isolated environment, pinned to root when one is
+// nativeGitDeadline is the fixture lane's hang-prevention ceiling. It
+// deliberately duplicates both internal/git.CommandTimeout and the parent
+// testsupport package's gitTestDeadline: this leaf package cannot import either.
+const nativeGitDeadline = 2 * time.Minute
+
+// runGit runs Git under the isolated environment, pinned to root when one is
 // given, and returns trimmed combined output.
-//
-// NO DEADLINE, DELIBERATELY, AND THIS IS WHERE A HANGING TEST LIVES. The seam's
-// runner (internal/git) refuses a context carrying no deadline, so a production
-// invocation blocked on a stale index.lock or a credential prompt fails fast.
-// This lane does not match that: a fixture builds state rather than serving a
-// caller who could bound it, and threading a context through every helper would
-// buy nothing a test binary's own timeout does not already provide. The cost is
-// diagnostic, not correctness: a fixture blocked on Git hangs until the Go test
-// timeout, and the panic dump points here rather than at a cause. If that
-// happens, suspect a stale index.lock under the fixture's temporary root, a Git
-// prompting despite the pins in nativeEnvironment, or a stalled TMPDIR - not a
-// deadlock in awf. See the pitfalls doc entry on the fixture lane's deadline.
 func runGit(root string, args ...string) (string, error) {
+	output, err := runGitWithTimeout(nativeGitDeadline, root, nil, args...)
+	return strings.TrimSpace(string(output)), err
+}
+
+// runGitWithTimeout is the one process boundary for every Git invocation in
+// this package. The duration parameter lets the deadline proof run promptly
+// without a swappable global seam.
+func runGitWithTimeout(timeout time.Duration, root string, stdin io.Reader, args ...string) ([]byte, error) {
 	if root != "" {
 		args = append([]string{"-C", root}, args...)
 	}
-	command := exec.Command("git", args...)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	command := exec.CommandContext(ctx, "git", args...)
 	command.Env = nativeEnvironment(os.Environ())
-	output, err := command.CombinedOutput()
-	return strings.TrimSpace(string(output)), err
+	command.Stdin = stdin
+	return command.CombinedOutput()
 }
 
 // nativeEnvironment strips every inherited git control variable and pins the

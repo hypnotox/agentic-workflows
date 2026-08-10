@@ -3,7 +3,7 @@
 ## In flight
 
 - [ADR-0260: Verification checkout for implementation commit policy](0260-verification-checkout-for-implementation-commit-policy.md) (Proposed)
-- [ADR-0261: Bound Native Git Fixtures](0261-bound-native-git-fixtures.md) (Accepted)
+- [ADR-0261: Bound Native Git Fixtures](0261-bound-native-git-fixtures.md) (Implementing)
 
 ## History
 

@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 // nativeIsolationPins is the whole policy the native lane guarantees, written
@@ -38,6 +39,34 @@ func effectiveEnvironment(env []string) map[string]string {
 		out[key] = value
 	}
 	return out
+}
+
+// TestNativeGitDeadlineTerminatesBlockedProcess proves the native fixture lane
+// kills a Git process that remains blocked past its fixture-owned ceiling. The
+// pipe gives Git an open stdin with no bytes, while direct duration injection
+// keeps the proof fast without a swappable package-level seam.
+// invariant: tooling/git-access:fixture-isolation-parity (TestNativeGitDeadlineTerminatesBlockedProcess)
+func TestNativeGitDeadlineTerminatesBlockedProcess(t *testing.T) {
+	read, write, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer read.Close()
+	defer write.Close()
+
+	const deadline = 50 * time.Millisecond
+	started := time.Now()
+	_, err = runGitWithTimeout(deadline, "", read, "hash-object", "--stdin")
+	elapsed := time.Since(started)
+	if err == nil {
+		t.Fatal("blocked git process survived its deadline")
+	}
+	if elapsed < deadline/2 {
+		t.Fatalf("blocked git process failed after %v, before the %v deadline could terminate it", elapsed, deadline)
+	}
+	if elapsed > 2*time.Second {
+		t.Fatalf("blocked git process returned after %v, want prompt deadline termination", elapsed)
+	}
 }
 
 // TestNativeEnvironmentPinsTheWholeIsolationPolicy is the proof carrier for the
