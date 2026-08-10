@@ -344,12 +344,13 @@ func TestRollbackCreationFaultBoundariesRetainTypedState(t *testing.T) {
 	for _, stage := range []string{"rollback.rename", "rollback.root-fsync", "rollback.delete", "rollback.delete-fsync"} {
 		t.Run(stage, func(t *testing.T) {
 			root := initEffortRepo(t)
+			fault := errors.New("fault")
 			service := openTestService(t, root, func(deps *Dependencies) {
 				noTopology(deps)
 				deps.UUID = func() (string, error) { return testIDA, nil }
 				deps.Fault = func(got string) error {
 					if got == stage {
-						return errors.New("fault")
+						return fault
 					}
 					return nil
 				}
@@ -359,8 +360,14 @@ func TestRollbackCreationFaultBoundariesRetainTypedState(t *testing.T) {
 				t.Fatal(err)
 			}
 			result, err := service.RollbackCreation(testContext(t), record)
-			if err == nil {
-				t.Fatal("rollback fault was ignored")
+			if err == nil || !errors.Is(err, fault) {
+				t.Fatalf("rollback fault identity lost: %v", err)
+			}
+			if stage == "rollback.root-fsync" && !strings.Contains(err.Error(), "after rollback reservation") {
+				t.Fatalf("reservation sync boundary absent: %v", err)
+			}
+			if stage == "rollback.delete-fsync" && !strings.Contains(err.Error(), "after rollback deletion") {
+				t.Fatalf("deletion sync boundary absent: %v", err)
 			}
 			if stage == "rollback.rename" && result != (RollbackResult{}) {
 				t.Fatalf("pre-reservation result=%#v", result)
