@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-atomic-exclusive-artifact-publication: Atomic Exclusive Artifact Publication](atomic-exclusive-artifact-publication.md) (Proposed)
 
 ## History
 
