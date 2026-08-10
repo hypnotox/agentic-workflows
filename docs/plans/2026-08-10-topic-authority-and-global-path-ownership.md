@@ -4,7 +4,7 @@ date: 2026-08-10
 adrs:
   - retire-domain-staleness-audit-heuristics
   - global-topic-path-ownership
-status: Proposed
+status: Implemented
 ---
 # Plan: Topic Authority and Global Path Ownership
 

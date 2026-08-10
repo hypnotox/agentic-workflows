@@ -2,8 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-0256: Retire Domain Staleness Audit Heuristics](0256-retire-domain-staleness-audit-heuristics.md) (Implementing)
-- [ADR-0257: Global Topic Path Ownership](0257-global-topic-path-ownership.md) (Implementing)
+_No decisions are in flight._
 
 ## History
 
@@ -262,3 +261,5 @@
 - [ADR-0253: Unconditional Gates And Audit Rules](0253-unconditional-gates-and-audit-rules.md) (Implemented)
 - [ADR-0254: CLI Grammar Expresses Creation And Inventory](0254-cli-grammar-expresses-creation-and-inventory.md) (Implemented)
 - [ADR-0255: Deduplicate Plan Authoring and Execution Workflow](0255-deduplicate-plan-authoring-and-execution-workflow.md) (Implemented)
+- [ADR-0256: Retire Domain Staleness Audit Heuristics](0256-retire-domain-staleness-audit-heuristics.md) (Implemented)
+- [ADR-0257: Global Topic Path Ownership](0257-global-topic-path-ownership.md) (Implemented)
