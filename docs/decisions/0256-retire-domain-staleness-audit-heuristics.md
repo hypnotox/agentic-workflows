@@ -4,7 +4,7 @@ slug: retire-domain-staleness-audit-heuristics
 status: Implementing
 date: 2026-08-09
 ---
-# ADR-retire-domain-staleness-audit-heuristics: Retire Domain Staleness Audit Heuristics
+# ADR-0256: Retire Domain Staleness Audit Heuristics
 
 
 ## Context

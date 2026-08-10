@@ -14,7 +14,7 @@ These packages read git history, build immutable tree snapshots, and audit workf
 
 The plain-punctuation and uncommitted-changes rules always evaluate; plain-punctuation emits Warning findings and uncommitted-changes emits an Error.
 Origin: ADR-0253
-Revised-by: ADR-retire-domain-staleness-audit-heuristics
+Revised-by: ADR-0256
 Backing: test
 
 ### `invariant: audit-thresholds-fixed`

@@ -25,7 +25,7 @@ Backing: test
 ### `invariant: domain-path-globs-valid`
 
 Working-tree and staged domain sidecars reject empty, duplicate, or malformed anchored path selectors when they load. Historical audit projection omits domain sidecars and does not validate them.
-Origin: ADR-retire-domain-staleness-audit-heuristics
+Origin: ADR-0256
 Backing: test
 
 ### `invariant: glob-migration-anchored`

@@ -19,7 +19,7 @@ Backing: test
 
 Topic and context keep applicability separate from ownership evidence: awf topic --coverage remains the unbounded drilldown for applicable and owned paths and marker sites, while the context selectors facet reports owning-domain selectors, a global declaration when present, and bounded ownership selectors separately. It states the applicable ownership rule and never lists path witnesses; global topics remain visible outside their ownership selectors.
 Origin: ADR-0148
-Revised-by: ADR-0165, ADR-global-topic-path-ownership
+Revised-by: ADR-0165, ADR-0257
 Backing: test
 
 ### `invariant: context-default-excludes-history`

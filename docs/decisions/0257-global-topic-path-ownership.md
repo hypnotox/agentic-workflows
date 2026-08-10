@@ -4,7 +4,7 @@ slug: global-topic-path-ownership
 status: Implementing
 date: 2026-08-09
 ---
-# ADR-global-topic-path-ownership: Global Topic Path Ownership
+# ADR-0257: Global Topic Path Ownership
 
 
 ## Context
