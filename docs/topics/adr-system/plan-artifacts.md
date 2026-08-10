@@ -58,8 +58,9 @@ Backing: test
 
 ### `invariant: plan-new-unnumbered`
 
-awf new plan scaffolds docs/plans/YYYY-MM-DD-<slug>.md from the plans template with today's date and no sequential number, and refuses to overwrite an existing file.
+awf new plan scaffolds docs/plans/YYYY-MM-DD-<slug>.md from the plans template with today's date and no sequential number. Complete exclusive publication refuses an existing or concurrent winner without changing its bytes, retaining the established overwrite-refusal presentation.
 Origin: ADR-0098
+Revised-by: ADR-atomic-exclusive-artifact-publication
 Backing: test
 
 ### `invariant: plans-template-taxonomy`

@@ -1,11 +1,13 @@
 package project
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -130,6 +132,68 @@ func TestUninstallRejectsUnsafeResidentRoot(t *testing.T) {
 				t.Fatalf("lock mutated after refusal: %v", err)
 			}
 		})
+	}
+}
+
+func TestBackupFileReturnsSourceInspectionError(t *testing.T) {
+	p := &Project{Root: t.TempDir()}
+	if _, err := p.BackupFile("missing"); !os.IsNotExist(err) {
+		t.Fatalf("BackupFile missing source error = %v, want not exist", err)
+	}
+}
+
+// invariant: rendering/sync-and-drift:sync-backs-up-foreign (TestBackupFilePropagatesNonCollisionPublicationError)
+func TestBackupFilePropagatesNonCollisionPublicationError(t *testing.T) {
+	root := t.TempDir()
+	const source = "rescue source"
+	if err := os.WriteFile(filepath.Join(root, "artifact"), []byte(source), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	publicationFailure := errors.New("publication storage failure")
+	calls := 0
+	p := &Project{Root: root}
+	_, err := p.backupFile("artifact", func(path string, contents []byte, mode os.FileMode) error {
+		calls++
+		return publicationFailure
+	})
+	if !errors.Is(err, publicationFailure) {
+		t.Fatalf("BackupFile error = %v, want non-collision publication failure", err)
+	}
+	if calls != 1 {
+		t.Fatalf("publication calls = %d, want one without suffix retry", calls)
+	}
+	if _, err := os.Stat(filepath.Join(root, "artifact.awf-bak")); !os.IsNotExist(err) {
+		t.Fatalf("backup created after publication failure: %v", err)
+	}
+}
+
+func TestBackupFileRetriesOnlyPublicationCollision(t *testing.T) {
+	root := t.TempDir()
+	const source = "rescue source"
+	if err := os.WriteFile(filepath.Join(root, "artifact"), []byte(source), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	p := &Project{Root: root}
+	competed := false
+	_, err := p.backupFile("artifact", func(path string, contents []byte, mode os.FileMode) error {
+		if !competed {
+			competed = true
+			if err := os.WriteFile(path, []byte("concurrent winner"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return filepublication.Publish(path, contents, mode)
+	})
+	if err != nil {
+		t.Fatalf("BackupFile collision retry: %v", err)
+	}
+	winner, err := os.ReadFile(filepath.Join(root, "artifact.awf-bak"))
+	if err != nil || string(winner) != "concurrent winner" {
+		t.Fatalf("winner backup = %q, error = %v", winner, err)
+	}
+	backup, err := os.ReadFile(filepath.Join(root, "artifact.awf-bak.1"))
+	if err != nil || string(backup) != source {
+		t.Fatalf("retried backup = %q, error = %v", backup, err)
 	}
 }
 

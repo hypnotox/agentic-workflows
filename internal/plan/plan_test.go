@@ -341,11 +341,13 @@ func TestNewFileRefusesOverwrite(t *testing.T) {
 	dir := t.TempDir()
 	writePlanTemplate(t, dir)
 	swapNow(t, fixedNow)
-	if _, err := plan.NewFile(dir, "Same Plan"); err != nil {
+	path, err := plan.NewFile(dir, "Same Plan")
+	if err != nil {
 		t.Fatalf("first NewFile: %v", err)
 	}
-	if _, err := plan.NewFile(dir, "Same Plan"); err == nil {
-		t.Fatal("expected overwrite refusal on same-day same-title plan, got nil")
+	_, err = plan.NewFile(dir, "Same Plan")
+	if err == nil || err.Error() != "plan: "+path+" already exists" {
+		t.Fatalf("overwrite refusal = %v, want established presentation", err)
 	}
 }
 

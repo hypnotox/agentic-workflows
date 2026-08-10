@@ -2,10 +2,13 @@ package project
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
+	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 )
 
@@ -24,39 +27,43 @@ func (p *Project) InitCollisions(ctx context.Context) ([]string, error) {
 // sibling (never clobbering a prior backup) and returns the backup's
 // project-relative path.
 func (p *Project) BackupFile(rel string) (string, error) {
+	return p.backupFile(rel, filepublication.Publish)
+}
+
+// backupFile retains project-owned backup naming and collision retry policy;
+// its publication parameter lets tests force the consumer's namespace boundary.
+func (p *Project) backupFile(rel string, publish func(string, []byte, fs.FileMode) error) (string, error) {
 	src := filepath.Join(p.Root, rel)
-	bak := freeBackupPath(src)
-	if err := copyFile(src, bak); err != nil { // coverage-ignore: rel is a known-existing collision and bak is a free sibling path; copyFile fails only on a permission fault root bypasses
+	info, err := os.Stat(src)
+	if err != nil {
 		return "", err
 	}
-	bakRel, _ := filepath.Rel(p.Root, bak)
-	return bakRel, nil
-}
-
-// freeBackupPath returns base+".awf-bak", or "...awf-bak.N" with the lowest N
-// that does not yet exist, so a forced backup never overwrites a prior one.
-func freeBackupPath(base string) string {
-	p := base + ".awf-bak"
-	for i := 1; fileExists(p); i++ {
-		p = fmt.Sprintf("%s.awf-bak.%d", base, i)
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return "", err
 	}
-	return p
+	for suffix := 0; ; suffix++ {
+		bak := backupPath(src, suffix)
+		err := publish(bak, data, info.Mode().Perm())
+		if errors.Is(err, os.ErrExist) {
+			continue
+		}
+		if err != nil {
+			return "", err
+		}
+		bakRel, _ := filepath.Rel(p.Root, bak)
+		return bakRel, nil
+	}
 }
 
-func fileExists(p string) bool {
-	_, err := os.Stat(p)
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
 	return err == nil
 }
 
-// copyFile copies src to dst, preserving the source file's permission bits.
-func copyFile(src, dst string) error {
-	info, err := os.Stat(src)
-	if err != nil { // coverage-ignore: src is a known-existing collision path
-		return err
+func backupPath(base string, suffix int) string {
+	if suffix == 0 {
+		return base + ".awf-bak"
 	}
-	data, err := os.ReadFile(src)
-	if err != nil { // coverage-ignore: src was just stat'd and is readable
-		return err
-	}
-	return os.WriteFile(dst, data, info.Mode().Perm())
+	return fmt.Sprintf("%s.awf-bak.%d", base, suffix)
 }

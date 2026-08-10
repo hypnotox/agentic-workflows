@@ -5,9 +5,11 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 )
 
@@ -214,6 +216,58 @@ func TestPruneBacksUpCoOwnedRunner(t *testing.T) {
 // stays out of SingletonKinds() - the unified-doc-model completeness set is
 // unchanged by the runner's existence.
 // invariant: rendering/singletons-and-payloads:singleton-kinds-complete (TestRunnerNotASingletonKind)
+// invariant: rendering/companion-scripts:runner-prune-backup (TestConcurrentRunnerBackupsPublishCompleteRescueCopies)
+func TestConcurrentRunnerBackupsPublishCompleteRescueCopies(t *testing.T) {
+	root := t.TempDir()
+	const source = "complete runner rescue\n"
+	if err := os.WriteFile(filepath.Join(root, "x"), []byte(source), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	p := &Project{Root: root}
+	ready := make(chan struct{}, 2)
+	release := make(chan struct{})
+	var calls int
+	var callsMu sync.Mutex
+	publish := func(path string, contents []byte, mode os.FileMode) error {
+		callsMu.Lock()
+		calls++
+		call := calls
+		callsMu.Unlock()
+		if call <= 2 {
+			ready <- struct{}{}
+			<-release
+		}
+		return filepublication.Publish(path, contents, mode)
+	}
+
+	results := make(chan error, 2)
+	for range 2 {
+		go func() {
+			_, err := p.backupFile("x", publish)
+			results <- err
+		}()
+	}
+	<-ready
+	<-ready
+	close(release)
+	for range 2 {
+		if err := <-results; err != nil {
+			t.Fatalf("BackupFile: %v", err)
+		}
+	}
+	for _, name := range []string{"x.awf-bak", "x.awf-bak.1"} {
+		path := filepath.Join(root, name)
+		contents, err := os.ReadFile(path)
+		if err != nil || string(contents) != source {
+			t.Fatalf("backup %s = %q, error = %v", name, contents, err)
+		}
+		info, err := os.Stat(path)
+		if err != nil || info.Mode().Perm() != 0o640 {
+			t.Fatalf("backup %s mode = %v, error = %v, want 640", name, info.Mode(), err)
+		}
+	}
+}
+
 func TestRunnerNotASingletonKind(t *testing.T) {
 	if slices.Contains(catalog.SingletonKinds(), "runner") {
 		t.Error("the runner must not be a catalog SingletonKind (it is a dedicated render block)")
