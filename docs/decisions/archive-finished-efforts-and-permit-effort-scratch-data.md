@@ -42,14 +42,15 @@ policy.
 ## Decision
 
 1. `decision: archived-finish` Finishing an effort retires its active resident by moving the
-   complete validated directory into a repository-wide, self-ignored machine-local archive
-   instead of deleting it. The archive is ephemeral and non-authoritative: awf exposes no
-   archive inventory, selection, restoration, retention, pruning, analysis, or other
-   management surface, and users may inspect or delete its descendants manually.
-2. `decision: stable-archive-identity` Each archived directory is named from the effort's
-   immutable UUID and slug. This preserves recognizable identity, allows a finished slug to
-   be reused, and makes destination collision a refusal rather than replacement. UUID
-   uniqueness does not relax no-clobber safety.
+   complete validated directory to the repository-wide, self-ignored machine-local path
+   `.awf/effort-archive/<uuid>-<slug>/` instead of deleting it. The archive is ephemeral and
+   non-authoritative: awf exposes no archive inventory, selection, restoration, retention,
+   pruning, analysis, or other management surface, and users may inspect or delete its
+   descendants manually.
+2. `decision: stable-archive-identity` The archive name uses the effort's exact immutable
+   lowercase UUID, one hyphen, and its exact slug. This preserves recognizable identity,
+   allows a finished slug to be reused, and makes destination collision a refusal rather
+   than replacement. UUID uniqueness does not relax no-clobber safety.
 3. `decision: restartable-archive-transition` Finish retains its guarded active-to-finishing
    reservation transition. Moving that reservation to the archive is the completion and
    slug-release point. Before that point, retry by slug remains valid; after it, the result
@@ -57,10 +58,15 @@ policy.
    the reported source and destination rather than blind retry. The move follows the
    repository's platform-specific atomic namespace and parent-sync durability model and
    never falls back to copy-and-delete across filesystems.
-4. `decision: archive-ignore-precondition` Finish may archive private effort bytes only
-   after proving the governed self-ignoring archive root is present and safe. A project
-   lacking that rendered output must upgrade or render before finish proceeds, closing the
-   window in which a newer binary could create an unignored archive in an older project.
+4. `decision: archive-ignore-precondition` A new registered config generation introduces
+   the archive root so a project on an older generation must run `awf upgrade` before effort
+   commands can proceed; ordinary render repairs the marker only after the project is at the
+   current generation. Finish may archive private effort bytes only after proving that the
+   confined archive root is a real safely owned directory and its governed marker is a safe
+   regular file whose bytes match the planned self-ignore output. A missing, symlinked,
+   foreign, or stale root or marker refuses before the active resident changes. This closes
+   the window in which a newer binary could move private memory into an unignored archive
+   in an older project.
 5. `decision: opaque-effort-scratch` A valid active effort may contain one optional
    `scratch/` direct child. The child itself must be a real, safely owned directory, but awf
    treats every descendant as opaque and does not traverse, validate, list, interpret, or
@@ -72,13 +78,16 @@ policy.
    only when topology is proven absent. It uses a narrow internal rollback boundary rather
    than public finish, because a creation that never succeeded is not a finished effort and
    should not enter the archive.
-7. `decision: third-resident-root` Rendering, drift, sweep, uninstall, confinement, and test
-   discovery recognize the archive as a third repository-wide resident root beside active
-   efforts and managed worktrees. Only its self-ignoring marker is governed output; archived
-   descendants remain local bytes preserved without recursive interpretation.
+7. `decision: third-resident-root` Rendering, drift, sweep, uninstall, and confinement
+   recognize the archive as a third repository-wide resident root beside active efforts and
+   managed worktrees. Only its self-ignoring marker is governed output; archived descendants
+   remain local bytes preserved without recursive interpretation. The marker template stays
+   coherent under missing-key-zero rendering and cannot emit unresolved or no-value tokens
+   when variables are empty.
 
 ## State changes
 
+- add `config/migrations-and-locks:archive-root-upgrade-boundary`
 - update `tooling/effort-management:effort-record-authority`
 - update `tooling/effort-management:default-worktree-creation`
 - update `tooling/cli:effort-command-contract`
@@ -112,8 +121,11 @@ the exact path in the result is the recovery evidence.
 
 The third resident root widens rendering and repository-walking assumptions. Keeping it in the
 single closed resident-root registry allows output planning, drift exemptions, preservation,
-and test exclusions to derive from the same authority. The governed ignore precondition adds
-an actionable finish refusal for projects that have not yet rendered the archive root.
+and repository-walking exclusions to derive from the same authority. Registering a config
+generation makes adopters run upgrade even though their authored configuration may need no
+semantic edit; that boundary is the cost of ensuring the ignored root exists before any newer
+finish command can retain private bytes. At the current generation, a missing or stale marker
+remains an actionable render repair rather than an implicit mutation by finish.
 
 Default worktree creation can no longer reuse public finish for rollback. The narrow internal
 delete path is justified only for the just-published resident in the same failed creation
