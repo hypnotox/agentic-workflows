@@ -1,13 +1,16 @@
 package project
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 )
 
@@ -207,6 +210,117 @@ func TestPruneBacksUpCoOwnedRunner(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// invariant: rendering/companion-scripts:runner-prune-backup (TestRunnerPrunePropagatesBackupFailure)
+func TestRunnerPrunePropagatesBackupFailure(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	lock, err := manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry := lock.Files["awf"]
+	entry.TemplateID = coOwnedRunnerTID
+	lock.Files["x"] = entry
+	delete(lock.Files, "awf")
+	if err := lock.Save(lockFile(root)); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(root, "awf")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(root, "x"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	p, err = Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, _, err = p.SyncReport(testContext(t))
+	if err == nil || !strings.Contains(err.Error(), "back up pruned runner x") || !strings.Contains(err.Error(), "read backup source") {
+		t.Fatalf("runner prune backup error = %v", err)
+	}
+	var pathError *os.PathError
+	if !errors.As(err, &pathError) {
+		t.Fatalf("runner prune backup error identity = %T, want *os.PathError", err)
+	}
+	if info, statErr := os.Stat(filepath.Join(root, "x")); statErr != nil || !info.IsDir() {
+		t.Fatalf("runner source changed after backup refusal: info=%v error=%v", info, statErr)
+	}
+	preserved, err := manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := preserved.Files["x"]; !ok {
+		t.Fatal("runner lock entry was removed after backup refusal")
+	}
+}
+
+// invariant: rendering/companion-scripts:runner-prune-backup (TestConcurrentRunnerBackupsPublishCompleteRescueCopies)
+func TestConcurrentRunnerBackupsPublishCompleteRescueCopies(t *testing.T) {
+	root := t.TempDir()
+	const source = "complete runner rescue\n"
+	sourcePath := filepath.Join(root, "x")
+	if err := os.WriteFile(sourcePath, []byte(source), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	sourceInfo, err := os.Stat(sourcePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := &Project{Root: root}
+	ready := make(chan struct{}, 2)
+	release := make(chan struct{})
+	var calls int
+	var callsMu sync.Mutex
+	publish := func(path string, contents []byte, mode os.FileMode) error {
+		callsMu.Lock()
+		calls++
+		call := calls
+		callsMu.Unlock()
+		if call <= 2 {
+			ready <- struct{}{}
+			<-release
+		}
+		return filepublication.Publish(path, contents, mode)
+	}
+
+	results := make(chan error, 2)
+	for range 2 {
+		go func() {
+			_, err := p.backupFile("x", publish)
+			results <- err
+		}()
+	}
+	<-ready
+	<-ready
+	close(release)
+	for range 2 {
+		if err := <-results; err != nil {
+			t.Fatalf("BackupFile: %v", err)
+		}
+	}
+	for _, name := range []string{"x.awf-bak", "x.awf-bak.1"} {
+		path := filepath.Join(root, name)
+		contents, err := os.ReadFile(path)
+		if err != nil || string(contents) != source {
+			t.Fatalf("backup %s = %q, error = %v", name, contents, err)
+		}
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatalf("stat backup %s: %v", name, err)
+		}
+		if info.Mode().Perm() != sourceInfo.Mode().Perm() {
+			t.Fatalf("backup %s mode = %v, want source mode %v", name, info.Mode().Perm(), sourceInfo.Mode().Perm())
+		}
 	}
 }
 

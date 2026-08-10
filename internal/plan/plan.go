@@ -4,7 +4,9 @@
 package plan
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -14,6 +16,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
 )
 
@@ -245,6 +248,12 @@ func replaceOnce(s, old, replacement string) (string, error) {
 // YYYY-MM-DD-slug.md. No sequential number is allocated. Refuses to overwrite.
 // touches-state: adr-system/plan-artifacts:plan-new-unnumbered - unnumbered dated plan scaffold; proof in plan_test.go
 func NewFile(dir, title string) (string, error) {
+	return newFile(dir, title, filepublication.Publish)
+}
+
+// newFile retains plan-owned naming and refusal presentation while accepting
+// the publication operation at its consumer boundary for deterministic tests.
+func newFile(dir, title string, publish func(string, []byte, fs.FileMode) error) (string, error) {
 	title = strings.TrimSpace(title)
 	slug, err := slugify(title)
 	if err != nil {
@@ -252,11 +261,6 @@ func NewFile(dir, title string) (string, error) {
 	}
 	date := now().Format("2006-01-02")
 	path := filepath.Join(dir, date+"-"+slug+".md")
-	if _, err := os.Stat(path); err == nil {
-		return "", fmt.Errorf("plan: %s already exists", path)
-	} else if !os.IsNotExist(err) { // coverage-ignore: Stat fails here only on a permission fault a test cannot trigger
-		return "", err
-	}
 	raw, err := os.ReadFile(filepath.Join(dir, "template.md"))
 	if err != nil {
 		return "", fmt.Errorf("plan: read template: %w", err)
@@ -270,8 +274,11 @@ func NewFile(dir, title string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil { // coverage-ignore: post-Stat write; fails only on a permission fault a test cannot trigger
-		return "", err
+	if err := publish(path, []byte(content), 0o644); err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return "", fmt.Errorf("plan: %s already exists", path)
+		}
+		return "", fmt.Errorf("plan: publish %s: %w", path, err)
 	}
 	return path, nil
 }

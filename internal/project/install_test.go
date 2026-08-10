@@ -1,11 +1,14 @@
 package project
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -166,6 +169,119 @@ func TestUninstallRejectsUnsafeResidentRoot(t *testing.T) {
 				t.Fatalf("lock mutated after refusal: %v", err)
 			}
 		})
+	}
+}
+
+func TestBackupFileReturnsSourceInspectionError(t *testing.T) {
+	p := &Project{Root: t.TempDir()}
+	if _, err := p.BackupFile("missing"); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("BackupFile missing source error = %v, want not exist", err)
+	}
+}
+
+func TestSyncReportPropagatesForeignBackupFailure(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
+		t.Fatal(err)
+	}
+	lock, err := manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	delete(lock.Files, "AGENTS.md")
+	if err := lock.Save(lockFile(root)); err != nil {
+		t.Fatal(err)
+	}
+	foreign := filepath.Join(root, "AGENTS.md")
+	if err := os.Remove(foreign); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(foreign, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	_, _, _, err = p.SyncReport(testContext(t))
+	if err == nil || !strings.Contains(err.Error(), "back up AGENTS.md") || !strings.Contains(err.Error(), "read backup source") {
+		t.Fatalf("SyncReport foreign backup error = %v", err)
+	}
+	var pathError *os.PathError
+	if !errors.As(err, &pathError) {
+		t.Fatalf("SyncReport foreign backup error identity = %T, want *os.PathError", err)
+	}
+	if info, statErr := os.Stat(foreign); statErr != nil || !info.IsDir() {
+		t.Fatalf("foreign source changed after backup refusal: info=%v error=%v", info, statErr)
+	}
+}
+
+// invariant: rendering/sync-and-drift:sync-backs-up-foreign (TestBackupFilePropagatesNonCollisionPublicationError)
+func TestBackupFilePropagatesNonCollisionPublicationError(t *testing.T) {
+	root := t.TempDir()
+	const source = "rescue source"
+	if err := os.WriteFile(filepath.Join(root, "artifact"), []byte(source), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	publicationFailure := errors.New("publication storage failure")
+	calls := 0
+	p := &Project{Root: root}
+	_, err := p.backupFile("artifact", func(path string, contents []byte, mode os.FileMode) error {
+		calls++
+		return publicationFailure
+	})
+	if !errors.Is(err, publicationFailure) {
+		t.Fatalf("BackupFile error = %v, want non-collision publication failure", err)
+	}
+	if calls != 1 {
+		t.Fatalf("publication calls = %d, want one without suffix retry", calls)
+	}
+	if _, err := os.Stat(filepath.Join(root, "artifact.awf-bak")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("backup created after publication failure: %v", err)
+	}
+}
+
+// invariant: rendering/sync-and-drift:sync-backs-up-foreign (TestBackupFileRetriesOnlyPublicationCollision)
+func TestBackupFileRetriesOnlyPublicationCollision(t *testing.T) {
+	root := t.TempDir()
+	const source = "rescue source"
+	sourcePath := filepath.Join(root, "artifact")
+	if err := os.WriteFile(sourcePath, []byte(source), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	sourceInfo, err := os.Stat(sourcePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := &Project{Root: root}
+	competed := false
+	_, err = p.backupFile("artifact", func(path string, contents []byte, mode os.FileMode) error {
+		if !competed {
+			competed = true
+			if err := os.WriteFile(path, []byte("concurrent winner"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return filepublication.Publish(path, contents, mode)
+	})
+	if err != nil {
+		t.Fatalf("BackupFile collision retry: %v", err)
+	}
+	winner, err := os.ReadFile(filepath.Join(root, "artifact.awf-bak"))
+	if err != nil || string(winner) != "concurrent winner" {
+		t.Fatalf("winner backup = %q, error = %v", winner, err)
+	}
+	retriedPath := filepath.Join(root, "artifact.awf-bak.1")
+	backup, err := os.ReadFile(retriedPath)
+	if err != nil || string(backup) != source {
+		t.Fatalf("retried backup = %q, error = %v", backup, err)
+	}
+	backupInfo, err := os.Stat(retriedPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if backupInfo.Mode().Perm() != sourceInfo.Mode().Perm() {
+		t.Fatalf("retried backup mode = %v, want source mode %v", backupInfo.Mode().Perm(), sourceInfo.Mode().Perm())
 	}
 }
 

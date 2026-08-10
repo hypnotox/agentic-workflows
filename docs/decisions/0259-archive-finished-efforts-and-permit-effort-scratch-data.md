@@ -4,7 +4,7 @@ slug: archive-finished-efforts-and-permit-effort-scratch-data
 status: Implementing
 date: 2026-08-10
 ---
-# ADR-archive-finished-efforts-and-permit-effort-scratch-data: Archive Finished Efforts and Permit Effort Scratch Data
+# ADR-0259: Archive Finished Efforts and Permit Effort Scratch Data
 
 
 ## Context

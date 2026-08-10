@@ -10,6 +10,7 @@
 - [Context and topic](context-and-topic.md): The read-only orientation surfaces: context, topic, describe, uncovered.
 - [Effort management](effort-management.md): Binary-owned effort records and optional resources.
 - [Evaluations](evaluations.md): The golden-task evaluation suite.
+- [File publication](file-publication.md): Atomic no-replace complete-file publication shared across production consumers.
 - [Filesystem access](filesystem-access.md): Single-home root-confined filesystem access and its controlled test fault source.
 - [Git access](git-access.md): The one semantic git seam - entrypoints, backends, and their pinned contracts.
 - [Initialization](init-and-enablement.md): Project adoption and initialization behavior.

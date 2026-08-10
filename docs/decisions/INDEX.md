@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-archive-finished-efforts-and-permit-effort-scratch-data: Archive Finished Efforts and Permit Effort Scratch Data](archive-finished-efforts-and-permit-effort-scratch-data.md) (Implementing)
+- [ADR-0259: Archive Finished Efforts and Permit Effort Scratch Data](0259-archive-finished-efforts-and-permit-effort-scratch-data.md) (Implementing)
 
 ## History
 
@@ -263,3 +263,4 @@
 - [ADR-0255: Deduplicate Plan Authoring and Execution Workflow](0255-deduplicate-plan-authoring-and-execution-workflow.md) (Implemented)
 - [ADR-0256: Retire Domain Staleness Audit Heuristics](0256-retire-domain-staleness-audit-heuristics.md) (Implemented)
 - [ADR-0257: Global Topic Path Ownership](0257-global-topic-path-ownership.md) (Implemented)
+- [ADR-0258: Atomic Exclusive Artifact Publication](0258-atomic-exclusive-artifact-publication.md) (Implemented)

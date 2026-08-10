@@ -6,6 +6,7 @@ package adr
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -13,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
 )
 
@@ -471,8 +473,19 @@ func NewPendingFile(dir, title string) (string, error) {
 // Every refusal is evaluated before the first write.
 // touches-state: adr-system/adr-lifecycle:adr-new-strips-markers - the scaffold strips every marker comment from the copied template; proof in adr_test.go
 // touches-state: adr-system/adr-lifecycle:adr-new-heading-matches-file - the scaffold fills the heading from the allocated identity; proof in adr_test.go
-// touches-state: adr-system/adr-lifecycle:adr-new-no-overwrite - refuse-overwrite guard; unbacked (unreachable), see ADR-0042 Verify note
+// touches-state: adr-system/adr-lifecycle:adr-new-no-overwrite - complete no-replace publication preserves an existing record; proof in scaffold_lock_test.go
 func scaffoldRecord(dir, title string, format Format, pending bool) (string, error) {
+	return scaffoldRecordWith(dir, title, format, pending, acquireScaffoldLock, os.ReadFile, filepublication.Publish)
+}
+
+func scaffoldRecordWith(
+	dir, title string,
+	format Format,
+	pending bool,
+	acquire func(string) (func() error, error),
+	readFile func(string) ([]byte, error),
+	publish func(string, []byte, fs.FileMode) error,
+) (path string, returnErr error) {
 	title = strings.TrimSpace(title)
 	slug, err := slugify(title)
 	if err != nil {
@@ -487,6 +500,13 @@ func scaffoldRecord(dir, title string, format Format, pending bool) (string, err
 	if allDigitSlugRe.MatchString(slug) {
 		return "", fmt.Errorf("adr: title slugifies to %q, which collides with the number identity form", slug)
 	}
+	unlock, err := acquire(dir)
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		returnErr = errors.Join(returnErr, unlock())
+	}()
 	corpus, err := loadIdentityCorpus(dir)
 	if err != nil {
 		return "", err
@@ -505,13 +525,13 @@ func scaffoldRecord(dir, title string, format Format, pending bool) (string, err
 		base = slug + ".md"
 		heading = "# ADR-" + slug + ": " + title
 	}
-	path := filepath.Join(dir, base)
+	path = filepath.Join(dir, base)
 	if _, err := os.Stat(path); err == nil { // coverage-ignore: the slug-collision refusal above already rejects a pending name in the corpus, and the number is one past every numbered record, so this path can only pre-exist via a concurrent-process race a single-threaded test cannot construct
 		return "", fmt.Errorf("adr: %s already exists", path)
 	} else if !os.IsNotExist(err) { // coverage-ignore: Stat fails here only on a permission fault a test cannot trigger
 		return "", err
 	}
-	raw, err := os.ReadFile(filepath.Join(dir, "template.md"))
+	raw, err := readFile(filepath.Join(dir, "template.md"))
 	if err != nil {
 		return "", fmt.Errorf("adr: read template: %w", err)
 	}
@@ -568,7 +588,7 @@ func scaffoldRecord(dir, title string, format Format, pending bool) (string, err
 	if err != nil {
 		return "", err
 	}
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil { // coverage-ignore: post-Stat write into a dir just read by LoadCorpus; fails only on a permission fault a test cannot trigger
+	if err := publish(path, []byte(content), 0o644); err != nil {
 		return "", err
 	}
 	return path, nil

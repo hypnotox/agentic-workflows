@@ -27,6 +27,7 @@ The gated `check` family is organized by subject universe. `check repo` aggregat
 - [Context and topic](../topics/tooling/context-and-topic.md): The read-only orientation surfaces: context, topic, describe, uncovered.
 - [Effort management](../topics/tooling/effort-management.md): Binary-owned effort records and optional resources.
 - [Evaluations](../topics/tooling/evaluations.md): The golden-task evaluation suite.
+- [File publication](../topics/tooling/file-publication.md): Atomic no-replace complete-file publication shared across production consumers.
 - [Filesystem access](../topics/tooling/filesystem-access.md): Single-home root-confined filesystem access and its controlled test fault source.
 - [Git access](../topics/tooling/git-access.md): The one semantic git seam - entrypoints, backends, and their pinned contracts.
 - [Initialization](../topics/tooling/init-and-enablement.md): Project adoption and initialization behavior.

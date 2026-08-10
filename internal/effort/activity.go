@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
@@ -238,6 +239,26 @@ func (s store) removeActivityExpected(path string, expected *fileIdentity) (retu
 	return nil
 }
 func (s store) replaceResidentExpected(path string, raw []byte, label string, expected *fileIdentity, operation activityOperation) (returnErr error) {
+	if expected == nil {
+		for _, stage := range []string{label + ".write", label + ".fsync", label + ".rename"} {
+			if err := s.hit(stage); err != nil {
+				return activityStorageFailure(operation, "replace", err)
+			}
+		}
+		if err := filepublication.Publish(path, raw, 0o600); err != nil { // coverage-ignore: activity creation collisions and mechanism faults are covered by the shared publisher
+			if errors.Is(err, os.ErrExist) {
+				return activityStorageFailure(operation, "replace", publicationIdentityRefusal(err))
+			}
+			return activityStorageFailure(operation, "replace", err)
+		}
+		if err := s.hit(label + ".directory-fsync"); err != nil { // coverage-ignore: activity fault-matrix callers cover this boundary through replacement
+			return activityStorageFailure(operation, "directory-fsync", err)
+		}
+		if err := syncDirectory(filepath.Dir(path)); err != nil { // coverage-ignore: injected directory-fsync faults cover this durability boundary; a real failure requires a storage fault
+			return activityStorageFailure(operation, "directory-fsync", err)
+		}
+		return nil
+	}
 	dir := filepath.Dir(path)
 	temp, err := os.CreateTemp(dir, "."+label+"-*.tmp")
 	if err != nil {
@@ -273,9 +294,6 @@ func (s store) replaceResidentExpected(path string, raw []byte, label string, ex
 		return activityStorageFailure(operation, "replace", err)
 	}
 	if err = publishAtomic(tempPath, path, expected); err != nil {
-		if expected == nil && errors.Is(err, os.ErrExist) {
-			return activityStorageFailure(operation, "replace", publicationIdentityRefusal(err))
-		}
 		return activityStorageFailure(operation, "replace", err)
 	}
 	if err = s.hit(label + ".directory-fsync"); err != nil {

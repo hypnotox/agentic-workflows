@@ -93,6 +93,7 @@ func TestEffortProtocol2CreateShowListAndCollision(t *testing.T) {
 	}
 }
 
+// invariant: tooling/file-publication:exclusive-file-publication-single-home (TestCreationPublicationFaultOrderAndIncompleteEnumeration)
 func TestCreationPublicationFaultOrderAndIncompleteEnumeration(t *testing.T) {
 	t.Parallel()
 	stages := []string{

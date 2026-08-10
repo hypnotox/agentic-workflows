@@ -114,9 +114,9 @@ Backing: test
 
 ### `invariant: sync-backs-up-foreign`
 
-During `awf render`, a target path that already exists on disk but is not recorded as awf-written in the lock at the start of the sync is copied to a free `.awf-bak` sibling and reported before being overwritten, while a path recorded in that lock is overwritten with no backup.
+During `awf render`, a target path that already exists on disk but is not recorded as awf-written in the lock at the start of the sync is copied through complete exclusive publication to a `.awf-bak` sibling and reported before being overwritten, while a path recorded in that lock is overwritten with no backup. Backup suffixes retry only after a destination-exists refusal, preserve the source permission bits, and propagate every non-collision publication error without retry.
 Origin: ADR-0148
-Revised-by: ADR-0159
+Revised-by: ADR-0159, ADR-0258
 Backing: test
 
 ### `invariant: target-prune-ancestors`

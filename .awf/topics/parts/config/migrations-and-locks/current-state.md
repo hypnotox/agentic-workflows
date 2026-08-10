@@ -122,7 +122,7 @@ Backing: test
 ### `invariant: archive-root-upgrade-boundary`
 
 A project below schema generation 42 is gated before effort commands run; `awf upgrade` applies the effort-archive-root generation, publishes `.awf/effort-archive/.gitignore`, and writes a current lock. At the current generation ordinary render repairs that governed marker without interpreting archive descendants.
-Origin: ADR-archive-finished-efforts-and-permit-effort-scratch-data
+Origin: ADR-0259
 Backing: test
 
 ### `invariant: schema-min-version`

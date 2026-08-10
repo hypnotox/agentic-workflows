@@ -79,6 +79,9 @@ func TestIndependentWorkflowEscalation(t *testing.T) {
 			}
 			for _, name := range []string{"executing-plans", "subagent-driven-development"} {
 				body := bodies[name]
+				assertContainsAll(t, target+" "+name+" autonomous phase progression", body,
+					"continue the plan loop without returning control to the user", "select the next unfinished phase", "A phase-complete report is not a plan-complete stopping point")
+				assertOrderedPhrases(t, body, "**Routine checkpoint.**", "continue the plan loop without returning control to the user", "After all settled phases")
 				assertContainsAll(t, target+" "+name+" closure", body,
 					"assurance settles or is explicitly skipped", "effort-backed work returns", "effort-free work, the parent performs", "deferred ADR/plan terminal transaction", "adr-lifecycle", "gate and audit")
 				if strings.Contains(body, "Terminal review owns") {

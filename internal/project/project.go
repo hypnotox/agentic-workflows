@@ -385,7 +385,7 @@ func (p *Project) syncReportWith(ctx context.Context, seed *InitAuthority, opera
 			if _, statErr := os.Stat(abs); statErr == nil {
 				// touches-state: rendering/sync-and-drift:sync-backs-up-foreign - foreign-file backup on sync; proof in project_test.go
 				bak, err := p.BackupFile(f.Path)
-				if err != nil { // coverage-ignore: BackupFile only fails on a copyFile permission fault that root bypasses
+				if err != nil {
 					return backups, changes, pruned, fmt.Errorf("back up %s: %w", f.Path, err)
 				}
 				backups = append(backups, Backup{Path: f.Path, Bak: bak, Index: f.RegenChecked})
@@ -480,7 +480,7 @@ func (p *Project) syncReportWith(ctx context.Context, seed *InitAuthority, opera
 			// prune - never a silent fall-through to deletion.
 			if entry.TemplateID == coOwnedRunnerTID && fileExists(file) {
 				bak, bakErr := p.BackupFile(path)
-				if bakErr != nil { // coverage-ignore: BackupFile only fails on a copyFile permission fault that root bypasses
+				if bakErr != nil {
 					return backups, changes, pruned, fmt.Errorf("back up pruned runner %s: %w", path, bakErr)
 				}
 				backups = append(backups, Backup{Path: path, Bak: bak})

@@ -66,9 +66,9 @@ data:
       domains: [config]
       tags: [schema-migration, verification-discipline]
       body: |
-        Add the retired key to the forward-port proof. If an older migration writes the key,
-        strip it while loading historical migration input as well; a current-schema forward-port
-        branch alone does not protect that adopter path.
+        Add every newly retired key to both the retired-key removal ledger and the forward-port proof.
+        If an older migration writes the key, strip it while loading historical migration input as
+        well; a current-schema forward-port branch alone does not protect that adopter path.
     - title: "Scope a claim to the command's actual input"
       domains: [invariants]
       tags: [invariant-backing, verification-discipline]
@@ -234,9 +234,12 @@ data:
       domains: [tooling]
       tags: [coverage-gate]
       body: |
-        When refactoring a line carrying `coverage-ignore`, re-run its reachability argument against
-        the new state space and delete or cover it if the profile now executes the branch. The local
-        audit warning is advisory, not proof that the exclusion remains true.
+        A `coverage-ignore` is a reachability claim, not proof that its branch is impossible. The
+        gate requires a reason and enforces 100% after exclusions, while the local audit only warns
+        when production ignores are added or touched. During review, apply
+        `coverage-ignore-reachability` to new, retained, and refactor-inherited ignores: refute each
+        one against the state or call order it declares impossible, and remove it when that argument
+        no longer holds.
     - title: "An attribute-filtered pinned-set test exempts every other attribute value"
       domains: [tooling]
       tags: [pinned-set-tests, invariant-backing]
@@ -320,25 +323,11 @@ data:
       domains: [tooling]
       tags: [repo-open]
       body: |
-        A new repository walk must use the established nested-Git-root boundary or a Git-derived
-        file set. Add cases for linked worktrees and nested repositories; a plain recursive walk can
-        silently include another repository's files.
-    - title: "Relocating a cross-cutting guard out of a shared helper drops it for internal callers"
-      domains: [tooling]
-      tags: [cli-dispatch, version-authority]
-      body: |
-        `gate()` (the binary-version guard) was applied *transitively*: `runSync` gated at its top,
-        so every command that chained `runSync` (including the `Ungated` `init` and `upgrade`)
-        inherited the refusal without a direct `gate()` call. Moving the gate up to the parse-once
-        driver (ADR-0094) removed it from `runSync`; the top-level `render` command stayed covered by
-        the driver, but `init`/`upgrade` (Ungated, gating only through their chained sync) silently
-        lost it; `awf init` on a schema-behind tree re-stamped the current schema over an unmigrated
-        config instead of refusing "run awf upgrade". The transitive gate was real but *untested*, so
-        the reclassification looked complete and the gap survived to the review step. When you relocate
-        a guard out of a shared helper, enumerate every *internal* caller of that helper (not just the
-        top-level entry point you are reclassifying) and add a per-caller test for each one that still
-        needs the guard. `SyncReport`'s corrupt-lock refusal is not a substitute: it catches a corrupt
-        lock but not a schema- or version-behind one, which only `gate()` sees.
+        New tests should use `testsupport.WalkRepoFiles`; production code should use the Git-derived
+        selected file set or implement the same nested-checkout pruning. A plain recursive walk can
+        include nested repositories through either `.git` directories or `gitdir:` pointer files.
+        Add boundary cases for both forms, and test linked-worktree handling separately through the
+        Git opener.
     - title: "A plan editing a catalog template or default under-enumerates the render fan-out"
       domains: [rendering]
       tags: [render-completeness, multi-target]
@@ -532,20 +521,6 @@ data:
         In extension failure recovery, swallow UI-write failures so the original error remains
         authoritative, and run the real-Pi lane for changes that cross session teardown. The fake
         harness does not model disposed-session UI behavior.
-    - title: "A consumer of a filtered shared map can depend on the filter's accidents"
-      domains: [tooling]
-      tags: [verification-discipline, subagent-dispatch]
-      body: |
-        The trajectory-resume association invalidation read the causal anchor map and only ever
-        behaved acceptably because pervasive co-anchoring kept its lookup empty: the ambiguity
-        the checker flagged as a violation was silently load-bearing for a second consumer, and
-        the consumer's own test staged its claim through an arbitrary event kind, so it kept
-        passing right up until the claim restriction inverted the clause (firing on every normal
-        tree-resume, never on its intended case). When redefining the semantics of a shared
-        projection structure, enumerate every consumer mechanically first (grep the field, not
-        the concept) and re-derive each consumer's correctness under the new semantics; the 0154
-        grounding check caught this only because the dispatch brief explicitly asked who else
-        reads the map (ADR-0154; 2026-07-23).
     - title: "An ordering proof written against the log proves nothing"
       domains: [tooling, invariants]
       related: [175]
