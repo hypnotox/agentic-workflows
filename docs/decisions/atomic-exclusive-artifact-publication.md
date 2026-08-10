@@ -44,28 +44,42 @@ dependency is narrower than growing separate Unix and Windows lock implementatio
    same-directory temporary file and atomically published only when the destination is
    absent. Destination existence remains a matchable refusal and never changes existing
    bytes. A failure before publication leaves no partial destination; temporary cleanup is
-   best effort and never replaces the primary error. This is namespace atomicity and
-   complete-file publication, not a new promise of power-loss durability beyond the
-   platform behavior already owned by effort publication.
+   best effort and never replaces the primary error. ADR and plan scaffolds retain their
+   requested `0644` mode, and backups retain the source file's permission bits; mode setup
+   occurs before publication so no post-publication mode window is introduced. This is
+   namespace atomicity and complete-file publication, not a new promise of power-loss
+   durability beyond the platform behavior already owned by effort publication.
 3. `decision: serialize-adr-allocation` ADR scaffolding takes a cross-process advisory lock
-   keyed by the canonical decisions-directory path before reading the identity corpus and
-   holds it through publication. The lock uses `github.com/gofrs/flock` as a direct
-   dependency and a stable per-user cache location outside the repository. The lock file is
-   persistent and harmless; it is unlocked but not deleted, avoiding split-inode locking,
-   and the operating system releases the advisory lock on descriptor close or process
-   death. Distinct linked-worktree decision directories intentionally have distinct keys.
-   The lock serializes allocation rather than reserving a number, so ADR-0202's contiguous
-   highest-plus-one contract is unchanged.
+   keyed by the decisions directory's OS-resolved canonical identity before reading the
+   identity corpus and holds it through publication. Canonicalization resolves absolute and
+   symbolic-link aliases; on Windows it additionally resolves the final volume and path
+   spelling so case and volume aliases share one identity. A SHA-256 encoding of that
+   canonical identity forms the collision-resistant filename under a stable per-user cache
+   location outside the repository. The lock uses `github.com/gofrs/flock` as a direct
+   dependency. Its file is persistent and harmless; it is unlocked but not deleted,
+   avoiding split-inode locking, and the operating system releases the advisory lock on
+   descriptor close or process death. Distinct linked-worktree decision directories
+   intentionally have distinct keys. The lock serializes allocation rather than reserving
+   a number, so ADR-0202's contiguous highest-plus-one contract is unchanged.
 4. `decision: retain-consumer-policy` Consumers retain their domain policy. ADR owns corpus
    identity and slug checks, plan owns its computed-path refusal, and project owns backup
    suffix selection. Backup creation retries the next suffix only after a matchable
    destination-exists refusal; other publication failures stop immediately. The shared
    package owns mechanism and neutral error identity, not naming, allocation, retry, or
    presentation policy.
+5. `decision: prove-concurrent-publication` Deterministic tests synchronize competing
+   publishers at the namespace boundary and prove that one complete destination wins while
+   existing bytes never change. Cross-process ADR proving units invoke two creators against
+   one canonical decisions directory, including different slugs competing for the same next
+   number and alias paths resolving to the same lock. Plan and backup tests force a
+   destination collision at publication; mode tests prove scaffold modes and backup source
+   permissions. The added `exclusive-file-publication-single-home` claim is an invariant
+   with `Backing: test`, proved by the shared-package and cross-package structural tests
+   under `internal/filepublication`.
 
 ## State changes
 
-- add `tooling/filesystem-access:exclusive-file-publication-single-home`
+- add `tooling/file-publication:exclusive-file-publication-single-home`
 - update `adr-system/adr-lifecycle:adr-new-no-overwrite`
 - update `adr-system/adr-lifecycle:adr-new-sequential-numbering`
 - update `adr-system/plan-artifacts:plan-new-unnumbered`

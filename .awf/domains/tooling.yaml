@@ -15,6 +15,7 @@ paths:
   - internal/initspec/**
   - internal/git/**
   - internal/filesystem/**
+  - internal/filepublication/**
   - internal/effort/**
   - internal/worktree/**
   - internal/testsupport/**

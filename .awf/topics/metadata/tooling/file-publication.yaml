@@ -1,0 +1,4 @@
+title: File publication
+summary: Atomic no-replace complete-file publication shared across production consumers.
+paths:
+  - internal/filepublication/**
