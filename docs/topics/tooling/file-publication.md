@@ -6,6 +6,12 @@ Atomic no-replace complete-file publication shared across production consumers.
 
 **Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/commitmsg/**`, `internal/commitpolicy/**`, `internal/contextdelivery/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/filepublication/**`, `internal/filesystem/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/projectlicense/**`, `internal/prosegate/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `internal/filepublication/**`. Both domain and topic selectors must match. Run `awf topic tooling/file-publication --coverage` for current applicable and owned paths and marker sites.
 
-Current project contracts for this topic are documented here.
+Complete file creation has one cross-platform publication home; consumers retain their own naming, identity, retry, and durability policy.
 
 ## Claims
+
+### `invariant: exclusive-file-publication-single-home`
+
+`internal/filepublication` alone prepares complete same-directory temporary files and performs released-platform atomic no-replace creation; its consumers receive a matchable destination-exists refusal that preserves the winner bytes, while `internal/effort` retains expected-identity replacement, removal, and durable resident ordering. This provides namespace atomicity and complete-file publication, not a stronger power-loss durability promise.
+Origin: ADR-atomic-exclusive-artifact-publication
+Backing: test

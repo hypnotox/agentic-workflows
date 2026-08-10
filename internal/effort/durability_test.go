@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 )
 
 func TestProtocol2DirectorySyncAndExclusivePublication(t *testing.T) {
@@ -12,12 +14,8 @@ func TestProtocol2DirectorySyncAndExclusivePublication(t *testing.T) {
 	if err := syncDirectory(dir); err != nil {
 		t.Fatal(err)
 	}
-	temporary := filepath.Join(dir, "temporary")
 	destination := filepath.Join(dir, "destination")
-	if err := os.WriteFile(temporary, []byte("new"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := publishAtomic(temporary, destination, nil); err != nil {
+	if err := filepublication.Publish(destination, []byte("new"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if raw, err := os.ReadFile(destination); err != nil || string(raw) != "new" {

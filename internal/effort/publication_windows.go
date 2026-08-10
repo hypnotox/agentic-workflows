@@ -42,11 +42,9 @@ var nativeWindowsPublicationAPI = windowsPublicationAPI{
 	flush: flushPublishedWindowsFile,
 }
 
-// publishAtomic uses MoveFileEx with its documented write-through flag for
-// creation. ReplaceFileW accepts only its documented merge-error flags, so
-// replacement uses zero flags and then reopens and flushes the published file.
-// Windows documents no directory fsync primitive; the namespace operation is
-// atomic, while the explicit file flush is the available durability boundary.
+// publishAtomic uses ReplaceFileW for identity-checked replacement and then
+// reopens and flushes the published file. Windows documents no directory fsync
+// primitive; the explicit file flush is the available durability boundary.
 func publishAtomic(tempPath, path string, expected *fileIdentity) error {
 	return publishAtomicWindows(tempPath, path, expected, nativeWindowsPublicationAPI)
 }
@@ -55,15 +53,6 @@ func publishAtomicWindows(tempPath, path string, expected *fileIdentity, api win
 	published, err := api.inspect(tempPath)
 	if err != nil {
 		return fmt.Errorf("inspect Windows publication source %s: %w", tempPath, err)
-	}
-	if expected == nil {
-		if err := api.move(tempPath, path, windows.MOVEFILE_WRITE_THROUGH); err != nil {
-			return err
-		}
-		if err := api.flush(path, published); err != nil {
-			return fmt.Errorf("flush created file %s after atomic publication: %w", path, err)
-		}
-		return nil
 	}
 
 	displacedPath := tempPath + ".displaced"

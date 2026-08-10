@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-atomic-exclusive-artifact-publication: Atomic Exclusive Artifact Publication](atomic-exclusive-artifact-publication.md) (Proposed)
+- [ADR-atomic-exclusive-artifact-publication: Atomic Exclusive Artifact Publication](atomic-exclusive-artifact-publication.md) (Implementing)
 
 ## History
 

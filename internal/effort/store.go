@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 )
 
 var uuidV4Pattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
@@ -284,53 +286,23 @@ func (s store) replaceMemory(path string, raw []byte) (returnErr error) {
 	return nil
 }
 
-func (s store) publishNew(path string, raw []byte, label string) (returnErr error) {
-	dir := filepath.Dir(path)
-	temp, err := os.CreateTemp(dir, "."+label+"-*.tmp")
-	if err != nil { // coverage-ignore: reservation created the owned writable directory; CreateTemp failure requires a concurrent permission change or storage fault
-		return fmt.Errorf("create sibling temporary file for %s: %w", path, err)
-	}
-	tempPath := temp.Name()
-	closed, published := false, false
-	defer func() {
-		if !closed {
-			returnErr = errors.Join(returnErr, temp.Close()) // coverage-ignore: fault stages cover pre-close cleanup; a close failure itself requires a kernel or storage fault
-		}
-		if !published {
-			if err := os.Remove(tempPath); err != nil && !errors.Is(err, os.ErrNotExist) { // coverage-ignore: the owned sibling temporary remains removable absent a concurrent namespace or storage fault
-				returnErr = errors.Join(returnErr, fmt.Errorf("remove temporary file %s: %w", tempPath, err))
-			}
-		}
-	}()
+func (s store) publishNew(path string, raw []byte, label string) error {
 	if err := s.hit(label + ".write"); err != nil {
 		return err
-	}
-	if n, err := temp.Write(raw); err != nil { // coverage-ignore: injected write stages cover the boundary; os.File write failure requires a kernel or storage fault
-		return fmt.Errorf("write temporary file for %s: %w", path, err)
-	} else if n != len(raw) { // coverage-ignore: os.File.Write returns a non-nil error on a short write
-		return fmt.Errorf("write temporary file for %s: %w", path, io.ErrShortWrite)
 	}
 	if err := s.hit(label + ".fsync"); err != nil {
 		return err
 	}
-	if err := temp.Sync(); err != nil { // coverage-ignore: injected fsync stages cover the boundary; os.File.Sync failure requires a kernel or storage fault
-		return fmt.Errorf("fsync temporary file for %s: %w", path, err)
-	}
-	if err := temp.Close(); err != nil { // coverage-ignore: closing a successfully synced local file has no userspace failure trigger
-		return fmt.Errorf("close temporary file for %s: %w", path, err)
-	}
-	closed = true
 	if err := s.hit(label + ".rename"); err != nil {
 		return err
 	}
-	if err := publishAtomic(tempPath, path, nil); err != nil { // coverage-ignore: exclusive directory reservation makes a destination collision a same-user namespace race; platform refusal behavior is covered directly
+	if err := filepublication.Publish(path, raw, 0o600); err != nil { // coverage-ignore: exclusive directory reservation makes a destination collision a same-user namespace race; shared publication behavior is covered directly
 		return fmt.Errorf("publish temporary file without replacement to %s: %w", path, err)
 	}
-	published = true
 	if err := s.hit(label + ".directory-fsync"); err != nil {
 		return err
 	}
-	if err := syncDirectory(dir); err != nil { // coverage-ignore: injected directory-fsync stages cover the boundary; an actual failure requires a kernel or storage fault
+	if err := syncDirectory(filepath.Dir(path)); err != nil { // coverage-ignore: injected directory-fsync stages cover the durability boundary; an actual failure requires a kernel or storage fault
 		return fmt.Errorf("fsync effort directory after publishing %s: %w", path, err)
 	}
 	return nil

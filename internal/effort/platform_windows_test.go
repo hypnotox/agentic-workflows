@@ -87,28 +87,6 @@ func (f *fakeWindowsPublication) api(t *testing.T) windowsPublicationAPI {
 }
 
 func TestWindowsPublicationAPIFaultMatrix(t *testing.T) {
-	t.Run("create", func(t *testing.T) {
-		fake := &fakeWindowsPublication{files: map[string]fakeWindowsFile{"temp": {id: "new", bytes: "new"}}}
-		if err := publishAtomicWindows("temp", "path", nil, fake.api(t)); err != nil {
-			t.Fatal(err)
-		}
-		if got := fake.files["path"].bytes; got != "new" {
-			t.Fatalf("created bytes = %q", got)
-		}
-	})
-
-	t.Run("create refuses existing destination", func(t *testing.T) {
-		fake := &fakeWindowsPublication{files: map[string]fakeWindowsFile{
-			"temp": {id: "new", bytes: "new"}, "path": {id: "raced", bytes: "raced"},
-		}}
-		if err := publishAtomicWindows("temp", "path", nil, fake.api(t)); !errors.Is(err, os.ErrExist) {
-			t.Fatalf("create race error = %v", err)
-		}
-		if got := fake.files["path"].bytes; got != "raced" {
-			t.Fatalf("raced create bytes = %q", got)
-		}
-	})
-
 	t.Run("expected replacement", func(t *testing.T) {
 		fake := &fakeWindowsPublication{files: map[string]fakeWindowsFile{
 			"temp": {id: "new", bytes: "new"}, "path": {id: "old", bytes: "old"},

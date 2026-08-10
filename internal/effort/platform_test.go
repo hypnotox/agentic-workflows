@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 )
 
 func testPlatformPublicationContract(t *testing.T) {
@@ -12,10 +14,8 @@ func testPlatformPublicationContract(t *testing.T) {
 	t.Run("creation refuses raced destination", func(t *testing.T) {
 		dir := t.TempDir()
 		destination := filepath.Join(dir, "record.json")
-		temporary := filepath.Join(dir, "temporary")
 		writeEffortFile(t, destination, "unexpected")
-		writeEffortFile(t, temporary, "new")
-		if err := publishAtomic(temporary, destination, nil); err == nil {
+		if err := filepublication.Publish(destination, []byte("new"), 0o600); err == nil {
 			t.Fatal("creation replaced an existing destination")
 		}
 		if raw, err := os.ReadFile(destination); err != nil || string(raw) != "unexpected" {

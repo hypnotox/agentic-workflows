@@ -455,8 +455,8 @@
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
       "templateHash": "sha256:9a0c3317f528e24e24920c3a7dc0b57e30764c3dbd9091db3576d837be7af07c",
-      "configHash": "sha256:84acff0bc3367dfa045d4706c04436b2622658054bb7c79d0804856604ad2121",
-      "outputHash": "sha256:b874671e9d145a439be34d1d816a926646162aacc1e99dcfa903f722f72038ad"
+      "configHash": "sha256:f48926d556fe1516b058e198e0a5e33e86f2d2d3a00fdc660f3459973b71f50e",
+      "outputHash": "sha256:b6d9bbd4a9b006b87ba4c67c65ca3bec544adce99fdc386fcf78476e85498310"
     },
     "docs/config-reference.md": {
       "templateId": "",
@@ -475,7 +475,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:3606954756d4e07fc1b26ba8a4eaefcb971d21b3febb0ef449f7e1fd812bc247",
+      "outputHash": "sha256:c8aad385ddd9cb571dfe3b7e21893d272ac82de21c719ce53695ddab93270d4b",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -865,8 +865,8 @@
     "docs/topics/tooling/file-publication.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:dd74220c076e07c8cd74cf81606096b22c780dcd22ac3dd4ca91360e17e8c914",
-      "outputHash": "sha256:d2cb1d85af1604a04f921b6789954b2c714b460eaee0421bd6eefc1eb4cc6c89"
+      "configHash": "sha256:d5cb672962dfdad0a304373b7929c9523dd181f73a396c39ebaeb425e4efbd38",
+      "outputHash": "sha256:7afd3d091ec5a6bc028ce1a0e94fc4d88ec5917fe582cb521b1b3c6a2fb06a13"
     },
     "docs/topics/tooling/filesystem-access.md": {
       "templateId": "topics/topic.md.tmpl",

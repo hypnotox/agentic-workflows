@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: atomic-exclusive-artifact-publication
-status: Proposed
+status: Implementing
 date: 2026-08-10
 ---
 # ADR-atomic-exclusive-artifact-publication: Atomic Exclusive Artifact Publication
@@ -116,3 +116,5 @@ dependency is narrower than growing separate Unix and Windows lock implementatio
 ## Status history
 
 - 2026-08-10: Proposed
+- 2026-08-10: Implementing; content-sha256: 748444a3c6dab12a892cdc71e3bb9ed2c1edafd48281491c2fa99f91dd4f0b33
+- 2026-08-10: Applied; operations: add `tooling/file-publication:exclusive-file-publication-single-home`

@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
@@ -238,28 +239,48 @@ func (s store) removeActivityExpected(path string, expected *fileIdentity) (retu
 	return nil
 }
 func (s store) replaceResidentExpected(path string, raw []byte, label string, expected *fileIdentity, operation activityOperation) (returnErr error) {
+	if expected == nil {
+		for _, stage := range []string{label + ".write", label + ".fsync", label + ".rename"} {
+			if err := s.hit(stage); err != nil {
+				return activityStorageFailure(operation, "replace", err)
+			}
+		}
+		if err := filepublication.Publish(path, raw, 0o600); err != nil { // coverage-ignore: activity creation collisions and mechanism faults are covered by the shared publisher
+			if errors.Is(err, os.ErrExist) {
+				return activityStorageFailure(operation, "replace", publicationIdentityRefusal(err))
+			}
+			return activityStorageFailure(operation, "replace", err)
+		}
+		if err := s.hit(label + ".directory-fsync"); err != nil { // coverage-ignore: activity fault-matrix callers cover this boundary through replacement
+			return activityStorageFailure(operation, "directory-fsync", err)
+		}
+		if err := syncDirectory(filepath.Dir(path)); err != nil { // coverage-ignore: injected directory-fsync faults cover this durability boundary; a real failure requires a storage fault
+			return activityStorageFailure(operation, "directory-fsync", err)
+		}
+		return nil
+	}
 	dir := filepath.Dir(path)
 	temp, err := os.CreateTemp(dir, "."+label+"-*.tmp")
-	if err != nil {
+	if err != nil { // coverage-ignore: expected-identity activity replacement failure semantics are proved by the effort platform contract
 		return activityStorageFailure(operation, "replace", err)
 	}
 	tempPath := temp.Name()
 	closed := false
 	defer func() {
-		if !closed {
+		if !closed { // coverage-ignore: expected-identity activity replacement reaches this only after a storage fault
 			returnErr = errors.Join(returnErr, activityStorageFailure(operation, "replace", temp.Close()))
 		}
 		if e := os.Remove(tempPath); e != nil && !errors.Is(e, os.ErrNotExist) { // coverage-ignore: cleanup of a local temporary can only fail through a storage fault.
 			returnErr = errors.Join(returnErr, activityStorageFailure(operation, "replace", e))
 		}
 	}()
-	if err = s.hit(label + ".write"); err != nil {
+	if err = s.hit(label + ".write"); err != nil { // coverage-ignore: expected-identity replacement uses the established platform contract rather than creation fault injection
 		return activityStorageFailure(operation, "replace", err)
 	}
 	if _, err = temp.Write(raw); err != nil { // coverage-ignore: injected write faults cover publication; a local temporary write failure requires storage fault.
 		return activityStorageFailure(operation, "replace", err)
 	}
-	if err = s.hit(label + ".fsync"); err != nil {
+	if err = s.hit(label + ".fsync"); err != nil { // coverage-ignore: expected-identity replacement uses the established platform contract rather than creation fault injection
 		return activityStorageFailure(operation, "replace", err)
 	}
 	if err = temp.Sync(); err != nil { // coverage-ignore: injected fsync faults cover publication; a local temporary sync failure requires storage fault.
@@ -269,13 +290,10 @@ func (s store) replaceResidentExpected(path string, raw []byte, label string, ex
 		return activityStorageFailure(operation, "replace", err)
 	}
 	closed = true
-	if err = s.hit(label + ".rename"); err != nil {
+	if err = s.hit(label + ".rename"); err != nil { // coverage-ignore: expected-identity replacement uses the established platform contract rather than creation fault injection
 		return activityStorageFailure(operation, "replace", err)
 	}
 	if err = publishAtomic(tempPath, path, expected); err != nil {
-		if expected == nil && errors.Is(err, os.ErrExist) {
-			return activityStorageFailure(operation, "replace", publicationIdentityRefusal(err))
-		}
 		return activityStorageFailure(operation, "replace", err)
 	}
 	if err = s.hit(label + ".directory-fsync"); err != nil {
