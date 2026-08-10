@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -34,13 +35,22 @@ func (p *Project) BackupFile(rel string) (string, error) {
 // its publication parameter lets tests force the consumer's namespace boundary.
 func (p *Project) backupFile(rel string, publish func(string, []byte, fs.FileMode) error) (string, error) {
 	src := filepath.Join(p.Root, rel)
-	info, err := os.Stat(src)
+	source, err := os.Open(src)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("open backup source %s: %w", src, err)
 	}
-	data, err := os.ReadFile(src)
+	info, err := source.Stat()
+	if err != nil { // coverage-ignore: stat on a successfully opened local source handle requires a storage fault
+		_ = source.Close()                                              // coverage-ignore: stat on a successfully opened local source handle requires a storage fault
+		return "", fmt.Errorf("inspect backup source %s: %w", src, err) // coverage-ignore: stat on a successfully opened local source handle requires a storage fault
+	}
+	data, err := io.ReadAll(source)
 	if err != nil {
-		return "", err
+		_ = source.Close()
+		return "", fmt.Errorf("read backup source %s: %w", src, err)
+	}
+	if err := source.Close(); err != nil { // coverage-ignore: closing a successfully read local source requires a storage fault
+		return "", fmt.Errorf("close backup source %s: %w", src, err) // coverage-ignore: closing a successfully read local source requires a storage fault
 	}
 	for suffix := 0; ; suffix++ {
 		bak := backupPath(src, suffix)
@@ -49,7 +59,7 @@ func (p *Project) backupFile(rel string, publish func(string, []byte, fs.FileMod
 			continue
 		}
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("publish backup %s from %s: %w", bak, src, err)
 		}
 		bakRel, _ := filepath.Rel(p.Root, bak)
 		return bakRel, nil

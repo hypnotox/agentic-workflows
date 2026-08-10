@@ -200,3 +200,9 @@ implementation.
   only known Unix replacement flags, and binding the Windows effort exception to the single move
   function in `nativeWindowsPublicationAPI`. Blank, dot, inherited-constant, and duplicate-wrapper
   mutations now pin those boundaries without changing production behavior.
+- Phase 2 review settlement: no implementation deviation was reported. Review corrections bind
+  backup bytes and mode to one opened source, add contextual wrapped failures, exercise sync and
+  runner-prune backup refusals, restore displaced marker comments, prove the plan publication mode,
+  and use each platform's observed source permissions in backup assertions. The open-handle change
+  closes a source replacement race under the approved complete-backup outcome without changing
+  naming, retry, or presentation policy.

@@ -212,15 +212,63 @@ func TestPruneBacksUpCoOwnedRunner(t *testing.T) {
 	}
 }
 
-// The runner is a dedicated config-tree render block, not a catalog DocEntry, so it
-// stays out of SingletonKinds() - the unified-doc-model completeness set is
-// unchanged by the runner's existence.
-// invariant: rendering/singletons-and-payloads:singleton-kinds-complete (TestRunnerNotASingletonKind)
+// invariant: rendering/companion-scripts:runner-prune-backup (TestRunnerPrunePropagatesBackupFailure)
+func TestRunnerPrunePropagatesBackupFailure(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	lock, err := manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry := lock.Files["awf"]
+	entry.TemplateID = coOwnedRunnerTID
+	lock.Files["x"] = entry
+	delete(lock.Files, "awf")
+	if err := lock.Save(lockFile(root)); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(root, "awf")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(root, "x"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	p, err = Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, _, err = p.SyncReport(testContext(t))
+	if err == nil || !strings.Contains(err.Error(), "back up pruned runner x") || !strings.Contains(err.Error(), "read backup source") {
+		t.Fatalf("runner prune backup error = %v", err)
+	}
+	if info, statErr := os.Stat(filepath.Join(root, "x")); statErr != nil || !info.IsDir() {
+		t.Fatalf("runner source changed after backup refusal: info=%v error=%v", info, statErr)
+	}
+	preserved, err := manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := preserved.Files["x"]; !ok {
+		t.Fatal("runner lock entry was removed after backup refusal")
+	}
+}
+
 // invariant: rendering/companion-scripts:runner-prune-backup (TestConcurrentRunnerBackupsPublishCompleteRescueCopies)
 func TestConcurrentRunnerBackupsPublishCompleteRescueCopies(t *testing.T) {
 	root := t.TempDir()
 	const source = "complete runner rescue\n"
-	if err := os.WriteFile(filepath.Join(root, "x"), []byte(source), 0o640); err != nil {
+	sourcePath := filepath.Join(root, "x")
+	if err := os.WriteFile(sourcePath, []byte(source), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	sourceInfo, err := os.Stat(sourcePath)
+	if err != nil {
 		t.Fatal(err)
 	}
 	p := &Project{Root: root}
@@ -262,12 +310,19 @@ func TestConcurrentRunnerBackupsPublishCompleteRescueCopies(t *testing.T) {
 			t.Fatalf("backup %s = %q, error = %v", name, contents, err)
 		}
 		info, err := os.Stat(path)
-		if err != nil || info.Mode().Perm() != 0o640 {
-			t.Fatalf("backup %s mode = %v, error = %v, want 640", name, info.Mode(), err)
+		if err != nil {
+			t.Fatalf("stat backup %s: %v", name, err)
+		}
+		if info.Mode().Perm() != sourceInfo.Mode().Perm() {
+			t.Fatalf("backup %s mode = %v, want source mode %v", name, info.Mode().Perm(), sourceInfo.Mode().Perm())
 		}
 	}
 }
 
+// The runner is a dedicated config-tree render block, not a catalog DocEntry, so it
+// stays out of SingletonKinds() - the unified-doc-model completeness set is
+// unchanged by the runner's existence.
+// invariant: rendering/singletons-and-payloads:singleton-kinds-complete (TestRunnerNotASingletonKind)
 func TestRunnerNotASingletonKind(t *testing.T) {
 	if slices.Contains(catalog.SingletonKinds(), "runner") {
 		t.Error("the runner must not be a catalog SingletonKind (it is a dedicated render block)")

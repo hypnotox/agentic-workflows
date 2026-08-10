@@ -278,7 +278,7 @@ func newFile(dir, title string, publish func(string, []byte, fs.FileMode) error)
 		if errors.Is(err, os.ErrExist) {
 			return "", fmt.Errorf("plan: %s already exists", path)
 		}
-		return "", err
+		return "", fmt.Errorf("plan: publish %s: %w", path, err)
 	}
 	return path, nil
 }
