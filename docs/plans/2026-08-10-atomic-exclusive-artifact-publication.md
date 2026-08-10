@@ -206,3 +206,9 @@ implementation.
   and use each platform's observed source permissions in backup assertions. The open-handle change
   closes a source replacement race under the approved complete-backup outcome without changing
   naming, retry, or presentation policy.
+- Renewed Phase 2 review settlement: wrapped path-error identity is now asserted through both sync
+  error surfaces, cleanup close failures join rather than replace the primary source error, and the
+  remaining shallow absence predicate uses `errors.Is`. The suggested early changelog entry was not
+  applied because Phase 3 explicitly owns the one complete user-visible no-clobber correction after
+  ADR serialization lands; Phase 2's authored and rendered current-state claims already travel with
+  its nonterminal partial implementation.

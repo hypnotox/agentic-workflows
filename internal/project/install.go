@@ -41,13 +41,11 @@ func (p *Project) backupFile(rel string, publish func(string, []byte, fs.FileMod
 	}
 	info, err := source.Stat()
 	if err != nil { // coverage-ignore: stat on a successfully opened local source handle requires a storage fault
-		_ = source.Close()                                              // coverage-ignore: stat on a successfully opened local source handle requires a storage fault
-		return "", fmt.Errorf("inspect backup source %s: %w", src, err) // coverage-ignore: stat on a successfully opened local source handle requires a storage fault
+		return "", fmt.Errorf("inspect backup source %s: %w", src, errors.Join(err, source.Close())) // coverage-ignore: stat on a successfully opened local source handle requires a storage fault
 	}
 	data, err := io.ReadAll(source)
 	if err != nil {
-		_ = source.Close()
-		return "", fmt.Errorf("read backup source %s: %w", src, err)
+		return "", fmt.Errorf("read backup source %s: %w", src, errors.Join(err, source.Close()))
 	}
 	if err := source.Close(); err != nil { // coverage-ignore: closing a successfully read local source requires a storage fault
 		return "", fmt.Errorf("close backup source %s: %w", src, err) // coverage-ignore: closing a successfully read local source requires a storage fault

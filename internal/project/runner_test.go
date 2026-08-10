@@ -1,6 +1,7 @@
 package project
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -246,6 +247,10 @@ func TestRunnerPrunePropagatesBackupFailure(t *testing.T) {
 	_, _, _, err = p.SyncReport(testContext(t))
 	if err == nil || !strings.Contains(err.Error(), "back up pruned runner x") || !strings.Contains(err.Error(), "read backup source") {
 		t.Fatalf("runner prune backup error = %v", err)
+	}
+	var pathError *os.PathError
+	if !errors.As(err, &pathError) {
+		t.Fatalf("runner prune backup error identity = %T, want *os.PathError", err)
 	}
 	if info, statErr := os.Stat(filepath.Join(root, "x")); statErr != nil || !info.IsDir() {
 		t.Fatalf("runner source changed after backup refusal: info=%v error=%v", info, statErr)

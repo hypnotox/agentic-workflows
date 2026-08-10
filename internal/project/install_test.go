@@ -171,6 +171,10 @@ func TestSyncReportPropagatesForeignBackupFailure(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "back up AGENTS.md") || !strings.Contains(err.Error(), "read backup source") {
 		t.Fatalf("SyncReport foreign backup error = %v", err)
 	}
+	var pathError *os.PathError
+	if !errors.As(err, &pathError) {
+		t.Fatalf("SyncReport foreign backup error identity = %T, want *os.PathError", err)
+	}
 	if info, statErr := os.Stat(foreign); statErr != nil || !info.IsDir() {
 		t.Fatalf("foreign source changed after backup refusal: info=%v error=%v", info, statErr)
 	}
@@ -196,7 +200,7 @@ func TestBackupFilePropagatesNonCollisionPublicationError(t *testing.T) {
 	if calls != 1 {
 		t.Fatalf("publication calls = %d, want one without suffix retry", calls)
 	}
-	if _, err := os.Stat(filepath.Join(root, "artifact.awf-bak")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(root, "artifact.awf-bak")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("backup created after publication failure: %v", err)
 	}
 }
