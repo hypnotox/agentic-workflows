@@ -433,7 +433,9 @@ function eventText(event: DisplayEvent): string {
 function callOptions(role: RunRequest["role"], args: any): Record<string, string | boolean> {
   if (role === "explore") return { breadth: args.breadth ?? "?", detail: args.detail ?? "?" };
   if (role === "review") return { kind: args.kind ?? "?" };
+  /* c8 ignore stop */
   if (role === "implement") return { allowCommits: args.allowCommits ?? "?", ...(args.verificationCheckout === undefined ? {} : { verificationCheckout: args.verificationCheckout }) };
+  /* c8 ignore start */
   return {};
 }
 
@@ -841,6 +843,7 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
     ...renderers("review"),
   });
 
+  /* c8 ignore stop */
   pi.registerTool({
     name: "subagent_implement",
     label: "Implementation Subagent",
@@ -866,17 +869,13 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
       await previous;
       try {
         if (signal?.aborted) throw new Error("Implementation subagent was aborted while queued");
-        /* c8 ignore stop */
         const verificationCheckout = await resolveVerificationCheckout(pi, deps, root, params.verificationCheckout);
         const before = await snapshot(pi, verificationCheckout);
-        /* c8 ignore start */
         const finalSelected = await refreshAndResolve(ctx, "implement", params.model);
         const finalMetadata = executionMetadata(finalSelected, thinkingLevel, { allowCommits: params.allowCommits, verificationCheckout });
         const contract = await loadImplementer(deps, root, params.allowCommits);
         const result = await run("implement", params.task, IMPLEMENT_TOOLS, contract, finalSelected.model, finalMetadata, signal, onUpdate, queuedAt);
-        /* c8 ignore stop */
         const after = await snapshot(pi, verificationCheckout);
-        /* c8 ignore start */
         const comparable = before.available && after.available;
         const committedWhenForbidden = !params.allowCommits && comparable && before.head !== after.head;
         // A commit-capable owner that left HEAD alone did not complete its phase.
@@ -913,6 +912,7 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
     },
     ...renderers("implement"),
   });
+  /* c8 ignore start */
 }
 
 export default async function (pi: ExtensionAPI): Promise<void> {

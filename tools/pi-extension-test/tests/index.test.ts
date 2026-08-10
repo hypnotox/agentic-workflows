@@ -718,6 +718,26 @@ function checkoutGit(before = "aaaaaaa", after = "bbbbbbb", common = COMMON) {
   };
 }
 
+test("implementation call rendering covers optional checkout metadata", () => {
+  const h = harness();
+  const tool = h.tools.get("subagent_implement");
+  const theme = { fg: (_name: string, value: string) => value, bold: (value: string) => value };
+  assert.ok(tool.renderCall({ task: "x", allowCommits: true }, theme));
+  assert.ok(tool.renderCall({ task: "x", verificationCheckout: WORKTREE }, theme));
+});
+
+test("implementation refuses a pre-aborted call before verification or dispatch", async () => {
+  const h = harness();
+  const controller = new AbortController();
+  controller.abort();
+  await assert.rejects(
+    call(h, "subagent_implement", { task: "x", allowCommits: true }, controller.signal),
+    /aborted while queued/,
+  );
+  assert.equal(h.gitCalls.length, 0);
+  assert.equal(h.requests.length, 0);
+});
+
 test("implementation verification defaults to the root without changing runner cwd", async () => {
   const h = harness({ git: [HEAD_BEFORE, STATUS_CLEAN, HEAD_AFTER, STATUS_CLEAN] });
   const schema = h.tools.get("subagent_implement").parameters;
