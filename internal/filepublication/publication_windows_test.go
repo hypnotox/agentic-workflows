@@ -13,7 +13,7 @@ import (
 // invariant: tooling/file-publication:exclusive-file-publication-single-home (TestWindowsNoReplacePublicationContract)
 func TestWindowsNoReplacePublicationContract(t *testing.T) {
 	files := map[string]string{"temporary": "complete"}
-	api := windowsPublicationAPI{move: func(from, to string, flags uint32) error {
+	move := func(from, to string, flags uint32) error {
 		if flags != windows.MOVEFILE_WRITE_THROUGH {
 			t.Fatalf("MoveFileEx flags = %#x, want MOVEFILE_WRITE_THROUGH", flags)
 		}
@@ -27,9 +27,9 @@ func TestWindowsNoReplacePublicationContract(t *testing.T) {
 		files[to] = contents
 		delete(files, from)
 		return nil
-	}}
+	}
 
-	if err := publishNoReplaceWindows("temporary", "artifact", api); err != nil {
+	if err := publishNoReplaceWindows("temporary", "artifact", move); err != nil {
 		t.Fatal(err)
 	}
 	if got := files["artifact"]; got != "complete" {
@@ -37,7 +37,7 @@ func TestWindowsNoReplacePublicationContract(t *testing.T) {
 	}
 
 	files["loser"], files["artifact"] = "loser", "winner"
-	if err := publishNoReplaceWindows("loser", "artifact", api); !errors.Is(err, os.ErrExist) {
+	if err := publishNoReplaceWindows("loser", "artifact", move); !errors.Is(err, os.ErrExist) {
 		t.Fatalf("collision error = %v", err)
 	}
 	if got := files["artifact"]; got != "winner" {

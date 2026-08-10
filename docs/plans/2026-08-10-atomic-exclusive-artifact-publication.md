@@ -184,3 +184,9 @@ implementation.
   restoring a package-private Windows creation oracle, exercising expected-identity effort fault
   stages, synchronizing the concurrency test after complete preparation at the namespace boundary,
   and using wrapped-error matching for cleanup. No approved boundary or outcome changed.
+- Renewed Phase 1 review settlement: three follow-up findings were settled by attaching proof to
+  the existing expected-identity removal and publication-order fault matrices, replacing raw-token
+  structural detection with parsed call and import inspection plus positive and negative detector
+  cases, and reducing the one-operation Windows test seam to direct function injection. The
+  structural detector correction was reasoned from dependency-composition and test-design
+  authority; it changed verification shape without changing production behavior or scope.

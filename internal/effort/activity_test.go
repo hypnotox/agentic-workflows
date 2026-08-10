@@ -47,6 +47,7 @@ func TestAdvisoryActivityDoesNotGateUnrelatedEffortCommands(t *testing.T) {
 	}
 }
 
+// invariant: tooling/file-publication:exclusive-file-publication-single-home (TestActivityV2StorageAndResidentBoundaries)
 func TestActivityV2StorageAndResidentBoundaries(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, func(d *Dependencies) { noTopology(d) })
