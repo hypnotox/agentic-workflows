@@ -202,6 +202,60 @@ func TestOutputDeclarationsMatchThePlan(t *testing.T) {
 	}
 }
 
+func TestPitfallDeclarationPlanDependencyParity(t *testing.T) {
+	root := scaffoldFiles(t, pitfallsCfg, map[string]string{
+		"docs/pitfalls/alpha.md": pitfallSource("Alpha", "", "alpha body\n"),
+		"docs/pitfalls/beta.md":  pitfallSource("Beta", "", "beta body\n"),
+	})
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan, err := p.OutputPlan(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	corpus, _, _, _, err := p.deriveOperationStateWithPitfalls()
+	if err != nil {
+		t.Fatal(err)
+	}
+	declarations, err := BuildOutputDeclarations(p.Cfg, p.Cat, p.Targets, filesystemProjectReader{root: root}, corpus)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := outputDeclarationParityError(plan.Nodes, declarations); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string][]string{
+		"docs/pitfalls.md":       {".awf/docs/pitfalls/alpha.md", ".awf/docs/pitfalls/beta.md"},
+		"docs/pitfalls/alpha.md": {".awf/docs/pitfalls/alpha.md"},
+		"docs/pitfalls/beta.md":  {".awf/docs/pitfalls/beta.md"},
+	}
+	for path, deps := range want {
+		node := slices.IndexFunc(plan.Nodes, func(n OutputNode) bool { return n.Path == path })
+		decl := slices.IndexFunc(declarations, func(d OutputDeclaration) bool { return d.Path == path })
+		if node < 0 || decl < 0 || !slices.Equal(plan.Nodes[node].DependsOn, deps) || !slices.Equal(declarations[decl].Dependencies, deps) {
+			t.Fatalf("%s dependency parity: node=%v declaration=%v want=%v", path, func() []string {
+				if node < 0 {
+					return nil
+				}
+				return plan.Nodes[node].DependsOn
+			}(), func() []string {
+				if decl < 0 {
+					return nil
+				}
+				return declarations[decl].Dependencies
+			}(), deps)
+		}
+	}
+	mutated := slices.Clone(declarations)
+	idx := slices.IndexFunc(mutated, func(d OutputDeclaration) bool { return d.Path == "docs/pitfalls/alpha.md" })
+	mutated[idx].Dependencies = nil
+	if err := outputDeclarationParityError(plan.Nodes, mutated); err == nil || !strings.Contains(err.Error(), "dependencies") {
+		t.Fatalf("missing pitfall dependency escaped parity: %v", err)
+	}
+}
+
 func TestOutputPlanObservesConsumedInputsIndependently(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n"+debuggingVars+"", map[string]string{
 		"skills/debugging.yaml":                        "data: {}\n",

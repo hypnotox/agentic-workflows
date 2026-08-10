@@ -358,6 +358,12 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		return nil, readErr
 	}
 	for i := range decls {
+		if decls[i].Path == config.DocsDir+"/pitfalls.md" {
+			decls[i].Dependencies = append(decls[i].Dependencies, pitfallSourcePaths(pitfalls)...)
+		} else if strings.HasPrefix(decls[i].Path, config.DocsDir+"/pitfalls/") && decls[i].TemplateID == pitfallEntryTID {
+			slug := strings.TrimSuffix(strings.TrimPrefix(decls[i].Path, config.DocsDir+"/pitfalls/"), ".md")
+			decls[i].Dependencies = append(decls[i].Dependencies, pitfall.SourceDir+"/"+slug+".md")
+		}
 		switch decls[i].TemplateID {
 		case topicTID, topicIndexTID:
 			for _, input := range decls[i].Inputs {
@@ -611,8 +617,12 @@ func (p *Project) outputPlanWithPitfalls(ctx context.Context, corpus adr.Corpus,
 		return nil
 	}
 	for _, f := range base {
+		deps := []string(nil)
+		if f.Path == config.DocsDir+"/pitfalls.md" {
+			deps = pitfallSourcePaths(pitfalls)
+		}
 		// coverage-ignore: base output paths are unique by renderAllBase's precondition.
-		if err := add(f, f.TemplateID); err != nil {
+		if err := add(f, f.TemplateID, deps...); err != nil {
 			return nil, err
 		}
 	}
@@ -621,7 +631,8 @@ func (p *Project) outputPlanWithPitfalls(ctx context.Context, corpus adr.Corpus,
 		return nil, err
 	}
 	for _, f := range pitfallLeaves {
-		if err := add(f, f.Declarer); err != nil { // coverage-ignore: validated unique slugs derive unique leaf paths
+		slug := strings.TrimSuffix(strings.TrimPrefix(f.Path, config.DocsDir+"/pitfalls/"), ".md")
+		if err := add(f, f.Declarer, pitfall.SourceDir+"/"+slug+".md"); err != nil { // coverage-ignore: validated unique slugs derive unique leaf paths
 			return nil, err
 		}
 	}

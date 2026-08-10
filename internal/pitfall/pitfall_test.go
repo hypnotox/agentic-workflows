@@ -33,15 +33,25 @@ func TestCorpusContract(t *testing.T) {
 		{"reserved", source(SourceDir+"/index.md", "title: A\n", "body\n"), "reserved"},
 		{"slug", source(SourceDir+"/Bad_slug.md", "title: A\n", "body\n"), "invalid"},
 		{"frontmatter", SourceFile{Path: SourceDir + "/a.md", Regular: true, Bytes: []byte("body")}, "missing frontmatter"},
+		{"metadata-not-mapping", source(SourceDir+"/a.md", "- title: A\n", "body\n"), "must be a mapping"},
+		{"title-wrong-type", source(SourceDir+"/a.md", "title: [A]\n", "body\n"), "cannot unmarshal"},
 		{"unknown", source(SourceDir+"/a.md", "title: A\nunknown: x\n", "body\n"), "field unknown"},
+		{"duplicate-key", source(SourceDir+"/a.md", "title: A\ntitle: B\n", "body\n"), "duplicate pitfall metadata key"},
 		{"missing-title", source(SourceDir+"/a.md", "domains: [x]\n", "body\n"), "required title"},
 		{"empty-title", source(SourceDir+"/a.md", "title: '  '\n", "body\n"), "title is empty"},
 		{"newline-title", source(SourceDir+"/a.md", "title: |\n  A\n  B\n", "body\n"), "CR or LF"},
 		{"empty-body", source(SourceDir+"/a.md", "title: A\n", " \n"), "body is empty"},
 		{"empty-domain", source(SourceDir+"/a.md", "title: A\ndomains: ['']\n", "body\n"), "nonempty"},
+		{"empty-domains-list", source(SourceDir+"/a.md", "title: A\ndomains: []\n", "body\n"), "nonempty list"},
+		{"null-domains", source(SourceDir+"/a.md", "title: A\ndomains: null\n", "body\n"), "nonempty list"},
+		{"scalar-domains", source(SourceDir+"/a.md", "title: A\ndomains: x\n", "body\n"), "must be a nonempty list"},
 		{"duplicate-domain", source(SourceDir+"/a.md", "title: A\ndomains: [x, x]\n", "body\n"), "duplicate domains"},
 		{"bad-tag", source(SourceDir+"/a.md", "title: A\ntags: [' x ']\n", "body\n"), "tags entries"},
+		{"empty-tags-list", source(SourceDir+"/a.md", "title: A\ntags: []\n", "body\n"), "nonempty list"},
+		{"null-tags", source(SourceDir+"/a.md", "title: A\ntags: null\n", "body\n"), "nonempty list"},
 		{"bad-related", source(SourceDir+"/a.md", "title: A\nrelated: [0]\n", "body\n"), "positive"},
+		{"empty-related-list", source(SourceDir+"/a.md", "title: A\nrelated: []\n", "body\n"), "nonempty list"},
+		{"null-related", source(SourceDir+"/a.md", "title: A\nrelated: null\n", "body\n"), "nonempty list"},
 		{"duplicate-related", source(SourceDir+"/a.md", "title: A\nrelated: [1, 1]\n", "body\n"), "duplicate related"},
 	}
 	for _, tc := range bad {
@@ -93,14 +103,32 @@ func TestAllocationSerializationEscapingAndLinks(t *testing.T) {
 			t.Fatalf("escaped = %q", escaped)
 		}
 	}
-	e.Body = "[inline](rel.md) ![image](img/a.png)\n<other.md>\n[id]: refs/a.md\n[external](https://example.com) [root](/x) [frag](#x) ` [code](no.md) `\n```md\n[fenced](no.md)\n```\n"
+	e.Body = "[inline](rel.md) ![image](img/a.png)\n<other.md>\n[id]: refs/a.md\n[external](https://example.com) [root](/x) [frag](#x) <person@example.com> `` [double](no-double.md) ``\n```md\n[fenced](no.md)\n~~\n[still-fenced](no-short.md)\n~~~\n[still-mismatched](no-mismatch.md)\n```\n[after](after.md)\n"
 	links := RelativeLinks(e)
-	if len(links) != 4 {
+	if len(links) != 5 {
 		t.Fatalf("links = %#v", links)
 	}
 	for _, l := range links {
-		if l.Source != e.SourcePath || strings.Contains(l.Destination, "no.md") {
+		if l.Source != e.SourcePath || strings.Contains(l.Destination, "no-") || l.Destination == "no.md" || strings.Contains(l.Destination, "@") {
 			t.Fatalf("link = %#v", l)
 		}
+	}
+	shortFence := e
+	shortFence.Body = "~~\n[short](short.md)\n~~\n"
+	if links := RelativeLinks(shortFence); len(links) != 1 || links[0].Destination != "short.md" {
+		t.Fatalf("short fence masked content: %#v", links)
+	}
+	mismatchedFence := e
+	mismatchedFence.Body = "```\n[masked](no.md)\n~~~\n[also-masked](no2.md)\n```\n[visible](yes.md)\n"
+	if links := RelativeLinks(mismatchedFence); len(links) != 1 || links[0].Destination != "yes.md" {
+		t.Fatalf("mismatched fence closed block: %#v", links)
+	}
+	unmatchedInline := e
+	unmatchedInline.Body = "` unmatched [visible](still-relative.md)\n"
+	if links := RelativeLinks(unmatchedInline); len(links) != 1 || links[0].Destination != "still-relative.md" {
+		t.Fatalf("unmatched inline delimiter masked prose: %#v", links)
+	}
+	if got := maskInlineCode("before ``code ` tick`` after"); got != "before                 after" {
+		t.Fatalf("variable inline span mask = %q", got)
 	}
 }

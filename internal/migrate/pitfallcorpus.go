@@ -2,12 +2,16 @@ package migrate
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filepublication"
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"gopkg.in/yaml.v3"
 )
@@ -34,7 +38,7 @@ type plannedPitfallLeaf struct {
 
 type pitfallCorpusOperation struct {
 	create        func(string, []byte) error
-	writeSidecar  func(string, []byte) error
+	writeSidecar  func(string, []byte, fs.FileMode) error
 	removeSidecar func(string) error
 }
 
@@ -44,17 +48,9 @@ func productionPitfallCorpusOperation() pitfallCorpusOperation {
 			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 				return err
 			}
-			f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
-			if err != nil {
-				return err
-			}
-			if _, err = f.Write(data); err != nil { // coverage-ignore: a newly opened regular file cannot deterministically fail a complete small write in the test environment
-				_ = f.Close()
-				return err
-			}
-			return f.Close()
+			return filepublication.Publish(path, data, 0o644)
 		},
-		writeSidecar:  func(path string, data []byte) error { return os.WriteFile(path, data, 0o644) },
+		writeSidecar:  manifest.WriteFileAtomicMode,
 		removeSidecar: os.Remove,
 	}
 }
@@ -72,13 +68,21 @@ func applyPitfallCorpusWith(root string, out *Changes, operation pitfallCorpusOp
 	if err != nil {
 		return err
 	}
-	var sidecar legacyPitfallSidecar
+	info, err := os.Stat(sidecarPath)
+	if err != nil { // coverage-ignore: requires the sidecar to disappear or fault after its successful read
+		return err
+	}
+	var document yaml.Node
 	dec := yaml.NewDecoder(bytes.NewReader(raw))
 	dec.KnownFields(false)
-	if err := dec.Decode(&sidecar); err != nil {
+	if err := dec.Decode(&document); err != nil {
 		return fmt.Errorf("pitfall-corpus: parse %s: %w", sidecarPath, err)
 	}
-	if len(sidecar.Data.Pitfalls) == 0 {
+	var sidecar legacyPitfallSidecar
+	if err := document.Decode(&sidecar); err != nil {
+		return fmt.Errorf("pitfall-corpus: parse %s: %w", sidecarPath, err)
+	}
+	if !mappingPathPresent(&document, "data", "pitfalls") {
 		return nil
 	}
 
@@ -114,6 +118,10 @@ func applyPitfallCorpusWith(root string, out *Changes, operation pitfallCorpusOp
 	if err != nil { // coverage-ignore: the same bytes were decoded as a mapping immediately above
 		return fmt.Errorf("pitfall-corpus: preflight sidecar remainder: %w", err)
 	}
+	emptyRemainder, err := preflightPitfallSidecarRemainder(remainder)
+	if err != nil {
+		return fmt.Errorf("pitfall-corpus: preflight sidecar remainder: %w", err)
+	}
 	for _, plan := range plans {
 		existing, err := os.ReadFile(plan.path)
 		if err == nil && !bytes.Equal(existing, plan.bytes) {
@@ -132,17 +140,13 @@ func applyPitfallCorpusWith(root string, out *Changes, operation pitfallCorpusOp
 		}
 		out.Add("pitfall-corpus: created " + plan.entry.SourcePath)
 	}
-	emptyRemainder, err := pitfallSidecarRemainderEmpty(remainder)
-	if err != nil { // coverage-ignore: RemoveMappingKey already produced valid YAML from decoded input
-		return fmt.Errorf("pitfall-corpus: validate sidecar remainder: %w", err)
-	}
 	if emptyRemainder {
 		if err := operation.removeSidecar(sidecarPath); err != nil { // coverage-ignore: injected-operation failures are covered at the create boundary; production removal failure requires an IO race
 			return fmt.Errorf("pitfall-corpus: retire sidecar: %w", err)
 		}
 		out.Add("pitfall-corpus: removed empty .awf/docs/pitfalls.yaml")
 	} else {
-		if err := operation.writeSidecar(sidecarPath, remainder); err != nil { // coverage-ignore: production write failure requires an IO fault after successful preflight
+		if err := operation.writeSidecar(sidecarPath, remainder, info.Mode().Perm()); err != nil {
 			return fmt.Errorf("pitfall-corpus: retain sections-only sidecar: %w", err)
 		}
 		out.Add("pitfall-corpus: retained sections-only .awf/docs/pitfalls.yaml")
@@ -150,13 +154,56 @@ func applyPitfallCorpusWith(root string, out *Changes, operation pitfallCorpusOp
 	return nil
 }
 
-func pitfallSidecarRemainderEmpty(raw []byte) (bool, error) {
-	var value map[string]any
+func mappingPathPresent(document *yaml.Node, keys ...string) bool {
+	node := document
+	if node.Kind == yaml.DocumentNode && len(node.Content) == 1 {
+		node = node.Content[0]
+	}
+	for _, key := range keys {
+		if node.Kind != yaml.MappingNode {
+			return false
+		}
+		var next *yaml.Node
+		for i := 0; i < len(node.Content); i += 2 {
+			if node.Content[i].Value == key {
+				next = node.Content[i+1]
+				break
+			}
+		}
+		if next == nil {
+			return false
+		}
+		node = next
+	}
+	return true
+}
+
+func preflightPitfallSidecarRemainder(raw []byte) (bool, error) {
+	var value map[string]yaml.Node
 	if err := yaml.Unmarshal(raw, &value); err != nil {
 		return false, err
 	}
-	if data, ok := value["data"].(map[string]any); ok && len(data) == 0 { // coverage-ignore: config.RemoveMappingKey currently removes an emptied data mapping entirely
-		delete(value, "data")
+	if len(value) == 0 {
+		return true, nil
 	}
-	return len(value) == 0, nil
+	if len(value) != 1 {
+		return false, errors.New("only sections configuration may remain")
+	}
+	if _, ok := value["sections"]; !ok {
+		return false, errors.New("only sections configuration may remain")
+	}
+	var supported struct {
+		Sections map[string]config.SectionOverride `yaml:"sections"`
+	}
+	dec := yaml.NewDecoder(bytes.NewReader(raw))
+	dec.KnownFields(true)
+	if err := dec.Decode(&supported); err != nil {
+		return false, fmt.Errorf("invalid sections configuration: %w", err)
+	}
+	for name := range supported.Sections {
+		if name != "prepend" && name != "append" {
+			return false, fmt.Errorf("unsupported pitfall section %q", name)
+		}
+	}
+	return false, nil
 }

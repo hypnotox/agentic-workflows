@@ -150,7 +150,7 @@ data:
       meaning: "The computed-doc model: a render transform computes content from the artifact's own sidecar data upstream of both render and config hash, keeping the doc in the ordinary drift model. Contrast regeneration, which derives from repo state outside the sidecar."
       domains: [rendering]
     - term: pitfall entry
-      meaning: "One `{title, domains, related, body}` unit of `data.pitfalls`: the transform emits it as a `## title` section, its optional `domains:` must resolve to configured domains, and its optional `related:` ADR numbers render as plain text and are link-validated."
+      meaning: "A path-derived authored Markdown source under `.awf/docs/pitfalls/`. Strict frontmatter supplies title and optional metadata; the body publishes verbatim to its same-slug generated leaf, and metadata supplies one row and navigation links in the generated `docs/pitfalls.md` index."
       domains: [rendering]
     - term: git seam
       meaning: "The `internal/git` package as the single home of every form of Git access: each capability is one semantic entrypoint, and whether it runs a library in process or the git binary is an internal detail no consumer can observe."

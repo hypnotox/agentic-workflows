@@ -2,7 +2,7 @@
 package pitfall
 
 import (
-	"bytes"
+	"errors"
 	"fmt"
 	"path"
 	"regexp"
@@ -39,10 +39,44 @@ type SourceFile struct {
 }
 
 type metadata struct {
-	Title   *string  `yaml:"title"`
-	Domains []string `yaml:"domains,omitempty"`
-	Tags    []string `yaml:"tags,omitempty"`
-	Related []int    `yaml:"related,omitempty"`
+	Title   *string     `yaml:"title"`
+	Domains presentNode `yaml:"domains,omitempty"`
+	Tags    presentNode `yaml:"tags,omitempty"`
+	Related presentNode `yaml:"related,omitempty"`
+}
+
+type presentNode struct {
+	present bool
+	node    yaml.Node
+}
+
+func (m *metadata) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind != yaml.MappingNode {
+		return errors.New("pitfall metadata must be a mapping")
+	}
+	seen := map[string]bool{}
+	for i := 0; i < len(node.Content); i += 2 {
+		key, value := node.Content[i].Value, node.Content[i+1]
+		if seen[key] {
+			return fmt.Errorf("duplicate pitfall metadata key %q", key)
+		}
+		seen[key] = true
+		switch key {
+		case "title":
+			if err := value.Decode(&m.Title); err != nil {
+				return err
+			}
+		case "domains":
+			m.Domains = presentNode{present: true, node: *value}
+		case "tags":
+			m.Tags = presentNode{present: true, node: *value}
+		case "related":
+			m.Related = presentNode{present: true, node: *value}
+		default:
+			return fmt.Errorf("field %s not found in type pitfall.metadata", key)
+		}
+	}
+	return nil
 }
 
 // Load parses and validates a complete injected direct-leaf source set.
@@ -110,14 +144,26 @@ func Parse(f SourceFile) (Entry, error) {
 	if strings.TrimSpace(string(body)) == "" {
 		return Entry{}, fmt.Errorf("%s: body is empty", f.Path)
 	}
-	if err := validateStrings(f.Path, "domains", m.Domains); err != nil {
+	domains, err := decodeOptionalNonemptyList[string](f.Path, "domains", m.Domains)
+	if err != nil {
 		return Entry{}, err
 	}
-	if err := validateStrings(f.Path, "tags", m.Tags); err != nil {
+	tags, err := decodeOptionalNonemptyList[string](f.Path, "tags", m.Tags)
+	if err != nil {
+		return Entry{}, err
+	}
+	related, err := decodeOptionalNonemptyList[int](f.Path, "related", m.Related)
+	if err != nil {
+		return Entry{}, err
+	}
+	if err := validateStrings(f.Path, "domains", domains); err != nil {
+		return Entry{}, err
+	}
+	if err := validateStrings(f.Path, "tags", tags); err != nil {
 		return Entry{}, err
 	}
 	seenRelated := map[int]bool{}
-	for _, n := range m.Related {
+	for _, n := range related {
 		if n <= 0 {
 			return Entry{}, fmt.Errorf("%s: related entries must be positive ADR numbers", f.Path)
 		}
@@ -126,7 +172,25 @@ func Parse(f SourceFile) (Entry, error) {
 		}
 		seenRelated[n] = true
 	}
-	return Entry{Slug: slug, SourcePath: clean, Title: title, Domains: slices.Clone(m.Domains), Tags: slices.Clone(m.Tags), Related: slices.Clone(m.Related), Body: string(body), Source: slices.Clone(f.Bytes)}, nil
+	return Entry{Slug: slug, SourcePath: clean, Title: title, Domains: domains, Tags: tags, Related: related, Body: string(body), Source: slices.Clone(f.Bytes)}, nil
+}
+
+func decodeOptionalNonemptyList[T any](source, field string, value presentNode) ([]T, error) {
+	if !value.present {
+		return nil, nil
+	}
+	node := &value.node
+	if node.Tag == "!!null" {
+		return nil, fmt.Errorf("%s: explicitly supplied %s must be a nonempty list", source, field)
+	}
+	var values []T
+	if err := node.Decode(&values); err != nil {
+		return nil, fmt.Errorf("%s: %s must be a nonempty list: %w", source, field, err)
+	}
+	if len(values) == 0 {
+		return nil, fmt.Errorf("%s: explicitly supplied %s must be a nonempty list", source, field)
+	}
+	return values, nil
 }
 
 func validateStrings(source, field string, values []string) error {
@@ -244,7 +308,7 @@ func RelativeLinks(e Entry) []RelativeLink {
 }
 
 func isRelative(target string) bool {
-	if target == "" || strings.HasPrefix(target, "#") || strings.HasPrefix(target, "/") || strings.HasPrefix(target, "\\") || strings.HasPrefix(target, "//") {
+	if target == "" || strings.HasPrefix(target, "#") || strings.HasPrefix(target, "/") || strings.HasPrefix(target, "\\") || strings.HasPrefix(target, "//") || isEmailAutolink(target) {
 		return false
 	}
 	colon := strings.IndexByte(target, ':')
@@ -252,35 +316,86 @@ func isRelative(target string) bool {
 	return colon < 0 || (slash >= 0 && slash < colon)
 }
 
+func isEmailAutolink(target string) bool {
+	at := strings.IndexByte(target, '@')
+	return at > 0 && at < len(target)-1 && !strings.ContainsAny(target, "/: ") && strings.Contains(target[at+1:], ".")
+}
+
+type fence struct {
+	char byte
+	len  int
+}
+
+func fenceRun(line string) (byte, int, string) {
+	trimmed := strings.TrimLeft(line, " \t")
+	if trimmed == "" || (trimmed[0] != '`' && trimmed[0] != '~') {
+		return 0, 0, ""
+	}
+	char := trimmed[0]
+	n := 0
+	for n < len(trimmed) && trimmed[n] == char {
+		n++
+	}
+	return char, n, trimmed[n:]
+}
+
 func maskCode(s string) string {
 	lines := strings.SplitAfter(s, "\n")
-	fenced := false
+	var open *fence
 	for i, line := range lines {
-		trim := strings.TrimSpace(line)
-		if strings.HasPrefix(trim, "```") || strings.HasPrefix(trim, "~~~") {
-			fenced = !fenced
+		char, run, rest := fenceRun(strings.TrimSuffix(line, "\n"))
+		if open != nil {
+			lines[i] = strings.Repeat(" ", len(line))
+			if char == open.char && run >= open.len && strings.TrimSpace(rest) == "" {
+				open = nil
+			}
+			continue
+		}
+		if run >= 3 {
+			open = &fence{char: char, len: run}
 			lines[i] = strings.Repeat(" ", len(line))
 			continue
 		}
-		if fenced {
-			lines[i] = strings.Repeat(" ", len(line))
-			continue
-		}
-		var b bytes.Buffer
-		inCode := false
-		for _, r := range line {
-			if r == '`' {
-				inCode = !inCode
-				b.WriteRune(' ')
-				continue
-			}
-			if inCode {
-				b.WriteRune(' ')
-			} else {
-				b.WriteRune(r)
-			}
-		}
-		lines[i] = b.String()
+		lines[i] = maskInlineCode(line)
 	}
 	return strings.Join(lines, "")
+}
+
+func maskInlineCode(line string) string {
+	masked := []byte(line)
+	for start := 0; start < len(line); {
+		if line[start] != '`' {
+			start++
+			continue
+		}
+		run := 1
+		for start+run < len(line) && line[start+run] == '`' {
+			run++
+		}
+		closeAt := -1
+		for cursor := start + run; cursor < len(line); {
+			if line[cursor] != '`' {
+				cursor++
+				continue
+			}
+			closeRun := 1
+			for cursor+closeRun < len(line) && line[cursor+closeRun] == '`' {
+				closeRun++
+			}
+			if closeRun == run {
+				closeAt = cursor
+				break
+			}
+			cursor += closeRun
+		}
+		if closeAt < 0 {
+			start += run
+			continue
+		}
+		for j := start; j < closeAt+run; j++ {
+			masked[j] = ' '
+		}
+		start = closeAt + run
+	}
+	return string(masked)
 }

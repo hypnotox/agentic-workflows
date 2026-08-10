@@ -160,9 +160,9 @@
     },
     ".claude/skills/awf-retrospective/SKILL.md": {
       "templateId": "skills/retrospective/SKILL.md.tmpl",
-      "templateHash": "sha256:21b4b04d1c83135dd28555dd07fbaf31184f2dae909705f119ba80270c691a39",
-      "configHash": "sha256:3e99cbf29a0cc0ec33a0494be9f2170915297454dcc49f71bf9ed1ed2734579c",
-      "outputHash": "sha256:1ccdd92a2e4b41a6400698b671494bc73e1a14f9f0bfe2c8df3478257866ba74"
+      "templateHash": "sha256:991af0d26a4b88494854b44724b61af0b72db590505983f61850c18747fc6bd5",
+      "configHash": "sha256:fea018a6975f0cf266dd66dc3cbebee2bcb0de0baddb117d4693823f6fe0b608",
+      "outputHash": "sha256:3bb86b222e6f0036aa9294104a77cbd4e53772688aaabaeb8c869f1f321307d0"
     },
     ".claude/skills/awf-reviewing-adr/SKILL.md": {
       "templateId": "skills/reviewing-adr/SKILL.md.tmpl",
@@ -370,9 +370,9 @@
     },
     ".pi/skills/awf-retrospective/SKILL.md": {
       "templateId": "skills/retrospective/SKILL.md.tmpl",
-      "templateHash": "sha256:21b4b04d1c83135dd28555dd07fbaf31184f2dae909705f119ba80270c691a39",
-      "configHash": "sha256:eb1bb98d35f24b95c756bffecc21e84f59442a35b55ef4b7dc48a3b5a745463a",
-      "outputHash": "sha256:1ccdd92a2e4b41a6400698b671494bc73e1a14f9f0bfe2c8df3478257866ba74"
+      "templateHash": "sha256:991af0d26a4b88494854b44724b61af0b72db590505983f61850c18747fc6bd5",
+      "configHash": "sha256:3b6586638fcfbfbcd7cc6380a1865e47c428d24ccc988e40655e92add21078d3",
+      "outputHash": "sha256:3bb86b222e6f0036aa9294104a77cbd4e53772688aaabaeb8c869f1f321307d0"
     },
     ".pi/skills/awf-reviewing-adr/SKILL.md": {
       "templateId": "skills/reviewing-adr/SKILL.md.tmpl",
@@ -553,8 +553,8 @@
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",
       "templateHash": "sha256:dc751686b557a6bde2147cb6be97788269a3c375bfa64f3eebf5c0e08dc0bb45",
-      "configHash": "sha256:0991a134b7aed12c6e1fa99ddc14bf9b82000afacbaaa03a13dc86252668bc31",
-      "outputHash": "sha256:d5597427dab05bf98cc70becf9f2d4aff3f7f55f0d85e07f11f4a838e6bba1f5"
+      "configHash": "sha256:8cc9d2d1f9636feb669104af0eb028420f3bcf7649f1417fb1988d02e84e5ea6",
+      "outputHash": "sha256:3c20b60c9cf2dbfa6b0fa572210fa103f4253ffe9c858352937a37f4c5358b17"
     },
     "docs/maintainable-code-design.md": {
       "templateId": "docs/maintainable-code-design.md.tmpl",

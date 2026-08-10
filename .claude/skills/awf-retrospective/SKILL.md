@@ -22,7 +22,7 @@ Record only warranted durable lessons; a mechanical change may have none. Artifa
 
 2. **Reflect and record worthy observations.** Read the effort memory's `## Observations` and `## Decision log` as primary input alongside this session's implementation and terminal-review findings and friction, and confirm every user-provenance decision either landed in a durable artifact or was explicitly re-decided. Record a first occurrence at the appropriate durable rung; recording observations in memory during the effort is the expected path, and a lesson must land at a durable rung before finish moves the resident into the non-authoritative unmanaged archive.
 
-3. **Promote recurring, codifiable observations** to the strongest justified rung. Verify recurrence before promoting (within this session or across the effort's sessions as recorded in the observation log) and land any pitfall, invariant, deterministic check, or reviewer-focus change with its required render, staged check, gate, and commit.
+3. **Promote recurring, codifiable observations** to the strongest justified rung. Verify recurrence before promoting (within this session or across the effort's sessions as recorded in the observation log) and land any pitfall, invariant, deterministic check, or reviewer-focus change with its required render, staged check, gate, and commit. Author a pitfall only as a source under `.awf/docs/pitfalls/`; never edit generated `docs/pitfalls.md` or a generated leaf.
 
 4. **Update adopter-facing records.** Confirm adopter-visible behavior is recorded under `## [Unreleased]` in `changelog/CHANGELOG.md`, grouped by Breaking changes / Features / Bug fixes / Others, and note where each lesson landed.
 
@@ -44,7 +44,7 @@ Route each recurring, codifiable observation to the **strongest** rung it can su
 1. **Invariant**: a load-bearing rule the project must remember. Record the decision via `awf-proposing-adr` with a `State changes` `add` of a new invariant claim (`invariant: <slug>`) in the owning current-state topic, and back it with `Backing: test` plus a `<marker> invariant: <domain>/<topic>:<slug> (<name>)` proof comment on a test (backing tests live under `./internal/...`), or declare it `Backing: unbacked` with a `Verify:` note when no automatic test fits. The `<name>` is free text naming whatever proves the claim, a test function or a case label, and it must appear on a line of the same file that does not itself open with the marker token, so the marker fails once that unit is deleted or renamed. The marker and globs are config-driven, so this works in any language.
 2. **Gate test or lint rule**: an ordinary mechanically-checkable rule that does not rise to an invariant. Add a test or linter rule so `./x gate` catches it; no decision record needed.
 3. **Code-review focus item**: a rule that needs per-case judgment. Add a persistent project-focus item to the code-review agent's checklist: still probabilistic, but now applied on every review.
-4. **Pitfalls note**: tricky knowledge that is not mechanically checkable. Add an entry to `docs/pitfalls.md`.
+4. **Pitfalls note**: tricky knowledge that is not mechanically checkable. Create or edit one authored source under `.awf/docs/pitfalls/`; never edit the generated pitfall index or generated leaves.
 
 <!-- awf:edit control: default; create .awf/skills/parts/retrospective/control.md to override -->
 ## Control
