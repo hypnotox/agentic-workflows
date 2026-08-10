@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -104,6 +105,19 @@ func TestNativeGitDeadlineClosesDescendantPipes(t *testing.T) {
 	if elapsed > time.Second {
 		t.Fatalf("pipe-holding child delayed return for %v, want bounded pipe cleanup", elapsed)
 	}
+}
+
+func TestInitNativeObjectFormatSkipsUnsupportedGit(t *testing.T) {
+	bin := t.TempDir()
+	git := filepath.Join(bin, "git")
+	if err := os.WriteFile(git, []byte("#!/bin/sh\nexit 129\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin)
+	t.Run("unsupported", func(t *testing.T) {
+		InitNativeObjectFormat(t, filepath.Join(t.TempDir(), "repo"), "sha256")
+		t.Fatal("unsupported object format returned instead of skipping")
+	})
 }
 
 func TestObjectFormatInitDoesNotHideDeadline(t *testing.T) {

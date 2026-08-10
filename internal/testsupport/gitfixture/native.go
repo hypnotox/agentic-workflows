@@ -33,7 +33,7 @@ func InitNativeAt(t *testing.T, root string) Fixture {
 func InitNativeObjectFormat(t *testing.T, root, format string) Fixture {
 	t.Helper()
 	output, unsupported, err := runNativeInit(root, format, runGit)
-	if unsupported { // coverage-ignore: reached only where the installed Git lacks the requested object format
+	if unsupported {
 		t.Skipf("installed Git lacks %s repositories: %v: %s", format, err, output)
 	}
 	if err != nil { // coverage-ignore: init into a writable fixture directory fails only on a permission fault a test cannot trigger

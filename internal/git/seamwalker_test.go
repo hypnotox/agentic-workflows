@@ -1,11 +1,15 @@
 package git
 
 import (
+	"bytes"
 	"fmt"
 	"go/ast"
 	"go/parser"
+	"go/printer"
 	"go/token"
+	"os"
 	"path"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -118,6 +122,7 @@ func scanExecConstructions(path string, src []byte) ([]execConstruction, error) 
 		return nil, fmt.Errorf("parse %s: %w", path, err)
 	}
 	execName := importLocalName(file, "os/exec")
+	parents := astParentMap(file)
 	constructions := []execConstruction{}
 	ast.Inspect(file, func(n ast.Node) bool {
 		switch node := n.(type) {
@@ -141,6 +146,15 @@ func scanExecConstructions(path string, src []byte) ([]execConstruction, error) 
 				}
 			}
 			constructions = append(constructions, construction)
+		case *ast.SelectorExpr:
+			pkg, ok := node.X.(*ast.Ident)
+			if !ok || execName == "" || pkg.Name != execName || (node.Sel.Name != "Command" && node.Sel.Name != "CommandContext") {
+				return true
+			}
+			if call, ok := parents[node].(*ast.CallExpr); ok && call.Fun == node {
+				return true
+			}
+			constructions = append(constructions, execConstruction{Path: path, Constructor: node.Sel.Name + "Alias"})
 		case *ast.CompositeLit:
 			sel, ok := node.Type.(*ast.SelectorExpr)
 			if !ok || sel.Sel.Name != "Cmd" {
@@ -176,6 +190,23 @@ func scanExecConstructions(path string, src []byte) ([]execConstruction, error) 
 		return nil, err
 	}
 	return constructions, nil
+}
+
+func astParentMap(root ast.Node) map[ast.Node]ast.Node {
+	parents := map[ast.Node]ast.Node{}
+	stack := []ast.Node{}
+	ast.Inspect(root, func(node ast.Node) bool {
+		if node == nil {
+			stack = stack[:len(stack)-1]
+			return true
+		}
+		if len(stack) > 0 {
+			parents[node] = stack[len(stack)-1]
+		}
+		stack = append(stack, node)
+		return true
+	})
+	return parents
 }
 
 // isExecConstruction reports whether fun names os/exec's process constructors,
@@ -321,6 +352,61 @@ func TestGitFixtureHasOneNativeGitProcessBoundary(t *testing.T) {
 	}
 }
 
+// invariant: tooling/git-access:fixture-isolation-parity (TestGitDeadlineDeclarationsRemainEqual)
+func TestGitDeadlineDeclarationsRemainEqual(t *testing.T) {
+	t.Parallel()
+	root := moduleRoot(t)
+	declarations := []struct {
+		path string
+		name string
+	}{
+		{"internal/git/runner.go", "CommandTimeout"},
+		{"internal/testsupport/testsupport.go", "gitTestDeadline"},
+		{"internal/testsupport/gitfixture/native.go", "nativeGitDeadline"},
+	}
+	for _, declaration := range declarations {
+		expression, err := constExpression(filepath.Join(root, declaration.path), declaration.name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if expression != "2 * time.Minute" {
+			t.Errorf("%s %s = %s, want shared two-minute ceiling", declaration.path, declaration.name, expression)
+		}
+	}
+}
+
+func constExpression(filePath, name string) (string, error) {
+	body, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", err
+	}
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, filePath, body, 0)
+	if err != nil {
+		return "", err
+	}
+	for _, declaration := range file.Decls {
+		gen, ok := declaration.(*ast.GenDecl)
+		if !ok || gen.Tok != token.CONST {
+			continue
+		}
+		for _, spec := range gen.Specs {
+			values := spec.(*ast.ValueSpec)
+			for index, ident := range values.Names {
+				if ident.Name != name || index >= len(values.Values) {
+					continue
+				}
+				var rendered bytes.Buffer
+				if err := printer.Fprint(&rendered, fset, values.Values[index]); err != nil {
+					return "", err
+				}
+				return rendered.String(), nil
+			}
+		}
+	}
+	return "", fmt.Errorf("constant %s not found in %s", name, filePath)
+}
+
 func TestExecConstructionCensusRejectsVariableExecutable(t *testing.T) {
 	t.Parallel()
 	found, err := scanExecConstructions("variable.go", []byte("package p\nimport \"os/exec\"\nfunc f() { name := \"git\"; _ = exec.Command(name) }\n"))
@@ -330,6 +416,18 @@ func TestExecConstructionCensusRejectsVariableExecutable(t *testing.T) {
 	want := execConstruction{Path: "variable.go", Constructor: "Command"}
 	if len(found) != 1 || found[0] != want {
 		t.Fatalf("variable executable constructions = %+v, want nonliteral finding %+v", found, want)
+	}
+}
+
+func TestExecConstructionCensusRejectsConstructorAlias(t *testing.T) {
+	t.Parallel()
+	found, err := scanExecConstructions("alias.go", []byte("package p\nimport \"os/exec\"\nfunc f() { ctor := exec.Command; _ = ctor(\"git\") }\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := execConstruction{Path: "alias.go", Constructor: "CommandAlias"}
+	if len(found) != 1 || found[0] != want {
+		t.Fatalf("aliased executable constructions = %+v, want escape finding %+v", found, want)
 	}
 }
 
