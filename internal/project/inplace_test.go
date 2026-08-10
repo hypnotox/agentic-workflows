@@ -22,8 +22,8 @@ func TestReadBackInPlaceBodyExcludesStructuralHeading(t *testing.T) {
 		}
 		// Reassembly with the rendered structural line is a fixpoint rather than
 		// duplicating a whitespace-bearing empty-value fallback into the body.
-		segs := render.ParseSections("<!-- awf:section body inplace -->\n" + heading + "\ndefault\n<!-- awf:end -->\n")
-		assembled, _ := render.Assemble(segs, map[string]render.SectionPlan{"body": {InPlace: true, InPlaceFound: true, InPlaceBody: got}}, render.HTMLComment)
+		segs := parseSections("<!-- awf:section body inplace -->\n" + heading + "\ndefault\n<!-- awf:end -->\n")
+		assembled, _ := assemble(segs, map[string]render.SectionPlan{"body": {InPlace: true, InPlaceFound: true, InPlaceBody: got}}, render.HTMLComment)
 		if strings.Count(assembled, heading+"\n") != 1 {
 			t.Fatalf("heading %q duplicated after read-back and reassembly: %q", heading, assembled)
 		}
@@ -147,7 +147,7 @@ func TestPlanSectionsInPlacePartExclusive(t *testing.T) {
 	if err := os.WriteFile(part, []byte("conflicting part body\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	segs := render.ParseSections("<!-- awf:section s inplace -->\nDEFAULT\n<!-- awf:end -->\n")
+	segs := parseSections("<!-- awf:section s inplace -->\nDEFAULT\n<!-- awf:end -->\n")
 	_, err = p.planSections("skills", "foo", []string{"s"}, nil, segs, "out.md", render.HTMLComment)
 	if err == nil || !strings.Contains(err.Error(), "in-place-editable and must not also have a convention part") {
 		t.Fatalf("want a section-source-exclusive error, got %v", err)
@@ -167,7 +167,7 @@ func TestPlanSectionsInPlacePartReadError(t *testing.T) {
 	if err := os.MkdirAll(part, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	segs := render.ParseSections("<!-- awf:section s inplace -->\nDEFAULT\n<!-- awf:end -->\n")
+	segs := parseSections("<!-- awf:section s inplace -->\nDEFAULT\n<!-- awf:end -->\n")
 	if _, err := p.planSections("skills", "foo", []string{"s"}, nil, segs, "out.md", render.HTMLComment); err == nil {
 		t.Fatal("in-place part read error accepted")
 	}
@@ -182,7 +182,7 @@ func TestPlanSectionsInPlaceOutputReadError(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(root, "out.md"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	segs := render.ParseSections("<!-- awf:section s inplace -->\nDEFAULT\n<!-- awf:end -->\n")
+	segs := parseSections("<!-- awf:section s inplace -->\nDEFAULT\n<!-- awf:end -->\n")
 	if _, err := p.planSections("skills", "foo", []string{"s"}, nil, segs, "out.md", render.HTMLComment); err == nil || !strings.Contains(err.Error(), "read output out.md") {
 		t.Fatalf("in-place output read error = %v", err)
 	}
@@ -232,7 +232,7 @@ func TestPlanSectionsInPlaceReadBack(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	segs := render.ParseSections(
+	segs := parseSections(
 		"<!-- awf:section s inplace -->\nDEFAULT\n<!-- awf:end -->\n" +
 			"<!-- awf:section next -->\nN\n<!-- awf:end -->\n")
 	declared := []string{"s", "next"}
@@ -327,7 +327,7 @@ func TestInPlaceComposedSyncCheckFixpoint(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	segs := render.ParseSections(
+	segs := parseSections(
 		"banner\n" +
 			"<!-- awf:section s inplace -->\n## Owned heading\nDEFAULT\n<!-- awf:end -->\n" +
 			"<!-- awf:section tail -->\nOWNED\n<!-- awf:end -->\n")
@@ -340,7 +340,7 @@ func TestInPlaceComposedSyncCheckFixpoint(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		asm, _ := render.Assemble(segs, plan, render.HTMLComment)
+		asm, _ := assemble(segs, plan, render.HTMLComment)
 		return asm
 	}
 	drift := func(regenerated string) []manifest.Drift {
@@ -429,7 +429,7 @@ func TestPointerPrefixesMatchRenderedPointers(t *testing.T) {
 		if style == render.HashComment {
 			src = "#!/bin/sh\n" + src
 		}
-		asm, _ := render.Assemble(render.ParseSections(src),
+		asm, _ := assemble(parseSections(src),
 			map[string]render.SectionPlan{"s": {InPlace: true, InPlaceFound: true, InPlaceBody: "x"}}, style)
 		var ptrLine string
 		for _, ln := range strings.Split(asm, "\n") {
@@ -454,7 +454,7 @@ func TestInPlaceRegionKeepsAuthoringCommentShapedLine(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	segs := render.ParseSections(
+	segs := parseSections(
 		"<!-- awf:section s inplace -->\nDEFAULT\n<!-- awf:end -->\n" +
 			"<!-- awf:section next -->\nN\n<!-- awf:end -->\n")
 	declared := []string{"s", "next"}

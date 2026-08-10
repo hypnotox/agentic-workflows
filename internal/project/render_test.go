@@ -208,12 +208,12 @@ func TestCaptureStructuralHeadingsReportsDefaultExpressionOmittedByOverride(t *t
 	// Capture executes the complete template skeleton before assembly, so this
 	// invalid default expression is observable even though the convention-part
 	// override below would omit it from the final output.
-	segs := render.ParseSections("<!-- awf:section body -->\n## Heading\n{{ .missing.field }}\n<!-- awf:end -->", true)
+	segs := parseSections("<!-- awf:section body -->\n## Heading\n{{ .missing.field }}\n<!-- awf:end -->", true)
 	_, err := captureStructuralHeadings(segs, map[string]any{}, "test template")
 	if err == nil || !strings.Contains(err.Error(), "render test template headings: execute template") || !strings.Contains(err.Error(), "nil pointer evaluating") {
 		t.Fatalf("contextual capture error = %v", err)
 	}
-	assembled, parts := render.Assemble(segs, map[string]render.SectionPlan{"body": {HasPart: true, PartBody: "override"}}, render.HTMLComment)
+	assembled, parts := assemble(segs, map[string]render.SectionPlan{"body": {HasPart: true, PartBody: "override"}}, render.HTMLComment)
 	if output, assembleErr := render.Execute(assembled, map[string]any{}, parts, "test final assembly"); assembleErr != nil || !strings.Contains(output, "override") {
 		t.Fatalf("override final assembly = %q, %v", output, assembleErr)
 	}
@@ -237,7 +237,7 @@ func TestCaptureStructuralHeadingsReportsDefaultExpressionOmittedByOverride(t *t
 		t.Fatalf("renderTarget capture error = %v", targetErr)
 	}
 
-	collisionSegs := render.ParseSections("<!-- awf:section body -->\n## {{ .heading }}\ndefault\n<!-- awf:end -->", true)
+	collisionSegs := parseSections("<!-- awf:section body -->\n## {{ .heading }}\ndefault\n<!-- awf:end -->", true)
 	_, tokens := render.StructuralHeadingCapture(collisionSegs)
 	if _, collisionErr := captureStructuralHeadings(collisionSegs, map[string]any{"heading": tokens["body"][1]}, "collision template"); collisionErr == nil || !strings.Contains(collisionErr.Error(), "ambiguous framing") {
 		t.Fatalf("contextual collision error = %v", collisionErr)

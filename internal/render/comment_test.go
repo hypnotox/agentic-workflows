@@ -58,6 +58,24 @@ func TestStripAuthoringComments(t *testing.T) {
 // boundary that does not end with "-->" fails, naming the line, and the input
 // comes back unchanged.
 // invariant: rendering/render-engine:authoring-comment-malformed-fails (TestStripAuthoringCommentsMalformed)
+func TestStripAuthoringCommentsSourcePreservesIncludeTransitions(t *testing.T) {
+	src := render.SourceText{Root: "guide.md.tmpl", Spans: []render.SourceSpan{
+		{Source: "guide.md.tmpl", Text: "before\n<!-- awf:comment root -->\n"},
+		{Source: "partials/spine.md", Text: "<!-- awf:comment partial -->\nPART\n"},
+		{Source: "guide.md.tmpl", Text: "after\n"},
+	}}
+	stripped, err := render.StripAuthoringCommentsSource(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := stripped.AuthoredText(), "before\nPART\nafter\n"; got != want {
+		t.Fatalf("flattened source = %q, want %q", got, want)
+	}
+	if got, want := len(stripped.Spans), 3; got != want || stripped.Spans[0].Source != "guide.md.tmpl" || stripped.Spans[1].Source != "partials/spine.md" || stripped.Spans[2].Source != "guide.md.tmpl" {
+		t.Fatalf("stripped spans = %#v, want root/partial/root transitions", stripped.Spans)
+	}
+}
+
 func TestStripAuthoringCommentsMalformed(t *testing.T) {
 	cases := []struct {
 		name, in string

@@ -11,6 +11,22 @@ import (
 // whitespace variant is not the directive and passes through visibly.
 const commentOpen = "<!-- awf:comment"
 
+// StripAuthoringCommentsSource removes authoring directives while retaining each
+// kept byte range's source span. It never coalesces adjacent spans, since an
+// include boundary remains meaningful even when a comment is stripped nearby.
+func StripAuthoringCommentsSource(src SourceText) (SourceText, error) {
+	text := src.AuthoredText()
+	kept, err := authoringCommentRanges(text)
+	if err != nil {
+		return src, err
+	}
+	out := SourceText{Root: src.Root}
+	for _, r := range kept {
+		out.appendSource(src.slice(r[0], r[1]))
+	}
+	return out, nil
+}
+
 // StripAuthoringComments removes whole-line awf:comment authoring directives
 // from src: a line whose trimmed form opens with the exact commentOpen literal
 // at a token boundary (followed by a space, a tab, "-->", or the end of the
@@ -22,35 +38,46 @@ const commentOpen = "<!-- awf:comment"
 // alongside it. Mid-line occurrences and prefix-sharing tokens (awf:commentary)
 // never fire.
 func StripAuthoringComments(src string) (string, error) {
-	var kept []string
+	stripped, err := StripAuthoringCommentsSource(SourceText{Spans: []SourceSpan{{Text: src}}})
+	if err != nil {
+		return src, err
+	}
+	return stripped.AuthoredText(), nil
+}
+
+// authoringCommentRanges returns the source offsets retained by comment stripping.
+func authoringCommentRanges(src string) ([][2]int, error) {
+	var kept [][2]int
 	inFence := false
 	fence := ""
-	for i, line := range strings.Split(src, "\n") {
+	offset := 0
+	for i, raw := range strings.SplitAfter(src, "\n") {
+		line := strings.TrimSuffix(raw, "\n")
 		trimmed := strings.TrimSpace(line)
+		keep := true
 		if inFence {
 			if strings.HasPrefix(trimmed, fence) {
 				inFence = false
 			}
-			kept = append(kept, line)
-			continue
-		}
-		switch {
-		case strings.HasPrefix(trimmed, "```"):
-			inFence, fence = true, "```"
-			kept = append(kept, line)
-		case strings.HasPrefix(trimmed, "~~~"):
-			inFence, fence = true, "~~~"
-			kept = append(kept, line)
-		case opensAuthoringComment(trimmed):
-			if !strings.HasSuffix(trimmed, "-->") {
-				return src, fmt.Errorf("line %d: malformed awf:comment (the whole line must end with \"-->\"): %s", i+1, trimmed)
+		} else {
+			switch {
+			case strings.HasPrefix(trimmed, "```"):
+				inFence, fence = true, "```"
+			case strings.HasPrefix(trimmed, "~~~"):
+				inFence, fence = true, "~~~"
+			case opensAuthoringComment(trimmed):
+				if !strings.HasSuffix(trimmed, "-->") {
+					return nil, fmt.Errorf("line %d: malformed awf:comment (the whole line must end with \"-->\"): %s", i+1, trimmed)
+				}
+				keep = false
 			}
-			// A directive line: dropped, its newline consumed by the join.
-		default:
-			kept = append(kept, line)
 		}
+		if keep {
+			kept = append(kept, [2]int{offset, offset + len(raw)})
+		}
+		offset += len(raw)
 	}
-	return strings.Join(kept, "\n"), nil
+	return kept, nil
 }
 
 // opensAuthoringComment reports whether a trimmed line opens with the exact

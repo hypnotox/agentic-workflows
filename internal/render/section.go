@@ -9,10 +9,16 @@ import (
 type Segment struct {
 	IsSection bool
 	Name      string
-	Text      string
+	// Source is the ordered literal or default-body source. SectionSource is
+	// the root template identity of a structural section; convention parts are
+	// deliberately not represented here.
+	Source        SourceText
+	SectionSource string
+	Text          string
 	// Heading is the optional awf-owned Markdown ATX heading at the section's
 	// leading structural position. It is deliberately separate from the body.
-	Heading string
+	Heading       string
+	HeadingSource SourceText
 	// Stub marks a section whose template default is a must-replace authoring
 	// prompt, declared by the `stub` marker attribute (ADR-0070).
 	Stub bool
@@ -31,53 +37,56 @@ type Segment struct {
 // of a silent leak.
 var sectionRE = regexp.MustCompile(`(?s)<!-- awf:section (\S+)( stub| inplace)? -->\n(.*?)\n?<!-- awf:end -->`)
 
-// ParseSections splits src into ordered literal and section segments.
-// Marker lines are consumed. When markdown is selected, a whole ATX heading on
-// the first body line is structural and is stored separately from Text. The
-// optional argument preserves the historical Markdown default for direct users.
-func ParseSections(src string, markdown ...bool) []Segment {
+// ParseSourceSections splits source-aware text into ordered literal and section
+// segments while retaining literal and
+// default-body spans. Structural section identity is always the root template,
+// because included partials are forbidden from carrying section markers.
+func ParseSourceSections(src SourceText, markdown ...bool) []Segment {
 	isMarkdown := true
 	if len(markdown) > 0 {
 		isMarkdown = markdown[0]
 	}
+	text := src.AuthoredText()
 	var segs []Segment
-	idx := sectionRE.FindAllStringSubmatchIndex(src, -1)
+	idx := sectionRE.FindAllStringSubmatchIndex(text, -1)
 	last := 0
 	for _, m := range idx {
-		// m[0]:m[1] whole match; m[2]:m[3] name; m[4]:m[5] attribute; m[6]:m[7] body
 		if m[0] > last {
-			segs = append(segs, Segment{Text: src[last:m[0]]})
+			literal := src.slice(last, m[0])
+			segs = append(segs, Segment{Source: literal, Text: literal.AuthoredText()})
 		}
 		attr := ""
 		if m[4] >= 0 {
-			attr = strings.TrimSpace(src[m[4]:m[5]])
+			attr = strings.TrimSpace(text[m[4]:m[5]])
 		}
-		body := src[m[6]:m[7]]
+		bodyStart, bodyEnd := m[6], m[7]
+		body := text[bodyStart:bodyEnd]
 		heading := ""
+		headingEnd := 0
 		if isMarkdown {
 			if end := strings.IndexByte(body, '\n'); end >= 0 {
 				if atxHeading(body[:end]) {
-					heading, body = body[:end], body[end+1:]
+					heading, headingEnd = body[:end], end+1
 				}
 			} else if atxHeading(body) {
-				heading, body = body, ""
+				heading, headingEnd = body, len(body)
 			}
 		}
+		defaultSource := src.slice(bodyStart+headingEnd, bodyEnd)
+		headingSource := src.slice(bodyStart, bodyStart+headingEnd)
 		segs = append(segs, Segment{
-			IsSection: true,
-			Name:      src[m[2]:m[3]],
-			Stub:      attr == "stub",
-			InPlace:   attr == "inplace",
-			Heading:   heading,
-			Text:      body,
+			IsSection: true, Name: text[m[2]:m[3]], SectionSource: src.Root,
+			Stub: attr == "stub", InPlace: attr == "inplace", Heading: heading,
+			HeadingSource: headingSource, Source: defaultSource, Text: defaultSource.AuthoredText(),
 		})
 		last = m[1]
 	}
-	if last < len(src) {
-		segs = append(segs, Segment{Text: src[last:]})
+	if last < len(text) {
+		literal := src.slice(last, len(text))
+		segs = append(segs, Segment{Source: literal, Text: literal.AuthoredText()})
 	}
 	if len(segs) == 0 {
-		segs = append(segs, Segment{Text: src})
+		segs = append(segs, Segment{Source: src, Text: text})
 	}
 	return segs
 }

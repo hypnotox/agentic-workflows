@@ -97,6 +97,38 @@ func TestStructuralHeadingAssemblyOrdering(t *testing.T) {
 	}
 }
 
+func TestSourceSectionsAndAssemblyRetainLiteralAndDefaultSpans(t *testing.T) {
+	src := SourceText{Root: "guide.md.tmpl", Spans: []SourceSpan{
+		{Source: "guide.md.tmpl", Text: "before\n"},
+		{Source: "partials/spine.md", Text: "included\n"},
+		{Source: "guide.md.tmpl", Text: "<!-- awf:section body -->\nDEFAULT\n<!-- awf:end -->\nafter\n"},
+	}}
+	segs := ParseSourceSections(src)
+	if got, want := segs[0].Source.Spans[1].Source, "partials/spine.md"; got != want {
+		t.Fatalf("included literal source = %q, want %q", got, want)
+	}
+	if got, want := segs[1].SectionSource, "guide.md.tmpl"; got != want {
+		t.Fatalf("section source = %q, want root %q", got, want)
+	}
+	assembled, parts := AssembleSource(segs, map[string]SectionPlan{"body": {HasPart: true, PartBody: "PRE" + SectionDefaultSentinel + "POST"}}, HTMLComment)
+	out, err := Execute(assembled.AuthoredText(), nil, parts, "source")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "before\nincluded\n<!-- awf:edit body: from  -->\nPREDEFAULTPOST\nafter\n"; out != want {
+		t.Fatalf("assembled output = %q, want %q", out, want)
+	}
+	var defaultSpans []SourceSpan
+	for _, span := range assembled.Spans {
+		if span.Text == "DEFAULT" {
+			defaultSpans = append(defaultSpans, span)
+		}
+	}
+	if len(defaultSpans) != 1 || defaultSpans[0].Source != "guide.md.tmpl" {
+		t.Fatalf("re-injected default spans = %#v", defaultSpans)
+	}
+}
+
 func TestParseSectionsNoSections(t *testing.T) {
 	segs := ParseSections("plain text\n")
 	if len(segs) != 1 || segs[0].IsSection || segs[0].Text != "plain text\n" {

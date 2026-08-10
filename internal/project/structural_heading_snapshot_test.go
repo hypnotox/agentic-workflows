@@ -84,7 +84,7 @@ func structuralHeadingCutoverPopulation(t *testing.T, p *Project) map[string]str
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, segment := range render.ParseSections(stripped, true) {
+		for _, segment := range parseSections(stripped, true) {
 			if !segment.IsSection || segment.Heading == "" {
 				continue
 			}
@@ -116,7 +116,7 @@ func structuralHeadingCutoverPopulation(t *testing.T, p *Project) map[string]str
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, segment := range render.ParseSections(expanded, true) {
+	for _, segment := range parseSections(expanded, true) {
 		if segment.IsSection && segment.Heading != "" {
 			entries["domains/parts/*/"+segment.Name+".md"] = segment.Heading
 		}

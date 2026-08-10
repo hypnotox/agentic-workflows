@@ -1,8 +1,21 @@
 package project
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/render"
+)
 
 // renderedByPath returns the content of the RenderAll output at path, failing if absent.
+func parseSections(src string, markdown ...bool) []render.Segment {
+	return render.ParseSourceSections(render.SourceText{Spans: []render.SourceSpan{{Text: src}}}, markdown...)
+}
+
+func assemble(segs []render.Segment, plan map[string]render.SectionPlan, style render.CommentStyle) (string, map[string]string) {
+	assembled, parts := render.AssembleSource(segs, plan, style)
+	return assembled.AuthoredText(), parts
+}
+
 func renderedByPath(t *testing.T, files []RenderedFile, path string) string {
 	t.Helper()
 	for _, f := range files {

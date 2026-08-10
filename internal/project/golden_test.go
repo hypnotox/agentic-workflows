@@ -9,6 +9,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
+	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
@@ -312,8 +313,15 @@ func TestTemplateHashCoversExpandedSource(t *testing.T) {
 		t.Fatal(err)
 	}
 	// code-reviewer.md.tmpl carries awf:include directives, so its expanded source differs
-	// from its raw bytes; TemplateHash must be over the expanded source (ADR-0052). A
-	// regression to manifest.Hash(src) would make these equal.
+	// from its raw bytes; TemplateHash must be over the authored source-aware
+	// projection (ADR-0052), not over generated assembly bytes.
+	expanded, err := render.ExpandIncludesSource(string(raw), tid, templates.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != manifest.Hash([]byte(expanded.AuthoredText())) {
+		t.Errorf("TemplateHash = %q, want authored expanded projection", got)
+	}
 	// invariant: rendering/render-engine:include-in-templatehash (TestTemplateHashCoversExpandedSource)
 	if got == manifest.Hash(raw) {
 		t.Error("TemplateHash equals raw-source hash; expected expanded-source hash")

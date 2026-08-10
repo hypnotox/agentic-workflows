@@ -19,6 +19,19 @@ func sampleData() map[string]any {
 
 const tmpl = "# {{ .prefix }}\n\n<!-- awf:section surfaces -->\nS:{{ range .data.testSurfaces }}{{ .name }}{{ end }}\n<!-- awf:end -->\n\nrun {{ .vars.testCmd }}\n<!-- awf:section notes -->\nNOTE\n<!-- awf:end -->\n"
 
+func TestAssembleSourceLeavesRawPartsProvenanceFree(t *testing.T) {
+	segs := ParseSourceSections(SourceText{Root: "guide.md.tmpl", Spans: []SourceSpan{{Source: "guide.md.tmpl", Text: "<!-- awf:section body -->\nDEFAULT\n<!-- awf:end -->\n"}}})
+	assembled, _ := AssembleSource(segs, map[string]SectionPlan{"body": {HasPart: true, PartBody: "PART"}}, HTMLComment)
+	for _, span := range assembled.Spans {
+		if strings.Contains(span.Text, "awf:part:") && span.Source != "" {
+			t.Fatalf("raw part sentinel acquired template source: %#v", span)
+		}
+	}
+	if got, want := assembled.AuthoredText(), "<!-- awf:edit body: from  -->\n\x00awf:part:body\x00\n"; got != want {
+		t.Fatalf("assembled source = %q, want %q", got, want)
+	}
+}
+
 func TestRenderDefault(t *testing.T) {
 	asm, parts := Assemble(ParseSections(tmpl), nil, HTMLComment)
 	out, err := Execute(asm, sampleData(), parts, "test")

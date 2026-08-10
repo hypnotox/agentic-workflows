@@ -640,21 +640,23 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	if err != nil {
 		return RenderedFile{}, fmt.Errorf("read template %s: %w", tid, err)
 	}
-	expanded, err := render.ExpandIncludes(string(src), templates.FS)
+	expandedSource, err := render.ExpandIncludesSource(string(src), tid, templates.FS)
 	if err != nil { // coverage-ignore: awf-owned embedded templates never author a missing/nested/section-bearing include, so ExpandIncludes cannot fail through the render pass; its error branches are unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
-	stripped, err := render.StripAuthoringComments(expanded)
+	strippedSource, err := render.StripAuthoringCommentsSource(expandedSource)
 	if err != nil { // coverage-ignore: awf-owned embedded templates never author a malformed awf:comment opener, so the strip cannot fail through the render pass; its error branch is unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
+	expanded := expandedSource.AuthoredText()
+	stripped := strippedSource.AuthoredText()
 	// Ordinary catalog and neutral Markdown producers retain the declared
 	// Markdown default. Explicit producers supply their representation directly.
 	encoder := MarkdownAgentDialect
 	if options != nil && options.encoder != "" {
 		encoder = options.encoder
 	}
-	segs := render.ParseSections(stripped, encoder == MarkdownAgentDialect)
+	segs := render.ParseSourceSections(strippedSource, encoder == MarkdownAgentDialect)
 	style := render.CommentStyleForSource(stripped)
 	headings, err := captureStructuralHeadings(segs, data, tid)
 	if err != nil {
@@ -671,7 +673,8 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	if err := render.CheckSectionDefaultStubs(segs, plan); err != nil {
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
-	assembled, parts := render.Assemble(segs, plan, style)
+	assembledSource, parts := render.AssembleSource(segs, plan, style)
+	assembled := assembledSource.AuthoredText()
 	if err := render.CheckResidualMarkers(assembled); err != nil { // coverage-ignore: awf-owned embedded templates are marker-well-formed, so the guard cannot fire through the render pass; its error branch is unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}

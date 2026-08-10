@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
-	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
@@ -21,7 +20,7 @@ func templateMarkers(t *testing.T, tid string) []string {
 		t.Fatalf("read %s: %v", tid, err)
 	}
 	var markers []string
-	for _, s := range render.ParseSections(string(src)) {
+	for _, s := range parseSections(string(src)) {
 		if s.IsSection {
 			markers = append(markers, s.Name)
 		}

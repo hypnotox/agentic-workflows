@@ -30,7 +30,7 @@ func renderGolden(t *testing.T, tmplPath string, data map[string]any) string {
 	if err != nil {
 		t.Fatalf("expand includes: %v", err)
 	}
-	asm, parts := render.Assemble(render.ParseSections(expanded), nil, render.HTMLComment)
+	asm, parts := assemble(parseSections(expanded), nil, render.HTMLComment)
 	out, err := render.Execute(asm, data, parts, "test")
 	if err != nil {
 		t.Fatalf("render: %v", err)
@@ -766,7 +766,7 @@ func TestMaintainableCodeSubagentContract(t *testing.T) {
 		if err != nil {
 			t.Fatalf("expand %s: %v", templateID, err)
 		}
-		for _, segment := range render.ParseSections(expanded) {
+		for _, segment := range parseSections(expanded) {
 			if segment.IsSection && segment.Name == section {
 				out, err := render.Execute(segment.Text, data, nil, "test")
 				if err != nil {

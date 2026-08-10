@@ -151,73 +151,77 @@ func partSentinel(name string) string {
 // the template parser) and NUL-delimited (cannot collide with template or markdown text).
 const SectionDefaultSentinel = "\x00awf:section-default\x00"
 
-// Assemble applies the per-section plan to the parsed segments and returns the
-// template skeleton plus a sentinel→raw-body map. Literal segments pass through
-// verbatim; each non-dropped section is prefixed with its awf:edit pointer, then
-// either a sentinel standing in for its part body (restored after Execute) or the
-// template default. Section markers are consumed here and never written.
+// AssembleSource applies the section plan while preserving each template span.
+// Literal segments pass through verbatim; each non-dropped section is prefixed
+// with its awf:edit pointer, then receives either a raw part sentinel or the
+// recorded template default. Section markers are consumed here and never written.
 // touches-state: rendering/render-engine:no-section-marker-leak - section markers consumed, never written; proof in render_test.go
-func Assemble(segs []Segment, plan map[string]SectionPlan, style CommentStyle) (string, map[string]string) {
-	var b strings.Builder
+// Pointers belong to the structural root section; raw convention parts and
+// in-place readback deliberately have no template source identity.
+func AssembleSource(segs []Segment, plan map[string]SectionPlan, style CommentStyle) (SourceText, map[string]string) {
+	var out SourceText
+	if len(segs) > 0 {
+		out.Root = segs[0].Source.Root
+	}
 	parts := map[string]string{}
 	for _, s := range segs {
 		if !s.IsSection {
-			b.WriteString(s.Text)
+			out.appendSource(s.Source)
 			continue
 		}
 		p := plan[s.Name]
 		if p.Drop {
 			continue
 		}
-		b.WriteString(editPointer(s.Name, s.Stub, s.Heading != "", p, style))
+		out.Root = s.Source.Root
+		out.appendText(s.SectionSource, editPointer(s.Name, s.Stub, s.Heading != "", p, style))
 		if s.Heading != "" {
-			b.WriteString(s.Heading)
-			b.WriteByte('\n')
+			out.appendSource(s.HeadingSource)
+			if !strings.HasSuffix(s.HeadingSource.AuthoredText(), "\n") {
+				out.appendText(s.SectionSource, "\n")
+			}
 		}
 		switch {
 		case p.InPlace:
-			// touches-state: rendering/render-engine:in-place-pointer-distinct - distinct awf:edit-in-place pointer + verbatim interior; proof in render_test.go
-			// A located region's read-back body is emitted verbatim after the
-			// distinct awf:edit-in-place pointer (no re-templating), even when the
-			// adopter emptied it; only an unlocated region (first render / deleted
-			// pointer) falls back to the template default.
+			// A located region is adopter-owned raw text. An unlocated region is
+			// the recorded default source and retains its provenance.
 			if p.InPlaceFound {
-				b.WriteString(p.InPlaceBody)
+				out.appendText("", p.InPlaceBody)
 			} else {
-				b.WriteString(s.Text)
+				out.appendSource(s.Source)
 			}
 		case p.HasPart:
-			writePartBody(&b, parts, s, p)
+			writePartBodySource(&out, parts, s, p)
 		default:
-			b.WriteString(s.Text)
+			out.appendSource(s.Source)
 		}
 	}
-	return b.String(), parts
+	return out, parts
 }
 
-// writePartBody emits a section's part into the skeleton. When the part re-injects its
-// section default via the sectionDefault split marker (ADR-0072), it is split at each
-// marker into verbatim fragments - distinct sentinels restored after Execute -
-// interleaved with the section's raw default source (s.Text), which Execute templates in
-// place. A part without the marker emits a single sentinel for the whole body, the
-// pre-ADR-0072 behaviour.
-func writePartBody(b *strings.Builder, parts map[string]string, s Segment, p SectionPlan) {
+// writePartBodySource emits a section's part into the skeleton. When the part
+// re-injects its default via the sectionDefault split marker (ADR-0072), it is
+// split into raw fragments interleaved with the recorded default source spans.
+// A part without the marker emits one provenance-free sentinel for its raw body.
+func writePartBodySource(out *SourceText, parts map[string]string, s Segment, p SectionPlan) {
 	if !strings.Contains(p.PartBody, SectionDefaultSentinel) {
 		sent := partSentinel(s.Name)
 		parts[sent] = p.PartBody
-		b.WriteString(sent)
+		out.appendText("", sent)
 		return
 	}
 	for i, frag := range strings.Split(p.PartBody, SectionDefaultSentinel) {
 		if i > 0 {
-			b.WriteString(s.Text)
+			// Re-injection reuses the recorded default spans rather than a
+			// flattened reconstruction, retaining partial transitions exactly.
+			out.appendSource(s.Source)
 		}
 		// The index separator is a NUL, which can never occur in a section name
 		// (template source is text): it guarantees a fragment sentinel can never
 		// equal a plain part sentinel of some other section, whatever its name.
 		sent := partSentinel(s.Name + "\x00" + strconv.Itoa(i))
 		parts[sent] = frag
-		b.WriteString(sent)
+		out.appendText("", sent)
 	}
 }
 
