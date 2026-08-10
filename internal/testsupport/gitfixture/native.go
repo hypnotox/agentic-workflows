@@ -32,14 +32,8 @@ func InitNativeAt(t *testing.T, root string) Fixture {
 // commit without a global configuration.
 func InitNativeObjectFormat(t *testing.T, root, format string) Fixture {
 	t.Helper()
-	explicit := format != "" && format != "sha1"
-	args := []string{"init"}
-	if explicit {
-		args = append(args, "--object-format="+format)
-	}
-	// init runs without -C because root need not exist yet.
-	output, err := runGit("", append(args, root)...)
-	if isUnsupportedObjectFormat(explicit, err) { // coverage-ignore: reached only where the installed Git lacks the requested object format
+	output, unsupported, err := runNativeInit(root, format, runGit)
+	if unsupported { // coverage-ignore: reached only where the installed Git lacks the requested object format
 		t.Skipf("installed Git lacks %s repositories: %v: %s", format, err, output)
 	}
 	if err != nil { // coverage-ignore: init into a writable fixture directory fails only on a permission fault a test cannot trigger
@@ -49,6 +43,22 @@ func InitNativeObjectFormat(t *testing.T, root, format string) Fixture {
 	nativeConfig(t, f, "user.name", authorName)
 	nativeConfig(t, f, "user.email", authorEmail)
 	return f
+}
+
+type nativeGitRun func(root string, args ...string) (string, error)
+
+// runNativeInit owns object-format argument construction and the only
+// unsupported-format classification. Injecting the runner lets the operation
+// test prove a deadline remains a failure without a swappable global seam.
+func runNativeInit(root, format string, run nativeGitRun) (string, bool, error) {
+	explicit := format != "" && format != "sha1"
+	args := []string{"init"}
+	if explicit {
+		args = append(args, "--object-format="+format)
+	}
+	// init runs without -C because root need not exist yet.
+	output, err := run("", append(args, root)...)
+	return output, isUnsupportedObjectFormat(explicit, err), err
 }
 
 // NativeRun executes Git in a disposable fixture and returns combined output and the exact process error.
@@ -322,12 +332,18 @@ func runGitWithTimeout(timeout time.Duration, root string, stdin io.Reader, args
 	command := exec.CommandContext(ctx, "git", args...)
 	command.Env = nativeEnvironment(os.Environ())
 	command.Stdin = stdin
-	command.WaitDelay = min(timeout, nativeGitPipeWaitDelay)
+	command.WaitDelay = gitPipeWaitDelay(timeout)
 	output, err := command.CombinedOutput()
 	if ctxErr := ctx.Err(); ctxErr != nil {
 		err = errors.Join(err, ctxErr)
 	}
 	return output, err
+}
+
+// gitPipeWaitDelay keeps a short injected deadline short while capping the
+// production deadline's post-cancellation pipe cleanup at one second.
+func gitPipeWaitDelay(timeout time.Duration) time.Duration {
+	return min(timeout, nativeGitPipeWaitDelay)
 }
 
 // isUnsupportedObjectFormat distinguishes an installed Git that rejects the

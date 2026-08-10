@@ -101,6 +101,83 @@ func scanGitAccess(path string, src []byte) ([]gitAccessFinding, error) {
 	return findings, nil
 }
 
+type execConstruction struct {
+	Path        string
+	Constructor string
+	Command     string
+	Literal     bool
+}
+
+// scanExecConstructions reports every os/exec construction, including one
+// whose executable is not a literal. The fixture census uses the broader shape
+// because its two allowed process boundaries form a closed set.
+func scanExecConstructions(path string, src []byte) ([]execConstruction, error) {
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, path, src, 0)
+	if err != nil {
+		return nil, fmt.Errorf("parse %s: %w", path, err)
+	}
+	execName := importLocalName(file, "os/exec")
+	constructions := []execConstruction{}
+	ast.Inspect(file, func(n ast.Node) bool {
+		switch node := n.(type) {
+		case *ast.CallExpr:
+			if !isExecConstruction(node.Fun, execName) {
+				return true
+			}
+			sel := node.Fun.(*ast.SelectorExpr)
+			commandIndex := 0
+			if sel.Sel.Name == "CommandContext" {
+				commandIndex = 1
+			}
+			construction := execConstruction{Path: path, Constructor: sel.Sel.Name}
+			if len(node.Args) > commandIndex {
+				if lit, ok := node.Args[commandIndex].(*ast.BasicLit); ok && lit.Kind == token.STRING {
+					construction.Command, err = strconv.Unquote(lit.Value)
+					if err != nil { // coverage-ignore: the parser accepted the literal, so it unquotes
+						return false
+					}
+					construction.Literal = true
+				}
+			}
+			constructions = append(constructions, construction)
+		case *ast.CompositeLit:
+			sel, ok := node.Type.(*ast.SelectorExpr)
+			if !ok || sel.Sel.Name != "Cmd" {
+				return true
+			}
+			pkg, ok := sel.X.(*ast.Ident)
+			if !ok || execName == "" || pkg.Name != execName {
+				return true
+			}
+			construction := execConstruction{Path: path, Constructor: "Cmd"}
+			for _, elt := range node.Elts {
+				kv, ok := elt.(*ast.KeyValueExpr)
+				if !ok {
+					continue
+				}
+				key, keyOK := kv.Key.(*ast.Ident)
+				if !keyOK || key.Name != "Path" {
+					continue
+				}
+				if lit, literal := kv.Value.(*ast.BasicLit); literal && lit.Kind == token.STRING {
+					construction.Command, err = strconv.Unquote(lit.Value)
+					if err != nil { // coverage-ignore: the parser accepted the literal, so it unquotes
+						return false
+					}
+					construction.Literal = true
+				}
+			}
+			constructions = append(constructions, construction)
+		}
+		return true
+	})
+	if err != nil { // coverage-ignore: every parsed string literal unquotes
+		return nil, err
+	}
+	return constructions, nil
+}
+
 // isExecConstruction reports whether fun names os/exec's process constructors,
 // under whatever local name the file imported the package as.
 func isExecConstruction(fun ast.Expr, execName string) bool {
@@ -216,26 +293,43 @@ func TestGitFixtureHasOneNativeGitProcessBoundary(t *testing.T) {
 	t.Parallel()
 	root := moduleRoot(t)
 	seen := 0
-	processSites := []string{}
+	constructions := []execConstruction{}
 	testsupport.WalkRepoFiles(t, root, func(rel string) bool {
 		return strings.HasPrefix(rel, "internal/testsupport/gitfixture/") && strings.HasSuffix(rel, ".go") && !strings.HasSuffix(rel, "_test.go")
 	}, func(rel string, body []byte) {
 		seen++
-		findings, err := scanGitAccess(rel, body)
+		found, err := scanExecConstructions(rel, body)
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, finding := range findings {
-			if strings.Contains(finding.Detail, "constructs a git subprocess") {
-				processSites = append(processSites, finding.Path)
-			}
-		}
+		constructions = append(constructions, found...)
 	})
 	if seen == 0 {
 		t.Fatal("walked no gitfixture production files, so the census proves nothing")
 	}
-	if len(processSites) != 1 || processSites[0] != "internal/testsupport/gitfixture/native.go" {
-		t.Fatalf("gitfixture Git process constructions = %v, want one boundary in native.go", processSites)
+	want := []execConstruction{
+		{Path: "internal/testsupport/gitfixture/native.go", Constructor: "Command", Command: "ssh-keygen", Literal: true},
+		{Path: "internal/testsupport/gitfixture/native.go", Constructor: "CommandContext", Command: "git", Literal: true},
+	}
+	if len(constructions) != len(want) {
+		t.Fatalf("gitfixture process constructions = %+v, want exact closed set %+v", constructions, want)
+	}
+	for i := range want {
+		if constructions[i] != want[i] {
+			t.Fatalf("gitfixture process construction %d = %+v, want %+v", i, constructions[i], want[i])
+		}
+	}
+}
+
+func TestExecConstructionCensusRejectsVariableExecutable(t *testing.T) {
+	t.Parallel()
+	found, err := scanExecConstructions("variable.go", []byte("package p\nimport \"os/exec\"\nfunc f() { name := \"git\"; _ = exec.Command(name) }\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := execConstruction{Path: "variable.go", Constructor: "Command"}
+	if len(found) != 1 || found[0] != want {
+		t.Fatalf("variable executable constructions = %+v, want nonliteral finding %+v", found, want)
 	}
 }
 

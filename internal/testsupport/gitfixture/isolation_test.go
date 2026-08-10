@@ -53,6 +53,12 @@ func TestNativeGitDeadlineTerminatesBlockedProcess(t *testing.T) {
 	if nativeGitDeadline != 2*time.Minute {
 		t.Fatalf("nativeGitDeadline = %v, want two-minute parity with both native Git ceilings", nativeGitDeadline)
 	}
+	if got := gitPipeWaitDelay(50 * time.Millisecond); got != 50*time.Millisecond {
+		t.Fatalf("short-timeout pipe wait = %v, want 50ms", got)
+	}
+	if got := gitPipeWaitDelay(nativeGitDeadline); got != time.Second {
+		t.Fatalf("production pipe wait = %v, want one-second cap", got)
+	}
 
 	read, write, err := os.Pipe()
 	if err != nil {
@@ -100,18 +106,43 @@ func TestNativeGitDeadlineClosesDescendantPipes(t *testing.T) {
 	}
 }
 
-func TestObjectFormatSkipDoesNotHideDeadline(t *testing.T) {
-	if isUnsupportedObjectFormat(true, context.DeadlineExceeded) {
-		t.Fatal("deadline was classified as unsupported object format")
+func TestObjectFormatInitDoesNotHideDeadline(t *testing.T) {
+	deadline := errors.Join(errors.New("process killed"), context.DeadlineExceeded)
+	output, unsupported, err := runNativeInit("/fixture", "sha256", func(root string, args ...string) (string, error) {
+		if root != "" {
+			t.Errorf("init runner root = %q, want empty because the fixture root need not exist", root)
+		}
+		if got := strings.Join(args, " "); got != "init --object-format=sha256 /fixture" {
+			t.Errorf("init runner args = %q", got)
+		}
+		return "blocked", deadline
+	})
+	if output != "blocked" || !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("deadline init = (%q, %v), want preserved output and deadline", output, err)
 	}
-	if !isUnsupportedObjectFormat(true, errors.New("unknown object format")) {
-		t.Fatal("explicit unsupported object format was not classified for skipping")
+	if unsupported {
+		t.Fatal("deadline init was classified as unsupported object format")
 	}
-	if isUnsupportedObjectFormat(false, errors.New("init failed")) {
-		t.Fatal("default-format failure was classified for skipping")
+
+	_, unsupported, err = runNativeInit("/fixture", "sha256", func(string, ...string) (string, error) {
+		return "unknown format", errors.New("unknown object format")
+	})
+	if !unsupported || err == nil {
+		t.Fatalf("unsupported explicit init = (unsupported %v, err %v), want skip classification", unsupported, err)
 	}
-	if isUnsupportedObjectFormat(true, nil) {
-		t.Fatal("successful explicit init was classified for skipping")
+
+	_, unsupported, err = runNativeInit("/fixture", "", func(string, ...string) (string, error) {
+		return "failed", errors.New("init failed")
+	})
+	if unsupported || err == nil {
+		t.Fatalf("default-format failure = (unsupported %v, err %v), want ordinary failure", unsupported, err)
+	}
+
+	_, unsupported, err = runNativeInit("/fixture", "sha1", func(string, ...string) (string, error) {
+		return "ok", nil
+	})
+	if unsupported || err != nil {
+		t.Fatalf("successful sha1 init = (unsupported %v, err %v), want success", unsupported, err)
 	}
 }
 
