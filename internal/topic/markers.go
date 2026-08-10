@@ -317,10 +317,19 @@ func identAt(s string) bool {
 func identRune(r rune) bool {
 	return r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r)
 }
+
+// topicMatchesPath answers repository-wide applicability. A global topic is
+// authoritative everywhere, including outside the bounded paths it may own.
 func topicMatchesPath(t Topic, domainPaths []string, path string) bool {
 	if t.Metadata.Applies == "global" {
 		return true
 	}
+	return topicOwnsPath(t, domainPaths, path)
+}
+
+// topicOwnsPath answers domain-bounded path ownership. Selectors are the only
+// ownership declaration, so a global topic without paths owns nothing.
+func topicOwnsPath(t Topic, domainPaths []string, path string) bool {
 	return matchesAny(t.Metadata.Paths, path) && matchesAny(domainPaths, path)
 }
 func matchesAny(globs []string, path string) bool {

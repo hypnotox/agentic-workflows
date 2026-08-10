@@ -51,25 +51,20 @@ intended worktree's branch, tip, commit parent, and clean status before routing 
 A durable runtime fix needs the implementation tool to carry an explicit checkout identity
 into its postcondition rather than infer commit success from the dispatch checkout.
 
-## A global topic cannot cover its own domain-owned package
+## A global topic needs an explicit bounded ownership selector
 
 _Domains: code-design, invariants_
 
-A reviewed rollout assigned `internal/presentation/**` to the code-design domain while
-keeping its natural presentation-ownership topic global. The implementation reached its
-phase-closing check before exposing the contradiction: scoped coverage deliberately skips
-global topics, even when the topic's owning domain matches the new path, so every file in
-the package was uncovered. The plan simultaneously required immediate domain ownership and
-deferred the first path-covering claim until a later phase. Each instruction was plausible
-alone, but no intermediate repository state could satisfy all three.
+A global topic is authoritative for every repository path, but that applicability does not
+make it an owner everywhere. It covers and contributes to fan-out only where its explicit
+`paths:` selectors and its owning domain's selectors both match. A global-only topic owns
+no paths; claim references and markers do not fill that gap.
 
-When a plan introduces a domain-owned path, test the prospective domain selector against
-the exact claims active in that same transaction. A global topic supplies cross-cutting
-authority but never path coverage; the new path needs at least one truthful active claim in
-a path-scoped topic when ownership lands. Do not widen an unrelated topic merely to silence
-coverage, and do not defer ownership without making that authority gap explicit. If the
-global topic is also the natural package authority, add a complementary scoped package
-boundary or separately decide the coverage semantics before implementation.
+When a plan introduces a domain-owned path under a natural cross-cutting authority, add the
+path selector to that global topic in the same transaction as its claim. Test the selector
+against the owning domain and an outside path: only the intersection may satisfy coverage
+and fan-out, while context and marker applicability remain repository-wide. Do not widen an
+unrelated scoped topic merely to silence coverage.
 
 ## A census number is only as good as its stated query
 

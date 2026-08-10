@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: global-topic-path-ownership
-status: Proposed
+status: Implementing
 date: 2026-08-09
 ---
 # ADR-global-topic-path-ownership: Global Topic Path Ownership
@@ -105,3 +105,5 @@ must distinguish applicability from ownership.
 ## Status history
 
 - 2026-08-09: Proposed
+- 2026-08-10: Implementing; content-sha256: 00b010aa1ada4db889af46a2fb3fd63ccb0c84dea20883f5d2dbfdcab1d91b59
+- 2026-08-10: Applied; operations: update `invariants/topics-and-markers:fan-out-budget-fixed`, add `invariants/topics-and-markers:global-topic-path-ownership`, update `invariants/topics-and-markers:topic-scope-cannot-expand-domain`, update `invariants/topics-and-markers:topic-scope-is-domain-bounded`

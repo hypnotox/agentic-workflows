@@ -35,6 +35,7 @@ func coverageCorpus() Corpus {
 		{ID: TopicID{"core", "empty8"}, Metadata: Metadata{Paths: []string{"internal/lib/**"}}},
 		{ID: TopicID{"core", "empty9"}, Metadata: Metadata{Paths: []string{"internal/lib/**"}}},
 		{ID: TopicID{"core", "glob"}, Metadata: Metadata{Applies: "global"}},
+		{ID: TopicID{"core", "global-owner"}, Metadata: Metadata{Applies: "global", Paths: []string{"internal/global/**"}}, Claims: []Claim{{ID: "core/global-owner:a"}}},
 		{ID: TopicID{"overlap", "extra"}, Metadata: Metadata{Paths: []string{"internal/app/**"}}, Claims: []Claim{{ID: "overlap/extra:a"}}},
 	}
 	return c
@@ -118,12 +119,44 @@ func TestApplicabilityForTopic(t *testing.T) {
 	markers := MarkerIndex{sites: map[string][]MarkerSite{"d/t:c": {{Path: "z", Line: 2, ClaimID: "d/t:c"}, {Path: "a", Line: 1, ClaimID: "d/t:c"}}}}
 	topic := Topic{ID: TopicID{"d", "t"}, Metadata: Metadata{Paths: []string{"internal/**"}}, Claims: []Claim{{ID: "d/t:c"}}}
 	a := ApplicabilityForTopic(topic, []string{"internal/pkg/**"}, markers, []string{"other.go", "internal/pkg/a.go"})
-	if !reflect.DeepEqual(a.DomainPaths, []string{"internal/pkg/**"}) || !reflect.DeepEqual(a.TopicPaths, []string{"internal/**"}) || !reflect.DeepEqual(a.MatchedPaths, []string{"internal/pkg/a.go"}) || a.MarkerSites[0].Path != "a" {
+	if !reflect.DeepEqual(a.DomainPaths, []string{"internal/pkg/**"}) || !reflect.DeepEqual(a.TopicPaths, []string{"internal/**"}) || !reflect.DeepEqual(a.ApplicablePaths, []string{"internal/pkg/a.go"}) || !reflect.DeepEqual(a.OwnedPaths, []string{"internal/pkg/a.go"}) || a.MarkerSites[0].Path != "a" {
 		t.Fatalf("%#v", a)
 	}
 	topic.Metadata = Metadata{Applies: "global"}
 	a = ApplicabilityForTopic(topic, []string{"internal/**"}, markers, []string{"internal/a.go", "other.go"})
-	if !a.DeclaredGlobal || !reflect.DeepEqual(a.TopicPaths, []string{}) || !reflect.DeepEqual(a.MatchedPaths, []string{"internal/a.go"}) {
+	if !a.DeclaredGlobal || !reflect.DeepEqual(a.TopicPaths, []string{}) || !reflect.DeepEqual(a.ApplicablePaths, []string{"internal/a.go", "other.go"}) || len(a.OwnedPaths) != 0 {
 		t.Fatalf("global %#v", a)
+	}
+}
+
+// invariant: invariants/topics-and-markers:global-topic-path-ownership (TestGlobalTopicPathOwnership)
+func TestGlobalTopicPathOwnership(t *testing.T) {
+	metadata := []byte("title: Global owner\nsummary: Applies everywhere and owns a bounded path.\napplies: global\npaths: [\"internal/owned/**\"]\n")
+	if _, _, err := ParseMetadata(".awf/topics/metadata", ".awf/topics/metadata/core/global-owner.yaml", metadata); err != nil {
+		t.Fatalf("combined metadata: %v", err)
+	}
+	corpus := Corpus{DomainPaths: map[string][]string{"core": {"internal/**"}, "other": {"other/**"}}}
+	owner := Topic{ID: TopicID{"core", "global-owner"}, Metadata: Metadata{Applies: "global", Paths: []string{"internal/owned/**"}}, Claims: []Claim{{ID: "core/global-owner:claim"}}}
+	corpus.all = []Topic{owner}
+	applicability := ApplicabilityForTopic(owner, corpus.DomainPaths["core"], MarkerIndex{sites: map[string][]MarkerSite{}}, []string{"internal/owned/a.go", "internal/elsewhere.go", "other/a.go"})
+	if !reflect.DeepEqual(applicability.ApplicablePaths, []string{"internal/elsewhere.go", "internal/owned/a.go", "other/a.go"}) || !reflect.DeepEqual(applicability.OwnedPaths, []string{"internal/owned/a.go"}) {
+		t.Fatalf("applicability = %#v", applicability)
+	}
+	if got := EvaluateCoverage(corpus, []string{"internal/owned/a.go", "other/a.go"}, CoveragePolicy{Coverage: true}); len(got) != 1 || got[0].Path != "other/a.go" || got[0].Domain != "other" {
+		t.Fatalf("coverage = %#v", got)
+	}
+	claimless := owner
+	claimless.ID = TopicID{"core", "claimless-owner"}
+	claimless.Claims = nil
+	corpus.all = append(corpus.all, claimless)
+	for i := range maxTopicsPerPath - 1 {
+		t := claimless
+		t.ID.Slug = fmt.Sprintf("claimless-%d", i)
+		corpus.all = append(corpus.all, t)
+	}
+	got := EvaluateCoverage(corpus, []string{"internal/owned/a.go", "internal/elsewhere.go"}, CoveragePolicy{Fanout: true})
+	want := []CoverageFinding{{Path: "internal/owned/a.go", Kind: Fanout, Severity: severity.Warn, Topics: maxTopicsPerPath + 1}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("claimless global fan-out = %#v, want %#v", got, want)
 	}
 }

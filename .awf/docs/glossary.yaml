@@ -81,7 +81,7 @@ data:
       meaning: "The generated decisions index: in-flight ADRs by number, title, and status, and terminal ones under a compact history. It infers no currentness and renders no supersession chains, because current authority is read from topic claims."
       domains: [adr-system]
     - term: topic coverage
-      meaning: "The per-domain check that owned paths are described by current-state topics. One owner's topic never satisfies another owner's gap. Coverage ranks error and fan-out warn; neither is configurable."
+      meaning: "The per-domain check that owned paths are described by current-state topics. A global topic applies everywhere but covers only explicit paths in its domain; one owner's topic never satisfies another gap. Coverage ranks error and fan-out warn; neither is configurable."
       domains: [invariants]
     - term: checker-cmd idiom
       meaning: "The shape shared by the repo-only gate and release checkers: a coverage-ignored `main` that only exits a unit-tested `run(args, stdout, stderr) int` seam, so the logic meets the coverage floor while the wrapper stays one line."

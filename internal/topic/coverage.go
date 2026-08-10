@@ -8,37 +8,38 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
 
-// TopicApplicability is honest, concrete applicability evidence. DomainPaths
-// and TopicPaths are separate selectors and both must match for a scoped topic;
-// MatchedPaths are witnesses from the caller's selected universe, not a
-// symbolic glob-intersection proof.
+// TopicApplicability preserves separate witnesses for repository-wide authority
+// and domain-bounded path ownership. ApplicablePaths and OwnedPaths are from the
+// caller's selected universe, not symbolic glob-intersection proofs.
 type TopicApplicability struct {
-	DeclaredGlobal bool         `json:"declaredGlobal"`
-	DomainPaths    []string     `json:"domainPaths"`
-	TopicPaths     []string     `json:"topicPaths"`
-	MatchedPaths   []string     `json:"matchedPaths"`
-	MarkerSites    []MarkerSite `json:"markerSites"`
+	DeclaredGlobal  bool         `json:"declaredGlobal"`
+	DomainPaths     []string     `json:"domainPaths"`
+	TopicPaths      []string     `json:"topicPaths"`
+	ApplicablePaths []string     `json:"applicablePaths"`
+	OwnedPaths      []string     `json:"ownedPaths"`
+	MarkerSites     []MarkerSite `json:"markerSites"`
 }
 
 func ApplicabilityForTopic(t Topic, domainPaths []string, markers MarkerIndex, currentPaths []string) TopicApplicability {
 	out := TopicApplicability{
 		DeclaredGlobal: t.Metadata.Applies == "global",
 		DomainPaths:    nonNil(slices.Clone(domainPaths)), TopicPaths: nonNil(slices.Clone(t.Metadata.Paths)),
-		MatchedPaths: []string{}, MarkerSites: []MarkerSite{},
+		ApplicablePaths: []string{}, OwnedPaths: []string{}, MarkerSites: []MarkerSite{},
 	}
 	slices.Sort(out.DomainPaths)
 	slices.Sort(out.TopicPaths)
 	for _, p := range currentPaths {
-		if out.DeclaredGlobal {
-			if matchesAny(out.DomainPaths, p) {
-				out.MatchedPaths = append(out.MatchedPaths, p)
-			}
-		} else if matchesAny(out.DomainPaths, p) && matchesAny(out.TopicPaths, p) {
-			out.MatchedPaths = append(out.MatchedPaths, p)
+		if topicMatchesPath(t, out.DomainPaths, p) {
+			out.ApplicablePaths = append(out.ApplicablePaths, p)
+		}
+		if topicOwnsPath(t, out.DomainPaths, p) {
+			out.OwnedPaths = append(out.OwnedPaths, p)
 		}
 	}
-	slices.Sort(out.MatchedPaths)
-	out.MatchedPaths = slices.Compact(out.MatchedPaths)
+	slices.Sort(out.ApplicablePaths)
+	out.ApplicablePaths = slices.Compact(out.ApplicablePaths)
+	slices.Sort(out.OwnedPaths)
+	out.OwnedPaths = slices.Compact(out.OwnedPaths)
 	claimIDs := map[string]bool{}
 	for _, cl := range t.Claims {
 		claimIDs[cl.ID] = true
@@ -86,12 +87,11 @@ const maxTopicsPerPath = 8
 
 // EvaluateCoverage returns the sorted coverage and fan-out findings for the
 // eligible paths (ADR-0134 item 11). Every domain owning a path is evaluated
-// independently: a domain with no claim-bearing, path-scoped topic covering the
-// path yields one Uncovered finding at error, so a topic from one owner never
-// satisfies another owner's gap. Global and claimless topics never satisfy
-// scoped coverage. Across all owners the distinct path-scoped topics matching a
-// path are counted once; exceeding the budget yields a single Fanout finding at
-// warn. Globals are excluded from the count. The caller selects which checks run
+// independently: a domain with no claim-bearing topic owning the path yields one
+// Uncovered finding at error, so a topic from one owner never satisfies another
+// owner's gap. A global topic owns only its declared paths bounded by its parent
+// domain. Across all owners the distinct owning topics matching a path are
+// counted once; exceeding the budget yields a single Fanout finding at warn. The caller selects which checks run
 // through the policy, and no value suppresses a requested check. Unowned paths
 // are the context ownership concern and produce no finding here.
 func EvaluateCoverage(c Corpus, paths []string, policy CoveragePolicy) []CoverageFinding {
@@ -115,7 +115,7 @@ func EvaluateCoverage(c Corpus, paths []string, policy CoveragePolicy) []Coverag
 			}
 		}
 		if policy.Fanout {
-			if count := matchingScopedTopics(c, path); count > maxTopicsPerPath {
+			if count := matchingOwningTopics(c, path); count > maxTopicsPerPath {
 				findings = append(findings, CoverageFinding{Path: path, Kind: Fanout, Severity: severity.Warn, Topics: count})
 			}
 		}
@@ -148,29 +148,25 @@ func TopicsForPath(c Corpus, path string) []Topic {
 	return out
 }
 
-// coveredByDomain reports whether domain has a claim-bearing, path-scoped topic
-// whose effective scope covers path.
+// coveredByDomain reports whether domain has a claim-bearing topic whose
+// bounded ownership covers path.
 func coveredByDomain(c Corpus, domain, path string) bool {
 	for _, t := range c.all {
-		if t.ID.Domain != domain || t.Metadata.Applies == "global" || len(t.Claims) == 0 {
+		if t.ID.Domain != domain || len(t.Claims) == 0 {
 			continue
 		}
-		if topicMatchesPath(t, c.DomainPaths[domain], path) {
+		if topicOwnsPath(t, c.DomainPaths[domain], path) {
 			return true
 		}
 	}
 	return false
 }
 
-// matchingScopedTopics counts the path-scoped topics whose effective scope
-// covers path, excluding global topics.
-func matchingScopedTopics(c Corpus, path string) int {
+// matchingOwningTopics counts the topics whose bounded ownership covers path.
+func matchingOwningTopics(c Corpus, path string) int {
 	count := 0
 	for _, t := range c.all {
-		if t.Metadata.Applies == "global" {
-			continue
-		}
-		if topicMatchesPath(t, c.DomainPaths[t.ID.Domain], path) {
+		if topicOwnsPath(t, c.DomainPaths[t.ID.Domain], path) {
 			count++
 		}
 	}

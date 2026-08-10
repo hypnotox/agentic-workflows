@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-global-topic-path-ownership: Global Topic Path Ownership](global-topic-path-ownership.md) (Proposed)
+- [ADR-global-topic-path-ownership: Global Topic Path Ownership](global-topic-path-ownership.md) (Implementing)
 - [ADR-retire-domain-staleness-audit-heuristics: Retire Domain Staleness Audit Heuristics](retire-domain-staleness-audit-heuristics.md) (Implementing)
 
 ## History

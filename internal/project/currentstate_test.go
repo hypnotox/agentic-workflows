@@ -161,7 +161,7 @@ func TestCurrentStateReportRouting(t *testing.T) {
 		t.Fatalf("findings = %#v", findings)
 	}
 	notes := r.Notes()
-	if len(notes) != 5 || !strings.Contains(notes[0], "provisional older-format ADR-0002") || !strings.Contains(notes[1], "ADR-0003 (legacy)") || !strings.Contains(notes[2], "ADR-0004 (legacy)") || !strings.Contains(notes[3], "internal/b.go is matched by 3 path-scoped topics") || !strings.Contains(notes[4], "internal/c.go is owned by domain alpha") {
+	if len(notes) != 5 || !strings.Contains(notes[0], "provisional older-format ADR-0002") || !strings.Contains(notes[1], "ADR-0003 (legacy)") || !strings.Contains(notes[2], "ADR-0004 (legacy)") || !strings.Contains(notes[3], "internal/b.go is matched by 3 owning topics") || !strings.Contains(notes[4], "internal/c.go is owned by domain alpha") {
 		t.Fatalf("notes = %#v", notes)
 	}
 }

@@ -82,9 +82,9 @@ func (r CurrentStateReport) Notes() []string {
 // message shared by the blocking and note channels.
 func coverageLine(c topic.CoverageFinding) string {
 	if c.Kind == topic.Fanout {
-		return fmt.Sprintf("fan-out: %s is matched by %d path-scoped topics", c.Path, c.Topics)
+		return fmt.Sprintf("fan-out: %s is matched by %d owning topics", c.Path, c.Topics)
 	}
-	return fmt.Sprintf("uncovered: %s is owned by domain %s with no scoped topic", c.Path, c.Domain)
+	return fmt.Sprintf("uncovered: %s is owned by domain %s with no claim-bearing topic owner", c.Path, c.Domain)
 }
 
 // workingState is one loaded working-tree current-state universe: the parsed

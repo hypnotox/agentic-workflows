@@ -149,11 +149,11 @@ func ParseMetadata(metadataRoot, path string, data []byte) (TopicID, Metadata, e
 	if m.Summary == "" || strings.ContainsAny(m.Summary, "\r\n") {
 		return id, m, errors.New("topic summary must be one nonempty line")
 	}
-	if (len(m.Paths) > 0) == (m.Applies != "") {
-		return id, m, errors.New("topic must declare exactly one of nonempty paths or applies: global")
-	}
 	if m.Applies != "" && m.Applies != "global" {
 		return id, m, fmt.Errorf("topic applies must be global; got %q", m.Applies)
+	}
+	if len(m.Paths) == 0 && m.Applies == "" {
+		return id, m, errors.New("topic must declare nonempty paths, applies: global, or both")
 	}
 	seen := map[string]bool{}
 	for _, g := range m.Paths {

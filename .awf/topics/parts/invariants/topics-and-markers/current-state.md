@@ -4,8 +4,9 @@ The topic package parses topic metadata and claim inputs, builds the claim corpu
 
 ### `invariant: fan-out-budget-fixed`
 
-Path-scoped current-state topic fan-out emits a Warning when more than eight topics match one path; the fixed budget is 8 and is not configurable.
+Current-state topic fan-out emits a Warning when more than eight topic owners match one path; the fixed budget is 8 and is not configurable. A global topic counts only where its declared paths and owning-domain selectors both match, whether or not it has claims.
 Origin: ADR-0253
+Revised-by: ADR-global-topic-path-ownership
 Backing: test
 
 ### `invariant: backed-requires-proof`
@@ -25,6 +26,12 @@ Verify: Topic corpus tests exercise duplicate local slugs across different and i
 A coverage evaluation caller selects which checks run: coverage and fan-out are requested independently, an unrequested check produces none of its findings, no rank value suppresses a requested one, and the uncovered report requests coverage only.
 Origin: ADR-0183
 Revised-by: ADR-0184
+Backing: test
+
+### `invariant: global-topic-path-ownership`
+
+A topic may combine `applies: global` with nonempty anchored `paths`: it applies repository-wide, but owns only paths matched by both its selectors and its owning domain. A claim-bearing owner satisfies only that domain's coverage, and every matching owner counts once toward fan-out even when claimless.
+Origin: ADR-global-topic-path-ownership
 Backing: test
 
 ### `invariant: invariant-marker-close-token`
@@ -89,16 +96,18 @@ Backing: unbacked
 Verify: Renaming an unreferenced fixture topic changes its identity and output paths deterministically, and a retained reference to the old identity fails the rename with a dangling-reference diagnostic.
 ### `invariant: topic-scope-cannot-expand-domain`
 
-A path-scoped topic applies only where its selectors and its parent domain both match; only applies: global bypasses path bounding.
+A path-scoped topic applies and owns only where its selectors and its parent domain both match; applies: global remains repository-wide applicable, while its optional selectors declare only domain-bounded ownership.
 Origin: ADR-0134
+Revised-by: ADR-global-topic-path-ownership
 Backing: unbacked
-Verify: Queries inside and outside the domain intersection match only the intersection, and a global topic stored under the same domain applies to both.
+Verify: Queries inside and outside the domain intersection match only the intersection, and a global topic stored under the same domain applies everywhere while owning only its selector and domain intersection.
 ### `invariant: topic-scope-is-domain-bounded`
 
-Every topic has one owning domain; a path-scoped topic is bounded by that domain, and an explicit globally applicable topic remains stored under its owner as the only exception.
+Every topic has one owning domain; path ownership is bounded by that domain, while an explicit globally applicable topic remains stored under its owner and may be authoritative repository-wide without creating domain ownership outside its bounded selectors.
 Origin: ADR-0133
+Revised-by: ADR-global-topic-path-ownership
 Backing: unbacked
-Verify: A path-scoped selector that also matches outside its parent domain yields context only for the domain-owned match, and an applies: global topic under the same domain applies repository-wide without changing its rendered domain path.
+Verify: A path-scoped selector that also matches outside its parent domain yields context only for the domain-owned match, and an applies: global topic under the same domain applies repository-wide while ownership remains within the domain intersection.
 ### `invariant: touches-marker-advisory`
 
 A touches-state marker records a related code site for a claim but never counts toward a test-backed invariant claim's proof requirement.

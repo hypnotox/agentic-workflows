@@ -115,7 +115,7 @@ func TestQueryIndependentDetailsAndCombination(t *testing.T) {
 	if got := combined.References[0].Incoming; len(got) != 0 {
 		t.Fatalf("query traversed references: %v", got)
 	}
-	if a := combined.Coverage.Applicability; a.DeclaredGlobal || !reflect.DeepEqual(a.TopicPaths, []string{"internal/**"}) || len(a.MatchedPaths) != 2 || len(a.MarkerSites) != 2 {
+	if a := combined.Coverage.Applicability; a.DeclaredGlobal || !reflect.DeepEqual(a.TopicPaths, []string{"internal/**"}) || len(a.ApplicablePaths) != 2 || len(a.OwnedPaths) != 2 || len(a.MarkerSites) != 2 {
 		t.Fatalf("coverage = %#v", combined.Coverage)
 	}
 	claim, err := Query(corpus, adrs, "alpha/contracts:stable", QueryOptions{Coverage: true}, currentPaths)
@@ -238,7 +238,7 @@ func TestQuerySelectorsMissingAndStableJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	two, _ := json.Marshal(result)
-	if !reflect.DeepEqual(one, two) || !strings.Contains(string(one), `"claimId"`) || !strings.Contains(string(one), `"backing":"none"`) || strings.Contains(string(one), `"Origin"`) {
+	if !reflect.DeepEqual(one, two) || !strings.Contains(string(one), `"claimId"`) || !strings.Contains(string(one), `"backing":"none"`) || !strings.Contains(string(one), `"applicablePaths":[]`) || !strings.Contains(string(one), `"ownedPaths":[]`) || strings.Contains(string(one), `"Origin"`) {
 		t.Fatalf("unstable or semantically incomplete JSON: %s / %s", one, two)
 	}
 }

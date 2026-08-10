@@ -66,7 +66,7 @@ func (result QueryResult) Detail() presentation.Detail {
 		if a.DeclaredGlobal {
 			nodes = append(nodes, topicField("declared", "global"))
 		}
-		nodes = append(nodes, presentationTopicItems("domain-paths", a.DomainPaths), presentationTopicItems("topic-paths", a.TopicPaths), topicField("selector-rule", "both domain and topic selectors must match"), presentationTopicItems("matched-paths", a.MatchedPaths))
+		nodes = append(nodes, presentationTopicItems("domain-paths", a.DomainPaths), presentationTopicItems("topic-paths", a.TopicPaths), topicField("selector-rule", "both domain and topic selectors must match for ownership"), presentationTopicItems("applicable-paths", a.ApplicablePaths), presentationTopicItems("owned-paths", a.OwnedPaths))
 		for _, site := range a.MarkerSites {
 			text := fmt.Sprintf("%s:%d | %s | %s", site.Path, site.Line, site.Kind, site.ClaimID)
 			if site.Note != "" {

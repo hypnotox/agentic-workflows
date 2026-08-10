@@ -76,6 +76,7 @@ var registry = []Migration{
 	{To: 38, Name: "drop-gate-audit-settings", Apply: treeOnly(applyDropGateAuditSettings)},
 	{To: 39, Name: "drop-selection", Apply: treeOnly(applyDropSelection)},
 	{To: 40, Name: "retire-plan-resync-selection", Apply: treeOnly(applyRetirePlanResync)},
+	{To: globalTopicPathOwnershipGeneration, Name: "global-topic-path-ownership", Apply: treeOnly(applyGlobalTopicPathOwnership)},
 }
 
 // treeOnly adapts a migration that only rewrites the config tree to the

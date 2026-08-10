@@ -18,12 +18,16 @@ func TestParseMetadataAccepted(t *testing.T) {
 	if err != nil || m.Applies != "global" {
 		t.Fatalf("global: %#v %v", m, err)
 	}
+	_, m, err = ParseMetadata(root, root+"/rendering/global-owner.yaml", []byte("title: Global owner\nsummary: Everywhere with bounded ownership.\napplies: global\npaths: [\"internal/**\"]\n"))
+	if err != nil || m.Applies != "global" || len(m.Paths) != 1 {
+		t.Fatalf("combined: %#v %v", m, err)
+	}
 }
 func TestParseMetadataRejected(t *testing.T) {
 	root := ".awf/topics/metadata"
 	canonical := root + "/a/b.yaml"
 	cases := map[string]struct{ path, body string }{
-		"outside root": {"bad.yaml", "title: X\nsummary: X\npaths: [x]\n"}, "nested path": {root + "/a/nested/b.yaml", "title: X\nsummary: X\npaths: [x]\n"}, "identity": {root + "/Bad/x.yaml", "title: X\nsummary: X\npaths: [x]\n"}, "yaml": {canonical, "title: [\n"}, "not mapping": {canonical, "- title\n"}, "duplicate field": {canonical, "title: X\ntitle: Y\nsummary: X\npaths: [x]\n"}, "paths not sequence": {canonical, "title: X\nsummary: X\npaths: {}\n"}, "unknown": {canonical, "title: X\nsummary: X\npaths: [x]\ndata: {}\n"}, "second valid document": {canonical, "title: X\nsummary: X\npaths: [x]\n---\ntitle: Y\nsummary: Y\npaths: [y]\n"}, "second unknown document": {canonical, "title: X\nsummary: X\npaths: [x]\n---\ndata: {}\n"}, "title": {canonical, "summary: X\npaths: [x]\n"}, "summary empty": {canonical, "title: X\npaths: [x]\n"}, "summary multiline": {canonical, "title: X\nsummary: |\n  x\n  y\npaths: [x]\n"}, "neither": {canonical, "title: X\nsummary: X\n"}, "both": {canonical, "title: X\nsummary: X\npaths: [x]\napplies: global\n"}, "applies": {canonical, "title: X\nsummary: X\napplies: local\n"}, "empty path": {canonical, "title: X\nsummary: X\npaths: [\"\"]\n"}, "duplicate": {canonical, "title: X\nsummary: X\npaths: [x, x]\n"}, "glob": {canonical, "title: X\nsummary: X\npaths: ['[']\n"}}
+		"outside root": {"bad.yaml", "title: X\nsummary: X\npaths: [x]\n"}, "nested path": {root + "/a/nested/b.yaml", "title: X\nsummary: X\npaths: [x]\n"}, "identity": {root + "/Bad/x.yaml", "title: X\nsummary: X\npaths: [x]\n"}, "yaml": {canonical, "title: [\n"}, "not mapping": {canonical, "- title\n"}, "duplicate field": {canonical, "title: X\ntitle: Y\nsummary: X\npaths: [x]\n"}, "paths not sequence": {canonical, "title: X\nsummary: X\npaths: {}\n"}, "unknown": {canonical, "title: X\nsummary: X\npaths: [x]\ndata: {}\n"}, "second valid document": {canonical, "title: X\nsummary: X\npaths: [x]\n---\ntitle: Y\nsummary: Y\npaths: [y]\n"}, "second unknown document": {canonical, "title: X\nsummary: X\npaths: [x]\n---\ndata: {}\n"}, "title": {canonical, "summary: X\npaths: [x]\n"}, "summary empty": {canonical, "title: X\npaths: [x]\n"}, "summary multiline": {canonical, "title: X\nsummary: |\n  x\n  y\npaths: [x]\n"}, "neither": {canonical, "title: X\nsummary: X\n"}, "applies": {canonical, "title: X\nsummary: X\napplies: local\n"}, "empty path": {canonical, "title: X\nsummary: X\npaths: [\"\"]\n"}, "duplicate": {canonical, "title: X\nsummary: X\npaths: [x, x]\n"}, "glob": {canonical, "title: X\nsummary: X\npaths: ['[']\n"}}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
 			if _, _, err := ParseMetadata(root, tc.path, []byte(tc.body)); err == nil {

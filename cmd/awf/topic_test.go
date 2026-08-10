@@ -163,10 +163,10 @@ func TestPrintTopicPreservesLiteralIdentities(t *testing.T) {
 			Outgoing: []string{"target/with\ttab"},
 		}},
 		Coverage: &topic.QueryCoverage{Applicability: topic.TopicApplicability{
-			DomainPaths:  []string{"internal/a  b/**"},
-			TopicPaths:   []string{"internal/a\tb/**"},
-			MatchedPaths: []string{"internal/a  b/file.go"},
-			MarkerSites:  []topic.MarkerSite{{Path: "internal/a  b/file_test.go", Line: 7, Kind: topic.ProofMarker, ClaimID: identity + ":claim"}},
+			DomainPaths:     []string{"internal/a  b/**"},
+			TopicPaths:      []string{"internal/a\tb/**"},
+			ApplicablePaths: []string{"internal/a  b/file.go"}, OwnedPaths: []string{"internal/a  b/file.go"},
+			MarkerSites: []topic.MarkerSite{{Path: "internal/a  b/file_test.go", Line: 7, Kind: topic.ProofMarker, ClaimID: identity + ":claim"}},
 		}},
 	}
 	var out bytes.Buffer
@@ -228,11 +228,11 @@ func TestPrintTopicPropagatesEveryHumanWriteFailure(t *testing.T) {
 		Claims:     []topic.QueryClaim{{ID: "schedule/contracts:stable", Type: topic.Invariant, Prose: "Stable.", Backing: topic.Unbacked, Verify: "Inspect."}},
 		History:    []topic.ClaimHistory{{ClaimID: "schedule/contracts:stable", Origin: &topic.ADRHistory{Number: "0001", Status: "Implemented", Title: "Origin"}, RevisedBy: []topic.ADRHistory{{Number: "0002", Status: "Implemented", Title: "Revision"}}}},
 		References: []topic.ClaimReferences{{ClaimID: "schedule/contracts:stable", Incoming: []string{}, Outgoing: []string{"schedule/other:claim"}}},
-		Coverage:   &topic.QueryCoverage{Applicability: topic.TopicApplicability{DomainPaths: []string{"internal/**"}, TopicPaths: []string{"internal/schedule*"}, MatchedPaths: []string{"internal/schedule.go"}, MarkerSites: []topic.MarkerSite{{Path: "internal/schedule.go", Line: 2, Kind: topic.TouchesMarker, ClaimID: "schedule/contracts:stable", Note: "entry"}}}},
+		Coverage:   &topic.QueryCoverage{Applicability: topic.TopicApplicability{DomainPaths: []string{"internal/**"}, TopicPaths: []string{"internal/schedule*"}, ApplicablePaths: []string{"internal/schedule.go"}, OwnedPaths: []string{"internal/schedule.go"}, MarkerSites: []topic.MarkerSite{{Path: "internal/schedule.go", Line: 2, Kind: topic.TouchesMarker, ClaimID: "schedule/contracts:stable", Note: "entry"}}}},
 	}
 	for _, result := range []topic.QueryResult{base, func() topic.QueryResult {
 		global := base
-		global.Coverage = &topic.QueryCoverage{Applicability: topic.TopicApplicability{DeclaredGlobal: true, DomainPaths: []string{}, TopicPaths: []string{}, MatchedPaths: []string{}, MarkerSites: []topic.MarkerSite{}}}
+		global.Coverage = &topic.QueryCoverage{Applicability: topic.TopicApplicability{DeclaredGlobal: true, DomainPaths: []string{}, TopicPaths: []string{}, ApplicablePaths: []string{}, OwnedPaths: []string{}, MarkerSites: []topic.MarkerSite{}}}
 		return global
 	}()} {
 		counter := &failOnWrite{failAt: -1, err: sentinel}
@@ -256,7 +256,7 @@ func TestPrintTopicOptionalHumanFields(t *testing.T) {
 		Kind: "claim", ID: "schedule/global:stable", Claims: []topic.QueryClaim{{
 			ID: "schedule/global:stable", Type: topic.Invariant, Prose: "Stable.", Backing: topic.Unbacked, Verify: "Inspect output.",
 		}},
-		Coverage: &topic.QueryCoverage{Applicability: topic.TopicApplicability{DeclaredGlobal: true, DomainPaths: []string{}, TopicPaths: []string{}, MatchedPaths: []string{}, MarkerSites: []topic.MarkerSite{{
+		Coverage: &topic.QueryCoverage{Applicability: topic.TopicApplicability{DeclaredGlobal: true, DomainPaths: []string{}, TopicPaths: []string{}, ApplicablePaths: []string{}, OwnedPaths: []string{}, MarkerSites: []topic.MarkerSite{{
 			Path: "internal/schedule.go", Line: 2, Kind: topic.TouchesMarker, ClaimID: "schedule/global:stable", Note: "entry point",
 		}}}},
 	}

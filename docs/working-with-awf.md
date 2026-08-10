@@ -93,6 +93,8 @@ Pi association stays at repository root. `using_effort` directly attaches with a
 
 A convention part replaces only its section body. A declared Markdown structural heading is awf-owned, excluded from part replacement and in-place read-back, and disappears only when the complete section is dropped.
 
+**Topic metadata.** A topic may declare nonempty anchored `paths:`, `applies: global`, or both. A global topic remains applicable repository-wide for context and markers; when it also declares paths, those selectors separately state bounded ownership within its owning domain. Path-only metadata retains its scoped applicability and ownership meaning, while global-only metadata retains global authority without path ownership. Schema generation 41 activates the combined form; upgrade advances its lock generation without rewriting valid path-only or global-only metadata.
+
 **Domain paths.** A domain sidecar's `paths:` selectors bound current-state topic ownership within that domain; context and coverage use the same anchored glob dialect. Working-tree and staged loading reject empty, duplicate, or malformed selectors. Historical audit projection intentionally omits domain sidecars, and audit does not infer documentation freshness from changed domain paths.
 
 **Reading generated source guidance.** The generated-by banner says that awf owns the rendered
