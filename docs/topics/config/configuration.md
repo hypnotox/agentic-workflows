@@ -4,7 +4,7 @@
 
 The .awf config tree schema, its serialization, and the anchored path-glob dialect.
 
-**Applicability:** Owning domain selectors: `internal/config/**`, `internal/configspec/**`, `internal/manifest/**`, `internal/migrate/**`, `internal/pathglob/**`. Topic selectors: `internal/config/**`, `internal/configspec/**`, `internal/pathglob/**`. Both domain and topic selectors must match. Run `awf topic config/configuration --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `internal/config/**`, `internal/configspec/**`, `internal/manifest/**`, `internal/migrate/**`, `internal/pathglob/**`. Topic selectors: `internal/config/**`, `internal/configspec/**`, `internal/pathglob/**`. Both domain and topic selectors must match. Run `awf topic config/configuration --coverage` for current applicable and owned paths and marker sites.
 
 These packages load, validate, and describe the .awf config tree and the anchored path-glob dialect it uses. The claims below capture the current configuration contracts.
 

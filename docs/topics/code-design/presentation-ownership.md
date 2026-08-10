@@ -4,9 +4,9 @@
 
 Which package renders a result model for humans, and what a command binary keeps.
 
-**Applicability:** Global topic within owning domain selectors `internal/execution/**`, `internal/presentation/**`. Run `awf topic code-design/presentation-ownership --coverage` for current matched paths and marker sites.
+**Applicability:** Global topic: applies repository-wide. Bounded ownership selectors: `internal/presentation/**`. Owning domain selectors: `internal/execution/**`, `internal/presentation/**`. Both ownership and owning-domain selectors must match. Run `awf topic code-design/presentation-ownership --coverage` for current applicable and owned paths and marker sites.
 
-How rendering a result model for humans is owned: the package that owns the model owns its presentation, while command binaries keep argument parsing, renderer selection, and exit mapping. This topic governs renderings introduced by new work and command surfaces deliberately converted under its authority; the remaining cmd-side renderings (printPlan, printTopic) are recorded future candidates that convert as they are next touched (ADR-0195 item 4), not violations of a settled state.
+How rendering a result model for humans is owned: the package that owns the model owns its presentation, while command binaries keep argument parsing, renderer selection, and exit mapping. This global topic applies repository-wide and separately owns the code-design-bounded `internal/presentation/**` surface; it governs renderings introduced by new work and command surfaces deliberately converted under its authority. The complementary scoped presentation-package topic retains that package's local dependency and representation boundary. The remaining cmd-side renderings (printPlan, printTopic) are recorded future candidates that convert as they are next touched (ADR-0195 item 4), not violations of a settled state.
 
 ## Claims
 

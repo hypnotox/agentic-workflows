@@ -4,7 +4,7 @@
 
 How ADR records are parsed, identified, and moved through their lifecycle states.
 
-**Applicability:** Owning domain selectors: `internal/adr/**`, `internal/frontmatter/**`, `internal/plan/**`. Topic selectors: `internal/adr/**`. Both domain and topic selectors must match. Run `awf topic adr-system/adr-lifecycle --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `internal/adr/**`, `internal/frontmatter/**`, `internal/plan/**`. Topic selectors: `internal/adr/**`. Both domain and topic selectors must match. Run `awf topic adr-system/adr-lifecycle --coverage` for current applicable and owned paths and marker sites.
 
 The adr package parses decision records, derives their identity, and validates their lifecycle. The claims below capture the current parsing and status contracts.
 

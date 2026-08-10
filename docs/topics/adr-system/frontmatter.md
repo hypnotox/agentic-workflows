@@ -4,7 +4,7 @@
 
 How document frontmatter is split and validated.
 
-**Applicability:** Owning domain selectors: `internal/adr/**`, `internal/frontmatter/**`, `internal/plan/**`. Topic selectors: `internal/frontmatter/**`. Both domain and topic selectors must match. Run `awf topic adr-system/frontmatter --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `internal/adr/**`, `internal/frontmatter/**`, `internal/plan/**`. Topic selectors: `internal/frontmatter/**`. Both domain and topic selectors must match. Run `awf topic adr-system/frontmatter --coverage` for current applicable and owned paths and marker sites.
 
 The frontmatter package splits and validates YAML frontmatter for authored documents. The claims below capture the current frontmatter contracts.
 

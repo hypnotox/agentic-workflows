@@ -141,6 +141,18 @@ func TestRenderContextGrammar(t *testing.T) {
 // authority facets from asserting that test backing or known reference edges are
 // absent. The selected form retains one fixed schema for every claim row.
 // invariant: tooling/context-and-topic:context-full-authority-packet (TestRenderContextFacetOwnedAuthorityOmitsAbsentData)
+func TestRenderContextSelectorsSeparateGlobalDeclarationAndOwnership(t *testing.T) {
+	res := ContextResult{Selection: SelectionExplicit, Topics: []topicImpact{{
+		ID: "code-design/presentation-ownership", Title: "Presentation ownership", Summary: "Summary.",
+		Selectors: &contextSelectorImpact{DomainPaths: []string{"internal/**"}, TopicPaths: []string{"internal/presentation/**"}, DeclaredGlobal: true},
+	}}}
+	out := RenderContextText(res, "header", []ContextFacet{FacetSelectors})
+	want := "selectors:\n    code-design/presentation-ownership | internal/** | applies: global | internal/presentation/** | both ownership and owning-domain selectors must match"
+	if !strings.Contains(out, want) || strings.Contains(out, "matched path") {
+		t.Fatalf("selectors did not remain declaration-only:\n%s", out)
+	}
+}
+
 func TestRenderContextFacetOwnedAuthorityOmitsAbsentData(t *testing.T) {
 	claim := contextClaimImpact{
 		ID:       "alpha/one:tested",
@@ -194,7 +206,7 @@ func TestRenderAllContextBranches(t *testing.T) {
 	impact := contextPathImpact{Classification: pathNestedAdopter, NestedRoot: "child/.awf/config.yaml", Provenance: []contextProvenance{{Role: "template", Identity: "x", Sources: []artifactLink{}, Outputs: []artifactLink{{Path: "out", Label: "managed output"}}, Navigation: []artifactLink{{Path: "nav", Label: "managed output"}}}}, Domains: []domainRef{}, Topics: []contextPathTopic{}, Relationships: contextRelationships{State: []string{}, Touches: []string{}, Proofs: []string{}}, Warnings: []contextWarning{warningEligibleUnowned}, ADR: &adrArtifactContext{Number: "2", Title: "Decision", Status: "Implementing", Mutability: "frozen", AuthorityRole: "pending intent or decision history; not current authority", Operations: []adrOperationContext{{Operation: "update", Claim: "d/t:i", Progress: "applied", ClaimState: "active-current", Detail: &adrOperationDetail{Current: &current, Evidence: current.Evidence}}, {Operation: "remove", Claim: "d/t:old", Progress: "applied", ClaimState: "historically-removed", Detail: &adrOperationDetail{History: &topic.ClaimHistory{RemovedBy: &topic.ADRHistory{Number: "0002"}}}}}}}
 	res := ContextResult{Selection: SelectionStaged, Requests: []contextRequestReport{{Index: 1, Argument: "empty", Directory: &contextDirectory{Included: 0, Excluded: []contextClassificationCount{{Classification: pathGeneratedOutput, Count: 2}}, Groups: []contextGroup{{Count: 2, Members: []string{"a", "b"}, Context: impact}}}}}, Topics: []topicImpact{{ID: "d/t", Title: "T", Summary: "S", Selectors: &contextSelectorImpact{DomainPaths: []string{}, TopicPaths: []string{}, DeclaredGlobal: false}, Invariants: []contextClaimImpact{current}, Pending: contextPendingImpact{OperationCount: 4, ADRs: []string{"0001", "0002", "0003"}, AdditionalADRCount: 1}}}}
 	out := RenderContextText(res, "header", []ContextFacet{FacetArtifacts, FacetRelationships, FacetEvidence, FacetReferences})
-	for _, want := range []string{"selection: staged", "excluded: generated-output=2", "members: a, b", "nested-root:", "output: out", "navigate: nav", "adr: ADR-2", "claim:\n      d/t:i", "removal-history:", "inspect", "state | 4 | none", "pending-summary:\n    d/t | 4 | 0001, 0002, 0003 | 1", "selectors:\n    d/t | none | none | both domain and topic selectors must match"} {
+	for _, want := range []string{"selection: staged", "excluded: generated-output=2", "members: a, b", "nested-root:", "output: out", "navigate: nav", "adr: ADR-2", "claim:\n      d/t:i", "removal-history:", "inspect", "state | 4 | none", "pending-summary:\n    d/t | 4 | 0001, 0002, 0003 | 1", "selectors:\n    d/t | none | none | none | both domain and topic selectors must match"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q:\n%s", want, out)
 		}
@@ -202,7 +214,7 @@ func TestRenderAllContextBranches(t *testing.T) {
 	res.Topics[0].Pending.Operations = []pendingChange{{ADR: "0002", Op: "add", Claim: "d/t:r", Progress: "remaining"}}
 	res.Topics[0].Selectors.DeclaredGlobal = true
 	out = RenderContextText(res, "header", nil)
-	if !strings.Contains(out, "d/t | 0002 | add | d/t:r | remaining") || !strings.Contains(out, "d/t | none | global | both domain and topic selectors must match") {
+	if !strings.Contains(out, "d/t | 0002 | add | d/t:r | remaining") || !strings.Contains(out, "d/t | none | applies: global | none | both ownership and owning-domain selectors must match") {
 		t.Fatal(out)
 	}
 	// A report with neither a request nor an applicable topic renders both

@@ -163,11 +163,13 @@ func authorityNodes(topics []topicImpact, facets []ContextFacet) []presentation.
 	for _, topic := range topics {
 		topicRecords = append(topicRecords, record(literal(topic.ID), prose(topic.Title), prose(topic.Summary), prose(strconv.Itoa(topic.Counts.Invariants)), prose(strconv.Itoa(topic.Counts.Rules))))
 		if selectors := topic.Selectors; selectors != nil {
-			topicPaths := listText(selectors.TopicPaths)
+			globalDeclaration := "none"
+			ownershipRule := "both domain and topic selectors must match"
 			if selectors.DeclaredGlobal {
-				topicPaths = "global"
+				globalDeclaration = "applies: global"
+				ownershipRule = "both ownership and owning-domain selectors must match"
 			}
-			selectorRecords = append(selectorRecords, record(literal(topic.ID), literal(listText(selectors.DomainPaths)), literal(topicPaths), prose("both domain and topic selectors must match")))
+			selectorRecords = append(selectorRecords, record(literal(topic.ID), literal(listText(selectors.DomainPaths)), literal(globalDeclaration), literal(listText(selectors.TopicPaths)), prose(ownershipRule)))
 		}
 		for i, group := range claimGroups {
 			for _, claim := range group.claims(topic) {
@@ -202,7 +204,7 @@ func authorityNodes(topics []topicImpact, facets []ContextFacet) []presentation.
 	}
 	nodes = append(nodes, recordGroup("topics", []string{"identity", "title", "summary", "invariants", "rules"}, topicRecords...))
 	if len(selectorRecords) > 0 {
-		nodes = append(nodes, recordGroup("selectors", []string{"topic", "domain-paths", "topic-paths", "rule"}, selectorRecords...))
+		nodes = append(nodes, recordGroup("selectors", []string{"topic", "domain-paths", "global-declaration", "ownership-selectors", "rule"}, selectorRecords...))
 	}
 	for i, group := range claimGroups {
 		if len(claimRecords[i]) > 0 {

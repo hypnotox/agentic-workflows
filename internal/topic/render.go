@@ -50,9 +50,12 @@ func topicItems(topics []Topic, prefix string) []TopicListItem {
 // concrete matched paths and marker sites stay out of committed docs and live
 // in `awf topic <id> --coverage` (ADR-0147).
 func applicabilitySummary(id string, a TopicApplicability) string {
-	drilldown := fmt.Sprintf("Run `awf topic %s --coverage` for current matched paths and marker sites.", id)
+	drilldown := fmt.Sprintf("Run `awf topic %s --coverage` for current applicable and owned paths and marker sites.", id)
 	if a.DeclaredGlobal {
-		return fmt.Sprintf("Global topic within owning domain selectors %s. %s", selectorList(a.DomainPaths), drilldown)
+		if len(a.TopicPaths) == 0 {
+			return "Global topic: applies repository-wide. It declares no bounded ownership selectors. " + drilldown
+		}
+		return fmt.Sprintf("Global topic: applies repository-wide. Bounded ownership selectors: %s. Owning domain selectors: %s. Both ownership and owning-domain selectors must match. %s", selectorList(a.TopicPaths), selectorList(a.DomainPaths), drilldown)
 	}
 	return fmt.Sprintf("Owning domain selectors: %s. Topic selectors: %s. Both domain and topic selectors must match. %s", selectorList(a.DomainPaths), selectorList(a.TopicPaths), drilldown)
 }

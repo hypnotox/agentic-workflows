@@ -4,7 +4,7 @@
 
 <!-- awf:edit current-state: from .awf/domains/parts/code-design/current-state.md -->
 ## Current state
-The code-design domain owns cross-package structure guidance, `internal/execution/**` as its scoped capability-planning implementation surface, and `internal/presentation/**` as the central CLI representation package. Its explicit global topics remain repository-wide guidance and do not gain path ownership. Read the owning scoped and global topics before changing a governed structure rather than copying their claims into local guidance.
+The code-design domain is the sole domain owner of its selectors, including `internal/execution/**` and `internal/presentation/**`. Its global topics remain repository-wide applicable guidance; a global topic may separately own a bounded path only where its selectors and these domain selectors both match. `code-design/presentation-ownership` owns the cross-cutting presentation model globally and the bounded `internal/presentation/**` package surface, while the scoped `presentation-package` topic retains its complementary package-local boundary. Read the owning scoped and global topics before changing a governed structure rather than copying their claims into local guidance.
 
 
 ## Topics

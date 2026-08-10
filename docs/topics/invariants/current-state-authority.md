@@ -4,7 +4,7 @@
 
 How current-state claims are loaded, checked, and transitioned as the sole active authority.
 
-**Applicability:** Owning domain selectors: `internal/currentstate/**`, `internal/invariants/**`, `internal/topic/**`. Topic selectors: `internal/currentstate/**`, `internal/invariants/**`. Both domain and topic selectors must match. Run `awf topic invariants/current-state-authority --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `internal/currentstate/**`, `internal/invariants/**`, `internal/topic/**`. Topic selectors: `internal/currentstate/**`, `internal/invariants/**`. Both domain and topic selectors must match. Run `awf topic invariants/current-state-authority --coverage` for current applicable and owned paths and marker sites.
 
 The currentstate package is the active authority engine: it loads topic claims and ADRs from a tree, checks their static and transition consistency, and reports invariant obligations. The claims below capture the current authority contracts.
 

@@ -4,7 +4,7 @@
 
 How implementation plan documents are parsed and validated.
 
-**Applicability:** Owning domain selectors: `internal/adr/**`, `internal/frontmatter/**`, `internal/plan/**`. Topic selectors: `internal/plan/**`. Both domain and topic selectors must match. Run `awf topic adr-system/plan-artifacts --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `internal/adr/**`, `internal/frontmatter/**`, `internal/plan/**`. Topic selectors: `internal/plan/**`. Both domain and topic selectors must match. Run `awf topic adr-system/plan-artifacts --coverage` for current applicable and owned paths and marker sites.
 
 The plan package parses and validates implementation plan documents. The claims below capture the current plan-artifact contracts.
 

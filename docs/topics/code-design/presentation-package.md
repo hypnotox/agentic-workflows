@@ -4,9 +4,9 @@
 
 What the central presentation package owns and excludes.
 
-**Applicability:** Owning domain selectors: `internal/execution/**`, `internal/presentation/**`. Topic selectors: `internal/presentation/**`. Both domain and topic selectors must match. Run `awf topic code-design/presentation-package --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `internal/execution/**`, `internal/presentation/**`. Topic selectors: `internal/presentation/**`. Both domain and topic selectors must match. Run `awf topic code-design/presentation-package --coverage` for current applicable and owned paths and marker sites.
 
-The presentation package is the code-design-owned representation boundary for ordinary CLI output. Its local package contract complements the repository-wide grammar and semantic-mapping authority in the global presentation-ownership topic.
+The presentation package is the code-design-owned representation boundary for ordinary CLI output. Its scoped package contract remains active for `internal/presentation/**` and complements, rather than narrows or replaces, the repository-wide applicability and bounded ownership held by the global presentation-ownership topic.
 
 ## Claims
 

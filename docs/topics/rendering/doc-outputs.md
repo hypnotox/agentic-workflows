@@ -4,7 +4,7 @@
 
 Generated documentation outputs: domain and topic docs, layout, pitfalls, stubs, skill references.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/project/**`. Both domain and topic selectors must match. Run `awf topic rendering/doc-outputs --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/project/**`. Both domain and topic selectors must match. Run `awf topic rendering/doc-outputs --coverage` for current applicable and owned paths and marker sites.
 
 Generated documentation outputs: domain and topic documents, docs layout, pitfall data validation, unauthored-content stubs, and skill-reference hygiene.
 

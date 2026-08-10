@@ -4,7 +4,7 @@
 
 Config-tree validation rules: names, globs, targets, tags, anchoring.
 
-**Applicability:** Owning domain selectors: `internal/config/**`, `internal/configspec/**`, `internal/manifest/**`, `internal/migrate/**`, `internal/pathglob/**`. Topic selectors: `internal/config/**`, `internal/configspec/**`, `internal/pathglob/**`. Both domain and topic selectors must match. Run `awf topic config/validation --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `internal/config/**`, `internal/configspec/**`, `internal/manifest/**`, `internal/migrate/**`, `internal/pathglob/**`. Topic selectors: `internal/config/**`, `internal/configspec/**`, `internal/pathglob/**`. Both domain and topic selectors must match. Run `awf topic config/validation --coverage` for current applicable and owned paths and marker sites.
 
 Config-tree validation rules: names, path globs, targets, tags, and anchoring.
 

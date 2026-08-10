@@ -55,7 +55,7 @@ func TestRenderModelsAndTemplates(t *testing.T) {
 		t.Fatalf("topic output must end in exactly one newline: %q", out)
 	}
 	global := BuildTopicModel(topics[1], nil, MarkerIndex{}, nil)
-	if !strings.Contains(global.Applicability, "Global") {
+	if !strings.Contains(global.Applicability, "applies repository-wide") {
 		t.Fatal(global.Applicability)
 	}
 	shell := topics[0]
@@ -77,15 +77,23 @@ func TestApplicabilitySummarySelectorsOnly(t *testing.T) {
 	if !strings.Contains(model.Applicability, "Owning domain selectors: `x/pkg/**`.") ||
 		!strings.Contains(model.Applicability, "Topic selectors: `x/**`.") ||
 		!strings.Contains(model.Applicability, "Both domain and topic selectors must match.") ||
-		!strings.Contains(model.Applicability, "Run `awf topic d/z --coverage` for current matched paths and marker sites.") {
+		!strings.Contains(model.Applicability, "Run `awf topic d/z --coverage` for current applicable and owned paths and marker sites.") {
 		t.Fatalf("selectors-only form missing: %s", model.Applicability)
 	}
 	if strings.Contains(model.Applicability, "Current matched paths") || strings.Contains(model.Applicability, "Marker sites") || strings.Contains(model.Applicability, "x/pkg/a.go") {
 		t.Fatalf("census leaked into rendered applicability: %s", model.Applicability)
 	}
-	global := BuildTopicModel(Topic{ID: TopicID{"d", "g"}, Metadata: Metadata{Title: "G", Summary: "G.", Applies: "global"}}, []string{"x/**"}, MarkerIndex{}, nil)
-	if !strings.Contains(global.Applicability, "Global topic within owning domain selectors `x/**`.") || !strings.Contains(global.Applicability, "Run `awf topic d/g --coverage`") {
-		t.Fatalf("global variant = %s", global.Applicability)
+	global := BuildTopicModel(Topic{ID: TopicID{"d", "g"}, Metadata: Metadata{Title: "G", Summary: "G.", Applies: "global", Paths: []string{"x/owned/**"}}}, []string{"x/**"}, MarkerIndex{}, []string{"elsewhere.go"})
+	if !strings.Contains(global.Applicability, "Global topic: applies repository-wide.") ||
+		!strings.Contains(global.Applicability, "Bounded ownership selectors: `x/owned/**`.") ||
+		!strings.Contains(global.Applicability, "Owning domain selectors: `x/**`.") ||
+		!strings.Contains(global.Applicability, "Both ownership and owning-domain selectors must match.") ||
+		!strings.Contains(global.Applicability, "Run `awf topic d/g --coverage`") {
+		t.Fatalf("combined global variant = %s", global.Applicability)
+	}
+	globalOnly := BuildTopicModel(Topic{ID: TopicID{"d", "global-only"}, Metadata: Metadata{Title: "Global only", Summary: "G.", Applies: "global"}}, []string{"x/**"}, MarkerIndex{}, nil)
+	if !strings.Contains(globalOnly.Applicability, "applies repository-wide") || !strings.Contains(globalOnly.Applicability, "no bounded ownership selectors") {
+		t.Fatalf("global-only variant = %s", globalOnly.Applicability)
 	}
 	empty := BuildTopicModel(Topic{ID: TopicID{"d", "e"}, Metadata: Metadata{Title: "E", Summary: "E."}}, nil, MarkerIndex{}, nil)
 	if !strings.Contains(empty.Applicability, "Owning domain selectors: none.") || !strings.Contains(empty.Applicability, "Topic selectors: none.") || strings.Contains(empty.Applicability, "``") {

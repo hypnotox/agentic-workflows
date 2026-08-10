@@ -33,7 +33,7 @@ func ctxFiles() map[string]string {
 		".awf/domains/core.yaml":                       "paths: []\n",
 		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: The one topic.\npaths:\n  - internal/foo/**\n",
 		".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n\n### `rule: order`\nOrder is deterministic.\nSummary: Deterministic order.\nOrigin: ADR-0001\n\n### `invariant: tested`\nTests protect output.\nOrigin: ADR-0001\nBacking: test\n\n### `invariant: stable`\nOutput is stable.\nOrigin: ADR-0001\nBacking: unbacked\nVerify: by hand.\n",
-		".awf/topics/metadata/core/g.yaml":             "title: Global\nsummary: Global rules.\napplies: global\n",
+		".awf/topics/metadata/core/g.yaml":             "title: Global\nsummary: Global rules.\napplies: global\npaths:\n  - internal/owned/**\n",
 		".awf/topics/parts/core/g/current-state.md":    "Intro.\n\n## Claims\n\n### `rule: everywhere`\nApplies everywhere.\nOrigin: ADR-0001\n",
 		"internal/foo/x.go":                            "package foo\n// state: alpha/one:order\n",
 		"internal/foo/y.go":                            "package foo\n",
@@ -103,6 +103,26 @@ func TestContextRequestUniverse(t *testing.T) {
 	}
 	if len(res.Topics) != 2 {
 		t.Fatalf("topics=%#v", res.Topics)
+	}
+	// The request is outside core/g's bounded ownership selector, but its global
+	// applicability still makes it visible to context.
+	for _, impact := range res.Topics {
+		if impact.ID == "core/g" && impact.Selectors != nil {
+			t.Fatalf("unrequested selectors=%#v", impact.Selectors)
+		}
+	}
+	selectors := queryFor(t, p).ContextForOptions([]string{"internal/foo/x.go"}, ContextOptions{Selection: SelectionExplicit, Facets: []ContextFacet{FacetSelectors}})
+	foundGlobal := false
+	for _, impact := range selectors.Topics {
+		if impact.ID == "core/g" {
+			foundGlobal = true
+			if impact.Selectors == nil || !impact.Selectors.DeclaredGlobal || !reflect.DeepEqual(impact.Selectors.TopicPaths, []string{"internal/owned/**"}) {
+				t.Fatalf("global selector projection=%#v", impact.Selectors)
+			}
+		}
+	}
+	if !foundGlobal {
+		t.Fatal("global topic absent outside its ownership selectors")
 	}
 	wantDirectoryRelationships := contextRelationships{State: []string{"alpha/one:order"}, Touches: []string{}, Proofs: []string{"alpha/one:tested"}}
 	if !reflect.DeepEqual(res.Requests[0].Directory.Relationships, wantDirectoryRelationships) {

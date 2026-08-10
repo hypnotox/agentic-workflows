@@ -1,4 +1,4 @@
-The presentation package is the code-design-owned representation boundary for ordinary CLI output. Its local package contract complements the repository-wide grammar and semantic-mapping authority in the global presentation-ownership topic.
+The presentation package is the code-design-owned representation boundary for ordinary CLI output. Its scoped package contract remains active for `internal/presentation/**` and complements, rather than narrows or replaces, the repository-wide applicability and bounded ownership held by the global presentation-ownership topic.
 
 ## Claims
 

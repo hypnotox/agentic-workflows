@@ -4,7 +4,7 @@
 
 The template overlay render engine and its reference resolution.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/project/banner*.go`, `internal/project/topics*.go`, `internal/refs/**`, `internal/render/**`. Both domain and topic selectors must match. Run `awf topic rendering/render-engine --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/project/banner*.go`, `internal/project/topics*.go`, `internal/refs/**`, `internal/render/**`. Both domain and topic selectors must match. Run `awf topic rendering/render-engine --coverage` for current applicable and owned paths and marker sites.
 
 The render and refs packages drive the template overlay engine and resolve inter-document references. The claims below capture the current render-engine contracts.
 

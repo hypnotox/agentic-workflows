@@ -4,7 +4,7 @@
 
 The read-only orientation surfaces: context, topic, describe, uncovered.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/commitmsg/**`, `internal/commitpolicy/**`, `internal/contextdelivery/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/filesystem/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/projectlicense/**`, `internal/prosegate/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `cmd/**`, `internal/clispec/**`, `internal/contextdelivery/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/initspec/**`. Both domain and topic selectors must match. Run `awf topic tooling/context-and-topic --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/commitmsg/**`, `internal/commitpolicy/**`, `internal/contextdelivery/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/filesystem/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/projectlicense/**`, `internal/prosegate/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `cmd/**`, `internal/clispec/**`, `internal/contextdelivery/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/initspec/**`. Both domain and topic selectors must match. Run `awf topic tooling/context-and-topic --coverage` for current applicable and owned paths and marker sites.
 
 The read-only orientation surfaces: awf context, awf topic, describe, and uncovered reporting.
 
@@ -25,9 +25,9 @@ Backing: test
 
 ### `invariant: context-applicability-navigation`
 
-Topic and context applicability share one evidence model: awf topic --coverage remains the unbounded drilldown for matched paths and marker sites, while the context selectors facet reports owning-domain and topic selector declarations separately, states that both must match, and never lists matched paths.
+Topic and context keep applicability separate from ownership evidence: awf topic --coverage remains the unbounded drilldown for applicable and owned paths and marker sites, while the context selectors facet reports owning-domain selectors, a global declaration when present, and bounded ownership selectors separately. It states the applicable ownership rule and never lists path witnesses; global topics remain visible outside their ownership selectors.
 Origin: ADR-0148
-Revised-by: ADR-0165
+Revised-by: ADR-0165, ADR-global-topic-path-ownership
 Backing: test
 
 ### `invariant: context-default-excludes-history`

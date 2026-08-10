@@ -4,7 +4,7 @@
 
 How closed multi-step operations prepare shared requirements and execute selected steps.
 
-**Applicability:** Owning domain selectors: `internal/execution/**`, `internal/presentation/**`. Topic selectors: `internal/execution/**`. Both domain and topic selectors must match. Run `awf topic code-design/execution-planning --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `internal/execution/**`, `internal/presentation/**`. Topic selectors: `internal/execution/**`. Both domain and topic selectors must match. Run `awf topic code-design/execution-planning --coverage` for current applicable and owned paths and marker sites.
 
 Capability-planned execution is the scoped implementation surface for closed multi-step operations. Consumers retain domain values and policy while the shared package owns only closed selection, operation-scoped requirement preparation, binding, ordering, and attempted-step outcomes.
 
