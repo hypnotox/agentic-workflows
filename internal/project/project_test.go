@@ -583,6 +583,38 @@ func TestSyncRejectsUnsafeResidentEffortsRoot(t *testing.T) {
 	}
 }
 
+func TestSyncPruneFailureKeepsLockEntry(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, _ := Open(testContext(t), root)
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	const retired = "obsolete/generated.md"
+	lock, err := manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock.Files[retired] = manifest.Entry{}
+	if err := lock.Save(lockFile(root)); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(root, filepath.FromSlash(retired))
+	if err := os.MkdirAll(path, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	testsupport.WriteFile(t, filepath.Join(path, "resident"), "keep\n")
+	if _, _, _, err := p.SyncReport(testContext(t)); err == nil || !strings.Contains(err.Error(), "remove retired output") {
+		t.Fatalf("prune error = %v", err)
+	}
+	lock, err = manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := lock.Files[retired]; !ok {
+		t.Fatal("failed prune disappeared from the saved lock")
+	}
+}
+
 func TestSyncPruneReportSkipsAlreadyGoneFile(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, _ := Open(testContext(t), root)

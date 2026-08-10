@@ -186,6 +186,21 @@ func PreserveRemoval(path string, preserved []string) bool {
 	return false
 }
 
+// RemoveGeneratedFile removes one generated file. An already-absent path is a
+// successful no-op; every other failure remains actionable so its lock entry
+// can be preserved for a retry.
+func RemoveGeneratedFile(path string) (bool, error) {
+	err := os.Remove(path)
+	switch {
+	case err == nil:
+		return true, nil
+	case errors.Is(err, os.ErrNotExist):
+		return false, nil
+	default:
+		return false, fmt.Errorf("remove generated file %s: %w", path, err)
+	}
+}
+
 // Uninstall removes awf's generated footprint while preserving dynamic resident
 // state. It is a free function so a broken config does not block it.
 // touches-state: rendering/sync-and-drift:uninstall-removes-lock-entries - lock-tracked file removal; proof in resident_test.go
@@ -215,7 +230,11 @@ func Uninstall(ctx context.Context, root string) (UninstallReport, error) {
 		if IsResidentPath(path) {
 			abs = filepath.Join(residentRoot, filepath.FromSlash(path))
 		}
-		if err := os.Remove(abs); err == nil {
+		removed, err := RemoveGeneratedFile(abs)
+		if err != nil {
+			return report, err
+		}
+		if removed {
 			report.Removed++
 		}
 		base := root

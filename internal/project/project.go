@@ -485,8 +485,13 @@ func (p *Project) syncReportWith(ctx context.Context, seed *InitAuthority, opera
 				backups = append(backups, Backup{Path: path, Bak: bak})
 			}
 			// Report only an actual removal - a path whose file is already gone
-			// must not be claimed pruned.
-			if os.Remove(file) == nil {
+			// must not be claimed pruned. Any other failure preserves the old lock
+			// so the managed path remains visible and the operation can be retried.
+			removed, err := resident.RemoveGeneratedFile(file)
+			if err != nil {
+				return backups, changes, pruned, fmt.Errorf("remove retired output %s: %w", path, err)
+			}
+			if removed {
 				pruned = append(pruned, path)
 			}
 			base := p.Root

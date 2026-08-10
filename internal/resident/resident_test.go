@@ -63,6 +63,29 @@ func TestUninstallSkipsEscapingLockPaths(t *testing.T) {
 	}
 }
 
+func TestUninstallRemovalFailureKeepsLock(t *testing.T) {
+	root := t.TempDir()
+	const locked = "generated.md"
+	path := filepath.Join(root, locked)
+	if err := os.Mkdir(path, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	testsupport.WriteFile(t, filepath.Join(path, "resident"), "keep\n")
+	lock := &manifest.Lock{Files: map[string]manifest.Entry{locked: {}}}
+	if err := os.MkdirAll(filepath.Join(root, config.DirName), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := lock.Save(config.LockPath(root)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Uninstall(testsupport.Context(t), root); err == nil || !strings.Contains(err.Error(), "remove generated file") {
+		t.Fatalf("uninstall error = %v", err)
+	}
+	if _, err := os.Stat(config.LockPath(root)); err != nil {
+		t.Fatalf("lock removed after failed uninstall: %v", err)
+	}
+}
+
 func TestInspectRootsTreatsAnyDirectChildAsData(t *testing.T) {
 	root := t.TempDir()
 	efforts := filepath.Join(root, config.DirName, "efforts")
