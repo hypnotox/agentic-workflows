@@ -195,3 +195,8 @@ implementation.
   package checks, normalized nil conditions, and explicit mutations for zero, aliased, composed,
   unrelated-selector, and alternate-internal-import cases. The stricter proof remains confined to
   the approved single-home invariant and does not change runtime behavior.
+- Phase 1 proof closure: three mechanical detector escapes were closed by checking raw import paths
+  before alias filtering, honoring inherited constant expressions while conservatively allowing
+  only known Unix replacement flags, and binding the Windows effort exception to the single move
+  function in `nativeWindowsPublicationAPI`. Blank, dot, inherited-constant, and duplicate-wrapper
+  mutations now pin those boundaries without changing production behavior.

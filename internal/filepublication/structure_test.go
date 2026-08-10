@@ -56,6 +56,22 @@ import "github.com/hypnotox/agentic-workflows/internal/effort"`},
 		{name: "other outward internal dependency", sourcePath: "internal/filepublication/publication.go", body: `package filepublication
 import f "github.com/hypnotox/agentic-workflows/internal/filesystem"
 var _ = f.Handle{}`},
+		{name: "blank outward internal dependency", sourcePath: "internal/filepublication/publication.go", body: `package filepublication
+import _ "github.com/hypnotox/agentic-workflows/internal/filesystem"`},
+		{name: "dot outward internal dependency", sourcePath: "internal/filepublication/publication.go", body: `package filepublication
+import . "github.com/hypnotox/agentic-workflows/internal/filesystem"`},
+		{name: "inherited Unix exclusive constant", sourcePath: "internal/other/linux.go", body: `package other
+import "golang.org/x/sys/unix"
+const (
+	exclusive = unix.RENAME_NOREPLACE
+	inherited
+)
+func publish() { unix.Renameat2(a, b, c, d, inherited) }`},
+		{name: "second effort flags wrapper", sourcePath: "internal/effort/publication_windows.go", body: `package effort
+import "golang.org/x/sys/windows"
+type api struct { move func(string, string, uint32) error }
+var nativeWindowsPublicationAPI = api{move: func(a, b string, flags uint32) error { return windows.MoveFileEx(a, b, flags) }}
+func duplicate(a, b string, flags uint32) error { return windows.MoveFileEx(a, b, flags) }`},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if got := exclusivePublicationFindings(test.sourcePath, []byte(test.body)); len(got) == 0 {
@@ -79,7 +95,8 @@ func (localAPI) MoveFileEx(any, any, uint32) error { return nil }
 func replace(api localAPI) { api.MoveFileEx(a, b, 0) }`},
 		{name: "generic effort replacement move", sourcePath: "internal/effort/publication_windows.go", body: `package effort
 import "golang.org/x/sys/windows"
-func moveReplacement(flags uint32) { windows.MoveFileEx(a, b, flags) }`},
+type api struct { move func(string, string, uint32) error }
+var nativeWindowsPublicationAPI = api{move: func(a, b string, flags uint32) error { return windows.MoveFileEx(a, b, flags) }}`},
 		{name: "explicit Windows replacement", sourcePath: "internal/other/windows.go", body: `package other
 import w "golang.org/x/sys/windows"
 const replace = w.MOVEFILE_REPLACE_EXISTING | w.MOVEFILE_WRITE_THROUGH
@@ -105,13 +122,15 @@ func exclusivePublicationFindings(sourcePath string, body []byte) []string {
 	constants := constantExpressions(file)
 	var findings []string
 	if strings.HasPrefix(sourcePath, "internal/filepublication/") {
-		for _, importPath := range imports {
-			if strings.HasPrefix(importPath, modulePath+"/internal/") {
+		for _, spec := range file.Imports {
+			importPath, unquoteErr := strconv.Unquote(spec.Path.Value)
+			if unquoteErr == nil && strings.HasPrefix(importPath, modulePath+"/internal/") {
 				findings = append(findings, sourcePath+": publication leaf depends outward on "+importPath)
 			}
 		}
 		return findings
 	}
+	allowedEffortMove := allowedEffortMoveCall(sourcePath, file, imports)
 
 	ast.Inspect(file, func(node ast.Node) bool {
 		switch value := node.(type) {
@@ -126,11 +145,11 @@ func exclusivePublicationFindings(sourcePath string, body []byte) []string {
 			}
 			importPath := imports[qualifier.Name]
 			switch {
-			case importPath == "golang.org/x/sys/unix" && selector.Sel.Name == "Renameat2" && callFlagReferences(value, constants, qualifier.Name, "RENAME_NOREPLACE"):
-				findings = append(findings, sourcePath+": calls unix.Renameat2 with RENAME_NOREPLACE")
-			case importPath == "golang.org/x/sys/unix" && selector.Sel.Name == "RenamexNp" && callFlagReferences(value, constants, qualifier.Name, "RENAME_EXCL"):
-				findings = append(findings, sourcePath+": calls unix.RenamexNp with RENAME_EXCL")
-			case importPath == "golang.org/x/sys/windows" && selector.Sel.Name == "MoveFileEx" && windowsMoveIsNoReplace(sourcePath, value, constants, qualifier.Name):
+			case importPath == "golang.org/x/sys/unix" && selector.Sel.Name == "Renameat2" && !callFlagReferences(value, constants, qualifier.Name, "RENAME_EXCHANGE"):
+				findings = append(findings, sourcePath+": calls unix.Renameat2 without the retained replacement flag")
+			case importPath == "golang.org/x/sys/unix" && selector.Sel.Name == "RenamexNp" && !callFlagReferences(value, constants, qualifier.Name, "RENAME_SWAP"):
+				findings = append(findings, sourcePath+": calls unix.RenamexNp without the retained replacement flag")
+			case importPath == "golang.org/x/sys/windows" && selector.Sel.Name == "MoveFileEx" && windowsMoveIsNoReplace(value, constants, qualifier.Name, allowedEffortMove):
 				findings = append(findings, sourcePath+": calls windows.MoveFileEx without MOVEFILE_REPLACE_EXISTING")
 			}
 		case *ast.IfStmt:
@@ -166,14 +185,18 @@ func constantExpressions(file *ast.File) map[string]ast.Expr {
 		if !ok || general.Tok != token.CONST {
 			continue
 		}
+		var inherited []ast.Expr
 		for _, spec := range general.Specs {
 			value, ok := spec.(*ast.ValueSpec)
 			if !ok {
 				continue
 			}
+			if len(value.Values) != 0 {
+				inherited = value.Values
+			}
 			for index, name := range value.Names {
-				if index < len(value.Values) {
-					constants[name.Name] = value.Values[index]
+				if index < len(inherited) {
+					constants[name.Name] = inherited[index]
 				}
 			}
 		}
@@ -214,17 +237,62 @@ func expressionReferencesSelector(expression ast.Expr, constants map[string]ast.
 	return found
 }
 
-func windowsMoveIsNoReplace(sourcePath string, call *ast.CallExpr, constants map[string]ast.Expr, qualifier string) bool {
+func windowsMoveIsNoReplace(call *ast.CallExpr, constants map[string]ast.Expr, qualifier string, allowedEffortMove *ast.CallExpr) bool {
+	if call == allowedEffortMove {
+		return false
+	}
 	if len(call.Args) < 3 {
 		return true
 	}
-	flags := call.Args[2]
-	if sourcePath == "internal/effort/publication_windows.go" {
-		if identifier, ok := flags.(*ast.Ident); ok && identifier.Name == "flags" {
-			return false
+	return !expressionReferencesSelector(call.Args[2], constants, qualifier, "MOVEFILE_REPLACE_EXISTING", map[string]bool{})
+}
+
+func allowedEffortMoveCall(sourcePath string, file *ast.File, imports map[string]string) *ast.CallExpr {
+	if sourcePath != "internal/effort/publication_windows.go" {
+		return nil
+	}
+	var calls []*ast.CallExpr
+	for _, declaration := range file.Decls {
+		general, ok := declaration.(*ast.GenDecl)
+		if !ok || general.Tok != token.VAR {
+			continue
+		}
+		for _, spec := range general.Specs {
+			value, ok := spec.(*ast.ValueSpec)
+			if !ok || len(value.Names) != 1 || value.Names[0].Name != "nativeWindowsPublicationAPI" || len(value.Values) != 1 {
+				continue
+			}
+			composite, ok := value.Values[0].(*ast.CompositeLit)
+			if !ok {
+				continue
+			}
+			for _, element := range composite.Elts {
+				field, ok := element.(*ast.KeyValueExpr)
+				key, keyOK := field.Key.(*ast.Ident)
+				function, functionOK := field.Value.(*ast.FuncLit)
+				if !ok || !keyOK || key.Name != "move" || !functionOK {
+					continue
+				}
+				ast.Inspect(function.Body, func(node ast.Node) bool {
+					call, ok := node.(*ast.CallExpr)
+					if !ok || len(call.Args) < 3 {
+						return true
+					}
+					selector, ok := call.Fun.(*ast.SelectorExpr)
+					qualifier, qualifierOK := selector.X.(*ast.Ident)
+					flags, flagsOK := call.Args[2].(*ast.Ident)
+					if ok && qualifierOK && imports[qualifier.Name] == "golang.org/x/sys/windows" && selector.Sel.Name == "MoveFileEx" && flagsOK && flags.Name == "flags" {
+						calls = append(calls, call)
+					}
+					return true
+				})
+			}
 		}
 	}
-	return !expressionReferencesSelector(flags, constants, qualifier, "MOVEFILE_REPLACE_EXISTING", map[string]bool{})
+	if len(calls) == 1 {
+		return calls[0]
+	}
+	return nil
 }
 
 func expectedNilCondition(expression ast.Expr) bool {
