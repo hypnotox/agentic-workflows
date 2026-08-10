@@ -23,8 +23,8 @@ seam's timeout constant, just as it prevents sharing the environment-isolation p
 
 ## Decision
 
-1. `decision: bound-every-fixture-git-process` Every native Git subprocess used to construct or inspect fixture state has a fixed hang-prevention deadline owned by the fixture boundary. Both string-oriented and byte-oriented invocations use the same deadlined execution path, so an exported helper cannot accidentally select an unbounded lane.
-2. `decision: match-the-native-git-ceiling` The fixture deadline matches the production native Git command ceiling. The value remains a documented duplicate because the test-support leaf boundary forbids importing the production seam; a focused test proves that a blocked fixture process is terminated by the deadline.
+1. `decision: bound-every-fixture-git-process` Every invocation of the Git executable within the native Git fixture package has a fixed hang-prevention deadline owned by the fixture boundary. Both string-oriented and byte-oriented invocations use the same deadlined execution path, so an exported helper cannot accidentally select an unbounded lane. The package's separate `ssh-keygen` invocation is outside this Git-process rule.
+2. `decision: match-the-native-git-ceiling` The fixture-owned deadline is two minutes, deliberately matching both `internal/git.CommandTimeout` and `internal/testsupport.gitTestDeadline`. The value remains a documented duplicate because the test-support leaf boundary forbids importing the production seam. A focused proof test uses direct duration injection, not a swappable package-level global, to shorten the deadline and prove that a blocked fixture process is terminated.
 
 ## State changes
 
@@ -38,7 +38,9 @@ timeout. Existing fixture callers and their backend-neutral API remain unchanged
 A healthy Git operation that exceeds the shared ceiling is terminated, but the ceiling is
 intentionally far above observed fixture work. The timeout value remains duplicated across
 the production seam and test support and must be kept equal by hand under the existing leaf
-boundary.
+boundary. The focused blocked-process test becomes an annotated proof carrier for
+`tooling/git-access:fixture-isolation-parity` alongside the existing environment-isolation
+proof, and the resolved hanging-fixture pitfall is retired.
 
 ## Alternatives Considered
 
