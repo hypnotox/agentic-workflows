@@ -70,7 +70,19 @@ Apply all lenses to every plan:
 ## Project-specific focus items
 
 
-**step-exactness**: Reject task-level boundaries, cross-phase definitions, dead-code exceptions, plan-wide mode inference, placeholders, conditional or optional tasks, missing contract-bearing `Latitude: exact`, misplaced or unknown task fields, spikes with implementation bodies or no Notes target, ambiguous scope without `Paths:`, and batches or glob/pathspec scope without `Post-check:`.
+**change-specific-executability**: every phase declares independent inline or subagent-driven ownership, one coherent green transaction, and one closing subject; tasks are ordered steps with change-specific outcomes, authority, material boundaries, ordering dependencies, focused evidence, and needed confinement. Latitude, batch kind, representative, and edge examples are optional aids; ambiguous populations retain exhaustive Paths and deterministic Post-check evidence; commit-capable owners may resolve authority-determined local detail while helpers remain path-confined and commit-disabled. Reject duplicated generic execution protocol, task-level boundaries, cross-phase definitions, dead-code exceptions, plan-wide mode inference, and placeholders.
+
+
+**dependency-order**: tasks are ordered so each builds only on already-completed work
+
+
+**snapshot-scoped-verification**: execute material census and post-check commands against the exact intermediate snapshot declared by the plan; require the expected terminal set or lifecycle-authorized residual findings, and reject a premature zero requirement
+
+
+**check-authority-taxonomy**: classify each material check as an authority, state, or choreography check; preserve authority checks, require state checks to be no stricter than the durable property they prove, and flag choreography-only enforcement with no named authority or state obligation
+
+
+**plan-v2-schema-exactness**: Reject conditional or optional tasks, missing contract-bearing `Latitude: exact`, misplaced or unknown task fields, and spikes with implementation bodies or no Notes target.
 
 
 **quoted-command-output-is-rerun**: a plan that quotes a command and its expected output states a checkable fact: RUN it rather than reasoning about it, and never write a corrected number you have not observed. A review of the ADR-0128 plan "corrected" a `grep -rn adr.ParseDir(` count from 10 to 12 on the theory that two `coverage-ignore` comments matched; they read `adr.ParseDir here`, with no opening paren, so the pattern never matched them and BOTH the before and after numbers shipped wrong. An unverified correction makes a plan less accurate than leaving it alone, because the executor now trusts it. Escalate rather than correct when a plan asserts a literal COUNT at all: prefer a terminal-state assertion (the finding count reaches zero, the grep returns nothing, the drift check is clean), because a count is a measurement of a corpus that moves and a stale one fails misleadingly rather than loudly. The 2026-07-19 retrofit-D plan showed the compound form: its headline total was a merge-base measurement, its item/slug split was wrong at every commit, its sibling plan carried a third figure, and because four later figures were derived from the total, one stale measurement made every phase unverifiable. Correcting such numbers one at a time treats the symptom; the fix is to delete them in favour of the command
@@ -86,15 +98,6 @@ Apply all lenses to every plan:
 
 
 **generated-adopter-source-closure**: when a plan requires a generated output to change in one or more adopted project roots, it must name the authored input that drives that output in each project; do not infer that a root convention part fans out into an adopter with its own config tree, and flag any required generated diff that has no declared authored source and render step
-
-
-**dependency-order**: tasks are ordered so each builds only on already-completed work
-
-
-**snapshot-scoped-verification**: execute material census and post-check commands against the exact intermediate snapshot declared by the plan; require the expected terminal set or lifecycle-authorized residual findings, and reject a premature zero requirement
-
-
-**check-authority-taxonomy**: classify each material check as an authority, state, or choreography check; preserve authority checks, require state checks to be no stricter than the durable property they prove, and flag choreography-only enforcement with no named authority or state obligation
 
 
 **terminal-state-reachable-at-its-position**: a task that declares a terminal state (a command reaching a clean verdict, a grep returning nothing) asserts that state is reachable AT THAT POINT IN THE ORDERING, not merely eventually. Check the position, not just the command. The 2026-07-30 state-ownership plan ordered its render-and-check task BEFORE the task appending the ADR's Applied batch, so its declared `awf check: clean` could not be reached: the four new claims' `Origin` and the updated claim's `Revised-by` are illegal until the batch exists, and the check failed on exactly that at execution time. The plan had ALREADY recorded "a post-check that cannot go green is worse than none, because it reads as verified" after its resync pass found three unrunnable greps, and shipped a fourth instance anyway one section away, which is why this is its own item rather than a clause in step-exactness. The sibling item demands a quoted command be rerun; this one demands it be rerun FROM THE STATE THE PRECEDING TASKS LEAVE, since a command that goes green at the end of the phase can be red where the plan actually places it

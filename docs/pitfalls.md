@@ -179,33 +179,6 @@ When a template first consumes a variable, inspect its unset rendering and adopt
 advisory, then update config-reference consumer projections and unused-variable isolation
 fixtures. A coherent fallback does not make the new consumer relationship invisible.
 
-## A `data:` list override replaces the catalog defaults wholesale
-
-_Domains: config_
-
-Setting a list key in an artifact's `.awf/<kind>/<name>.yaml` `data:` block (e.g. the
-plan-reviewer's `focusItems`) replaces the catalog's default list; it does not append. Adding
-one project-local focus item this way silently dropped the two default items
-(`step-exactness`, `dependency-order`) from this repo's rendered reviewer for a day, and
-nothing flagged it: the render is drift-clean because the config said exactly that. When adding
-a project-local list entry, copy the catalog defaults you still want into the override
-alongside it (they live in `internal/catalog/standard.go`), and eyeball the rendered diff for
-deleted default lines before committing.
-
-**The reverse direction is worse, and this entry did not state it until it bit (ADR-0116,
-2026-07-15).** Adding a *new catalog default* to a list is invisible to every project that
-overrides that list: the default ships to adopters and is silently dropped for the
-overriding project. ADR-0116 added a `docCurrencyItems` entry to the `adr-reviewer` catalog
-default and cited *this pitfall* as the reason to edit the catalog rather than an override,
-without noticing `.awf/agents/adr-reviewer.yaml` already overrode that very list. The rule
-would have reached every adopter except awf itself, the one project meant to dogfood it,
-with a green gate and a clean `awf check` throughout; the ADR reviewer caught it. So the
-rule is bidirectional: **a `data:` list has as many sites as there are overrides of it.**
-Before adding a catalog default, `grep -rn '<listKey>' .awf/` and mirror it into every
-override found (restate it deliberately, as `.awf/agents/code-reviewer.yaml` does in a
-comment); before adding a local entry, copy the defaults you still want. Verify by reading
-every affected enabled-target output, not the config.
-
 ## Use absolute generations for historical migration shapes
 
 _Domains: config_
@@ -213,21 +186,6 @@ _Domains: config_
 A tree layout detected by historical shape belongs to a fixed generation, not
 `Current() +/- k`. Verify the absolute mapping against the migration registry whenever the
 registry grows.
-
-## Binary-side render changes do not reflag rendered outputs
-
-_Domains: rendering_
-
-`awf check` hashes config bytes and template bytes; a change to the *Go render logic*
-(a new render key, a changed derivation like `skillRows`) alters what a fresh render
-produces while every hash still matches, so check stays clean over now-stale outputs. This
-shipped a stale AGENTS.md mid-review on 2026-07-07: the commit changed the derivation but the
-rendered guide was produced by the intermediate version, and nothing flagged it. The gap is
-deliberate (ADR-0039 keeps `.version` out of the config hash; a binary upgrade advises
-"run awf render" as a note instead of failing). The discipline: any commit that changes render
-output for unchanged config/templates must run `./x render` *after the final code state* and
-commit the refreshed outputs; verify by grepping the rendered file for the change, not by
-trusting a clean check.
 
 ## Keep literal placeholder syntax out of guide prose
 
@@ -384,17 +342,6 @@ number (`ADR-0092 ... ADR-0092: Title`); plan review caught it. Strip the prefix
 (`strings.TrimPrefix(a.Title, "ADR-"+a.Number+": ")`) when surfacing Title alongside Number.
 `awf context` was the first `adr.ParseDir` consumer outside `internal/{adr,invariants,audit}`,
 so the gotcha only surfaces as awf grows ADR-aware tooling.
-
-## Section parts carry their own heading
-
-_Domains: rendering_
-
-A convention part replaces its section's *body*, and for most doc/guide sections the
-`## Heading` line lives inside that body; a part written without it renders a headless
-section (ADR-0090's identity part landed headingless on first sync; only comparing the
-rendered file against this repo's own parts caught it). When authoring a part, check the
-section's default (or an existing adopter's part) for whether the heading is yours to write.
-No note fires: the stub advisory clears the moment the part exists, whatever its shape.
 
 ## Ad hoc compound mutations still need target read-back
 
@@ -657,18 +604,6 @@ projection structure, enumerate every consumer mechanically first (grep the fiel
 the concept) and re-derive each consumer's correctness under the new semantics; the 0154
 grounding check caught this only because the dispatch brief explicitly asked who else
 reads the map (ADR-0154; 2026-07-23).
-
-## A new singleton-template conditional needs a live key and both branches pinned
-
-_Domains: rendering_
-
-ADR-0157 replaced the dead `targetSessionHandoff` branches with a real project-level
-capability key and proof-marked tests for both outcomes. The residual hazard applies to a
-future conditional in AGENTS.md or another singleton document: these artifacts render once
-through neutral project data, not through each target's derived keys. Before authoring the
-branch, locate the code that sets its key on that singleton's render path and add tests that
-render both outcomes. A coherent fallback and green neutral golden output do not prove that
-the alternate branch is reachable.
 
 ## An ordering proof written against the log proves nothing
 

@@ -18,6 +18,8 @@ query a single version or a range.
 
 - ADR and plan scaffolding now publish complete files without clobbering an existing artifact, and concurrent `awf new adr` calls serialize numbered allocation for one decisions directory. Render and runner-prune backups preserve complete rescue copies and retry the next suffix when another process wins a backup name.
 
+- Parent plan executors now continue autonomously to the next unfinished phase after a settled checkpoint, while delegated children remain phase-scoped and terminal assurance still waits for every phase.
+
 ## [0.32.0] - 2026-08-07
 
 ### Breaking changes

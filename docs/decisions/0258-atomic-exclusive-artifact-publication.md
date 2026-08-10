@@ -4,7 +4,7 @@ slug: atomic-exclusive-artifact-publication
 status: Implementing
 date: 2026-08-10
 ---
-# ADR-atomic-exclusive-artifact-publication: Atomic Exclusive Artifact Publication
+# ADR-0258: Atomic Exclusive Artifact Publication
 
 
 ## Context

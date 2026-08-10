@@ -13,5 +13,5 @@ Complete file creation has one cross-platform publication home; consumers retain
 ### `invariant: exclusive-file-publication-single-home`
 
 `internal/filepublication` alone prepares complete same-directory temporary files and performs released-platform atomic no-replace creation; its consumers receive a matchable destination-exists refusal that preserves the winner bytes, while `internal/effort` retains expected-identity replacement, removal, and durable resident ordering. This provides namespace atomicity and complete-file publication, not a stronger power-loss durability promise.
-Origin: ADR-atomic-exclusive-artifact-publication
+Origin: ADR-0258
 Backing: test

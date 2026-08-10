@@ -33,13 +33,13 @@ Backing: test
 
 awf new adr prepares complete record bytes and atomically publishes them only when its computed target path is absent, returning an already-exists error rather than replacing existing bytes. Concurrent processes share the canonical decisions-directory transaction, so a losing pending or numbered creator never clobbers the winner.
 Origin: ADR-0042
-Revised-by: ADR-0202, ADR-atomic-exclusive-artifact-publication
+Revised-by: ADR-0202, ADR-0258
 Backing: test
 ### `invariant: adr-new-sequential-numbering`
 
 awf new adr allocates its identity from the branch: on the configured integrationBranch one canonical decisions-directory advisory-lock transaction across concurrent processes takes the highest existing ADR number plus one and never reuses a number already present there; it holds no reservation after publication. On any other outcome - a different branch, a detached HEAD, or a repository it cannot read - it writes a slug-identified pending record carrying no number at all.
 Origin: ADR-0042
-Revised-by: ADR-0202, ADR-atomic-exclusive-artifact-publication
+Revised-by: ADR-0202, ADR-0258
 Backing: test
 
 ### `invariant: adr-new-strips-markers`

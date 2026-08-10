@@ -1,0 +1,1 @@
+After a settled-phase checkpoint that does not require user attention, continue the plan loop without returning control to the user: select the next unfinished phase and execute it according to its declared mode, handing it to the companion skill when needed. A phase-complete report is not a plan-complete stopping point. Enter terminal assurance only after every phase is settled.

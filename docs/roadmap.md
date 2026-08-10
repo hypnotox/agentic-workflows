@@ -44,11 +44,6 @@
   a pre-flip deviation sweep in the execution skills' final-commit step, which
   is where the omission actually happens; that is a shipped-template change, so it needs its own
   ADR rather than a local override, on pain of awf diverging from the standard it publishes.
-- A conditional-key consumption check: extend the ADR-0086 consumption union so a template
-  conditional keyed on a render key that no render path for that artifact sets fails loudly.
-  The 0157 effort found every `targetSessionHandoff` branch in the singleton templates had
-  been dead prose since authoring; the fix plumbed the key, but nothing today prevents the
-  next dead conditional (recorded as a rendering pitfall, 2026-07-23).
 - A mechanical check for over-broad current-state claim prose. The `claim-prose-no-broader-than-reality`
   reviewer focus item exists and works: it caught all four over-broad claims in the 2026-07-30 severity
   session. It prevented none of them, which is the signal to climb from a judgment rung to a
@@ -263,64 +258,6 @@ its control-root and noninteractive guarantees.
 
 <!-- awf:edit deferred: from .awf/docs/parts/roadmap/deferred.md -->
 ## Deferred
-### Historical stale-branch seal-crossing incident
-
-The former cutoff-based integration incident is superseded by intrinsic ADR formats and stale-merge authorization. Schema generation 31 retires permanent format cutoffs; a real merge may instead import an exact older-format incoming-parent ADR when its final message has the shared authorization trailer pair. `awf audit` replays that authorization for committed schema-31-and-later merges. The historical account below is retained as the incident record that motivated the successor decision.
-
-Three separate enforcement rules refused a legal integration, and the 2026-08-01
-named-proof-markers integration had to relax all three inline to land. They needed one
-decision record covering the class, against the ADR-0202/0203/0204 lineage.
-
-The shape: an effort branch forked before schema generation 29 merges an integration
-branch already past it. ADR-0202's hand-rename path for a slugless record whose number
-was taken assumes a free number below the v3 cutoff, but the numbering was dense through
-0202 with the cutoff at 203 and `legacyAdrGaps` empty, so the record could only be
-renumbered INTO the v3 range. Living there forces the v3 encoding, and that retrofit is
-what the three rules refuse.
-
-What was relaxed. `validatePermanentLockTransition` gained an inherited-cutoff edge: the
-transition crosses generation 29 in one step, so the cutoff arrives from the other parent
-already computed against a corpus neither tree holds, and re-deriving it would lower it
-under records already sealed above it. `renumberAliases` keeps its before side
-slugless-only, exactly as ADR-0204 item 5 wrote it, and admits one further record on the
-after side: a NUMBERED record whose slug is new in the transition, which is what a record
-renumbered across the cutoff becomes when it takes the v3 encoding. Requiring a number is
-what keeps the opening shut, since a pending record can only ever be an addition. And the
-governed-format-change rule admits exactly a v2 record renumbered to a v3 one.
-
-A first attempt at that middle relaxation admitted any record whose slug was new on its own
-side, and terminal review found it accepted four transitions the rule had refused: a
-numbered record losing its number, a retained v3 slug changed at one number, a
-frozen-content amendment escaping through an unrelated pending twin, and a genuine deletion
-laundered into a rename. That is the strongest argument for writing the decision rather
-than leaving these three as inline relaxations.
-
-Two current-state sentences are FALSE as written until that decision lands, both authored
-by terminal records so neither can be corrected without one. `config/migrations-and-locks:
-adr-v2-cutoff-atomic-immutable` says the transition admits exactly two edges and that
-"Both edges require the new value to equal the corpus's computed next identity"; the
-inherited-cutoff edge is a third and derives nothing, taking the published value on trust.
-`adr-system/adr-lifecycle:renumber-digest-paired` is false in two independent clauses: it
-says "The digest step considers only a record carrying no slug", where it now also
-considers a numbered record whose slug is new in the transition, and it says the step
-"re-keys only where the two ends hold different numbers", which the code has never done
-since a slugged after end keys on its slug and the numbers are never compared. The second
-clause predates this work; the first sentence of `renumberAliases` carries the same
-inaccuracy. The neighbouring `adr-number-immutable` and `adr-slug-frontmatter-mandatory`
-were briefly falsified by a first, too-broad version of the pairing change and are true
-again under the shipped rule.
-
-What the decision should settle: whether these three belong together as one sanctioned
-"stale branch crosses the seal" transition or are three independent edges; whether the
-inherited cutoff can be verified against anything rather than taken on trust, which is
-the weakest of the three; and whether a fourth rule is waiting behind them for the next
-branch older than this one.
-
-The review that caught the first version is the argument for writing it soon. That version
-read correctly and silently accepted four transitions the rule had refused, including
-laundering a genuine deletion plus an unrelated pending addition into a rename, which is
-the fail-closed promise ADR-0204 item 4 makes explicitly.
-
 ## Mechanically detecting a nominal invariant proof
 
 `invariant-proof-exercises-its-claim` has now failed to prevent three sessions
