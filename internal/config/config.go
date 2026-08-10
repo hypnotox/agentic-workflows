@@ -479,6 +479,11 @@ func (c *Config) Sidecar(kind, name string) (Sidecar, error) {
 	if err := dec.Decode(&s); err != nil {
 		return Sidecar{}, fmt.Errorf("parse sidecar %s: %w", rel, err)
 	}
+	if kind == "domains" {
+		if err := ValidatePathGlobs(s.Paths); err != nil {
+			return Sidecar{}, fmt.Errorf("domain sidecar %s paths: %w", name, err)
+		}
+	}
 	return s, nil
 }
 
@@ -594,11 +599,11 @@ func (c *Config) Validate() error {
 			if src.closeSet && src.Close == "" {
 				return fmt.Errorf("currentState.sources[%d] has an explicitly empty close token", i)
 			}
-			if err := validateUniquePathGlobs(src.Globs); err != nil {
+			if err := ValidatePathGlobs(src.Globs); err != nil {
 				return fmt.Errorf("currentState.sources[%d].globs: %w", i, err)
 			}
 		}
-		if err := validateUniquePathGlobs(c.CurrentState.TestGlobs); err != nil {
+		if err := ValidatePathGlobs(c.CurrentState.TestGlobs); err != nil {
 			return fmt.Errorf("currentState.testGlobs: %w", err)
 		}
 	}
@@ -792,7 +797,8 @@ func matchingSSHKeyBlob(algorithm, encoded string) bool {
 	return string(blob[4:4+int(n)]) == algorithm
 }
 
-func validateUniquePathGlobs(globs []string) error {
+// ValidatePathGlobs rejects empty, duplicate, or malformed anchored path globs.
+func ValidatePathGlobs(globs []string) error {
 	seen := map[string]bool{}
 	for _, g := range globs {
 		if g == "" {

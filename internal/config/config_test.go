@@ -170,6 +170,7 @@ func TestSidecarReadsDataSections(t *testing.T) {
 	}
 }
 
+// invariant: config/validation:domain-path-globs-valid (TestSidecarReadsDomainPaths)
 func TestSidecarReadsDomainPaths(t *testing.T) {
 	dir := writeConfig(t, "prefix: example\ndomains:\n  - tooling\n")
 	if err := os.MkdirAll(filepath.Join(dir, "domains"), 0o755); err != nil {
@@ -188,6 +189,12 @@ func TestSidecarReadsDomainPaths(t *testing.T) {
 	}
 	if len(sc.Paths) != 1 || sc.Paths[0] != "cmd/**" {
 		t.Errorf("sidecar paths = %v, want [cmd/**]", sc.Paths)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "domains", "tooling.yaml"), []byte("paths: ['[']\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Sidecar("domains", "tooling"); err == nil || !strings.Contains(err.Error(), "domain sidecar tooling paths") {
+		t.Fatalf("malformed domain path was accepted: %v", err)
 	}
 }
 

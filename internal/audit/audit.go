@@ -9,7 +9,6 @@ package audit
 import (
 	"context"
 	"fmt"
-	"maps"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -35,16 +34,11 @@ type Finding struct {
 // need. The embedded Settings carries the repository's allowed scope vocabulary.
 type Inputs struct {
 	Settings
-	GeneratedPaths    map[string]bool
-	ADRDir            string   // e.g. "docs/decisions"
-	DocsDir           string   // e.g. "docs"; the authored-prose root (ADRDir and PlansDir sit under it)
-	IndexMd           string   // e.g. "docs/decisions/INDEX.md"
-	PlansDir          string   // e.g. "docs/plans"
-	ConfiguredDomains []string // config.Domains; staleness limited to these, undocumented-domain fires outside them
-	DomainsPartsDir   string   // e.g. ".awf/domains/parts"
-	// DomainPaths maps a configured domain to its sidecar-declared anchored
-	// path globs (ADR-0077); empty = the domain-code-staleness rule is inert.
-	DomainPaths map[string][]string
+	GeneratedPaths map[string]bool
+	ADRDir         string // e.g. "docs/decisions"
+	DocsDir        string // e.g. "docs"; the authored-prose root (ADRDir and PlansDir sit under it)
+	IndexMd        string // e.g. "docs/decisions/INDEX.md"
+	PlansDir       string // e.g. "docs/plans"
 }
 
 // ruleUncommittedChanges flags a non-clean working tree as a branch-level Error
@@ -106,12 +100,10 @@ type rangeEvaluator struct {
 	manifest                    *Finding
 	adrTouched, planTouched     bool
 	lines                       int
-	refreshed, docFlagged       map[string]bool
-	undocumented, codeChurned   map[string]bool
 }
 
 func newRangeEvaluator(in Inputs) *rangeEvaluator {
-	return &rangeEvaluator{in: in, refreshed: map[string]bool{}, docFlagged: map[string]bool{}, undocumented: map[string]bool{}, codeChurned: map[string]bool{}}
+	return &rangeEvaluator{in: in}
 }
 
 func (e *rangeEvaluator) observe(c awfgit.Commit) {
@@ -134,16 +126,6 @@ func (e *rangeEvaluator) observe(c awfgit.Commit) {
 		if !e.in.GeneratedPaths[ch.Path] {
 			e.lines += ch.Added + ch.Deleted
 		}
-		if d, ok := domainOfPart(ch.Path, e.in.DomainsPartsDir); ok {
-			e.refreshed[d] = true
-		}
-		if !e.in.GeneratedPaths[ch.Path] {
-			for d, globs := range e.in.DomainPaths {
-				if matchesAny(globs, ch.Path) {
-					e.codeChurned[d] = true
-				}
-			}
-		}
 		if isADRFile(ch.Path, e.in.ADRDir) && ch.Action != awfgit.Deleted {
 			rec, ok := adrRecordOf(ch.Path, ch.NewText)
 			if !ok {
@@ -153,23 +135,6 @@ func (e *rangeEvaluator) observe(c awfgit.Commit) {
 				old, oldOK := adrRecordOf(ch.Path, ch.OldText)
 				if (ch.Action == awfgit.Added || (oldOK && old.Status != rec.Status)) && !indexTouched {
 					e.status = append(e.status, finding(severity.Error, "adr-status-cochange", c, filepath.Base(ch.Path)+" status set/changed without INDEX.md in the same commit"))
-				}
-			}
-			if ok && rec.IsImplemented() {
-				old, oldOK := adrRecordOf(ch.Path, ch.OldText)
-				if ch.Action == awfgit.Added || (oldOK && !old.IsImplemented()) {
-					for _, d := range rec.Domains {
-						if slices.Contains(e.in.ConfiguredDomains, d) {
-							e.docFlagged[d] = true
-						}
-					}
-				}
-			}
-			if ok {
-				for _, d := range rec.Domains {
-					if !slices.Contains(e.in.ConfiguredDomains, d) {
-						e.undocumented[d] = true
-					}
 				}
 			}
 		}
@@ -199,21 +164,6 @@ func (e *rangeEvaluator) findings() []Finding {
 	}
 	if e.lines > diffThreshold && !e.planTouched {
 		out = append(out, Finding{Severity: severity.Warn, Rule: "plan-for-large-change", Detail: fmt.Sprintf("branch changes %d non-generated lines (> %d) with no plan under %s", e.lines, diffThreshold, e.in.PlansDir)})
-	}
-	for _, d := range slices.Sorted(maps.Keys(e.docFlagged)) {
-		if !e.refreshed[d] {
-			out = append(out, Finding{Severity: severity.Warn, Rule: "domain-doc-staleness", Detail: fmt.Sprintf("an ADR in domain %q reached Implemented but %s/%s/current-state.md was not refreshed in this range", d, e.in.DomainsPartsDir, d)})
-		}
-	}
-	if len(e.in.ConfiguredDomains) > 0 {
-		for _, d := range slices.Sorted(maps.Keys(e.undocumented)) {
-			out = append(out, Finding{Severity: severity.Warn, Rule: "undocumented-domain", Detail: fmt.Sprintf("an ADR is tagged with domain %q, which has no domain doc: add it to config.Domains and author its current-state narrative, or drop the tag", d)})
-		}
-	}
-	for _, d := range slices.Sorted(maps.Keys(e.codeChurned)) {
-		if !e.refreshed[d] {
-			out = append(out, Finding{Severity: severity.Warn, Rule: "domain-code-staleness", Detail: fmt.Sprintf("files in domain %q changed but %s/%s/current-state.md was not refreshed in this range: if anything meaningful changed, document it", d, e.in.DomainsPartsDir, d)})
-		}
 	}
 	return append(out, e.punctuation...)
 }
@@ -253,19 +203,6 @@ func checkConventionalCommit(c awfgit.Commit, s Settings, scopeSeverity severity
 		out = append(out, finding(severity.Error, "conventional-commits", c, fmt.Sprintf("subject %d chars > %d", n, subjectMaxLength)))
 	}
 	return out
-}
-
-func domainOfPart(path, partsDir string) (string, bool) {
-	const suffix = "/current-state.md"
-	rest, ok := strings.CutPrefix(path, partsDir+"/")
-	if !ok || !strings.HasSuffix(rest, suffix) {
-		return "", false
-	}
-	domain := strings.TrimSuffix(rest, suffix)
-	if domain == "" || strings.Contains(domain, "/") {
-		return "", false
-	}
-	return domain, true
 }
 
 // bannedProseRunes are the typographic punctuation substitutes the documentation

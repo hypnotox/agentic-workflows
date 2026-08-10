@@ -108,6 +108,9 @@ func domainPathsFromTree(tree *snapshot.Tree, domain string) ([]string, error) {
 	if err := dec.Decode(&sc); err != nil {
 		return nil, fmt.Errorf("parse domain sidecar %s: %w", domain, err)
 	}
+	if err := config.ValidatePathGlobs(sc.Paths); err != nil {
+		return nil, fmt.Errorf("domain sidecar %s paths: %w", domain, err)
+	}
 	return slices.Clone(sc.Paths), nil
 }
 

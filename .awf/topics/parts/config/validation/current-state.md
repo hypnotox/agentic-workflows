@@ -14,6 +14,12 @@ Config validation rejects a domain name that contains a path separator (a forwar
 Origin: ADR-0148
 Backing: test
 
+### `invariant: domain-path-globs-valid`
+
+Working-tree and staged domain sidecars reject empty, duplicate, or malformed anchored path selectors when they load. Historical audit projection omits domain sidecars and does not validate them.
+Origin: ADR-retire-domain-staleness-audit-heuristics
+Backing: test
+
 ### `invariant: glob-migration-anchored`
 
 AnchorNoSlashGlobs rewrites every no-slash pattern in invariants.sources globs and audit.dependencyManifests to a leading double-star form, leaves already-slashed patterns untouched, and is idempotent.

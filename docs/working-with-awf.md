@@ -93,6 +93,8 @@ Pi association stays at repository root. `using_effort` directly attaches with a
 
 A convention part replaces only its section body. A declared Markdown structural heading is awf-owned, excluded from part replacement and in-place read-back, and disappears only when the complete section is dropped.
 
+**Domain paths.** A domain sidecar's `paths:` selectors bound current-state topic ownership within that domain; context and coverage use the same anchored glob dialect. Working-tree and staged loading reject empty, duplicate, or malformed selectors. Historical audit projection intentionally omits domain sidecars, and audit does not infer documentation freshness from changed domain paths.
+
 **Reading generated source guidance.** The generated-by banner says that awf owns the rendered
 file; it is not an editing instruction. An `awf:edit` pointer identifies the convention part that
 owns one rendered section. An informational `awf:source` comment, when present immediately after

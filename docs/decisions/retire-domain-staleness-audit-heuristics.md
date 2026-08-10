@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: retire-domain-staleness-audit-heuristics
-status: Proposed
+status: Implementing
 date: 2026-08-09
 ---
 # ADR-retire-domain-staleness-audit-heuristics: Retire Domain Staleness Audit Heuristics
@@ -79,3 +79,5 @@ behavioral compatibility break in pre-1.0 audit output.
 ## Status history
 
 - 2026-08-09: Proposed
+- 2026-08-10: Implementing; content-sha256: 40a3a176574bdbd9853805c2fa445abb0719b5fd5e7c9083e615178389d6992f
+- 2026-08-10: Applied; operations: update `tooling/audit-and-snapshots:audit-advisories-always-run`, remove `tooling/audit-and-snapshots:audit-domain-code-staleness`, remove `tooling/audit-and-snapshots:audit-domain-doc-staleness`, remove `tooling/audit-and-snapshots:audit-undocumented-domain`, add `config/validation:domain-path-globs-valid`

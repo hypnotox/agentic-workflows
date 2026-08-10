@@ -279,10 +279,9 @@ paths:
   - src/api/*.ts
 ```
 
-When files matching a domain's `paths` change on a branch without a co-change to
-`.awf/domains/parts/<name>/current-state.md`, `awf audit` raises an advisory
-`domain-code-staleness` warning. If anything meaningful changed, document it. The rule always
-evaluates; a domain without `paths` is structurally inert.
+Domain paths bound the ownership of current-state topics within that domain. Context and coverage
+use the same selectors. Working-tree and staged loading reject empty, duplicate, or malformed
+anchored selectors; historical audit projection intentionally omits domain sidecars.
 <!-- awf:end -->
 
 <!-- awf:section model-selection -->

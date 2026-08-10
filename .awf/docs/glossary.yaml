@@ -81,7 +81,7 @@ data:
       meaning: "The generated decisions index: in-flight ADRs by number, title, and status, and terminal ones under a compact history. It infers no currentness and renders no supersession chains, because current authority is read from topic claims."
       domains: [adr-system]
     - term: topic coverage
-      meaning: "The per-domain check that owned paths are described by current-state topics. One owner's topic never satisfies another owner's gap, and a global topic never satisfies scoped coverage. Coverage ranks error and fan-out warn; neither is configurable."
+      meaning: "The per-domain check that owned paths are described by current-state topics. One owner's topic never satisfies another owner's gap. Coverage ranks error and fan-out warn; neither is configurable."
       domains: [invariants]
     - term: checker-cmd idiom
       meaning: "The shape shared by the repo-only gate and release checkers: a coverage-ignored `main` that only exits a unit-tested `run(args, stdout, stderr) int` seam, so the logic meets the coverage floor while the wrapper stays one line."
@@ -105,7 +105,7 @@ data:
       meaning: "The var three-state model: a key set is configured, present-but-empty is the seeded to-do the unset-var note nudges, and absent is the deliberate decline that silences it for good. Rendering degrades identically for every unset state."
       domains: [config]
     - term: domain paths
-      meaning: "A domain's file territory: anchored globs under `paths:` in its domain sidecar. Input to the `domain-code-staleness` audit rule, which warns on territory churn without a current-state co-change; a domain without `paths` opts out."
+      meaning: "A domain's file territory: anchored globs under `paths:` in its domain sidecar. They bound topic ownership, context, and coverage; working-tree and staged loading reject malformed selectors."
       domains: [config]
     - term: invariant backing
       meaning: "The ledger-not-proof model: a `Backing: test` claim is satisfied by a matching proof-marker comment in a test file, a textual match blind to whether that test asserts the invariant. `Backing: unbacked` forbids a marker and requires a `Verify:` line."

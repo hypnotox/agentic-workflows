@@ -44,15 +44,6 @@ func ruleDependencyADR(commits []Commit, in Inputs) []Finding {
 func rulePlanForLargeChange(commits []Commit, in Inputs) []Finding {
 	return ruleFindings(commits, in, "plan-for-large-change")
 }
-func ruleDomainDocStaleness(commits []Commit, in Inputs) []Finding {
-	return ruleFindings(commits, in, "domain-doc-staleness")
-}
-func ruleUndocumentedDomain(commits []Commit, in Inputs) []Finding {
-	return ruleFindings(commits, in, "undocumented-domain")
-}
-func ruleDomainCodeStaleness(commits []Commit, in Inputs) []Finding {
-	return ruleFindings(commits, in, "domain-code-staleness")
-}
 func rulePlainPunctuation(commits []Commit, in Inputs) []Finding {
 	return ruleFindings(commits, in, "plain-punctuation")
 }
@@ -348,142 +339,6 @@ func adrChange(action Action, status string, domains string) FileChange {
 	return FileChange{Path: "docs/decisions/0099-x.md", Action: action, NewText: txt}
 }
 
-// invariant: tooling/audit-and-snapshots:audit-advisories-always-run (TestRuleDomainDocStaleness)
-func TestRuleDomainDocStaleness(t *testing.T) {
-	in := Inputs{ADRDir: "docs/decisions", ConfiguredDomains: []string{"tooling", "rendering"}, DomainsPartsDir: ".awf/domains/parts", Settings: Settings{}}
-	partChange := func(p string) FileChange { return FileChange{Path: p, Action: Modified} }
-
-	// Implemented in a configured domain, narrative NOT refreshed -> 1 warning.
-	got := ruleDomainDocStaleness([]Commit{{Changes: []FileChange{adrChange(Added, "Implemented", "tooling")}}}, in)
-	// invariant: tooling/audit-and-snapshots:audit-domain-doc-staleness (TestRuleDomainDocStaleness)
-	if len(got) != 1 || got[0].Rule != "domain-doc-staleness" || got[0].Severity != severity.Warn || got[0].Commit != "" {
-		t.Fatalf("want 1 branch-level warning, got %v", got)
-	}
-
-	// Narrative refreshed in range -> 0. Also exercises domainOfPart valid + invalid-suffix + nested paths.
-	clean := ruleDomainDocStaleness([]Commit{{Changes: []FileChange{
-		adrChange(Modified, "Implemented", "tooling"),
-		partChange(".awf/domains/parts/tooling/current-state.md"),
-		partChange(".awf/domains/parts/tooling/notes.md"),     // under partsDir, wrong file
-		partChange(".awf/domains/parts/a/b/current-state.md"), // nested -> rejected
-	}}}, in)
-	if len(clean) != 0 {
-		t.Fatalf("refreshed narrative should be clean, got %v", clean)
-	}
-
-	// status only Accepted; unconfigured domain; no domains; already Implemented; deleted; non-ADR -> all 0.
-	for _, ch := range []FileChange{
-		adrChange(Added, "Accepted", "tooling"),
-		adrChange(Added, "Implemented", "ghost"),
-		{Path: "docs/decisions/0099-x.md", Action: Added, NewText: "---\nstatus: Implemented\n---\n"},
-		{Path: "docs/decisions/0099-x.md", Action: Modified, OldText: "---\nstatus: Implemented\ndomains: [tooling]\n---\n", NewText: "---\nstatus: Implemented\ndomains: [tooling]\n---\nedited\n"},
-		{Path: "docs/decisions/0099-x.md", Action: Deleted},
-		{Path: "README.md", Action: Modified},
-	} {
-		if f := ruleDomainDocStaleness([]Commit{{Changes: []FileChange{ch}}}, in); len(f) != 0 {
-			t.Errorf("change %+v should be clean, got %v", ch, f)
-		}
-	}
-
-	// Multi-domain [tooling, rendering], only tooling refreshed -> 1 warning (rendering).
-	multi := ruleDomainDocStaleness([]Commit{{Changes: []FileChange{
-		adrChange(Added, "Implemented", "tooling, rendering"),
-		partChange(".awf/domains/parts/tooling/current-state.md"),
-	}}}, in)
-	if len(multi) != 1 || multi[0].Detail == "" {
-		t.Fatalf("want 1 warning for rendering, got %v", multi)
-	}
-
-	// Empty ConfiguredDomains -> inert.
-	if f := ruleDomainDocStaleness([]Commit{{Changes: []FileChange{adrChange(Added, "Implemented", "tooling")}}},
-		Inputs{ADRDir: "docs/decisions", DomainsPartsDir: ".awf/domains/parts", Settings: Settings{}}); len(f) != 0 {
-		t.Errorf("no configured domains should be inert, got %v", f)
-	}
-}
-
-// invariant: tooling/audit-and-snapshots:audit-advisories-always-run (TestRuleUndocumentedDomain)
-func TestRuleUndocumentedDomain(t *testing.T) {
-	in := Inputs{ADRDir: "docs/decisions", ConfiguredDomains: []string{"tooling"}, Settings: Settings{}}
-
-	// No configured domains -> inert.
-	if f := ruleUndocumentedDomain([]Commit{{Changes: []FileChange{adrChange(Added, "Proposed", "ghost")}}},
-		Inputs{ADRDir: "docs/decisions", Settings: Settings{}}); f != nil {
-		t.Errorf("no configured domains returned %v", f)
-	}
-	// ADR tags an unconfigured domain -> 1 warning.
-	got := ruleUndocumentedDomain([]Commit{{Changes: []FileChange{adrChange(Added, "Proposed", "ghost")}}}, in)
-	// invariant: tooling/audit-and-snapshots:audit-undocumented-domain (TestRuleUndocumentedDomain)
-	if len(got) != 1 || got[0].Rule != "undocumented-domain" || got[0].Severity != severity.Warn {
-		t.Fatalf("want 1 warning, got %v", got)
-	}
-	// Configured domain -> clean.
-	if f := ruleUndocumentedDomain([]Commit{{Changes: []FileChange{adrChange(Modified, "Accepted", "tooling")}}}, in); len(f) != 0 {
-		t.Errorf("configured domain should be clean, got %v", f)
-	}
-	// Deleted ADR -> clean.
-	if f := ruleUndocumentedDomain([]Commit{{Changes: []FileChange{{Path: "docs/decisions/0099-x.md", Action: Deleted}}}}, in); len(f) != 0 {
-		t.Errorf("deleted ADR should be clean, got %v", f)
-	}
-	// ADR file with no parseable frontmatter -> domainsOf hits its not-found branch -> 0.
-	if f := ruleUndocumentedDomain([]Commit{{Changes: []FileChange{{Path: "docs/decisions/0099-x.md", Action: Added, NewText: "# no frontmatter"}}}}, in); len(f) != 0 {
-		t.Errorf("frontmatter-less ADR should be clean, got %v", f)
-	}
-	// Multi-domain [tooling, ghost] -> 1 warning (ghost).
-	multi := ruleUndocumentedDomain([]Commit{{Changes: []FileChange{adrChange(Added, "Proposed", "tooling, ghost")}}}, in)
-	if len(multi) != 1 {
-		t.Fatalf("want 1 warning for ghost, got %v", multi)
-	}
-}
-
-// invariant: tooling/audit-and-snapshots:audit-domain-code-staleness (TestRuleDomainCodeStaleness)
-// invariant: tooling/audit-and-snapshots:audit-advisories-always-run (TestRuleDomainCodeStaleness)
-func TestRuleDomainCodeStaleness(t *testing.T) {
-	in := Inputs{
-		Settings:        Settings{},
-		DomainsPartsDir: ".awf/domains/parts",
-		GeneratedPaths:  map[string]bool{"docs/domains/tooling.md": true},
-		DomainPaths:     map[string][]string{"tooling": {"cmd/**", "internal/audit/**"}},
-	}
-	churn := FileChange{Path: "cmd/awf/main.go", Action: Modified}
-	part := FileChange{Path: ".awf/domains/parts/tooling/current-state.md", Action: Modified}
-
-	// Territory churned, narrative not refreshed -> one branch-level warn.
-	got := ruleDomainCodeStaleness([]Commit{{Changes: []FileChange{churn}}}, in)
-	if len(got) != 1 || got[0].Rule != "domain-code-staleness" || got[0].Severity != severity.Warn || got[0].Commit != "" {
-		t.Fatalf("want 1 branch-level warning, got %v", got)
-	}
-
-	// Narrative co-changed (any in-range commit) -> silent.
-	if f := ruleDomainCodeStaleness([]Commit{{Changes: []FileChange{churn}}, {Changes: []FileChange{part}}}, in); len(f) != 0 {
-		t.Errorf("refreshed narrative should be clean, got %v", f)
-	}
-
-	// Only a generated file matched -> silent.
-	if f := ruleDomainCodeStaleness([]Commit{{Changes: []FileChange{{Path: "docs/domains/tooling.md", Action: Modified}}}}, in); len(f) != 0 {
-		t.Errorf("generated-path churn should be clean, got %v", f)
-	}
-
-	// Change outside every territory -> silent.
-	if f := ruleDomainCodeStaleness([]Commit{{Changes: []FileChange{{Path: "internal/render/render.go", Action: Modified}}}}, in); len(f) != 0 {
-		t.Errorf("non-matching churn should be clean, got %v", f)
-	}
-
-	// No paths configured -> inert.
-	none := in
-	none.DomainPaths = nil
-	if f := ruleDomainCodeStaleness([]Commit{{Changes: []FileChange{churn}}}, none); f != nil {
-		t.Errorf("pathless config returned %v", f)
-	}
-
-	// Two domains churned, neither refreshed -> two findings sorted by domain.
-	two := in
-	two.DomainPaths = map[string][]string{"tooling": {"cmd/**"}, "adr-system": {"internal/adr/**"}}
-	got = ruleDomainCodeStaleness([]Commit{{Changes: []FileChange{churn, {Path: "internal/adr/adr.go", Action: Modified}}}}, two)
-	if len(got) != 2 || !strings.Contains(got[0].Detail, `"adr-system"`) || !strings.Contains(got[1].Detail, `"tooling"`) {
-		t.Fatalf("want 2 warnings sorted by domain, got %v", got)
-	}
-}
-
 // invariant: tooling/audit-and-snapshots:audit-advisories-always-run (TestRulePlainPunctuation)
 func TestRulePlainPunctuation(t *testing.T) {
 	in := Inputs{DocsDir: "docs", Settings: Settings{},
@@ -767,7 +622,7 @@ func TestAuditSnapshotReadersAndErrors(t *testing.T) {
 }
 
 func TestRangeEvaluatorStreamsEveryOrdinaryRuleState(t *testing.T) {
-	in := Inputs{Settings: Settings{}, GeneratedPaths: map[string]bool{"docs/generated.md": true}, ADRDir: "docs/decisions", DocsDir: "docs", IndexMd: "docs/decisions/INDEX.md", PlansDir: "docs/plans", ConfiguredDomains: []string{"tooling"}, DomainsPartsDir: ".awf/domains/parts", DomainPaths: map[string][]string{"tooling": {"internal/**"}}}
+	in := Inputs{Settings: Settings{}, GeneratedPaths: map[string]bool{"docs/generated.md": true}, ADRDir: "docs/decisions", DocsDir: "docs", IndexMd: "docs/decisions/INDEX.md", PlansDir: "docs/plans"}
 	evaluator := newRangeEvaluator(in)
 	evaluator.observe(Commit{Hash: "one", Subject: "bad", Changes: []FileChange{
 		{Path: "go.mod", Added: 401},
@@ -779,7 +634,7 @@ func TestRangeEvaluatorStreamsEveryOrdinaryRuleState(t *testing.T) {
 		{Path: "docs/generated.md", Added: 99, OldText: "plain", NewText: string(rune(0x2014))},
 	}})
 	findings := evaluator.findings()
-	for _, rule := range []string{"adr-frontmatter", "adr-status-cochange", "plan-for-large-change", "domain-doc-staleness", "undocumented-domain", "domain-code-staleness", "plain-punctuation"} {
+	for _, rule := range []string{"adr-frontmatter", "adr-status-cochange", "plan-for-large-change", "plain-punctuation"} {
 		if countRule(findings, rule, severity.Warn)+countRule(findings, rule, severity.Error) == 0 {
 			t.Errorf("missing %s finding: %#v", rule, findings)
 		}
@@ -793,7 +648,7 @@ func TestRangeEvaluatorStreamsEveryOrdinaryRuleState(t *testing.T) {
 
 func TestRangeEvaluatorPreservesFrozenGroupedFindings(t *testing.T) {
 	dash := string(rune(0x2014))
-	in := Inputs{Settings: Settings{}, GeneratedPaths: map[string]bool{"docs/generated.md": true, "internal/generated.go": true}, ADRDir: "docs/decisions", DocsDir: "docs", IndexMd: "docs/decisions/INDEX.md", PlansDir: "docs/plans", ConfiguredDomains: []string{"tooling"}, DomainsPartsDir: ".awf/domains/parts", DomainPaths: map[string][]string{"tooling": {"internal/**"}}}
+	in := Inputs{Settings: Settings{}, GeneratedPaths: map[string]bool{"docs/generated.md": true, "internal/generated.go": true}, ADRDir: "docs/decisions", DocsDir: "docs", IndexMd: "docs/decisions/INDEX.md", PlansDir: "docs/plans"}
 	t.Run("every ordinary group in final order", func(t *testing.T) {
 		status := strings.Replace(auditV1(t, "Implemented"), "date:", "domains: [tooling, ghost]\ndate:", 1)
 		evaluator := newRangeEvaluator(in)
@@ -813,9 +668,6 @@ func TestRangeEvaluatorPreservesFrozenGroupedFindings(t *testing.T) {
 			{Severity: severity.Error, Rule: "adr-status-cochange", Commit: "one", Subject: "not conventional", Detail: "0137-status.md status set/changed without INDEX.md in the same commit"},
 			{Severity: severity.Warn, Rule: "adr-frontmatter", Commit: "one", Subject: "not conventional", Detail: "bad.md frontmatter does not parse; ADR status rules skipped for it"},
 			{Severity: severity.Warn, Rule: "plan-for-large-change", Detail: "branch changes 402 non-generated lines (> 400) with no plan under docs/plans"},
-			{Severity: severity.Warn, Rule: "domain-doc-staleness", Detail: "an ADR in domain \"tooling\" reached Implemented but .awf/domains/parts/tooling/current-state.md was not refreshed in this range"},
-			{Severity: severity.Warn, Rule: "undocumented-domain", Detail: "an ADR is tagged with domain \"ghost\", which has no domain doc: add it to config.Domains and author its current-state narrative, or drop the tag"},
-			{Severity: severity.Warn, Rule: "domain-code-staleness", Detail: "files in domain \"tooling\" changed but .awf/domains/parts/tooling/current-state.md was not refreshed in this range: if anything meaningful changed, document it"},
 			{Severity: severity.Warn, Rule: "plain-punctuation", Commit: "one", Subject: "not conventional", Detail: "docs/rise.md adds typographic punctuation: em-dash (U+2014) (0 to 1); authored prose uses plain punctuation (a colon, semicolon, comma, or parentheses; an ASCII hyphen for a range; three periods for elision)"},
 		}
 		if got := evaluator.findings(); !slices.Equal(got, want) {

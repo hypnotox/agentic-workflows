@@ -279,8 +279,8 @@ var keys = []Entry{
 	},
 	{
 		Path: "sidecar.paths", Type: "string list (anchored path globs)", Default: "none",
-		Description:  "A domain's file territory, matched against slash-separated repo-relative paths. Powers the domain-code-staleness audit advisory: territory changes expect a co-change to the domain's `current-state` part.",
-		Availability: "Domain sidecars only; rejected at open on any other kind.",
+		Description:  "A domain's file territory, matched against slash-separated repo-relative paths. Current-state topic ownership, context, and coverage use these selectors; empty, duplicate, or malformed selectors are rejected.",
+		Availability: "Domain sidecars only; validated during working-tree and staged loading, and rejected at open on any other kind.",
 	},
 }
 

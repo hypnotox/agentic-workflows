@@ -19,7 +19,6 @@ import (
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
-	"github.com/hypnotox/agentic-workflows/internal/pathglob"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
@@ -554,31 +553,13 @@ func (p *Project) Audit(ctx context.Context, base, head string) ([]audit.Finding
 			generated[path] = true
 		}
 	}
-	domainPaths := map[string][]string{}
-	for _, d := range p.Cfg.Domains {
-		sc, err := p.Cfg.Sidecar("domains", d)
-		if err != nil {
-			return nil, 0, err
-		}
-		for _, g := range sc.Paths {
-			if err := pathglob.Validate(g); err != nil {
-				return nil, 0, fmt.Errorf("domain %q paths: %w", d, err)
-			}
-		}
-		if len(sc.Paths) > 0 {
-			domainPaths[d] = sc.Paths
-		}
-	}
 	return audit.Run(ctx, p.Root, base, head, audit.Inputs{
-		Settings:          s,
-		GeneratedPaths:    generated,
-		ADRDir:            lay.ADRDir,
-		DocsDir:           lay.DocsDir,
-		IndexMd:           lay.IndexMd,
-		PlansDir:          lay.PlansDir,
-		ConfiguredDomains: p.Cfg.Domains,
-		DomainsPartsDir:   config.DirName + "/domains/parts",
-		DomainPaths:       domainPaths,
+		Settings:       s,
+		GeneratedPaths: generated,
+		ADRDir:         lay.ADRDir,
+		DocsDir:        lay.DocsDir,
+		IndexMd:        lay.IndexMd,
+		PlansDir:       lay.PlansDir,
 	})
 }
 

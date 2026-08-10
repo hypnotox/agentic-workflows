@@ -139,6 +139,16 @@ func TestLoadCorpusFromTreeErrors(t *testing.T) {
 			wantErr: "parse domain sidecar alpha",
 		},
 		{
+			name: "malformed domain path",
+			cfg:  "prefix: test\nintegrationBranch: main\ndomains: [alpha]\n",
+			files: map[string]string{
+				".awf/domains/alpha.yaml":                      "paths: ['[']\n",
+				".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
+				".awf/topics/parts/alpha/one/current-state.md": rulePart("r", "0001", ""),
+			},
+			wantErr: "domain sidecar alpha paths",
+		},
+		{
 			name: "assemble failure",
 			cfg:  "prefix: test\nintegrationBranch: main\ndomains: [alpha]\n",
 			files: map[string]string{

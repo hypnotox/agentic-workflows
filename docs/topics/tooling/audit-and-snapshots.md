@@ -12,8 +12,9 @@ These packages read git history, build immutable tree snapshots, and audit workf
 
 ### `invariant: audit-advisories-always-run`
 
-The domain-document staleness, domain-code staleness, undocumented-domain, plain-punctuation, and uncommitted-changes rules always evaluate; the first four emit Warning findings and uncommitted-changes emits an Error.
+The plain-punctuation and uncommitted-changes rules always evaluate; plain-punctuation emits Warning findings and uncommitted-changes emits an Error.
 Origin: ADR-0253
+Revised-by: ADR-retire-domain-staleness-audit-heuristics
 Backing: test
 
 ### `invariant: audit-thresholds-fixed`
@@ -67,19 +68,6 @@ awf audit raises a Warning finding, never an Error, when a dependency-manifest f
 Origin: ADR-0017
 Backing: test
 
-### `invariant: audit-domain-code-staleness`
-
-The domain-code-staleness rule emits a Warning for a domain exactly when it is configured with non-empty sidecar paths, an in-range commit changed a non-generated file matching those patterns, and no in-range commit changed that domain's current-state part; it is silent when the part is co-changed, when only generated paths matched, or when the domain declares no paths.
-Origin: ADR-0077
-Revised-by: ADR-0253
-Backing: test
-
-### `invariant: audit-domain-doc-staleness`
-
-The domain-doc-staleness audit rule emits one branch-level warning for a configured domain when an in-range commit brings an ADR tagging that domain to Implemented status without any in-range commit changing that domain's `.awf/domains/parts/<domain>/current-state.md`; it stays silent when the narrative is co-changed, when the status only reaches Accepted or Proposed, when the domain is unconfigured, and when the ADR carries no domains.
-Origin: ADR-0019
-Backing: test
-
 ### `invariant: audit-empty-range-clean`
 
 awf audit over a branch with no commits beyond its base yields zero findings.
@@ -105,12 +93,6 @@ Backing: test
 When the working tree is dirty, audit always emits a single Error finding whose detail tallies the tracked-change and untracked-file counts.
 Origin: ADR-0025
 Revised-by: ADR-0253
-Backing: test
-
-### `invariant: audit-undocumented-domain`
-
-The undocumented-domain audit rule emits one branch-level warning for a domain when an in-range commit adds or changes an ADR whose domains list names a domain absent from the configured domain set; it stays silent for configured domains and for ADRs carrying no domains.
-Origin: ADR-0019
 Backing: test
 
 ### `invariant: commit-gate-shared-rule`
