@@ -52,13 +52,13 @@ func ApplicabilityForTopic(t Topic, domainPaths []string, markers MarkerIndex, c
 	return out
 }
 
-// CoverageKind distinguishes a missing-scoped-topic finding from a fan-out one.
+// CoverageKind distinguishes a missing topic-owner finding from a fan-out one.
 type CoverageKind string
 
 const (
-	// Uncovered marks a domain-owned path with no claim-bearing scoped topic.
+	// Uncovered marks a domain-owned path with no claim-bearing topic owner.
 	Uncovered CoverageKind = "uncovered"
-	// Fanout marks a path matched by more path-scoped topics than the budget.
+	// Fanout marks a path owned by more topics than the budget.
 	Fanout CoverageKind = "fanout"
 )
 
@@ -134,9 +134,10 @@ func EvaluateCoverage(c Corpus, paths []string, policy CoveragePolicy) []Coverag
 
 // TopicsForPath returns the topics applicable to a repo-relative path: every
 // global topic plus every path-scoped topic whose effective scope (its owning
-// domain's paths intersected with the topic's own selectors) covers the path. A
-// topic never applies outside its domain ownership by construction. Results are
-// sorted by topic ID, so a caller's per-file selection is deterministic.
+// domain's paths intersected with the topic's own selectors) covers the path.
+// Scoped topics are domain-bounded; global topics remain applicable outside
+// their bounded ownership. Results are sorted by topic ID, so a caller's
+// per-file selection is deterministic.
 func TopicsForPath(c Corpus, path string) []Topic {
 	var out []Topic
 	for _, t := range c.all {

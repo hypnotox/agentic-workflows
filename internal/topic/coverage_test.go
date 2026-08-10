@@ -133,30 +133,37 @@ func TestApplicabilityForTopic(t *testing.T) {
 // invariant: invariants/topics-and-markers:global-topic-path-ownership (TestGlobalTopicPathOwnership)
 // invariant: invariants/topics-and-markers:fan-out-budget-fixed (TestGlobalTopicPathOwnership)
 func TestGlobalTopicPathOwnership(t *testing.T) {
-	metadata := []byte("title: Global owner\nsummary: Applies everywhere and owns a bounded path.\napplies: global\npaths: [\"internal/owned/**\"]\n")
-	if _, _, err := ParseMetadata(".awf/topics/metadata", ".awf/topics/metadata/core/global-owner.yaml", metadata); err != nil {
+	metadata := []byte("title: Global owner\nsummary: Applies everywhere and owns a bounded path.\napplies: global\npaths: [\"**/owned/**\"]\n")
+	id, parsed, err := ParseMetadata(".awf/topics/metadata", ".awf/topics/metadata/core/global-owner.yaml", metadata)
+	if err != nil {
 		t.Fatalf("combined metadata: %v", err)
 	}
 	corpus := Corpus{DomainPaths: map[string][]string{"core": {"internal/**"}, "other": {"other/**"}}}
-	owner := Topic{ID: TopicID{"core", "global-owner"}, Metadata: Metadata{Applies: "global", Paths: []string{"**"}}, Claims: []Claim{{ID: "core/global-owner:claim"}}}
+	owner := Topic{ID: id, Metadata: parsed, Claims: []Claim{{ID: "core/global-owner:claim"}}}
 	corpus.all = []Topic{owner}
 	corpus.byClaim = map[string]*Claim{"core/global-owner:claim": &corpus.all[0].Claims[0]}
 	corpus.byTopic = map[string]*Topic{"core/global-owner": &corpus.all[0]}
-	applicability := ApplicabilityForTopic(owner, corpus.DomainPaths["core"], MarkerIndex{sites: map[string][]MarkerSite{}}, []string{"internal/owned/a.go", "other/a.go", "outside/a.go"})
-	if !reflect.DeepEqual(applicability.ApplicablePaths, []string{"internal/owned/a.go", "other/a.go", "outside/a.go"}) || !reflect.DeepEqual(applicability.OwnedPaths, []string{"internal/owned/a.go"}) {
+	paths := []string{"internal/elsewhere.go", "internal/owned/a.go", "other/owned/a.go", "outside/elsewhere.go"}
+	applicability := ApplicabilityForTopic(owner, corpus.DomainPaths["core"], MarkerIndex{sites: map[string][]MarkerSite{}}, paths)
+	if !reflect.DeepEqual(applicability.ApplicablePaths, paths) || !reflect.DeepEqual(applicability.OwnedPaths, []string{"internal/owned/a.go"}) {
 		t.Fatalf("applicability = %#v", applicability)
 	}
-	if got := TopicsForPath(corpus, "outside/a.go"); len(got) != 1 || got[0].ID != owner.ID {
+	if got := TopicsForPath(corpus, "outside/elsewhere.go"); len(got) != 1 || got[0].ID != owner.ID {
 		t.Fatalf("global applicability outside ownership = %#v", got)
 	}
-	if _, _, err := resolveMarker("outside/a.go", 1, "state: core/global-owner:claim", corpus, &config.CurrentStateConfig{}); err != nil {
+	if _, _, err := resolveMarker("outside/elsewhere.go", 1, "state: core/global-owner:claim", corpus, &config.CurrentStateConfig{}); err != nil {
 		t.Fatalf("global marker outside ownership: %v", err)
 	}
-	if got := EvaluateCoverage(corpus, []string{"internal/owned/a.go", "other/a.go", "outside/a.go"}, CoveragePolicy{Coverage: true}); len(got) != 1 || got[0].Path != "other/a.go" || got[0].Domain != "other" {
-		t.Fatalf("coverage = %#v", got)
+	gotCoverage := EvaluateCoverage(corpus, paths, CoveragePolicy{Coverage: true})
+	wantCoverage := []CoverageFinding{
+		{Path: "internal/elsewhere.go", Domain: "core", Kind: Uncovered, Severity: severity.Error},
+		{Path: "other/owned/a.go", Domain: "other", Kind: Uncovered, Severity: severity.Error},
 	}
-	if got := EvaluateCoverage(corpus, []string{"other/a.go", "outside/a.go"}, CoveragePolicy{Fanout: true}); len(got) != 0 {
-		t.Fatalf("outside-domain ownership contributed to fan-out: %#v", got)
+	if !reflect.DeepEqual(gotCoverage, wantCoverage) {
+		t.Fatalf("coverage = %#v, want %#v", gotCoverage, wantCoverage)
+	}
+	if got := EvaluateCoverage(corpus, []string{"internal/elsewhere.go", "other/owned/a.go", "outside/elsewhere.go"}, CoveragePolicy{Fanout: true}); len(got) != 0 {
+		t.Fatalf("single-selector ownership contributed to fan-out: %#v", got)
 	}
 	claimless := owner
 	claimless.ID = TopicID{"core", "claimless-owner"}
@@ -167,7 +174,7 @@ func TestGlobalTopicPathOwnership(t *testing.T) {
 		t.ID.Slug = fmt.Sprintf("claimless-%d", i)
 		corpus.all = append(corpus.all, t)
 	}
-	got := EvaluateCoverage(corpus, []string{"internal/owned/a.go", "other/a.go"}, CoveragePolicy{Fanout: true})
+	got := EvaluateCoverage(corpus, []string{"internal/owned/a.go", "internal/elsewhere.go", "other/owned/a.go"}, CoveragePolicy{Fanout: true})
 	want := []CoverageFinding{{Path: "internal/owned/a.go", Kind: Fanout, Severity: severity.Warn, Topics: maxTopicsPerPath + 1}}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("claimless global fan-out = %#v, want %#v", got, want)
