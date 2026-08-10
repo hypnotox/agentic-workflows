@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-repository-local-template-source-symbols: Repository-Local Template Source Symbols](repository-local-template-source-symbols.md) (Proposed)
+- [ADR-repository-local-template-source-symbols: Repository-Local Template Source Symbols](repository-local-template-source-symbols.md) (Accepted)
 
 ## History
 
