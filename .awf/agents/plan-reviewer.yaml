@@ -1,8 +1,8 @@
 data:
   focusItems:
-    - name: step-exactness
+    - name: plan-v2-schema-exactness
       description: >-
-        Reject task-level boundaries, cross-phase definitions, dead-code exceptions, plan-wide mode inference, placeholders, conditional or optional tasks, missing contract-bearing `Latitude: exact`, misplaced or unknown task fields, spikes with implementation bodies or no Notes target, ambiguous scope without `Paths:`, and batches or glob/pathspec scope without `Post-check:`.
+        Reject conditional or optional tasks, missing contract-bearing `Latitude: exact`, misplaced or unknown task fields, and spikes with implementation bodies or no Notes target.
     - name: quoted-command-output-is-rerun
       description: 'a plan that quotes a command and its expected output states a checkable fact: RUN it rather than reasoning about it, and never write a corrected number you have not observed. A review of the ADR-0128 plan "corrected" a `grep -rn adr.ParseDir(` count from 10 to 12 on the theory that two `coverage-ignore` comments matched; they read `adr.ParseDir here`, with no opening paren, so the pattern never matched them and BOTH the before and after numbers shipped wrong. An unverified correction makes a plan less accurate than leaving it alone, because the executor now trusts it. Escalate rather than correct when a plan asserts a literal COUNT at all: prefer a terminal-state assertion (the finding count reaches zero, the grep returns nothing, the drift check is clean), because a count is a measurement of a corpus that moves and a stale one fails misleadingly rather than loudly. The 2026-07-19 retrofit-D plan showed the compound form: its headline total was a merge-base measurement, its item/slug split was wrong at every commit, its sibling plan carried a third figure, and because four later figures were derived from the total, one stale measurement made every phase unverifiable. Correcting such numbers one at a time treats the symptom; the fix is to delete them in favour of the command'
     - name: claimed-enforcement-exists
@@ -14,12 +14,6 @@ data:
     - name: generated-adopter-source-closure
       description: >-
         when a plan requires a generated output to change in one or more adopted project roots, it must name the authored input that drives that output in each project; do not infer that a root convention part fans out into an adopter with its own config tree, and flag any required generated diff that has no declared authored source and render step
-    - name: dependency-order
-      description: tasks are ordered so each builds only on already-completed work
-    - name: snapshot-scoped-verification
-      description: execute material census and post-check commands against the exact intermediate snapshot declared by the plan; require the expected terminal set or lifecycle-authorized residual findings, and reject a premature zero requirement
-    - name: check-authority-taxonomy
-      description: classify each material check as an authority, state, or choreography check; preserve authority checks, require state checks to be no stricter than the durable property they prove, and flag choreography-only enforcement with no named authority or state obligation
     - name: terminal-state-reachable-at-its-position
       description: 'a task that declares a terminal state (a command reaching a clean verdict, a grep returning nothing) asserts that state is reachable AT THAT POINT IN THE ORDERING, not merely eventually. Check the position, not just the command. The 2026-07-30 state-ownership plan ordered its render-and-check task BEFORE the task appending the ADR''s Applied batch, so its declared `awf check: clean` could not be reached: the four new claims'' `Origin` and the updated claim''s `Revised-by` are illegal until the batch exists, and the check failed on exactly that at execution time. The plan had ALREADY recorded "a post-check that cannot go green is worse than none, because it reads as verified" after its resync pass found three unrunnable greps, and shipped a fourth instance anyway one section away, which is why this is its own item rather than a clause in step-exactness. The sibling item demands a quoted command be rerun; this one demands it be rerun FROM THE STATE THE PRECEDING TASKS LEAVE, since a command that goes green at the end of the phase can be red where the plan actually places it'
     - name: gate-clean-embedded
@@ -51,9 +45,5 @@ data:
     - name: quoted-claim-body-quantifies-verified-reality
       description: 'a plan task that quotes a claim body verbatim states a future truth the executor will land unexamined: read each universal in the quoted sentence ("every consumer", "alone", "derived by the operation") against the repository at plan time and against what the plan''s own tasks actually make true, and flag any quantifier that outruns both. The decompose plan shipped three such bodies in one plan - a module-wide kind-dispatch universal falsified by in-core sites its tasks never touched, a two-table derivation claim when the tasks sanctioned four files, and a derive-and-thread lifecycle asserted for a value its own design fixed at construction - each caught only at execution review, each forcing a phase-commit rewrite because applied claim prose cannot change without its operation'
   docCurrencyItems:
-    - check: the plan schedules updates for every document its changes invalidate, in the same commits
     - check: docs/decisions/INDEX.md task included whenever an ADR status flip is planned
     - check: AGENTS.md update task included when the plan introduces new conventions or changes the workflow chain
-dataDefaults:
-  focusItems: false
-  docCurrencyItems: false

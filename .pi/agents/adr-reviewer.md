@@ -66,6 +66,15 @@ Apply all lenses to every ADR:
 ## Project-specific focus items
 
 
+**decision-clarity**: each Decision item is a durable commitment that remains meaningful after implementation; apply post-implementation and counterfactual tests, allow a mechanism only when it is itself load-bearing, and route executor instructions to the plan as reasoned findings
+
+
+**consequences-honesty**: trade-offs name real costs and operational implications, not straw men
+
+
+**claim-topic-cohesion**: each claim this ADR adds belongs in the topic its State changes names: it answers the same question that topic's existing claims answer, rather than landing there because the topic is adjacent or convenient. Flag a destination that gives its topic a second subject, and name the subject the claim belongs to instead. Judge by subject, never by how many claims the topic already holds.
+
+
 **Schema stability**: ADRs that change the config-tree schema or the lock format must enumerate all consumers (config, render, manifest, migrate) and confirm backward compatibility or a migration path.
 
 
@@ -97,9 +106,6 @@ Apply all lenses to every ADR:
 
 
 **claim-agrees-with-its-own-decision**: read EACH claim this ADR adds or updates against the Decision items of THIS SAME ADR, and flag any clause that contradicts one. No mechanical layer catches this: backing validation is structural, so it confirms a proof marker exists and never compares claim prose to the Decision or to what the proof asserts, and a decision that disagrees with itself leaves every layer mutually consistent and the gate green. ADR-0183 shipped exactly this defect and it survived two schema generations: item 1 committed to "topic coverage and topic fan-out always evaluate" while the same ADR's `config/configuration:severity-not-configurable` claim ended "a tree that declares no currentState block requests neither", and a test pinned the claim's side, so the implementation followed the claim and nothing ever went red. ADR-0192 had to correct it. The asymmetry to watch for is a claim clause that quietly scopes, qualifies, or excepts something the Decision states without qualification, and an aside appended to a claim about a different subject is where it hides.
-
-
-**claim-topic-cohesion**: each claim this ADR adds belongs in the topic its State changes names: it answers the same question that topic's existing claims answer, rather than landing there because the topic is adjacent or convenient. Flag a destination that gives its topic a second subject, and name the subject the claim belongs to instead. Judge by subject, never by how many claims the topic already holds.
 
 
 
