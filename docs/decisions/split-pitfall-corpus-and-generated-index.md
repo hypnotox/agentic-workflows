@@ -51,16 +51,22 @@ the output lifecycle.
 1. `decision: per-entry-authored-corpus` Replace `data.pitfalls` with independently authored
    Markdown files. Each file has one path-derived stable slug and strict YAML frontmatter containing
    required `title` and optional `domains`, `tags`, and `related`, followed by a nonblank Markdown
-   body. The title is display text and never renames identity. Only direct regular `.md` children
-   with lowercase kebab slugs are valid; `index` is reserved. Unknown or duplicate keys, malformed
-   or duplicate list members, duplicate active titles, nested paths, and non-regular inputs fail.
+   body. The title is trimmed display text and never renames identity. Duplicate-title comparison
+   collapses internal Unicode whitespace and compares case-insensitively, so cosmetically equivalent
+   active titles fail. Only direct regular `.md` children with lowercase kebab slugs are valid;
+   `index` is reserved. Unknown or duplicate keys, malformed or duplicate list members, nested
+   paths, and non-regular inputs fail.
 
 2. `decision: indexed-leaf-publication` Keep `docs/pitfalls.md` as the compact generated catalog
    entry and publish one generated leaf per source beneath `docs/pitfalls/` at the same slug. The
    index states that hazards are not backlog items, renders one title-sorted table containing links,
    domains, tags, and related ADRs, and adds compact title-sorted domain sections plus an unassigned
    section. A zero-entry corpus renders an explicit empty state. Each leaf renders one title,
-   visible metadata, and the authored body verbatim, without published frontmatter.
+   visible metadata, and the authored body verbatim, without published frontmatter. Titles are
+   plain text rather than authored Markdown: rendering backslash-escapes CommonMark ASCII
+   punctuation and literal backslashes in headings and link labels, with table delimiters escaped
+   for cells, so punctuation cannot change generated structure while displayed title text is
+   preserved.
 
 3. `decision: index-only-convention-framing` Preserve the existing `prepend` and `append`
    convention sections as index-only framing. Migration removes the retired data key and deletes
@@ -69,10 +75,13 @@ the output lifecycle.
    not inherit its framing.
 
 4. `decision: path-derived-scaffolding` Add `awf new pitfall "<Title>"` as the supported creation
-   path. It derives a collision-free stable slug, uses numeric suffixes for different titles with
-   the same derived slug, refuses a duplicate active title, creates exclusively, and reports the
-   authored path. Deleting a source retires its entry through ordinary pruning. Pitfalls gain no
-   lifecycle states, registry, or per-entry enablement.
+   path. One shared allocator trims the title, lowercases it, replaces each maximal run outside
+   ASCII `a-z` and `0-9` with one hyphen, trims edge hyphens, and refuses an empty result or the
+   reserved result `index`. It inspects the unsuffixed slug and then integer suffixes from `-2`
+   upward, choosing the first absent candidate; migration reserves each allocation before choosing
+   the next. It refuses a duplicate active title, creates exclusively,
+   and reports the authored path. Deleting a source retires its entry through ordinary pruning.
+   Pitfalls gain no lifecycle states, registry, or per-entry enablement.
 
 5. `decision: cohesive-pitfall-model` Give one internal pitfall package ownership of identity,
    strict frontmatter parsing, corpus ordering and validation, deterministic source serialization,
@@ -102,9 +111,19 @@ the output lifecycle.
 8. `decision: preserve-validation-and-guidance` Move existing pitfall domain, tag, ADR-link, tag
    health, and frequency checks from sidecar entries to the parsed corpus. Generated index guidance
    names the source glob and each leaf names its exact source. Authoring and retrospective guidance
-   directs users to `awf new pitfall` or the authored corpus, never to generated output.
+   directs users to `awf new pitfall` or the authored corpus, never to generated output. Template
+   and section assembly retains `missingkey=zero`; empty variables, absent overrides, and a zero-entry
+   corpus render coherent token-free Markdown with no `<no value>` output.
 
-9. `decision: bounded-navigation-scope` Do not restore `awf context` pitfall surfacing, add a tag
+9. `decision: backed-pitfall-contracts` Back the new corpus-validation, output-completeness,
+   semantic-ownership, scaffold, and migration claims with tests and matching invariant markers.
+   Corpus tests refute each source and identity violation. Project tests prove index and leaf output
+   planning, hashing, render, drift, lock, backup, and pruning plus the single package ownership
+   boundary. CLI tests prove creation dispatch and exclusive collision allocation. Migration tests
+   prove field preservation, full preflight, relative-link and conflict refusal, byte-identical
+   retry, create-before-retire ordering, and section preservation.
+
+10. `decision: bounded-navigation-scope` Do not restore `awf context` pitfall surfacing, add a tag
    index, split indexes by domain, model remediation status, or reintroduce catalog-document toggles.
    The metadata table, domain link sections, ordinary search, and independent leaves are the bounded
    navigation improvement justified by the observed corpus.
@@ -114,7 +133,9 @@ the output lifecycle.
 - remove `rendering/doc-outputs:pitfall-data-validated`
 - add `rendering/doc-outputs:pitfall-corpus-validated`
 - add `rendering/doc-outputs:pitfall-output-complete`
+- add `rendering/doc-outputs:pitfall-model-single-home`
 - update `rendering/doc-outputs:opaque-doc-source-guidance`
+- update `tooling/cli:cli-creation-and-inventory`
 - add `tooling/cli:pitfall-scaffold`
 - add `config/migrations-and-locks:pitfall-corpus-migration`
 
