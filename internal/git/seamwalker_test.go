@@ -208,6 +208,37 @@ var seamAllowlist = []string{
 	"internal/testsupport/gitfixture/",
 }
 
+// TestGitFixtureHasOneNativeGitProcessBoundary closes the fixture carve-out:
+// the package may construct Git directly, but exactly one production site may
+// do so, forcing every wrapper through the deadlined boundary in native.go.
+// invariant: tooling/git-access:fixture-isolation-parity (TestGitFixtureHasOneNativeGitProcessBoundary)
+func TestGitFixtureHasOneNativeGitProcessBoundary(t *testing.T) {
+	t.Parallel()
+	root := moduleRoot(t)
+	seen := 0
+	processSites := []string{}
+	testsupport.WalkRepoFiles(t, root, func(rel string) bool {
+		return strings.HasPrefix(rel, "internal/testsupport/gitfixture/") && strings.HasSuffix(rel, ".go") && !strings.HasSuffix(rel, "_test.go")
+	}, func(rel string, body []byte) {
+		seen++
+		findings, err := scanGitAccess(rel, body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, finding := range findings {
+			if strings.Contains(finding.Detail, "constructs a git subprocess") {
+				processSites = append(processSites, finding.Path)
+			}
+		}
+	})
+	if seen == 0 {
+		t.Fatal("walked no gitfixture production files, so the census proves nothing")
+	}
+	if len(processSites) != 1 || processSites[0] != "internal/testsupport/gitfixture/native.go" {
+		t.Fatalf("gitfixture Git process constructions = %v, want one boundary in native.go", processSites)
+	}
+}
+
 // TestNoProductionGitAccessOutsideTheSeam fails when any non-test file in the
 // module imports a Git library or builds a git subprocess outside the seam.
 // This is the enforcement half of one-implementation-per-entrypoint: without it

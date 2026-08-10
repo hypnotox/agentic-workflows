@@ -39,7 +39,7 @@ func InitNativeObjectFormat(t *testing.T, root, format string) Fixture {
 	}
 	// init runs without -C because root need not exist yet.
 	output, err := runGit("", append(args, root)...)
-	if err != nil && explicit { // coverage-ignore: reached only where the installed Git lacks the requested object format
+	if isUnsupportedObjectFormat(explicit, err) { // coverage-ignore: reached only where the installed Git lacks the requested object format
 		t.Skipf("installed Git lacks %s repositories: %v: %s", format, err, output)
 	}
 	if err != nil { // coverage-ignore: init into a writable fixture directory fails only on a permission fault a test cannot trigger
@@ -299,6 +299,10 @@ func runNativeBytes(f Fixture, stdin []byte, args ...string) ([]byte, error) {
 // testsupport package's gitTestDeadline: this leaf package cannot import either.
 const nativeGitDeadline = 2 * time.Minute
 
+// nativeGitPipeWaitDelay bounds the extra wait after a process exits or its
+// context expires when a descendant still holds the output pipes open.
+const nativeGitPipeWaitDelay = time.Second
+
 // runGit runs Git under the isolated environment, pinned to root when one is
 // given, and returns trimmed combined output.
 func runGit(root string, args ...string) (string, error) {
@@ -318,7 +322,18 @@ func runGitWithTimeout(timeout time.Duration, root string, stdin io.Reader, args
 	command := exec.CommandContext(ctx, "git", args...)
 	command.Env = nativeEnvironment(os.Environ())
 	command.Stdin = stdin
-	return command.CombinedOutput()
+	command.WaitDelay = min(timeout, nativeGitPipeWaitDelay)
+	output, err := command.CombinedOutput()
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		err = errors.Join(err, ctxErr)
+	}
+	return output, err
+}
+
+// isUnsupportedObjectFormat distinguishes an installed Git that rejects the
+// requested format from a fixture invocation that reached its deadline.
+func isUnsupportedObjectFormat(explicit bool, err error) bool {
+	return explicit && err != nil && !errors.Is(err, context.DeadlineExceeded)
 }
 
 // nativeEnvironment strips every inherited git control variable and pins the

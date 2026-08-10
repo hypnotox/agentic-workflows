@@ -1,7 +1,10 @@
 package gitfixture
 
 import (
+	"context"
+	"errors"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -47,6 +50,10 @@ func effectiveEnvironment(env []string) map[string]string {
 // keeps the proof fast without a swappable package-level seam.
 // invariant: tooling/git-access:fixture-isolation-parity (TestNativeGitDeadlineTerminatesBlockedProcess)
 func TestNativeGitDeadlineTerminatesBlockedProcess(t *testing.T) {
+	if nativeGitDeadline != 2*time.Minute {
+		t.Fatalf("nativeGitDeadline = %v, want two-minute parity with both native Git ceilings", nativeGitDeadline)
+	}
+
 	read, write, err := os.Pipe()
 	if err != nil {
 		t.Fatal(err)
@@ -58,14 +65,53 @@ func TestNativeGitDeadlineTerminatesBlockedProcess(t *testing.T) {
 	started := time.Now()
 	_, err = runGitWithTimeout(deadline, "", read, "hash-object", "--stdin")
 	elapsed := time.Since(started)
-	if err == nil {
-		t.Fatal("blocked git process survived its deadline")
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("blocked git process error = %v, want deadline identity", err)
+	}
+	var exit *exec.ExitError
+	if !errors.As(err, &exit) {
+		t.Fatalf("blocked git process error = %T %v, want preserved process error", err, err)
 	}
 	if elapsed < deadline/2 {
 		t.Fatalf("blocked git process failed after %v, before the %v deadline could terminate it", elapsed, deadline)
 	}
 	if elapsed > 2*time.Second {
 		t.Fatalf("blocked git process returned after %v, want prompt deadline termination", elapsed)
+	}
+}
+
+// TestNativeGitDeadlineClosesDescendantPipes covers the failure shape where a
+// Git-spawned child survives cancellation while retaining CombinedOutput's
+// pipes. WaitDelay must close those pipes rather than waiting for the child.
+func TestNativeGitDeadlineClosesDescendantPipes(t *testing.T) {
+	const deadline = 50 * time.Millisecond
+	started := time.Now()
+	_, err := runGitWithTimeout(deadline, "", nil, "-c", "alias.stall=!exec sleep 3", "stall")
+	elapsed := time.Since(started)
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("pipe-holding child error = %v, want deadline identity", err)
+	}
+	var exit *exec.ExitError
+	if !errors.As(err, &exit) {
+		t.Fatalf("pipe-holding child error = %T %v, want preserved process error", err, err)
+	}
+	if elapsed > time.Second {
+		t.Fatalf("pipe-holding child delayed return for %v, want bounded pipe cleanup", elapsed)
+	}
+}
+
+func TestObjectFormatSkipDoesNotHideDeadline(t *testing.T) {
+	if isUnsupportedObjectFormat(true, context.DeadlineExceeded) {
+		t.Fatal("deadline was classified as unsupported object format")
+	}
+	if !isUnsupportedObjectFormat(true, errors.New("unknown object format")) {
+		t.Fatal("explicit unsupported object format was not classified for skipping")
+	}
+	if isUnsupportedObjectFormat(false, errors.New("init failed")) {
+		t.Fatal("default-format failure was classified for skipping")
+	}
+	if isUnsupportedObjectFormat(true, nil) {
+		t.Fatal("successful explicit init was classified for skipping")
 	}
 }
 
