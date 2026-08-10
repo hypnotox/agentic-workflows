@@ -180,11 +180,16 @@ func TestPrintTopicPreservesLiteralIdentities(t *testing.T) {
 		"outgoing: target/with\ttab",
 		"    internal/a  b/**",
 		"    internal/a\tb/**",
+		"applicable-paths:",
+		"owned-paths:",
 		"marker: internal/a  b/file_test.go:7 | invariant | " + identity + ":claim",
 	} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("literal topic identity collapsed in %q:\n%s", want, out.String())
 		}
+	}
+	if strings.Contains(out.String(), "matched-paths") {
+		t.Fatalf("retired coverage label remains:\n%s", out.String())
 	}
 }
 

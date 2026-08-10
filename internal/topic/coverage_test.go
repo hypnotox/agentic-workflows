@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
 
@@ -130,20 +131,32 @@ func TestApplicabilityForTopic(t *testing.T) {
 }
 
 // invariant: invariants/topics-and-markers:global-topic-path-ownership (TestGlobalTopicPathOwnership)
+// invariant: invariants/topics-and-markers:fan-out-budget-fixed (TestGlobalTopicPathOwnership)
 func TestGlobalTopicPathOwnership(t *testing.T) {
 	metadata := []byte("title: Global owner\nsummary: Applies everywhere and owns a bounded path.\napplies: global\npaths: [\"internal/owned/**\"]\n")
 	if _, _, err := ParseMetadata(".awf/topics/metadata", ".awf/topics/metadata/core/global-owner.yaml", metadata); err != nil {
 		t.Fatalf("combined metadata: %v", err)
 	}
 	corpus := Corpus{DomainPaths: map[string][]string{"core": {"internal/**"}, "other": {"other/**"}}}
-	owner := Topic{ID: TopicID{"core", "global-owner"}, Metadata: Metadata{Applies: "global", Paths: []string{"internal/owned/**"}}, Claims: []Claim{{ID: "core/global-owner:claim"}}}
+	owner := Topic{ID: TopicID{"core", "global-owner"}, Metadata: Metadata{Applies: "global", Paths: []string{"**"}}, Claims: []Claim{{ID: "core/global-owner:claim"}}}
 	corpus.all = []Topic{owner}
-	applicability := ApplicabilityForTopic(owner, corpus.DomainPaths["core"], MarkerIndex{sites: map[string][]MarkerSite{}}, []string{"internal/owned/a.go", "internal/elsewhere.go", "other/a.go"})
-	if !reflect.DeepEqual(applicability.ApplicablePaths, []string{"internal/elsewhere.go", "internal/owned/a.go", "other/a.go"}) || !reflect.DeepEqual(applicability.OwnedPaths, []string{"internal/owned/a.go"}) {
+	corpus.byClaim = map[string]*Claim{"core/global-owner:claim": &corpus.all[0].Claims[0]}
+	corpus.byTopic = map[string]*Topic{"core/global-owner": &corpus.all[0]}
+	applicability := ApplicabilityForTopic(owner, corpus.DomainPaths["core"], MarkerIndex{sites: map[string][]MarkerSite{}}, []string{"internal/owned/a.go", "other/a.go", "outside/a.go"})
+	if !reflect.DeepEqual(applicability.ApplicablePaths, []string{"internal/owned/a.go", "other/a.go", "outside/a.go"}) || !reflect.DeepEqual(applicability.OwnedPaths, []string{"internal/owned/a.go"}) {
 		t.Fatalf("applicability = %#v", applicability)
 	}
-	if got := EvaluateCoverage(corpus, []string{"internal/owned/a.go", "other/a.go"}, CoveragePolicy{Coverage: true}); len(got) != 1 || got[0].Path != "other/a.go" || got[0].Domain != "other" {
+	if got := TopicsForPath(corpus, "outside/a.go"); len(got) != 1 || got[0].ID != owner.ID {
+		t.Fatalf("global applicability outside ownership = %#v", got)
+	}
+	if _, _, err := resolveMarker("outside/a.go", 1, "state: core/global-owner:claim", corpus, &config.CurrentStateConfig{}); err != nil {
+		t.Fatalf("global marker outside ownership: %v", err)
+	}
+	if got := EvaluateCoverage(corpus, []string{"internal/owned/a.go", "other/a.go", "outside/a.go"}, CoveragePolicy{Coverage: true}); len(got) != 1 || got[0].Path != "other/a.go" || got[0].Domain != "other" {
 		t.Fatalf("coverage = %#v", got)
+	}
+	if got := EvaluateCoverage(corpus, []string{"other/a.go", "outside/a.go"}, CoveragePolicy{Fanout: true}); len(got) != 0 {
+		t.Fatalf("outside-domain ownership contributed to fan-out: %#v", got)
 	}
 	claimless := owner
 	claimless.ID = TopicID{"core", "claimless-owner"}
@@ -154,7 +167,7 @@ func TestGlobalTopicPathOwnership(t *testing.T) {
 		t.ID.Slug = fmt.Sprintf("claimless-%d", i)
 		corpus.all = append(corpus.all, t)
 	}
-	got := EvaluateCoverage(corpus, []string{"internal/owned/a.go", "internal/elsewhere.go"}, CoveragePolicy{Fanout: true})
+	got := EvaluateCoverage(corpus, []string{"internal/owned/a.go", "other/a.go"}, CoveragePolicy{Fanout: true})
 	want := []CoverageFinding{{Path: "internal/owned/a.go", Kind: Fanout, Severity: severity.Warn, Topics: maxTopicsPerPath + 1}}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("claimless global fan-out = %#v, want %#v", got, want)
