@@ -9,6 +9,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 )
 
+// invariant: tooling/file-publication:exclusive-file-publication-single-home (TestProtocol2DirectorySyncAndExclusivePublication)
 func TestProtocol2DirectorySyncAndExclusivePublication(t *testing.T) {
 	dir := t.TempDir()
 	if err := syncDirectory(dir); err != nil {

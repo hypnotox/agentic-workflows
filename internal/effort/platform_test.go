@@ -66,6 +66,7 @@ func testPlatformPublicationContract(t *testing.T) {
 	})
 }
 
+// invariant: tooling/file-publication:exclusive-file-publication-single-home (TestPlatformPublicationContract)
 func TestPlatformPublicationContract(t *testing.T) {
 	testPlatformPublicationContract(t)
 }

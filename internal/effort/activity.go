@@ -261,26 +261,26 @@ func (s store) replaceResidentExpected(path string, raw []byte, label string, ex
 	}
 	dir := filepath.Dir(path)
 	temp, err := os.CreateTemp(dir, "."+label+"-*.tmp")
-	if err != nil { // coverage-ignore: expected-identity activity replacement failure semantics are proved by the effort platform contract
+	if err != nil {
 		return activityStorageFailure(operation, "replace", err)
 	}
 	tempPath := temp.Name()
 	closed := false
 	defer func() {
-		if !closed { // coverage-ignore: expected-identity activity replacement reaches this only after a storage fault
+		if !closed {
 			returnErr = errors.Join(returnErr, activityStorageFailure(operation, "replace", temp.Close()))
 		}
 		if e := os.Remove(tempPath); e != nil && !errors.Is(e, os.ErrNotExist) { // coverage-ignore: cleanup of a local temporary can only fail through a storage fault.
 			returnErr = errors.Join(returnErr, activityStorageFailure(operation, "replace", e))
 		}
 	}()
-	if err = s.hit(label + ".write"); err != nil { // coverage-ignore: expected-identity replacement uses the established platform contract rather than creation fault injection
+	if err = s.hit(label + ".write"); err != nil {
 		return activityStorageFailure(operation, "replace", err)
 	}
 	if _, err = temp.Write(raw); err != nil { // coverage-ignore: injected write faults cover publication; a local temporary write failure requires storage fault.
 		return activityStorageFailure(operation, "replace", err)
 	}
-	if err = s.hit(label + ".fsync"); err != nil { // coverage-ignore: expected-identity replacement uses the established platform contract rather than creation fault injection
+	if err = s.hit(label + ".fsync"); err != nil {
 		return activityStorageFailure(operation, "replace", err)
 	}
 	if err = temp.Sync(); err != nil { // coverage-ignore: injected fsync faults cover publication; a local temporary sync failure requires storage fault.
@@ -290,7 +290,7 @@ func (s store) replaceResidentExpected(path string, raw []byte, label string, ex
 		return activityStorageFailure(operation, "replace", err)
 	}
 	closed = true
-	if err = s.hit(label + ".rename"); err != nil { // coverage-ignore: expected-identity replacement uses the established platform contract rather than creation fault injection
+	if err = s.hit(label + ".rename"); err != nil {
 		return activityStorageFailure(operation, "replace", err)
 	}
 	if err = publishAtomic(tempPath, path, expected); err != nil {

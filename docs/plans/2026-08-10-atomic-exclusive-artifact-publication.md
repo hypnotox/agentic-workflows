@@ -179,3 +179,8 @@ implementation.
   not added because execution workflow owns generic clean/green setup; plan closure remains
   deferred until post-assurance finalization; and parent-owned post-review settlement commits remain
   authorized by the subagent-driven workflow.
+- Phase 1 review settlement: no implementation deviation was reported. Five mechanical findings
+  were settled by widening the invariant proof across the production tree and behavioral units,
+  restoring a package-private Windows creation oracle, exercising expected-identity effort fault
+  stages, synchronizing the concurrency test after complete preparation at the namespace boundary,
+  and using wrapped-error matching for cleanup. No approved boundary or outcome changed.

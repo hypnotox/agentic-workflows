@@ -123,6 +123,61 @@ func TestActivityV2StorageAndResidentBoundaries(t *testing.T) {
 	service.store.fault = nil
 }
 
+// invariant: tooling/file-publication:exclusive-file-publication-single-home (TestActivityExpectedReplacementFaultMatrix)
+func TestActivityExpectedReplacementFaultMatrix(t *testing.T) {
+	cause := errors.New("injected replacement fault")
+	for _, stage := range []string{"activity.write", "activity.fsync", "activity.rename", "activity.directory-fsync"} {
+		t.Run(stage, func(t *testing.T) {
+			root := initEffortRepo(t)
+			service := openTestService(t, root, func(d *Dependencies) { noTopology(d) })
+			if _, err := service.New(testContext(t), NewInput{Slug: "replacement", Title: "Replacement"}); err != nil {
+				t.Fatal(err)
+			}
+			path := service.paths.activityFile("replacement")
+			activity := Activity{SchemaVersion: 2, Owner: testIDA, AttachedAt: time.Now().UTC(), HeartbeatAt: time.Now().UTC()}
+			if err := service.store.replaceActivity(path, activity, nil, activityAttach); err != nil {
+				t.Fatal(err)
+			}
+			_, identity, err := readRegularNoFollowBoundedIdentity(path, maxMemoryBytes)
+			if err != nil {
+				t.Fatal(err)
+			}
+			service.store.fault = func(got string) error {
+				if got == stage {
+					return cause
+				}
+				return nil
+			}
+			err = service.store.replaceActivity(path, activity, &identity, activityHeartbeat)
+			if !errors.Is(err, cause) {
+				t.Fatalf("%s error = %v", stage, err)
+			}
+			var storage *activityStorageError
+			if !errors.As(err, &storage) {
+				t.Fatalf("%s did not preserve storage error identity: %v", stage, err)
+			}
+			entries, err := os.ReadDir(filepath.Dir(path))
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, entry := range entries {
+				if strings.HasPrefix(entry.Name(), ".activity-") {
+					t.Fatalf("%s left temporary %s", stage, entry.Name())
+				}
+			}
+		})
+	}
+
+	root := initEffortRepo(t)
+	service := openTestService(t, root, func(d *Dependencies) { noTopology(d) })
+	identity := fileIdentity{}
+	err := service.store.replaceResidentExpected(filepath.Join(root, "missing", "activity.json"), []byte("x"), "activity", &identity, activityHeartbeat)
+	var storage *activityStorageError
+	if !errors.As(err, &storage) {
+		t.Fatalf("missing replacement parent error = %v", err)
+	}
+}
+
 // invariant: tooling/effort-management:effort-record-authority (TestActivityV2SafeRecoveryAndRefusals)
 func TestActivityV2SafeRecoveryAndRefusals(t *testing.T) {
 	root := initEffortRepo(t)

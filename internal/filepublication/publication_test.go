@@ -9,6 +9,7 @@ import (
 	"testing"
 )
 
+// invariant: tooling/file-publication:exclusive-file-publication-single-home (TestPublishCompleteExclusiveFile)
 func TestPublishCompleteExclusiveFile(t *testing.T) {
 	t.Run("prepares complete file with requested mode", func(t *testing.T) {
 		destination := filepath.Join(t.TempDir(), "artifact")
@@ -54,24 +55,39 @@ func TestPublishCompleteExclusiveFile(t *testing.T) {
 	})
 }
 
+// invariant: tooling/file-publication:exclusive-file-publication-single-home (TestPublishConcurrentPublishersLeaveOneCompleteWinner)
 func TestPublishConcurrentPublishersLeaveOneCompleteWinner(t *testing.T) {
 	destination := filepath.Join(t.TempDir(), "artifact")
-	start := make(chan struct{})
-	results := make(chan error, 2)
-	var ready sync.WaitGroup
-	ready.Add(2)
+	publications := make([]*prepared, 0, 2)
 	for _, contents := range []string{"first complete artifact", "second complete artifact"} {
-		go func(contents string) {
+		publication, err := prepare(destination, []byte(contents), 0o644)
+		if err != nil {
+			t.Fatal(err)
+		}
+		publications = append(publications, publication)
+		defer func() {
+			if err := publication.cleanup(); err != nil {
+				t.Error(err)
+			}
+		}()
+	}
+
+	start := make(chan struct{})
+	results := make(chan error, len(publications))
+	var ready sync.WaitGroup
+	ready.Add(len(publications))
+	for _, publication := range publications {
+		go func() {
 			ready.Done()
 			<-start
-			results <- Publish(destination, []byte(contents), 0o644)
-		}(contents)
+			results <- publication.publish()
+		}()
 	}
 	ready.Wait()
 	close(start)
 
 	var successes int
-	for range 2 {
+	for range publications {
 		err := <-results
 		if err == nil {
 			successes++
