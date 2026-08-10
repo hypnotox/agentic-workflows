@@ -71,6 +71,7 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 			"clean green baseline", "one coherent green transaction", "shared files parent-owned")
 		assertAll("inline",
 			"mixed plan can hand subagent-driven phases", "Iterate phases, not tasks",
+			"continue the plan loop without returning control to the user", "select the next unfinished phase", "A phase-complete report is not a plan-complete stopping point",
 			"awf read plan <plan> <P[.T]>", "generated task scope notice", "phase-owner context only", "Advances and Completes outcomes",
 			"never gives a task helper commit, review, checkpoint, handoff, or outcome authority",
 			"projection changes neither phase ownership nor checkpoint boundaries",
@@ -81,6 +82,7 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 			"complete revised phase", "recovery verification", "blind successor instruction")
 		assertAll("subagent",
 			"plan may mix modes", "hand inline phases", "known clean and green baseline",
+			"continue the plan loop without returning control to the user", "select the next unfinished phase", "A phase-complete report is not a plan-complete stopping point",
 			"awf read plan <plan> <P>", "generated scope notice, Phase close, and Advances/Completes outcomes are phase-owner context only",
 			"never transfer commit, review, checkpoint, handoff, helper, or outcome authority", "projection changes neither ownership nor checkpoint boundaries",
 			"one implementation child alone", "state commit-capable phase-owner mode in the brief", "complete phase",
@@ -112,8 +114,16 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 			body := surfaces[name]
 			review := strings.Index(body, "report-only phase review")
 			checkpoint := strings.Index(body, "**Routine checkpoint.**")
+			continuation := strings.Index(body, "continue the plan loop without returning control to the user")
+			terminal := strings.Index(body, "After all settled phases")
 			if review < 0 || checkpoint < review {
 				t.Errorf("%s/%s checkpoint is not after phase review settlement", variant, name)
+			}
+			if continuation < checkpoint {
+				t.Errorf("%s/%s autonomous next-phase transition is not after the checkpoint", variant, name)
+			}
+			if terminal < continuation {
+				t.Errorf("%s/%s terminal assurance is not after autonomous phase continuation", variant, name)
 			}
 			if strings.Count(body, "**Routine checkpoint.**") != 1 {
 				t.Errorf("%s/%s has %d routine checkpoints, want one settled-phase checkpoint", variant, name, strings.Count(body, "**Routine checkpoint.**"))
