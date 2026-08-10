@@ -41,10 +41,15 @@ the wrong checkout remains a separate roadmap problem.
    the project root, normalizes Pi's one-leading-`@` path convention, and canonicalizes filesystem
    aliases. It must be a checkout root whose Git common-directory identity equals the project
    root's, which admits the project root and its live registered linked worktrees while excluding
-   subdirectories, unrelated clones, stale registrations, and non-Git paths. Empty, missing, and
-   mismatched identities refuse before child dispatch with an actionable diagnostic. The extension
-   validates only the selected checkout through Git identity queries; it does not parse or
-   reimplement repository worktree topology, whose shared authored implementation remains in
+   subdirectories, unrelated clones, stale registrations, copied linked-worktree pointers, and
+   non-Git paths. Empty, missing, and mismatched identities refuse before child dispatch with an
+   actionable diagnostic. The extension validates only the selected checkout through Git identity
+   queries plus one narrowly scoped linked-worktree administrative-backlink check: it resolves the
+   selected checkout's absolute Git directory, requires a linked checkout's `.git` entry to be a
+   non-symlink regular file, reads only the Git directory's `gitdir` backlink when present, and
+   requires the backlink to canonically identify that exact `.git` file without following a
+   selected-entry symlink. It does not enumerate worktrees, invoke or parse `git worktree list`, or reimplement repository
+   topology beyond that selected-checkout backlink; shared topology ownership remains in
    `internal/git`.
 
 3. `decision: checkout-scoped-policy` The existing before-and-after Git snapshot and both commit
@@ -72,15 +77,17 @@ the wrong checkout remains a separate roadmap problem.
 A managed-worktree commit can satisfy the existing commit-capable-owner postcondition without moving
 either Pi process away from the repository root. The same selected identity detects a forbidden
 commit, and invalid explicit paths fail before an implementation child spends tokens or mutates a
-tree. The public tool schema grows by one optional field, while callers that implement in the root
-retain their existing invocation.
+tree. A copied linked-worktree `.git` pointer also fails because its administrative backlink names
+the registered checkout instead. The public tool schema grows by one optional field, while callers
+that implement in the root retain their existing invocation.
 
 Checkout selection remains explicit. A caller that directs work elsewhere but omits the field still
 verifies the root, but the resulting diagnostic now gives the complete retry path. The extension
 must canonicalize the selected path and compare its Git checkout-root and common-directory identity
 before explicit dispatch, adding Git and filesystem validation to the parent-side precondition
-without adding a second topology parser. This decision does not bind ordinary mutations to an
-effort worktree, prove the child's reported commit hash, or strengthen the existing clean-tree and
+without adding a worktree-list parser; linked checkouts add only the selected administrative
+backlink comparison. This decision does not bind ordinary mutations to an effort worktree, prove
+the child's reported commit hash, or strengthen the existing clean-tree and
 commit-parent policy.
 
 ## Alternatives Considered
@@ -91,7 +98,7 @@ commit-parent policy.
 | Parse the child's reported worktree, branch, or commit | Makes enforcement depend on untrusted prose and cannot distinguish a mistaken report from repository state. |
 | Infer the checkout from attached effort metadata | Effort association is advisory and explicitly not routing authority; implementation can also run without an effort. |
 | Accept any Git checkout path | Permits a typo or unrelated clone to become the monitored authority instead of constraining verification to this repository's Git identity. |
-| Add a TypeScript parser for `git worktree list` | Duplicates the repository topology contract already owned by `internal/git`; single-checkout Git identity probes answer this extension's narrower question. |
+| Add a TypeScript parser for `git worktree list` | Duplicates the repository topology contract already owned by `internal/git`; selected-checkout Git identity probes plus the narrowly scoped administrative-backlink validation answer this extension's narrower question. |
 | Keep root-only monitoring and document manual inspection | Preserves the recurring contradictory result and leaves recovery outside the tool that produced the false finding. |
 
 ## Status history
@@ -100,3 +107,4 @@ commit-parent policy.
 - 2026-08-10: Implementing; content-sha256: ec022c621120e86c92456fbd4bc9bafe7daf7c93a87138e98e81077f5f813e73
 - 2026-08-10: Applied; operations: update `rendering/pi-runtime:pi-implementation-state-boundary`, update `rendering/pi-workflows:pi-structured-exploration-contract`, update `rendering/pi-workflows:pi-implement-role-artifact`, update `rendering/workflow-skill-templates:phase-transaction-ownership`
 - 2026-08-10: Reapplied; operations: update `rendering/pi-runtime:pi-implementation-state-boundary`
+- 2026-08-10: Amended; content-sha256: b17edec247eba508ae87b0380567533fc31215902d81fcfa6dd8c7ca45d08e25
