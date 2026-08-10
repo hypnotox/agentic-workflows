@@ -82,8 +82,27 @@ func TestArchiveRootUpgradeBoundary(t *testing.T) {
 	if lock.SchemaVersion != 42 {
 		t.Fatalf("upgraded lock schema = %d, want 42", lock.SchemaVersion)
 	}
-	if _, ok := lock.Files[markerRel]; !ok {
-		t.Fatalf("upgraded lock lacks %s", markerRel)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	planned, err := p.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wantEntry manifest.Entry
+	for _, file := range planned {
+		if file.Path == markerRel {
+			wantEntry = manifest.Entry{
+				TemplateID: file.TemplateID, TemplateHash: file.TemplateHash,
+				ConfigHash: file.ConfigHash, OutputHash: manifest.Hash([]byte(file.Content)),
+				RegenChecked: file.RegenChecked,
+			}
+			break
+		}
+	}
+	if got, ok := lock.Files[markerRel]; !ok || got != wantEntry {
+		t.Fatalf("upgraded lock marker entry = %#v, present %v; want %#v", got, ok, wantEntry)
 	}
 	marker := filepath.Join(root, filepath.FromSlash(markerRel))
 	want := "# " + bannerText + "\n*\n!.gitignore\n"
@@ -95,11 +114,27 @@ func TestArchiveRootUpgradeBoundary(t *testing.T) {
 		}
 	}
 	assertMarker("upgraded")
+	archiveDescendant := filepath.Join(root, ".awf", "effort-archive", "id-slug", "nested", "adversarial.go")
+	const archiveBytes = "not valid Go and never interpreted\n"
+	if err := os.MkdirAll(filepath.Dir(archiveDescendant), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(archiveDescendant, []byte(archiveBytes), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	assertArchiveDescendant := func(state string) {
+		t.Helper()
+		got, err := os.ReadFile(archiveDescendant)
+		if err != nil || string(got) != archiveBytes {
+			t.Fatalf("%s archive descendant = %q, %v; want byte-identical", state, got, err)
+		}
+	}
 
 	if output, err := run(root, "render"); err != nil || strings.Contains(output, markerRel) {
 		t.Fatalf("correct marker render = %v\n%s; want unchanged marker", err, output)
 	}
 	assertMarker("unchanged")
+	assertArchiveDescendant("unchanged marker render")
 	if err := os.Remove(marker); err != nil {
 		t.Fatal(err)
 	}
@@ -107,6 +142,7 @@ func TestArchiveRootUpgradeBoundary(t *testing.T) {
 		t.Fatalf("missing marker repair = %v\n%s", err, output)
 	}
 	assertMarker("missing repair")
+	assertArchiveDescendant("missing marker repair")
 	if err := os.WriteFile(marker, []byte("stale\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -114,4 +150,5 @@ func TestArchiveRootUpgradeBoundary(t *testing.T) {
 		t.Fatalf("stale marker repair = %v\n%s", err, output)
 	}
 	assertMarker("stale repair")
+	assertArchiveDescendant("stale marker repair")
 }

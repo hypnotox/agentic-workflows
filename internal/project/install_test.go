@@ -32,6 +32,9 @@ func TestSyncPrunesResidentLockEntryFromResidentRoot(t *testing.T) {
 	for _, path := range obsolete {
 		lock.Files[path] = manifest.Entry{}
 	}
+	archivePath := filepath.Join(root, filepath.FromSlash(obsolete[2]))
+	const archiveBytes = "archive sentinel\n"
+	testsupport.WriteFile(t, archivePath, archiveBytes)
 	if err := lock.Save(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
@@ -46,6 +49,9 @@ func TestSyncPrunesResidentLockEntryFromResidentRoot(t *testing.T) {
 		if _, ok := lock.Files[path]; ok {
 			t.Errorf("resident descendant remained in lock: %s", path)
 		}
+	}
+	if got, err := os.ReadFile(archivePath); err != nil || string(got) != archiveBytes {
+		t.Fatalf("archive descendant after lock pruning = %q, %v; want byte-identical", got, err)
 	}
 }
 
