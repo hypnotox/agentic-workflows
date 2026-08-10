@@ -956,6 +956,23 @@ func TestPiImplementRoleArtifact(t *testing.T) {
 			t.Errorf("generic implementer role gained Pi-only verification metadata %q", piOnly)
 		}
 	}
+	behavior, err := os.ReadFile(filepath.Join(repoRootDir(t), "tools/pi-extension-test/tests/index.test.ts"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"implementation verification defaults to the root without changing runner cwd",
+		"a linked-worktree HEAD advance satisfies owner verification while root and runner cwd stay fixed",
+		"selected checkout canonicalizes one leading at-sign and filesystem aliases",
+		"selected checkout detects a forbidden commit and names its resolved identity",
+		"invalid explicit verification identities refuse before child dispatch",
+		"omitted verification retains unavailable commit policy outside Git",
+		"a commit-capable implementation that leaves selected HEAD unchanged names retry repair",
+	} {
+		if !strings.Contains(string(behavior), want) {
+			t.Errorf("TypeScript implementation-verification behavior contract missing %q", want)
+		}
+	}
 }
 
 // invariant: rendering/pi-workflows:pi-role-contract-loader (TestPiRoleContractLoader)

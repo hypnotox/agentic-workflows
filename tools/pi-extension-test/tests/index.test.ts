@@ -758,7 +758,9 @@ test("invalid explicit verification identities refuse before child dispatch", as
     label: string; value: string; realpath?: (path: string) => Promise<string>;
     git?: any; expected: RegExp;
   }> = [
+    { label: "raw empty", value: "", expected: /verificationCheckout.*empty/ },
     { label: "empty after normalization", value: "@", expected: /verificationCheckout.*empty/ },
+    { label: "exactly one leading at-sign", value: "@@worktree-link", realpath: async () => { throw Object.assign(new Error("missing"), { code: "ENOENT" }); }, expected: /\/repo\/@worktree-link/ },
     { label: "missing", value: "/missing", realpath: async () => { throw Object.assign(new Error("missing"), { code: "ENOENT" }); }, expected: /verificationCheckout.*does not exist/ },
     { label: "non-Git", value: "/tmp/plain", git: () => ({ code: 1, stderr: "not a git repository" }), expected: /verificationCheckout.*checkout root/ },
     { label: "subdirectory", value: `${WORKTREE}/sub`, git: (_command: string, args: string[]) => args.includes("--show-toplevel") ? { code: 0, stdout: `${WORKTREE}\n` } : { code: 1 }, expected: /verificationCheckout.*checkout root/ },
@@ -773,6 +775,22 @@ test("invalid explicit verification identities refuse before child dispatch", as
     );
     assert.equal(h.requests.length, 0, item.label);
   }
+
+  const permission = harness({ realpath: async () => { throw Object.assign(new Error("permission denied"), { code: "EACCES" }); } });
+  await assert.rejects(
+    call(permission, "subagent_implement", { task: "x", allowCommits: true, verificationCheckout: "/private" }),
+    (error: any) => error.message.includes("permission denied") && error.cause?.code === "EACCES",
+  );
+  assert.equal(permission.requests.length, 0);
+});
+
+test("omitted verification retains unavailable commit policy outside Git", async () => {
+  const h = harness({ git: [{ code: 1 }, { code: 1 }] });
+  const { value } = await call(h, "subagent_implement", { task: "x", allowCommits: true });
+  assert.equal(value.details.state, "completed");
+  assert.equal(value.details.verificationCheckout, ROOT);
+  assert.equal(value.details.commitVerification, "unavailable");
+  assert.equal(h.requests[0].cwd, ROOT);
 });
 
 test("a commit-capable implementation that leaves selected HEAD unchanged names retry repair", async () => {

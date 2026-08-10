@@ -281,9 +281,9 @@ async function snapshot(pi: ExtensionAPI, cwd: string): Promise<GitSnapshot> {
   return { available: status.code === 0, head: head.stdout.trim(), status: status.stdout };
 }
 
-async function canonicalPath(deps: ExtensionDependencies, path: string, missingMessage: string): Promise<string> {
+async function canonicalPath(deps: ExtensionDependencies, path: string, failureMessage: string): Promise<string> {
   try { return await (deps.realpath ?? realpath)(path); }
-  catch { throw new Error(missingMessage); }
+  catch (error) { throw new Error(`${failureMessage}: ${errorText(error)}`, { cause: error }); }
 }
 
 async function resolveVerificationCheckout(

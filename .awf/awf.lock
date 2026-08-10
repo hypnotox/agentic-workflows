@@ -280,9 +280,9 @@
     },
     ".pi/extensions/awf-subagents/index.ts": {
       "templateId": "pi/awf-subagents/index.ts.tmpl",
-      "templateHash": "sha256:8405cded7caf27b81605d2315a0b213d2d18acdebead7635a22f4fe1b621e9f5",
+      "templateHash": "sha256:d70ebb6ab9529564dccf1d144a0df3e3867ee3b07503fece660080022dec6a91",
       "configHash": "sha256:2de15b42b029392aaa7bd2d996c9d8d910841273f3dd40695b290e66777021e4",
-      "outputHash": "sha256:54839366a9396c1851fae99c9ce41c9f3828b876b0c548777cfac5381e8b8e3a"
+      "outputHash": "sha256:672c6718292ae1c3f8be0508e4738cfa6281643beb658e5d544bc0bc441ecfd7"
     },
     ".pi/extensions/awf-subagents/model-routing.ts": {
       "templateId": "pi/awf-subagents/model-routing.ts.tmpl",
@@ -775,8 +775,8 @@
     "docs/topics/rendering/pi-runtime.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:5c5f74cb582e79770e13b2be6ff430f2fae94d3487b6fbdedc9bfba7b605c17a",
-      "outputHash": "sha256:9d63de133ad25401df233255a7bf2be414afee3f633f94b71894db772bd5d724"
+      "configHash": "sha256:2eefc34ca53dfa821fd7e5e8bfdb0c58cfbbf56578a47291ecd1279a728d18a5",
+      "outputHash": "sha256:e5d4235c7541db97ba772405f7b91069988e81dbb98cd61cae77e447e01da2a8"
     },
     "docs/topics/rendering/pi-workflows.md": {
       "templateId": "topics/topic.md.tmpl",
