@@ -279,7 +279,13 @@ func TestFinishFaultAndTopologyErrorBranches(t *testing.T) {
 			if _, err := service.New(testContext(t), NewInput{Slug: "finish-faults", Title: "Finish faults"}); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := service.Finish(testContext(t), "finish-faults"); err == nil {
+			result, err := service.Finish(testContext(t), "finish-faults")
+			syncStage := stage == "finish.root-fsync" || stage == "finish.archive-parent-fsync" || stage == "finish.source-parent-fsync"
+			if syncStage && !directorySyncAvailable() {
+				if err != nil || !result.Archived || result.DestinationSyncAvailable || result.SourceSyncAvailable || result.DestinationSynced || result.SourceSynced {
+					t.Fatalf("unavailable parent sync result=%#v err=%v", result, err)
+				}
+			} else if err == nil {
 				t.Fatal("fault was ignored")
 			}
 		})

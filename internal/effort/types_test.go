@@ -53,7 +53,7 @@ func TestPartialFinishErrorDiagnostic(t *testing.T) {
 	if renderErr := presentation.Render(&out, document); renderErr != nil {
 		t.Fatal(renderErr)
 	}
-	const want = "condition: effort finish was interrupted\nstate: operation\ncause: disk fault\n\ndiagnostic:\n  changed:\n    active resident: no\n    finishing reservation: no\n    archived resident: yes\n    archive parent synced: no\n    efforts parent synced: no\n  steps:\n    step 1: retry `awf effort finish path/with  spaces`\n"
+	const want = "condition: effort finish was interrupted\nstate: operation\ncause: disk fault\n\ndiagnostic:\n  changed:\n    active resident: no\n    finishing reservation: no\n    archived resident: yes\n    archive parent sync available: no\n    archive parent synced: no\n    efforts parent sync available: no\n    efforts parent synced: no\n  steps:\n    step 1: retry `awf effort finish path/with  spaces`\n"
 	if out.String() != want {
 		t.Fatalf("diagnostic = %q, want %q", out.String(), want)
 	}
@@ -61,7 +61,7 @@ func TestPartialFinishErrorDiagnostic(t *testing.T) {
 
 func TestFinishPresentationRejectsInvalidLiteralInputs(t *testing.T) {
 	valid, err := (&PartialFinishError{Result: FinishResult{ArchivePath: ".awf/effort-archive/id-demo"}, Cause: errors.New("failure")}).Diagnostic()
-	if err != nil || len(valid.Changed) != 6 {
+	if err != nil || len(valid.Changed) != 8 {
 		t.Fatalf("valid archive diagnostic=%#v err=%v", valid, err)
 	}
 	if _, err := (&PartialFinishError{Result: FinishResult{ArchivePath: "bad\npath"}, Cause: errors.New("failure")}).Diagnostic(); err == nil || !strings.Contains(err.Error(), "line break") {
@@ -90,10 +90,10 @@ func TestPartialFinishDiagnosticReportsEveryAxis(t *testing.T) {
 		result FinishResult
 		want   string
 	}{
-		{"active", FinishResult{State: FinishStateActive}, "active resident: yes\n    finishing reservation: no\n    archived resident: no\n    archive parent synced: no\n    efforts parent synced: no"},
-		{"reserved", FinishResult{State: FinishStateReserved, Reserved: true}, "active resident: no\n    finishing reservation: yes\n    archived resident: no\n    archive parent synced: no\n    efforts parent synced: no"},
-		{"archived", FinishResult{State: FinishStateArchived, Archived: true}, "active resident: no\n    finishing reservation: no\n    archived resident: yes\n    archive parent synced: no\n    efforts parent synced: no"},
-		{"archived after reservation", FinishResult{State: FinishStateArchived, Reserved: true, Archived: true}, "active resident: no\n    finishing reservation: no\n    archived resident: yes\n    archive parent synced: no\n    efforts parent synced: no"},
+		{"active", FinishResult{State: FinishStateActive}, "active resident: yes\n    finishing reservation: no\n    archived resident: no\n    archive parent sync available: no\n    archive parent synced: no\n    efforts parent sync available: no\n    efforts parent synced: no"},
+		{"reserved", FinishResult{State: FinishStateReserved, Reserved: true}, "active resident: no\n    finishing reservation: yes\n    archived resident: no\n    archive parent sync available: no\n    archive parent synced: no\n    efforts parent sync available: no\n    efforts parent synced: no"},
+		{"archived", FinishResult{State: FinishStateArchived, Archived: true}, "active resident: no\n    finishing reservation: no\n    archived resident: yes\n    archive parent sync available: no\n    archive parent synced: no\n    efforts parent sync available: no\n    efforts parent synced: no"},
+		{"archived after reservation", FinishResult{State: FinishStateArchived, Reserved: true, Archived: true}, "active resident: no\n    finishing reservation: no\n    archived resident: yes\n    archive parent sync available: no\n    archive parent synced: no\n    efforts parent sync available: no\n    efforts parent synced: no"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			diagnostic, err := (&PartialFinishError{Result: test.result, Cause: errors.New("mechanism failed"), Actions: []RecoveryAction{{Text: "retry"}}}).Diagnostic()
@@ -121,7 +121,7 @@ func TestPartialFinishDiagnosticReportsEveryAxis(t *testing.T) {
 			for _, change := range mutation.Changes {
 				gotChanges += len(change.Values)
 			}
-			wantChanges := 0
+			wantChanges := 2 // unavailable parent syncs are reported as platform limits
 			if test.result.Reserved {
 				wantChanges++
 			}

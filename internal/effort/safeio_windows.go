@@ -151,6 +151,8 @@ func (windowsDirectorySyncFile) Sync() error {
 	return nil
 }
 
+func directorySyncAvailable() bool { return false }
+
 func openDirectoryForSync(path string) (durableFile, error) {
 	file, err := os.Open(path)
 	if err != nil {

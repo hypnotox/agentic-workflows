@@ -156,8 +156,9 @@ func (s *Service) Finish(ctx context.Context, slug string) (FinishResult, error)
 		if topologyErr := s.requireNoManagedTopology(ctx, slug); topologyErr != nil {
 			return FinishResult{}, topologyErr
 		}
-		if err := s.requireArchiveDestinationAbsent(record); err != nil {
-			return FinishResult{}, err
+		activeResult := newFinishResult(FinishStateActive, false, s.paths.publicArchivePath(record))
+		if err := s.requireArchiveDestinationAbsent(record, activeResult); err != nil {
+			return activeResult, err
 		}
 		tombstone := filepath.Join(s.paths.efforts, tombstoneName(record))
 		if err := s.store.hit("finish.rename"); err != nil {
@@ -166,12 +167,14 @@ func (s *Service) Finish(ctx context.Context, slug string) (FinishResult, error)
 		if err := moveDirectoryNoReplace(active, tombstone); err != nil { // coverage-ignore: the validated owned active directory and absent UUID reservation make failure a concurrent namespace or storage fault
 			return FinishResult{}, fmt.Errorf("rename effort %s to finishing reservation: %w", slug, err)
 		}
-		result := FinishResult{State: FinishStateReserved, Reserved: true}
-		if err := s.store.hit("finish.root-fsync"); err != nil {
-			return result, partialFinish(result, fmt.Errorf("effort became reserved but source parent sync failed: %w", err), retryFinish(slug))
-		}
-		if err := syncDirectory(s.paths.efforts); err != nil { // coverage-ignore: injected root-fsync covers this kernel boundary
-			return result, partialFinish(result, fmt.Errorf("sync efforts root after finishing rename: %w", err), retryFinish(slug))
+		result := newFinishResult(FinishStateReserved, true, s.paths.publicArchivePath(record))
+		if result.SourceSyncAvailable {
+			if err := s.store.hit("finish.root-fsync"); err != nil {
+				return result, partialFinish(result, fmt.Errorf("effort became reserved but source parent sync failed: %w", err), retryFinish(slug))
+			}
+			if err := syncDirectory(s.paths.efforts); err != nil { // coverage-ignore: injected root-fsync covers this kernel boundary
+				return result, partialFinish(result, fmt.Errorf("sync efforts root after finishing rename: %w", err), retryFinish(slug))
+			}
 		}
 		return s.archiveReservation(slug, tombstone, true)
 	} else if !errors.Is(err, os.ErrNotExist) { // coverage-ignore: local lstat reports an inode or os.ErrNotExist absent a kernel fault
@@ -219,10 +222,14 @@ func (s *Service) validateArchive() error {
 	return nil
 }
 
-func (s *Service) requireArchiveDestinationAbsent(record Record) error {
+func (s *Service) requireArchiveDestinationAbsent(record Record, result FinishResult) error {
 	destination := s.paths.archive(record)
 	if _, err := os.Lstat(destination); err == nil {
-		return refusal(fmt.Sprintf("archive destination %s already exists; changed bytes: no; next action: inspect the existing destination and preserve both residents", destination), "effort archive destination already exists", "archive", "destination collision", []RecoveryAction{{Text: "inspect " + destination}, {Text: "preserve both residents and resolve the collision manually"}}, nil)
+		source := s.paths.effort(record.Slug)
+		if result.State == FinishStateReserved {
+			source = filepath.Join(s.paths.efforts, tombstoneName(record))
+		}
+		return partialFinish(result, fmt.Errorf("effort archive destination already exists: %s", destination), archiveCollisionActions(source, destination))
 	} else if !errors.Is(err, os.ErrNotExist) { // coverage-ignore: local lstat reports an inode or os.ErrNotExist absent a kernel fault
 		return fmt.Errorf("inspect archive destination %s: %w", destination, err)
 	}
@@ -237,6 +244,14 @@ func partialFinish(result FinishResult, cause error, actions []RecoveryAction) e
 	return &PartialFinishError{Result: result, Cause: cause, Actions: actions}
 }
 
+func newFinishResult(state FinishResidentState, reserved bool, archivePath string) FinishResult {
+	available := directorySyncAvailable()
+	return FinishResult{
+		State: state, Reserved: reserved, ArchivePath: archivePath,
+		DestinationSyncAvailable: available, SourceSyncAvailable: available,
+	}
+}
+
 func (s *Service) archiveReservation(slug, tombstone string, reserved bool) (FinishResult, error) {
 	record, err := s.store.loadDirectory(tombstone, slug, true)
 	if err != nil {
@@ -246,35 +261,47 @@ func (s *Service) archiveReservation(slug, tombstone string, reserved bool) (Fin
 	if filepath.Clean(want) != filepath.Clean(tombstone) {
 		return FinishResult{State: FinishStateReserved, Reserved: reserved}, &CorruptError{Path: tombstone, Err: errors.New("finishing name does not match stored slug and UUID")}
 	}
-	if err := s.requireArchiveDestinationAbsent(record); err != nil {
-		return FinishResult{State: FinishStateReserved, Reserved: reserved}, err
-	}
 	destination := s.paths.archive(record)
 	publicDestination := s.paths.publicArchivePath(record)
-	result := FinishResult{State: FinishStateReserved, Reserved: reserved, ArchivePath: publicDestination}
+	result := newFinishResult(FinishStateReserved, reserved, publicDestination)
+	if err := s.requireArchiveDestinationAbsent(record, result); err != nil {
+		return result, err
+	}
 	if err := s.store.hit("finish.archive"); err != nil {
 		return result, partialFinish(result, fmt.Errorf("archive move interrupted before completion: %w", err), retryFinish(slug))
 	}
 	if err := moveDirectoryNoReplace(tombstone, destination); err != nil {
-		return result, partialFinish(result, fmt.Errorf("move finishing reservation to archive without replacement: %w", err), retryFinish(slug))
+		return result, partialFinish(result, fmt.Errorf("move finishing reservation to archive without replacement: %w", err), archiveMoveRefusalActions(tombstone, destination))
 	}
 	result.State = FinishStateArchived
 	result.Archived = true
-	if err := s.store.hit("finish.archive-parent-fsync"); err != nil {
-		return result, partialFinish(result, fmt.Errorf("archive destination parent sync failed after move: %w", err), archiveInspectionActions(tombstone, destination))
+	if result.DestinationSyncAvailable {
+		if err := s.store.hit("finish.archive-parent-fsync"); err != nil {
+			return result, partialFinish(result, fmt.Errorf("archive destination parent sync failed after move: %w", err), archiveInspectionActions(tombstone, destination))
+		}
+		if err := syncDirectory(s.paths.effortArchive); err != nil { // coverage-ignore: injected archive-parent-fsync covers this kernel boundary
+			return result, partialFinish(result, fmt.Errorf("sync archive parent after move: %w", err), archiveInspectionActions(tombstone, destination))
+		}
+		result.DestinationSynced = true
 	}
-	if err := syncDirectory(s.paths.effortArchive); err != nil { // coverage-ignore: injected archive-parent-fsync covers this kernel boundary
-		return result, partialFinish(result, fmt.Errorf("sync archive parent after move: %w", err), archiveInspectionActions(tombstone, destination))
+	if result.SourceSyncAvailable {
+		if err := s.store.hit("finish.source-parent-fsync"); err != nil {
+			return result, partialFinish(result, fmt.Errorf("efforts source parent sync failed after archive move: %w", err), archiveInspectionActions(tombstone, destination))
+		}
+		if err := syncDirectory(s.paths.efforts); err != nil { // coverage-ignore: injected source-parent-fsync covers this kernel boundary
+			return result, partialFinish(result, fmt.Errorf("sync efforts parent after archive move: %w", err), archiveInspectionActions(tombstone, destination))
+		}
+		result.SourceSynced = true
 	}
-	result.DestinationSynced = true
-	if err := s.store.hit("finish.source-parent-fsync"); err != nil {
-		return result, partialFinish(result, fmt.Errorf("efforts source parent sync failed after archive move: %w", err), archiveInspectionActions(tombstone, destination))
-	}
-	if err := syncDirectory(s.paths.efforts); err != nil { // coverage-ignore: injected source-parent-fsync covers this kernel boundary
-		return result, partialFinish(result, fmt.Errorf("sync efforts parent after archive move: %w", err), archiveInspectionActions(tombstone, destination))
-	}
-	result.SourceSynced = true
 	return result, nil
+}
+
+func archiveCollisionActions(source, destination string) []RecoveryAction {
+	return []RecoveryAction{{Text: "inspect " + source}, {Text: "inspect " + destination}, {Text: "preserve both residents and resolve the collision manually before retrying"}}
+}
+
+func archiveMoveRefusalActions(source, destination string) []RecoveryAction {
+	return []RecoveryAction{{Text: "inspect " + source}, {Text: "inspect " + destination}, {Text: "resolve the destination collision or filesystem boundary before retrying"}}
 }
 
 func archiveInspectionActions(source, destination string) []RecoveryAction {

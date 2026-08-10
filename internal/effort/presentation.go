@@ -68,11 +68,11 @@ func (e *managedTopologyError) Diagnostic() (presentation.Diagnostic, error) {
 
 // Diagnostic maps a partial finish without embedding recovery prose in Cause.
 func (e *PartialFinishError) Diagnostic() (presentation.Diagnostic, error) {
-	changed := make([]presentation.Field, 0, 6)
+	changed := make([]presentation.Field, 0, 8)
 	for _, fact := range []struct {
 		label string
 		value bool
-	}{{"active resident", e.Result.State == FinishStateActive}, {"finishing reservation", e.Result.State == FinishStateReserved}, {"archived resident", e.Result.State == FinishStateArchived}, {"archive parent synced", e.Result.DestinationSynced}, {"efforts parent synced", e.Result.SourceSynced}} {
+	}{{"active resident", e.Result.State == FinishStateActive}, {"finishing reservation", e.Result.State == FinishStateReserved}, {"archived resident", e.Result.State == FinishStateArchived}, {"archive parent sync available", e.Result.DestinationSyncAvailable}, {"archive parent synced", e.Result.DestinationSynced}, {"efforts parent sync available", e.Result.SourceSyncAvailable}, {"efforts parent synced", e.Result.SourceSynced}} {
 		value, err := presentation.Prose(yesNo(fact.value))
 		if err != nil { // coverage-ignore: yesNo always returns a nonempty prose value
 			return presentation.Diagnostic{}, err
@@ -375,6 +375,23 @@ func (r FinishResult) FinishMutation(slug string) (presentation.Mutation, error)
 	mutation := presentation.Mutation{Status: "archived", Identity: []presentation.Field{effortField, archiveField}, NextActions: []presentation.Value{next}}
 	if len(changed) > 0 {
 		mutation.Changes = []presentation.MutationChange{{Label: "completed", Values: changed}}
+	}
+	limits := make([]presentation.Value, 0, 2)
+	for _, text := range []string{
+		map[bool]string{true: "", false: "archive parent sync unavailable on this platform"}[r.DestinationSyncAvailable],
+		map[bool]string{true: "", false: "efforts parent sync unavailable on this platform"}[r.SourceSyncAvailable],
+	} {
+		if text == "" {
+			continue
+		}
+		value, err := presentation.Prose(text)
+		if err != nil { // coverage-ignore: fixed platform-limit prose is presentation-valid
+			return presentation.Mutation{}, err
+		}
+		limits = append(limits, value)
+	}
+	if len(limits) > 0 {
+		mutation.Changes = append(mutation.Changes, presentation.MutationChange{Label: "platform limits", Values: limits})
 	}
 	return mutation, nil
 }

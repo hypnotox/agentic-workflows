@@ -75,12 +75,14 @@ const (
 
 // FinishResult reports each observable namespace and durability boundary.
 type FinishResult struct {
-	State             FinishResidentState
-	Reserved          bool
-	Archived          bool
-	DestinationSynced bool
-	SourceSynced      bool
-	ArchivePath       string
+	State                    FinishResidentState
+	Reserved                 bool
+	Archived                 bool
+	DestinationSyncAvailable bool
+	SourceSyncAvailable      bool
+	DestinationSynced        bool
+	SourceSynced             bool
+	ArchivePath              string
 }
 
 // RollbackResult reports the narrow failed-creation deletion transition.

@@ -299,6 +299,13 @@ func (m *Manager) rollback(ctx context.Context, record effort.Record, addErr err
 			Condition: "managed worktree creation failed and topology remains", ChangedEffort: true, ChangedTopology: true, Cause: addErr, RollbackCause: rollbackErr,
 			Steps: []string{"inspect `git worktree list --porcelain`", fmt.Sprintf("clean up with native Git or `awf effort worktree remove %s`", slug), fmt.Sprintf("retry `awf effort worktree add %s` or finish the effort", slug)},
 		}
+	case rollbackResult.Removed:
+		reservation := ".awf/efforts/.finishing-" + record.ID + "-" + slug
+		return &CreationError{
+			Message:   fmt.Sprintf("worktree creation failed: %v; effort %s deletion completed with parent durability uncertainty: %v; next action: verify the active resident and %s are absent", addErr, slug, rollbackErr, reservation),
+			Condition: "managed worktree creation failed after effort deletion with durability uncertainty", Cause: addErr, RollbackCause: rollbackErr,
+			Steps: []string{fmt.Sprintf("verify `.awf/efforts/%s` is absent", slug), fmt.Sprintf("verify `%s` is absent", reservation), "retry effort creation only after both paths are absent"},
+		}
 	case rollbackResult.Reserved:
 		return &CreationError{
 			Message:   fmt.Sprintf("worktree creation failed: %v; effort %s deletion rollback was interrupted: %v; next action: inspect the finishing reservation", addErr, slug, rollbackErr),

@@ -152,6 +152,35 @@ func TestWindowsPublicationAPIFaultMatrix(t *testing.T) {
 	})
 }
 
+func TestWindowsFinishReportsUnavailableParentSync(t *testing.T) {
+	if directorySyncAvailable() {
+		t.Fatal("Windows directory sync reported available")
+	}
+	root := initEffortRepo(t)
+	service := openTestService(t, root, func(deps *Dependencies) {
+		noTopology(deps)
+		deps.UUID = func() (string, error) { return testIDA, nil }
+		deps.Fault = func(stage string) error {
+			if strings.HasSuffix(stage, "fsync") {
+				return errors.New("unavailable sync stage was invoked")
+			}
+			return nil
+		}
+	})
+	record, err := service.New(testContext(t), NewInput{Slug: "windows-sync", Title: "Windows sync"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := service.Finish(testContext(t), record.Slug)
+	if err != nil || !result.Archived || result.DestinationSyncAvailable || result.SourceSyncAvailable || result.DestinationSynced || result.SourceSynced {
+		t.Fatalf("finish result=%#v err=%v", result, err)
+	}
+	mutation, err := result.FinishMutation(record.Slug)
+	if err != nil || len(mutation.Changes) != 2 || mutation.Changes[1].Label != "platform limits" || len(mutation.Changes[1].Values) != 2 {
+		t.Fatalf("finish mutation=%#v err=%v", mutation, err)
+	}
+}
+
 func TestWindowsOwnershipAPIRejectsForeignOwnerAndFaults(t *testing.T) {
 	api := windowsSecurityAPI{
 		ownerSID:   func(windows.Handle) (string, error) { return "S-1-owner", nil },

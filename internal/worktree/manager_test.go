@@ -413,10 +413,11 @@ func TestNewEffortRollsBackOnlyWhenTopologyIsProvenAbsent(t *testing.T) {
 // invariant: tooling/effort-management:default-worktree-creation (TestNewEffortReportsInterruptedAndFailedRollbacksDistinctly)
 func TestNewEffortReportsInterruptedAndFailedRollbacksDistinctly(t *testing.T) {
 	for _, test := range []struct {
-		name    string
-		stage   string
-		wants   []string
-		removed bool
+		name     string
+		stage    string
+		wants    []string
+		removed  bool
+		reserved bool
 	}{
 		{
 			name:  "rollback failed before reservation",
@@ -424,9 +425,16 @@ func TestNewEffortReportsInterruptedAndFailedRollbacksDistinctly(t *testing.T) {
 			wants: []string{"retained: rollback failed", "retry `awf effort worktree add retained-rollback`"},
 		},
 		{
-			name:    "interrupted after reservation",
-			stage:   "rollback.root-fsync",
-			wants:   []string{"deletion rollback was interrupted", "inspect the finishing reservation"},
+			name:     "interrupted after reservation",
+			stage:    "rollback.root-fsync",
+			wants:    []string{"deletion rollback was interrupted", "inspect the finishing reservation"},
+			removed:  true,
+			reserved: true,
+		},
+		{
+			name:    "durability uncertain after deletion",
+			stage:   "rollback.delete-fsync",
+			wants:   []string{"deletion completed with parent durability uncertainty", "verify the active resident"},
 			removed: true,
 		},
 	} {
@@ -450,12 +458,20 @@ func TestNewEffortReportsInterruptedAndFailedRollbacksDistinctly(t *testing.T) {
 			if test.stage == "rollback.root-fsync" {
 				want = "condition: managed worktree creation failed and effort deletion rollback was interrupted\nstate: operation\ncause: injected worktree add | injected failure at rollback.root-fsync: injected rollback.root-fsync\n\ndiagnostic:\n  changed:\n    effort resident: yes\n    managed topology: no\n  steps:\n    step 1: inspect the identity-bound finishing reservation\n    step 2: complete safe manual cleanup only after verifying its immutable identity\n"
 			}
+			if test.stage == "rollback.delete-fsync" {
+				want = "condition: managed worktree creation failed after effort deletion with durability uncertainty\nstate: operation\ncause: injected worktree add | injected failure at rollback.delete-fsync: injected rollback.delete-fsync\n\ndiagnostic:\n  changed:\n    effort resident: no\n    managed topology: no\n  steps:\n    step 1: verify `.awf/efforts/retained-rollback` is absent\n    step 2: verify `.awf/efforts/.finishing-018f47a0-7b3d-4c52-8f1a-123456789abc-retained-rollback` is absent\n    step 3: retry effort creation only after both paths are absent\n"
+			}
 			if got := renderedTopologyDiagnostic(t, creation); got != want {
 				t.Fatalf("%s diagnostic = %q, want %q", test.name, got, want)
 			}
 			_, statErr := os.Lstat(filepath.Join(root, ".awf", "efforts", "retained-rollback"))
 			if test.removed != errors.Is(statErr, os.ErrNotExist) {
 				t.Fatalf("active resident presence = %v, want removed=%v", statErr, test.removed)
+			}
+			reservation := filepath.Join(root, ".awf", "efforts", ".finishing-"+worktreeTestID+"-retained-rollback")
+			_, reservationErr := os.Lstat(reservation)
+			if test.reserved == errors.Is(reservationErr, os.ErrNotExist) {
+				t.Fatalf("reservation presence = %v, want reserved=%v", reservationErr, test.reserved)
 			}
 		})
 	}
@@ -496,7 +512,7 @@ func TestNewEffortReturnsResidentFailuresBeforeAnyTopology(t *testing.T) {
 func managerWithFaultingEfforts(t *testing.T, root, stage string) *Manager {
 	t.Helper()
 	roots := worktreeControlRoots(t, root)
-	service := newEffortService(t, roots, nil, func(got string) error {
+	service := newEffortService(t, roots, func() (string, error) { return worktreeTestID, nil }, func(got string) error {
 		if got == stage {
 			return failing(stage)
 		}

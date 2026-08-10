@@ -41,7 +41,7 @@ func TestOpaqueScratchMovesUnchangedWithoutTraversal(t *testing.T) {
 		t.Fatalf("list traversed or rejected opaque scratch: %#v, %v", listed, err)
 	}
 	result, err := service.Finish(testContext(t), record.Slug)
-	if err != nil || !result.Archived || !result.DestinationSynced || !result.SourceSynced {
+	if err != nil || !result.Archived || result.DestinationSyncAvailable != directorySyncAvailable() || result.SourceSyncAvailable != directorySyncAvailable() || result.DestinationSynced != result.DestinationSyncAvailable || result.SourceSynced != result.SourceSyncAvailable {
 		t.Fatalf("finish result=%#v err=%v", result, err)
 	}
 	archivedScratch := filepath.Join(root, filepath.FromSlash(result.ArchivePath), "scratch")
@@ -113,8 +113,10 @@ func TestFinishRefusesActiveArchiveCollisionWithoutMutation(t *testing.T) {
 	if err := os.Mkdir(destination, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if result, err := service.Finish(testContext(t), record.Slug); err == nil || result != (FinishResult{}) {
-		t.Fatalf("collision result=%#v err=%v", result, err)
+	result, err := service.Finish(testContext(t), record.Slug)
+	var partial *PartialFinishError
+	if err == nil || result.State != FinishStateActive || result.Archived || !errors.As(err, &partial) || len(partial.Actions) != 3 || !strings.Contains(partial.Actions[0].Text, filepath.Join("efforts", record.Slug)) || !strings.Contains(partial.Actions[2].Text, "before retrying") {
+		t.Fatalf("collision result=%#v err=%v partial=%#v", result, err, partial)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".awf", "efforts", record.Slug)); err != nil {
 		t.Fatalf("active resident changed: %v", err)
