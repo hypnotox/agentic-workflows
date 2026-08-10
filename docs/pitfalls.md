@@ -343,17 +343,6 @@ number (`ADR-0092 ... ADR-0092: Title`); plan review caught it. Strip the prefix
 `awf context` was the first `adr.ParseDir` consumer outside `internal/{adr,invariants,audit}`,
 so the gotcha only surfaces as awf grows ADR-aware tooling.
 
-## Section parts carry their own heading
-
-_Domains: rendering_
-
-A convention part replaces its section's *body*, and for most doc/guide sections the
-`## Heading` line lives inside that body; a part written without it renders a headless
-section (ADR-0090's identity part landed headingless on first sync; only comparing the
-rendered file against this repo's own parts caught it). When authoring a part, check the
-section's default (or an existing adopter's part) for whether the heading is yours to write.
-No note fires: the stub advisory clears the moment the part exists, whatever its shape.
-
 ## Ad hoc compound mutations still need target read-back
 
 Material plan post-checks now require reading back every target after a compound mutation.

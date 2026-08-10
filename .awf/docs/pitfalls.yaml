@@ -307,16 +307,6 @@ data:
         (`strings.TrimPrefix(a.Title, "ADR-"+a.Number+": ")`) when surfacing Title alongside Number.
         `awf context` was the first `adr.ParseDir` consumer outside `internal/{adr,invariants,audit}`,
         so the gotcha only surfaces as awf grows ADR-aware tooling.
-    - title: "Section parts carry their own heading"
-      domains: [rendering]
-      tags: [convention-parts, section-assembly]
-      body: |
-        A convention part replaces its section's *body*, and for most doc/guide sections the
-        `## Heading` line lives inside that body; a part written without it renders a headless
-        section (ADR-0090's identity part landed headingless on first sync; only comparing the
-        rendered file against this repo's own parts caught it). When authoring a part, check the
-        section's default (or an existing adopter's part) for whether the heading is yours to write.
-        No note fires: the stub advisory clears the moment the part exists, whatever its shape.
     - title: "Ad hoc compound mutations still need target read-back"
       tags: [verification-discipline]
       body: |
