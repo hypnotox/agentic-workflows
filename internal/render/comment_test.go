@@ -22,6 +22,8 @@ func TestStripAuthoringComments(t *testing.T) {
 			"<!-- awf:comment note -->\n", ""},
 		{"directive as unterminated last line strips empty",
 			"<!-- awf:comment note -->", ""},
+		{"unterminated final directive removes preceding separator",
+			"a\n<!-- awf:comment note -->", "a"},
 		{"indented directive stripped",
 			"a\n  <!-- awf:comment note -->\nb\n", "a\nb\n"},
 		{"immediate close stripped",
@@ -53,11 +55,6 @@ func TestStripAuthoringComments(t *testing.T) {
 	}
 }
 
-// TestStripAuthoringCommentsMalformed pins the hard-error contract (ADR-0121
-// Decision 3): outside a fence, a whole line opening at the directive token
-// boundary that does not end with "-->" fails, naming the line, and the input
-// comes back unchanged.
-// invariant: rendering/render-engine:authoring-comment-malformed-fails (TestStripAuthoringCommentsMalformed)
 func TestStripAuthoringCommentsSourcePreservesIncludeTransitions(t *testing.T) {
 	src := render.SourceText{Root: "guide.md.tmpl", Spans: []render.SourceSpan{
 		{Source: "guide.md.tmpl", Text: "before\n<!-- awf:comment root -->\n"},
@@ -76,6 +73,11 @@ func TestStripAuthoringCommentsSourcePreservesIncludeTransitions(t *testing.T) {
 	}
 }
 
+// TestStripAuthoringCommentsMalformed pins the hard-error contract (ADR-0121
+// Decision 3): outside a fence, a whole line opening at the directive token
+// boundary that does not end with "-->" fails, naming the line, and the input
+// comes back unchanged.
+// invariant: rendering/render-engine:authoring-comment-malformed-fails (TestStripAuthoringCommentsMalformed)
 func TestStripAuthoringCommentsMalformed(t *testing.T) {
 	cases := []struct {
 		name, in string

@@ -74,6 +74,14 @@ func authoringCommentRanges(src string) ([][2]int, error) {
 		}
 		if keep {
 			kept = append(kept, [2]int{offset, offset + len(raw)})
+		} else if !strings.HasSuffix(raw, "\n") && offset+len(raw) == len(src) && len(kept) > 0 {
+			// Split-and-join stripping historically removed the separator before
+			// a stripped final physical line. Preserve that output contract while
+			// retaining source ranges for every surviving byte.
+			last := &kept[len(kept)-1]
+			if last[1] > last[0] && src[last[1]-1] == '\n' {
+				last[1]--
+			}
 		}
 		offset += len(raw)
 	}
