@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/filepublication"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 const scaffoldTestTemplate = `---
@@ -235,7 +236,8 @@ func provePublicationCollisionPreservesWinner(t *testing.T) {
 }
 
 func proveScaffoldRecordProductionWiring(t *testing.T) {
-	file, err := parser.ParseFile(token.NewFileSet(), "adr.go", nil, 0)
+	path := filepath.Join(testsupport.RepoRoot(t), "internal", "adr", "adr.go")
+	file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -298,18 +300,6 @@ func TestScaffoldRecordLockSpansPublication(t *testing.T) {
 	}
 	if locked {
 		t.Fatal("scaffold returned while the corpus lock remained held")
-	}
-}
-
-func TestCanonicalDecisionsDirectoryRejectsDeletedWorkingDirectory(t *testing.T) {
-	dir := t.TempDir()
-	t.Chdir(dir)
-	if err := os.Remove(dir); err != nil {
-		t.Fatal(err)
-	}
-	_, err := canonicalDecisionsDirectory(".")
-	if err == nil || !strings.Contains(err.Error(), "make absolute") {
-		t.Fatalf("deleted working directory error = %v", err)
 	}
 }
 

@@ -230,5 +230,6 @@ implementation.
   executed its final-path, case, extended-path, contention, and publication assertions under Wine in
   addition to released-target compilation. A final mechanical correction exercises the deleted-CWD
   canonicalization failure directly and binds the no-overwrite marker to the production
-  `acquireScaffoldLock` and `filepublication.Publish` composition with an AST wiring proof. These
-  corrections strengthen verification only.
+  `acquireScaffoldLock` and `filepublication.Publish` composition with an AST wiring proof. The
+  deleted-CWD unit is confined to the non-Windows implementation and asserts both contextual prose
+  and wrapped not-exist identity. These corrections strengthen verification only.
