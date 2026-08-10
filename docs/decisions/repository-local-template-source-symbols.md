@@ -19,7 +19,7 @@ In-place sections create a further boundary. Their bodies become adopter-owned r
 
 ## Decision
 
-1. `decision: repository-template-root` The config may declare an optional normalized repository-relative template source root. Its presence states that the repository contains the awf implementation template tree at that location and enables template source symbols; its absence disables them. Render and check reject traversal or a configured mapping that cannot resolve an emitted template source. Fresh adopter config omits the fact.
+1. `decision: repository-template-root` The config may declare an optional normalized repository-relative `render.templateSourceRoot`. Its presence states that the repository contains the awf implementation template tree at that location and enables template source symbols; its absence disables them. Config loading and reference generation expose the optional fact, while render and check reject traversal or a configured mapping that cannot resolve an emitted template source. The additive schema generation recognizes the field without rewriting configs that omit it, and fresh adopter config omits the fact.
 
 2. `decision: distinct-template-source-marker` An enabled generated Markdown region carries an HTML `awf:template-source` comment whose value is the repository-relative implementation source path. A structural section appends its stable section ID as a fragment. This marker is maintainer-facing template provenance and remains semantically distinct from effective-source `awf:edit` pointers and reader-facing `awf:source` guidance. It carries neither source line numbers nor Go producer symbols.
 
@@ -29,7 +29,7 @@ In-place sections create a further boundary. Their bodies become adopter-owned r
 
 5. `decision: markdown-scope-and-placement` Symbols apply to outputs selected by awf's declared Markdown representation, including guides, docs, skills, agents, topics, domains, and Markdown bridges. Native-format scripts and hooks, template-less procedural regions, and YAML frontmatter are not instrumented. The root-template symbol follows the generated banner and any reader-facing `awf:source` marker so existing frontmatter and public provenance placement remain valid.
 
-6. `decision: deterministic-output-participation` Enabling a template source root changes ordinary planned render bytes and the affected Markdown artifacts' effective config hashes, while authored template hashes remain based on authored include-expanded source rather than generated instrumentation. Render and check use the same configured mode, and absent configuration preserves existing adopter output byte for byte.
+6. `decision: deterministic-output-participation` Enabling a template source root changes ordinary planned render bytes and the affected Markdown artifacts' per-artifact manifest config hashes, while authored template hashes remain based on authored include-expanded source rather than generated instrumentation. Render and check consume the same normalized config fact. Provenance instrumentation does not alter missing-key handling or permit `<no value>` residue, and absent configuration preserves existing adopter output byte for byte.
 
 ## State changes
 
@@ -38,6 +38,8 @@ In-place sections create a further boundary. Their bodies become adopter-owned r
 - add `rendering/render-engine:template-source-symbol`
 
 ## Consequences
+
+The two added claims are behavioral invariants backed by automated tests. Their proofs cover config activation and validation, marker identity and ordering, root/include transitions, overrides, drops, section-default re-injection, in-place readback, declared-Markdown scope, hash participation, publication-safe empty data, and absent-config byte compatibility. The updated marker-exclusivity invariant retains automated backing.
 
 Maintainers can navigate directly from checked-in generated Markdown to the root template, declaring section, or included partial responsible for a region. Structural provenance remains visible even when self-hosted convention parts replace default bodies, without overloading adopter guidance.
 
@@ -52,6 +54,7 @@ Moving the configured source tree or an awf template changes checked-in self-hos
 | Boolean `render.sourceSymbols` preference | It conflicts with the config-facts-only rule and does not establish that emitted paths resolve in the repository. |
 | Unconditional template markers | It would publish maintainer-oriented implementation details into every adopter's generated documents. |
 | On-demand annotated rendering or a sidecar source map | It would not provide navigation from the ordinary checked-in self-hosted documents. |
+| One document-level template pointer | It cannot identify the structural source of individual include and overridden-section regions. |
 | Annotate the flattened expanded string or post-process rendered text | Either approach loses reliable provenance across includes, overrides, frontmatter, and in-place readback. |
 | Source line numbers or Go producer symbols | They create churn or widen attribution beyond the current template-navigation need. |
 
