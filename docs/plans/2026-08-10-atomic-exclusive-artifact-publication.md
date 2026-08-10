@@ -222,3 +222,10 @@ implementation.
   reachable canonicalization and cache failures, wrapped cleanup errors, and current claim markers.
   This changes proof shape and test confinement only; the approved runtime boundary and behavior are
   unchanged.
+- Renewed Phase 3 review settlement: the canonical-process proof now requires a waiter's failed
+  nonblocking acquisition before terminating the holder, then proves acquisition and persistent
+  identity after descriptor release. The one no-overwrite marker composes that alias-keyed
+  cross-process transaction with the forced no-replace winner assertion. Reachable canonicalization
+  and missing-cache failures are directly covered without exclusions, and the Windows test binary
+  executed its final-path, case, extended-path, contention, and publication assertions under Wine in
+  addition to released-target compilation. These corrections strengthen verification only.

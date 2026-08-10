@@ -81,12 +81,28 @@ func TestADRLockProcess(t *testing.T) {
 		return
 	}
 	fmt.Fprintln(os.Stdout, "attempt")
-	unlock, err := acquireScaffoldLock(os.Getenv("ADR_LOCK_DIR"))
+	lock, identity, err := newScaffoldLock(os.Getenv("ADR_LOCK_DIR"))
 	if err != nil {
 		t.Fatal(err)
 	}
+	if os.Getenv("ADR_LOCK_TRY_FIRST") != "" {
+		locked, err := lock.TryLock()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if locked {
+			t.Fatal("waiter acquired while the holder was alive")
+		}
+		fmt.Fprintln(os.Stdout, "contended")
+	}
+	if err := lock.Lock(); err != nil {
+		t.Fatalf("lock ADR decisions directory %s: %v", identity, err)
+	}
+	if err := restrictScaffoldLock(lock); err != nil {
+		t.Fatal(err)
+	}
 	defer func() {
-		if err := unlock(); err != nil {
+		if err := lock.Close(); err != nil {
 			t.Error(err)
 		}
 	}()
@@ -102,10 +118,13 @@ type lockProcess struct {
 	output  *bufio.Reader
 }
 
-func startLockProcess(t *testing.T, dir string) lockProcess {
+func startLockProcess(t *testing.T, dir string, tryFirst bool) lockProcess {
 	t.Helper()
 	command := exec.Command(os.Args[0], "-test.run=^TestADRLockProcess$")
 	command.Env = append(os.Environ(), "ADR_LOCK_PROCESS=1", "ADR_LOCK_DIR="+dir)
+	if tryFirst {
+		command.Env = append(command.Env, "ADR_LOCK_TRY_FIRST=1")
+	}
 	stdin, err := command.StdinPipe()
 	if err != nil {
 		t.Fatal(err)
@@ -127,17 +146,26 @@ func readLockSignal(t *testing.T, process lockProcess, want string) {
 	}
 }
 
-// TestScaffoldLockReleasesAfterProcessDeath proves that the operating system
-// releases a descriptor-held lock even when the holder cannot run cleanup.
-func TestScaffoldLockReleasesAfterProcessDeath(t *testing.T) {
+func proveCanonicalProcessContentionAndDeathRelease(t *testing.T) {
 	cache := isolateScaffoldLockCache(t)
-	dir := t.TempDir()
-	holder := startLockProcess(t, dir)
+	dir := filepath.Join(t.TempDir(), "decisions")
+	if err := os.Mkdir(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	alias := `\\?\` + dir
+	if runtime.GOOS != "windows" {
+		alias = filepath.Join(filepath.Dir(dir), "decisions-alias")
+		if err := os.Symlink(dir, alias); err != nil {
+			t.Fatal(err)
+		}
+	}
+	holder := startLockProcess(t, dir, false)
 	readLockSignal(t, holder, "attempt")
 	readLockSignal(t, holder, "acquired")
 
-	waiter := startLockProcess(t, dir)
+	waiter := startLockProcess(t, alias, true)
 	readLockSignal(t, waiter, "attempt")
+	readLockSignal(t, waiter, "contended")
 	if err := holder.command.Process.Kill(); err != nil {
 		t.Fatal(err)
 	}
@@ -179,8 +207,7 @@ func TestScaffoldLockReleasesAfterProcessDeath(t *testing.T) {
 	}
 }
 
-// invariant: adr-system/adr-lifecycle:adr-new-no-overwrite (TestScaffoldRecordPublicationCollisionPreservesWinner)
-func TestScaffoldRecordPublicationCollisionPreservesWinner(t *testing.T) {
+func provePublicationCollisionPreservesWinner(t *testing.T) {
 	dir := t.TempDir()
 	writeScaffoldTestTemplate(t, dir)
 	winner := []byte("concurrent winner\n")
@@ -202,6 +229,12 @@ func TestScaffoldRecordPublicationCollisionPreservesWinner(t *testing.T) {
 	if string(got) != string(winner) {
 		t.Fatalf("collision changed winner bytes: %q", got)
 	}
+}
+
+// invariant: adr-system/adr-lifecycle:adr-new-no-overwrite (TestADRNewNoOverwriteInvariant)
+func TestADRNewNoOverwriteInvariant(t *testing.T) {
+	t.Run("canonical-process-transaction", proveCanonicalProcessContentionAndDeathRelease)
+	t.Run("publication-collision", provePublicationCollisionPreservesWinner)
 }
 
 func TestScaffoldRecordLockSpansPublication(t *testing.T) {
@@ -237,6 +270,22 @@ func TestAcquireScaffoldLockRejectsMissingDirectory(t *testing.T) {
 	_, err := acquireScaffoldLock(filepath.Join(t.TempDir(), "missing"))
 	if err == nil || !strings.Contains(err.Error(), "canonicalize decisions directory") {
 		t.Fatalf("missing directory error = %v", err)
+	}
+}
+
+func TestAcquireScaffoldLockRejectsMissingUserCache(t *testing.T) {
+	switch runtime.GOOS {
+	case "windows":
+		t.Setenv("LOCALAPPDATA", "")
+	case "darwin":
+		t.Setenv("HOME", "")
+	default:
+		t.Setenv("XDG_CACHE_HOME", "")
+		t.Setenv("HOME", "")
+	}
+	_, err := acquireScaffoldLock(t.TempDir())
+	if err == nil || !strings.Contains(err.Error(), "locate ADR lock cache") {
+		t.Fatalf("missing user cache error = %v", err)
 	}
 }
 
