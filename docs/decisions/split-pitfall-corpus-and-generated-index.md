@@ -51,11 +51,12 @@ the output lifecycle.
 1. `decision: per-entry-authored-corpus` Replace `data.pitfalls` with independently authored
    Markdown files. Each file has one path-derived stable slug and strict YAML frontmatter containing
    required `title` and optional `domains`, `tags`, and `related`, followed by a nonblank Markdown
-   body. The title is trimmed display text and never renames identity. Duplicate-title comparison
-   collapses internal Unicode whitespace and compares case-insensitively, so cosmetically equivalent
-   active titles fail. Only direct regular `.md` children with lowercase kebab slugs are valid;
-   `index` is reserved. Unknown or duplicate keys, malformed or duplicate list members, nested
-   paths, and non-regular inputs fail.
+   body. The title is trimmed, nonempty, single-line display text; CR and LF are rejected, and title
+   edits never rename identity. Duplicate-title comparison joins Go `strings.Fields` with one ASCII
+   space and compares the results with `strings.EqualFold`, so cosmetically equivalent active titles
+   fail under one exact Unicode whitespace and simple-folding rule. Only direct regular `.md`
+   children with lowercase kebab slugs are valid; `index` is reserved. Unknown or duplicate keys,
+   malformed or duplicate list members, nested paths, and non-regular inputs fail.
 
 2. `decision: indexed-leaf-publication` Keep `docs/pitfalls.md` as the compact generated catalog
    entry and publish one generated leaf per source beneath `docs/pitfalls/` at the same slug. The
@@ -101,8 +102,10 @@ the output lifecycle.
 
 7. `decision: safe-forward-migration` Add a new schema migration after the current generation and
    leave the historical generation-9 migration frozen. Convert old entries in authored order,
-   allocating the same deterministic collision suffixes as scaffolding and preserving every title,
-   domain, tag, related ADR, and body. Preflight the whole conversion. Refuse relative Markdown links
+   allocating the same deterministic collision suffixes as scaffolding and preserving the legacy
+   parser's canonical trimmed title plus every domain, tag, related ADR, and body. Raw surrounding
+   title whitespace is not active legacy data because the existing parser already trims it.
+   Preflight the whole conversion. Refuse relative Markdown links
    with entry-specific recovery guidance rather than rewriting prose, refuse conflicting destination
    files, accept byte-identical leaves from a partial prior attempt, create all missing leaves before
    removing old authority, and retain unrelated section configuration. Retrying after interruption
@@ -117,7 +120,7 @@ the output lifecycle.
 
 9. `decision: backed-pitfall-contracts` Back the new corpus-validation, output-completeness,
    semantic-ownership, scaffold, and migration claims with tests and matching invariant markers.
-   Corpus tests refute each source and identity violation. Project tests prove index and leaf output
+   Corpus tests refute each source and identity violation, including CR/LF titles. Project tests prove index and leaf output
    planning, hashing, render, drift, lock, backup, and pruning plus the single package ownership
    boundary. CLI tests prove creation dispatch and exclusive collision allocation. Migration tests
    prove field preservation, full preflight, relative-link and conflict refusal, byte-identical
@@ -133,7 +136,7 @@ the output lifecycle.
 - remove `rendering/doc-outputs:pitfall-data-validated`
 - add `rendering/doc-outputs:pitfall-corpus-validated`
 - add `rendering/doc-outputs:pitfall-output-complete`
-- add `rendering/doc-outputs:pitfall-model-single-home`
+- add `code-design/single-home:pitfall-model-single-home`
 - update `rendering/doc-outputs:opaque-doc-source-guidance`
 - update `tooling/cli:cli-creation-and-inventory`
 - add `tooling/cli:pitfall-scaffold`
