@@ -1,7 +1,7 @@
 // @ts-nocheck
 /* c8 ignore start */
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, realpath, rename, unlink, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readFile, realpath, rename, unlink, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -112,6 +112,7 @@ export interface ExtensionDependencies {
   rename(from: string, to: string): Promise<void>;
   unlink(path: string): Promise<void>;
   realpath?(path: string): Promise<string>;
+  lstat?(path: string): Promise<{ isFile(): boolean; isSymbolicLink(): boolean }>;
   now?: () => number;
   observationId?: () => string;
 }
@@ -268,6 +269,27 @@ async function resolveVerificationCheckout(
   const canonicalRootCommon = await canonicalPath(deps, rootCommon.stdout.trim(), "Cannot resolve the project root Git common directory.");
   const canonicalCheckoutCommon = await canonicalPath(deps, checkoutCommon.stdout.trim(), `Cannot resolve verificationCheckout Git common directory: ${checkout}`);
   if (canonicalRootCommon !== canonicalCheckoutCommon) throw new Error(`verificationCheckout must belong to the same repository as the project root: ${checkout}`);
+
+  const gitDirectory = await pi.exec("git", ["rev-parse", "--absolute-git-dir"], { cwd: checkout });
+  if (gitDirectory.code !== 0) throw new Error(`Cannot resolve verificationCheckout absolute Git directory: ${checkout}`);
+  const canonicalGitDirectory = await canonicalPath(deps, gitDirectory.stdout.trim(), `Cannot resolve verificationCheckout absolute Git directory: ${checkout}`);
+  if (canonicalGitDirectory === canonicalCheckoutCommon) return checkout;
+  let backlink: string;
+  try { backlink = await deps.readFile(join(canonicalGitDirectory, "gitdir"), "utf8"); }
+  catch (error) {
+    if (errorCode(error) === "ENOENT") throw new Error(`verificationCheckout must be a live linked checkout with an administrative backlink: ${checkout}`, { cause: error });
+    throw new Error(`Cannot read verificationCheckout administrative backlink for ${checkout}: ${errorText(error)}`, { cause: error });
+  }
+  const selectedGitEntry = join(checkout, ".git");
+  let entry: { isFile(): boolean; isSymbolicLink(): boolean };
+  try { entry = await (deps.lstat ?? lstat)(selectedGitEntry); }
+  catch (error) { throw new Error(`Cannot inspect verificationCheckout .git entry ${selectedGitEntry}: ${errorText(error)}`, { cause: error }); }
+  if (!entry.isFile() || entry.isSymbolicLink()) throw new Error(`verificationCheckout linked .git entry must be a non-symlink regular file: ${selectedGitEntry}`);
+  const backlinkPath = backlink.trim();
+  if (backlinkPath === "") throw new Error(`verificationCheckout administrative backlink is empty: ${join(canonicalGitDirectory, "gitdir")}`);
+  const canonicalBacklink = await canonicalPath(deps, resolve(canonicalGitDirectory, backlinkPath), `Cannot resolve verificationCheckout administrative backlink for ${checkout}`);
+  const canonicalSelectedEntry = await canonicalPath(deps, selectedGitEntry, `Cannot resolve verificationCheckout .git entry for ${checkout}`);
+  if (canonicalBacklink !== canonicalSelectedEntry) throw new Error(`verificationCheckout administrative backlink ${canonicalBacklink} does not identify the registered checkout ${checkout}`);
   return checkout;
 }
 
@@ -851,6 +873,7 @@ export default async function (pi: ExtensionAPI): Promise<void> {
     rename,
     unlink,
     realpath,
+    lstat,
   });
 }
 

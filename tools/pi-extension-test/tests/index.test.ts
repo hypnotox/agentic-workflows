@@ -96,6 +96,7 @@ function harness(options: {
   answers?: Answer[];
   git?: Array<{ code: number; stdout?: string; stderr?: string }> | ((command: string, args: string[], options: { cwd: string }, index: number) => { code: number; stdout?: string; stderr?: string });
   realpath?: (path: string) => Promise<string>;
+  lstat?: (path: string) => Promise<{ isFile(): boolean; isSymbolicLink(): boolean }>;
   run?: (request: RunRequest) => Promise<RunResult>;
   sessionManager?: object;
   activeTools?: string[];
@@ -113,6 +114,8 @@ function harness(options: {
   const prompts: any[] = [];
   const git = Array.isArray(options.git) ? [...options.git] : [];
   const gitCalls: Array<{ command: string; args: string[]; cwd: string }> = [];
+  const realpathCalls: string[] = [];
+  const lstatCalls: string[] = [];
   const models = new Map<string, any>();
   const available = new Set<string>();
   const addModel = (reference: string, authenticated = true, isAvailable = true) => {
@@ -147,6 +150,7 @@ function harness(options: {
   const deps: ExtensionDependencies = {
     readFile: async (path: string) => {
       if (path.startsWith("/repo/.pi/agents/")) return "---\nname: reviewer\ndescription: test\n---\nReview carefully.";
+      if (path === ADMIN_BACKLINK && files[path] === undefined) return `${WORKTREE}/.git\n`;
       const value = files[path];
       if (value instanceof Error) throw value;
       if (value === undefined) throw Object.assign(new Error("missing"), { code: "ENOENT" });
@@ -164,7 +168,14 @@ function harness(options: {
       temporary.delete(from);
     },
     unlink: async (path: string) => { writes.push({ op: "unlink", path }); temporary.delete(path); },
-    realpath: options.realpath ?? (async (path: string) => path),
+    realpath: async (path: string) => {
+      realpathCalls.push(path);
+      return options.realpath ? options.realpath(path) : path;
+    },
+    lstat: async (path: string) => {
+      lstatCalls.push(path);
+      return options.lstat ? options.lstat(path) : { isFile: () => path.endsWith("/.git"), isSymbolicLink: () => false };
+    },
     runner: { run: async (request) => { requests.push(request); return options.run ? options.run(request) : baseResult; } },
     packageVersion: "0.81.1",
     extensionFile: "/repo/.pi/extensions/awf-subagents/index.ts",
@@ -191,7 +202,7 @@ function harness(options: {
   };
   registerSubagentTools(pi, deps);
   const h = {
-    files, tools, commands, hooks, requests, notices, writes, prompts, models, available, gitCalls, deps, ctx, addModel,
+    files, tools, commands, hooks, requests, notices, writes, prompts, models, available, gitCalls, realpathCalls, lstatCalls, deps, ctx, addModel,
     runWizard: () => commands.get("awf-subagent-models").handler("", ctx),
     setLeaf: (value: any) => { leaf = value; },
   };
@@ -692,12 +703,15 @@ const STATUS_DIRTY = { code: 0, stdout: " M internal/thing.go\n" };
 const ROOT = "/repo";
 const WORKTREE = "/repo/.awf/worktrees/verification-checkout";
 const COMMON = "/repo/.git";
+const ADMIN = "/repo/.git/worktrees/verification-checkout";
+const ADMIN_BACKLINK = `${ADMIN}/gitdir`;
 
 function checkoutGit(before = "aaaaaaa", after = "bbbbbbb", common = COMMON) {
   let snapshots = 0;
   return (_command: string, args: string[], options: { cwd: string }) => {
     if (args[0] === "rev-parse" && args[1] === "--show-toplevel") return { code: 0, stdout: `${options.cwd}\n` };
     if (args.includes("--git-common-dir")) return { code: 0, stdout: `${options.cwd === ROOT ? COMMON : common}\n` };
+    if (args.includes("--absolute-git-dir")) return { code: 0, stdout: `${options.cwd === ROOT ? COMMON : ADMIN}\n` };
     if (args[0] === "rev-parse" && args[1] === "HEAD") return { code: 0, stdout: `${snapshots++ === 0 ? before : after}\n` };
     if (args[0] === "status") return STATUS_CLEAN;
     return { code: 1, stderr: "unexpected git command" };
@@ -726,6 +740,7 @@ test("a linked-worktree HEAD advance satisfies owner verification while root and
   assert.equal(h.requests[0].cwd, ROOT);
   assert.equal(h.gitCalls.filter((entry) => entry.args.includes("HEAD")).every((entry) => entry.cwd === WORKTREE), true);
   assert.equal(h.gitCalls.some((entry) => entry.args[0] === "worktree"), false);
+  assert.deepEqual(h.lstatCalls, [`${WORKTREE}/.git`]);
 });
 
 test("selected checkout canonicalizes one leading at-sign and filesystem aliases", async () => {
@@ -755,7 +770,9 @@ test("selected checkout detects a forbidden commit and names its resolved identi
 
 test("invalid explicit verification identities refuse before child dispatch", async () => {
   const cases: Array<{
-    label: string; value: string; realpath?: (path: string) => Promise<string>;
+    label: string; value: string; files?: Record<string, string | Error>;
+    realpath?: (path: string) => Promise<string>;
+    lstat?: (path: string) => Promise<{ isFile(): boolean; isSymbolicLink(): boolean }>;
     git?: any; expected: RegExp;
   }> = [
     { label: "raw empty", value: "", expected: /verificationCheckout.*empty/ },
@@ -766,14 +783,19 @@ test("invalid explicit verification identities refuse before child dispatch", as
     { label: "subdirectory", value: `${WORKTREE}/sub`, git: (_command: string, args: string[]) => args.includes("--show-toplevel") ? { code: 0, stdout: `${WORKTREE}\n` } : { code: 1 }, expected: /verificationCheckout.*checkout root/ },
     { label: "stale", value: WORKTREE, git: () => ({ code: 1, stderr: "not a git repository" }), expected: /verificationCheckout.*registered checkout/ },
     { label: "foreign repository", value: WORKTREE, git: checkoutGit("a", "b", "/foreign/.git"), expected: /verificationCheckout.*same repository/ },
+    { label: "missing administrative backlink", value: WORKTREE, files: { [ADMIN_BACKLINK]: Object.assign(new Error("missing"), { code: "ENOENT" }) }, git: checkoutGit(), expected: /live linked checkout.*administrative backlink/ },
+    { label: "copied linked-worktree pointer", value: "/repo/copied", git: checkoutGit(), expected: /administrative backlink.*registered checkout/ },
+    { label: "selected dot-git symlink", value: WORKTREE, git: checkoutGit(), lstat: async () => ({ isFile: () => true, isSymbolicLink: () => true }), expected: /\.git.*non-symlink regular file/ },
   ];
   for (const item of cases) {
-    const h = harness({ git: item.git, realpath: item.realpath });
+    const h = harness({ files: item.files, git: item.git, realpath: item.realpath, lstat: item.lstat });
     await assert.rejects(
       call(h, "subagent_implement", { task: "x", allowCommits: true, verificationCheckout: item.value }),
       item.expected, item.label,
     );
     assert.equal(h.requests.length, 0, item.label);
+    assert.equal(h.gitCalls.some((entry) => entry.args[0] === "worktree"), false, item.label);
+    if (item.label === "selected dot-git symlink") assert.equal(h.realpathCalls.includes(`${WORKTREE}/.git`), false, item.label);
   }
 
   const permission = harness({ realpath: async () => { throw Object.assign(new Error("permission denied"), { code: "EACCES" }); } });

@@ -936,6 +936,10 @@ func TestPiImplementRoleArtifact(t *testing.T) {
 		`requested.startsWith("@") ? requested.slice(1) : requested`,
 		`["rev-parse", "--show-toplevel"]`,
 		`["rev-parse", "--path-format=absolute", "--git-common-dir"]`,
+		`["rev-parse", "--absolute-git-dir"]`,
+		`join(canonicalGitDirectory, "gitdir")`,
+		"non-symlink regular file",
+		"administrative backlink",
 		"same repository as the project root",
 		"snapshot(pi, verificationCheckout)",
 		"retry with verificationCheckout set to that checkout root",
@@ -968,6 +972,10 @@ func TestPiImplementRoleArtifact(t *testing.T) {
 		"invalid explicit verification identities refuse before child dispatch",
 		"omitted verification retains unavailable commit policy outside Git",
 		"a commit-capable implementation that leaves selected HEAD unchanged names retry repair",
+		`label: "copied linked-worktree pointer"`,
+		`label: "selected dot-git symlink"`,
+		"ADMIN_BACKLINK",
+		"isSymbolicLink",
 	} {
 		if !strings.Contains(string(behavior), want) {
 			t.Errorf("TypeScript implementation-verification behavior contract missing %q", want)

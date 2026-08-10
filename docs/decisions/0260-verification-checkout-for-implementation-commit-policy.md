@@ -108,3 +108,4 @@ commit-parent policy.
 - 2026-08-10: Applied; operations: update `rendering/pi-runtime:pi-implementation-state-boundary`, update `rendering/pi-workflows:pi-structured-exploration-contract`, update `rendering/pi-workflows:pi-implement-role-artifact`, update `rendering/workflow-skill-templates:phase-transaction-ownership`
 - 2026-08-10: Reapplied; operations: update `rendering/pi-runtime:pi-implementation-state-boundary`
 - 2026-08-10: Amended; content-sha256: b17edec247eba508ae87b0380567533fc31215902d81fcfa6dd8c7ca45d08e25
+- 2026-08-10: Reapplied; operations: update `rendering/pi-runtime:pi-implementation-state-boundary`
