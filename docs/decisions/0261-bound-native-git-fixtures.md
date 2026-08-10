@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: bound-native-git-fixtures
-status: Implementing
+status: Implemented
 date: 2026-08-10
 ---
 # ADR-0261: Bound Native Git Fixtures
@@ -58,3 +58,4 @@ proof, and the resolved hanging-fixture pitfall is retired.
 - 2026-08-10: Applied; operations: update `tooling/git-access:fixture-isolation-parity`
 - 2026-08-10: Reapplied; operations: update `tooling/git-access:fixture-isolation-parity`
 - 2026-08-10: Reapplied; operations: update `tooling/git-access:fixture-isolation-parity`
+- 2026-08-10: Implemented; content-sha256: 637c050ffd883e9c34982f7a81a0fd7eeb643aceaf4a0f4ec6509ccae6887898
