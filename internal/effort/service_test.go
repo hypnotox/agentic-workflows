@@ -393,8 +393,15 @@ func TestFinishReservationRefusesArchiveCollisionAndPreservesBoth(t *testing.T) 
 		t.Fatal(err)
 	}
 	service.store.fault = nil
-	if result, err := service.Finish(testContext(t), "reserved-finish"); err == nil || result.Archived || !strings.Contains(err.Error(), "already exists") {
-		t.Fatalf("collision result=%#v err=%v", result, err)
+	result, err := service.Finish(testContext(t), "reserved-finish")
+	var partial *PartialFinishError
+	wantActions := []RecoveryAction{
+		{Text: "inspect " + reservation},
+		{Text: "inspect " + destination},
+		{Text: "preserve both residents and resolve the collision manually before retrying"},
+	}
+	if err == nil || result.State != FinishStateReserved || result.Reserved || result.Archived || result.ArchivePath != filepath.ToSlash(filepath.Join(".awf", "effort-archive", testIDA+"-reserved-finish")) || result.DestinationSyncAvailable != directorySyncAvailable() || result.SourceSyncAvailable != directorySyncAvailable() || result.DestinationSynced || result.SourceSynced || !errors.As(err, &partial) || partial.Result != result || !slices.Equal(partial.Actions, wantActions) {
+		t.Fatalf("collision result=%#v err=%v partial=%#v, want actions %#v", result, err, partial, wantActions)
 	}
 	if _, err := os.Stat(reservation); err != nil {
 		t.Fatalf("reservation changed: %v", err)
