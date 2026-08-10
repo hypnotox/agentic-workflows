@@ -72,6 +72,14 @@ import "golang.org/x/sys/windows"
 type api struct { move func(string, string, uint32) error }
 var nativeWindowsPublicationAPI = api{move: func(a, b string, flags uint32) error { return windows.MoveFileEx(a, b, flags) }}
 func duplicate(a, b string, flags uint32) error { return windows.MoveFileEx(a, b, flags) }`},
+		{name: "hard-link publication", sourcePath: "internal/other/publication.go", body: `package other
+import "os"
+func publish(path string, contents []byte) error {
+	temporary, _ := os.CreateTemp("", "publication-")
+	_, _ = temporary.Write(contents)
+	_ = temporary.Close()
+	return os.Link(temporary.Name(), path)
+}`},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if got := exclusivePublicationFindings(test.sourcePath, []byte(test.body)); len(got) == 0 {
@@ -104,6 +112,9 @@ func publish() { w.MoveFileEx(a, b, replace) }`},
 		{name: "Unix replacement operations", sourcePath: "internal/other/unix.go", body: `package other
 import "golang.org/x/sys/unix"
 func replace() { unix.Renameat2(a, b, c, d, unix.RENAME_EXCHANGE); unix.RenamexNp(a, b, unix.RENAME_SWAP) }`},
+		{name: "unrelated hard link", sourcePath: "internal/other/mirror.go", body: `package other
+import "os"
+func mirror(existing, alias string) error { return os.Link(existing, alias) }`},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if got := exclusivePublicationFindings(test.sourcePath, []byte(test.body)); len(got) != 0 {
@@ -131,6 +142,18 @@ func exclusivePublicationFindings(sourcePath string, body []byte) []string {
 		return findings
 	}
 	allowedEffortMove := allowedEffortMoveCall(sourcePath, file, imports)
+	for _, declaration := range file.Decls {
+		function, ok := declaration.(*ast.FuncDecl)
+		if !ok {
+			continue
+		}
+		preparesCompleteFile := functionCallsImported(function, imports, "os", "CreateTemp", "WriteFile", "OpenFile")
+		linksWithoutReplace := functionCallsImported(function, imports, "os", "Link") ||
+			functionCallsImported(function, imports, "golang.org/x/sys/windows", "CreateHardLink")
+		if preparesCompleteFile && linksWithoutReplace {
+			findings = append(findings, sourcePath+":"+function.Name.Name+" prepares a file and publishes it through a second hard-link no-replace home")
+		}
+	}
 
 	ast.Inspect(file, func(node ast.Node) bool {
 		switch value := node.(type) {
@@ -160,6 +183,33 @@ func exclusivePublicationFindings(sourcePath string, body []byte) []string {
 		return true
 	})
 	return findings
+}
+
+func functionCallsImported(function *ast.FuncDecl, imports map[string]string, importPath string, names ...string) bool {
+	wanted := make(map[string]bool, len(names))
+	for _, name := range names {
+		wanted[name] = true
+	}
+	found := false
+	ast.Inspect(function.Body, func(node ast.Node) bool {
+		if found {
+			return false
+		}
+		call, ok := node.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		selector, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok || !wanted[selector.Sel.Name] {
+			return true
+		}
+		qualifier, ok := selector.X.(*ast.Ident)
+		if ok && imports[qualifier.Name] == importPath {
+			found = true
+		}
+		return true
+	})
+	return found
 }
 
 func importAliases(file *ast.File) map[string]string {

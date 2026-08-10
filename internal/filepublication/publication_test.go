@@ -2,6 +2,7 @@ package filepublication
 
 import (
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,6 +27,17 @@ func TestPublishCompleteExclusiveFile(t *testing.T) {
 		}
 		if got := info.Mode().Perm(); got != 0o640 {
 			t.Fatalf("published mode = %o, want 640", got)
+		}
+	})
+
+	t.Run("reports a missing parent without creating a destination", func(t *testing.T) {
+		destination := filepath.Join(t.TempDir(), "missing", "artifact")
+		err := Publish(destination, []byte("complete bytes"), 0o644)
+		if !errors.Is(err, fs.ErrNotExist) || !strings.Contains(err.Error(), "create publication temporary") {
+			t.Fatalf("missing-parent error = %v; want wrapped not-exist identity with context", err)
+		}
+		if _, statErr := os.Stat(destination); !errors.Is(statErr, fs.ErrNotExist) {
+			t.Fatalf("missing-parent destination exists or has unexpected error: %v", statErr)
 		}
 	})
 

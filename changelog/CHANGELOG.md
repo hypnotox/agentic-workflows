@@ -16,7 +16,7 @@ query a single version or a range.
 
 ### Bug fixes
 
-- Concurrent `awf new adr` calls now publish complete records without clobbering an existing ADR and serialize numbered allocation for one decisions directory.
+- ADR and plan scaffolding now publish complete files without clobbering an existing artifact, and concurrent `awf new adr` calls serialize numbered allocation for one decisions directory. Render and runner-prune backups preserve complete rescue copies and retry the next suffix when another process wins a backup name.
 
 ## [0.32.0] - 2026-08-07
 

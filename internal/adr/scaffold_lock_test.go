@@ -275,7 +275,26 @@ func TestADRNewNoOverwriteInvariant(t *testing.T) {
 	t.Run("publication-collision", provePublicationCollisionPreservesWinner)
 }
 
-func TestScaffoldRecordLockSpansPublication(t *testing.T) {
+func proveAcquirePrecedesCorpusLoad(t *testing.T) {
+	dir := t.TempDir()
+	writeScaffoldTestTemplate(t, dir)
+	acquire := func(string) (func() error, error) {
+		existing := fmt.Sprintf("---\nformat: %s\nslug: existing\nstatus: Proposed\ndate: 2026-08-10\n---\n# ADR-0001: Existing\n", CurrentFormatMarker())
+		if err := os.WriteFile(filepath.Join(dir, "0001-existing.md"), []byte(existing), 0o644); err != nil {
+			return nil, err
+		}
+		return func() error { return nil }, nil
+	}
+	path, err := scaffoldRecordWith(dir, "New Record", CurrentFormat(), false, acquire, os.ReadFile, filepublication.Publish)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := filepath.Base(path); got != "0002-new-record.md" {
+		t.Fatalf("allocated path = %s, want corpus mutation observed as 0002-new-record.md", got)
+	}
+}
+
+func proveScaffoldRecordLockSpansPublication(t *testing.T) {
 	dir := t.TempDir()
 	writeScaffoldTestTemplate(t, dir)
 	var mutex sync.Mutex
@@ -301,6 +320,13 @@ func TestScaffoldRecordLockSpansPublication(t *testing.T) {
 	if locked {
 		t.Fatal("scaffold returned while the corpus lock remained held")
 	}
+}
+
+// invariant: adr-system/adr-lifecycle:adr-new-sequential-numbering (TestADRNewSequentialNumberingInvariant)
+func TestADRNewSequentialNumberingInvariant(t *testing.T) {
+	t.Run("production-wiring", proveScaffoldRecordProductionWiring)
+	t.Run("acquire-before-corpus-load", proveAcquirePrecedesCorpusLoad)
+	t.Run("lock-held-through-publication", proveScaffoldRecordLockSpansPublication)
 }
 
 func TestAcquireScaffoldLockRejectsMissingDirectory(t *testing.T) {

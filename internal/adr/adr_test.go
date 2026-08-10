@@ -869,7 +869,6 @@ func finishScaffoldProcesses(t *testing.T, firstIn, secondIn io.WriteCloser, fir
 	return results
 }
 
-// invariant: adr-system/adr-lifecycle:adr-new-sequential-numbering (TestNewFileConcurrentNumberedCreators)
 func TestNewFileConcurrentNumberedCreators(t *testing.T) {
 	dir := t.TempDir()
 	cache := t.TempDir()

@@ -233,3 +233,13 @@ implementation.
   `acquireScaffoldLock` and `filepublication.Publish` composition with an AST wiring proof. The
   deleted-CWD unit is confined to the non-Windows implementation and asserts both contextual prose
   and wrapped not-exist identity. These corrections strengthen verification only.
+- Terminal assurance settlement: the approved Windows volume-alias requirement already determines a
+  GUID-volume final-path identity, so the implementation now requests that OS representation and a
+  Windows unit creates a distinct drive alias for the same volume. The sequential-numbering marker
+  now deterministically proves acquisition before corpus loading and lock retention through
+  publication, while retaining cross-process behavior separately. The single-home detector now
+  rejects hard-link publication functions that also prepare complete files without rejecting an
+  unrelated hard-link operation. Shared publication directly proves a missing-parent error, and the
+  changelog now covers plan and backup no-clobber behavior. These authority-preserving corrections
+  change proof completeness and documentation only, except for the required Windows volume identity
+  correction.

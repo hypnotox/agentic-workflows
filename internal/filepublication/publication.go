@@ -29,8 +29,8 @@ type prepared struct {
 
 func prepare(path string, contents []byte, mode fs.FileMode) (_ *prepared, returnErr error) {
 	temporary, err := os.CreateTemp(filepath.Dir(path), ".filepublication-*.tmp")
-	if err != nil { // coverage-ignore: a same-directory temporary creation failure requires a storage or permission fault
-		return nil, fmt.Errorf("create publication temporary for %s: %w", path, err) // coverage-ignore: a same-directory temporary creation failure requires a storage or permission fault
+	if err != nil {
+		return nil, fmt.Errorf("create publication temporary for %s: %w", path, err)
 	}
 	publication := &prepared{temporary: temporary.Name(), path: path}
 	closed := false
