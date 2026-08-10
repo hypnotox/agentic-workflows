@@ -362,7 +362,7 @@ func (s *Service) RollbackCreation(ctx context.Context, identity Record) (Rollba
 		return result, err
 	}
 	if err := syncDirectory(s.paths.efforts); err != nil { // coverage-ignore: injected rollback.root-fsync covers this kernel boundary
-		return result, err
+		return result, fmt.Errorf("sync efforts parent after rollback reservation: %w", err)
 	}
 	if err := s.store.hit("rollback.delete"); err != nil {
 		return result, err
@@ -375,7 +375,7 @@ func (s *Service) RollbackCreation(ctx context.Context, identity Record) (Rollba
 		return result, err
 	}
 	if err := syncDirectory(s.paths.efforts); err != nil { // coverage-ignore: injected rollback.delete-fsync covers this kernel boundary
-		return result, err
+		return result, fmt.Errorf("sync efforts parent after rollback deletion: %w", err)
 	}
 	return result, nil
 }
