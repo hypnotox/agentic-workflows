@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"maps"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -268,6 +269,11 @@ func readBackInPlaceBody(output, name string, declared []string, style render.Co
 	for i := start + 1; i < len(lines); i++ {
 		if hasAnyPrefix(strings.TrimSpace(lines[i]), boundaryPrefixes) {
 			end = i
+			// A renderer-owned regional source symbol immediately framing the
+			// following registered pointer is not adopter body content.
+			if i > start+1 && isTemplateSourceSymbol(lines[i-1]) {
+				end = i - 1
+			}
 			break
 		}
 	}
@@ -281,6 +287,11 @@ func readBackInPlaceBody(output, name string, declared []string, style render.Co
 		}
 	}
 	return trimBlankFraming(body), true
+}
+
+func isTemplateSourceSymbol(line string) bool {
+	line = strings.TrimSpace(line)
+	return strings.HasPrefix(line, "<!-- awf:template-source ") && strings.HasSuffix(line, " -->")
 }
 
 func atxHeadingLine(s string) bool {
@@ -657,6 +668,15 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		encoder = options.encoder
 	}
 	segs := render.ParseSourceSections(strippedSource, encoder == MarkdownAgentDialect)
+	provenance := render.TemplateSource{}
+	if encoder == MarkdownAgentDialect && p.Cfg.Render != nil {
+		provenance.Root = p.Cfg.Render.TemplateSourceRoot
+		if provenance.Root != "" {
+			if err := p.validateTemplateSources(strippedSource, provenance.Root); err != nil {
+				return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
+			}
+		}
+	}
 	style := render.CommentStyleForSource(stripped)
 	headings, err := captureStructuralHeadings(segs, data, tid)
 	if err != nil {
@@ -667,13 +687,21 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
 	consumedInputs, err := p.observeRenderInputs(kind, artifact, tid, outPath, plan)
+	if provenance.Root != "" {
+		for _, span := range strippedSource.Spans {
+			if span.Source != "" {
+				consumedInputs = append(consumedInputs, OutputInput{Path: path.Join(provenance.Root, span.Source), Role: ArtifactTemplate})
+			}
+		}
+		consumedInputs = normalizeOutputInputs(consumedInputs)
+	}
 	if err != nil { // coverage-ignore: the producer already parsed the same sidecar and planSections read the same parts in this invocation
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
 	if err := render.CheckSectionDefaultStubs(segs, plan); err != nil {
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
-	assembledSource, parts := render.AssembleSource(segs, plan, style)
+	assembledSource, parts := render.AssembleSourceWithTemplateSource(segs, plan, style, provenance)
 	assembled := assembledSource.AuthoredText()
 	if err := render.CheckResidualMarkers(assembled); err != nil { // coverage-ignore: awf-owned embedded templates are marker-well-formed, so the guard cannot fire through the render pass; its error branch is unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
@@ -710,6 +738,9 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		targetInput = []Target{*options.target}
 	}
 	cfgHash, err := p.artifactConfigHash(assembled, sc, p.consumedParts(kind, artifact, plan), eff, targetInput...)
+	if provenance.Root != "" {
+		cfgHash = manifest.Hash([]byte(cfgHash + "\x00templateSourceRoot=" + provenance.Root))
+	}
 	if err != nil { // coverage-ignore: artifactConfigHash only fails on an unreadable consumed part, but planSections above already read every HasPart part, so consumedParts holds only readable paths
 		return RenderedFile{}, err
 	}
@@ -734,6 +765,28 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 // skeleton, rather than each heading as an independent template. This retains
 // surrounding dot, variables, and control context while producing the expected
 // line needed for in-place read-back before final assembly.
+// validateTemplateSources requires every provenance identity used by an
+// instrumented output to exist in the operation's selected repository universe.
+// The selected ProjectTreeReader keeps staged drift from consulting worktree files.
+func (p *Project) validateTemplateSources(source render.SourceText, root string) error {
+	seen := map[string]bool{}
+	for _, span := range source.Spans {
+		if span.Source == "" || seen[span.Source] {
+			continue
+		}
+		seen[span.Source] = true
+		candidate := path.Join(root, span.Source)
+		_, ok, err := p.projectTreeReader().ReadFile(candidate)
+		if err != nil {
+			return fmt.Errorf("read configured template source %s for %s: %w", candidate, span.Source, err)
+		}
+		if !ok {
+			return fmt.Errorf("configured render.templateSourceRoot %q cannot resolve template source %q (%s): regular file required", root, span.Source, candidate)
+		}
+	}
+	return nil
+}
+
 func captureStructuralHeadings(segs []render.Segment, data map[string]any, tid string) (map[string]string, error) {
 	headingSkeleton, headingTokens := render.StructuralHeadingCapture(segs)
 	headingOutput, err := render.Execute(headingSkeleton, data, nil, tid+" headings")

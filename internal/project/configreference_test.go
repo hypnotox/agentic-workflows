@@ -23,6 +23,17 @@ vars:
 `
 
 // invariant: config/configspec-and-reference:live-state-projection-explicit (TestLiveStateAuthorityRejectsOmissionAndWrongClass)
+func TestTemplateSourceRootCurrentValue(t *testing.T) {
+	p := &Project{Cfg: &config.Config{}}
+	if got := p.currentValueResolvers()["render.templateSourceRoot"](); got != "(none)" {
+		t.Fatalf("absent root = %q", got)
+	}
+	p.Cfg.Render = &config.RenderConfig{TemplateSourceRoot: "templates"}
+	if got := p.currentValueResolvers()["render.templateSourceRoot"](); got != "`templates`" {
+		t.Fatalf("configured root = %q", got)
+	}
+}
+
 func TestLiveStateAuthorityRejectsOmissionAndWrongClass(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)

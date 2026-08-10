@@ -21,7 +21,7 @@ const tmpl = "# {{ .prefix }}\n\n<!-- awf:section surfaces -->\nS:{{ range .data
 
 func TestAssembleSourceLeavesRawPartsProvenanceFree(t *testing.T) {
 	segs := ParseSourceSections(SourceText{Root: "guide.md.tmpl", Spans: []SourceSpan{{Source: "guide.md.tmpl", Text: "<!-- awf:section body -->\nDEFAULT\n<!-- awf:end -->\n"}}})
-	assembled, _ := AssembleSource(segs, map[string]SectionPlan{"body": {HasPart: true, PartBody: "PART"}}, HTMLComment)
+	assembled, _ := AssembleSourceWithTemplateSource(segs, map[string]SectionPlan{"body": {HasPart: true, PartBody: "PART"}}, HTMLComment, TemplateSource{})
 	for _, span := range assembled.Spans {
 		if strings.Contains(span.Text, "awf:part:") && span.Source != "" {
 			t.Fatalf("raw part sentinel acquired template source: %#v", span)
@@ -29,6 +29,29 @@ func TestAssembleSourceLeavesRawPartsProvenanceFree(t *testing.T) {
 	}
 	if got, want := assembled.AuthoredText(), "<!-- awf:edit body: from  -->\n\x00awf:part:body\x00\n"; got != want {
 		t.Fatalf("assembled source = %q, want %q", got, want)
+	}
+}
+
+func TestAssembleSourceTemplateSourceTransitions(t *testing.T) {
+	src := SourceText{Root: "guide.md", Spans: []SourceSpan{
+		{Source: "guide.md", Text: "before\n"},
+		{Source: "partials/shared.md", Text: "included\n"},
+		{Source: "guide.md", Text: "<!-- awf:section body -->\nbody\n<!-- awf:end -->\nafter\n"},
+	}}
+	segs := ParseSourceSections(src)
+	assembled, _ := AssembleSourceWithTemplateSource(segs, map[string]SectionPlan{"body": {}}, HTMLComment, TemplateSource{Root: "templates"})
+	got := assembled.AuthoredText()
+	for _, want := range []string{
+		"<!-- awf:template-source templates/guide.md -->\n",
+		"<!-- awf:template-source templates/partials/shared.md -->\n",
+		"<!-- awf:template-source templates/guide.md#body -->\n<!-- awf:edit body:",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("assembled source missing %q:\n%s", want, got)
+		}
+	}
+	if strings.Count(got, "templates/guide.md -->") != 1 {
+		t.Fatalf("adjacent root symbols were not suppressed:\n%s", got)
 	}
 }
 

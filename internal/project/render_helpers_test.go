@@ -12,7 +12,7 @@ func parseSections(src string, markdown ...bool) []render.Segment {
 }
 
 func assemble(segs []render.Segment, plan map[string]render.SectionPlan, style render.CommentStyle) (string, map[string]string) {
-	assembled, parts := render.AssembleSource(segs, plan, style)
+	assembled, parts := render.AssembleSourceWithTemplateSource(segs, plan, style, render.TemplateSource{})
 	return assembled.AuthoredText(), parts
 }
 

@@ -79,8 +79,8 @@ func TestArchiveRootUpgradeBoundary(t *testing.T) {
 		t.Fatal(err)
 	}
 	const markerRel = ".awf/effort-archive/.gitignore"
-	if lock.SchemaVersion != 42 {
-		t.Fatalf("upgraded lock schema = %d, want 42", lock.SchemaVersion)
+	if lock.SchemaVersion != migrate.Current() {
+		t.Fatalf("upgraded lock schema = %d, want current %d", lock.SchemaVersion, migrate.Current())
 	}
 	p, err := Open(testContext(t), root)
 	if err != nil {

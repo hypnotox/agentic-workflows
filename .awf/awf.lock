@@ -1,6 +1,6 @@
 {
   "awfVersion": "0.33.0",
-  "schemaVersion": 42,
+  "schemaVersion": 43,
   "files": {
     ".awf/effort-archive/.gitignore": {
       "templateId": "effort-archive/gitignore.tmpl",
@@ -468,7 +468,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:7064504c08cdb7dd3c894587139820efb35603cbbacb02b187e9146fed028204",
+      "outputHash": "sha256:2e58d98378b63a18fd420ef9a49fd27bd13c5a1ea9a6d905df8de2f230aae490",
       "regenChecked": true
     },
     "docs/debugging.md": {

@@ -9,6 +9,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/render"
+	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
@@ -147,6 +148,68 @@ func TestEmbeddedTemplateAuthoringCommentStripped(t *testing.T) {
 	}
 	if strings.Contains(string(b), directive) || strings.Contains(string(b), "awf:comment") {
 		t.Errorf("the embedded template's qualified authoring comment leaked into rendered output:\n%s", b)
+	}
+}
+
+func TestRenderTargetTemplateSourceActivation(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nrender:\n  templateSourceRoot: templates\n")
+	const tid = "adr-readme/README.md.tmpl"
+	src, err := fs.ReadFile(templates.FS, tid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expanded, err := render.ExpandIncludesSource(string(src), tid, templates.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, span := range expanded.Spans {
+		if span.Source == "" {
+			continue
+		}
+		path := filepath.Join(root, "templates", filepath.FromSlash(span.Source))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(span.Text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rf, err := p.renderTarget("adr-readme", "", tid, p.Cat.Docs["adr-readme"].Sections, config.Sidecar{}, p.data(config.Sidecar{}, map[string]bool{}), "docs/decisions/README.md", map[string]bool{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rf.Content, "<!-- awf:template-source templates/"+tid+" -->") || rf.TemplateHash == "" || rf.ConfigHash == "" {
+		t.Fatalf("provenance render missing expected identity: %s", rf.Content)
+	}
+	p.Cfg.Render.TemplateSourceRoot = "missing"
+	if _, err := p.renderTarget("adr-readme", "", tid, p.Cat.Docs["adr-readme"].Sections, config.Sidecar{}, p.data(config.Sidecar{}, map[string]bool{}), "docs/decisions/README.md", map[string]bool{}); err == nil {
+		t.Fatal("unresolved configured source root accepted")
+	}
+}
+
+func TestValidateTemplateSourcesUsesSelectedTree(t *testing.T) {
+	tree, err := snapshot.NewTree([]snapshot.File{{Path: "templates/doc.md", Mode: snapshot.Regular, Bytes: []byte("source")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := &Project{read: snapshotTreeReader{tree: tree}}
+	src := render.SourceText{Root: "doc.md", Spans: []render.SourceSpan{{Source: "doc.md", Text: "x"}}}
+	if err := p.validateTemplateSources(src, "templates"); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.validateTemplateSources(render.SourceText{Spans: []render.SourceSpan{{Source: "missing.md", Text: "x"}}}, "templates"); err == nil {
+		t.Fatal("missing source accepted")
+	}
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "templates", "directory.md"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := (&Project{Root: root}).validateTemplateSources(render.SourceText{Spans: []render.SourceSpan{{Source: "directory.md", Text: "x"}}}, "templates"); err == nil {
+		t.Fatal("directory source accepted")
 	}
 }
 

@@ -474,3 +474,11 @@ func TestInPlaceRegionKeepsAuthoringCommentShapedLine(t *testing.T) {
 		t.Errorf("in-place body must survive verbatim\ngot  %q\nwant %q", plan["s"].InPlaceBody, want)
 	}
 }
+
+func TestReadBackInPlaceBodySkipsTemplateSourceFraming(t *testing.T) {
+	output := "<!-- awf:edit-in-place one: your edits below are preserved across syncs; awf owns the rest -->\nbody\n<!-- awf:template-source templates/guide.md#two -->\n<!-- awf:edit two: default; create x to override -->\nnext\n"
+	got, found := readBackInPlaceBody(output, "one", []string{"one", "two"}, render.HTMLComment)
+	if !found || got != "body" {
+		t.Fatalf("readback = %q, %t", got, found)
+	}
+}

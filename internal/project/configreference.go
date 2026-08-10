@@ -105,6 +105,12 @@ func (p *Project) currentValueResolvers() map[string]func() string {
 	return map[string]func() string{
 		"prefix":            func() string { return "`" + p.Cfg.Prefix + "`" },
 		"integrationBranch": func() string { return "`" + p.Cfg.IntegrationBranch + "`" },
+		"render.templateSourceRoot": func() string {
+			if p.Cfg.Render == nil {
+				return "(none)"
+			}
+			return "`" + p.Cfg.Render.TemplateSourceRoot + "`"
+		},
 		"vars": func() string {
 			set := 0
 			for _, v := range p.Cfg.Vars {

@@ -110,7 +110,7 @@ func TestSourceSectionsAndAssemblyRetainLiteralAndDefaultSpans(t *testing.T) {
 	if got, want := segs[1].SectionSource, "guide.md.tmpl"; got != want {
 		t.Fatalf("section source = %q, want root %q", got, want)
 	}
-	assembled, parts := AssembleSource(segs, map[string]SectionPlan{"body": {HasPart: true, PartBody: "PRE" + SectionDefaultSentinel + "POST"}}, HTMLComment)
+	assembled, parts := AssembleSourceWithTemplateSource(segs, map[string]SectionPlan{"body": {HasPart: true, PartBody: "PRE" + SectionDefaultSentinel + "POST"}}, HTMLComment, TemplateSource{})
 	out, err := Execute(assembled.AuthoredText(), nil, parts, "source")
 	if err != nil {
 		t.Fatal(err)

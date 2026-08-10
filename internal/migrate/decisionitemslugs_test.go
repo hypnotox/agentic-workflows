@@ -35,8 +35,9 @@ func TestDecisionItemSlugsMigrationPreservesAuthoredBytes(t *testing.T) {
 		t.Fatalf("upgrade = %v, output %q; want %v", applied, out.String(), wantApplied)
 	}
 	for path, want := range fixtures {
+		// The selected trailing no-op migrations do not rewrite authored config.
 		if path == ".awf/config.yaml" {
-			want = []byte("prefix: fixture\n")
+			want = fixtures[path]
 		}
 		got, err := os.ReadFile(filepath.Join(root, path))
 		if err != nil || !bytes.Equal(got, want) {

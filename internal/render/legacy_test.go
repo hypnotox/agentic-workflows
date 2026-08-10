@@ -8,6 +8,6 @@ func ParseSections(src string, markdown ...bool) []Segment {
 
 // Assemble preserves concise legacy test assertions over the authored projection.
 func Assemble(segs []Segment, plan map[string]SectionPlan, style CommentStyle) (string, map[string]string) {
-	assembled, parts := AssembleSource(segs, plan, style)
+	assembled, parts := AssembleSourceWithTemplateSource(segs, plan, style, TemplateSource{})
 	return assembled.AuthoredText(), parts
 }

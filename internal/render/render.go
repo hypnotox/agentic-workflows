@@ -151,22 +151,40 @@ func partSentinel(name string) string {
 // the template parser) and NUL-delimited (cannot collide with template or markdown text).
 const SectionDefaultSentinel = "\x00awf:section-default\x00"
 
-// AssembleSource applies the section plan while preserving each template span.
-// Literal segments pass through verbatim; each non-dropped section is prefixed
-// with its awf:edit pointer, then receives either a raw part sentinel or the
-// recorded template default. Section markers are consumed here and never written.
-// touches-state: rendering/render-engine:no-section-marker-leak - section markers consumed, never written; proof in render_test.go
-// Pointers belong to the structural root section; raw convention parts and
-// in-place readback deliberately have no template source identity.
-func AssembleSource(segs []Segment, plan map[string]SectionPlan, style CommentStyle) (SourceText, map[string]string) {
+// TemplateSource enables renderer-owned regional template provenance. Root is a
+// normalized repository-relative directory; an empty Root preserves historical
+// output exactly.
+type TemplateSource struct{ Root string }
+
+// AssembleSourceWithTemplateSource applies section assembly and emits source
+// transitions when template provenance is enabled.
+func AssembleSourceWithTemplateSource(segs []Segment, plan map[string]SectionPlan, style CommentStyle, provenance TemplateSource) (SourceText, map[string]string) {
 	var out SourceText
 	if len(segs) > 0 {
 		out.Root = segs[0].Source.Root
 	}
 	parts := map[string]string{}
+	lastSource := ""
+	marker := func(source, section string, force bool) {
+		if provenance.Root == "" || source == "" || (!force && source == lastSource) {
+			return
+		}
+		value := strings.TrimSuffix(provenance.Root, "/") + "/" + source + section
+		out.appendText("", "<!-- awf:template-source "+value+" -->\n")
+		lastSource = source
+	}
+	appendSource := func(source SourceText) {
+		for _, span := range source.Spans {
+			marker(span.Source, "", false)
+			out.appendText(span.Source, span.Text)
+		}
+	}
+	if len(segs) > 0 {
+		marker(segs[0].Source.Root, "", false)
+	}
 	for _, s := range segs {
 		if !s.IsSection {
-			out.appendSource(s.Source)
+			appendSource(s.Source)
 			continue
 		}
 		p := plan[s.Name]
@@ -174,9 +192,10 @@ func AssembleSource(segs []Segment, plan map[string]SectionPlan, style CommentSt
 			continue
 		}
 		out.Root = s.Source.Root
+		marker(s.SectionSource, "#"+s.Name, true)
 		out.appendText(s.SectionSource, editPointer(s.Name, s.Stub, s.Heading != "", p, style))
 		if s.Heading != "" {
-			out.appendSource(s.HeadingSource)
+			appendSource(s.HeadingSource)
 			if !strings.HasSuffix(s.HeadingSource.AuthoredText(), "\n") {
 				out.appendText(s.SectionSource, "\n")
 			}
@@ -188,12 +207,12 @@ func AssembleSource(segs []Segment, plan map[string]SectionPlan, style CommentSt
 			if p.InPlaceFound {
 				out.appendText("", p.InPlaceBody)
 			} else {
-				out.appendSource(s.Source)
+				appendSource(s.Source)
 			}
 		case p.HasPart:
-			writePartBodySource(&out, parts, s, p)
+			writePartBodySource(&out, parts, s, p, appendSource)
 		default:
-			out.appendSource(s.Source)
+			appendSource(s.Source)
 		}
 	}
 	return out, parts
@@ -203,7 +222,7 @@ func AssembleSource(segs []Segment, plan map[string]SectionPlan, style CommentSt
 // re-injects its default via the sectionDefault split marker (ADR-0072), it is
 // split into raw fragments interleaved with the recorded default source spans.
 // A part without the marker emits one provenance-free sentinel for its raw body.
-func writePartBodySource(out *SourceText, parts map[string]string, s Segment, p SectionPlan) {
+func writePartBodySource(out *SourceText, parts map[string]string, s Segment, p SectionPlan, appendSource func(SourceText)) {
 	if !strings.Contains(p.PartBody, SectionDefaultSentinel) {
 		sent := partSentinel(s.Name)
 		parts[sent] = p.PartBody
@@ -214,7 +233,7 @@ func writePartBodySource(out *SourceText, parts map[string]string, s Segment, p 
 		if i > 0 {
 			// Re-injection reuses the recorded default spans rather than a
 			// flattened reconstruction, retaining partial transitions exactly.
-			out.appendSource(s.Source)
+			appendSource(s.Source)
 		}
 		// The index separator is a NUL, which can never occur in a section name
 		// (template source is text): it guarantees a fragment sentinel can never
