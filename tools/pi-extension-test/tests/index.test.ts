@@ -728,6 +728,15 @@ test("implementation verification defaults to the root without changing runner c
   assert.equal(h.requests[0].cwd, ROOT);
 });
 
+test("explicit project-root verification accepts the primary Git directory", async () => {
+  const h = harness({ git: checkoutGit() });
+  const { value } = await call(h, "subagent_implement", {
+    task: "x", allowCommits: true, verificationCheckout: ROOT,
+  });
+  assert.equal(value.details.verificationCheckout, ROOT);
+  assert.equal(h.requests[0].cwd, ROOT);
+});
+
 test("a linked-worktree HEAD advance satisfies owner verification while root and runner cwd stay fixed", async () => {
   const h = harness({ git: checkoutGit() });
   const { value } = await call(h, "subagent_implement", {
@@ -757,6 +766,23 @@ test("selected checkout canonicalizes one leading at-sign and filesystem aliases
   assert.equal(h.gitCalls.filter((entry) => entry.cwd !== ROOT).every((entry) => entry.cwd === WORKTREE), true);
 });
 
+test("selected checkout preserves significant trailing path whitespace", async () => {
+  const spaced = `${WORKTREE} `;
+  const h = harness({
+    files: { [ADMIN_BACKLINK]: `${spaced}/.git\r\n` },
+    git: (command, args, options) => {
+      const result = checkoutGit()(command, args, options);
+      if (args[0] === "rev-parse" && args[1] === "--show-toplevel") return { code: 0, stdout: options.cwd };
+      return result;
+    },
+  });
+  const { value } = await call(h, "subagent_implement", {
+    task: "x", allowCommits: true, verificationCheckout: spaced,
+  });
+  assert.equal(value.details.verificationCheckout, spaced);
+  assert.equal(h.requests[0].cwd, ROOT);
+});
+
 test("selected checkout detects a forbidden commit and names its resolved identity", async () => {
   const h = harness({ git: checkoutGit() });
   const { value } = await call(h, "subagent_implement", {
@@ -783,9 +809,34 @@ test("invalid explicit verification identities refuse before child dispatch", as
     { label: "subdirectory", value: `${WORKTREE}/sub`, git: (_command: string, args: string[]) => args.includes("--show-toplevel") ? { code: 0, stdout: `${WORKTREE}\n` } : { code: 1 }, expected: /verificationCheckout.*checkout root/ },
     { label: "stale", value: WORKTREE, git: () => ({ code: 1, stderr: "not a git repository" }), expected: /verificationCheckout.*registered checkout/ },
     { label: "foreign repository", value: WORKTREE, git: checkoutGit("a", "b", "/foreign/.git"), expected: /verificationCheckout.*same repository/ },
+    { label: "project common directory unavailable", value: WORKTREE, git: (_command: string, args: string[], options: { cwd: string }) => {
+      if (args[0] === "rev-parse" && args[1] === "--show-toplevel") return { code: 0, stdout: `${options.cwd}\n` };
+      if (args.includes("--git-common-dir")) return options.cwd === ROOT ? { code: 1 } : { code: 0, stdout: `${COMMON}\n` };
+      return { code: 1 };
+    }, expected: /live registered checkout/ },
+    { label: "selected common directory unavailable", value: WORKTREE, git: (_command: string, args: string[], options: { cwd: string }) => {
+      if (args[0] === "rev-parse" && args[1] === "--show-toplevel") return { code: 0, stdout: `${options.cwd}\n` };
+      if (args.includes("--git-common-dir")) return options.cwd === ROOT ? { code: 0, stdout: `${COMMON}\n` } : { code: 1 };
+      return { code: 1 };
+    }, expected: /live registered checkout/ },
+    { label: "absolute Git directory unavailable", value: WORKTREE, git: (_command: string, args: string[], options: { cwd: string }) => {
+      if (args[0] === "rev-parse" && args[1] === "--show-toplevel") return { code: 0, stdout: `${options.cwd}\n` };
+      if (args.includes("--git-common-dir")) return { code: 0, stdout: `${COMMON}\n` };
+      return { code: 1 };
+    }, expected: /Cannot resolve verificationCheckout absolute Git directory/ },
+    { label: "dot-git inspection failure", value: WORKTREE, git: checkoutGit(), lstat: async () => { throw Object.assign(new Error("permission denied"), { code: "EACCES" }); }, expected: /Cannot inspect verificationCheckout \.git entry.*permission denied/ },
+    { label: "missing dot-git entry", value: WORKTREE, git: checkoutGit(), lstat: async () => { throw Object.assign(new Error("missing"), { code: "ENOENT" }); }, expected: /non-symlink regular file/ },
+    { label: "non-file dot-git entry", value: WORKTREE, git: checkoutGit(), lstat: async () => ({ isFile: () => false, isSymbolicLink: () => false }), expected: /non-symlink regular file/ },
     { label: "missing administrative backlink", value: WORKTREE, files: { [ADMIN_BACKLINK]: Object.assign(new Error("missing"), { code: "ENOENT" }) }, git: checkoutGit(), expected: /live linked checkout.*administrative backlink/ },
+    { label: "unreadable administrative backlink", value: WORKTREE, files: { [ADMIN_BACKLINK]: Object.assign(new Error("permission denied"), { code: "EACCES" }) }, git: checkoutGit(), expected: /Cannot read verificationCheckout administrative backlink.*permission denied/ },
+    { label: "empty administrative backlink", value: WORKTREE, files: { [ADMIN_BACKLINK]: "\n" }, git: checkoutGit(), expected: /administrative backlink is empty/ },
     { label: "copied linked-worktree pointer", value: "/repo/copied", git: checkoutGit(), expected: /administrative backlink.*registered checkout/ },
-    { label: "selected dot-git symlink", value: WORKTREE, git: checkoutGit(), lstat: async () => ({ isFile: () => true, isSymbolicLink: () => true }), expected: /\.git.*non-symlink regular file/ },
+    { label: "copied primary pointer", value: "/repo/copied-primary", git: (_command: string, args: string[], options: { cwd: string }) => {
+      if (args[0] === "rev-parse" && args[1] === "--show-toplevel") return { code: 0, stdout: `${options.cwd}\n` };
+      if (args.includes("--git-common-dir") || args.includes("--absolute-git-dir")) return { code: 0, stdout: "/external/repo.git\n" };
+      return { code: 1 };
+    }, expected: /copied primary Git pointer/ },
+    { label: "selected dot-git symlink", value: WORKTREE, git: checkoutGit(), lstat: async () => ({ isFile: () => true, isSymbolicLink: () => true }), expected: /\.git.*must not be a symlink/ },
   ];
   for (const item of cases) {
     const h = harness({ files: item.files, git: item.git, realpath: item.realpath, lstat: item.lstat });
@@ -795,7 +846,10 @@ test("invalid explicit verification identities refuse before child dispatch", as
     );
     assert.equal(h.requests.length, 0, item.label);
     assert.equal(h.gitCalls.some((entry) => entry.args[0] === "worktree"), false, item.label);
-    if (item.label === "selected dot-git symlink") assert.equal(h.realpathCalls.includes(`${WORKTREE}/.git`), false, item.label);
+    if (item.label === "selected dot-git symlink") {
+      assert.equal(h.realpathCalls.includes(`${WORKTREE}/.git`), false, item.label);
+      assert.equal(h.gitCalls.length, 0, item.label);
+    }
   }
 
   const permission = harness({ realpath: async () => { throw Object.assign(new Error("permission denied"), { code: "EACCES" }); } });

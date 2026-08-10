@@ -107,6 +107,8 @@ async function runPinnedSession(activeTools: string[], handoffKickoff?: string):
       throw Object.assign(new Error("missing"), { code: "ENOENT" });
     },
     writeFile: async () => {}, mkdir: async () => {}, rename: async () => {}, unlink: async () => {},
+    realpath: async (path) => path,
+    lstat: async () => ({ isFile: () => false, isSymbolicLink: () => false }),
     runner: { run: async () => { throw new Error("runtime smoke must not execute a subagent tool"); } },
   };
   const extensionFactories = handoffKickoff === undefined

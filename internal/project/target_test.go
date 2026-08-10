@@ -276,6 +276,9 @@ func TestPiContextUsageInjection(t *testing.T) {
 // invariant: rendering/pi-workflows:pi-session-handoff-public-contract (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-runtime:pi-context-usage-injection (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-runtime:pi-minimum-runtime (TestPiRealRuntimeSmoke)
+// invariant: rendering/pi-runtime:pi-implementation-state-boundary (TestPiRealRuntimeSmoke)
+// invariant: rendering/pi-workflows:pi-implement-role-artifact (TestPiRealRuntimeSmoke)
+// invariant: rendering/pi-workflows:pi-structured-exploration-contract (TestPiRealRuntimeSmoke)
 var (
 	piRuntimeSmokeOnce   sync.Once
 	piRuntimeSmokeOutput []byte
@@ -327,7 +330,6 @@ func TestTargetOutputRenderError(t *testing.T) {
 }
 
 // invariant: rendering/pi-workflows:pi-dedicated-grounding-dispatch (TestPiStructuredExplorationContractRender)
-// invariant: rendering/pi-workflows:pi-structured-exploration-contract (TestPiStructuredExplorationContractRender)
 func TestPiStructuredExplorationContractRender(t *testing.T) {
 	body := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	for _, want := range []string{"subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement", "verificationCheckout: Type.Optional(Type.String())", "Omit verificationCheckout for the project root", "MAX_EXPLORATION_CONCURRENCY = 10", "queues the rest FIFO with abort-aware removal"} {
@@ -917,8 +919,6 @@ func TestPlannedOutputsSurfacesRenderError(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-runtime:pi-implementation-state-boundary (TestPiImplementRoleArtifact)
-// invariant: rendering/pi-workflows:pi-implement-role-artifact (TestPiImplementRoleArtifact)
 func TestPiImplementRoleArtifact(t *testing.T) {
 	src := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	for _, want := range []string{
@@ -968,11 +968,13 @@ func TestPiImplementRoleArtifact(t *testing.T) {
 		"implementation verification defaults to the root without changing runner cwd",
 		"a linked-worktree HEAD advance satisfies owner verification while root and runner cwd stay fixed",
 		"selected checkout canonicalizes one leading at-sign and filesystem aliases",
+		"selected checkout preserves significant trailing path whitespace",
 		"selected checkout detects a forbidden commit and names its resolved identity",
 		"invalid explicit verification identities refuse before child dispatch",
 		"omitted verification retains unavailable commit policy outside Git",
 		"a commit-capable implementation that leaves selected HEAD unchanged names retry repair",
 		`label: "copied linked-worktree pointer"`,
+		`label: "copied primary pointer"`,
 		`label: "selected dot-git symlink"`,
 		"ADMIN_BACKLINK",
 		"isSymbolicLink",

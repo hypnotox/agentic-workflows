@@ -147,8 +147,8 @@ export interface ExtensionDependencies {
   mkdir(path: string, options: { recursive: true }): Promise<unknown>;
   rename(from: string, to: string): Promise<void>;
   unlink(path: string): Promise<void>;
-  realpath?(path: string): Promise<string>;
-  lstat?(path: string): Promise<{ isFile(): boolean; isSymbolicLink(): boolean }>;
+  realpath(path: string): Promise<string>;
+  lstat(path: string): Promise<{ isFile(): boolean; isSymbolicLink(): boolean }>;
   now?: () => number;
   observationId?: () => string;
 }
@@ -275,6 +275,13 @@ function loadGroundingChecker(deps: ExtensionDependencies, root: string): Promis
   });
 }
 
+/* c8 ignore stop */
+function stripTerminalLineEnding(value: string): string {
+  if (value.endsWith("\r\n")) return value.slice(0, -2);
+  if (value.endsWith("\n")) return value.slice(0, -1);
+  return value;
+}
+
 async function snapshot(pi: ExtensionAPI, cwd: string): Promise<GitSnapshot> {
   const head = await pi.exec("git", ["rev-parse", "HEAD"], { cwd });
   if (head.code !== 0) return { available: false };
@@ -283,7 +290,7 @@ async function snapshot(pi: ExtensionAPI, cwd: string): Promise<GitSnapshot> {
 }
 
 async function canonicalPath(deps: ExtensionDependencies, path: string, failureMessage: string): Promise<string> {
-  try { return await (deps.realpath ?? realpath)(path); }
+  try { return await deps.realpath(path); }
   catch (error) { throw new Error(`${failureMessage}: ${errorText(error)}`, { cause: error }); }
 }
 
@@ -295,39 +302,48 @@ async function resolveVerificationCheckout(
   if (normalized === "") throw new Error("verificationCheckout is empty after removing one leading @; omit the field for root verification or provide a registered checkout root.");
   const candidate = resolve(root, normalized);
   const checkout = await canonicalPath(deps, candidate, `verificationCheckout does not exist: ${candidate}`);
+  const canonicalRoot = await canonicalPath(deps, root, "Cannot resolve the project root checkout.");
+  const selectedGitEntry = join(checkout, ".git");
+  let entry: { isFile(): boolean; isSymbolicLink(): boolean } | undefined;
+  try { entry = await deps.lstat(selectedGitEntry); }
+  catch (error) {
+    if (errorCode(error) !== "ENOENT") throw new Error(`Cannot inspect verificationCheckout .git entry ${selectedGitEntry}: ${errorText(error)}`, { cause: error });
+  }
+  if (entry?.isSymbolicLink()) throw new Error(`verificationCheckout .git entry must not be a symlink: ${selectedGitEntry}`);
+
   const top = await pi.exec("git", ["rev-parse", "--show-toplevel"], { cwd: checkout });
   if (top.code !== 0) throw new Error(`verificationCheckout must be a live registered checkout root for this repository: ${checkout}`);
-  const canonicalTop = await canonicalPath(deps, top.stdout.trim(), `verificationCheckout Git root does not exist: ${top.stdout.trim()}`);
+  const topPath = stripTerminalLineEnding(top.stdout);
+  const canonicalTop = await canonicalPath(deps, topPath, `verificationCheckout Git root does not exist: ${topPath}`);
   if (canonicalTop !== checkout) throw new Error(`verificationCheckout must name the checkout root, not a subdirectory: ${checkout}`);
   const rootCommon = await pi.exec("git", ["rev-parse", "--path-format=absolute", "--git-common-dir"], { cwd: root });
   const checkoutCommon = await pi.exec("git", ["rev-parse", "--path-format=absolute", "--git-common-dir"], { cwd: checkout });
   if (rootCommon.code !== 0 || checkoutCommon.code !== 0) throw new Error(`verificationCheckout must be a live registered checkout root for this repository: ${checkout}`);
-  const canonicalRootCommon = await canonicalPath(deps, rootCommon.stdout.trim(), "Cannot resolve the project root Git common directory.");
-  const canonicalCheckoutCommon = await canonicalPath(deps, checkoutCommon.stdout.trim(), `Cannot resolve verificationCheckout Git common directory: ${checkout}`);
+  const canonicalRootCommon = await canonicalPath(deps, stripTerminalLineEnding(rootCommon.stdout), "Cannot resolve the project root Git common directory.");
+  const canonicalCheckoutCommon = await canonicalPath(deps, stripTerminalLineEnding(checkoutCommon.stdout), `Cannot resolve verificationCheckout Git common directory: ${checkout}`);
   if (canonicalRootCommon !== canonicalCheckoutCommon) throw new Error(`verificationCheckout must belong to the same repository as the project root: ${checkout}`);
 
   const gitDirectory = await pi.exec("git", ["rev-parse", "--absolute-git-dir"], { cwd: checkout });
   if (gitDirectory.code !== 0) throw new Error(`Cannot resolve verificationCheckout absolute Git directory: ${checkout}`);
-  const canonicalGitDirectory = await canonicalPath(deps, gitDirectory.stdout.trim(), `Cannot resolve verificationCheckout absolute Git directory: ${checkout}`);
-  if (canonicalGitDirectory === canonicalCheckoutCommon) return checkout;
+  const canonicalGitDirectory = await canonicalPath(deps, stripTerminalLineEnding(gitDirectory.stdout), `Cannot resolve verificationCheckout absolute Git directory: ${checkout}`);
+  if (canonicalGitDirectory === canonicalCheckoutCommon) {
+    if (checkout !== canonicalRoot) throw new Error(`verificationCheckout must identify the project root or a live linked checkout, not a copied primary Git pointer: ${checkout}`);
+    return checkout;
+  }
   let backlink: string;
   try { backlink = await deps.readFile(join(canonicalGitDirectory, "gitdir"), "utf8"); }
   catch (error) {
     if (errorCode(error) === "ENOENT") throw new Error(`verificationCheckout must be a live linked checkout with an administrative backlink: ${checkout}`, { cause: error });
     throw new Error(`Cannot read verificationCheckout administrative backlink for ${checkout}: ${errorText(error)}`, { cause: error });
   }
-  const selectedGitEntry = join(checkout, ".git");
-  let entry: { isFile(): boolean; isSymbolicLink(): boolean };
-  try { entry = await (deps.lstat ?? lstat)(selectedGitEntry); }
-  catch (error) { throw new Error(`Cannot inspect verificationCheckout .git entry ${selectedGitEntry}: ${errorText(error)}`, { cause: error }); }
-  if (!entry.isFile() || entry.isSymbolicLink()) throw new Error(`verificationCheckout linked .git entry must be a non-symlink regular file: ${selectedGitEntry}`);
-  const backlinkPath = backlink.trim();
+  if (!entry?.isFile()) throw new Error(`verificationCheckout linked .git entry must be a non-symlink regular file: ${selectedGitEntry}`);
+  const backlinkPath = stripTerminalLineEnding(backlink);
   if (backlinkPath === "") throw new Error(`verificationCheckout administrative backlink is empty: ${join(canonicalGitDirectory, "gitdir")}`);
   const canonicalBacklink = await canonicalPath(deps, resolve(canonicalGitDirectory, backlinkPath), `Cannot resolve verificationCheckout administrative backlink for ${checkout}`);
-  const canonicalSelectedEntry = await canonicalPath(deps, selectedGitEntry, `Cannot resolve verificationCheckout .git entry for ${checkout}`);
-  if (canonicalBacklink !== canonicalSelectedEntry) throw new Error(`verificationCheckout administrative backlink ${canonicalBacklink} does not identify the registered checkout ${checkout}`);
+  if (canonicalBacklink !== selectedGitEntry) throw new Error(`verificationCheckout administrative backlink ${canonicalBacklink} does not identify the registered checkout ${checkout}`);
   return checkout;
 }
+/* c8 ignore start */
 
 function validateTask(task: string): void {
   if (!task.trim()) throw new Error("Subagent task must be a non-empty string");
@@ -850,13 +866,17 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
       await previous;
       try {
         if (signal?.aborted) throw new Error("Implementation subagent was aborted while queued");
+        /* c8 ignore stop */
         const verificationCheckout = await resolveVerificationCheckout(pi, deps, root, params.verificationCheckout);
         const before = await snapshot(pi, verificationCheckout);
+        /* c8 ignore start */
         const finalSelected = await refreshAndResolve(ctx, "implement", params.model);
         const finalMetadata = executionMetadata(finalSelected, thinkingLevel, { allowCommits: params.allowCommits, verificationCheckout });
         const contract = await loadImplementer(deps, root, params.allowCommits);
         const result = await run("implement", params.task, IMPLEMENT_TOOLS, contract, finalSelected.model, finalMetadata, signal, onUpdate, queuedAt);
+        /* c8 ignore stop */
         const after = await snapshot(pi, verificationCheckout);
+        /* c8 ignore start */
         const comparable = before.available && after.available;
         const committedWhenForbidden = !params.allowCommits && comparable && before.head !== after.head;
         // A commit-capable owner that left HEAD alone did not complete its phase.

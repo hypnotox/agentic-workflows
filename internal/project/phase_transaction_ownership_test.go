@@ -171,10 +171,13 @@ func TestPiManagedWorktreeVerificationGuidance(t *testing.T) {
 		"inline":    renderSkillGolden(t, "executing-plans", data),
 		"delegated": renderSkillGolden(t, "subagent-driven-development", data),
 	} {
-		for _, want := range []string{"verificationCheckout", "managed-worktree path", "actual mutation paths", "parent and child Pi CWD", "omit"} {
+		for _, want := range []string{"verificationCheckout", "managed-worktree path", "actual mutation paths", "parent and child Pi CWD"} {
 			if !strings.Contains(body, want) {
 				t.Errorf("Pi %s guidance missing %q", name, want)
 			}
+		}
+		if !strings.Contains(strings.ToLower(body), "omit `verificationcheckout` for root work") {
+			t.Errorf("Pi %s guidance missing the complete root-work omission clause", name)
 		}
 	}
 	claudeData := maps.Clone(data)
