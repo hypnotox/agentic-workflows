@@ -59,14 +59,17 @@ policy.
    repository's platform-specific atomic namespace and parent-sync durability model and
    never falls back to copy-and-delete across filesystems.
 4. `decision: archive-ignore-precondition` A new registered config generation introduces
-   the archive root so a project on an older generation must run `awf upgrade` before effort
-   commands can proceed; ordinary render repairs the marker only after the project is at the
-   current generation. Finish may archive private effort bytes only after proving that the
-   confined archive root is a real safely owned directory and its governed marker is a safe
-   regular file whose bytes match the planned self-ignore output. A missing, symlinked,
-   foreign, or stale root or marker refuses before the active resident changes. This closes
-   the window in which a newer binary could move private memory into an unignored archive
-   in an older project.
+   the archive root. Config and lock loading detect an older effective generation and the
+   version gate requires `awf upgrade` before effort commands can proceed. Upgrade applies
+   the registered migration, then its ordinary render and sync phase creates the planned
+   archive marker and atomically publishes an `awf.lock` manifest carrying both that output
+   and the current generation. Ordinary render repairs the marker only after the project is
+   at the current generation. Finish may archive private effort bytes only after proving
+   that the confined archive root is a real safely owned directory and its governed marker
+   is a safe regular file whose bytes match the planned self-ignore output. A missing,
+   symlinked, foreign, or stale root or marker refuses before the active resident changes.
+   This closes the window in which a newer binary could move private memory into an
+   unignored archive in an older project.
 5. `decision: opaque-effort-scratch` A valid active effort may contain one optional
    `scratch/` direct child. The child itself must be a real, safely owned directory, but awf
    treats every descendant as opaque and does not traverse, validate, list, interpret, or
@@ -84,6 +87,11 @@ policy.
    remain local bytes preserved without recursive interpretation. The marker template stays
    coherent under missing-key-zero rendering and cannot emit unresolved or no-value tokens
    when variables are empty.
+8. `decision: upgrade-boundary-proof` The added
+   `config/migrations-and-locks:archive-root-upgrade-boundary` claim is an invariant with
+   `Backing: test`. Its proof marker names the implementing test under `internal/` that
+   demonstrates older-generation gating, upgrade publication of the ignored archive root,
+   and current-generation render repair.
 
 ## State changes
 
