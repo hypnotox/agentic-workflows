@@ -330,7 +330,7 @@ func TestTargetOutputRenderError(t *testing.T) {
 // invariant: rendering/pi-workflows:pi-structured-exploration-contract (TestPiStructuredExplorationContractRender)
 func TestPiStructuredExplorationContractRender(t *testing.T) {
 	body := renderPiExtensionFile(t, "awf-subagents/index.ts")
-	for _, want := range []string{"subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement", "MAX_EXPLORATION_CONCURRENCY = 10", "queues the rest FIFO with abort-aware removal"} {
+	for _, want := range []string{"subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement", "verificationCheckout: Type.Optional(Type.String())", "Omit verificationCheckout for the project root", "MAX_EXPLORATION_CONCURRENCY = 10", "queues the rest FIFO with abort-aware removal"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("Pi subagent extension missing %q", want)
 		}
@@ -917,6 +917,7 @@ func TestPlannedOutputsSurfacesRenderError(t *testing.T) {
 	}
 }
 
+// invariant: rendering/pi-runtime:pi-implementation-state-boundary (TestPiImplementRoleArtifact)
 // invariant: rendering/pi-workflows:pi-implement-role-artifact (TestPiImplementRoleArtifact)
 func TestPiImplementRoleArtifact(t *testing.T) {
 	src := renderPiExtensionFile(t, "awf-subagents/index.ts")
@@ -931,6 +932,14 @@ func TestPiImplementRoleArtifact(t *testing.T) {
 		"before.head === after.head",
 		"commit-capable but created no commit",
 		"committed despite allowCommits=false",
+		"resolveVerificationCheckout",
+		`requested.startsWith("@") ? requested.slice(1) : requested`,
+		`["rev-parse", "--show-toplevel"]`,
+		`["rev-parse", "--path-format=absolute", "--git-common-dir"]`,
+		"same repository as the project root",
+		"snapshot(pi, verificationCheckout)",
+		"retry with verificationCheckout set to that checkout root",
+		"cwd: root",
 	} {
 		if !strings.Contains(src, want) {
 			t.Errorf("rendered Pi extension missing %q", want)
@@ -940,6 +949,12 @@ func TestPiImplementRoleArtifact(t *testing.T) {
 	// the loader while leaving the old string in place fails here.
 	if strings.Contains(src, "You are a fresh-context implementation subagent") {
 		t.Error("the literal implement role prose survived the loader cutover")
+	}
+	implementer := explorationRenderedByPath(t, explorationFixtureConfig("pi"))[".pi/agents/implementer.md"]
+	for _, piOnly := range []string{"verificationCheckout", "verification checkout", "Pi CWD"} {
+		if strings.Contains(implementer, piOnly) {
+			t.Errorf("generic implementer role gained Pi-only verification metadata %q", piOnly)
+		}
 	}
 }
 

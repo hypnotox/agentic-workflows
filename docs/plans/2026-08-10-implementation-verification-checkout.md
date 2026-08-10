@@ -61,3 +61,5 @@ fix(rendering): verify selected checkout (applies 0260 batch)
 ## Notes
 
 Inline owners immediately correct stale instructions and record reasoned deviations here. Delegated owners may report rather than edit; the parent supplies the report to phase review and reconciles it with findings in one focused post-review settlement commit before checkpointing or later execution. Record deviations, spike answers, follow-ups, and findings surfaced during implementation.
+
+- 2026-08-10 Phase 1 semantic review: inspected the rendered Pi phase-owner skills, byte-stable Claude counterparts, rendered current-state claims, README, generic working-guide template and project override boundary, changelog, and source/rendered pitfalls catalog together. The outputs consistently describe verification identity without mutation binding or CWD changes, contain no Pi-only Claude wording or unresolved/no-value token, preserve the separate mutation-routing roadmap item, and remove the resolved monitor pitfall. The project-specific `docs/working-with-awf.md` override remained byte-identical while the generic template and lock relationship changed, as anticipated.

@@ -84,9 +84,12 @@ A compatible Pi 0.81.1+ build exposing the required queued-command and persisted
 `model` selection and otherwise inherits the parent. Exploration requires `{task, breadth, detail}`:
 breadth is `targeted`, `bounded`, or `broad`, and detail is `paths`, `summary`, or `analysis`;
 independent calls run through a ten-active FIFO queue. Grounding, exploration, and review are a
-no-mutation prompt policy, not an OS sandbox. Implementation shares the checkout, runs alone and
-sequentially, and mixed parent batches are mechanically blocked; it commits only when its
-orchestrator sets `allowCommits`. Every role shows bounded inline child progress while intermediate
+no-mutation prompt policy, not an OS sandbox. Implementation starts from the project root, runs
+alone and sequentially, and mixed parent batches are mechanically blocked; it commits only when its
+orchestrator sets `allowCommits`. Its optional `verificationCheckout` selects the project root or an
+exact same-repository managed-worktree root for commit-policy snapshots without changing parent or
+child Pi CWD or binding mutation paths; callers keep worktree operations explicit in the task.
+Every role shows bounded inline child progress while intermediate
 activity stays outside parent model content. The catalog `effort-workflow` renders a target-neutral guide for entering the exact existing awf-managed worktree through native persistent checkout tooling. Pi additionally derives the `using_effort` tool and companion skill: direct attach or detach leaves the runtime at repository root, heartbeats after turns, and injects fixed relative memory and optional managed-worktree paths before model calls. It publishes complete advisory Remote Pi metadata independently from a capability-gated display-only effort suffix, answers replay requests, and clears the suffix on lifecycle boundaries without reading or changing routing identity. Missing or withdrawn suffix support degrades to metadata-only behavior. No checkout validation, CWD replacement, queue, or local TUI presentation is involved. Non-Pi targets never receive this tool, claim activity, or create a parallel harness-owned worktree.
 
 A separate `handoff_session` tool accepts only exact bounded `{kickoff}` prose for a parent-linked fresh persisted TUI session. Workflow checkpoints stay durable and visible first; the handoff runs alone afterward, waits five cancellable seconds, preserves old history, and submits one visible default-rendered `agent-handoff` custom message whose content is `Agent-authored handoff context; this is not user input:` followed by two newlines and the unchanged kickoff. Replacement-bound `sendMessage` triggers the turn; Pi's current provider adapter still converts custom content to a user-role request. Unsupported modes reject, cleanup is manual, and automatic or replacement failure leaves that same envelope in the editor.
