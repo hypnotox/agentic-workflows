@@ -93,6 +93,7 @@ func lockFile(root string) string { return filepath.Join(root, ".awf", "awf.lock
 
 // invariant: tooling/context-and-topic:context-read-only (TestContextRequestUniverse)
 // invariant: tooling/context-and-topic:context-path-attribution (TestContextRequestUniverse)
+// invariant: tooling/context-and-topic:context-applicability-navigation (TestContextRequestUniverse)
 func TestContextRequestUniverse(t *testing.T) {
 	t.Parallel()
 	p := ctxRepo(t, ctxConfig, ctxFiles())

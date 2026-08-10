@@ -137,22 +137,28 @@ func TestRenderContextGrammar(t *testing.T) {
 	}
 }
 
-// TestRenderContextFacetOwnedAuthorityOmitsAbsentData prevents unrequested
-// authority facets from asserting that test backing or known reference edges are
-// absent. The selected form retains one fixed schema for every claim row.
-// invariant: tooling/context-and-topic:context-full-authority-packet (TestRenderContextFacetOwnedAuthorityOmitsAbsentData)
+// invariant: tooling/context-and-topic:context-applicability-navigation (TestRenderContextSelectorsSeparateGlobalDeclarationAndOwnership)
 func TestRenderContextSelectorsSeparateGlobalDeclarationAndOwnership(t *testing.T) {
 	res := ContextResult{Selection: SelectionExplicit, Topics: []topicImpact{{
 		ID: "code-design/presentation-ownership", Title: "Presentation ownership", Summary: "Summary.",
 		Selectors: &contextSelectorImpact{DomainPaths: []string{"internal/**"}, TopicPaths: []string{"internal/presentation/**"}, DeclaredGlobal: true},
 	}}}
 	out := RenderContextText(res, "header", []ContextFacet{FacetSelectors})
-	want := "selectors:\n    code-design/presentation-ownership | internal/** | applies: global | internal/presentation/** | both ownership and owning-domain selectors must match"
-	if !strings.Contains(out, want) || strings.Contains(out, "matched path") {
-		t.Fatalf("selectors did not remain declaration-only:\n%s", out)
+	want := "selectors:\n    code-design/presentation-ownership | internal/** | applies: global | internal/presentation/** | both ownership and owning-domain selectors must match\n"
+	if !strings.Contains(out, want) {
+		t.Fatalf("selectors did not preserve their complete record:\n%s", out)
+	}
+	for _, forbidden := range []string{"applicable-paths", "owned-paths", "matched-path"} {
+		if strings.Contains(out, forbidden) {
+			t.Fatalf("selectors exposed path witnesses through %q:\n%s", forbidden, out)
+		}
 	}
 }
 
+// TestRenderContextFacetOwnedAuthorityOmitsAbsentData prevents unrequested
+// authority facets from asserting that test backing or known reference edges are
+// absent. The selected form retains one fixed schema for every claim row.
+// invariant: tooling/context-and-topic:context-full-authority-packet (TestRenderContextFacetOwnedAuthorityOmitsAbsentData)
 func TestRenderContextFacetOwnedAuthorityOmitsAbsentData(t *testing.T) {
 	claim := contextClaimImpact{
 		ID:       "alpha/one:tested",
