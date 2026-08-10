@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-archive-finished-efforts-and-permit-effort-scratch-data: Archive Finished Efforts and Permit Effort Scratch Data](archive-finished-efforts-and-permit-effort-scratch-data.md) (Proposed)
 
 ## History
 
