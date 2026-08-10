@@ -276,6 +276,9 @@ func TestPiContextUsageInjection(t *testing.T) {
 // invariant: rendering/pi-workflows:pi-session-handoff-public-contract (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-runtime:pi-context-usage-injection (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-runtime:pi-minimum-runtime (TestPiRealRuntimeSmoke)
+// invariant: rendering/pi-runtime:pi-implementation-state-boundary (TestPiRealRuntimeSmoke)
+// invariant: rendering/pi-workflows:pi-implement-role-artifact (TestPiRealRuntimeSmoke)
+// invariant: rendering/pi-workflows:pi-structured-exploration-contract (TestPiRealRuntimeSmoke)
 var (
 	piRuntimeSmokeOnce   sync.Once
 	piRuntimeSmokeOutput []byte
@@ -327,10 +330,9 @@ func TestTargetOutputRenderError(t *testing.T) {
 }
 
 // invariant: rendering/pi-workflows:pi-dedicated-grounding-dispatch (TestPiStructuredExplorationContractRender)
-// invariant: rendering/pi-workflows:pi-structured-exploration-contract (TestPiStructuredExplorationContractRender)
 func TestPiStructuredExplorationContractRender(t *testing.T) {
 	body := renderPiExtensionFile(t, "awf-subagents/index.ts")
-	for _, want := range []string{"subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement", "MAX_EXPLORATION_CONCURRENCY = 10", "queues the rest FIFO with abort-aware removal"} {
+	for _, want := range []string{"subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement", "verificationCheckout: Type.Optional(Type.String())", "Omit verificationCheckout for the project root", "MAX_EXPLORATION_CONCURRENCY = 10", "queues the rest FIFO with abort-aware removal"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("Pi subagent extension missing %q", want)
 		}
@@ -917,7 +919,6 @@ func TestPlannedOutputsSurfacesRenderError(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-workflows:pi-implement-role-artifact (TestPiImplementRoleArtifact)
 func TestPiImplementRoleArtifact(t *testing.T) {
 	src := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	for _, want := range []string{
@@ -931,6 +932,18 @@ func TestPiImplementRoleArtifact(t *testing.T) {
 		"before.head === after.head",
 		"commit-capable but created no commit",
 		"committed despite allowCommits=false",
+		"resolveVerificationCheckout",
+		`requested.startsWith("@") ? requested.slice(1) : requested`,
+		`["rev-parse", "--show-toplevel"]`,
+		`["rev-parse", "--path-format=absolute", "--git-common-dir"]`,
+		`["rev-parse", "--absolute-git-dir"]`,
+		`join(canonicalGitDirectory, "gitdir")`,
+		"non-symlink regular file",
+		"administrative backlink",
+		"same repository as the project root",
+		"snapshot(pi, verificationCheckout)",
+		"retry with verificationCheckout set to that checkout root",
+		"cwd: root",
 	} {
 		if !strings.Contains(src, want) {
 			t.Errorf("rendered Pi extension missing %q", want)
@@ -940,6 +953,35 @@ func TestPiImplementRoleArtifact(t *testing.T) {
 	// the loader while leaving the old string in place fails here.
 	if strings.Contains(src, "You are a fresh-context implementation subagent") {
 		t.Error("the literal implement role prose survived the loader cutover")
+	}
+	implementer := explorationRenderedByPath(t, explorationFixtureConfig("pi"))[".pi/agents/implementer.md"]
+	for _, piOnly := range []string{"verificationCheckout", "verification checkout", "Pi CWD"} {
+		if strings.Contains(implementer, piOnly) {
+			t.Errorf("generic implementer role gained Pi-only verification metadata %q", piOnly)
+		}
+	}
+	behavior, err := os.ReadFile(filepath.Join(repoRootDir(t), "tools/pi-extension-test/tests/index.test.ts"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"implementation verification defaults to the root without changing runner cwd",
+		"a linked-worktree HEAD advance satisfies owner verification while root and runner cwd stay fixed",
+		"selected checkout canonicalizes one leading at-sign and filesystem aliases",
+		"selected checkout preserves significant trailing path whitespace",
+		"selected checkout detects a forbidden commit and names its resolved identity",
+		"invalid explicit verification identities refuse before child dispatch",
+		"omitted verification retains unavailable commit policy outside Git",
+		"a commit-capable implementation that leaves selected HEAD unchanged names retry repair",
+		`label: "copied linked-worktree pointer"`,
+		`label: "copied primary pointer"`,
+		`label: "selected dot-git symlink"`,
+		"ADMIN_BACKLINK",
+		"isSymbolicLink",
+	} {
+		if !strings.Contains(string(behavior), want) {
+			t.Errorf("TypeScript implementation-verification behavior contract missing %q", want)
+		}
 	}
 }
 

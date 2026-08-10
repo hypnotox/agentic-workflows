@@ -73,8 +73,9 @@ Backing: test
 
 ### `invariant: pi-structured-exploration-contract`
 
-The generated Pi extension exposes exactly four closed-schema roles, each with optional exact model routing; exploration retains required task, breadth, and detail and runs through the ten-active FIFO limiter without changing the other process boundaries.
+The generated Pi extension exposes exactly four closed-schema roles, each with optional exact model routing; implementation alone also accepts optional `verificationCheckout` as commit-policy identity without changing process CWD or task mutation paths. Exploration retains required task, breadth, and detail and runs through the ten-active FIFO limiter without changing the other process boundaries.
 Origin: ADR-0148
+Revised-by: ADR-0260
 Backing: test
 
 ### `invariant: pi-subagent-failure-details`
@@ -106,9 +107,9 @@ Backing: test
 
 ### `invariant: pi-implement-role-artifact`
 
-The generated Pi extension builds the implementation child's role prompt from the rendered implementer agent at its `.pi/agents/` path, prepending the commit-authority role line for the call's mode. The before-and-after git snapshot fails a commit-capable implementation call whose HEAD is unchanged, naming the required stopped inventory, and retains the existing commit-forbidden violation, its message, cancellation, cleanup, and bounded-diagnostic reporting.
+The generated Pi extension builds the implementation child's role prompt from the rendered implementer agent at its `.pi/agents/` path, prepending the commit-authority role line for the call's mode. The before-and-after Git snapshot targets the resolved verification checkout while the child runner stays at the project root. It fails a commit-capable call whose selected HEAD is unchanged, naming the checkout, required stopped inventory, and explicit `verificationCheckout` retry repair; it retains the commit-forbidden violation while naming the selected checkout, plus cancellation, cleanup, and bounded-diagnostic reporting. The generic implementer role contract carries no Pi-only checkout routing duty.
 Origin: ADR-0177
-Revised-by: ADR-0179
+Revised-by: ADR-0179, ADR-0260
 Backing: test
 
 ### `invariant: pi-subagent-progress-bounds`

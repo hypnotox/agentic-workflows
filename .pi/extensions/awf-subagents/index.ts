@@ -2,7 +2,7 @@
 // @ts-nocheck
 /* c8 ignore start */
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readFile, realpath, rename, unlink, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -147,6 +147,8 @@ export interface ExtensionDependencies {
   mkdir(path: string, options: { recursive: true }): Promise<unknown>;
   rename(from: string, to: string): Promise<void>;
   unlink(path: string): Promise<void>;
+  realpath(path: string): Promise<string>;
+  lstat(path: string): Promise<{ isFile(): boolean; isSymbolicLink(): boolean }>;
   now?: () => number;
   observationId?: () => string;
 }
@@ -273,12 +275,75 @@ function loadGroundingChecker(deps: ExtensionDependencies, root: string): Promis
   });
 }
 
+/* c8 ignore stop */
+function stripTerminalLineEnding(value: string): string {
+  if (value.endsWith("\r\n")) return value.slice(0, -2);
+  if (value.endsWith("\n")) return value.slice(0, -1);
+  return value;
+}
+
 async function snapshot(pi: ExtensionAPI, cwd: string): Promise<GitSnapshot> {
   const head = await pi.exec("git", ["rev-parse", "HEAD"], { cwd });
   if (head.code !== 0) return { available: false };
   const status = await pi.exec("git", ["status", "--short"], { cwd });
   return { available: status.code === 0, head: head.stdout.trim(), status: status.stdout };
 }
+
+async function canonicalPath(deps: ExtensionDependencies, path: string, failureMessage: string): Promise<string> {
+  try { return await deps.realpath(path); }
+  catch (error) { throw new Error(`${failureMessage}: ${errorText(error)}`, { cause: error }); }
+}
+
+async function resolveVerificationCheckout(
+  pi: ExtensionAPI, deps: ExtensionDependencies, root: string, requested: string | undefined,
+): Promise<string> {
+  if (requested === undefined) return root;
+  const normalized = requested.startsWith("@") ? requested.slice(1) : requested;
+  if (normalized === "") throw new Error("verificationCheckout is empty after removing one leading @; omit the field for root verification or provide a registered checkout root.");
+  const candidate = resolve(root, normalized);
+  const checkout = await canonicalPath(deps, candidate, `verificationCheckout does not exist: ${candidate}`);
+  const canonicalRoot = await canonicalPath(deps, root, "Cannot resolve the project root checkout.");
+  const selectedGitEntry = join(checkout, ".git");
+  let entry: { isFile(): boolean; isSymbolicLink(): boolean } | undefined;
+  try { entry = await deps.lstat(selectedGitEntry); }
+  catch (error) {
+    if (errorCode(error) !== "ENOENT") throw new Error(`Cannot inspect verificationCheckout .git entry ${selectedGitEntry}: ${errorText(error)}`, { cause: error });
+  }
+  if (entry?.isSymbolicLink()) throw new Error(`verificationCheckout .git entry must not be a symlink: ${selectedGitEntry}`);
+
+  const top = await pi.exec("git", ["rev-parse", "--show-toplevel"], { cwd: checkout });
+  if (top.code !== 0) throw new Error(`verificationCheckout must be a live registered checkout root for this repository: ${checkout}`);
+  const topPath = stripTerminalLineEnding(top.stdout);
+  const canonicalTop = await canonicalPath(deps, topPath, `verificationCheckout Git root does not exist: ${topPath}`);
+  if (canonicalTop !== checkout) throw new Error(`verificationCheckout must name the checkout root, not a subdirectory: ${checkout}`);
+  const rootCommon = await pi.exec("git", ["rev-parse", "--path-format=absolute", "--git-common-dir"], { cwd: root });
+  const checkoutCommon = await pi.exec("git", ["rev-parse", "--path-format=absolute", "--git-common-dir"], { cwd: checkout });
+  if (rootCommon.code !== 0 || checkoutCommon.code !== 0) throw new Error(`verificationCheckout must be a live registered checkout root for this repository: ${checkout}`);
+  const canonicalRootCommon = await canonicalPath(deps, stripTerminalLineEnding(rootCommon.stdout), "Cannot resolve the project root Git common directory.");
+  const canonicalCheckoutCommon = await canonicalPath(deps, stripTerminalLineEnding(checkoutCommon.stdout), `Cannot resolve verificationCheckout Git common directory: ${checkout}`);
+  if (canonicalRootCommon !== canonicalCheckoutCommon) throw new Error(`verificationCheckout must belong to the same repository as the project root: ${checkout}`);
+
+  const gitDirectory = await pi.exec("git", ["rev-parse", "--absolute-git-dir"], { cwd: checkout });
+  if (gitDirectory.code !== 0) throw new Error(`Cannot resolve verificationCheckout absolute Git directory: ${checkout}`);
+  const canonicalGitDirectory = await canonicalPath(deps, stripTerminalLineEnding(gitDirectory.stdout), `Cannot resolve verificationCheckout absolute Git directory: ${checkout}`);
+  if (canonicalGitDirectory === canonicalCheckoutCommon) {
+    if (checkout !== canonicalRoot) throw new Error(`verificationCheckout must identify the project root or a live linked checkout, not a copied primary Git pointer: ${checkout}`);
+    return checkout;
+  }
+  let backlink: string;
+  try { backlink = await deps.readFile(join(canonicalGitDirectory, "gitdir"), "utf8"); }
+  catch (error) {
+    if (errorCode(error) === "ENOENT") throw new Error(`verificationCheckout must be a live linked checkout with an administrative backlink: ${checkout}`, { cause: error });
+    throw new Error(`Cannot read verificationCheckout administrative backlink for ${checkout}: ${errorText(error)}`, { cause: error });
+  }
+  if (!entry?.isFile()) throw new Error(`verificationCheckout linked .git entry must be a non-symlink regular file: ${selectedGitEntry}`);
+  const backlinkPath = stripTerminalLineEnding(backlink);
+  if (backlinkPath === "") throw new Error(`verificationCheckout administrative backlink is empty: ${join(canonicalGitDirectory, "gitdir")}`);
+  const canonicalBacklink = await canonicalPath(deps, resolve(canonicalGitDirectory, backlinkPath), `Cannot resolve verificationCheckout administrative backlink for ${checkout}`);
+  if (canonicalBacklink !== selectedGitEntry) throw new Error(`verificationCheckout administrative backlink ${canonicalBacklink} does not identify the registered checkout ${checkout}`);
+  return checkout;
+}
+/* c8 ignore start */
 
 function validateTask(task: string): void {
   if (!task.trim()) throw new Error("Subagent task must be a non-empty string");
@@ -368,7 +433,9 @@ function eventText(event: DisplayEvent): string {
 function callOptions(role: RunRequest["role"], args: any): Record<string, string | boolean> {
   if (role === "explore") return { breadth: args.breadth ?? "?", detail: args.detail ?? "?" };
   if (role === "review") return { kind: args.kind ?? "?" };
-  if (role === "implement") return { allowCommits: args.allowCommits ?? "?" };
+  /* c8 ignore stop */
+  if (role === "implement") return { allowCommits: args.allowCommits ?? "?", ...(args.verificationCheckout === undefined ? {} : { verificationCheckout: args.verificationCheckout }) };
+  /* c8 ignore start */
   return {};
 }
 
@@ -776,22 +843,24 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
     ...renderers("review"),
   });
 
+  /* c8 ignore stop */
   pi.registerTool({
     name: "subagent_implement",
     label: "Implementation Subagent",
-    description: "Run one serialized implementation child in the shared checkout. Call this tool alone in its parent tool batch. Omit model for configured or inherited routing; use an exact tier provider/model-id only for deliberate override. Omission is the only default form.",
+    description: "Run one serialized implementation child while verifying commit policy in the caller-selected project checkout. Call this tool alone in its parent tool batch. Omit verificationCheckout for the project root. Omit model for configured or inherited routing; use an exact tier provider/model-id only for deliberate override. Omission is the only model default form.",
     promptSnippet: "Delegate one sequential implementation task to fresh context",
-    promptGuidelines: ["Call subagent_implement alone in a tool batch, never in parallel; set allowCommits explicitly. Omit model for configured or inherited routing; use the selected tier's exact provider/model-id only for deliberate override. Omit the model field to use configured or inherited routing."],
+    promptGuidelines: ["Call subagent_implement alone in a tool batch, never in parallel; set allowCommits explicitly. Set verificationCheckout when implementation intentionally targets a managed worktree; this changes verification identity only, not parent or child CWD. Omit it for root work. Omit model for configured or inherited routing; use the selected tier's exact provider/model-id only for deliberate override. Omit the model field to use configured or inherited routing."],
     parameters: Type.Object({
       task: Type.String({ minLength: 1 }),
       allowCommits: Type.Boolean(),
+      verificationCheckout: Type.Optional(Type.String()),
       model: Type.Optional(MODEL_REFERENCE_SCHEMA),
     }, { additionalProperties: false }),
     async execute(_id, params, signal, onUpdate, ctx) {
       validateTask(params.task);
       const thinkingLevel = pi.getThinkingLevel() as ThinkingLevel;
       const selected = await refreshAndResolve(ctx, "implement", params.model);
-      const metadata = executionMetadata(selected, thinkingLevel, { allowCommits: params.allowCommits });
+      const metadata = executionMetadata(selected, thinkingLevel, { allowCommits: params.allowCommits, ...(params.verificationCheckout === undefined ? {} : { verificationCheckout: params.verificationCheckout }) });
       const queuedAt = now();
       let release!: () => void;
       const previous = implementationTail;
@@ -800,12 +869,13 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
       await previous;
       try {
         if (signal?.aborted) throw new Error("Implementation subagent was aborted while queued");
-        const before = await snapshot(pi, root);
+        const verificationCheckout = await resolveVerificationCheckout(pi, deps, root, params.verificationCheckout);
+        const before = await snapshot(pi, verificationCheckout);
         const finalSelected = await refreshAndResolve(ctx, "implement", params.model);
-        const finalMetadata = executionMetadata(finalSelected, thinkingLevel, { allowCommits: params.allowCommits });
+        const finalMetadata = executionMetadata(finalSelected, thinkingLevel, { allowCommits: params.allowCommits, verificationCheckout });
         const contract = await loadImplementer(deps, root, params.allowCommits);
         const result = await run("implement", params.task, IMPLEMENT_TOOLS, contract, finalSelected.model, finalMetadata, signal, onUpdate, queuedAt);
-        const after = await snapshot(pi, root);
+        const after = await snapshot(pi, verificationCheckout);
         const comparable = before.available && after.available;
         const committedWhenForbidden = !params.allowCommits && comparable && before.head !== after.head;
         // A commit-capable owner that left HEAD alone did not complete its phase.
@@ -815,12 +885,12 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
         // already-failed or aborted run lands here too, and keeps its own
         // diagnostic ahead of the demand rather than being relabelled.
         const missingCommitWhenOwner = params.allowCommits && comparable && before.head === after.head;
-        const gitDetails = { ...finalMetadata, allowCommits: params.allowCommits, before, after, commitVerification: comparable ? "verified" : "unavailable" };
+        const gitDetails = { ...finalMetadata, allowCommits: params.allowCommits, verificationCheckout, before, after, commitVerification: comparable ? "verified" : "unavailable" };
         if (committedWhenForbidden) {
           const failure = {
             ...result,
             failed: true,
-            failureMessage: `Implementation committed despite allowCommits=false (HEAD ${before.head} -> ${after.head}); changes were not reverted.`,
+            failureMessage: `Implementation committed despite allowCommits=false (HEAD ${before.head} -> ${after.head}) in verification checkout ${verificationCheckout}; changes were not reverted.`,
           };
           return toolResult("implement", params.task, failure, gitDetails);
         }
@@ -829,7 +899,7 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
           // failed result renders only failureMessage, so carry it into the
           // message rather than replacing it with the demand. An already-failed
           // run contributes its failureMessage; a normal one contributes output.
-          const demand = `Implementation was commit-capable but created no commit (HEAD unchanged at ${before.head}). A stopped report must carry the working-tree status, work completed, work remaining, the named failing check with its actual output, and what was already tried.`;
+          const demand = `Implementation was commit-capable but created no commit in ${verificationCheckout} (HEAD unchanged at ${before.head}). If work occurred in another registered worktree, retry with verificationCheckout set to that checkout root. A stopped report must carry the working-tree status, work completed, work remaining, the named failing check with its actual output, and what was already tried.`;
           const failure = {
             ...result,
             failed: true,
@@ -842,6 +912,7 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
     },
     ...renderers("implement"),
   });
+  /* c8 ignore start */
 }
 
 export default async function (pi: ExtensionAPI): Promise<void> {
@@ -857,6 +928,8 @@ export default async function (pi: ExtensionAPI): Promise<void> {
     mkdir,
     rename,
     unlink,
+    realpath,
+    lstat,
   });
 }
 

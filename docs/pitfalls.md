@@ -35,22 +35,6 @@ confirm that the intended mutable plan received the Notes update and that unrela
 artifacts retained their status. A green render or gate does not prove that a valid edit
 reached the intended artifact.
 
-## A managed-worktree implementer can outpace the dispatch checkout monitor
-
-_Domains: rendering, tooling_
-
-A commit-capable implementation child can be directed to an existing managed worktree while
-the subagent extension itself remains in the primary dispatch checkout. The child may commit
-successfully and return the correct managed-worktree branch, hash, and clean status, yet the
-extension's postcondition compares only the dispatch checkout HEAD and appends a false
-"created no commit" stopped-report demand. This recurred for every delegated phase of the
-publication-completeness rollout.
-
-Treat that appended demand as a monitor finding, not repository truth: verify the explicitly
-intended worktree's branch, tip, commit parent, and clean status before routing the report.
-A durable runtime fix needs the implementation tool to carry an explicit checkout identity
-into its postcondition rather than infer commit success from the dispatch checkout.
-
 ## A global topic needs an explicit bounded ownership selector
 
 _Domains: code-design, invariants_

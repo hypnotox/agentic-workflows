@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-0260: Verification checkout for implementation commit policy](0260-verification-checkout-for-implementation-commit-policy.md) (Proposed)
+- [ADR-0260: Verification checkout for implementation commit policy](0260-verification-checkout-for-implementation-commit-policy.md) (Implementing)
 
 ## History
 

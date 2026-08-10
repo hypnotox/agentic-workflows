@@ -8,6 +8,10 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Bug fixes
+
+- Pi implementation commit policy now accepts an explicit same-repository verification checkout, so commits in an awf-managed worktree are verified there without changing parent or child Pi CWD. Invalid explicit identities refuse before dispatch, forbidden commits use the same selected checkout, and unchanged-HEAD failures name the checkout and retry field.
+
 ## [0.33.0] - 2026-08-10
 
 ### Breaking changes

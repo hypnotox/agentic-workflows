@@ -203,7 +203,11 @@ required `task` for the workflow's premise and altitude check; `subagent_explore
 `{task, breadth, detail}`, where breadth is `targeted`, `bounded`, or `broad` and independently
 selected detail is `paths`, `summary`, or `analysis`; `subagent_review` takes required `kind`
 (`adr`, `plan`, or `code`) and `task`; and `subagent_implement` takes required `task` and
-`allowCommits`. Every closed schema also accepts optional canonical `model` as
+`allowCommits`, plus optional `verificationCheckout`. Omission verifies the project-root checkout.
+An explicit value resolves relative to the project root after one leading `@` is removed, must be
+an exact live checkout root for the same Git common directory, and selects only the before-and-after
+commit-policy snapshots. It does not change either Pi process CWD or bind the task's mutation paths.
+Every closed schema also accepts optional canonical `model` as
 `provider/model-id`. Omission resolves configured preferences, then inherits the active parent
 model, while an explicit value is resolved exactly through Pi's model registry and must have
 configured authentication. Unknown, unauthenticated, or malformed selections fail before role
@@ -246,8 +250,13 @@ detail, or widen breadth. Independent exploration calls may execute concurrently
 active children per extension instance; excess calls queue FIFO, queued aborts are removed without
 starting a child, and every child exit releases its slot. Refinement of a prior result remains
 sequential. Grounding, exploration, and review follow a no-mutation prompt policy and can use `bash`;
-they are not OS-sandboxed. Implementation shares the parent checkout, must run alone in its parent
+they are not OS-sandboxed. Implementation starts from the project root, must run alone in its parent
 tool batch and sequentially, and may commit only when the orchestrator sets `allowCommits: true`.
+When a task explicitly operates in a supplied managed worktree, the caller sets
+`verificationCheckout` to that path and keeps the actual mutation paths explicit in the task; both
+parent and child Pi CWD remain the project root. Root work omits the field. Invalid explicit
+identities refuse before child dispatch, while an unchanged selected HEAD names the checkout and
+explains how to retry with the correct verification identity.
 Pi's current-leaf, tool-call-id-correlated preflight blocks every member of a reconstructable mixed
 implementation batch. When trustworthy batch context is unavailable, only implementation fails
 closed with an actionable retry-alone error.

@@ -30,8 +30,9 @@ Backing: test
 
 ### `invariant: pi-implementation-state-boundary`
 
-Pi implementation subagent calls serialize against one another, enforce the caller-selected commit permission - reporting a changed HEAD under a no-commit permission as a policy violation without auto-reverting - and report starting and ending git state, marking commit verification unavailable outside a git checkout.
+Pi implementation subagent calls serialize against one another and enforce the caller-selected commit permission against an optional invocation-owned verification checkout, defaulting to the project root. An explicit identity resolves relative to the project root after one leading `@` is removed, canonicalizes filesystem aliases, and must be an exact live checkout root whose Git common directory matches the project root. For a linked checkout, the absolute Git directory's `gitdir` backlink must canonically identify the selected checkout's non-symlink regular `.git` file; copied pointers, selected-entry symlinks, and other invalid identities refuse before child dispatch without worktree enumeration or `git worktree list` parsing. Both snapshots and permission directions use the resolved checkout and expose it in structured details and diagnostics, while parent and child Pi CWD and role loading remain rooted; effort association and mutation routing remain unchanged, and mutation paths stay task-explicit. A changed selected HEAD under a no-commit permission is a policy violation without auto-reverting, and an unverifiable omitted-root checkout reports commit verification unavailable.
 Origin: ADR-0148
+Revised-by: ADR-0260
 Backing: test
 
 ### `invariant: pi-minimum-runtime`

@@ -1,6 +1,7 @@
 package project
 
 import (
+	"maps"
 	"strings"
 	"testing"
 
@@ -157,6 +158,38 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 
 	assertContract("configured", renderSurfaces(configured), "./x gate")
 	assertContract("empty", renderSurfaces(empty), "the project's gate")
+}
+
+// invariant: rendering/workflow-skill-templates:phase-transaction-ownership (TestPiManagedWorktreeVerificationGuidance)
+func TestPiManagedWorktreeVerificationGuidance(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example", "vars": map[string]any{"gateCmd": "./x gate"},
+		"layout": testLayout(), "data": map[string]any{}, "skills": map[string]bool{},
+		"targetSubagentTools": true,
+	}
+	for name, body := range map[string]string{
+		"inline":    renderSkillGolden(t, "executing-plans", data),
+		"delegated": renderSkillGolden(t, "subagent-driven-development", data),
+	} {
+		for _, want := range []string{"verificationCheckout", "managed-worktree path", "actual mutation paths", "parent and child Pi CWD"} {
+			if !strings.Contains(body, want) {
+				t.Errorf("Pi %s guidance missing %q", name, want)
+			}
+		}
+		if !strings.Contains(strings.ToLower(body), "omit `verificationcheckout` for root work") {
+			t.Errorf("Pi %s guidance missing the complete root-work omission clause", name)
+		}
+	}
+	claudeData := maps.Clone(data)
+	claudeData["targetSubagentTools"] = false
+	for name, body := range map[string]string{
+		"inline":    renderSkillGolden(t, "executing-plans", claudeData),
+		"delegated": renderSkillGolden(t, "subagent-driven-development", claudeData),
+	} {
+		if strings.Contains(body, "verificationCheckout") || strings.Contains(body, "parent and child Pi CWD") {
+			t.Errorf("non-Pi %s guidance leaked Pi verification identity", name)
+		}
+	}
 }
 
 func TestFreshPhaseAssuranceReuseContract(t *testing.T) {
