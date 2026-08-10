@@ -263,6 +263,7 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 		{file: "sync.go", owner: "newProjectLoader", name: "project.NewLoader"}:                                           1,
 		{file: "sync.go", owner: "newProjectLoader", name: "project.NewLoaderWithoutRepository"}:                          1,
 		{file: "dispatch.go", owner: "", name: "runSync"}:                                                                 1,
+		{file: "effort.go", owner: "openEffortComposition", name: "project.Open"}:                                         1,
 		{file: "init.go", owner: "runInitWithProjectLoader", name: "initProjectLoader"}:                                   1,
 		{file: "init.go", owner: "runInitWithProjectLoader", name: "syncMutation"}:                                        1,
 		{file: "upgrade_presentation.go", owner: "upgradeSyncMutationWith", name: "newProjectLoader"}:                     1,

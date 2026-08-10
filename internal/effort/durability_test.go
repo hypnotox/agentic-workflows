@@ -32,6 +32,33 @@ func TestProtocol2DirectorySyncAndExclusivePublication(t *testing.T) {
 	}
 }
 
+func TestDirectoryMoveIsAtomicAndNoReplace(t *testing.T) {
+	dir := t.TempDir()
+	source := filepath.Join(dir, "source")
+	destination := filepath.Join(dir, "destination")
+	if err := os.Mkdir(source, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(destination, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := moveDirectoryNoReplace(source, destination); err == nil {
+		t.Fatal("directory collision replaced destination")
+	}
+	if _, err := os.Stat(source); err != nil {
+		t.Fatalf("collision changed source: %v", err)
+	}
+	if err := os.Remove(destination); err != nil {
+		t.Fatal(err)
+	}
+	if err := moveDirectoryNoReplace(source, destination); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(destination); err != nil {
+		t.Fatalf("move destination absent: %v", err)
+	}
+}
+
 func TestProtocol2SafeLeafRefusals(t *testing.T) {
 	root := t.TempDir()
 	directoryInfo, err := os.Lstat(root)

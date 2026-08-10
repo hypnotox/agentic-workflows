@@ -42,6 +42,20 @@ var nativeWindowsPublicationAPI = windowsPublicationAPI{
 	flush: flushPublishedWindowsFile,
 }
 
+func moveDirectoryNoReplace(fromPath, toPath string) error {
+	from, err := windows.UTF16PtrFromString(fromPath)
+	if err != nil {
+		return err
+	}
+	to, err := windows.UTF16PtrFromString(toPath)
+	if err != nil {
+		return err
+	}
+	// Without MOVEFILE_REPLACE_EXISTING, a collision is a refusal. WRITE_THROUGH
+	// is Windows' documented completion boundary for this namespace move.
+	return windows.MoveFileEx(from, to, windows.MOVEFILE_WRITE_THROUGH)
+}
+
 // publishAtomic uses MoveFileEx with its documented write-through flag for
 // creation. ReplaceFileW accepts only its documented merge-error flags, so
 // replacement uses zero flags and then reopens and flushes the published file.

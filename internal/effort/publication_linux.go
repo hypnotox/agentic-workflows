@@ -10,6 +10,10 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+func moveDirectoryNoReplace(fromPath, toPath string) error {
+	return unix.Renameat2(unix.AT_FDCWD, fromPath, unix.AT_FDCWD, toPath, unix.RENAME_NOREPLACE)
+}
+
 // publishAtomic consumes tempPath with an atomic no-replace creation or an
 // exchange whose displaced inode proves the expected replacement identity.
 func publishAtomic(tempPath, path string, expected *fileIdentity) error {

@@ -77,9 +77,9 @@ type MemoryUpdateInput struct {
 	Preview bool
 }
 
-func (MemoryReadInput) memoryOperation()   {}
-func (MemoryEditInput) memoryOperation()   {}
-func (MemoryUpdateInput) memoryOperation() {}
+func (MemoryReadInput) memoryOperation()   {} // coverage-ignore: compile-time-only sealed-interface marker
+func (MemoryEditInput) memoryOperation()   {} // coverage-ignore: compile-time-only sealed-interface marker
+func (MemoryUpdateInput) memoryOperation() {} // coverage-ignore: compile-time-only sealed-interface marker
 
 // MemoryRange reports the selected complete-document line range.
 type MemoryRange struct {

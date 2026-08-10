@@ -232,13 +232,14 @@ func newEffortService(t *testing.T, roots awfgit.ControlRoots, uuid func() (stri
 		uuid = effort.RandomUUIDv4
 	}
 	service, err := effort.Open(roots, effort.Dependencies{
-		Clock:        time.Now,
-		UUID:         uuid,
-		Worktrees:    repo.WorktreeList,
-		BranchExists: repo.BranchExists,
-		ValidateRef:  repo.ValidateRefName,
-		RemoveTree:   os.RemoveAll,
-		Fault:        fault,
+		Clock:                 time.Now,
+		UUID:                  uuid,
+		Worktrees:             repo.WorktreeList,
+		BranchExists:          repo.BranchExists,
+		ValidateRef:           repo.ValidateRefName,
+		RemoveTree:            os.RemoveAll,
+		ExpectedArchiveMarker: func() ([]byte, error) { return []byte("marker\n"), nil },
+		Fault:                 fault,
 	})
 	if err != nil {
 		t.Fatal(err)

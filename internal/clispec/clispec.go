@@ -231,19 +231,19 @@ var Commands = []Command{
 	{
 		Name: "effort", Summary: "Manage slugged repository-local efforts",
 		MaxPos: 0, Gating: Gated,
-		Help: Help{Usage: []string{"awf effort <subcommand>"}, Description: "Create, inspect, finish, integrate, and remove immutable slugged efforts, which get a managed worktree by default."},
+		Help: Help{Usage: []string{"awf effort <subcommand>"}, Description: "Create, inspect, archive, integrate, and remove immutable slugged efforts, which get a managed worktree by default."},
 		Children: []Command{
 			{Name: "new", Summary: "Create an effort with a managed worktree by default",
 				BoolFlags: []string{"--no-worktree"}, ValueFlags: []string{"--slug", "--base"},
 				MinPos: 1, MaxPos: 1,
-				Help: Help{Usage: []string{"awf effort new --slug <slug> <outcome-title> [--no-worktree] [--base <ref>]"}, Description: "Create schema-2 effort state with owned memory and a managed worktree by default.", Details: []string{"The immutable canonical slug is supplied independently of the single outcome title. Flags may appear before or after that positional.", "The worktree uses the invoking checkout HEAD by default; --no-worktree keeps execution in the invoking checkout and rejects --base. A worktree failure rolls back only when managed topology is proven absent."}, Positionals: []HelpItem{{Name: "<outcome-title>", Description: "single effort outcome title"}}, Options: []HelpItem{{Name: "--slug", Description: "<slug> immutable canonical slug of 1 through 32 bytes"}, {Name: "--base", Description: "<ref> base revision for the managed worktree"}, {Name: "--no-worktree", Description: "keep execution in the invoking checkout"}}}},
+				Help: Help{Usage: []string{"awf effort new --slug <slug> <outcome-title> [--no-worktree] [--base <ref>]"}, Description: "Create schema-2 effort state with owned memory and a managed worktree by default.", Details: []string{"The immutable canonical slug is supplied independently of the single outcome title. Flags may appear before or after that positional. An optional scratch directory is opaque and never scaffolded or managed.", "The worktree uses the invoking checkout HEAD by default; --no-worktree keeps execution in the invoking checkout and rejects --base. A worktree failure deletes only its identity-matched resident when managed topology is proven absent."}, Positionals: []HelpItem{{Name: "<outcome-title>", Description: "single effort outcome title"}}, Options: []HelpItem{{Name: "--slug", Description: "<slug> immutable canonical slug of 1 through 32 bytes"}, {Name: "--base", Description: "<ref> base revision for the managed worktree"}, {Name: "--no-worktree", Description: "keep execution in the invoking checkout"}}}},
 
 			{Name: "list", Summary: "List efforts by slug", MaxPos: 0,
 				Help: Help{Usage: []string{"awf effort list"}, Description: "List every usable active effort in slug order."}},
 			{Name: "show", Summary: "Show one effort", MinPos: 1, MaxPos: 1,
 				Help: Help{Usage: []string{"awf effort show <slug>"}, Description: "Show one schema-2 effort and its owned memory path.", Positionals: []HelpItem{{Name: "<slug>", Description: "immutable effort slug"}}}},
-			{Name: "finish", Summary: "Finish and delete one effort", MinPos: 1, MaxPos: 1,
-				Help: Help{Usage: []string{"awf effort finish <slug>"}, Description: "Restartably delete an effort only after all managed Git topology is absent.", Positionals: []HelpItem{{Name: "<slug>", Description: "immutable effort slug"}}}},
+			{Name: "finish", Summary: "Finish and archive one effort", MinPos: 1, MaxPos: 1,
+				Help: Help{Usage: []string{"awf effort finish <slug>"}, Description: "Archive the complete effort at .awf/effort-archive/<uuid>-<slug> only after all managed Git topology is absent.", Details: []string{"The ignored archive is unmanaged and manually disposable. Retry before the archive move; after it, inspect reported paths on durability uncertainty."}, Positionals: []HelpItem{{Name: "<slug>", Description: "immutable effort slug"}}}},
 			{Name: "worktree", Summary: "Add or remove a managed worktree", ValueFlags: []string{"--base"}, MinPos: 2, MaxPos: 2,
 				Help: Help{Usage: []string{"awf effort worktree add <slug> [--base <ref>]", "awf effort worktree remove <slug>"}, Description: "Manage the fixed .awf/worktrees/<slug> checkout and awf/<slug> branch without stored attachment state.", Positionals: []HelpItem{{Name: "<add|remove>", Description: "worktree operation"}, {Name: "<slug>", Description: "immutable effort slug"}}, Options: []HelpItem{{Name: "--base", Description: "<ref> Git revision used as the worktree base"}}}},
 			{Name: "integrate", Summary: "Integrate a managed worktree", MinPos: 1, MaxPos: 1,

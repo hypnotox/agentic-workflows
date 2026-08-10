@@ -22,12 +22,13 @@ func testWiring(t *testing.T, root string) (awfgit.ControlRoots, Dependencies) {
 		t.Fatal(err)
 	}
 	return roots, Dependencies{
-		Clock:        time.Now,
-		UUID:         RandomUUIDv4,
-		Worktrees:    repo.WorktreeList,
-		BranchExists: repo.BranchExists,
-		ValidateRef:  repo.ValidateRefName,
-		RemoveTree:   os.RemoveAll,
+		Clock:                 time.Now,
+		UUID:                  RandomUUIDv4,
+		Worktrees:             repo.WorktreeList,
+		BranchExists:          repo.BranchExists,
+		ValidateRef:           repo.ValidateRefName,
+		RemoveTree:            os.RemoveAll,
+		ExpectedArchiveMarker: func() ([]byte, error) { return []byte(testArchiveMarker), nil },
 	}
 }
 

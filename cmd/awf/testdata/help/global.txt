@@ -44,7 +44,7 @@ help:
         new | Create an effort with a managed worktree by default
         list | List efforts by slug
         show | Show one effort
-        finish | Finish and delete one effort
+        finish | Finish and archive one effort
         worktree | Add or remove a managed worktree
         integrate | Integrate a managed worktree
         memory | Read and update bounded effort memory

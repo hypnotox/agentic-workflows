@@ -10,6 +10,10 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+func moveDirectoryNoReplace(fromPath, toPath string) error {
+	return unix.RenamexNp(fromPath, toPath, unix.RENAME_EXCL)
+}
+
 // publishAtomic uses Darwin's exclusive rename for creation and swap rename
 // for identity-checked replacement.
 func publishAtomic(tempPath, path string, expected *fileIdentity) error {

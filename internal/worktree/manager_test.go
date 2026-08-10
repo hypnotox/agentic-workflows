@@ -419,14 +419,14 @@ func TestNewEffortReportsInterruptedAndFailedRollbacksDistinctly(t *testing.T) {
 		removed bool
 	}{
 		{
-			name:  "rollback failed before rename",
-			stage: "finish.rename",
+			name:  "rollback failed before reservation",
+			stage: "rollback.rename",
 			wants: []string{"retained: rollback failed", "retry `awf effort worktree add retained-rollback`"},
 		},
 		{
-			name:    "interrupted after rename",
-			stage:   "finish.root-fsync",
-			wants:   []string{"rollback interrupted after rename", "retry `awf effort finish retained-rollback`"},
+			name:    "interrupted after reservation",
+			stage:   "rollback.root-fsync",
+			wants:   []string{"deletion rollback was interrupted", "inspect the finishing reservation"},
 			removed: true,
 		},
 	} {
@@ -446,9 +446,9 @@ func TestNewEffortReportsInterruptedAndFailedRollbacksDistinctly(t *testing.T) {
 			if !errors.As(err, &creation) || !errors.Is(err, creation.Cause) || !errors.Is(err, creation.RollbackCause) {
 				t.Fatalf("faulted rollback lost typed mechanism identity: %v", err)
 			}
-			want := "condition: managed worktree creation failed and effort rollback failed\nstate: operation\ncause: injected worktree add | injected failure at finish.rename: injected finish.rename\n\ndiagnostic:\n  changed:\n    effort resident: yes\n    managed topology: no\n  steps:\n    step 1: resolve the rollback failure\n    step 2: retry `awf effort worktree add retained-rollback` or `awf effort finish retained-rollback`\n"
-			if test.stage == "finish.root-fsync" {
-				want = "condition: managed worktree creation failed and effort rollback was interrupted\nstate: operation\ncause: injected worktree add | effort became inactive but finishing root sync failed: injected failure at finish.root-fsync: injected finish.root-fsync\n\ndiagnostic:\n  changed:\n    effort resident: yes\n    managed topology: no\n  steps:\n    step 1: retry `awf effort finish retained-rollback`\n"
+			want := "condition: managed worktree creation failed and effort rollback failed\nstate: operation\ncause: injected worktree add | injected failure at rollback.rename: injected rollback.rename\n\ndiagnostic:\n  changed:\n    effort resident: yes\n    managed topology: no\n  steps:\n    step 1: resolve the rollback failure\n    step 2: retry `awf effort worktree add retained-rollback` or `awf effort finish retained-rollback`\n"
+			if test.stage == "rollback.root-fsync" {
+				want = "condition: managed worktree creation failed and effort deletion rollback was interrupted\nstate: operation\ncause: injected worktree add | injected failure at rollback.root-fsync: injected rollback.root-fsync\n\ndiagnostic:\n  changed:\n    effort resident: yes\n    managed topology: no\n  steps:\n    step 1: inspect the identity-bound finishing reservation\n    step 2: complete safe manual cleanup only after verifying its immutable identity\n"
 			}
 			if got := renderedTopologyDiagnostic(t, creation); got != want {
 				t.Fatalf("%s diagnostic = %q, want %q", test.name, got, want)

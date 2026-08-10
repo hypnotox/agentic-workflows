@@ -64,10 +64,29 @@ type Record struct {
 	MemoryPath    string    `json:"memoryPath"`
 }
 
-// FinishResult reports the restartable deletion mutations separately.
+// FinishResidentState identifies the resident namespace proven at return.
+type FinishResidentState string
+
+const (
+	FinishStateActive   FinishResidentState = "active"
+	FinishStateReserved FinishResidentState = "reserved"
+	FinishStateArchived FinishResidentState = "archived"
+)
+
+// FinishResult reports each observable namespace and durability boundary.
 type FinishResult struct {
-	Renamed bool
-	Cleaned bool
+	State             FinishResidentState
+	Reserved          bool
+	Archived          bool
+	DestinationSynced bool
+	SourceSynced      bool
+	ArchivePath       string
+}
+
+// RollbackResult reports the narrow failed-creation deletion transition.
+type RollbackResult struct {
+	Reserved bool
+	Removed  bool
 }
 
 // RecoveryAction is one independently executable ordered remedy for a failed

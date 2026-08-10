@@ -68,11 +68,11 @@ func (e *managedTopologyError) Diagnostic() (presentation.Diagnostic, error) {
 
 // Diagnostic maps a partial finish without embedding recovery prose in Cause.
 func (e *PartialFinishError) Diagnostic() (presentation.Diagnostic, error) {
-	changed := make([]presentation.Field, 0, 2)
+	changed := make([]presentation.Field, 0, 6)
 	for _, fact := range []struct {
 		label string
 		value bool
-	}{{"active resident", e.Result.Renamed}, {"finishing cleanup", e.Result.Cleaned}} {
+	}{{"active resident", e.Result.State == FinishStateActive}, {"finishing reservation", e.Result.State == FinishStateReserved}, {"archived resident", e.Result.State == FinishStateArchived}, {"archive parent synced", e.Result.DestinationSynced}, {"efforts parent synced", e.Result.SourceSynced}} {
 		value, err := presentation.Prose(yesNo(fact.value))
 		if err != nil { // coverage-ignore: yesNo always returns a nonempty prose value
 			return presentation.Diagnostic{}, err
@@ -80,6 +80,17 @@ func (e *PartialFinishError) Diagnostic() (presentation.Diagnostic, error) {
 		field, err := presentation.NewField(fact.label, value)
 		if err != nil { // coverage-ignore: fixed grammar-valid finish labels always validate
 			return presentation.Diagnostic{}, err
+		}
+		changed = append(changed, field)
+	}
+	if e.Result.ArchivePath != "" {
+		value, valueErr := presentation.Literal(e.Result.ArchivePath)
+		if valueErr != nil {
+			return presentation.Diagnostic{}, valueErr
+		}
+		field, fieldErr := presentation.NewField("archive", value)
+		if fieldErr != nil { // coverage-ignore: fixed grammar-valid label and confined path are presentation-valid
+			return presentation.Diagnostic{}, fieldErr
 		}
 		changed = append(changed, field)
 	}
@@ -327,33 +338,41 @@ func fieldsAsNodesForEffort(fields []presentation.Field) []presentation.Node {
 // FinishMutation maps a completed restartable finish into its effort-owned
 // mutation identity, changed axes, and continuation action.
 func (r FinishResult) FinishMutation(slug string) (presentation.Mutation, error) {
-	value, err := presentation.Prose(slug)
-	if err != nil { // coverage-ignore: typed result values and fixed presentation grammar are validated before this mapping
+	effortValue, err := presentation.Prose(slug)
+	if err != nil {
 		return presentation.Mutation{}, err
 	}
-	identity, err := presentation.NewField("effort", value)
-	if err != nil { // coverage-ignore: typed result values and fixed presentation grammar are validated before this mapping
+	effortField, err := presentation.NewField("effort", effortValue)
+	if err != nil { // coverage-ignore: validated slug and fixed label are presentation-valid
 		return presentation.Mutation{}, err
 	}
-	changed := make([]presentation.Value, 0, 2)
+	archiveValue, err := presentation.Literal(r.ArchivePath)
+	if err != nil {
+		return presentation.Mutation{}, err
+	}
+	archiveField, err := presentation.NewField("archive", archiveValue)
+	if err != nil { // coverage-ignore: confined archive path and fixed label are presentation-valid
+		return presentation.Mutation{}, err
+	}
+	changed := make([]presentation.Value, 0, 4)
 	for _, axis := range []struct {
 		label string
 		value bool
-	}{{"active resident", r.Renamed}, {"finishing cleanup", r.Cleaned}} {
+	}{{"finishing reservation", r.Reserved}, {"archived resident", r.Archived}, {"archive parent synced", r.DestinationSynced}, {"efforts parent synced", r.SourceSynced}} {
 		if !axis.value {
 			continue
 		}
 		item, err := presentation.Prose(axis.label)
-		if err != nil { // coverage-ignore: typed result values and fixed presentation grammar are validated before this mapping
+		if err != nil { // coverage-ignore: fixed labels are presentation-valid
 			return presentation.Mutation{}, err
 		}
 		changed = append(changed, item)
 	}
-	next, err := presentation.Prose("continue without this finished effort")
-	if err != nil { // coverage-ignore: typed result values and fixed presentation grammar are validated before this mapping
+	next, err := presentation.Prose("continue without this finished effort; delete the local archive manually when it is no longer useful")
+	if err != nil { // coverage-ignore: fixed prose is presentation-valid
 		return presentation.Mutation{}, err
 	}
-	mutation := presentation.Mutation{Status: "completed", Identity: []presentation.Field{identity}, NextActions: []presentation.Value{next}}
+	mutation := presentation.Mutation{Status: "archived", Identity: []presentation.Field{effortField, archiveField}, NextActions: []presentation.Value{next}}
 	if len(changed) > 0 {
 		mutation.Changes = []presentation.MutationChange{{Label: "completed", Values: changed}}
 	}

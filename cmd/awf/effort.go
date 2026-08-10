@@ -18,6 +18,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/effort"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
+	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/worktree"
 )
 
@@ -56,15 +57,27 @@ func openEffortComposition(ctx context.Context, root string) (effortComposition,
 	if err != nil { // coverage-ignore: ResolveControlRoots just proved this path is a checkout; a failed open requires a concurrent repository-identity race
 		return effortComposition{}, err
 	}
+	archiveMarker := func() ([]byte, error) {
+		projectState, err := project.Open(ctx, root)
+		if err != nil { // coverage-ignore: the gated command already loaded this same project; failure requires a concurrent config-tree race
+			return nil, err
+		}
+		rendered, err := projectState.RenderResidentMarker(ctx, string(awfgit.ResidentEffortArchive))
+		if err != nil { // coverage-ignore: the gate already built the same closed output plan; failure requires a concurrent config-tree race
+			return nil, err
+		}
+		return []byte(rendered.Content), nil
+	}
 	service, err := effort.Open(roots, effort.Dependencies{
-		Clock:        time.Now,
-		UUID:         effort.RandomUUIDv4,
-		Worktrees:    repo.WorktreeList,
-		BranchExists: repo.BranchExists,
-		ValidateRef:  repo.ValidateRefName,
-		RemoveTree:   os.RemoveAll,
+		Clock:                 time.Now,
+		UUID:                  effort.RandomUUIDv4,
+		Worktrees:             repo.WorktreeList,
+		BranchExists:          repo.BranchExists,
+		ValidateRef:           repo.ValidateRefName,
+		RemoveTree:            os.RemoveAll,
+		ExpectedArchiveMarker: archiveMarker,
 	})
-	if err != nil {
+	if err != nil { // coverage-ignore: the complete literal dependency set and already-resolved roots make service composition infallible
 		return effortComposition{}, err
 	}
 	manager, err := worktree.Open(roots, openCheckout, service)

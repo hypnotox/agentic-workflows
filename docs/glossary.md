@@ -3,7 +3,7 @@
 # Glossary
 
 <!-- awf:edit prepend: from .awf/docs/parts/glossary/prepend.md -->
-- **Finishing tombstone:** A confined slug-and-internal-UUID-matched effort-directory rename that reserves the slug while restartable finish deletes proven bytes.
+- **Finishing reservation:** A confined slug-and-internal-UUID-matched effort-directory rename that reserves the slug while restartable finish prepares the complete validated resident for no-replace archival.
 
 
 | Term | Meaning |
@@ -35,6 +35,8 @@
 | dominated operation | An applied update whose claim an applied remove already absorbed. It is retained as history, establishes no current claim, requires no claim mutation, and provides no authority. |
 | drift | Divergence between a generated file and what the config would produce now, or between a declaration and reality. The check command is the oracle, and drift fails it. |
 | effort | One active slugged unit of continuity, owning a working-memory file when multi-step work, likely continuation, coordination, delegation, or durable observations make continuity materially useful. Work without that need uses none. |
+| effort archive | The ignored machine-local `.awf/effort-archive/` root where finish preserves complete residents as `<uuid>-<slug>`. Archived bytes are unmanaged, non-authoritative, absent from active effort inventory, manually disposable, and may still appear in backups or local disclosure. |
+| effort scratch | An optional `.awf/efforts/<slug>/scratch/` directory for disposable effort-local data. awf validates only its owned real-directory boundary, never scaffolds or traverses descendants, and preserves it unchanged when finishing archives the resident. |
 | export earns its consumer | A new or deliberately converted exported symbol ships with an outside-package production consumer in the same transaction. Narrow documented exceptions cover test exports, composition boundaries, and error identities. |
 | gating classification | The four-valued gating on a command spec: `inherit` (a group child resolving to its parent's), `ungated`, `gated` (the driver gates before the handler), or `gated-in-handler`. A top-level command is never `inherit`, having no parent. |
 | git seam | The `internal/git` package as the single home of every form of Git access: each capability is one semantic entrypoint, and whether it runs a library in process or the git binary is an internal detail no consumer can observe. |

@@ -1,6 +1,7 @@
 package effort
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -24,12 +25,13 @@ import (
 // answers. Each is bound to the checkout the service was opened against, so
 // none of them names a root.
 type Dependencies struct {
-	Clock        func() time.Time
-	UUID         func() (string, error)
-	Worktrees    func(context.Context) ([]awfgit.WorktreeRegistration, error)
-	BranchExists func(context.Context, string) (bool, error)
-	ValidateRef  func(context.Context, string) (bool, error)
-	RemoveTree   func(string) error
+	Clock                 func() time.Time
+	UUID                  func() (string, error)
+	Worktrees             func(context.Context) ([]awfgit.WorktreeRegistration, error)
+	BranchExists          func(context.Context, string) (bool, error)
+	ValidateRef           func(context.Context, string) (bool, error)
+	RemoveTree            func(string) error
+	ExpectedArchiveMarker func() ([]byte, error)
 	// Fault is the durability-boundary hook the restartable-finish tests
 	// interrupt the service at. It is the one optional member: a nil Fault
 	// injects nothing, which is what production wants and what "no fault
@@ -39,14 +41,15 @@ type Dependencies struct {
 
 // Service owns immutable effort residents and restartable finish.
 type Service struct {
-	paths        paths
-	store        store
-	clock        func() time.Time
-	uuid         func() (string, error)
-	worktrees    func(context.Context) ([]awfgit.WorktreeRegistration, error)
-	branchExists func(context.Context, string) (bool, error)
-	validateRef  func(context.Context, string) (bool, error)
-	removeTree   func(string) error
+	paths                 paths
+	store                 store
+	clock                 func() time.Time
+	uuid                  func() (string, error)
+	worktrees             func(context.Context) ([]awfgit.WorktreeRegistration, error)
+	branchExists          func(context.Context, string) (bool, error)
+	validateRef           func(context.Context, string) (bool, error)
+	removeTree            func(string) error
+	expectedArchiveMarker func() ([]byte, error)
 }
 
 // Open resolves the resident paths owned by roots and composes the service over
@@ -67,6 +70,8 @@ func Open(roots awfgit.ControlRoots, deps Dependencies) (*Service, error) {
 		panic("effort Service: missing reference validation dependency")
 	case deps.RemoveTree == nil:
 		panic("effort Service: missing tree removal dependency")
+	case deps.ExpectedArchiveMarker == nil:
+		panic("effort Service: missing archive marker dependency")
 	}
 	resolved, err := resolvePaths(roots)
 	if err != nil {
@@ -76,6 +81,7 @@ func Open(roots awfgit.ControlRoots, deps Dependencies) (*Service, error) {
 		paths: resolved, store: store{paths: resolved, fault: deps.Fault},
 		clock: deps.Clock, uuid: deps.UUID, worktrees: deps.Worktrees,
 		branchExists: deps.BranchExists, validateRef: deps.ValidateRef, removeTree: deps.RemoveTree,
+		expectedArchiveMarker: deps.ExpectedArchiveMarker,
 	}, nil
 }
 
@@ -138,9 +144,11 @@ func (s *Service) Finish(ctx context.Context, slug string) (FinishResult, error)
 	if err := validateSlug(slug); err != nil {
 		return FinishResult{}, invalidSlugRefusal(slug, err)
 	}
+	if err := s.validateArchive(); err != nil {
+		return FinishResult{}, err
+	}
 	active := s.paths.effort(slug)
-	_, err := os.Lstat(active)
-	if err == nil {
+	if _, err := os.Lstat(active); err == nil {
 		record, loadErr := s.store.load(slug)
 		if loadErr != nil {
 			return FinishResult{}, loadErr
@@ -148,26 +156,25 @@ func (s *Service) Finish(ctx context.Context, slug string) (FinishResult, error)
 		if topologyErr := s.requireNoManagedTopology(ctx, slug); topologyErr != nil {
 			return FinishResult{}, topologyErr
 		}
+		if err := s.requireArchiveDestinationAbsent(record); err != nil {
+			return FinishResult{}, err
+		}
 		tombstone := filepath.Join(s.paths.efforts, tombstoneName(record))
 		if err := s.store.hit("finish.rename"); err != nil {
 			return FinishResult{}, err
 		}
-		if err := os.Rename(active, tombstone); err != nil { // coverage-ignore: the validated owned active directory and absent UUID tombstone make rename failure a concurrent namespace or storage fault
+		if err := moveDirectoryNoReplace(active, tombstone); err != nil { // coverage-ignore: the validated owned active directory and absent UUID reservation make failure a concurrent namespace or storage fault
 			return FinishResult{}, fmt.Errorf("rename effort %s to finishing reservation: %w", slug, err)
 		}
+		result := FinishResult{State: FinishStateReserved, Reserved: true}
 		if err := s.store.hit("finish.root-fsync"); err != nil {
-			result := FinishResult{Renamed: true}
-			cause := fmt.Errorf("effort became inactive but finishing root sync failed: %w", err)
-			return result, &PartialFinishError{Result: result, Cause: cause, Actions: []RecoveryAction{{Text: "retry `awf effort finish " + slug + "`"}}}
+			return result, partialFinish(result, fmt.Errorf("effort became reserved but source parent sync failed: %w", err), retryFinish(slug))
 		}
-		if err := syncDirectory(s.paths.efforts); err != nil { // coverage-ignore: injected root-fsync covers the ordered boundary; actual sync failure requires a kernel or storage fault
-			result := FinishResult{Renamed: true}
-			cause := fmt.Errorf("fsync efforts root after finishing rename: %w", err)
-			return result, &PartialFinishError{Result: result, Cause: cause, Actions: []RecoveryAction{{Text: "retry `awf effort finish " + slug + "`"}}}
+		if err := syncDirectory(s.paths.efforts); err != nil { // coverage-ignore: injected root-fsync covers this kernel boundary
+			return result, partialFinish(result, fmt.Errorf("sync efforts root after finishing rename: %w", err), retryFinish(slug))
 		}
-		return s.cleanTombstone(slug, tombstone, true)
-	}
-	if !errors.Is(err, os.ErrNotExist) { // coverage-ignore: local lstat returns an inode or os.ErrNotExist absent a kernel fault
+		return s.archiveReservation(slug, tombstone, true)
+	} else if !errors.Is(err, os.ErrNotExist) { // coverage-ignore: local lstat reports an inode or os.ErrNotExist absent a kernel fault
 		return FinishResult{}, fmt.Errorf("inspect active effort %s: %w", active, err)
 	}
 	tombstones, err := s.store.findTombstones(slug)
@@ -180,7 +187,98 @@ func (s *Service) Finish(ctx context.Context, slug string) (FinishResult, error)
 	if len(tombstones) != 1 {
 		return FinishResult{}, &CorruptError{Path: s.paths.efforts, Err: fmt.Errorf("multiple finishing reservations match slug %q", slug)}
 	}
-	return s.cleanTombstone(slug, tombstones[0], false)
+	return s.archiveReservation(slug, tombstones[0], false)
+}
+
+func (s *Service) validateArchive() error {
+	if err := s.paths.validate(s.paths.effortArchive); err != nil {
+		return refusal(fmt.Sprintf("validate effort archive root: %v; changed bytes: no; next action: run `awf render` and inspect the archive root", err), "effort archive root is unsafe", "archive", err.Error(), []RecoveryAction{{Text: "run `awf render`"}, {Text: "inspect " + s.paths.effortArchive}}, err)
+	}
+	if err := validateOwnedDirectory(s.paths.effortArchive); err != nil {
+		return refusal(fmt.Sprintf("validate effort archive root: %v; changed bytes: no; next action: run `awf render` and inspect the archive root", err), "effort archive root is unsafe", "archive", err.Error(), []RecoveryAction{{Text: "run `awf render`"}, {Text: "inspect " + s.paths.effortArchive}}, err)
+	}
+	info, err := os.Lstat(s.paths.effortArchive)
+	if err != nil { // coverage-ignore: validateOwnedDirectory just inspected the same inode; failure requires a concurrent namespace race
+		return fmt.Errorf("reinspect effort archive root permissions: %w", err)
+	}
+	if info.Mode().Perm()&0o022 != 0 {
+		permissionErr := safety("resident-permissions", s.paths.effortArchive, fmt.Errorf("mode is %o, group/world write bits must be clear", info.Mode().Perm()))
+		return refusal(fmt.Sprintf("validate effort archive root: %v; changed bytes: no; next action: run `awf render` and inspect the archive root", permissionErr), "effort archive root is unsafe", "archive", permissionErr.Error(), []RecoveryAction{{Text: "run `awf render`"}, {Text: "inspect " + s.paths.effortArchive}}, permissionErr)
+	}
+	raw, err := readRegularNoFollow(s.paths.archiveMarker())
+	if err != nil {
+		return refusal(fmt.Sprintf("validate effort archive marker: %v; changed bytes: no; next action: run `awf render` and inspect the marker", err), "effort archive marker is unsafe or absent", "archive", err.Error(), []RecoveryAction{{Text: "run `awf render`"}, {Text: "inspect " + s.paths.archiveMarker()}}, err)
+	}
+	expected, err := s.expectedArchiveMarker()
+	if err != nil {
+		return fmt.Errorf("render expected effort archive marker: %w", err)
+	}
+	if !bytes.Equal(raw, expected) {
+		return refusal("effort archive marker is stale; changed bytes: no; next action: run `awf render` and inspect the marker", "effort archive marker is stale", "archive", "marker bytes do not match the planned output", []RecoveryAction{{Text: "run `awf render`"}, {Text: "inspect " + s.paths.archiveMarker()}}, nil)
+	}
+	return nil
+}
+
+func (s *Service) requireArchiveDestinationAbsent(record Record) error {
+	destination := s.paths.archive(record)
+	if _, err := os.Lstat(destination); err == nil {
+		return refusal(fmt.Sprintf("archive destination %s already exists; changed bytes: no; next action: inspect the existing destination and preserve both residents", destination), "effort archive destination already exists", "archive", "destination collision", []RecoveryAction{{Text: "inspect " + destination}, {Text: "preserve both residents and resolve the collision manually"}}, nil)
+	} else if !errors.Is(err, os.ErrNotExist) { // coverage-ignore: local lstat reports an inode or os.ErrNotExist absent a kernel fault
+		return fmt.Errorf("inspect archive destination %s: %w", destination, err)
+	}
+	return nil
+}
+
+func retryFinish(slug string) []RecoveryAction {
+	return []RecoveryAction{{Text: "retry `awf effort finish " + slug + "`"}}
+}
+
+func partialFinish(result FinishResult, cause error, actions []RecoveryAction) error {
+	return &PartialFinishError{Result: result, Cause: cause, Actions: actions}
+}
+
+func (s *Service) archiveReservation(slug, tombstone string, reserved bool) (FinishResult, error) {
+	record, err := s.store.loadDirectory(tombstone, slug, true)
+	if err != nil {
+		return FinishResult{State: FinishStateReserved, Reserved: reserved}, err
+	}
+	want := filepath.Join(s.paths.efforts, tombstoneName(record))
+	if filepath.Clean(want) != filepath.Clean(tombstone) {
+		return FinishResult{State: FinishStateReserved, Reserved: reserved}, &CorruptError{Path: tombstone, Err: errors.New("finishing name does not match stored slug and UUID")}
+	}
+	if err := s.requireArchiveDestinationAbsent(record); err != nil {
+		return FinishResult{State: FinishStateReserved, Reserved: reserved}, err
+	}
+	destination := s.paths.archive(record)
+	publicDestination := s.paths.publicArchivePath(record)
+	result := FinishResult{State: FinishStateReserved, Reserved: reserved, ArchivePath: publicDestination}
+	if err := s.store.hit("finish.archive"); err != nil {
+		return result, partialFinish(result, fmt.Errorf("archive move interrupted before completion: %w", err), retryFinish(slug))
+	}
+	if err := moveDirectoryNoReplace(tombstone, destination); err != nil {
+		return result, partialFinish(result, fmt.Errorf("move finishing reservation to archive without replacement: %w", err), retryFinish(slug))
+	}
+	result.State = FinishStateArchived
+	result.Archived = true
+	if err := s.store.hit("finish.archive-parent-fsync"); err != nil {
+		return result, partialFinish(result, fmt.Errorf("archive destination parent sync failed after move: %w", err), archiveInspectionActions(tombstone, destination))
+	}
+	if err := syncDirectory(s.paths.effortArchive); err != nil { // coverage-ignore: injected archive-parent-fsync covers this kernel boundary
+		return result, partialFinish(result, fmt.Errorf("sync archive parent after move: %w", err), archiveInspectionActions(tombstone, destination))
+	}
+	result.DestinationSynced = true
+	if err := s.store.hit("finish.source-parent-fsync"); err != nil {
+		return result, partialFinish(result, fmt.Errorf("efforts source parent sync failed after archive move: %w", err), archiveInspectionActions(tombstone, destination))
+	}
+	if err := syncDirectory(s.paths.efforts); err != nil { // coverage-ignore: injected source-parent-fsync covers this kernel boundary
+		return result, partialFinish(result, fmt.Errorf("sync efforts parent after archive move: %w", err), archiveInspectionActions(tombstone, destination))
+	}
+	result.SourceSynced = true
+	return result, nil
+}
+
+func archiveInspectionActions(source, destination string) []RecoveryAction {
+	return []RecoveryAction{{Text: "inspect " + source}, {Text: "inspect " + destination}, {Text: "do not blindly retry finish after the archive move"}}
 }
 
 func (s *Service) requireNoManagedTopology(ctx context.Context, slug string) error {
@@ -210,31 +308,48 @@ func (s *Service) requireNoManagedTopology(ctx context.Context, slug string) err
 	return nil
 }
 
-func (s *Service) cleanTombstone(slug, tombstone string, renamed bool) (FinishResult, error) {
-	record, err := s.store.loadDirectory(tombstone, slug, true)
+// RollbackCreation removes only the immutable resident created by a failed
+// default worktree transaction. It is deliberately not a finish variant.
+func (s *Service) RollbackCreation(ctx context.Context, identity Record) (RollbackResult, error) {
+	if err := s.requireNoManagedTopology(ctx, identity.Slug); err != nil {
+		return RollbackResult{}, err
+	}
+	active := s.paths.effort(identity.Slug)
+	record, err := s.store.load(identity.Slug)
 	if err != nil {
-		return FinishResult{Renamed: renamed}, err
+		return RollbackResult{}, err
 	}
-	want := filepath.Join(s.paths.efforts, tombstoneName(record))
-	if filepath.Clean(want) != filepath.Clean(tombstone) {
-		return FinishResult{Renamed: renamed}, &CorruptError{Path: tombstone, Err: errors.New("finishing name does not match stored slug and UUID")}
+	if record.ID != identity.ID || record.Slug != identity.Slug {
+		return RollbackResult{}, refusal("failed-creation rollback identity no longer matches; changed bytes: no; next action: retain and inspect the resident", "failed-creation rollback identity changed", "resident", "immutable identity mismatch", []RecoveryAction{{Text: "retain and inspect " + active}}, nil)
 	}
-	if err := s.store.hit("finish.delete"); err != nil {
-		result := FinishResult{Renamed: renamed}
-		cause := fmt.Errorf("finishing cleanup interrupted: %w", err)
-		return result, &PartialFinishError{Result: result, Cause: cause, Actions: []RecoveryAction{{Text: "retry `awf effort finish " + slug + "`"}}}
+	reservation := filepath.Join(s.paths.efforts, tombstoneName(record))
+	if err := s.store.hit("rollback.rename"); err != nil {
+		return RollbackResult{}, err
 	}
-	if err := s.removeTree(tombstone); err != nil {
-		result := FinishResult{Renamed: renamed}
-		cause := fmt.Errorf("delete proven finishing reservation %s: %w", tombstone, err)
-		return result, &PartialFinishError{Result: result, Cause: cause, Actions: []RecoveryAction{{Text: "retry `awf effort finish " + slug + "`"}}}
+	if err := moveDirectoryNoReplace(active, reservation); err != nil { // coverage-ignore: identity was just proven and the UUID reservation is absent
+		return RollbackResult{}, fmt.Errorf("reserve failed-creation rollback: %w", err)
 	}
-	if err := syncDirectory(s.paths.efforts); err != nil { // coverage-ignore: the owned root remains openable after deleting one proven child; failure requires a kernel or storage fault
-		result := FinishResult{Renamed: renamed, Cleaned: true}
-		cause := fmt.Errorf("fsync efforts root after finishing cleanup: %w", err)
-		return result, &PartialFinishError{Result: result, Cause: cause, Actions: []RecoveryAction{{Text: "verify " + tombstone + " is absent"}, {Text: "retry `awf effort finish " + slug + "` only if it remains"}}}
+	result := RollbackResult{Reserved: true}
+	if err := s.store.hit("rollback.root-fsync"); err != nil {
+		return result, err
 	}
-	return FinishResult{Renamed: renamed, Cleaned: true}, nil
+	if err := syncDirectory(s.paths.efforts); err != nil { // coverage-ignore: injected rollback.root-fsync covers this kernel boundary
+		return result, err
+	}
+	if err := s.store.hit("rollback.delete"); err != nil {
+		return result, err
+	}
+	if err := s.removeTree(reservation); err != nil {
+		return result, fmt.Errorf("delete identity-bound failed-creation reservation: %w", err)
+	}
+	result.Removed = true
+	if err := s.store.hit("rollback.delete-fsync"); err != nil {
+		return result, err
+	}
+	if err := syncDirectory(s.paths.efforts); err != nil { // coverage-ignore: injected rollback.delete-fsync covers this kernel boundary
+		return result, err
+	}
+	return result, nil
 }
 
 func yesNo(value bool) string {

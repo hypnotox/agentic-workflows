@@ -16,6 +16,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/hypnotox/agentic-workflows/internal/effort"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"github.com/hypnotox/agentic-workflows/internal/worktree"
 )
@@ -68,8 +69,8 @@ func TestPersisted63ByteEffortRemainsOperable(t *testing.T) {
 	if output := runEffortCommand(t, root, "worktree", []string{"remove", slug}); !strings.Contains(output, "managed worktree topology is absent") {
 		t.Fatalf("worktree remove did not settle topology: %q", output)
 	}
-	if output := runEffortCommand(t, root, "finish", []string{slug}); !strings.Contains(output, "finishing cleanup") {
-		t.Fatalf("finish did not clean resident: %q", output)
+	if output := runEffortCommand(t, root, "finish", []string{slug}); !strings.Contains(output, "archived resident") || !strings.Contains(output, ".awf/effort-archive/"+"018f47a0-7b3d-4c52-8f1a-123456789abc-"+slug) {
+		t.Fatalf("finish did not archive resident: %q", output)
 	}
 }
 
@@ -674,18 +675,14 @@ func commandRepo(t *testing.T) string {
 	if err := os.WriteFile(filepath.Join(root, "tracked.txt"), []byte("base\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	gitfixture.NativeAdd(t, fixture, "tracked.txt")
-	for _, resident := range []string{"efforts", "worktrees"} {
-		ignore := filepath.Join(root, ".awf", resident, ".gitignore")
-		if err := os.MkdirAll(filepath.Dir(ignore), 0o700); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(ignore, []byte("*\n!.gitignore\n"), 0o600); err != nil {
-			t.Fatal(err)
-		}
-		gitfixture.NativeAdd(t, fixture, ".awf/"+resident+"/.gitignore")
-	}
+	testsupport.WriteAwfConfig(t, root, minimalYAML)
+	gitfixture.NativeAdd(t, fixture, "tracked.txt", ".awf/config.yaml")
 	gitfixture.NativeCommit(t, fixture, "base")
+	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	gitfixture.NativeAdd(t, fixture, ".")
+	gitfixture.NativeCommit(t, fixture, "initialize awf")
 	return root
 }
 
@@ -806,9 +803,15 @@ func TestEffortPublicTextProtocol(t *testing.T) {
 		{[]string{"effort", "worktree", "add", "public-output"}, fmt.Sprintf("status: managed worktree added for public-output\n\nmutation:\n  identity:\n    worktree: %s\n    branch: awf/public-output\n  changes:\n    completed:\n      managed topology\n  next actions:\n    step 1: continue the effort in %s\n", managed, managed)},
 		{[]string{"effort", "integrate", "public-output"}, "status: effort tip is already integrated into the target\n\nmutation:\n  next actions:\n    step 1: run `awf effort worktree remove public-output` after terminal review is settled\n"},
 		{[]string{"effort", "worktree", "remove", "public-output"}, "status: managed worktree topology is absent\n\nmutation:\n  changes:\n    completed:\n      managed topology\n  next actions:\n    step 1: continue to retrospective, then finish the effort\n"},
-		{[]string{"effort", "finish", "public-output"}, "status: completed\n\nmutation:\n  identity:\n    effort: public-output\n  changes:\n    completed:\n      active resident\n      finishing cleanup\n  next actions:\n    step 1: continue without this finished effort\n"},
+		{[]string{"effort", "finish", "public-output"}, ""},
 	} {
-		if got := run(test.args...); got != test.want {
+		if got := run(test.args...); test.want == "" {
+			for _, want := range []string{"status: archived", "effort: public-output", "archive: .awf/effort-archive/", "archived resident", "archive parent synced", "efforts parent synced", "delete the local archive manually"} {
+				if !strings.Contains(got, want) {
+					t.Fatalf("%v output = %q, missing %q", test.args, got, want)
+				}
+			}
+		} else if got != test.want {
 			t.Fatalf("%v output = %q, want %q", test.args, got, test.want)
 		}
 	}

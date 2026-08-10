@@ -121,6 +121,43 @@ func TestInjectSourceMarker(t *testing.T) {
 
 // A resident gitignore is neither markdown nor a shebang script: its banner is a
 // leading #-comment keyed on the template id (ADR-0069).
+func TestResidentMarkerCompositionMatchesPlannedOutput(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	composed, err := p.RenderResidentMarker(testContext(t), "effort-archive")
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan, err := p.OutputPlan(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, node := range plan.Nodes {
+		if node.Path == ".awf/effort-archive/.gitignore" {
+			if node.file == nil || node.file.Content != composed.Content {
+				t.Fatalf("composed marker = %q, planned = %#v", composed.Content, node.file)
+			}
+			return
+		}
+	}
+	t.Fatal("planned effort archive marker is absent")
+}
+
+func TestRenderResidentMarkerPropagatesOutputPlanFailure(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.Targets = append(p.Targets, Target{Outputs: []TargetOutput{{TemplateID: "missing/live-template.tmpl"}}})
+	if _, err := p.RenderResidentMarker(testContext(t), "effort-archive"); err == nil {
+		t.Fatal("resident marker renderer hid output-plan failure")
+	}
+}
+
 func TestInjectBannerResidentGitignore(t *testing.T) {
 	want := "# " + bannerText + "\n*\n!.gitignore\n"
 	names := resident.RootNames()

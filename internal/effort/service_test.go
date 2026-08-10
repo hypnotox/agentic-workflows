@@ -127,7 +127,7 @@ func TestFinishRenamesCleansAndRetries(t *testing.T) {
 		deps.Clock = func() time.Time { return time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC) }
 		deps.UUID = func() (string, error) { return testIDA, nil }
 		deps.Fault = func(stage string) error {
-			if stage == "finish.delete" && failDelete {
+			if stage == "finish.archive" && failDelete {
 				failDelete = false
 				return errors.New("interrupted")
 			}
@@ -139,7 +139,7 @@ func TestFinishRenamesCleansAndRetries(t *testing.T) {
 	}
 	result, err := service.Finish(testContext(t), "restartable-finish")
 	var partial *PartialFinishError
-	if err == nil || !result.Renamed || result.Cleaned || !errors.As(err, &partial) || !strings.Contains(partial.Cause.Error(), "finishing cleanup interrupted") || len(partial.Actions) != 1 || partial.Actions[0].Text != "retry `awf effort finish restartable-finish`" {
+	if err == nil || !result.Reserved || result.Archived || !errors.As(err, &partial) || !strings.Contains(partial.Cause.Error(), "archive move interrupted before completion") || len(partial.Actions) != 1 || partial.Actions[0].Text != "retry `awf effort finish restartable-finish`" {
 		t.Fatalf("first finish result=%#v err=%v partial=%#v", result, err, partial)
 	}
 	if _, err := os.Lstat(filepath.Join(root, ".awf", "efforts", "restartable-finish")); !errors.Is(err, os.ErrNotExist) {
@@ -149,7 +149,7 @@ func TestFinishRenamesCleansAndRetries(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Renamed || !result.Cleaned {
+	if result.Reserved || !result.Archived {
 		t.Fatalf("retry result = %#v", result)
 	}
 	entries, err := os.ReadDir(filepath.Join(root, ".awf", "efforts"))
@@ -220,7 +220,7 @@ func TestFinishPreservesMismatchedAndMultipleTombstones(t *testing.T) {
 		noTopology(deps)
 		deps.UUID = func() (string, error) { return testIDA, nil }
 		deps.Fault = func(stage string) error {
-			if stage == "finish.delete" {
+			if stage == "finish.archive" {
 				return errors.New("stop")
 			}
 			return nil
@@ -263,7 +263,7 @@ func TestFinishPreservesMismatchedAndMultipleTombstones(t *testing.T) {
 }
 
 func TestFinishFaultAndTopologyErrorBranches(t *testing.T) {
-	for _, stage := range []string{"finish.rename", "finish.root-fsync", "finish.delete"} {
+	for _, stage := range []string{"finish.rename", "finish.root-fsync", "finish.archive", "finish.archive-parent-fsync", "finish.source-parent-fsync"} {
 		t.Run(stage, func(t *testing.T) {
 			root := initEffortRepo(t)
 			service := openTestService(t, root, func(deps *Dependencies) {
@@ -356,14 +356,14 @@ func TestServiceResidentAndCorruptFinishBranches(t *testing.T) {
 	}
 }
 
-func TestFinishCleanupAndReservationBranches(t *testing.T) {
+func TestFinishReservationRefusesArchiveCollisionAndPreservesBoth(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, func(deps *Dependencies) {
 		noTopology(deps)
 		deps.UUID = func() (string, error) { return testIDA, nil }
 		deps.Fault = func(stage string) error {
-			if stage == "finish.delete" {
-				return errors.New("retain tombstone")
+			if stage == "finish.archive" {
+				return errors.New("retain reservation")
 			}
 			return nil
 		}
@@ -381,28 +381,20 @@ func TestFinishCleanupAndReservationBranches(t *testing.T) {
 	if err != nil || len(entries) != 1 {
 		t.Fatalf("entries=%v err=%v", entries, err)
 	}
-	tombstone := filepath.Join(root, ".awf", "efforts", entries[0].Name())
-	failingRemoval := openTestService(t, root, func(deps *Dependencies) {
-		noTopology(deps)
-		deps.UUID = func() (string, error) { return testIDA, nil }
-		deps.RemoveTree = func(string) error { return errors.New("remove fault") }
-	})
-	if _, err := failingRemoval.Finish(testContext(t), "reserved-finish"); err == nil || !strings.Contains(err.Error(), "remove fault") {
-		t.Fatalf("remove error = %v", err)
-	}
-	if result, err := failingRemoval.cleanTombstone("reserved-finish", filepath.Join(root, ".awf", "efforts", "wrong"), false); err == nil || result != (FinishResult{}) {
-		t.Fatalf("wrong tombstone result=%#v err=%v", result, err)
-	}
-	mismatched := filepath.Join(root, ".awf", "efforts", finishingPrefix+testIDB+"-reserved-finish")
-	if err := os.Rename(tombstone, mismatched); err != nil {
+	reservation := filepath.Join(root, ".awf", "efforts", entries[0].Name())
+	destination := filepath.Join(root, ".awf", "effort-archive", testIDA+"-reserved-finish")
+	if err := os.Mkdir(destination, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if result, err := failingRemoval.cleanTombstone("reserved-finish", mismatched, false); err == nil || result != (FinishResult{}) || !strings.Contains(err.Error(), "does not match") {
-		t.Fatalf("mismatched tombstone result=%#v err=%v", result, err)
+	service.store.fault = nil
+	if result, err := service.Finish(testContext(t), "reserved-finish"); err == nil || result.Archived || !strings.Contains(err.Error(), "already exists") {
+		t.Fatalf("collision result=%#v err=%v", result, err)
 	}
-	tombstone = mismatched
-	if _, err := os.Stat(tombstone); err != nil {
-		t.Fatalf("tombstone changed: %v", err)
+	if _, err := os.Stat(reservation); err != nil {
+		t.Fatalf("reservation changed: %v", err)
+	}
+	if _, err := os.Stat(destination); err != nil {
+		t.Fatalf("destination changed: %v", err)
 	}
 }
 
@@ -413,12 +405,13 @@ func TestServiceRefusesAMissingDependency(t *testing.T) {
 	root := initEffortRepo(t)
 	roots, complete := testWiring(t, root)
 	for name, drop := range map[string]func(*Dependencies){
-		"clock":        func(d *Dependencies) { d.Clock = nil },
-		"UUID":         func(d *Dependencies) { d.UUID = nil },
-		"worktree":     func(d *Dependencies) { d.Worktrees = nil },
-		"branch":       func(d *Dependencies) { d.BranchExists = nil },
-		"reference":    func(d *Dependencies) { d.ValidateRef = nil },
-		"tree removal": func(d *Dependencies) { d.RemoveTree = nil },
+		"clock":          func(d *Dependencies) { d.Clock = nil },
+		"UUID":           func(d *Dependencies) { d.UUID = nil },
+		"worktree":       func(d *Dependencies) { d.Worktrees = nil },
+		"branch":         func(d *Dependencies) { d.BranchExists = nil },
+		"reference":      func(d *Dependencies) { d.ValidateRef = nil },
+		"tree removal":   func(d *Dependencies) { d.RemoveTree = nil },
+		"archive marker": func(d *Dependencies) { d.ExpectedArchiveMarker = nil },
 	} {
 		t.Run(name, func(t *testing.T) {
 			deps := complete

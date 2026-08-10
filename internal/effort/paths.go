@@ -80,6 +80,10 @@ func (p paths) activityFile(slug string) string {
 	return filepath.Join(p.effort(slug), "activity.json")
 }
 func (p paths) managedWorktree(slug string) string { return filepath.Join(p.worktrees, slug) }
+func (p paths) archive(record Record) string {
+	return filepath.Join(p.effortArchive, record.ID+"-"+record.Slug)
+}
+func (p paths) archiveMarker() string { return filepath.Join(p.effortArchive, ".gitignore") }
 func memoryPublicPath(slug string) string {
 	return filepath.ToSlash(filepath.Join(".awf", "efforts", slug, "memory.md"))
 }
@@ -92,4 +96,11 @@ func (p paths) publicMemoryPath(slug string) string {
 		return memoryPublicPath(slug)
 	}
 	return p.memoryFile(slug)
+}
+
+func (p paths) publicArchivePath(record Record) string {
+	if filepath.Clean(p.roots.InvokingRoot) == filepath.Clean(p.roots.PrimaryRoot) {
+		return filepath.ToSlash(filepath.Join(".awf", "effort-archive", record.ID+"-"+record.Slug))
+	}
+	return p.archive(record)
 }

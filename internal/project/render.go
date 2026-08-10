@@ -1,6 +1,7 @@
 package project
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
 	"maps"
@@ -602,6 +603,22 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	// Duplicate declarations are deliberately retained for OutputPlan to
 	// coalesce or reject from normalized recipes.
 	return out, nil
+}
+
+// RenderResidentMarker returns the exact resident marker from the ordinary
+// output plan, including template execution and provenance banner injection.
+func (p *Project) RenderResidentMarker(ctx context.Context, name string) (RenderedFile, error) {
+	plan, err := p.OutputPlan(ctx)
+	if err != nil {
+		return RenderedFile{}, err
+	}
+	want := config.DirName + "/" + name + "/.gitignore"
+	for _, node := range plan.Nodes {
+		if node.Path == want && node.file != nil {
+			return *node.file, nil
+		}
+	}
+	return RenderedFile{}, fmt.Errorf("resident marker %s is absent from the output plan", want) // coverage-ignore: the closed resident registry and output planner always declare every registered marker
 }
 
 // renderResidentMarker is the single resident-marker renderer. It owns template

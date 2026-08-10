@@ -42,6 +42,13 @@ func TestEffortPathsUseSlugDirectoryAndOwnedMemory(t *testing.T) {
 	if got := linked.publicMemoryPath("meaningful-slug"); got != filepath.Join(root, ".awf", "efforts", "meaningful-slug", "memory.md") {
 		t.Fatalf("linked-checkout public memory path = %q, want the absolute primary-root form", got)
 	}
+	record := Record{ID: "018f47a0-7b3d-4c52-8f1a-123456789abc", Slug: "meaningful-slug"}
+	if got := paths.publicArchivePath(record); got != ".awf/effort-archive/018f47a0-7b3d-4c52-8f1a-123456789abc-meaningful-slug" {
+		t.Fatalf("primary archive path = %q", got)
+	}
+	if got := linked.publicArchivePath(record); got != filepath.Join(root, ".awf", "effort-archive", record.ID+"-"+record.Slug) {
+		t.Fatalf("linked archive path = %q", got)
+	}
 	if err := paths.validate(paths.worktrees); err != nil {
 		t.Fatalf("worktrees root rejected: %v", err)
 	}
@@ -79,6 +86,9 @@ func TestEffortPathsUseSlugDirectoryAndOwnedMemory(t *testing.T) {
 		t.Fatal("invalid efforts root accepted")
 	}
 	effortArchive := filepath.Join(root, ".awf", "effort-archive")
+	if err := os.RemoveAll(effortArchive); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.Symlink(t.TempDir(), effortArchive); err != nil {
 		t.Fatal(err)
 	}

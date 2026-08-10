@@ -363,10 +363,18 @@ func (s store) loadDirectory(dir, expectedSlug string, requireMemory bool) (Reco
 	if err != nil { // coverage-ignore: validateOwnedDirectory just proved a readable owned directory; failure requires a concurrent namespace or storage fault
 		return Record{}, &CorruptError{Path: dir, Err: &residentReadError{err}}
 	}
-	allowed := map[string]bool{"state.json": true, "memory.md": true, "activity.json": true}
+	allowed := map[string]bool{"state.json": true, "memory.md": true, "activity.json": true, "scratch": true}
 	for _, entry := range entries {
+		path := filepath.Join(dir, entry.Name())
 		if !allowed[entry.Name()] {
-			return Record{}, &CorruptError{Path: filepath.Join(dir, entry.Name()), Err: errors.New("foreign leaf in effort resident")}
+			return Record{}, &CorruptError{Path: path, Err: errors.New("foreign leaf in effort resident")}
+		}
+		if entry.Name() == "scratch" {
+			// Scratch descendants are intentionally opaque. Validate only the
+			// direct child inode and never enumerate or interpret its contents.
+			if err := validateOwnedDirectory(path); err != nil {
+				return Record{}, &CorruptError{Path: path, Err: err}
+			}
 		}
 	}
 	statePath := filepath.Join(dir, "state.json")

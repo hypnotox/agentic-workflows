@@ -140,6 +140,12 @@ data:
     - term: working memory
       meaning: "One active effort's always-owned `.awf/efforts/<slug>/memory.md`, carrying phase, next action, brief, decisions, observations, and handoff log. Repository authority outranks it; one writer updates it, and a replacement session logs its actual boundary first."
       domains: [rendering]
+    - term: effort scratch
+      meaning: "An optional `.awf/efforts/<slug>/scratch/` directory for disposable effort-local data. awf validates only its owned real-directory boundary, never scaffolds or traverses descendants, and preserves it unchanged when finishing archives the resident."
+      domains: [tooling]
+    - term: effort archive
+      meaning: "The ignored machine-local `.awf/effort-archive/` root where finish preserves complete residents as `<uuid>-<slug>`. Archived bytes are unmanaged, non-authoritative, absent from active effort inventory, manually disposable, and may still appear in backups or local disclosure."
+      domains: [tooling]
     - term: sidecar-derived doc
       meaning: "The computed-doc model: a render transform computes content from the artifact's own sidecar data upstream of both render and config hash, keeping the doc in the ordinary drift model. Contrast regeneration, which derives from repo state outside the sidecar."
       domains: [rendering]
