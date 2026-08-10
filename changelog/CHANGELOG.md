@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Breaking changes
 
+- Schema generation 42 adds the governed self-ignored `.awf/effort-archive` resident root. Older projects must run `awf upgrade` before effort commands; upgrade publishes the marker and current lock, and ordinary render repairs that marker without managing archive descendants.
+
 - Removed the `domain-doc-staleness`, `domain-code-staleness`, and `undocumented-domain` audit warnings. Exact ADR operation replay and structural topic coverage, ownership, and selector validation remain the enforceable current-state checks.
 
 - Schema generation 41 permits global topics to declare domain-bounded path ownership. Topic coverage output replaces `matchedPaths` and `matched-paths` with separate `applicablePaths`/`applicable-paths` and `ownedPaths`/`owned-paths` witnesses; no compatibility alias remains. Human context selector records now expose separate global-declaration and ownership-selectors columns while remaining free of matched-path witnesses.

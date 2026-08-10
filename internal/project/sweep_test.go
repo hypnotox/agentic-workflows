@@ -100,11 +100,14 @@ func TestSweepFlagsUnclaimedEntries(t *testing.T) {
 // local authority, including one shaped like a nested adopter or a stale backup.
 func TestSweepExemptsResidentRoots(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
-		"efforts/e/memory.md":         "scratch\n",
-		"efforts/e/deep/file.awf-bak": "scratch\n",
-		"efforts/e/sessions/s":        "resident\n",
-		"efforts/e/.awf/config.yaml":  "adversarial\n",
-		"worktrees/w/anything.md":     "scratch\n",
+		"efforts/e/memory.md":                                "scratch\n",
+		"efforts/e/deep/file.awf-bak":                        "scratch\n",
+		"efforts/e/sessions/s":                               "resident\n",
+		"efforts/e/.awf/config.yaml":                         "adversarial\n",
+		"worktrees/w/anything.md":                            "scratch\n",
+		"effort-archive/id-e/deep/file.awf-bak":              "archive\n",
+		"effort-archive/id-e/nested/.awf/config.yaml":        "adversarial\n",
+		"effort-archive/id-e/nested/internal/adversarial.go": "not go\n",
 	})
 	if got := orphanedByPath(checkDrift(t, root)); len(got) != 0 {
 		t.Fatalf("dynamic resident trees must be exempt, got %#v", got)

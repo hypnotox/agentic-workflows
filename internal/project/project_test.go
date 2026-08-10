@@ -293,7 +293,7 @@ func TestNewADRIsBranchAware(t *testing.T) {
 }
 
 // Generation 21 removes the obsolete workflow roots and generation 22 resets
-// the standalone memory root, while the two roots awf still owns keep every
+// the standalone memory root, while the three roots awf still owns keep every
 // dynamic descendant through migration, sync, and render alike.
 //
 // invariant: rendering/singletons-and-payloads:resident-output-preservation (TestResidentMigrationsPreserveOwnedRootsThroughProjectSync)
@@ -312,8 +312,8 @@ func TestResidentMigrationsPreserveOwnedRootsThroughProjectSync(t *testing.T) {
 	for _, name := range []string{"metrics", "assignments"} {
 		testsupport.WriteFile(t, filepath.Join(root, ".awf", name, "obsolete", "resident"), name)
 	}
-	for _, name := range []string{"efforts", "memory", "worktrees"} {
-		testsupport.WriteFile(t, filepath.Join(root, ".awf", name, "retained", "resident"), name)
+	for _, name := range []string{"efforts", "memory", "worktrees", "effort-archive"} {
+		testsupport.WriteFile(t, filepath.Join(root, ".awf", name, "retained", "nested", "resident.go"), name)
 	}
 
 	if _, _, err := migrate.Upgrade(testContext(t), root); err != nil {
@@ -324,8 +324,8 @@ func TestResidentMigrationsPreserveOwnedRootsThroughProjectSync(t *testing.T) {
 			t.Fatalf("obsolete %s root remains after migration: %v", name, err)
 		}
 	}
-	for _, name := range []string{"efforts", "worktrees"} {
-		path := filepath.Join(root, ".awf", name, "retained", "resident")
+	for _, name := range []string{"efforts", "worktrees", "effort-archive"} {
+		path := filepath.Join(root, ".awf", name, "retained", "nested", "resident.go")
 		if got, err := os.ReadFile(path); err != nil || string(got) != name {
 			t.Fatalf("retained %s resident changed: %q, %v", name, got, err)
 		}
@@ -351,9 +351,10 @@ func TestResidentMigrationsPreserveOwnedRootsThroughProjectSync(t *testing.T) {
 			t.Fatalf("obsolete %s root was recreated by sync/render: %v", name, err)
 		}
 	}
-	for _, name := range []string{"efforts", "worktrees"} {
-		if _, err := os.Stat(filepath.Join(root, ".awf", name, "retained", "resident")); err != nil {
-			t.Fatalf("retained %s resident missing after sync/render: %v", name, err)
+	for _, name := range []string{"efforts", "worktrees", "effort-archive"} {
+		path := filepath.Join(root, ".awf", name, "retained", "nested", "resident.go")
+		if got, err := os.ReadFile(path); err != nil || string(got) != name {
+			t.Fatalf("retained %s resident changed after sync/render: %q, %v", name, got, err)
 		}
 	}
 	if _, err := os.Lstat(filepath.Join(root, ".awf", "memory")); !os.IsNotExist(err) {

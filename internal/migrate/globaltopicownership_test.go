@@ -11,11 +11,21 @@ import (
 )
 
 func TestGlobalTopicPathOwnershipGeneration(t *testing.T) {
-	if Current() != 42 {
-		t.Fatalf("Current() = %d, want 42", Current())
+	if globalTopicPathOwnershipGeneration != 41 {
+		t.Fatalf("global topic path ownership generation = %d, want 41", globalTopicPathOwnershipGeneration)
+	}
+	migration := registry[len(registry)-2]
+	if migration.To != globalTopicPathOwnershipGeneration || migration.Name != "global-topic-path-ownership" {
+		t.Fatalf("global topic path ownership migration = %#v", migration)
+	}
+}
+
+func TestEffortArchiveRootGeneration(t *testing.T) {
+	if effortArchiveGeneration != 42 || Current() != effortArchiveGeneration {
+		t.Fatalf("effort archive generation = %d, current = %d; want 42", effortArchiveGeneration, Current())
 	}
 	last := registry[len(registry)-1]
-	if last.To != 42 || last.Name != "effort-archive-root" {
+	if last.To != effortArchiveGeneration || last.Name != "effort-archive-root" {
 		t.Fatalf("last migration = %#v", last)
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -18,15 +19,20 @@ const testsupportImport = "github.com/hypnotox/agentic-workflows/internal/testsu
 func productionTestsupportImportViolations(path string, source any) ([]string, error) {
 	slashPath := strings.TrimPrefix(filepath.ToSlash(filepath.Clean(path)), "./")
 	parts := strings.Split(slashPath, "/")
-	for _, part := range parts[:len(parts)-1] {
+	for i, part := range parts[:len(parts)-1] {
 		if part == ".git" || part == "testdata" || part == "vendor" || part == "node_modules" {
 			return nil, nil
 		}
+		if part == ".awf" && i+1 < len(parts) {
+			for _, root := range resident.RootNames() {
+				if parts[i+1] == root {
+					return nil, nil
+				}
+			}
+		}
 	}
 	if strings.HasSuffix(slashPath, "_test.go") ||
-		slashPath == "internal/testsupport" || strings.HasPrefix(slashPath, "internal/testsupport/") ||
-		slashPath == ".awf/efforts" || strings.HasPrefix(slashPath, ".awf/efforts/") ||
-		slashPath == ".awf/worktrees" || strings.HasPrefix(slashPath, ".awf/worktrees/") {
+		slashPath == "internal/testsupport" || strings.HasPrefix(slashPath, "internal/testsupport/") {
 		return nil, nil
 	}
 
@@ -121,6 +127,8 @@ func TestProductionNeverImportsTestSupport(t *testing.T) {
 		{name: "root testsupport", path: "cmd/tool/main.go", source: "package main\nimport \"github.com/hypnotox/agentic-workflows/internal/testsupport\"", violations: 1},
 		{name: "testsupport subpackage", path: "internal/tool/tool.go", source: "package tool\nimport \"github.com/hypnotox/agentic-workflows/internal/testsupport/fsfixture\"", violations: 1},
 		{name: "nested fixture", path: "fixtures/nested-adopter/internal/tool/tool.go", source: "package tool\nimport \"github.com/hypnotox/agentic-workflows/internal/testsupport\"", violations: 1},
+		{name: "primary archive resident", path: ".awf/effort-archive/id-slug/adversarial.go", source: "not go"},
+		{name: "nested archive resident", path: "fixtures/nested-adopter/.awf/effort-archive/id-slug/adversarial.go", source: "not go"},
 		{name: "standard library", path: "internal/tool/tool.go", source: "package tool\nimport \"strings\""},
 		{name: "other repository package", path: "internal/tool/tool.go", source: "package tool\nimport \"github.com/hypnotox/agentic-workflows/internal/config\""},
 		{name: "test file", path: "internal/tool/tool_test.go", source: "package tool\nimport \"github.com/hypnotox/agentic-workflows/internal/testsupport\""},

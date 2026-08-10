@@ -2,6 +2,7 @@ package project
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -46,36 +47,71 @@ func TestSchemaMinimumVersionAuthority(t *testing.T) {
 
 // invariant: config/migrations-and-locks:archive-root-upgrade-boundary (TestArchiveRootUpgradeBoundary)
 func TestArchiveRootUpgradeBoundary(t *testing.T) {
+	binary := filepath.Join(t.TempDir(), "awf")
+	build := exec.CommandContext(testContext(t), "go", "build", "-o", binary, "./cmd/awf")
+	build.Dir = repoRootDir(t)
+	if output, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build awf: %v\n%s", err, output)
+	}
+	run := func(root string, args ...string) (string, error) {
+		t.Helper()
+		cmd := exec.CommandContext(testContext(t), binary, args...)
+		cmd.Dir = root
+		output, err := cmd.CombinedOutput()
+		return string(output), err
+	}
+
 	root := scaffold(t, "prefix: archive\nintegrationBranch: main\n")
-	lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: migrate.Current() - 1, Files: map[string]manifest.Entry{}}
-	if err := lock.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
+	lockPath := filepath.Join(root, ".awf", "awf.lock")
+	lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: 41, Files: map[string]manifest.Entry{}}
+	if err := lock.Save(lockPath); err != nil {
 		t.Fatal(err)
 	}
-	if state, _, err := migrate.GateState(root); err != nil || state != "gate" {
-		t.Fatalf("older generation gate = %q, %v; want gate", state, err)
+	if output, err := run(root, "effort", "list"); err == nil || !strings.Contains(output, "awf upgrade") {
+		t.Fatalf("generation-41 effort command = %v\n%s; want upgrade gate", err, output)
 	}
-	if _, _, err := migrate.Upgrade(testContext(t), root); err != nil {
-		t.Fatal(err)
+
+	if output, err := run(root, "upgrade"); err != nil {
+		t.Fatalf("awf upgrade: %v\n%s", err, output)
 	}
-	p, err := Open(testContext(t), root)
+	lock, err := manifest.Load(lockPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
-		t.Fatal(err)
+	const markerRel = ".awf/effort-archive/.gitignore"
+	if lock.SchemaVersion != 42 {
+		t.Fatalf("upgraded lock schema = %d, want 42", lock.SchemaVersion)
 	}
-	marker := filepath.Join(root, ".awf", "effort-archive", ".gitignore")
+	if _, ok := lock.Files[markerRel]; !ok {
+		t.Fatalf("upgraded lock lacks %s", markerRel)
+	}
+	marker := filepath.Join(root, filepath.FromSlash(markerRel))
 	want := "# " + bannerText + "\n*\n!.gitignore\n"
-	if got, err := os.ReadFile(marker); err != nil || string(got) != want {
-		t.Fatalf("upgraded marker = %q, %v; want %q", got, err, want)
+	assertMarker := func(state string) {
+		t.Helper()
+		got, err := os.ReadFile(marker)
+		if err != nil || string(got) != want {
+			t.Fatalf("%s marker = %q, %v; want %q", state, got, err, want)
+		}
 	}
+	assertMarker("upgraded")
+
+	if output, err := run(root, "render"); err != nil || strings.Contains(output, markerRel) {
+		t.Fatalf("correct marker render = %v\n%s; want unchanged marker", err, output)
+	}
+	assertMarker("unchanged")
 	if err := os.Remove(marker); err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if output, err := run(root, "render"); err != nil || !strings.Contains(output, markerRel) {
+		t.Fatalf("missing marker repair = %v\n%s", err, output)
+	}
+	assertMarker("missing repair")
+	if err := os.WriteFile(marker, []byte("stale\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := os.ReadFile(marker); err != nil || string(got) != want {
-		t.Fatalf("repaired marker = %q, %v; want %q", got, err, want)
+	if output, err := run(root, "render"); err != nil || !strings.Contains(output, markerRel) {
+		t.Fatalf("stale marker repair = %v\n%s", err, output)
 	}
+	assertMarker("stale repair")
 }

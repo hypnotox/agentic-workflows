@@ -24,13 +24,28 @@ func TestSyncPrunesResidentLockEntryFromResidentRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	const obsolete = ".awf/efforts/obsolete"
-	lock.Files[obsolete] = manifest.Entry{}
+	obsolete := []string{
+		".awf/efforts/obsolete",
+		".awf/worktrees/obsolete",
+		".awf/effort-archive/id-slug/nested/obsolete",
+	}
+	for _, path := range obsolete {
+		lock.Files[path] = manifest.Entry{}
+	}
 	if err := lock.Save(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
 	if _, _, _, err := p.SyncReport(testContext(t)); err != nil {
 		t.Fatalf("resident-root prune path failed: %v", err)
+	}
+	lock, err = manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range obsolete {
+		if _, ok := lock.Files[path]; ok {
+			t.Errorf("resident descendant remained in lock: %s", path)
+		}
 	}
 }
 
@@ -43,13 +58,25 @@ func TestUninstallPreservesResidentState(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	dynamic := filepath.Join(root, ".awf", "efforts", "efforts", "e", "sessions", "s.jsonl")
-	testsupport.WriteFile(t, dynamic, "resident\n")
+	dynamic := map[string]string{
+		"efforts":        filepath.Join(root, ".awf", "efforts", "e", "sessions", "s.jsonl"),
+		"worktrees":      filepath.Join(root, ".awf", "worktrees", "w", "nested", "state"),
+		"effort-archive": filepath.Join(root, ".awf", "effort-archive", "id-e", "nested", "adversarial.go"),
+	}
+	for name, path := range dynamic {
+		testsupport.WriteFile(t, path, name+"\n")
+	}
 	lock, err := manifest.Load(lockFile(root))
 	if err != nil {
 		t.Fatal(err)
 	}
-	lock.Files[".awf/efforts/efforts/e/sessions/s.jsonl"] = manifest.Entry{}
+	for _, path := range []string{
+		".awf/efforts/e/sessions/s.jsonl",
+		".awf/worktrees/w/nested/state",
+		".awf/effort-archive/id-e/nested/adversarial.go",
+	} {
+		lock.Files[path] = manifest.Entry{}
+	}
 	if err := lock.Save(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
@@ -57,12 +84,15 @@ func TestUninstallPreservesResidentState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Contains(report.PreservedRoots, "efforts") {
-		t.Fatal("resident efforts were not reported preserved")
-	}
-	for _, path := range []string{dynamic, filepath.Join(root, ".awf", "efforts", ".gitignore")} {
-		if _, err := os.Lstat(path); err != nil {
-			t.Errorf("preserved path %s: %v", path, err)
+	for name, path := range dynamic {
+		if !slices.Contains(report.PreservedRoots, name) {
+			t.Errorf("resident %s was not reported preserved", name)
+		}
+		if got, err := os.ReadFile(path); err != nil || string(got) != name+"\n" {
+			t.Errorf("preserved path %s = %q, %v", path, got, err)
+		}
+		if _, err := os.Lstat(filepath.Join(root, ".awf", name, ".gitignore")); err != nil {
+			t.Errorf("preserved marker for %s: %v", name, err)
 		}
 	}
 	if _, err := os.Stat(lockFile(root)); !os.IsNotExist(err) {
