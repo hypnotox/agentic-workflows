@@ -446,11 +446,11 @@ func (p *Project) generateConfigReference(files []RenderedFile, eff map[string]b
 // (ConfigKeys, VarEntries, SidecarFields, DataKeys) with live project state -
 // the `awf config` command's data source.
 func (p *Project) ConfigReferenceModel(ctx context.Context) (ConfigReference, error) {
-	corpus, topics, eff, err := p.deriveOperationState()
+	corpus, pitfalls, topics, eff, err := p.deriveOperationStateWithPitfalls()
 	if err != nil {
 		return ConfigReference{}, err
 	}
-	op, err := p.outputPlan(ctx, corpus, topics, eff)
+	op, err := p.outputPlanWithPitfalls(ctx, corpus, pitfalls, topics, eff)
 	if err != nil {
 		return ConfigReference{}, err
 	}

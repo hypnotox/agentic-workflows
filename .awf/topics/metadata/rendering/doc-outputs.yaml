@@ -2,3 +2,4 @@ title: Doc outputs
 summary: "Generated documentation outputs: domain and topic docs, layout, pitfalls, stubs, skill references."
 paths:
   - internal/project/**
+  - internal/pitfall/**

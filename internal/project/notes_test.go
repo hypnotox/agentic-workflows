@@ -8,6 +8,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -406,18 +407,21 @@ func TestTagHealthNotesEmptyDenominator(t *testing.T) {
 	}
 }
 
-// A malformed pitfalls sidecar surfaces as an error from tagHealthNotes'
-// pitfallTagEntries (only reached once the vocabulary is non-empty and the ADRs parse).
+// A malformed pitfall source surfaces from direct tag-health projection.
 func TestTagHealthNotesPitfallError(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: awf\nintegrationBranch: main\ndomains: []\ntags:\n  alpha: A\n",
-		map[string]string{"docs/pitfalls.yaml": "data:\n  pitfalls: just a string\n"})
+		map[string]string{"docs/pitfalls/bad.md": "---\ntitle: Bad\nunknown: value\n---\nbody\n"})
 	writeADR(t, root, "0001-a.md", testsupport.ADR("Implemented", testsupport.WithTitle("0001: A"), testsupport.WithTags("alpha")))
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.tagHealthNotes(mustDeriveCorpus(t, p)); err == nil {
-		t.Fatal("expected pitfallTagEntries structural error, got nil")
+	corpus, err := adr.NewCorpus(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.tagHealthNotes(corpus); err == nil {
+		t.Fatal("expected pitfall corpus structural error, got nil")
 	}
 }
 
@@ -425,9 +429,10 @@ func TestTagHealthNotesPitfallError(t *testing.T) {
 // pitfall - exercising the pitfall arm of the artifact scan.
 func TestTagHealthNotesPitfalls(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: awf\nintegrationBranch: main\ndomains: []\ntags:\n  alpha: A\n",
-		map[string]string{"docs/pitfalls.yaml": "data:\n  pitfalls:\n" +
-			"    - title: Tagged\n      tags: [alpha]\n      body: ok\n" +
-			"    - title: Untagged\n      body: ok\n"})
+		map[string]string{
+			"docs/pitfalls/tagged.md":   pitfallSource("Tagged", "tags: [alpha]\n", "ok\n"),
+			"docs/pitfalls/untagged.md": pitfallSource("Untagged", "", "ok\n"),
+		})
 	writeADR(t, root, "0001-a.md", testsupport.ADR("Implemented", testsupport.WithTitle("0001: A"), testsupport.WithTags("alpha")))
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -442,7 +447,7 @@ func TestTagHealthNotesPitfalls(t *testing.T) {
 	if !strings.Contains(joined, `tag "alpha" is on 2/2`) {
 		t.Errorf("expected alpha frequency note counting the pitfall; got %v", notes)
 	}
-	if !strings.Contains(joined, "Untagged carries no tags") {
+	if !strings.Contains(joined, ".awf/docs/pitfalls/untagged.md carries no tags") {
 		t.Errorf("expected coverage note for the untagged pitfall; got %v", notes)
 	}
 }

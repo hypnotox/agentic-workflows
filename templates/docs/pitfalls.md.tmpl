@@ -3,7 +3,24 @@
 <!-- awf:section prepend -->
 <!-- awf:end -->
 
-{{ with .data.pitfalls }}{{ . }}{{ else }}_No pitfalls recorded yet. Add entries under `data.pitfalls` in `.awf/docs/pitfalls.yaml`._
+Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs/pitfalls/*.md`.
+
+{{ with .data.pitfalls }}{{ with .Entries }}| Pitfall | Domains | Tags | Related ADRs |
+| --- | --- | --- | --- |
+{{ range . }}| [{{ .TableTitle }}](pitfalls/{{ .Slug }}.md) | {{ if .Domains }}{{ .DomainsText }}{{ else }}Unassigned{{ end }} | {{ .TagsText }} | {{ range $i, $n := .Related }}{{ if $i }}, {{ end }}ADR-{{ printf "%04d" $n }}{{ end }} |
+{{ end }}
+## By domain
+
+{{ range $.data.pitfalls.Domains }}### {{ .Name }}
+
+{{ range .Entries }}- [{{ .LinkTitle }}](pitfalls/{{ .Slug }}.md)
+{{ end }}
+{{ end }}{{ with $.data.pitfalls.Unassigned }}### Unassigned
+
+{{ range . }}- [{{ .LinkTitle }}](pitfalls/{{ .Slug }}.md)
+{{ end }}
+{{ end }}{{ else }}_No pitfalls recorded yet. Add a Markdown source under `.awf/docs/pitfalls/`._
+{{ end }}{{ else }}_No pitfalls recorded yet. Add a Markdown source under `.awf/docs/pitfalls/`._
 {{ end }}
 <!-- awf:section append -->
 <!-- awf:end -->

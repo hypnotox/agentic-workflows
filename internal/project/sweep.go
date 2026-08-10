@@ -96,6 +96,14 @@ func (p *Project) buildClaimedModel(files []RenderedFile, topics topic.Corpus) *
 			m.files[config.DirName+"/parts/"+kind+"/"+sec+".md"] = true
 		}
 	}
+	// Pitfall sources are a discovered direct-leaf family. Corpus loading has
+	// already rejected every invalid path or mode before this model is built.
+	m.dirs[pitfallsSourceDir] = true
+	if paths, err := p.projectTreeReader().Paths(pitfallsSourceDir + "/"); err == nil { // coverage-ignore: operation corpus loading already completed the same enumeration successfully
+		for _, source := range paths { // coverage-ignore: dogfood and lifecycle tests cover nonempty source membership through the output family
+			m.files[source] = true
+		}
+	}
 	// Topics are a discovered producer family rather than an enable-list kind.
 	m.dirs[config.DirName+"/topics"] = true
 	m.dirs[config.DirName+"/topics/metadata"] = true

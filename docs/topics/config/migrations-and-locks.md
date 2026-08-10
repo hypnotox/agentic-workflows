@@ -10,6 +10,13 @@ These packages migrate the config tree across schema generations and read and wr
 
 ## Claims
 
+### `invariant: pitfall-corpus-migration`
+
+Schema generation 43 fully preflights the legacy ordered pitfall registry, deterministic reserved slugs, canonical leaves, relative links, destinations, duplicate titles, and the sidecar remainder; it accepts byte-identical partial leaves, creates every missing leaf exclusively before retiring `data.pitfalls`, and preserves a sections-only sidecar so interruption and retry cannot lose authority.
+Origin: ADR-split-pitfall-corpus-and-generated-index
+Backing: test
+
+
 ### `invariant: selection-keys-dropped`
 
 Schema generation 39 removes skills, agents, docs, targets, and docsDir from config.yaml, announces each removal actually performed, and preserves surviving bytes and key order.

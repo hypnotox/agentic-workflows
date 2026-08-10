@@ -19,6 +19,7 @@ import (
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
+	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
@@ -29,7 +30,7 @@ import (
 // Version is the awf release version - the single version authority
 // (ADR-0049): gate comparisons, the lock stamp, the bootstrap pin, and the
 // CLI output all read this const.
-const Version = "0.33.0"
+const Version = "0.34.0"
 
 // BridgeTrancheComplete blocks publication while the two-plan current-state
 // bridge tranche is only partially implemented. Plans 1 and 2 have both landed
@@ -78,6 +79,7 @@ var minVersionBySchema = map[int]string{
 	40: "0.32.0",
 	41: "0.33.0",
 	42: "0.33.0",
+	43: "0.34.0",
 }
 
 // ValidateSchemaMinimumVersion confirms that version is new enough to render a
@@ -307,14 +309,14 @@ func productionSyncOperation() syncOperation {
 }
 
 func (p *Project) syncReport(ctx context.Context, seed *InitAuthority) (backups []Backup, changes []Change, pruned []string, err error) {
-	corpus, topics, eff, err := p.deriveOperationState()
+	corpus, pitfalls, topics, eff, err := p.deriveOperationStateWithPitfalls()
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	return p.syncReportWith(ctx, seed, productionSyncOperation(), corpus, topics, eff)
+	return p.syncReportWithPitfalls(ctx, seed, productionSyncOperation(), corpus, pitfalls, topics, eff)
 }
 
-func (p *Project) syncReportWith(ctx context.Context, seed *InitAuthority, operation syncOperation, corpus adr.Corpus, topics topic.Corpus, eff map[string]bool) (backups []Backup, changes []Change, pruned []string, err error) {
+func (p *Project) syncReportWithPitfalls(ctx context.Context, seed *InitAuthority, operation syncOperation, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (backups []Backup, changes []Change, pruned []string, err error) {
 	defer func() {
 		slices.Sort(pruned)
 		slices.SortFunc(changes, func(a, b Change) int { return strings.Compare(a.Path, b.Path) })
@@ -342,7 +344,7 @@ func (p *Project) syncReportWith(ctx context.Context, seed *InitAuthority, opera
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	op, err := p.outputPlan(ctx, corpus, topics, eff)
+	op, err := p.outputPlanWithPitfalls(ctx, corpus, pitfalls, topics, eff)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -516,9 +518,9 @@ func (p *Project) lockPath() string {
 	return config.LockPath(p.Root)
 }
 
-// deriveOperationState derives the three values a lifecycle operation needs
-// from disk: the parsed ADR corpus, the current-state topic corpus built from
-// it, and the effective rendered skill set. The operation that calls this owns
+// deriveOperationState derives the values a lifecycle operation needs from
+// disk: the parsed ADR and pitfall corpora, current-state topics, and effective
+// rendered skill set. The operation that calls this owns
 // the result and threads it to its consumers, so nothing derived here outlives
 // the call and no consumer re-derives it (ADR-0180).
 //
@@ -528,20 +530,24 @@ func (p *Project) lockPath() string {
 // Sync miss an ADR written in between, silently blinding the drift oracle
 // rather than merely serving a stale read. A value that cannot outlive the
 // operation cannot go stale, so no caller has to remember to reset it.
-func (p *Project) deriveOperationState() (adr.Corpus, topic.Corpus, map[string]bool, error) {
+func (p *Project) deriveOperationStateWithPitfalls() (adr.Corpus, pitfall.Corpus, topic.Corpus, map[string]bool, error) {
 	corpus, err := adr.LoadCorpus(p.decisionsDir())
 	if err != nil {
-		return adr.Corpus{}, topic.Corpus{}, nil, err
+		return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
+	}
+	pitfalls, err := p.loadPitfallCorpus()
+	if err != nil {
+		return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
 	}
 	topics, err := topic.LoadCorpus(p.Root, p.Cfg, corpus)
 	if err != nil {
-		return adr.Corpus{}, topic.Corpus{}, nil, err
+		return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
 	}
 	eff, err := p.effectiveSkills()
 	if err != nil {
-		return adr.Corpus{}, topic.Corpus{}, nil, err
+		return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
 	}
-	return corpus, topics, eff, nil
+	return corpus, pitfalls, topics, eff, nil
 }
 
 // Audit runs the process-conformance audit (ADR-0017) over the caller-supplied

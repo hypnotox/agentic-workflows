@@ -15,9 +15,9 @@ import (
 // invariant: rendering/doc-outputs:opaque-doc-source-guidance (TestSourceMarkerFamilyMatrix)
 func TestSourceMarkerFamilyMatrix(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: ./x gate\ndomains: [rendering]\n", map[string]string{
-		"domains/rendering.yaml": "paths: ['internal/**']\n",
-		"docs/glossary.yaml":     "data:\n  standardTerms:\n  terms:\n",
-		"docs/pitfalls.yaml":     "data:\n  pitfalls:\n",
+		"domains/rendering.yaml":   "paths: ['internal/**']\n",
+		"docs/glossary.yaml":       "data:\n  standardTerms:\n  terms:\n",
+		"docs/pitfalls/fixture.md": pitfallSource("Fixture pitfall", "", "body\n"),
 	})
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "plans", "2026-08-07-fixture.md"), "---\nformat: plan-v2\ndate: 2026-08-07\nadrs: []\nstatus: Proposed\n---\n# Plan: Fixture\n")
 	writeProjectTopic(t, root, "opaque", "Opaque", "applies: global\n")
@@ -36,7 +36,8 @@ func TestSourceMarkerFamilyMatrix(t *testing.T) {
 	}
 	positive := map[string]string{
 		"docs/glossary.md":                ".awf/docs/glossary.yaml derived:awf-standard-vocabulary",
-		"docs/pitfalls.md":                ".awf/docs/pitfalls.yaml",
+		"docs/pitfalls.md":                ".awf/docs/pitfalls/*.md",
+		"docs/pitfalls/fixture.md":        ".awf/docs/pitfalls/fixture.md",
 		"docs/decisions/INDEX.md":         "derived:authored-adr-corpus",
 		"docs/config-reference.md":        "derived:configspec derived:project-configuration",
 		"docs/domains/rendering.md":       ".awf/topics/metadata/rendering/*.yaml .awf/topics/parts/rendering/*/current-state.md",

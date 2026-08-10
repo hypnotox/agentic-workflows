@@ -1,0 +1,13 @@
+---
+title: "Free-form domain narratives can hide drifting counts"
+domains: ["adr-system"]
+tags: ["domain-staleness", "convention-parts"]
+---
+Governed plan post-checks now distinguish indicative counts from terminal-set verification,
+but domain current-state narratives (`.awf/domains/parts/*/current-state.md`) remain free prose.
+A spelled-out cardinal ("the nine chain-progression skills", "only the ten workflow-chain
+skills") is invisible to deterministic checks and can go stale when the catalog grows. A
+2026-07-07 currency sweep found three such counts from ADR-0067/0068 in paragraphs the feature
+commits never touched. In free-form narratives, prefer count-free phrasing ("the
+`core`-flagged skills", "the chain-progression skills"); when a count is essential, sweep the
+whole narrative whenever its source population changes.

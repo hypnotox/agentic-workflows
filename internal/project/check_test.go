@@ -26,7 +26,7 @@ import (
 // passes it (ADR-0180).
 func mustDeriveCorpus(t *testing.T, p *Project) adr.Corpus {
 	t.Helper()
-	corpus, _, _, err := p.deriveOperationState()
+	corpus, _, _, _, err := p.deriveOperationStateWithPitfalls()
 	if err != nil {
 		t.Fatalf("derive operation state: %v", err)
 	}
@@ -36,7 +36,7 @@ func mustDeriveCorpus(t *testing.T, p *Project) adr.Corpus {
 // mustDeriveTopics derives the operation-owned topic corpus the same way.
 func mustDeriveTopics(t *testing.T, p *Project) topic.Corpus {
 	t.Helper()
-	_, topics, _, err := p.deriveOperationState()
+	_, _, topics, _, err := p.deriveOperationStateWithPitfalls()
 	if err != nil {
 		t.Fatalf("derive operation state: %v", err)
 	}
@@ -46,7 +46,7 @@ func mustDeriveTopics(t *testing.T, p *Project) topic.Corpus {
 // mustDeriveSkills derives the operation-owned effective skill set the same way.
 func mustDeriveSkills(t *testing.T, p *Project) map[string]bool {
 	t.Helper()
-	_, _, eff, err := p.deriveOperationState()
+	_, _, _, eff, err := p.deriveOperationStateWithPitfalls()
 	if err != nil {
 		t.Fatalf("derive operation state: %v", err)
 	}
@@ -66,15 +66,15 @@ const pitfallsCheckCfg = "prefix: example\nintegrationBranch: main\nvars: {}\ndo
 
 const commitSubjectCfg = "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: []\naudit:\n  allowedScopes:\n    - name: awf\n"
 
-// A disabled pitfalls doc yields no drift and never reads the sidecar.
-func TestCheckPitfallsDisabled(t *testing.T) {
+// An empty unconditional pitfall corpus yields no project-level drift.
+func TestCheckPitfallsEmpty(t *testing.T) {
 	p, err := Open(testContext(t), scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	drift, err := p.checkPitfalls(mustDeriveCorpus(t, p))
 	if err != nil || drift != nil {
-		t.Errorf("disabled pitfalls must yield no drift, got %v / %v", drift, err)
+		t.Errorf("empty pitfalls must yield no drift, got %v / %v", drift, err)
 	}
 }
 
@@ -84,10 +84,9 @@ func TestCheckPitfallsDisabled(t *testing.T) {
 // invariant: rendering/doc-outputs:pitfall-adr-link-resolved (TestCheckPitfallsValidatesDomainsAndLinks)
 func TestCheckPitfallsValidatesDomainsAndLinks(t *testing.T) {
 	root := scaffoldFiles(t, pitfallsCheckCfg, map[string]string{
-		"docs/pitfalls.yaml": "data:\n  pitfalls:\n" +
-			"    - title: Clean\n      domains: [rendering]\n      related: [1]\n      body: ok\n" +
-			"    - title: BadDomain\n      domains: [bogus]\n      body: ok\n" +
-			"    - title: BadLink\n      related: [42]\n      body: ok\n",
+		"docs/pitfalls/clean.md":      pitfallSource("Clean", "domains: [rendering]\nrelated: [1]\n", "ok\n"),
+		"docs/pitfalls/bad-domain.md": pitfallSource("BadDomain", "domains: [bogus]\n", "ok\n"),
+		"docs/pitfalls/bad-link.md":   pitfallSource("BadLink", "related: [42]\n", "ok\n"),
 	})
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-real.md"),
 		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-12"),
@@ -109,15 +108,15 @@ func TestCheckPitfallsValidatesDomainsAndLinks(t *testing.T) {
 	}
 }
 
-// Valid YAML with a bad data.pitfalls shape surfaces the structural error.
+// A malformed authored source is a hard corpus-load error before check projection.
 func TestCheckPitfallsStructuralError(t *testing.T) {
 	p, err := Open(testContext(t), scaffoldFiles(t, pitfallsCheckCfg, map[string]string{
-		"docs/pitfalls.yaml": "data:\n  pitfalls: just a string\n",
+		"docs/pitfalls/bad.md": "---\ntitle: Bad\nunknown: value\n---\nbody\n",
 	}))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.checkPitfalls(mustDeriveCorpus(t, p)); err == nil || !strings.Contains(err.Error(), "must be a list") {
+	if _, err := p.loadPitfallCorpus(); err == nil || !strings.Contains(err.Error(), "unknown") {
 		t.Fatalf("expected structural error, got %v", err)
 	}
 }
@@ -198,7 +197,7 @@ func TestDeriveOperationStateSurfacesMalformedADR(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := p.deriveOperationState(); err == nil {
+	if _, _, _, _, err := p.deriveOperationStateWithPitfalls(); err == nil {
 		t.Fatal("expected adr.ParseDir error for malformed frontmatter, got nil")
 	}
 }
@@ -210,7 +209,7 @@ func TestCheckTagVocabulary(t *testing.T) {
 	cfg := "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: [rendering]\n" +
 		"tags:\n  render-engine: the render engine\n  empty: \"\"\n"
 	root := scaffoldFiles(t, cfg, map[string]string{
-		"docs/pitfalls.yaml": "data:\n  pitfalls:\n    - title: P\n      tags: [render-engine, ghost]\n      body: ok\n",
+		"docs/pitfalls/p.md": pitfallSource("P", "tags: [render-engine, ghost]\n", "ok\n"),
 	})
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
 		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
@@ -361,12 +360,10 @@ func TestCheckADRRelatedAscending(t *testing.T) {
 	}
 }
 
-// checkTagVocabulary's pitfallTagEntries branch surfaces a malformed pitfalls
-// sidecar (valid ADRs so ParseDir succeeds first; non-empty vocabulary so the
-// method proceeds past the len==0 guard) - reachable, tested not ignored.
+// Direct vocabulary projection derives and rejects a malformed corpus source.
 func TestCheckTagVocabularyPitfallStructuralError(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: []\ntags:\n  rendering: x\n",
-		map[string]string{"docs/pitfalls.yaml": "data:\n  pitfalls: just a string\n"})
+		map[string]string{"docs/pitfalls/bad.md": "---\ntitle: Bad\nunknown: value\n---\nbody\n"})
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
 		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
 			testsupport.WithTitle("0001: A"), testsupport.WithBody("## Context\nx\n")))
@@ -374,7 +371,11 @@ func TestCheckTagVocabularyPitfallStructuralError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.checkTagVocabulary(mustDeriveCorpus(t, p)); err == nil || !strings.Contains(err.Error(), "must be a list") {
+	corpus, err := adr.NewCorpus(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.checkTagVocabulary(corpus); err == nil || !strings.Contains(err.Error(), "unknown") {
 		t.Fatalf("expected pitfalls structural error, got %v", err)
 	}
 }
@@ -750,12 +751,12 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 	advisory := checkFunc(t, file, "advisoryNotesWithState")
 
 	for _, fn := range []*ast.FuncDecl{report, directAdvisory} {
-		if got := calledMethodCount(fn, "outputPlan"); got != 1 {
+		if got := calledMethodCount(fn, "outputPlanWithPitfalls"); got != 1 {
 			t.Errorf("%s constructs %d output plans, want exactly one", fn.Name.Name, got)
 		}
 	}
-	outputPlanPosition := calledMethodPosition(report, "outputPlan")
-	for _, producer := range []string{"deriveOperationState", "ParseDir"} {
+	outputPlanPosition := calledMethodPosition(report, "outputPlanWithPitfalls")
+	for _, producer := range []string{"deriveOperationStateWithPitfalls", "ParseDir"} {
 		producerPosition := calledMethodPosition(report, producer)
 		if producerPosition == token.NoPos || outputPlanPosition == token.NoPos || outputPlanPosition <= producerPosition {
 			t.Errorf("CheckReport outputPlan position %d must follow %s position %d", outputPlanPosition, producer, producerPosition)
@@ -768,7 +769,7 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 		if !hasOutputPlanParameter(fn) {
 			t.Errorf("%s does not receive op *OutputPlan", fn.Name.Name)
 		}
-		if got := calledMethodCount(fn, "outputPlan"); got != 0 {
+		if got := calledMethodCount(fn, "outputPlanWithPitfalls"); got != 0 {
 			t.Errorf("%s reconstructs %d output plans", fn.Name.Name, got)
 		}
 		if !callsMethodWithIdent(report, fn.Name.Name, "op") {

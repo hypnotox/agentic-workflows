@@ -18,6 +18,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/refs"
 	"github.com/hypnotox/agentic-workflows/internal/render"
@@ -28,7 +29,7 @@ import (
 // AdvisoryNotes returns the compatibility projection of the non-failing notes
 // produced by one operation-scoped plan parse.
 func (p *Project) AdvisoryNotes(ctx context.Context) ([]string, error) {
-	corpus, topics, eff, err := p.deriveOperationState()
+	corpus, pitfalls, topics, eff, err := p.deriveOperationStateWithPitfalls()
 	if err != nil {
 		return nil, err
 	}
@@ -36,22 +37,22 @@ func (p *Project) AdvisoryNotes(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	op, err := p.outputPlan(ctx, corpus, topics, eff)
+	op, err := p.outputPlanWithPitfalls(ctx, corpus, pitfalls, topics, eff)
 	if err != nil {
 		return nil, err
 	}
-	return p.advisoryNotesWithState(corpus, plans, op)
+	return p.advisoryNotesWithState(corpus, pitfalls, plans, op)
 }
 
 // advisoryNotesWithState returns the non-failing render advisories in print
 // order from operation-owned state, its already parsed plans, and its one
 // prepared output plan.
-func (p *Project) advisoryNotesWithState(corpus adr.Corpus, plans []plan.Plan, op *OutputPlan) ([]string, error) {
+func (p *Project) advisoryNotesWithState(corpus adr.Corpus, pitfalls pitfall.Corpus, plans []plan.Plan, op *OutputPlan) ([]string, error) {
 	files := op.writeFiles()
 	all := advisoryCompatibilityFiles(op)
 	notes := append(p.unsetVarNotes(files), stubNotes(all)...)
 	notes = append(notes, markerNotes(all)...)
-	th, err := p.tagHealthNotes(corpus)
+	th, err := p.tagHealthNotes(corpus, pitfalls)
 	if err != nil { // coverage-ignore: advisory read errors are covered by direct helper tests
 		return nil, err
 	}
@@ -129,15 +130,16 @@ const tagFrequencyThreshold = 0.25
 // express), and a coverage note for any ADR or pitfall carrying zero tags (the
 // under-tagging backstop). Inert under an empty/absent vocabulary, so an
 // un-curated adopter - and the example - stays note-free.
-func (p *Project) tagHealthNotes(corpus adr.Corpus) ([]string, error) {
+func (p *Project) tagHealthNotes(corpus adr.Corpus, supplied ...pitfall.Corpus) ([]string, error) {
 	if len(p.Cfg.Tags) == 0 {
 		return nil, nil
 	}
-	adrs := corpus.All()
-	pf, err := p.pitfallTagEntries()
-	if err != nil {
+	pitfalls, err := p.compatPitfallCorpus(supplied)
+	if err != nil { // coverage-ignore: aggregate operations always supply the validated corpus; direct malformed-load propagation is covered separately
 		return nil, err
 	}
+	adrs := corpus.All()
+	pf := pitfalls.All()
 	type artifact struct {
 		label string
 		tags  []string
@@ -151,7 +153,7 @@ func (p *Project) tagHealthNotes(corpus adr.Corpus) ([]string, error) {
 		arts = append(arts, artifact{label: rel + "/" + a.Filename, tags: a.Tags})
 	}
 	for _, e := range pf {
-		arts = append(arts, artifact{label: e.Title, tags: e.Tags})
+		arts = append(arts, artifact{label: e.SourcePath, tags: e.Tags})
 	}
 
 	var notes []string
@@ -429,7 +431,7 @@ func (p *Project) CheckReport(ctx context.Context) (CheckReport, error) {
 	if err := validateCommandWiring(p.Cfg); err != nil {
 		return CheckReport{}, err
 	}
-	corpus, topics, eff, err := p.deriveOperationState()
+	corpus, pitfalls, topics, eff, err := p.deriveOperationStateWithPitfalls()
 	if err != nil {
 		return CheckReport{}, err
 	}
@@ -447,17 +449,17 @@ func (p *Project) CheckReport(ctx context.Context) (CheckReport, error) {
 			})
 		}
 	}
-	op, err := p.outputPlan(ctx, corpus, topics, eff)
+	op, err := p.outputPlanWithPitfalls(ctx, corpus, pitfalls, topics, eff)
 	if err != nil {
 		return CheckReport{}, err
 	}
-	drift, err := p.checkWithState(ctx, corpus, topics, eff, plans, op)
+	drift, err := p.checkWithState(ctx, corpus, pitfalls, topics, eff, plans, op)
 	if err != nil {
 		return CheckReport{}, err
 	}
 	contextDrift, contextNotes := planArtifactReport(plans, corpus)
 	planDrift = append(planDrift, contextDrift...)
-	notes, err := p.advisoryNotesWithState(corpus, plans, op)
+	notes, err := p.advisoryNotesWithState(corpus, pitfalls, plans, op)
 	return finishCheckReport(drift, planDrift, contextNotes, notes, op, err)
 }
 
@@ -475,7 +477,7 @@ func (p *Project) Check(ctx context.Context) ([]manifest.Drift, error) {
 	return report.Drift, err
 }
 
-func (p *Project) checkWithState(ctx context.Context, corpus adr.Corpus, topics topic.Corpus, eff map[string]bool, plans []plan.Plan, op *OutputPlan) ([]manifest.Drift, error) {
+func (p *Project) checkWithState(ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool, plans []plan.Plan, op *OutputPlan) ([]manifest.Drift, error) {
 	lock, found, err := manifest.LoadOptional(p.lockPath())
 	if err != nil {
 		return nil, err
@@ -510,8 +512,8 @@ func (p *Project) checkWithState(ctx context.Context, corpus adr.Corpus, topics 
 	drift = append(drift, p.checkDeadSkillRefs(files, eff)...)
 
 	drift = append(drift, p.checkPlans(corpus, plans)...)
-	pitfallDrift, err := p.checkPitfalls(corpus)
-	if err != nil {
+	pitfallDrift, err := p.checkPitfalls(corpus, pitfalls)
+	if err != nil { // coverage-ignore: the operation supplied its already validated pitfall corpus
 		return nil, err
 	}
 	drift = append(drift, pitfallDrift...)
@@ -520,7 +522,7 @@ func (p *Project) checkWithState(ctx context.Context, corpus adr.Corpus, topics 
 		return nil, err
 	}
 	drift = append(drift, glossaryDrift...)
-	tagDrift, err := p.checkTagVocabulary(corpus)
+	tagDrift, err := p.checkTagVocabulary(corpus, pitfalls)
 	if err != nil { // coverage-ignore: checkTagVocabulary now fails only through pitfallTagEntries, which reads the same data.pitfalls that checkPitfalls above already read and failed on
 		return nil, err
 	}
@@ -753,18 +755,10 @@ func (p *Project) planCommitScopeNotes(plans []plan.Plan) []string {
 	return notes
 }
 
-// checkPitfalls validates the pitfalls sidecar when the doc is enabled: each entry's
-// domains: must resolve to a configured domain, and each related: number to an
-// existing ADR. Structural validation (title/body) is the transform's job; this
-// resolves the links the transform cannot see. A disabled pitfalls doc, or a sidecar
-// with no data.pitfalls, yields no drift.
-func (p *Project) checkPitfalls(corpus adr.Corpus) ([]manifest.Drift, error) {
-	sc, err := p.Cfg.Sidecar("docs", "pitfalls")
-	if err != nil { // coverage-ignore: the pitfalls sidecar's YAML was already parsed and validated at Open, so this re-read cannot fail
-		return nil, err
-	}
-	entries, err := pitfallEntries(sc.Data["pitfalls"])
-	if err != nil {
+// checkPitfalls resolves corpus metadata against project-owned domains and ADRs.
+func (p *Project) checkPitfalls(corpus adr.Corpus, supplied ...pitfall.Corpus) ([]manifest.Drift, error) {
+	pitfalls, err := p.compatPitfallCorpus(supplied)
+	if err != nil { // coverage-ignore: aggregate operations always supply their validated operation-owned corpus
 		return nil, err
 	}
 	domains := map[string]bool{}
@@ -772,15 +766,15 @@ func (p *Project) checkPitfalls(corpus adr.Corpus) ([]manifest.Drift, error) {
 		domains[d] = true
 	}
 	var drift []manifest.Drift
-	for _, e := range entries {
+	for _, e := range pitfalls.All() {
 		for _, d := range e.Domains {
 			if !domains[d] {
-				drift = append(drift, manifest.Drift{Path: pitfallsSidecarPath, Kind: "pitfall-domain", Detail: fmt.Sprintf("%q: unknown domain %q", e.Title, d)})
+				drift = append(drift, manifest.Drift{Path: e.SourcePath, Kind: "pitfall-domain", Detail: fmt.Sprintf("%s (%q): unknown domain %q", e.Slug, e.Title, d)})
 			}
 		}
 		for _, n := range e.Related {
 			if !corpus.Has(fmt.Sprintf("%04d", n)) {
-				drift = append(drift, manifest.Drift{Path: pitfallsSidecarPath, Kind: "pitfall-adr-link", Detail: fmt.Sprintf("%q: ADR-%04d", e.Title, n)})
+				drift = append(drift, manifest.Drift{Path: e.SourcePath, Kind: "pitfall-adr-link", Detail: fmt.Sprintf("%s (%q): ADR-%04d", e.Slug, e.Title, n)})
 			}
 		}
 	}
@@ -822,9 +816,13 @@ func (p *Project) checkGlossary() ([]manifest.Drift, error) {
 // non-empty meaning. An empty or absent vocabulary is inert (tags are then
 // free-form). A declared member no artifact uses is intentionally permitted,
 // mirroring an unused configured domain under pitfall-domains-resolved.
-func (p *Project) checkTagVocabulary(corpus adr.Corpus) ([]manifest.Drift, error) {
+func (p *Project) checkTagVocabulary(corpus adr.Corpus, supplied ...pitfall.Corpus) ([]manifest.Drift, error) {
 	if len(p.Cfg.Tags) == 0 {
 		return nil, nil
+	}
+	pitfalls, err := p.compatPitfallCorpus(supplied)
+	if err != nil {
+		return nil, err
 	}
 	cfgPath := config.DirName + "/config.yaml"
 	domainName := map[string]bool{}
@@ -851,29 +849,21 @@ func (p *Project) checkTagVocabulary(corpus adr.Corpus) ([]manifest.Drift, error
 			}
 		}
 	}
-	pf, err := p.pitfallTagEntries()
-	if err != nil { // reachable via a direct checkTagVocabulary call over a malformed pitfalls sidecar; pitfallEntries validates shape
-		return nil, err
-	}
-	for _, e := range pf {
+	for _, e := range pitfalls.All() {
 		for _, tag := range e.Tags {
 			if _, ok := p.Cfg.Tags[tag]; !ok {
-				drift = append(drift, manifest.Drift{Path: pitfallsSidecarPath, Kind: "pitfall-tag", Detail: fmt.Sprintf("%q: unknown tag %q", e.Title, tag)})
+				drift = append(drift, manifest.Drift{Path: e.SourcePath, Kind: "pitfall-tag", Detail: fmt.Sprintf("%s (%q): unknown tag %q", e.Slug, e.Title, tag)})
 			}
 		}
 	}
 	return drift, nil
 }
 
-// pitfallTagEntries returns the pitfall entries when the pitfalls doc is
-// enabled, else nil - factored so checkTagVocabulary reads tags without
-// duplicating checkPitfalls' sidecar plumbing.
-func (p *Project) pitfallTagEntries() ([]pitfallEntry, error) {
-	sc, err := p.Cfg.Sidecar("docs", "pitfalls")
-	if err != nil { // coverage-ignore: the pitfalls sidecar's YAML was validated at Open, so this re-read cannot fail
-		return nil, err
+func (p *Project) compatPitfallCorpus(supplied []pitfall.Corpus) (pitfall.Corpus, error) {
+	if len(supplied) > 0 {
+		return supplied[0], nil
 	}
-	return pitfallEntries(sc.Data["pitfalls"])
+	return p.loadPitfallCorpus()
 }
 
 // checkADRRelatedLinks fails an ADR whose related: names an ADR number with no

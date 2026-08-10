@@ -3,6 +3,7 @@ paths:
   - internal/render/**
   - internal/catalog/**
   - internal/project/**
+  - internal/pitfall/**
   - internal/resident/**
   - internal/refs/**
   - templates/**

@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: split-pitfall-corpus-and-generated-index
-status: Proposed
+status: Implementing
 date: 2026-08-10
 ---
 # ADR-split-pitfall-corpus-and-generated-index: Split Pitfall Corpus and Generated Index
@@ -185,3 +185,5 @@ tracker, and the roadmap remains the durable backlog surface.
 ## Status history
 
 - 2026-08-10: Proposed
+- 2026-08-10: Implementing; content-sha256: d34bb325be9a4a75217e30be95eb556eb9bb5bca48f31f35226adac93214e148
+- 2026-08-10: Applied; operations: remove `rendering/doc-outputs:pitfall-data-validated`, add `rendering/doc-outputs:pitfall-corpus-validated`, add `rendering/doc-outputs:pitfall-output-complete`, add `code-design/single-home:pitfall-model-single-home`, update `rendering/doc-outputs:opaque-doc-source-guidance`, add `config/migrations-and-locks:pitfall-corpus-migration`

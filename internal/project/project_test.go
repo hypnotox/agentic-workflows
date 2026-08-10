@@ -669,11 +669,11 @@ func TestSyncReportRetainsWrittenOutputWhenChmodFails(t *testing.T) {
 		}
 		return nil
 	}
-	corpus, topics, eff, deriveErr := p.deriveOperationState()
+	corpus, pitfalls, topics, eff, deriveErr := p.deriveOperationStateWithPitfalls()
 	if deriveErr != nil {
 		t.Fatal(deriveErr)
 	}
-	_, changes, _, err := p.syncReportWith(testContext(t), nil, operation, corpus, topics, eff)
+	_, changes, _, err := p.syncReportWithPitfalls(testContext(t), nil, operation, corpus, pitfalls, topics, eff)
 	if err == nil || len(changes) == 0 || changes[0].Path != "AGENTS.md" {
 		t.Fatalf("changes = %v, err = %v", changes, err)
 	}
@@ -699,11 +699,11 @@ func TestSyncReportRetainsModeCorrectionWhenLaterWriteFails(t *testing.T) {
 		}
 		return priorWrite(path, content, mode)
 	}
-	corpus, topics, eff, err := p.deriveOperationState()
+	corpus, pitfalls, topics, eff, err := p.deriveOperationStateWithPitfalls()
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, changes, _, err := p.syncReportWith(testContext(t), nil, operation, corpus, topics, eff)
+	_, changes, _, err := p.syncReportWithPitfalls(testContext(t), nil, operation, corpus, pitfalls, topics, eff)
 	if !errors.Is(err, failure) {
 		t.Fatalf("error = %v, want %v", err, failure)
 	}
@@ -776,11 +776,11 @@ func TestSyncReportDoesNotReportOutputWhenWriteFails(t *testing.T) {
 		}
 		return priorWrite(path, content, mode)
 	}
-	corpus, topics, eff, err := p.deriveOperationState()
+	corpus, pitfalls, topics, eff, err := p.deriveOperationStateWithPitfalls()
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, changes, _, err := p.syncReportWith(testContext(t), nil, operation, corpus, topics, eff)
+	_, changes, _, err := p.syncReportWithPitfalls(testContext(t), nil, operation, corpus, pitfalls, topics, eff)
 	if !errors.Is(err, failure) {
 		t.Fatalf("error = %v, want %v", err, failure)
 	}

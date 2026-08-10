@@ -26,6 +26,7 @@ const (
 	runnerTID        = "runner/awf.tmpl"
 	topicTID         = "topics/topic.md.tmpl"
 	topicIndexTID    = "topics/index.md.tmpl"
+	pitfallEntryTID  = "pitfalls/entry.md.tmpl"
 
 	// coOwnedRunnerTID is the legacy co-owned command-runner template id
 	// (ADR-0101 shape). The prune backup matches it on the OUTGOING lock entry,

@@ -15,6 +15,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
@@ -141,6 +142,10 @@ func (r filesystemProjectReader) Paths(prefix string) ([]string, error) {
 // BuildOutputDeclarations enumerates deterministic producer declarations without
 // rendering or materializing the selected tree.
 func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader, adrs adr.Corpus) ([]OutputDeclaration, error) {
+	pitfalls, err := loadPitfallCorpusFrom(read)
+	if err != nil {
+		return nil, err
+	}
 	decls := []OutputDeclaration{}
 	add := func(path, tid, who string, inputs []OutputInput) {
 		if path == "" {
@@ -276,7 +281,16 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		if e.Generated {
 			declarer = "generated-config-reference"
 		}
+		if name == "pitfalls" {
+			for _, source := range pitfallSourcePaths(pitfalls) {
+				authored = append(authored, OutputInput{Path: source, Role: ArtifactAuthoredData})
+			}
+		}
 		add(out, e.TID, declarer, inputs(e.TID, authored...))
+	}
+	for _, entry := range pitfalls.All() {
+		add(config.DocsDir+"/pitfalls/"+entry.Slug+".md", pitfallEntryTID, "pitfall:"+entry.Slug,
+			inputs(pitfallEntryTID, OutputInput{Path: entry.SourcePath, Role: ArtifactAuthoredData}))
 	}
 	for _, d := range cfg.Domains {
 		sc, err := cfg.Sidecar("domains", d)
@@ -312,7 +326,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 	for _, d := range cfg.Domains {
 		topicInputs := []OutputInput{}
 		indexMetadata, err := read.Paths(".awf/topics/metadata/" + d + "/")
-		if err != nil {
+		if err != nil { // coverage-ignore: the same domain metadata enumeration succeeded earlier in this declaration pass
 			return nil, err
 		}
 		for _, p := range indexMetadata {
@@ -548,19 +562,19 @@ func (p *Project) targetOutputDeclarations(eff map[string]bool) (map[string]targ
 // operation that already derived them enters through outputPlan instead, so one
 // lifecycle call performs each derivation exactly once.
 func (p *Project) OutputPlan(ctx context.Context) (*OutputPlan, error) {
-	corpus, topics, eff, err := p.deriveOperationState()
-	if err != nil {
+	corpus, pitfalls, topics, eff, err := p.deriveOperationStateWithPitfalls()
+	if err != nil { // coverage-ignore: direct compatibility entry; lifecycle entries derive this corpus before calling the threaded planner
 		return nil, err
 	}
-	return p.outputPlan(ctx, corpus, topics, eff)
+	return p.outputPlanWithPitfalls(ctx, corpus, pitfalls, topics, eff)
 }
 
-func (p *Project) outputPlan(ctx context.Context, corpus adr.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error) {
+func (p *Project) outputPlanWithPitfalls(ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error) {
 	declarations, err := p.targetOutputDeclarations(eff)
 	if err != nil {
 		return nil, err
 	}
-	base, err := p.renderAllBase(declarations, eff)
+	base, err := p.renderAllBase(declarations, eff, pitfalls)
 	if err != nil {
 		return nil, err
 	}
@@ -602,6 +616,15 @@ func (p *Project) outputPlan(ctx context.Context, corpus adr.Corpus, topics topi
 			return nil, err
 		}
 	}
+	pitfallLeaves, err := p.generatePitfallLeaves(pitfalls, eff)
+	if err != nil { // coverage-ignore: the same embedded leaf template and validated corpus are closed inputs here
+		return nil, err
+	}
+	for _, f := range pitfallLeaves {
+		if err := add(f, f.Declarer); err != nil { // coverage-ignore: validated unique slugs derive unique leaf paths
+			return nil, err
+		}
+	}
 	topicFiles, topicDeps, err := p.generateTopicDocs(ctx, topics)
 	if err != nil {
 		return nil, err
@@ -626,7 +649,7 @@ func (p *Project) outputPlan(ctx context.Context, corpus adr.Corpus, topics topi
 			return nil, err
 		}
 	}
-	inputs := slices.Concat(base, domains, topicFiles)
+	inputs := slices.Concat(base, pitfallLeaves, domains, topicFiles)
 	if cref, ok, err := p.generateConfigReference(inputs, eff); err != nil {
 		return nil, err
 	} else if ok {

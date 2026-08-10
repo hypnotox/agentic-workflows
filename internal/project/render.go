@@ -14,6 +14,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/refs"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
@@ -437,28 +438,41 @@ func (p *Project) renderKind(spec renderKindSpec, eff map[string]bool) ([]Render
 
 // renderAllBase renders declarative catalog and singleton producers. OutputPlan
 // owns the public render/sync/check lifecycle and adds generated producers.
-func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration, eff map[string]bool) ([]RenderedFile, error) {
+func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration, eff map[string]bool, pitfalls pitfall.Corpus) ([]RenderedFile, error) {
 	var out []RenderedFile
 	// Neutral: docs render once - the output path is docsDir-relative, not adapter-placed.
 	docsRfs, err := p.renderKind(renderKindSpec{
 		kind: "docs", names: catalog.NameDerivedDocNames(p.Cat),
-		tid:       p.docTID,
-		sections:  func(n string) []string { return p.Cat.Docs[n].Sections },
-		outPath:   func(_ Target, n string) string { return p.docOutPath(n) },
-		defaults:  func(n string) map[string]any { return p.Cat.Docs[n].Data },
-		transform: docDataTransform,
+		tid:      p.docTID,
+		sections: func(n string) []string { return p.Cat.Docs[n].Sections },
+		outPath:  func(_ Target, n string) string { return p.docOutPath(n) },
+		defaults: func(n string) map[string]any { return p.Cat.Docs[n].Data },
+		transform: func(n string, sc config.Sidecar) (config.Sidecar, error) {
+			if n == "pitfalls" {
+				return pitfallIndexSidecar(sc, pitfalls), nil
+			}
+			return docDataTransform(n, sc)
+		},
 		sources: func(n string) []string {
 			switch n {
 			case "glossary":
 				return []string{".awf/docs/glossary.yaml", "derived:awf-standard-vocabulary"}
 			case "pitfalls":
-				return []string{".awf/docs/pitfalls.yaml"}
+				return []string{".awf/docs/pitfalls/*.md"}
 			}
 			return nil
 		},
 	}, eff)
 	if err != nil {
 		return nil, err
+	}
+	for i := range docsRfs {
+		if docsRfs[i].TemplateID == p.docTID("pitfalls") {
+			for _, source := range pitfallSourcePaths(pitfalls) {
+				docsRfs[i].ConsumedInputs = append(docsRfs[i].ConsumedInputs, OutputInput{Path: source, Role: ArtifactAuthoredData})
+			}
+			docsRfs[i].ConsumedInputs = normalizeOutputInputs(docsRfs[i].ConsumedInputs)
+		}
 	}
 	out = append(out, docsRfs...)
 	// Adapter: skills + agents render once per fixed target (inv: multi-target-render).
@@ -749,7 +763,7 @@ func (p *Project) observeRenderInputs(kind, artifact, tid, outPath string, plan 
 	if tid != "" {
 		inputs = append(inputs, OutputInput{Path: "templates/" + tid, Role: ArtifactTemplate})
 	}
-	if kind != "target-output" && kind != targetBridgeKind && kind != "bootstrap" && kind != "hooks" && kind != "runner" && !resident.IsResidentKind(kind) {
+	if kind != "target-output" && kind != targetBridgeKind && kind != "bootstrap" && kind != "hooks" && kind != "runner" && kind != "pitfall-entry" && !resident.IsResidentKind(kind) {
 		has, err := p.Cfg.HasSidecar(kind, artifact)
 		if err != nil { // coverage-ignore: render producers parse this sidecar before input observation, and filesystem stat cannot newly fail without a concurrent race
 			return nil, err
@@ -792,6 +806,24 @@ func (p *Project) encodeAgent(t Target, name, body string, data map[string]any) 
 		return "", fmt.Errorf("unknown agent dialect %q", t.AgentDialect)
 	}
 	return encodeMarkdownAgent(a)
+}
+
+func (p *Project) generatePitfallLeaves(corpus pitfall.Corpus, eff map[string]bool) ([]RenderedFile, error) {
+	out := make([]RenderedFile, 0, corpus.Len())
+	for _, entry := range corpus.All() {
+		sc := config.Sidecar{Data: pitfallLeafData(entry)}
+		rf, err := p.renderTarget("pitfall-entry", entry.Slug, pitfallEntryTID, nil, sc,
+			p.data(sc, eff), config.DocsDir+"/pitfalls/"+entry.Slug+".md", eff,
+			&renderOutputOptions{sources: []string{entry.SourcePath}})
+		if err != nil { // coverage-ignore: embedded leaf template and validated typed data cannot fail at this point
+			return nil, err
+		}
+		rf.ConfigHash = manifest.Hash([]byte(rf.ConfigHash + "\x00" + string(entry.Source)))
+		rf.ConsumedInputs = normalizeOutputInputs(append(rf.ConsumedInputs, OutputInput{Path: entry.SourcePath, Role: ArtifactAuthoredData}))
+		rf.Declarer, rf.DeclarerProjection = "pitfall:"+entry.Slug, entry.SourcePath
+		out = append(out, rf)
+	}
+	return out, nil
 }
 
 // generateIndexMD renders the ADR INDEX for the project's decisions directory

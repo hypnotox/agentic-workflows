@@ -8,6 +8,14 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Breaking changes
+
+- Schema generation 43 moves `data.pitfalls` into strict per-entry Markdown sources under `.awf/docs/pitfalls/`. Upgrade preflights every destination and refuses relative Markdown links with the entry and target named; replace those links and retry. Byte-identical leaves from an interrupted attempt are accepted, all leaves are created before old authority is retired, and a sidecar containing independent section configuration survives with only those sections.
+
+### Features
+
+- Pitfalls now publish as a compact title-sorted metadata index with domain and Unassigned navigation plus one exact-source generated leaf per entry. The complete family participates in working and staged output plans, lock, drift, backup, and deletion pruning.
+
 ### Bug fixes
 
 - Pi implementation commit policy now accepts an explicit same-repository verification checkout, so commits in an awf-managed worktree are verified there without changing parent or child Pi CWD. Invalid explicit identities refuse before dispatch, forbidden commits use the same selected checkout, and unchanged-HEAD failures name the checkout and retry field.

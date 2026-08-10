@@ -14,19 +14,19 @@ func TestGlobalTopicPathOwnershipGeneration(t *testing.T) {
 	if globalTopicPathOwnershipGeneration != 41 {
 		t.Fatalf("global topic path ownership generation = %d, want 41", globalTopicPathOwnershipGeneration)
 	}
-	migration := registry[len(registry)-2]
+	migration := registry[len(registry)-3]
 	if migration.To != globalTopicPathOwnershipGeneration || migration.Name != "global-topic-path-ownership" {
 		t.Fatalf("global topic path ownership migration = %#v", migration)
 	}
 }
 
 func TestEffortArchiveRootGeneration(t *testing.T) {
-	if effortArchiveGeneration != 42 || Current() != effortArchiveGeneration {
-		t.Fatalf("effort archive generation = %d, current = %d; want 42", effortArchiveGeneration, Current())
+	if effortArchiveGeneration != 42 || Current() != pitfallCorpusGeneration {
+		t.Fatalf("effort archive generation = %d, current = %d; want 42 and 43", effortArchiveGeneration, Current())
 	}
-	last := registry[len(registry)-1]
-	if last.To != effortArchiveGeneration || last.Name != "effort-archive-root" {
-		t.Fatalf("last migration = %#v", last)
+	archive := registry[len(registry)-2]
+	if archive.To != effortArchiveGeneration || archive.Name != "effort-archive-root" {
+		t.Fatalf("archive migration = %#v", archive)
 	}
 }
 
@@ -50,7 +50,7 @@ func TestGlobalTopicPathOwnershipUpgradeOnlyStampsSchema(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(applied, []string{"global-topic-path-ownership", "effort-archive-root"}) || len(changes) != 1 || changes[0].Text != "schema-stamp: updated awf.lock schema version" {
+	if !reflect.DeepEqual(applied, []string{"global-topic-path-ownership", "effort-archive-root", "pitfall-corpus"}) || len(changes) != 1 || changes[0].Text != "schema-stamp: updated awf.lock schema version" {
 		t.Fatalf("upgrade = %v, %v", applied, changes)
 	}
 	for path, want := range map[string][]byte{pathOnly: beforePath, globalOnly: beforeGlobal} {

@@ -249,7 +249,7 @@ func projectFieldWriteFindings(pkgs []*packages.Package) []string {
 }
 
 // derivingEntries collects, per enclosing function name, the production call
-// sites of deriveOperationState. Clause 2 of the claim says the operation that
+// sites of deriveOperationStateWithPitfalls. Clause 2 of the claim says the operation that
 // needs the state derives it and threads it, so exactly the deriving entries
 // may call it and nothing nested may re-derive.
 func derivingEntries(pkgs []*packages.Package) map[string]int {
@@ -266,7 +266,7 @@ func derivingEntries(pkgs []*packages.Package) map[string]int {
 					if !ok {
 						return true
 					}
-					if sel, ok := call.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "deriveOperationState" {
+					if sel, ok := call.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "deriveOperationStateWithPitfalls" {
 						callers[funcDecl.Name.Name]++
 					}
 					return true
@@ -358,7 +358,7 @@ func TestProjectDerivedStateOwnership(t *testing.T) {
 	}
 
 	// Clause 2: the operation that needs the state derives it and threads it.
-	// Exactly the deriving entries call deriveOperationState, each once, so a
+	// Exactly the deriving entries call deriveOperationStateWithPitfalls, each once, so a
 	// nested re-derivation is a failure rather than an invisible regression.
 	wantEntries := map[string]bool{
 		"CheckReport": true, "syncReport": true, "AdvisoryNotes": true,
@@ -385,10 +385,10 @@ func TestProjectDerivedStateOwnership(t *testing.T) {
 	// numberingCorpus is the one entry beside the aggregate deriver, and only
 	// for the ADR corpus. Numbering needs a duplicate-identity corpus as data
 	// rather than as an abort (ADR-0202 item 12), which is the opposite of what
-	// deriveOperationState owes every other consumer, so it cannot enter
+	// deriveOperationStateWithPitfalls owes every other consumer, so it cannot enter
 	// through it. The set is pinned exactly, so a consumer re-deriving a value
 	// that was threaded to it still fails here.
-	producerOwners := map[string]bool{"deriveOperationState": true, "numberingCorpus": true}
+	producerOwners := map[string]bool{"deriveOperationStateWithPitfalls": true, "numberingCorpus": true}
 	for producer, owners := range producerCallSites(production) {
 		for _, owner := range owners {
 			if !producerOwners[owner] {
@@ -427,7 +427,7 @@ func (p *Project) mutationWritesViaPointer() {
 }
 
 func (p *Project) mutationRederivesNested() {
-	_, _, _, _ = p.deriveOperationState()
+	_, _, _, _, _ = p.deriveOperationStateWithPitfalls()
 }
 
 func (p *Project) mutationRederivesCorpusDirectly() (adr.Corpus, error) {

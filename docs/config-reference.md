@@ -110,7 +110,13 @@ declined; the generic prose renders).
 - `agent code-reviewer` · `data.digestSummary` (catalog default): The digest's summary skeleton: the bullet template the reviewer fills per review.
 - `agent implementer` · `data.prohibitedShortcuts` (catalog default): The bolt-on shortcuts the implementer must never take (list of {description}); the default names speculative abstraction and misplaced responsibility. Unset, the body omits the list and the rest of the contract renders unchanged.
 - `doc glossary` · `data.terms` (project-only/specialized): The glossary's terms as an ordered list of `{term, meaning, domains}` records; the table renders always sorted (case-insensitive, pipes escaped), and an empty term or meaning, an interior newline, an unknown record key, or a case-insensitive duplicate term fails the render naming the offending term. `domains` (optional) must resolve to configured domains. A term here overrides the standard vocabulary awf ships of the same case-insensitive name, which is how you replace or retire one. Unset, the doc renders the standard vocabulary alone; the pointer telling you where to add terms renders only when neither layer supplies a term. A meaning longer than the terseness guideline raises a non-failing advisory rather than failing the render.
-- `doc pitfalls` · `data.pitfalls` (project-only/specialized): The pitfalls as an ordered list of `{title, domains, related, body}` entries; the doc renders each as a `## title` section (an empty/newline title or empty body fails the render), `domains` (optional) must resolve to configured domains, and `related` (optional) ADR numbers must resolve to real ADRs. Unset, the doc renders a pointer telling you where to add entries.
 - `agents-doc` · `data.commands` (project-only/specialized): Extra command entries for the agent guide's Commands section (list of {cmd, desc}-shaped mappings rendered as lines); unset, only the built-in command list renders.
 - `agents-doc` · `data.docMap`: Extra document-map entries for the agent guide (list rendered after the managed docs); unset, only the managed docs render.
 - `agents-doc` · `data.invariants` (project-only/specialized): The project's hard-rules list for the agent guide's Invariants section (list of {ref, text} mappings); unset, the section renders its generic invariants prose.
+
+## Pitfall sources
+
+Pitfalls are direct regular `.awf/docs/pitfalls/<lowercase-kebab-slug>.md` files with strict
+frontmatter: required `title`, optional `domains`, `tags`, and positive `related` lists, then a
+nonblank Markdown body. The slug `index` is reserved. `.awf/docs/pitfalls.yaml` is optional and may
+contain only ordinary `prepend` or `append` section configuration; it is never an entry registry.

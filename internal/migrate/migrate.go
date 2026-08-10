@@ -78,6 +78,7 @@ var registry = []Migration{
 	{To: 40, Name: "retire-plan-resync-selection", Apply: treeOnly(applyRetirePlanResync)},
 	{To: globalTopicPathOwnershipGeneration, Name: "global-topic-path-ownership", Apply: treeOnly(applyGlobalTopicPathOwnership)},
 	{To: effortArchiveGeneration, Name: "effort-archive-root", Apply: treeOnly(applyEffortArchiveRoot)},
+	{To: pitfallCorpusGeneration, Name: "pitfall-corpus", Apply: treeOnly(applyPitfallCorpus)},
 }
 
 // treeOnly adapts a migration that only rewrites the config tree to the
