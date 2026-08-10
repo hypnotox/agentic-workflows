@@ -9,9 +9,10 @@ import (
 )
 
 type paths struct {
-	roots     awfgit.ControlRoots
-	efforts   string
-	worktrees string
+	roots         awfgit.ControlRoots
+	efforts       string
+	worktrees     string
+	effortArchive string
 }
 
 func resolvePaths(roots awfgit.ControlRoots) (paths, error) {
@@ -23,7 +24,11 @@ func resolvePaths(roots awfgit.ControlRoots) (paths, error) {
 	if err != nil {
 		return paths{}, fmt.Errorf("resolve worktrees resident root: %w", err)
 	}
-	return paths{roots: roots, efforts: efforts, worktrees: worktrees}, nil
+	effortArchive, err := roots.ResidentRoot(awfgit.ResidentEffortArchive)
+	if err != nil {
+		return paths{}, fmt.Errorf("resolve effort archive resident root: %w", err)
+	}
+	return paths{roots: roots, efforts: efforts, worktrees: worktrees, effortArchive: effortArchive}, nil
 }
 
 func (p paths) ensure(root string) error {
@@ -53,6 +58,8 @@ func (p paths) validate(root string) error {
 		name = awfgit.ResidentEfforts
 	case p.worktrees:
 		name = awfgit.ResidentWorktrees
+	case p.effortArchive:
+		name = awfgit.ResidentEffortArchive
 	default:
 		return fmt.Errorf("unknown resident root %s", root)
 	}

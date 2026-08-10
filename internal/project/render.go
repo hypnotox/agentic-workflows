@@ -593,7 +593,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	// Every resident root has exactly one tracked self-ignoring node. Dynamic
 	// descendants are local authority and never enter the manifest.
 	for _, name := range resident.RootNames() {
-		rf, err := p.renderTarget(name, "", residentGitignoreTID(name), nil, config.Sidecar{}, p.data(config.Sidecar{}, eff), config.DirName+"/"+name+"/.gitignore", eff, &renderOutputOptions{encoder: PlainAgentDialect})
+		rf, err := p.renderResidentMarker(name, eff)
 		if err != nil { // coverage-ignore: resident templates are embedded and registered at startup
 			return nil, err
 		}
@@ -602,6 +602,13 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	// Duplicate declarations are deliberately retained for OutputPlan to
 	// coalesce or reject from normalized recipes.
 	return out, nil
+}
+
+// renderResidentMarker is the single resident-marker renderer. It owns template
+// execution and provenance-banner injection, so every caller sees the exact bytes
+// ordinary rendering plans and publishes.
+func (p *Project) renderResidentMarker(name string, eff map[string]bool) (RenderedFile, error) {
+	return p.renderTarget(name, "", residentGitignoreTID(name), nil, config.Sidecar{}, p.data(config.Sidecar{}, eff), config.DirName+"/"+name+"/.gitignore", eff, &renderOutputOptions{encoder: PlainAgentDialect})
 }
 
 // renderTarget assembles an artifact (sidecar sections + convention parts), executes

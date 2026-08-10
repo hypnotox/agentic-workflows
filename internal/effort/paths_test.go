@@ -45,6 +45,9 @@ func TestEffortPathsUseSlugDirectoryAndOwnedMemory(t *testing.T) {
 	if err := paths.validate(paths.worktrees); err != nil {
 		t.Fatalf("worktrees root rejected: %v", err)
 	}
+	if err := paths.validate(paths.effortArchive); err != nil {
+		t.Fatalf("effort archive root rejected: %v", err)
+	}
 	if err := paths.validate(filepath.Join(root, "foreign")); err == nil {
 		t.Fatal("unknown resident root accepted")
 	}
@@ -74,6 +77,16 @@ func TestEffortPathsUseSlugDirectoryAndOwnedMemory(t *testing.T) {
 	badRoots.PrimaryRoot = "relative"
 	if _, err := resolvePaths(badRoots); err == nil {
 		t.Fatal("invalid efforts root accepted")
+	}
+	effortArchive := filepath.Join(root, ".awf", "effort-archive")
+	if err := os.Symlink(t.TempDir(), effortArchive); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := resolvePaths(roots); err == nil {
+		t.Fatal("symlinked effort archive root accepted")
+	}
+	if err := os.Remove(effortArchive); err != nil {
+		t.Fatal(err)
 	}
 	worktrees := filepath.Join(root, ".awf", "worktrees")
 	if err := os.Symlink(t.TempDir(), worktrees); err != nil {

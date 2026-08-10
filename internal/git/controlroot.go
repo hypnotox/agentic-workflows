@@ -21,8 +21,9 @@ type ControlRoots struct {
 type ResidentName string
 
 const (
-	ResidentEfforts   ResidentName = "efforts"
-	ResidentWorktrees ResidentName = "worktrees"
+	ResidentEfforts       ResidentName = "efforts"
+	ResidentWorktrees     ResidentName = "worktrees"
+	ResidentEffortArchive ResidentName = "effort-archive"
 )
 
 // HardSafetyError marks a safety refusal that cannot be overridden by force.
@@ -185,7 +186,7 @@ func ResolveControlRoots(ctx context.Context, root string) (ControlRoots, error)
 // existing component beneath PrimaryRoot is non-symlinked and current-owned.
 func (r ControlRoots) ResidentRoot(name ResidentName) (string, error) {
 	switch name {
-	case ResidentEfforts, ResidentWorktrees:
+	case ResidentEfforts, ResidentWorktrees, ResidentEffortArchive:
 	default:
 		return "", &HardSafetyError{Category: "unknown-resident", Path: string(name)}
 	}

@@ -21,7 +21,7 @@ func TestDecisionItemSlugsMigrationPreservesAuthoredBytes(t *testing.T) {
 	for path, content := range fixtures {
 		testsupport.WriteFile(t, filepath.Join(root, path), string(content))
 	}
-	stampLockAt(t, filepath.Join(root, ".awf", "awf.lock"), Current()-2)
+	stampLockAt(t, filepath.Join(root, ".awf", "awf.lock"), Current()-3)
 	ordinary := []byte("ordinary authored bytes\n")
 	testsupport.WriteFile(t, filepath.Join(root, "notes.txt"), string(ordinary))
 
@@ -30,7 +30,7 @@ func TestDecisionItemSlugsMigrationPreservesAuthoredBytes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantApplied := []string{registry[len(registry)-2].Name, registry[len(registry)-1].Name}
+	wantApplied := []string{registry[len(registry)-3].Name, registry[len(registry)-2].Name, registry[len(registry)-1].Name}
 	if !reflect.DeepEqual(applied, wantApplied) || out.Len() != 0 {
 		t.Fatalf("upgrade = %v, output %q; want %v", applied, out.String(), wantApplied)
 	}

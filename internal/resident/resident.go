@@ -34,7 +34,7 @@ import (
 // The table carries names only. Template identity for each root's one governed
 // .gitignore belongs to the render core's single derivation, so this package
 // never spells a template id (ADR-0195 item 5).
-var roots = []string{"efforts", "worktrees"}
+var roots = []string{"efforts", "worktrees", "effort-archive"}
 
 // RootNames returns the owned root names in table order. It hands back a copy
 // so the single declaration above stays the only writable home of the set.

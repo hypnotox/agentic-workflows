@@ -14,11 +14,11 @@ import (
 )
 
 func TestRetirePlanResyncGenerationRegistration(t *testing.T) {
-	if Current() != globalTopicPathOwnershipGeneration {
-		t.Fatalf("Current() = %d, want %d", Current(), globalTopicPathOwnershipGeneration)
+	if Current() != 42 {
+		t.Fatalf("Current() = %d, want 42", Current())
 	}
 	last := registry[len(registry)-1]
-	if last.To != globalTopicPathOwnershipGeneration || last.Name != "global-topic-path-ownership" {
+	if last.To != 42 || last.Name != "effort-archive-root" {
 		t.Fatalf("last migration = %#v", last)
 	}
 }
@@ -105,7 +105,7 @@ func TestRetirePlanResyncMigrationReportsAndStamps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(applied, []string{"retire-plan-resync-selection", "global-topic-path-ownership"}) {
+	if !reflect.DeepEqual(applied, []string{"retire-plan-resync-selection", "global-topic-path-ownership", "effort-archive-root"}) {
 		t.Fatalf("applied = %v", applied)
 	}
 	texts := make([]string, len(changes))

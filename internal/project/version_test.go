@@ -1,9 +1,12 @@
 package project
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 )
 
@@ -38,5 +41,41 @@ func TestSchemaMinimumVersionAuthority(t *testing.T) {
 	}
 	if err := ValidateSchemaMinimumVersion(migrate.Current()+1, Version); err == nil || !strings.Contains(err.Error(), "no minimum") {
 		t.Fatalf("unmapped schema error = %v", err)
+	}
+}
+
+// invariant: config/migrations-and-locks:archive-root-upgrade-boundary (TestArchiveRootUpgradeBoundary)
+func TestArchiveRootUpgradeBoundary(t *testing.T) {
+	root := scaffold(t, "prefix: archive\nintegrationBranch: main\n")
+	lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: migrate.Current() - 1, Files: map[string]manifest.Entry{}}
+	if err := lock.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
+		t.Fatal(err)
+	}
+	if state, _, err := migrate.GateState(root); err != nil || state != "gate" {
+		t.Fatalf("older generation gate = %q, %v; want gate", state, err)
+	}
+	if _, _, err := migrate.Upgrade(testContext(t), root); err != nil {
+		t.Fatal(err)
+	}
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	marker := filepath.Join(root, ".awf", "effort-archive", ".gitignore")
+	want := "# " + bannerText + "\n*\n!.gitignore\n"
+	if got, err := os.ReadFile(marker); err != nil || string(got) != want {
+		t.Fatalf("upgraded marker = %q, %v; want %q", got, err, want)
+	}
+	if err := os.Remove(marker); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := os.ReadFile(marker); err != nil || string(got) != want {
+		t.Fatalf("repaired marker = %q, %v; want %q", got, err, want)
 	}
 }

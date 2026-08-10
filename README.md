@@ -73,7 +73,7 @@ instead of rotting.
   command runner, such as this repository's `x`.
 - **A pinned bootstrap** (`.awf/bootstrap.sh`): an optional installer that fetches the
   exact awf version the repo was rendered with, for hooks and CI.
-- **Effort residents** (`.awf/efforts/<slug>/`, `.awf/worktrees/<slug>/`): one concrete non-minimal outcome owns immutable schema-2 state, `memory.md`, and optional mutable protocol-2 `activity.json`; optional managed worktrees use Git-authoritative path, registration, and branch topology. Activity is fallible Pi presence, never authority or a lock, and older binaries need not read an effort after it exists. These two are the only resident roots awf owns; schema generation 22 reset the legacy standalone memory root, and no render recreates it.
+- **Effort residents** (`.awf/efforts/<slug>/`, `.awf/worktrees/<slug>/`, `.awf/effort-archive/`): one concrete non-minimal outcome owns immutable schema-2 state, `memory.md`, and optional mutable protocol-2 `activity.json`; optional managed worktrees use Git-authoritative path, registration, and branch topology. The archive is a third self-ignored local root whose descendants are unmanaged and manually disposable. Activity is fallible Pi presence, never authority or a lock. Schema generation 42 requires older projects to upgrade before effort commands proceed, so ordinary upgrade rendering publishes the archive marker and current lock; schema generation 22 reset the legacy standalone memory root, and no render recreates it.
 
 awf renders for Pi and [Claude Code](https://www.anthropic.com/claude-code). Each gets
 every catalog skill and agent at descriptor-owned paths; Claude Code also receives its

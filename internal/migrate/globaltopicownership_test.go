@@ -11,11 +11,11 @@ import (
 )
 
 func TestGlobalTopicPathOwnershipGeneration(t *testing.T) {
-	if Current() != globalTopicPathOwnershipGeneration {
-		t.Fatalf("Current() = %d, want %d", Current(), globalTopicPathOwnershipGeneration)
+	if Current() != 42 {
+		t.Fatalf("Current() = %d, want 42", Current())
 	}
 	last := registry[len(registry)-1]
-	if last.To != globalTopicPathOwnershipGeneration || last.Name != "global-topic-path-ownership" {
+	if last.To != 42 || last.Name != "effort-archive-root" {
 		t.Fatalf("last migration = %#v", last)
 	}
 }
@@ -40,7 +40,7 @@ func TestGlobalTopicPathOwnershipUpgradeOnlyStampsSchema(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(applied, []string{"global-topic-path-ownership"}) || len(changes) != 1 || changes[0].Text != "schema-stamp: updated awf.lock schema version" {
+	if !reflect.DeepEqual(applied, []string{"global-topic-path-ownership", "effort-archive-root"}) || len(changes) != 1 || changes[0].Text != "schema-stamp: updated awf.lock schema version" {
 		t.Fatalf("upgrade = %v, %v", applied, changes)
 	}
 	for path, want := range map[string][]byte{pathOnly: beforePath, globalOnly: beforeGlobal} {

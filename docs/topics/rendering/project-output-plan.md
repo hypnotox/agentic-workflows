@@ -35,9 +35,9 @@ Backing: test
 
 ### `invariant: output-plan-complete`
 
-The deterministic output plan contains every catalog artifact, bridge files, generated documentation, reservations, and exactly two resident-root self-ignoring outputs: efforts and worktrees. Its conditional config-tree units share their declaration facts with render dispatch. Resident dynamic descendants are not plan nodes and resolve at the primary root while tracked authority remains invoking-checkout authority.
+The deterministic output plan contains every catalog artifact, bridge files, generated documentation, reservations, and exactly three resident-root self-ignoring outputs: efforts, worktrees, and effort-archive. Its conditional config-tree units share their declaration facts with render dispatch. Resident dynamic descendants are not plan nodes and resolve at the primary root while tracked authority remains invoking-checkout authority; archive descendants are preserved without recursive management.
 Origin: ADR-0124
-Revised-by: ADR-0164, ADR-0167, ADR-0175, ADR-0235, ADR-0251
+Revised-by: ADR-0164, ADR-0167, ADR-0175, ADR-0235, ADR-0251, ADR-archive-finished-efforts-and-permit-effort-scratch-data
 Backing: test
 
 ### `invariant: full-catalog-render`

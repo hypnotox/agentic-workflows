@@ -114,7 +114,7 @@ func TestTableHandsOutACopy(t *testing.T) {
 	if RootNames()[0] != original {
 		t.Fatal("mutating a handed-out table entry changed the declaration")
 	}
-	if !slices.Equal(RootNames(), []string{"efforts", "worktrees"}) {
+	if !slices.Equal(RootNames(), []string{"efforts", "worktrees", "effort-archive"}) {
 		t.Fatalf("RootNames() = %v", RootNames())
 	}
 }
@@ -122,7 +122,7 @@ func TestTableHandsOutACopy(t *testing.T) {
 // The path predicate is closed to the owned roots: a root itself and anything
 // below it is resident, a near-miss sibling is not.
 func TestIsResidentPathAndKind(t *testing.T) {
-	for _, path := range []string{".awf/efforts", ".awf/efforts/slug/memory.md", ".awf/worktrees"} {
+	for _, path := range []string{".awf/efforts", ".awf/efforts/slug/memory.md", ".awf/worktrees", ".awf/effort-archive", ".awf/effort-archive/opaque/file"} {
 		if !IsResidentPath(path) {
 			t.Errorf("IsResidentPath(%q) = false", path)
 		}
@@ -132,7 +132,7 @@ func TestIsResidentPathAndKind(t *testing.T) {
 			t.Errorf("IsResidentPath(%q) = true", path)
 		}
 	}
-	if !IsResidentKind("efforts") || !IsResidentKind("worktrees") {
+	if !IsResidentKind("efforts") || !IsResidentKind("worktrees") || !IsResidentKind("effort-archive") {
 		t.Error("an owned root name is not recognised as a resident render kind")
 	}
 	if IsResidentKind("hooks") || IsResidentKind("") {

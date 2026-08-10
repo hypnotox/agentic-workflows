@@ -77,6 +77,7 @@ var registry = []Migration{
 	{To: 39, Name: "drop-selection", Apply: treeOnly(applyDropSelection)},
 	{To: 40, Name: "retire-plan-resync-selection", Apply: treeOnly(applyRetirePlanResync)},
 	{To: globalTopicPathOwnershipGeneration, Name: "global-topic-path-ownership", Apply: treeOnly(applyGlobalTopicPathOwnership)},
+	{To: 42, Name: "effort-archive-root", Apply: treeOnly(applyEffortArchiveRoot)},
 }
 
 // treeOnly adapts a migration that only rewrites the config tree to the
@@ -108,6 +109,10 @@ func applyCurrentStateTopicSubstrate(root string, w *Changes) error {
 		return out, nil
 	})
 }
+
+// applyEffortArchiveRoot creates a schema boundary for the archive marker.
+// Ordinary upgrade sync owns publication of the governed output and lock.
+func applyEffortArchiveRoot(_ string, _ *Changes) error { return nil }
 
 // Current is the current schema generation (the highest registered To).
 func Current() int { return registry[len(registry)-1].To }
