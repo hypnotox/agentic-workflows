@@ -212,3 +212,13 @@ implementation.
   applied because Phase 3 explicitly owns the one complete user-visible no-clobber correction after
   ADR serialization lands; Phase 2's authored and rendered current-state claims already travel with
   its nonterminal partial implementation.
+- Phase 3 review settlement: the phase-owner response was truncated before its explicit deviation
+  field. Review inferred that the initial subprocess proof widened a race interval rather than
+  synchronizing at the publication boundary, process-exit and Windows-alias evidence was incomplete,
+  and reachable fault paths were over-excluded. The settlement removes the timing amplifier and
+  composes deterministic lock-span and publication-collision units with isolated-cache cross-process
+  creator and process-death contention proofs. It also proves persistent SHA-256 lock identity and
+  permissions, Windows final-path and case canonicalization, released-target corpus-source census,
+  reachable canonicalization and cache failures, wrapped cleanup errors, and current claim markers.
+  This changes proof shape and test confinement only; the approved runtime boundary and behavior are
+  unchanged.

@@ -813,12 +813,13 @@ func TestADRScaffoldProcess(t *testing.T) {
 	}
 }
 
-func startScaffoldProcess(t *testing.T, dir, title string, pending bool) (stdin io.WriteCloser, command *exec.Cmd, result string) {
+func startScaffoldProcess(t *testing.T, dir, title string, pending bool, cacheRoot string) (stdin io.WriteCloser, command *exec.Cmd, result string) {
 	t.Helper()
 	result = filepath.Join(t.TempDir(), "result.json")
 	command = exec.Command(os.Args[0], "-test.run=^TestADRScaffoldProcess$")
 	command.Env = append(os.Environ(), "ADR_SCAFFOLD_PROCESS=1", "ADR_SCAFFOLD_DIR="+dir,
-		"ADR_SCAFFOLD_TITLE="+title, "ADR_SCAFFOLD_RESULT="+result)
+		"ADR_SCAFFOLD_TITLE="+title, "ADR_SCAFFOLD_RESULT="+result,
+		"XDG_CACHE_HOME="+cacheRoot, "HOME="+cacheRoot, "LOCALAPPDATA="+cacheRoot)
 	if pending {
 		command.Env = append(command.Env, "ADR_SCAFFOLD_PENDING=1")
 	}
@@ -868,27 +869,13 @@ func finishScaffoldProcesses(t *testing.T, firstIn, secondIn io.WriteCloser, fir
 	return results
 }
 
-func writeConcurrentTemplate(t *testing.T, dir string) {
-	t.Helper()
-	writeTemplateFixture(t, dir)
-	data, err := os.ReadFile(filepath.Join(dir, "template.md"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	// Make the post-corpus preparation interval long enough that the unlocked
-	// implementation exposes the allocation race without timing sleeps.
-	data = append(data, []byte(strings.Repeat("x", 4<<20))...)
-	if err := os.WriteFile(filepath.Join(dir, "template.md"), data, 0o644); err != nil {
-		t.Fatal(err)
-	}
-}
-
 // invariant: adr-system/adr-lifecycle:adr-new-sequential-numbering (TestNewFileConcurrentNumberedCreators)
 func TestNewFileConcurrentNumberedCreators(t *testing.T) {
 	dir := t.TempDir()
-	writeConcurrentTemplate(t, dir)
-	firstIn, first, firstResult := startScaffoldProcess(t, dir, "First Creator", false)
-	secondIn, second, secondResult := startScaffoldProcess(t, dir, "Second Creator", false)
+	cache := t.TempDir()
+	writeTemplateFixture(t, dir)
+	firstIn, first, firstResult := startScaffoldProcess(t, dir, "First Creator", false, cache)
+	secondIn, second, secondResult := startScaffoldProcess(t, dir, "Second Creator", false, cache)
 	results := finishScaffoldProcesses(t, firstIn, secondIn, first, second, firstResult, secondResult)
 	for _, result := range results {
 		if result.Error != "" {
@@ -904,12 +891,12 @@ func TestNewFileConcurrentNumberedCreators(t *testing.T) {
 	}
 }
 
-// invariant: adr-system/adr-lifecycle:adr-new-no-overwrite (TestNewPendingFileConcurrentCreators)
 func TestNewPendingFileConcurrentCreators(t *testing.T) {
 	dir := t.TempDir()
-	writeConcurrentTemplate(t, dir)
-	firstIn, first, firstResult := startScaffoldProcess(t, dir, "One Pending", true)
-	secondIn, second, secondResult := startScaffoldProcess(t, dir, "One Pending", true)
+	cache := t.TempDir()
+	writeTemplateFixture(t, dir)
+	firstIn, first, firstResult := startScaffoldProcess(t, dir, "One Pending", true, cache)
+	secondIn, second, secondResult := startScaffoldProcess(t, dir, "One Pending", true, cache)
 	results := finishScaffoldProcesses(t, firstIn, secondIn, first, second, firstResult, secondResult)
 	successes := 0
 	for _, result := range results {
@@ -941,9 +928,10 @@ func TestNewFileConcurrentAliasCreators(t *testing.T) {
 	if err := os.Symlink(dir, alias); err != nil {
 		t.Skipf("symlink aliases unavailable: %v", err)
 	}
-	writeConcurrentTemplate(t, dir)
-	firstIn, first, firstResult := startScaffoldProcess(t, dir, "Resolved Creator", false)
-	secondIn, second, secondResult := startScaffoldProcess(t, alias, "Alias Creator", false)
+	cache := t.TempDir()
+	writeTemplateFixture(t, dir)
+	firstIn, first, firstResult := startScaffoldProcess(t, dir, "Resolved Creator", false, cache)
+	secondIn, second, secondResult := startScaffoldProcess(t, alias, "Alias Creator", false, cache)
 	results := finishScaffoldProcesses(t, firstIn, secondIn, first, second, firstResult, secondResult)
 	for _, result := range results {
 		if result.Error != "" {

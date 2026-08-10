@@ -2,6 +2,7 @@ package adr
 
 import (
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -22,7 +23,7 @@ func acquireScaffoldLock(dir string) (func() error, error) {
 		return nil, fmt.Errorf("locate ADR lock cache: %w", err)
 	}
 	cache = filepath.Join(cache, "awf", "adr-locks")
-	if err := os.MkdirAll(cache, 0o700); err != nil { // coverage-ignore: cache creation faults require host storage or permission failure
+	if err := os.MkdirAll(cache, 0o700); err != nil {
 		return nil, fmt.Errorf("create ADR lock cache %s: %w", cache, err)
 	}
 	if err := os.Chmod(cache, 0o700); err != nil { // coverage-ignore: chmod of this user-owned cache needs a host filesystem fault
@@ -34,8 +35,7 @@ func acquireScaffoldLock(dir string) (func() error, error) {
 		return nil, fmt.Errorf("lock ADR decisions directory %s: %w", identity, err)
 	}
 	if err := os.Chmod(lock.Path(), 0o600); err != nil { // coverage-ignore: chmod of the just-created lock needs a host filesystem fault
-		unlockErr := lock.Close()
-		return nil, fmt.Errorf("restrict ADR lock file %s: %w", lock.Path(), fmt.Errorf("%w; unlock: %w", err, unlockErr))
+		return nil, fmt.Errorf("restrict ADR lock file %s: %w", lock.Path(), errors.Join(err, lock.Close()))
 	}
 	return lock.Close, nil
 }
