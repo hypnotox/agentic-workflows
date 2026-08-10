@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-10
 adrs: [260]
-status: Proposed
+status: Implemented
 ---
 # Plan: Implementation Verification Checkout
 

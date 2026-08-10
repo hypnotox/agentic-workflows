@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-0260: Verification checkout for implementation commit policy](0260-verification-checkout-for-implementation-commit-policy.md) (Implementing)
+_No decisions are in flight._
 
 ## History
 
@@ -265,4 +265,5 @@
 - [ADR-0257: Global Topic Path Ownership](0257-global-topic-path-ownership.md) (Implemented)
 - [ADR-0258: Atomic Exclusive Artifact Publication](0258-atomic-exclusive-artifact-publication.md) (Implemented)
 - [ADR-0259: Archive Finished Efforts and Permit Effort Scratch Data](0259-archive-finished-efforts-and-permit-effort-scratch-data.md) (Implemented)
+- [ADR-0260: Verification checkout for implementation commit policy](0260-verification-checkout-for-implementation-commit-policy.md) (Implemented)
 - [ADR-0261: Bound Native Git Fixtures](0261-bound-native-git-fixtures.md) (Implemented)

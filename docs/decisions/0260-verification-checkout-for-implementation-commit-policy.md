@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: verification-checkout-for-implementation-commit-policy
-status: Implementing
+status: Implemented
 date: 2026-08-10
 ---
 # ADR-0260: Verification checkout for implementation commit policy
@@ -109,3 +109,4 @@ commit-parent policy.
 - 2026-08-10: Reapplied; operations: update `rendering/pi-runtime:pi-implementation-state-boundary`
 - 2026-08-10: Amended; content-sha256: b17edec247eba508ae87b0380567533fc31215902d81fcfa6dd8c7ca45d08e25
 - 2026-08-10: Reapplied; operations: update `rendering/pi-runtime:pi-implementation-state-boundary`
+- 2026-08-10: Implemented; content-sha256: b17edec247eba508ae87b0380567533fc31215902d81fcfa6dd8c7ca45d08e25
