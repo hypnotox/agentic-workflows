@@ -175,8 +175,9 @@ func (s *Service) Finish(ctx context.Context, slug string) (FinishResult, error)
 			if err := syncDirectory(s.paths.efforts); err != nil { // coverage-ignore: injected root-fsync covers this kernel boundary
 				return result, partialFinish(result, fmt.Errorf("sync efforts root after finishing rename: %w", err), retryFinish(slug))
 			}
+			result.SourceSynced = true
 		}
-		return s.archiveReservation(slug, tombstone, true)
+		return s.archiveReservation(slug, tombstone, result)
 	} else if !errors.Is(err, os.ErrNotExist) { // coverage-ignore: local lstat reports an inode or os.ErrNotExist absent a kernel fault
 		return FinishResult{}, fmt.Errorf("inspect active effort %s: %w", active, err)
 	}
@@ -190,7 +191,7 @@ func (s *Service) Finish(ctx context.Context, slug string) (FinishResult, error)
 	if len(tombstones) != 1 {
 		return FinishResult{}, &CorruptError{Path: s.paths.efforts, Err: fmt.Errorf("multiple finishing reservations match slug %q", slug)}
 	}
-	return s.archiveReservation(slug, tombstones[0], false)
+	return s.archiveReservation(slug, tombstones[0], newFinishResult(FinishStateReserved, false, ""))
 }
 
 func (s *Service) validateArchive() error {
@@ -252,18 +253,17 @@ func newFinishResult(state FinishResidentState, reserved bool, archivePath strin
 	}
 }
 
-func (s *Service) archiveReservation(slug, tombstone string, reserved bool) (FinishResult, error) {
+func (s *Service) archiveReservation(slug, tombstone string, result FinishResult) (FinishResult, error) {
 	record, err := s.store.loadDirectory(tombstone, slug, true)
 	if err != nil {
-		return FinishResult{State: FinishStateReserved, Reserved: reserved}, err
+		return result, err
 	}
 	want := filepath.Join(s.paths.efforts, tombstoneName(record))
 	if filepath.Clean(want) != filepath.Clean(tombstone) {
-		return FinishResult{State: FinishStateReserved, Reserved: reserved}, &CorruptError{Path: tombstone, Err: errors.New("finishing name does not match stored slug and UUID")}
+		return result, &CorruptError{Path: tombstone, Err: errors.New("finishing name does not match stored slug and UUID")}
 	}
 	destination := s.paths.archive(record)
-	publicDestination := s.paths.publicArchivePath(record)
-	result := newFinishResult(FinishStateReserved, reserved, publicDestination)
+	result.ArchivePath = s.paths.publicArchivePath(record)
 	if err := s.requireArchiveDestinationAbsent(record, result); err != nil {
 		return result, err
 	}
@@ -275,6 +275,7 @@ func (s *Service) archiveReservation(slug, tombstone string, reserved bool) (Fin
 	}
 	result.State = FinishStateArchived
 	result.Archived = true
+	result.SourceSynced = false
 	if result.DestinationSyncAvailable {
 		if err := s.store.hit("finish.archive-parent-fsync"); err != nil {
 			return result, partialFinish(result, fmt.Errorf("archive destination parent sync failed after move: %w", err), archiveInspectionActions(tombstone, destination))

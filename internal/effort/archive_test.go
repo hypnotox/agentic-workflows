@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -115,8 +116,13 @@ func TestFinishRefusesActiveArchiveCollisionWithoutMutation(t *testing.T) {
 	}
 	result, err := service.Finish(testContext(t), record.Slug)
 	var partial *PartialFinishError
-	if err == nil || result.State != FinishStateActive || result.Archived || !errors.As(err, &partial) || len(partial.Actions) != 3 || !strings.Contains(partial.Actions[0].Text, filepath.Join("efforts", record.Slug)) || !strings.Contains(partial.Actions[2].Text, "before retrying") {
-		t.Fatalf("collision result=%#v err=%v partial=%#v", result, err, partial)
+	wantActions := []RecoveryAction{
+		{Text: "inspect " + filepath.Join(root, ".awf", "efforts", record.Slug)},
+		{Text: "inspect " + destination},
+		{Text: "preserve both residents and resolve the collision manually before retrying"},
+	}
+	if err == nil || result.State != FinishStateActive || result.Archived || !errors.As(err, &partial) || partial.Result != result || !reflect.DeepEqual(partial.Actions, wantActions) {
+		t.Fatalf("collision result=%#v err=%v partial=%#v, want actions %#v", result, err, partial, wantActions)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".awf", "efforts", record.Slug)); err != nil {
 		t.Fatalf("active resident changed: %v", err)
@@ -277,7 +283,7 @@ func TestFinishReservationCorruptionAndPublicationRacePreserveBytes(t *testing.T
 		if result, err := service.Finish(testContext(t), record.Slug); err == nil || result != (FinishResult{}) || !strings.Contains(err.Error(), "does not match") {
 			t.Fatalf("mismatched reservation discovery result=%#v err=%v", result, err)
 		}
-		if result, err := service.archiveReservation(record.Slug, to, false); err == nil || result.State != FinishStateReserved || !strings.Contains(err.Error(), "does not match") {
+		if result, err := service.archiveReservation(record.Slug, to, newFinishResult(FinishStateReserved, false, "")); err == nil || result.State != FinishStateReserved || !strings.Contains(err.Error(), "does not match") {
 			t.Fatalf("mismatched reservation publication result=%#v err=%v", result, err)
 		}
 	})
@@ -301,10 +307,17 @@ func TestFinishReservationCorruptionAndPublicationRacePreserveBytes(t *testing.T
 		}
 		destination = filepath.Join(root, ".awf", "effort-archive", record.ID+"-"+record.Slug)
 		result, err := service.Finish(testContext(t), record.Slug)
-		if err == nil || result.State != FinishStateReserved || result.Archived {
-			t.Fatalf("publication race result=%#v err=%v", result, err)
+		var partial *PartialFinishError
+		source := filepath.Join(root, ".awf", "efforts", tombstoneName(record))
+		wantActions := []RecoveryAction{
+			{Text: "inspect " + source},
+			{Text: "inspect " + destination},
+			{Text: "resolve the destination collision or filesystem boundary before retrying"},
 		}
-		if _, err := os.Stat(filepath.Join(root, ".awf", "efforts", tombstoneName(record))); err != nil {
+		if err == nil || result.State != FinishStateReserved || result.Archived || result.SourceSynced != directorySyncAvailable() || !errors.As(err, &partial) || partial.Result != result || !reflect.DeepEqual(partial.Actions, wantActions) {
+			t.Fatalf("publication race result=%#v err=%v partial=%#v, want actions %#v", result, err, partial, wantActions)
+		}
+		if _, err := os.Stat(source); err != nil {
 			t.Fatalf("reservation changed: %v", err)
 		}
 	})
