@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-user-approved-production-code-implementation-outlines: User-Approved Production-Code Implementation Outlines](user-approved-production-code-implementation-outlines.md) (Proposed)
 
 ## History
 
