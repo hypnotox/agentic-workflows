@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: user-approved-production-code-implementation-outlines
-status: Proposed
+status: Accepted
 date: 2026-08-11
 ---
 # ADR-user-approved-production-code-implementation-outlines: User-Approved Production-Code Implementation Outlines
@@ -98,3 +98,4 @@ their parent supplies instead of introducing an unreachable approval interaction
 ## Status history
 
 - 2026-08-11: Proposed
+- 2026-08-11: Accepted; content-sha256: 2f9db939ea4405e0e24591e689d2ec4e0fe18e628db4383e8234a03c43c0669f
