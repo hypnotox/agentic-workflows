@@ -7,6 +7,22 @@ import (
 	"testing"
 )
 
+func ownsEffortSwitchingPolicy(body string) bool {
+	normalized := strings.ToLower(strings.Join(strings.Fields(body), " "))
+	containsAny := func(phrases ...string) bool {
+		for _, phrase := range phrases {
+			if strings.Contains(normalized, phrase) {
+				return true
+			}
+		}
+		return false
+	}
+	return strings.Contains(normalized, "switch") &&
+		containsAny("active effort", "unfinished effort", "current effort") &&
+		containsAny("kept effort", "keep the old", "preserve the old", "resumable checkpoint") &&
+		containsAny("discontinued effort", "discontinue the old", "obsolete effort", "archive the old", "discard")
+}
+
 // invariant: rendering/workflow-skill-templates:independent-workflow-escalation (TestIndependentWorkflowEscalation)
 // invariant: rendering/workflow-skill-templates:memory-checkpoint-chain-coverage (TestIndependentWorkflowEscalation)
 // invariant: rendering/workflow-skill-templates:unified-effort-workflow-coverage (TestIndependentWorkflowEscalation)
@@ -15,6 +31,13 @@ import (
 // invariant: rendering/workflow-skill-templates:phase-transaction-ownership (TestIndependentWorkflowEscalation)
 // invariant: rendering/pi-workflows:pi-session-handoff-workflow (TestIndependentWorkflowEscalation)
 func TestIndependentWorkflowEscalation(t *testing.T) {
+	if !ownsEffortSwitchingPolicy("When a current effort is active, switch only after deciding to preserve the old work with a resumable checkpoint or discard and archive the old obsolete effort.") {
+		t.Fatal("paraphrased duplicate switching owner was not classified as policy ownership")
+	}
+	if ownsEffortSwitchingPolicy("When another effort is active, invoke effort-workflow for deliberate switching.") {
+		t.Fatal("non-owning switching reference was classified as policy ownership")
+	}
+
 	cat := loadCatalog(t)
 	allNames := make([]string, 0, len(cat.Skills))
 	for name := range cat.Skills {
@@ -58,6 +81,9 @@ func TestIndependentWorkflowEscalation(t *testing.T) {
 			assertOrderedPhrases(t, effort,
 				"Before intentionally discarding obsolete dirty or unmerged topology",
 				"inspect the", "repository identity and worktree state", "then use existing native Git safety primitives explicitly")
+			if !ownsEffortSwitchingPolicy(effort) {
+				t.Errorf("%s effort-workflow does not own the complete switching policy", target)
+			}
 			for _, name := range allNames {
 				if name == "effort-workflow" {
 					continue
@@ -67,10 +93,8 @@ func TestIndependentWorkflowEscalation(t *testing.T) {
 						t.Errorf("%s %s duplicates effort lifecycle command %q", target, name, forbidden)
 					}
 				}
-				for _, forbidden := range []string{"When a different unfinished effort is active", "For a kept effort", "For a discontinued effort", "native Git safety primitives explicitly"} {
-					if strings.Contains(bodies[name], forbidden) {
-						t.Errorf("%s %s duplicates effort switching policy %q", target, name, forbidden)
-					}
+				if ownsEffortSwitchingPolicy(bodies[name]) {
+					t.Errorf("%s %s duplicates effort switching policy", target, name)
 				}
 			}
 

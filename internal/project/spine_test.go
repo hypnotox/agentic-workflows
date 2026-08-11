@@ -2054,22 +2054,60 @@ func effortSignaturePatterns() []effortSignaturePattern {
 		{"two-field confirmation", regexp.MustCompile("labeled outcome and " + `(proposed )?(effort )?title`)},
 		{"two-field confirmation", regexp.MustCompile("confirms? the " + `pair`)},
 		{"two-field confirmation", regexp.MustCompile("both " + `fields`)},
-		{"creation confirmation request", regexp.MustCompile(`[Aa]sk[^\r\n]{0,60}` + `user[^\r\n]{0,40}confirm[^\r\n]{0,80}(outcome|title|slug|fields?|creation)`)},
-		{"turn-ending creation authorization", regexp.MustCompile(`[Ee]nd[^\r\n]{0,20}` + `turn[^\r\n]{0,80}(without (creating|mutation)|before (creating|creation)|creation authorization)`)},
-		{"later-response creation authorization", regexp.MustCompile(`(clear )?response in a ` + `later turn[^\r\n]{0,80}(confirm|permit|creation)`)},
-		{"later-response creation authorization", regexp.MustCompile(`later user ` + `response[^\r\n]{0,80}(confirm|permit|creation)`)},
-		{"repeated creation authorization", regexp.MustCompile(`[Rr]econfirm[^\r\n]{0,80}` + `(outcome|title|slug|fields?|creation|effort)`)},
-		{"repeated creation authorization", regexp.MustCompile(`confirm all three ` + `fields again`)},
 	}
+}
+
+func obsoleteCreationPolicyPatterns() []effortSignaturePattern {
+	return []effortSignaturePattern{
+		{"creation confirmation request", regexp.MustCompile(`(?is)[Aa]sk[\s\S]{0,80}user[\s\S]{0,60}confirm[\s\S]{0,100}(outcome|title|slug|fields?|creation)`)},
+		{"turn-ending creation authorization", regexp.MustCompile(`(?is)[Ee]nd[\s\S]{0,40}turn[\s\S]{0,100}(without\s+(creating|mutation)|before\s+(creating|creation)|creation\s+authorization)`)},
+		{"later-response creation authorization", regexp.MustCompile(`(?is)(clear\s+)?response\s+in\s+a\s+later\s+turn[\s\S]{0,100}(confirm|permit|creation)`)},
+		{"later-response creation authorization", regexp.MustCompile(`(?is)later\s+user\s+response[\s\S]{0,100}(confirm|permit|creation)`)},
+		{"repeated creation authorization", regexp.MustCompile(`(?is)[Rr]econfirm[\s\S]{0,100}(outcome|title|slug|fields?|creation|effort)`)},
+		{"repeated creation authorization", regexp.MustCompile(`(?is)confirm\s+all\s+three\s+fields\s+again`)},
+	}
+}
+
+func effortPolicySurface(relative string) bool {
+	relative = filepath.ToSlash(relative)
+	if relative == "AGENTS.md" || relative == "README.md" {
+		return true
+	}
+	for _, prefix := range []string{".awf/parts/", ".awf/docs/", ".awf/skills/", ".awf/topics/", "templates/", "docs/", ".pi/", ".claude/", "examples/"} {
+		if strings.HasPrefix(relative, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+func negatedCreationPolicy(raw []byte, matchStart int) bool {
+	start := matchStart - 160
+	if start < 0 {
+		start = 0
+	}
+	prefix := string(raw[start:matchStart])
+	if boundary := strings.LastIndexAny(prefix, ".;:!?"); boundary >= 0 {
+		prefix = prefix[boundary+1:]
+	}
+	prefix = strings.ToLower(strings.Join(strings.Fields(prefix), " "))
+	for _, negation := range []string{"do not", "don't", "never", "must not", "no"} {
+		if prefix == negation || strings.HasSuffix(prefix, negation) || strings.Contains(prefix, negation+" ") {
+			return true
+		}
+	}
+	return false
 }
 
 func activeEffortSignatureFindings(t *testing.T, root string) []effortSignatureFinding {
 	t.Helper()
-	patterns := effortSignaturePatterns()
 	var findings []effortSignatureFinding
-	scan := func(relative string, raw []byte) {
+	scanPatterns := func(relative string, raw []byte, patterns []effortSignaturePattern, allowNegated bool) {
 		for _, candidate := range patterns {
 			for _, match := range candidate.pattern.FindAllIndex(raw, -1) {
+				if allowNegated && negatedCreationPolicy(raw, match[0]) {
+					continue
+				}
 				lineStart := bytes.LastIndexByte(raw[:match[0]], '\n') + 1
 				lineEnd := bytes.IndexByte(raw[match[0]:], '\n')
 				if lineEnd < 0 {
@@ -2082,6 +2120,12 @@ func activeEffortSignatureFindings(t *testing.T, root string) []effortSignatureF
 					offset: match[0], contract: candidate.contract, lineText: string(raw[lineStart:lineEnd]),
 				})
 			}
+		}
+	}
+	scan := func(relative string, raw []byte) {
+		scanPatterns(relative, raw, effortSignaturePatterns(), false)
+		if effortPolicySurface(relative) {
+			scanPatterns(relative, raw, obsoleteCreationPolicyPatterns(), true)
 		}
 	}
 	historical := func(relative string) bool {
@@ -2202,24 +2246,17 @@ func TestActiveEffortCreationSignaturesStaySynchronized(t *testing.T) {
 		{"labeled outcome and " + "proposed title receive", "two-field confirmation"},
 		{"confirms the " + "pair", "two-field confirmation"},
 		{"both " + "fields", "two-field confirmation"},
-		{
-			"ask the " +
-				"user to confirm all three fields before creation",
-			"creation confirmation request",
-		},
-		{
-			"end the " +
-				"turn without creating an effort",
-			"turn-ending creation authorization",
-		},
-		{"clear response in a " + "later turn confirms creation", "later-response creation authorization"},
-		{"later user " + "response permits creation", "later-response creation authorization"},
-		{
-			"reconfirm the " +
-				"effort title after context loss",
-			"repeated creation authorization",
-		},
-		{"confirm all three " + "fields again before creation", "repeated creation authorization"},
+	}
+	policyCases := []struct {
+		body     string
+		contract string
+	}{
+		{"ask the\nuser to confirm all three fields before creation", "creation confirmation request"},
+		{"end the\nturn without creating an effort", "turn-ending creation authorization"},
+		{"clear response in a\nlater turn confirms creation", "later-response creation authorization"},
+		{"later user\nresponse permits creation", "later-response creation authorization"},
+		{"reconfirm the\neffort title after context loss", "repeated creation authorization"},
+		{"confirm all three\nfields again before creation", "repeated creation authorization"},
 	}
 	var expected []string
 	for index, test := range cases {
@@ -2227,6 +2264,18 @@ func TestActiveEffortCreationSignaturesStaySynchronized(t *testing.T) {
 		writeFixture(path, test.body)
 		expected = append(expected, fmt.Sprintf("%s:1:0: %s", path, test.contract))
 	}
+	for index, test := range policyCases {
+		path := fmt.Sprintf("templates/policy-stale-%d.md", index)
+		writeFixture(path, test.body)
+		expected = append(expected, fmt.Sprintf("%s:1:0: %s", path, test.contract))
+	}
+	writeFixture("templates/policy-compliant.md", strings.Join([]string{
+		"Do not ask the user to confirm creation.",
+		"Never end the turn for creation authorization.",
+		"No clear response in a later turn permits creation.",
+		"Do not reconfirm the effort title.",
+		"Never confirm all three fields again.",
+	}, "\n"))
 	multiplePath := "cmd/stale-multiple.md"
 	multiple := cases[5].body + " / " + cases[5].body + "\n" + cases[5].body
 	writeFixture(multiplePath, multiple)
