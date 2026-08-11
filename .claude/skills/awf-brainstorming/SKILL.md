@@ -10,7 +10,7 @@ description: Use before hand-authored production-code changes and when work need
 <!-- awf:template-source templates/skills/brainstorming/SKILL.md.tmpl -->
 # awf-brainstorming
 
-Brainstorming is the sole workflow owner of concise implementation outlines and fuller material-choice design: it owns clarification, design exploration, proportionate presentation, conditional grounding invocation, and explicit outline approval. It does not create an effort or require one.
+Brainstorming is the sole workflow owner of concise implementation outlines and fuller material-choice design: it owns clarification, design exploration, proportionate presentation, conditional grounding invocation, and the explicit pre-artifact outline approval. It does not create an effort or require one.
 
 <!-- awf:template-source templates/skills/brainstorming/SKILL.md.tmpl#when-to-invoke -->
 <!-- awf:edit when-to-invoke: default; create .awf/skills/parts/brainstorming/when-to-invoke.md to override -->
@@ -56,8 +56,8 @@ Do not create a separate specification. Put a choice in an ADR only when it rema
 Present the complete design or concise implementation outline after any grounding findings are resolved, explicitly request approval, and stop. If the user requests changes, revise and re-present without recursively grounding unless changed facts newly warrant it. Once approved, independently evaluate the ADR, plan, continuity, and implementation-review triggers; no later mechanism is automatic.
 
 <!-- awf:template-source templates/partials/checkpoint-approval.md -->
-**Mandatory approval checkpoint.**
-1. Present the completed design or ADR summary and explicitly request user approval, then stop and wait. This approval boundary never creates an effort.
+**Mandatory pre-artifact outline approval.**
+1. Before ADR or plan authoring for a hand-authored production-code change, present the completed design or proportionate implementation outline, explicitly request user approval, then stop and wait. This approval boundary never creates an effort.
 2. If an effort already owns the outcome, validate its immutable slug and exact primary-root-relative `.awf/efforts/<slug>/memory.md`, confirm either legacy `Effort: <slug>` or canonical `effort: <slug>` identity (the canonical form is YAML; the legacy form is deprecated and remains only until active efforts finish), preserve one user-managed writer, and in one writer-owned tool batch run exactly one `./awf effort memory update <slug> --phase "<completed phase>" --next "<immediate next action>"`; it is the sole writer of phase, next action, and time. Persist the presented summary separately before the request. If continuity did not warrant an effort, omit effort and memory fields rather than fabricating them.
 3. If the user rejects or requests changes, revise and persist when applicable, regenerate the summary, explicitly request approval again, then stop. After explicit approval, persist the approval and next action when an effort exists before continuing.
 4. Continue only after the clear later approval response. An executable `awf read plan` projection never creates a checkpoint or handoff boundary. Continue through the target-native successor without claiming session replacement. Repository authority, the one-writer contract, and the full memory protocol live in the workflow doc.

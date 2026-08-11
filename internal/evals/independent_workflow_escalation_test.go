@@ -129,7 +129,11 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 		assertContainsAll(t, target+" brainstorming approval", brainstorming, "Present the complete design", "explicitly request approval", "stop", "clear later approval response")
 		assertOrderedPhrases(t, brainstorming, "Present the complete design", "explicitly request approval", "stop", "clear later approval response")
 		adrReview := read(t, path("reviewing-adr"))
-		assertContainsAll(t, target+" ADR approval", adrReview, "approval", "stop")
+		assertContainsAll(t, target+" autonomous ADR hand-off", adrReview,
+			"After the review settles", "run `awf context --show references", "ordinary `"+evalPrefix+"-reviewing-plan`")
+		if strings.Contains(adrReview, "Stop for approval") || strings.Contains(adrReview, "settled ADR is the mandatory approval check-in") {
+			t.Errorf("%s ADR review retains a settled-ADR approval stop", target)
+		}
 		effort := read(t, path("effort-workflow"))
 		assertContainsAll(t, target+" effort confirmation", effort, "`Outcome:", "`Effort title:", "`Effort slug:", "clear response in a later turn")
 		assertOrderedPhrases(t, effort, "`Outcome: <confirmed outcome>`", "`Effort title: <proposed title>`", "`Effort slug: <proposed-short-slug>`", "clear response in a later turn", "awf effort new --slug <confirmed-slug>")

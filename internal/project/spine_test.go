@@ -1812,7 +1812,7 @@ func TestLinkedPlanReviewFreshness(t *testing.T) {
 			t.Errorf("ordinary ADR review missing %q", want)
 		}
 	}
-	assertOrderedPhrases(t, adr, "review converges", "After approval, run `awf context --show references <explicit-ADR-path>`", "Invoke ordinary `example-reviewing-plan` separately for every linked plan")
+	assertOrderedPhrases(t, adr, "review converges", "After the review settles, run `awf context --show references <explicit-ADR-path>`", "Invoke ordinary `example-reviewing-plan` separately for every linked plan")
 	if _, ok := catalog.Standard.Skills["reviewing-plan-"+"resync"]; ok {
 		t.Fatal("retired plan review skill remains in the live catalog")
 	}
@@ -2750,8 +2750,8 @@ func TestAuthorityGuidedReviewRemediation(t *testing.T) {
 		"Apply mechanical corrections directly and reasoned corrections with a concise rationale, autonomously",
 		"single semantic home",
 		"routes it rather than redefining it",
-		"route it through the existing grounded-design or ADR workflow",
-		"pauses only at that workflow's mandatory approval boundary",
+		"route a new material decision or changed approved boundary through brainstorming before ADR mutation",
+		"pauses at brainstorming's pre-artifact outline approval boundary",
 		"Exactly one fresh verify-pass dispatch is retained",
 		"without dispatching another same-artifact review loop",
 		"A consensus deviation remains a user decision.",

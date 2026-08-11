@@ -94,7 +94,7 @@ If continuity independently fired, validate the fixed effort identity and exact 
 <!-- awf:template-source templates/skills/proposing-adr/SKILL.md.tmpl#autonomous-rule -->
 <!-- awf:edit autonomous-rule: default; create .awf/skills/parts/proposing-adr/autonomous-rule.md to override -->
 <!-- awf:template-source templates/skills/proposing-adr/SKILL.md.tmpl -->
-7. **Autonomous continuation into review.** After the commit, continue into ADR review without waiting for approval; the mandatory approval check-in lives at the end of that review, once the ADR settles.
+7. **Autonomous continuation into review.** After the commit, continue into ADR review without waiting for approval. The approved pre-artifact outline remains the sole routine user checkpoint for this boundary.
 
 <!-- awf:template-source templates/skills/proposing-adr/SKILL.md.tmpl#terminal-step -->
 <!-- awf:edit terminal-step: default; create .awf/skills/parts/proposing-adr/terminal-step.md to override -->
