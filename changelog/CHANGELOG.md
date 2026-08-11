@@ -16,6 +16,8 @@ query a single version or a range.
 
 - Pitfalls now publish as a compact title-sorted metadata index with domain and Unassigned navigation plus one exact-source generated leaf per entry. The complete family participates in working and staged output plans, lock, drift, backup, and deletion pruning.
 
+- `awf new pitfall "<Title>"` now creates one canonical authored `.awf/docs/pitfalls/<slug>.md` source exclusively, reports its repository-relative path, and never renders or mutates another registry. Duplicate titles and a selected-path race refuse; a later retry reloads the corpus and chooses the first free deterministic suffix. Deleting the authored source retires its generated index row and leaf through ordinary render pruning.
+
 ### Bug fixes
 
 - Pi implementation commit policy now accepts an explicit same-repository verification checkout, so commits in an awf-managed worktree are verified there without changing parent or child Pi CWD. Invalid explicit identities refuse before dispatch, forbidden commits use the same selected checkout, and unchanged-HEAD failures name the checkout and retry field.

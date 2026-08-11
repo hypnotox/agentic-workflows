@@ -37,8 +37,8 @@ For materially larger work, ask the user whether to
 perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated.
 No safety bypasses. No incidental refactors riding along; one concern per commit. No speculative shims.
 
-<!-- awf:edit pitfalls-check: default; create .awf/skills/parts/bugfix/pitfalls-check.md to override -->
-   Before writing the fix, check `docs/pitfalls.md` for known-tricky areas: the pitfalls list catalogues recurring traps; verify the fix is not re-introducing one that bit before.
+<!-- awf:edit pitfalls-check: from .awf/skills/parts/bugfix/pitfalls-check.md -->
+Before writing the fix, read the compact generated pitfall index at `docs/pitfalls.md`, then open only relevant linked leaves for known-tricky areas; verify the fix is not re-introducing one that bit before.
 
 
 3. **Verify via the gates.** `./x gate` is the default.

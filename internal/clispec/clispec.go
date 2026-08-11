@@ -300,11 +300,11 @@ var Commands = []Command{
 		Help: Help{Usage: []string{"awf topic <domain>/<topic>[:<claim>] [flags]"}, Description: "Query one current-state topic or claim, active by default. Default output includes", Details: []string{"title and summary for a topic plus claim types, prose, and backing state. Detail", "flags are independent and direct-only. A removed claim identity resolves only", "with --history and returns operation history without an active tombstone. Outside", "an awf project, a static command reference prints without version gating."}, Positionals: []HelpItem{{Name: "<domain>/<topic>[:<claim>]", Description: "current-state topic or claim identifier"}}, Options: []HelpItem{{Name: "--history", Description: "add direct Origin, Revised-by, and Removed-by ADR details"}, {Name: "--references", Description: "add sorted direct incoming and outgoing claim IDs"}, {Name: "--coverage", Description: "add separate domain/topic scopes, current matches, and marker sites"}}},
 	},
 	{
-		Name: "new", Summary: "Scaffold a new artifact: kind ∈ {adr, plan, topic, domain}",
+		Name: "new", Summary: "Scaffold a new artifact: kind in {adr, plan, topic, domain, pitfall}",
 		MaxPos: -1, Gating: GatedInHandler,
 		Help: Help{
 			Usage:       []string{"awf new <kind> <args>"},
-			Description: "Scaffold a new artifact. The kind is adr, plan, topic, or domain.",
+			Description: "Scaffold a new artifact. The kind is adr, plan, topic, domain, or pitfall.",
 			Positionals: []HelpItem{
 				{Name: "<kind>", Description: "artifact kind"},
 				{Name: "<args>", Description: "arguments required by the selected kind"},
@@ -314,6 +314,7 @@ var Commands = []Command{
 				"awf new plan \"Some Plan Title\"",
 				"awf new topic <domain> \"Some Topic Title\"",
 				"awf new domain <name>",
+				"awf new pitfall \"Some Durable Hazard\"",
 			},
 			Related: []string{"awf adr number"},
 		},
@@ -333,6 +334,10 @@ var Commands = []Command{
 			{
 				Name: "domain", Summary: "Create a configured domain", MinPos: 1, MaxPos: 1,
 				Help: Help{Usage: []string{"awf new domain <name>"}, Description: "Add a domain and scaffold its current-state convention part."},
+			},
+			{
+				Name: "pitfall", Summary: "Scaffold one authored pitfall", MinPos: 1, MaxPos: 1,
+				Help: Help{Usage: []string{"awf new pitfall <title>"}, Description: "Create one canonical source exclusively under .awf/docs/pitfalls without rendering.", Details: []string{"The title is one complete positional, so quote titles containing spaces. Duplicate titles and a selected-path race are refused."}, Positionals: []HelpItem{{Name: "<title>", Description: "complete human-readable pitfall title"}}},
 			},
 		},
 	},

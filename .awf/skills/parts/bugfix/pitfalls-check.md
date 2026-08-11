@@ -1,0 +1,1 @@
+Before writing the fix, read the compact generated pitfall index at `docs/pitfalls.md`, then open only relevant linked leaves for known-tricky areas; verify the fix is not re-introducing one that bit before.

@@ -32,6 +32,36 @@ func New(entries []Entry) Corpus { return Corpus{entries: slices.Clone(entries)}
 func (c Corpus) All() []Entry    { return slices.Clone(c.entries) }
 func (c Corpus) Len() int        { return len(c.entries) }
 
+const scaffoldBody = "Describe the durable hazard, its consequence, and the safer practice.\n"
+
+// Scaffold derives one canonical authored source from the current corpus.
+func (c Corpus) Scaffold(rawTitle string) (Entry, []byte, error) {
+	title := strings.TrimSpace(rawTitle)
+	if title == "" {
+		return Entry{}, nil, errors.New("pitfall title is empty")
+	}
+	if strings.ContainsAny(rawTitle, "\r\n") {
+		return Entry{}, nil, errors.New("pitfall title contains CR or LF")
+	}
+	used := make(map[string]bool, len(c.entries))
+	for _, existing := range c.entries {
+		if EqualTitle(title, existing.Title) {
+			return Entry{}, nil, fmt.Errorf("pitfall title %q duplicates %s under Unicode whitespace and simple folding", title, existing.SourcePath)
+		}
+		used[existing.Slug] = true
+	}
+	slug, err := AllocateSlug(title, used)
+	if err != nil {
+		return Entry{}, nil, err
+	}
+	entry := Entry{Slug: slug, SourcePath: SourceDir + "/" + slug + ".md", Title: title, Body: scaffoldBody}
+	serialized, err := Serialize(entry)
+	if err != nil { // coverage-ignore: fixed nonempty scaffold body and validated title make serialization infallible
+		return Entry{}, nil, err
+	}
+	return entry, serialized, nil
+}
+
 type SourceFile struct {
 	Path    string
 	Bytes   []byte

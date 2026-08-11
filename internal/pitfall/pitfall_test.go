@@ -89,6 +89,39 @@ func TestCorpusContract(t *testing.T) {
 	}
 }
 
+func TestScaffoldUsesCorpusIdentityAndCanonicalSource(t *testing.T) {
+	corpus := New([]Entry{
+		{Slug: "durable-hazard", SourcePath: SourceDir + "/durable-hazard.md", Title: "Other"},
+		{Slug: "durable-hazard-2", SourcePath: SourceDir + "/durable-hazard-2.md", Title: "Another"},
+		{Slug: "durable-hazard-4", SourcePath: SourceDir + "/durable-hazard-4.md", Title: "Fourth"},
+	})
+	entry, source, err := corpus.Scaffold("  Durable, HAZARD!  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if entry.Slug != "durable-hazard-3" || entry.SourcePath != SourceDir+"/durable-hazard-3.md" || entry.Title != "Durable, HAZARD!" {
+		t.Fatalf("entry = %#v", entry)
+	}
+	const want = "---\ntitle: Durable, HAZARD!\n---\nDescribe the durable hazard, its consequence, and the safer practice.\n"
+	if string(source) != want {
+		t.Fatalf("source = %q, want %q", source, want)
+	}
+	for _, tc := range []struct{ title, want string }{
+		{"  ", "empty"},
+		{"index", "reserved"},
+		{"日本語", "no ASCII"},
+		{"line\nbreak", "CR or LF"},
+	} {
+		if _, _, err := corpus.Scaffold(tc.title); err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Fatalf("Scaffold(%q) error = %v, want %q", tc.title, err, tc.want)
+		}
+	}
+	duplicateCorpus := New([]Entry{{Slug: "existing", SourcePath: SourceDir + "/existing.md", Title: "Kelvin   Hazard"}})
+	if _, _, err := duplicateCorpus.Scaffold("  kelvin\tHAZARD "); err == nil || !strings.Contains(err.Error(), "duplicates") {
+		t.Fatalf("duplicate error = %v", err)
+	}
+}
+
 func TestAllocationSerializationEscapingAndLinks(t *testing.T) {
 	used := map[string]bool{"hello-world": true, "hello-world-2": true, "hello-world-4": true}
 	if got, err := AllocateSlug(" Hello, WORLD! ", used); err != nil || got != "hello-world-3" {

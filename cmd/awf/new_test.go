@@ -49,6 +49,45 @@ func TestRunNewADRError(t *testing.T) {
 	}
 }
 
+func TestRunNewPitfallScaffoldsOneAuthoredSourceWithoutRender(t *testing.T) {
+	root := scaffoldProject(t)
+	generated := filepath.Join(root, "docs", "pitfalls.md")
+	beforeGenerated := mustReadCLIFile(t, generated)
+	beforeLock := mustReadCLIFile(t, filepath.Join(root, ".awf", "awf.lock"))
+	var out bytes.Buffer
+	if err := runNew(testContext(t), root, "pitfall", []string{"CLI Hazard!"}, &out); err != nil {
+		t.Fatal(err)
+	}
+	const relative = ".awf/docs/pitfalls/cli-hazard.md"
+	if out.String() != "status: pitfall created\nauthored path: "+relative+"\n" {
+		t.Fatalf("output = %q", out.String())
+	}
+	const want = "---\ntitle: CLI Hazard!\n---\nDescribe the durable hazard, its consequence, and the safer practice.\n"
+	if got := mustReadCLIFile(t, filepath.Join(root, filepath.FromSlash(relative))); got != want {
+		t.Fatalf("source = %q, want %q", got, want)
+	}
+	if got := mustReadCLIFile(t, generated); got != beforeGenerated {
+		t.Fatal("pitfall scaffold mutated generated index")
+	}
+	if got := mustReadCLIFile(t, filepath.Join(root, ".awf", "awf.lock")); got != beforeLock {
+		t.Fatal("pitfall scaffold mutated lock")
+	}
+	for _, args := range [][]string{nil, {"split", "title"}} {
+		if err := runNew(testContext(t), root, "pitfall", args, io.Discard); err == nil || !strings.Contains(err.Error(), "usage: awf new pitfall") {
+			t.Fatalf("args %v: %v", args, err)
+		}
+	}
+	if err := runNew(testContext(t), root, "pitfall", []string{""}, io.Discard); err == nil || !strings.Contains(err.Error(), "title is empty") {
+		t.Fatalf("empty title error = %v", err)
+	}
+
+	broken := scaffoldProject(t)
+	testsupport.WriteAwfConfig(t, broken, minimalYAML+"unknown: true\n")
+	if err := runNew(testContext(t), broken, "pitfall", []string{"Title"}, io.Discard); err == nil {
+		t.Fatal("pitfall scaffold accepted a project.Open error")
+	}
+}
+
 func TestRunNewUnknownKind(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
@@ -504,6 +543,11 @@ func TestRunNewDispatch(t *testing.T) {
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "new", "adr", "Some", "Title"}, &out, &errb); code != 0 {
 		t.Fatalf("expected exit 0, got %d (%s)", code, errb.String())
+	}
+	out.Reset()
+	errb.Reset()
+	if code := run([]string{"awf", "new", "pitfall", "One Complete Title"}, &out, &errb); code != 0 {
+		t.Fatalf("pitfall dispatch: exit %d (%s)", code, errb.String())
 	}
 }
 

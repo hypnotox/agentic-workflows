@@ -1,13 +1,18 @@
 package project
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"maps"
+	"os"
+	"path/filepath"
 	"slices"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -71,6 +76,65 @@ func ScaffoldConfig(prefix string, vars map[string]string, scopes []string) ([]b
 		return nil, err
 	}
 	return out, nil
+}
+
+// NewPitfall loads the current corpus, creates one canonical source exclusively,
+// and returns project-owned presentation for its repository-relative path.
+func (p *Project) NewPitfall(title string) (presentation.Document, error) {
+	return p.newPitfallWith(title, os.MkdirAll, createPitfallExclusive)
+}
+
+func (p *Project) newPitfallWith(title string, mkdir func(string, os.FileMode) error, create func(string, []byte) error) (presentation.Document, error) {
+	corpus, err := p.loadPitfallCorpus()
+	if err != nil {
+		return presentation.Document{}, err
+	}
+	entry, source, err := corpus.Scaffold(title)
+	if err != nil {
+		return presentation.Document{}, err
+	}
+	absolute := filepath.Join(p.Root, filepath.FromSlash(entry.SourcePath))
+	if err := mkdir(filepath.Dir(absolute), 0o755); err != nil {
+		return presentation.Document{}, fmt.Errorf("create pitfall source directory: %w", err)
+	}
+	if err := create(absolute, source); err != nil {
+		return presentation.Document{}, fmt.Errorf("create pitfall source %s exclusively: %w", entry.SourcePath, err)
+	}
+	return PitfallScaffoldDocument(entry.SourcePath)
+}
+
+func createPitfallExclusive(path string, source []byte) error {
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		return err
+	}
+	written, writeErr := file.Write(source)
+	if writeErr == nil && written != len(source) { // coverage-ignore: a successful regular-file write cannot return a short count in supported filesystems
+		writeErr = io.ErrShortWrite
+	}
+	closeErr := file.Close()
+	return errors.Join(writeErr, closeErr)
+}
+
+// PitfallScaffoldDocument maps a created source path to the CLI presentation grammar.
+func PitfallScaffoldDocument(sourcePath string) (presentation.Document, error) {
+	statusValue, err := presentation.Prose("pitfall created")
+	if err != nil { // coverage-ignore: fixed status prose is valid
+		return presentation.Document{}, err
+	}
+	status, err := presentation.NewField("status", statusValue)
+	if err != nil { // coverage-ignore: fixed label and validated value are valid
+		return presentation.Document{}, err
+	}
+	pathValue, err := presentation.Literal(sourcePath)
+	if err != nil {
+		return presentation.Document{}, err
+	}
+	authoredPath, err := presentation.NewField("authored path", pathValue)
+	if err != nil { // coverage-ignore: fixed label and validated value are valid
+		return presentation.Document{}, err
+	}
+	return presentation.NewDocument(status, authoredPath)
 }
 
 // NeededVars returns the var names referenced by the full rendered catalog.

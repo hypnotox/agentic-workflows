@@ -187,3 +187,4 @@ tracker, and the roadmap remains the durable backlog surface.
 - 2026-08-10: Proposed
 - 2026-08-10: Implementing; content-sha256: d34bb325be9a4a75217e30be95eb556eb9bb5bca48f31f35226adac93214e148
 - 2026-08-10: Applied; operations: remove `rendering/doc-outputs:pitfall-data-validated`, add `rendering/doc-outputs:pitfall-corpus-validated`, add `rendering/doc-outputs:pitfall-output-complete`, add `code-design/single-home:pitfall-model-single-home`, update `rendering/doc-outputs:opaque-doc-source-guidance`, add `config/migrations-and-locks:pitfall-corpus-migration`
+- 2026-08-10: Applied; operations: update `tooling/cli:cli-creation-and-inventory`, add `tooling/cli:pitfall-scaffold`

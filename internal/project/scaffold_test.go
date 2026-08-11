@@ -1,6 +1,8 @@
 package project
 
 import (
+	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,6 +11,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -24,6 +27,153 @@ func writeScaffold(t *testing.T, b []byte) string {
 
 // invariant: config/configuration:integration-branch-explicit (TestScaffoldWritesRepositoryFacts)
 // invariant: tooling/init-and-enablement:init-bootstrap-default-on (TestScaffoldWritesRepositoryFacts)
+// invariant: tooling/cli:pitfall-scaffold (TestPitfallScaffoldCLIContract)
+func TestPitfallScaffoldCLIContract(t *testing.T) {
+	t.Run("creation-presentation-and-no-render", TestNewPitfallScaffoldContract)
+	t.Run("exclusive-race-and-retry", TestNewPitfallExclusiveRaceRefusesThenRetryReallocates)
+	t.Run("load-and-directory-errors", func(t *testing.T) {
+		t.Run("malformed corpus", func(t *testing.T) {
+			root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
+			dir := filepath.Join(root, ".awf/docs/pitfalls")
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(dir, "bad.md"), []byte("malformed"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			p, err := Open(testContext(t), root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := p.NewPitfall("New"); err == nil || !strings.Contains(err.Error(), "missing frontmatter") {
+				t.Fatalf("load error = %v", err)
+			}
+		})
+		t.Run("source directory is a file", func(t *testing.T) {
+			root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
+			dir := filepath.Join(root, ".awf/docs/pitfalls")
+			if err := os.MkdirAll(filepath.Dir(dir), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(dir, []byte("not a directory"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			p, err := Open(testContext(t), root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := p.NewPitfall("New"); err == nil {
+				t.Fatal("non-directory source root accepted")
+			}
+		})
+		t.Run("mkdir failure", func(t *testing.T) {
+			root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
+			p, err := Open(testContext(t), root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			mkdirErr := errors.New("mkdir failed")
+			if _, err := p.newPitfallWith("New", func(string, os.FileMode) error { return mkdirErr }, createPitfallExclusive); !errors.Is(err, mkdirErr) {
+				t.Fatalf("mkdir error = %v", err)
+			}
+		})
+	})
+	t.Run("refusals-and-suffix-gap", func(t *testing.T) {
+		root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
+		dir := filepath.Join(root, ".awf/docs/pitfalls")
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		for name, title := range map[string]string{"hazard.md": "Other", "hazard-2.md": "Another", "hazard-4.md": "Fourth"} {
+			source := "---\ntitle: " + title + "\n---\nbody\n"
+			if err := os.WriteFile(filepath.Join(dir, name), []byte(source), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		p, err := Open(testContext(t), root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, title := range []string{"", "index", "日本語"} {
+			if _, err := p.NewPitfall(title); err == nil {
+				t.Fatalf("title %q accepted", title)
+			}
+		}
+		if _, err := p.NewPitfall("Hazard"); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := os.Stat(filepath.Join(dir, "hazard-3.md")); err != nil {
+			t.Fatalf("first suffix gap not selected: %v", err)
+		}
+	})
+}
+
+func TestNewPitfallScaffoldContract(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	generated := filepath.Join(root, "docs", "pitfalls.md")
+	if _, err := os.Stat(generated); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("unexpected generated fixture: %v", err)
+	}
+	document, err := p.NewPitfall("Unicode + punctuation: 日本語")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	if err := presentation.Render(&output, document); err != nil {
+		t.Fatal(err)
+	}
+	const relative = ".awf/docs/pitfalls/unicode-punctuation.md"
+	if output.String() != "status: pitfall created\nauthored path: "+relative+"\n" {
+		t.Fatalf("presentation = %q", output.String())
+	}
+	const want = "---\ntitle: 'Unicode + punctuation: 日本語'\n---\nDescribe the durable hazard, its consequence, and the safer practice.\n"
+	got, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(relative)))
+	if err != nil || string(got) != want {
+		t.Fatalf("source = %q, %v", got, err)
+	}
+	if _, err := os.Stat(generated); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("NewPitfall rendered generated output: %v", err)
+	}
+	if _, err := p.NewPitfall(" unicode\t+ PUNCTUATION: 日本語 "); err == nil || !strings.Contains(err.Error(), "duplicates") {
+		t.Fatalf("duplicate error = %v", err)
+	}
+}
+
+func TestNewPitfallExclusiveRaceRefusesThenRetryReallocates(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raced := false
+	create := func(path string, source []byte) error {
+		if !raced {
+			raced = true
+			const competing = "---\ntitle: Competing writer\n---\nbody\n"
+			if err := os.WriteFile(path, []byte(competing), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return createPitfallExclusive(path, source)
+	}
+	if _, err := p.newPitfallWith("Race", os.MkdirAll, create); !errors.Is(err, os.ErrExist) {
+		t.Fatalf("race error = %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".awf/docs/pitfalls/race-2.md")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("race silently advanced suffix: %v", err)
+	}
+	if _, err := p.newPitfallWith("Race", os.MkdirAll, create); err != nil {
+		t.Fatalf("ordinary retry: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".awf/docs/pitfalls/race-2.md")); err != nil {
+		t.Fatalf("retry did not recompute suffix: %v", err)
+	}
+}
+
 func TestScaffoldWritesRepositoryFacts(t *testing.T) {
 	b, err := ScaffoldConfig("myproj", nil, nil)
 	if err != nil {

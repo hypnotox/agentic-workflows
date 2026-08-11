@@ -35,10 +35,15 @@ dependency list. For a topic page, edit both `.awf/topics/metadata/<domain>/<top
 `.awf/topics/parts/<domain>/<topic>/current-state.md`; a topic index instead names the family globs
 `.awf/topics/metadata/<domain>/*.yaml` and `.awf/topics/parts/<domain>/*/current-state.md`. The
 output plan remains the authority for machine render dependencies; `.awf/awf.lock` remains the
-drift authority. **Source map.** Section-overridable catalog docs and `AGENTS.md` use `awf:edit`.
-Topic pages name their metadata-and-claim-part pair, while indexes and domain navigation name the
-family globs. Glossary and pitfalls name their sidecars (glossary also names
-`derived:awf-standard-vocabulary`); the ADR index names `derived:authored-adr-corpus`; config
+drift authority. **Pitfalls.** Run `awf new pitfall "<Title>"` to create one canonical authored
+source under `.awf/docs/pitfalls/` and report its repository-relative path without rendering. Edit
+that source, then run `awf render`. The compact generated `docs/pitfalls.md` index points to generated
+`docs/pitfalls/<slug>.md` leaves; read them but never edit them. Deleting an authored source retires
+its entry through ordinary render pruning. **Source map.** Section-overridable catalog docs and
+`AGENTS.md` use `awf:edit`. Topic pages name their metadata-and-claim-part pair, while indexes and
+domain navigation name the family globs. Glossary names its sidecar and
+`derived:awf-standard-vocabulary`; the pitfall index names `.awf/docs/pitfalls/*.md`, while each
+pitfall leaf names its exact authored source. The ADR index names `derived:authored-adr-corpus`; config
 reference names `derived:configspec` and `derived:project-configuration`; target bridges name
 `AGENTS.md`. Authored ADRs and plans are banner-free. Edit the authority, run `awf render`, run
 `awf check`, and commit regenerated outputs and lock together.
