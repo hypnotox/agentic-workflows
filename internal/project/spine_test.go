@@ -2248,7 +2248,7 @@ func TestMemoryLogConsumerCoverage(t *testing.T) {
 	}
 	effortFreeOmission := map[string]string{
 		"reviewing-plan": "otherwise omit effort and memory fields",
-		"reviewing-impl": "Effort-free review creates no effort, memory",
+		"reviewing-impl": "absence of an effort omits those fields",
 	}
 	for skill, want := range effortFreeOmission {
 		out := renderSkillGolden(t, skill, data)
