@@ -20,6 +20,12 @@ The test-first discipline as a project-owned support skill.
 
 ## Procedure
 
+<!-- awf:template-source templates/partials/production-code-outline-approval.md -->
+Before any hand-authored production-code mutation, including mechanical production refactors and tests that prepare a production change, require explicit outline approval. documentation-only work, test-only maintenance that does not prepare a production change, generated-output-only work, and non-code mechanical work remain autonomous unless another independent trigger fires.
+
+The approved boundary may be evidenced by retained conversation, user-provenance effort Decision-log evidence, or an explicit request to execute a named plan whose Architecture summary supplies the outline. If none is available, invoke brainstorming before mutation; brainstorming is the sole owner of the proportionate outline and approval interaction. A delegated owner consumes the parent-supplied approved boundary and must never recreate the approval interaction.
+
+<!-- awf:template-source templates/skills/tdd/SKILL.md.tmpl -->
 TDD may run without an effort. If continuity materially helps, invoke `awf-effort-workflow` before mutation; if an effort already exists, validate its fixed identity and exact `.awf/efforts/<slug>/memory.md`, preserve one writer, and give that context read-only to helpers. Otherwise omit effort and memory fields. Repository and current-state authority remain primary, and standalone memory is forbidden.
 
 1. Run `awf context <the implementation and test paths>`, then write the failing test capturing the wrong (bug) or missing (feature) behaviour. Ground tests, checks, seams, and harness work only in changed behavior, a demonstrated regression, an existing documented contract, or a clearly applicable project invariant; reject speculative test or policy machinery.

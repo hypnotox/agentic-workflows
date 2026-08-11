@@ -24,6 +24,12 @@ Invoke for an accepted plan with an `inline` phase. Read every phase's declared 
 <!-- awf:template-source templates/skills/executing-plans/SKILL.md.tmpl -->
 ## Procedure
 
+<!-- awf:template-source templates/partials/production-code-outline-approval.md -->
+Before any hand-authored production-code mutation, including mechanical production refactors and tests that prepare a production change, require explicit outline approval. documentation-only work, test-only maintenance that does not prepare a production change, generated-output-only work, and non-code mechanical work remain autonomous unless another independent trigger fires.
+
+The approved boundary may be evidenced by retained conversation, user-provenance effort Decision-log evidence, or an explicit request to execute a named plan whose Architecture summary supplies the outline. If none is available, invoke brainstorming before mutation; brainstorming is the sole owner of the proportionate outline and approval interaction. A delegated owner consumes the parent-supplied approved boundary and must never recreate the approval interaction.
+
+<!-- awf:template-source templates/skills/executing-plans/SKILL.md.tmpl -->
 1. Resolve the mutable plan and read its complete phase structure. This skill may run without an effort. If continuity independently fired, validate its immutable slug and exact `.awf/efforts/<slug>/memory.md`, confirm either legacy `Effort: <slug>` or canonical `effort: <slug>` identity (the legacy form is deprecated and remains only until active efforts finish), preserve one user-managed writer, and use the managed worktree when present; otherwise omit effort and memory fields. If changed facts newly make continuity useful, invoke `awf-effort-workflow` before further mutation. A fresh owner assigned one phase or task may run `awf read plan <plan> <P[.T]>` for its executable closure, including the generated task scope notice, phase-owned Advances and Completes outcomes, Notes, and Phase close; all are phase-owner context only; projection changes neither phase ownership nor checkpoint boundaries and never gives a task helper commit, review, checkpoint, handoff, or outcome authority. Repository sources and current-state documentation remain authoritative, and standalone memory is forbidden.
 
 <!-- awf:template-source templates/skills/executing-plans/SKILL.md.tmpl#procedure-raise-concerns -->

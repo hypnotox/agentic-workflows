@@ -11,6 +11,8 @@ The direct implementation chain node for work whose clear outcome, solution shap
 
 Invoke when the outcome, solution shape, boundary, and verification are clear, and no independent need for brainstorming, an ADR, or a plan fires. If a material choice or clarification is needed, invoke brainstorming; if an ADR or plan is warranted, use that workflow instead.
 
+<!-- awf:include production-code-outline-approval -->
+
 ## Procedure
 
 1. Before mutation, evaluate continuity independently. This skill may run without an effort. If continuity materially helps, invoke `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}`; if an effort already exists, validate its fixed identity and exact `.awf/efforts/<slug>/memory.md`, preserve one writer, and use its managed worktree when present. Otherwise omit effort and memory fields. Repository sources and current-state documentation remain authoritative. Re-read any settled design brief and, per `{{ .layout.maintainableCodeDesign }}`, assess bounded enabling refactoring before editing and preserve settled boundaries.

@@ -153,6 +153,47 @@ func TestGroundingSupportOwnership(t *testing.T) {
 	assertContainsAll(t, "Claude grounding", claudeGrounding, "grounding-checker", "guide-first", "AWF_CONTEXT_SPILL_V1")
 }
 
+// invariant: rendering/workflow-skill-templates:independent-workflow-escalation (TestProductionCodeOutlineApproval)
+func TestProductionCodeOutlineApproval(t *testing.T) {
+	cat := loadCatalog(t)
+	for _, target := range []string{"pi", "claude"} {
+		t.Run(target, func(t *testing.T) {
+			root := syncFullCatalogForTarget(t, cat, target)
+			path := func(name string) string {
+				if target == "pi" {
+					return filepath.Join(root, ".pi", "skills", evalPrefix+"-"+name, "SKILL.md")
+				}
+				return skillPath(root, name)
+			}
+			brainstorming := read(t, path("brainstorming"))
+			assertContainsAll(t, target+" outline owner", brainstorming,
+				"concise implementation outline", "fuller material-choice design", "explicit outline approval")
+
+			for _, name := range []string{"executing-direct", "tdd", "bugfix", "executing-plans", "subagent-driven-development"} {
+				assertContainsAll(t, target+" "+name+" outline intake", read(t, path(name)),
+					"hand-authored production-code", "mechanical production refactors", "tests that prepare a production change", "explicit outline approval")
+			}
+			for _, name := range []string{"writing-plans", "proposing-adr"} {
+				assertContainsAll(t, target+" "+name+" artifact intake", read(t, path(name)),
+					"explicit outline approval", "Architecture summary")
+			}
+			implementer := read(t, filepath.Join(root, "."+target, "agents", "implementer.md"))
+			assertContainsAll(t, target+" delegated intake", implementer,
+				"parent-supplied approved boundary", "never recreate the approval interaction")
+			for _, name := range []string{"executing-direct", "tdd", "bugfix", "executing-plans", "subagent-driven-development", "proposing-adr"} {
+				body := read(t, path(name))
+				assertContainsAll(t, target+" "+name+" evidence", body,
+					"retained conversation", "Decision-log evidence", "explicit request to execute a named plan", "Architecture summary")
+			}
+			for _, exclusion := range []string{"documentation-only", "test-only maintenance", "generated-output-only", "non-code mechanical"} {
+				if !strings.Contains(read(t, path("executing-direct")), exclusion) {
+					t.Errorf("%s direct intake omits autonomous exclusion %q", target, exclusion)
+				}
+			}
+		})
+	}
+}
+
 func assertOrderedPhrases(t *testing.T, body string, wants ...string) {
 	t.Helper()
 	position := 0

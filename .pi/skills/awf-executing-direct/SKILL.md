@@ -13,6 +13,12 @@ The direct implementation chain node for work whose clear outcome, solution shap
 
 Invoke when the outcome, solution shape, boundary, and verification are clear, and no independent need for brainstorming, an ADR, or a plan fires. If a material choice or clarification is needed, invoke brainstorming; if an ADR or plan is warranted, use that workflow instead.
 
+<!-- awf:template-source templates/partials/production-code-outline-approval.md -->
+Before any hand-authored production-code mutation, including mechanical production refactors and tests that prepare a production change, require explicit outline approval. documentation-only work, test-only maintenance that does not prepare a production change, generated-output-only work, and non-code mechanical work remain autonomous unless another independent trigger fires.
+
+The approved boundary may be evidenced by retained conversation, user-provenance effort Decision-log evidence, or an explicit request to execute a named plan whose Architecture summary supplies the outline. If none is available, invoke brainstorming before mutation; brainstorming is the sole owner of the proportionate outline and approval interaction. A delegated owner consumes the parent-supplied approved boundary and must never recreate the approval interaction.
+
+<!-- awf:template-source templates/skills/executing-direct/SKILL.md.tmpl -->
 ## Procedure
 
 1. Before mutation, evaluate continuity independently. This skill may run without an effort. If continuity materially helps, invoke `awf-effort-workflow`; if an effort already exists, validate its fixed identity and exact `.awf/efforts/<slug>/memory.md`, preserve one writer, and use its managed worktree when present. Otherwise omit effort and memory fields. Repository sources and current-state documentation remain authoritative. Re-read any settled design brief and, per `docs/maintainable-code-design.md`, assess bounded enabling refactoring before editing and preserve settled boundaries.

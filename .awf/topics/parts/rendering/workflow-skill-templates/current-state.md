@@ -16,8 +16,9 @@ Backing: test
 
 ### `invariant: independent-workflow-escalation`
 
-Workflow intake independently evaluates brainstorming for material choices, continuity for durable coordination or resumability, grounding for broad or uncertain repository premises, ADRs for load-bearing decisions or changed active claims, plans for useful sequencing, and implementation review for independent assurance value. Material fact changes re-evaluate only affected triggers before further mutation without invalidating prior valid work. Effort-free and effort-backed work may each skip or receive review under the risk trigger; universal authority, documentation, verification, and commit obligations remain. No classifier, checklist, router, or new runtime mechanism is introduced.
+Workflow intake independently evaluates brainstorming for material choices and as the sole owner of proportionate outline approval before hand-authored production-code mutation, continuity for durable coordination or resumability, grounding for broad or uncertain repository premises, ADRs for load-bearing decisions or changed active claims, plans for useful sequencing, and implementation review for independent assurance value. The outline covers mechanical production refactors and preparatory tests, while documentation-only, test-only maintenance, generated-output-only, and non-code mechanical work remain autonomous unless another independent trigger fires. Retained conversation, user-provenance Decision-log evidence, or an explicit request to execute a named plan with its Architecture summary establish the approved boundary; delegated owners consume the parent-supplied boundary. Material fact changes re-evaluate only affected triggers before further mutation without invalidating prior valid work. Effort-free and effort-backed work may each skip or receive review under the risk trigger; universal authority, documentation, verification, and commit obligations remain. No classifier, checklist, router, or new runtime mechanism is introduced.
 Origin: ADR-0243
+Revised-by: ADR-user-approved-production-code-implementation-outlines
 Backing: test
 
 

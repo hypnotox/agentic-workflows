@@ -678,6 +678,46 @@ func TestAuthorityGuidedImplementationAutonomy(t *testing.T) {
 	}
 }
 
+// invariant: rendering/workflow-skill-templates:independent-workflow-escalation (TestProductionCodeOutlineApprovalProjection)
+func TestProductionCodeOutlineApprovalProjection(t *testing.T) {
+	partial, err := fs.ReadFile(templates.FS, "partials/production-code-outline-approval.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(partial)
+	if strings.Contains(body, "{{") {
+		t.Errorf("outline approval partial must remain variable-free:\n%s", body)
+	}
+	for _, line := range strings.Split(body, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "#") {
+			t.Errorf("outline approval partial must not interrupt consumer structure with heading %q", line)
+		}
+	}
+	for _, want := range []string{
+		"hand-authored production-code mutation", "mechanical production refactors", "tests that prepare a production change",
+		"documentation-only", "test-only maintenance", "generated-output-only", "non-code mechanical",
+		"retained conversation", "Decision-log evidence", "explicit request to execute a named plan", "Architecture summary",
+		"brainstorming is the sole owner", "parent-supplied approved boundary", "never recreate the approval interaction",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("outline approval partial missing %q", want)
+		}
+	}
+	for _, consumer := range []string{
+		"agents/implementer.md.tmpl", "skills/executing-direct/SKILL.md.tmpl", "skills/tdd/SKILL.md.tmpl",
+		"skills/bugfix/SKILL.md.tmpl", "skills/executing-plans/SKILL.md.tmpl", "skills/subagent-driven-development/SKILL.md.tmpl",
+		"skills/writing-plans/SKILL.md.tmpl", "skills/proposing-adr/SKILL.md.tmpl",
+	} {
+		raw, err := fs.ReadFile(templates.FS, consumer)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := strings.Count(string(raw), "<!-- awf:include production-code-outline-approval -->"); got != 1 {
+			t.Errorf("%s has %d outline approval includes, want 1", consumer, got)
+		}
+	}
+}
+
 func TestExecutingDirectTemplate(t *testing.T) {
 	out := renderSkillGolden(t, "executing-direct", map[string]any{
 		"prefix": "example", "vars": map[string]any{"gateCmd": "./x gate", "checkCmd": "./x check"},

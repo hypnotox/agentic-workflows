@@ -36,6 +36,8 @@ When grounding is stale - the ADR will cite repository facts not verified in the
 
 ## Procedure
 
+<!-- awf:include production-code-outline-approval -->
+
 This skill may run without an effort. Before any ADR-file mutation, identify the explicitly accepted decision set: effort-backed work uses the memory Decision log and its `Record:` evidence, while effort-free work uses the approved design summary retained in the current conversation. If that evidence is missing or insufficient, do not infer consent from repository facts; return to design approval. Keep every unaccepted suggestion outside the ADR until accepted.
 
 If continuity independently fired, validate the fixed effort identity and exact `.awf/efforts/<slug>/memory.md`, preserve one user-managed writer, and use that context read-only for children; otherwise omit effort and memory fields. If changed facts newly make continuity useful, invoke `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}` before further mutation. Repository sources and current-state documentation remain authoritative, and standalone memory is forbidden.

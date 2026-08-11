@@ -45,6 +45,10 @@ Resolve implementation findings autonomously when applicable ADRs, current-state
 A reasoned non-mechanical deviation records its changed detail, rationale, governing authority, and verification. A commit-capable phase owner may add an omitted path when it is necessary to complete the approved outcome and remains inside those authority, scope, boundary, and verification limits, and reports every added path as a reasoned deviation. An omitted path alone is not a reason to stop. Do not replan the approved outcome, broaden material scope, overturn settled structural choices, weaken an oracle, or perform unrelated cleanup.
 
 Stop and report through the active workflow only when authorities conflict or must change, the approved outcome or material scope must change, a genuine unresolved design fork remains, safe or correct completion inside the boundary is impossible, or required verification remains unreachable after reasonable diagnosis and remediation.
+<!-- awf:template-source templates/partials/production-code-outline-approval.md -->
+Before any hand-authored production-code mutation, including mechanical production refactors and tests that prepare a production change, require explicit outline approval. documentation-only work, test-only maintenance that does not prepare a production change, generated-output-only work, and non-code mechanical work remain autonomous unless another independent trigger fires.
+
+The approved boundary may be evidenced by retained conversation, user-provenance effort Decision-log evidence, or an explicit request to execute a named plan whose Architecture summary supplies the outline. If none is available, invoke brainstorming before mutation; brainstorming is the sole owner of the proportionate outline and approval interaction. A delegated owner consumes the parent-supplied approved boundary and must never recreate the approval interaction.
 
 <!-- awf:template-source templates/agents/implementer.md.tmpl -->
 In phase-owner mode, an omitted path alone is not a reason to stop: apply the shared rule above and

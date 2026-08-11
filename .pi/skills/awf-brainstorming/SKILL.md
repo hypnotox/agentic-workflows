@@ -10,14 +10,14 @@ description: Use when work needs a material choice or clarification before imple
 <!-- awf:template-source templates/skills/brainstorming/SKILL.md.tmpl -->
 # awf-brainstorming
 
-Brainstorming owns clarification, design exploration, proportionate presentation, conditional grounding invocation, and final grounded-design approval. It does not create an effort or require one.
+Brainstorming is the sole workflow owner of concise implementation outlines and fuller material-choice design: it owns clarification, design exploration, proportionate presentation, conditional grounding invocation, and explicit outline approval. It does not create an effort or require one.
 
 <!-- awf:template-source templates/skills/brainstorming/SKILL.md.tmpl#when-to-invoke -->
 <!-- awf:edit when-to-invoke: default; create .awf/skills/parts/brainstorming/when-to-invoke.md to override -->
 <!-- awf:template-source templates/skills/brainstorming/SKILL.md.tmpl -->
 ## When to invoke
 
-Use only when behavior, scope, structure, dependencies, patterns, checks, or testing need a material choice or clarification. Proceed directly when the intended outcome, solution shape, affected boundary, and verification are already clear.
+Use for a material choice or clarification, and before a hand-authored production-code change when no explicit outline approval evidence is available. Proceed directly only for nonproduction work when the intended outcome, solution shape, affected boundary, and verification are already clear.
 
 <!-- awf:template-source templates/skills/brainstorming/SKILL.md.tmpl#procedure -->
 <!-- awf:edit procedure: default; create .awf/skills/parts/brainstorming/procedure.md to override -->
@@ -41,7 +41,7 @@ Ask focused questions one at a time and avoid inventing requirements. Prefer que
 <!-- awf:template-source templates/skills/brainstorming/SKILL.md.tmpl#design-sections -->
 <!-- awf:edit design-sections: default; create .awf/skills/parts/brainstorming/design-sections.md to override -->
 <!-- awf:template-source templates/skills/brainstorming/SKILL.md.tmpl -->
-Per `docs/maintainable-code-design.md`, settle the semantic model and ownership, representation boundaries, dependency direction, test seams, and preparatory-refactor decision in a proportionate simplicity contract: scope and exclusions, structural approach and dependencies, patterns or abstractions, and checks and testing strategy. Scale the presentation to the choice; a straightforward change may settle these in a few sentences rather than a fixed checklist. The final approved design becomes the implementation boundary and closes the approved decision set. Do not strengthen it with related commitments during later artifact authoring. Raise a useful additional decision as a suggestion outside the ADR until accepted, and express every accepted decision as the narrowest durable commitment that preserves its approved semantics.
+Per `docs/maintainable-code-design.md`, settle the semantic model and ownership, representation boundaries, dependency direction, test seams, and preparatory-refactor decision in a proportionate simplicity contract: scope and exclusions, structural approach and dependencies, patterns or abstractions, and checks and testing strategy. A hand-authored production-code change receives a concise implementation outline even when straightforward; fuller material-choice design retains this same contract. Scale the presentation to the choice; a straightforward change may settle these in a few sentences rather than a fixed checklist. The final approved design becomes the implementation boundary and closes the approved decision set. Do not strengthen it with related commitments during later artifact authoring. Raise a useful additional decision as a suggestion outside the ADR until accepted, and express every accepted decision as the narrowest durable commitment that preserves its approved semantics.
 
 <!-- awf:template-source templates/skills/brainstorming/SKILL.md.tmpl#no-spec-rule -->
 <!-- awf:edit no-spec-rule: default; create .awf/skills/parts/brainstorming/no-spec-rule.md to override -->
@@ -53,7 +53,7 @@ Do not create a separate specification. Put a choice in an ADR only when it rema
 <!-- awf:template-source templates/skills/brainstorming/SKILL.md.tmpl -->
 ## Final approval
 
-Present the complete design after any grounding findings are resolved, explicitly request approval, and stop. If the user requests changes, revise and re-present without recursively grounding unless changed facts newly warrant it. Once approved, independently evaluate the ADR, plan, continuity, and implementation-review triggers; no later mechanism is automatic.
+Present the complete design or concise implementation outline after any grounding findings are resolved, explicitly request approval, and stop. If the user requests changes, revise and re-present without recursively grounding unless changed facts newly warrant it. Once approved, independently evaluate the ADR, plan, continuity, and implementation-review triggers; no later mechanism is automatic.
 
 <!-- awf:template-source templates/partials/checkpoint-approval.md -->
 **Mandatory approval checkpoint.**

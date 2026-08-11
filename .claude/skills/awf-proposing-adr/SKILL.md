@@ -45,6 +45,12 @@ When grounding is stale - the ADR will cite repository facts not verified in the
 
 ## Procedure
 
+<!-- awf:template-source templates/partials/production-code-outline-approval.md -->
+Before any hand-authored production-code mutation, including mechanical production refactors and tests that prepare a production change, require explicit outline approval. documentation-only work, test-only maintenance that does not prepare a production change, generated-output-only work, and non-code mechanical work remain autonomous unless another independent trigger fires.
+
+The approved boundary may be evidenced by retained conversation, user-provenance effort Decision-log evidence, or an explicit request to execute a named plan whose Architecture summary supplies the outline. If none is available, invoke brainstorming before mutation; brainstorming is the sole owner of the proportionate outline and approval interaction. A delegated owner consumes the parent-supplied approved boundary and must never recreate the approval interaction.
+
+<!-- awf:template-source templates/skills/proposing-adr/SKILL.md.tmpl -->
 This skill may run without an effort. Before any ADR-file mutation, identify the explicitly accepted decision set: effort-backed work uses the memory Decision log and its `Record:` evidence, while effort-free work uses the approved design summary retained in the current conversation. If that evidence is missing or insufficient, do not infer consent from repository facts; return to design approval. Keep every unaccepted suggestion outside the ADR until accepted.
 
 If continuity independently fired, validate the fixed effort identity and exact `.awf/efforts/<slug>/memory.md`, preserve one user-managed writer, and use that context read-only for children; otherwise omit effort and memory fields. If changed facts newly make continuity useful, invoke `awf-effort-workflow` before further mutation. Repository sources and current-state documentation remain authoritative, and standalone memory is forbidden.

@@ -12,6 +12,11 @@ description: Use to write a change-specific implementation plan for a complex aw
 
 Writes a plan to `docs/plans/YYYY-MM-DD-<topic>.md` per the awf plan convention. The plan is the change-specific execution record: observable outcomes, authority links, material boundaries, ordering dependencies, focused evidence, and confinement where ambiguity or helpers require it. Workflow skills and agents own generic execution protocol. The durable design lives in linked ADRs when any exist; link through `adrs:` rather than duplicating rationale. If planning discovers a new choice that remains meaningful after implementation, return to ADR authoring instead of hiding it in a task.
 
+<!-- awf:template-source templates/partials/production-code-outline-approval.md -->
+Before any hand-authored production-code mutation, including mechanical production refactors and tests that prepare a production change, require explicit outline approval. documentation-only work, test-only maintenance that does not prepare a production change, generated-output-only work, and non-code mechanical work remain autonomous unless another independent trigger fires.
+
+The approved boundary may be evidenced by retained conversation, user-provenance effort Decision-log evidence, or an explicit request to execute a named plan whose Architecture summary supplies the outline. If none is available, invoke brainstorming before mutation; brainstorming is the sole owner of the proportionate outline and approval interaction. A delegated owner consumes the parent-supplied approved boundary and must never recreate the approval interaction.
+
 <!-- awf:template-source templates/skills/writing-plans/SKILL.md.tmpl#when-to-invoke -->
 <!-- awf:edit when-to-invoke: default; create .awf/skills/parts/writing-plans/when-to-invoke.md to override -->
 <!-- awf:template-source templates/skills/writing-plans/SKILL.md.tmpl -->
