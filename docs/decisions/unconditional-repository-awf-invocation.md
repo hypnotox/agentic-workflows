@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: unconditional-repository-awf-invocation
-status: Proposed
+status: Accepted
 date: 2026-08-12
 ---
 # ADR-unconditional-repository-awf-invocation: Unconditional Repository Awf Invocation
@@ -90,3 +90,4 @@ a hypothetical consumer would contradict the configuration-surface reduction thi
 ## Status history
 
 - 2026-08-12: Proposed
+- 2026-08-12: Accepted; content-sha256: 3e7547693bc14249c8e6bff367fe619216fa394275146c824000894cedbd189d

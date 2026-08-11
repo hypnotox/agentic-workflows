@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-unconditional-repository-awf-invocation: Unconditional Repository Awf Invocation](unconditional-repository-awf-invocation.md) (Proposed)
+- [ADR-unconditional-repository-awf-invocation: Unconditional Repository Awf Invocation](unconditional-repository-awf-invocation.md) (Accepted)
 
 ## History
 
