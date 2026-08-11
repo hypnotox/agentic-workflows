@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-user-approved-production-code-implementation-outlines: User-Approved Production-Code Implementation Outlines](user-approved-production-code-implementation-outlines.md) (Implementing)
+- [ADR-0265: User-Approved Production-Code Implementation Outlines](0265-user-approved-production-code-implementation-outlines.md) (Implementing)
 
 ## History
 

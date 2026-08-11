@@ -4,7 +4,7 @@ slug: user-approved-production-code-implementation-outlines
 status: Implementing
 date: 2026-08-11
 ---
-# ADR-user-approved-production-code-implementation-outlines: User-Approved Production-Code Implementation Outlines
+# ADR-0265: User-Approved Production-Code Implementation Outlines
 
 
 ## Context

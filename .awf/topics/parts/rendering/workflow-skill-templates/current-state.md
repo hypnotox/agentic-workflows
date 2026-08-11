@@ -18,7 +18,7 @@ Backing: test
 
 Workflow intake independently evaluates brainstorming for material choices and as the sole owner of proportionate outline approval before hand-authored production-code mutation, continuity for durable coordination or resumability, grounding for broad or uncertain repository premises, ADRs for load-bearing decisions or changed active claims, plans for useful sequencing, and implementation review for independent assurance value. The outline covers mechanical production refactors and preparatory tests, while documentation-only, test-only maintenance, generated-output-only, and non-code mechanical work remain autonomous unless another independent trigger fires. Retained conversation, user-provenance Decision-log evidence, or an explicit request to execute a named plan with its Architecture summary establish the approved boundary; delegated owners consume the parent-supplied boundary. Material fact changes re-evaluate only affected triggers before further mutation without invalidating prior valid work. Effort-free and effort-backed work may each skip or receive review under the risk trigger; universal authority, documentation, verification, and commit obligations remain. No classifier, checklist, router, or new runtime mechanism is introduced.
 Origin: ADR-0243
-Revised-by: ADR-user-approved-production-code-implementation-outlines
+Revised-by: ADR-0265
 Backing: test
 
 
@@ -49,7 +49,7 @@ Backing: test
 The rendered effort-workflow owns first-creation confirmation when continuity fires: it presents labeled `Outcome:`, `Effort title:`, and `Effort slug:` fields, asks the user to confirm all three, ends the turn without mutation, and permits explicit-slug creation only after a clear later response. Brainstorming closes with explicit pre-artifact outline approval whenever it fires for a hand-authored production-code change; it presents the completed design or proportionate outline, requests approval, and stops, persisting only when an effort exists. ADR review proceeds directly after settlement to deterministic linked-plan handling or the independently selected implementation path. Brainstorming settles a proportionate simplicity contract covering scope and exclusions, structure and dependencies, abstractions, and verification. No checkpoint creates ownership, and effort-free approval omits memory rather than fabricating it.
 This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0152
-Revised-by: ADR-0160, ADR-0167, ADR-0222, ADR-0226, ADR-0232, ADR-0240, ADR-0243, ADR-user-approved-production-code-implementation-outlines
+Revised-by: ADR-0160, ADR-0167, ADR-0222, ADR-0226, ADR-0232, ADR-0240, ADR-0243, ADR-0265
 Backing: test
 
 ### `invariant: authority-guided-implementation-autonomy`
@@ -63,7 +63,7 @@ Backing: test
 
 The shared review spine is the single semantic home of finding classification and reserves `user-decision` for a finding where every viable correct remediation would contradict or change a settled user-approved design or decision or require an unauthorized change to an active current-state claim, with the affected authority cited; ambiguity, competing clean options, severity, structural character, and survival of a prior correction do not transfer the choice, and an ADR intentionally declaring an active-claim change is not an unauthorized deviation. Removing an unaccepted surplus commitment restores the accepted decision set and is an authority-preserving reasoned correction, while contradicting or changing accepted semantics remains a user decision. One variable-free shared prose partial is directly included exactly once by ordinary plan review, ADR review, and implementation review; it applies mechanical and reasoned corrections autonomously, scopes its stop rule to review findings, and routes a new material decision or changed approved boundary through brainstorming before ADR mutation, pausing at its pre-artifact outline approval boundary. Exactly one fresh verify pass is retained, every residual finding is diagnosed under the same boundary without another same-artifact review loop, and a plan correction that would contradict linked authority returns to ADR amendment and review before a fresh ordinary plan review. Every affected skill and reviewer template renders coherently under empty variables.
 Origin: ADR-0245
-Revised-by: ADR-0255, ADR-0264, ADR-user-approved-production-code-implementation-outlines
+Revised-by: ADR-0255, ADR-0264, ADR-0265
 Backing: test
 
 ### `invariant: memory-checkpoint-chain-coverage`
