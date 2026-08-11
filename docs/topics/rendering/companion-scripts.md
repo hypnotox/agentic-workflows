@@ -13,8 +13,9 @@ Rendered companion script contracts: the bootstrap and upgrade scripts, the comm
 
 ### `invariant: bootstrap-checksum`
 
-The rendered `awf-bootstrap.sh` performs a SHA-256 checksum verification of the downloaded archive before it installs the binary, so the download is always integrity-checked ahead of use.
+The rendered `.awf/bootstrap.sh` performs a SHA-256 checksum verification of the downloaded archive before it installs the binary, so the download is always integrity-checked ahead of use.
 Origin: ADR-0148
+Revised-by: ADR-0267
 Backing: test
 
 ### `invariant: bootstrap-env-override`

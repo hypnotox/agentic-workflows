@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: correct-bootstrap-companion-path-authority
-status: Proposed
+status: Implemented
 date: 2026-08-11
 ---
 # ADR-0267: Correct Bootstrap Companion Path Authority
@@ -40,3 +40,4 @@ forward current-state claim correction and its generated documentation.
 ## Status history
 
 - 2026-08-11: Proposed
+- 2026-08-11: Implemented; content-sha256: 2e8976db1b1180a4479c91bb7deb47b28852a1da70a6deb2f65448996155452e
