@@ -1128,11 +1128,21 @@ func TestCheckpointDigestShape(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		"correctness or safety concern, blocker, or failed required verification",
-		"remains unresolved after the active workflow's required diagnosis and authority-guided remediation",
+		"Route a new material decision or changed approved boundary through the active workflow to brainstorming",
+		"which owns the approval interaction",
+		"Separately, report a correctness or safety concern, blocker, or failed required verification through the active workflow",
+		"remains unresolved after that workflow's required diagnosis and authority-guided remediation",
 	} {
 		if !strings.Contains(string(routine), want) {
-			t.Errorf("routine checkpoint missing unresolved-only attention boundary %q", want)
+			t.Errorf("routine checkpoint missing routed attention boundary %q", want)
+		}
+	}
+	for _, direct := range []string{
+		"Decide whether user attention is required",
+		"material authority drift, a materially different choice, significant scope expansion",
+	} {
+		if strings.Contains(string(routine), direct) {
+			t.Errorf("routine checkpoint retains direct user route %q", direct)
 		}
 	}
 

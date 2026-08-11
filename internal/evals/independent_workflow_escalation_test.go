@@ -140,6 +140,21 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 				t.Errorf("%s %s retains a downstream routine approval stop", target, name)
 			}
 		}
+		writingPlans := read(t, path("writing-plans"))
+		assertContainsAll(t, target+" plan-scope routing", writingPlans,
+			"Use repository authority to settle local file structure and phase shape inside the approved boundary",
+			"new material decision or would change the approved boundary", "invoke `"+evalPrefix+"-brainstorming`",
+			"do not ask the user directly from plan writing")
+		checkpoint := read(t, path("executing-plans"))
+		assertContainsAll(t, target+" checkpoint routing", checkpoint,
+			"Route a new material decision or changed approved boundary through the active workflow to brainstorming",
+			"Separately, report a correctness or safety concern, blocker, or failed required verification through the active workflow",
+			"remains unresolved after that workflow's required diagnosis and authority-guided remediation")
+		for _, direct := range []string{"Confirm scope with the user", "Decide whether user attention is required", "material authority drift, a materially different choice, significant scope expansion"} {
+			if strings.Contains(writingPlans, direct) || strings.Contains(checkpoint, direct) {
+				t.Errorf("%s downstream workflow retains direct user route %q", target, direct)
+			}
+		}
 		effort := read(t, path("effort-workflow"))
 		assertContainsAll(t, target+" effort confirmation", effort, "`Outcome:", "`Effort title:", "`Effort slug:", "clear response in a later turn")
 		assertOrderedPhrases(t, effort, "`Outcome: <confirmed outcome>`", "`Effort title: <proposed title>`", "`Effort slug: <proposed-short-slug>`", "clear response in a later turn", "awf effort new --slug <confirmed-slug>")

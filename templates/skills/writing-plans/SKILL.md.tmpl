@@ -55,7 +55,7 @@ Per `{{ .layout.workflowRef }}`: use a plan when sequencing, coordination, or re
 This skill may run without an effort. If continuity independently fired, validate the fixed effort identity and exact `.awf/efforts/<slug>/memory.md`, preserve one user-managed writer, and give the plan reviewer that context read-only; otherwise omit effort and memory fields. If changed facts newly make continuity useful, invoke `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}` before further mutation. Repository sources and current-state documentation remain authoritative, and standalone memory is forbidden.
 
 <!-- awf:section procedure-confirm-scope -->
-1. **Confirm scope with the user** if the brainstorm did not already pin down the file structure and phase shape. Resolve any open questions before writing the plan. If the plan is written in a later session than the brainstorm, or the file structure reaches areas not examined this session, invoke `{{ .prefix }}-orienting` first.
+1. **Resolve planning scope.** Use repository authority to settle local file structure and phase shape inside the approved boundary. If a missing detail exposes a new material decision or would change the approved boundary, invoke `{{ .prefix }}-brainstorming` and wait at its pre-artifact approval boundary; do not ask the user directly from plan writing. If the plan is written in a later session than the brainstorm, or the file structure reaches areas not examined this session, invoke `{{ .prefix }}-orienting` first.
 <!-- awf:end -->
 
 <!-- awf:section plan-template-ref -->
