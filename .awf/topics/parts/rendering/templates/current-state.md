@@ -52,7 +52,7 @@ ADR Decision items own only commitments explicitly accepted by the user before a
 Origin: ADR-0224
 Revised-by: ADR-0264
 Backing: unbacked
-Verify: For each new or amended ADR and its linked plan, compare every Decision item with its user-consent evidence; confirm it was accepted before insertion, states the narrowest semantics that preserve the accepted decision, and does not promote implementation detail. Apply the post-implementation and counterfactual tests; confirm any retained mechanism was accepted as load-bearing, scaffold-emitted frontmatter was preserved, and no terminal ADR body was retrofitted.
+Verify: For each new or amended ADR and its linked plan, compare every Decision item with its user-consent evidence; confirm it was accepted before insertion, states the narrowest semantics that preserve the accepted decision, and does not promote implementation detail. Apply the post-implementation and counterfactual tests; confirm any retained mechanism was accepted as load-bearing and the record explains why it is load-bearing, scaffold-emitted frontmatter was preserved, and no terminal ADR body was retrofitted.
 
 ### `invariant: source-embed-parity`
 

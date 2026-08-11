@@ -1039,8 +1039,8 @@
     "docs/topics/rendering/templates.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:b49a4df32c60fbeeb2e1da1957f7b531d9774aa8ae416eb4350207ecadd42da7",
-      "outputHash": "sha256:3618577b7782ef9c0602f5c6646dd16c827ffdae117af83e9d88a140552d6545"
+      "configHash": "sha256:6c8e40def03cdc78de4a234a3ff8ab3964f45aa2f7f56d94b114b368982d6726",
+      "outputHash": "sha256:521e66de63bd7584dddaa0fcba896f9b8490edc9bd0bd1eab5d783cefabfefe2"
     },
     "docs/topics/rendering/workflow-skill-templates.md": {
       "templateId": "topics/topic.md.tmpl",
