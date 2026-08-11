@@ -8,6 +8,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
+	"github.com/hypnotox/agentic-workflows/internal/render"
 )
 
 // invariant: rendering/render-engine:template-source-symbol (TestTemplateSourceMarkerProducerMatrix)
@@ -136,6 +137,42 @@ func TestTemplateSourceMarkerProducerMatrix(t *testing.T) {
 		if !slices.Contains(node.ConsumedInputs, OutputInput{Path: "templates/" + node.ObservedTemplateID, Role: ArtifactTemplate}) {
 			t.Errorf("%s lacks configured root template input: %#v", node.Path, node.ConsumedInputs)
 		}
+	}
+}
+
+// invariant: rendering/render-engine:template-source-symbol (TestTemplateSourceSectionSemantics)
+func TestTemplateSourceSectionSemantics(t *testing.T) {
+	source := render.SourceText{Root: "guide.md.tmpl", Spans: []render.SourceSpan{
+		{Source: "guide.md.tmpl", Text: "<!-- awf:section body -->\n"},
+		{Source: "partials/default.md", Text: "DEFAULT\n"},
+		{Source: "guide.md.tmpl", Text: "<!-- awf:end -->\n"},
+	}}
+	segments := render.ParseSourceSections(source)
+	provenance := render.TemplateSource{Root: "templates"}
+
+	dropped, _ := render.AssembleSourceWithTemplateSource(segments, map[string]render.SectionPlan{"body": {Drop: true}}, render.HTMLComment, provenance)
+	if got := dropped.AuthoredText(); strings.Contains(got, "#body") || strings.Contains(got, "awf:edit") || strings.Contains(got, "DEFAULT") {
+		t.Fatalf("dropped section retained structural provenance or content: %q", got)
+	}
+
+	reinjected, _ := render.AssembleSourceWithTemplateSource(segments, map[string]render.SectionPlan{"body": {
+		HasPart: true, PartBody: "BEFORE\n" + render.SectionDefaultSentinel + "\nAFTER\n",
+	}}, render.HTMLComment, provenance)
+	got := reinjected.AuthoredText()
+	for _, want := range []string{
+		"<!-- awf:template-source templates/guide.md.tmpl#body -->\n<!-- awf:edit body:",
+		"<!-- awf:template-source templates/partials/default.md -->\nDEFAULT",
+		"<!-- awf:template-source templates/guide.md.tmpl -->\n",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("sectionDefault reinjection lacks %q:\n%s", want, got)
+		}
+	}
+
+	inPlace, _ := render.AssembleSourceWithTemplateSource(segments, map[string]render.SectionPlan{"body": {InPlace: true}}, render.HTMLComment, provenance)
+	got = inPlace.AuthoredText()
+	if !strings.Contains(got, "templates/guide.md.tmpl#body -->\n<!-- awf:edit-in-place") || strings.Contains(got, "partials/default.md") {
+		t.Fatalf("in-place body structural/interior provenance invalid:\n%s", got)
 	}
 }
 

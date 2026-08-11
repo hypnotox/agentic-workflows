@@ -99,6 +99,7 @@ func TestCommitPolicyConsumerConfigHash(t *testing.T) {
 	}
 }
 
+// invariant: config/configuration:template-source-root (TestTemplateSourceRootChangesOnlyActivatedMarkdownConfigHash)
 func TestTemplateSourceRootChangesOnlyActivatedMarkdownConfigHash(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)

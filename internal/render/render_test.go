@@ -32,6 +32,7 @@ func TestAssembleSourceLeavesRawPartsProvenanceFree(t *testing.T) {
 	}
 }
 
+// invariant: rendering/render-engine:no-section-marker-leak (TestAssembleSourceTemplateSourceTransitions)
 // invariant: rendering/render-engine:template-source-symbol (TestAssembleSourceTemplateSourceTransitions)
 func TestAssembleSourceTemplateSourceTransitions(t *testing.T) {
 	src := SourceText{Root: "guide.md", Spans: []SourceSpan{
@@ -53,6 +54,9 @@ func TestAssembleSourceTemplateSourceTransitions(t *testing.T) {
 	}
 	if strings.Count(got, "templates/guide.md -->") != 2 {
 		t.Fatalf("section-to-root return symbol was not emitted exactly once:\n%s", got)
+	}
+	if strings.Contains(got, "awf:section") || strings.Contains(got, "awf:end") {
+		t.Fatalf("structural directives leaked beside template-source markers:\n%s", got)
 	}
 }
 

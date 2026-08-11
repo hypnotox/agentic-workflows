@@ -24,6 +24,7 @@ func writeScaffold(t *testing.T, b []byte) string {
 
 // invariant: config/configuration:integration-branch-explicit (TestScaffoldWritesRepositoryFacts)
 // invariant: tooling/init-and-enablement:init-bootstrap-default-on (TestScaffoldWritesRepositoryFacts)
+// invariant: config/configuration:template-source-root (TestScaffoldWritesRepositoryFacts)
 func TestScaffoldWritesRepositoryFacts(t *testing.T) {
 	b, err := ScaffoldConfig("myproj", nil, nil)
 	if err != nil {
