@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-keep-maintainer-context-spill-state-outside-configuration: Keep Maintainer Context Spill State Outside Configuration](keep-maintainer-context-spill-state-outside-configuration.md) (Proposed)
 
 ## History
 
