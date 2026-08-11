@@ -192,3 +192,9 @@ Record deviations, spike answers, follow-ups, and findings surfaced during imple
 - Phase 2 review confirmed the replacement-failure tests already lived in `project_test.go`; no
   `coverage_test.go` mutation was needed. Retaining the tests in their existing semantic home
   preserves the approved failure oracle without moving coverage only to satisfy a planned path.
+- Phase 2 also updated `internal/project/drift_test.go`, which was omitted from the planned paths,
+  because it referenced the removed direct-backup helper and needed to follow the confined backup
+  seam.
+- Phase 3 also updated `internal/resident/resident_test.go`, which was omitted from the planned
+  paths, to keep the unchanged uninstall-owned absent-removal helper covered after sync stopped
+  calling it.

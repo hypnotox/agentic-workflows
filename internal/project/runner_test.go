@@ -212,6 +212,51 @@ func TestPruneBacksUpCoOwnedRunner(t *testing.T) {
 	}
 }
 
+func TestPruneRemovesManagedRunnerSymlinkWithoutTargetAccess(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	lock, err := manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry := lock.Files["awf"]
+	entry.TemplateID = coOwnedRunnerTID
+	lock.Files["x"] = entry
+	delete(lock.Files, "awf")
+	if err := lock.Save(lockFile(root)); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(root, "awf")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("missing-target", filepath.Join(root, "x")); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	p, err = Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	backups, _, pruned, err := p.SyncReport(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(backups) != 0 {
+		t.Fatalf("managed runner symlink backups = %v", backups)
+	}
+	if !slices.Contains(pruned, "x") {
+		t.Fatalf("managed runner symlink pruned = %v", pruned)
+	}
+	if _, err := os.Lstat(filepath.Join(root, "x")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("managed runner symlink remains: %v", err)
+	}
+}
+
 // invariant: rendering/companion-scripts:runner-prune-backup (TestRunnerPrunePropagatesBackupFailure)
 func TestRunnerPrunePropagatesBackupFailure(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")

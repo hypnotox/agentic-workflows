@@ -351,8 +351,8 @@ func (p *Project) syncReport(ctx context.Context, seed *InitAuthority) (backups 
 		return nil, nil, nil, err
 	}
 	filesystems, closeAll, err := p.openSyncFilesystems()
-	if err != nil { // coverage-ignore: the composition failure is directly tested; reaching it after successful input derivation requires concurrent root removal
-		return nil, nil, nil, err // coverage-ignore: the composition failure is directly tested; reaching it after successful input derivation requires concurrent root removal
+	if err != nil {
+		return nil, nil, nil, err
 	}
 	defer closeAll()
 	return p.syncReportWithPitfalls(ctx, seed, filesystems, corpus, pitfalls, topics, eff)
@@ -528,7 +528,7 @@ func (p *Project) syncReportWithPitfalls(ctx context.Context, seed *InitAuthorit
 			// into git history (ADR-0156 item 9). A backup failure aborts the
 			// prune - never a silent fall-through to deletion.
 			if entry.TemplateID == coOwnedRunnerTID {
-				if _, existsErr := filesystem.LinkInfo(outputPath); existsErr == nil {
+				if info, existsErr := filesystem.LinkInfo(outputPath); existsErr == nil && info.Mode()&fs.ModeSymlink == 0 {
 					bak, bakErr := p.backupFileConfined(outputPath, filesystem)
 					if bakErr != nil {
 						return backups, changes, pruned, fmt.Errorf("back up pruned runner %s: %w", path, bakErr)

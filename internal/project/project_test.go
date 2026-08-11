@@ -708,6 +708,25 @@ type swapAfterPruneFilesystem struct {
 	calls         []string
 }
 
+type swapBeforeLockReplaceFilesystem struct {
+	syncFilesystem
+	root, outside string
+	swapped       bool
+}
+
+func (f *swapBeforeLockReplaceFilesystem) Replace(path string, contents []byte, mode os.FileMode) error {
+	if path == ".awf/awf.lock" && !f.swapped {
+		if err := os.Rename(filepath.Join(f.root, ".awf"), filepath.Join(f.root, "saved-awf")); err != nil {
+			return err
+		}
+		if err := os.Symlink(f.outside, filepath.Join(f.root, ".awf")); err != nil {
+			return err
+		}
+		f.swapped = true
+	}
+	return f.syncFilesystem.Replace(path, contents, mode)
+}
+
 func (f *swapAfterPruneFilesystem) Remove(path string) error {
 	f.calls = append(f.calls, path)
 	err := f.syncFilesystem.Remove(path)
@@ -763,6 +782,47 @@ func TestOpenSyncFilesystemsComposesDistinctRootsBeforeMutation(t *testing.T) {
 	p.roots.Tracked = filepath.Join(root, "missing-tracked")
 	if _, _, err := p.openSyncFilesystems(); err == nil {
 		t.Fatal("missing tracked root opened")
+	}
+}
+
+func TestSyncReportOpensDistinctResidentRootBeforeTrackedMutation(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
+		t.Fatal(err)
+	}
+	agents := filepath.Join(root, "AGENTS.md")
+	if err := os.WriteFile(agents, []byte("hand edit\n"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(agents, 0o640); err != nil {
+		t.Fatal(err)
+	}
+	beforeLock, err := os.ReadFile(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	missingResident := t.TempDir()
+	if err := os.Remove(missingResident); err != nil {
+		t.Fatal(err)
+	}
+	p, err = Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.roots.Resident = missingResident
+	if _, _, _, err := p.SyncReport(testContext(t)); err == nil {
+		t.Fatal("sync accepted missing distinct resident root")
+	}
+	if got, err := os.ReadFile(agents); err != nil || string(got) != "hand edit\n" {
+		t.Fatalf("tracked output changed before resident open refusal = %q, %v", got, err)
+	}
+	assertPerm(t, agents, 0o640)
+	if got, err := os.ReadFile(lockFile(root)); err != nil || !reflect.DeepEqual(got, beforeLock) {
+		t.Fatalf("lock changed before resident open refusal = %q, %v", got, err)
 	}
 }
 
@@ -1632,6 +1692,7 @@ func TestSyncRecordsTopicOutputsInManifest(t *testing.T) {
 }
 
 // invariant: rendering/sync-and-drift:sync-mutations-root-confined (TestSyncMutationsStayWithinSelectedRoots)
+// invariant: rendering/sync-and-drift:sync-backs-up-foreign (TestSyncMutationsStayWithinSelectedRoots)
 func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	residentRoot := t.TempDir()
@@ -1926,7 +1987,42 @@ func TestSyncAncestorCleanupRefusesParentSwap(t *testing.T) {
 	}
 }
 
-// invariant: config/migrations-and-locks:lock-atomic-save (TestSyncLockRefusesEscapingParent)
+// invariant: config/migrations-and-locks:lock-atomic-save (TestSyncLockSaveRefusesParentSwap)
+func TestSyncLockSaveRefusesParentSwap(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.ReadFile(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	outside := t.TempDir()
+	filesystems, closeAll, err := p.openSyncFilesystems()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closeAll()
+	filesystems.tracked = &swapBeforeLockReplaceFilesystem{syncFilesystem: filesystems.tracked, root: root, outside: outside}
+	corpus, pitfalls, topics, eff, err := p.deriveOperationStateWithPitfalls()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := p.syncReportWithPitfalls(testContext(t), nil, filesystems, corpus, pitfalls, topics, eff); err == nil {
+		t.Fatal("sync accepted swapped lock parent during final save")
+	}
+	if _, err := os.Stat(filepath.Join(outside, "awf.lock")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("outside lock = %v", err)
+	}
+	if got, err := os.ReadFile(filepath.Join(root, "saved-awf", "awf.lock")); err != nil || !reflect.DeepEqual(got, before) {
+		t.Fatalf("saved lock advanced = %q, %v", got, err)
+	}
+}
+
 func TestSyncLockRefusesEscapingParent(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(testContext(t), root)

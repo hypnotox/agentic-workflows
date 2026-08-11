@@ -278,6 +278,65 @@ func TestHandleOperations(t *testing.T) {
 	}
 }
 
+func TestReadWithModeUsesOneOpenedFileForBytesAndMode(t *testing.T) {
+	var source []byte
+	testsupport.WalkRepoSources(t, testsupport.RepoRoot(t), func(rel string, body []byte) {
+		if rel == "internal/filesystem/handle.go" {
+			source = append([]byte(nil), body...)
+		}
+	})
+	file, err := parser.ParseFile(token.NewFileSet(), "internal/filesystem/handle.go", source, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var function *ast.FuncDecl
+	for _, declaration := range file.Decls {
+		candidate, ok := declaration.(*ast.FuncDecl)
+		if ok && candidate.Name.Name == "ReadWithMode" {
+			function = candidate
+			break
+		}
+	}
+	if function == nil {
+		t.Fatal("ReadWithMode declaration missing")
+	}
+	selector := func(expression ast.Expr, object, member string) bool {
+		selected, ok := expression.(*ast.SelectorExpr)
+		if !ok || selected.Sel.Name != member {
+			return false
+		}
+		if identifier, ok := selected.X.(*ast.Ident); ok {
+			return identifier.Name == object
+		}
+		root, ok := selected.X.(*ast.SelectorExpr)
+		identifier, identifierOK := root.X.(*ast.Ident)
+		return ok && identifierOK && identifier.Name+"."+root.Sel.Name == object
+	}
+	opens, reads, stats := 0, 0, 0
+	ast.Inspect(function.Body, func(node ast.Node) bool {
+		call, ok := node.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		switch {
+		case selector(call.Fun, "h.root", "Open"):
+			opens++
+		case selector(call.Fun, "h.root", "ReadFile") || selector(call.Fun, "h.root", "Stat"):
+			t.Fatalf("ReadWithMode split bytes and mode across root calls: %s", call.Fun)
+		case selector(call.Fun, "io", "ReadAll") && len(call.Args) == 1:
+			if identifier, ok := call.Args[0].(*ast.Ident); ok && identifier.Name == "file" {
+				reads++
+			}
+		case selector(call.Fun, "file", "Stat"):
+			stats++
+		}
+		return true
+	})
+	if opens != 1 || reads != 1 || stats != 1 {
+		t.Fatalf("ReadWithMode operations = opens %d reads %d stats %d; want one opened file supplying bytes and mode", opens, reads, stats)
+	}
+}
+
 func TestOpenFailureAndWalkErrors(t *testing.T) {
 	if _, err := Open(filepath.Join(t.TempDir(), "missing")); err == nil {
 		t.Fatal("open missing succeeded")

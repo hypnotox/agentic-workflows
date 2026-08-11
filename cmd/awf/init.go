@@ -146,8 +146,8 @@ func runInitWithProjectLoader(ctx context.Context, root string, force, describe 
 	if err := gate(ctx, root); err != nil {
 		return err
 	}
-	// Under --force, the selected sync path backs up every foreign file via the
-	// shared BackupFile mechanism (ADR-0035) - one backup path for init and sync alike.
+	// Under --force, the selected sync path backs up every foreign file through
+	// the same confined backup policy used by ordinary sync (ADR-0035).
 	var seed *project.InitAuthority
 	if !configExists && !lockExists {
 		seed = &project.InitAuthority{InitializedWithVersion: project.Version}
