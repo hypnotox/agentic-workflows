@@ -192,7 +192,10 @@ func TestRenderTargetTemplateSourceActivation(t *testing.T) {
 }
 
 func TestValidateTemplateSourcesUsesSelectedTree(t *testing.T) {
-	tree, err := snapshot.NewTree([]snapshot.File{{Path: "templates/doc.md", Mode: snapshot.Regular, Bytes: []byte("source")}})
+	tree, err := snapshot.NewTree([]snapshot.File{
+		{Path: "templates/doc.md", Mode: snapshot.Regular, Bytes: []byte("source")},
+		{Path: "templates/linked.md", Mode: snapshot.Symlink, Bytes: []byte("../outside.md")},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,12 +207,32 @@ func TestValidateTemplateSourcesUsesSelectedTree(t *testing.T) {
 	if err := p.validateTemplateSources(render.SourceText{Spans: []render.SourceSpan{{Source: "missing.md", Text: "x"}}}, "templates"); err == nil {
 		t.Fatal("missing source accepted")
 	}
+	if err := p.validateTemplateSources(render.SourceText{Spans: []render.SourceSpan{{Source: "linked.md", Text: "x"}}}, "templates"); err == nil {
+		t.Fatal("staged symlink source accepted")
+	}
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "templates", "directory.md"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := (&Project{Root: root}).validateTemplateSources(render.SourceText{Spans: []render.SourceSpan{{Source: "directory.md", Text: "x"}}}, "templates"); err == nil {
 		t.Fatal("directory source accepted")
+	}
+	if err := os.WriteFile(filepath.Join(root, "outside.md"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(root, "outside.md"), filepath.Join(root, "templates", "linked.md")); err != nil {
+		t.Fatal(err)
+	}
+	if err := (&Project{Root: root}).validateTemplateSources(render.SourceText{Spans: []render.SourceSpan{{Source: "linked.md", Text: "x"}}}, "templates"); err == nil {
+		t.Fatal("symlink source accepted")
+	}
+	// An included partial that strips to empty still has an authored identity
+	// and must therefore resolve before stripping removes its output bytes.
+	if err := os.WriteFile(filepath.Join(root, "templates", "comment-only.md"), []byte("<!-- awf:comment note -->\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := (&Project{Root: root}).validateTemplateSources(render.SourceText{Spans: []render.SourceSpan{{Source: "comment-only.md", Text: "<!-- awf:comment note -->\n"}}}, "templates"); err != nil {
+		t.Fatalf("comment-only included source was not observed: %v", err)
 	}
 }
 

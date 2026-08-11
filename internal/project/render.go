@@ -2,9 +2,11 @@ package project
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"maps"
+	"os"
 	"path"
 	"path/filepath"
 	"slices"
@@ -200,7 +202,7 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 			// A located region (its pointer present) is used verbatim even when
 			// empty; only an unlocated region falls back to the template default
 			// in Assemble (ADR-0100 in-place-readback).
-			sp.InPlaceBody, sp.InPlaceFound = readBackInPlaceBody(out, s, declared, style, headings[s])
+			sp.InPlaceBody, sp.InPlaceFound = readBackInPlaceBody(out, s, declared, style, headings[s], templateSourceSectionMarkers(segs, p.templateSourceRoot()))
 			plan[s] = sp
 			continue
 		}
@@ -246,8 +248,18 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 // or a deleted anchor), so the caller falls back to the template default.
 // touches-state: rendering/inplace-and-placeholders:in-place-readback - read-back between the section pointer and awf's next registered pointer; proof in inplace_test.go
 // touches-state: rendering/inplace-and-placeholders:in-place-spacing-owned - verbatim interior, trimmed framing; proof in inplace_test.go
-func readBackInPlaceBody(output, name string, declared []string, style render.CommentStyle, expectedHeading ...string) (string, bool) {
+func readBackInPlaceBody(output, name string, declared []string, style render.CommentStyle, expectedHeading ...any) (string, bool) {
 	lines := strings.Split(output, "\n")
+	expectedSymbols := map[string]string{}
+	heading := ""
+	for _, expected := range expectedHeading {
+		switch value := expected.(type) {
+		case string:
+			heading = value
+		case map[string]string:
+			expectedSymbols = value
+		}
+	}
 	ownPrefixes := render.PointerLinePrefixes(name, style)
 	start := -1
 	for i, ln := range lines {
@@ -269,29 +281,49 @@ func readBackInPlaceBody(output, name string, declared []string, style render.Co
 	for i := start + 1; i < len(lines); i++ {
 		if hasAnyPrefix(strings.TrimSpace(lines[i]), boundaryPrefixes) {
 			end = i
-			// A renderer-owned regional source symbol immediately framing the
-			// following registered pointer is not adopter body content.
-			if i > start+1 && isTemplateSourceSymbol(lines[i-1]) {
-				end = i - 1
+			// Only the exact renderer-owned symbol for this registered next
+			// section is framing. Lookalikes remain adopter body content.
+			if i > start+1 {
+				for _, d := range declared {
+					if d != name && hasAnyPrefix(strings.TrimSpace(lines[i]), render.PointerLinePrefixes(d, style)) && strings.TrimSpace(lines[i-1]) == expectedSymbols[d] {
+						end = i - 1
+						break
+					}
+				}
 			}
 			break
 		}
 	}
 	body := lines[start+1 : end]
-	if len(expectedHeading) > 0 && expectedHeading[0] != "" && len(body) > 0 {
+	if heading != "" && len(body) > 0 {
 		// A structural slot is awf-owned. Any ATX heading occupying it is tamper,
 		// regardless of level; a body heading is preserved only when that slot is
 		// genuinely absent.
-		if body[0] == expectedHeading[0] || atxHeadingLine(strings.TrimSpace(body[0])) {
+		if body[0] == heading || atxHeadingLine(strings.TrimSpace(body[0])) {
 			body = body[1:]
 		}
 	}
 	return trimBlankFraming(body), true
 }
 
-func isTemplateSourceSymbol(line string) bool {
-	line = strings.TrimSpace(line)
-	return strings.HasPrefix(line, "<!-- awf:template-source ") && strings.HasSuffix(line, " -->")
+func templateSourceSectionMarkers(segs []render.Segment, root string) map[string]string {
+	markers := map[string]string{}
+	if root == "" {
+		return markers
+	}
+	for _, seg := range segs {
+		if seg.IsSection {
+			markers[seg.Name] = "<!-- awf:template-source " + path.Join(root, seg.SectionSource) + "#" + seg.Name + " -->"
+		}
+	}
+	return markers
+}
+
+func (p *Project) templateSourceRoot() string {
+	if p.Cfg.Render == nil {
+		return ""
+	}
+	return p.Cfg.Render.TemplateSourceRoot
 }
 
 func atxHeadingLine(s string) bool {
@@ -672,7 +704,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	if encoder == MarkdownAgentDialect && p.Cfg.Render != nil {
 		provenance.Root = p.Cfg.Render.TemplateSourceRoot
 		if provenance.Root != "" {
-			if err := p.validateTemplateSources(strippedSource, provenance.Root); err != nil {
+			if err := p.validateTemplateSources(expandedSource, provenance.Root); err != nil {
 				return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 			}
 		}
@@ -688,7 +720,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	}
 	consumedInputs, err := p.observeRenderInputs(kind, artifact, tid, outPath, plan)
 	if provenance.Root != "" {
-		for _, span := range strippedSource.Spans {
+		for _, span := range expandedSource.Spans {
 			if span.Source != "" {
 				consumedInputs = append(consumedInputs, OutputInput{Path: path.Join(provenance.Root, span.Source), Role: ArtifactTemplate})
 			}
@@ -776,8 +808,17 @@ func (p *Project) validateTemplateSources(source render.SourceText, root string)
 		}
 		seen[span.Source] = true
 		candidate := path.Join(root, span.Source)
+		if reader, working := p.projectTreeReader().(filesystemProjectReader); working {
+			info, statErr := os.Lstat(filepath.Join(reader.root, filepath.FromSlash(candidate)))
+			if statErr == nil && !info.Mode().IsRegular() {
+				return fmt.Errorf("configured render.templateSourceRoot %q cannot resolve template source %q (%s): regular file required", root, span.Source, candidate)
+			}
+			if statErr != nil && !errors.Is(statErr, fs.ErrNotExist) { // coverage-ignore: non-absence Lstat failures are OS-dependent and the error-preserving branch is direct
+				return fmt.Errorf("read configured template source %s for %s: %w", candidate, span.Source, statErr)
+			}
+		}
 		_, ok, err := p.projectTreeReader().ReadFile(candidate)
-		if err != nil {
+		if err != nil { // coverage-ignore: composed working and immutable snapshot readers return absence separately; their I/O failures are tested at reader ownership
 			return fmt.Errorf("read configured template source %s for %s: %w", candidate, span.Source, err)
 		}
 		if !ok {

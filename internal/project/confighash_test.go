@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/render"
+	"github.com/hypnotox/agentic-workflows/templates"
 )
 
 func TestDataDefaultsConfigurationChangesConfigHash(t *testing.T) {
@@ -94,6 +96,60 @@ func TestCommitPolicyConsumerConfigHash(t *testing.T) {
 	}
 	if _, err := p.artifactConfigHash("plain", config.Sidecar{}, []string{part}, eff); err == nil {
 		t.Fatal("malformed authoring comment did not fail config hashing")
+	}
+}
+
+func TestTemplateSourceRootChangesOnlyActivatedMarkdownConfigHash(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const tid = "adr-readme/README.md.tmpl"
+	src, err := templates.FS.ReadFile(tid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expanded, err := render.ExpandIncludesSource(string(src), tid, templates.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, span := range expanded.Spans {
+		if span.Source == "" {
+			continue
+		}
+		file := filepath.Join(root, "templates", filepath.FromSlash(span.Source))
+		if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(file, []byte(span.Text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	sc := config.Sidecar{}
+	plain, err := p.renderTarget("adr-readme", "", tid, p.Cat.Docs["adr-readme"].Sections, sc, p.data(sc, map[string]bool{}), "out.md", map[string]bool{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.Cfg.Render = &config.RenderConfig{TemplateSourceRoot: "templates"}
+	active, err := p.renderTarget("adr-readme", "", tid, p.Cat.Docs["adr-readme"].Sections, sc, p.data(sc, map[string]bool{}), "out.md", map[string]bool{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plain.ConfigHash == active.ConfigHash || plain.TemplateHash != active.TemplateHash {
+		t.Fatalf("root projection hashes plain=%#v active=%#v", plain, active)
+	}
+	nativeBefore, err := p.renderTarget("hooks", "", "hooks/pre-commit.sh.tmpl", nil, sc, p.data(sc, map[string]bool{}), "hook", map[string]bool{}, &renderOutputOptions{encoder: PlainAgentDialect})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.Cfg.Render = nil
+	nativeAbsent, err := p.renderTarget("hooks", "", "hooks/pre-commit.sh.tmpl", nil, sc, p.data(sc, map[string]bool{}), "hook", map[string]bool{}, &renderOutputOptions{encoder: PlainAgentDialect})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if nativeBefore.ConfigHash != nativeAbsent.ConfigHash || nativeBefore.TemplateHash != nativeAbsent.TemplateHash {
+		t.Fatalf("native encoder projected root: before=%#v absent=%#v", nativeBefore, nativeAbsent)
 	}
 }
 

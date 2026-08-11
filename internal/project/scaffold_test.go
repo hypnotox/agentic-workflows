@@ -35,7 +35,7 @@ func TestScaffoldWritesRepositoryFacts(t *testing.T) {
 			t.Errorf("scaffold missing %q:\n%s", want, text)
 		}
 	}
-	for _, retired := range []string{"skills:", "agents:", "docs:", "targets:", "docsDir:"} {
+	for _, retired := range []string{"skills:", "agents:", "docs:", "targets:", "docsDir:", "render:", "templateSourceRoot:"} {
 		if strings.Contains(text, retired) {
 			t.Errorf("scaffold retained %q:\n%s", retired, text)
 		}

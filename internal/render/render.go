@@ -164,14 +164,17 @@ func AssembleSourceWithTemplateSource(segs []Segment, plan map[string]SectionPla
 		out.Root = segs[0].Source.Root
 	}
 	parts := map[string]string{}
-	lastSource := ""
+	lastIdentity := ""
 	marker := func(source, section string, force bool) {
-		if provenance.Root == "" || source == "" || (!force && source == lastSource) {
+		if provenance.Root == "" || source == "" {
 			return
 		}
 		value := strings.TrimSuffix(provenance.Root, "/") + "/" + source + section
+		if !force && value == lastIdentity {
+			return
+		}
 		out.appendText("", "<!-- awf:template-source "+value+" -->\n")
-		lastSource = source
+		lastIdentity = value
 	}
 	appendSource := func(source SourceText) {
 		for _, span := range source.Spans {
@@ -202,12 +205,14 @@ func AssembleSourceWithTemplateSource(segs []Segment, plan map[string]SectionPla
 		}
 		switch {
 		case p.InPlace:
-			// A located region is adopter-owned raw text. An unlocated region is
-			// the recorded default source and retains its provenance.
+			// A located region is adopter-owned raw text. On first render the
+			// recorded default supplies its bytes, but the structural section marker
+			// is its only provenance: nested include transitions would become part
+			// of the later adopter-owned read-back region.
 			if p.InPlaceFound {
 				out.appendText("", p.InPlaceBody)
 			} else {
-				appendSource(s.Source)
+				out.appendText(s.SectionSource, s.Source.AuthoredText())
 			}
 		case p.HasPart:
 			writePartBodySource(&out, parts, s, p, appendSource)

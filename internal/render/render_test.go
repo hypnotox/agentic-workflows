@@ -50,8 +50,33 @@ func TestAssembleSourceTemplateSourceTransitions(t *testing.T) {
 			t.Fatalf("assembled source missing %q:\n%s", want, got)
 		}
 	}
-	if strings.Count(got, "templates/guide.md -->") != 1 {
-		t.Fatalf("adjacent root symbols were not suppressed:\n%s", got)
+	if strings.Count(got, "templates/guide.md -->") != 2 {
+		t.Fatalf("section-to-root return symbol was not emitted exactly once:\n%s", got)
+	}
+}
+
+func TestAssembleTemplateSourceInPlaceFallbackAndSectionReturn(t *testing.T) {
+	src := SourceText{Root: "guide.md", Spans: []SourceSpan{
+		{Source: "guide.md", Text: "before\n<!-- awf:section body inplace -->\n"},
+		{Source: "partials/default.md", Text: "DEFAULT\n"},
+		{Source: "guide.md", Text: "<!-- awf:end -->\nafter\n"},
+	}}
+	segs := ParseSourceSections(src)
+	first, _ := AssembleSourceWithTemplateSource(segs, map[string]SectionPlan{"body": {InPlace: true}}, HTMLComment, TemplateSource{Root: "templates"})
+	got := first.AuthoredText()
+	if strings.Contains(got, "partials/default.md") {
+		t.Fatalf("first in-place fallback leaked a nested transition:\n%s", got)
+	}
+	if !strings.Contains(got, "templates/guide.md#body -->\n<!-- awf:edit-in-place") || strings.Count(got, "templates/guide.md -->") != 2 {
+		t.Fatalf("first render structural and return symbols =:\n%s", got)
+	}
+	rendered, err := Execute(got, map[string]any{}, nil, "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	reread, _ := AssembleSourceWithTemplateSource(segs, map[string]SectionPlan{"body": {InPlace: true, InPlaceFound: true, InPlaceBody: "edited"}}, HTMLComment, TemplateSource{Root: "templates"})
+	if strings.Contains(reread.AuthoredText(), "partials/default.md") || !strings.Contains(rendered, "DEFAULT") || !strings.Contains(reread.AuthoredText(), "edited") {
+		t.Fatalf("in-place first/rerender provenance is not a fixpoint:\nfirst=%s\nreread=%s", got, reread.AuthoredText())
 	}
 }
 

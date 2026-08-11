@@ -60,6 +60,29 @@ func TestInjectBannerFrontmatter(t *testing.T) {
 	}
 }
 
+func TestInjectBannerRootSymbolOrderingAndAbsentIdentity(t *testing.T) {
+	root := "<!-- awf:template-source templates/docs/example.md.tmpl -->\n"
+	cases := []struct{ name, content, want string }{
+		{"plain", root + "# Title\n", "<!-- " + bannerText + " -->\n" + root + "# Title\n"},
+		{"frontmatter", root + "---\ntitle: Example\n---\n# Title\n", "---\ntitle: Example\n---\n<!-- " + bannerText + " -->\n" + root + "# Title\n"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := injectBanner(tc.content, ""); got != tc.want {
+				t.Fatalf("root placement bytes = %q, want %q", got, tc.want)
+			}
+		})
+	}
+	bannered := injectBanner(root+"body\n", "")
+	if got, want := injectSourceMarker(bannered, []string{"derived:authority"}), "<!-- "+bannerText+" -->\n<!-- awf:source derived:authority -->\n"+root+"body\n"; got != want {
+		t.Fatalf("source/root ordering bytes = %q, want %q", got, want)
+	}
+	without := "# Title\n"
+	if got := injectBanner(without, ""); strings.Contains(got, "awf:template-source") {
+		t.Fatalf("absent root option invented identity: %q", got)
+	}
+}
+
 func TestInjectSourceMarker(t *testing.T) {
 	for _, tc := range []struct {
 		name    string

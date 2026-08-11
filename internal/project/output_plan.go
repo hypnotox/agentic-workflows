@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"maps"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -180,6 +181,31 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		}
 		return out
 	}
+	// Ordinary Markdown renderTarget consumers observe each authored expanded
+	// source mapping when the configured repository fact is active. Declarations
+	// mirror that observation without changing TemplateHash ownership.
+	markdownInputs := func(tid string, authored ...OutputInput) ([]OutputInput, error) {
+		out := inputs(tid, authored...)
+		if cfg.Render == nil || cfg.Render.TemplateSourceRoot == "" || tid == "" {
+			return out, nil
+		}
+		src, err := fs.ReadFile(templates.FS, tid)
+		if err != nil { // coverage-ignore: declaration template IDs come from the validated embedded catalog and descriptor tables
+			return nil, fmt.Errorf("read template %s: %w", tid, err)
+		}
+		expanded, err := render.ExpandIncludesSource(string(src), tid, templates.FS)
+		if err != nil { // coverage-ignore: embedded templates are validated by the production render path and focused include tests
+			return nil, fmt.Errorf("render %s: %w", tid, err)
+		}
+		seen := map[string]bool{}
+		for _, span := range expanded.Spans {
+			if span.Source != "" && !seen[span.Source] {
+				seen[span.Source] = true
+				out = append(out, OutputInput{Path: path.Join(cfg.Render.TemplateSourceRoot, span.Source), Role: ArtifactTemplate})
+			}
+		}
+		return out, nil
+	}
 	partInputs := func(kind, name string, sections []string, overrides ...map[string]config.SectionOverride) []OutputInput {
 		out := []OutputInput{}
 		for _, section := range sections {
@@ -206,7 +232,10 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			}
 			tid := mustDescriptor("skills").tid(name)
 			sections := cat.Skills[name].Sections
-			input := inputs(tid, append([]OutputInput{{Path: ".awf/skills/" + name + ".yaml", Role: ArtifactAuthoredData}}, partInputs("skills", name, sections, sc.Sections)...)...)
+			input, err := markdownInputs(tid, append([]OutputInput{{Path: ".awf/skills/" + name + ".yaml", Role: ArtifactAuthoredData}}, partInputs("skills", name, sections, sc.Sections)...)...)
+			if err != nil { // coverage-ignore: catalog skill template IDs and embedded sources are validated static authority
+				return nil, err
+			}
 			add(t.SkillPath(cfg.Prefix, name), tid, t.Name, input)
 		}
 		for _, name := range slices.Sorted(maps.Keys(cat.Agents)) {
@@ -217,9 +246,19 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			tid := mustDescriptor("agents").tid(name)
 			sections := cat.Agents[name].Sections
 			input := inputs(tid, append([]OutputInput{{Path: ".awf/agents/" + name + ".yaml", Role: ArtifactAuthoredData}}, partInputs("agents", name, sections, sc.Sections)...)...)
+			if t.AgentDialect == MarkdownAgentDialect {
+				input, err = markdownInputs(tid, append([]OutputInput{{Path: ".awf/agents/" + name + ".yaml", Role: ArtifactAuthoredData}}, partInputs("agents", name, sections, sc.Sections)...)...)
+				if err != nil { // coverage-ignore: catalog agent template IDs and embedded sources are validated static authority
+					return nil, err
+				}
+			}
 			add(t.AgentPath(name), tid, t.Name, input)
 		}
-		add(t.BridgeFile, t.BridgeTemplate, t.BridgeTemplate, inputs(t.BridgeTemplate))
+		bridgeInputs, err := markdownInputs(t.BridgeTemplate)
+		if err != nil { // coverage-ignore: validated target descriptors own embedded bridge template identity
+			return nil, err
+		}
+		add(t.BridgeFile, t.BridgeTemplate, t.BridgeTemplate, bridgeInputs)
 		if err := validateTargetOutputRequirements(t, cat); err != nil {
 			return nil, err
 		}
@@ -276,7 +315,11 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		if e.Generated {
 			declarer = "generated-config-reference"
 		}
-		add(out, e.TID, declarer, inputs(e.TID, authored...))
+		declaredInputs, err := markdownInputs(e.TID, authored...)
+		if err != nil { // coverage-ignore: catalog document template IDs and embedded sources are validated static authority
+			return nil, err
+		}
+		add(out, e.TID, declarer, declaredInputs)
 	}
 	for _, d := range cfg.Domains {
 		sc, err := cfg.Sidecar("domains", d)

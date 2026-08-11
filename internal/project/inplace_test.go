@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 )
@@ -475,10 +476,40 @@ func TestInPlaceRegionKeepsAuthoringCommentShapedLine(t *testing.T) {
 	}
 }
 
-func TestReadBackInPlaceBodySkipsTemplateSourceFraming(t *testing.T) {
-	output := "<!-- awf:edit-in-place one: your edits below are preserved across syncs; awf owns the rest -->\nbody\n<!-- awf:template-source templates/guide.md#two -->\n<!-- awf:edit two: default; create x to override -->\nnext\n"
-	got, found := readBackInPlaceBody(output, "one", []string{"one", "two"}, render.HTMLComment)
+func TestTemplateSourceSectionMarkerProjection(t *testing.T) {
+	if got := templateSourceSectionMarkers(nil, ""); len(got) != 0 {
+		t.Fatalf("disabled markers = %#v, want none", got)
+	}
+	segs := []render.Segment{
+		{Source: render.SourceText{Spans: []render.SourceSpan{{Source: "guide.md.tmpl", Text: "prefix\n"}}}},
+		{IsSection: true, Name: "two", SectionSource: "guide.md.tmpl"},
+	}
+	got := templateSourceSectionMarkers(segs, "templates")
+	if want := "<!-- awf:template-source templates/guide.md.tmpl#two -->"; got["two"] != want || len(got) != 1 {
+		t.Fatalf("section markers = %#v, want two=%q", got, want)
+	}
+
+	p := &Project{Cfg: &config.Config{}}
+	if root := p.templateSourceRoot(); root != "" {
+		t.Fatalf("absent render root = %q", root)
+	}
+	p.Cfg.Render = &config.RenderConfig{TemplateSourceRoot: "templates"}
+	if root := p.templateSourceRoot(); root != "templates" {
+		t.Fatalf("configured render root = %q", root)
+	}
+}
+
+func TestReadBackInPlaceBodySkipsOnlyExpectedTemplateSourceFraming(t *testing.T) {
+	pointer := "<!-- awf:edit-in-place one: your edits below are preserved across syncs; awf owns the rest -->\n"
+	next := "<!-- awf:edit two: default; create x to override -->\nnext\n"
+	expected := map[string]string{"two": "<!-- awf:template-source templates/guide.md#two -->"}
+	got, found := readBackInPlaceBody(pointer+"body\n"+expected["two"]+"\n"+next, "one", []string{"one", "two"}, render.HTMLComment, expected)
 	if !found || got != "body" {
-		t.Fatalf("readback = %q, %t", got, found)
+		t.Fatalf("matching readback = %q, %t", got, found)
+	}
+	lookalike := "<!-- awf:template-source templates/other.md#two -->"
+	got, found = readBackInPlaceBody(pointer+"body\n"+lookalike+"\n"+next, "one", []string{"one", "two"}, render.HTMLComment, expected)
+	if !found || got != "body\n"+lookalike {
+		t.Fatalf("mismatched symbol was treated as framing: %q, %t", got, found)
 	}
 }
