@@ -163,6 +163,29 @@ func TestHandleOperations(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, "created/child/artifact")); !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("removed path remains: %v", err)
 	}
+	if err := h.Remove("missing"); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("remove error identity = %v", err)
+	}
+	if err := h.Replace("missing-parent/artifact", nil, 0o644); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("replace error identity = %v", err)
+	}
+	outside := t.TempDir()
+	outsidePath := filepath.Join(outside, "victim")
+	if err := os.WriteFile(outsidePath, []byte("outside"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(root, "escape")); err != nil {
+		t.Skipf("symlink unsupported: %v", err)
+	}
+	if err := h.Replace("escape/victim", []byte("replacement"), 0o644); err == nil {
+		t.Fatal("replace through escaping symlink succeeded")
+	}
+	if err := h.Remove("escape/victim"); err == nil {
+		t.Fatal("remove through escaping symlink succeeded")
+	}
+	if raw, err := os.ReadFile(outsidePath); err != nil || string(raw) != "outside" {
+		t.Fatalf("escaping mutations changed outside target = %q, %v", raw, err)
+	}
 	for _, operation := range []func() error{
 		func() error { return h.MkdirAll("..", 0o755) },
 		func() error { return h.Publish("../artifact", nil, 0o644) },
