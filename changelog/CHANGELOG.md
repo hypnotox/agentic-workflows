@@ -14,6 +14,8 @@ query a single version or a range.
 
 ### Features
 
+- The adopter-facing documentation standard now advises count-free prose for changing sets and requires essential exact counts to name their query and be reverified when the source population changes.
+
 - Pitfalls now publish as a compact title-sorted metadata index with domain and Unassigned navigation plus one exact-source generated leaf per entry. The complete family participates in working and staged output plans, lock, drift, backup, and deletion pruning.
 
 - `awf new pitfall "<Title>"` now creates one canonical authored `.awf/docs/pitfalls/<slug>.md` source exclusively, reports its repository-relative path, and never renders or mutates another registry. Duplicate titles and a selected-path race refuse; a later retry reloads the corpus and chooses the first free deterministic suffix. Deleting the authored source retires its generated index row and leaf through ordinary render pruning.

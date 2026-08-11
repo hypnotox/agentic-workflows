@@ -504,9 +504,9 @@
     },
     "docs/doc-standard.md": {
       "templateId": "docs/doc-standard.md.tmpl",
-      "templateHash": "sha256:1910536254cf18fad52c5332b12a801f484a4a8e03a324881dd7a4205b6b572e",
+      "templateHash": "sha256:bc6faaabffdba7219682fb6f1ddb2a971663dcc9d4d36347174f1b5c0485fc1d",
       "configHash": "sha256:f95aba3b509cd55093f772dddc34c7811e7976690f664c3bc108059264573973",
-      "outputHash": "sha256:d01a164681f9c16a61271f4f78dd7238fa8e477f28f4056deffaf7076d46d22a"
+      "outputHash": "sha256:2e0fdced9716fb0441ea928d7bc7c1f194988611c61c8c6ed8e540e1683f18d5"
     },
     "docs/domains/adr-system.md": {
       "templateId": "",
@@ -565,8 +565,8 @@
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
       "templateHash": "sha256:d6475aaeadbbed6f56bfc85c4716b8636fea0d5922661201890334a6429b4f85",
-      "configHash": "sha256:fb4b23b0c63beb407ef3d64c2240ddccb637f7c2e113d298343af71c67dffcd0",
-      "outputHash": "sha256:7ab72c890fe6305c7af6849a124b53770f80c20d3e88e0d7db8d81a7933c9840"
+      "configHash": "sha256:27cb95d59fe33e47e2b8cebd6f1412d5ccc72a102ab7a7026d47de50c8de2a18",
+      "outputHash": "sha256:06c5c66d685ee0c46cd0a8ed10a6a6f5f3da412dd6c71ccb820c2bd99f79460c"
     },
     "docs/pitfalls/a-census-number-is-only-as-good-as-its-stated-query.md": {
       "templateId": "pitfalls/entry.md.tmpl",
@@ -717,12 +717,6 @@
       "templateHash": "sha256:23ea7baa4f2cd0e3a7319448093f2612ca5a7beab8cb0bfc631015eef99be786",
       "configHash": "sha256:1464ea2ab2bb6968b7ad5f0100a0e325f1e845806e40fac66d2bdc7a92349a8d",
       "outputHash": "sha256:3abe1c6bf8a561337788381e3c67daed14c6ea637c2476936c9feb776f1a04f3"
-    },
-    "docs/pitfalls/free-form-domain-narratives-can-hide-drifting-counts.md": {
-      "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:23ea7baa4f2cd0e3a7319448093f2612ca5a7beab8cb0bfc631015eef99be786",
-      "configHash": "sha256:bee86dcd8f58ae3252aab749492eb7d72a5b059bd11410b37139215bf32c3ea4",
-      "outputHash": "sha256:30294d892136f2316eb0e96586fb23413e064b00df66d334698f6d28849723ff"
     },
     "docs/pitfalls/gofmt-rewrites-double-backticks-in-doc-comments-into-curly-quotes.md": {
       "templateId": "pitfalls/entry.md.tmpl",

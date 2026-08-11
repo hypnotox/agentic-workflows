@@ -36,7 +36,6 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 | [Check the Open boundary before ignoring an assembly error](pitfalls/check-the-open-boundary-before-ignoring-an-assembly-error.md) | tooling | coverage\-gate\, cli\-dispatch | ADR-0012, ADR-0092, ADR-0102 |
 | [Do not infer linked\-plan freshness from file activity](pitfalls/do-not-infer-linked-plan-freshness-from-file-activity.md) | rendering\, tooling | plan\-artifact\, verification\-discipline |  |
 | [Enabled linters constrain API shape\, sketch signatures against them](pitfalls/enabled-linters-constrain-api-shape-sketch-signatures-against-them.md) | tooling | static\-linting |  |
-| [Free\-form domain narratives can hide drifting counts](pitfalls/free-form-domain-narratives-can-hide-drifting-counts.md) | adr\-system | domain\-staleness\, convention\-parts |  |
 | [gofmt rewrites double backticks in doc comments into curly quotes](pitfalls/gofmt-rewrites-double-backticks-in-doc-comments-into-curly-quotes.md) | tooling | gofmt\-doccomment |  |
 | [GoReleaser aborts on a dirty git tree\; pre\-release artifacts belong outside the worktree](pitfalls/goreleaser-aborts-on-a-dirty-git-tree-pre-release-artifacts-belong-outside-the-worktree.md) | tooling | release\-pipeline |  |
 | [Keep literal placeholder syntax out of guide prose](pitfalls/keep-literal-placeholder-syntax-out-of-guide-prose.md) | rendering | placeholder\-degradation\, agents\-guide |  |
@@ -67,7 +66,6 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 - [A census number is only as good as its stated query](pitfalls/a-census-number-is-only-as-good-as-its-stated-query.md)
 - [A future code\-fence marker must account for Linguist aliases](pitfalls/a-future-code-fence-marker-must-account-for-linguist-aliases.md)
 - [A scripted sweep over ADR prose can silently unmake the structure it edits](pitfalls/a-scripted-sweep-over-adr-prose-can-silently-unmake-the-structure-it-edits.md)
-- [Free\-form domain narratives can hide drifting counts](pitfalls/free-form-domain-narratives-can-hide-drifting-counts.md)
 - [Link ADRs by their on\-disk filename\, never by constructing one from the title](pitfalls/link-adrs-by-their-on-disk-filename-never-by-constructing-one-from-the-title.md)
 - [Make custom staged\-slice hooks explicit about branch and cleanup](pitfalls/make-custom-staged-slice-hooks-explicit-about-branch-and-cleanup.md)
 - [Port a stale branch before merging a breaking marker grammar](pitfalls/port-a-stale-branch-before-merging-a-breaking-marker-grammar.md)
