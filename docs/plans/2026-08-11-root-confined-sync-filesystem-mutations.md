@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-11
 adrs: [root-confined-sync-filesystem-mutations]
-status: Proposed
+status: Implemented
 ---
 # Plan: Root-confined sync filesystem mutations
 

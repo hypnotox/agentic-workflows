@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-0269: Root-confined sync filesystem mutations](0269-root-confined-sync-filesystem-mutations.md) (Implementing)
+_No decisions are in flight._
 
 ## History
 
@@ -274,3 +274,4 @@
 - [ADR-0266: Restore Autonomous Effort Management](0266-restore-autonomous-effort-management.md) (Implemented)
 - [ADR-0267: Correct Bootstrap Companion Path Authority](0267-correct-bootstrap-companion-path-authority.md) (Implemented)
 - [ADR-0268: Keep Maintainer Context Spill State Outside Configuration](0268-keep-maintainer-context-spill-state-outside-configuration.md) (Implemented)
+- [ADR-0269: Root-confined sync filesystem mutations](0269-root-confined-sync-filesystem-mutations.md) (Implemented)
