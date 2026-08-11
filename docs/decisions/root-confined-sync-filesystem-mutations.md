@@ -66,7 +66,8 @@ that preserves both confinement and the established backup meaning.
 5. `decision: preserve-sync-policy` Preserve project-owned foreign attribution, backup suffix and
    collision retry, complete exclusive backup publication, source permission bits, error identity,
    backup and change reporting, corrupt-lock pre-mutation refusal, actual-removal reporting, and
-   deepest-first empty-ancestor pruning across both output anchors.
+   deepest-first empty-ancestor pruning across both output anchors. Back the complete root-confined
+   sync mutation invariant with tests.
 
 6. `decision: bounded-conversion` Leave uninstall, upgrade migrations, snapshot capture, and
    unrelated historical direct filesystem effects outside this conversion. They remain governed by
@@ -77,7 +78,6 @@ that preserves both confinement and the established backup meaning.
 
 - add `rendering/sync-and-drift:sync-mutations-root-confined`
 - update `rendering/sync-and-drift:sync-backs-up-foreign`
-- update `rendering/sync-and-drift:target-prune-ancestors`
 - update `config/migrations-and-locks:lock-atomic-save`
 
 ## Consequences
@@ -102,6 +102,10 @@ replacement, backup, pruning, and lock behavior form one cohesive sync dependenc
 not gain a universal interface or project policy. The conversion adds capability to the existing
 single production handle rather than introducing another filesystem implementation.
 
+Deliberately ignoring post-operation root-handle close failures loses that diagnostic signal. This is
+accepted because each durable operation reports its own outcome, while returning a close error after
+successful mutation would report the completed sync as failed.
+
 Pruning and lock I/O make the change broader than publication alone, but excluding them would leave
 the same redirection class inside one sync transaction and make any claim of a confined sync
 boundary misleading. Other filesystem consumers remain unchanged.
@@ -111,6 +115,7 @@ boundary misleading. Other filesystem consumers remain unchanged.
 | Alternative | Why not chosen |
 |---|---|
 | Confine rendered-file writes and backups only | Leaves prune deletion, ancestor cleanup, and lock authority I/O redirectable inside the same sync operation. |
+| Open the resident-root handle only when its first output is reached | A late open failure could follow already-successful tracked-root mutations. |
 | Canonicalize or clean lexical absolute paths before direct OS calls | Path validation cannot prevent a symlink substitution or traversal race after validation. |
 | Back up an escaping symlink as link text or overwrite it without backup | Changes the established foreign-file backup representation or silently violates backup-before-overwrite. |
 | Put output routing and backup policy into `internal/filesystem` | Makes the shared mechanism depend on project and rendering semantics owned by its consumer. |
