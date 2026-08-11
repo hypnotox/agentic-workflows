@@ -83,3 +83,4 @@ when optional variables are empty.
 - 2026-08-11: Implementing; content-sha256: 2eddf90dc55c84c541fb5f85aa842fa95bcc4d2b4c03c884ed9b5e62077147f1
 - 2026-08-11: Applied; operations: update `rendering/templates:decision-artifact-routing`
 - 2026-08-11: Reapplied; operations: update `rendering/templates:decision-artifact-routing`
+- 2026-08-11: Applied; operations: update `rendering/workflow-skill-templates:authority-guided-review-remediation`, update `rendering/workflow-skill-templates:memory-log-consumer-coverage`

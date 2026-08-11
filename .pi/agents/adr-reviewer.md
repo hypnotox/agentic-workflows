@@ -35,7 +35,7 @@ Classify by what acting on the finding requires, not by severity:
 
 - **mechanical**: the answer is unambiguous from existing rules, docs, or code; the fix is direct.
 - **reasoned**: a good answer can be reached by reading the relevant code or docs, but judgment is required; a one-line rationale is warranted. For deferred-to-follow-up cases, the rationale is prefixed with `Deferred to <name>:`.
-- **user-decision**: every viable correct remediation would contradict or change a settled user-approved design or decision, or would require an unauthorized change to an active current-state claim; cite the affected authority and name the deviation it would require; a consensus deviation is a `user-decision` under the Consensus adherence rule below.
+- **user-decision**: every viable correct remediation would contradict or change a settled user-approved design or decision, or would require an unauthorized change to an active current-state claim; cite the affected authority and name the deviation it would require; changing accepted semantics is a `user-decision` under the Consensus adherence rule below, while removing authority-free surplus is not.
 
 Severity is informational only; the dispatching skill routes by classification kind.
 
@@ -43,14 +43,16 @@ Ambiguity, competing clean options, severity, structural character, and the fact
 
 ## Consensus adherence
 
-When the brief carries pasted consensus entries (user-provenance decision-log entries, including whatever `Record:` blocks exist), check the ADR against each one. A deviation from a user entry is always a `user-decision` finding, never silently absorbed: `location` cites the deviating ADR passage, `issue` names the deviation, and `suggested_fix` carries the escalation phrasing "we decided X; during <phase> we found Z; recommend Y, approve?". A brief without consensus entries leaves this check idle.
+When the brief carries consent evidence, check the ADR against it. Effort-backed evidence is the pasted user-provenance decision-log entries, including whatever `Record:` blocks exist; effort-free ADR evidence is the explicitly approved design summary. A contradiction or change to accepted semantics is always a `user-decision` finding, never silently absorbed: `location` cites the deviating ADR passage, `issue` names the deviation, and `suggested_fix` carries the escalation phrasing "we decided X; during <phase> we found Z; recommend Y, approve?". Removing an unaccepted surplus commitment restores the accepted decision set and is an authority-preserving `reasoned` correction, not a consensus deviation; disclose the removal and keep any worthwhile suggestion outside the artifact until accepted. A brief without either form of consent evidence leaves this check idle, and repository facts never substitute for consent.
 
 <!-- awf:edit universal-lenses: default; create .awf/agents/parts/adr-reviewer/universal-lenses.md to override -->
 ## Universal lenses
 
 Apply all lenses to every ADR:
 
-1. **decision-clarity**: each Decision item must be a discrete durable commitment that remains meaningful after implementation; numbered as a readable commitment (item numbers are not supersession anchors); no hedging or narrative; no bundling of items whose motivating frictions are unrelated (scope-coherence sub-check: flag only when items do not share a single rationale across all items). Apply the post-implementation test (does it still constrain the project after delivery?) and the counterfactual test (could it change without violating the intended architecture, policy, behaviour, ownership, compatibility, safety, or reproducibility boundary?). A mechanism is valid only when the ADR explains why the mechanism itself is load-bearing. Treat paths, commands, task order, rollout batches, ordinary test transactions, and comparable executor instructions as plan content; report a misplaced directive as a reasoned finding, not a mechanical format failure.
+1. **decision-adherence**: compare every Decision commitment with the consent evidence supplied in the brief. Flag a contradiction, semantic strengthening, or new decision that the evidence does not establish. Repository facts, conventions, and architectural reasoning can test correctness but do not establish user consent. Do not infer acceptance from missing or insufficient evidence.
+
+1. **ADR-scope**: require each Decision item to be the narrowest discrete durable commitment that preserves the accepted semantics and remains meaningful after implementation; numbered as a readable commitment (item numbers are not supersession anchors); no hedging or narrative; no bundling of items whose motivating frictions are unrelated (scope-coherence sub-check: flag only when items do not share a single rationale across all items). Apply the post-implementation test (does it still constrain the project after delivery?) and the counterfactual test (could it change without violating the intended architecture, policy, behaviour, ownership, compatibility, safety, or reproducibility boundary?). Flag an unnecessary constraint, representation, guarantee, mechanism, exclusion, or incidental implementation choice that can vary without violating the accepted decision. A mechanism is valid only when the consent evidence establishes that the mechanism itself is load-bearing. Treat paths, commands, task order, rollout batches, ordinary test transactions, and comparable executor instructions as plan or direct-execution content; report a misplaced directive as a reasoned finding, not a mechanical format failure.
 
 1. **state-changes-fidelity**: the `State changes` section must be `None.` or a list whose every entry names one claim by a valid `<domain>/<topic>:<slug>` id and picks the operation (add, update, remove) that matches the Decision's intent; a rename is remove plus add. Flag an operation whose destination topic does not exist, an id named more than once, a re-add of a removed id, or a claim the Decision describes changing that is missing an operation. A claim the ADR adds is a rule or an invariant; an invariant claim must state how it will be backed. Backed invariant claims are proven by a test annotation at `./internal/...`.
 
@@ -64,9 +66,6 @@ Apply all lenses to every ADR:
 
 <!-- awf:edit project-focus: default; create .awf/agents/parts/adr-reviewer/project-focus.md to override -->
 ## Project-specific focus items
-
-
-**decision-clarity**: each Decision item is a durable commitment that remains meaningful after implementation; apply post-implementation and counterfactual tests, allow a mechanism only when it is itself load-bearing, and route executor instructions to the plan as reasoned findings
 
 
 **consequences-honesty**: trade-offs name real costs and operational implications, not straw men

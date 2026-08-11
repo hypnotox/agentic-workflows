@@ -60,9 +60,9 @@ Backing: test
 
 ### `invariant: authority-guided-review-remediation`
 
-The shared review spine is the single semantic home of finding classification and reserves `user-decision` for a finding where every viable correct remediation would contradict or change a settled user-approved design or decision or require an unauthorized change to an active current-state claim, with the affected authority cited; ambiguity, competing clean options, severity, structural character, and survival of a prior correction do not transfer the choice, and an ADR intentionally declaring an active-claim change is not an unauthorized deviation. One variable-free shared prose partial is directly included exactly once by ordinary plan review, ADR review, and implementation review; it applies mechanical and reasoned corrections autonomously, scopes its stop rule to review findings, and routes a newly material load-bearing choice through the existing grounded-design or ADR workflow, pausing at that workflow's mandatory approval boundary. Exactly one fresh verify pass is retained, every residual finding is diagnosed under the same boundary without another same-artifact review loop, and a plan correction that would contradict linked authority returns to ADR amendment and review before a fresh ordinary plan review. Every affected skill and reviewer template renders coherently under empty variables.
+The shared review spine is the single semantic home of finding classification and reserves `user-decision` for a finding where every viable correct remediation would contradict or change a settled user-approved design or decision or require an unauthorized change to an active current-state claim, with the affected authority cited; ambiguity, competing clean options, severity, structural character, and survival of a prior correction do not transfer the choice, and an ADR intentionally declaring an active-claim change is not an unauthorized deviation. Removing an unaccepted surplus commitment restores the accepted decision set and is an authority-preserving reasoned correction, while contradicting or changing accepted semantics remains a user decision. One variable-free shared prose partial is directly included exactly once by ordinary plan review, ADR review, and implementation review; it applies mechanical and reasoned corrections autonomously, scopes its stop rule to review findings, and routes a newly material load-bearing choice through the existing grounded-design or ADR workflow, pausing at that workflow's mandatory approval boundary. Exactly one fresh verify pass is retained, every residual finding is diagnosed under the same boundary without another same-artifact review loop, and a plan correction that would contradict linked authority returns to ADR amendment and review before a fresh ordinary plan review. Every affected skill and reviewer template renders coherently under empty variables.
 Origin: ADR-0245
-Revised-by: ADR-0255
+Revised-by: ADR-0255, ADR-user-approved-adr-decision-boundaries
 Backing: test
 
 ### `invariant: memory-checkpoint-chain-coverage`
@@ -91,10 +91,10 @@ Backing: test
 
 ### `invariant: memory-log-consumer-coverage`
 
-The shared review spine carries the consensus-adherence check when user-provenance entries exist. Ordinary artifact and implementation review briefs paste available user entries verbatim, including `Record:` blocks; effort-free briefs omit memory evidence without fabricating consensus and still carry outcome, constraints, summary, range, and verification. Retrospective consumes effort observations and decisions only for effort-backed work.
+The shared review spine carries the consent-adherence check. Effort-backed review briefs paste available user-provenance entries verbatim, including `Record:` blocks; effort-free ADR review briefs paste the explicitly approved design summary from the current conversation. Missing evidence never permits inferred consent, and repository facts do not substitute for it. Other effort-free artifact and implementation briefs omit memory evidence without fabricating consensus and still carry outcome, constraints, summary, range, and verification. Retrospective consumes effort observations and decisions only for effort-backed work.
 This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0186
-Revised-by: ADR-0197, ADR-0243, ADR-0255
+Revised-by: ADR-0197, ADR-0243, ADR-0255, ADR-user-approved-adr-decision-boundaries
 Backing: test
 
 ### `invariant: workflow-transitions-advisory`

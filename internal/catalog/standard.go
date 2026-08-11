@@ -125,7 +125,6 @@ var Standard = &Catalog{
 			Sections:    []string{"universal-lenses", "project-focus"},
 			Data: map[string]any{
 				"focusItems": []any{
-					map[string]any{"name": "decision-clarity", "description": "each Decision item is a durable commitment that remains meaningful after implementation; apply post-implementation and counterfactual tests, allow a mechanism only when it is itself load-bearing, and route executor instructions to the plan as reasoned findings"},
 					map[string]any{"name": "consequences-honesty", "description": "trade-offs name real costs and operational implications, not straw men"},
 					map[string]any{"name": "claim-topic-cohesion", "description": "each claim this ADR adds belongs in the topic its State changes names: it answers the same question that topic's existing claims answer, rather than landing there because the topic is adjacent or convenient. Flag a destination that gives its topic a second subject, and name the subject the claim belongs to instead. Judge by subject, never by how many claims the topic already holds."},
 				},

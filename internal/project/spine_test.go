@@ -148,6 +148,11 @@ func TestAdrReviewerAgent(t *testing.T) {
 		"only when a Decision changes",
 		"cohesion, representation isolation, dependency direction, enabling-refactor disposition, testable seams, and justification for indirection",
 		"skip this lens rather than manufacturing structural requirements",
+		"decision-adherence",
+		"ADR-scope",
+		"consent evidence",
+		"semantic strengthening",
+		"unnecessary constraint",
 	} {
 		if !strings.Contains(out, phrase) {
 			t.Errorf("expected structural-design phrase %q in output:\n%s", phrase, out)
@@ -1835,6 +1840,12 @@ func TestReviewingAdrTemplate(t *testing.T) {
 		"user-decision",
 		"example-reviewing-plan",
 		"Proposed",
+		"user-provenance decision-log",
+		"explicitly approved design summary",
+		"repository facts do not establish consent",
+		"removed unauthorized surplus commitments",
+		"semantics-preserving refinements",
+		"writing `none` for an empty inventory",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -2211,7 +2222,10 @@ func TestMemoryLogConsumerCoverage(t *testing.T) {
 			"`issue` names the deviation",
 			"`suggested_fix` carries the escalation phrasing",
 			"we decided X; during <phase> we found Z; recommend Y, approve?",
-			"A brief without consensus entries leaves this check idle.",
+			"explicitly approved design summary",
+			"Removing an unaccepted surplus commitment",
+			"authority-preserving `reasoned` correction",
+			"A brief without either form of consent evidence leaves this check idle",
 		} {
 			if !strings.Contains(out, want) {
 				t.Errorf("%s missing consensus-adherence phrase %q:\n%s", agent, want, out)
@@ -2220,7 +2234,7 @@ func TestMemoryLogConsumerCoverage(t *testing.T) {
 	}
 	for _, skill := range []string{"reviewing-adr", "reviewing-plan", "reviewing-impl"} {
 		out := renderSkillGolden(t, skill, data)
-		for _, want := range []string{"pasted verbatim", "including whatever `Record:` blocks exist"} {
+		for _, want := range []string{"verbatim", "including whatever `Record:` blocks exist"} {
 			if !strings.Contains(out, want) {
 				t.Errorf("%s missing decision-log paste phrase %q:\n%s", skill, want, out)
 			}
@@ -2827,7 +2841,7 @@ func TestAuthorityGuidedReviewRemediation(t *testing.T) {
 		"cite the affected authority and name the deviation it would require",
 		"is not an unauthorized deviation merely because its proposed future state differs from current state",
 		"would make a new load-bearing choice material outside approved durable boundaries",
-		"a consensus deviation is a `user-decision` under the Consensus adherence rule below",
+		"changing accepted semantics is a `user-decision` under the Consensus adherence rule below, while removing authority-free surplus is not",
 		// Pin the surviving classification bullets by their own text. The
 		// bare tokens `mechanical` and `reasoned` also occur in the finding
 		// schema, so asserting those alone lets a whole bullet be deleted

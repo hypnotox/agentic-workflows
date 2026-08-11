@@ -40,6 +40,23 @@ func TestPlanReviewerChangeSpecificExecutabilitySanctionsBatch(t *testing.T) {
 	}
 }
 
+func TestADRReviewerDefaultsDoNotDuplicateUniversalLenses(t *testing.T) {
+	items, ok := Standard.Agents["adr-reviewer"].Data["focusItems"].([]any)
+	if !ok {
+		t.Fatalf("adr-reviewer focusItems missing or not []any")
+	}
+	for _, item := range items {
+		entry, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		name, _ := entry["name"].(string)
+		if name == "decision-clarity" || name == "decision-adherence" || name == "ADR-scope" {
+			t.Errorf("ADR reviewer project focus duplicates universal lens %q", name)
+		}
+	}
+}
+
 func TestReviewerVerificationGuidanceDefaults(t *testing.T) {
 	contracts := []struct {
 		agent string

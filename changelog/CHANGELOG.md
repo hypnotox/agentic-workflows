@@ -14,7 +14,7 @@ query a single version or a range.
 
 ### Features
 
-- ADR authoring guidance now requires explicit user acceptance before a commitment enters a decision record, keeps unaccepted suggestions outside the artifact, and defaults to the narrowest durable semantics while routing implementation detail to a plan or direct execution.
+- ADR authoring guidance now requires explicit user acceptance before a commitment enters a decision record, keeps unaccepted suggestions outside the artifact, and defaults to the narrowest durable semantics while routing implementation detail to a plan or direct execution. ADR review now separates consent adherence from scope, consumes effort-memory transcript evidence or the effort-free approved summary, removes unauthorized surplus commitments as reasoned corrections, and discloses removals and refinements at approval.
 
 - The adopter-facing documentation standard now advises count-free prose for changing sets and requires essential exact counts to name their query and be reverified when the source population changes. The agent-guide standard now keeps literal placeholder syntax in reference documentation unless its brace guard deliberately recognizes it.
 
