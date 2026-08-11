@@ -565,8 +565,8 @@
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
       "templateHash": "sha256:d6475aaeadbbed6f56bfc85c4716b8636fea0d5922661201890334a6429b4f85",
-      "configHash": "sha256:6514151f0b315f4014679e5d3a597bee51333a49115ceb764cd1fdd20a2d5191",
-      "outputHash": "sha256:a2427e51d4e52dce872d94b7f8aff4e4d0de85c934777f652b52424e38ab24f2"
+      "configHash": "sha256:2a03b85294e32b5ec8fbd9eb60dbc35cf644366e3e2f7640acd33a8b1538d9a5",
+      "outputHash": "sha256:7436a2d125f8263ce0fe61721e427e4c699919fbc4d0e13e28be40ef02cdce76"
     },
     "docs/pitfalls/a-census-number-is-only-as-good-as-its-stated-query.md": {
       "templateId": "pitfalls/entry.md.tmpl",
@@ -699,12 +699,6 @@
       "templateHash": "sha256:23ea7baa4f2cd0e3a7319448093f2612ca5a7beab8cb0bfc631015eef99be786",
       "configHash": "sha256:4266d1d154f77476ded93e51cc8e12125d69e0f242288655c34f0a6bfc37e7c1",
       "outputHash": "sha256:54e837e4831126f6e5408ec06812cc88034f3f53c2cc7268f3021a7dab9514ce"
-    },
-    "docs/pitfalls/do-not-infer-linked-plan-freshness-from-file-activity.md": {
-      "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:23ea7baa4f2cd0e3a7319448093f2612ca5a7beab8cb0bfc631015eef99be786",
-      "configHash": "sha256:2063a4741e8050b185de666ab919f471606db5e66a69a71bc89b65e962566a7a",
-      "outputHash": "sha256:0f95dc055f16c22a142f3ac1ae14cb67929e1e31087834b22b2869a86cebf396"
     },
     "docs/pitfalls/enabled-linters-constrain-api-shape-sketch-signatures-against-them.md": {
       "templateId": "pitfalls/entry.md.tmpl",
