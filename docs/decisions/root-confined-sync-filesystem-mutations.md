@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: root-confined-sync-filesystem-mutations
-status: Accepted
+status: Implementing
 date: 2026-08-11
 ---
 # ADR-root-confined-sync-filesystem-mutations: Root-confined sync filesystem mutations
@@ -125,3 +125,5 @@ boundary misleading. Other filesystem consumers remain unchanged.
 
 - 2026-08-11: Proposed
 - 2026-08-11: Accepted; content-sha256: 2f04c7d6ed189b8c5abab0c6794150117a4cb6728079ac9007dea0b4fb9d137f
+- 2026-08-11: Implementing; content-sha256: 2f04c7d6ed189b8c5abab0c6794150117a4cb6728079ac9007dea0b4fb9d137f
+- 2026-08-11: Applied; operations: add `rendering/sync-and-drift:sync-mutations-root-confined`, update `rendering/sync-and-drift:sync-backs-up-foreign`, update `config/migrations-and-locks:lock-atomic-save`

@@ -97,8 +97,9 @@ Backing: test
 
 ### `invariant: lock-atomic-save`
 
-The lock file and migration rewrites of existing config files are written through a temp-file-plus-rename helper that leaves no temp residue when the rename fails, rather than a direct in-place write.
+Ordinary render loads and completely replaces the lock through the selected tracked root-confined handle, while migration rewrites of existing config files retain their temp-file-plus-rename helper that leaves no temp residue when the rename fails. Neither path writes the lock or migration target in place.
 Origin: ADR-0076
+Revised-by: ADR-root-confined-sync-filesystem-mutations
 Backing: test
 
 ### `invariant: migration-ordering`

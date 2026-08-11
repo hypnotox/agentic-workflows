@@ -63,6 +63,15 @@ func TestUninstallSkipsEscapingLockPaths(t *testing.T) {
 	}
 }
 
+// Removing an already absent generated entry remains the no-op contract used
+// by uninstall now that sync owns its separate root-confined removal path.
+func TestRemoveGeneratedFileAbsentIsNoOp(t *testing.T) {
+	removed, err := RemoveGeneratedFile(filepath.Join(t.TempDir(), "absent"))
+	if err != nil || removed {
+		t.Fatalf("RemoveGeneratedFile absent = %t, %v", removed, err)
+	}
+}
+
 func TestUninstallRemovalFailureKeepsLock(t *testing.T) {
 	root := t.TempDir()
 	const locked = "generated.md"

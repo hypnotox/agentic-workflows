@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/fs"
 	"maps"
-	"os"
 	"path"
 	"path/filepath"
 	"slices"
@@ -508,7 +507,11 @@ func (p *Project) syncReportWithPitfalls(ctx context.Context, seed *InitAuthorit
 	// immediate parent, so dropping a target clears its whole tree (inv:
 	// target-prune-ancestors; reuses Uninstall's idiom).
 	if old != nil {
-		dirs := map[string]bool{}
+		type cleanupDir struct {
+			filesystem syncFilesystem
+			path       string
+		}
+		dirs := map[string]cleanupDir{}
 		for path, entry := range old.Files {
 			if want[path] || resident.PreserveRemoval(path, preservedResidents) {
 				continue
@@ -518,14 +521,13 @@ func (p *Project) syncReportWithPitfalls(ctx context.Context, seed *InitAuthorit
 			if !filepath.IsLocal(filepath.FromSlash(path)) {
 				continue
 			}
-			file := p.roots.ResolveOutput(path)
+			filesystem, outputPath := filesystems.output(path)
 			// The outgoing co-owned runner is the one pruned output an adopter
 			// hand-authored inside (its in-place verb bodies), so it is backed
 			// up before removal for the one-time hand-port instead of vanishing
 			// into git history (ADR-0156 item 9). A backup failure aborts the
 			// prune - never a silent fall-through to deletion.
 			if entry.TemplateID == coOwnedRunnerTID {
-				filesystem, outputPath := filesystems.output(path)
 				if _, existsErr := filesystem.LinkInfo(outputPath); existsErr == nil {
 					bak, bakErr := p.backupFileConfined(outputPath, filesystem)
 					if bakErr != nil {
@@ -537,25 +539,22 @@ func (p *Project) syncReportWithPitfalls(ctx context.Context, seed *InitAuthorit
 			// Report only an actual removal - a path whose file is already gone
 			// must not be claimed pruned. Any other failure preserves the old lock
 			// so the managed path remains visible and the operation can be retried.
-			removed, err := resident.RemoveGeneratedFile(file)
-			if err != nil {
+			err := filesystem.Remove(outputPath)
+			if err != nil && !errors.Is(err, fs.ErrNotExist) {
 				return backups, changes, pruned, fmt.Errorf("remove retired output %s: %w", path, err)
 			}
-			if removed {
+			if err == nil {
 				pruned = append(pruned, path)
 			}
-			base := p.Root
-			if resident.IsResidentPath(path) {
-				base = p.roots.Resident
-			}
-			for d := filepath.Dir(file); d != base; d = filepath.Dir(d) {
-				dirs[d] = true
+			for d := filepath.ToSlash(filepath.Dir(filepath.FromSlash(outputPath))); d != "."; d = filepath.ToSlash(filepath.Dir(filepath.FromSlash(d))) {
+				key := fmt.Sprintf("%t:%s", resident.IsResidentPath(path), d)
+				dirs[key] = cleanupDir{filesystem: filesystem, path: d}
 			}
 		}
-		dirList := slices.Collect(maps.Keys(dirs))
-		slices.SortFunc(dirList, func(a, b string) int { return len(b) - len(a) })
+		dirList := slices.Collect(maps.Values(dirs))
+		slices.SortFunc(dirList, func(a, b cleanupDir) int { return len(b.path) - len(a.path) })
 		for _, d := range dirList {
-			_ = os.Remove(d) // removes only if now empty
+			_ = d.filesystem.Remove(d.path) // removes only if now empty
 		}
 	}
 	lockBytes, err = lock.Marshal()
