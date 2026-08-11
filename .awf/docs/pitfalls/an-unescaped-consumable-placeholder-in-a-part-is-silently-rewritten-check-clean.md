@@ -1,0 +1,16 @@
+---
+title: "An unescaped consumable placeholder in a part is silently rewritten, check-clean"
+domains: ["rendering"]
+tags: ["placeholder-degradation", "convention-parts"]
+---
+The guide-brace-check entry above covers a token tripping a test; the worse variant trips
+nothing. A convention part that *documents* a consumable placeholder (`{{=awf:gateCmd}}`,
+`{{=awf:checkCmd}}`) without the backslash escape gets substituted like any other part:
+the rendered doc shows the var's *value* where the token *name* belongs, `awf check` stays
+clean (the output is exactly what the config produces), and only a human reading the
+rendered file notices. Bit the ADR-0086 docs commit (2026-07-10): the rendering domain's
+current-state part quoted both tokens bare while the same file escaped
+`{{=awf:sectionDefault}}` two sentences earlier. Machine-checking this is off the table (
+substituting inside backticks is also a legitimate pattern), so it is promoted to a
+code-review focus item (`part-placeholder-escaping`): quoted-as-syntax means escaped,
+meant-to-resolve means bare, and verify by reading the rendered file, not the part.

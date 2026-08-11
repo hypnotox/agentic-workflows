@@ -2,6 +2,13 @@ This topic governs concerns introduced by new work and forks deliberately conver
 
 ## Claims
 
+### `invariant: pitfall-model-single-home`
+
+Pitfall identity, strict source parsing, title equivalence, canonical serialization, Markdown title escaping, relative-link preflight, and slug allocation have one production home in `internal/pitfall`; project orchestration and migration consume that model without redeclaring its semantic types or rules.
+Origin: ADR-0262
+Backing: test
+
+
 ### `invariant: single-implementation`
 
 A policy or mechanism consumed from more than one package has exactly one implementation, in the package that owns the concern, and every consumer uses it; a second implementation is a defect rather than a variant, and a narrow consumer configures the shared implementation instead of reimplementing a reduced copy. Two implementations of similar-looking behaviour are permitted only when they answer materially different contracts from distinct sources, with that reasoning recorded in a durable decision and referenced at the site; undocumented similarity is a fork until reasoned otherwise, a coupling obstacle is a reason to fix the shared implementation rather than to fork, and distinct sources qualify a materially different contract rather than substituting for one. A new consumer of an already-forked concern adopts one existing implementation and never adds another. Scope is this repository's authored sources: `internal/` and `cmd/` packages, test-support packages, and the runtime template sources under `templates/`; generated output is outside it because its duplication is by construction.

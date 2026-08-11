@@ -1,0 +1,14 @@
+---
+title: "A milestone-time check must not double as an every-commit test"
+domains: ["tooling"]
+tags: ["release-pipeline", "changelog"]
+---
+`cmd/releasecheck` (ADR-0078) holds a condition that is *supposed* to be false mid-cycle: the
+exact changelog pin only has to be true at tag time, and a normal in-cycle repo carries a
+non-empty `[Unreleased]`. An early draft of its test suite ran the real check against the live
+embedded changelog in the ordinary gate run, with a skip for only one of the two mid-cycle
+failure modes, which would have silently re-imposed the every-commit pin the ADR exists to
+remove, reddening the gate on the first in-cycle changelog entry (caught before commit,
+2026-07-08). When a check's whole point is to hold only at a milestone (a tag, a release, a
+schema migration), its unit tests belong on synthetic fixtures; the live repo state is input
+for the milestone gate alone.

@@ -17,7 +17,7 @@ import (
 )
 
 // runNew scaffolds one of the surviving authored artifacts: an ADR, plan,
-// current-state topic, or domain. Each arm owns its kind-specific arguments.
+// current-state topic, domain, or pitfall. Each arm owns its kind-specific arguments.
 // touches-state: tooling/cli:adr-new-version-gated - new-command version gate site; proof in gate_test.go
 func runNew(ctx context.Context, root, kind string, args []string, stdout io.Writer) error {
 	switch {
@@ -27,13 +27,15 @@ func runNew(ctx context.Context, root, kind string, args []string, stdout io.Wri
 		return newPlan(ctx, root, args, stdout)
 	case kind == "topic":
 		return newTopic(ctx, root, args, stdout)
+	case kind == "pitfall":
+		return newPitfall(ctx, root, args, stdout)
 	case project.IsFreeformDomainKind(kind):
 		if len(args) != 1 {
 			return &usageErr{"usage: awf new domain <name>"}
 		}
 		return runNewDomain(ctx, root, args[0], stdout)
 	default:
-		return &usageErr{fmt.Sprintf("unknown kind %q (want: adr, plan, topic, domain)", kind)}
+		return &usageErr{fmt.Sprintf("unknown kind %q (want: adr, plan, topic, domain, pitfall)", kind)}
 	}
 }
 
@@ -71,6 +73,24 @@ func newPlan(ctx context.Context, root string, titleWords []string, stdout io.Wr
 		return err
 	}
 	return writeStatus(stdout, "created: "+path)
+}
+
+func newPitfall(ctx context.Context, root string, args []string, stdout io.Writer) error {
+	if len(args) != 1 {
+		return &usageErr{"usage: awf new pitfall <title>"}
+	}
+	if err := gate(ctx, root); err != nil {
+		return err
+	}
+	p, err := project.Open(ctx, root)
+	if err != nil {
+		return err
+	}
+	document, err := p.NewPitfall(args[0])
+	if err != nil {
+		return err
+	}
+	return presentation.Render(stdout, document)
 }
 
 func newTopic(ctx context.Context, root string, args []string, stdout io.Writer) error {

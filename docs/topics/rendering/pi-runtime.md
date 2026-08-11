@@ -5,7 +5,7 @@
 
 The Pi runtime floor and its boundaries.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `.pi/extensions/**`, `internal/catalog/**`. Both domain and topic selectors must match. Run `awf topic rendering/pi-runtime --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/pitfall/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `.pi/extensions/**`, `internal/catalog/**`. Both domain and topic selectors must match. Run `awf topic rendering/pi-runtime --coverage` for current applicable and owned paths and marker sites.
 
 The Pi runtime floor and its boundaries: child-process safety, tool boundaries, target rendering, and real-runtime smoke coverage.
 

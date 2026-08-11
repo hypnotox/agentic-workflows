@@ -11,6 +11,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
@@ -28,17 +29,13 @@ func TestAdvisoryCompatibilityAndReportErrorPaths(t *testing.T) {
 func TestAdvisoryNotesRejectMalformedRetainedData(t *testing.T) {
 	t.Run("pitfalls", func(t *testing.T) {
 		root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\ntags:\n  narrow: Narrow.\n", map[string]string{
-			"docs/pitfalls.yaml": "data:\n  pitfalls: not-a-list\n",
+			"docs/pitfalls/bad.md": "---\ntitle: Bad\nunknown: value\n---\nbody\n",
 		})
 		p, err := Open(testContext(t), root)
 		if err != nil {
 			t.Fatal(err)
 		}
-		corpus, err := adr.NewCorpus(nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := p.advisoryNotesWithState(corpus, nil, &OutputPlan{}); err == nil || !strings.Contains(err.Error(), "must be a list") {
+		if _, err := p.AdvisoryNotes(testContext(t)); err == nil || !strings.Contains(err.Error(), "unknown") {
 			t.Fatalf("advisory pitfall error = %v", err)
 		}
 	})
@@ -54,7 +51,7 @@ func TestAdvisoryNotesRejectMalformedRetainedData(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := p.advisoryNotesWithState(corpus, nil, &OutputPlan{}); err == nil || !strings.Contains(err.Error(), "must be a list") {
+		if _, err := p.advisoryNotesWithState(corpus, pitfall.Corpus{}, nil, &OutputPlan{}); err == nil || !strings.Contains(err.Error(), "must be a list") {
 			t.Fatalf("advisory glossary error = %v", err)
 		}
 	})
@@ -62,10 +59,10 @@ func TestAdvisoryNotesRejectMalformedRetainedData(t *testing.T) {
 
 func TestOutputPlanRejectsMalformedRetainedData(t *testing.T) {
 	for _, tc := range []struct {
-		name, path, sidecar string
+		name, path, sidecar, want string
 	}{
-		{"pitfalls", "docs/pitfalls.yaml", "data:\n  pitfalls: not-a-list\n"},
-		{"glossary", "docs/glossary.yaml", "data:\n  terms: not-a-list\n"},
+		{"pitfalls", "docs/pitfalls/bad.md", "---\ntitle: Bad\nunknown: value\n---\nbody\n", "unknown"},
+		{"glossary", "docs/glossary.yaml", "data:\n  terms: not-a-list\n", "must be a list"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{tc.path: tc.sidecar})
@@ -73,7 +70,7 @@ func TestOutputPlanRejectsMalformedRetainedData(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := p.OutputPlan(testContext(t)); err == nil || !strings.Contains(err.Error(), "must be a list") {
+			if _, err := p.OutputPlan(testContext(t)); err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("output-plan error = %v", err)
 			}
 		})
@@ -84,7 +81,6 @@ func TestCheckWithStatePropagatesMalformedRetainedData(t *testing.T) {
 	for _, tc := range []struct {
 		name, path, sidecar string
 	}{
-		{"pitfalls", "docs/pitfalls.yaml", "data:\n  pitfalls: not-a-list\n"},
 		{"glossary", "docs/glossary.yaml", "data:\n  terms: not-a-list\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -96,11 +92,11 @@ func TestCheckWithStatePropagatesMalformedRetainedData(t *testing.T) {
 			if err := p.Sync(); err != nil {
 				t.Fatal(err)
 			}
-			corpus, topics, effective, err := p.deriveOperationState()
+			corpus, pitfalls, topics, effective, err := p.deriveOperationStateWithPitfalls()
 			if err != nil {
 				t.Fatal(err)
 			}
-			op, err := p.outputPlan(testContext(t), corpus, topics, effective)
+			op, err := p.outputPlanWithPitfalls(testContext(t), corpus, pitfalls, topics, effective)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -111,7 +107,7 @@ func TestCheckWithStatePropagatesMalformedRetainedData(t *testing.T) {
 			if err := os.WriteFile(sidecarPath, []byte(tc.sidecar), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := p.checkWithState(testContext(t), corpus, topics, effective, mustParsePlans(t, p), op); err == nil || !strings.Contains(err.Error(), "must be a list") {
+			if _, err := p.checkWithState(testContext(t), corpus, pitfall.Corpus{}, topics, effective, mustParsePlans(t, p), op); err == nil || !strings.Contains(err.Error(), "must be a list") {
 				t.Fatalf("check-with-state error = %v", err)
 			}
 		})

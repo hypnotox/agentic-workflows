@@ -43,7 +43,11 @@ func (p *Project) CheckStagedDrift(ctx context.Context) ([]manifest.Drift, error
 	for name := range universe.Cat.Skills {
 		effective[name] = true
 	}
-	op, err := universe.outputPlan(ctx, state.Loaded.Corpus, state.Loaded.Topics, effective)
+	pitfalls, err := universe.loadPitfallCorpus()
+	if err != nil { // coverage-ignore: indexCurrentState and catalog validation already read this immutable staged tree
+		return nil, err
+	}
+	op, err := universe.outputPlanWithPitfalls(ctx, state.Loaded.Corpus, pitfalls, state.Loaded.Topics, effective)
 	if err != nil {
 		return nil, err
 	}

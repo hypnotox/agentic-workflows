@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-repository-local-template-source-symbols: Repository-Local Template Source Symbols](repository-local-template-source-symbols.md) (Implementing)
+- [ADR-0263: Repository-Local Template Source Symbols](0263-repository-local-template-source-symbols.md) (Implementing)
 
 ## History
 
@@ -267,3 +267,4 @@
 - [ADR-0259: Archive Finished Efforts and Permit Effort Scratch Data](0259-archive-finished-efforts-and-permit-effort-scratch-data.md) (Implemented)
 - [ADR-0260: Verification checkout for implementation commit policy](0260-verification-checkout-for-implementation-commit-policy.md) (Implemented)
 - [ADR-0261: Bound Native Git Fixtures](0261-bound-native-git-fixtures.md) (Implemented)
+- [ADR-0262: Split Pitfall Corpus and Generated Index](0262-split-pitfall-corpus-and-generated-index.md) (Implemented)

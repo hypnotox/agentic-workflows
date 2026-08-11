@@ -4,7 +4,7 @@ slug: repository-local-template-source-symbols
 status: Implementing
 date: 2026-08-11
 ---
-# ADR-repository-local-template-source-symbols: Repository-Local Template Source Symbols
+# ADR-0263: Repository-Local Template Source Symbols
 
 
 ## Context

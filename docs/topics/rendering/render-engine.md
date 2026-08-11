@@ -5,7 +5,7 @@
 
 The template overlay render engine and its reference resolution.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/project/banner*.go`, `internal/project/inplace_test.go`, `internal/project/render.go`, `internal/project/template_source_marker_test.go`, `internal/project/topics*.go`, `internal/refs/**`, `internal/render/**`. Both domain and topic selectors must match. Run `awf topic rendering/render-engine --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/pitfall/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/project/banner*.go`, `internal/project/inplace_test.go`, `internal/project/render.go`, `internal/project/template_source_marker_test.go`, `internal/project/topics*.go`, `internal/refs/**`, `internal/render/**`. Both domain and topic selectors must match. Run `awf topic rendering/render-engine --coverage` for current applicable and owned paths and marker sites.
 
 The render and refs packages drive the template overlay engine and resolve inter-document references. The claims below capture the current render-engine contracts.
 
@@ -75,13 +75,13 @@ Backing: test
 
 Renderer-owned template structural directives never survive as awf:section or awf:end markers in rendered output. Raw convention parts and adopter-owned in-place bodies remain verbatim and may contain marker-shaped text. Apart from those verbatim inputs, the awf markers a rendered file may carry are the generated-by banner, the awf:edit family, informational awf:source comments, and maintainer-facing awf:template-source comments.
 Origin: ADR-0015
-Revised-by: ADR-0250, ADR-repository-local-template-source-symbols
+Revised-by: ADR-0250, ADR-0263
 Backing: test
 
 ### `invariant: template-source-symbol`
 
 When `render.templateSourceRoot` is configured, every template-backed declared Markdown output carries renderer-owned `awf:template-source` markers for its root template, included partial entries and returns, and surviving structural sections. The root follows the banner and any reader-facing `awf:source`; frontmatter, in-place bodies, template-less producers, and native-format outputs carry none. The selected working or staged repository tree must resolve every emitted source, and the root participates in affected output config hashes while absent configuration preserves prior bytes.
-Origin: ADR-repository-local-template-source-symbols
+Origin: ADR-0263
 Backing: test
 
 ### `invariant: source-marker-informational`

@@ -215,6 +215,54 @@ func TestRetainedDomainAndListCLIPaths(t *testing.T) {
 		}
 	})
 
+	t.Run("production dispatch creates every authored kind without render selection", func(t *testing.T) {
+		root := scaffoldProject(t)
+		if err := runNew(ctx, root, "domain", []string{"payments"}, io.Discard); err != nil {
+			t.Fatalf("dispatch domain: %v", err)
+		}
+		configAfterDomain := mustReadCLIFile(t, config.ConfigPath(root))
+		lockAfterDomain := mustReadCLIFile(t, filepath.Join(root, ".awf", "awf.lock"))
+		pitfallsBefore := mustReadCLIFile(t, filepath.Join(root, "docs", "pitfalls.md"))
+
+		if err := runNew(ctx, root, "adr", []string{"Dispatch", "ADR"}, io.Discard); err != nil {
+			t.Fatalf("dispatch adr: %v", err)
+		}
+		if err := runNew(ctx, root, "plan", []string{"Dispatch", "Plan"}, io.Discard); err != nil {
+			t.Fatalf("dispatch plan: %v", err)
+		}
+		if err := runNew(ctx, root, "topic", []string{"payments", "Dispatch", "Topic"}, io.Discard); err != nil {
+			t.Fatalf("dispatch topic: %v", err)
+		}
+		if err := runNew(ctx, root, "pitfall", []string{"Dispatch Pitfall"}, io.Discard); err != nil {
+			t.Fatalf("dispatch pitfall: %v", err)
+		}
+
+		for _, pattern := range []string{
+			filepath.Join(root, "docs", "decisions", "*-dispatch-adr.md"),
+			filepath.Join(root, "docs", "plans", "*-dispatch-plan.md"),
+			filepath.Join(root, ".awf", "domains", "parts", "payments", "current-state.md"),
+			filepath.Join(root, ".awf", "topics", "metadata", "payments", "dispatch-topic.yaml"),
+			filepath.Join(root, ".awf", "docs", "pitfalls", "dispatch-pitfall.md"),
+		} {
+			matches, err := filepath.Glob(pattern)
+			if err != nil || len(matches) != 1 {
+				t.Fatalf("created path %q matches = %v, %v", pattern, matches, err)
+			}
+		}
+		if got := mustReadCLIFile(t, config.ConfigPath(root)); got != configAfterDomain {
+			t.Fatal("non-domain creation selected render membership in config")
+		}
+		if got := mustReadCLIFile(t, filepath.Join(root, ".awf", "awf.lock")); got != lockAfterDomain {
+			t.Fatal("authored creation rendered or changed lock inventory")
+		}
+		if got := mustReadCLIFile(t, filepath.Join(root, "docs", "pitfalls.md")); got != pitfallsBefore {
+			t.Fatal("pitfall dispatch rendered the generated index")
+		}
+		if _, err := os.Stat(filepath.Join(root, "docs", "topics", "payments", "dispatch-topic.md")); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("topic dispatch rendered generated output: %v", err)
+		}
+	})
+
 	t.Run("version gate", func(t *testing.T) {
 		root := scaffoldProject(t)
 		lockPath := filepath.Join(root, ".awf", "awf.lock")

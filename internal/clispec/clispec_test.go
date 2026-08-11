@@ -77,6 +77,7 @@ func TestContextHumanOnlyFacetSpec(t *testing.T) {
 // Every command and child carries non-empty identifying metadata, and top-level
 // names are unique.
 // invariant: tooling/cli:cli-creation-and-inventory (TestConfigurationSurfaceGrammar)
+// invariant: tooling/cli:pitfall-scaffold (TestConfigurationSurfaceGrammar)
 func TestConfigurationSurfaceGrammar(t *testing.T) {
 	for _, retired := range []string{"enable", "disable", "target"} {
 		if _, ok := Lookup(retired); ok {
@@ -91,7 +92,7 @@ func TestConfigurationSurfaceGrammar(t *testing.T) {
 	for _, child := range newCommand.Children {
 		children = append(children, child.Name)
 	}
-	if got, want := strings.Join(children, ","), "adr,plan,topic,domain"; got != want {
+	if got, want := strings.Join(children, ","), "adr,plan,topic,domain,pitfall"; got != want {
 		t.Fatalf("new children = %q, want %q", got, want)
 	}
 }
@@ -426,6 +427,7 @@ func helpValues(help Help) []string {
 	return values
 }
 
+// invariant: tooling/cli:pitfall-scaffold (TestLookup)
 func TestLookup(t *testing.T) {
 	if _, ok := Lookup("render"); !ok {
 		t.Error("Lookup(render) missing")
@@ -437,14 +439,19 @@ func TestLookup(t *testing.T) {
 	if !ok {
 		t.Fatal("Lookup(new) missing")
 	}
-	if len(newCmd.Children) != 4 {
-		t.Errorf("new has %d children, want 4", len(newCmd.Children))
+	if len(newCmd.Children) != 5 {
+		t.Errorf("new has %d children, want 5", len(newCmd.Children))
 	}
 	if _, ok := newCmd.Child("adr"); !ok {
 		t.Error("new.Child(adr) missing")
 	}
 	if _, ok := newCmd.Child("plan"); !ok {
 		t.Error("new.Child(plan) missing")
+	}
+	if pitfall, ok := newCmd.Child("pitfall"); !ok {
+		t.Error("new.Child(pitfall) missing")
+	} else if pitfall.MinPos != 1 || pitfall.MaxPos != 1 || !strings.Contains(helpText(pitfall), "without rendering") {
+		t.Errorf("new pitfall spec = %#v", pitfall)
 	}
 	if topic, ok := newCmd.Child("topic"); !ok {
 		t.Error("new.Child(topic) missing")

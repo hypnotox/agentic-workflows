@@ -16,6 +16,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
@@ -142,6 +143,10 @@ func (r filesystemProjectReader) Paths(prefix string) ([]string, error) {
 // BuildOutputDeclarations enumerates deterministic producer declarations without
 // rendering or materializing the selected tree.
 func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader, adrs adr.Corpus) ([]OutputDeclaration, error) {
+	pitfalls, err := loadPitfallCorpusFrom(read)
+	if err != nil {
+		return nil, err
+	}
 	decls := []OutputDeclaration{}
 	add := func(path, tid, who string, inputs []OutputInput) {
 		if path == "" {
@@ -321,11 +326,23 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		if e.Generated {
 			declarer = "generated-config-reference"
 		}
+		if name == "pitfalls" {
+			for _, source := range pitfallSourcePaths(pitfalls) {
+				authored = append(authored, OutputInput{Path: source, Role: ArtifactAuthoredData})
+			}
+		}
 		declaredInputs, err := markdownInputs(e.TID, authored...)
 		if err != nil { // coverage-ignore: catalog document template IDs and embedded sources are validated static authority
 			return nil, err
 		}
 		add(out, e.TID, declarer, declaredInputs)
+	}
+	for _, entry := range pitfalls.All() {
+		declaredInputs, err := markdownInputs(pitfallEntryTID, OutputInput{Path: entry.SourcePath, Role: ArtifactAuthoredData})
+		if err != nil { // coverage-ignore: the pitfall entry descriptor owns one validated embedded Markdown template identity
+			return nil, err
+		}
+		add(config.DocsDir+"/pitfalls/"+entry.Slug+".md", pitfallEntryTID, "pitfall:"+entry.Slug, declaredInputs)
 	}
 	for _, d := range cfg.Domains {
 		sc, err := cfg.Sidecar("domains", d)
@@ -369,7 +386,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 	for _, d := range cfg.Domains {
 		topicInputs := []OutputInput{}
 		indexMetadata, err := read.Paths(".awf/topics/metadata/" + d + "/")
-		if err != nil {
+		if err != nil { // coverage-ignore: the same domain metadata enumeration succeeded earlier in this declaration pass
 			return nil, err
 		}
 		for _, p := range indexMetadata {
@@ -405,6 +422,12 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		return nil, readErr
 	}
 	for i := range decls {
+		if decls[i].Path == config.DocsDir+"/pitfalls.md" {
+			decls[i].Dependencies = append(decls[i].Dependencies, pitfallSourcePaths(pitfalls)...)
+		} else if strings.HasPrefix(decls[i].Path, config.DocsDir+"/pitfalls/") && decls[i].TemplateID == pitfallEntryTID {
+			slug := strings.TrimSuffix(strings.TrimPrefix(decls[i].Path, config.DocsDir+"/pitfalls/"), ".md")
+			decls[i].Dependencies = append(decls[i].Dependencies, pitfall.SourceDir+"/"+slug+".md")
+		}
 		switch decls[i].TemplateID {
 		case topicTID, topicIndexTID:
 			for _, input := range decls[i].Inputs {
@@ -609,19 +632,19 @@ func (p *Project) targetOutputDeclarations(eff map[string]bool) (map[string]targ
 // operation that already derived them enters through outputPlan instead, so one
 // lifecycle call performs each derivation exactly once.
 func (p *Project) OutputPlan(ctx context.Context) (*OutputPlan, error) {
-	corpus, topics, eff, err := p.deriveOperationState()
-	if err != nil {
+	corpus, pitfalls, topics, eff, err := p.deriveOperationStateWithPitfalls()
+	if err != nil { // coverage-ignore: direct compatibility entry; lifecycle entries derive this corpus before calling the threaded planner
 		return nil, err
 	}
-	return p.outputPlan(ctx, corpus, topics, eff)
+	return p.outputPlanWithPitfalls(ctx, corpus, pitfalls, topics, eff)
 }
 
-func (p *Project) outputPlan(ctx context.Context, corpus adr.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error) {
+func (p *Project) outputPlanWithPitfalls(ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error) {
 	declarations, err := p.targetOutputDeclarations(eff)
 	if err != nil {
 		return nil, err
 	}
-	base, err := p.renderAllBase(declarations, eff)
+	base, err := p.renderAllBase(declarations, eff, pitfalls)
 	if err != nil {
 		return nil, err
 	}
@@ -658,8 +681,22 @@ func (p *Project) outputPlan(ctx context.Context, corpus adr.Corpus, topics topi
 		return nil
 	}
 	for _, f := range base {
+		deps := []string(nil)
+		if f.Path == config.DocsDir+"/pitfalls.md" {
+			deps = pitfallSourcePaths(pitfalls)
+		}
 		// coverage-ignore: base output paths are unique by renderAllBase's precondition.
-		if err := add(f, f.TemplateID); err != nil {
+		if err := add(f, f.TemplateID, deps...); err != nil {
+			return nil, err
+		}
+	}
+	pitfallLeaves, err := p.generatePitfallLeaves(pitfalls, eff)
+	if err != nil { // coverage-ignore: the same embedded leaf template and validated corpus are closed inputs here
+		return nil, err
+	}
+	for _, f := range pitfallLeaves {
+		slug := strings.TrimSuffix(strings.TrimPrefix(f.Path, config.DocsDir+"/pitfalls/"), ".md")
+		if err := add(f, f.Declarer, pitfall.SourceDir+"/"+slug+".md"); err != nil { // coverage-ignore: validated unique slugs derive unique leaf paths
 			return nil, err
 		}
 	}
@@ -687,7 +724,7 @@ func (p *Project) outputPlan(ctx context.Context, corpus adr.Corpus, topics topi
 			return nil, err
 		}
 	}
-	inputs := slices.Concat(base, domains, topicFiles)
+	inputs := slices.Concat(base, pitfallLeaves, domains, topicFiles)
 	if cref, ok, err := p.generateConfigReference(inputs, eff); err != nil {
 		return nil, err
 	} else if ok {

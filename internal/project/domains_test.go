@@ -138,7 +138,7 @@ func TestDeriveOperationStateSurfacesTopicAssemblyError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	if _, _, _, err := p.deriveOperationState(); err == nil {
+	if _, _, _, _, err := p.deriveOperationStateWithPitfalls(); err == nil {
 		t.Error("expected the operation derivation to surface the topic-corpus assembly error")
 	}
 }

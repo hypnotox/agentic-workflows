@@ -134,8 +134,70 @@ func TestHandleConfinesPaths(t *testing.T) {
 	}
 }
 
+// invariant: tooling/filesystem-access:root-confined-paths (TestHandleOperations)
 func TestHandleOperations(t *testing.T) {
 	h, root := openFixture(t)
+	if err := h.MkdirAll("created/child", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.Publish("created/child/artifact", []byte("complete"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.Publish("created/child/artifact", []byte("loser"), 0o600); !errors.Is(err, os.ErrExist) {
+		t.Fatalf("publish collision = %v", err)
+	}
+	if raw, err := os.ReadFile(filepath.Join(root, "created/child/artifact")); err != nil || string(raw) != "complete" {
+		t.Fatalf("published bytes = %q, %v", raw, err)
+	}
+	if err := h.Replace("created/child/artifact", []byte("replacement"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	raw, readErr := os.ReadFile(filepath.Join(root, "created/child/artifact"))
+	replacedInfo, statErr := os.Stat(filepath.Join(root, "created/child/artifact"))
+	if readErr != nil || statErr != nil || string(raw) != "replacement" || replacedInfo.Mode().Perm() != 0o600 {
+		t.Fatalf("replacement = %q, %v, %v", raw, replacedInfo, errors.Join(readErr, statErr))
+	}
+	if err := h.Remove("created/child/artifact"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "created/child/artifact")); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("removed path remains: %v", err)
+	}
+	if err := h.Remove("missing"); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("remove error identity = %v", err)
+	}
+	if err := h.Replace("missing-parent/artifact", nil, 0o644); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("replace error identity = %v", err)
+	}
+	outside := t.TempDir()
+	outsidePath := filepath.Join(outside, "victim")
+	if err := os.WriteFile(outsidePath, []byte("outside"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(root, "escape")); err != nil {
+		t.Skipf("symlink unsupported: %v", err)
+	}
+	if err := h.Replace("escape/victim", []byte("replacement"), 0o644); err == nil {
+		t.Fatal("replace through escaping symlink succeeded")
+	}
+	if err := h.Remove("escape/victim"); err == nil {
+		t.Fatal("remove through escaping symlink succeeded")
+	}
+	if raw, err := os.ReadFile(outsidePath); err != nil || string(raw) != "outside" {
+		t.Fatalf("escaping mutations changed outside target = %q, %v", raw, err)
+	}
+	for _, operation := range []func() error{
+		func() error { return h.MkdirAll("..", 0o755) },
+		func() error { return h.Publish("../artifact", nil, 0o644) },
+		func() error { return h.Replace("../artifact", nil, 0o644) },
+		func() error { return h.Replace("dir/file/child", nil, 0o644) },
+		func() error { return h.Remove("../artifact") },
+		func() error { return h.MkdirAll("dir/file/child", 0o755) },
+	} {
+		if err := operation(); err == nil {
+			t.Fatal("invalid root-confined mutation succeeded")
+		}
+	}
 	if _, err := h.Info("dir/file"); err != nil {
 		t.Fatal(err)
 	}

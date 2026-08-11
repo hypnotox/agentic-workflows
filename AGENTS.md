@@ -72,6 +72,7 @@ go test ./...: run the test suite
 awf upgrade: migrate the config tree after upgrading awf
 awf audit: report workflow conformance for a commit range
 awf new plan "<Title>": scaffold a dated implementation plan
+awf new pitfall "<Title>": scaffold one authored pitfall source without rendering
 ```
 
 Use `awf read plan <plan> <P[.T]>` for executable plan scope. For command flags, context spills, effort lifecycle, and ADR lifecycle, see [docs/working-with-awf.md](docs/working-with-awf.md) and the selected native skill.

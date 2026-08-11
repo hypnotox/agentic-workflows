@@ -60,9 +60,12 @@ instead of rotting.
   plus a generated compact list of that domain's current-state topics. A domain's sidecar can declare
   `paths` globs (its code territory), and `awf audit` then warns when code in that
   territory changes without the narrative being refreshed.
-- **ADR and plan scaffolding** (`docs/decisions/`, `docs/plans/`): a README and a
-  template for each, always rendered, so `awf new adr` and `awf new plan` produce the
-  shape the review skills and the generated decision index expect.
+- **ADR, plan, and pitfall scaffolding**: `awf new adr` and `awf new plan` produce the
+  shapes their review flows and generated indexes expect. `awf new pitfall "<Title>"`
+  exclusively creates one canonical authored `.awf/docs/pitfalls/<slug>.md` source and
+  reports that path without rendering. Edit the source; the compact generated
+  `docs/pitfalls.md` index links to generated leaves, and deleting a source retires its
+  row and leaf on the next render.
 - **Git-hook payloads** (`.awf/hooks/`): five inert pre-commit, commit-msg,
   pre-merge-commit, reference-transaction, and pre-push scripts. You wire them up;
   awf never touches your Git configuration. Optional commit policy lets the last two
@@ -271,7 +274,7 @@ files are drift-checked; use `awf render` to restore missing or modified copies.
 | `awf config [<key-or-var>]` | Describe config keys and vars (live state inside a project) |
 | `awf context [<path>...] [--show <facet>]... [--full] [--staged] [--range <a>..<b>] [--uncovered]` | Orient by request with compact current-state impact reports |
 | `awf topic <domain>/<topic>[:<claim>] [flags]` | Query current claims, history, references, and applicability |
-| `awf new <kind> <args>` | Scaffold a new artifact: kind ∈ {adr, plan, topic, domain} |
+| `awf new <kind> <args>` | Scaffold a new artifact: kind in {adr, plan, topic, domain, pitfall} |
 | `awf remove domain <name>` | Remove a configured domain |
 | `awf upgrade [--recover]` | Migrate the .awf/ config tree or consume a current-state attestation |
 | `awf uninstall` | Remove awf's generated files (keeps .awf/) |

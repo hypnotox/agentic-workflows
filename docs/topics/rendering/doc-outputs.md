@@ -5,9 +5,9 @@
 
 Generated documentation outputs: domain and topic docs, layout, pitfalls, stubs, skill references.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/project/**`. Both domain and topic selectors must match. Run `awf topic rendering/doc-outputs --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/pitfall/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/pitfall/**`, `internal/project/**`. Both domain and topic selectors must match. Run `awf topic rendering/doc-outputs --coverage` for current applicable and owned paths and marker sites.
 
-Generated documentation outputs: domain and topic documents, docs layout, pitfall data validation, unauthored-content stubs, and skill-reference hygiene.
+Generated documentation outputs: domain and topic documents, docs layout, the pitfall corpus and generated family, unauthored-content stubs, and skill-reference hygiene.
 
 ## Claims
 
@@ -49,10 +49,16 @@ check fails a pitfall entry whose related list names an ADR number with no match
 Origin: ADR-0148
 Backing: test
 
-### `invariant: pitfall-data-validated`
+### `invariant: pitfall-corpus-validated`
 
-check fails on unparseable docs/pitfalls.yaml data and on any entry with a non-string or empty or newline-bearing title, a missing or non-string or empty body, or a malformed domains, related, or tags field; the transform that renders docs/pitfalls.md is a hard error on the same malformed data.
-Origin: ADR-0148
+The pitfall source loader accepts only direct regular lowercase-kebab `.md` leaves under `.awf/docs/pitfalls`, reserves `index`, strictly validates required single-line titles, optional duplicate-free metadata, nonblank bodies, and corpus-wide title uniqueness, and makes malformed sources hard errors for render and check.
+Origin: ADR-0262
+Backing: test
+
+### `invariant: pitfall-output-complete`
+
+Every valid pitfall source produces exactly one metadata row and one generated leaf through matching working and staged output declarations, with full-source leaf hashes, metadata-only index hashes, lock and drift membership, ordinary backup, and deletion pruning.
+Origin: ADR-0262
 Backing: test
 
 ### `invariant: pitfall-domains-resolved`
@@ -104,7 +110,7 @@ Backing: test
 
 ### `invariant: opaque-doc-source-guidance`
 
-Opaque generated documentation carries one compact reader-facing `awf:source` marker for topic pages and indexes, domain navigation, glossary, pitfalls, the ADR index, config reference, and target bridges. Section-overridable standard docs and AGENTS.md retain their `awf:edit` guidance without duplication; authored ADRs and plans remain banner-free. Marker payloads guide readers and are not exhaustive machine dependencies.
+Opaque generated documentation carries one compact reader-facing `awf:source` marker for topic pages and indexes, domain navigation, glossary, the pitfall index and each exact-source pitfall leaf, the ADR index, config reference, and target bridges. Section-overridable standard docs and AGENTS.md retain their `awf:edit` guidance without duplication; authored ADRs and plans remain banner-free. Marker payloads guide readers and are not exhaustive machine dependencies.
 Origin: ADR-0250
-Revised-by: ADR-0251
+Revised-by: ADR-0251, ADR-0262
 Backing: test

@@ -606,7 +606,7 @@ func TestSingletonConditionalKeysUseLiveRenderContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, eff, err := p.deriveOperationState()
+	_, _, _, eff, err := p.deriveOperationStateWithPitfalls()
 	if err != nil {
 		t.Fatal(err)
 	}

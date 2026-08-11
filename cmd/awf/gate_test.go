@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -148,6 +149,7 @@ func TestNormalizeSemver(t *testing.T) {
 
 // TestNewGatesInHandler confirms runNew (GatedInHandler) surfaces the gate error
 // itself - after name validation, not via the driver - on an ahead-schema project.
+// invariant: tooling/cli:pitfall-scaffold (TestNewGatesInHandler)
 func TestNewGatesInHandler(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
@@ -163,8 +165,18 @@ func TestNewGatesInHandler(t *testing.T) {
 	if err := runNew(ctx, root, "topic", []string{"rendering", "x"}, &out); err == nil {
 		t.Error("runNew topic: expected gate error on ahead schema")
 	}
+	testsupport.WriteFile(t, filepath.Join(root, ".awf/docs/pitfalls/bad.md"), "malformed source")
+	if err := runNew(ctx, root, "pitfall", []string{"x"}, &out); err == nil || !strings.Contains(err.Error(), "update your pinned awf") || strings.Contains(err.Error(), "pitfall source") {
+		t.Errorf("runNew pitfall must gate before corpus reads, got %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".awf/docs/pitfalls/x.md")); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("runNew pitfall wrote before gate refusal: %v", err)
+	}
 	if err := runNew(ctx, root, "topic", []string{"rendering"}, &out); err == nil || !strings.Contains(err.Error(), "usage: awf new topic") {
 		t.Errorf("runNew topic must validate usage before gating, got %v", err)
+	}
+	if err := runNew(ctx, root, "pitfall", nil, &out); err == nil || !strings.Contains(err.Error(), "usage: awf new pitfall") {
+		t.Errorf("runNew pitfall must validate usage before gating, got %v", err)
 	}
 	if err := runNew(ctx, root, "skill", []string{"x", "desc"}, &out); err == nil {
 		t.Error("runNew skill: expected gate error on ahead schema")
@@ -255,6 +267,7 @@ var gatedProbes = map[string][]string{
 	"new":                       {"awf", "new", "plan", "Gate probe"},
 	"new adr":                   {"awf", "new", "adr", "Gate probe"},
 	"new plan":                  {"awf", "new", "plan", "Gate probe"},
+	"new pitfall":               {"awf", "new", "pitfall", "Gate probe"},
 	"new topic":                 {"awf", "new", "topic", "rendering", "gate-probe"},
 	"new domain":                {"awf", "new", "domain", "gate-probe"},
 	"remove":                    {"awf", "remove", "domain", "gate-probe"},

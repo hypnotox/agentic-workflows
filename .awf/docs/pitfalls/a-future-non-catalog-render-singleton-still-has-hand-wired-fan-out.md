@@ -1,0 +1,12 @@
+---
+title: "A future non-catalog render singleton still has hand-wired fan-out"
+domains: ["rendering"]
+tags: ["render-completeness", "closed-config-tree", "template-embed"]
+---
+The bootstrap, hooks, and runner are now wired and covered, but their architecture remains
+unlike the table-driven catalog fan-out. A new config-tree singleton rendered by a dedicated
+`RenderAll` block must still be added by hand to the template embed, render block, closed-tree
+claimed-path model, configspec and generated reference, enable/disable and list dispatch, and
+example adoption. Existing singleton coverage proves only the known set; it cannot infer a
+new kind. Walk the whole fan-out when adding one rather than trusting its first successful
+render.

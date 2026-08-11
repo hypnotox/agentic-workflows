@@ -110,11 +110,20 @@ repository-relative directory stating where this repository keeps awf's implemen
 It enables template-source symbols only when every emitted source resolves in the selected working
 or staged tree; omit it in ordinary adopter configuration.
 
+**Pitfalls.** Run `awf new pitfall "<Title>"` to create exactly one canonical authored source
+under `.awf/docs/pitfalls/` and print its repository-relative path. The command refuses duplicate
+titles and exclusive path collisions and does not render. Edit the reported source, then run
+`awf render`: `docs/pitfalls.md` is the compact generated index and each
+`docs/pitfalls/<slug>.md` is a generated leaf. Read the index to choose relevant leaves; never edit
+either generated publication. Deleting the authored source retires the entry when ordinary render
+prunes its row and leaf.
+
 **Source map.** Ordinary docs and `AGENTS.md` use their `awf:edit` pointers; generated local docs
 use `.awf/docs/<name>.yaml` for title and description metadata and
 `.awf/docs/parts/<name>/content.md` for the body. Topic pages name their metadata/part pair, while indexes and domain
-navigation name those family globs. Glossary and pitfalls name their sidecars (glossary also names
-`derived:awf-standard-vocabulary`); the ADR index names `derived:authored-adr-corpus`; the config
+navigation name those family globs. Glossary names its sidecar and
+`derived:awf-standard-vocabulary`; the pitfall index names `.awf/docs/pitfalls/*.md`, while each
+pitfall leaf names its exact authored source. The ADR index names `derived:authored-adr-corpus`; the config
 reference names `derived:configspec` and `derived:project-configuration`; target bridges name
 `AGENTS.md`. Generated local docs and section-overridable outputs do not need duplicate markers.
 Authored ADRs, plans, and `local: true` docs are banner-free and remain directly authored. For any

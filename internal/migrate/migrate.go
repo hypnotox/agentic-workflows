@@ -78,6 +78,7 @@ var registry = []Migration{
 	{To: 40, Name: "retire-plan-resync-selection", Apply: treeOnly(applyRetirePlanResync)},
 	{To: globalTopicPathOwnershipGeneration, Name: "global-topic-path-ownership", Apply: treeOnly(applyGlobalTopicPathOwnership)},
 	{To: effortArchiveGeneration, Name: "effort-archive-root", Apply: treeOnly(applyEffortArchiveRoot)},
+	{To: pitfallCorpusGeneration, Name: "pitfall-corpus", Apply: treeOnly(applyPitfallCorpus)},
 	{To: templateSourceGeneration, Name: "template-source-root", Apply: treeOnly(applyTemplateSourceRoot)},
 }
 
@@ -112,7 +113,7 @@ func applyCurrentStateTopicSubstrate(root string, w *Changes) error {
 }
 
 const effortArchiveGeneration = 42
-const templateSourceGeneration = 43
+const templateSourceGeneration = 44
 
 // applyEffortArchiveRoot creates a schema boundary for the archive marker.
 // Ordinary upgrade sync owns publication of the governed output and lock.

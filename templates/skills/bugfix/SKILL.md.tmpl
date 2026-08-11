@@ -31,7 +31,7 @@ For materially larger work, ask the user whether to
 No safety bypasses. No incidental refactors riding along; one concern per commit. No speculative shims.
 
 <!-- awf:section pitfalls-check -->
-{{ if .layout.docs.pitfalls }}   Before writing the fix, check `{{ .layout.docs.pitfalls }}` for known-tricky areas: the pitfalls list catalogues recurring traps; verify the fix is not re-introducing one that bit before.
+{{ if .layout.docs.pitfalls }}   Before writing the fix, read the compact generated pitfall index at `{{ .layout.docs.pitfalls }}`, then open only relevant linked leaves for known-tricky areas; verify the fix is not re-introducing one that bit before.
 {{ end }}<!-- awf:end -->
 
 3. **Verify via the gates.** {{ with .vars.gateCmd }}`{{ . }}`{{ else }}The project's gate{{ end }} is the default.{{ if .vars.gateCmdFull }} Run `{{ .vars.gateCmdFull }}` when regression-test placement warrants the full tier.{{ end }}

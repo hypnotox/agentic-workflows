@@ -5,7 +5,7 @@
 
 How a project assembles its render set, output plan, drift check, and prune behaviour.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/project/**`, `internal/resident/**`. Both domain and topic selectors must match. Run `awf topic rendering/project-output-plan --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/pitfall/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/project/**`, `internal/resident/**`. Both domain and topic selectors must match. Run `awf topic rendering/project-output-plan --coverage` for current applicable and owned paths and marker sites.
 
 The project package assembles the full render set, computes the output plan and config hash, checks drift, and prunes stale outputs. The claims below capture the current output-plan and render-orchestration contracts.
 

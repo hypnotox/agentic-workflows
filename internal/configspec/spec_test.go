@@ -271,11 +271,17 @@ func TestConfigspecDataParity(t *testing.T) {
 		// authored standardTerms would be unused-data drift; a project removes an
 		// unwanted shipped term by defining that term in terms instead.
 		{kind: "docs", artifact: "glossary", key: "standardTerms"}: true,
+		// The pitfall index model is operation-owned parsed corpus state, not
+		// sidecar data an adopter can set.
+		{kind: "docs", artifact: "pitfalls", key: "pitfalls"}: true,
 	}
 	want := map[ak]bool{}
 	collect := func(kind, artifact, tid string, defaults map[string]any) {
 		for _, k := range render.ReferencedDataKeys(expandedTemplate(t, tid)) {
-			want[ak{kind, artifact, k}] = true
+			key := ak{kind, artifact, k}
+			if !exemptDataKeys[key] {
+				want[key] = true
+			}
 		}
 		for k := range defaults {
 			if exemptDataKeys[ak{kind, artifact, k}] {

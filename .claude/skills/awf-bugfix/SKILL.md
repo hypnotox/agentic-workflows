@@ -46,11 +46,11 @@ perform it first, include it in the current effort, defer it in a durable projec
 No safety bypasses. No incidental refactors riding along; one concern per commit. No speculative shims.
 
 <!-- awf:template-source templates/skills/bugfix/SKILL.md.tmpl#pitfalls-check -->
-<!-- awf:edit pitfalls-check: default; create .awf/skills/parts/bugfix/pitfalls-check.md to override -->
+<!-- awf:edit pitfalls-check: from .awf/skills/parts/bugfix/pitfalls-check.md -->
+Before writing the fix, read the compact generated pitfall index at `docs/pitfalls.md`, then open only relevant linked leaves for known-tricky areas; verify the fix is not re-introducing one that bit before.
+
+
 <!-- awf:template-source templates/skills/bugfix/SKILL.md.tmpl -->
-   Before writing the fix, check `docs/pitfalls.md` for known-tricky areas: the pitfalls list catalogues recurring traps; verify the fix is not re-introducing one that bit before.
-
-
 3. **Verify via the gates.** `./x gate` is the default.
 
 4. **Commit** with Conventional Commits, typically `fix(<scope>): ...`; the body explains the *why*. Per `docs/workflow.md`, fixes ship with a regression test.

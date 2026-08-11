@@ -15,9 +15,10 @@ import (
 // invariant: rendering/doc-outputs:opaque-doc-source-guidance (TestSourceMarkerFamilyMatrix)
 func TestSourceMarkerFamilyMatrix(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: ./x gate\ndomains: [rendering]\n", map[string]string{
-		"domains/rendering.yaml": "paths: ['internal/**']\n",
-		"docs/glossary.yaml":     "data:\n  standardTerms:\n  terms:\n",
-		"docs/pitfalls.yaml":     "data:\n  pitfalls:\n",
+		"domains/rendering.yaml":       "paths: ['internal/**']\n",
+		"docs/glossary.yaml":           "data:\n  standardTerms:\n  terms:\n",
+		"docs/pitfalls/fixture.md":     pitfallSource("Fixture pitfall", "domains: [rendering]\n", "first body\n"),
+		"docs/pitfalls/second-kind.md": pitfallSource("Second heterogeneous pitfall", "tags: [proof]\nrelated: [1]\n", "second body with different metadata\n"),
 	})
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "plans", "2026-08-07-fixture.md"), "---\nformat: plan-v2\ndate: 2026-08-07\nadrs: []\nstatus: Proposed\n---\n# Plan: Fixture\n")
 	writeProjectTopic(t, root, "opaque", "Opaque", "applies: global\n")
@@ -36,7 +37,9 @@ func TestSourceMarkerFamilyMatrix(t *testing.T) {
 	}
 	positive := map[string]string{
 		"docs/glossary.md":                ".awf/docs/glossary.yaml derived:awf-standard-vocabulary",
-		"docs/pitfalls.md":                ".awf/docs/pitfalls.yaml",
+		"docs/pitfalls.md":                ".awf/docs/pitfalls/*.md",
+		"docs/pitfalls/fixture.md":        ".awf/docs/pitfalls/fixture.md",
+		"docs/pitfalls/second-kind.md":    ".awf/docs/pitfalls/second-kind.md",
 		"docs/decisions/INDEX.md":         "derived:authored-adr-corpus",
 		"docs/config-reference.md":        "derived:configspec derived:project-configuration",
 		"docs/domains/rendering.md":       ".awf/topics/metadata/rendering/*.yaml .awf/topics/parts/rendering/*/current-state.md",
@@ -57,6 +60,17 @@ func TestSourceMarkerFamilyMatrix(t *testing.T) {
 		}
 		if strings.Contains(content, "<no value>") {
 			t.Errorf("%s contains unresolved value", path)
+		}
+	}
+	index := byPath["docs/pitfalls.md"]
+	if strings.Contains(index, ".awf/docs/pitfalls/fixture.md") || strings.Contains(index, ".awf/docs/pitfalls/second-kind.md") {
+		t.Errorf("pitfall index names individual sources instead of only corpus guidance:\n%s", index)
+	}
+	for _, slug := range []string{"fixture", "second-kind"} {
+		path := "docs/pitfalls/" + slug + ".md"
+		want := "<!-- awf:source .awf/docs/pitfalls/" + slug + ".md -->"
+		if !strings.Contains(byPath[path], want) {
+			t.Errorf("%s lacks its own exact source marker: %s", path, byPath[path])
 		}
 	}
 	for _, path := range []string{"AGENTS.md", "docs/working-with-awf.md"} {

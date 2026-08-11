@@ -87,7 +87,7 @@ Backing: test
 ### `invariant: template-source-root`
 
 The optional `render.templateSourceRoot` is a normalized repository-relative directory fact. When present it enables Markdown template-source symbols only after every emitted root or included source resolves as a regular file in the selected working or staged repository tree; when absent scaffolded configuration and generated adopter bytes remain unchanged.
-Origin: ADR-repository-local-template-source-symbols
+Origin: ADR-0263
 Backing: test
 
 ### `invariant: tag-coverage-note`

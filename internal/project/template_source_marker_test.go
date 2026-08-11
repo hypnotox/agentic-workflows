@@ -31,7 +31,7 @@ func TestTemplateSourceMarkerProducerMatrix(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	corpus, _, _, err := p.deriveOperationState()
+	corpus, _, _, _, err := p.deriveOperationStateWithPitfalls()
 	if err != nil {
 		t.Fatal(err)
 	}

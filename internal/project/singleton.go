@@ -26,6 +26,7 @@ const (
 	runnerTID        = "runner/awf.tmpl"
 	topicTID         = "topics/topic.md.tmpl"
 	topicIndexTID    = "topics/index.md.tmpl"
+	pitfallEntryTID  = "pitfalls/entry.md.tmpl"
 
 	// coOwnedRunnerTID is the legacy co-owned command-runner template id
 	// (ADR-0101 shape). The prune backup matches it on the OUTGOING lock entry,
@@ -107,7 +108,7 @@ type conditionalUnit struct {
 // identities are intentionally absent. This keeps structural parsing and the
 // exhaustive census on the same declaration owners as output planning.
 func (p *Project) liveTemplateEncoders() map[string]AgentDialect {
-	encoders := map[string]AgentDialect{topicTID: MarkdownAgentDialect, topicIndexTID: MarkdownAgentDialect}
+	encoders := map[string]AgentDialect{topicTID: MarkdownAgentDialect, topicIndexTID: MarkdownAgentDialect, pitfallEntryTID: MarkdownAgentDialect}
 	for _, descriptor := range kindDescriptors {
 		if descriptor.freeformDomain {
 			encoders[descriptor.tid("")] = MarkdownAgentDialect

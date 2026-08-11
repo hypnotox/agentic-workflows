@@ -16,7 +16,7 @@ help:
       config | Describe config keys and vars (live state inside a project)
       context | Orient by request with compact current-state impact reports
       topic | Query current claims, history, references, and applicability
-      new | Scaffold a new artifact: kind ∈ {adr, plan, topic, domain}
+      new | Scaffold a new artifact: kind in {adr, plan, topic, domain, pitfall}
       remove | Remove a configured domain
       upgrade | Migrate the .awf/ config tree or consume a current-state attestation
       uninstall | Remove awf's generated files (keeps .awf/)
@@ -66,6 +66,7 @@ help:
         plan | Scaffold a new plan
         topic | Scaffold paired current-state topic inputs
         domain | Create a configured domain
+        pitfall | Scaffold one authored pitfall
     remove:
       commands:
         domain | Remove a configured domain

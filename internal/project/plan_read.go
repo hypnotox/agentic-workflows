@@ -22,7 +22,7 @@ func (p *Project) ReadPlan(name, selector string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	corpus, _, _, err := p.deriveOperationState()
+	corpus, _, _, _, err := p.deriveOperationStateWithPitfalls()
 	if err != nil {
 		return nil, err
 	}

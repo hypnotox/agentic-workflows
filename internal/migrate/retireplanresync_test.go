@@ -105,7 +105,7 @@ func TestRetirePlanResyncMigrationReportsAndStamps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(applied, []string{"retire-plan-resync-selection", "global-topic-path-ownership", "effort-archive-root", "template-source-root"}) {
+	if !reflect.DeepEqual(applied, []string{"retire-plan-resync-selection", "global-topic-path-ownership", "effort-archive-root", "pitfall-corpus", "template-source-root"}) {
 		t.Fatalf("applied = %v", applied)
 	}
 	texts := make([]string, len(changes))

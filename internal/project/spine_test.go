@@ -2346,7 +2346,7 @@ var unsetFallbackCases = []fallbackCase{
 			"the effort lifecycle owner",
 			"the project's pitfalls notes",
 			"the project's decision process",
-			"Record it in the project's pitfalls notes.",
+			"Run `awf new pitfall \"<Title>\"`, then edit the reported authored source under `.awf/docs/pitfalls/`",
 		},
 		ban: []string{"example-reviewing-impl", "example-proposing-adr", "``"},
 	},

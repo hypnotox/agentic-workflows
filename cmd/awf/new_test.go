@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -47,6 +48,90 @@ func TestRunNewADRError(t *testing.T) {
 	if err := runNew(ctx, root, "adr", []string{"!!!"}, os.Stdout); err == nil {
 		t.Fatal("expected NewADR error for an all-punctuation title")
 	}
+}
+
+// invariant: tooling/cli:pitfall-scaffold (TestRunNewPitfallScaffoldsOneAuthoredSourceWithoutRender)
+func TestRunNewPitfallScaffoldsOneAuthoredSourceWithoutRender(t *testing.T) {
+	root := scaffoldProject(t)
+	generated := filepath.Join(root, "docs", "pitfalls.md")
+	beforeGenerated := mustReadCLIFile(t, generated)
+	beforeLock := mustReadCLIFile(t, filepath.Join(root, ".awf", "awf.lock"))
+	beforeCensus := newPitfallFileCensus(t, root)
+	var out bytes.Buffer
+	if err := runNew(testContext(t), root, "pitfall", []string{"CLI Hazard!"}, &out); err != nil {
+		t.Fatal(err)
+	}
+	const relative = ".awf/docs/pitfalls/cli-hazard.md"
+	if out.String() != "status: pitfall created\nauthored path: "+relative+"\n" {
+		t.Fatalf("output = %q", out.String())
+	}
+	const want = "---\ntitle: CLI Hazard!\n---\nDescribe the durable hazard, its consequence, and the safer practice.\n"
+	if got := mustReadCLIFile(t, filepath.Join(root, filepath.FromSlash(relative))); got != want {
+		t.Fatalf("source = %q, want %q", got, want)
+	}
+	if got := mustReadCLIFile(t, generated); got != beforeGenerated {
+		t.Fatal("pitfall scaffold mutated generated index")
+	}
+	if got := mustReadCLIFile(t, filepath.Join(root, ".awf", "awf.lock")); got != beforeLock {
+		t.Fatal("pitfall scaffold mutated lock")
+	}
+	afterCensus := newPitfallFileCensus(t, root)
+	delete(afterCensus, relative)
+	if !maps.Equal(beforeCensus, afterCensus) {
+		var changed []string
+		for path, before := range beforeCensus {
+			if after, ok := afterCensus[path]; !ok || after != before {
+				changed = append(changed, path)
+			}
+		}
+		for path := range afterCensus {
+			if _, ok := beforeCensus[path]; !ok {
+				changed = append(changed, path)
+			}
+		}
+		slices.Sort(changed)
+		t.Fatalf("pitfall scaffold changed files beyond its selected source: %v", changed)
+	}
+	for _, args := range [][]string{nil, {"split", "title"}} {
+		if err := runNew(testContext(t), root, "pitfall", args, io.Discard); err == nil || !strings.Contains(err.Error(), "usage: awf new pitfall") {
+			t.Fatalf("args %v: %v", args, err)
+		}
+	}
+	if err := runNew(testContext(t), root, "pitfall", []string{""}, io.Discard); err == nil || !strings.Contains(err.Error(), "title is empty") {
+		t.Fatalf("empty title error = %v", err)
+	}
+
+	broken := scaffoldProject(t)
+	testsupport.WriteAwfConfig(t, broken, minimalYAML+"unknown: true\n")
+	if err := runNew(testContext(t), broken, "pitfall", []string{"Title"}, io.Discard); err == nil {
+		t.Fatal("pitfall scaffold accepted a project.Open error")
+	}
+}
+
+func newPitfallFileCensus(t *testing.T, root string) map[string]string {
+	t.Helper()
+	files := map[string]string{}
+	if err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		files[filepath.ToSlash(rel)] = string(raw)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return files
 }
 
 func TestRunNewUnknownKind(t *testing.T) {
@@ -498,12 +583,24 @@ func TestRunNewPlanRefusesExisting(t *testing.T) {
 	}
 }
 
+// invariant: tooling/cli:pitfall-scaffold (TestRunNewDispatch)
+// invariant: tooling/cli:cli-creation-and-inventory (TestRunNewDispatch)
 func TestRunNewDispatch(t *testing.T) {
 	root := scaffoldProject(t)
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "new", "adr", "Some", "Title"}, &out, &errb); code != 0 {
 		t.Fatalf("expected exit 0, got %d (%s)", code, errb.String())
+	}
+	out.Reset()
+	errb.Reset()
+	if code := run([]string{"awf", "new", "pitfall", "One Complete Title"}, &out, &errb); code != 0 {
+		t.Fatalf("pitfall dispatch: exit %d (%s)", code, errb.String())
+	}
+	out.Reset()
+	errb.Reset()
+	if code := run([]string{"awf", "new", "pitfall", "split", "title"}, &out, &errb); code != 2 || !strings.Contains(errb.String(), "unexpected arguments") {
+		t.Fatalf("split pitfall title: exit %d (%s)", code, errb.String())
 	}
 }
 

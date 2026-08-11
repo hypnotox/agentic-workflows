@@ -8,9 +8,19 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Breaking changes
+
+- Schema generation 43 moves `data.pitfalls` into strict per-entry Markdown sources under `.awf/docs/pitfalls/`. Upgrade preflights every destination and refuses relative Markdown links with the entry and target named; replace those links and retry. Byte-identical leaves from an interrupted attempt are accepted, all leaves are created before old authority is retired, and a sidecar containing independent section configuration survives with only those sections.
+
 ### Features
 
 - Configured repositories can declare `render.templateSourceRoot` to add maintainer-facing `awf:template-source` provenance to generated Markdown without changing ordinary adopter output.
+
+- The adopter-facing documentation standard now advises count-free prose for changing sets and requires essential exact counts to name their query and be reverified when the source population changes.
+
+- Pitfalls now publish as a compact title-sorted metadata index with domain and Unassigned navigation plus one exact-source generated leaf per entry. The complete family participates in working and staged output plans, lock, drift, backup, and deletion pruning.
+
+- `awf new pitfall "<Title>"` now creates one canonical authored `.awf/docs/pitfalls/<slug>.md` source exclusively, reports its repository-relative path, and never renders or mutates another registry. Duplicate titles and a selected-path race refuse; a later retry reloads the corpus and chooses the first free deterministic suffix. Deleting the authored source retires its generated index row and leaf through ordinary render pruning.
 
 ### Bug fixes
 

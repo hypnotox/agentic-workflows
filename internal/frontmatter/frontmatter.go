@@ -4,7 +4,9 @@ package frontmatter
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -35,6 +37,28 @@ func Parse(content []byte, out any) (body []byte, found bool, err error) {
 	}
 	if err := yaml.Unmarshal(yamlBlock, out); err != nil {
 		return body, true, fmt.Errorf("parse frontmatter: %w", err)
+	}
+	return body, true, nil
+}
+
+// ParseStrict is Parse with a closed mapping contract. It rejects fields that
+// are not represented by out and rejects a second YAML document.
+func ParseStrict(content []byte, out any) (body []byte, found bool, err error) {
+	yamlBlock, body, found := Split(content)
+	if !found {
+		return body, false, nil
+	}
+	dec := yaml.NewDecoder(bytes.NewReader(yamlBlock))
+	dec.KnownFields(true)
+	if err := dec.Decode(out); err != nil {
+		return body, true, fmt.Errorf("parse frontmatter: %w", err)
+	}
+	var extra any
+	if err := dec.Decode(&extra); !errors.Is(err, io.EOF) { // coverage-ignore: Split ends the block at the first exact delimiter, so a second YAML document cannot remain inside it
+		if err != nil { // coverage-ignore: the first decode consumed the complete delimiter-bounded YAML block
+			return body, true, fmt.Errorf("parse frontmatter: %w", err)
+		}
+		return body, true, errors.New("parse frontmatter: multiple YAML documents") // coverage-ignore: see delimiter argument above
 	}
 	return body, true, nil
 }
