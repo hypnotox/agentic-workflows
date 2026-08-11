@@ -236,7 +236,7 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 	return plan, nil
 }
 
-// readBackInPlaceBody extracts the current body of the in-place section `name`
+// readBackInPlaceBodyWithExpectations extracts the current body of the in-place section `name`
 // from the existing rendered `output`. The region runs from just after `name`'s
 // awf:edit-in-place pointer line to the first later line that is the pointer of
 // any *other* registered (declared) section - matched by that section's expected
