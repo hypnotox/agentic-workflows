@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-11
 adrs: [user-approved-adr-decision-boundaries]
-status: Proposed
+status: Implemented
 ---
 # Plan: User-Approved ADR Decision Boundaries
 
