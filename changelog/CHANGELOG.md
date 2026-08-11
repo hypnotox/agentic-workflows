@@ -8,6 +8,10 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Features
+
+- Effort-workflow guidance now creates explicit-slug efforts autonomously when durable continuity materially helps, reports their identity, and directs deliberate active-effort switching through checkpointing or safe discontinuation and ordinary finish.
+
 ## [0.34.0] - 2026-08-11
 
 ### Breaking changes

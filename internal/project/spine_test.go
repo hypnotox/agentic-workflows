@@ -2,7 +2,6 @@ package project
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"fmt"
 	"io/fs"
 	"os"
@@ -1161,17 +1160,19 @@ func TestCheckpointDigestShape(t *testing.T) {
 		}
 	}
 
-	confirmation, err := fs.ReadFile(templates.FS, "partials/outcome-confirmation.md")
+	creation, err := fs.ReadFile(templates.FS, "partials/effort-creation.md")
 	if err != nil {
-		t.Fatalf("read outcome confirmation partial: %v", err)
+		t.Fatalf("read effort creation partial: %v", err)
 	}
-	body := string(confirmation)
-	if strings.Count(body, "**Mandatory first-creation confirmation.**") != 1 {
-		t.Error("outcome confirmation partial must carry exactly one boundary header")
-	}
-	for _, want := range []string{"`Outcome: <confirmed outcome>`", "`Effort title: <proposed title>`", "`Effort slug: <proposed-short-slug>`", "clear response in a later turn", "awf effort new --slug <confirmed-slug> \"<confirmed-title>\""} {
+	body := string(creation)
+	for _, want := range []string{"**Autonomous effort creation.**", "continuity materially helps", "faithful outcome, title, and canonical short slug", "awf effort new --slug <slug> \"<title>\"", "report the allocated immutable identity", "continue there"} {
 		if !strings.Contains(body, want) {
-			t.Errorf("outcome confirmation partial missing %q", want)
+			t.Errorf("effort creation partial missing %q", want)
+		}
+	}
+	for _, obsolete := range []string{"clear response in a later turn", "reconfirm after context loss", "Mandatory first-creation confirmation"} {
+		if strings.Contains(body, obsolete) {
+			t.Errorf("effort creation partial retains obsolete policy %q", obsolete)
 		}
 	}
 
@@ -2158,25 +2159,9 @@ func TestActiveEffortCreationSignaturesStaySynchronized(t *testing.T) {
 	root := filepath.Join("..", "..")
 	findings := activeEffortSignatureFindings(t, root)
 	switch status := explicitSlugADRStatus(t, root); status {
-	case "Implementing":
-		expectedPaths := []string{
-			".awf/topics/parts/rendering/workflow-skill-templates/current-state.md",
-			"docs/topics/rendering/workflow-skill-templates.md",
-		}
-		if len(findings) != len(expectedPaths) {
-			t.Fatalf("Implementing ADR requires exactly two active findings, got:\n%s", formatEffortSignatureFindings(findings))
-		}
-		for index, finding := range findings {
-			if finding.path != expectedPaths[index] || finding.contract != "two-field confirmation" {
-				t.Fatalf("unauthorized intermediate finding:\n%s", formatEffortSignatureFindings(findings))
-			}
-			if digest := fmt.Sprintf("%x", sha256.Sum256([]byte(finding.lineText))); digest != "5a3317a41dbd23aecdb54fdf4d2fc924a19b88e2f8600510b37d163540c0fa3e" {
-				t.Fatalf("intermediate claim passage changed at %s:%d (digest %s)", finding.path, finding.line, digest)
-			}
-		}
-	case "Implemented":
+	case "Implementing", "Implemented":
 		if len(findings) != 0 {
-			t.Fatalf("Implemented ADR requires zero active findings:\n%s", formatEffortSignatureFindings(findings))
+			t.Fatalf("%s ADR requires zero active findings:\n%s", status, formatEffortSignatureFindings(findings))
 		}
 	default:
 		t.Fatalf("explicit-slug signature test does not permit ADR status %q", status)
@@ -2252,7 +2237,7 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 	data := map[string]any{"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}, "skills": map[string]bool{"effort-workflow": true}}
 	workflow := renderGolden(t, "docs/workflow.md.tmpl", data)
 	assertOrderedPhrases(t, workflow,
-		"## Working memory", "Session context is volatile", "`effort-workflow` alone proposes", "rendered orienting skill's resume-revalidation section is the procedural home", "One effort has one user-managed writer")
+		"## Working memory", "Session context is volatile", "`effort-workflow` alone chooses", "awf effort new --slug <slug>", "reports the allocated immutable identity", "rendered orienting skill's resume-revalidation section is the procedural home", "One effort has one user-managed writer")
 	effort := renderSkillGolden(t, "effort-workflow", data)
 	assertContainsAll := func(body string, wants ...string) {
 		for _, want := range wants {

@@ -48,7 +48,7 @@ func TestIndependentWorkflowEscalation(t *testing.T) {
 
 			effort := bodies["effort-workflow"]
 			assertContainsAll(t, target+" effort-workflow", effort,
-				"sole owner of the effort lifecycle", "durable continuity materially helps", "clear response in a later turn", "awf effort new --slug", "awf effort integrate <slug>", "awf effort worktree remove <slug>", "awf effort finish <slug>", "divergent result", "before any topology removal")
+				"sole owner of the effort lifecycle", "durable continuity materially helps", "choose a faithful outcome, title, and canonical short slug", "awf effort new --slug", "report the allocated immutable identity", "managed worktree", "resumable checkpoint", "transfer necessary context", "repository identity and worktree state", "awf effort integrate <slug>", "awf effort worktree remove <slug>", "awf effort finish <slug>", "divergent result", "before any topology removal")
 			for _, name := range allNames {
 				if name == "effort-workflow" {
 					continue
@@ -183,8 +183,13 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 			}
 		}
 		effort := read(t, path("effort-workflow"))
-		assertContainsAll(t, target+" effort confirmation", effort, "`Outcome:", "`Effort title:", "`Effort slug:", "clear response in a later turn")
-		assertOrderedPhrases(t, effort, "`Outcome: <confirmed outcome>`", "`Effort title: <proposed title>`", "`Effort slug: <proposed-short-slug>`", "clear response in a later turn", "awf effort new --slug <confirmed-slug>")
+		assertContainsAll(t, target+" autonomous effort creation", effort, "durable continuity materially helps", "choose a faithful outcome, title, and canonical short slug", "awf effort new --slug <slug>", "report the allocated immutable identity", "continue there")
+		assertOrderedPhrases(t, effort, "durable continuity materially helps", "choose a faithful outcome, title, and canonical short slug", "awf effort new --slug <slug>", "report the allocated immutable identity", "continue there")
+		for _, obsolete := range []string{"clear response in a later turn", "reconfirm after context loss", "Mandatory first-creation confirmation"} {
+			if strings.Contains(effort, obsolete) {
+				t.Errorf("%s effort-workflow retains obsolete creation policy %q", target, obsolete)
+			}
+		}
 	}
 }
 

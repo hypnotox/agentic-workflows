@@ -13,37 +13,35 @@ This support skill is the sole owner of the effort lifecycle. Other workflows in
 
 Evaluate continuity independently. Create an effort only when durable continuity materially helps through multi-step work, likely session continuation, coordination or delegation, or preserving settled decisions and observations. Reaching a workflow stage, creating an ADR or plan, receiving review, or changing code does not itself require an effort.
 
-When no existing effort owns an outcome whose continuity trigger fired, propose the labeled outcome, title, and canonical short slug, then complete this confirmation boundary before any creation mutation:
+When no existing effort owns an outcome whose continuity trigger fired, use the single autonomous creation contract:
 
-<!-- awf:template-source templates/partials/outcome-confirmation.md -->
-**Mandatory first-creation confirmation.** Discovery creates no effort. Analysis, exploration,
+<!-- awf:template-source templates/partials/effort-creation.md -->
+**Autonomous effort creation.** Discovery creates no effort. Analysis, exploration,
 prioritization, option comparison, and selection remain discovery until continuity materially helps.
-A direct request follows the same boundary. Work may remain effort-free when continuity is not needed. An existing effort resumes under its fixed identity and existing
-validation rules without title reconfirmation only while work remains within its confirmed outcome;
-a newly discovered outcome cannot silently reuse, rename, replace, or create beside that active
-effort.
+A direct request follows the same boundary. Work may remain effort-free when continuity is not needed.
+An existing effort resumes under its fixed identity and existing validation rules while work remains
+within its outcome; a newly discovered outcome cannot silently reuse, rename, replace, or create
+beside a different active effort.
 
-When no existing effort owns the outcome, propose a canonical short slug and present all three
-fields:
+When independent judgment determines that continuity materially helps for an outcome with no owner,
+choose a faithful outcome, title, and canonical short slug. Create it with
+`awf effort new --slug <slug> "<title>"`, report the allocated immutable identity and managed
+worktree path, and continue there. No user confirmation, later response, turn-ending authorization,
+or repeated authorization precedes creation.
 
-`Outcome: <confirmed outcome>`
-`Effort title: <proposed title>`
-`Effort slug: <proposed-short-slug>`
-
-Ask the user to confirm creation, then end the turn without creating an effort, memory, branch, or
-managed worktree. Only a clear response in a later turn confirms all three fields and permits
-`awf effort new --slug <confirmed-slug> "<confirmed-title>"`. Agreement before the three fields were
-presented does not confirm them. A requested change to any field stays in discovery and receives a
-revised three-field proposal; an ambiguous response receives a focused clarification about the
-outcome, title, and slug.
-
-If creation fails while the three-field proposal and its later confirming response remain available
-in conversational context, report the concrete failure and recovery action and retry without another
-confirmation. If context loss or session replacement makes that evidence unavailable, present and
-confirm all three fields again before retrying creation.
+If creation fails, diagnose the concrete failure and retry under repository authority when safe. If a
+matching owned effort already exists, resume it under its fixed identity; a distinct active effort
+requires the deliberate switching branch in `effort-workflow`.
 
 <!-- awf:template-source templates/skills/effort-workflow/SKILL.md.tmpl -->
-Only after the required later response, run `awf effort new --slug <confirmed-slug> "<confirmed-title>"`. Creation normally makes `.awf/worktrees/<slug>` on `awf/<slug>`; use `--no-worktree` only when explicitly intended. If creation fails while the proposal and confirmation remain available, report the concrete failure and recovery action and retry without reconfirming; after context loss, reconfirm all three fields.
+Creation normally makes `.awf/worktrees/<slug>` on `awf/<slug>`; use `--no-worktree` only when explicitly intended.
+
+When a different unfinished effort is active, reason why the new outcome needs separate ownership and
+whether the old effort remains resumable or is intentionally discontinued. For a kept effort, write a
+resumable checkpoint before switching. For a discontinued effort, transfer necessary context to the
+new owner, use ordinary safe topology removal when possible, and finish it through the ordinary
+archive lifecycle. Before intentionally discarding obsolete dirty or unmerged topology, inspect the
+repository identity and worktree state, then use existing native Git safety primitives explicitly.
 
 ## Resume and execution context
 
@@ -53,7 +51,7 @@ Use ordinary `awf effort` commands for the owned effort. This skill owns all eff
 
 <!-- awf:template-source templates/partials/checkpoint-routine.md -->
 **Routine checkpoint.** At this boundary:
-1. A checkpoint never creates an effort. When continuity independently warranted one, validate its immutable slug and owned `.awf/efforts/<slug>/memory.md`; otherwise omit effort and memory fields. `effort-workflow` alone confirms and creates continuity ownership.
+1. A checkpoint never creates an effort. When continuity independently warranted one, validate its immutable slug and owned `.awf/efforts/<slug>/memory.md`; otherwise omit effort and memory fields. `effort-workflow` alone creates continuity ownership after its independent judgment.
 2. For an effort-backed checkpoint, validate the exact primary-root-relative path, confirm either legacy `Effort: <slug>` or canonical `effort: <slug>` identity (the canonical form is YAML; the legacy form is deprecated and remains only until active efforts finish), continue in the managed worktree when present, and in one writer-owned tool batch run exactly one `./awf effort memory update <slug> --phase "<completed phase>" --next "<immediate next action>"`; it is the sole writer of phase, next action, and time. Separately append unrecorded settled decisions and observations. For effort-free work, skip persistence rather than fabricating a checkpoint.
 3. Resolve checkpoint attention by kind. Route a new material decision or changed approved boundary through the active workflow to brainstorming, which owns the approval interaction. Separately, report a correctness or safety concern, blocker, or failed required verification through the active workflow only when it remains unresolved after that workflow's required diagnosis and authority-guided remediation. In either case name the issue, options, recommendation, and blocked next action, then stop.
 4. Otherwise state a one-line continuity notice and continue. For effort-backed work include the exact slug and owned path. An executable `awf read plan` projection never creates a checkpoint or handoff boundary. After an effort-backed persisted formal phase checkpoint, or another safe resumable effort point, judge retained-context relevance and successor work from current context and compaction evidence. Continue autonomously or invoke `handoff_session` alone with kickoff prose directing the replacement to read the effort checkpoint and append the actual boundary to `## Handoff log` before substantive work. Scope any managed-worktree restriction to pre-integration execution and preserve the governed primary-checkout switch for integration, deferred lifecycle closure, worktree removal, and retrospective. Cancellation or failure that leaves the old session active appends no boundary. Repository authority, the one-writer contract, the file skeleton, and the full protocol live in the workflow doc.

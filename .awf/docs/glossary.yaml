@@ -34,7 +34,7 @@ data:
       meaning: "The transient model-facing line reporting current tokens against the active model window and the active-branch compaction count."
       domains: [rendering]
     - term: mandatory approval check-in
-      meaning: "The chain's two hard stops: first-creation three-field confirmation and pre-artifact brainstorming outline approval. Each stops for a later explicit user response; the outline approval persists a completed-phase summary when an effort exists."
+      meaning: "The routine pre-artifact stop for explicit brainstorming outline approval. Autonomous effort creation is not an approval boundary; the outline approval persists a completed-phase summary when an effort exists."
     - term: anchored glob
       meaning: "awf's single glob dialect: a pattern matches a file's full slash-separated repo-relative path. `*.go` is top-level only, `**/*.go` any depth, `cmd/**` a subtree. No basename mode, deliberately stricter than gitignore."
       domains: [config]

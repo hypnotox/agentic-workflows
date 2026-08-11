@@ -11,11 +11,18 @@ This support skill is the sole owner of the effort lifecycle. Other workflows in
 
 Evaluate continuity independently. Create an effort only when durable continuity materially helps through multi-step work, likely session continuation, coordination or delegation, or preserving settled decisions and observations. Reaching a workflow stage, creating an ADR or plan, receiving review, or changing code does not itself require an effort.
 
-When no existing effort owns an outcome whose continuity trigger fired, propose the labeled outcome, title, and canonical short slug, then complete this confirmation boundary before any creation mutation:
+When no existing effort owns an outcome whose continuity trigger fired, use the single autonomous creation contract:
 
-<!-- awf:include outcome-confirmation -->
+<!-- awf:include effort-creation -->
 
-Only after the required later response, run `awf effort new --slug <confirmed-slug> "<confirmed-title>"`. Creation normally makes `.awf/worktrees/<slug>` on `awf/<slug>`; use `--no-worktree` only when explicitly intended. If creation fails while the proposal and confirmation remain available, report the concrete failure and recovery action and retry without reconfirming; after context loss, reconfirm all three fields.
+Creation normally makes `.awf/worktrees/<slug>` on `awf/<slug>`; use `--no-worktree` only when explicitly intended.
+
+When a different unfinished effort is active, reason why the new outcome needs separate ownership and
+whether the old effort remains resumable or is intentionally discontinued. For a kept effort, write a
+resumable checkpoint before switching. For a discontinued effort, transfer necessary context to the
+new owner, use ordinary safe topology removal when possible, and finish it through the ordinary
+archive lifecycle. Before intentionally discarding obsolete dirty or unmerged topology, inspect the
+repository identity and worktree state, then use existing native Git safety primitives explicitly.
 
 ## Resume and execution context
 

@@ -25,7 +25,7 @@ This is a **support skill**: it sits off the workflow chain.
 <!-- awf:template-source templates/skills/roadmap-graduation/SKILL.md.tmpl -->
 ## Procedure
 
-Graduation may remain effort-free. Identify and re-verify the roadmap item before deciding whether continuity materially helps; neither reaching this procedure nor citing an item creates an effort. An existing effort resumes under its fixed identity without title reconfirmation only while graduation remains within its confirmed outcome. Confirm either legacy `Effort: <slug>` or canonical frontmatter `effort: <slug>` identity when ownership exists. Repository sources and current-state documentation outrank checkpoint prose, children receive any parent slug and exact `.awf/efforts/<slug>/memory.md` path read-only and never edit memory, standalone memory is forbidden, and one user-managed writer remains responsible.
+Graduation may remain effort-free. Identify and re-verify the roadmap item before deciding whether continuity materially helps; neither reaching this procedure nor citing an item creates an effort. An existing effort resumes under its fixed identity only while graduation remains within its outcome. Confirm either legacy `Effort: <slug>` or canonical frontmatter `effort: <slug>` identity when ownership exists. Repository sources and current-state documentation outrank checkpoint prose, children receive any parent slug and exact `.awf/efforts/<slug>/memory.md` path read-only and never edit memory, standalone memory is forbidden, and one user-managed writer remains responsible.
 
 <!-- awf:template-source templates/skills/roadmap-graduation/SKILL.md.tmpl#identify-entry -->
 <!-- awf:edit identify-entry: default; create .awf/skills/parts/roadmap-graduation/identify-entry.md to override -->
@@ -42,7 +42,7 @@ If the entry cites inline numbers, re-measure on the current code before graduat
 <!-- awf:template-source templates/skills/roadmap-graduation/SKILL.md.tmpl#graduate-single-commit -->
 <!-- awf:edit graduate-single-commit: default; create .awf/skills/parts/roadmap-graduation/graduate-single-commit.md to override -->
 <!-- awf:template-source templates/skills/roadmap-graduation/SKILL.md.tmpl -->
-### 3. Confirm first effort creation
+### 3. Evaluate first effort creation
 
 Evaluate continuity independently after identifying and re-verifying the item. Invoke `awf-effort-workflow` before ADR or implementation mutation only when durable continuity materially helps; otherwise graduation remains effort-free.
 
