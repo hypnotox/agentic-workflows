@@ -91,7 +91,7 @@ Backing: test
 
 ### `invariant: memory-log-consumer-coverage`
 
-The shared review spine carries the consent-adherence check. Effort-backed review briefs paste available user-provenance entries verbatim, including `Record:` blocks; effort-free ADR review briefs paste the explicitly approved design summary from the current conversation. Missing evidence never permits inferred consent, and repository facts do not substitute for it. Other effort-free artifact and implementation briefs omit memory evidence without fabricating consensus and still carry outcome, constraints, summary, range, and verification. Retrospective consumes effort observations and decisions only for effort-backed work.
+The shared review spine carries the consent-adherence check. Effort-backed review briefs paste available user-provenance entries verbatim, including `Record:` blocks; effort-free ADR review briefs paste the explicitly approved design summary from the current conversation. Missing evidence never permits inferred consent, and repository facts do not substitute for it. Effort-free plan and implementation review omit memory evidence without fabricating consensus and retain their workflow-defined scope. Retrospective consumes effort observations and decisions only for effort-backed work.
 This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0186
 Revised-by: ADR-0197, ADR-0243, ADR-0255, ADR-user-approved-adr-decision-boundaries

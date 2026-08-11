@@ -2240,6 +2240,22 @@ func TestMemoryLogConsumerCoverage(t *testing.T) {
 			}
 		}
 	}
+	adrReview := renderSkillGolden(t, "reviewing-adr", data)
+	for _, want := range []string{"For effort-backed work", "For effort-free work", "explicitly approved design summary", "repository facts do not establish consent", "reviewer must not infer it"} {
+		if !strings.Contains(adrReview, want) {
+			t.Errorf("reviewing-adr missing consent-evidence branch %q:\n%s", want, adrReview)
+		}
+	}
+	effortFreeOmission := map[string]string{
+		"reviewing-plan": "otherwise omit effort and memory fields",
+		"reviewing-impl": "Effort-free review creates no effort, memory",
+	}
+	for skill, want := range effortFreeOmission {
+		out := renderSkillGolden(t, skill, data)
+		if !strings.Contains(out, want) {
+			t.Errorf("%s does not preserve effort-free memory omission %q:\n%s", skill, want, out)
+		}
+	}
 	retrospective := renderSkillGolden(t, "retrospective", data)
 	for _, want := range []string{"`## Observations`", "`## Decision log`", "as primary input", "across the effort's sessions"} {
 		if !strings.Contains(retrospective, want) {
@@ -2842,6 +2858,7 @@ func TestAuthorityGuidedReviewRemediation(t *testing.T) {
 		"is not an unauthorized deviation merely because its proposed future state differs from current state",
 		"would make a new load-bearing choice material outside approved durable boundaries",
 		"changing accepted semantics is a `user-decision` under the Consensus adherence rule below, while removing authority-free surplus is not",
+		"Removing an unaccepted surplus commitment restores the accepted decision set and is an authority-preserving `reasoned` correction",
 		// Pin the surviving classification bullets by their own text. The
 		// bare tokens `mechanical` and `reasoned` also occur in the finding
 		// schema, so asserting those alone lets a whole bullet be deleted

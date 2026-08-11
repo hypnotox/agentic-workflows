@@ -1057,8 +1057,8 @@
     "docs/topics/rendering/workflow-skill-templates.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:67426d92b62445e01f24f85d30d7c03ea810935b68a6a5bdb942546e1fc708e9",
-      "outputHash": "sha256:822f553547692a0affe8a95d28f4e5005b5dba349ba33d6a4eb194db4b4b5eec"
+      "configHash": "sha256:605ab3d07d0a2e28a1013fe3c3a686a167b9c8b1e767d0c2db4896491e502db1",
+      "outputHash": "sha256:9da9224deffe25a3cac05c361a3469cc04e243e455e1e13f9d6b76119b191c33"
     },
     "docs/topics/tooling/audit-and-snapshots.md": {
       "templateId": "topics/topic.md.tmpl",

@@ -84,3 +84,4 @@ when optional variables are empty.
 - 2026-08-11: Applied; operations: update `rendering/templates:decision-artifact-routing`
 - 2026-08-11: Reapplied; operations: update `rendering/templates:decision-artifact-routing`
 - 2026-08-11: Applied; operations: update `rendering/workflow-skill-templates:authority-guided-review-remediation`, update `rendering/workflow-skill-templates:memory-log-consumer-coverage`
+- 2026-08-11: Reapplied; operations: update `rendering/workflow-skill-templates:memory-log-consumer-coverage`
