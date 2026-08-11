@@ -1,7 +1,7 @@
 ---
 date: 2026-07-19
 adrs: [133, 134, 135, 136]
-status: Proposed
+status: Implemented
 ---
 # Plan: Project Cutover and Current-State Release
 
@@ -439,3 +439,4 @@ No commit is legal between these phases: an attested bridge lock intentionally p
   tag only with maintainer approval, fix forward, rerun the complete preflight, and issue a new tag.
 - Remove `/tmp/awf-cs-{root,sundial,integration,prep}` with `git worktree remove` and prune only after
   the release succeeds or rollback evidence has been preserved.
+- Administrative closure: repository audit verified the linked ADRs and release outcomes as implemented; the plan status now records that completed execution.
