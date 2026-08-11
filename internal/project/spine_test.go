@@ -1792,7 +1792,7 @@ func TestLinkedPlanReviewFreshness(t *testing.T) {
 		"every linked plan whose parsed status remains `Proposed`",
 		"inventory completed phases against the changed ADR",
 		"renewed implementation assurance for affected landed work",
-		"return first to ADR amendment and ordinary ADR review",
+		"settle the changed decision through brainstorming, then return to ADR amendment and ordinary ADR review",
 		"exactly one fresh `plan-reviewer` verify pass",
 	} {
 		if !strings.Contains(plan, want) {
@@ -2785,9 +2785,9 @@ func TestAuthorityGuidedReviewRemediation(t *testing.T) {
 	// of the retired predecessor alone lets the replacement be degraded back
 	// toward an unconditioned escalation without turning the suite red.
 	routingWants := map[string]string{
-		"reviewing-plan": "present to the user with the cited affected authority and wait",
-		"reviewing-adr":  "present to the user with the cited affected authority and wait",
-		"reviewing-impl": "present a `user-decision` finding with the cited affected authority, or a consensus deviation, and stop",
+		"reviewing-plan": "route the finding through `example-brainstorming` with the cited affected authority and wait at its pre-artifact approval boundary",
+		"reviewing-adr":  "route the finding through `example-brainstorming` with the cited affected authority and wait at its pre-artifact approval boundary",
+		"reviewing-impl": "route a `user-decision` finding or consensus deviation through `example-brainstorming` with the cited affected authority, and wait at its pre-artifact approval boundary",
 	}
 
 	skillVariants := map[string]map[string]any{
@@ -2811,7 +2811,9 @@ func TestAuthorityGuidedReviewRemediation(t *testing.T) {
 		if got := strings.Count(string(raw), "<!-- awf:include review-remediation-autonomy -->"); got != 1 {
 			t.Errorf("skills/%s has %d review-remediation includes, want 1", skill, got)
 		}
-		for _, reject := range retired {
+		for _, reject := range append(retired,
+			"present to the user with the cited affected authority and wait",
+			"present a `user-decision` finding with the cited affected authority") {
 			if strings.Contains(string(raw), reject) {
 				t.Errorf("skills/%s source retains retired escalation phrase %q", skill, reject)
 			}

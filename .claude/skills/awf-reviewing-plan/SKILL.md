@@ -66,8 +66,8 @@ On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the w
 4. **Surface the digest, then route the findings.** Display the digest the `plan-reviewer` agent returns to the user. Then route the classified findings by classification kind, not severity:
    - **mechanical**: this skill applies directly.
    - **reasoned**: this skill applies with a one-line rationale.
-   - **user-decision**: present to the user with the cited affected authority and wait.
-   A correction that would contradict any linked ADR is never applied to the plan: return first to ADR amendment and ordinary ADR review, then start a fresh ordinary plan review after that authority settles.
+   - **user-decision**: route the finding through `awf-brainstorming` with the cited affected authority and wait at its pre-artifact approval boundary.
+   A correction that would contradict any linked ADR is never applied to the plan: settle the changed decision through brainstorming, then return to ADR amendment and ordinary ADR review before starting a fresh ordinary plan review.
 
 <!-- awf:template-source templates/skills/reviewing-plan/SKILL.md.tmpl#apply-fixes-commit -->
 <!-- awf:edit apply-fixes-commit: default; create .awf/skills/parts/reviewing-plan/apply-fixes-commit.md to override -->

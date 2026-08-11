@@ -60,7 +60,7 @@ This skill may run without an effort. If continuity independently fired, validat
 4. **Surface the digest, then route the findings.** Display the digest the `adr-reviewer` agent returns to the user. Then route the classified findings by classification kind, not severity:
    - **mechanical**: this skill applies directly.
    - **reasoned**: this skill applies with a one-line rationale.
-   - **user-decision**: present to the user with the cited affected authority and wait.
+   - **user-decision**: route the finding through `awf-brainstorming` with the cited affected authority and wait at its pre-artifact approval boundary.
 
 <!-- awf:template-source templates/skills/reviewing-adr/SKILL.md.tmpl#apply-fixes-commit -->
 <!-- awf:edit apply-fixes-commit: default; create .awf/skills/parts/reviewing-adr/apply-fixes-commit.md to override -->

@@ -126,13 +126,19 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 			return skillPath(root, name)
 		}
 		brainstorming := read(t, path("brainstorming"))
-		assertContainsAll(t, target+" brainstorming approval", brainstorming, "Present the complete design", "explicitly request approval", "stop", "clear later approval response")
+		assertContainsAll(t, target+" brainstorming approval", brainstorming, "before a hand-authored production-code change", "Present the complete design", "explicitly request approval", "stop", "clear later approval response")
 		assertOrderedPhrases(t, brainstorming, "Present the complete design", "explicitly request approval", "stop", "clear later approval response")
 		adrReview := read(t, path("reviewing-adr"))
 		assertContainsAll(t, target+" autonomous ADR hand-off", adrReview,
-			"After the review settles", "run `awf context --show references", "ordinary `"+evalPrefix+"-reviewing-plan`")
+			"After the review settles", "run `awf context --show references", "ordinary `"+evalPrefix+"-reviewing-plan`", "If no linked Proposed plan exists yet", "proceed directly to implementation")
 		if strings.Contains(adrReview, "Stop for approval") || strings.Contains(adrReview, "settled ADR is the mandatory approval check-in") {
 			t.Errorf("%s ADR review retains a settled-ADR approval stop", target)
+		}
+		for _, name := range []string{"proposing-adr", "writing-plans", "reviewing-plan", "executing-plans", "reviewing-impl"} {
+			body := read(t, path(name))
+			if strings.Contains(body, "settled ADR is the mandatory approval check-in") || strings.Contains(body, "Stop for approval, then") {
+				t.Errorf("%s %s retains a downstream routine approval stop", target, name)
+			}
 		}
 		effort := read(t, path("effort-workflow"))
 		assertContainsAll(t, target+" effort confirmation", effort, "`Outcome:", "`Effort title:", "`Effort slug:", "clear response in a later turn")

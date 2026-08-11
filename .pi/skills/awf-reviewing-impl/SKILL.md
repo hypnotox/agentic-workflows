@@ -53,7 +53,7 @@ Call `subagent_review` exactly once with `kind: "code"` and the complete brief i
 <!-- awf:template-source templates/skills/reviewing-impl/SKILL.md.tmpl#classify-route-findings -->
 <!-- awf:edit classify-route-findings: default; create .awf/skills/parts/reviewing-impl/classify-route-findings.md to override -->
 <!-- awf:template-source templates/skills/reviewing-impl/SKILL.md.tmpl -->
-3. Surface the digest. Diagnose each finding against repository and current-state authority, then route by classification rather than severity: apply `mechanical` corrections directly; apply `reasoned` corrections with a one-line rationale; present a `user-decision` finding with the cited affected authority, or a consensus deviation, and stop.
+3. Surface the digest. Diagnose each finding against repository and current-state authority, then route by classification rather than severity: apply `mechanical` corrections directly; apply `reasoned` corrections with a one-line rationale; route a `user-decision` finding or consensus deviation through `awf-brainstorming` with the cited affected authority, and wait at its pre-artifact approval boundary.
 
 <!-- awf:template-source templates/skills/reviewing-impl/SKILL.md.tmpl#apply-fixes-commit -->
 <!-- awf:edit apply-fixes-commit: default; create .awf/skills/parts/reviewing-impl/apply-fixes-commit.md to override -->
