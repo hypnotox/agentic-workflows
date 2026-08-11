@@ -17,10 +17,8 @@
 !.pi/
 .pi/awf-subagents.local.json
 
-# Repository-local context spill observability is operator-owned and ignored.
-.awf/local/
-
-# Per-checkout golangci-lint cache (exported by ./x); never committed.
+# Per-checkout maintainer caches, including golangci-lint and context-spill
+# observability, are operator-owned and never committed.
 /.cache/
 
 # awf preserves a pre-existing hand-written file at <path>.awf-bak rather than

@@ -116,14 +116,14 @@ Backing: test
 ### `invariant: sync-mutations-root-confined`
 
 During ordinary render and first adoption, sync opens selected root-confined handles for the tracked checkout and any distinct primary resident root before its first mutation. Every lock-relative output observation and replacement, parent creation and mode correction, foreign or runner backup publication, retired-output removal, empty-ancestor cleanup, and lock load and replacement uses that output's selected handle with its unchanged slash-relative path. Escaping or broken output, backup, prune, ancestor, and lock parents refuse without changing outside bytes or modes, and an incomplete mutation never advances the old lock.
-Origin: ADR-root-confined-sync-filesystem-mutations
+Origin: ADR-0269
 Backing: test
 
 ### `invariant: sync-backs-up-foreign`
 
 During `awf render`, a target path that already exists on disk but is not recorded as awf-written in the lock at the start of the sync is copied through the selected root-confined handle and complete exclusive publication to a `.awf-bak` sibling and reported before being overwritten, while a path recorded in that lock is overwritten with no backup. One confined open observes source bytes and permission mode. A foreign final symlink is backed up only when that open safely reads its in-root target; an escaping, broken, or unreadable target refuses without backup or replacement. Backup suffixes retry only after a destination-exists refusal, preserve the source permission bits, and propagate every non-collision publication error without retry.
 Origin: ADR-0148
-Revised-by: ADR-0159, ADR-0258, ADR-root-confined-sync-filesystem-mutations
+Revised-by: ADR-0159, ADR-0258, ADR-0269
 Backing: test
 
 ### `invariant: target-prune-ancestors`

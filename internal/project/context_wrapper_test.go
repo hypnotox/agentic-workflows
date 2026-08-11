@@ -26,6 +26,7 @@ func TestContextSpillObservabilityContract(t *testing.T) {
 	t.Run("safe check advisory", func(t *testing.T) {
 		testCheckRunnerSpillAdvisoryTracksNonemptySafeLog(t, helper)
 	})
+	t.Run("cache residue composes with real drift", testContextSpillCacheResidueLeavesConfigTreeClean)
 }
 
 func testContextRunnerPreservesOutputStatusAndObservesSpills(t *testing.T, helper string) {
@@ -54,7 +55,7 @@ func testContextRunnerPreservesOutputStatusAndObservesSpills(t *testing.T, helpe
 	if stdout != ordinaryContext || stderr != "" || status != 0 {
 		t.Fatalf("normal stdout=%q stderr=%q status=%d", stdout, stderr, status)
 	}
-	if _, err := os.Stat(filepath.Join(root, ".awf", "local", "context-spills.log")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(root, ".cache", "awf-context", "context-spills.log")); !os.IsNotExist(err) {
 		t.Fatalf("normal output created spill log: %v", err)
 	}
 
@@ -64,7 +65,7 @@ func testContextRunnerPreservesOutputStatusAndObservesSpills(t *testing.T, helpe
 	if stdout != wantNotice || stderr != "" || status != 0 {
 		t.Fatalf("spill stdout=%q stderr=%q status=%d", stdout, stderr, status)
 	}
-	logged, err := os.ReadFile(filepath.Join(root, ".awf", "local", "context-spills.log"))
+	logged, err := os.ReadFile(filepath.Join(root, ".cache", "awf-context", "context-spills.log"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +78,7 @@ func testContextRunnerPreservesOutputStatusAndObservesSpills(t *testing.T, helpe
 	if stdout != "AWF_CONTEXT_SPILL bytes=9000 format=text\n/tmp/nope\n" || status != 0 {
 		t.Fatalf("near miss stdout=%q status=%d", stdout, status)
 	}
-	after, _ := os.ReadFile(filepath.Join(root, ".awf", "local", "context-spills.log"))
+	after, _ := os.ReadFile(filepath.Join(root, ".cache", "awf-context", "context-spills.log"))
 	if string(after) != before {
 		t.Fatal("near miss was logged")
 	}
@@ -86,7 +87,7 @@ func testContextRunnerPreservesOutputStatusAndObservesSpills(t *testing.T, helpe
 	if stdout != "AWF_CONTEXT_SPILL_V1 bytes=bad format=text\n/tmp/nope\n" || !strings.Contains(stderr, "local observability logging failed") || status != 0 {
 		t.Fatalf("malformed stdout=%q stderr=%q status=%d", stdout, stderr, status)
 	}
-	after, _ = os.ReadFile(filepath.Join(root, ".awf", "local", "context-spills.log"))
+	after, _ = os.ReadFile(filepath.Join(root, ".cache", "awf-context", "context-spills.log"))
 	if string(after) != before {
 		t.Fatal("malformed notice was logged")
 	}
@@ -95,7 +96,7 @@ func testContextRunnerPreservesOutputStatusAndObservesSpills(t *testing.T, helpe
 	if stdout != "partial\n\n" || status != 7 {
 		t.Fatalf("failure stdout=%q status=%d", stdout, status)
 	}
-	after, _ = os.ReadFile(filepath.Join(root, ".awf", "local", "context-spills.log"))
+	after, _ = os.ReadFile(filepath.Join(root, ".cache", "awf-context", "context-spills.log"))
 	if string(after) != before {
 		t.Fatal("failed child was logged")
 	}
@@ -103,8 +104,8 @@ func testContextRunnerPreservesOutputStatusAndObservesSpills(t *testing.T, helpe
 
 func testContextRunnerLoggingFailureWarnsWithoutChangingSuccess(t *testing.T, helper string) {
 	root := contextRunnerFixture(t, helper)
-	local := filepath.Join(root, ".awf", "local")
-	if err := os.Mkdir(local, 0o755); err != nil {
+	local := filepath.Join(root, ".cache", "awf-context")
+	if err := os.MkdirAll(local, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	command := exec.Command("bash", "./x", "context")
@@ -142,7 +143,7 @@ func testContextRunnerConcurrentRecordsDoNotInterleave(t *testing.T, helper stri
 			t.Fatal(err)
 		}
 	}
-	data, err := os.ReadFile(filepath.Join(root, ".awf", "local", "context-spills.log"))
+	data, err := os.ReadFile(filepath.Join(root, ".cache", "awf-context", "context-spills.log"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,8 +168,8 @@ func testCheckRunnerSpillAdvisoryTracksNonemptySafeLog(t *testing.T, helper stri
 	if err := os.WriteFile(filepath.Join(fakeBin, "go"), []byte(goScript), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	local := filepath.Join(root, ".awf", "local")
-	if err := os.Mkdir(local, 0o700); err != nil {
+	local := filepath.Join(root, ".cache", "awf-context")
+	if err := os.MkdirAll(local, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	logPath := filepath.Join(local, "context-spills.log")
@@ -200,6 +201,23 @@ func testCheckRunnerSpillAdvisoryTracksNonemptySafeLog(t *testing.T, helper stri
 	}
 	if stderr := run(); !strings.Contains(stderr, "advisory inspection failed") || strings.Contains(stderr, "check: advisory:") {
 		t.Fatalf("unsafe log inspection was not warning-only: %q", stderr)
+	}
+}
+
+func testContextSpillCacheResidueLeavesConfigTreeClean(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: make gate\n", nil)
+	observability := filepath.Join(root, ".cache", "awf-context")
+	if err := os.MkdirAll(observability, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if got := checkDrift(t, root); len(got) != 0 {
+		t.Fatalf("empty cache residue affected project drift: %#v", got)
+	}
+	if err := os.WriteFile(filepath.Join(observability, "context-spills.log"), []byte("record\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if got := checkDrift(t, root); len(got) != 0 {
+		t.Fatalf("nonempty cache log affected project drift: %#v", got)
 	}
 }
 

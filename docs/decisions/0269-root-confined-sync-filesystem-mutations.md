@@ -4,7 +4,7 @@ slug: root-confined-sync-filesystem-mutations
 status: Implementing
 date: 2026-08-11
 ---
-# ADR-root-confined-sync-filesystem-mutations: Root-confined sync filesystem mutations
+# ADR-0269: Root-confined sync filesystem mutations
 
 ## Context
 

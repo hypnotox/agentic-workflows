@@ -12,6 +12,8 @@ query a single version or a range.
 
 - Render now confines output, backup, retired-output removal, empty-ancestor cleanup, and lock publication to the selected tracked or resident repository root, replaces final symlinks without following them, and safely refuses foreign escaping or broken symlinks instead of reading, writing, or deleting outside the root.
 
+- Repository-maintainer context-spill observations now use an ignored checkout cache outside `.awf`, so the next `./x check` reaches its non-failing advisory instead of rejecting the log as closed config-tree drift.
+
 ## [0.35.0] - 2026-08-11
 
 ### Features

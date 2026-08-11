@@ -26,15 +26,15 @@ func testLogOperationalFailures(t *testing.T) {
 		want string
 	}{
 		{name: "open root", set: func() { openAt = func(int, string, int, uint32) (int, error) { return -1, errors.New("open fault") } }, want: "open fault"},
-		{name: "open awf", set: func() {
+		{name: "open cache", set: func() {
 			original := openAt
 			openAt = func(fd int, path string, flags int, mode uint32) (int, error) {
-				if path == ".awf" {
-					return -1, errors.New("awf fault")
+				if path == ".cache" {
+					return -1, errors.New("cache fault")
 				}
 				return original(fd, path, flags, mode)
 			}
-		}, want: "awf fault"},
+		}, want: "cache fault"},
 		{name: "directory kind", set: func() {
 			fstatFile = func(fd int, stat *unix.Stat_t) error {
 				if err := unix.Fstat(fd, stat); err != nil {
@@ -94,9 +94,6 @@ func testLogOperationalFailures(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			restoreLogOps(t)
 			root := t.TempDir()
-			if err := os.Mkdir(filepath.Join(root, ".awf"), 0o755); err != nil {
-				t.Fatal(err)
-			}
 			test.set()
 			err := Log(root, Notice{Bytes: 1}, []string{"x"})
 			if err == nil || !strings.Contains(err.Error(), test.want) {
@@ -104,19 +101,59 @@ func testLogOperationalFailures(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("observability mkdir failure", func(t *testing.T) {
+		restoreLogOps(t)
+		root := t.TempDir()
+		if err := os.Mkdir(filepath.Join(root, ".cache"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		mkdirAt = func(int, string, uint32) error { return errors.New("observability mkdir fault") }
+		if err := Log(root, Notice{Bytes: 1}, []string{"x"}); err == nil || !strings.Contains(err.Error(), "observability mkdir fault") {
+			t.Fatalf("Log() error = %v", err)
+		}
+	})
+
+	t.Run("failed log open leaves only cache directories", func(t *testing.T) {
+		restoreLogOps(t)
+		root := t.TempDir()
+		original := openAt
+		openAt = func(fd int, path string, flags int, mode uint32) (int, error) {
+			if path == "context-spills.log" {
+				return -1, errors.New("log fault")
+			}
+			return original(fd, path, flags, mode)
+		}
+		if err := Log(root, Notice{Bytes: 1}, []string{"x"}); err == nil {
+			t.Fatal("expected log open failure")
+		}
+		if info, err := os.Stat(filepath.Join(root, ".cache", "awf-context")); err != nil || !info.IsDir() {
+			t.Fatalf("private cache residue = %v, %v", info, err)
+		}
+		if _, err := os.Stat(filepath.Join(root, ".cache", "awf-context", "context-spills.log")); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("failed open published log: %v", err)
+		}
+		if _, err := os.Stat(filepath.Join(root, ".awf")); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("failed cache logging entered config tree: %v", err)
+		}
+	})
 }
 
 func testLogDirectoryValidationAndDescriptorAnchoring(t *testing.T) {
 	for name, prepare := range map[string]func(string) error{
-		"missing awf": func(string) error { return nil },
-		"awf file":    func(root string) error { return os.WriteFile(filepath.Join(root, ".awf"), nil, 0o600) },
-		"local file": func(root string) error {
-			if err := os.Mkdir(filepath.Join(root, ".awf"), 0o755); err != nil {
+		"cache file": func(root string) error { return os.WriteFile(filepath.Join(root, ".cache"), nil, 0o600) },
+		"observability file": func(root string) error {
+			if err := os.Mkdir(filepath.Join(root, ".cache"), 0o755); err != nil {
 				return err
 			}
-			return os.WriteFile(filepath.Join(root, ".awf", "local"), nil, 0o600)
+			return os.WriteFile(filepath.Join(root, ".cache", "awf-context"), nil, 0o600)
 		},
-		"local mode": func(root string) error { return os.MkdirAll(filepath.Join(root, ".awf", "local"), 0o755) },
+		"observability mode": func(root string) error {
+			if err := os.Mkdir(filepath.Join(root, ".cache"), 0o755); err != nil {
+				return err
+			}
+			return os.Mkdir(filepath.Join(root, ".cache", "awf-context"), 0o755)
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			restoreLogOps(t)
@@ -132,9 +169,6 @@ func testLogDirectoryValidationAndDescriptorAnchoring(t *testing.T) {
 	t.Run("directory owner", func(t *testing.T) {
 		restoreLogOps(t)
 		root := t.TempDir()
-		if err := os.Mkdir(filepath.Join(root, ".awf"), 0o755); err != nil {
-			t.Fatal(err)
-		}
 		fstatFile = func(fd int, stat *unix.Stat_t) error {
 			if err := unix.Fstat(fd, stat); err != nil {
 				return err
@@ -149,9 +183,9 @@ func testLogDirectoryValidationAndDescriptorAnchoring(t *testing.T) {
 	t.Run("substituted pathname cannot redirect log", func(t *testing.T) {
 		restoreLogOps(t)
 		root := t.TempDir()
-		awf := filepath.Join(root, ".awf")
-		local := filepath.Join(awf, "local")
-		if err := os.MkdirAll(local, 0o700); err != nil {
+		cache := filepath.Join(root, ".cache")
+		observability := filepath.Join(cache, "awf-context")
+		if err := os.MkdirAll(observability, 0o700); err != nil {
 			t.Fatal(err)
 		}
 		original := openAt
@@ -159,10 +193,10 @@ func testLogDirectoryValidationAndDescriptorAnchoring(t *testing.T) {
 		openAt = func(fd int, path string, flags int, mode uint32) (int, error) {
 			if path == "context-spills.log" && !swapped {
 				swapped = true
-				if err := os.Rename(awf, awf+".anchored"); err != nil {
+				if err := os.Rename(cache, cache+".anchored"); err != nil {
 					return -1, err
 				}
-				if err := os.MkdirAll(filepath.Join(awf, "local"), 0o700); err != nil {
+				if err := os.MkdirAll(filepath.Join(cache, "awf-context"), 0o700); err != nil {
 					return -1, err
 				}
 			}
@@ -171,10 +205,10 @@ func testLogDirectoryValidationAndDescriptorAnchoring(t *testing.T) {
 		if err := Log(root, Notice{Bytes: 7}, []string{"x"}); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := os.Stat(filepath.Join(awf, "local", "context-spills.log")); !os.IsNotExist(err) {
+		if _, err := os.Stat(filepath.Join(cache, "awf-context", "context-spills.log")); !os.IsNotExist(err) {
 			t.Fatalf("replacement received log: %v", err)
 		}
-		if _, err := os.Stat(filepath.Join(awf+".anchored", "local", "context-spills.log")); err != nil {
+		if _, err := os.Stat(filepath.Join(cache+".anchored", "awf-context", "context-spills.log")); err != nil {
 			t.Fatalf("anchored log missing: %v", err)
 		}
 	})
@@ -183,13 +217,17 @@ func testLogDirectoryValidationAndDescriptorAnchoring(t *testing.T) {
 func testHasSafeLogRejectsForeignOwnerAndMissingPaths(t *testing.T) {
 	restoreLogOps(t)
 	root := t.TempDir()
-	if err := os.Mkdir(filepath.Join(root, ".awf"), 0o755); err != nil {
+	if nonempty, err := HasSafeLog(root); err != nil || nonempty {
+		t.Fatalf("missing cache = %v, %v", nonempty, err)
+	}
+	cache := filepath.Join(root, ".cache")
+	if err := os.Mkdir(cache, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if nonempty, err := HasSafeLog(root); err != nil || nonempty {
-		t.Fatalf("missing local = %v, %v", nonempty, err)
+		t.Fatalf("missing observability directory = %v, %v", nonempty, err)
 	}
-	local := filepath.Join(root, ".awf", "local")
+	local := filepath.Join(cache, "awf-context")
 	if err := os.Mkdir(local, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -214,20 +252,20 @@ func testHasSafeLogOperationalErrors(t *testing.T) {
 		set  func()
 	}{
 		{name: "root", set: func() { openAt = func(int, string, int, uint32) (int, error) { return -1, errors.New("root") } }},
-		{name: "awf", set: func() {
+		{name: "cache", set: func() {
 			original := openAt
 			openAt = func(fd int, path string, flags int, mode uint32) (int, error) {
-				if path == ".awf" {
-					return -1, errors.New("awf")
+				if path == ".cache" {
+					return -1, errors.New("cache")
 				}
 				return original(fd, path, flags, mode)
 			}
 		}},
-		{name: "local", set: func() {
+		{name: "observability", set: func() {
 			original := openAt
 			openAt = func(fd int, path string, flags int, mode uint32) (int, error) {
-				if path == "local" {
-					return -1, errors.New("local")
+				if path == "awf-context" {
+					return -1, errors.New("observability")
 				}
 				return original(fd, path, flags, mode)
 			}
@@ -255,7 +293,7 @@ func testHasSafeLogOperationalErrors(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			restoreLogOps(t)
 			root := t.TempDir()
-			local := filepath.Join(root, ".awf", "local")
+			local := filepath.Join(root, ".cache", "awf-context")
 			if err := os.MkdirAll(local, 0o700); err != nil {
 				t.Fatal(err)
 			}
@@ -273,9 +311,6 @@ func testHasSafeLogOperationalErrors(t *testing.T) {
 func testWriteAllFDHandlesPartialWrites(t *testing.T) {
 	restoreLogOps(t)
 	root := t.TempDir()
-	if err := os.Mkdir(filepath.Join(root, ".awf"), 0o755); err != nil {
-		t.Fatal(err)
-	}
 	original := writeFile
 	writeFile = func(fd int, data []byte) (int, error) {
 		if len(data) > 1 {

@@ -98,8 +98,9 @@ Backing: test
 
 ### `invariant: context-spill-observability`
 
-The repository-local `./x context` preserves context stdout and child status byte-for-byte; after an exact successful spill notice it appends a UTC timestamp, rendered byte count, and POSIX-shell-quoted invocation, never the spill path, to an owner-only no-follow flock-serialized ignored log. Recognition or logging failure only warns on stderr, and `./x check` emits a non-failing advisory while a safe nonempty log remains for operator-owned resolution or promotion and removal.
+The repository-local `./x context` preserves context stdout and child status byte-for-byte; after an exact successful spill notice it appends a UTC timestamp, rendered byte count, and POSIX-shell-quoted invocation, never the spill path, to an ignored owner-only log under a dedicated checkout-cache directory outside `.awf`, using descriptor-relative no-follow access and flock-serialized append. Recognition or logging failure only warns on stderr, and `./x check` emits a non-failing advisory while a safe nonempty log remains for operator-owned resolution or promotion and removal.
 Origin: ADR-0165
+Revised-by: ADR-0268
 Backing: test
 
 ### `invariant: describe-read-only`

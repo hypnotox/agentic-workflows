@@ -67,7 +67,8 @@ func testParseNoticeContract(t *testing.T) {
 
 func testLogExactRecord(t *testing.T) {
 	root := t.TempDir()
-	if err := os.Mkdir(filepath.Join(root, ".awf"), 0o755); err != nil {
+	cache := filepath.Join(root, ".cache")
+	if err := os.Mkdir(cache, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	oldNow := now
@@ -76,10 +77,11 @@ func testLogExactRecord(t *testing.T) {
 	if err := Log(root, Notice{Bytes: 9000, Path: "/tmp/secret"}, []string{"./x", "context", "a b"}); err != nil {
 		t.Fatal(err)
 	}
-	data, err := os.ReadFile(filepath.Join(root, ".awf", "local", "context-spills.log"))
+	data, err := os.ReadFile(filepath.Join(cache, "awf-context", "context-spills.log"))
 	if err != nil {
 		t.Fatal(err)
 	}
+	assertMode(t, cache, 0o755)
 	const want = "2026-07-27T11:34:56.000000123Z\tbytes=9000\tinvocation='./x' 'context' 'a b'\n"
 	if string(data) != want {
 		t.Fatalf("record=%q, want %q", data, want)
@@ -96,9 +98,6 @@ func testShellQuote(t *testing.T) {
 
 func testLogSecureAppendAndConcurrency(t *testing.T) {
 	root := t.TempDir()
-	if err := os.Mkdir(filepath.Join(root, ".awf"), 0o755); err != nil {
-		t.Fatal(err)
-	}
 	oldNow := now
 	now = func() time.Time { return time.Date(2026, 7, 27, 12, 34, 56, 123, time.FixedZone("offset", 3600)) }
 	t.Cleanup(func() { now = oldNow })
@@ -120,7 +119,7 @@ func testLogSecureAppendAndConcurrency(t *testing.T) {
 			t.Fatalf("Log: %v", err)
 		}
 	}
-	local := filepath.Join(root, ".awf", "local")
+	local := filepath.Join(root, ".cache", "awf-context")
 	logPath := filepath.Join(local, "context-spills.log")
 	assertMode(t, local, 0o700)
 	assertMode(t, logPath, 0o600)
@@ -143,18 +142,18 @@ func testLogSecureAppendAndConcurrency(t *testing.T) {
 }
 
 func testLogRejectsUnsafePaths(t *testing.T) {
-	t.Run("awf symlink", func(t *testing.T) {
+	t.Run("cache symlink", func(t *testing.T) {
 		root := t.TempDir()
-		if err := os.Symlink(t.TempDir(), filepath.Join(root, ".awf")); err != nil {
+		if err := os.Symlink(t.TempDir(), filepath.Join(root, ".cache")); err != nil {
 			t.Fatal(err)
 		}
 		if err := Log(root, Notice{Bytes: 1}, nil); err == nil {
 			t.Fatal("expected symlink rejection")
 		}
 	})
-	t.Run("local mode", func(t *testing.T) {
+	t.Run("observability mode", func(t *testing.T) {
 		root := t.TempDir()
-		if err := os.MkdirAll(filepath.Join(root, ".awf", "local"), 0o755); err != nil {
+		if err := os.MkdirAll(filepath.Join(root, ".cache", "awf-context"), 0o755); err != nil {
 			t.Fatal(err)
 		}
 		if err := Log(root, Notice{Bytes: 1}, nil); err == nil {
@@ -163,7 +162,7 @@ func testLogRejectsUnsafePaths(t *testing.T) {
 	})
 	t.Run("log symlink", func(t *testing.T) {
 		root := t.TempDir()
-		local := filepath.Join(root, ".awf", "local")
+		local := filepath.Join(root, ".cache", "awf-context")
 		if err := os.MkdirAll(local, 0o700); err != nil {
 			t.Fatal(err)
 		}

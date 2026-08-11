@@ -79,26 +79,27 @@ func ShellQuote(argv []string) string {
 	return strings.Join(quoted, " ")
 }
 
-// Log appends one path-free spill record beneath the repository-local private
-// directory. Every descendant is opened relative to its verified parent
-// descriptor, preventing path substitution between inspection and use.
+// Log appends one path-free spill record beneath the repository's dedicated
+// maintainer cache directory. Every descendant is opened relative to its
+// verified parent descriptor, preventing path substitution between inspection
+// and use.
 func Log(root string, notice Notice, invocation []string) error {
 	rootFD, err := openRepositoryRoot(root)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = closeFile(rootFD) }()
-	awfFD, err := openOwnedDirectoryAt(rootFD, ".awf", 0)
-	if err != nil {
-		return fmt.Errorf("open .awf: %w", err)
-	}
-	defer func() { _ = closeFile(awfFD) }()
-	localFD, err := openLocalDirectory(awfFD)
+	cacheFD, err := openCacheDirectory(rootFD)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = closeFile(localFD) }()
-	fd, err := openAt(localFD, "context-spills.log", unix.O_WRONLY|unix.O_APPEND|unix.O_CREAT|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0o600)
+	defer func() { _ = closeFile(cacheFD) }()
+	observabilityFD, err := openObservabilityDirectory(cacheFD)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = closeFile(observabilityFD) }()
+	fd, err := openAt(observabilityFD, "context-spills.log", unix.O_WRONLY|unix.O_APPEND|unix.O_CREAT|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0o600)
 	if err != nil {
 		return fmt.Errorf("open context spill log: %w", err)
 	}
@@ -142,20 +143,23 @@ func HasSafeLog(root string) (bool, error) {
 		return false, err
 	}
 	defer func() { _ = closeFile(rootFD) }()
-	awfFD, err := openOwnedDirectoryAt(rootFD, ".awf", 0)
-	if err != nil {
-		return false, fmt.Errorf("open .awf: %w", err)
-	}
-	defer func() { _ = closeFile(awfFD) }()
-	localFD, err := openOwnedDirectoryAt(awfFD, "local", 0o700)
+	cacheFD, err := openOwnedDirectoryAt(rootFD, ".cache", 0)
 	if errors.Is(err, unix.ENOENT) {
 		return false, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("open .awf/local: %w", err)
+		return false, fmt.Errorf("open .cache: %w", err)
 	}
-	defer func() { _ = closeFile(localFD) }()
-	fd, err := openAt(localFD, "context-spills.log", unix.O_RDONLY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
+	defer func() { _ = closeFile(cacheFD) }()
+	observabilityFD, err := openOwnedDirectoryAt(cacheFD, "awf-context", 0o700)
+	if errors.Is(err, unix.ENOENT) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("open .cache/awf-context: %w", err)
+	}
+	defer func() { _ = closeFile(observabilityFD) }()
+	fd, err := openAt(observabilityFD, "context-spills.log", unix.O_RDONLY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
 	if errors.Is(err, unix.ENOENT) {
 		return false, nil
 	}
@@ -200,16 +204,30 @@ func canonicalRoot(root string) (string, error) {
 	return canonical, nil
 }
 
-func openLocalDirectory(awfFD int) (int, error) {
-	fd, err := openOwnedDirectoryAt(awfFD, "local", 0o700)
+func openCacheDirectory(rootFD int) (int, error) {
+	fd, err := openOwnedDirectoryAt(rootFD, ".cache", 0)
 	if errors.Is(err, unix.ENOENT) {
-		if mkdirErr := mkdirAt(awfFD, "local", 0o700); mkdirErr != nil && !errors.Is(mkdirErr, unix.EEXIST) {
-			return -1, fmt.Errorf("create .awf/local: %w", mkdirErr)
+		if mkdirErr := mkdirAt(rootFD, ".cache", 0o700); mkdirErr != nil && !errors.Is(mkdirErr, unix.EEXIST) {
+			return -1, fmt.Errorf("create .cache: %w", mkdirErr)
 		}
-		fd, err = openOwnedDirectoryAt(awfFD, "local", 0o700)
+		fd, err = openOwnedDirectoryAt(rootFD, ".cache", 0)
 	}
 	if err != nil {
-		return -1, fmt.Errorf("open .awf/local: %w", err)
+		return -1, fmt.Errorf("open .cache: %w", err)
+	}
+	return fd, nil
+}
+
+func openObservabilityDirectory(cacheFD int) (int, error) {
+	fd, err := openOwnedDirectoryAt(cacheFD, "awf-context", 0o700)
+	if errors.Is(err, unix.ENOENT) {
+		if mkdirErr := mkdirAt(cacheFD, "awf-context", 0o700); mkdirErr != nil && !errors.Is(mkdirErr, unix.EEXIST) {
+			return -1, fmt.Errorf("create .cache/awf-context: %w", mkdirErr)
+		}
+		fd, err = openOwnedDirectoryAt(cacheFD, "awf-context", 0o700)
+	}
+	if err != nil {
+		return -1, fmt.Errorf("open .cache/awf-context: %w", err)
 	}
 	return fd, nil
 }

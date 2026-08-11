@@ -99,7 +99,7 @@ Backing: test
 
 Ordinary render loads and completely replaces the lock through the selected tracked root-confined handle, while migration rewrites of existing config files retain their temp-file-plus-rename helper that leaves no temp residue when the rename fails. Neither path writes the lock or migration target in place.
 Origin: ADR-0076
-Revised-by: ADR-root-confined-sync-filesystem-mutations
+Revised-by: ADR-0269
 Backing: test
 
 ### `invariant: migration-ordering`
