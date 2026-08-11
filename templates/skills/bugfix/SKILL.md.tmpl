@@ -28,7 +28,7 @@ This skill may run without an effort. If continuity materially helps, invoke `{{
 
 2. **Implement the root-cause fix, not the symptom.** Per `{{ .layout.maintainableCodeDesign }}`, assess whether the root cause is an unsuitable model or boundary; include bounded enabling work that prevents a workaround.
 <!-- awf:include implementation-autonomy -->
-For materially larger work, ask the user whether to
+For materially larger work, route the disposition through {{ if .skills.brainstorming }}`{{ .prefix }}-brainstorming`{{ else }}the active workflow's design discussion{{ end }}:
 <!-- awf:include escalation-menu -->
 No safety bypasses. No incidental refactors riding along; one concern per commit. No speculative shims.
 

@@ -45,7 +45,7 @@ A reasoned non-mechanical deviation records its changed detail, rationale, gover
 
 Stop and report through the active workflow only when authorities conflict or must change, the approved outcome or material scope must change, a genuine unresolved design fork remains, safe or correct completion inside the boundary is impossible, or required verification remains unreachable after reasonable diagnosis and remediation.
 <!-- awf:template-source templates/skills/tdd/SKILL.md.tmpl -->
-Escalate materially larger work by asking the user whether to
+Route materially larger work through `awf-brainstorming` to
 <!-- awf:template-source templates/partials/escalation-menu.md -->
 perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated.
 <!-- awf:template-source templates/skills/tdd/SKILL.md.tmpl -->

@@ -716,6 +716,18 @@ func TestProductionCodeOutlineApprovalProjection(t *testing.T) {
 			t.Errorf("%s has %d outline approval includes, want 1", consumer, got)
 		}
 	}
+	for templateID, direct := range map[string]string{
+		"skills/bugfix/SKILL.md.tmpl": "For materially larger work, ask the user whether to",
+		"skills/tdd/SKILL.md.tmpl":    "Escalate materially larger work by asking the user whether to",
+	} {
+		raw, err := fs.ReadFile(templates.FS, templateID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(raw), direct) {
+			t.Errorf("%s retains direct larger-work user route %q", templateID, direct)
+		}
+	}
 }
 
 func TestExecutingDirectTemplate(t *testing.T) {
@@ -763,7 +775,7 @@ func TestMaintainableCodeStageCoverage(t *testing.T) {
 			"docs/maintainable-code-design.md", "settled model and ownership, boundaries, dependency direction, representation translations, refactor decision, prohibited shortcuts, and validation", "ordered executable tasks", "self-contained", "no prior conversation context", "sequencing, coordination, or resumability materially helps", "records and operationalizes approved choices", "rather than inventing speculative structure, checks, or work",
 		}},
 		"tdd": {wants: []string{
-			"docs/maintainable-code-design.md", "bounded enabling refactor", "duplication, coupling, representation leakage, or a workaround", "perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated", "smallest behavior-proving, model-supporting seam", "force representation leakage or needless indirection", "confirm it fails for the right reason", "minimal change to pass", "Ground tests, checks, seams, and harness work only in changed behavior, a demonstrated regression, an existing documented contract, or a clearly applicable project invariant", "reject speculative test or policy machinery", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
+			"docs/maintainable-code-design.md", "bounded enabling refactor", "duplication, coupling, representation leakage, or a workaround", "Route materially larger work through the active workflow's design discussion", "perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated", "smallest behavior-proving, model-supporting seam", "force representation leakage or needless indirection", "confirm it fails for the right reason", "minimal change to pass", "Ground tests, checks, seams, and harness work only in changed behavior, a demonstrated regression, an existing documented contract, or a clearly applicable project invariant", "reject speculative test or policy machinery", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
 		}},
 		"executing-plans": {wants: []string{
 			"docs/maintainable-code-design.md", "preserve the plan's settled structural choices", "bounded enabling refactor", "reassess if grounded source contradicts them", "stop rather than bolt correctness onto the wrong abstraction", "do not drift from the plan", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
@@ -775,7 +787,7 @@ func TestMaintainableCodeStageCoverage(t *testing.T) {
 			"docs/maintainable-code-design.md", "preserve the plan's settled structural choices", "bounded enabling refactor", "reassess them if grounded source contradicts them", "stop and escalate rather than accept a bolt-on workaround", "Sequential dispatch only, never parallel", "complete phase", "allowCommits: true", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
 		}},
 		"bugfix": {wants: []string{
-			"docs/maintainable-code-design.md", "unsuitable model or boundary", "bounded enabling work that prevents a workaround", "perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated", "root-cause fix, not the symptom", "one concern per commit", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
+			"docs/maintainable-code-design.md", "unsuitable model or boundary", "bounded enabling work that prevents a workaround", "For materially larger work, route the disposition through the active workflow's design discussion", "perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated", "root-cause fix, not the symptom", "one concern per commit", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
 		}},
 	}
 	for skill, contract := range cases {

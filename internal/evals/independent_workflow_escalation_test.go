@@ -150,9 +150,36 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 			"Route a new material decision or changed approved boundary through the active workflow to brainstorming",
 			"Separately, report a correctness or safety concern, blocker, or failed required verification through the active workflow",
 			"remains unresolved after that workflow's required diagnosis and authority-guided remediation")
-		for _, direct := range []string{"Confirm scope with the user", "Decide whether user attention is required", "material authority drift, a materially different choice, significant scope expansion"} {
-			if strings.Contains(writingPlans, direct) || strings.Contains(checkpoint, direct) {
-				t.Errorf("%s downstream workflow retains direct user route %q", target, direct)
+		bugfix := read(t, path("bugfix"))
+		assertContainsAll(t, target+" bugfix larger-work routing", bugfix,
+			"For materially larger work, route the disposition through `"+evalPrefix+"-brainstorming`")
+		tdd := read(t, path("tdd"))
+		assertContainsAll(t, target+" TDD larger-work routing", tdd,
+			"Route materially larger work through `"+evalPrefix+"-brainstorming`")
+		workflow := read(t, filepath.Join(root, "docs", "workflow.md"))
+		assertContainsAll(t, target+" workflow checkpoint routing", workflow,
+			"routes a new material decision or changed approved boundary through the active workflow to brainstorming",
+			"separately reporting a correctness or safety concern, blocker, or failed required verification through the active workflow",
+			"only when it remains unresolved after required diagnosis and authority-guided remediation")
+		directRoutes := map[string]string{
+			"writing-plans":  writingPlans,
+			"checkpoint":     checkpoint,
+			"bugfix":         bugfix,
+			"tdd":            tdd,
+			"workflow-guide": workflow,
+		}
+		for _, direct := range []string{
+			"Confirm scope with the user",
+			"Decide whether user attention is required",
+			"material authority drift, a materially different choice, significant scope expansion",
+			"For materially larger work, ask the user whether to",
+			"Escalate materially larger work by asking the user whether to",
+			"authority drift, materially changed choices, scope expansion",
+		} {
+			for surface, body := range directRoutes {
+				if strings.Contains(body, direct) {
+					t.Errorf("%s %s retains direct user route %q", target, surface, direct)
+				}
 			}
 		}
 		effort := read(t, path("effort-workflow"))
