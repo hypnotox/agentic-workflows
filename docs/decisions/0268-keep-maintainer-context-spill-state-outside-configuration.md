@@ -4,7 +4,7 @@ slug: keep-maintainer-context-spill-state-outside-configuration
 status: Implementing
 date: 2026-08-11
 ---
-# ADR-keep-maintainer-context-spill-state-outside-configuration: Keep Maintainer Context Spill State Outside Configuration
+# ADR-0268: Keep Maintainer Context Spill State Outside Configuration
 
 
 ## Context

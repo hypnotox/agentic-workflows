@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-keep-maintainer-context-spill-state-outside-configuration: Keep Maintainer Context Spill State Outside Configuration](keep-maintainer-context-spill-state-outside-configuration.md) (Implementing)
+- [ADR-0268: Keep Maintainer Context Spill State Outside Configuration](0268-keep-maintainer-context-spill-state-outside-configuration.md) (Implementing)
 
 ## History
 
