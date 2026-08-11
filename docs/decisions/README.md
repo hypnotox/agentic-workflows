@@ -27,7 +27,7 @@ Among accepted decisions, record the narrowest durable commitment that preserves
 |---|---|
 | Durable choice and rationale | ADR Decision |
 | Active rule or invariant | Current-state topic claim through `State changes` |
-| Paths, commands, task order, rollout batches, ordinary test transactions, rollout inventories, and proof transactions | Implementation plan |
+| Paths, commands, task order, rollout batches, ordinary test transactions, rollout inventories, and proof transactions | Implementation plan or direct execution |
 | Unsettled analysis, observations, and provisional choices | Effort memory |
 
 Historical ADRs remain unchanged: directive-heavy history may inform generic examples, but is not retrofitted or maintained in a second classification.

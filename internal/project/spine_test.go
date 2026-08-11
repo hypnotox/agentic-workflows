@@ -1615,12 +1615,14 @@ func TestProposingAdrTemplate(t *testing.T) {
 		"counterfactual",
 		"mechanism itself is load-bearing",
 		"preserve exactly the frontmatter emitted by `awf new adr`",
-		"explicitly accepted",
-		"before any ADR-file mutation",
+		"Before any ADR-file mutation, identify the explicitly accepted decision set",
 		"narrowest durable commitment",
 		"outside the ADR until accepted",
 		"effort-free",
 		"approved design summary",
+		"Decision log",
+		"`Record:` evidence",
+		"plan or direct execution",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {

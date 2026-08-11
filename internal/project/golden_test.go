@@ -28,6 +28,7 @@ func TestADRReadmeDecisionRouting(t *testing.T) {
 		"explicitly accepted",
 		"narrowest durable commitment",
 		"outside the ADR until accepted",
+		"Implementation plan or direct execution",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("ADR README missing decision-routing contract %q:\n%s", want, out)
