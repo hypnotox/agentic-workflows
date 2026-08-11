@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-11
 adrs: ["restore-autonomous-effort-management"]
-status: Proposed
+status: Implemented
 ---
 # Plan: Implement Autonomous Effort Management
 

@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: restore-autonomous-effort-management
-status: Implementing
+status: Implemented
 date: 2026-08-11
 ---
 # ADR-0266: Restore Autonomous Effort Management
@@ -101,3 +101,4 @@ progression under the general workflow contract.
 - 2026-08-11: Proposed
 - 2026-08-11: Implementing; content-sha256: 8aec239e7f3b1a323099a7f66a3dcfafac360213dae4117ffe520c1f6e92c563
 - 2026-08-11: Applied; operations: update `rendering/workflow-skill-templates:mandatory-approval-boundaries`, update `rendering/workflow-skill-templates:unified-effort-workflow-coverage`, update `rendering/workflow-skill-templates:effort-workflow`
+- 2026-08-11: Implemented; content-sha256: 8aec239e7f3b1a323099a7f66a3dcfafac360213dae4117ffe520c1f6e92c563

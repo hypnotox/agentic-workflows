@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-0266: Restore Autonomous Effort Management](0266-restore-autonomous-effort-management.md) (Implementing)
+_No decisions are in flight._
 
 ## History
 
@@ -271,3 +271,4 @@
 - [ADR-0263: Repository-Local Template Source Symbols](0263-repository-local-template-source-symbols.md) (Implemented)
 - [ADR-0264: User-Approved ADR Decision Boundaries](0264-user-approved-adr-decision-boundaries.md) (Implemented)
 - [ADR-0265: User-Approved Production-Code Implementation Outlines](0265-user-approved-production-code-implementation-outlines.md) (Implemented)
+- [ADR-0266: Restore Autonomous Effort Management](0266-restore-autonomous-effort-management.md) (Implemented)
