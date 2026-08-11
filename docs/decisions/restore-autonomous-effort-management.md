@@ -49,19 +49,15 @@ changes their active claims without editing either record.
    switch autonomously only after reasoning about why the new effort should own the work and whether
    the old effort should be kept for later continuation or discontinued. A kept effort receives a
    resumable checkpoint before the switch. A discontinued effort transfers necessary context to the
-   new owner before its old managed topology is explicitly discarded and its resident is finished
-   into the ordinary archive.
+   new owner, then uses ordinary safe topology removal when possible. Intentionally obsolete dirty or
+   unmerged topology requires explicit repository-identity and worktree-state inspection before it is
+   discarded through existing native Git safety primitives and the resident is finished into the
+   ordinary archive.
 
 4. `decision: reuse-existing-lifecycle` Add no abandoned lifecycle state, effort schema, CLI command,
-   conversational authorization state, or runtime policy knob. A discontinued effort uses the same
-   topology-removal and archival-finish mechanics as any other finished effort; the reasoned
-   disposition and context transfer are workflow responsibilities.
-
-5. `decision: prove-autonomous-boundary` Deterministic workflow projections must positively prove
-   autonomous explicit-slug creation, identity reporting, managed-worktree continuation, and
-   deliberate active-effort disposition while rejecting obsolete ask, wait, later-response, and
-   reconfirmation instructions. Existing sole-owner, immutable-identity, effort-free discovery, and
-   active-signature protections remain.
+   conversational authorization state, or runtime policy knob. A discontinued effort uses existing
+   topology cleanup and the same archival finish as any other finished effort; the reasoned
+   disposition, context transfer, and any intentional discard are workflow responsibilities.
 
 ## State changes
 
@@ -83,8 +79,10 @@ archival cleanup rather than silent rename or reuse.
 
 Switching between efforts becomes possible without a mandatory check-in, including when priorities
 change mid-conversation. The agent must make the transition legible: preserve a resumable old effort
-or transfer its necessary context and archive it. This adds judgment to lifecycle management but does
-not add persistent state or destructive automation to the CLI.
+or transfer its necessary context and archive it. Discontinuation can intentionally destroy dirty
+work or unintegrated commits after that transfer, so destructive cleanup carries irreversible
+loss risk and requires explicit repository-identity and worktree-state checks. This adds judgment to
+lifecycle management but does not add persistent state or destructive automation to the CLI.
 
 Failure recovery no longer depends on retained confirmation evidence. Ordinary diagnosis and
 authority-preserving retry rules apply, while unresolved safety or correctness blockers still stop
