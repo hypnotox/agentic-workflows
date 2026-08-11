@@ -41,9 +41,10 @@ Creation normally makes `.awf/worktrees/<slug>` on `awf/<slug>`; use `--no-workt
 When a different unfinished effort is active, reason why the new outcome needs separate ownership and
 whether the old effort remains resumable or is intentionally discontinued. For a kept effort, write a
 resumable checkpoint before switching. For a discontinued effort, transfer necessary context to the
-new owner, use ordinary safe topology removal when possible, and finish it through the ordinary
-archive lifecycle. Before intentionally discarding obsolete dirty or unmerged topology, inspect the
-repository identity and worktree state, then use existing native Git safety primitives explicitly.
+new owner, then inspect the repository identity and worktree state. Use ordinary safe topology removal
+when possible. To intentionally discard obsolete dirty or unmerged topology, use existing native Git
+safety primitives explicitly after that inspection. In either case, complete ordinary topology removal
+and finish it through the ordinary archive lifecycle.
 
 ## Resume and execution context
 

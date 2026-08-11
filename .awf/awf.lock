@@ -112,9 +112,9 @@
     },
     ".claude/skills/awf-effort-workflow/SKILL.md": {
       "templateId": "skills/effort-workflow/SKILL.md.tmpl",
-      "templateHash": "sha256:c028f4ec22ad687ac026621f4e9a0ef97cf61b63dbe92e4292698074989ff8ff",
+      "templateHash": "sha256:3dc0d24fb8c7a560176582c72a43c7dc5db9797f4364a52ea23b33bc59150153",
       "configHash": "sha256:b9e0f3078bc0fb7d682d9af54abb8e59c45aa8f6ef26a51b0a74539212f41362",
-      "outputHash": "sha256:22f4a949fc427f1975d940687052326bdd9a60c69a55db923e5f8016e18daff7"
+      "outputHash": "sha256:ad446e16e0c50fa1e12adb90e0928d76ddaa90971f416b734ab685fcdbf3a6f5"
     },
     ".claude/skills/awf-executing-direct/SKILL.md": {
       "templateId": "skills/executing-direct/SKILL.md.tmpl",
@@ -322,9 +322,9 @@
     },
     ".pi/skills/awf-effort-workflow/SKILL.md": {
       "templateId": "skills/effort-workflow/SKILL.md.tmpl",
-      "templateHash": "sha256:c028f4ec22ad687ac026621f4e9a0ef97cf61b63dbe92e4292698074989ff8ff",
+      "templateHash": "sha256:3dc0d24fb8c7a560176582c72a43c7dc5db9797f4364a52ea23b33bc59150153",
       "configHash": "sha256:1c564a47dceea354fcba1f6764efdb303a8cd74716f4c65a068a1884d867586e",
-      "outputHash": "sha256:b6d7f551b22bb5f716a24ec68812d2657cfa73a808fc11b4680f3c058980b794"
+      "outputHash": "sha256:5183d8e87ba21c01d81eb401c6aa037688cdab47540b68a2b0a3fdf7eb104b65"
     },
     ".pi/skills/awf-executing-direct/SKILL.md": {
       "templateId": "skills/executing-direct/SKILL.md.tmpl",

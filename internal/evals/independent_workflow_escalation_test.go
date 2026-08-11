@@ -47,17 +47,36 @@ func TestIndependentWorkflowEscalation(t *testing.T) {
 			}
 
 			effort := bodies["effort-workflow"]
+			normalizedEffort := strings.Join(strings.Fields(effort), " ")
 			assertContainsAll(t, target+" effort-workflow", effort,
 				"sole owner of the effort lifecycle", "durable continuity materially helps", "choose a faithful outcome, title, and canonical short slug", "awf effort new --slug", "report the allocated immutable identity", "managed worktree", "resumable checkpoint", "transfer necessary context", "repository identity and worktree state", "awf effort integrate <slug>", "awf effort worktree remove <slug>", "awf effort finish <slug>", "divergent result", "before any topology removal")
-			assertOrderedPhrases(t, effort,
+			const dispositionDecision = "When a different unfinished effort is active, reason why the new outcome needs separate ownership and whether the old effort remains resumable or is intentionally discontinued."
+			if !strings.Contains(normalizedEffort, dispositionDecision) {
+				t.Errorf("%s effort-workflow does not require deliberate disposition of the old effort", target)
+			}
+			withoutDispositionDecision := strings.Replace(normalizedEffort,
+				"whether the old effort remains resumable or is intentionally discontinued",
+				"skip deciding the old effort's disposition", 1)
+			if strings.Contains(withoutDispositionDecision, dispositionDecision) {
+				t.Errorf("%s effort-workflow disposition oracle accepted a missing decision", target)
+			}
+			assertOrderedPhrases(t, normalizedEffort,
 				"When a different unfinished effort is active", "reason why the new outcome needs separate ownership",
-				"For a kept effort", "resumable checkpoint before switching")
-			assertOrderedPhrases(t, effort,
-				"When a different unfinished effort is active", "For a discontinued effort", "transfer necessary context",
-				"ordinary safe topology removal", "finish it through the ordinary", "archive lifecycle")
-			assertOrderedPhrases(t, effort,
-				"Before intentionally discarding obsolete dirty or unmerged topology",
-				"inspect the", "repository identity and worktree state", "then use existing native Git safety primitives explicitly")
+				"whether the old effort remains resumable or is intentionally discontinued", "For a kept effort",
+				"resumable checkpoint before switching")
+			assertOrderedPhrases(t, normalizedEffort,
+				"For a discontinued effort", "transfer necessary context", "inspect the repository identity and worktree state",
+				"obsolete dirty or unmerged topology", "existing native Git safety primitives explicitly",
+				"In either case, complete ordinary topology removal", "finish it through the ordinary archive lifecycle")
+			cleanOnlyFinish := strings.Replace(normalizedEffort,
+				"In either case, complete ordinary topology removal",
+				"For clean topology only, complete ordinary topology removal", 1)
+			if hasOrderedPhrases(cleanOnlyFinish,
+				"For a discontinued effort", "transfer necessary context", "inspect the repository identity and worktree state",
+				"obsolete dirty or unmerged topology", "existing native Git safety primitives explicitly",
+				"In either case, complete ordinary topology removal", "finish it through the ordinary archive lifecycle") {
+				t.Errorf("%s effort-workflow dirty-topology oracle accepted a clean-only finish", target)
+			}
 			if got := strings.Count(effort, "**Autonomous effort creation.**"); got != 1 {
 				t.Errorf("%s effort-workflow autonomous creation contract count = %d, want 1", target, got)
 			}
@@ -204,7 +223,16 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 			}
 		}
 		effort := read(t, path("effort-workflow"))
-		assertContainsAll(t, target+" autonomous effort creation", effort, "durable continuity materially helps", "choose a faithful outcome, title, and canonical short slug", "awf effort new --slug <slug>", "report the allocated immutable identity", "continue there", "No user confirmation", "later response", "turn-ending authorization", "or repeated authorization precedes creation")
+		normalizedEffort := strings.Join(strings.Fields(effort), " ")
+		assertContainsAll(t, target+" autonomous effort creation", effort, "durable continuity materially helps", "choose a faithful outcome, title, and canonical short slug", "awf effort new --slug <slug>", "report the allocated immutable identity", "continue there")
+		const noCreationAuthorization = "No user confirmation, later response, turn-ending authorization, or repeated authorization precedes creation."
+		if !strings.Contains(normalizedEffort, noCreationAuthorization) {
+			t.Errorf("%s effort-workflow does not prohibit creation authorization as one relation", target)
+		}
+		laterAuthorizationPrecedesCreation := strings.Replace(normalizedEffort, "No user confirmation,", "No user confirmation.", 1)
+		if strings.Contains(laterAuthorizationPrecedesCreation, noCreationAuthorization) {
+			t.Errorf("%s effort-workflow authorization oracle accepted later authorization before creation", target)
+		}
 		assertOrderedPhrases(t, effort, "durable continuity materially helps", "choose a faithful outcome, title, and canonical short slug", "awf effort new --slug <slug>", "report the allocated immutable identity", "continue there")
 		for _, obsolete := range []string{
 			"clear response in a " +
@@ -292,6 +320,18 @@ func assertOrderedPhrases(t *testing.T, body string, wants ...string) {
 		}
 		position += next + len(want)
 	}
+}
+
+func hasOrderedPhrases(body string, wants ...string) bool {
+	position := 0
+	for _, want := range wants {
+		next := strings.Index(body[position:], want)
+		if next < 0 {
+			return false
+		}
+		position += next + len(want)
+	}
+	return true
 }
 
 func assertContainsAll(t *testing.T, label, body string, wants ...string) {
