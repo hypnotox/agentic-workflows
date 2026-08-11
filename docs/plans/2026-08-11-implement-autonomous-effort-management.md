@@ -80,3 +80,5 @@ feat(rendering): restore autonomous efforts (applies ADR batch)
 ## Notes
 
 Inline owners immediately correct stale instructions and record reasoned deviations here. Delegated owners may report rather than edit; the parent supplies the report to phase review and reconciles it with findings in one focused post-review settlement commit before checkpointing or later execution. Preserve the managed-worktree restriction only through pre-integration execution: eventual integration, ADR/plan terminal flips, topology removal, retrospective, and effort finish switch to the governed primary-checkout lifecycle owned by `effort-workflow`.
+
+Phase-review settlement: report-only review found two mechanical proof gaps. The parent extended the active-source scanner and negative fixtures to reject creation-confirmation requests, turn-ending authorization, later-response authorization, and reconfirmation across the complete active path policy. It also replaced unordered switching keywords with ordered kept/discontinued/discard assertions and rejects switching-policy ownership outside `effort-workflow`. The corrections preserve the approved policy and add no runtime behavior.

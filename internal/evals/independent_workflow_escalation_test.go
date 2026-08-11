@@ -49,6 +49,15 @@ func TestIndependentWorkflowEscalation(t *testing.T) {
 			effort := bodies["effort-workflow"]
 			assertContainsAll(t, target+" effort-workflow", effort,
 				"sole owner of the effort lifecycle", "durable continuity materially helps", "choose a faithful outcome, title, and canonical short slug", "awf effort new --slug", "report the allocated immutable identity", "managed worktree", "resumable checkpoint", "transfer necessary context", "repository identity and worktree state", "awf effort integrate <slug>", "awf effort worktree remove <slug>", "awf effort finish <slug>", "divergent result", "before any topology removal")
+			assertOrderedPhrases(t, effort,
+				"When a different unfinished effort is active", "reason why the new outcome needs separate ownership",
+				"For a kept effort", "resumable checkpoint before switching")
+			assertOrderedPhrases(t, effort,
+				"When a different unfinished effort is active", "For a discontinued effort", "transfer necessary context",
+				"ordinary safe topology removal", "finish it through the ordinary", "archive lifecycle")
+			assertOrderedPhrases(t, effort,
+				"Before intentionally discarding obsolete dirty or unmerged topology",
+				"inspect the", "repository identity and worktree state", "then use existing native Git safety primitives explicitly")
 			for _, name := range allNames {
 				if name == "effort-workflow" {
 					continue
@@ -56,6 +65,11 @@ func TestIndependentWorkflowEscalation(t *testing.T) {
 				for _, forbidden := range []string{"awf effort new --slug", "awf effort integrate <slug>", "awf effort worktree remove <slug>", "awf effort finish <slug>"} {
 					if strings.Contains(bodies[name], forbidden) {
 						t.Errorf("%s %s duplicates effort lifecycle command %q", target, name, forbidden)
+					}
+				}
+				for _, forbidden := range []string{"When a different unfinished effort is active", "For a kept effort", "For a discontinued effort", "native Git safety primitives explicitly"} {
+					if strings.Contains(bodies[name], forbidden) {
+						t.Errorf("%s %s duplicates effort switching policy %q", target, name, forbidden)
 					}
 				}
 			}
@@ -185,7 +199,13 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 		effort := read(t, path("effort-workflow"))
 		assertContainsAll(t, target+" autonomous effort creation", effort, "durable continuity materially helps", "choose a faithful outcome, title, and canonical short slug", "awf effort new --slug <slug>", "report the allocated immutable identity", "continue there")
 		assertOrderedPhrases(t, effort, "durable continuity materially helps", "choose a faithful outcome, title, and canonical short slug", "awf effort new --slug <slug>", "report the allocated immutable identity", "continue there")
-		for _, obsolete := range []string{"clear response in a later turn", "reconfirm after context loss", "Mandatory first-creation confirmation"} {
+		for _, obsolete := range []string{
+			"clear response in a " +
+				"later turn",
+			"reconfirm after " +
+				"context loss",
+			"Mandatory first-creation confirmation",
+		} {
 			if strings.Contains(effort, obsolete) {
 				t.Errorf("%s effort-workflow retains obsolete creation policy %q", target, obsolete)
 			}

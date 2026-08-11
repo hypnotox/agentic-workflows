@@ -1170,7 +1170,13 @@ func TestCheckpointDigestShape(t *testing.T) {
 			t.Errorf("effort creation partial missing %q", want)
 		}
 	}
-	for _, obsolete := range []string{"clear response in a later turn", "reconfirm after context loss", "Mandatory first-creation confirmation"} {
+	for _, obsolete := range []string{
+		"clear response in a " +
+			"later turn",
+		"reconfirm after " +
+			"context loss",
+		"Mandatory first-creation confirmation",
+	} {
 		if strings.Contains(body, obsolete) {
 			t.Errorf("effort creation partial retains obsolete policy %q", obsolete)
 		}
@@ -2048,6 +2054,12 @@ func effortSignaturePatterns() []effortSignaturePattern {
 		{"two-field confirmation", regexp.MustCompile("labeled outcome and " + `(proposed )?(effort )?title`)},
 		{"two-field confirmation", regexp.MustCompile("confirms? the " + `pair`)},
 		{"two-field confirmation", regexp.MustCompile("both " + `fields`)},
+		{"creation confirmation request", regexp.MustCompile(`[Aa]sk[^\r\n]{0,60}` + `user[^\r\n]{0,40}confirm[^\r\n]{0,80}(outcome|title|slug|fields?|creation)`)},
+		{"turn-ending creation authorization", regexp.MustCompile(`[Ee]nd[^\r\n]{0,20}` + `turn[^\r\n]{0,80}(without (creating|mutation)|before (creating|creation)|creation authorization)`)},
+		{"later-response creation authorization", regexp.MustCompile(`(clear )?response in a ` + `later turn[^\r\n]{0,80}(confirm|permit|creation)`)},
+		{"later-response creation authorization", regexp.MustCompile(`later user ` + `response[^\r\n]{0,80}(confirm|permit|creation)`)},
+		{"repeated creation authorization", regexp.MustCompile(`[Rr]econfirm[^\r\n]{0,80}` + `(outcome|title|slug|fields?|creation|effort)`)},
+		{"repeated creation authorization", regexp.MustCompile(`confirm all three ` + `fields again`)},
 	}
 }
 
@@ -2190,6 +2202,24 @@ func TestActiveEffortCreationSignaturesStaySynchronized(t *testing.T) {
 		{"labeled outcome and " + "proposed title receive", "two-field confirmation"},
 		{"confirms the " + "pair", "two-field confirmation"},
 		{"both " + "fields", "two-field confirmation"},
+		{
+			"ask the " +
+				"user to confirm all three fields before creation",
+			"creation confirmation request",
+		},
+		{
+			"end the " +
+				"turn without creating an effort",
+			"turn-ending creation authorization",
+		},
+		{"clear response in a " + "later turn confirms creation", "later-response creation authorization"},
+		{"later user " + "response permits creation", "later-response creation authorization"},
+		{
+			"reconfirm the " +
+				"effort title after context loss",
+			"repeated creation authorization",
+		},
+		{"confirm all three " + "fields again before creation", "repeated creation authorization"},
 	}
 	var expected []string
 	for index, test := range cases {
