@@ -16,7 +16,6 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 | [A faked collaborator makes both the fixtures and the assertion vocabulary unfalsifiable](pitfalls/a-faked-collaborator-makes-both-the-fixtures-and-the-assertion-vocabulary-unfalsifiable.md) | rendering\, tooling | test\-support\, verification\-discipline | ADR-0244 |
 | [A future code\-fence marker must account for Linguist aliases](pitfalls/a-future-code-fence-marker-must-account-for-linguist-aliases.md) | adr\-system | plan\-taxonomy\, commit\-gate | ADR-0111 |
 | [A future non\-catalog render singleton still has hand\-wired fan\-out](pitfalls/a-future-non-catalog-render-singleton-still-has-hand-wired-fan-out.md) | rendering | render\-completeness\, closed\-config\-tree\, template\-embed |  |
-| [A global topic needs an explicit bounded ownership selector](pitfalls/a-global-topic-needs-an-explicit-bounded-ownership-selector.md) | code\-design\, invariants | plan\-artifact\, verification\-discipline |  |
 | [A milestone\-time check must not double as an every\-commit test](pitfalls/a-milestone-time-check-must-not-double-as-an-every-commit-test.md) | tooling | release\-pipeline\, changelog |  |
 | [A new output language needs an exercised real render target](pitfalls/a-new-output-language-needs-an-exercised-real-render-target.md) | rendering | editable\-sections\, provenance\-markers\, command\-runner |  |
 | [A plan editing a catalog template or default under\-enumerates the render fan\-out](pitfalls/a-plan-editing-a-catalog-template-or-default-under-enumerates-the-render-fan-out.md) | rendering | render\-completeness\, multi\-target |  |
@@ -64,10 +63,6 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 - [Port a stale branch before merging a breaking marker grammar](pitfalls/port-a-stale-branch-before-merging-a-breaking-marker-grammar.md)
 - [Retiring a concept needs paraphrase sweeps\, not just identifier greps](pitfalls/retiring-a-concept-needs-paraphrase-sweeps-not-just-identifier-greps.md)
 
-### code\-design
-
-- [A global topic needs an explicit bounded ownership selector](pitfalls/a-global-topic-needs-an-explicit-bounded-ownership-selector.md)
-
 ### config
 
 - [Raw\-byte ADR surgery must bound every scan to the frontmatter window](pitfalls/raw-byte-adr-surgery-must-bound-every-scan-to-the-frontmatter-window.md)
@@ -77,7 +72,6 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 
 ### invariants
 
-- [A global topic needs an explicit bounded ownership selector](pitfalls/a-global-topic-needs-an-explicit-bounded-ownership-selector.md)
 - [A proof marker does not prove every clause in its invariant claim](pitfalls/a-proof-marker-does-not-prove-every-clause-in-its-invariant-claim.md)
 - [A prose\-contract test proves only the clauses whose literals occur for one reason](pitfalls/a-prose-contract-test-proves-only-the-clauses-whose-literals-occur-for-one-reason.md)
 - [A token or convention rename must sweep every rendered doc surface](pitfalls/a-token-or-convention-rename-must-sweep-every-rendered-doc-surface.md)

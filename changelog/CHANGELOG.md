@@ -22,6 +22,8 @@ query a single version or a range.
 
 ### Bug fixes
 
+- Current-state coverage findings now give actionable recovery: they name claim-bearing global topics in the owning domain whose bounded path selector can be extended, or direct the adopter to create or use a scoped claim-bearing topic.
+
 - Pi implementation commit policy now accepts an explicit same-repository verification checkout, so commits in an awf-managed worktree are verified there without changing parent or child Pi CWD. Invalid explicit identities refuse before dispatch, forbidden commits use the same selected checkout, and unchanged-HEAD failures name the checkout and retry field.
 
 ## [0.33.0] - 2026-08-10

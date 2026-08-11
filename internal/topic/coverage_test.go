@@ -53,7 +53,7 @@ func TestEvaluateCoverage(t *testing.T) {
 	want := []CoverageFinding{
 		{Path: "bare/z.go", Domain: "bare", Kind: Uncovered, Severity: severity.Error},
 		{Path: "internal/lib/x.go", Kind: Fanout, Severity: severity.Warn, Topics: 9},
-		{Path: "internal/lib/x.go", Domain: "core", Kind: Uncovered, Severity: severity.Error},
+		{Path: "internal/lib/x.go", Domain: "core", Kind: Uncovered, Severity: severity.Error, CandidateTopics: []string{"core/global-owner"}},
 		{Path: "shared/a.go", Domain: "d1", Kind: Uncovered, Severity: severity.Error},
 		{Path: "shared/a.go", Domain: "d2", Kind: Uncovered, Severity: severity.Error},
 	}
@@ -73,7 +73,7 @@ func TestEvaluateCoverage(t *testing.T) {
 	got = EvaluateCoverage(c, paths, CoveragePolicy{Coverage: true, Fanout: false})
 	want = []CoverageFinding{
 		{Path: "bare/z.go", Domain: "bare", Kind: Uncovered, Severity: severity.Error},
-		{Path: "internal/lib/x.go", Domain: "core", Kind: Uncovered, Severity: severity.Error},
+		{Path: "internal/lib/x.go", Domain: "core", Kind: Uncovered, Severity: severity.Error, CandidateTopics: []string{"core/global-owner"}},
 		{Path: "shared/a.go", Domain: "d1", Kind: Uncovered, Severity: severity.Error},
 		{Path: "shared/a.go", Domain: "d2", Kind: Uncovered, Severity: severity.Error},
 	}
@@ -84,6 +84,25 @@ func TestEvaluateCoverage(t *testing.T) {
 	// Requesting neither check yields nothing at all.
 	if got := EvaluateCoverage(c, paths, CoveragePolicy{Coverage: false, Fanout: false}); len(got) != 0 {
 		t.Fatalf("neither check requested: %#v", got)
+	}
+}
+
+func TestEvaluateCoverageNamesGlobalRecoveryCandidates(t *testing.T) {
+	c := Corpus{DomainPaths: map[string][]string{"alpha": {"internal/**"}, "other": {"internal/**"}}}
+	c.all = []Topic{
+		{ID: TopicID{"alpha", "global"}, Metadata: Metadata{Applies: "global", Paths: []string{"elsewhere/**"}}, Claims: []Claim{{ID: "alpha/global:a"}}},
+		{ID: TopicID{"alpha", "claimless"}, Metadata: Metadata{Applies: "global"}},
+		{ID: TopicID{"alpha", "scoped"}, Metadata: Metadata{Paths: []string{"elsewhere/**"}}, Claims: []Claim{{ID: "alpha/scoped:a"}}},
+		{ID: TopicID{"other", "global"}, Metadata: Metadata{Applies: "global"}, Claims: []Claim{{ID: "other/global:a"}}},
+	}
+
+	got := EvaluateCoverage(c, []string{"internal/a.go"}, CoveragePolicy{Coverage: true})
+	want := []CoverageFinding{
+		{Path: "internal/a.go", Domain: "alpha", Kind: Uncovered, Severity: severity.Error, CandidateTopics: []string{"alpha/global"}},
+		{Path: "internal/a.go", Domain: "other", Kind: Uncovered, Severity: severity.Error, CandidateTopics: []string{"other/global"}},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("recovery candidates:\n got %#v\nwant %#v", got, want)
 	}
 }
 
@@ -156,7 +175,7 @@ func TestGlobalTopicPathOwnership(t *testing.T) {
 	}
 	gotCoverage := EvaluateCoverage(corpus, paths, CoveragePolicy{Coverage: true})
 	wantCoverage := []CoverageFinding{
-		{Path: "internal/elsewhere.go", Domain: "core", Kind: Uncovered, Severity: severity.Error},
+		{Path: "internal/elsewhere.go", Domain: "core", Kind: Uncovered, Severity: severity.Error, CandidateTopics: []string{"core/global-owner"}},
 		{Path: "other/owned/a.go", Domain: "other", Kind: Uncovered, Severity: severity.Error},
 	}
 	if !reflect.DeepEqual(gotCoverage, wantCoverage) {

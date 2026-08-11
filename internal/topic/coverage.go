@@ -65,11 +65,13 @@ const (
 // CoverageFinding is one deterministic coverage result. Domain names the owning
 // domain of an Uncovered finding and is empty for a Fanout finding, which is
 // emitted once per path across owners; Topics carries a Fanout finding's
-// matching count.
+// matching count. CandidateTopics names claim-bearing global topics in the
+// uncovered domain whose ownership selector can be extended as one recovery.
 type CoverageFinding struct {
-	Path   string       `json:"path"`
-	Domain string       `json:"domain,omitempty"`
-	Kind   CoverageKind `json:"kind"`
+	Path            string       `json:"path"`
+	Domain          string       `json:"domain,omitempty"`
+	Kind            CoverageKind `json:"kind"`
+	CandidateTopics []string     `json:"candidateTopics,omitempty"`
 	// The rank is not part of this struct's wire form. Stated rather than left
 	// implicit: an untagged exported field still marshals, as a bare 0 or 1.
 	Severity severity.Rank `json:"-"`
@@ -110,7 +112,10 @@ func EvaluateCoverage(c Corpus, paths []string, policy CoveragePolicy) []Coverag
 		if policy.Coverage {
 			for _, d := range owners {
 				if !coveredByDomain(c, d, path) {
-					findings = append(findings, CoverageFinding{Path: path, Domain: d, Kind: Uncovered, Severity: severity.Error})
+					findings = append(findings, CoverageFinding{
+						Path: path, Domain: d, Kind: Uncovered, Severity: severity.Error,
+						CandidateTopics: globalRecoveryCandidates(c, d),
+					})
 				}
 			}
 		}
@@ -161,6 +166,21 @@ func coveredByDomain(c Corpus, domain, path string) bool {
 		}
 	}
 	return false
+}
+
+// globalRecoveryCandidates returns claim-bearing global topics in domain. An
+// uncovered finding proves none currently owns the path, so each candidate can
+// recover coverage by gaining a matching selector without changing its global
+// applicability.
+func globalRecoveryCandidates(c Corpus, domain string) []string {
+	var out []string
+	for _, t := range c.all {
+		if t.ID.Domain == domain && t.Metadata.Applies == "global" && len(t.Claims) > 0 {
+			out = append(out, t.ID.String())
+		}
+	}
+	slices.Sort(out)
+	return out
 }
 
 // matchingOwningTopics counts the topics whose bounded ownership covers path.

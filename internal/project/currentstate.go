@@ -84,7 +84,14 @@ func coverageLine(c topic.CoverageFinding) string {
 	if c.Kind == topic.Fanout {
 		return fmt.Sprintf("fan-out: %s is matched by %d owning topics", c.Path, c.Topics)
 	}
-	return fmt.Sprintf("uncovered: %s is owned by domain %s with no claim-bearing topic owner", c.Path, c.Domain)
+	base := fmt.Sprintf("uncovered: %s is owned by domain %s with no claim-bearing topic owner", c.Path, c.Domain)
+	if len(c.CandidateTopics) == 0 {
+		return base + "; create/use a scoped claim-bearing topic with a matching domain-bounded paths selector"
+	}
+	if len(c.CandidateTopics) == 1 {
+		return fmt.Sprintf("%s; add a matching domain-bounded paths selector to global topic %s, or create/use a scoped claim-bearing topic", base, c.CandidateTopics[0])
+	}
+	return fmt.Sprintf("%s; add a matching domain-bounded paths selector to one of global topics %s, or create/use a scoped claim-bearing topic", base, strings.Join(c.CandidateTopics, ", "))
 }
 
 // workingState is one loaded working-tree current-state universe: the parsed

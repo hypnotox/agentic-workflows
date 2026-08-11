@@ -565,8 +565,8 @@
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
       "templateHash": "sha256:d6475aaeadbbed6f56bfc85c4716b8636fea0d5922661201890334a6429b4f85",
-      "configHash": "sha256:80e76009f2fadc0a10c56be1c617b6306f111e9d204055360397822335e8991d",
-      "outputHash": "sha256:68fa3705e644b3a731683a1900c15b8747ec3e09aa93a171cf4e84aafb37d059"
+      "configHash": "sha256:d0c40f591aed934fb28087326a405475e9118a69cca7be8acb96808ddde325eb",
+      "outputHash": "sha256:7416cad052a8c5d40388aebc841bbb8526bf4040f7a9681aab5506be550d9ac8"
     },
     "docs/pitfalls/a-census-number-is-only-as-good-as-its-stated-query.md": {
       "templateId": "pitfalls/entry.md.tmpl",
@@ -591,12 +591,6 @@
       "templateHash": "sha256:23ea7baa4f2cd0e3a7319448093f2612ca5a7beab8cb0bfc631015eef99be786",
       "configHash": "sha256:aed2c1c73831d245ac1837f359f8d93b03ef79a9e2b6989753b650cb6d8d6be3",
       "outputHash": "sha256:fc7305f047a6be5932e8c1012000e8a308e18124c7f06d8a17402c8ecc54c017"
-    },
-    "docs/pitfalls/a-global-topic-needs-an-explicit-bounded-ownership-selector.md": {
-      "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:23ea7baa4f2cd0e3a7319448093f2612ca5a7beab8cb0bfc631015eef99be786",
-      "configHash": "sha256:52b1dfa2123be7024a59f802f61f76de581cb506374e35d22d6820b17dce629e",
-      "outputHash": "sha256:2cd68d58e7f7c77de2b7889c13f254af4ce50499d6b8758087937b4021091c59"
     },
     "docs/pitfalls/a-milestone-time-check-must-not-double-as-an-every-commit-test.md": {
       "templateId": "pitfalls/entry.md.tmpl",
