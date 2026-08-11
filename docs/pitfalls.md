@@ -19,7 +19,6 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 | [A faked collaborator makes both the fixtures and the assertion vocabulary unfalsifiable](pitfalls/a-faked-collaborator-makes-both-the-fixtures-and-the-assertion-vocabulary-unfalsifiable.md) | rendering\, tooling | test\-support\, verification\-discipline | ADR-0244 |
 | [A future code\-fence marker must account for Linguist aliases](pitfalls/a-future-code-fence-marker-must-account-for-linguist-aliases.md) | adr\-system | plan\-taxonomy\, commit\-gate | ADR-0111 |
 | [A future non\-catalog render singleton still has hand\-wired fan\-out](pitfalls/a-future-non-catalog-render-singleton-still-has-hand-wired-fan-out.md) | rendering | render\-completeness\, closed\-config\-tree\, template\-embed |  |
-| [A global topic needs an explicit bounded ownership selector](pitfalls/a-global-topic-needs-an-explicit-bounded-ownership-selector.md) | code\-design\, invariants | plan\-artifact\, verification\-discipline |  |
 | [A milestone\-time check must not double as an every\-commit test](pitfalls/a-milestone-time-check-must-not-double-as-an-every-commit-test.md) | tooling | release\-pipeline\, changelog |  |
 | [A new output language needs an exercised real render target](pitfalls/a-new-output-language-needs-an-exercised-real-render-target.md) | rendering | editable\-sections\, provenance\-markers\, command\-runner |  |
 | [A plan editing a catalog template or default under\-enumerates the render fan\-out](pitfalls/a-plan-editing-a-catalog-template-or-default-under-enumerates-the-render-fan-out.md) | rendering | render\-completeness\, multi\-target |  |
@@ -43,7 +42,6 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 | [Moving a check earlier in the pipeline steals a later stage\'s error\-branch coverage](pitfalls/moving-a-check-earlier-in-the-pipeline-steals-a-later-stage-s-error-branch-coverage.md) | tooling | coverage\-gate |  |
 | [Obsoleting rendered prose\: sweep parts and whole narratives\, not just templates](pitfalls/obsoleting-rendered-prose-sweep-parts-and-whole-narratives-not-just-templates.md) | rendering | convention\-parts\, template\-overlay |  |
 | [Port a stale branch before merging a breaking marker grammar](pitfalls/port-a-stale-branch-before-merging-a-breaking-marker-grammar.md) | invariants\, adr\-system\, tooling | invariant\-backing\, worktree\-isolation\, git\-hooks | ADR-0205, ADR-0206 |
-| [Put bounded evidence before unbounded inventories in subagent returns](pitfalls/put-bounded-evidence-before-unbounded-inventories-in-subagent-returns.md) | Unassigned |  |  |
 | [Raw\-byte ADR surgery must bound every scan to the frontmatter window](pitfalls/raw-byte-adr-surgery-must-bound-every-scan-to-the-frontmatter-window.md) | config | schema\-migration\, adr\-parsing | ADR-0120 |
 | [Raw\-byte offsets go stale the moment an earlier pass edits the file](pitfalls/raw-byte-offsets-go-stale-the-moment-an-earlier-pass-edits-the-file.md) | config | schema\-migration\, adr\-parsing | ADR-0128 |
 | [Recheck closure assertions after changing catalog edges](pitfalls/recheck-closure-assertions-after-changing-catalog-edges.md) | rendering | kind\-descriptor\, catalog\-derived\-tests\, verification\-discipline |  |
@@ -68,10 +66,6 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 - [Port a stale branch before merging a breaking marker grammar](pitfalls/port-a-stale-branch-before-merging-a-breaking-marker-grammar.md)
 - [Retiring a concept needs paraphrase sweeps\, not just identifier greps](pitfalls/retiring-a-concept-needs-paraphrase-sweeps-not-just-identifier-greps.md)
 
-### code\-design
-
-- [A global topic needs an explicit bounded ownership selector](pitfalls/a-global-topic-needs-an-explicit-bounded-ownership-selector.md)
-
 ### config
 
 - [Raw\-byte ADR surgery must bound every scan to the frontmatter window](pitfalls/raw-byte-adr-surgery-must-bound-every-scan-to-the-frontmatter-window.md)
@@ -81,7 +75,6 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 
 ### invariants
 
-- [A global topic needs an explicit bounded ownership selector](pitfalls/a-global-topic-needs-an-explicit-bounded-ownership-selector.md)
 - [A proof marker does not prove every clause in its invariant claim](pitfalls/a-proof-marker-does-not-prove-every-clause-in-its-invariant-claim.md)
 - [A prose\-contract test proves only the clauses whose literals occur for one reason](pitfalls/a-prose-contract-test-proves-only-the-clauses-whose-literals-occur-for-one-reason.md)
 - [A token or convention rename must sweep every rendered doc surface](pitfalls/a-token-or-convention-rename-must-sweep-every-rendered-doc-surface.md)
@@ -127,7 +120,6 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 
 - [Ad hoc compound mutations still need target read\-back](pitfalls/ad-hoc-compound-mutations-still-need-target-read-back.md)
 - [An ad hoc empty scan still needs proof that the probe ran](pitfalls/an-ad-hoc-empty-scan-still-needs-proof-that-the-probe-ran.md)
-- [Put bounded evidence before unbounded inventories in subagent returns](pitfalls/put-bounded-evidence-before-unbounded-inventories-in-subagent-returns.md)
 
 
 <!-- awf:template-source templates/docs/pitfalls.md.tmpl#append -->

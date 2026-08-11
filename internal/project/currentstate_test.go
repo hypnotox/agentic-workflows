@@ -151,17 +151,19 @@ func TestCurrentStateReportRouting(t *testing.T) {
 		Provisional: []currentstate.Introduction{{Identity: "0002", Format: adr.CurrentStateV2}, {Identity: "0003", Format: adr.Legacy}, {Identity: "0004", Format: adr.Format(999)}},
 		PlanDrift:   []manifest.Drift{{Path: "docs/plans/v2.md", Kind: "plan-reference", Detail: "missing ADR"}},
 		Coverage: []topic.CoverageFinding{
-			{Path: "internal/a.go", Domain: "alpha", Kind: topic.Uncovered, Severity: severity.Error},
+			{Path: "internal/a.go", Domain: "alpha", Kind: topic.Uncovered, Severity: severity.Error, CandidateTopics: []string{"alpha/global"}},
 			{Path: "internal/b.go", Kind: topic.Fanout, Severity: severity.Warn, Topics: 3},
-			{Path: "internal/c.go", Domain: "alpha", Kind: topic.Uncovered, Severity: severity.Warn},
+			{Path: "internal/c.go", Domain: "alpha", Kind: topic.Uncovered, Severity: severity.Warn, CandidateTopics: []string{"alpha/a", "alpha/b"}},
 		},
 	}
 	findings := r.Findings()
-	if len(findings) != 3 || findings[0] != "handshake broke" || !strings.Contains(findings[1], "internal/a.go is owned by domain alpha") || findings[2] != "plan-reference docs/plans/v2.md: missing ADR" {
+	wantCoverage := "uncovered: internal/a.go is owned by domain alpha with no claim-bearing topic owner; if global topic alpha/global naturally governs this path, add a matching domain-bounded paths selector; otherwise create/use an appropriate scoped claim-bearing topic"
+	if len(findings) != 3 || findings[0] != "handshake broke" || findings[1] != wantCoverage || findings[2] != "plan-reference docs/plans/v2.md: missing ADR" {
 		t.Fatalf("findings = %#v", findings)
 	}
 	notes := r.Notes()
-	if len(notes) != 5 || !strings.Contains(notes[0], "provisional older-format ADR-0002") || !strings.Contains(notes[1], "ADR-0003 (legacy)") || !strings.Contains(notes[2], "ADR-0004 (legacy)") || !strings.Contains(notes[3], "internal/b.go is matched by 3 owning topics") || !strings.Contains(notes[4], "internal/c.go is owned by domain alpha") {
+	wantNote := "uncovered: internal/c.go is owned by domain alpha with no claim-bearing topic owner; if one of global topics alpha/a, alpha/b naturally governs this path, add a matching domain-bounded paths selector; otherwise create/use an appropriate scoped claim-bearing topic"
+	if len(notes) != 5 || !strings.Contains(notes[0], "provisional older-format ADR-0002") || !strings.Contains(notes[1], "ADR-0003 (legacy)") || !strings.Contains(notes[2], "ADR-0004 (legacy)") || !strings.Contains(notes[3], "internal/b.go is matched by 3 owning topics") || notes[4] != wantNote {
 		t.Fatalf("notes = %#v", notes)
 	}
 }

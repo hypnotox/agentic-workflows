@@ -184,4 +184,4 @@ Plan review complete (N lenses, M findings).
   1. <user-decision finding, if any>
 ```
 
-Target ~80 words for the Plan summary (range 50-100 words).
+Target ~80 words for the Plan summary (range 50-100 words). Keep this bounded digest before any optional exhaustive inventory. Summarize a large inventory by count and category first; when a report truncates, the parent reruns the inventory rather than treating omitted fields as empty.
