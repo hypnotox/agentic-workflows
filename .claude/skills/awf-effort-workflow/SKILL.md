@@ -36,6 +36,8 @@ requires the deliberate switching branch in `effort-workflow`.
 <!-- awf:template-source templates/skills/effort-workflow/SKILL.md.tmpl -->
 Creation normally makes `.awf/worktrees/<slug>` on `awf/<slug>`; use `--no-worktree` only when explicitly intended.
 
+## Deliberate switching
+
 When a different unfinished effort is active, reason why the new outcome needs separate ownership and
 whether the old effort remains resumable or is intentionally discontinued. For a kept effort, write a
 resumable checkpoint before switching. For a discontinued effort, transfer necessary context to the

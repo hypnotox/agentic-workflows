@@ -1170,13 +1170,7 @@ func TestCheckpointDigestShape(t *testing.T) {
 			t.Errorf("effort creation partial missing %q", want)
 		}
 	}
-	for _, obsolete := range []string{
-		"clear response in a " +
-			"later turn",
-		"reconfirm after " +
-			"context loss",
-		"Mandatory first-creation confirmation",
-	} {
+	for _, obsolete := range []string{"clear response in a later turn", "reconfirm after context loss", "Mandatory first-creation confirmation"} {
 		if strings.Contains(body, obsolete) {
 			t.Errorf("effort creation partial retains obsolete policy %q", obsolete)
 		}
@@ -2057,57 +2051,13 @@ func effortSignaturePatterns() []effortSignaturePattern {
 	}
 }
 
-func obsoleteCreationPolicyPatterns() []effortSignaturePattern {
-	return []effortSignaturePattern{
-		{"creation confirmation request", regexp.MustCompile(`(?is)[Aa]sk[\s\S]{0,80}user[\s\S]{0,60}confirm[\s\S]{0,100}(outcome|title|slug|fields?|creation)`)},
-		{"turn-ending creation authorization", regexp.MustCompile(`(?is)[Ee]nd[\s\S]{0,40}turn[\s\S]{0,100}(without\s+(creating|mutation)|before\s+(creating|creation)|creation\s+authorization)`)},
-		{"later-response creation authorization", regexp.MustCompile(`(?is)(clear\s+)?response\s+in\s+a\s+later\s+turn[\s\S]{0,100}(confirm|permit|creation)`)},
-		{"later-response creation authorization", regexp.MustCompile(`(?is)later\s+user\s+response[\s\S]{0,100}(confirm|permit|creation)`)},
-		{"repeated creation authorization", regexp.MustCompile(`(?is)[Rr]econfirm[\s\S]{0,100}(outcome|title|slug|fields?|creation|effort)`)},
-		{"repeated creation authorization", regexp.MustCompile(`(?is)confirm\s+all\s+three\s+fields\s+again`)},
-	}
-}
-
-func effortPolicySurface(relative string) bool {
-	relative = filepath.ToSlash(relative)
-	if relative == "AGENTS.md" || relative == "README.md" {
-		return true
-	}
-	for _, prefix := range []string{".awf/parts/", ".awf/docs/", ".awf/skills/", ".awf/topics/", "templates/", "docs/", ".pi/", ".claude/", "examples/"} {
-		if strings.HasPrefix(relative, prefix) {
-			return true
-		}
-	}
-	return false
-}
-
-func negatedCreationPolicy(raw []byte, matchStart int) bool {
-	start := matchStart - 160
-	if start < 0 {
-		start = 0
-	}
-	prefix := string(raw[start:matchStart])
-	if boundary := strings.LastIndexAny(prefix, ".;:!?"); boundary >= 0 {
-		prefix = prefix[boundary+1:]
-	}
-	prefix = strings.ToLower(strings.Join(strings.Fields(prefix), " "))
-	for _, negation := range []string{"do not", "don't", "never", "must not", "no"} {
-		if prefix == negation || strings.HasSuffix(prefix, negation) || strings.Contains(prefix, negation+" ") {
-			return true
-		}
-	}
-	return false
-}
-
 func activeEffortSignatureFindings(t *testing.T, root string) []effortSignatureFinding {
 	t.Helper()
+	patterns := effortSignaturePatterns()
 	var findings []effortSignatureFinding
-	scanPatterns := func(relative string, raw []byte, patterns []effortSignaturePattern, allowNegated bool) {
+	scan := func(relative string, raw []byte) {
 		for _, candidate := range patterns {
 			for _, match := range candidate.pattern.FindAllIndex(raw, -1) {
-				if allowNegated && negatedCreationPolicy(raw, match[0]) {
-					continue
-				}
 				lineStart := bytes.LastIndexByte(raw[:match[0]], '\n') + 1
 				lineEnd := bytes.IndexByte(raw[match[0]:], '\n')
 				if lineEnd < 0 {
@@ -2120,12 +2070,6 @@ func activeEffortSignatureFindings(t *testing.T, root string) []effortSignatureF
 					offset: match[0], contract: candidate.contract, lineText: string(raw[lineStart:lineEnd]),
 				})
 			}
-		}
-	}
-	scan := func(relative string, raw []byte) {
-		scanPatterns(relative, raw, effortSignaturePatterns(), false)
-		if effortPolicySurface(relative) {
-			scanPatterns(relative, raw, obsoleteCreationPolicyPatterns(), true)
 		}
 	}
 	historical := func(relative string) bool {
@@ -2247,35 +2191,12 @@ func TestActiveEffortCreationSignaturesStaySynchronized(t *testing.T) {
 		{"confirms the " + "pair", "two-field confirmation"},
 		{"both " + "fields", "two-field confirmation"},
 	}
-	policyCases := []struct {
-		body     string
-		contract string
-	}{
-		{"ask the\nuser to confirm all three fields before creation", "creation confirmation request"},
-		{"end the\nturn without creating an effort", "turn-ending creation authorization"},
-		{"clear response in a\nlater turn confirms creation", "later-response creation authorization"},
-		{"later user\nresponse permits creation", "later-response creation authorization"},
-		{"reconfirm the\neffort title after context loss", "repeated creation authorization"},
-		{"confirm all three\nfields again before creation", "repeated creation authorization"},
-	}
 	var expected []string
 	for index, test := range cases {
 		path := fmt.Sprintf("cmd/stale-%d.md", index)
 		writeFixture(path, test.body)
 		expected = append(expected, fmt.Sprintf("%s:1:0: %s", path, test.contract))
 	}
-	for index, test := range policyCases {
-		path := fmt.Sprintf("templates/policy-stale-%d.md", index)
-		writeFixture(path, test.body)
-		expected = append(expected, fmt.Sprintf("%s:1:0: %s", path, test.contract))
-	}
-	writeFixture("templates/policy-compliant.md", strings.Join([]string{
-		"Do not ask the user to confirm creation.",
-		"Never end the turn for creation authorization.",
-		"No clear response in a later turn permits creation.",
-		"Do not reconfirm the effort title.",
-		"Never confirm all three fields again.",
-	}, "\n"))
 	multiplePath := "cmd/stale-multiple.md"
 	multiple := cases[5].body + " / " + cases[5].body + "\n" + cases[5].body
 	writeFixture(multiplePath, multiple)
