@@ -35,7 +35,7 @@ neither establishes that the user accepted another load-bearing commitment.
 
 3. `decision: ground-adherence-in-consent-evidence` Ground decision adherence in the effort memory's user-provenance Decision-log entries and especially their `Record:` transcript evidence when an effort exists. For effort-free work, use the explicitly approved conversational design summary. Treat missing or insufficient evidence as no basis to infer consent, while keeping efforts optional.
 
-4. `decision: review-adherence-and-scope-separately` Give universal ADR review distinct decision-adherence and ADR-scope lenses. Adherence compares every commitment with consent evidence and detects omissions, contradictions, semantic strengthening, and new decisions. Scope applies the minimum-sufficient boundary and detects incidental implementation choices or unnecessary constraints. Reconcile overlapping decision-clarity guidance rather than producing duplicate findings.
+4. `decision: review-adherence-and-scope-separately` Give universal ADR review distinct decision-adherence and ADR-scope lenses. Adherence compares every commitment with consent evidence and detects contradictions, semantic strengthening, and new decisions. Scope applies the minimum-sufficient boundary and detects incidental implementation choices or unnecessary constraints. Reconcile overlapping decision-clarity guidance rather than producing duplicate findings.
 
 5. `decision: remove-surplus-and-disclose-refinements` Treat removal of an unauthorized surplus commitment as an authority-preserving reasoned correction, disclose the removal in the settled-ADR approval summary, and raise any worthwhile replacement only as a separate suggestion requiring acceptance before insertion. Keep a correction that would change accepted semantics classified as a user decision. Permit semantics-preserving reasoned wording refinements and disclose them in the same summary.
 
@@ -43,6 +43,7 @@ neither establishes that the user accepted another load-bearing commitment.
 
 - update `rendering/templates:decision-artifact-routing`
 - update `rendering/workflow-skill-templates:authority-guided-review-remediation`
+- update `rendering/workflow-skill-templates:memory-log-consumer-coverage`
 
 ## Consequences
 
@@ -63,6 +64,9 @@ shared classification rule keeps that distinction consistent across initial and 
 Reasoned refinements may improve accuracy without another approval interruption, but the final
 summary makes them inspectable. A useful surplus idea incurs an explicit suggestion-and-approval
 round before entering the ADR rather than gaining authority by appearing in a draft.
+
+Every affected template preserves `missingkey=zero` behavior and renders coherent, token-free prose
+when optional variables are empty.
 
 ## Alternatives Considered
 
