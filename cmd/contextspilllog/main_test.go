@@ -54,7 +54,7 @@ func TestRunSafeLogAdvisory(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(local, "context-spills.log"), []byte("record\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if status := run([]string{"--check-log", "--root", root}, &stdout, &stderr); status != 0 || !strings.Contains(stderr.String(), "resolve or promote") {
+	if status := run([]string{"--check-log", "--root", root}, &stdout, &stderr); status != 0 || !strings.Contains(stderr.String(), ".cache/awf-context/context-spills.log") || strings.Contains(stderr.String(), ".awf/local/context-spills.log") {
 		t.Fatalf("nonempty status=%d stderr=%q", status, stderr.String())
 	}
 	if err := os.Chmod(filepath.Join(local, "context-spills.log"), 0o644); err != nil {

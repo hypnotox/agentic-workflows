@@ -210,14 +210,14 @@ func testContextSpillCacheResidueLeavesConfigTreeClean(t *testing.T) {
 	if err := os.MkdirAll(observability, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if got := orphanedByPath(checkDrift(t, root)); len(got) != 0 {
-		t.Fatalf("empty cache residue affected config drift: %#v", got)
+	if got := checkDrift(t, root); len(got) != 0 {
+		t.Fatalf("empty cache residue affected project drift: %#v", got)
 	}
 	if err := os.WriteFile(filepath.Join(observability, "context-spills.log"), []byte("record\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if got := orphanedByPath(checkDrift(t, root)); len(got) != 0 {
-		t.Fatalf("nonempty cache log affected config drift: %#v", got)
+	if got := checkDrift(t, root); len(got) != 0 {
+		t.Fatalf("nonempty cache log affected project drift: %#v", got)
 	}
 }
 
