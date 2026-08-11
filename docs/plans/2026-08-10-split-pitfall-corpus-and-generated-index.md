@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-10
 adrs: [split-pitfall-corpus-and-generated-index]
-status: Proposed
+status: Implemented
 ---
 # Plan: Split Pitfall Corpus and Generated Index
 
