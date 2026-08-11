@@ -42,6 +42,26 @@ func coverageCorpus() Corpus {
 	return c
 }
 
+func TestCoverageFindingMessage(t *testing.T) {
+	tests := []struct {
+		name string
+		in   CoverageFinding
+		want string
+	}{
+		{name: "fan-out", in: CoverageFinding{Path: "a.go", Kind: Fanout, Topics: 9}, want: "fan-out: a.go is matched by 9 owning topics"},
+		{name: "scoped recovery", in: CoverageFinding{Path: "a.go", Domain: "alpha", Kind: Uncovered}, want: "uncovered: a.go is owned by domain alpha with no claim-bearing topic owner; create/use an appropriate scoped claim-bearing topic with a matching domain-bounded paths selector"},
+		{name: "one global", in: CoverageFinding{Path: "a.go", Domain: "alpha", Kind: Uncovered, CandidateTopics: []string{"alpha/global"}}, want: "uncovered: a.go is owned by domain alpha with no claim-bearing topic owner; if global topic alpha/global naturally governs this path, add a matching domain-bounded paths selector; otherwise create/use an appropriate scoped claim-bearing topic"},
+		{name: "several globals", in: CoverageFinding{Path: "a.go", Domain: "alpha", Kind: Uncovered, CandidateTopics: []string{"alpha/a", "alpha/b"}}, want: "uncovered: a.go is owned by domain alpha with no claim-bearing topic owner; if one of global topics alpha/a, alpha/b naturally governs this path, add a matching domain-bounded paths selector; otherwise create/use an appropriate scoped claim-bearing topic"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.in.Message(); got != tt.want {
+				t.Fatalf("Message() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 // invariant: invariants/topics-and-markers:coverage-evaluation-selects-checks (TestEvaluateCoverage)
 func TestEvaluateCoverage(t *testing.T) {
 	c := coverageCorpus()

@@ -47,7 +47,7 @@ func (r CurrentStateReport) Findings() []string {
 	}
 	for _, c := range r.Coverage {
 		if c.Severity == severity.Error {
-			out = append(out, coverageLine(c))
+			out = append(out, c.Message())
 		}
 	}
 	for _, d := range r.PlanDrift {
@@ -71,27 +71,11 @@ func (r CurrentStateReport) Notes() []string {
 	}
 	for _, c := range r.Coverage {
 		if c.Severity == severity.Warn {
-			out = append(out, coverageLine(c))
+			out = append(out, c.Message())
 		}
 	}
 	out = append(out, r.PlanNotes...)
 	return out
-}
-
-// coverageLine renders one coverage or fan-out finding as a stable one-line
-// message shared by the blocking and note channels.
-func coverageLine(c topic.CoverageFinding) string {
-	if c.Kind == topic.Fanout {
-		return fmt.Sprintf("fan-out: %s is matched by %d owning topics", c.Path, c.Topics)
-	}
-	base := fmt.Sprintf("uncovered: %s is owned by domain %s with no claim-bearing topic owner", c.Path, c.Domain)
-	if len(c.CandidateTopics) == 0 {
-		return base + "; create/use a scoped claim-bearing topic with a matching domain-bounded paths selector"
-	}
-	if len(c.CandidateTopics) == 1 {
-		return fmt.Sprintf("%s; add a matching domain-bounded paths selector to global topic %s, or create/use a scoped claim-bearing topic", base, c.CandidateTopics[0])
-	}
-	return fmt.Sprintf("%s; add a matching domain-bounded paths selector to one of global topics %s, or create/use a scoped claim-bearing topic", base, strings.Join(c.CandidateTopics, ", "))
 }
 
 // workingState is one loaded working-tree current-state universe: the parsed

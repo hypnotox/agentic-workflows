@@ -157,12 +157,12 @@ func TestCurrentStateReportRouting(t *testing.T) {
 		},
 	}
 	findings := r.Findings()
-	wantCoverage := "uncovered: internal/a.go is owned by domain alpha with no claim-bearing topic owner; add a matching domain-bounded paths selector to global topic alpha/global, or create/use a scoped claim-bearing topic"
+	wantCoverage := "uncovered: internal/a.go is owned by domain alpha with no claim-bearing topic owner; if global topic alpha/global naturally governs this path, add a matching domain-bounded paths selector; otherwise create/use an appropriate scoped claim-bearing topic"
 	if len(findings) != 3 || findings[0] != "handshake broke" || findings[1] != wantCoverage || findings[2] != "plan-reference docs/plans/v2.md: missing ADR" {
 		t.Fatalf("findings = %#v", findings)
 	}
 	notes := r.Notes()
-	wantNote := "uncovered: internal/c.go is owned by domain alpha with no claim-bearing topic owner; add a matching domain-bounded paths selector to one of global topics alpha/a, alpha/b, or create/use a scoped claim-bearing topic"
+	wantNote := "uncovered: internal/c.go is owned by domain alpha with no claim-bearing topic owner; if one of global topics alpha/a, alpha/b naturally governs this path, add a matching domain-bounded paths selector; otherwise create/use an appropriate scoped claim-bearing topic"
 	if len(notes) != 5 || !strings.Contains(notes[0], "provisional older-format ADR-0002") || !strings.Contains(notes[1], "ADR-0003 (legacy)") || !strings.Contains(notes[2], "ADR-0004 (legacy)") || !strings.Contains(notes[3], "internal/b.go is matched by 3 owning topics") || notes[4] != wantNote {
 		t.Fatalf("notes = %#v", notes)
 	}

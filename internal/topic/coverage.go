@@ -1,6 +1,7 @@
 package topic
 
 import (
+	"fmt"
 	"maps"
 	"slices"
 	"strings"
@@ -76,6 +77,22 @@ type CoverageFinding struct {
 	// implicit: an untagged exported field still marshals, as a bare 0 or 1.
 	Severity severity.Rank `json:"-"`
 	Topics   int           `json:"topics,omitempty"`
+}
+
+// Message renders the finding's semantic diagnostic. The model owner retains
+// both the finding vocabulary and its actionable recovery mapping.
+func (c CoverageFinding) Message() string {
+	if c.Kind == Fanout {
+		return fmt.Sprintf("fan-out: %s is matched by %d owning topics", c.Path, c.Topics)
+	}
+	base := fmt.Sprintf("uncovered: %s is owned by domain %s with no claim-bearing topic owner", c.Path, c.Domain)
+	if len(c.CandidateTopics) == 0 {
+		return base + "; create/use an appropriate scoped claim-bearing topic with a matching domain-bounded paths selector"
+	}
+	if len(c.CandidateTopics) == 1 {
+		return fmt.Sprintf("%s; if global topic %s naturally governs this path, add a matching domain-bounded paths selector; otherwise create/use an appropriate scoped claim-bearing topic", base, c.CandidateTopics[0])
+	}
+	return fmt.Sprintf("%s; if one of global topics %s naturally governs this path, add a matching domain-bounded paths selector; otherwise create/use an appropriate scoped claim-bearing topic", base, strings.Join(c.CandidateTopics, ", "))
 }
 
 // CoveragePolicy carries which coverage checks a caller wants evaluated. A
