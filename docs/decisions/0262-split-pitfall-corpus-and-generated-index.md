@@ -4,7 +4,7 @@ slug: split-pitfall-corpus-and-generated-index
 status: Implementing
 date: 2026-08-10
 ---
-# ADR-split-pitfall-corpus-and-generated-index: Split Pitfall Corpus and Generated Index
+# ADR-0262: Split Pitfall Corpus and Generated Index
 
 
 ## Context

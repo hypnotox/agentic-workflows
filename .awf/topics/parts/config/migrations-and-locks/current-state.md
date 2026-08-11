@@ -5,7 +5,7 @@ These packages migrate the config tree across schema generations and read and wr
 ### `invariant: pitfall-corpus-migration`
 
 Schema generation 43 fully preflights the legacy ordered pitfall registry, deterministic reserved slugs, canonical leaves, relative links, destinations, duplicate titles, and the sidecar remainder; it accepts byte-identical partial leaves, creates every missing leaf exclusively before retiring `data.pitfalls`, and preserves a sections-only sidecar so interruption and retry cannot lose authority.
-Origin: ADR-split-pitfall-corpus-and-generated-index
+Origin: ADR-0262
 Backing: test
 
 

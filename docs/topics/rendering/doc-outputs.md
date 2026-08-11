@@ -51,13 +51,13 @@ Backing: test
 ### `invariant: pitfall-corpus-validated`
 
 The pitfall source loader accepts only direct regular lowercase-kebab `.md` leaves under `.awf/docs/pitfalls`, reserves `index`, strictly validates required single-line titles, optional duplicate-free metadata, nonblank bodies, and corpus-wide title uniqueness, and makes malformed sources hard errors for render and check.
-Origin: ADR-split-pitfall-corpus-and-generated-index
+Origin: ADR-0262
 Backing: test
 
 ### `invariant: pitfall-output-complete`
 
 Every valid pitfall source produces exactly one metadata row and one generated leaf through matching working and staged output declarations, with full-source leaf hashes, metadata-only index hashes, lock and drift membership, ordinary backup, and deletion pruning.
-Origin: ADR-split-pitfall-corpus-and-generated-index
+Origin: ADR-0262
 Backing: test
 
 ### `invariant: pitfall-domains-resolved`
@@ -111,5 +111,5 @@ Backing: test
 
 Opaque generated documentation carries one compact reader-facing `awf:source` marker for topic pages and indexes, domain navigation, glossary, the pitfall index and each exact-source pitfall leaf, the ADR index, config reference, and target bridges. Section-overridable standard docs and AGENTS.md retain their `awf:edit` guidance without duplication; authored ADRs and plans remain banner-free. Marker payloads guide readers and are not exhaustive machine dependencies.
 Origin: ADR-0250
-Revised-by: ADR-0251, ADR-split-pitfall-corpus-and-generated-index
+Revised-by: ADR-0251, ADR-0262
 Backing: test

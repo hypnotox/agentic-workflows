@@ -14,13 +14,13 @@ The cmd packages and their spec helpers implement the awf command surfaces and t
 
 The CLI creates authored ADRs, plans, topics, domains, and pitfalls and lists fixed catalog inventory; no command selects catalog render membership.
 Origin: ADR-0254
-Revised-by: ADR-split-pitfall-corpus-and-generated-index
+Revised-by: ADR-0262
 Backing: test
 
 ### `invariant: pitfall-scaffold`
 
 `awf new pitfall <title>` accepts exactly one complete title positional, gates before project reads or writes, loads the current authored corpus, refuses empty, reserved, or whitespace-and-case-equivalent duplicate titles, uses the shared ASCII slug allocator and canonical serializer, creates exactly one selected source path exclusively, and reports that repository-relative authored path through project-owned presentation. Occupied suffix gaps choose the first free candidate; a race at the selected path refuses without advancing, while an ordinary retry reloads and recomputes. The command never renders or mutates generated output, a sidecar, or another registry.
-Origin: ADR-split-pitfall-corpus-and-generated-index
+Origin: ADR-0262
 Backing: test
 
 ### `invariant: domain-lifecycle-commands`

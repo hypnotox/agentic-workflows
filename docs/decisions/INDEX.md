@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-split-pitfall-corpus-and-generated-index: Split Pitfall Corpus and Generated Index](split-pitfall-corpus-and-generated-index.md) (Implementing)
+- [ADR-0262: Split Pitfall Corpus and Generated Index](0262-split-pitfall-corpus-and-generated-index.md) (Implementing)
 
 ## History
 
