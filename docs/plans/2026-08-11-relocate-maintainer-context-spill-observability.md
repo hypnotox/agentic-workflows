@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-11
 adrs: [keep-maintainer-context-spill-state-outside-configuration]
-status: Proposed
+status: Implemented
 ---
 # Plan: Relocate Maintainer Context Spill Observability
 

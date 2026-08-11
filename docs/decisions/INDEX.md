@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-0268: Keep Maintainer Context Spill State Outside Configuration](0268-keep-maintainer-context-spill-state-outside-configuration.md) (Implementing)
+_No decisions are in flight._
 
 ## History
 
@@ -273,3 +273,4 @@
 - [ADR-0265: User-Approved Production-Code Implementation Outlines](0265-user-approved-production-code-implementation-outlines.md) (Implemented)
 - [ADR-0266: Restore Autonomous Effort Management](0266-restore-autonomous-effort-management.md) (Implemented)
 - [ADR-0267: Correct Bootstrap Companion Path Authority](0267-correct-bootstrap-companion-path-authority.md) (Implemented)
+- [ADR-0268: Keep Maintainer Context Spill State Outside Configuration](0268-keep-maintainer-context-spill-state-outside-configuration.md) (Implemented)
