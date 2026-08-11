@@ -92,25 +92,26 @@ commit. Return the stopped report.
 ## What to return
 
 Your final message is the entire report. It has exactly one of two outcomes; name it on the first
-line.
+line. Put bounded decision-bearing evidence before any exhaustive inventory. Summarize a large
+path inventory by count and category before its optional complete form; when a return truncates,
+the parent independently inventories the checkout rather than treating omitted fields as empty.
 
 **completed** requires all of:
 
-- the closing commit's subject and hash in phase-owner mode, or the list of changed paths in helper
-  mode
-- the complete phase scope performed and every changed path
+- the closing commit's subject and hash in phase-owner mode, or a helper-mode completion statement
+- `deviations: none` or each deviation with changed detail, rationale, governing authority, and verification
 - every verification you ran, each with its actual result
+- anything you deliberately left out of scope
+- the complete phase scope performed and every changed path
 - for generated-prose changes, the focused meaning-review evidence: inspected produced-output boundaries and result
 - each golden or fixture you legitimately updated, and why the new value is correct
-- anything you deliberately left out of scope
-- `deviations: none` or each deviation with changed detail, rationale, governing authority, and verification
 
 **stopped** requires all five of:
 
-- the exact output of `git status --short`
+- either the failing required check, named, with its actual output rather than your summary of it, or a complete report identifying the applicable narrow authority conflict, required authority change, material outcome or scope change, unresolved design fork, unsafe completion, or persistently unreachable verification boundary
 - what you completed
 - what remains
-- either the failing required check, named, with its actual output rather than your summary of it, or a complete report identifying the applicable narrow authority conflict, required authority change, material outcome or scope change, unresolved design fork, unsafe completion, or persistently unreachable verification boundary
+- the exact output of `git status --short`
 - what you already tried, so the next attempt does not repeat it
 
 A stopped report missing any of the shared inventory or both alternatives is not a valid report. There is no third outcome, and a

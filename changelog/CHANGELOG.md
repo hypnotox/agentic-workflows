@@ -14,7 +14,7 @@ query a single version or a range.
 
 ### Features
 
-- The adopter-facing documentation standard now advises count-free prose for changing sets and requires essential exact counts to name their query and be reverified when the source population changes. The agent-guide standard now keeps literal placeholder syntax in reference documentation unless its brace guard deliberately recognizes it.
+- The adopter-facing documentation standard now advises count-free prose for changing sets and requires essential exact counts to name their query and be reverified when the source population changes. The agent-guide standard now keeps literal placeholder syntax in reference documentation unless its brace guard deliberately recognizes it. Subagent return contracts now put bounded decision-bearing evidence before optional exhaustive inventories so runtime truncation does not hide outcomes, deviations, verification, or blockers.
 
 - Pitfalls now publish as a compact title-sorted metadata index with domain and Unassigned navigation plus one exact-source generated leaf per entry. The complete family participates in working and staged output plans, lock, drift, backup, and deletion pruning.
 

@@ -40,7 +40,6 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 | [Moving a check earlier in the pipeline steals a later stage\'s error\-branch coverage](pitfalls/moving-a-check-earlier-in-the-pipeline-steals-a-later-stage-s-error-branch-coverage.md) | tooling | coverage\-gate |  |
 | [Obsoleting rendered prose\: sweep parts and whole narratives\, not just templates](pitfalls/obsoleting-rendered-prose-sweep-parts-and-whole-narratives-not-just-templates.md) | rendering | convention\-parts\, template\-overlay |  |
 | [Port a stale branch before merging a breaking marker grammar](pitfalls/port-a-stale-branch-before-merging-a-breaking-marker-grammar.md) | invariants\, adr\-system\, tooling | invariant\-backing\, worktree\-isolation\, git\-hooks | ADR-0205, ADR-0206 |
-| [Put bounded evidence before unbounded inventories in subagent returns](pitfalls/put-bounded-evidence-before-unbounded-inventories-in-subagent-returns.md) | Unassigned |  |  |
 | [Raw\-byte ADR surgery must bound every scan to the frontmatter window](pitfalls/raw-byte-adr-surgery-must-bound-every-scan-to-the-frontmatter-window.md) | config | schema\-migration\, adr\-parsing | ADR-0120 |
 | [Raw\-byte offsets go stale the moment an earlier pass edits the file](pitfalls/raw-byte-offsets-go-stale-the-moment-an-earlier-pass-edits-the-file.md) | config | schema\-migration\, adr\-parsing | ADR-0128 |
 | [Recheck closure assertions after changing catalog edges](pitfalls/recheck-closure-assertions-after-changing-catalog-edges.md) | rendering | kind\-descriptor\, catalog\-derived\-tests\, verification\-discipline |  |
@@ -124,7 +123,6 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 
 - [Ad hoc compound mutations still need target read\-back](pitfalls/ad-hoc-compound-mutations-still-need-target-read-back.md)
 - [An ad hoc empty scan still needs proof that the probe ran](pitfalls/an-ad-hoc-empty-scan-still-needs-proof-that-the-probe-ran.md)
-- [Put bounded evidence before unbounded inventories in subagent returns](pitfalls/put-bounded-evidence-before-unbounded-inventories-in-subagent-returns.md)
 
 
 <!-- awf:edit append: default; create .awf/docs/parts/pitfalls/append.md to override -->

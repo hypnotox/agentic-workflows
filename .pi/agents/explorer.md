@@ -47,6 +47,6 @@ Distinguish not-found, inconclusive, and unverified outcomes. Not-found is succe
 <!-- awf:edit report-discipline: default; create .awf/agents/parts/explorer/report-discipline.md to override -->
 ## Report discipline
 
-Return only the relevant final report, never the search narrative or intermediate activity.
+Return only the relevant final report, never the search narrative or intermediate activity. Put the bounded conclusion, deviations, verification, and blockers before any exhaustive inventory. Summarize a large inventory by count and category before its optional complete form; when a report truncates, the parent reruns the inventory rather than treating omitted fields as empty.
 
 Retain no search session or state. After a not-found, inconclusive, unverified, or insufficient report, the parent may issue a new fresh-context call that corrects the task, changes report detail, or widens breadth.

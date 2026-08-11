@@ -41,6 +41,6 @@ On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the w
 
 Return findings only as {kind: open-question | possible-issue, topic, detail, grounding, confidence: verified | interpreted | unverified}.
 
-Ground each finding with file:line evidence. The confidence field is load-bearing: verified means the claim was mechanically confirmed against source; interpreted means the reading requires judgment; unverified means the claim could not be confirmed.
+Ground each finding with file:line evidence. The confidence field is load-bearing: verified means the claim was mechanically confirmed against source; interpreted means the reading requires judgment; unverified means the claim could not be confirmed. Put bounded conclusions, deviations, verification, and blockers before any exhaustive inventory. Summarize a large inventory by count and category before its optional complete form; when a report truncates, the parent reruns the inventory rather than treating omitted fields as empty.
 
 This pass is advisory and single-pass. Report findings; never gate, rewrite, or commit.
