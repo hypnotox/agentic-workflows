@@ -14,6 +14,8 @@ query a single version or a range.
 
 ### Features
 
+- Agent guides now treat native-skill descriptions as routing metadata and direct agents to load skill bodies only when their owned work begins. Likely follow-ups stay unloaded until transition, while multiple bodies are reserved for skills that concurrently govern the current step.
+
 - Hand-authored production-code changes now require a proportionate, explicitly approved implementation outline before mutation, including mechanical production refactors and preparatory tests. Documentation-only, test-only maintenance, generated-output-only, and non-code mechanical work retain independent autonomy, while conversation, effort decisions, and explicitly requested named-plan Architecture summaries can carry approval evidence into direct and delegated execution.
 
 - The approved production-code outline is now the sole routine user checkpoint for its boundary. Settled ADR review continues autonomously to linked-plan handling or implementation, while new material decisions or boundary changes return through brainstorming.

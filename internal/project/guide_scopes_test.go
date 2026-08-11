@@ -17,8 +17,13 @@ import (
 func TestGuideRoutesNativeSkillsWithoutCatalog(t *testing.T) {
 	data := map[string]any{"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}, "commitScopes": "", "gatedCommands": "", "skills": map[string]bool{}}
 	out := renderGuide(t, data)
-	if !strings.Contains(out, "Use any native skill whose exposed description fits the current work.") {
-		t.Error("guide does not route selection through native skill descriptions")
+	for _, want := range []string{
+		"Treat exposed native-skill descriptions as routing metadata.",
+		"Load a skill body only when beginning the work it owns; do not preload likely follow-up skills, and load multiple bodies only when they concurrently govern the current step.",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("guide does not preserve progressive skill disclosure %q", want)
+		}
 	}
 	for _, banned := range []string{"Enabled skills:", "example-brainstorming", "purpose", "Trigger:", "Usually follows:", "Common follow-ups:", "fallback", "<no value>", "awf_workflow", "only legal predecessor", "only legal successor", "mandatory successor", "must follow", "must be followed by", "mandatory transition"} {
 		if strings.Contains(out, banned) {

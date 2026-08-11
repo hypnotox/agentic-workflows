@@ -2008,7 +2008,8 @@ func TestAgentsDocNativeSkillRouter(t *testing.T) {
 		"Preserve the approved design boundary",
 		"docs/maintainable-code-design.md",
 		"make gate",
-		"Use any native skill whose exposed description fits the current work.",
+		"Treat exposed native-skill descriptions as routing metadata.",
+		"Load a skill body only when beginning the work it owns; do not preload likely follow-up skills, and load multiple bodies only when they concurrently govern the current step.",
 	} {
 		if !strings.Contains(out, phrase) {
 			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
