@@ -39,10 +39,10 @@ type SourceFile struct {
 }
 
 type metadata struct {
-	Title   *string     `yaml:"title"`
-	Domains presentNode `yaml:"domains,omitempty"`
-	Tags    presentNode `yaml:"tags,omitempty"`
-	Related presentNode `yaml:"related,omitempty"`
+	Title   *string
+	Domains presentNode
+	Tags    presentNode
+	Related presentNode
 }
 
 type presentNode struct {
@@ -63,9 +63,11 @@ func (m *metadata) UnmarshalYAML(node *yaml.Node) error {
 		seen[key] = true
 		switch key {
 		case "title":
-			if err := value.Decode(&m.Title); err != nil {
-				return err
+			if value.Kind != yaml.ScalarNode || value.Tag != "!!str" {
+				return errors.New("pitfall title must be a string scalar")
 			}
+			title := value.Value
+			m.Title = &title
 		case "domains":
 			m.Domains = presentNode{present: true, node: *value}
 		case "tags":
@@ -144,15 +146,15 @@ func Parse(f SourceFile) (Entry, error) {
 	if strings.TrimSpace(string(body)) == "" {
 		return Entry{}, fmt.Errorf("%s: body is empty", f.Path)
 	}
-	domains, err := decodeOptionalNonemptyList[string](f.Path, "domains", m.Domains)
+	domains, err := decodeOptionalStringList(f.Path, "domains", m.Domains)
 	if err != nil {
 		return Entry{}, err
 	}
-	tags, err := decodeOptionalNonemptyList[string](f.Path, "tags", m.Tags)
+	tags, err := decodeOptionalStringList(f.Path, "tags", m.Tags)
 	if err != nil {
 		return Entry{}, err
 	}
-	related, err := decodeOptionalNonemptyList[int](f.Path, "related", m.Related)
+	related, err := decodeOptionalIntegerList(f.Path, "related", m.Related)
 	if err != nil {
 		return Entry{}, err
 	}
@@ -175,20 +177,46 @@ func Parse(f SourceFile) (Entry, error) {
 	return Entry{Slug: slug, SourcePath: clean, Title: title, Domains: domains, Tags: tags, Related: related, Body: string(body), Source: slices.Clone(f.Bytes)}, nil
 }
 
-func decodeOptionalNonemptyList[T any](source, field string, value presentNode) ([]T, error) {
+func optionalSequence(source, field string, value presentNode) ([]*yaml.Node, error) {
 	if !value.present {
 		return nil, nil
 	}
-	node := &value.node
-	if node.Tag == "!!null" {
+	if value.node.Kind != yaml.SequenceNode || len(value.node.Content) == 0 {
 		return nil, fmt.Errorf("%s: explicitly supplied %s must be a nonempty list", source, field)
 	}
-	var values []T
-	if err := node.Decode(&values); err != nil {
-		return nil, fmt.Errorf("%s: %s must be a nonempty list: %w", source, field, err)
+	return value.node.Content, nil
+}
+
+func decodeOptionalStringList(source, field string, value presentNode) ([]string, error) {
+	nodes, err := optionalSequence(source, field, value)
+	if err != nil || nodes == nil {
+		return nil, err
 	}
-	if len(values) == 0 {
-		return nil, fmt.Errorf("%s: explicitly supplied %s must be a nonempty list", source, field)
+	values := make([]string, 0, len(nodes))
+	for _, node := range nodes {
+		if node.Kind != yaml.ScalarNode || node.Tag != "!!str" {
+			return nil, fmt.Errorf("%s: %s entries must be string scalars", source, field)
+		}
+		values = append(values, node.Value)
+	}
+	return values, nil
+}
+
+func decodeOptionalIntegerList(source, field string, value presentNode) ([]int, error) {
+	nodes, err := optionalSequence(source, field, value)
+	if err != nil || nodes == nil {
+		return nil, err
+	}
+	values := make([]int, 0, len(nodes))
+	for _, node := range nodes {
+		if node.Kind != yaml.ScalarNode || node.Tag != "!!int" {
+			return nil, fmt.Errorf("%s: %s entries must be integer scalars", source, field)
+		}
+		var number int
+		if err := node.Decode(&number); err != nil {
+			return nil, fmt.Errorf("%s: %s entries must be integer scalars: %w", source, field, err)
+		}
+		values = append(values, number)
 	}
 	return values, nil
 }
@@ -326,60 +354,81 @@ type fence struct {
 	len  int
 }
 
-func fenceRun(line string) (byte, int, string) {
-	trimmed := strings.TrimLeft(line, " \t")
-	if trimmed == "" || (trimmed[0] != '`' && trimmed[0] != '~') {
-		return 0, 0, ""
+func fenceRun(line string) (byte, int, string, bool) {
+	indent := 0
+	for indent < len(line) && line[indent] == ' ' {
+		indent++
 	}
-	char := trimmed[0]
+	if indent > 3 || indent == len(line) || (line[indent] != '`' && line[indent] != '~') {
+		return 0, 0, "", false
+	}
+	char := line[indent]
 	n := 0
-	for n < len(trimmed) && trimmed[n] == char {
+	for indent+n < len(line) && line[indent+n] == char {
 		n++
 	}
-	return char, n, trimmed[n:]
+	return char, n, line[indent+n:], true
 }
 
 func maskCode(s string) string {
-	lines := strings.SplitAfter(s, "\n")
-	var open *fence
-	for i, line := range lines {
-		char, run, rest := fenceRun(strings.TrimSuffix(line, "\n"))
-		if open != nil {
-			lines[i] = strings.Repeat(" ", len(line))
-			if char == open.char && run >= open.len && strings.TrimSpace(rest) == "" {
-				open = nil
-			}
-			continue
-		}
-		if run >= 3 {
-			open = &fence{char: char, len: run}
-			lines[i] = strings.Repeat(" ", len(line))
-			continue
-		}
-		lines[i] = maskInlineCode(line)
+	masked := []byte(s)
+	eligible := make([]bool, len(s))
+	for i := range eligible {
+		eligible[i] = true
 	}
-	return strings.Join(lines, "")
+	var open *fence
+	for start := 0; start < len(s); {
+		end := strings.IndexByte(s[start:], '\n')
+		if end < 0 {
+			end = len(s)
+		} else {
+			end += start
+		}
+		line := s[start:end]
+		char, run, rest, candidate := fenceRun(line)
+		isCloser := open != nil && candidate && char == open.char && run >= open.len && strings.Trim(rest, " \t") == ""
+		isOpener := open == nil && candidate && run >= 3 && (char != '`' || !strings.Contains(rest, "`"))
+		if open != nil || isOpener {
+			for i := start; i < end; i++ {
+				masked[i] = ' '
+				eligible[i] = false
+			}
+		}
+		if isCloser {
+			open = nil
+		} else if isOpener {
+			open = &fence{char: char, len: run}
+		}
+		if end == len(s) {
+			break
+		}
+		start = end + 1
+	}
+	maskCodeSpans(masked, eligible)
+	return string(masked)
 }
 
-func maskInlineCode(line string) string {
-	masked := []byte(line)
-	for start := 0; start < len(line); {
-		if line[start] != '`' {
+func maskCodeSpans(masked []byte, eligible []bool) {
+	for start := 0; start < len(masked); {
+		if !eligible[start] || masked[start] != '`' {
 			start++
 			continue
 		}
 		run := 1
-		for start+run < len(line) && line[start+run] == '`' {
+		for start+run < len(masked) && eligible[start+run] && masked[start+run] == '`' {
 			run++
 		}
 		closeAt := -1
-		for cursor := start + run; cursor < len(line); {
-			if line[cursor] != '`' {
+		for cursor := start + run; cursor < len(masked); {
+			if !eligible[cursor] {
+				break
+			}
+			if masked[cursor] != '`' {
 				cursor++
 				continue
 			}
 			closeRun := 1
-			for cursor+closeRun < len(line) && line[cursor+closeRun] == '`' {
+			for cursor+closeRun < len(masked) && eligible[cursor+closeRun] && masked[cursor+closeRun] == '`' {
 				closeRun++
 			}
 			if closeRun == run {
@@ -392,10 +441,11 @@ func maskInlineCode(line string) string {
 			start += run
 			continue
 		}
-		for j := start; j < closeAt+run; j++ {
-			masked[j] = ' '
+		for i := start; i < closeAt+run; i++ {
+			if masked[i] != '\n' && masked[i] != '\r' {
+				masked[i] = ' '
+			}
 		}
 		start = closeAt + run
 	}
-	return string(masked)
 }

@@ -34,7 +34,9 @@ func TestCorpusContract(t *testing.T) {
 		{"slug", source(SourceDir+"/Bad_slug.md", "title: A\n", "body\n"), "invalid"},
 		{"frontmatter", SourceFile{Path: SourceDir + "/a.md", Regular: true, Bytes: []byte("body")}, "missing frontmatter"},
 		{"metadata-not-mapping", source(SourceDir+"/a.md", "- title: A\n", "body\n"), "must be a mapping"},
-		{"title-wrong-type", source(SourceDir+"/a.md", "title: [A]\n", "body\n"), "cannot unmarshal"},
+		{"title-sequence", source(SourceDir+"/a.md", "title: [A]\n", "body\n"), "string scalar"},
+		{"title-number", source(SourceDir+"/a.md", "title: 12\n", "body\n"), "string scalar"},
+		{"title-bool", source(SourceDir+"/a.md", "title: true\n", "body\n"), "string scalar"},
 		{"unknown", source(SourceDir+"/a.md", "title: A\nunknown: x\n", "body\n"), "field unknown"},
 		{"duplicate-key", source(SourceDir+"/a.md", "title: A\ntitle: B\n", "body\n"), "duplicate pitfall metadata key"},
 		{"missing-title", source(SourceDir+"/a.md", "domains: [x]\n", "body\n"), "required title"},
@@ -44,14 +46,28 @@ func TestCorpusContract(t *testing.T) {
 		{"empty-domain", source(SourceDir+"/a.md", "title: A\ndomains: ['']\n", "body\n"), "nonempty"},
 		{"empty-domains-list", source(SourceDir+"/a.md", "title: A\ndomains: []\n", "body\n"), "nonempty list"},
 		{"null-domains", source(SourceDir+"/a.md", "title: A\ndomains: null\n", "body\n"), "nonempty list"},
-		{"scalar-domains", source(SourceDir+"/a.md", "title: A\ndomains: x\n", "body\n"), "must be a nonempty list"},
+		{"scalar-domains", source(SourceDir+"/a.md", "title: A\ndomains: x\n", "body\n"), "nonempty list"},
+		{"mapping-domains", source(SourceDir+"/a.md", "title: A\ndomains: {x: y}\n", "body\n"), "nonempty list"},
+		{"numeric-domain", source(SourceDir+"/a.md", "title: A\ndomains: [12]\n", "body\n"), "string scalars"},
+		{"bool-domain", source(SourceDir+"/a.md", "title: A\ndomains: [true]\n", "body\n"), "string scalars"},
 		{"duplicate-domain", source(SourceDir+"/a.md", "title: A\ndomains: [x, x]\n", "body\n"), "duplicate domains"},
 		{"bad-tag", source(SourceDir+"/a.md", "title: A\ntags: [' x ']\n", "body\n"), "tags entries"},
 		{"empty-tags-list", source(SourceDir+"/a.md", "title: A\ntags: []\n", "body\n"), "nonempty list"},
 		{"null-tags", source(SourceDir+"/a.md", "title: A\ntags: null\n", "body\n"), "nonempty list"},
+		{"scalar-tags", source(SourceDir+"/a.md", "title: A\ntags: proof\n", "body\n"), "nonempty list"},
+		{"mapping-tags", source(SourceDir+"/a.md", "title: A\ntags: {proof: true}\n", "body\n"), "nonempty list"},
+		{"numeric-tag", source(SourceDir+"/a.md", "title: A\ntags: [1]\n", "body\n"), "string scalars"},
+		{"bool-tag", source(SourceDir+"/a.md", "title: A\ntags: [false]\n", "body\n"), "string scalars"},
 		{"bad-related", source(SourceDir+"/a.md", "title: A\nrelated: [0]\n", "body\n"), "positive"},
 		{"empty-related-list", source(SourceDir+"/a.md", "title: A\nrelated: []\n", "body\n"), "nonempty list"},
 		{"null-related", source(SourceDir+"/a.md", "title: A\nrelated: null\n", "body\n"), "nonempty list"},
+		{"scalar-related", source(SourceDir+"/a.md", "title: A\nrelated: 1\n", "body\n"), "nonempty list"},
+		{"mapping-related", source(SourceDir+"/a.md", "title: A\nrelated: {adr: 1}\n", "body\n"), "nonempty list"},
+		{"string-related", source(SourceDir+"/a.md", "title: A\nrelated: ['1']\n", "body\n"), "integer scalars"},
+		{"bool-related", source(SourceDir+"/a.md", "title: A\nrelated: [true]\n", "body\n"), "integer scalars"},
+		{"float-related", source(SourceDir+"/a.md", "title: A\nrelated: [1.0]\n", "body\n"), "integer scalars"},
+		{"overflow-related", source(SourceDir+"/a.md", "title: A\nrelated: [999999999999999999999999999999999]\n", "body\n"), "integer scalars"},
+		{"invalid-tagged-integer", source(SourceDir+"/a.md", "title: A\nrelated: [!!int nope]\n", "body\n"), "integer scalars"},
 		{"duplicate-related", source(SourceDir+"/a.md", "title: A\nrelated: [1, 1]\n", "body\n"), "duplicate related"},
 	}
 	for _, tc := range bad {
@@ -128,7 +144,37 @@ func TestAllocationSerializationEscapingAndLinks(t *testing.T) {
 	if links := RelativeLinks(unmatchedInline); len(links) != 1 || links[0].Destination != "still-relative.md" {
 		t.Fatalf("unmatched inline delimiter masked prose: %#v", links)
 	}
-	if got := maskInlineCode("before ``code ` tick`` after"); got != "before                 after" {
+	if got := maskCode("before ``code ` tick`` after"); got != "before                 after" {
 		t.Fatalf("variable inline span mask = %q", got)
+	}
+
+	for _, tc := range []struct {
+		name string
+		body string
+		want []string
+	}{
+		{"multiline-code-span", "before ``code\n[masked](no.md)`` [visible](yes.md)\n", []string{"yes.md"}},
+		{"zero-space-backtick-fence", "```go\n[masked](no.md)\n```\n[visible](yes.md)\n", []string{"yes.md"}},
+		{"one-space-backtick-fence", " ```go\n[masked](no.md)\n ```\n[visible](yes.md)\n", []string{"yes.md"}},
+		{"two-space-tilde-fence", "  ~~~ go\n[masked](no.md)\n  ~~~\n[visible](yes.md)\n", []string{"yes.md"}},
+		{"three-space-tilde-fence", "   ~~~~ go\n[masked](no.md)\n   ~~~~\t\n[visible](yes.md)\n", []string{"yes.md"}},
+		{"four-space-pseudo-fence", "    ~~~\n[visible](yes.md)\n    ~~~\n", []string{"yes.md"}},
+		{"invalid-backtick-info", "```go`bad\n[visible](yes.md)\n~~~\n", []string{"yes.md"}},
+		{"mismatched-closer", "~~~\n[masked](no.md)\n```\n[still-masked](no2.md)\n~~~\n[visible](yes.md)\n", []string{"yes.md"}},
+		{"short-closer", "````\n[masked](no.md)\n```\n[still-masked](no2.md)\n````\n[visible](yes.md)\n", []string{"yes.md"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			candidate := e
+			candidate.Body = tc.body
+			links := RelativeLinks(candidate)
+			if len(links) != len(tc.want) {
+				t.Fatalf("links = %#v, want %v", links, tc.want)
+			}
+			for i := range tc.want {
+				if links[i].Destination != tc.want[i] {
+					t.Fatalf("links = %#v, want %v", links, tc.want)
+				}
+			}
+		})
 	}
 }

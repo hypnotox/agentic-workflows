@@ -1,7 +1,9 @@
 package project
 
 import (
+	"bytes"
 	"go/ast"
+	"go/format"
 	"go/parser"
 	"go/token"
 	"os"
@@ -275,73 +277,173 @@ func difference(a, b []string) []string {
 
 // invariant: code-design/single-home:pitfall-model-single-home (TestPitfallModelSingleHome)
 func TestPitfallModelSingleHome(t *testing.T) {
-	root := testsupport.RepoRoot(t)
+	sources := pitfallProductionSources(t)
+	if findings := pitfallSemanticHomeFindings(sources); len(findings) != 0 {
+		t.Fatalf("pitfall semantic ownership findings:\n%s", strings.Join(findings, "\n"))
+	}
+}
+
+func TestPitfallModelSingleHomeProofRejectsMutations(t *testing.T) {
+	production := pitfallProductionSources(t)
+	for _, tc := range []struct {
+		name   string
+		mutate func(map[string][]byte)
+		want   string
+	}{
+		{
+			name: "outside-entry-duplicate",
+			mutate: func(sources map[string][]byte) {
+				sources["internal/migrate/pitfallcorpus.go"] = append(sources["internal/migrate/pitfallcorpus.go"], []byte("\ntype Entry struct {\nSlug, SourcePath, Title string\nDomains, Tags []string\nRelated []int\nBody string\nSource []byte\n}\n")...)
+			},
+			want: "type Entry",
+		},
+		{
+			name: "consumer-local-allocation-rule",
+			mutate: func(sources map[string][]byte) {
+				path := "internal/migrate/pitfallcorpus.go"
+				sources[path] = bytes.ReplaceAll(sources[path], []byte("pitfall.AllocateSlug("), []byte("consumerAllocateSlug("))
+			},
+			want: "internal/migrate does not call pitfall.AllocateSlug",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			sources := make(map[string][]byte, len(production))
+			for path, body := range production {
+				sources[path] = bytes.Clone(body)
+			}
+			tc.mutate(sources)
+			if findings := pitfallSemanticHomeFindings(sources); !slices.ContainsFunc(findings, func(finding string) bool { return strings.Contains(finding, tc.want) }) {
+				t.Fatalf("mutation escaped proof: findings=%v, want %q", findings, tc.want)
+			}
+		})
+	}
+}
+
+func pitfallProductionSources(t *testing.T) map[string][]byte {
+	t.Helper()
+	sources := map[string][]byte{}
+	testsupport.WalkRepoSources(t, testsupport.RepoRoot(t), func(rel string, body []byte) {
+		sources[rel] = bytes.Clone(body)
+	})
+	return sources
+}
+
+func pitfallSemanticHomeFindings(sources map[string][]byte) []string {
 	semanticTypes := map[string]bool{"Entry": true, "Corpus": true, "SourceFile": true, "RelativeLink": true}
 	semanticFuncs := map[string]bool{
 		"Load": true, "Parse": true, "EqualTitle": true, "Serialize": true,
 		"EscapeTitle": true, "EscapeHeading": true, "EscapeLinkLabel": true,
 		"EscapeTableCell": true, "RelativeLinks": true, "AllocateSlug": true,
 	}
-	declarations := map[string][]string{}
-	consumers := map[string]bool{}
-	consumerCalls := map[string]map[string]bool{}
-	testsupport.WalkRepoSources(t, root, func(rel string, body []byte) {
-		if !strings.HasSuffix(rel, ".go") || strings.HasSuffix(rel, "_test.go") || (!strings.HasPrefix(rel, "internal/") && !strings.HasPrefix(rel, "cmd/")) {
-			return
-		}
-		file, err := parser.ParseFile(token.NewFileSet(), rel, body, 0)
+	type parsedSource struct {
+		path string
+		file *ast.File
+	}
+	var parsed []parsedSource
+	for path, body := range sources {
+		file, err := parser.ParseFile(token.NewFileSet(), path, body, 0)
 		if err != nil {
-			t.Fatalf("parse %s: %v", rel, err)
+			return []string{"parse " + path + ": " + err.Error()}
 		}
-		for _, imp := range file.Imports {
-			if imp.Path.Value == `"github.com/hypnotox/agentic-workflows/internal/pitfall"` {
-				consumers[filepath.ToSlash(filepath.Dir(rel))] = true
-			}
+		parsed = append(parsed, parsedSource{path: path, file: file})
+	}
+	slices.SortFunc(parsed, func(a, b parsedSource) int { return strings.Compare(a.path, b.path) })
+
+	ownerShapes := map[string]string{}
+	for _, source := range parsed {
+		if !strings.HasPrefix(source.path, "internal/pitfall/") {
+			continue
 		}
-		for _, decl := range file.Decls {
+		for _, decl := range source.file.Decls {
 			switch node := decl.(type) {
 			case *ast.GenDecl:
 				for _, spec := range node.Specs {
-					if typ, ok := spec.(*ast.TypeSpec); ok && semanticTypes[typ.Name.Name] && strings.HasPrefix(rel, "internal/pitfall/") {
-						declarations["type "+typ.Name.Name] = append(declarations["type "+typ.Name.Name], rel)
+					if typ, ok := spec.(*ast.TypeSpec); ok && semanticTypes[typ.Name.Name] {
+						ownerShapes["type "+typ.Name.Name] = formattedNode(typ.Type)
 					}
 				}
 			case *ast.FuncDecl:
-				if node.Recv == nil && semanticFuncs[node.Name.Name] && strings.HasPrefix(rel, "internal/pitfall/") {
-					declarations["func "+node.Name.Name] = append(declarations["func "+node.Name.Name], rel)
+				if node.Recv == nil && semanticFuncs[node.Name.Name] {
+					ownerShapes["func "+node.Name.Name] = functionShape(node.Type)
 				}
 			}
 		}
-		ast.Inspect(file, func(node ast.Node) bool {
-			selector, ok := node.(*ast.SelectorExpr)
+	}
+
+	homes := map[string][]string{}
+	consumers := map[string]bool{}
+	consumerCalls := map[string]map[string]bool{}
+	for _, source := range parsed {
+		pkg := filepath.ToSlash(filepath.Dir(source.path))
+		pitfallImportNames := map[string]bool{}
+		for _, imp := range source.file.Imports {
+			if imp.Path.Value != `"github.com/hypnotox/agentic-workflows/internal/pitfall"` {
+				continue
+			}
+			name := "pitfall"
+			if imp.Name != nil {
+				name = imp.Name.Name
+			}
+			pitfallImportNames[name] = true
+			consumers[pkg] = true
+		}
+		for _, decl := range source.file.Decls {
+			switch node := decl.(type) {
+			case *ast.GenDecl:
+				for _, spec := range node.Specs {
+					typ, ok := spec.(*ast.TypeSpec)
+					if !ok || !semanticTypes[typ.Name.Name] {
+						continue
+					}
+					key := "type " + typ.Name.Name
+					if formattedNode(typ.Type) == ownerShapes[key] {
+						homes[key] = append(homes[key], source.path)
+					}
+				}
+			case *ast.FuncDecl:
+				key := "func " + node.Name.Name
+				if node.Recv == nil && semanticFuncs[node.Name.Name] && functionShape(node.Type) == ownerShapes[key] {
+					homes[key] = append(homes[key], source.path)
+				}
+			}
+		}
+		ast.Inspect(source.file, func(node ast.Node) bool {
+			call, ok := node.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			selector, ok := call.Fun.(*ast.SelectorExpr)
 			if !ok {
 				return true
 			}
 			ident, ok := selector.X.(*ast.Ident)
-			if !ok || ident.Name != "pitfall" {
+			if !ok || !pitfallImportNames[ident.Name] {
 				return true
 			}
-			pkg := filepath.ToSlash(filepath.Dir(rel))
 			if consumerCalls[pkg] == nil {
 				consumerCalls[pkg] = map[string]bool{}
 			}
 			consumerCalls[pkg][selector.Sel.Name] = true
 			return true
 		})
-	})
-	for name := range semanticTypes {
-		assertPitfallSemanticHome(t, "type "+name, declarations["type "+name])
 	}
-	for name := range semanticFuncs {
-		assertPitfallSemanticHome(t, "func "+name, declarations["func "+name])
+
+	var findings []string
+	for declaration := range ownerShapes {
+		paths := homes[declaration]
+		if len(paths) != 1 || paths[0] != "internal/pitfall/pitfall.go" {
+			findings = append(findings, declaration+" homes = "+strings.Join(paths, ", "))
+		}
 	}
 	wantConsumers := map[string]bool{"internal/project": true, "internal/migrate": true}
-	if len(consumers) != len(wantConsumers) {
-		t.Fatalf("pitfall production consumer packages = %v, want %v", consumers, wantConsumers)
+	for consumer := range consumers {
+		if !wantConsumers[consumer] {
+			findings = append(findings, "unexpected pitfall consumer "+consumer)
+		}
 	}
 	for consumer := range wantConsumers {
 		if !consumers[consumer] {
-			t.Fatalf("pitfall model consumer %s does not import the semantic home; consumers=%v", consumer, consumers)
+			findings = append(findings, "missing pitfall consumer "+consumer)
 		}
 	}
 	for consumer, expected := range map[string][]string{
@@ -350,15 +452,38 @@ func TestPitfallModelSingleHome(t *testing.T) {
 	} {
 		for _, name := range expected {
 			if !consumerCalls[consumer][name] {
-				t.Fatalf("%s does not consume pitfall.%s; calls=%v", consumer, name, consumerCalls[consumer])
+				findings = append(findings, consumer+" does not call pitfall."+name)
 			}
 		}
 	}
+	slices.Sort(findings)
+	return findings
 }
 
-func assertPitfallSemanticHome(t *testing.T, declaration string, paths []string) {
-	t.Helper()
-	if len(paths) != 1 || paths[0] != "internal/pitfall/pitfall.go" {
-		t.Fatalf("%s homes = %v, want exactly internal/pitfall/pitfall.go", declaration, paths)
+func functionShape(function *ast.FuncType) string {
+	fieldShapes := func(fields *ast.FieldList) []string {
+		if fields == nil {
+			return nil
+		}
+		var shapes []string
+		for _, field := range fields.List {
+			count := len(field.Names)
+			if count == 0 {
+				count = 1
+			}
+			for range count {
+				shapes = append(shapes, formattedNode(field.Type))
+			}
+		}
+		return shapes
 	}
+	return "(" + strings.Join(fieldShapes(function.Params), ",") + ")->(" + strings.Join(fieldShapes(function.Results), ",") + ")"
+}
+
+func formattedNode(node any) string {
+	var out bytes.Buffer
+	if err := format.Node(&out, token.NewFileSet(), node); err != nil {
+		return "<format-error>"
+	}
+	return out.String()
 }

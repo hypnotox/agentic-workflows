@@ -24,16 +24,98 @@ type legacyPitfallSidecar struct {
 	} `yaml:"data"`
 }
 type legacyPitfallEntry struct {
-	Title   string   `yaml:"title"`
-	Domains []string `yaml:"domains"`
-	Tags    []string `yaml:"tags"`
-	Related []int    `yaml:"related"`
-	Body    string   `yaml:"body"`
+	Title   string
+	Domains []string
+	Tags    []string
+	Related []int
+	Body    string
 }
+
+func (e *legacyPitfallEntry) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind != yaml.MappingNode {
+		return errors.New("legacy pitfall entry must be a mapping")
+	}
+	seen := map[string]bool{}
+	for i := 0; i < len(node.Content); i += 2 {
+		key, value := node.Content[i].Value, node.Content[i+1]
+		if seen[key] {
+			return fmt.Errorf("duplicate legacy pitfall key %q", key)
+		}
+		seen[key] = true
+		switch key {
+		case "title", "body":
+			if value.Kind != yaml.ScalarNode || value.Tag != "!!str" {
+				return fmt.Errorf("legacy pitfall %s must be a string", key)
+			}
+			if key == "title" {
+				e.Title = strings.TrimSpace(value.Value)
+			} else {
+				e.Body = strings.TrimRight(value.Value, "\n")
+			}
+		case "domains", "tags":
+			values, err := decodeLegacyStrings(key, value)
+			if err != nil {
+				return err
+			}
+			if key == "domains" {
+				e.Domains = values
+			} else {
+				e.Tags = values
+			}
+		case "related":
+			values, err := decodeLegacyInts(key, value)
+			if err != nil {
+				return err
+			}
+			e.Related = values
+		}
+	}
+	return nil
+}
+
+func decodeLegacyStrings(field string, node *yaml.Node) ([]string, error) {
+	if node.Tag == "!!null" {
+		return nil, nil
+	}
+	if node.Kind != yaml.SequenceNode {
+		return nil, fmt.Errorf("legacy pitfall %s must be a list", field)
+	}
+	values := make([]string, 0, len(node.Content))
+	for _, member := range node.Content {
+		if member.Kind != yaml.ScalarNode || member.Tag != "!!str" || strings.TrimSpace(member.Value) == "" {
+			return nil, fmt.Errorf("legacy pitfall %s entries must be non-empty strings", field)
+		}
+		values = append(values, strings.TrimSpace(member.Value))
+	}
+	return values, nil
+}
+
+func decodeLegacyInts(field string, node *yaml.Node) ([]int, error) {
+	if node.Tag == "!!null" {
+		return nil, nil
+	}
+	if node.Kind != yaml.SequenceNode {
+		return nil, fmt.Errorf("legacy pitfall %s must be a list", field)
+	}
+	values := make([]int, 0, len(node.Content))
+	for _, member := range node.Content {
+		if member.Kind != yaml.ScalarNode || member.Tag != "!!int" {
+			return nil, fmt.Errorf("legacy pitfall %s entries must be ADR numbers", field)
+		}
+		var value int
+		if err := member.Decode(&value); err != nil {
+			return nil, fmt.Errorf("legacy pitfall %s entries must be ADR numbers: %w", field, err)
+		}
+		values = append(values, value)
+	}
+	return values, nil
+}
+
 type plannedPitfallLeaf struct {
-	entry pitfall.Entry
-	bytes []byte
-	path  string
+	entry  pitfall.Entry
+	bytes  []byte
+	path   string
+	exists bool
 }
 
 type pitfallCorpusOperation struct {
@@ -89,13 +171,13 @@ func applyPitfallCorpusWith(root string, out *Changes, operation pitfallCorpusOp
 	used := map[string]bool{}
 	plans := make([]plannedPitfallLeaf, 0, len(sidecar.Data.Pitfalls))
 	for i, old := range sidecar.Data.Pitfalls {
-		title := strings.TrimSpace(old.Title)
+		title := old.Title
 		slug, err := pitfall.AllocateSlug(title, used)
 		if err != nil {
 			return fmt.Errorf("pitfall-corpus: entry %d %q: %w", i, title, err)
 		}
 		used[slug] = true
-		e := pitfall.Entry{Slug: slug, SourcePath: pitfall.SourceDir + "/" + slug + ".md", Title: title, Domains: old.Domains, Tags: old.Tags, Related: old.Related, Body: strings.TrimRight(old.Body, "\n")}
+		e := pitfall.Entry{Slug: slug, SourcePath: pitfall.SourceDir + "/" + slug + ".md", Title: title, Domains: old.Domains, Tags: old.Tags, Related: old.Related, Body: old.Body}
 		serialized, err := pitfall.Serialize(e)
 		if err != nil {
 			return fmt.Errorf("pitfall-corpus: entry %d %q: %w", i, title, err)
@@ -122,17 +204,29 @@ func applyPitfallCorpusWith(root string, out *Changes, operation pitfallCorpusOp
 	if err != nil {
 		return fmt.Errorf("pitfall-corpus: preflight sidecar remainder: %w", err)
 	}
-	for _, plan := range plans {
-		existing, err := os.ReadFile(plan.path)
-		if err == nil && !bytes.Equal(existing, plan.bytes) {
-			return fmt.Errorf("pitfall-corpus: destination %s conflicts with migrated entry %q", plan.entry.SourcePath, plan.entry.Title)
+	for i := range plans {
+		plan := &plans[i]
+		info, err := os.Lstat(plan.path)
+		if os.IsNotExist(err) {
+			continue
 		}
-		if err != nil && !os.IsNotExist(err) { // coverage-ignore: requires a filesystem permission or IO fault after successful sidecar read
+		if err != nil { // coverage-ignore: requires a filesystem permission or IO fault after successful sidecar read
 			return fmt.Errorf("pitfall-corpus: inspect %s: %w", plan.entry.SourcePath, err)
 		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("pitfall-corpus: destination %s is not a direct regular file", plan.entry.SourcePath)
+		}
+		existing, err := os.ReadFile(plan.path)
+		if err != nil { // coverage-ignore: requires the regular destination to fault after successful Lstat
+			return fmt.Errorf("pitfall-corpus: inspect %s: %w", plan.entry.SourcePath, err)
+		}
+		if !bytes.Equal(existing, plan.bytes) {
+			return fmt.Errorf("pitfall-corpus: destination %s conflicts with migrated entry %q", plan.entry.SourcePath, plan.entry.Title)
+		}
+		plan.exists = true
 	}
 	for _, plan := range plans {
-		if existing, err := os.ReadFile(plan.path); err == nil && bytes.Equal(existing, plan.bytes) {
+		if plan.exists {
 			continue
 		}
 		if err := operation.create(plan.path, plan.bytes); err != nil {
@@ -200,10 +294,14 @@ func preflightPitfallSidecarRemainder(raw []byte) (bool, error) {
 	if err := dec.Decode(&supported); err != nil {
 		return false, fmt.Errorf("invalid sections configuration: %w", err)
 	}
-	for name := range supported.Sections {
+	effective := false
+	for name, override := range supported.Sections {
 		if name != "prepend" && name != "append" {
 			return false, fmt.Errorf("unsupported pitfall section %q", name)
 		}
+		if override.Drop {
+			effective = true
+		}
 	}
-	return false, nil
+	return !effective, nil
 }

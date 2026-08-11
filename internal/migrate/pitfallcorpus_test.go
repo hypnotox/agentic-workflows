@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"gopkg.in/yaml.v3"
 )
 
@@ -26,7 +27,7 @@ func writeLegacyPitfalls(t *testing.T, root, body string) string {
 
 func TestPitfallCorpusMigrationPreflightRetryAndSections(t *testing.T) {
 	root := t.TempDir()
-	sidecar := writeLegacyPitfalls(t, root, "sections:\n  prepend:\n    drop: true\ndata:\n  pitfalls:\n    - title: ' First! '\n      domains: [rendering]\n      tags: [proof]\n      related: [1]\n      body: |\n        first body\n    - title: First\n      body: second body\n")
+	sidecar := writeLegacyPitfalls(t, root, "sections:\n  prepend:\n    drop: true\ndata:\n  pitfalls:\n    - title: ' First! '\n      domains: [' rendering ', config]\n      tags: [' proof ', workflow]\n      related: [2, 1]\n      body: |\n        first body\n        second line\n    - title: First\n      domains: null\n      tags: null\n      related: null\n      body: second body\n")
 	var changes Changes
 	if err := applyPitfallCorpus(root, &changes); err != nil {
 		t.Fatal(err)
@@ -42,10 +43,12 @@ func TestPitfallCorpusMigrationPreflightRetryAndSections(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"title: First!", "domains: [rendering]", "tags: [proof]", "related: [1]", "first body"} {
-		if !strings.Contains(string(b), want) {
-			t.Fatalf("leaf missing %q:\n%s", want, b)
-		}
+	parsed, err := pitfall.Parse(pitfall.SourceFile{Path: pitfall.SourceDir + "/first.md", Bytes: b, Regular: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if parsed.Title != "First!" || strings.Join(parsed.Domains, ",") != "rendering,config" || strings.Join(parsed.Tags, ",") != "proof,workflow" || len(parsed.Related) != 2 || parsed.Related[0] != 2 || parsed.Related[1] != 1 || parsed.Body != "first body\nsecond line\n" {
+		t.Fatalf("canonical legacy preservation = %#v", parsed)
 	}
 	remaining, err := os.ReadFile(sidecar)
 	if err != nil {
@@ -90,6 +93,54 @@ func TestPitfallCorpusMigrationPreflightsLinksConflictsAndDuplicates(t *testing.
 	}
 }
 
+func TestPitfallCorpusMigrationRejectsNonRegularDestinations(t *testing.T) {
+	for _, kind := range []string{"symlink", "directory"} {
+		t.Run(kind, func(t *testing.T) {
+			root := t.TempDir()
+			sidecar := writeLegacyPitfalls(t, root, "data:\n  pitfalls:\n    - title: A\n      body: body\n    - title: B\n      body: other\n")
+			before, err := os.ReadFile(sidecar)
+			if err != nil {
+				t.Fatal(err)
+			}
+			destination := filepath.Join(root, ".awf/docs/pitfalls/a.md")
+			if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			switch kind {
+			case "symlink":
+				canonical, err := pitfall.Serialize(pitfall.Entry{Title: "A", Body: "body"})
+				if err != nil {
+					t.Fatal(err)
+				}
+				target := filepath.Join(root, "identical.md")
+				if err := os.WriteFile(target, canonical, 0o644); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink(target, destination); err != nil {
+					t.Skipf("symlink unavailable: %v", err)
+				}
+			case "directory":
+				if err := os.Mkdir(destination, 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := applyPitfallCorpus(root, &Changes{}); err == nil || !strings.Contains(err.Error(), "not a direct regular file") {
+				t.Fatalf("non-regular destination error = %v", err)
+			}
+			after, err := os.ReadFile(sidecar)
+			if err != nil || !bytes.Equal(before, after) {
+				t.Fatalf("legacy authority changed: %q, %v", after, err)
+			}
+			if _, err := os.Lstat(destination); err != nil {
+				t.Fatalf("destination changed: %v", err)
+			}
+			if _, err := os.Lstat(filepath.Join(root, ".awf/docs/pitfalls/b.md")); !os.IsNotExist(err) {
+				t.Fatalf("later destination mutated: %v", err)
+			}
+		})
+	}
+}
+
 func TestProductionPitfallCorpusOperation(t *testing.T) {
 	op := productionPitfallCorpusOperation()
 	root := t.TempDir()
@@ -125,29 +176,33 @@ func TestProductionPitfallCorpusOperation(t *testing.T) {
 	if empty, err := preflightPitfallSidecarRemainder([]byte("[")); err == nil || empty {
 		t.Fatal("malformed remainder accepted")
 	}
-	if empty, err := preflightPitfallSidecarRemainder([]byte("sections: {}\n")); err != nil || empty {
-		t.Fatalf("nonempty remainder = %v, %v", empty, err)
+	if empty, err := preflightPitfallSidecarRemainder([]byte("sections: {}\n")); err != nil || !empty {
+		t.Fatalf("empty map remainder = %v, %v", empty, err)
 	}
 	for _, tc := range []struct {
-		name    string
-		raw     string
-		wantErr bool
+		name      string
+		raw       string
+		wantEmpty bool
+		wantErr   bool
 	}{
-		{"multiple-top-level", "sections: {}\nother: x\n", true},
-		{"sections-wrong-kind", "sections: []\n", true},
-		{"null-sections", "sections: null\n", false},
-		{"unsupported-section", "sections:\n  other: {}\n", true},
-		{"null-override", "sections:\n  prepend: null\n", false},
-		{"override-wrong-kind", "sections:\n  prepend: true\n", true},
-		{"unsupported-override-field", "sections:\n  prepend:\n    custom: true\n", true},
-		{"invalid-drop", "sections:\n  prepend:\n    drop: nope\n", true},
-		{"duplicate-section", "sections:\n  prepend: {}\n  prepend: {}\n", true},
-		{"duplicate-drop", "sections:\n  prepend:\n    drop: true\n    drop: false\n", true},
+		{"multiple-top-level", "sections: {}\nother: x\n", false, true},
+		{"sections-wrong-kind", "sections: []\n", false, true},
+		{"null-sections", "sections: null\n", true, false},
+		{"unsupported-section", "sections:\n  other: {}\n", false, true},
+		{"null-override", "sections:\n  prepend: null\n", true, false},
+		{"empty-override", "sections:\n  append: {}\n", true, false},
+		{"ineffective-override", "sections:\n  prepend:\n    drop: false\n", true, false},
+		{"effective-override", "sections:\n  append:\n    drop: true\n", false, false},
+		{"override-wrong-kind", "sections:\n  prepend: true\n", false, true},
+		{"unsupported-override-field", "sections:\n  prepend:\n    custom: true\n", false, true},
+		{"invalid-drop", "sections:\n  prepend:\n    drop: nope\n", false, true},
+		{"duplicate-section", "sections:\n  prepend: {}\n  prepend: {}\n", false, true},
+		{"duplicate-drop", "sections:\n  prepend:\n    drop: true\n    drop: false\n", false, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			empty, err := preflightPitfallSidecarRemainder([]byte(tc.raw))
-			if (err != nil) != tc.wantErr || empty {
-				t.Fatalf("preflight remainder = %v, %v; wantErr=%t", empty, err, tc.wantErr)
+			if (err != nil) != tc.wantErr || (!tc.wantErr && empty != tc.wantEmpty) {
+				t.Fatalf("preflight remainder = %v, %v; wantEmpty=%t wantErr=%t", empty, err, tc.wantEmpty, tc.wantErr)
 			}
 		})
 	}
@@ -164,8 +219,18 @@ func TestPitfallCorpusMigrationRefusalBranches(t *testing.T) {
 	for _, tc := range []struct{ name, content, want string }{
 		{"malformed", "data: [\n", "parse"},
 		{"registry-wrong-type", "data:\n  pitfalls: value\n", "parse"},
+		{"entry-wrong-type", "data:\n  pitfalls: [value]\n", "must be a mapping"},
+		{"duplicate-entry-key", "data:\n  pitfalls:\n    - title: A\n      title: B\n      body: x\n", "duplicate legacy"},
+		{"numeric-title", "data:\n  pitfalls:\n    - title: 1\n      body: x\n", "must be a string"},
 		{"empty-title", "data:\n  pitfalls:\n    - title: '  '\n      body: x\n", "ASCII slug"},
 		{"empty-body", "data:\n  pitfalls:\n    - title: A\n      body: ' '\n", "body is empty"},
+		{"domains-wrong-kind", "data:\n  pitfalls:\n    - title: A\n      domains: value\n      body: x\n", "must be a list"},
+		{"numeric-domain", "data:\n  pitfalls:\n    - title: A\n      domains: [1]\n      body: x\n", "non-empty strings"},
+		{"bool-tag", "data:\n  pitfalls:\n    - title: A\n      tags: [true]\n      body: x\n", "non-empty strings"},
+		{"related-wrong-kind", "data:\n  pitfalls:\n    - title: A\n      related: 1\n      body: x\n", "must be a list"},
+		{"string-related", "data:\n  pitfalls:\n    - title: A\n      related: ['1']\n      body: x\n", "ADR numbers"},
+		{"overflow-related", "data:\n  pitfalls:\n    - title: A\n      related: [999999999999999999999999999999999]\n      body: x\n", "ADR numbers"},
+		{"invalid-tagged-integer", "data:\n  pitfalls:\n    - title: A\n      related: [!!int nope]\n      body: x\n", "ADR numbers"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
@@ -185,6 +250,35 @@ func TestPitfallCorpusMigrationRefusalBranches(t *testing.T) {
 	}
 	if err := applyPitfallCorpus(root, &Changes{}); err == nil {
 		t.Fatal("directory sidecar accepted")
+	}
+}
+
+func TestPitfallCorpusMigrationDropsSemanticallyEmptyRemainders(t *testing.T) {
+	for _, tc := range []struct {
+		name, sections string
+		retained       bool
+	}{
+		{"null-sections", "sections: null\n", false},
+		{"empty-sections", "sections: {}\n", false},
+		{"null-override", "sections:\n  prepend: null\n", false},
+		{"empty-override", "sections:\n  append: {}\n", false},
+		{"effective-override", "sections:\n  prepend:\n    drop: true\n", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			sidecar := writeLegacyPitfalls(t, root, tc.sections+"data:\n  pitfalls: null\n")
+			if err := applyPitfallCorpus(root, &Changes{}); err != nil {
+				t.Fatal(err)
+			}
+			remaining, err := os.ReadFile(sidecar)
+			if tc.retained {
+				if err != nil || !strings.Contains(string(remaining), "drop: true") || strings.Contains(string(remaining), "pitfalls") {
+					t.Fatalf("effective remainder = %q, %v", remaining, err)
+				}
+			} else if !os.IsNotExist(err) {
+				t.Fatalf("semantically empty remainder survived: %q, %v", remaining, err)
+			}
+		})
 	}
 }
 
@@ -313,8 +407,10 @@ func TestPitfallCorpusMigrationPublicationFailureLeavesRetryableState(t *testing
 func TestPitfallCorpusMigrationContract(t *testing.T) {
 	t.Run("fields-sections-identical-retry", TestPitfallCorpusMigrationPreflightRetryAndSections)
 	t.Run("relative-conflict-duplicate-preflight", TestPitfallCorpusMigrationPreflightsLinksConflictsAndDuplicates)
+	t.Run("non-regular-destination-preflight", TestPitfallCorpusMigrationRejectsNonRegularDestinations)
 	t.Run("create-before-retire", TestPitfallCorpusMigrationInterruptionKeepsAuthorityAndRetries)
 	t.Run("empty-null-retirement", TestPitfallCorpusMigrationRetiresPresentEmptyAndNullRegistries)
+	t.Run("semantic-remainder-retirement", TestPitfallCorpusMigrationDropsSemanticallyEmptyRemainders)
 	t.Run("unknown-remainder-ordering", TestPitfallCorpusMigrationRejectsUnknownRemainderBeforeMutation)
 	t.Run("atomic-sidecar", TestPitfallCorpusMigrationAtomicSidecarFailurePreservesBytes)
 	t.Run("atomic-exclusive-publication", TestPitfallCorpusMigrationPublicationFailureLeavesRetryableState)
