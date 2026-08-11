@@ -682,6 +682,47 @@ type chmodFailureFilesystem struct {
 
 func (f chmodFailureFilesystem) Chmod(string, os.FileMode) error { return f.err }
 
+type swapBeforePublishFilesystem struct {
+	syncFilesystem
+	root, outside string
+	swapped       bool
+}
+
+func (f *swapBeforePublishFilesystem) Publish(path string, contents []byte, mode os.FileMode) error {
+	if !f.swapped {
+		dir := filepath.Dir(filepath.Join(f.root, filepath.FromSlash(path)))
+		if err := os.Rename(dir, dir+"-saved"); err != nil {
+			return err
+		}
+		if err := os.Symlink(f.outside, dir); err != nil {
+			return err
+		}
+		f.swapped = true
+	}
+	return f.syncFilesystem.Publish(path, contents, mode)
+}
+
+type swapAfterPruneFilesystem struct {
+	syncFilesystem
+	root, outside string
+	calls         []string
+}
+
+func (f *swapAfterPruneFilesystem) Remove(path string) error {
+	f.calls = append(f.calls, path)
+	err := f.syncFilesystem.Remove(path)
+	if path == "cleanup/child/file" && err == nil {
+		dir := filepath.Join(f.root, "cleanup")
+		if renameErr := os.Rename(dir, dir+"-saved"); renameErr != nil {
+			return renameErr
+		}
+		if linkErr := os.Symlink(f.outside, dir); linkErr != nil {
+			return linkErr
+		}
+	}
+	return err
+}
+
 func TestSyncFilesystemsRouteUnchangedPaths(t *testing.T) {
 	tracked := &readFailureFilesystem{}
 	residentTree := &readFailureFilesystem{}
@@ -1639,6 +1680,40 @@ func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 	}
 	assertPerm(t, backup, 0o640)
 
+	// A foreign resident output keeps the same lock-relative report while its
+	// backup, replacement bytes, and final mode stay under the resident root.
+	lock, err = manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const residentOutput = ".awf/efforts/.gitignore"
+	delete(lock.Files, residentOutput)
+	if err := lock.Save(lockFile(root)); err != nil {
+		t.Fatal(err)
+	}
+	residentFile := filepath.Join(residentRoot, filepath.FromSlash(residentOutput))
+	if err := os.WriteFile(residentFile, []byte("resident foreign\n"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(residentFile, 0o640); err != nil {
+		t.Fatal(err)
+	}
+	p, _ = Open(testContext(t), root)
+	p.roots.Resident = residentRoot
+	backups, _, _, err = p.SyncReport(testContext(t))
+	wantResidentBackup := Backup{Path: residentOutput, Bak: residentOutput + ".awf-bak"}
+	if err != nil || !slices.Contains(backups, wantResidentBackup) {
+		t.Fatalf("resident backup = %v, error = %v", backups, err)
+	}
+	residentBackup := residentFile + ".awf-bak"
+	residentBackupBytes, residentBackupErr := os.ReadFile(residentBackup)
+	residentOutputBytes, residentOutputErr := os.ReadFile(residentFile)
+	if residentBackupErr != nil || residentOutputErr != nil || string(residentBackupBytes) != "resident foreign\n" || string(residentOutputBytes) == "resident foreign\n" {
+		t.Fatalf("resident publication = backup %q output %q errors %v", residentBackupBytes, residentOutputBytes, errors.Join(residentBackupErr, residentOutputErr))
+	}
+	assertPerm(t, residentBackup, 0o640)
+	assertPerm(t, residentFile, 0o644)
+
 	// A managed final symlink is pruned as its entry, not by touching its target.
 	lock, err = manifest.Load(lockFile(root))
 	if err != nil {
@@ -1669,7 +1744,54 @@ func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 		t.Fatalf("symlink target changed = %q, %v", got, err)
 	}
 
-	// An escaping output and backup parent refuses before replacement or lock
+	// An escaping prune parent refuses at the converted removal path, preserves
+	// outside bytes and mode, and leaves the old lock entry for retry.
+	lock, err = manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const escapingPrune = "escape-prune/victim"
+	lock.Files[escapingPrune] = manifest.Entry{}
+	if err := lock.Save(lockFile(root)); err != nil {
+		t.Fatal(err)
+	}
+	beforePruneLock, err := os.ReadFile(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	outsidePrune := t.TempDir()
+	outsideVictim := filepath.Join(outsidePrune, "victim")
+	if err := os.WriteFile(outsideVictim, []byte("outside prune\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outsidePrune, filepath.Join(root, "escape-prune")); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	p, _ = Open(testContext(t), root)
+	p.roots.Resident = residentRoot
+	if _, _, _, err := p.SyncReport(testContext(t)); err == nil {
+		t.Fatal("sync accepted escaping prune parent")
+	}
+	if got, err := os.ReadFile(outsideVictim); err != nil || string(got) != "outside prune\n" {
+		t.Fatalf("outside prune target changed = %q, %v", got, err)
+	}
+	assertPerm(t, outsideVictim, 0o600)
+	if got, err := os.ReadFile(lockFile(root)); err != nil || !reflect.DeepEqual(got, beforePruneLock) {
+		t.Fatalf("lock advanced after failed prune = %q, %v", got, err)
+	}
+	if err := os.Remove(filepath.Join(root, "escape-prune")); err != nil {
+		t.Fatal(err)
+	}
+	lock, err = manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	delete(lock.Files, escapingPrune)
+	if err := lock.Save(lockFile(root)); err != nil {
+		t.Fatal(err)
+	}
+
+	// An escaping output parent refuses before replacement or lock
 	// advance, preserving outside bytes and modes.
 	beforeLock, err := os.ReadFile(lockFile(root))
 	if err != nil {
@@ -1697,6 +1819,110 @@ func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 	assertPerm(t, sentinel, 0o600)
 	if got, err := os.ReadFile(lockFile(root)); err != nil || !reflect.DeepEqual(got, beforeLock) {
 		t.Fatalf("lock advanced after incomplete output mutation = %q, %v", got, err)
+	}
+}
+
+// invariant: rendering/sync-and-drift:sync-mutations-root-confined (TestSyncBackupPublicationRefusesParentSwap)
+// invariant: rendering/sync-and-drift:sync-backs-up-foreign (TestSyncBackupPublicationRefusesParentSwap)
+func TestSyncBackupPublicationRefusesParentSwap(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "collision"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "collision", "source"), []byte("source bytes\n"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	outside := t.TempDir()
+	sentinel := filepath.Join(outside, "sentinel")
+	if err := os.WriteFile(sentinel, []byte("outside\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	filesystems, closeAll, err := p.openSyncFilesystems()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closeAll()
+	filesystem := &swapBeforePublishFilesystem{syncFilesystem: filesystems.tracked, root: root, outside: outside}
+	if _, err := p.backupFileConfined("collision/source", filesystem); err == nil {
+		t.Fatal("backup publication accepted swapped escaping parent")
+	}
+	if got, err := os.ReadFile(filepath.Join(root, "collision-saved", "source")); err != nil || string(got) != "source bytes\n" {
+		t.Fatalf("backup source changed = %q, %v", got, err)
+	}
+	if _, err := os.Stat(filepath.Join(outside, "source.awf-bak")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("outside backup published: %v", err)
+	}
+	if got, err := os.ReadFile(sentinel); err != nil || string(got) != "outside\n" {
+		t.Fatalf("outside sentinel changed = %q, %v", got, err)
+	}
+	assertPerm(t, sentinel, 0o600)
+}
+
+// invariant: rendering/sync-and-drift:sync-mutations-root-confined (TestSyncAncestorCleanupRefusesParentSwap)
+func TestSyncAncestorCleanupRefusesParentSwap(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
+		t.Fatal(err)
+	}
+	lock, err := manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const retired = "cleanup/child/file"
+	lock.Files[retired] = manifest.Entry{}
+	if err := lock.Save(lockFile(root)); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "cleanup", "child"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(retired)), []byte("retired\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	outside := t.TempDir()
+	sentinel := filepath.Join(outside, "sentinel")
+	if err := os.WriteFile(sentinel, []byte("outside cleanup\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	p, _ = Open(testContext(t), root)
+	filesystems, closeAll, err := p.openSyncFilesystems()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closeAll()
+	swapping := &swapAfterPruneFilesystem{syncFilesystem: filesystems.tracked, root: root, outside: outside}
+	filesystems.tracked = swapping
+	corpus, pitfalls, topics, eff, err := p.deriveOperationStateWithPitfalls()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, pruned, err := p.syncReportWithPitfalls(testContext(t), nil, filesystems, corpus, pitfalls, topics, eff)
+	if err != nil || !slices.Contains(pruned, retired) {
+		t.Fatalf("cleanup sync = pruned %v, error %v", pruned, err)
+	}
+	for _, want := range []string{"cleanup/child/file", "cleanup/child", "cleanup"} {
+		if !slices.Contains(swapping.calls, want) {
+			t.Fatalf("cleanup calls = %v, missing %q", swapping.calls, want)
+		}
+	}
+	if got, err := os.ReadFile(sentinel); err != nil || string(got) != "outside cleanup\n" {
+		t.Fatalf("outside cleanup changed = %q, %v", got, err)
+	}
+	assertPerm(t, sentinel, 0o600)
+	updated, err := manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := updated.Files[retired]; ok {
+		t.Fatal("successfully pruned path remained in lock")
 	}
 }
 
