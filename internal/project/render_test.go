@@ -119,19 +119,26 @@ func TestUnknownPlaceholderInsideCommentRenders(t *testing.T) {
 	}
 }
 
-// The template seam end-to-end: the embedded adr-readme template carries a real
-// qualified touches-state authoring comment, so any regression in the
-// renderTarget strip wiring (which the render-layer unit tests cannot see)
-// leaks it into every scaffolded project's rendered README.
+// The template seam end-to-end: the embedded adr-readme template includes a
+// partial containing only a qualified touches-state authoring comment, so any
+// regression in include expansion or renderTarget strip wiring leaks it into
+// every scaffolded project's rendered README.
 // touches-state: rendering/inplace-and-placeholders:authoring-comment-stripped - the renderTarget wiring, proven end-to-end over the real embedded template
 func TestEmbeddedTemplateAuthoringCommentStripped(t *testing.T) {
-	const directive = "<!-- awf:comment touches-state: rendering/templates:template-source-residue - the embedded ADR README directive is source-only -->"
+	const directive = "<!-- awf:comment touches-state: rendering/templates:template-source-residue - the embedded ADR README include is source-only -->"
 	src, err := fs.ReadFile(templates.FS, "adr-readme/README.md.tmpl")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(src), directive) {
-		t.Fatalf("embedded ADR README source lacks qualified directive %q", directive)
+	if !strings.Contains(string(src), "<!-- awf:include template-source-observation -->") {
+		t.Fatal("embedded ADR README source lacks the comment-only include")
+	}
+	partial, err := fs.ReadFile(templates.FS, "partials/template-source-observation.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(partial), directive) {
+		t.Fatalf("embedded comment-only include lacks qualified directive %q", directive)
 	}
 
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n", nil)
@@ -162,8 +169,14 @@ func TestRenderTargetTemplateSourceActivation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	const commentOnlySource = "partials/template-source-observation.md"
+	var commentOnlyText strings.Builder
 	for _, span := range expanded.Spans {
 		if span.Source == "" {
+			continue
+		}
+		if span.Source == commentOnlySource {
+			commentOnlyText.WriteString(span.Text)
 			continue
 		}
 		path := filepath.Join(root, "templates", filepath.FromSlash(span.Source))
@@ -174,16 +187,29 @@ func TestRenderTargetTemplateSourceActivation(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	if commentOnlyText.Len() == 0 {
+		t.Fatal("expanded template lost the comment-only include identity")
+	}
 	p, err := Open(testContext(t), root)
 	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.renderTarget("adr-readme", "", tid, p.Cat.Docs["adr-readme"].Sections, config.Sidecar{}, p.data(config.Sidecar{}, map[string]bool{}), "docs/decisions/README.md", map[string]bool{}); err == nil || !strings.Contains(err.Error(), "templates/"+commentOnlySource) {
+		t.Fatalf("missing comment-only include mapping error = %v", err)
+	}
+	commentOnlyPath := filepath.Join(root, "templates", filepath.FromSlash(commentOnlySource))
+	if err := os.MkdirAll(filepath.Dir(commentOnlyPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(commentOnlyPath, []byte(commentOnlyText.String()), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	rf, err := p.renderTarget("adr-readme", "", tid, p.Cat.Docs["adr-readme"].Sections, config.Sidecar{}, p.data(config.Sidecar{}, map[string]bool{}), "docs/decisions/README.md", map[string]bool{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(rf.Content, "<!-- awf:template-source templates/"+tid+" -->") || rf.TemplateHash == "" || rf.ConfigHash == "" {
-		t.Fatalf("provenance render missing expected identity: %s", rf.Content)
+	if !strings.Contains(rf.Content, "<!-- awf:template-source templates/"+tid+" -->") || strings.Contains(rf.Content, commentOnlySource) || rf.TemplateHash == "" || rf.ConfigHash == "" {
+		t.Fatalf("provenance render did not validate then strip the comment-only include: %s", rf.Content)
 	}
 	p.Cfg.Render.TemplateSourceRoot = "missing"
 	if _, err := p.renderTarget("adr-readme", "", tid, p.Cat.Docs["adr-readme"].Sections, config.Sidecar{}, p.data(config.Sidecar{}, map[string]bool{}), "docs/decisions/README.md", map[string]bool{}); err == nil {

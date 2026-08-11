@@ -11,6 +11,16 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/render"
 )
 
+// readBackInPlaceBody keeps heading-free and heading-only test cases concise;
+// production framing passes both typed expectations explicitly.
+func readBackInPlaceBody(output, name string, declared []string, style render.CommentStyle, expectedHeading ...string) (string, bool) {
+	heading := ""
+	if len(expectedHeading) != 0 {
+		heading = expectedHeading[0]
+	}
+	return readBackInPlaceBodyWithExpectations(output, name, declared, style, heading, nil)
+}
+
 // readBackInPlaceBody extracts the interior between an in-place section's pointer
 // and awf's next registered section pointer, verbatim (internal blank lines kept),
 // trimming only the awf-owned leading/trailing framing.
@@ -503,12 +513,12 @@ func TestReadBackInPlaceBodySkipsOnlyExpectedTemplateSourceFraming(t *testing.T)
 	pointer := "<!-- awf:edit-in-place one: your edits below are preserved across syncs; awf owns the rest -->\n"
 	next := "<!-- awf:edit two: default; create x to override -->\nnext\n"
 	expected := map[string]string{"two": "<!-- awf:template-source templates/guide.md#two -->"}
-	got, found := readBackInPlaceBody(pointer+"body\n"+expected["two"]+"\n"+next, "one", []string{"one", "two"}, render.HTMLComment, expected)
+	got, found := readBackInPlaceBodyWithExpectations(pointer+"body\n"+expected["two"]+"\n"+next, "one", []string{"one", "two"}, render.HTMLComment, "", expected)
 	if !found || got != "body" {
 		t.Fatalf("matching readback = %q, %t", got, found)
 	}
 	lookalike := "<!-- awf:template-source templates/other.md#two -->"
-	got, found = readBackInPlaceBody(pointer+"body\n"+lookalike+"\n"+next, "one", []string{"one", "two"}, render.HTMLComment, expected)
+	got, found = readBackInPlaceBodyWithExpectations(pointer+"body\n"+lookalike+"\n"+next, "one", []string{"one", "two"}, render.HTMLComment, "", expected)
 	if !found || got != "body\n"+lookalike {
 		t.Fatalf("mismatched symbol was treated as framing: %q, %t", got, found)
 	}

@@ -190,7 +190,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			return out, nil
 		}
 		src, err := fs.ReadFile(templates.FS, tid)
-		if err != nil { // coverage-ignore: declaration template IDs come from the validated embedded catalog and descriptor tables
+		if err != nil {
 			return nil, fmt.Errorf("read template %s: %w", tid, err)
 		}
 		expanded, err := render.ExpandIncludesSource(string(src), tid, templates.FS)
@@ -255,7 +255,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			add(t.AgentPath(name), tid, t.Name, input)
 		}
 		bridgeInputs, err := markdownInputs(t.BridgeTemplate)
-		if err != nil { // coverage-ignore: validated target descriptors own embedded bridge template identity
+		if err != nil {
 			return nil, err
 		}
 		add(t.BridgeFile, t.BridgeTemplate, t.BridgeTemplate, bridgeInputs)

@@ -202,6 +202,16 @@ func TestOutputDeclarationsMatchThePlan(t *testing.T) {
 	}
 }
 
+func TestEnabledDeclarationsRejectMissingBridgeTemplate(t *testing.T) {
+	cfg := &config.Config{Prefix: "example", Render: &config.RenderConfig{TemplateSourceRoot: "templates"}}
+	cat := &catalog.Catalog{Skills: map[string]catalog.SkillSpec{}, Agents: map[string]catalog.AgentSpec{}, Docs: map[string]catalog.DocEntry{}}
+	targets := []Target{{Name: "broken", BridgeFile: "BRIDGE.md", BridgeTemplate: "missing/bridge.md.tmpl"}}
+	_, err := BuildOutputDeclarations(cfg, cat, targets, memoryProjectReader{}, mustCorpus())
+	if err == nil || !strings.Contains(err.Error(), "read template missing/bridge.md.tmpl") {
+		t.Fatalf("missing enabled bridge template error = %v", err)
+	}
+}
+
 func TestEnabledMarkdownDeclarationsMatchObservedTemplateSources(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
