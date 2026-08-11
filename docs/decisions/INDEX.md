@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-0267: Correct Bootstrap Companion Path Authority](0267-correct-bootstrap-companion-path-authority.md) (Proposed)
 
 ## History
 
