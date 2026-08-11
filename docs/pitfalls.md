@@ -26,7 +26,6 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 | [A staged\-symlink fixture needs a real blob\, a gitlink does not](pitfalls/a-staged-symlink-fixture-needs-a-real-blob-a-gitlink-does-not.md) | tooling | test\-support\, verification\-discipline |  |
 | [A token or convention rename must sweep every rendered doc surface](pitfalls/a-token-or-convention-rename-must-sweep-every-rendered-doc-surface.md) | invariants\, rendering | cross\-references\, render\-completeness |  |
 | [Ad hoc compound mutations still need target read\-back](pitfalls/ad-hoc-compound-mutations-still-need-target-read-back.md) | Unassigned | verification\-discipline |  |
-| [Adding a template var changes adopter behavior and consumer projections](pitfalls/adding-a-template-var-changes-adopter-behavior-and-consumer-projections.md) | rendering | placeholder\-degradation\, publication\-safety |  |
 | [An ad hoc empty scan still needs proof that the probe ran](pitfalls/an-ad-hoc-empty-scan-still-needs-proof-that-the-probe-ran.md) | Unassigned | verification\-discipline |  |
 | [An ad hoc post\-check can still overrun the change\'s scope](pitfalls/an-ad-hoc-post-check-can-still-overrun-the-change-s-scope.md) | tooling | verification\-discipline\, plan\-taxonomy | ADR-0115 |
 | [An attribute\-filtered pinned\-set test exempts every other attribute value](pitfalls/an-attribute-filtered-pinned-set-test-exempts-every-other-attribute-value.md) | tooling | pinned\-set\-tests\, invariant\-backing |  |
@@ -96,7 +95,6 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 - [A plan editing a catalog template or default under\-enumerates the render fan\-out](pitfalls/a-plan-editing-a-catalog-template-or-default-under-enumerates-the-render-fan-out.md)
 - [A prose\-contract test proves only the clauses whose literals occur for one reason](pitfalls/a-prose-contract-test-proves-only-the-clauses-whose-literals-occur-for-one-reason.md)
 - [A token or convention rename must sweep every rendered doc surface](pitfalls/a-token-or-convention-rename-must-sweep-every-rendered-doc-surface.md)
-- [Adding a template var changes adopter behavior and consumer projections](pitfalls/adding-a-template-var-changes-adopter-behavior-and-consumer-projections.md)
 - [An ordered\-phrase assertion cannot reach a site ahead of its first anchor](pitfalls/an-ordered-phrase-assertion-cannot-reach-a-site-ahead-of-its-first-anchor.md)
 - [Keep recovery UI writes non\-fatal after session disposal](pitfalls/keep-recovery-ui-writes-non-fatal-after-session-disposal.md)
 - [Obsoleting rendered prose\: sweep parts and whole narratives\, not just templates](pitfalls/obsoleting-rendered-prose-sweep-parts-and-whole-narratives-not-just-templates.md)

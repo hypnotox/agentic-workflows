@@ -59,8 +59,8 @@
     ".claude/agents/code-reviewer.md": {
       "templateId": "agents/code-reviewer.md.tmpl",
       "templateHash": "sha256:dfa37086d1d6f5f9025cc66b93f211c024b0313d66d45be37aac5e1673aef399",
-      "configHash": "sha256:fbc0c1cffb54746ed5d1e15f7405315a3fdb9afd807494464ed1f3dfab1c3508",
-      "outputHash": "sha256:8f02ca6032bd45691d64ea035e385cbb680ec74e50b88e4e5f3782c27c7f7ad5"
+      "configHash": "sha256:adc2b5ce752b8d191f0f28ccfedba885b573bf94d962b1be3aad818f1cd56ac3",
+      "outputHash": "sha256:efae85975d755c179fdb55adac745fe48f56cb9b0dc479ff1aff5cd65abac987"
     },
     ".claude/agents/explorer.md": {
       "templateId": "agents/explorer.md.tmpl",
@@ -227,8 +227,8 @@
     ".pi/agents/code-reviewer.md": {
       "templateId": "agents/code-reviewer.md.tmpl",
       "templateHash": "sha256:dfa37086d1d6f5f9025cc66b93f211c024b0313d66d45be37aac5e1673aef399",
-      "configHash": "sha256:ff728ed8f9371c4a7a0b6a2fe317aae0ac450971a0582704d31d4864d13ce3ea",
-      "outputHash": "sha256:8f02ca6032bd45691d64ea035e385cbb680ec74e50b88e4e5f3782c27c7f7ad5"
+      "configHash": "sha256:385b84ae9526dfff4ce75e8b919ed7303069f6ed60e5e19df3c9e76e137e7ef3",
+      "outputHash": "sha256:efae85975d755c179fdb55adac745fe48f56cb9b0dc479ff1aff5cd65abac987"
     },
     ".pi/agents/explorer.md": {
       "templateId": "agents/explorer.md.tmpl",
@@ -565,8 +565,8 @@
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
       "templateHash": "sha256:d6475aaeadbbed6f56bfc85c4716b8636fea0d5922661201890334a6429b4f85",
-      "configHash": "sha256:a463dd019809116d961bf64908d809f465cb8820aa81cdb880e50f92099213a4",
-      "outputHash": "sha256:3a1d7a618ab6b99e577da3df01122dfc53994d7a8450985d41a3263d8ba687f8"
+      "configHash": "sha256:8341dc777872c4e410009056e24d6af21f918994354f0351a945a4a7a78abf1a",
+      "outputHash": "sha256:49bb8dfc97b4516a3ecc6deba2b5b69cc3e0d2de14fb2c207042b542963b4eb6"
     },
     "docs/pitfalls/a-census-number-is-only-as-good-as-its-stated-query.md": {
       "templateId": "pitfalls/entry.md.tmpl",
@@ -651,12 +651,6 @@
       "templateHash": "sha256:23ea7baa4f2cd0e3a7319448093f2612ca5a7beab8cb0bfc631015eef99be786",
       "configHash": "sha256:478383822fa201a1b00e77017d81afc888038b71a0dd321c3bd2f11833346331",
       "outputHash": "sha256:b371be4bdec17ab3e37273b93673ad1deecb0a12dbc28b1dba9036106eca6fd9"
-    },
-    "docs/pitfalls/adding-a-template-var-changes-adopter-behavior-and-consumer-projections.md": {
-      "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:23ea7baa4f2cd0e3a7319448093f2612ca5a7beab8cb0bfc631015eef99be786",
-      "configHash": "sha256:d30a77e8ccfacf702f24cd8f85e40100d035d2f40d5d0ba3da2f205d6a111526",
-      "outputHash": "sha256:30119a34e0190c2a080757e013157a4ed53fb278d542fa2fe352c57bad3e689a"
     },
     "docs/pitfalls/adr-adr-title-already-carries-the-adr-nnnn-prefix.md": {
       "templateId": "pitfalls/entry.md.tmpl",
