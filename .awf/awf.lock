@@ -565,8 +565,8 @@
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
       "templateHash": "sha256:d6475aaeadbbed6f56bfc85c4716b8636fea0d5922661201890334a6429b4f85",
-      "configHash": "sha256:4e660cc63b254ea1f58b9fe6d445ceee100b405748fc391469203c4c597f713c",
-      "outputHash": "sha256:eed8b8663fd6a3e4f3ed5c1b7753b095814279aee38ced161cdd23a358495ab7"
+      "configHash": "sha256:fb4b23b0c63beb407ef3d64c2240ddccb637f7c2e113d298343af71c67dffcd0",
+      "outputHash": "sha256:7ab72c890fe6305c7af6849a124b53770f80c20d3e88e0d7db8d81a7933c9840"
     },
     "docs/pitfalls/a-census-number-is-only-as-good-as-its-stated-query.md": {
       "templateId": "pitfalls/entry.md.tmpl",
@@ -777,6 +777,12 @@
       "templateHash": "sha256:23ea7baa4f2cd0e3a7319448093f2612ca5a7beab8cb0bfc631015eef99be786",
       "configHash": "sha256:4fa5e0ec306e217864b421909a9a16d1cc48059ac199a67bd6c7d0a884c8cd01",
       "outputHash": "sha256:c1a1a858cadff6b96ddf6ff5db7ae7eef2f2335ee8b410b38e0510a1c8fabf4e"
+    },
+    "docs/pitfalls/put-bounded-evidence-before-unbounded-inventories-in-subagent-returns.md": {
+      "templateId": "pitfalls/entry.md.tmpl",
+      "templateHash": "sha256:23ea7baa4f2cd0e3a7319448093f2612ca5a7beab8cb0bfc631015eef99be786",
+      "configHash": "sha256:e3eb7dc3b7de745bd1a635b0319553098ea64b66de8b99b9b32529bb8ee48fe4",
+      "outputHash": "sha256:ff7d35c2d1609bf554944e741c5e70e5b5816b5944534dfde4ad9f6bb3b7d8c0"
     },
     "docs/pitfalls/raw-byte-adr-surgery-must-bound-every-scan-to-the-frontmatter-window.md": {
       "templateId": "pitfalls/entry.md.tmpl",
