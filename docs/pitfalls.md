@@ -35,7 +35,6 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 | [Check the Open boundary before ignoring an assembly error](pitfalls/check-the-open-boundary-before-ignoring-an-assembly-error.md) | tooling | coverage\-gate\, cli\-dispatch | ADR-0012, ADR-0092, ADR-0102 |
 | [Enabled linters constrain API shape\, sketch signatures against them](pitfalls/enabled-linters-constrain-api-shape-sketch-signatures-against-them.md) | tooling | static\-linting |  |
 | [gofmt rewrites double backticks in doc comments into curly quotes](pitfalls/gofmt-rewrites-double-backticks-in-doc-comments-into-curly-quotes.md) | tooling | gofmt\-doccomment |  |
-| [GoReleaser aborts on a dirty git tree\; pre\-release artifacts belong outside the worktree](pitfalls/goreleaser-aborts-on-a-dirty-git-tree-pre-release-artifacts-belong-outside-the-worktree.md) | tooling | release\-pipeline |  |
 | [Keep recovery UI writes non\-fatal after session disposal](pitfalls/keep-recovery-ui-writes-non-fatal-after-session-disposal.md) | rendering | target\-seam\, verification\-discipline |  |
 | [Link ADRs by their on\-disk filename\, never by constructing one from the title](pitfalls/link-adrs-by-their-on-disk-filename-never-by-constructing-one-from-the-title.md) | adr\-system | cross\-references\, link\-resolution |  |
 | [Make custom staged\-slice hooks explicit about branch and cleanup](pitfalls/make-custom-staged-slice-hooks-explicit-about-branch-and-cleanup.md) | tooling\, adr\-system | commit\-gate\, worktree\-isolation | ADR-0202 |
@@ -117,7 +116,6 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 - [Check the Open boundary before ignoring an assembly error](pitfalls/check-the-open-boundary-before-ignoring-an-assembly-error.md)
 - [Enabled linters constrain API shape\, sketch signatures against them](pitfalls/enabled-linters-constrain-api-shape-sketch-signatures-against-them.md)
 - [gofmt rewrites double backticks in doc comments into curly quotes](pitfalls/gofmt-rewrites-double-backticks-in-doc-comments-into-curly-quotes.md)
-- [GoReleaser aborts on a dirty git tree\; pre\-release artifacts belong outside the worktree](pitfalls/goreleaser-aborts-on-a-dirty-git-tree-pre-release-artifacts-belong-outside-the-worktree.md)
 - [Make custom staged\-slice hooks explicit about branch and cleanup](pitfalls/make-custom-staged-slice-hooks-explicit-about-branch-and-cleanup.md)
 - [Moving a check earlier in the pipeline steals a later stage\'s error\-branch coverage](pitfalls/moving-a-check-earlier-in-the-pipeline-steals-a-later-stage-s-error-branch-coverage.md)
 - [Port a stale branch before merging a breaking marker grammar](pitfalls/port-a-stale-branch-before-merging-a-breaking-marker-grammar.md)

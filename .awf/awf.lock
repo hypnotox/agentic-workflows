@@ -565,8 +565,8 @@
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
       "templateHash": "sha256:d6475aaeadbbed6f56bfc85c4716b8636fea0d5922661201890334a6429b4f85",
-      "configHash": "sha256:e6ef2fa30b203ca16f5e98043f6a37ff1c892582c52d035a6c880575cf32d7f4",
-      "outputHash": "sha256:36c97f91abcdbe8d398a734b86993adfc04469f4f30730e75bef2603060106b0"
+      "configHash": "sha256:a463dd019809116d961bf64908d809f465cb8820aa81cdb880e50f92099213a4",
+      "outputHash": "sha256:3a1d7a618ab6b99e577da3df01122dfc53994d7a8450985d41a3263d8ba687f8"
     },
     "docs/pitfalls/a-census-number-is-only-as-good-as-its-stated-query.md": {
       "templateId": "pitfalls/entry.md.tmpl",
@@ -712,12 +712,6 @@
       "configHash": "sha256:3a8d1240b13ee747eab76fc6273ab0d43a84a5170228094539c01c930436784a",
       "outputHash": "sha256:09f52df4e1b0c258d2ccbe6b7ffae29e39a0eee844f2c3f7b333e7b3317997d5"
     },
-    "docs/pitfalls/goreleaser-aborts-on-a-dirty-git-tree-pre-release-artifacts-belong-outside-the-worktree.md": {
-      "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:23ea7baa4f2cd0e3a7319448093f2612ca5a7beab8cb0bfc631015eef99be786",
-      "configHash": "sha256:c23c152b75ea98123800ab182c51cf696a43305f272d80adb9ceef20770b4584",
-      "outputHash": "sha256:8668b4f0038051c1d16f6e0cd7d93c648ab3ea5201ec74f47793dca4c5321650"
-    },
     "docs/pitfalls/keep-recovery-ui-writes-non-fatal-after-session-disposal.md": {
       "templateId": "pitfalls/entry.md.tmpl",
       "templateHash": "sha256:23ea7baa4f2cd0e3a7319448093f2612ca5a7beab8cb0bfc631015eef99be786",
@@ -835,8 +829,8 @@
     "docs/releasing.md": {
       "templateId": "docs/releasing.md.tmpl",
       "templateHash": "sha256:0683f8ceca62d4c5c91ce1058d1e2970f4336aced06b298b7ea3ef8cc328d78c",
-      "configHash": "sha256:c9b39669a96f5d7329b514e8243cdedfc48989ff15b941b3ac6338cdc9582aba",
-      "outputHash": "sha256:662d4312960ee033ebc4dec9533f0e24b30ac67a1b2f17ca895f673d90ce7371"
+      "configHash": "sha256:ad1ef30dcc933d2a1c58dd00864b867bb9e7567491d62bc6f1b536b71a066b98",
+      "outputHash": "sha256:f21c841e893fa63f446454bcf135c423c0dc5c48f152e5e320401916e8f9b2d5"
     },
     "docs/roadmap.md": {
       "templateId": "docs/roadmap.md.tmpl",
