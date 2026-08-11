@@ -21,7 +21,7 @@ in different ways.
 
 ## Decision
 
-1. `decision: live-retirement` Retired configuration and the capabilities it selected stay absent from live templates, current-state guidance, and generated documentation.
+1. `decision: live-retirement` Live templates, current-state guidance, and generated documentation never present retired configuration or the capabilities it selected as supported; truthful historical and vocabulary references remain.
 2. `decision: historical-retirement` Every retired configuration key is removed when historical configuration is projected into the current schema, before strict decoding.
 
 ## State changes
@@ -29,12 +29,13 @@ in different ways.
 - update `rendering/guide-and-doc-templates:guide-entry-point-routing`
 - add `rendering/templates:retired-config-guidance-absent`
 - update `config/migrations-and-locks:retired-keys-forward-ported`
+- remove `config/migrations-and-locks:toggle-keys-forward-ported`
 
 ## Consequences
 
-Adopters no longer receive documentation for unsupported project-local artifact selection. Template
-and current-state regressions require focused checks because ordinary self-host rendering can mask a
-stale default with a convention part.
+Adopters no longer receive documentation for unsupported project-local artifact selection. A
+focused test-backed invariant protects live templates and current-state guidance because ordinary
+self-host rendering can mask a stale default with a convention part.
 
 Historical audit and staged checks can consume configurations containing any retired key without
 mistaking historical syntax for current configuration. The retirement inventory must remain complete
