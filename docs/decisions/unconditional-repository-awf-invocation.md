@@ -20,7 +20,10 @@ ADR-0156 also introduced `vars.awfInvokeCmd` so this repository could make its w
 source. The wrapper already has a `runner-body` convention-part boundary, and the project is the
 only intended source-execution adaptation. The user confirmed that no adopter uses the var, so
 preserving a public configuration key or migration path for it would retain a distinction with no
-served repository fact behind it.
+served repository fact behind it. Retiring the key removes its catalog/config-reference descriptor
+and render input, removes this repository's configured value, and regenerates the wrapper's config
+hash and lock-manifest entry through ordinary render; no migration or backward-compatibility path
+remains.
 
 The semantic boundary is between invocation and resolution. Rendered repository instructions invoke
 `./awf`; the default wrapper resolves the bootstrap-pinned binary and then PATH, while a repository
@@ -29,9 +32,11 @@ Conceptual references to the awf product or its CLI grammar need not acquire a p
 
 ## Decision
 
-1. `decision: repository-wrapper-invocation` Every executable awf CLI instruction rendered into a
-   repository uses its unconditional repo-root `./awf` wrapper. The render model carries no runner
-   enablement signal and no executable fallback instruction assumes that `awf` is on PATH.
+1. `decision: repository-wrapper-invocation` Every adopter- or agent-facing executable awf CLI
+   instruction and hook fallback rendered into a repository uses its unconditional repo-root
+   `./awf` wrapper. The render model carries no runner enablement signal and no such instruction
+   assumes that `awf` is on PATH. Commands internal to bootstrap or wrapper binary resolution stay
+   outside this invocation-guidance rule.
 
 2. `decision: wrapper-resolution-part-owned` The standard wrapper body resolves the
    bootstrap-pinned binary first and PATH `awf` second. Repository-specific execution semantics are
@@ -39,14 +44,15 @@ Conceptual references to the awf product or its CLI grammar need not acquire a p
    interpreted inside the standard wrapper template.
 
 3. `decision: invocation-var-retired` The `awfInvokeCmd` var is retired without a compatibility
-   migration. No adopter uses it; this repository replaces its value with the runner-body part in
-   the same transaction.
+   migration. No adopter uses it; this repository expresses its source-execution adaptation through
+   the runner-body part.
 
 ## State changes
 
 - update `rendering/companion-scripts:runner-resolution-pinned-first`
 - update `rendering/catalog-and-targets:var-descriptor-set-pinned`
 - update `rendering/workflow-skill-templates:implementer-context-grounding`
+- update `rendering/workflow-skill-templates:phase-transaction-ownership`
 - add `rendering/workflow-skill-templates:repository-awf-invocation`
 - add `rendering/guide-and-doc-templates:guide-awf-invocation`
 
@@ -59,9 +65,14 @@ this repository's development setup.
 
 This repository must carry a small runner-body convention part containing its from-source `exec`.
 That makes the adaptation authored project policy rather than generic configuration. Bare `awf`
-remains appropriate in product names, usage syntax, diagnostics, and prose that does not direct a
-repository-local execution; distinguishing those cases requires a focused instruction-corpus sweep
-rather than an indiscriminate textual replacement.
+remains appropriate in product names, usage syntax, diagnostics, internal binary resolution, and
+prose that does not direct a repository-local execution; distinguishing those cases requires a
+focused instruction-corpus sweep rather than an indiscriminate textual replacement.
+
+The two new invocation claims are test-backed invariants. Their proofs scan the applicable rendered
+agent, guide, skill, and hook instruction surfaces, and the existing empty-data rendering spine
+continues to reject no-value tokens and malformed command fragments after the obsolete conditionals
+and var disappear.
 
 Dropping the var without migration would break an unreported external user of `awfInvokeCmd` on
 upgrade. The user accepts that risk based on the confirmed adopter set; retaining compatibility for
