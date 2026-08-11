@@ -29,19 +29,14 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 | [A staged\-symlink fixture needs a real blob\, a gitlink does not](pitfalls/a-staged-symlink-fixture-needs-a-real-blob-a-gitlink-does-not.md) | tooling | test\-support\, verification\-discipline |  |
 | [A token or convention rename must sweep every rendered doc surface](pitfalls/a-token-or-convention-rename-must-sweep-every-rendered-doc-surface.md) | invariants\, rendering | cross\-references\, render\-completeness |  |
 | [Ad hoc compound mutations still need target read\-back](pitfalls/ad-hoc-compound-mutations-still-need-target-read-back.md) | Unassigned | verification\-discipline |  |
-| [Adding a template var changes adopter behavior and consumer projections](pitfalls/adding-a-template-var-changes-adopter-behavior-and-consumer-projections.md) | rendering | placeholder\-degradation\, publication\-safety |  |
 | [An ad hoc empty scan still needs proof that the probe ran](pitfalls/an-ad-hoc-empty-scan-still-needs-proof-that-the-probe-ran.md) | Unassigned | verification\-discipline |  |
 | [An ad hoc post\-check can still overrun the change\'s scope](pitfalls/an-ad-hoc-post-check-can-still-overrun-the-change-s-scope.md) | tooling | verification\-discipline\, plan\-taxonomy | ADR-0115 |
 | [An attribute\-filtered pinned\-set test exempts every other attribute value](pitfalls/an-attribute-filtered-pinned-set-test-exempts-every-other-attribute-value.md) | tooling | pinned\-set\-tests\, invariant\-backing |  |
 | [An ordered\-phrase assertion cannot reach a site ahead of its first anchor](pitfalls/an-ordered-phrase-assertion-cannot-reach-a-site-ahead-of-its-first-anchor.md) | rendering\, invariants | invariant\-backing\, verification\-discipline |  |
 | [An ordering proof written against the log proves nothing](pitfalls/an-ordering-proof-written-against-the-log-proves-nothing.md) | tooling\, invariants | invariant\-backing\, coverage\-gate | ADR-0175 |
-| [An unescaped consumable placeholder in a part is silently rewritten\, check\-clean](pitfalls/an-unescaped-consumable-placeholder-in-a-part-is-silently-rewritten-check-clean.md) | rendering | placeholder\-degradation\, convention\-parts |  |
 | [Check the Open boundary before ignoring an assembly error](pitfalls/check-the-open-boundary-before-ignoring-an-assembly-error.md) | tooling | coverage\-gate\, cli\-dispatch | ADR-0012, ADR-0092, ADR-0102 |
-| [Do not infer linked\-plan freshness from file activity](pitfalls/do-not-infer-linked-plan-freshness-from-file-activity.md) | rendering\, tooling | plan\-artifact\, verification\-discipline |  |
 | [Enabled linters constrain API shape\, sketch signatures against them](pitfalls/enabled-linters-constrain-api-shape-sketch-signatures-against-them.md) | tooling | static\-linting |  |
 | [gofmt rewrites double backticks in doc comments into curly quotes](pitfalls/gofmt-rewrites-double-backticks-in-doc-comments-into-curly-quotes.md) | tooling | gofmt\-doccomment |  |
-| [GoReleaser aborts on a dirty git tree\; pre\-release artifacts belong outside the worktree](pitfalls/goreleaser-aborts-on-a-dirty-git-tree-pre-release-artifacts-belong-outside-the-worktree.md) | tooling | release\-pipeline |  |
-| [Keep literal placeholder syntax out of guide prose](pitfalls/keep-literal-placeholder-syntax-out-of-guide-prose.md) | rendering | placeholder\-degradation\, agents\-guide |  |
 | [Keep recovery UI writes non\-fatal after session disposal](pitfalls/keep-recovery-ui-writes-non-fatal-after-session-disposal.md) | rendering | target\-seam\, verification\-discipline |  |
 | [Link ADRs by their on\-disk filename\, never by constructing one from the title](pitfalls/link-adrs-by-their-on-disk-filename-never-by-constructing-one-from-the-title.md) | adr\-system | cross\-references\, link\-resolution |  |
 | [Make custom staged\-slice hooks explicit about branch and cleanup](pitfalls/make-custom-staged-slice-hooks-explicit-about-branch-and-cleanup.md) | tooling\, adr\-system | commit\-gate\, worktree\-isolation | ADR-0202 |
@@ -51,7 +46,6 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 | [Put bounded evidence before unbounded inventories in subagent returns](pitfalls/put-bounded-evidence-before-unbounded-inventories-in-subagent-returns.md) | Unassigned |  |  |
 | [Raw\-byte ADR surgery must bound every scan to the frontmatter window](pitfalls/raw-byte-adr-surgery-must-bound-every-scan-to-the-frontmatter-window.md) | config | schema\-migration\, adr\-parsing | ADR-0120 |
 | [Raw\-byte offsets go stale the moment an earlier pass edits the file](pitfalls/raw-byte-offsets-go-stale-the-moment-an-earlier-pass-edits-the-file.md) | config | schema\-migration\, adr\-parsing | ADR-0128 |
-| [Re\-prove every touched coverage ignore](pitfalls/re-prove-every-touched-coverage-ignore.md) | tooling | coverage\-gate |  |
 | [Recheck closure assertions after changing catalog edges](pitfalls/recheck-closure-assertions-after-changing-catalog-edges.md) | rendering | kind\-descriptor\, catalog\-derived\-tests\, verification\-discipline |  |
 | [Reconcile the exact mutable artifact\, not a similarly named predecessor](pitfalls/reconcile-the-exact-mutable-artifact-not-a-similarly-named-predecessor.md) | rendering\, tooling | plan\-artifact\, verification\-discipline |  |
 | [Retiring a concept needs paraphrase sweeps\, not just identifier greps](pitfalls/retiring-a-concept-needs-paraphrase-sweeps-not-just-identifier-greps.md) | rendering\, adr\-system | render\-completeness\, template\-residue | ADR-0191 |
@@ -104,11 +98,7 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 - [A plan editing a catalog template or default under\-enumerates the render fan\-out](pitfalls/a-plan-editing-a-catalog-template-or-default-under-enumerates-the-render-fan-out.md)
 - [A prose\-contract test proves only the clauses whose literals occur for one reason](pitfalls/a-prose-contract-test-proves-only-the-clauses-whose-literals-occur-for-one-reason.md)
 - [A token or convention rename must sweep every rendered doc surface](pitfalls/a-token-or-convention-rename-must-sweep-every-rendered-doc-surface.md)
-- [Adding a template var changes adopter behavior and consumer projections](pitfalls/adding-a-template-var-changes-adopter-behavior-and-consumer-projections.md)
 - [An ordered\-phrase assertion cannot reach a site ahead of its first anchor](pitfalls/an-ordered-phrase-assertion-cannot-reach-a-site-ahead-of-its-first-anchor.md)
-- [An unescaped consumable placeholder in a part is silently rewritten\, check\-clean](pitfalls/an-unescaped-consumable-placeholder-in-a-part-is-silently-rewritten-check-clean.md)
-- [Do not infer linked\-plan freshness from file activity](pitfalls/do-not-infer-linked-plan-freshness-from-file-activity.md)
-- [Keep literal placeholder syntax out of guide prose](pitfalls/keep-literal-placeholder-syntax-out-of-guide-prose.md)
 - [Keep recovery UI writes non\-fatal after session disposal](pitfalls/keep-recovery-ui-writes-non-fatal-after-session-disposal.md)
 - [Obsoleting rendered prose\: sweep parts and whole narratives\, not just templates](pitfalls/obsoleting-rendered-prose-sweep-parts-and-whole-narratives-not-just-templates.md)
 - [Recheck closure assertions after changing catalog edges](pitfalls/recheck-closure-assertions-after-changing-catalog-edges.md)
@@ -125,14 +115,11 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 - [An attribute\-filtered pinned\-set test exempts every other attribute value](pitfalls/an-attribute-filtered-pinned-set-test-exempts-every-other-attribute-value.md)
 - [An ordering proof written against the log proves nothing](pitfalls/an-ordering-proof-written-against-the-log-proves-nothing.md)
 - [Check the Open boundary before ignoring an assembly error](pitfalls/check-the-open-boundary-before-ignoring-an-assembly-error.md)
-- [Do not infer linked\-plan freshness from file activity](pitfalls/do-not-infer-linked-plan-freshness-from-file-activity.md)
 - [Enabled linters constrain API shape\, sketch signatures against them](pitfalls/enabled-linters-constrain-api-shape-sketch-signatures-against-them.md)
 - [gofmt rewrites double backticks in doc comments into curly quotes](pitfalls/gofmt-rewrites-double-backticks-in-doc-comments-into-curly-quotes.md)
-- [GoReleaser aborts on a dirty git tree\; pre\-release artifacts belong outside the worktree](pitfalls/goreleaser-aborts-on-a-dirty-git-tree-pre-release-artifacts-belong-outside-the-worktree.md)
 - [Make custom staged\-slice hooks explicit about branch and cleanup](pitfalls/make-custom-staged-slice-hooks-explicit-about-branch-and-cleanup.md)
 - [Moving a check earlier in the pipeline steals a later stage\'s error\-branch coverage](pitfalls/moving-a-check-earlier-in-the-pipeline-steals-a-later-stage-s-error-branch-coverage.md)
 - [Port a stale branch before merging a breaking marker grammar](pitfalls/port-a-stale-branch-before-merging-a-breaking-marker-grammar.md)
-- [Re\-prove every touched coverage ignore](pitfalls/re-prove-every-touched-coverage-ignore.md)
 - [Reconcile the exact mutable artifact\, not a similarly named predecessor](pitfalls/reconcile-the-exact-mutable-artifact-not-a-similarly-named-predecessor.md)
 - [Reuse the repository boundary for new filesystem walks](pitfalls/reuse-the-repository-boundary-for-new-filesystem-walks.md)
 

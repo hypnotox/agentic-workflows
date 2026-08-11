@@ -16,7 +16,7 @@ query a single version or a range.
 
 - Configured repositories can declare `render.templateSourceRoot` to add maintainer-facing `awf:template-source` provenance to generated Markdown without changing ordinary adopter output.
 
-- The adopter-facing documentation standard now advises count-free prose for changing sets and requires essential exact counts to name their query and be reverified when the source population changes.
+- The adopter-facing documentation standard now advises count-free prose for changing sets and requires essential exact counts to name their query and be reverified when the source population changes. The agent-guide standard now keeps literal placeholder syntax in reference documentation unless its brace guard deliberately recognizes it.
 
 - Pitfalls now publish as a compact title-sorted metadata index with domain and Unassigned navigation plus one exact-source generated leaf per entry. The complete family participates in working and staged output plans, lock, drift, backup, and deletion pruning.
 

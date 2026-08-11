@@ -16,7 +16,12 @@ GoReleaser (`.goreleaser.yaml`) to build cross-platform binaries (linux/darwin/w
 amd64/arm64), package per-OS archives bundling `LICENSE` + `README.md`, write `checksums.txt`,
 and create the GitHub Release whose body is those notes, passed as `--release-notes`. GoReleaser's
 own commit-derived changelog is disabled: deriving notes from commit subjects leaked internal
-commits whose scopes dodged the exclude filters (ADR-0096). The effort authority uses each target's
+commits whose scopes dodged the exclude filters (ADR-0096). GoReleaser refuses a dirty checkout,
+including untracked files. Any preceding release-workflow step writes its artifacts outside the
+checkout, normally under `$RUNNER_TEMP`, or to a deliberately gitignored path; the release-notes
+step uses `"$RUNNER_TEMP/release-notes.md"` for this reason.
+
+The effort authority uses each target's
 native no-follow file access, repository lock, and conditional atomic publication primitives: creation
 never overwrites an existing name, while replacement either publishes the expected update or restores
 an unexpected raced destination. On Windows, creation uses MoveFileEx write-through; replacement uses
