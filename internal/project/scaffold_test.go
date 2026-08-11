@@ -3,6 +3,7 @@ package project
 import (
 	"bytes"
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
@@ -66,14 +68,51 @@ func TestPitfallScaffoldCLIContract(t *testing.T) {
 				t.Fatal("non-directory source root accepted")
 			}
 		})
+		t.Run("nested source and injected read or walk failures", func(t *testing.T) {
+			root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
+			dir := filepath.Join(root, ".awf/docs/pitfalls/nested")
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(dir, "bad.md"), []byte("---\ntitle: Bad\n---\nbody\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			p, err := Open(testContext(t), root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			tree := openPitfallScaffoldTree(t, root)
+			if _, err := p.newPitfallWith("New", tree); err == nil || !strings.Contains(err.Error(), "direct child") {
+				t.Fatalf("nested source error = %v", err)
+			}
+			if err := os.RemoveAll(filepath.Join(root, ".awf/docs/pitfalls")); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.MkdirAll(filepath.Join(root, ".awf/docs/pitfalls"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(root, ".awf/docs/pitfalls/a.md"), []byte("---\ntitle: A\n---\nbody\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			readErr := errors.New("read failed")
+			if _, err := p.newPitfallWith("New", &faultPitfallFilesystem{pitfallScaffoldFilesystem: tree, readErr: readErr}); !errors.Is(err, readErr) {
+				t.Fatalf("read error = %v", err)
+			}
+			walkErr := errors.New("walk failed")
+			if _, err := p.newPitfallWith("New", &faultPitfallFilesystem{pitfallScaffoldFilesystem: tree, walkErr: walkErr}); !errors.Is(err, walkErr) {
+				t.Fatalf("walk error = %v", err)
+			}
+		})
 		t.Run("mkdir failure", func(t *testing.T) {
 			root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
 			p, err := Open(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
 			}
+			tree := openPitfallScaffoldTree(t, root)
 			mkdirErr := errors.New("mkdir failed")
-			if _, err := p.newPitfallWith("New", func(string, os.FileMode) error { return mkdirErr }, createPitfallExclusive); !errors.Is(err, mkdirErr) {
+			faults := &faultPitfallFilesystem{pitfallScaffoldFilesystem: tree, mkdirErr: mkdirErr}
+			if _, err := p.newPitfallWith("New", faults); !errors.Is(err, mkdirErr) {
 				t.Fatalf("mkdir error = %v", err)
 			}
 		})
@@ -108,6 +147,93 @@ func TestPitfallScaffoldCLIContract(t *testing.T) {
 	})
 }
 
+// invariant: tooling/cli:pitfall-scaffold (TestNewPitfallPublicationFailureLeavesDestinationAbsent)
+func TestNewPitfallPublicationFailureLeavesDestinationAbsent(t *testing.T) {
+	if _, err := (&Project{Root: filepath.Join(t.TempDir(), "missing")}).NewPitfall("Unopened"); err == nil {
+		t.Fatal("missing project root opened for pitfall scaffold")
+	}
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tree := openPitfallScaffoldTree(t, root)
+	publishErr := errors.New("publication preparation failed")
+	faults := &faultPitfallFilesystem{
+		pitfallScaffoldFilesystem: tree,
+		publish:                   func(string, []byte, os.FileMode) error { return publishErr },
+	}
+	if _, err := p.newPitfallWith("Unpublished", faults); !errors.Is(err, publishErr) {
+		t.Fatalf("publication error = %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".awf/docs/pitfalls/unpublished.md")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("failed publication left selected destination: %v", err)
+	}
+}
+
+// invariant: tooling/cli:pitfall-scaffold (TestNewPitfallRootConfinement)
+func TestNewPitfallRootConfinement(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		arrange func(*testing.T, string, string)
+	}{
+		{
+			name: "escaping docs symlink",
+			arrange: func(t *testing.T, root, outside string) {
+				if err := os.RemoveAll(filepath.Join(root, ".awf/docs")); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink(outside, filepath.Join(root, ".awf/docs")); err != nil {
+					t.Skipf("symlink unsupported: %v", err)
+				}
+			},
+		},
+		{
+			name: "escaping pitfalls symlink",
+			arrange: func(t *testing.T, root, outside string) {
+				if err := os.MkdirAll(filepath.Join(root, ".awf/docs"), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink(outside, filepath.Join(root, ".awf/docs/pitfalls")); err != nil {
+					t.Skipf("symlink unsupported: %v", err)
+				}
+			},
+		},
+		{
+			name: "non-regular source root",
+			arrange: func(t *testing.T, root, _ string) {
+				if err := os.MkdirAll(filepath.Join(root, ".awf/docs"), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(root, ".awf/docs/pitfalls"), []byte("not a directory"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
+			p, err := Open(testContext(t), root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			outside := t.TempDir()
+			tc.arrange(t, root, outside)
+			if _, err := p.NewPitfall("Escaping"); err == nil {
+				t.Fatal("unsafe source root accepted")
+			}
+			entries, err := os.ReadDir(outside)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(entries) != 0 {
+				t.Fatalf("external target mutated: %v", entries)
+			}
+		})
+	}
+}
+
+// invariant: tooling/cli:pitfall-scaffold (TestNewPitfallScaffoldContract)
 func TestNewPitfallScaffoldContract(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
 	p, err := Open(testContext(t), root)
@@ -131,9 +257,14 @@ func TestNewPitfallScaffoldContract(t *testing.T) {
 		t.Fatalf("presentation = %q", output.String())
 	}
 	const want = "---\ntitle: 'Unicode + punctuation: 日本語'\n---\nDescribe the durable hazard, its consequence, and the safer practice.\n"
-	got, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(relative)))
+	path := filepath.Join(root, filepath.FromSlash(relative))
+	got, err := os.ReadFile(path)
 	if err != nil || string(got) != want {
 		t.Fatalf("source = %q, %v", got, err)
+	}
+	info, err := os.Stat(path)
+	if err != nil || info.Mode().Perm() != 0o644 {
+		t.Fatalf("source mode = %v, %v", info, err)
 	}
 	if _, err := os.Stat(generated); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("NewPitfall rendered generated output: %v", err)
@@ -143,35 +274,92 @@ func TestNewPitfallScaffoldContract(t *testing.T) {
 	}
 }
 
+// invariant: tooling/cli:pitfall-scaffold (TestNewPitfallExclusiveRaceRefusesThenRetryReallocates)
 func TestNewPitfallExclusiveRaceRefusesThenRetryReallocates(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
+	tree := openPitfallScaffoldTree(t, root)
 	raced := false
-	create := func(path string, source []byte) error {
+	faults := &faultPitfallFilesystem{pitfallScaffoldFilesystem: tree}
+	faults.publish = func(path string, source []byte, mode os.FileMode) error {
 		if !raced {
 			raced = true
 			const competing = "---\ntitle: Competing writer\n---\nbody\n"
-			if err := os.WriteFile(path, []byte(competing), 0o644); err != nil {
+			if err := tree.Publish(path, []byte(competing), 0o644); err != nil {
 				t.Fatal(err)
 			}
 		}
-		return createPitfallExclusive(path, source)
+		return tree.Publish(path, source, mode)
 	}
-	if _, err := p.newPitfallWith("Race", os.MkdirAll, create); !errors.Is(err, os.ErrExist) {
+	if _, err := p.newPitfallWith("Race", faults); !errors.Is(err, os.ErrExist) {
 		t.Fatalf("race error = %v", err)
+	}
+	winner := filepath.Join(root, ".awf/docs/pitfalls/race.md")
+	if got, err := os.ReadFile(winner); err != nil || !strings.Contains(string(got), "Competing writer") {
+		t.Fatalf("race changed winner bytes = %q, %v", got, err)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".awf/docs/pitfalls/race-2.md")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("race silently advanced suffix: %v", err)
 	}
-	if _, err := p.newPitfallWith("Race", os.MkdirAll, create); err != nil {
+	if _, err := p.newPitfallWith("Race", faults); err != nil {
 		t.Fatalf("ordinary retry: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".awf/docs/pitfalls/race-2.md")); err != nil {
 		t.Fatalf("retry did not recompute suffix: %v", err)
 	}
+}
+
+type faultPitfallFilesystem struct {
+	pitfallScaffoldFilesystem
+	mkdirErr error
+	readErr  error
+	walkErr  error
+	publish  func(string, []byte, os.FileMode) error
+}
+
+func (f *faultPitfallFilesystem) MkdirAll(path string, mode os.FileMode) error {
+	if f.mkdirErr != nil {
+		return f.mkdirErr
+	}
+	return f.pitfallScaffoldFilesystem.MkdirAll(path, mode)
+}
+
+func (f *faultPitfallFilesystem) Read(path string) ([]byte, error) {
+	if f.readErr != nil {
+		return nil, f.readErr
+	}
+	return f.pitfallScaffoldFilesystem.Read(path)
+}
+
+func (f *faultPitfallFilesystem) Walk(path string, visit func(string, fs.FileInfo) (bool, error)) error {
+	if f.walkErr != nil {
+		return f.walkErr
+	}
+	return f.pitfallScaffoldFilesystem.Walk(path, visit)
+}
+
+func (f *faultPitfallFilesystem) Publish(path string, source []byte, mode os.FileMode) error {
+	if f.publish != nil {
+		return f.publish(path, source, mode)
+	}
+	return f.pitfallScaffoldFilesystem.Publish(path, source, mode)
+}
+
+func openPitfallScaffoldTree(t *testing.T, root string) *filesystem.Handle {
+	t.Helper()
+	tree, err := filesystem.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := tree.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	return tree
 }
 
 func TestScaffoldWritesRepositoryFacts(t *testing.T) {

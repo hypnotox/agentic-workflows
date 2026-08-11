@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -49,11 +50,13 @@ func TestRunNewADRError(t *testing.T) {
 	}
 }
 
+// invariant: tooling/cli:pitfall-scaffold (TestRunNewPitfallScaffoldsOneAuthoredSourceWithoutRender)
 func TestRunNewPitfallScaffoldsOneAuthoredSourceWithoutRender(t *testing.T) {
 	root := scaffoldProject(t)
 	generated := filepath.Join(root, "docs", "pitfalls.md")
 	beforeGenerated := mustReadCLIFile(t, generated)
 	beforeLock := mustReadCLIFile(t, filepath.Join(root, ".awf", "awf.lock"))
+	beforeCensus := newPitfallFileCensus(t, root)
 	var out bytes.Buffer
 	if err := runNew(testContext(t), root, "pitfall", []string{"CLI Hazard!"}, &out); err != nil {
 		t.Fatal(err)
@@ -72,6 +75,23 @@ func TestRunNewPitfallScaffoldsOneAuthoredSourceWithoutRender(t *testing.T) {
 	if got := mustReadCLIFile(t, filepath.Join(root, ".awf", "awf.lock")); got != beforeLock {
 		t.Fatal("pitfall scaffold mutated lock")
 	}
+	afterCensus := newPitfallFileCensus(t, root)
+	delete(afterCensus, relative)
+	if !maps.Equal(beforeCensus, afterCensus) {
+		var changed []string
+		for path, before := range beforeCensus {
+			if after, ok := afterCensus[path]; !ok || after != before {
+				changed = append(changed, path)
+			}
+		}
+		for path := range afterCensus {
+			if _, ok := beforeCensus[path]; !ok {
+				changed = append(changed, path)
+			}
+		}
+		slices.Sort(changed)
+		t.Fatalf("pitfall scaffold changed files beyond its selected source: %v", changed)
+	}
 	for _, args := range [][]string{nil, {"split", "title"}} {
 		if err := runNew(testContext(t), root, "pitfall", args, io.Discard); err == nil || !strings.Contains(err.Error(), "usage: awf new pitfall") {
 			t.Fatalf("args %v: %v", args, err)
@@ -86,6 +106,32 @@ func TestRunNewPitfallScaffoldsOneAuthoredSourceWithoutRender(t *testing.T) {
 	if err := runNew(testContext(t), broken, "pitfall", []string{"Title"}, io.Discard); err == nil {
 		t.Fatal("pitfall scaffold accepted a project.Open error")
 	}
+}
+
+func newPitfallFileCensus(t *testing.T, root string) map[string]string {
+	t.Helper()
+	files := map[string]string{}
+	if err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		files[filepath.ToSlash(rel)] = string(raw)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return files
 }
 
 func TestRunNewUnknownKind(t *testing.T) {
@@ -537,6 +583,8 @@ func TestRunNewPlanRefusesExisting(t *testing.T) {
 	}
 }
 
+// invariant: tooling/cli:pitfall-scaffold (TestRunNewDispatch)
+// invariant: tooling/cli:cli-creation-and-inventory (TestRunNewDispatch)
 func TestRunNewDispatch(t *testing.T) {
 	root := scaffoldProject(t)
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
@@ -548,6 +596,11 @@ func TestRunNewDispatch(t *testing.T) {
 	errb.Reset()
 	if code := run([]string{"awf", "new", "pitfall", "One Complete Title"}, &out, &errb); code != 0 {
 		t.Fatalf("pitfall dispatch: exit %d (%s)", code, errb.String())
+	}
+	out.Reset()
+	errb.Reset()
+	if code := run([]string{"awf", "new", "pitfall", "split", "title"}, &out, &errb); code != 2 || !strings.Contains(errb.String(), "unexpected arguments") {
+		t.Fatalf("split pitfall title: exit %d (%s)", code, errb.String())
 	}
 }
 

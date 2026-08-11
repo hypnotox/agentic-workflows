@@ -7,6 +7,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
 
+// invariant: tooling/cli:pitfall-scaffold (TestPitfallScaffoldPresentationBoundary)
 func TestPitfallScaffoldPresentationBoundary(t *testing.T) {
 	document, err := PitfallScaffoldDocument(".awf/docs/pitfalls/example.md")
 	if err != nil {

@@ -3,15 +3,14 @@ package project
 import (
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"maps"
-	"os"
-	"path/filepath"
 	"slices"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
+	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
@@ -80,12 +79,25 @@ func ScaffoldConfig(prefix string, vars map[string]string, scopes []string) ([]b
 
 // NewPitfall loads the current corpus, creates one canonical source exclusively,
 // and returns project-owned presentation for its repository-relative path.
-func (p *Project) NewPitfall(title string) (presentation.Document, error) {
-	return p.newPitfallWith(title, os.MkdirAll, createPitfallExclusive)
+func (p *Project) NewPitfall(title string) (document presentation.Document, returnErr error) {
+	tree, err := filesystem.Open(p.Root)
+	if err != nil {
+		return presentation.Document{}, err
+	}
+	defer func() { returnErr = errors.Join(returnErr, tree.Close()) }()
+	return p.newPitfallWith(title, tree)
 }
 
-func (p *Project) newPitfallWith(title string, mkdir func(string, os.FileMode) error, create func(string, []byte) error) (presentation.Document, error) {
-	corpus, err := p.loadPitfallCorpus()
+type pitfallScaffoldFilesystem interface {
+	LinkInfo(string) (fs.FileInfo, error)
+	Walk(string, func(string, fs.FileInfo) (bool, error)) error
+	Read(string) ([]byte, error)
+	MkdirAll(string, fs.FileMode) error
+	Publish(string, []byte, fs.FileMode) error
+}
+
+func (p *Project) newPitfallWith(title string, tree pitfallScaffoldFilesystem) (presentation.Document, error) {
+	corpus, err := loadPitfallScaffoldCorpus(tree)
 	if err != nil {
 		return presentation.Document{}, err
 	}
@@ -93,27 +105,48 @@ func (p *Project) newPitfallWith(title string, mkdir func(string, os.FileMode) e
 	if err != nil {
 		return presentation.Document{}, err
 	}
-	absolute := filepath.Join(p.Root, filepath.FromSlash(entry.SourcePath))
-	if err := mkdir(filepath.Dir(absolute), 0o755); err != nil {
+	if err := tree.MkdirAll(pitfallsSourceDir, 0o755); err != nil {
 		return presentation.Document{}, fmt.Errorf("create pitfall source directory: %w", err)
 	}
-	if err := create(absolute, source); err != nil {
+	if err := tree.Publish(entry.SourcePath, source, 0o644); err != nil {
 		return presentation.Document{}, fmt.Errorf("create pitfall source %s exclusively: %w", entry.SourcePath, err)
 	}
 	return PitfallScaffoldDocument(entry.SourcePath)
 }
 
-func createPitfallExclusive(path string, source []byte) error {
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+func loadPitfallScaffoldCorpus(tree pitfallScaffoldFilesystem) (pitfall.Corpus, error) {
+	info, err := tree.LinkInfo(pitfallsSourceDir)
+	if errors.Is(err, fs.ErrNotExist) {
+		return pitfall.Load(nil)
+	}
 	if err != nil {
-		return err
+		return pitfall.Corpus{}, fmt.Errorf("inspect pitfall source root %s: %w", pitfallsSourceDir, err)
 	}
-	written, writeErr := file.Write(source)
-	if writeErr == nil && written != len(source) { // coverage-ignore: a successful regular-file write cannot return a short count in supported filesystems
-		writeErr = io.ErrShortWrite
+	if !info.IsDir() {
+		return pitfall.Corpus{}, fmt.Errorf("pitfall source root %s is not a directory", pitfallsSourceDir)
 	}
-	closeErr := file.Close()
-	return errors.Join(writeErr, closeErr)
+	var files []pitfall.SourceFile
+	err = tree.Walk(pitfallsSourceDir, func(source string, info fs.FileInfo) (bool, error) {
+		if source == pitfallsSourceDir {
+			return true, nil
+		}
+		if info.IsDir() {
+			return true, nil
+		}
+		file := pitfall.SourceFile{Path: source, Regular: info.Mode().IsRegular()}
+		if file.Regular {
+			file.Bytes, err = tree.Read(source)
+			if err != nil {
+				return false, fmt.Errorf("read pitfall source %s: %w", source, err)
+			}
+		}
+		files = append(files, file)
+		return false, nil
+	})
+	if err != nil {
+		return pitfall.Corpus{}, err
+	}
+	return pitfall.Load(files)
 }
 
 // PitfallScaffoldDocument maps a created source path to the CLI presentation grammar.

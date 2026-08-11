@@ -77,6 +77,7 @@ func TestContextHumanOnlyFacetSpec(t *testing.T) {
 // Every command and child carries non-empty identifying metadata, and top-level
 // names are unique.
 // invariant: tooling/cli:cli-creation-and-inventory (TestConfigurationSurfaceGrammar)
+// invariant: tooling/cli:pitfall-scaffold (TestConfigurationSurfaceGrammar)
 func TestConfigurationSurfaceGrammar(t *testing.T) {
 	for _, retired := range []string{"enable", "disable", "target"} {
 		if _, ok := Lookup(retired); ok {
@@ -426,6 +427,7 @@ func helpValues(help Help) []string {
 	return values
 }
 
+// invariant: tooling/cli:pitfall-scaffold (TestLookup)
 func TestLookup(t *testing.T) {
 	if _, ok := Lookup("render"); !ok {
 		t.Error("Lookup(render) missing")

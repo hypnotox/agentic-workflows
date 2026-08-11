@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+
+	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 )
 
 // Handle provides root-confined filesystem operations.
@@ -59,6 +61,29 @@ func (h *Handle) Walk(subtree string, visit func(path string, info fs.FileInfo) 
 		return nil
 	})
 	return err
+}
+
+// MkdirAll creates path and missing parents beneath the selected root.
+func (h *Handle) MkdirAll(path string, mode fs.FileMode) error {
+	if err := validPath(path); err != nil {
+		return fmt.Errorf("filesystem: mkdir-all %q: %w", path, err)
+	}
+	if err := h.root.MkdirAll(path, mode); err != nil {
+		return fmt.Errorf("filesystem: mkdir-all %q: %w", path, err)
+	}
+	return nil
+}
+
+// Publish atomically publishes one complete file without replacement beneath
+// the selected root.
+func (h *Handle) Publish(path string, contents []byte, mode fs.FileMode) error {
+	if err := validPath(path); err != nil {
+		return fmt.Errorf("filesystem: publish %q: %w", path, err)
+	}
+	if err := filepublication.PublishConfined(h.root, path, contents, mode); err != nil {
+		return fmt.Errorf("filesystem: publish %q: %w", path, err)
+	}
+	return nil
 }
 
 // Read reads path beneath the selected root.

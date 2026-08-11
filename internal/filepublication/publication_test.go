@@ -95,38 +95,138 @@ func TestPublishCompleteExclusiveFile(t *testing.T) {
 }
 
 // invariant: tooling/file-publication:exclusive-file-publication-single-home (TestPublishConcurrentPublishersLeaveOneCompleteWinner)
-func TestPublishConcurrentPublishersLeaveOneCompleteWinner(t *testing.T) {
-	destination := filepath.Join(t.TempDir(), "artifact")
-	publications := make([]*prepared, 0, 2)
-	for _, contents := range []string{"first complete artifact", "second complete artifact"} {
-		publication, err := prepare(destination, []byte(contents), 0o644)
+type confinedFixtureRoot struct {
+	dir       string
+	openErr   error
+	linkErr   error
+	removeErr error
+	openCalls int
+}
+
+func (r *confinedFixtureRoot) OpenFile(name string, flag int, mode os.FileMode) (*os.File, error) {
+	r.openCalls++
+	if r.openErr != nil {
+		return nil, r.openErr
+	}
+	return os.OpenFile(filepath.Join(r.dir, filepath.FromSlash(name)), flag, mode)
+}
+
+func (r *confinedFixtureRoot) Link(oldname, newname string) error {
+	if r.linkErr != nil {
+		return r.linkErr
+	}
+	return os.Link(filepath.Join(r.dir, filepath.FromSlash(oldname)), filepath.Join(r.dir, filepath.FromSlash(newname)))
+}
+
+func (r *confinedFixtureRoot) Remove(name string) error {
+	removeErr := os.Remove(filepath.Join(r.dir, filepath.FromSlash(name)))
+	if r.removeErr != nil {
+		return r.removeErr
+	}
+	return removeErr
+}
+
+// invariant: tooling/file-publication:exclusive-file-publication-single-home (TestPublishConfinedCompleteExclusiveFile)
+func TestPublishConfinedCompleteExclusiveFile(t *testing.T) {
+	t.Run("preparation failure leaves destination absent", func(t *testing.T) {
+		dir := t.TempDir()
+		destination := "artifact"
+		preparationErr := errors.New("preparation failed")
+		err := PublishConfined(&confinedFixtureRoot{dir: dir, openErr: preparationErr}, destination, []byte("loser"), 0o644)
+		if !errors.Is(err, preparationErr) {
+			t.Fatalf("preparation error = %v", err)
+		}
+		if _, err := os.Stat(filepath.Join(dir, destination)); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("failed preparation left destination: %v", err)
+		}
+	})
+
+	t.Run("collision preserves winner and exact mode is selected", func(t *testing.T) {
+		dir := t.TempDir()
+		root := &confinedFixtureRoot{dir: dir}
+		destination := "artifact"
+		if err := PublishConfined(root, destination, []byte("winner"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := PublishConfined(root, destination, []byte("loser"), 0o600); !errors.Is(err, os.ErrExist) {
+			t.Fatalf("collision error = %v", err)
+		}
+		raw, err := os.ReadFile(filepath.Join(dir, destination))
+		if err != nil || string(raw) != "winner" {
+			t.Fatalf("winner bytes = %q, %v", raw, err)
+		}
+		info, err := os.Stat(filepath.Join(dir, destination))
+		if err != nil || info.Mode().Perm() != 0o644 {
+			t.Fatalf("winner mode = %v, %v", info, err)
+		}
+		entries, err := os.ReadDir(dir)
 		if err != nil {
 			t.Fatal(err)
 		}
-		publications = append(publications, publication)
-		defer func() {
-			if err := publication.cleanup(); err != nil {
-				t.Error(err)
-			}
-		}()
-	}
+		if len(entries) != 1 || entries[0].Name() != destination {
+			t.Fatalf("publication residue = %v", entries)
+		}
+	})
+}
 
+func TestPublishConfinedNegativeBackendPaths(t *testing.T) {
+	t.Run("joins publication and cleanup failures without leaking", func(t *testing.T) {
+		dir := t.TempDir()
+		publishErr := errors.New("publish failed")
+		cleanupErr := errors.New("cleanup failed")
+		root := &confinedFixtureRoot{dir: dir, linkErr: publishErr, removeErr: cleanupErr}
+		err := PublishConfined(root, "artifact", []byte("complete"), 0o644)
+		if !errors.Is(err, publishErr) || !errors.Is(err, cleanupErr) {
+			t.Fatalf("joined error = %v; want publication and cleanup identities", err)
+		}
+		entries, readErr := os.ReadDir(dir)
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		if len(entries) != 0 {
+			t.Fatalf("failed publication residue = %v", entries)
+		}
+	})
+
+	t.Run("exhausts temporary collisions without leaking", func(t *testing.T) {
+		dir := t.TempDir()
+		root := &confinedFixtureRoot{dir: dir, openErr: os.ErrExist}
+		err := PublishConfined(root, "artifact", []byte("complete"), 0o644)
+		if err == nil || !strings.Contains(err.Error(), "temporary name collisions exhausted") {
+			t.Fatalf("collision exhaustion error = %v", err)
+		}
+		if root.openCalls != 100 {
+			t.Fatalf("temporary open attempts = %d, want 100", root.openCalls)
+		}
+		entries, readErr := os.ReadDir(dir)
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		if len(entries) != 0 {
+			t.Fatalf("collision exhaustion residue = %v", entries)
+		}
+	})
+}
+
+func TestPublishConcurrentPublishersLeaveOneCompleteWinner(t *testing.T) {
+	destination := filepath.Join(t.TempDir(), "artifact")
+	contents := []string{"first complete artifact", "second complete artifact"}
 	start := make(chan struct{})
-	results := make(chan error, len(publications))
+	results := make(chan error, len(contents))
 	var ready sync.WaitGroup
-	ready.Add(len(publications))
-	for _, publication := range publications {
+	ready.Add(len(contents))
+	for _, body := range contents {
 		go func() {
 			ready.Done()
 			<-start
-			results <- publication.publish()
+			results <- Publish(destination, []byte(body), 0o644)
 		}()
 	}
 	ready.Wait()
 	close(start)
 
 	var successes int
-	for range publications {
+	for range contents {
 		err := <-results
 		if err == nil {
 			successes++
@@ -143,7 +243,7 @@ func TestPublishConcurrentPublishersLeaveOneCompleteWinner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(raw) != "first complete artifact" && string(raw) != "second complete artifact" {
+	if string(raw) != contents[0] && string(raw) != contents[1] {
 		t.Fatalf("winner bytes = %q", raw)
 	}
 }

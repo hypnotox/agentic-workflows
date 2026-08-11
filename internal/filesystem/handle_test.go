@@ -134,8 +134,30 @@ func TestHandleConfinesPaths(t *testing.T) {
 	}
 }
 
+// invariant: tooling/filesystem-access:root-confined-paths (TestHandleOperations)
 func TestHandleOperations(t *testing.T) {
 	h, root := openFixture(t)
+	if err := h.MkdirAll("created/child", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.Publish("created/child/artifact", []byte("complete"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.Publish("created/child/artifact", []byte("loser"), 0o600); !errors.Is(err, os.ErrExist) {
+		t.Fatalf("publish collision = %v", err)
+	}
+	if raw, err := os.ReadFile(filepath.Join(root, "created/child/artifact")); err != nil || string(raw) != "complete" {
+		t.Fatalf("published bytes = %q, %v", raw, err)
+	}
+	for _, operation := range []func() error{
+		func() error { return h.MkdirAll("..", 0o755) },
+		func() error { return h.Publish("../artifact", nil, 0o644) },
+		func() error { return h.MkdirAll("dir/file/child", 0o755) },
+	} {
+		if err := operation(); err == nil {
+			t.Fatal("invalid root-confined mutation succeeded")
+		}
+	}
 	if _, err := h.Info("dir/file"); err != nil {
 		t.Fatal(err)
 	}
