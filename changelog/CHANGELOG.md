@@ -14,6 +14,8 @@ query a single version or a range.
 
 ### Features
 
+- Hand-authored production-code changes now require a proportionate, explicitly approved implementation outline before mutation, including mechanical production refactors and preparatory tests. Documentation-only, test-only maintenance, generated-output-only, and non-code mechanical work retain independent autonomy, while conversation, effort decisions, and explicitly requested named-plan Architecture summaries can carry approval evidence into direct and delegated execution.
+
 - ADR authoring guidance now requires explicit user acceptance before a commitment enters a decision record, keeps unaccepted suggestions outside the artifact, and defaults to the narrowest durable semantics while routing implementation detail to a plan or direct execution. ADR review now separates consent adherence from scope, consumes effort-memory transcript evidence or the effort-free approved summary, removes unauthorized surplus commitments as reasoned corrections, and discloses removals and refinements at approval.
 
 - Configured repositories can declare `render.templateSourceRoot` to add maintainer-facing `awf:template-source` provenance to generated Markdown without changing ordinary adopter output.

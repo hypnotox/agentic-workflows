@@ -695,9 +695,9 @@ func TestProductionCodeOutlineApprovalProjection(t *testing.T) {
 	}
 	for _, want := range []string{
 		"hand-authored production-code mutation", "mechanical production refactors", "tests that prepare a production change",
-		"documentation-only", "test-only maintenance", "generated-output-only", "non-code mechanical",
+		"Documentation-only", "test-only maintenance", "generated-output-only", "non-code mechanical",
 		"retained conversation", "Decision-log evidence", "explicit request to execute a named plan", "Architecture summary",
-		"brainstorming is the sole owner", "parent-supplied approved boundary", "never recreate the approval interaction",
+		"brainstorming is the sole owner", "parent-supplied approved boundary", "never recreate the approval interaction", "stops without mutation to report missing evidence to its parent",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("outline approval partial missing %q", want)

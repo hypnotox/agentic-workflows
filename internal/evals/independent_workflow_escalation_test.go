@@ -167,7 +167,7 @@ func TestProductionCodeOutlineApproval(t *testing.T) {
 			}
 			brainstorming := read(t, path("brainstorming"))
 			assertContainsAll(t, target+" outline owner", brainstorming,
-				"concise implementation outline", "fuller material-choice design", "explicit outline approval")
+				"description: Use before hand-authored production-code changes", "concise implementation outline", "fuller material-choice design", "explicit outline approval")
 
 			for _, name := range []string{"executing-direct", "tdd", "bugfix", "executing-plans", "subagent-driven-development"} {
 				assertContainsAll(t, target+" "+name+" outline intake", read(t, path(name)),
@@ -179,13 +179,13 @@ func TestProductionCodeOutlineApproval(t *testing.T) {
 			}
 			implementer := read(t, filepath.Join(root, "."+target, "agents", "implementer.md"))
 			assertContainsAll(t, target+" delegated intake", implementer,
-				"parent-supplied approved boundary", "never recreate the approval interaction")
+				"parent-supplied approved boundary", "never recreate the approval interaction", "stops without mutation to report missing evidence to its parent")
 			for _, name := range []string{"executing-direct", "tdd", "bugfix", "executing-plans", "subagent-driven-development", "proposing-adr"} {
 				body := read(t, path(name))
 				assertContainsAll(t, target+" "+name+" evidence", body,
 					"retained conversation", "Decision-log evidence", "explicit request to execute a named plan", "Architecture summary")
 			}
-			for _, exclusion := range []string{"documentation-only", "test-only maintenance", "generated-output-only", "non-code mechanical"} {
+			for _, exclusion := range []string{"Documentation-only", "test-only maintenance", "generated-output-only", "non-code mechanical"} {
 				if !strings.Contains(read(t, path("executing-direct")), exclusion) {
 					t.Errorf("%s direct intake omits autonomous exclusion %q", target, exclusion)
 				}
