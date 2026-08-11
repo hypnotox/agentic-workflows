@@ -702,6 +702,27 @@ func TestCommitPolicyValidation(t *testing.T) {
 	}
 }
 
+// invariant: config/configuration:template-source-root (TestValidateTemplateSourceRoot)
+func TestValidateTemplateSourceRoot(t *testing.T) {
+	for _, root := range []string{"templates", "templates/parts"} {
+		if err := validateTemplateSourceRoot(root); err != nil {
+			t.Fatalf("validate %q: %v", root, err)
+		}
+	}
+	for _, root := range []string{"", ".", "/templates", "templates/../other", "templates//parts", "templates\\parts"} {
+		if err := validateTemplateSourceRoot(root); err == nil {
+			t.Fatalf("validate %q succeeded", root)
+		}
+	}
+	cfg, err := Parse(t.TempDir(), []byte("prefix: example\nintegrationBranch: main\nrender:\n  templateSourceRoot: templates\n"))
+	if err != nil || cfg.Validate() != nil {
+		t.Fatalf("configured root rejected: %v / %v", err, cfg.Validate())
+	}
+	if err := (&Config{Prefix: "example", IntegrationBranch: "main", Render: &RenderConfig{}}).Validate(); err == nil {
+		t.Fatal("present empty template source root accepted")
+	}
+}
+
 func TestPathHelpers(t *testing.T) {
 	root := filepath.Join("x", "y")
 	if got, want := RootDir(root), filepath.Join("x", "y", ".awf"); got != want {

@@ -162,6 +162,8 @@ vars:
   testCmd: go test ./...
 bootstrap:
   enabled: false
+render:
+  templateSourceRoot: templates
 proseGate:
   exemptions:
     - path: docs/decisions/0113-em-dash-free-shipped-templates.md

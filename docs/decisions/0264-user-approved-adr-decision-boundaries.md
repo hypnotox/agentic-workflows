@@ -4,7 +4,7 @@ slug: user-approved-adr-decision-boundaries
 status: Implementing
 date: 2026-08-11
 ---
-# ADR-user-approved-adr-decision-boundaries: User-Approved ADR Decision Boundaries
+# ADR-0264: User-Approved ADR Decision Boundaries
 
 
 ## Context

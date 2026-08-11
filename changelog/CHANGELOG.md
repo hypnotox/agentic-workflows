@@ -16,13 +16,17 @@ query a single version or a range.
 
 - ADR authoring guidance now requires explicit user acceptance before a commitment enters a decision record, keeps unaccepted suggestions outside the artifact, and defaults to the narrowest durable semantics while routing implementation detail to a plan or direct execution. ADR review now separates consent adherence from scope, consumes effort-memory transcript evidence or the effort-free approved summary, removes unauthorized surplus commitments as reasoned corrections, and discloses removals and refinements at approval.
 
-- The adopter-facing documentation standard now advises count-free prose for changing sets and requires essential exact counts to name their query and be reverified when the source population changes. The agent-guide standard now keeps literal placeholder syntax in reference documentation unless its brace guard deliberately recognizes it.
+- Configured repositories can declare `render.templateSourceRoot` to add maintainer-facing `awf:template-source` provenance to generated Markdown without changing ordinary adopter output.
+
+- The adopter-facing documentation standard now advises count-free prose for changing sets and requires essential exact counts to name their query and be reverified when the source population changes. The agent-guide standard now keeps literal placeholder syntax in reference documentation unless its brace guard deliberately recognizes it. Subagent return contracts now put bounded decision-bearing evidence before optional exhaustive inventories so runtime truncation does not hide outcomes, deviations, verification, or blockers.
 
 - Pitfalls now publish as a compact title-sorted metadata index with domain and Unassigned navigation plus one exact-source generated leaf per entry. The complete family participates in working and staged output plans, lock, drift, backup, and deletion pruning.
 
 - `awf new pitfall "<Title>"` now creates one canonical authored `.awf/docs/pitfalls/<slug>.md` source exclusively, reports its repository-relative path, and never renders or mutates another registry. Duplicate titles and a selected-path race refuse; a later retry reloads the corpus and chooses the first free deterministic suffix. Deleting the authored source retires its generated index row and leaf through ordinary render pruning.
 
 ### Bug fixes
+
+- Current-state coverage findings now give actionable recovery: they name same-domain claim-bearing global topics for adopter judgment, recommend extending a bounded selector only when that topic naturally governs the path, and otherwise direct the adopter to create or use an appropriate scoped claim-bearing topic.
 
 - Pi implementation commit policy now accepts an explicit same-repository verification checkout, so commits in an awf-managed worktree are verified there without changing parent or child Pi CWD. Invalid explicit identities refuse before dispatch, forbidden commits use the same selected checkout, and unchanged-HEAD failures name the checkout and retry field.
 

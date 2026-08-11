@@ -40,7 +40,7 @@ func TestDocsSectionParity(t *testing.T) {
 			t.Fatalf("read %s: %v", tid, err)
 		}
 		var markers []string
-		for _, s := range render.ParseSections(string(src)) {
+		for _, s := range parseSections(string(src)) {
 			if s.IsSection {
 				markers = append(markers, s.Name)
 			}
@@ -52,7 +52,7 @@ func TestDocsSectionParity(t *testing.T) {
 		if strings.Join(want, ",") != strings.Join(got, ",") {
 			t.Errorf("%s: section mismatch: catalog %v vs template markers %v", name, want, got)
 		}
-		asm, parts := render.Assemble(render.ParseSections(string(src)), nil, render.HTMLComment)
+		asm, parts := assemble(parseSections(string(src)), nil, render.HTMLComment)
 		out, err := render.Execute(asm,
 			map[string]any{"prefix": "awf", "vars": map[string]any{},
 				"layout": map[string]any{"adrReadme": "docs/decisions/README.md"}, "data": map[string]any{}}, parts, "test")
@@ -132,7 +132,7 @@ func TestAgentsDocSectionParity(t *testing.T) {
 		t.Fatalf("read %s: %v", entry.TID, err)
 	}
 	var markers []string
-	for _, s := range render.ParseSections(string(src)) {
+	for _, s := range parseSections(string(src)) {
 		if s.IsSection {
 			markers = append(markers, s.Name)
 		}
@@ -370,7 +370,7 @@ func TestMaintainableCodeDesignGuide(t *testing.T) {
 		t.Fatalf("read %s: %v", entry.TID, err)
 	}
 	var markers []string
-	for _, section := range render.ParseSections(string(src)) {
+	for _, section := range parseSections(string(src)) {
 		if section.IsSection {
 			markers = append(markers, section.Name)
 		}
@@ -423,7 +423,7 @@ func TestAdrSingletonSectionParity(t *testing.T) {
 			t.Fatalf("read %s: %v", sg.tid, err)
 		}
 		var markers []string
-		for _, s := range render.ParseSections(string(src)) {
+		for _, s := range parseSections(string(src)) {
 			if s.IsSection {
 				markers = append(markers, s.Name)
 			}
@@ -432,7 +432,7 @@ func TestAdrSingletonSectionParity(t *testing.T) {
 		if strings.Join(markers, ",") != strings.Join(wantSections, ",") {
 			t.Errorf("%s markers %v != catalog sections %v", sg.tid, markers, wantSections)
 		}
-		asm, parts := render.Assemble(render.ParseSections(string(src)), nil, render.HTMLComment)
+		asm, parts := assemble(parseSections(string(src)), nil, render.HTMLComment)
 		out, err := render.Execute(asm, map[string]any{
 			"prefix": "awf", "vars": map[string]any{}, "layout": lay, "data": map[string]any{}}, parts, "test")
 		if err != nil {

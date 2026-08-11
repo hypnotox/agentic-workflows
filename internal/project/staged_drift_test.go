@@ -1,6 +1,7 @@
 package project
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -12,6 +13,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
+	"github.com/hypnotox/agentic-workflows/templates"
 )
 
 // invariant: rendering/sync-and-drift:ordinary-render-freshness (TestStagedDriftClassifiesFreshnessBeforeObservation)
@@ -59,6 +61,52 @@ func TestStagedDriftClassifiesFreshnessBeforeObservation(t *testing.T) {
 
 // invariant: rendering/sync-and-drift:staged-drift-rendered-output (TestStagedDriftRenderedOutputInvariant)
 // invariant: rendering/sync-and-drift:ordinary-render-freshness (TestStagedDriftRenderedOutputInvariant)
+// invariant: config/configuration:template-source-root (TestCheckStagedDriftUsesIndexedTemplateSourceMappings)
+func TestCheckStagedDriftUsesIndexedTemplateSourceMappings(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+	if err := fs.WalkDir(templates.FS, ".", func(name string, entry fs.DirEntry, err error) error {
+		if err != nil || entry.IsDir() {
+			return err
+		}
+		body, err := templates.FS.ReadFile(name)
+		if err != nil {
+			return err
+		}
+		out := filepath.Join(root, "templates", filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
+			return err
+		}
+		return os.WriteFile(out, body, 0o644)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	repo := gitfixture.InitRepoAt(t, root)
+	gitfixture.AddAll(t, repo)
+	gitfixture.Commit(t, repo, "source mappings", nil)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	gitfixture.AddAll(t, repo)
+	gitfixture.Commit(t, repo, "rendered", nil)
+	// The immutable index enables mappings while the working tree is missing a
+	// required root source. A staged operation must not consult that deletion.
+	gitfixture.Stage(t, repo, map[string]string{".awf/config.yaml": "prefix: example\nintegrationBranch: main\nrender:\n  templateSourceRoot: templates\n"})
+	if err := os.Remove(filepath.Join(root, "templates", "docs", "architecture.md.tmpl")); err != nil {
+		t.Fatal(err)
+	}
+	drift, err := CheckStagedDriftRoot(testContext(t), root)
+	if err != nil {
+		t.Fatalf("staged mapping consulted missing working source: %v", err)
+	}
+	if len(drift) == 0 {
+		t.Fatal("staged root activation did not participate in drift")
+	}
+}
+
 func TestStagedDriftRenderedOutputInvariant(t *testing.T) {
 	tree, err := snapshot.NewTree([]snapshot.File{
 		{Path: ".awf/efforts/.gitignore", Mode: snapshot.Regular, Bytes: []byte("resident edit")},

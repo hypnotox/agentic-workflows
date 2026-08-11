@@ -94,12 +94,21 @@ rendered file; it is not an editing instruction. An `awf:edit` pointer identifie
 convention part that owns one rendered section. An informational `awf:source` comment,
 when present immediately after the banner, identifies the compact reader-facing authority
 for an otherwise opaque generated document. It is neither an `awf:edit` pointer nor a
-read-back boundary, and it is not an exhaustive dependency list. For a topic page, edit
+read-back boundary, and it is not an exhaustive dependency list. When this repository declares
+`render.templateSourceRoot`, maintainer-facing `awf:template-source` comments follow the banner
+and any `awf:source` marker to identify the checked-in Markdown root template, includes, and
+structural sections. They do not replace reader guidance or edit ownership; frontmatter,
+native-format outputs, template-less producers, and in-place editable bodies are not annotated. For a topic page, edit
 both `.awf/topics/metadata/<domain>/<topic>.yaml` and
 `.awf/topics/parts/<domain>/<topic>/current-state.md`; a topic index instead names the
 family globs `.awf/topics/metadata/<domain>/*.yaml` and
 `.awf/topics/parts/<domain>/*/current-state.md`. The output plan remains the authority
 for machine render dependencies; `.awf/awf.lock` remains the drift authority.
+
+**Template source root.** `render.templateSourceRoot` is an optional normalized
+repository-relative directory stating where this repository keeps awf's implementation templates.
+It enables template-source symbols only when every emitted source resolves in the selected working
+or staged tree; omit it in ordinary adopter configuration.
 
 **Pitfalls.** Run `awf new pitfall "<Title>"` to create exactly one canonical authored source
 under `.awf/docs/pitfalls/` and print its repository-relative path. The command refuses duplicate

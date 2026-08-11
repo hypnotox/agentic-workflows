@@ -30,7 +30,7 @@ func TestDecisionItemSlugsMigrationPreservesAuthoredBytes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantApplied := []string{registry[len(registry)-4].Name, registry[len(registry)-3].Name, registry[len(registry)-2].Name, registry[len(registry)-1].Name}
+	wantApplied := []string{registry[len(registry)-5].Name, registry[len(registry)-4].Name, registry[len(registry)-3].Name, registry[len(registry)-2].Name, registry[len(registry)-1].Name}
 	if !reflect.DeepEqual(applied, wantApplied) || out.Len() != 0 {
 		t.Fatalf("upgrade = %v, output %q; want %v", applied, out.String(), wantApplied)
 	}

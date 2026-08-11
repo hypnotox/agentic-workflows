@@ -33,9 +33,19 @@ func injectSourceMarker(content string, sources []string) string {
 	return content[:at+len(banner)] + marker + content[at+len(banner):]
 }
 
+// touches-state: rendering/render-engine:template-source-symbol - root symbol placement after frontmatter and the generated banner; proof in banner_test.go and template_source_marker_test.go
 func injectBanner(content, tid string, styles ...render.CommentStyle) string {
+	// The renderer places a root template symbol first. Lift it out before
+	// framing so YAML frontmatter remains the leading construct, then restore it
+	// directly after the banner (and, subsequently, any awf:source marker).
+	rootSymbol := ""
+	if strings.HasPrefix(content, "<!-- awf:template-source ") {
+		if end := strings.IndexByte(content, '\n'); end >= 0 {
+			rootSymbol, content = content[:end+1], content[end+1:]
+		}
+	}
 	if isResidentGitignoreTID(tid) {
-		return "# " + bannerText + "\n" + content
+		return "# " + bannerText + "\n" + rootSymbol + content
 	}
 	if strings.HasPrefix(content, "#!") {
 		// Shell/script target: banner as a # comment after the shebang line.
@@ -43,7 +53,7 @@ func injectBanner(content, tid string, styles ...render.CommentStyle) string {
 		if nl < 0 { // coverage-ignore: a rendered shebang script always has a trailing newline body
 			return content
 		}
-		return content[:nl+1] + "# " + bannerText + "\n" + content[nl+1:]
+		return content[:nl+1] + "# " + bannerText + "\n" + rootSymbol + content[nl+1:]
 	}
 	line := "<!-- " + bannerText + " -->\n"
 	if len(styles) != 0 {
@@ -57,7 +67,7 @@ func injectBanner(content, tid string, styles ...render.CommentStyle) string {
 		}
 	}
 	if yamlBlock, body, found := frontmatter.Split([]byte(content)); found {
-		return "---\n" + string(yamlBlock) + "---\n" + line + string(body)
+		return "---\n" + string(yamlBlock) + "---\n" + line + rootSymbol + string(body)
 	}
-	return line + content
+	return line + rootSymbol + content
 }

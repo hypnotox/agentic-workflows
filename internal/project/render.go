@@ -2,9 +2,12 @@ package project
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"maps"
+	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -200,7 +203,7 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 			// A located region (its pointer present) is used verbatim even when
 			// empty; only an unlocated region falls back to the template default
 			// in Assemble (ADR-0100 in-place-readback).
-			sp.InPlaceBody, sp.InPlaceFound = readBackInPlaceBody(out, s, declared, style, headings[s])
+			sp.InPlaceBody, sp.InPlaceFound = readBackInPlaceBodyWithExpectations(out, s, declared, style, headings[s], templateSourceSectionMarkers(segs, p.templateSourceRoot()))
 			plan[s] = sp
 			continue
 		}
@@ -234,7 +237,7 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 	return plan, nil
 }
 
-// readBackInPlaceBody extracts the current body of the in-place section `name`
+// readBackInPlaceBodyWithExpectations extracts the current body of the in-place section `name`
 // from the existing rendered `output`. The region runs from just after `name`'s
 // awf:edit-in-place pointer line to the first later line that is the pointer of
 // any *other* registered (declared) section - matched by that section's expected
@@ -246,7 +249,7 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 // or a deleted anchor), so the caller falls back to the template default.
 // touches-state: rendering/inplace-and-placeholders:in-place-readback - read-back between the section pointer and awf's next registered pointer; proof in inplace_test.go
 // touches-state: rendering/inplace-and-placeholders:in-place-spacing-owned - verbatim interior, trimmed framing; proof in inplace_test.go
-func readBackInPlaceBody(output, name string, declared []string, style render.CommentStyle, expectedHeading ...string) (string, bool) {
+func readBackInPlaceBodyWithExpectations(output, name string, declared []string, style render.CommentStyle, expectedHeading string, expectedSymbols map[string]string) (string, bool) {
 	lines := strings.Split(output, "\n")
 	ownPrefixes := render.PointerLinePrefixes(name, style)
 	start := -1
@@ -269,19 +272,87 @@ func readBackInPlaceBody(output, name string, declared []string, style render.Co
 	for i := start + 1; i < len(lines); i++ {
 		if hasAnyPrefix(strings.TrimSpace(lines[i]), boundaryPrefixes) {
 			end = i
+			// Only the exact renderer-owned symbol for this registered next
+			// section is framing. Lookalikes remain adopter body content.
+			if i > start+1 {
+				for _, d := range declared {
+					if d != name && hasAnyPrefix(strings.TrimSpace(lines[i]), render.PointerLinePrefixes(d, style)) && strings.TrimSpace(lines[i-1]) == expectedSymbols[d] {
+						end = i - 1
+						break
+					}
+				}
+			}
 			break
 		}
 	}
 	body := lines[start+1 : end]
-	if len(expectedHeading) > 0 && expectedHeading[0] != "" && len(body) > 0 {
+	if expectedHeading != "" && len(body) > 0 {
 		// A structural slot is awf-owned. Any ATX heading occupying it is tamper,
 		// regardless of level; a body heading is preserved only when that slot is
 		// genuinely absent.
-		if body[0] == expectedHeading[0] || atxHeadingLine(strings.TrimSpace(body[0])) {
+		if body[0] == expectedHeading || atxHeadingLine(strings.TrimSpace(body[0])) {
 			body = body[1:]
 		}
 	}
 	return trimBlankFraming(body), true
+}
+
+func templateSourceSectionMarkers(segs []render.Segment, root string) map[string]string {
+	markers := map[string]string{}
+	if root == "" {
+		return markers
+	}
+	for _, seg := range segs {
+		if seg.IsSection {
+			markers[seg.Name] = "<!-- awf:template-source " + path.Join(root, seg.SectionSource) + "#" + seg.Name + " -->"
+		}
+	}
+	return markers
+}
+
+func (p *Project) templateSourceRoot() string {
+	if p.Cfg.Render == nil {
+		return ""
+	}
+	return p.Cfg.Render.TemplateSourceRoot
+}
+
+// touches-state: rendering/render-engine:template-source-symbol - configured source mapping for Markdown producers outside renderTarget; proof in template_source_marker_test.go
+// templateSourceRootMarker is the project-owned bridge for Markdown producers
+// that execute their template outside renderTarget. It keeps their configured
+// source mapping, validation, and observed inputs identical to ordinary renders.
+func (p *Project) templateSourceRootMarker(tid string) (string, []OutputInput, error) {
+	root := p.templateSourceRoot()
+	if root == "" || tid == "" {
+		return "", nil, nil
+	}
+	src, err := fs.ReadFile(templates.FS, tid)
+	if err != nil {
+		return "", nil, fmt.Errorf("read template %s: %w", tid, err)
+	}
+	expanded, err := render.ExpandIncludesSource(string(src), tid, templates.FS)
+	if err != nil { // coverage-ignore: live embedded templates are include-validated; render package tests own malformed expansion
+		return "", nil, fmt.Errorf("render %s: %w", tid, err)
+	}
+	if err := p.validateTemplateSources(expanded, root); err != nil {
+		return "", nil, fmt.Errorf("render %s: %w", tid, err)
+	}
+	inputs := []OutputInput{}
+	seen := map[string]bool{}
+	for _, span := range expanded.Spans {
+		if span.Source != "" && !seen[span.Source] {
+			seen[span.Source] = true
+			inputs = append(inputs, OutputInput{Path: path.Join(root, span.Source), Role: ArtifactTemplate})
+		}
+	}
+	return "<!-- awf:template-source " + path.Join(root, tid) + " -->\n", normalizeOutputInputs(inputs), nil
+}
+
+func templateSourceConfigHash(hash, root string) string {
+	if root == "" {
+		return hash
+	}
+	return manifest.Hash([]byte(hash + "\x00templateSourceRoot=" + root))
 }
 
 func atxHeadingLine(s string) bool {
@@ -654,21 +725,32 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	if err != nil {
 		return RenderedFile{}, fmt.Errorf("read template %s: %w", tid, err)
 	}
-	expanded, err := render.ExpandIncludes(string(src), templates.FS)
+	expandedSource, err := render.ExpandIncludesSource(string(src), tid, templates.FS)
 	if err != nil { // coverage-ignore: awf-owned embedded templates never author a missing/nested/section-bearing include, so ExpandIncludes cannot fail through the render pass; its error branches are unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
-	stripped, err := render.StripAuthoringComments(expanded)
+	strippedSource, err := render.StripAuthoringCommentsSource(expandedSource)
 	if err != nil { // coverage-ignore: awf-owned embedded templates never author a malformed awf:comment opener, so the strip cannot fail through the render pass; its error branch is unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
+	expanded := expandedSource.AuthoredText()
+	stripped := strippedSource.AuthoredText()
 	// Ordinary catalog and neutral Markdown producers retain the declared
 	// Markdown default. Explicit producers supply their representation directly.
 	encoder := MarkdownAgentDialect
 	if options != nil && options.encoder != "" {
 		encoder = options.encoder
 	}
-	segs := render.ParseSections(stripped, encoder == MarkdownAgentDialect)
+	segs := render.ParseSourceSections(strippedSource, encoder == MarkdownAgentDialect)
+	provenance := render.TemplateSource{}
+	if encoder == MarkdownAgentDialect && p.Cfg.Render != nil {
+		provenance.Root = p.Cfg.Render.TemplateSourceRoot
+		if provenance.Root != "" {
+			if err := p.validateTemplateSources(expandedSource, provenance.Root); err != nil {
+				return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
+			}
+		}
+	}
 	style := render.CommentStyleForSource(stripped)
 	headings, err := captureStructuralHeadings(segs, data, tid)
 	if err != nil {
@@ -679,14 +761,23 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
 	consumedInputs, err := p.observeRenderInputs(kind, artifact, tid, outPath, plan)
+	if provenance.Root != "" {
+		for _, span := range expandedSource.Spans {
+			if span.Source != "" {
+				consumedInputs = append(consumedInputs, OutputInput{Path: path.Join(provenance.Root, span.Source), Role: ArtifactTemplate})
+			}
+		}
+		consumedInputs = normalizeOutputInputs(consumedInputs)
+	}
 	if err != nil { // coverage-ignore: the producer already parsed the same sidecar and planSections read the same parts in this invocation
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
 	if err := render.CheckSectionDefaultStubs(segs, plan); err != nil {
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
-	assembled, parts := render.Assemble(segs, plan, style)
-	if err := render.CheckResidualMarkers(assembled); err != nil { // coverage-ignore: awf-owned embedded templates are marker-well-formed, so the guard cannot fire through the render pass; its error branch is unit-tested in internal/render
+	assembledSource, parts := render.AssembleSourceWithTemplateSource(segs, plan, style, provenance)
+	assembled := assembledSource.AuthoredText()
+	if err := render.CheckResidualMarkersSource(assembledSource); err != nil { // coverage-ignore: awf-owned embedded templates are marker-well-formed, so the guard cannot fire through the render pass; its error branches are unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
 	stubDefaults, stubParts := render.StubSections(segs, plan)
@@ -697,7 +788,12 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		}
 		partVarRefs = append(partVarRefs, plan[name].PartVarRefs...)
 	}
-	content, err := render.Execute(assembled, data, parts, tid)
+	var content string
+	if provenance.Root != "" {
+		content, err = render.ExecuteSourceWithTemplateSource(assembledSource, data, parts, tid, provenance)
+	} else {
+		content, err = render.Execute(assembled, data, parts, tid)
+	}
 	if err != nil { // coverage-ignore: with raw convention parts (ADR-0034) and always-valid embedded template defaults, render.Execute cannot fail through the render pass; its own parse/execute error branches are unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
@@ -721,6 +817,9 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		targetInput = []Target{*options.target}
 	}
 	cfgHash, err := p.artifactConfigHash(assembled, sc, p.consumedParts(kind, artifact, plan), eff, targetInput...)
+	if provenance.Root != "" {
+		cfgHash = manifest.Hash([]byte(cfgHash + "\x00templateSourceRoot=" + provenance.Root))
+	}
 	if err != nil { // coverage-ignore: artifactConfigHash only fails on an unreadable consumed part, but planSections above already read every HasPart part, so consumedParts holds only readable paths
 		return RenderedFile{}, err
 	}
@@ -745,6 +844,47 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 // skeleton, rather than each heading as an independent template. This retains
 // surrounding dot, variables, and control context while producing the expected
 // line needed for in-place read-back before final assembly.
+// touches-state: config/configuration:template-source-root - selected working/staged repository mapping validation; proof in render_test.go and staged_drift_test.go
+// validateTemplateSources requires every provenance identity used by an
+// instrumented output to exist in the operation's selected repository universe.
+// The selected ProjectTreeReader keeps staged drift from consulting worktree files.
+func (p *Project) validateTemplateSources(source render.SourceText, root string) error {
+	seen := map[string]bool{}
+	for _, span := range source.Spans {
+		if span.Source == "" || seen[span.Source] {
+			continue
+		}
+		seen[span.Source] = true
+		candidate := path.Join(root, span.Source)
+		if reader, working := p.projectTreeReader().(filesystemProjectReader); working {
+			components := strings.Split(candidate, "/")
+			current := reader.root
+			for i, component := range components {
+				current = filepath.Join(current, filepath.FromSlash(component))
+				info, statErr := os.Lstat(current)
+				if errors.Is(statErr, fs.ErrNotExist) {
+					break
+				}
+				if statErr != nil { // coverage-ignore: non-absence Lstat failures are OS-dependent and the error-preserving branch is direct
+					return fmt.Errorf("read configured template source %s for %s: %w", candidate, span.Source, statErr)
+				}
+				last := i == len(components)-1
+				if (!last && !info.IsDir()) || (last && !info.Mode().IsRegular()) {
+					return fmt.Errorf("configured render.templateSourceRoot %q cannot resolve template source %q (%s): repository-confined regular file required", root, span.Source, candidate)
+				}
+			}
+		}
+		_, ok, err := p.projectTreeReader().ReadFile(candidate)
+		if err != nil { // coverage-ignore: composed working and immutable snapshot readers return absence separately; their I/O failures are tested at reader ownership
+			return fmt.Errorf("read configured template source %s for %s: %w", candidate, span.Source, err)
+		}
+		if !ok {
+			return fmt.Errorf("configured render.templateSourceRoot %q cannot resolve template source %q (%s): regular file required", root, span.Source, candidate)
+		}
+	}
+	return nil
+}
+
 func captureStructuralHeadings(segs []render.Segment, data map[string]any, tid string) (map[string]string, error) {
 	headingSkeleton, headingTokens := render.StructuralHeadingCapture(segs)
 	headingOutput, err := render.Execute(headingSkeleton, data, nil, tid+" headings")
@@ -867,12 +1007,16 @@ func (p *Project) generateDomainDocs(topics topic.Corpus, eff map[string]bool) (
 				OutputInput{Path: relSlash(p.Root, currentTopic.PartPath), Role: ArtifactClaimPart})
 		}
 		rf.ConsumedInputs = normalizeOutputInputs(rf.ConsumedInputs)
-		out = append(out, RenderedFile{Path: rf.Path, Content: rf.Content,
+		wrapped := RenderedFile{Path: rf.Path, Content: rf.Content,
 			stubDefaults: rf.stubDefaults, stubParts: rf.stubParts,
 			markerParts: rf.markerParts, assembled: rf.assembled,
 			partVarRefs: rf.partVarRefs, kind: rf.kind, artifact: rf.artifact,
 			RegenChecked: true, Policy: OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}, Encoder: rf.Encoder,
-			ConsumedInputs: rf.ConsumedInputs, ObservedTemplateID: rf.ObservedTemplateID})
+			ConsumedInputs: rf.ConsumedInputs, ObservedTemplateID: rf.ObservedTemplateID}
+		if p.templateSourceRoot() != "" {
+			wrapped.TemplateID, wrapped.TemplateHash, wrapped.ConfigHash = rf.TemplateID, rf.TemplateHash, rf.ConfigHash
+		}
+		out = append(out, wrapped)
 	}
 	return out, nil
 }

@@ -118,6 +118,11 @@ var keys = []Entry{
 		Availability: "Always.",
 	},
 	{
+		Path: "render.templateSourceRoot", Type: "normalized repository-relative directory", Default: "none (template source symbols disabled)",
+		Description:  "The repository directory containing the implementation template tree. When set, generated Markdown carries compact `awf:template-source` comments identifying the root template, included partials, and structural sections. The directory and every referenced source file must exist in the selected repository state.",
+		Availability: "Markdown outputs rendered from templates; omitted leaves output unchanged.",
+	},
+	{
 		Path: "vars", Type: "key → value map", Default: "seeded with every catalog-referenced var as an empty string at init",
 		Description:  "Freeform values templates interpolate. A key with a value renders it; a present-but-empty key is an open to-do (rendered artifacts referencing it degrade to generic prose and a non-failing note nudges you); a deleted key is the deliberate, git-auditable decline of that var; the generic prose renders silently. A non-empty key no rendered artifact references is failing drift.",
 		Availability: "Each key is consumed only while a rendered artifact's template (or a `gateCmd`/`checkCmd` part placeholder) references it, except that `gateCmd` is also consumed by divergent effort-integration guidance.",

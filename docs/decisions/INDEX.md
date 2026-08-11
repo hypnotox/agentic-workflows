@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-user-approved-adr-decision-boundaries: User-Approved ADR Decision Boundaries](user-approved-adr-decision-boundaries.md) (Implementing)
+- [ADR-0264: User-Approved ADR Decision Boundaries](0264-user-approved-adr-decision-boundaries.md) (Implementing)
 
 ## History
 
@@ -268,3 +268,4 @@
 - [ADR-0260: Verification checkout for implementation commit policy](0260-verification-checkout-for-implementation-commit-policy.md) (Implemented)
 - [ADR-0261: Bound Native Git Fixtures](0261-bound-native-git-fixtures.md) (Implemented)
 - [ADR-0262: Split Pitfall Corpus and Generated Index](0262-split-pitfall-corpus-and-generated-index.md) (Implemented)
+- [ADR-0263: Repository-Local Template Source Symbols](0263-repository-local-template-source-symbols.md) (Implemented)

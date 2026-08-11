@@ -63,10 +63,16 @@ type Config struct {
 	ProseGate         *ProseGateConfig    `yaml:"proseGate"`
 	MemoryCite        *MemoryCiteConfig   `yaml:"memoryCite"`
 	CommitPolicy      *CommitPolicyConfig `yaml:"commitPolicy"`
+	Render            *RenderConfig       `yaml:"render"`
 	root              string              // <project>/.awf, for sidecar/part resolution
 	raw               []byte              // the exact config.yaml bytes Load read, for in-place byte edits
 	read              TreeReader          // selected filesystem or immutable snapshot universe
 	filesystem        bool
+}
+
+// RenderConfig holds optional rendering facts.
+type RenderConfig struct {
+	TemplateSourceRoot string `yaml:"templateSourceRoot"`
 }
 
 // CommitPolicyConfig is an optional exact-commit provenance policy. Repository
@@ -613,6 +619,11 @@ func (c *Config) Validate() error {
 			return err
 		}
 	}
+	if c.Render != nil {
+		if err := validateTemplateSourceRoot(c.Render.TemplateSourceRoot); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -642,6 +653,24 @@ func ValidateArtifactName(kind, name string) error {
 		case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '-':
 		default:
 			return fmt.Errorf("%s %q must be lowercase kebab-case: letters, digits, and hyphens only", kind, name)
+		}
+	}
+	return nil
+}
+
+// TemplateSourceRoot is a slash-separated, normalized repository-relative
+// directory. It intentionally rejects a present empty value and dot segments.
+// touches-state: config/configuration:template-source-root - optional repository template-root shape validation; proof in config_test.go
+func validateTemplateSourceRoot(root string) error {
+	if root == "" {
+		return errors.New("render.templateSourceRoot must not be empty when present")
+	}
+	if strings.Contains(root, "\\") || filepath.IsAbs(root) || filepath.ToSlash(filepath.Clean(root)) != root {
+		return fmt.Errorf("render.templateSourceRoot %q must be a normalized repository-relative directory", root)
+	}
+	for _, part := range strings.Split(root, "/") {
+		if part == "" || part == "." || part == ".." {
+			return fmt.Errorf("render.templateSourceRoot %q must be a normalized repository-relative directory", root)
 		}
 	}
 	return nil

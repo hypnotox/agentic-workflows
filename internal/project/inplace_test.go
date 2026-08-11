@@ -6,9 +6,20 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 )
+
+// readBackInPlaceBody keeps heading-free and heading-only test cases concise;
+// production framing passes both typed expectations explicitly.
+func readBackInPlaceBody(output, name string, declared []string, style render.CommentStyle, expectedHeading ...string) (string, bool) {
+	heading := ""
+	if len(expectedHeading) != 0 {
+		heading = expectedHeading[0]
+	}
+	return readBackInPlaceBodyWithExpectations(output, name, declared, style, heading, nil)
+}
 
 // readBackInPlaceBody extracts the interior between an in-place section's pointer
 // and awf's next registered section pointer, verbatim (internal blank lines kept),
@@ -22,8 +33,12 @@ func TestReadBackInPlaceBodyExcludesStructuralHeading(t *testing.T) {
 		}
 		// Reassembly with the rendered structural line is a fixpoint rather than
 		// duplicating a whitespace-bearing empty-value fallback into the body.
-		segs := render.ParseSections("<!-- awf:section body inplace -->\n" + heading + "\ndefault\n<!-- awf:end -->\n")
-		assembled, _ := render.Assemble(segs, map[string]render.SectionPlan{"body": {InPlace: true, InPlaceFound: true, InPlaceBody: got}}, render.HTMLComment)
+		segs := parseSections("<!-- awf:section body inplace -->\n" + heading + "\ndefault\n<!-- awf:end -->\n")
+		assembled, parts := assemble(segs, map[string]render.SectionPlan{"body": {InPlace: true, InPlaceFound: true, InPlaceBody: got}}, render.HTMLComment)
+		assembled, err := render.Execute(assembled, nil, parts, "heading fixpoint")
+		if err != nil {
+			t.Fatal(err)
+		}
 		if strings.Count(assembled, heading+"\n") != 1 {
 			t.Fatalf("heading %q duplicated after read-back and reassembly: %q", heading, assembled)
 		}
@@ -147,7 +162,7 @@ func TestPlanSectionsInPlacePartExclusive(t *testing.T) {
 	if err := os.WriteFile(part, []byte("conflicting part body\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	segs := render.ParseSections("<!-- awf:section s inplace -->\nDEFAULT\n<!-- awf:end -->\n")
+	segs := parseSections("<!-- awf:section s inplace -->\nDEFAULT\n<!-- awf:end -->\n")
 	_, err = p.planSections("skills", "foo", []string{"s"}, nil, segs, "out.md", render.HTMLComment)
 	if err == nil || !strings.Contains(err.Error(), "in-place-editable and must not also have a convention part") {
 		t.Fatalf("want a section-source-exclusive error, got %v", err)
@@ -167,7 +182,7 @@ func TestPlanSectionsInPlacePartReadError(t *testing.T) {
 	if err := os.MkdirAll(part, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	segs := render.ParseSections("<!-- awf:section s inplace -->\nDEFAULT\n<!-- awf:end -->\n")
+	segs := parseSections("<!-- awf:section s inplace -->\nDEFAULT\n<!-- awf:end -->\n")
 	if _, err := p.planSections("skills", "foo", []string{"s"}, nil, segs, "out.md", render.HTMLComment); err == nil {
 		t.Fatal("in-place part read error accepted")
 	}
@@ -182,7 +197,7 @@ func TestPlanSectionsInPlaceOutputReadError(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(root, "out.md"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	segs := render.ParseSections("<!-- awf:section s inplace -->\nDEFAULT\n<!-- awf:end -->\n")
+	segs := parseSections("<!-- awf:section s inplace -->\nDEFAULT\n<!-- awf:end -->\n")
 	if _, err := p.planSections("skills", "foo", []string{"s"}, nil, segs, "out.md", render.HTMLComment); err == nil || !strings.Contains(err.Error(), "read output out.md") {
 		t.Fatalf("in-place output read error = %v", err)
 	}
@@ -232,7 +247,7 @@ func TestPlanSectionsInPlaceReadBack(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	segs := render.ParseSections(
+	segs := parseSections(
 		"<!-- awf:section s inplace -->\nDEFAULT\n<!-- awf:end -->\n" +
 			"<!-- awf:section next -->\nN\n<!-- awf:end -->\n")
 	declared := []string{"s", "next"}
@@ -327,7 +342,7 @@ func TestInPlaceComposedSyncCheckFixpoint(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	segs := render.ParseSections(
+	segs := parseSections(
 		"banner\n" +
 			"<!-- awf:section s inplace -->\n## Owned heading\nDEFAULT\n<!-- awf:end -->\n" +
 			"<!-- awf:section tail -->\nOWNED\n<!-- awf:end -->\n")
@@ -340,8 +355,12 @@ func TestInPlaceComposedSyncCheckFixpoint(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		asm, _ := render.Assemble(segs, plan, render.HTMLComment)
-		return asm
+		asm, parts := assemble(segs, plan, render.HTMLComment)
+		output, err := render.Execute(asm, nil, parts, "in-place composed")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return output
 	}
 	drift := func(regenerated string) []manifest.Drift {
 		t.Helper()
@@ -429,8 +448,12 @@ func TestPointerPrefixesMatchRenderedPointers(t *testing.T) {
 		if style == render.HashComment {
 			src = "#!/bin/sh\n" + src
 		}
-		asm, _ := render.Assemble(render.ParseSections(src),
+		asm, parts := assemble(parseSections(src),
 			map[string]render.SectionPlan{"s": {InPlace: true, InPlaceFound: true, InPlaceBody: "x"}}, style)
+		asm, err := render.Execute(asm, nil, parts, "pointer prefixes")
+		if err != nil {
+			t.Fatal(err)
+		}
 		var ptrLine string
 		for _, ln := range strings.Split(asm, "\n") {
 			if strings.Contains(ln, "awf:edit-in-place s") {
@@ -454,7 +477,7 @@ func TestInPlaceRegionKeepsAuthoringCommentShapedLine(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	segs := render.ParseSections(
+	segs := parseSections(
 		"<!-- awf:section s inplace -->\nDEFAULT\n<!-- awf:end -->\n" +
 			"<!-- awf:section next -->\nN\n<!-- awf:end -->\n")
 	declared := []string{"s", "next"}
@@ -472,5 +495,44 @@ func TestInPlaceRegionKeepsAuthoringCommentShapedLine(t *testing.T) {
 	want := "kept above\n<!-- awf:comment shaped, but user-owned output -->\nkept below"
 	if plan["s"].InPlaceBody != want {
 		t.Errorf("in-place body must survive verbatim\ngot  %q\nwant %q", plan["s"].InPlaceBody, want)
+	}
+}
+
+func TestTemplateSourceSectionMarkerProjection(t *testing.T) {
+	if got := templateSourceSectionMarkers(nil, ""); len(got) != 0 {
+		t.Fatalf("disabled markers = %#v, want none", got)
+	}
+	segs := []render.Segment{
+		{Source: render.SourceText{Spans: []render.SourceSpan{{Source: "guide.md.tmpl", Text: "prefix\n"}}}},
+		{IsSection: true, Name: "two", SectionSource: "guide.md.tmpl"},
+	}
+	got := templateSourceSectionMarkers(segs, "templates")
+	if want := "<!-- awf:template-source templates/guide.md.tmpl#two -->"; got["two"] != want || len(got) != 1 {
+		t.Fatalf("section markers = %#v, want two=%q", got, want)
+	}
+
+	p := &Project{Cfg: &config.Config{}}
+	if root := p.templateSourceRoot(); root != "" {
+		t.Fatalf("absent render root = %q", root)
+	}
+	p.Cfg.Render = &config.RenderConfig{TemplateSourceRoot: "templates"}
+	if root := p.templateSourceRoot(); root != "templates" {
+		t.Fatalf("configured render root = %q", root)
+	}
+}
+
+// invariant: rendering/render-engine:template-source-symbol (TestReadBackInPlaceBodySkipsOnlyExpectedTemplateSourceFraming)
+func TestReadBackInPlaceBodySkipsOnlyExpectedTemplateSourceFraming(t *testing.T) {
+	pointer := "<!-- awf:edit-in-place one: your edits below are preserved across syncs; awf owns the rest -->\n"
+	next := "<!-- awf:edit two: default; create x to override -->\nnext\n"
+	expected := map[string]string{"two": "<!-- awf:template-source templates/guide.md#two -->"}
+	got, found := readBackInPlaceBodyWithExpectations(pointer+"body\n"+expected["two"]+"\n"+next, "one", []string{"one", "two"}, render.HTMLComment, "", expected)
+	if !found || got != "body" {
+		t.Fatalf("matching readback = %q, %t", got, found)
+	}
+	lookalike := "<!-- awf:template-source templates/other.md#two -->"
+	got, found = readBackInPlaceBodyWithExpectations(pointer+"body\n"+lookalike+"\n"+next, "one", []string{"one", "two"}, render.HTMLComment, "", expected)
+	if !found || got != "body\n"+lookalike {
+		t.Fatalf("mismatched symbol was treated as framing: %q, %t", got, found)
 	}
 }

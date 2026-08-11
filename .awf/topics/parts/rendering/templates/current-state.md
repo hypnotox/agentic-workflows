@@ -50,7 +50,7 @@ Backing: test
 
 ADR Decision items own only commitments explicitly accepted by the user before authoring, stated as the narrowest durable semantics that preserve the approved decision and remain meaningful after implementation; current-state claims own active rules and invariants; plans and direct execution own implementation detail; and effort memory owns unsettled or transient working context. Relatedness, usefulness, repository facts, and architectural reasoning do not authorize another commitment, and a suggestion stays outside the ADR until accepted. ADR review applies the post-implementation and counterfactual tests semantically, treats a misplaced implementation directive as a reasoned finding, and accepts a mechanism only when the record explains why that mechanism itself is load-bearing. Authoring guidance preserves scaffold-emitted ADR frontmatter, objective rendering checks enforce publication contracts without inferring prose meaning, and terminal ADR bodies remain unchanged.
 Origin: ADR-0224
-Revised-by: ADR-user-approved-adr-decision-boundaries
+Revised-by: ADR-0264
 Backing: unbacked
 Verify: For each new or amended ADR and its linked plan, compare every Decision item with its user-consent evidence; confirm it was accepted before insertion, states the narrowest semantics that preserve the accepted decision, and does not promote implementation detail. Apply the post-implementation and counterfactual tests; confirm any retained mechanism was accepted as load-bearing, scaffold-emitted frontmatter was preserved, and no terminal ADR body was retrofitted.
 

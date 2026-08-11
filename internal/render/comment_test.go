@@ -22,6 +22,8 @@ func TestStripAuthoringComments(t *testing.T) {
 			"<!-- awf:comment note -->\n", ""},
 		{"directive as unterminated last line strips empty",
 			"<!-- awf:comment note -->", ""},
+		{"unterminated final directive removes preceding separator",
+			"a\n<!-- awf:comment note -->", "a"},
 		{"indented directive stripped",
 			"a\n  <!-- awf:comment note -->\nb\n", "a\nb\n"},
 		{"immediate close stripped",
@@ -50,6 +52,24 @@ func TestStripAuthoringComments(t *testing.T) {
 		if got != c.want {
 			t.Errorf("%s: got %q want %q", c.name, got, c.want)
 		}
+	}
+}
+
+func TestStripAuthoringCommentsSourcePreservesIncludeTransitions(t *testing.T) {
+	src := render.SourceText{Root: "guide.md.tmpl", Spans: []render.SourceSpan{
+		{Source: "guide.md.tmpl", Text: "before\n<!-- awf:comment root -->\n"},
+		{Source: "partials/spine.md", Text: "<!-- awf:comment partial -->\nPART\n"},
+		{Source: "guide.md.tmpl", Text: "after\n"},
+	}}
+	stripped, err := render.StripAuthoringCommentsSource(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := stripped.AuthoredText(), "before\nPART\nafter\n"; got != want {
+		t.Fatalf("flattened source = %q, want %q", got, want)
+	}
+	if got, want := len(stripped.Spans), 3; got != want || stripped.Spans[0].Source != "guide.md.tmpl" || stripped.Spans[1].Source != "partials/spine.md" || stripped.Spans[2].Source != "guide.md.tmpl" {
+		t.Fatalf("stripped spans = %#v, want root/partial/root transitions", stripped.Spans)
 	}
 }
 

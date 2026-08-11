@@ -202,6 +202,52 @@ func TestOutputDeclarationsMatchThePlan(t *testing.T) {
 	}
 }
 
+func TestEnabledDeclarationsRejectMissingBridgeTemplate(t *testing.T) {
+	cfg := &config.Config{Prefix: "example", Render: &config.RenderConfig{TemplateSourceRoot: "templates"}}
+	cat := &catalog.Catalog{Skills: map[string]catalog.SkillSpec{}, Agents: map[string]catalog.AgentSpec{}, Docs: map[string]catalog.DocEntry{}}
+	targets := []Target{{Name: "broken", BridgeFile: "BRIDGE.md", BridgeTemplate: "missing/bridge.md.tmpl"}}
+	_, err := BuildOutputDeclarations(cfg, cat, targets, memoryProjectReader{}, mustCorpus())
+	if err == nil || !strings.Contains(err.Error(), "read template missing/bridge.md.tmpl") {
+		t.Fatalf("missing enabled bridge template error = %v", err)
+	}
+}
+
+func TestEnabledMarkdownDeclarationsMatchObservedTemplateSources(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.Cfg.Render = &config.RenderConfig{TemplateSourceRoot: "templates"}
+	plan, err := p.OutputPlan(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	corpus, _, _, _, err := p.deriveOperationStateWithPitfalls()
+	if err != nil {
+		t.Fatal(err)
+	}
+	declarations, err := BuildOutputDeclarations(p.Cfg, p.Cat, p.Targets, filesystemProjectReader{root: p.Root}, corpus)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := "docs/architecture.md"
+	nodeIndex := slices.IndexFunc(plan.Nodes, func(node OutputNode) bool { return node.Path == path })
+	declarationIndex := slices.IndexFunc(declarations, func(declaration OutputDeclaration) bool { return declaration.Path == path })
+	if nodeIndex < 0 || declarationIndex < 0 {
+		t.Fatalf("ordinary Markdown output missing: plan=%d declaration=%d", nodeIndex, declarationIndex)
+	}
+	if got, want := plan.Nodes[nodeIndex].ConsumedInputs, normalizeOutputInputs(declarations[declarationIndex].Inputs); !slices.Equal(got, want) {
+		t.Fatalf("enabled declaration/observation parity:\n got %#v\nwant %#v", got, want)
+	}
+	if !slices.Contains(plan.Nodes[nodeIndex].ConsumedInputs, OutputInput{Path: "templates/docs/architecture.md.tmpl", Role: ArtifactTemplate}) {
+		t.Fatalf("configured root source was not observed: %#v", plan.Nodes[nodeIndex].ConsumedInputs)
+	}
+}
+
 func TestPitfallDeclarationPlanDependencyParity(t *testing.T) {
 	root := scaffoldFiles(t, pitfallsCfg, map[string]string{
 		"docs/pitfalls/alpha.md": pitfallSource("Alpha", "", "alpha body\n"),

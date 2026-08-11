@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"maps"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -185,6 +186,31 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		}
 		return out
 	}
+	// Ordinary Markdown renderTarget consumers observe each authored expanded
+	// source mapping when the configured repository fact is active. Declarations
+	// mirror that observation without changing TemplateHash ownership.
+	markdownInputs := func(tid string, authored ...OutputInput) ([]OutputInput, error) {
+		out := inputs(tid, authored...)
+		if cfg.Render == nil || cfg.Render.TemplateSourceRoot == "" || tid == "" {
+			return out, nil
+		}
+		src, err := fs.ReadFile(templates.FS, tid)
+		if err != nil {
+			return nil, fmt.Errorf("read template %s: %w", tid, err)
+		}
+		expanded, err := render.ExpandIncludesSource(string(src), tid, templates.FS)
+		if err != nil { // coverage-ignore: embedded templates are validated by the production render path and focused include tests
+			return nil, fmt.Errorf("render %s: %w", tid, err)
+		}
+		seen := map[string]bool{}
+		for _, span := range expanded.Spans {
+			if span.Source != "" && !seen[span.Source] {
+				seen[span.Source] = true
+				out = append(out, OutputInput{Path: path.Join(cfg.Render.TemplateSourceRoot, span.Source), Role: ArtifactTemplate})
+			}
+		}
+		return out, nil
+	}
 	partInputs := func(kind, name string, sections []string, overrides ...map[string]config.SectionOverride) []OutputInput {
 		out := []OutputInput{}
 		for _, section := range sections {
@@ -211,7 +237,10 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			}
 			tid := mustDescriptor("skills").tid(name)
 			sections := cat.Skills[name].Sections
-			input := inputs(tid, append([]OutputInput{{Path: ".awf/skills/" + name + ".yaml", Role: ArtifactAuthoredData}}, partInputs("skills", name, sections, sc.Sections)...)...)
+			input, err := markdownInputs(tid, append([]OutputInput{{Path: ".awf/skills/" + name + ".yaml", Role: ArtifactAuthoredData}}, partInputs("skills", name, sections, sc.Sections)...)...)
+			if err != nil { // coverage-ignore: catalog skill template IDs and embedded sources are validated static authority
+				return nil, err
+			}
 			add(t.SkillPath(cfg.Prefix, name), tid, t.Name, input)
 		}
 		for _, name := range slices.Sorted(maps.Keys(cat.Agents)) {
@@ -222,14 +251,30 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			tid := mustDescriptor("agents").tid(name)
 			sections := cat.Agents[name].Sections
 			input := inputs(tid, append([]OutputInput{{Path: ".awf/agents/" + name + ".yaml", Role: ArtifactAuthoredData}}, partInputs("agents", name, sections, sc.Sections)...)...)
+			if t.AgentDialect == MarkdownAgentDialect {
+				input, err = markdownInputs(tid, append([]OutputInput{{Path: ".awf/agents/" + name + ".yaml", Role: ArtifactAuthoredData}}, partInputs("agents", name, sections, sc.Sections)...)...)
+				if err != nil { // coverage-ignore: catalog agent template IDs and embedded sources are validated static authority
+					return nil, err
+				}
+			}
 			add(t.AgentPath(name), tid, t.Name, input)
 		}
-		add(t.BridgeFile, t.BridgeTemplate, t.BridgeTemplate, inputs(t.BridgeTemplate))
+		bridgeInputs, err := markdownInputs(t.BridgeTemplate)
+		if err != nil {
+			return nil, err
+		}
+		add(t.BridgeFile, t.BridgeTemplate, t.BridgeTemplate, bridgeInputs)
 		if err := validateTargetOutputRequirements(t, cat); err != nil {
 			return nil, err
 		}
 		for _, o := range resolvedTargetOutputs(t, cfg.Prefix, slices.Sorted(maps.Keys(cat.Skills))) {
 			declaredInputs := inputs(o.TemplateID)
+			if o.Encoder == MarkdownAgentDialect {
+				declaredInputs, err = markdownInputs(o.TemplateID)
+				if err != nil { // coverage-ignore: validated target-output descriptors own embedded Markdown template identities; markdownInputs error propagation is covered through enabled bridge declarations
+					return nil, err
+				}
+			}
 			for _, input := range o.Inputs {
 				declaredInputs = append(declaredInputs, OutputInput(input))
 			}
@@ -286,11 +331,18 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 				authored = append(authored, OutputInput{Path: source, Role: ArtifactAuthoredData})
 			}
 		}
-		add(out, e.TID, declarer, inputs(e.TID, authored...))
+		declaredInputs, err := markdownInputs(e.TID, authored...)
+		if err != nil { // coverage-ignore: catalog document template IDs and embedded sources are validated static authority
+			return nil, err
+		}
+		add(out, e.TID, declarer, declaredInputs)
 	}
 	for _, entry := range pitfalls.All() {
-		add(config.DocsDir+"/pitfalls/"+entry.Slug+".md", pitfallEntryTID, "pitfall:"+entry.Slug,
-			inputs(pitfallEntryTID, OutputInput{Path: entry.SourcePath, Role: ArtifactAuthoredData}))
+		declaredInputs, err := markdownInputs(pitfallEntryTID, OutputInput{Path: entry.SourcePath, Role: ArtifactAuthoredData})
+		if err != nil { // coverage-ignore: the pitfall entry descriptor owns one validated embedded Markdown template identity
+			return nil, err
+		}
+		add(config.DocsDir+"/pitfalls/"+entry.Slug+".md", pitfallEntryTID, "pitfall:"+entry.Slug, declaredInputs)
 	}
 	for _, d := range cfg.Domains {
 		sc, err := cfg.Sidecar("domains", d)
@@ -310,7 +362,11 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			}
 		}
 		domainTID := mustDescriptor("domains").tid(d)
-		add(config.DocsDir+"/domains/"+d+".md", domainTID, "generated-domain", inputs(domainTID, authored...))
+		declaredInputs, err := markdownInputs(domainTID, authored...)
+		if err != nil { // coverage-ignore: the domain descriptor owns one validated embedded template identity
+			return nil, err
+		}
+		add(config.DocsDir+"/domains/"+d+".md", domainTID, "generated-domain", declaredInputs)
 	}
 	allMetadata, err := read.Paths(".awf/topics/metadata/")
 	if err != nil {
@@ -321,7 +377,11 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			continue
 		}
 		id := strings.TrimSuffix(strings.TrimPrefix(p, ".awf/topics/metadata/"), ".yaml")
-		add(config.DocsDir+"/topics/"+id+".md", topicTID, "topic:"+id, inputs(topicTID, OutputInput{Path: p, Role: ArtifactTopicMetadata}, OutputInput{Path: ".awf/topics/parts/" + id + "/current-state.md", Role: ArtifactClaimPart}))
+		declaredInputs, err := markdownInputs(topicTID, OutputInput{Path: p, Role: ArtifactTopicMetadata}, OutputInput{Path: ".awf/topics/parts/" + id + "/current-state.md", Role: ArtifactClaimPart})
+		if err != nil { // coverage-ignore: topicTID is a validated compile-time embedded identity
+			return nil, err
+		}
+		add(config.DocsDir+"/topics/"+id+".md", topicTID, "topic:"+id, declaredInputs)
 	}
 	for _, d := range cfg.Domains {
 		topicInputs := []OutputInput{}
@@ -336,7 +396,11 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			}
 		}
 		if len(topicInputs) > 0 {
-			add(config.DocsDir+"/topics/"+d+"/index.md", topicIndexTID, "topic-index:"+d, inputs(topicIndexTID, topicInputs...))
+			declaredInputs, err := markdownInputs(topicIndexTID, topicInputs...)
+			if err != nil { // coverage-ignore: topicIndexTID is a validated compile-time embedded identity
+				return nil, err
+			}
+			add(config.DocsDir+"/topics/"+d+"/index.md", topicIndexTID, "topic-index:"+d, declaredInputs)
 		}
 	}
 	decisionInputs := []OutputInput{}

@@ -10,7 +10,6 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
-	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -180,7 +179,7 @@ func TestDomainDocSectionParity(t *testing.T) {
 		t.Fatalf("read domain template: %v", err)
 	}
 	var markers []string
-	for _, s := range render.ParseSections(string(src)) {
+	for _, s := range parseSections(string(src)) {
 		if s.IsSection {
 			markers = append(markers, s.Name)
 		}

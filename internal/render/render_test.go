@@ -19,6 +19,171 @@ func sampleData() map[string]any {
 
 const tmpl = "# {{ .prefix }}\n\n<!-- awf:section surfaces -->\nS:{{ range .data.testSurfaces }}{{ .name }}{{ end }}\n<!-- awf:end -->\n\nrun {{ .vars.testCmd }}\n<!-- awf:section notes -->\nNOTE\n<!-- awf:end -->\n"
 
+func TestAssembleSourceLeavesRawPartsProvenanceFree(t *testing.T) {
+	segs := ParseSourceSections(SourceText{Root: "guide.md.tmpl", Spans: []SourceSpan{{Source: "guide.md.tmpl", Text: "<!-- awf:section body -->\nDEFAULT\n<!-- awf:end -->\n"}}})
+	assembled, _ := AssembleSourceWithTemplateSource(segs, map[string]SectionPlan{"body": {HasPart: true, PartBody: "PART"}}, HTMLComment, TemplateSource{})
+	for _, span := range assembled.Spans {
+		if strings.Contains(span.Text, "awf:part:") && span.Source != "" {
+			t.Fatalf("raw part sentinel acquired template source: %#v", span)
+		}
+	}
+	if got, want := assembled.AuthoredText(), "<!-- awf:edit body: from  -->\n\x00awf:part:body\x00\n"; got != want {
+		t.Fatalf("assembled source = %q, want %q", got, want)
+	}
+}
+
+// invariant: rendering/render-engine:no-section-marker-leak (TestAssembleSourceTemplateSourceTransitions)
+// invariant: rendering/render-engine:template-source-symbol (TestAssembleSourceTemplateSourceTransitions)
+func TestAssembleSourceTemplateSourceTransitions(t *testing.T) {
+	src := SourceText{Root: "guide.md", Spans: []SourceSpan{
+		{Source: "guide.md", Text: "before\n"},
+		{Source: "partials/shared.md", Text: "included\n"},
+		{Source: "guide.md", Text: "<!-- awf:section body -->\nbody\n<!-- awf:end -->\nafter\n"},
+	}}
+	segs := ParseSourceSections(src)
+	provenance := TemplateSource{Root: "templates"}
+	assembled, parts := AssembleSourceWithTemplateSource(segs, map[string]SectionPlan{"body": {}}, HTMLComment, provenance)
+	got, err := ExecuteSourceWithTemplateSource(assembled, nil, parts, "transitions", provenance)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"<!-- awf:template-source templates/guide.md -->\n",
+		"<!-- awf:template-source templates/partials/shared.md -->\n",
+		"<!-- awf:template-source templates/guide.md#body -->\n<!-- awf:edit body:",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("assembled source missing %q:\n%s", want, got)
+		}
+	}
+	if strings.Count(got, "templates/guide.md -->") != 2 {
+		t.Fatalf("section-to-root return symbol was not emitted exactly once:\n%s", got)
+	}
+	if strings.Contains(got, "awf:section") || strings.Contains(got, "awf:end") {
+		t.Fatalf("structural directives leaked beside template-source markers:\n%s", got)
+	}
+}
+
+func TestExecutePreservesCrossControlTemplateSourceTransition(t *testing.T) {
+	segments := []Segment{{
+		Source: SourceText{Root: "guide.md", Spans: []SourceSpan{
+			{Source: "guide.md", Text: "{{ if false }}hidden"},
+			{Source: "partials/final.md", Text: "{{ end }}visible"},
+		}},
+	}}
+	assembled, parts := AssembleSourceWithTemplateSource(segments, nil, HTMLComment, TemplateSource{Root: "templates"})
+	got, err := ExecuteSourceWithTemplateSource(assembled, nil, parts, "cross-control", TemplateSource{Root: "templates"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "<!-- awf:template-source templates/partials/final.md -->\nvisible"
+	if got != want {
+		t.Fatalf("cross-control transition = %q, want %q", got, want)
+	}
+}
+
+func TestExecuteTemplateSourceActionsAndDefinitions(t *testing.T) {
+	provenance := TemplateSource{Root: "templates"}
+	segments := []Segment{{Source: SourceText{Root: "guide.md", Spans: []SourceSpan{
+		{Source: "guide.md", Text: "before"},
+		{Source: "partials/value.md", Text: "{{ .value }}"},
+		{Source: "guide.md", Text: "after{{ define \"suffix\" }}defined{{ end }}{{ template \"suffix\" }}"},
+	}}}}
+	assembled, parts := AssembleSourceWithTemplateSource(segments, nil, HTMLComment, provenance)
+	got, err := ExecuteSourceWithTemplateSource(assembled, map[string]any{"value": "VALUE"}, parts, "actions", provenance)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "<!-- awf:template-source templates/guide.md -->\nbefore<!-- awf:template-source templates/partials/value.md -->\nVALUE<!-- awf:template-source templates/guide.md -->\nafterdefined"
+	if got != want {
+		t.Fatalf("action/definition provenance = %q, want %q", got, want)
+	}
+	got, err = ExecuteSourceWithTemplateSource(assembled, map[string]any{"value": ""}, parts, "empty-action", provenance)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(got, "partials/value.md") || strings.Count(got, "templates/guide.md -->") != 1 {
+		t.Fatalf("empty action emitted a synthetic transition: %s", got)
+	}
+}
+
+func TestAssembleTemplateSourceSkipsZeroWidthTransitions(t *testing.T) {
+	segments := []Segment{{
+		Source: SourceText{Root: "guide.md", Spans: []SourceSpan{
+			{Source: "guide.md", Text: ""},
+			{Source: "partials/final.md", Text: "final"},
+			{Source: "guide.md", Text: "\n"},
+		}},
+	}}
+	provenance := TemplateSource{Root: "templates"}
+	assembled, parts := AssembleSourceWithTemplateSource(segments, nil, HTMLComment, provenance)
+	got, err := ExecuteSourceWithTemplateSource(assembled, nil, parts, "zero-width", provenance)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(got, "templates/guide.md -->") || strings.Count(got, "templates/partials/final.md -->") != 1 || !strings.HasSuffix(got, "final\n") {
+		t.Fatalf("zero-width spans emitted synthetic transitions:\n%s", got)
+	}
+}
+
+func TestAssembleTemplateSourceInPlaceFallbackAndSectionReturn(t *testing.T) {
+	src := SourceText{Root: "guide.md", Spans: []SourceSpan{
+		{Source: "guide.md", Text: "before\n<!-- awf:section body inplace -->\n"},
+		{Source: "partials/default.md", Text: "DEFAULT\n"},
+		{Source: "guide.md", Text: "<!-- awf:end -->\nafter\n"},
+	}}
+	segs := ParseSourceSections(src)
+	provenance := TemplateSource{Root: "templates"}
+	first, firstParts := AssembleSourceWithTemplateSource(segs, map[string]SectionPlan{"body": {InPlace: true}}, HTMLComment, provenance)
+	got, err := ExecuteSourceWithTemplateSource(first, map[string]any{}, firstParts, "in-place", provenance)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(got, "partials/default.md") {
+		t.Fatalf("first in-place fallback leaked a nested transition:\n%s", got)
+	}
+	if !strings.Contains(got, "templates/guide.md#body -->\n<!-- awf:edit-in-place") || strings.Count(got, "templates/guide.md -->") != 2 {
+		t.Fatalf("first render structural and return symbols =:\n%s", got)
+	}
+	adopterBody := "edited\n<!-- awf:section adopter-shaped -->"
+	reread, rereadParts := AssembleSourceWithTemplateSource(segs, map[string]SectionPlan{"body": {InPlace: true, InPlaceFound: true, InPlaceBody: adopterBody}}, HTMLComment, provenance)
+	// invariant: rendering/render-engine:no-section-marker-leak (TestAssembleTemplateSourceInPlaceFallbackAndSectionReturn)
+	if err := CheckResidualMarkersSource(reread); err != nil {
+		t.Fatalf("adopter-owned in-place marker-shaped text tripped the renderer-owned residue guard: %v", err)
+	}
+	rereadOutput, err := ExecuteSourceWithTemplateSource(reread, map[string]any{}, rereadParts, "in-place-reread", provenance)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(rereadOutput, "partials/default.md") || !strings.Contains(got, "DEFAULT") || !strings.Contains(rereadOutput, adopterBody) {
+		t.Fatalf("in-place first/rerender provenance is not a fixpoint:\nfirst=%s\nreread=%s", got, rereadOutput)
+	}
+}
+
+func TestInPlaceBodyIsRawNeverTemplated(t *testing.T) {
+	src := SourceText{Root: "guide.md", Spans: []SourceSpan{{Source: "guide.md", Text: "<!-- awf:section body inplace -->\ndefault {{ .prefix }}\n<!-- awf:end -->\n"}}}
+	body := "literal {{ .prefix }} and malformed {{ if }}"
+	plan := map[string]SectionPlan{"body": {InPlace: true, InPlaceFound: true, InPlaceBody: body}}
+	for _, provenance := range []TemplateSource{{}, {Root: "templates"}} {
+		assembled, parts := AssembleSourceWithTemplateSource(ParseSourceSections(src), plan, HTMLComment, provenance)
+		var (
+			got string
+			err error
+		)
+		if provenance.Root == "" {
+			got, err = Execute(assembled.AuthoredText(), sampleData(), parts, "in-place-raw")
+		} else {
+			got, err = ExecuteSourceWithTemplateSource(assembled, sampleData(), parts, "in-place-raw", provenance)
+		}
+		if err != nil {
+			t.Fatalf("provenance %q parsed adopter-owned body: %v", provenance.Root, err)
+		}
+		if !strings.Contains(got, body) || strings.Contains(got, "literal example") {
+			t.Fatalf("provenance %q did not preserve in-place body verbatim: %s", provenance.Root, got)
+		}
+	}
+}
+
 func TestRenderDefault(t *testing.T) {
 	asm, parts := Assemble(ParseSections(tmpl), nil, HTMLComment)
 	out, err := Execute(asm, sampleData(), parts, "test")
@@ -315,7 +480,7 @@ func TestPartBodyIsRawNeverTemplated(t *testing.T) {
 	tmpl := "<!-- awf:section body -->\nDEFAULT {{ .prefix }}\n<!-- awf:end -->\n"
 	plan := map[string]SectionPlan{"body": {
 		HasPart:  true,
-		PartBody: "Literal braces survive: {{ .vars.x }} {{ if }} }} and a mustache {{name}}.",
+		PartBody: "Literal braces survive: {{ .vars.x }} {{ if }} }} and a mustache {{name}}.\n<!-- awf:end -->",
 		EditPath: ".awf/x/parts/y/body.md",
 	}}
 	asm, parts := Assemble(ParseSections(tmpl), plan, HTMLComment)
@@ -323,8 +488,9 @@ func TestPartBodyIsRawNeverTemplated(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Execute over a part with literal braces must not error: %v", err)
 	}
-	want := "Literal braces survive: {{ .vars.x }} {{ if }} }} and a mustache {{name}}."
+	want := "Literal braces survive: {{ .vars.x }} {{ if }} }} and a mustache {{name}}.\n<!-- awf:end -->"
 	// invariant: rendering/render-engine:parts-raw-except-authoring-comments (TestPartBodyIsRawNeverTemplated)
+	// invariant: rendering/render-engine:no-section-marker-leak (TestPartBodyIsRawNeverTemplated)
 	if !strings.Contains(out, want) {
 		t.Fatalf("part body must render verbatim (not interpolated)\n got: %q\nwant substring: %q", out, want)
 	}

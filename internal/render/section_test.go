@@ -97,6 +97,38 @@ func TestStructuralHeadingAssemblyOrdering(t *testing.T) {
 	}
 }
 
+func TestSourceSectionsAndAssemblyRetainLiteralAndDefaultSpans(t *testing.T) {
+	src := SourceText{Root: "guide.md.tmpl", Spans: []SourceSpan{
+		{Source: "guide.md.tmpl", Text: "before\n"},
+		{Source: "partials/spine.md", Text: "included\n"},
+		{Source: "guide.md.tmpl", Text: "<!-- awf:section body -->\nDEFAULT\n<!-- awf:end -->\nafter\n"},
+	}}
+	segs := ParseSourceSections(src)
+	if got, want := segs[0].Source.Spans[1].Source, "partials/spine.md"; got != want {
+		t.Fatalf("included literal source = %q, want %q", got, want)
+	}
+	if got, want := segs[1].SectionSource, "guide.md.tmpl"; got != want {
+		t.Fatalf("section source = %q, want root %q", got, want)
+	}
+	assembled, parts := AssembleSourceWithTemplateSource(segs, map[string]SectionPlan{"body": {HasPart: true, PartBody: "PRE" + SectionDefaultSentinel + "POST"}}, HTMLComment, TemplateSource{})
+	out, err := Execute(assembled.AuthoredText(), nil, parts, "source")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "before\nincluded\n<!-- awf:edit body: from  -->\nPREDEFAULTPOST\nafter\n"; out != want {
+		t.Fatalf("assembled output = %q, want %q", out, want)
+	}
+	var defaultSpans []SourceSpan
+	for _, span := range assembled.Spans {
+		if span.Text == "DEFAULT" {
+			defaultSpans = append(defaultSpans, span)
+		}
+	}
+	if len(defaultSpans) != 1 || defaultSpans[0].Source != "guide.md.tmpl" {
+		t.Fatalf("re-injected default spans = %#v", defaultSpans)
+	}
+}
+
 func TestParseSectionsNoSections(t *testing.T) {
 	segs := ParseSections("plain text\n")
 	if len(segs) != 1 || segs[0].IsSection || segs[0].Text != "plain text\n" {
@@ -234,6 +266,31 @@ func TestHasMarkerLine(t *testing.T) {
 				t.Errorf("HasMarkerLine(%q) = %v, want %v", c.body, got, c.want)
 			}
 		})
+	}
+}
+
+func TestCheckResidualMarkersSourceDoesNotJoinAcrossRawBody(t *testing.T) {
+	separated := SourceText{Spans: []SourceSpan{
+		{Source: "guide.md", Text: "<!-- awf:"},
+		{Text: "raw body"},
+		{Source: "guide.md", Text: "section body -->"},
+	}}
+	if err := CheckResidualMarkersSource(separated); err != nil {
+		t.Fatalf("raw body boundary reconstructed a synthetic marker: %v", err)
+	}
+	adjacent := SourceText{Spans: []SourceSpan{
+		{Source: "guide.md", Text: "<!-- awf:"},
+		{Source: "partial.md", Text: "section body -->"},
+	}}
+	if err := CheckResidualMarkersSource(adjacent); err == nil {
+		t.Fatal("adjacent renderer-owned spans hid a residual marker")
+	}
+	beforeRaw := SourceText{Spans: []SourceSpan{
+		{Source: "guide.md", Text: "<!-- awf:end -->"},
+		{Text: "raw body"},
+	}}
+	if err := CheckResidualMarkersSource(beforeRaw); err == nil {
+		t.Fatal("renderer-owned residual before a raw boundary was accepted")
 	}
 }
 

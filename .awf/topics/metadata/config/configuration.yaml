@@ -4,3 +4,5 @@ paths:
   - internal/config/**
   - internal/configspec/**
   - internal/pathglob/**
+  - internal/project/render.go
+  - internal/project/staged_drift_test.go

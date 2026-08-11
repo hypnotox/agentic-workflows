@@ -1,6 +1,7 @@
 package render
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -34,6 +35,25 @@ func TestExpandIncludesNoDirectivePassesThrough(t *testing.T) {
 	}
 	if out != src {
 		t.Fatalf("expected passthrough, got %q", out)
+	}
+}
+
+func TestExpandIncludesSourceRetainsOrderedTransitions(t *testing.T) {
+	src := "before\n<!-- awf:include spine -->\nafter\n"
+	expanded, err := ExpandIncludesSource(src, "templates/guide.md.tmpl", partialsFS(map[string]string{"spine": "PART\n"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := expanded.AuthoredText(), "before\nPART\nafter\n"; got != want {
+		t.Fatalf("flattened source = %q, want %q", got, want)
+	}
+	want := []SourceSpan{
+		{Source: "templates/guide.md.tmpl", Text: "before\n"},
+		{Source: "partials/spine.md", Text: "PART\n"},
+		{Source: "templates/guide.md.tmpl", Text: "after\n"},
+	}
+	if !reflect.DeepEqual(expanded.Spans, want) {
+		t.Fatalf("source spans = %#v, want %#v", expanded.Spans, want)
 	}
 }
 

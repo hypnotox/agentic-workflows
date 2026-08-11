@@ -9,6 +9,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/render"
+	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
@@ -118,19 +119,26 @@ func TestUnknownPlaceholderInsideCommentRenders(t *testing.T) {
 	}
 }
 
-// The template seam end-to-end: the embedded adr-readme template carries a real
-// qualified touches-state authoring comment, so any regression in the
-// renderTarget strip wiring (which the render-layer unit tests cannot see)
-// leaks it into every scaffolded project's rendered README.
+// The template seam end-to-end: the embedded adr-readme template includes a
+// partial containing only a qualified touches-state authoring comment, so any
+// regression in include expansion or renderTarget strip wiring leaks it into
+// every scaffolded project's rendered README.
 // touches-state: rendering/inplace-and-placeholders:authoring-comment-stripped - the renderTarget wiring, proven end-to-end over the real embedded template
 func TestEmbeddedTemplateAuthoringCommentStripped(t *testing.T) {
-	const directive = "<!-- awf:comment touches-state: rendering/templates:template-source-residue - the embedded ADR README directive is source-only -->"
+	const directive = "<!-- awf:comment touches-state: rendering/templates:template-source-residue - the embedded ADR README include is source-only -->"
 	src, err := fs.ReadFile(templates.FS, "adr-readme/README.md.tmpl")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(src), directive) {
-		t.Fatalf("embedded ADR README source lacks qualified directive %q", directive)
+	if !strings.Contains(string(src), "<!-- awf:include template-source-observation -->") {
+		t.Fatal("embedded ADR README source lacks the comment-only include")
+	}
+	partial, err := fs.ReadFile(templates.FS, "partials/template-source-observation.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(partial), directive) {
+		t.Fatalf("embedded comment-only include lacks qualified directive %q", directive)
 	}
 
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n", nil)
@@ -147,6 +155,131 @@ func TestEmbeddedTemplateAuthoringCommentStripped(t *testing.T) {
 	}
 	if strings.Contains(string(b), directive) || strings.Contains(string(b), "awf:comment") {
 		t.Errorf("the embedded template's qualified authoring comment leaked into rendered output:\n%s", b)
+	}
+}
+
+func TestRenderTargetTemplateSourceActivation(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nrender:\n  templateSourceRoot: templates\n")
+	const tid = "adr-readme/README.md.tmpl"
+	src, err := fs.ReadFile(templates.FS, tid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expanded, err := render.ExpandIncludesSource(string(src), tid, templates.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const commentOnlySource = "partials/template-source-observation.md"
+	var commentOnlyText strings.Builder
+	for _, span := range expanded.Spans {
+		if span.Source == "" {
+			continue
+		}
+		if span.Source == commentOnlySource {
+			commentOnlyText.WriteString(span.Text)
+			continue
+		}
+		path := filepath.Join(root, "templates", filepath.FromSlash(span.Source))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(span.Text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if commentOnlyText.Len() == 0 {
+		t.Fatal("expanded template lost the comment-only include identity")
+	}
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.renderTarget("adr-readme", "", tid, p.Cat.Docs["adr-readme"].Sections, config.Sidecar{}, p.data(config.Sidecar{}, map[string]bool{}), "docs/decisions/README.md", map[string]bool{}); err == nil || !strings.Contains(err.Error(), "templates/"+commentOnlySource) {
+		t.Fatalf("missing comment-only include mapping error = %v", err)
+	}
+	commentOnlyPath := filepath.Join(root, "templates", filepath.FromSlash(commentOnlySource))
+	if err := os.MkdirAll(filepath.Dir(commentOnlyPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(commentOnlyPath, []byte(commentOnlyText.String()), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	rf, err := p.renderTarget("adr-readme", "", tid, p.Cat.Docs["adr-readme"].Sections, config.Sidecar{}, p.data(config.Sidecar{}, map[string]bool{}), "docs/decisions/README.md", map[string]bool{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rf.Content, "<!-- awf:template-source templates/"+tid+" -->") || strings.Contains(rf.Content, commentOnlySource) || rf.TemplateHash == "" || rf.ConfigHash == "" {
+		t.Fatalf("provenance render did not validate then strip the comment-only include: %s", rf.Content)
+	}
+	p.Cfg.Render.TemplateSourceRoot = "missing"
+	if _, err := p.renderTarget("adr-readme", "", tid, p.Cat.Docs["adr-readme"].Sections, config.Sidecar{}, p.data(config.Sidecar{}, map[string]bool{}), "docs/decisions/README.md", map[string]bool{}); err == nil {
+		t.Fatal("unresolved configured source root accepted")
+	}
+}
+
+func TestValidateTemplateSourcesUsesSelectedTree(t *testing.T) {
+	tree, err := snapshot.NewTree([]snapshot.File{
+		{Path: "templates/doc.md", Mode: snapshot.Regular, Bytes: []byte("source")},
+		{Path: "templates/linked.md", Mode: snapshot.Symlink, Bytes: []byte("../outside.md")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := &Project{read: snapshotTreeReader{tree: tree}}
+	src := render.SourceText{Root: "doc.md", Spans: []render.SourceSpan{{Source: "doc.md", Text: "x"}}}
+	if err := p.validateTemplateSources(src, "templates"); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.validateTemplateSources(render.SourceText{Spans: []render.SourceSpan{{Source: "missing.md", Text: "x"}}}, "templates"); err == nil {
+		t.Fatal("missing source accepted")
+	}
+	if err := p.validateTemplateSources(render.SourceText{Spans: []render.SourceSpan{{Source: "linked.md", Text: "x"}}}, "templates"); err == nil {
+		t.Fatal("staged symlink source accepted")
+	}
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "templates", "directory.md"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := (&Project{Root: root}).validateTemplateSources(render.SourceText{Spans: []render.SourceSpan{{Source: "directory.md", Text: "x"}}}, "templates"); err == nil {
+		t.Fatal("directory source accepted")
+	}
+	if err := os.WriteFile(filepath.Join(root, "outside.md"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(root, "outside.md"), filepath.Join(root, "templates", "linked.md")); err != nil {
+		t.Fatal(err)
+	}
+	if err := (&Project{Root: root}).validateTemplateSources(render.SourceText{Spans: []render.SourceSpan{{Source: "linked.md", Text: "x"}}}, "templates"); err == nil {
+		t.Fatal("symlink source accepted")
+	}
+	outside := t.TempDir()
+	if err := os.WriteFile(filepath.Join(outside, "doc.md"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	symlinkRoot := t.TempDir()
+	if err := os.Symlink(outside, filepath.Join(symlinkRoot, "templates")); err != nil {
+		t.Fatal(err)
+	}
+	if err := (&Project{Root: symlinkRoot}).validateTemplateSources(render.SourceText{Spans: []render.SourceSpan{{Source: "doc.md", Text: "x"}}}, "templates"); err == nil {
+		t.Fatal("symlinked configured source root accepted")
+	}
+	intermediateRoot := t.TempDir()
+	if err := os.Mkdir(filepath.Join(intermediateRoot, "templates"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(intermediateRoot, "templates", "nested")); err != nil {
+		t.Fatal(err)
+	}
+	if err := (&Project{Root: intermediateRoot}).validateTemplateSources(render.SourceText{Spans: []render.SourceSpan{{Source: "nested/doc.md", Text: "x"}}}, "templates"); err == nil {
+		t.Fatal("symlinked source path ancestor accepted")
+	}
+	// An included partial that strips to empty still has an authored identity
+	// and must therefore resolve before stripping removes its output bytes.
+	if err := os.WriteFile(filepath.Join(root, "templates", "comment-only.md"), []byte("<!-- awf:comment note -->\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := (&Project{Root: root}).validateTemplateSources(render.SourceText{Spans: []render.SourceSpan{{Source: "comment-only.md", Text: "<!-- awf:comment note -->\n"}}}, "templates"); err != nil {
+		t.Fatalf("comment-only included source was not observed: %v", err)
 	}
 }
 
@@ -208,12 +341,12 @@ func TestCaptureStructuralHeadingsReportsDefaultExpressionOmittedByOverride(t *t
 	// Capture executes the complete template skeleton before assembly, so this
 	// invalid default expression is observable even though the convention-part
 	// override below would omit it from the final output.
-	segs := render.ParseSections("<!-- awf:section body -->\n## Heading\n{{ .missing.field }}\n<!-- awf:end -->", true)
+	segs := parseSections("<!-- awf:section body -->\n## Heading\n{{ .missing.field }}\n<!-- awf:end -->", true)
 	_, err := captureStructuralHeadings(segs, map[string]any{}, "test template")
 	if err == nil || !strings.Contains(err.Error(), "render test template headings: execute template") || !strings.Contains(err.Error(), "nil pointer evaluating") {
 		t.Fatalf("contextual capture error = %v", err)
 	}
-	assembled, parts := render.Assemble(segs, map[string]render.SectionPlan{"body": {HasPart: true, PartBody: "override"}}, render.HTMLComment)
+	assembled, parts := assemble(segs, map[string]render.SectionPlan{"body": {HasPart: true, PartBody: "override"}}, render.HTMLComment)
 	if output, assembleErr := render.Execute(assembled, map[string]any{}, parts, "test final assembly"); assembleErr != nil || !strings.Contains(output, "override") {
 		t.Fatalf("override final assembly = %q, %v", output, assembleErr)
 	}
@@ -237,7 +370,7 @@ func TestCaptureStructuralHeadingsReportsDefaultExpressionOmittedByOverride(t *t
 		t.Fatalf("renderTarget capture error = %v", targetErr)
 	}
 
-	collisionSegs := render.ParseSections("<!-- awf:section body -->\n## {{ .heading }}\ndefault\n<!-- awf:end -->", true)
+	collisionSegs := parseSections("<!-- awf:section body -->\n## {{ .heading }}\ndefault\n<!-- awf:end -->", true)
 	_, tokens := render.StructuralHeadingCapture(collisionSegs)
 	if _, collisionErr := captureStructuralHeadings(collisionSegs, map[string]any{"heading": tokens["body"][1]}, "collision template"); collisionErr == nil || !strings.Contains(collisionErr.Error(), "ambiguous framing") {
 		t.Fatalf("contextual collision error = %v", collisionErr)

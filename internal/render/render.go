@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+	"text/template/parse"
 )
 
 // SectionPlan is the project layer's per-section resolution handed to Assemble.
@@ -151,73 +152,88 @@ func partSentinel(name string) string {
 // the template parser) and NUL-delimited (cannot collide with template or markdown text).
 const SectionDefaultSentinel = "\x00awf:section-default\x00"
 
-// Assemble applies the per-section plan to the parsed segments and returns the
-// template skeleton plus a sentinel→raw-body map. Literal segments pass through
-// verbatim; each non-dropped section is prefixed with its awf:edit pointer, then
-// either a sentinel standing in for its part body (restored after Execute) or the
-// template default. Section markers are consumed here and never written.
-// touches-state: rendering/render-engine:no-section-marker-leak - section markers consumed, never written; proof in render_test.go
-func Assemble(segs []Segment, plan map[string]SectionPlan, style CommentStyle) (string, map[string]string) {
-	var b strings.Builder
+// TemplateSource enables renderer-owned regional template provenance. Root is a
+// normalized repository-relative directory; an empty Root preserves historical
+// output exactly.
+type TemplateSource struct{ Root string }
+
+// AssembleSourceWithTemplateSource applies section assembly and emits source
+// transitions when template provenance is enabled.
+// touches-state: rendering/render-engine:no-section-marker-leak - structural directives remain excluded while template-source markers are renderer-owned; proof in render_test.go
+// touches-state: rendering/render-engine:template-source-symbol - root, include, return, and structural-section marker emission; proof in render_test.go and project/template_source_marker_test.go
+func AssembleSourceWithTemplateSource(segs []Segment, plan map[string]SectionPlan, style CommentStyle, provenance TemplateSource) (SourceText, map[string]string) {
+	var out SourceText
+	if len(segs) > 0 {
+		out.Root = segs[0].Source.Root
+	}
 	parts := map[string]string{}
+	appendSource := func(source SourceText) {
+		for _, span := range source.Spans {
+			out.appendProvenanceText(span.Source, span.Source, span.Text)
+		}
+	}
 	for _, s := range segs {
 		if !s.IsSection {
-			b.WriteString(s.Text)
+			appendSource(s.Source)
 			continue
 		}
 		p := plan[s.Name]
 		if p.Drop {
 			continue
 		}
-		b.WriteString(editPointer(s.Name, s.Stub, s.Heading != "", p, style))
+		out.Root = s.Source.Root
+		out.appendProvenanceText(s.SectionSource, s.SectionSource+"#"+s.Name, editPointer(s.Name, s.Stub, s.Heading != "", p, style))
 		if s.Heading != "" {
-			b.WriteString(s.Heading)
-			b.WriteByte('\n')
+			appendSource(s.HeadingSource)
+			if !strings.HasSuffix(s.HeadingSource.AuthoredText(), "\n") {
+				out.appendText(s.SectionSource, "\n")
+			}
 		}
 		switch {
 		case p.InPlace:
-			// touches-state: rendering/render-engine:in-place-pointer-distinct - distinct awf:edit-in-place pointer + verbatim interior; proof in render_test.go
-			// A located region's read-back body is emitted verbatim after the
-			// distinct awf:edit-in-place pointer (no re-templating), even when the
-			// adopter emptied it; only an unlocated region (first render / deleted
-			// pointer) falls back to the template default.
+			// A located region is adopter-owned raw text. On first render the
+			// recorded default supplies its bytes, but the structural section marker
+			// is its only provenance: nested include transitions would become part
+			// of the later adopter-owned read-back region.
 			if p.InPlaceFound {
-				b.WriteString(p.InPlaceBody)
+				sent := partSentinel(s.Name + "\x00in-place")
+				parts[sent] = p.InPlaceBody
+				out.appendText("", sent)
 			} else {
-				b.WriteString(s.Text)
+				out.appendText(s.SectionSource, s.Source.AuthoredText())
 			}
 		case p.HasPart:
-			writePartBody(&b, parts, s, p)
+			writePartBodySource(&out, parts, s, p, appendSource)
 		default:
-			b.WriteString(s.Text)
+			appendSource(s.Source)
 		}
 	}
-	return b.String(), parts
+	return out, parts
 }
 
-// writePartBody emits a section's part into the skeleton. When the part re-injects its
-// section default via the sectionDefault split marker (ADR-0072), it is split at each
-// marker into verbatim fragments - distinct sentinels restored after Execute -
-// interleaved with the section's raw default source (s.Text), which Execute templates in
-// place. A part without the marker emits a single sentinel for the whole body, the
-// pre-ADR-0072 behaviour.
-func writePartBody(b *strings.Builder, parts map[string]string, s Segment, p SectionPlan) {
+// writePartBodySource emits a section's part into the skeleton. When the part
+// re-injects its default via the sectionDefault split marker (ADR-0072), it is
+// split into raw fragments interleaved with the recorded default source spans.
+// A part without the marker emits one provenance-free sentinel for its raw body.
+func writePartBodySource(out *SourceText, parts map[string]string, s Segment, p SectionPlan, appendSource func(SourceText)) {
 	if !strings.Contains(p.PartBody, SectionDefaultSentinel) {
 		sent := partSentinel(s.Name)
 		parts[sent] = p.PartBody
-		b.WriteString(sent)
+		out.appendText("", sent)
 		return
 	}
 	for i, frag := range strings.Split(p.PartBody, SectionDefaultSentinel) {
 		if i > 0 {
-			b.WriteString(s.Text)
+			// Re-injection reuses the recorded default spans rather than a
+			// flattened reconstruction, retaining partial transitions exactly.
+			appendSource(s.Source)
 		}
 		// The index separator is a NUL, which can never occur in a section name
 		// (template source is text): it guarantees a fragment sentinel can never
 		// equal a plain part sentinel of some other section, whatever its name.
 		sent := partSentinel(s.Name + "\x00" + strconv.Itoa(i))
 		parts[sent] = frag
-		b.WriteString(sent)
+		out.appendText("", sent)
 	}
 }
 
@@ -320,9 +336,30 @@ func ExtractStructuralHeadings(output string, tokens map[string][2]string) (map[
 // and execute errors with the target rather than a hardcoded literal.
 // touches-state: rendering/render-engine:parts-raw-except-authoring-comments - part bodies restored verbatim post-strip, never templated; proof in render_test.go
 func Execute(assembled string, data map[string]any, parts map[string]string, name string) (string, error) {
+	return execute(assembled, data, parts, name, nil)
+}
+
+// ExecuteSourceWithTemplateSource executes an assembled source while deriving
+// markers from the bytes that survive template control flow. Instrumenting the
+// parsed tree preserves controls that cross source-span and section boundaries.
+func ExecuteSourceWithTemplateSource(assembled SourceText, data map[string]any, parts map[string]string, name string, provenance TemplateSource) (string, error) {
+	return execute(assembled.AuthoredText(), data, parts, name, func(t *template.Template) func(string) string {
+		identities := map[string]string{}
+		instrumentTemplateSources(t, assembled, identities)
+		return func(rendered string) string {
+			return renderTemplateSourceMarkers(rendered, identities, provenance.Root)
+		}
+	})
+}
+
+func execute(assembled string, data map[string]any, parts map[string]string, name string, instrument func(*template.Template) func(string) string) (string, error) {
 	t, err := template.New(name).Option("missingkey=zero").Parse(assembled)
 	if err != nil {
 		return "", fmt.Errorf("parse template: %w", err)
+	}
+	var postprocess func(string) string
+	if instrument != nil {
+		postprocess = instrument(t)
 	}
 	var out strings.Builder
 	if err := t.Execute(&out, data); err != nil {
@@ -332,5 +369,119 @@ func Execute(assembled string, data map[string]any, parts map[string]string, nam
 	for sent, body := range parts {
 		rendered = strings.ReplaceAll(rendered, sent, body)
 	}
+	if postprocess != nil {
+		rendered = postprocess(rendered)
+	}
 	return rendered, nil
+}
+
+const templateSourceTokenPrefix = "\x00awf:template-source:"
+
+type sourceInterval struct {
+	start, end int
+	identity   string
+}
+
+func instrumentTemplateSources(t *template.Template, assembled SourceText, identities map[string]string) {
+	intervals := make([]sourceInterval, 0, len(assembled.Spans))
+	offset := 0
+	for _, span := range assembled.Spans {
+		intervals = append(intervals, sourceInterval{start: offset, end: offset + len(span.Text), identity: span.Provenance})
+		offset += len(span.Text)
+	}
+	nextToken := 0
+	token := func(identity string, pos parse.Pos) *parse.TextNode {
+		nextToken++
+		value := templateSourceTokenPrefix + strconv.Itoa(nextToken) + "\x00"
+		identities[value] = identity
+		return &parse.TextNode{NodeType: parse.NodeText, Pos: pos, Text: []byte(value)}
+	}
+	identityAt := func(pos int) string {
+		identity := ""
+		for _, interval := range intervals {
+			if pos >= interval.start && pos < interval.end {
+				identity = interval.identity
+				break
+			}
+		}
+		return identity
+	}
+	var instrumentList func(*parse.ListNode)
+	instrumentList = func(list *parse.ListNode) {
+		if list == nil {
+			return
+		}
+		nodes := make([]parse.Node, 0, len(list.Nodes)*2)
+		for _, node := range list.Nodes {
+			switch n := node.(type) {
+			case *parse.TextNode:
+				start := int(n.Position())
+				end := start + len(n.Text)
+				cursor := start
+				for _, interval := range intervals {
+					from, to := max(cursor, interval.start), min(end, interval.end)
+					if from >= to {
+						continue
+					}
+					nodes = append(nodes, token(interval.identity, parse.Pos(from)))
+					nodes = append(nodes, &parse.TextNode{NodeType: parse.NodeText, Pos: parse.Pos(from), Text: append([]byte(nil), n.Text[from-start:to-start]...)})
+					cursor = to
+				}
+				// Source intervals cover AuthoredText exactly; partitioning therefore
+				// consumes every retained TextNode byte, including after trim actions.
+				continue
+			case *parse.ActionNode, *parse.TemplateNode:
+				nodes = append(nodes, token(identityAt(int(node.Position())), node.Position()))
+			case *parse.IfNode:
+				instrumentList(n.List)
+				instrumentList(n.ElseList)
+			case *parse.RangeNode:
+				instrumentList(n.List)
+				instrumentList(n.ElseList)
+			case *parse.WithNode:
+				instrumentList(n.List)
+				instrumentList(n.ElseList)
+			}
+			nodes = append(nodes, node)
+		}
+		list.Nodes = nodes
+	}
+	for _, tmpl := range t.Templates() {
+		instrumentList(tmpl.Root)
+	}
+}
+
+func renderTemplateSourceMarkers(rendered string, tokenIdentities map[string]string, root string) string {
+	var out strings.Builder
+	lastIdentity := ""
+	pendingIdentity := ""
+	cursor := 0
+	emit := func(content string) {
+		if strings.TrimSpace(content) != "" {
+			if pendingIdentity == "" {
+				lastIdentity = ""
+			} else if pendingIdentity != lastIdentity {
+				out.WriteString("<!-- awf:template-source ")
+				out.WriteString(strings.TrimSuffix(root, "/") + "/" + pendingIdentity)
+				out.WriteString(" -->\n")
+				lastIdentity = pendingIdentity
+			}
+		}
+		out.WriteString(content)
+	}
+	for {
+		start := strings.Index(rendered[cursor:], templateSourceTokenPrefix)
+		if start < 0 {
+			emit(rendered[cursor:])
+			return out.String()
+		}
+		start += cursor
+		emit(rendered[cursor:start])
+		// Tokens are renderer-created NUL-delimited values; authored template,
+		// part, and in-place text cannot contain NUL bytes.
+		endOffset := strings.IndexByte(rendered[start+len(templateSourceTokenPrefix):], 0)
+		end := start + len(templateSourceTokenPrefix) + endOffset + 1
+		pendingIdentity = tokenIdentities[rendered[start:end]]
+		cursor = end
+	}
 }
