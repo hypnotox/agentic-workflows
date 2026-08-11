@@ -408,7 +408,7 @@ func TestSyncReportRefusesCorruptLockBeforeWriting(t *testing.T) {
 	if err != nil || !bytes.Equal(before, after) {
 		t.Fatalf("SyncReport wrote despite refusing (err %v)", err)
 	}
-	if fileExists(filepath.Join(root, "AGENTS.md.awf-bak")) {
+	if _, err := os.Stat(filepath.Join(root, "AGENTS.md.awf-bak")); err == nil {
 		t.Fatal("backup created despite refusal")
 	}
 }

@@ -2,12 +2,13 @@
 package project
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"maps"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
@@ -300,13 +302,48 @@ func (p *Project) InitializeReport(ctx context.Context, seed InitAuthority) ([]B
 	return p.syncReport(ctx, &seed)
 }
 
-type syncOperation struct {
-	writeFile func(string, []byte, os.FileMode) error
-	chmod     func(string, os.FileMode) error
+// syncFilesystem is sync's cohesive, root-confined filesystem dependency.
+type syncFilesystem interface {
+	MkdirAll(string, fs.FileMode) error
+	Chmod(string, fs.FileMode) error
+	Publish(string, []byte, fs.FileMode) error
+	Replace(string, []byte, fs.FileMode) error
+	Remove(string) error
+	Read(string) ([]byte, error)
+	ReadWithMode(string) ([]byte, fs.FileMode, error)
+	LinkInfo(string) (fs.FileInfo, error)
 }
 
-func productionSyncOperation() syncOperation {
-	return syncOperation{writeFile: os.WriteFile, chmod: os.Chmod}
+type syncFilesystems struct {
+	tracked  syncFilesystem
+	resident syncFilesystem
+}
+
+func (s syncFilesystems) output(rel string) syncFilesystem {
+	if resident.IsResidentPath(rel) {
+		return s.resident
+	}
+	return s.tracked
+}
+
+func (p *Project) openSyncFilesystems() (syncFilesystems, func(), error) {
+	tracked, err := filesystem.Open(p.roots.Tracked)
+	if err != nil {
+		return syncFilesystems{}, nil, err
+	}
+	closeAll := func() { _ = tracked.Close() }
+	if p.roots.Resident == p.roots.Tracked {
+		return syncFilesystems{tracked: tracked, resident: tracked}, closeAll, nil
+	}
+	residentHandle, err := filesystem.Open(p.roots.Resident)
+	if err != nil {
+		closeAll()
+		return syncFilesystems{}, nil, err
+	}
+	return syncFilesystems{tracked: tracked, resident: residentHandle}, func() {
+		_ = residentHandle.Close()
+		_ = tracked.Close()
+	}, nil
 }
 
 func (p *Project) syncReport(ctx context.Context, seed *InitAuthority) (backups []Backup, changes []Change, pruned []string, err error) {
@@ -314,19 +351,32 @@ func (p *Project) syncReport(ctx context.Context, seed *InitAuthority) (backups 
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	return p.syncReportWithPitfalls(ctx, seed, productionSyncOperation(), corpus, pitfalls, topics, eff)
+	filesystems, closeAll, err := p.openSyncFilesystems()
+	if err != nil { // coverage-ignore: the composition failure is directly tested; reaching it after successful input derivation requires concurrent root removal
+		return nil, nil, nil, err // coverage-ignore: the composition failure is directly tested; reaching it after successful input derivation requires concurrent root removal
+	}
+	defer closeAll()
+	return p.syncReportWithPitfalls(ctx, seed, filesystems, corpus, pitfalls, topics, eff)
 }
 
-func (p *Project) syncReportWithPitfalls(ctx context.Context, seed *InitAuthority, operation syncOperation, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (backups []Backup, changes []Change, pruned []string, err error) {
+func (p *Project) syncReportWithPitfalls(ctx context.Context, seed *InitAuthority, filesystems syncFilesystems, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (backups []Backup, changes []Change, pruned []string, err error) {
 	defer func() {
 		slices.Sort(pruned)
 		slices.SortFunc(changes, func(a, b Change) int { return strings.Compare(a.Path, b.Path) })
 	}()
 	// Refuse before rendering or writing anything: a corrupt lock must never
 	// produce a backup, skip a prune, or be overwritten (ADR-0076 Decision 2).
-	old, found, err := manifest.LoadOptional(p.lockPath())
-	if err != nil {
-		return nil, nil, nil, err
+	lockPath := path.Join(config.DirName, "awf.lock")
+	lockBytes, lockErr := filesystems.tracked.Read(lockPath)
+	var old *manifest.Lock
+	found := lockErr == nil
+	if found {
+		old, err = manifest.Parse(lockBytes)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("unreadable .awf/awf.lock (%w): restore it from version control, or delete it deliberately to re-adopt", err)
+		}
+	} else if !errors.Is(lockErr, fs.ErrNotExist) {
+		return nil, nil, nil, fmt.Errorf("unreadable .awf/awf.lock (%w): restore it from version control, or delete it deliberately to re-adopt", lockErr)
 	}
 	if seed != nil {
 		if found {
@@ -374,46 +424,47 @@ func (p *Project) syncReportWithPitfalls(ctx context.Context, seed *InitAuthorit
 	}
 	want := map[string]bool{}
 	for _, f := range files {
-		abs := p.roots.ResolveOutput(f.Path)
-		dir := filepath.Dir(abs)
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			return backups, changes, pruned, err
-		}
-		if strings.HasPrefix(f.Path, config.DirName+"/") && strings.HasSuffix(f.Path, "/.gitignore") && resident.IsResidentPath(strings.TrimSuffix(f.Path, "/.gitignore")) {
-			if err := os.Chmod(dir, 0o700); err != nil { // coverage-ignore: MkdirAll just established the confined directory; a permission race is not deterministic under the root gate
+		filesystem := filesystems.output(f.Path)
+		dir := path.Dir(f.Path)
+		if dir != "." {
+			if err := filesystem.MkdirAll(dir, 0o755); err != nil {
 				return backups, changes, pruned, err
 			}
 		}
-		if !prior[f.Path] {
-			if _, statErr := os.Stat(abs); statErr == nil {
-				// touches-state: rendering/sync-and-drift:sync-backs-up-foreign - foreign-file backup on sync; proof in project_test.go
-				bak, err := p.BackupFile(f.Path)
-				if err != nil {
-					return backups, changes, pruned, fmt.Errorf("back up %s: %w", f.Path, err)
-				}
-				backups = append(backups, Backup{Path: f.Path, Bak: bak, Index: f.RegenChecked})
-			} else if !errors.Is(statErr, os.ErrNotExist) { // coverage-ignore: os.Stat returns a non-NotExist error only on a permission/IO fault that root bypasses
-				return backups, changes, pruned, statErr
+		if strings.HasPrefix(f.Path, config.DirName+"/") && strings.HasSuffix(f.Path, "/.gitignore") && resident.IsResidentPath(strings.TrimSuffix(f.Path, "/.gitignore")) {
+			if err := filesystem.Chmod(dir, 0o700); err != nil {
+				return backups, changes, pruned, err
 			}
 		}
-		// A rendered #!-shebang script is written executable (ADR-0100 Decision 8),
-		// so the wrapper is runnable as ./awf. The mode is enforced on every sync - a
-		// pre-existing file's mode is corrected too, since os.WriteFile applies perm
-		// only at creation - hence the explicit Chmod.
-		perm := os.FileMode(0o644)
+		info, infoErr := filesystem.LinkInfo(f.Path)
+		if infoErr != nil && !errors.Is(infoErr, fs.ErrNotExist) {
+			return backups, changes, pruned, infoErr
+		}
+		if !prior[f.Path] && infoErr == nil {
+			// touches-state: rendering/sync-and-drift:sync-backs-up-foreign - foreign-file backup on sync; proof in project_test.go
+			bak, err := p.backupFileConfined(f.Path, filesystem)
+			if err != nil {
+				return backups, changes, pruned, fmt.Errorf("back up %s: %w", f.Path, err)
+			}
+			backups = append(backups, Backup{Path: f.Path, Bak: bak, Index: f.RegenChecked})
+		}
+		perm := fs.FileMode(0o644)
 		if strings.HasPrefix(f.Content, "#!") {
 			perm = 0o755
 		}
-		info, statErr := os.Stat(abs)
-		if statErr != nil && !errors.Is(statErr, os.ErrNotExist) {
-			return backups, changes, pruned, statErr
+		modeChanged := false
+		changedOutput := infoErr != nil
+		if infoErr == nil && info.Mode()&fs.ModeSymlink == 0 {
+			before, mode, readErr := filesystem.ReadWithMode(f.Path)
+			if readErr != nil {
+				return backups, changes, pruned, readErr
+			}
+			modeChanged = mode != perm
+			changedOutput = string(before) != f.Content
+		} else if infoErr == nil {
+			// A managed final symlink is replaced as its entry without target access.
+			changedOutput = true
 		}
-		modeChanged := statErr == nil && info.Mode().Perm() != perm
-		before, readErr := os.ReadFile(abs)
-		if readErr != nil && !errors.Is(readErr, os.ErrNotExist) {
-			return backups, changes, pruned, readErr
-		}
-		changedOutput := errors.Is(readErr, os.ErrNotExist) || !bytes.Equal(before, []byte(f.Content))
 		recordChange := func() {
 			if old == nil {
 				return
@@ -437,20 +488,12 @@ func (p *Project) syncReportWithPitfalls(ctx context.Context, seed *InitAuthorit
 			}
 			changes = append(changes, Change{Path: f.Path, Cause: cause})
 		}
-		if err := operation.writeFile(abs, []byte(f.Content), perm); err != nil {
+		if err := filesystem.Replace(f.Path, []byte(f.Content), perm); err != nil {
 			return backups, changes, pruned, err
 		}
-		// The content write is already a proven output axis, even when the
-		// subsequent mode correction fails.
-		if changedOutput {
-			recordChange()
-		}
-		if err := operation.chmod(abs, perm); err != nil {
-			return backups, changes, pruned, err
-		}
-		// A mode-only correction is proven only after chmod succeeds. A content
-		// change already has evidence, so it must not receive a duplicate record.
-		if modeChanged && !changedOutput {
+		// Replacement commits bytes and final mode together, so a change becomes
+		// reportable only after the namespace commit succeeds.
+		if changedOutput || modeChanged {
 			recordChange()
 		}
 		lock.Files[f.Path] = manifest.Entry{
@@ -481,12 +524,14 @@ func (p *Project) syncReportWithPitfalls(ctx context.Context, seed *InitAuthorit
 			// up before removal for the one-time hand-port instead of vanishing
 			// into git history (ADR-0156 item 9). A backup failure aborts the
 			// prune - never a silent fall-through to deletion.
-			if entry.TemplateID == coOwnedRunnerTID && fileExists(file) {
-				bak, bakErr := p.BackupFile(path)
-				if bakErr != nil {
-					return backups, changes, pruned, fmt.Errorf("back up pruned runner %s: %w", path, bakErr)
+			if entry.TemplateID == coOwnedRunnerTID {
+				if _, existsErr := filesystems.output(path).LinkInfo(path); existsErr == nil {
+					bak, bakErr := p.backupFileConfined(path, filesystems.output(path))
+					if bakErr != nil {
+						return backups, changes, pruned, fmt.Errorf("back up pruned runner %s: %w", path, bakErr)
+					}
+					backups = append(backups, Backup{Path: path, Bak: bak})
 				}
-				backups = append(backups, Backup{Path: path, Bak: bak})
 			}
 			// Report only an actual removal - a path whose file is already gone
 			// must not be claimed pruned. Any other failure preserves the old lock
@@ -512,7 +557,11 @@ func (p *Project) syncReportWithPitfalls(ctx context.Context, seed *InitAuthorit
 			_ = os.Remove(d) // removes only if now empty
 		}
 	}
-	return backups, changes, pruned, lock.Save(p.lockPath())
+	lockBytes, err = lock.Marshal()
+	if err != nil { // coverage-ignore: sync constructs only authority-valid lock fields, so marshal failure requires a future representation change
+		return backups, changes, pruned, err // coverage-ignore: sync constructs only authority-valid lock fields, so marshal failure requires a future representation change
+	}
+	return backups, changes, pruned, filesystems.tracked.Replace(lockPath, lockBytes, 0o644)
 }
 
 func (p *Project) lockPath() string {

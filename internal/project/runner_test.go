@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
-	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 )
 
@@ -265,8 +264,28 @@ func TestRunnerPrunePropagatesBackupFailure(t *testing.T) {
 }
 
 // invariant: rendering/companion-scripts:runner-prune-backup (TestConcurrentRunnerBackupsPublishCompleteRescueCopies)
+type blockingPublishFilesystem struct {
+	syncFilesystem
+	ready   chan<- struct{}
+	release <-chan struct{}
+	calls   int
+	mu      sync.Mutex
+}
+
+func (f *blockingPublishFilesystem) Publish(path string, contents []byte, mode os.FileMode) error {
+	f.mu.Lock()
+	f.calls++
+	call := f.calls
+	f.mu.Unlock()
+	if call <= 2 {
+		f.ready <- struct{}{}
+		<-f.release
+	}
+	return f.syncFilesystem.Publish(path, contents, mode)
+}
+
 func TestConcurrentRunnerBackupsPublishCompleteRescueCopies(t *testing.T) {
-	root := t.TempDir()
+	root := scaffold(t, sampleYAML)
 	const source = "complete runner rescue\n"
 	sourcePath := filepath.Join(root, "x")
 	if err := os.WriteFile(sourcePath, []byte(source), 0o640); err != nil {
@@ -276,27 +295,23 @@ func TestConcurrentRunnerBackupsPublishCompleteRescueCopies(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p := &Project{Root: root}
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	filesystems, closeAll, err := p.openSyncFilesystems()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closeAll()
 	ready := make(chan struct{}, 2)
 	release := make(chan struct{})
-	var calls int
-	var callsMu sync.Mutex
-	publish := func(path string, contents []byte, mode os.FileMode) error {
-		callsMu.Lock()
-		calls++
-		call := calls
-		callsMu.Unlock()
-		if call <= 2 {
-			ready <- struct{}{}
-			<-release
-		}
-		return filepublication.Publish(path, contents, mode)
-	}
+	filesystem := &blockingPublishFilesystem{syncFilesystem: filesystems.tracked, ready: ready, release: release}
 
 	results := make(chan error, 2)
 	for range 2 {
 		go func() {
-			_, err := p.backupFile("x", publish)
+			_, err := p.backupFileConfined("x", filesystem)
 			results <- err
 		}()
 	}

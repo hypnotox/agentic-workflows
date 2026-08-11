@@ -143,6 +143,19 @@ func TestHandleOperations(t *testing.T) {
 	if err := h.Publish("created/child/artifact", []byte("complete"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	if err := h.Chmod("created/child/artifact", 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.Chmod("missing", 0o600); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("missing chmod error = %v", err)
+	}
+	contents, mode, err := h.ReadWithMode("created/child/artifact")
+	if err != nil || string(contents) != "complete" || mode != 0o600 {
+		t.Fatalf("read with mode = %q, %v, %v", contents, mode, err)
+	}
+	if _, _, err := h.ReadWithMode("missing"); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("missing read with mode error = %v", err)
+	}
 	if err := h.Publish("created/child/artifact", []byte("loser"), 0o600); !errors.Is(err, os.ErrExist) {
 		t.Fatalf("publish collision = %v", err)
 	}
@@ -192,6 +205,8 @@ func TestHandleOperations(t *testing.T) {
 		func() error { return h.Replace("../artifact", nil, 0o644) },
 		func() error { return h.Replace("dir/file/child", nil, 0o644) },
 		func() error { return h.Remove("../artifact") },
+		func() error { return h.Chmod("../artifact", 0o644) },
+		func() error { _, _, err := h.ReadWithMode("../artifact"); return err },
 		func() error { return h.MkdirAll("dir/file/child", 0o755) },
 	} {
 		if err := operation(); err == nil {

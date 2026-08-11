@@ -78,6 +78,17 @@ func (h *Handle) MkdirAll(path string, mode fs.FileMode) error {
 	return nil
 }
 
+// Chmod changes path's permission mode beneath the selected root.
+func (h *Handle) Chmod(path string, mode fs.FileMode) error {
+	if err := validPath(path); err != nil {
+		return fmt.Errorf("filesystem: chmod %q: %w", path, err)
+	}
+	if err := h.root.Chmod(path, mode); err != nil {
+		return fmt.Errorf("filesystem: chmod %q: %w", path, err)
+	}
+	return nil
+}
+
 // Publish atomically publishes one complete file without replacement beneath
 // the selected root.
 func (h *Handle) Publish(path string, contents []byte, mode fs.FileMode) error {
@@ -166,6 +177,30 @@ func (h *Handle) Read(path string) ([]byte, error) {
 		return nil, fmt.Errorf("filesystem: read %q: %w", path, err)
 	}
 	return b, nil
+}
+
+// ReadWithMode reads path and returns its permission mode from one confined open.
+func (h *Handle) ReadWithMode(path string) ([]byte, fs.FileMode, error) {
+	if err := validPath(path); err != nil {
+		return nil, 0, fmt.Errorf("filesystem: read %q: %w", path, err)
+	}
+	file, err := h.root.Open(path)
+	if err != nil {
+		return nil, 0, fmt.Errorf("filesystem: read %q: %w", path, err)
+	}
+	contents, readErr := io.ReadAll(file)
+	info, statErr := file.Stat()
+	closeErr := file.Close()
+	if readErr != nil {
+		return nil, 0, fmt.Errorf("filesystem: read %q: %w", path, errors.Join(readErr, closeErr))
+	}
+	if statErr != nil { // coverage-ignore: stat on a successfully read confined regular file requires a storage fault
+		return nil, 0, fmt.Errorf("filesystem: read %q: %w", path, errors.Join(statErr, closeErr)) // coverage-ignore: stat on a successfully read confined regular file requires a storage fault
+	}
+	if closeErr != nil { // coverage-ignore: close after a successful confined read requires a storage fault
+		return nil, 0, fmt.Errorf("filesystem: read %q: %w", path, closeErr) // coverage-ignore: close after a successful confined read requires a storage fault
+	}
+	return contents, info.Mode().Perm(), nil
 }
 
 // Info returns metadata for path, following a final symbolic link.
