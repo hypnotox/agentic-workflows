@@ -8,6 +8,10 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Bug fixes
+
+- Repository-maintainer context-spill observations now use an ignored checkout cache outside `.awf`, so the next `./x check` reaches its non-failing advisory instead of rejecting the log as closed config-tree drift.
+
 ## [0.35.0] - 2026-08-11
 
 ### Features

@@ -15,9 +15,6 @@ import (
 
 func TestRun(t *testing.T) {
 	root := t.TempDir()
-	if err := os.Mkdir(filepath.Join(root, ".awf"), 0o755); err != nil {
-		t.Fatal(err)
-	}
 	capture := filepath.Join(t.TempDir(), "capture")
 	spill := filepath.Join(t.TempDir(), "spill")
 	if err := os.WriteFile(spill, []byte("spill"), 0o600); err != nil {
@@ -35,7 +32,7 @@ func TestRun(t *testing.T) {
 	if stdout.Len() != 0 || stderr.Len() != 0 {
 		t.Fatalf("valid output stdout=%q stderr=%q", stdout.String(), stderr.String())
 	}
-	logged, err := os.ReadFile(filepath.Join(root, ".awf", "local", "context-spills.log"))
+	logged, err := os.ReadFile(filepath.Join(root, ".cache", "awf-context", "context-spills.log"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +43,7 @@ func TestRun(t *testing.T) {
 
 func TestRunSafeLogAdvisory(t *testing.T) {
 	root := t.TempDir()
-	local := filepath.Join(root, ".awf", "local")
+	local := filepath.Join(root, ".cache", "awf-context")
 	if err := os.MkdirAll(local, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +89,7 @@ func TestXContextConsumerUsesOnlySpillNoticeProtocol(t *testing.T) {
 		"printf '%s\\n' \"$*\" >> \"$AWF_GO_LOG\"\n" +
 		"capture=; root=; previous=\n" +
 		"for arg in \"$@\"; do if [ \"$previous\" = --notice-file ]; then capture=$arg; fi; if [ \"$previous\" = --root ]; then root=$arg; fi; previous=$arg; done\n" +
-		"if grep -q '^AWF_CONTEXT_SPILL_V1 bytes=[0-9][0-9]* format=text$' \"$capture\"; then mkdir -p \"$root/.awf/local\"; printf 'observed\\n' > \"$root/.awf/local/context-spills.log\"; exit 0; fi\n" +
+		"if grep -q '^AWF_CONTEXT_SPILL_V1 bytes=[0-9][0-9]* format=text$' \"$capture\"; then mkdir -p \"$root/.cache/awf-context\"; printf 'observed\\n' > \"$root/.cache/awf-context/context-spills.log\"; exit 0; fi\n" +
 		"if grep -q '^AWF_CONTEXT_SPILL_V1' \"$capture\"; then printf 'malformed notice\\n' >&2; exit 1; fi\n" +
 		"exit 0\n"
 	if err := os.WriteFile(filepath.Join(bin, "go"), []byte(logger), 0o755); err != nil {
@@ -108,7 +105,7 @@ func TestXContextConsumerUsesOnlySpillNoticeProtocol(t *testing.T) {
 		{"child-failure", "child failed\n", "", "", 7},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := os.RemoveAll(filepath.Join(root, ".awf")); err != nil {
+			if err := os.RemoveAll(filepath.Join(root, ".cache")); err != nil {
 				t.Fatal(err)
 			}
 			logPath := filepath.Join(t.TempDir(), "go.log")
@@ -128,7 +125,7 @@ func TestXContextConsumerUsesOnlySpillNoticeProtocol(t *testing.T) {
 			if status != tc.status || stdout.String() != tc.fixture || stderr.String() != tc.wantErr {
 				t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout.String(), stderr.String())
 			}
-			logged, _ := os.ReadFile(filepath.Join(root, ".awf", "local", "context-spills.log"))
+			logged, _ := os.ReadFile(filepath.Join(root, ".cache", "awf-context", "context-spills.log"))
 			if string(logged) != tc.wantLog {
 				t.Fatalf("spill log=%q, want %q", logged, tc.wantLog)
 			}
@@ -196,10 +193,14 @@ func TestRunErrors(t *testing.T) {
 	if err := os.WriteFile(validCapture, []byte("AWF_CONTEXT_SPILL_V1 bytes=1 format=text\n"+spill+"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	unsafeRoot := t.TempDir()
+	if err := os.WriteFile(filepath.Join(unsafeRoot, ".cache"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
 	stdout.Reset()
 	stderr.Reset()
-	if status := run([]string{"--root", t.TempDir(), "--notice-file", validCapture, "--", "./x"}, &stdout, &stderr); status == 0 {
-		t.Fatal("logging against missing .awf must fail")
+	if status := run([]string{"--root", unsafeRoot, "--notice-file", validCapture, "--", "./x"}, &stdout, &stderr); status == 0 {
+		t.Fatal("logging against unsafe cache must fail")
 	}
 	if stdout.Len() != 0 || stderr.Len() == 0 {
 		t.Fatalf("stdout=%q stderr=%q", stdout.String(), stderr.String())

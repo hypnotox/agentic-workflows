@@ -186,7 +186,7 @@ contract. Results through 8,192 bytes write unchanged; larger direct-command res
 exact bytes outside the repository and return a two-line notice whose temporary file the successful
 caller owns and deletes. In this
 repository, `./x context` preserves that output while recording path-free spill observations in the
-ignored owner-only `.awf/local/context-spills.log`; logging failures only warn. `./x check` advises
+ignored owner-only `.cache/awf-context/context-spills.log`; logging failures only warn. `./x check` advises
 while the log is nonempty, and the operator resolves or promotes the recurring issue and removes it.
 
 **Invariants are enforced, not just documented.** An invariant claim declares its backing:

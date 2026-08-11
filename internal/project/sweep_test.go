@@ -50,6 +50,7 @@ func TestSweepClaimsOnlyUpgradeJournalAfterCutover(t *testing.T) {
 func TestSweepFlagsUnclaimedEntries(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
 		"notes.md":                        "stray\n",
+		"local/context-spills.log":        "repository-private state stays outside configuration\n",
 		"scratch/a.txt":                   "stray\n",
 		"scratch/b/c.txt":                 "stray\n",
 		"skills/readme.txt":               "stray\n",
@@ -72,6 +73,7 @@ func TestSweepFlagsUnclaimedEntries(t *testing.T) {
 
 	want := map[string]string{
 		".awf/notes.md":                   unclaimedDetail,
+		".awf/local":                      unclaimedDetail,
 		".awf/scratch":                    unclaimedDetail,
 		".awf/skills/readme.txt":          unclaimedDetail,
 		".awf/skills/parts/tdd/stray.txt": unclaimedDetail,

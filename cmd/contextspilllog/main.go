@@ -25,7 +25,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 		if nonempty {
-			fmt.Fprintln(stderr, "check: advisory: context spills were observed; resolve or promote the issue, then remove .awf/local/context-spills.log")
+			fmt.Fprintln(stderr, "check: advisory: context spills were observed; resolve or promote the issue, then remove .cache/awf-context/context-spills.log")
 		}
 		return 0
 	}

@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: keep-maintainer-context-spill-state-outside-configuration
-status: Proposed
+status: Implementing
 date: 2026-08-11
 ---
 # ADR-keep-maintainer-context-spill-state-outside-configuration: Keep Maintainer Context Spill State Outside Configuration
@@ -61,3 +61,5 @@ contain state from other maintainer tools.
 ## Status history
 
 - 2026-08-11: Proposed
+- 2026-08-11: Implementing; content-sha256: b59390cd9242ce06656e344c34527bc72a0887e488d358177939c385ee280957
+- 2026-08-11: Applied; operations: update `tooling/context-and-topic:context-spill-observability`
