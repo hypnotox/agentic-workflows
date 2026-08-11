@@ -565,8 +565,8 @@
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
       "templateHash": "sha256:d6475aaeadbbed6f56bfc85c4716b8636fea0d5922661201890334a6429b4f85",
-      "configHash": "sha256:27cb95d59fe33e47e2b8cebd6f1412d5ccc72a102ab7a7026d47de50c8de2a18",
-      "outputHash": "sha256:06c5c66d685ee0c46cd0a8ed10a6a6f5f3da412dd6c71ccb820c2bd99f79460c"
+      "configHash": "sha256:f32196de6c100595a04ac08e7c70bcad80143cd879cea8534b87c33ce35569bc",
+      "outputHash": "sha256:6d4d818db40f65dc366235b9fdec1ffcad677ce3daed2bd249037f10bd7d8612"
     },
     "docs/pitfalls/a-census-number-is-only-as-good-as-its-stated-query.md": {
       "templateId": "pitfalls/entry.md.tmpl",
@@ -693,12 +693,6 @@
       "templateHash": "sha256:23ea7baa4f2cd0e3a7319448093f2612ca5a7beab8cb0bfc631015eef99be786",
       "configHash": "sha256:50db0d87913b804c721277767439042d65a629177fce4e1b9a7cfe9948761a77",
       "outputHash": "sha256:bddefd7b00c8c215270d1d258bdee2d2cbf5ea21e2a30846783627f0a57ae910"
-    },
-    "docs/pitfalls/an-unescaped-consumable-placeholder-in-a-part-is-silently-rewritten-check-clean.md": {
-      "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:23ea7baa4f2cd0e3a7319448093f2612ca5a7beab8cb0bfc631015eef99be786",
-      "configHash": "sha256:09ff874bf78562393f75317d1864bf654343995eb57bca58b8a69089c917af1e",
-      "outputHash": "sha256:5dd1890589e7bb048bd23e790d7dd479ec25b8b4f844deb890abeb6901cfd2aa"
     },
     "docs/pitfalls/check-the-open-boundary-before-ignoring-an-assembly-error.md": {
       "templateId": "pitfalls/entry.md.tmpl",

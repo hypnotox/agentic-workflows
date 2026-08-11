@@ -32,7 +32,6 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 | [An attribute\-filtered pinned\-set test exempts every other attribute value](pitfalls/an-attribute-filtered-pinned-set-test-exempts-every-other-attribute-value.md) | tooling | pinned\-set\-tests\, invariant\-backing |  |
 | [An ordered\-phrase assertion cannot reach a site ahead of its first anchor](pitfalls/an-ordered-phrase-assertion-cannot-reach-a-site-ahead-of-its-first-anchor.md) | rendering\, invariants | invariant\-backing\, verification\-discipline |  |
 | [An ordering proof written against the log proves nothing](pitfalls/an-ordering-proof-written-against-the-log-proves-nothing.md) | tooling\, invariants | invariant\-backing\, coverage\-gate | ADR-0175 |
-| [An unescaped consumable placeholder in a part is silently rewritten\, check\-clean](pitfalls/an-unescaped-consumable-placeholder-in-a-part-is-silently-rewritten-check-clean.md) | rendering | placeholder\-degradation\, convention\-parts |  |
 | [Check the Open boundary before ignoring an assembly error](pitfalls/check-the-open-boundary-before-ignoring-an-assembly-error.md) | tooling | coverage\-gate\, cli\-dispatch | ADR-0012, ADR-0092, ADR-0102 |
 | [Do not infer linked\-plan freshness from file activity](pitfalls/do-not-infer-linked-plan-freshness-from-file-activity.md) | rendering\, tooling | plan\-artifact\, verification\-discipline |  |
 | [Enabled linters constrain API shape\, sketch signatures against them](pitfalls/enabled-linters-constrain-api-shape-sketch-signatures-against-them.md) | tooling | static\-linting |  |
@@ -103,7 +102,6 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 - [A token or convention rename must sweep every rendered doc surface](pitfalls/a-token-or-convention-rename-must-sweep-every-rendered-doc-surface.md)
 - [Adding a template var changes adopter behavior and consumer projections](pitfalls/adding-a-template-var-changes-adopter-behavior-and-consumer-projections.md)
 - [An ordered\-phrase assertion cannot reach a site ahead of its first anchor](pitfalls/an-ordered-phrase-assertion-cannot-reach-a-site-ahead-of-its-first-anchor.md)
-- [An unescaped consumable placeholder in a part is silently rewritten\, check\-clean](pitfalls/an-unescaped-consumable-placeholder-in-a-part-is-silently-rewritten-check-clean.md)
 - [Do not infer linked\-plan freshness from file activity](pitfalls/do-not-infer-linked-plan-freshness-from-file-activity.md)
 - [Keep literal placeholder syntax out of guide prose](pitfalls/keep-literal-placeholder-syntax-out-of-guide-prose.md)
 - [Keep recovery UI writes non\-fatal after session disposal](pitfalls/keep-recovery-ui-writes-non-fatal-after-session-disposal.md)
