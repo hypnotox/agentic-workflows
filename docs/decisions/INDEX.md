@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-restore-autonomous-effort-management: Restore Autonomous Effort Management](restore-autonomous-effort-management.md) (Implementing)
+- [ADR-0266: Restore Autonomous Effort Management](0266-restore-autonomous-effort-management.md) (Implementing)
 
 ## History
 

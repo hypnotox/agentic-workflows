@@ -58,7 +58,7 @@ Backing: test
 The rendered effort-workflow autonomously creates when continuity fires: it selects a faithful outcome, title, and canonical short slug, runs the explicit-slug command, reports the allocated identity, and continues in the managed worktree without an approval stop. Brainstorming closes with explicit pre-artifact outline approval whenever it fires for a hand-authored production-code change; it presents the completed design or proportionate outline, requests approval, and stops, persisting only when an effort exists. ADR review proceeds directly after settlement to deterministic linked-plan handling or the independently selected implementation path. Brainstorming settles a proportionate simplicity contract covering scope and exclusions, structure and dependencies, abstractions, and verification. No checkpoint creates ownership, and effort-free approval omits memory rather than fabricating it.
 This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0152
-Revised-by: ADR-0160, ADR-0167, ADR-0222, ADR-0226, ADR-0232, ADR-0240, ADR-0243, ADR-0265, ADR-restore-autonomous-effort-management
+Revised-by: ADR-0160, ADR-0167, ADR-0222, ADR-0226, ADR-0232, ADR-0240, ADR-0243, ADR-0265, ADR-0266
 Backing: test
 
 ### `invariant: authority-guided-implementation-autonomy`
@@ -88,7 +88,7 @@ Backing: test
 Catalog-derived tests render every applicable workflow for every enabled target and prove continuity is independent of brainstorming, artifacts, implementation, and review. Only effort-workflow contains the creation command and owns autonomous creation, resume, deliberate active-effort disposition, checkpoints, integration, divergence handling, deferred artifact transitions, topology removal, retrospective routing, and finish. Other workflows may run effort-free, carry validated read-only effort context only when continuity fired, and never create or finalize topology. Reviewing-impl owns assurance only. All four effort/review completion routes exist, and divergent integration activates review before removal. Repository authority, the standalone-memory ban, and the one-writer/report-only-child contract remain universal.
 This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0175
-Revised-by: ADR-0187, ADR-0197, ADR-0218, ADR-0222, ADR-0225, ADR-0226, ADR-0243, ADR-restore-autonomous-effort-management
+Revised-by: ADR-0187, ADR-0197, ADR-0218, ADR-0222, ADR-0225, ADR-0226, ADR-0243, ADR-0266
 Backing: test
 
 ### `invariant: effort-workflow`
@@ -96,7 +96,7 @@ Backing: test
 Core `effort-workflow` is the selectable cross-target lifecycle owner used only when durable continuity materially helps or an existing effort resumes or finishes. It owns autonomous explicit-slug creation, validation, managed-worktree context, deliberate active-effort disposition, checkpoints, integration, divergence-triggered review, deferred artifact closure, topology removal, retrospective routing, and finish. It directs runtimes without supplied paths into the exact managed worktree and permits explicit-path runtimes to target it from the root. It never creates standalone memory or parallel topology, infers state, treats activity as authority, or names a runtime-specific tool.
 This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0218
-Revised-by: ADR-0225, ADR-0243, ADR-restore-autonomous-effort-management
+Revised-by: ADR-0225, ADR-0243, ADR-0266
 Backing: test
 
 ### `invariant: memory-log-consumer-coverage`

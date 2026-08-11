@@ -4,7 +4,7 @@ slug: restore-autonomous-effort-management
 status: Implementing
 date: 2026-08-11
 ---
-# ADR-restore-autonomous-effort-management: Restore Autonomous Effort Management
+# ADR-0266: Restore Autonomous Effort Management
 
 
 ## Context
