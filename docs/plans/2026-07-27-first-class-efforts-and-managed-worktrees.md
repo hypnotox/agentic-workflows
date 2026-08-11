@@ -1,7 +1,7 @@
 ---
 date: 2026-07-27
 adrs: [164]
-status: Proposed
+status: Implemented
 ---
 # Plan: First-class efforts and managed worktrees
 
@@ -166,5 +166,6 @@ This is the second transitional segment of the Coupled Phases 4-6 escape. Tasks 
 - Existing protocol-2 telemetry remains readable as legacy historical data under its embedded effort identity. Only new session streams use current assignment joins; no migration or automatic cleanup crosses that boundary.
 - ADR-0164's plan-review amendment added removal of the obsolete `workflowTelemetry` config authority and a generation-20 migration update. Generations 17-19 stay covered as historical upgrade input; generation 20 removes only the now-inert block.
 - A second approved plan resync makes Phases 4-6 one atomic state transaction: Tasks 4.5 and 5.4 prepare changes only, and Task 6.6 records operations 4-28 in one final Applied event followed by Implemented.
-- Review correction: the coupled implementation Applied event occurred on 2026-07-28. The frozen ADR records that event; this still-Proposed plan now specifies the same truthful final date without rewriting ADR history.
+- Review correction: the coupled implementation Applied event occurred on 2026-07-28. The frozen ADR records that event; the plan specifies the same truthful final date without rewriting ADR history.
+- Administrative closure: repository audit verified ADR-0164 and the plan outcomes as implemented; the plan status now records that completed execution.
 - Pi lock release settles on owner-only resident directories plus conforming writers as the supported boundary. Each release uses atomic quarantine rename, no-follow/current-owner/stable-identity/content validation, fsync, and a unique quarantine name; conforming writers never address another writer's quarantine. A replacement observed before final unlink is refused and preserved. Portable Node/POSIX has no unlink-by-handle primitive, so deliberate same-user replacement after final validation is explicitly outside scope.

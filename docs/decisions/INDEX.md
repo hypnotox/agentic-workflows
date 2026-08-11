@@ -272,3 +272,4 @@
 - [ADR-0264: User-Approved ADR Decision Boundaries](0264-user-approved-adr-decision-boundaries.md) (Implemented)
 - [ADR-0265: User-Approved Production-Code Implementation Outlines](0265-user-approved-production-code-implementation-outlines.md) (Implemented)
 - [ADR-0266: Restore Autonomous Effort Management](0266-restore-autonomous-effort-management.md) (Implemented)
+- [ADR-0267: Correct Bootstrap Companion Path Authority](0267-correct-bootstrap-companion-path-authority.md) (Implemented)
