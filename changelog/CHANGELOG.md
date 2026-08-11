@@ -8,6 +8,8 @@ query a single version or a range.
 
 ## [Unreleased]
 
+## [0.34.0] - 2026-08-11
+
 ### Breaking changes
 
 - Schema generation 43 moves `data.pitfalls` into strict per-entry Markdown sources under `.awf/docs/pitfalls/`. Upgrade preflights every destination and refuses relative Markdown links with the entry and target named; replace those links and retry. Byte-identical leaves from an interrupted attempt are accepted, all leaves are created before old authority is retired, and a sidecar containing independent section configuration survives with only those sections.
