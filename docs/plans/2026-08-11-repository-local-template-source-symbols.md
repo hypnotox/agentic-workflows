@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-11
 adrs: [repository-local-template-source-symbols]
-status: Proposed
+status: Implemented
 ---
 # Plan: Repository-Local Template Source Symbols
 
