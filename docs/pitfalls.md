@@ -47,7 +47,6 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 | [Put bounded evidence before unbounded inventories in subagent returns](pitfalls/put-bounded-evidence-before-unbounded-inventories-in-subagent-returns.md) | Unassigned |  |  |
 | [Raw\-byte ADR surgery must bound every scan to the frontmatter window](pitfalls/raw-byte-adr-surgery-must-bound-every-scan-to-the-frontmatter-window.md) | config | schema\-migration\, adr\-parsing | ADR-0120 |
 | [Raw\-byte offsets go stale the moment an earlier pass edits the file](pitfalls/raw-byte-offsets-go-stale-the-moment-an-earlier-pass-edits-the-file.md) | config | schema\-migration\, adr\-parsing | ADR-0128 |
-| [Re\-prove every touched coverage ignore](pitfalls/re-prove-every-touched-coverage-ignore.md) | tooling | coverage\-gate |  |
 | [Recheck closure assertions after changing catalog edges](pitfalls/recheck-closure-assertions-after-changing-catalog-edges.md) | rendering | kind\-descriptor\, catalog\-derived\-tests\, verification\-discipline |  |
 | [Reconcile the exact mutable artifact\, not a similarly named predecessor](pitfalls/reconcile-the-exact-mutable-artifact-not-a-similarly-named-predecessor.md) | rendering\, tooling | plan\-artifact\, verification\-discipline |  |
 | [Retiring a concept needs paraphrase sweeps\, not just identifier greps](pitfalls/retiring-a-concept-needs-paraphrase-sweeps-not-just-identifier-greps.md) | rendering\, adr\-system | render\-completeness\, template\-residue | ADR-0191 |
@@ -127,7 +126,6 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 - [Make custom staged\-slice hooks explicit about branch and cleanup](pitfalls/make-custom-staged-slice-hooks-explicit-about-branch-and-cleanup.md)
 - [Moving a check earlier in the pipeline steals a later stage\'s error\-branch coverage](pitfalls/moving-a-check-earlier-in-the-pipeline-steals-a-later-stage-s-error-branch-coverage.md)
 - [Port a stale branch before merging a breaking marker grammar](pitfalls/port-a-stale-branch-before-merging-a-breaking-marker-grammar.md)
-- [Re\-prove every touched coverage ignore](pitfalls/re-prove-every-touched-coverage-ignore.md)
 - [Reconcile the exact mutable artifact\, not a similarly named predecessor](pitfalls/reconcile-the-exact-mutable-artifact-not-a-similarly-named-predecessor.md)
 - [Reuse the repository boundary for new filesystem walks](pitfalls/reuse-the-repository-boundary-for-new-filesystem-walks.md)
 
