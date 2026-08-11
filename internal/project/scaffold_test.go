@@ -28,9 +28,6 @@ func writeScaffold(t *testing.T, b []byte) string {
 	return dir
 }
 
-// invariant: config/configuration:integration-branch-explicit (TestScaffoldWritesRepositoryFacts)
-// invariant: config/configuration:template-source-root (TestScaffoldWritesRepositoryFacts)
-// invariant: tooling/init-and-enablement:init-bootstrap-default-on (TestScaffoldWritesRepositoryFacts)
 // invariant: tooling/cli:pitfall-scaffold (TestPitfallScaffoldCLIContract)
 func TestPitfallScaffoldCLIContract(t *testing.T) {
 	t.Run("creation-presentation-and-no-render", TestNewPitfallScaffoldContract)
@@ -435,6 +432,9 @@ func openPitfallScaffoldTree(t *testing.T, root string) *filesystem.Handle {
 	return tree
 }
 
+// invariant: config/configuration:integration-branch-explicit (TestScaffoldWritesRepositoryFacts)
+// invariant: config/configuration:template-source-root (TestScaffoldWritesRepositoryFacts)
+// invariant: tooling/init-and-enablement:init-bootstrap-default-on (TestScaffoldWritesRepositoryFacts)
 func TestScaffoldWritesRepositoryFacts(t *testing.T) {
 	b, err := ScaffoldConfig("myproj", nil, nil)
 	if err != nil {
@@ -446,7 +446,7 @@ func TestScaffoldWritesRepositoryFacts(t *testing.T) {
 			t.Errorf("scaffold missing %q:\n%s", want, text)
 		}
 	}
-	for _, retired := range []string{"skills:", "agents:", "docs:", "targets:", "docsDir:"} {
+	for _, retired := range []string{"skills:", "agents:", "docs:", "targets:", "docsDir:", "render:", "templateSourceRoot:"} {
 		if strings.Contains(text, retired) {
 			t.Errorf("scaffold retained %q:\n%s", retired, text)
 		}
