@@ -31,7 +31,7 @@ The repository already has an ignored checkout-local cache boundary for maintain
 ## Decision
 
 1. `decision: separate-maintainer-state` Maintainer-owned context-spill observability lives in a dedicated ignored checkout-local cache outside `.awf`, keeping repository-private operational state separate from public adopter configuration and resident-state authority.
-2. `decision: preserve-advisory-security` Relocation preserves the approved path-free, owner-only, no-follow, serialized, warning-only observability and operator-removal contract.
+2. `decision: preserve-advisory-security` Relocation preserves the approved path-free, owner-only, descriptor-relative no-follow, serialized, warning-only observability and operator-removal contract.
 
 ## State changes
 
