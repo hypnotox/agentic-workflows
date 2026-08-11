@@ -25,6 +25,9 @@ func TestADRReadmeDecisionRouting(t *testing.T) {
 		"rollout inventories",
 		"proof transactions",
 		"Historical ADRs remain unchanged",
+		"explicitly accepted",
+		"narrowest durable commitment",
+		"outside the ADR until accepted",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("ADR README missing decision-routing contract %q:\n%s", want, out)
@@ -244,7 +247,7 @@ func assertV3ADRTemplatePublicationSafe(t *testing.T) {
 	if strings.Count(tail, "- YYYY-MM-DD:") != 1 || !strings.Contains(tail, "- YYYY-MM-DD: Proposed") {
 		t.Fatalf("fresh Proposed Status history contains non-Proposed events:\n%s", tail)
 	}
-	for _, want := range []string{"remains meaningful after implementation", "paths, commands, task order, rollout batches, and ordinary test transactions"} {
+	for _, want := range []string{"remains meaningful after implementation", "paths, commands, task order, rollout batches, and ordinary test transactions", "explicitly accepted", "narrowest durable commitment", "outside the ADR until accepted"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("ADR template missing decision-routing contract %q:\n%s", want, out)
 		}

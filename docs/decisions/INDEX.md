@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-user-approved-adr-decision-boundaries: User-Approved ADR Decision Boundaries](user-approved-adr-decision-boundaries.md) (Proposed)
+- [ADR-user-approved-adr-decision-boundaries: User-Approved ADR Decision Boundaries](user-approved-adr-decision-boundaries.md) (Implementing)
 
 ## History
 

@@ -1615,6 +1615,12 @@ func TestProposingAdrTemplate(t *testing.T) {
 		"counterfactual",
 		"mechanism itself is load-bearing",
 		"preserve exactly the frontmatter emitted by `awf new adr`",
+		"explicitly accepted",
+		"before any ADR-file mutation",
+		"narrowest durable commitment",
+		"outside the ADR until accepted",
+		"effort-free",
+		"approved design summary",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -2468,8 +2474,10 @@ func TestUnsetFallbackRenders(t *testing.T) {
 
 func TestBrainstormingTemplate(t *testing.T) {
 	out := renderSkillGolden(t, "brainstorming", map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "layout": testLayout()})
-	if !strings.Contains(out, "material choice or clarification") {
-		t.Fatal("brainstorming contract missing")
+	for _, want := range []string{"material choice or clarification", "approved decision set", "narrowest durable commitment", "outside the ADR until accepted"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("brainstorming contract missing %q", want)
+		}
 	}
 }
 func TestReviewingImplTemplate(t *testing.T) {

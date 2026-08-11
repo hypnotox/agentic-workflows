@@ -48,10 +48,11 @@ Backing: test
 
 ### `invariant: decision-artifact-routing`
 
-ADR Decision items own durable commitments that remain meaningful after implementation; current-state claims own active rules and invariants; plans own affected paths, commands, task order, rollout batches, ordinary test transactions, and comparable execution directives; and effort memory owns unsettled or transient working context. ADR review applies the post-implementation and counterfactual tests semantically, treats a misplaced implementation directive as a reasoned finding, and accepts a mechanism only when the record explains why that mechanism is itself load-bearing. Authoring guidance preserves scaffold-emitted ADR frontmatter, objective rendering checks enforce publication contracts without inferring prose meaning, and terminal ADR bodies remain unchanged.
+ADR Decision items own only commitments explicitly accepted by the user before authoring, stated as the narrowest durable semantics that preserve the approved decision and remain meaningful after implementation; current-state claims own active rules and invariants; plans and direct execution own implementation detail; and effort memory owns unsettled or transient working context. Relatedness, usefulness, repository facts, and architectural reasoning do not authorize another commitment, and a suggestion stays outside the ADR until accepted. ADR review applies the post-implementation and counterfactual tests semantically, treats a misplaced implementation directive as a reasoned finding, and accepts a mechanism only when the user accepted that mechanism itself as load-bearing. Authoring guidance preserves scaffold-emitted ADR frontmatter, objective rendering checks enforce publication contracts without inferring prose meaning, and terminal ADR bodies remain unchanged.
 Origin: ADR-0224
+Revised-by: ADR-user-approved-adr-decision-boundaries
 Backing: unbacked
-Verify: For each new or amended ADR and its linked plan, apply the post-implementation and counterfactual tests to every Decision item; confirm execution directives live in the plan, any retained mechanism has an explicit durable rationale, scaffold-emitted frontmatter was preserved, and no terminal ADR body was retrofitted.
+Verify: For each new or amended ADR and its linked plan, compare every Decision item with its user-consent evidence; confirm it was accepted before insertion, states the narrowest semantics that preserve the accepted decision, and does not promote implementation detail. Apply the post-implementation and counterfactual tests; confirm any retained mechanism was accepted as load-bearing, scaffold-emitted frontmatter was preserved, and no terminal ADR body was retrofitted.
 
 ### `invariant: source-embed-parity`
 

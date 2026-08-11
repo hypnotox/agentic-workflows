@@ -19,7 +19,9 @@ A Decision item is a durable design, policy, boundary, or constraint that remain
 - **Post-implementation:** does the commitment still constrain the project after delivery?
 - **Counterfactual:** could the detail change without violating the intended architecture, policy, behaviour, ownership, compatibility, safety, or reproducibility boundary?
 
-A mechanism belongs in the Decision only when the record explains why the mechanism itself is load-bearing. Otherwise route settled content by authority lifetime:
+A commitment belongs in the Decision only after the user explicitly accepted it. Treat the approved decision set as closed: relatedness, usefulness, repository facts, and architectural reasoning do not authorize another commitment. Keep a suggested addition outside the ADR until accepted.
+
+Among accepted decisions, record the narrowest durable commitment that preserves the approved semantics. Do not strengthen it with a representation, guarantee, mechanism, constraint, exclusion, or other detail that could vary without violating the accepted decision. A mechanism belongs in the Decision only when the user explicitly accepted that the mechanism itself is load-bearing. Otherwise route settled content by authority lifetime:
 
 | Content | Authoritative home |
 |---|---|

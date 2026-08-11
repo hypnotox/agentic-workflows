@@ -16,7 +16,7 @@ problem space? Include any measurements or observations that are verifiable.
 
 ## Decision
 
-The chosen approach, as column-zero numbered items sequential from 1. Each item is a durable commitment that remains meaningful after implementation. Apply the post-implementation and counterfactual tests from the ADR guide. A mechanism belongs here only when the record explains why the mechanism itself is load-bearing. Route paths, commands, task order, rollout batches, and ordinary test transactions to the implementation plan.
+The chosen approach, as column-zero numbered items sequential from 1. Include only commitments the user explicitly accepted before ADR authoring, and keep suggestions outside the ADR until accepted. Each item is the narrowest durable commitment that preserves the approved semantics and remains meaningful after implementation. Apply the post-implementation and counterfactual tests from the ADR guide. A mechanism belongs here only when the user accepted the mechanism itself as load-bearing. Route paths, commands, task order, rollout batches, and ordinary test transactions to the implementation plan or direct execution.
 
 1. `decision: first-commitment` Describe the first commitment.
 2. `decision: second-commitment` Describe the second commitment.

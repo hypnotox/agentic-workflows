@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: user-approved-adr-decision-boundaries
-status: Proposed
+status: Implementing
 date: 2026-08-11
 ---
 # ADR-user-approved-adr-decision-boundaries: User-Approved ADR Decision Boundaries
@@ -80,3 +80,5 @@ when optional variables are empty.
 ## Status history
 
 - 2026-08-11: Proposed
+- 2026-08-11: Implementing; content-sha256: 2eddf90dc55c84c541fb5f85aa842fa95bcc4d2b4c03c884ed9b5e62077147f1
+- 2026-08-11: Applied; operations: update `rendering/templates:decision-artifact-routing`
