@@ -79,6 +79,7 @@ func TestPitfallDogfoodSourceOutputParity(t *testing.T) {
 func TestPitfallOutputCompleteIntegration(t *testing.T) {
 	t.Run("dogfood-unique-row-leaf-parity", TestPitfallDogfoodSourceOutputParity)
 	t.Run("index-domain-navigation-and-leaf-metadata", TestPitfallCorpusRendersIndexAndLeaves)
+	t.Run("markdown-safe-metadata-projection", TestPitfallMetadataProjectionKeepsMarkdownStructure)
 	t.Run("working-declaration-plan-parity", TestPitfallDeclarationPlanDependencyParity)
 	t.Run("source-guidance", TestSourceMarkerFamilyMatrix)
 	t.Run("hash-lock-drift-backup-prune", testPitfallHashAndOutputLifecycle)

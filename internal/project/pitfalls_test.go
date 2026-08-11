@@ -76,6 +76,62 @@ func TestPitfallCorpusReaderErrorsAndIndexTie(t *testing.T) {
 	}
 }
 
+func TestPitfallMetadataProjectionKeepsMarkdownStructure(t *testing.T) {
+	const domain = "# [domain] | `code` \\ path\r\nnext"
+	const tag = "tag | [literal] `tick` \\ value\r\ncontinued"
+	root := scaffoldFiles(t, pitfallsCfg, map[string]string{
+		"docs/pitfalls/punctuation.md": pitfallSource("'# [Title] | `tick` \\ literal'", "domains: [\"# [domain] | `code` \\\\ path\\r\\nnext\"]\ntags: [\"tag | [literal] `tick` \\\\ value\\r\\ncontinued\"]\n", "body bytes | remain `verbatim`\n"),
+	})
+	files := renderPitfallFiles(t, root)
+	index := files["docs/pitfalls.md"]
+	wantHeading := "### " + pitfall.EscapeHeading(domain)
+	if !strings.Contains(index, wantHeading+"\n") {
+		t.Fatalf("domain heading projection missing %q:\n%s", wantHeading, index)
+	}
+	var row string
+	for _, line := range strings.Split(index, "\n") {
+		if strings.Contains(line, "pitfalls/punctuation.md") && strings.HasPrefix(line, "|") {
+			row = line
+			break
+		}
+	}
+	if row == "" || countMarkdownTableDelimiters(row) != 5 {
+		t.Fatalf("metadata row structure = %q, delimiters=%d", row, countMarkdownTableDelimiters(row))
+	}
+	for _, want := range []string{pitfall.EscapeTableCell(domain), pitfall.EscapeTableCell(tag), "[\\# \\[Title\\] \\| \\`tick\\` \\\\ literal](pitfalls/punctuation.md)"} {
+		if !strings.Contains(row, want) {
+			t.Fatalf("metadata row missing literal projection %q: %s", want, row)
+		}
+	}
+	if strings.ContainsAny(row, "\r\n") || strings.Contains(wantHeading, "\r") || strings.Contains(wantHeading, "\n") {
+		t.Fatalf("metadata projection retained structural line break: heading=%q row=%q", wantHeading, row)
+	}
+	if !strings.Contains(index, "&#13;&#10;") {
+		t.Fatalf("metadata line breaks are not visibly escaped:\n%s", index)
+	}
+	leaf := files["docs/pitfalls/punctuation.md"]
+	if !strings.HasSuffix(leaf, "body bytes | remain `verbatim`\n") {
+		t.Fatalf("body bytes changed:\n%s", leaf)
+	}
+}
+
+func countMarkdownTableDelimiters(line string) int {
+	count := 0
+	for i, r := range line {
+		if r != '|' {
+			continue
+		}
+		backslashes := 0
+		for j := i - 1; j >= 0 && line[j] == '\\'; j-- {
+			backslashes++
+		}
+		if backslashes%2 == 0 {
+			count++
+		}
+	}
+	return count
+}
+
 func TestPitfallCorpusEmptyState(t *testing.T) {
 	files := renderPitfallFiles(t, scaffoldFiles(t, pitfallsCfg, nil))
 	index := files["docs/pitfalls.md"]

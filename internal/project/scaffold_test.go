@@ -12,6 +12,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/render"
@@ -33,6 +34,7 @@ func writeScaffold(t *testing.T, b []byte) string {
 func TestPitfallScaffoldCLIContract(t *testing.T) {
 	t.Run("creation-presentation-and-no-render", TestNewPitfallScaffoldContract)
 	t.Run("exclusive-race-and-retry", TestNewPitfallExclusiveRaceRefusesThenRetryReallocates)
+	t.Run("committed-cleanup-outcome", TestNewPitfallCommittedCleanupOutcomeIsActionableAndDoesNotAdvance)
 	t.Run("load-and-directory-errors", func(t *testing.T) {
 		t.Run("malformed corpus", func(t *testing.T) {
 			root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
@@ -168,6 +170,76 @@ func TestNewPitfallPublicationFailureLeavesDestinationAbsent(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(root, ".awf/docs/pitfalls/unpublished.md")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("failed publication left selected destination: %v", err)
+	}
+}
+
+func TestNewPitfallCommittedCleanupOutcomeIsActionableAndDoesNotAdvance(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tree := openPitfallScaffoldTree(t, root)
+	cleanupErr := errors.New("persistent cleanup failure")
+	const sourcePath = ".awf/docs/pitfalls/committed.md"
+	const residuePath = ".awf/docs/pitfalls/.filepublication-injected.tmp"
+	faults := &faultPitfallFilesystem{pitfallScaffoldFilesystem: tree}
+	faults.publish = func(path string, source []byte, mode os.FileMode) error {
+		if err := tree.Publish(path, source, mode); err != nil {
+			return err
+		}
+		if err := tree.Publish(residuePath, []byte("temporary"), 0o600); err != nil {
+			return err
+		}
+		return &filepublication.CommittedCleanupError{DestinationPath: path, ResiduePath: residuePath, Cause: cleanupErr}
+	}
+	_, err = p.newPitfallWith("Committed", faults)
+	var outcome *PitfallScaffoldCleanupError
+	var committed *filepublication.CommittedCleanupError
+	if !errors.As(err, &outcome) || !errors.As(err, &committed) || !errors.Is(err, cleanupErr) {
+		t.Fatalf("committed scaffold error = %v", err)
+	}
+	if outcome.SourcePath != sourcePath || outcome.ResiduePath != residuePath || !strings.Contains(outcome.Error(), cleanupErr.Error()) {
+		t.Fatalf("committed scaffold outcome = %#v (%v)", outcome, outcome)
+	}
+	raw, readErr := os.ReadFile(filepath.Join(root, filepath.FromSlash(sourcePath)))
+	info, statErr := os.Stat(filepath.Join(root, filepath.FromSlash(sourcePath)))
+	if readErr != nil || statErr != nil || !strings.Contains(string(raw), "title: Committed") || info.Mode().Perm() != 0o644 {
+		t.Fatalf("committed source = %q, %v, %v", raw, info, errors.Join(readErr, statErr))
+	}
+	diagnostic, err := outcome.Diagnostic()
+	if err != nil {
+		t.Fatal(err)
+	}
+	document, err := diagnostic.Document()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rendered bytes.Buffer
+	if err := presentation.Render(&rendered, document); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"condition: pitfall source " + sourcePath + " is created", "authored source: yes", "cleanup residue: yes", "step 1: inspect the created authored source " + sourcePath, "step 2: remove publication cleanup residue " + residuePath} {
+		if !strings.Contains(rendered.String(), want) {
+			t.Fatalf("actionable committed diagnostic missing %q:\n%s", want, rendered.String())
+		}
+	}
+	invalidOutcome := *outcome
+	invalidOutcome.ResiduePath = "bad\nresidue"
+	if _, err := invalidOutcome.Diagnostic(); err == nil {
+		t.Fatal("line-breaking cleanup action accepted")
+	}
+	if _, retryErr := p.newPitfallWith("Committed", tree); retryErr == nil || !strings.Contains(retryErr.Error(), residuePath) {
+		t.Fatalf("ordinary retry did not report cleanup residue: %v", retryErr)
+	}
+	if err := tree.Remove(residuePath); err != nil {
+		t.Fatal(err)
+	}
+	if _, retryErr := p.newPitfallWith("Committed", tree); retryErr == nil || !strings.Contains(retryErr.Error(), "duplicates") {
+		t.Fatalf("post-cleanup retry did not recognize committed authored identity: %v", retryErr)
+	}
+	if _, statErr := os.Stat(filepath.Join(root, ".awf/docs/pitfalls/committed-2.md")); !errors.Is(statErr, fs.ErrNotExist) {
+		t.Fatalf("ordinary retry silently advanced suffix: %v", statErr)
 	}
 }
 

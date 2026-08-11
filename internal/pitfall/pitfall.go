@@ -137,8 +137,11 @@ func Load(files []SourceFile) (Corpus, error) {
 
 func Parse(f SourceFile) (Entry, error) {
 	clean := path.Clean(f.Path)
+	if f.Path == "" || path.IsAbs(f.Path) || f.Path != clean || strings.Contains(f.Path, `\`) {
+		return Entry{}, fmt.Errorf("%s: pitfall source path must already be canonical slash-relative form", f.Path)
+	}
 	prefix := SourceDir + "/"
-	name, ok := strings.CutPrefix(clean, prefix)
+	name, ok := strings.CutPrefix(f.Path, prefix)
 	if !ok || name == "" || strings.Contains(name, "/") {
 		return Entry{}, fmt.Errorf("%s: pitfall source must be a direct child of %s", f.Path, SourceDir)
 	}
@@ -204,7 +207,7 @@ func Parse(f SourceFile) (Entry, error) {
 		}
 		seenRelated[n] = true
 	}
-	return Entry{Slug: slug, SourcePath: clean, Title: title, Domains: domains, Tags: tags, Related: related, Body: string(body), Source: slices.Clone(f.Bytes)}, nil
+	return Entry{Slug: slug, SourcePath: f.Path, Title: title, Domains: domains, Tags: tags, Related: related, Body: string(body), Source: slices.Clone(f.Bytes)}, nil
 }
 
 func optionalSequence(source, field string, value presentNode) ([]*yaml.Node, error) {
@@ -330,6 +333,14 @@ const commonmarkPunct = `!"#$%&'()*+,-./:;<=>?@[\]^_` + "`" + `{|}~`
 func EscapeTitle(title string) string {
 	var b strings.Builder
 	for _, r := range title {
+		switch r {
+		case '\r':
+			b.WriteString("&#13;")
+			continue
+		case '\n':
+			b.WriteString("&#10;")
+			continue
+		}
 		if r == '\\' || strings.ContainsRune(commonmarkPunct, r) {
 			b.WriteByte('\\')
 		}

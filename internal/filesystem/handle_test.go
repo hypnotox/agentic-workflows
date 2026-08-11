@@ -149,9 +149,26 @@ func TestHandleOperations(t *testing.T) {
 	if raw, err := os.ReadFile(filepath.Join(root, "created/child/artifact")); err != nil || string(raw) != "complete" {
 		t.Fatalf("published bytes = %q, %v", raw, err)
 	}
+	if err := h.Replace("created/child/artifact", []byte("replacement"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	raw, readErr := os.ReadFile(filepath.Join(root, "created/child/artifact"))
+	replacedInfo, statErr := os.Stat(filepath.Join(root, "created/child/artifact"))
+	if readErr != nil || statErr != nil || string(raw) != "replacement" || replacedInfo.Mode().Perm() != 0o600 {
+		t.Fatalf("replacement = %q, %v, %v", raw, replacedInfo, errors.Join(readErr, statErr))
+	}
+	if err := h.Remove("created/child/artifact"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "created/child/artifact")); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("removed path remains: %v", err)
+	}
 	for _, operation := range []func() error{
 		func() error { return h.MkdirAll("..", 0o755) },
 		func() error { return h.Publish("../artifact", nil, 0o644) },
+		func() error { return h.Replace("../artifact", nil, 0o644) },
+		func() error { return h.Replace("dir/file/child", nil, 0o644) },
+		func() error { return h.Remove("../artifact") },
 		func() error { return h.MkdirAll("dir/file/child", 0o755) },
 	} {
 		if err := operation(); err == nil {

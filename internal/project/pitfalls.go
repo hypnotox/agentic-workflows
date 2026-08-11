@@ -62,8 +62,8 @@ type pitfallIndexEntry struct {
 	Related                            []int
 }
 type pitfallDomainGroup struct {
-	Name    string
-	Entries []pitfallIndexEntry
+	Name, Heading string
+	Entries       []pitfallIndexEntry
 }
 type pitfallIndexModel struct {
 	Entries    []pitfallIndexEntry
@@ -89,7 +89,7 @@ func buildPitfallIndex(corpus pitfall.Corpus) pitfallIndexModel {
 	model := pitfallIndexModel{}
 	groups := map[string][]pitfallIndexEntry{}
 	for _, e := range entries {
-		item := pitfallIndexEntry{Slug: e.Slug, Title: e.Title, LinkTitle: pitfall.EscapeLinkLabel(e.Title), TableTitle: pitfall.EscapeTableCell(e.Title), Domains: e.Domains, Tags: e.Tags, DomainsText: strings.Join(e.Domains, ", "), TagsText: strings.Join(e.Tags, ", "), Related: e.Related}
+		item := pitfallIndexEntry{Slug: e.Slug, Title: e.Title, LinkTitle: pitfall.EscapeLinkLabel(e.Title), TableTitle: pitfall.EscapeTableCell(e.Title), Domains: e.Domains, Tags: e.Tags, DomainsText: pitfall.EscapeTableCell(strings.Join(e.Domains, ", ")), TagsText: pitfall.EscapeTableCell(strings.Join(e.Tags, ", ")), Related: e.Related}
 		model.Entries = append(model.Entries, item)
 		if len(e.Domains) == 0 {
 			model.Unassigned = append(model.Unassigned, item)
@@ -101,7 +101,7 @@ func buildPitfallIndex(corpus pitfall.Corpus) pitfallIndexModel {
 	names := mapsKeys(groups)
 	slices.Sort(names)
 	for _, name := range names {
-		model.Domains = append(model.Domains, pitfallDomainGroup{Name: name, Entries: groups[name]})
+		model.Domains = append(model.Domains, pitfallDomainGroup{Name: name, Heading: pitfall.EscapeHeading(name), Entries: groups[name]})
 	}
 	return model
 }

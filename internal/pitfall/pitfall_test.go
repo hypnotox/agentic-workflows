@@ -27,6 +27,11 @@ func TestCorpusContract(t *testing.T) {
 		want string
 	}{
 		{"nested", source(SourceDir+"/nested/a.md", "title: A\n", "body\n"), "direct child"},
+		{"traversal-shaped", source(SourceDir+"/nested/../entry.md", "title: A\n", "body\n"), "canonical slash-relative"},
+		{"repeated-separator", source(SourceDir+"//entry.md", "title: A\n", "body\n"), "canonical slash-relative"},
+		{"dot-segment", source(SourceDir+"/./entry.md", "title: A\n", "body\n"), "canonical slash-relative"},
+		{"backslash", source(`.awf\docs\pitfalls\entry.md`, "title: A\n", "body\n"), "canonical slash-relative"},
+		{"absolute", source("/"+SourceDir+"/entry.md", "title: A\n", "body\n"), "canonical slash-relative"},
 		{"outside", source("elsewhere/a.md", "title: A\n", "body\n"), "direct child"},
 		{"mode", SourceFile{Path: SourceDir + "/a.md", Bytes: valid.Bytes}, "regular"},
 		{"extension", source(SourceDir+"/a.txt", "title: A\n", "body\n"), ".md"},
@@ -150,6 +155,17 @@ func TestAllocationSerializationEscapingAndLinks(t *testing.T) {
 	for _, escaped := range []string{EscapeHeading(e.Title), EscapeLinkLabel(e.Title), EscapeTableCell(e.Title)} {
 		if !strings.Contains(escaped, `\[x\]`) || !strings.Contains(escaped, `\|`) || !strings.Contains(escaped, `\\`) {
 			t.Fatalf("escaped = %q", escaped)
+		}
+	}
+	punctuation := "# [domain] | `code` \\ path\r\nnext"
+	for _, escaped := range []string{EscapeHeading(punctuation), EscapeLinkLabel(punctuation), EscapeTableCell(punctuation)} {
+		for _, want := range []string{`\#`, `\[domain\]`, `\|`, `\` + "`code\\`", `\\`, "&#13;", "&#10;"} {
+			if !strings.Contains(escaped, want) {
+				t.Fatalf("metadata escape %q missing %q", escaped, want)
+			}
+		}
+		if strings.ContainsAny(escaped, "\r\n") {
+			t.Fatalf("metadata escape retained structural line break: %q", escaped)
 		}
 	}
 	e.Body = "[inline](rel.md) ![image](img/a.png)\n<other.md>\n[id]: refs/a.md\n[external](https://example.com) [root](/x) [frag](#x) <person@example.com> `` [double](no-double.md) ``\n```md\n[fenced](no.md)\n~~\n[still-fenced](no-short.md)\n~~~\n[still-mismatched](no-mismatch.md)\n```\n[after](after.md)\n"

@@ -9,6 +9,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
@@ -109,9 +110,62 @@ func (p *Project) newPitfallWith(title string, tree pitfallScaffoldFilesystem) (
 		return presentation.Document{}, fmt.Errorf("create pitfall source directory: %w", err)
 	}
 	if err := tree.Publish(entry.SourcePath, source, 0o644); err != nil {
+		var committed *filepublication.CommittedCleanupError
+		if errors.As(err, &committed) {
+			return presentation.Document{}, &PitfallScaffoldCleanupError{SourcePath: entry.SourcePath, ResiduePath: committed.ResiduePath, Cause: err}
+		}
 		return presentation.Document{}, fmt.Errorf("create pitfall source %s exclusively: %w", entry.SourcePath, err)
 	}
 	return PitfallScaffoldDocument(entry.SourcePath)
+}
+
+// PitfallScaffoldCleanupError reports a committed authored source whose
+// publication temporary still requires cleanup.
+type PitfallScaffoldCleanupError struct {
+	SourcePath  string
+	ResiduePath string
+	Cause       error
+}
+
+func (e *PitfallScaffoldCleanupError) Error() string {
+	return fmt.Sprintf("pitfall source %s is created with publication cleanup residue %s: %v", e.SourcePath, e.ResiduePath, e.Cause)
+}
+
+// Unwrap preserves the committed-publication and cleanup failure identities.
+func (e *PitfallScaffoldCleanupError) Unwrap() error { return e.Cause }
+
+// Diagnostic maps the committed scaffold outcome to actionable CLI output.
+func (e *PitfallScaffoldCleanupError) Diagnostic() (presentation.Diagnostic, error) {
+	changed := make([]presentation.Field, 0, 2)
+	for _, label := range []string{"authored source", "cleanup residue"} {
+		value, err := presentation.Prose("yes")
+		if err != nil { // coverage-ignore: fixed nonempty prose is valid
+			return presentation.Diagnostic{}, err
+		}
+		field, err := presentation.NewField(label, value)
+		if err != nil { // coverage-ignore: fixed labels and validated values are valid
+			return presentation.Diagnostic{}, err
+		}
+		changed = append(changed, field)
+	}
+	steps := make([]presentation.Value, 0, 2)
+	for _, action := range []string{
+		"inspect the created authored source " + e.SourcePath,
+		"remove publication cleanup residue " + e.ResiduePath,
+	} {
+		step, err := presentation.Literal(action)
+		if err != nil {
+			return presentation.Diagnostic{}, err
+		}
+		steps = append(steps, step)
+	}
+	return presentation.Diagnostic{
+		Condition: fmt.Sprintf("pitfall source %s is created with publication cleanup residue %s", e.SourcePath, e.ResiduePath),
+		State:     "operation",
+		Changed:   changed,
+		Cause:     e.Cause.Error(),
+		Steps:     steps,
+	}, nil
 }
 
 func loadPitfallScaffoldCorpus(tree pitfallScaffoldFilesystem) (pitfall.Corpus, error) {

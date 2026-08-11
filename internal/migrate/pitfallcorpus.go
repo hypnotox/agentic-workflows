@@ -5,13 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/filepublication"
-	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"gopkg.in/yaml.v3"
 )
@@ -118,51 +116,51 @@ type plannedPitfallLeaf struct {
 	exists bool
 }
 
-type pitfallCorpusOperation struct {
-	create        func(string, []byte) error
-	writeSidecar  func(string, []byte, fs.FileMode) error
-	removeSidecar func(string) error
+type pitfallCorpusFilesystem interface {
+	LinkInfo(string) (fs.FileInfo, error)
+	Read(string) ([]byte, error)
+	MkdirAll(string, fs.FileMode) error
+	Publish(string, []byte, fs.FileMode) error
+	Replace(string, []byte, fs.FileMode) error
+	Remove(string) error
 }
 
-func productionPitfallCorpusOperation() pitfallCorpusOperation {
-	return pitfallCorpusOperation{
-		create: func(path string, data []byte) error {
-			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-				return err
-			}
-			return filepublication.Publish(path, data, 0o644)
-		},
-		writeSidecar:  manifest.WriteFileAtomicMode,
-		removeSidecar: os.Remove,
+const pitfallSidecarPath = config.DirName + "/docs/pitfalls.yaml"
+const pitfallDocsRoot = config.DirName + "/docs"
+
+func applyPitfallCorpus(root string, out *Changes) (returnErr error) {
+	tree, err := filesystem.Open(root)
+	if err != nil {
+		return fmt.Errorf("pitfall-corpus: open repository root: %w", err)
 	}
+	defer func() { returnErr = errors.Join(returnErr, tree.Close()) }()
+	return applyPitfallCorpusWith(out, tree)
 }
 
-func applyPitfallCorpus(root string, out *Changes) error {
-	return applyPitfallCorpusWith(root, out, productionPitfallCorpusOperation())
-}
-
-func applyPitfallCorpusWith(root string, out *Changes, operation pitfallCorpusOperation) error {
-	sidecarPath := filepath.Join(config.RootDir(root), "docs", "pitfalls.yaml")
-	raw, err := os.ReadFile(sidecarPath)
-	if os.IsNotExist(err) {
+func applyPitfallCorpusWith(out *Changes, operation pitfallCorpusFilesystem) error {
+	info, err := operation.LinkInfo(pitfallSidecarPath)
+	if errors.Is(err, fs.ErrNotExist) {
 		return nil
 	}
 	if err != nil {
-		return err
+		return fmt.Errorf("pitfall-corpus: inspect %s: %w", pitfallSidecarPath, err)
 	}
-	info, err := os.Stat(sidecarPath)
-	if err != nil { // coverage-ignore: requires the sidecar to disappear or fault after its successful read
-		return err
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("pitfall-corpus: sidecar %s is not a direct regular file", pitfallSidecarPath)
+	}
+	raw, err := operation.Read(pitfallSidecarPath)
+	if err != nil {
+		return fmt.Errorf("pitfall-corpus: read %s: %w", pitfallSidecarPath, err)
 	}
 	var document yaml.Node
 	dec := yaml.NewDecoder(bytes.NewReader(raw))
 	dec.KnownFields(false)
 	if err := dec.Decode(&document); err != nil {
-		return fmt.Errorf("pitfall-corpus: parse %s: %w", sidecarPath, err)
+		return fmt.Errorf("pitfall-corpus: parse %s: %w", pitfallSidecarPath, err)
 	}
 	var sidecar legacyPitfallSidecar
 	if err := document.Decode(&sidecar); err != nil {
-		return fmt.Errorf("pitfall-corpus: parse %s: %w", sidecarPath, err)
+		return fmt.Errorf("pitfall-corpus: parse %s: %w", pitfallSidecarPath, err)
 	}
 	if !mappingPathPresent(&document, "data", "pitfalls") {
 		return nil
@@ -186,7 +184,7 @@ func applyPitfallCorpusWith(root string, out *Changes, operation pitfallCorpusOp
 		for _, link := range pitfall.RelativeLinks(e) {
 			return fmt.Errorf("pitfall-corpus: entry %q contains relative link %q; replace it with a repository-root absolute or external target and retry awf upgrade", title, link.Destination)
 		}
-		plans = append(plans, plannedPitfallLeaf{entry: e, bytes: serialized, path: filepath.Join(root, filepath.FromSlash(e.SourcePath))})
+		plans = append(plans, plannedPitfallLeaf{entry: e, bytes: serialized, path: e.SourcePath})
 	}
 	files := make([]pitfall.SourceFile, 0, len(plans))
 	for _, plan := range plans {
@@ -204,44 +202,73 @@ func applyPitfallCorpusWith(root string, out *Changes, operation pitfallCorpusOp
 	if err != nil {
 		return fmt.Errorf("pitfall-corpus: preflight sidecar remainder: %w", err)
 	}
+	docsInfo, err := operation.LinkInfo(pitfallDocsRoot)
+	if err != nil {
+		return fmt.Errorf("pitfall-corpus: inspect source root %s: %w", pitfallDocsRoot, err)
+	}
+	if !docsInfo.IsDir() {
+		return fmt.Errorf("pitfall-corpus: source root %s is not a direct directory", pitfallDocsRoot)
+	}
+	pitfallsRootMissing := false
+	pitfallsInfo, err := operation.LinkInfo(pitfall.SourceDir)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		pitfallsRootMissing = true
+	case err != nil:
+		return fmt.Errorf("pitfall-corpus: inspect destination root %s: %w", pitfall.SourceDir, err)
+	case !pitfallsInfo.IsDir():
+		return fmt.Errorf("pitfall-corpus: destination root %s is not a direct directory", pitfall.SourceDir)
+	}
+	missingLeaf := false
 	for i := range plans {
 		plan := &plans[i]
-		info, err := os.Lstat(plan.path)
-		if os.IsNotExist(err) {
+		destinationInfo, err := operation.LinkInfo(plan.path)
+		if errors.Is(err, fs.ErrNotExist) {
+			missingLeaf = true
 			continue
 		}
-		if err != nil { // coverage-ignore: requires a filesystem permission or IO fault after successful sidecar read
-			return fmt.Errorf("pitfall-corpus: inspect %s: %w", plan.entry.SourcePath, err)
+		if err != nil {
+			return fmt.Errorf("pitfall-corpus: inspect destination %s: %w", plan.entry.SourcePath, err)
 		}
-		if !info.Mode().IsRegular() {
+		if !destinationInfo.Mode().IsRegular() {
 			return fmt.Errorf("pitfall-corpus: destination %s is not a direct regular file", plan.entry.SourcePath)
 		}
-		existing, err := os.ReadFile(plan.path)
-		if err != nil { // coverage-ignore: requires the regular destination to fault after successful Lstat
-			return fmt.Errorf("pitfall-corpus: inspect %s: %w", plan.entry.SourcePath, err)
+		existing, err := operation.Read(plan.path)
+		if err != nil {
+			return fmt.Errorf("pitfall-corpus: read destination %s: %w", plan.entry.SourcePath, err)
 		}
 		if !bytes.Equal(existing, plan.bytes) {
 			return fmt.Errorf("pitfall-corpus: destination %s conflicts with migrated entry %q", plan.entry.SourcePath, plan.entry.Title)
 		}
 		plan.exists = true
 	}
+	if missingLeaf && pitfallsRootMissing {
+		if err := operation.MkdirAll(pitfall.SourceDir, 0o755); err != nil {
+			return fmt.Errorf("pitfall-corpus: create destination root %s: %w", pitfall.SourceDir, err)
+		}
+	}
 	for _, plan := range plans {
 		if plan.exists {
 			continue
 		}
-		if err := operation.create(plan.path, plan.bytes); err != nil {
+		if err := operation.Publish(plan.path, plan.bytes, 0o644); err != nil {
+			var committed *filepublication.CommittedCleanupError
+			if errors.As(err, &committed) {
+				out.Add("pitfall-corpus: created " + plan.entry.SourcePath)
+				return fmt.Errorf("pitfall-corpus: destination %s is committed but publication cleanup residue %s remains; remove the residue and retry awf upgrade before retiring legacy authority: %w", plan.entry.SourcePath, committed.ResiduePath, err)
+			}
 			return fmt.Errorf("pitfall-corpus: create %s: %w", plan.entry.SourcePath, err)
 		}
 		out.Add("pitfall-corpus: created " + plan.entry.SourcePath)
 	}
 	if emptyRemainder {
-		if err := operation.removeSidecar(sidecarPath); err != nil { // coverage-ignore: injected-operation failures are covered at the create boundary; production removal failure requires an IO race
-			return fmt.Errorf("pitfall-corpus: retire sidecar: %w", err)
+		if err := operation.Remove(pitfallSidecarPath); err != nil {
+			return fmt.Errorf("pitfall-corpus: retire sidecar %s: %w", pitfallSidecarPath, err)
 		}
 		out.Add("pitfall-corpus: removed empty .awf/docs/pitfalls.yaml")
 	} else {
-		if err := operation.writeSidecar(sidecarPath, remainder, info.Mode().Perm()); err != nil {
-			return fmt.Errorf("pitfall-corpus: retain sections-only sidecar: %w", err)
+		if err := operation.Replace(pitfallSidecarPath, remainder, info.Mode().Perm()); err != nil {
+			return fmt.Errorf("pitfall-corpus: retain sections-only sidecar %s: %w", pitfallSidecarPath, err)
 		}
 		out.Add("pitfall-corpus: retained sections-only .awf/docs/pitfalls.yaml")
 	}

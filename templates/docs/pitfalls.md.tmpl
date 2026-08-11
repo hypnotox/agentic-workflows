@@ -11,7 +11,7 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 {{ end }}
 ## By domain
 
-{{ range $.data.pitfalls.Domains }}### {{ .Name }}
+{{ range $.data.pitfalls.Domains }}### {{ .Heading }}
 
 {{ range .Entries }}- [{{ .LinkTitle }}](pitfalls/{{ .Slug }}.md)
 {{ end }}

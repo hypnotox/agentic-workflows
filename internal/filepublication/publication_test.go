@@ -119,11 +119,10 @@ func (r *confinedFixtureRoot) Link(oldname, newname string) error {
 }
 
 func (r *confinedFixtureRoot) Remove(name string) error {
-	removeErr := os.Remove(filepath.Join(r.dir, filepath.FromSlash(name)))
 	if r.removeErr != nil {
 		return r.removeErr
 	}
-	return removeErr
+	return os.Remove(filepath.Join(r.dir, filepath.FromSlash(name)))
 }
 
 // invariant: tooling/file-publication:exclusive-file-publication-single-home (TestPublishConfinedCompleteExclusiveFile)
@@ -183,8 +182,30 @@ func TestPublishConfinedNegativeBackendPaths(t *testing.T) {
 		if readErr != nil {
 			t.Fatal(readErr)
 		}
-		if len(entries) != 0 {
-			t.Fatalf("failed publication residue = %v", entries)
+		if len(entries) != 1 || !strings.HasPrefix(entries[0].Name(), ".filepublication-") {
+			t.Fatalf("failed publication cleanup residue = %v", entries)
+		}
+	})
+
+	t.Run("distinguishes committed destination from persistent cleanup failure", func(t *testing.T) {
+		dir := t.TempDir()
+		cleanupErr := errors.New("persistent cleanup failed")
+		root := &confinedFixtureRoot{dir: dir, removeErr: cleanupErr}
+		err := PublishConfined(root, "artifact", []byte("complete"), 0o640)
+		var committed *CommittedCleanupError
+		if !errors.As(err, &committed) || !errors.Is(err, cleanupErr) {
+			t.Fatalf("committed cleanup error = %v", err)
+		}
+		if committed.DestinationPath != "artifact" || !strings.HasPrefix(committed.ResiduePath, ".filepublication-") {
+			t.Fatalf("committed outcome = %#v", committed)
+		}
+		raw, readErr := os.ReadFile(filepath.Join(dir, "artifact"))
+		info, statErr := os.Stat(filepath.Join(dir, "artifact"))
+		if readErr != nil || statErr != nil || string(raw) != "complete" || info.Mode().Perm() != 0o640 {
+			t.Fatalf("committed destination = %q, %v, %v", raw, info, errors.Join(readErr, statErr))
+		}
+		if _, statErr := os.Stat(filepath.Join(dir, filepath.FromSlash(committed.ResiduePath))); statErr != nil {
+			t.Fatalf("reported cleanup residue absent: %v", statErr)
 		}
 	})
 

@@ -19,6 +19,21 @@ func MoveNoReplace(fromPath, toPath string) error {
 	return publishNoReplace(fromPath, toPath)
 }
 
+// CommittedCleanupError reports that destination was committed but its
+// same-directory publication temporary could not be removed.
+type CommittedCleanupError struct {
+	DestinationPath string
+	ResiduePath     string
+	Cause           error
+}
+
+func (e *CommittedCleanupError) Error() string {
+	return fmt.Sprintf("publication committed to %s but cleanup residue %s remains: %v", e.DestinationPath, e.ResiduePath, e.Cause)
+}
+
+// Unwrap preserves the cleanup failure identity.
+func (e *CommittedCleanupError) Unwrap() error { return e.Cause }
+
 type publicationBackend interface {
 	openTemporary(string) (string, *os.File, error)
 	publishNoReplace(string, string) error
@@ -91,6 +106,7 @@ func PublishConfined(root confinedRoot, destination string, contents []byte, mod
 // publish is the single complete-file publication state machine. Backends own
 // only the namespace operations whose path representation differs.
 func publish(backend publicationBackend, destination string, contents []byte, mode fs.FileMode) (returnErr error) {
+	committed := false
 	temporary, file, err := backend.openTemporary(destination)
 	if err != nil {
 		return fmt.Errorf("create publication temporary for %s: %w", destination, err)
@@ -101,7 +117,12 @@ func publish(backend publicationBackend, destination string, contents []byte, mo
 		}
 		if temporary != "" {
 			if err := backend.remove(temporary); err != nil && !errors.Is(err, os.ErrNotExist) {
-				returnErr = errors.Join(returnErr, fmt.Errorf("remove publication temporary %s: %w", temporary, err))
+				cleanupErr := fmt.Errorf("remove publication temporary %s: %w", temporary, err)
+				if committed && returnErr == nil {
+					returnErr = &CommittedCleanupError{DestinationPath: destination, ResiduePath: temporary, Cause: cleanupErr}
+				} else {
+					returnErr = errors.Join(returnErr, cleanupErr)
+				}
 			}
 		}
 	}()
@@ -123,5 +144,6 @@ func publish(backend publicationBackend, destination string, contents []byte, mo
 	if err := backend.publishNoReplace(temporary, destination); err != nil {
 		return fmt.Errorf("publish complete file without replacement to %s: %w", destination, err)
 	}
+	committed = true
 	return nil
 }

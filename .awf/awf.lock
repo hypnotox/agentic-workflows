@@ -564,9 +564,9 @@
     },
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
-      "templateHash": "sha256:200d86330d4e4e695a049ecedf8750d28180dc671d58bd4dd7af4ac9398d777c",
-      "configHash": "sha256:fe7f4d341d64840d6df9e2c0ca382306fd74edd566c8a21eb6d4e192a8a3d602",
-      "outputHash": "sha256:716d343449be208cd62355f7348bbf69ed16ccd840aeb96c39307ae8e3228902"
+      "templateHash": "sha256:d6475aaeadbbed6f56bfc85c4716b8636fea0d5922661201890334a6429b4f85",
+      "configHash": "sha256:4e660cc63b254ea1f58b9fe6d445ceee100b405748fc391469203c4c597f713c",
+      "outputHash": "sha256:eed8b8663fd6a3e4f3ed5c1b7753b095814279aee38ced161cdd23a358495ab7"
     },
     "docs/pitfalls/a-census-number-is-only-as-good-as-its-stated-query.md": {
       "templateId": "pitfalls/entry.md.tmpl",
