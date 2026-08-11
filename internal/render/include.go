@@ -13,6 +13,10 @@ import (
 type SourceSpan struct {
 	Source string
 	Text   string
+	// Provenance is the effective template identity emitted for surviving
+	// rendered bytes. It is populated during assembly and excluded from the
+	// authored-text projection used by template hashes.
+	Provenance string
 }
 
 // SourceText retains the root template identity and each ordered authored span.
@@ -39,7 +43,7 @@ func (s SourceText) slice(start, end int) SourceText {
 		spanEnd := offset + len(span.Text)
 		if start < spanEnd && end > offset {
 			from, to := max(start, offset)-offset, min(end, spanEnd)-offset
-			out.Spans = append(out.Spans, SourceSpan{Source: span.Source, Text: span.Text[from:to]})
+			out.Spans = append(out.Spans, SourceSpan{Source: span.Source, Text: span.Text[from:to], Provenance: span.Provenance})
 		}
 		offset = spanEnd
 	}
@@ -47,8 +51,12 @@ func (s SourceText) slice(start, end int) SourceText {
 }
 
 func (s *SourceText) appendText(source, text string) {
+	s.appendProvenanceText(source, "", text)
+}
+
+func (s *SourceText) appendProvenanceText(source, provenance, text string) {
 	if text != "" {
-		s.Spans = append(s.Spans, SourceSpan{Source: source, Text: text})
+		s.Spans = append(s.Spans, SourceSpan{Source: source, Text: text, Provenance: provenance})
 	}
 }
 

@@ -18,6 +18,7 @@ The final bridge upgrade verifies its frozen version-1 attestation before its jo
 The gated `check` family is organized by subject universe. `check repo` aggregates drift, state, prose, and memory checks; `check staged` aggregates HEAD-to-index state and rendered-output drift, while its commit-message child remains direct-only because it requires a message file. Bare `check` runs both aggregates, and disabled prose or memory children disclose their enablement knobs without failing. Plan-v2 assignment notes are Proposed-only advisory output from the selected working or index universe; structural and reference findings remain blocking, and historical Decision context never becomes current-state authority.
 
 
+<!-- awf:template-source templates/domains/domain.md.tmpl -->
 ## Topics
 
 [All topics](../topics/tooling/index.md)

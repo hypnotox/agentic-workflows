@@ -73,9 +73,7 @@ Backing: test
 
 ### `invariant: no-section-marker-leak`
 
-Rendered output never contains awf:section or awf:end markers. The only awf markers a rendered
-file may carry are the generated-by banner, the awf:edit family, informational awf:source comments,
-and maintainer-facing awf:template-source comments.
+Renderer-owned template structural directives never survive as awf:section or awf:end markers in rendered output. Raw convention parts and adopter-owned in-place bodies remain verbatim and may contain marker-shaped text. Apart from those verbatim inputs, the awf markers a rendered file may carry are the generated-by banner, the awf:edit family, informational awf:source comments, and maintainer-facing awf:template-source comments.
 Origin: ADR-0015
 Revised-by: ADR-0250, ADR-repository-local-template-source-symbols
 Backing: test

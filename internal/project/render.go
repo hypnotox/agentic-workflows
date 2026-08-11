@@ -763,7 +763,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	}
 	assembledSource, parts := render.AssembleSourceWithTemplateSource(segs, plan, style, provenance)
 	assembled := assembledSource.AuthoredText()
-	if err := render.CheckResidualMarkers(assembled); err != nil { // coverage-ignore: awf-owned embedded templates are marker-well-formed, so the guard cannot fire through the render pass; its error branch is unit-tested in internal/render
+	if err := render.CheckResidualMarkersSource(assembledSource); err != nil { // coverage-ignore: awf-owned embedded templates are marker-well-formed, so the guard cannot fire through the render pass; its error branches are unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
 	stubDefaults, stubParts := render.StubSections(segs, plan)
@@ -774,7 +774,12 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		}
 		partVarRefs = append(partVarRefs, plan[name].PartVarRefs...)
 	}
-	content, err := render.Execute(assembled, data, parts, tid)
+	var content string
+	if provenance.Root != "" {
+		content, err = render.ExecuteSourceWithTemplateSource(assembledSource, data, parts, tid, provenance)
+	} else {
+		content, err = render.Execute(assembled, data, parts, tid)
+	}
 	if err != nil { // coverage-ignore: with raw convention parts (ADR-0034) and always-valid embedded template defaults, render.Execute cannot fail through the render pass; its own parse/execute error branches are unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
@@ -838,12 +843,21 @@ func (p *Project) validateTemplateSources(source render.SourceText, root string)
 		seen[span.Source] = true
 		candidate := path.Join(root, span.Source)
 		if reader, working := p.projectTreeReader().(filesystemProjectReader); working {
-			info, statErr := os.Lstat(filepath.Join(reader.root, filepath.FromSlash(candidate)))
-			if statErr == nil && !info.Mode().IsRegular() {
-				return fmt.Errorf("configured render.templateSourceRoot %q cannot resolve template source %q (%s): regular file required", root, span.Source, candidate)
-			}
-			if statErr != nil && !errors.Is(statErr, fs.ErrNotExist) { // coverage-ignore: non-absence Lstat failures are OS-dependent and the error-preserving branch is direct
-				return fmt.Errorf("read configured template source %s for %s: %w", candidate, span.Source, statErr)
+			components := strings.Split(candidate, "/")
+			current := reader.root
+			for i, component := range components {
+				current = filepath.Join(current, filepath.FromSlash(component))
+				info, statErr := os.Lstat(current)
+				if errors.Is(statErr, fs.ErrNotExist) {
+					break
+				}
+				if statErr != nil { // coverage-ignore: non-absence Lstat failures are OS-dependent and the error-preserving branch is direct
+					return fmt.Errorf("read configured template source %s for %s: %w", candidate, span.Source, statErr)
+				}
+				last := i == len(components)-1
+				if (!last && !info.IsDir()) || (last && !info.Mode().IsRegular()) {
+					return fmt.Errorf("configured render.templateSourceRoot %q cannot resolve template source %q (%s): repository-confined regular file required", root, span.Source, candidate)
+				}
 			}
 		}
 		_, ok, err := p.projectTreeReader().ReadFile(candidate)

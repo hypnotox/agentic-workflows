@@ -23,6 +23,7 @@ Pi extension entrypoints check their required runtime APIs before registering ho
 Pi rendering governs five TypeScript outputs. Context usage is observational and transient: its unavailable form is publication-safe, model-window terminology is neutral, active-branch compactions are counted, and it has no warning or pressure action.
 
 
+<!-- awf:template-source templates/domains/domain.md.tmpl -->
 ## Topics
 
 [All topics](../topics/rendering/index.md)

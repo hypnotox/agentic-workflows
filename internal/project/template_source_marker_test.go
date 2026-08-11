@@ -156,22 +156,27 @@ func TestTemplateSourceSectionSemantics(t *testing.T) {
 		t.Fatalf("dropped section retained structural provenance or content: %q", got)
 	}
 
-	reinjected, _ := render.AssembleSourceWithTemplateSource(segments, map[string]render.SectionPlan{"body": {
+	reinjected, reinjectedParts := render.AssembleSourceWithTemplateSource(segments, map[string]render.SectionPlan{"body": {
 		HasPart: true, PartBody: "BEFORE\n" + render.SectionDefaultSentinel + "\nAFTER\n",
 	}}, render.HTMLComment, provenance)
-	got := reinjected.AuthoredText()
+	got, err := render.ExecuteSourceWithTemplateSource(reinjected, nil, reinjectedParts, "reinjected", provenance)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, want := range []string{
 		"<!-- awf:template-source templates/guide.md.tmpl#body -->\n<!-- awf:edit body:",
 		"<!-- awf:template-source templates/partials/default.md -->\nDEFAULT",
-		"<!-- awf:template-source templates/guide.md.tmpl -->\n",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("sectionDefault reinjection lacks %q:\n%s", want, got)
 		}
 	}
 
-	inPlace, _ := render.AssembleSourceWithTemplateSource(segments, map[string]render.SectionPlan{"body": {InPlace: true}}, render.HTMLComment, provenance)
-	got = inPlace.AuthoredText()
+	inPlace, inPlaceParts := render.AssembleSourceWithTemplateSource(segments, map[string]render.SectionPlan{"body": {InPlace: true}}, render.HTMLComment, provenance)
+	got, err = render.ExecuteSourceWithTemplateSource(inPlace, nil, inPlaceParts, "in-place", provenance)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !strings.Contains(got, "templates/guide.md.tmpl#body -->\n<!-- awf:edit-in-place") || strings.Contains(got, "partials/default.md") {
 		t.Fatalf("in-place body structural/interior provenance invalid:\n%s", got)
 	}

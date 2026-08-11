@@ -163,3 +163,16 @@ func CheckResidualMarkers(assembled string) error {
 	}
 	return nil
 }
+
+// CheckResidualMarkersSource applies the structural residue guard only to
+// renderer-owned template spans. Empty-source spans are raw convention or
+// adopter-owned in-place bytes and remain verbatim by contract.
+func CheckResidualMarkersSource(assembled SourceText) error {
+	var owned strings.Builder
+	for _, span := range assembled.Spans {
+		if span.Source != "" {
+			owned.WriteString(span.Text)
+		}
+	}
+	return CheckResidualMarkers(owned.String())
+}

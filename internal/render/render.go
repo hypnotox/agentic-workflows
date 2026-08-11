@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+	"text/template/parse"
 )
 
 // SectionPlan is the project layer's per-section resolution handed to Assemble.
@@ -166,28 +167,10 @@ func AssembleSourceWithTemplateSource(segs []Segment, plan map[string]SectionPla
 		out.Root = segs[0].Source.Root
 	}
 	parts := map[string]string{}
-	lastIdentity := ""
-	marker := func(source, section string, force bool) {
-		if provenance.Root == "" || source == "" {
-			return
-		}
-		value := strings.TrimSuffix(provenance.Root, "/") + "/" + source + section
-		if !force && value == lastIdentity {
-			return
-		}
-		out.appendText("", "<!-- awf:template-source "+value+" -->\n")
-		lastIdentity = value
-	}
 	appendSource := func(source SourceText) {
 		for _, span := range source.Spans {
-			if strings.TrimSpace(span.Text) != "" {
-				marker(span.Source, "", false)
-			}
-			out.appendText(span.Source, span.Text)
+			out.appendProvenanceText(span.Source, span.Source, span.Text)
 		}
-	}
-	if len(segs) > 0 {
-		marker(segs[0].Source.Root, "", false)
 	}
 	for _, s := range segs {
 		if !s.IsSection {
@@ -199,8 +182,7 @@ func AssembleSourceWithTemplateSource(segs []Segment, plan map[string]SectionPla
 			continue
 		}
 		out.Root = s.Source.Root
-		marker(s.SectionSource, "#"+s.Name, true)
-		out.appendText(s.SectionSource, editPointer(s.Name, s.Stub, s.Heading != "", p, style))
+		out.appendProvenanceText(s.SectionSource, s.SectionSource+"#"+s.Name, editPointer(s.Name, s.Stub, s.Heading != "", p, style))
 		if s.Heading != "" {
 			appendSource(s.HeadingSource)
 			if !strings.HasSuffix(s.HeadingSource.AuthoredText(), "\n") {
@@ -352,9 +334,30 @@ func ExtractStructuralHeadings(output string, tokens map[string][2]string) (map[
 // and execute errors with the target rather than a hardcoded literal.
 // touches-state: rendering/render-engine:parts-raw-except-authoring-comments - part bodies restored verbatim post-strip, never templated; proof in render_test.go
 func Execute(assembled string, data map[string]any, parts map[string]string, name string) (string, error) {
+	return execute(assembled, data, parts, name, nil)
+}
+
+// ExecuteSourceWithTemplateSource executes an assembled source while deriving
+// markers from the bytes that survive template control flow. Instrumenting the
+// parsed tree preserves controls that cross source-span and section boundaries.
+func ExecuteSourceWithTemplateSource(assembled SourceText, data map[string]any, parts map[string]string, name string, provenance TemplateSource) (string, error) {
+	return execute(assembled.AuthoredText(), data, parts, name, func(t *template.Template) func(string) string {
+		identities := map[string]string{}
+		instrumentTemplateSources(t, assembled, identities)
+		return func(rendered string) string {
+			return renderTemplateSourceMarkers(rendered, identities, provenance.Root)
+		}
+	})
+}
+
+func execute(assembled string, data map[string]any, parts map[string]string, name string, instrument func(*template.Template) func(string) string) (string, error) {
 	t, err := template.New(name).Option("missingkey=zero").Parse(assembled)
 	if err != nil {
 		return "", fmt.Errorf("parse template: %w", err)
+	}
+	var postprocess func(string) string
+	if instrument != nil {
+		postprocess = instrument(t)
 	}
 	var out strings.Builder
 	if err := t.Execute(&out, data); err != nil {
@@ -364,5 +367,119 @@ func Execute(assembled string, data map[string]any, parts map[string]string, nam
 	for sent, body := range parts {
 		rendered = strings.ReplaceAll(rendered, sent, body)
 	}
+	if postprocess != nil {
+		rendered = postprocess(rendered)
+	}
 	return rendered, nil
+}
+
+const templateSourceTokenPrefix = "\x00awf:template-source:"
+
+type sourceInterval struct {
+	start, end int
+	identity   string
+}
+
+func instrumentTemplateSources(t *template.Template, assembled SourceText, identities map[string]string) {
+	intervals := make([]sourceInterval, 0, len(assembled.Spans))
+	offset := 0
+	for _, span := range assembled.Spans {
+		intervals = append(intervals, sourceInterval{start: offset, end: offset + len(span.Text), identity: span.Provenance})
+		offset += len(span.Text)
+	}
+	nextToken := 0
+	token := func(identity string, pos parse.Pos) *parse.TextNode {
+		nextToken++
+		value := templateSourceTokenPrefix + strconv.Itoa(nextToken) + "\x00"
+		identities[value] = identity
+		return &parse.TextNode{NodeType: parse.NodeText, Pos: pos, Text: []byte(value)}
+	}
+	identityAt := func(pos int) string {
+		identity := ""
+		for _, interval := range intervals {
+			if pos >= interval.start && pos < interval.end {
+				identity = interval.identity
+				break
+			}
+		}
+		return identity
+	}
+	var instrumentList func(*parse.ListNode)
+	instrumentList = func(list *parse.ListNode) {
+		if list == nil {
+			return
+		}
+		nodes := make([]parse.Node, 0, len(list.Nodes)*2)
+		for _, node := range list.Nodes {
+			switch n := node.(type) {
+			case *parse.TextNode:
+				start := int(n.Position())
+				end := start + len(n.Text)
+				cursor := start
+				for _, interval := range intervals {
+					from, to := max(cursor, interval.start), min(end, interval.end)
+					if from >= to {
+						continue
+					}
+					nodes = append(nodes, token(interval.identity, parse.Pos(from)))
+					nodes = append(nodes, &parse.TextNode{NodeType: parse.NodeText, Pos: parse.Pos(from), Text: append([]byte(nil), n.Text[from-start:to-start]...)})
+					cursor = to
+				}
+				// Source intervals cover AuthoredText exactly; partitioning therefore
+				// consumes every retained TextNode byte, including after trim actions.
+				continue
+			case *parse.ActionNode, *parse.TemplateNode:
+				nodes = append(nodes, token(identityAt(int(node.Position())), node.Position()))
+			case *parse.IfNode:
+				instrumentList(n.List)
+				instrumentList(n.ElseList)
+			case *parse.RangeNode:
+				instrumentList(n.List)
+				instrumentList(n.ElseList)
+			case *parse.WithNode:
+				instrumentList(n.List)
+				instrumentList(n.ElseList)
+			}
+			nodes = append(nodes, node)
+		}
+		list.Nodes = nodes
+	}
+	for _, tmpl := range t.Templates() {
+		instrumentList(tmpl.Root)
+	}
+}
+
+func renderTemplateSourceMarkers(rendered string, tokenIdentities map[string]string, root string) string {
+	var out strings.Builder
+	lastIdentity := ""
+	pendingIdentity := ""
+	cursor := 0
+	emit := func(content string) {
+		if strings.TrimSpace(content) != "" {
+			if pendingIdentity == "" {
+				lastIdentity = ""
+			} else if pendingIdentity != lastIdentity {
+				out.WriteString("<!-- awf:template-source ")
+				out.WriteString(strings.TrimSuffix(root, "/") + "/" + pendingIdentity)
+				out.WriteString(" -->\n")
+				lastIdentity = pendingIdentity
+			}
+		}
+		out.WriteString(content)
+	}
+	for {
+		start := strings.Index(rendered[cursor:], templateSourceTokenPrefix)
+		if start < 0 {
+			emit(rendered[cursor:])
+			return out.String()
+		}
+		start += cursor
+		emit(rendered[cursor:start])
+		// Tokens are renderer-created NUL-delimited values; authored template,
+		// part, and in-place text cannot contain NUL bytes.
+		endOffset := strings.IndexByte(rendered[start+len(templateSourceTokenPrefix):], 0)
+		end := start + len(templateSourceTokenPrefix) + endOffset + 1
+		pendingIdentity = tokenIdentities[rendered[start:end]]
+		cursor = end
+	}
 }

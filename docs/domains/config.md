@@ -12,6 +12,7 @@ Configuration is strict tracked authority under `.awf/`. Schema generation 21 re
 Schema generation 31 removes permanent ADR routing cutoffs and gap sets. A schema-30 snapshot is compatibility-decoded during migration, then the current lock omits those retired fields. Schema generation 32 deletes the retired `proseGateCmd` and `memoryGateCmd` vars, retargets surviving check-command values into the repo and staged universes, and clears values naming the removed invariant report. Schema 35 owns the frozen list-replacement census: it preserves authored catalog-list values while recording `dataDefaults` suppression so layering can add catalog defaults only when intended. Schema 36 owns the frozen structural-heading census: it removes only an exact leading awf-owned heading from matching convention parts and refuses ambiguous custom headings before mutation.
 
 
+<!-- awf:template-source templates/domains/domain.md.tmpl -->
 ## Topics
 
 [All topics](../topics/config/index.md)

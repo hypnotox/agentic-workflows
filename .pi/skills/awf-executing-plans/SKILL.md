@@ -67,7 +67,6 @@ If an implementer stops dirty, first inventory `git status --short`, diff, compl
 
 <!-- awf:template-source templates/skills/executing-plans/SKILL.md.tmpl#gate-tier-detail -->
 <!-- awf:edit gate-tier-detail: default; create .awf/skills/parts/executing-plans/gate-tier-detail.md to override -->
-<!-- awf:template-source templates/skills/executing-plans/SKILL.md.tmpl -->
 
 <!-- awf:template-source templates/skills/executing-plans/SKILL.md.tmpl#procedure-adr-final-commit -->
 <!-- awf:edit procedure-adr-final-commit: default; create .awf/skills/parts/executing-plans/procedure-adr-final-commit.md to override -->

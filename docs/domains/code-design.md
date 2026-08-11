@@ -10,6 +10,7 @@
 The code-design domain is the sole domain owner of its selectors, including `internal/execution/**` and `internal/presentation/**`. Its global topics remain repository-wide applicable guidance; a global topic may separately own a bounded path only where its selectors and these domain selectors both match. `code-design/presentation-ownership` owns the cross-cutting presentation model globally and the bounded `internal/presentation/**` package surface, while the scoped `presentation-package` topic retains its complementary package-local boundary. Read the owning scoped and global topics before changing a governed structure rather than copying their claims into local guidance.
 
 
+<!-- awf:template-source templates/domains/domain.md.tmpl -->
 ## Topics
 
 [All topics](../topics/code-design/index.md)

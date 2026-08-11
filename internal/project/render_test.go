@@ -252,6 +252,27 @@ func TestValidateTemplateSourcesUsesSelectedTree(t *testing.T) {
 	if err := (&Project{Root: root}).validateTemplateSources(render.SourceText{Spans: []render.SourceSpan{{Source: "linked.md", Text: "x"}}}, "templates"); err == nil {
 		t.Fatal("symlink source accepted")
 	}
+	outside := t.TempDir()
+	if err := os.WriteFile(filepath.Join(outside, "doc.md"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	symlinkRoot := t.TempDir()
+	if err := os.Symlink(outside, filepath.Join(symlinkRoot, "templates")); err != nil {
+		t.Fatal(err)
+	}
+	if err := (&Project{Root: symlinkRoot}).validateTemplateSources(render.SourceText{Spans: []render.SourceSpan{{Source: "doc.md", Text: "x"}}}, "templates"); err == nil {
+		t.Fatal("symlinked configured source root accepted")
+	}
+	intermediateRoot := t.TempDir()
+	if err := os.Mkdir(filepath.Join(intermediateRoot, "templates"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(intermediateRoot, "templates", "nested")); err != nil {
+		t.Fatal(err)
+	}
+	if err := (&Project{Root: intermediateRoot}).validateTemplateSources(render.SourceText{Spans: []render.SourceSpan{{Source: "nested/doc.md", Text: "x"}}}, "templates"); err == nil {
+		t.Fatal("symlinked source path ancestor accepted")
+	}
 	// An included partial that strips to empty still has an authored identity
 	// and must therefore resolve before stripping removes its output bytes.
 	if err := os.WriteFile(filepath.Join(root, "templates", "comment-only.md"), []byte("<!-- awf:comment note -->\n"), 0o644); err != nil {

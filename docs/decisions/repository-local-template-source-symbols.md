@@ -64,3 +64,4 @@ Moving the configured source tree or an awf template changes checked-in self-hos
 - 2026-08-11: Accepted; content-sha256: ddd49353b01dda515701896774831ac6aebbee7436109a30a980e8664febe288
 - 2026-08-11: Implementing; content-sha256: ddd49353b01dda515701896774831ac6aebbee7436109a30a980e8664febe288
 - 2026-08-11: Applied; operations: add `config/configuration:template-source-root`, update `rendering/render-engine:no-section-marker-leak`, add `rendering/render-engine:template-source-symbol`
+- 2026-08-11: Reapplied; operations: update `rendering/render-engine:no-section-marker-leak`

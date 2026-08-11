@@ -110,4 +110,5 @@ Pi context events sample the current model window and active branch at request t
 - **Pinned Pi runtime floor**: the retained fork-v0.81.1-awf.3 coding-agent artifact (embedded 0.81.1) supplies `getActiveTools`, `setActiveTools`, tool prompt guidance, and `withFileMutationQueue`; the effort companion guards these APIs before registration and uses the shared real-path mutation queue.
 
 
+<!-- awf:template-source templates/docs/architecture.md.tmpl -->
 This checkout includes optional `commitPolicy` configuration. It is structurally validated and consumed by the generated reference-transaction and pre-push payloads. Configuration alone neither activates hooks nor protects a remote: preview intended history with `awf check commit-policy <revision-or-range>...`, then let adopter-owned, worktree-aware wiring invoke the inert payloads. The remote's receiving and branch policy remains the final boundary.

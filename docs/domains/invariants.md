@@ -21,6 +21,7 @@ Staged current-state checking reports an ADR newly introduced in an older intrin
 Historical transition and stale-merge replay use a reduced committed projection from `internal/currentstate` and `internal/topic`: configuration and schema boundaries, ADR records and source bytes, and topic definitions and claims. They do not construct marker indexes or domain ownership paths. Repository and staged checks continue to load the full projection and validate marker backing, test globs, coverage paths, and domain sidecars.
 
 
+<!-- awf:template-source templates/domains/domain.md.tmpl -->
 ## Topics
 
 [All topics](../topics/invariants/index.md)
