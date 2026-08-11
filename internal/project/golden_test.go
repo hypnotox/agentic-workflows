@@ -20,7 +20,7 @@ func TestADRReadmeDecisionRouting(t *testing.T) {
 		"remains meaningful after implementation",
 		"post-implementation",
 		"counterfactual",
-		"mechanism itself is load-bearing",
+		"user explicitly accepted that the mechanism itself is load-bearing and the record explains why it is load-bearing",
 		"Implementation plan",
 		"rollout inventories",
 		"proof transactions",
@@ -248,7 +248,7 @@ func assertV3ADRTemplatePublicationSafe(t *testing.T) {
 	if strings.Count(tail, "- YYYY-MM-DD:") != 1 || !strings.Contains(tail, "- YYYY-MM-DD: Proposed") {
 		t.Fatalf("fresh Proposed Status history contains non-Proposed events:\n%s", tail)
 	}
-	for _, want := range []string{"remains meaningful after implementation", "paths, commands, task order, rollout batches, and ordinary test transactions", "explicitly accepted", "narrowest durable commitment", "outside the ADR until accepted"} {
+	for _, want := range []string{"remains meaningful after implementation", "paths, commands, task order, rollout batches, and ordinary test transactions", "explicitly accepted", "narrowest durable commitment", "outside the ADR until accepted", "user accepted the mechanism itself as load-bearing and the record explains why it is load-bearing"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("ADR template missing decision-routing contract %q:\n%s", want, out)
 		}

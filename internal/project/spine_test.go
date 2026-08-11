@@ -140,7 +140,7 @@ func TestAdrReviewerAgent(t *testing.T) {
 	for _, phrase := range []string{
 		"post-implementation",
 		"counterfactual",
-		"mechanism itself is load-bearing",
+		"consent evidence establishes that the mechanism itself is load-bearing and the record explains why it is load-bearing",
 		"reasoned finding",
 		"structural-design",
 		"docs/maintainable-code-design.md",
@@ -1618,7 +1618,7 @@ func TestProposingAdrTemplate(t *testing.T) {
 		"remains meaningful after implementation",
 		"post-implementation",
 		"counterfactual",
-		"mechanism itself is load-bearing",
+		"consent evidence establishes that it is load-bearing and the ADR explains why it is load-bearing",
 		"preserve exactly the frontmatter emitted by `awf new adr`",
 		"Before any ADR-file mutation, identify the explicitly accepted decision set",
 		"narrowest durable commitment",
