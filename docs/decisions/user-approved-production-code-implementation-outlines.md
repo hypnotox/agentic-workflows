@@ -50,8 +50,8 @@ than weakening it.
 
 4. `decision: keep-brainstorming-as-single-owner` Broaden the existing brainstorming workflow to
    own both concise implementation outlines and fuller material-choice design work. Do not add a
-   parallel outline skill, workflow stage, router, or classifier. The existing proportionate design
-   contract remains the semantic shape of the approved boundary.
+   parallel outline skill. The existing proportionate design contract remains the semantic shape
+   of the approved boundary.
 
 5. `decision: retain-outline-approval-evidence` Accept retained conversation, a user-provenance
    effort Decision-log entry, or an explicit request to execute a named existing plan whose
@@ -90,6 +90,7 @@ their parent supplies instead of introducing an unreachable approval interaction
 | Alternative | Why not chosen |
 |---|---|
 | Add a dedicated implementation-outline skill | It would duplicate brainstorming's design ownership and introduce another workflow stage for the same semantic boundary. |
+| Distribute the checkpoint across planning and execution workflows | It would duplicate design policy and approval semantics across several owners instead of keeping one proportionate design boundary. |
 | Approve the outline after ADR authoring | Higher-altitude design choices could already be embedded in the ADR before the user accepts them, conflicting with ADR-0264. |
 | Keep mandatory settled-ADR approval as well | It would create two routine approvals for one already approved boundary rather than making later artifact work autonomous. |
 | Exempt mechanical production refactors | Mechanical edits can still commit the repository to an unsuitable structure, so their implementation shape must be visible first. |
