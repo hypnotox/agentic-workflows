@@ -319,11 +319,11 @@ type syncFilesystems struct {
 	resident syncFilesystem
 }
 
-func (s syncFilesystems) output(rel string) syncFilesystem {
+func (s syncFilesystems) output(rel string) (syncFilesystem, string) {
 	if resident.IsResidentPath(rel) {
-		return s.resident
+		return s.resident, rel
 	}
-	return s.tracked
+	return s.tracked, rel
 }
 
 func (p *Project) openSyncFilesystems() (syncFilesystems, func(), error) {
@@ -424,8 +424,8 @@ func (p *Project) syncReportWithPitfalls(ctx context.Context, seed *InitAuthorit
 	}
 	want := map[string]bool{}
 	for _, f := range files {
-		filesystem := filesystems.output(f.Path)
-		dir := path.Dir(f.Path)
+		filesystem, outputPath := filesystems.output(f.Path)
+		dir := path.Dir(outputPath)
 		if dir != "." {
 			if err := filesystem.MkdirAll(dir, 0o755); err != nil {
 				return backups, changes, pruned, err
@@ -436,13 +436,13 @@ func (p *Project) syncReportWithPitfalls(ctx context.Context, seed *InitAuthorit
 				return backups, changes, pruned, err
 			}
 		}
-		info, infoErr := filesystem.LinkInfo(f.Path)
+		info, infoErr := filesystem.LinkInfo(outputPath)
 		if infoErr != nil && !errors.Is(infoErr, fs.ErrNotExist) {
 			return backups, changes, pruned, infoErr
 		}
 		if !prior[f.Path] && infoErr == nil {
 			// touches-state: rendering/sync-and-drift:sync-backs-up-foreign - foreign-file backup on sync; proof in project_test.go
-			bak, err := p.backupFileConfined(f.Path, filesystem)
+			bak, err := p.backupFileConfined(outputPath, filesystem)
 			if err != nil {
 				return backups, changes, pruned, fmt.Errorf("back up %s: %w", f.Path, err)
 			}
@@ -455,7 +455,7 @@ func (p *Project) syncReportWithPitfalls(ctx context.Context, seed *InitAuthorit
 		modeChanged := false
 		changedOutput := infoErr != nil
 		if infoErr == nil && info.Mode()&fs.ModeSymlink == 0 {
-			before, mode, readErr := filesystem.ReadWithMode(f.Path)
+			before, mode, readErr := filesystem.ReadWithMode(outputPath)
 			if readErr != nil {
 				return backups, changes, pruned, readErr
 			}
@@ -488,7 +488,7 @@ func (p *Project) syncReportWithPitfalls(ctx context.Context, seed *InitAuthorit
 			}
 			changes = append(changes, Change{Path: f.Path, Cause: cause})
 		}
-		if err := filesystem.Replace(f.Path, []byte(f.Content), perm); err != nil {
+		if err := filesystem.Replace(outputPath, []byte(f.Content), perm); err != nil {
 			return backups, changes, pruned, err
 		}
 		// Replacement commits bytes and final mode together, so a change becomes
@@ -525,8 +525,9 @@ func (p *Project) syncReportWithPitfalls(ctx context.Context, seed *InitAuthorit
 			// into git history (ADR-0156 item 9). A backup failure aborts the
 			// prune - never a silent fall-through to deletion.
 			if entry.TemplateID == coOwnedRunnerTID {
-				if _, existsErr := filesystems.output(path).LinkInfo(path); existsErr == nil {
-					bak, bakErr := p.backupFileConfined(path, filesystems.output(path))
+				filesystem, outputPath := filesystems.output(path)
+				if _, existsErr := filesystem.LinkInfo(outputPath); existsErr == nil {
+					bak, bakErr := p.backupFileConfined(outputPath, filesystem)
 					if bakErr != nil {
 						return backups, changes, pruned, fmt.Errorf("back up pruned runner %s: %w", path, bakErr)
 					}

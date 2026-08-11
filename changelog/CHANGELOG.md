@@ -8,6 +8,10 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Bug fixes
+
+- Render now confines output, backup, and lock publication to the selected tracked or resident repository root, replaces final symlinks without following them, and safely refuses foreign escaping or broken symlinks instead of reading or writing outside the root.
+
 ## [0.35.0] - 2026-08-11
 
 ### Features

@@ -189,3 +189,6 @@ Record deviations, spike answers, follow-ups, and findings surfaced during imple
   returning neutral bytes and permission mode, and fixed the private sync contract to the exact
   concrete method set. This keeps capability in the provider, sync policy in the consumer, and no
   representation beyond what the approved backup behavior requires.
+- Phase 2 review confirmed the replacement-failure tests already lived in `project_test.go`; no
+  `coverage_test.go` mutation was needed. Retaining the tests in their existing semantic home
+  preserves the approved failure oracle without moving coverage only to satisfy a planned path.

@@ -637,11 +637,6 @@ func TestSyncPruneReportSkipsAlreadyGoneFile(t *testing.T) {
 	}
 }
 
-// TestSyncReportClassifiesChangedOutput stages every provenance cause by
-// authoring the prior lock directly - the classification compares the old
-// entry against the fresh render, so a tweaked stored hash simulates the
-// corresponding real change (an upstream template edit, a config edit, a
-// non-hashed input) without mutating the embedded templates.
 type replacementFailureFilesystem struct {
 	syncFilesystem
 	path string
@@ -657,10 +652,14 @@ func (f replacementFailureFilesystem) Replace(path string, contents []byte, mode
 
 type publicationFailureFilesystem struct {
 	syncFilesystem
-	err error
+	err   error
+	calls *int
 }
 
-func (f publicationFailureFilesystem) Publish(string, []byte, os.FileMode) error { return f.err }
+func (f publicationFailureFilesystem) Publish(string, []byte, os.FileMode) error {
+	*f.calls++
+	return f.err
+}
 
 type readFailureFilesystem struct {
 	syncFilesystem
@@ -682,6 +681,24 @@ type chmodFailureFilesystem struct {
 }
 
 func (f chmodFailureFilesystem) Chmod(string, os.FileMode) error { return f.err }
+
+func TestSyncFilesystemsRouteUnchangedPaths(t *testing.T) {
+	tracked := &readFailureFilesystem{}
+	residentTree := &readFailureFilesystem{}
+	filesystems := syncFilesystems{tracked: tracked, resident: residentTree}
+	for _, tc := range []struct {
+		path string
+		want syncFilesystem
+	}{
+		{"AGENTS.md", tracked},
+		{".awf/efforts/.gitignore", residentTree},
+	} {
+		got, path := filesystems.output(tc.path)
+		if got != tc.want || path != tc.path {
+			t.Fatalf("output(%q) = %T, %q; want %T, unchanged path", tc.path, got, path, tc.want)
+		}
+	}
+}
 
 func TestOpenSyncFilesystemsComposesDistinctRootsBeforeMutation(t *testing.T) {
 	root := scaffold(t, sampleYAML)
@@ -753,6 +770,7 @@ func TestSyncFilesystemFailuresPreserveErrorIdentity(t *testing.T) {
 	}
 }
 
+// invariant: rendering/sync-and-drift:sync-backs-up-foreign (TestBackupFileConfinedPropagatesPublicationFailure)
 func TestBackupFileConfinedPropagatesPublicationFailure(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(testContext(t), root)
@@ -765,9 +783,10 @@ func TestBackupFileConfinedPropagatesPublicationFailure(t *testing.T) {
 	}
 	defer closeAll()
 	failure := errors.New("publication failed")
-	_, err = p.backupFileConfined(".awf/config.yaml", publicationFailureFilesystem{syncFilesystem: filesystems.tracked, err: failure})
-	if !errors.Is(err, failure) {
-		t.Fatalf("backup error = %v", err)
+	calls := 0
+	_, err = p.backupFileConfined(".awf/config.yaml", publicationFailureFilesystem{syncFilesystem: filesystems.tracked, err: failure, calls: &calls})
+	if !errors.Is(err, failure) || calls != 1 {
+		t.Fatalf("backup error = %v, publication calls = %d", err, calls)
 	}
 }
 
@@ -1003,6 +1022,11 @@ func TestSyncReportDoesNotReportOutputWhenWriteFails(t *testing.T) {
 	}
 }
 
+// TestSyncReportClassifiesChangedOutput stages every provenance cause by
+// authoring the prior lock directly - the classification compares the old
+// entry against the fresh render, so a tweaked stored hash simulates the
+// corresponding real change (an upstream template edit, a config edit, a
+// non-hashed input) without mutating the embedded templates.
 func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, _ := Open(testContext(t), root)

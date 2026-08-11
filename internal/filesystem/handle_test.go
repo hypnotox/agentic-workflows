@@ -190,14 +190,52 @@ func TestHandleOperations(t *testing.T) {
 	if err := os.Symlink(outside, filepath.Join(root, "escape")); err != nil {
 		t.Skipf("symlink unsupported: %v", err)
 	}
+	outsideInfo, err := os.Stat(outsidePath)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := h.Replace("escape/victim", []byte("replacement"), 0o644); err == nil {
 		t.Fatal("replace through escaping symlink succeeded")
+	}
+	if err := h.Chmod("escape/victim", 0o600); err == nil {
+		t.Fatal("chmod through escaping symlink succeeded")
+	}
+	if _, _, err := h.ReadWithMode("escape/victim"); err == nil {
+		t.Fatal("read-with-mode through escaping symlink succeeded")
 	}
 	if err := h.Remove("escape/victim"); err == nil {
 		t.Fatal("remove through escaping symlink succeeded")
 	}
-	if raw, err := os.ReadFile(outsidePath); err != nil || string(raw) != "outside" {
-		t.Fatalf("escaping mutations changed outside target = %q, %v", raw, err)
+	afterOutsideInfo, statErr := os.Stat(outsidePath)
+	if raw, readErr := os.ReadFile(outsidePath); readErr != nil || statErr != nil || string(raw) != "outside" || afterOutsideInfo.Mode().Perm() != outsideInfo.Mode().Perm() {
+		t.Fatalf("escaping operations changed outside target = %q, %v, %v", raw, afterOutsideInfo, errors.Join(readErr, statErr))
+	}
+	if err := os.Symlink("dir/file", filepath.Join(root, "replace-link")); err != nil {
+		t.Skipf("symlink unsupported: %v", err)
+	}
+	if err := h.Replace("replace-link", []byte("link replacement"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	linkBytes, linkReadErr := os.ReadFile(filepath.Join(root, "replace-link"))
+	targetBytes, targetReadErr := os.ReadFile(filepath.Join(root, "dir/file"))
+	linkInfo, linkStatErr := os.Lstat(filepath.Join(root, "replace-link"))
+	if linkReadErr != nil || targetReadErr != nil || linkStatErr != nil || string(linkBytes) != "link replacement" || string(targetBytes) != "contents" || linkInfo.Mode()&fs.ModeSymlink != 0 || linkInfo.Mode().Perm() != 0o600 {
+		t.Fatalf("final symlink replacement = link %q target %q info %v errors %v", linkBytes, targetBytes, linkInfo, errors.Join(linkReadErr, targetReadErr, linkStatErr))
+	}
+	failedDestination := filepath.Join(root, "replace-failure")
+	if err := os.Mkdir(failedDestination, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(failedDestination, "marker"), []byte("preserved"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.Replace("replace-failure", []byte("replacement"), 0o600); err == nil {
+		t.Fatal("replacement over nonempty directory succeeded")
+	}
+	marker, markerReadErr := os.ReadFile(filepath.Join(failedDestination, "marker"))
+	failedInfo, failedStatErr := os.Stat(failedDestination)
+	if markerReadErr != nil || failedStatErr != nil || string(marker) != "preserved" || failedInfo.Mode().Perm() != 0o750 {
+		t.Fatalf("failed replacement changed destination = %q, %v, %v", marker, failedInfo, errors.Join(markerReadErr, failedStatErr))
 	}
 	for _, operation := range []func() error{
 		func() error { return h.MkdirAll("..", 0o755) },

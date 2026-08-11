@@ -263,7 +263,6 @@ func TestRunnerPrunePropagatesBackupFailure(t *testing.T) {
 	}
 }
 
-// invariant: rendering/companion-scripts:runner-prune-backup (TestConcurrentRunnerBackupsPublishCompleteRescueCopies)
 type blockingPublishFilesystem struct {
 	syncFilesystem
 	ready   chan<- struct{}
@@ -284,6 +283,7 @@ func (f *blockingPublishFilesystem) Publish(path string, contents []byte, mode o
 	return f.syncFilesystem.Publish(path, contents, mode)
 }
 
+// invariant: rendering/companion-scripts:runner-prune-backup (TestConcurrentRunnerBackupsPublishCompleteRescueCopies)
 func TestConcurrentRunnerBackupsPublishCompleteRescueCopies(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	const source = "complete runner rescue\n"
