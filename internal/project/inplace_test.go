@@ -509,6 +509,7 @@ func TestTemplateSourceSectionMarkerProjection(t *testing.T) {
 	}
 }
 
+// invariant: rendering/render-engine:template-source-symbol (TestReadBackInPlaceBodySkipsOnlyExpectedTemplateSourceFraming)
 func TestReadBackInPlaceBodySkipsOnlyExpectedTemplateSourceFraming(t *testing.T) {
 	pointer := "<!-- awf:edit-in-place one: your edits below are preserved across syncs; awf owns the rest -->\n"
 	next := "<!-- awf:edit two: default; create x to override -->\nnext\n"

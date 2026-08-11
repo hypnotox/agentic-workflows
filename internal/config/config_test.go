@@ -702,6 +702,7 @@ func TestCommitPolicyValidation(t *testing.T) {
 	}
 }
 
+// invariant: config/configuration:template-source-root (TestValidateTemplateSourceRoot)
 func TestValidateTemplateSourceRoot(t *testing.T) {
 	for _, root := range []string{"templates", "templates/parts"} {
 		if err := validateTemplateSourceRoot(root); err != nil {

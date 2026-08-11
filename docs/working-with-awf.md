@@ -102,7 +102,13 @@ file; it is not an editing instruction. An `awf:edit` pointer identifies the con
 owns one rendered section. An informational `awf:source` comment, when present immediately after
 the banner, identifies the compact reader-facing authority for an otherwise opaque generated
 document. It is neither an `awf:edit` pointer nor a read-back boundary, and it is not an exhaustive
-dependency list. For a topic page, edit both `.awf/topics/metadata/<domain>/<topic>.yaml` and
+dependency list. When `render.templateSourceRoot` is configured, maintainer-facing
+`awf:template-source` comments follow the banner and any `awf:source` marker to identify the
+checked-in Markdown root template, included partials, and structural sections. They do not replace
+reader guidance or edit ownership; frontmatter, native-format outputs, template-less producers, and
+in-place editable bodies are not annotated. The optional value is a normalized repository-relative
+directory and every emitted source must resolve in the selected working or staged tree; ordinary
+adopters omit it. For a topic page, edit both `.awf/topics/metadata/<domain>/<topic>.yaml` and
 `.awf/topics/parts/<domain>/<topic>/current-state.md`; a topic index instead names the family globs
 `.awf/topics/metadata/<domain>/*.yaml` and `.awf/topics/parts/<domain>/*/current-state.md`. The
 output plan remains the authority for machine render dependencies; `.awf/awf.lock` remains the

@@ -660,6 +660,7 @@ func ValidateArtifactName(kind, name string) error {
 
 // TemplateSourceRoot is a slash-separated, normalized repository-relative
 // directory. It intentionally rejects a present empty value and dot segments.
+// touches-state: config/configuration:template-source-root - optional repository template-root shape validation; proof in config_test.go
 func validateTemplateSourceRoot(root string) error {
 	if root == "" {
 		return errors.New("render.templateSourceRoot must not be empty when present")

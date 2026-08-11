@@ -61,6 +61,7 @@ func TestStagedDriftClassifiesFreshnessBeforeObservation(t *testing.T) {
 
 // invariant: rendering/sync-and-drift:staged-drift-rendered-output (TestStagedDriftRenderedOutputInvariant)
 // invariant: rendering/sync-and-drift:ordinary-render-freshness (TestStagedDriftRenderedOutputInvariant)
+// invariant: config/configuration:template-source-root (TestCheckStagedDriftUsesIndexedTemplateSourceMappings)
 func TestCheckStagedDriftUsesIndexedTemplateSourceMappings(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	if err := fs.WalkDir(templates.FS, ".", func(name string, entry fs.DirEntry, err error) error {

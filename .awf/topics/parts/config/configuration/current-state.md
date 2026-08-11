@@ -84,6 +84,12 @@ Origin: ADR-0236
 Revised-by: ADR-0251
 Backing: test
 
+### `invariant: template-source-root`
+
+The optional `render.templateSourceRoot` is a normalized repository-relative directory fact. When present it enables Markdown template-source symbols only after every emitted root or included source resolves as a regular file in the selected working or staged repository tree; when absent scaffolded configuration and generated adopter bytes remain unchanged.
+Origin: ADR-repository-local-template-source-symbols
+Backing: test
+
 ### `invariant: tag-coverage-note`
 
 Under a non-empty tag vocabulary, awf check emits a non-failing note for each ADR and each pitfall that carries zero tags and for no tagged artifact, never changing the exit code; an empty or absent vocabulary is inert.

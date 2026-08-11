@@ -316,6 +316,44 @@ func (p *Project) templateSourceRoot() string {
 	return p.Cfg.Render.TemplateSourceRoot
 }
 
+// touches-state: rendering/render-engine:template-source-symbol - configured source mapping for Markdown producers outside renderTarget; proof in template_source_marker_test.go
+// templateSourceRootMarker is the project-owned bridge for Markdown producers
+// that execute their template outside renderTarget. It keeps their configured
+// source mapping, validation, and observed inputs identical to ordinary renders.
+func (p *Project) templateSourceRootMarker(tid string) (string, []OutputInput, error) {
+	root := p.templateSourceRoot()
+	if root == "" || tid == "" {
+		return "", nil, nil
+	}
+	src, err := fs.ReadFile(templates.FS, tid)
+	if err != nil {
+		return "", nil, fmt.Errorf("read template %s: %w", tid, err)
+	}
+	expanded, err := render.ExpandIncludesSource(string(src), tid, templates.FS)
+	if err != nil { // coverage-ignore: live embedded templates are include-validated; render package tests own malformed expansion
+		return "", nil, fmt.Errorf("render %s: %w", tid, err)
+	}
+	if err := p.validateTemplateSources(expanded, root); err != nil {
+		return "", nil, fmt.Errorf("render %s: %w", tid, err)
+	}
+	inputs := []OutputInput{}
+	seen := map[string]bool{}
+	for _, span := range expanded.Spans {
+		if span.Source != "" && !seen[span.Source] {
+			seen[span.Source] = true
+			inputs = append(inputs, OutputInput{Path: path.Join(root, span.Source), Role: ArtifactTemplate})
+		}
+	}
+	return "<!-- awf:template-source " + path.Join(root, tid) + " -->\n", normalizeOutputInputs(inputs), nil
+}
+
+func templateSourceConfigHash(hash, root string) string {
+	if root == "" {
+		return hash
+	}
+	return manifest.Hash([]byte(hash + "\x00templateSourceRoot=" + root))
+}
+
 func atxHeadingLine(s string) bool {
 	i := 0
 	for i < len(s) && s[i] == '#' {
@@ -787,6 +825,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 // skeleton, rather than each heading as an independent template. This retains
 // surrounding dot, variables, and control context while producing the expected
 // line needed for in-place read-back before final assembly.
+// touches-state: config/configuration:template-source-root - selected working/staged repository mapping validation; proof in render_test.go and staged_drift_test.go
 // validateTemplateSources requires every provenance identity used by an
 // instrumented output to exist in the operation's selected repository universe.
 // The selected ProjectTreeReader keeps staged drift from consulting worktree files.
@@ -922,12 +961,16 @@ func (p *Project) generateDomainDocs(topics topic.Corpus, eff map[string]bool) (
 				OutputInput{Path: relSlash(p.Root, currentTopic.PartPath), Role: ArtifactClaimPart})
 		}
 		rf.ConsumedInputs = normalizeOutputInputs(rf.ConsumedInputs)
-		out = append(out, RenderedFile{Path: rf.Path, Content: rf.Content,
+		wrapped := RenderedFile{Path: rf.Path, Content: rf.Content,
 			stubDefaults: rf.stubDefaults, stubParts: rf.stubParts,
 			markerParts: rf.markerParts, assembled: rf.assembled,
 			partVarRefs: rf.partVarRefs, kind: rf.kind, artifact: rf.artifact,
 			RegenChecked: true, Policy: OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}, Encoder: rf.Encoder,
-			ConsumedInputs: rf.ConsumedInputs, ObservedTemplateID: rf.ObservedTemplateID})
+			ConsumedInputs: rf.ConsumedInputs, ObservedTemplateID: rf.ObservedTemplateID}
+		if p.templateSourceRoot() != "" {
+			wrapped.TemplateID, wrapped.TemplateHash, wrapped.ConfigHash = rf.TemplateID, rf.TemplateHash, rf.ConfigHash
+		}
+		out = append(out, wrapped)
 	}
 	return out, nil
 }

@@ -158,6 +158,8 @@ type TemplateSource struct{ Root string }
 
 // AssembleSourceWithTemplateSource applies section assembly and emits source
 // transitions when template provenance is enabled.
+// touches-state: rendering/render-engine:no-section-marker-leak - structural directives remain excluded while template-source markers are renderer-owned; proof in render_test.go
+// touches-state: rendering/render-engine:template-source-symbol - root, include, return, and structural-section marker emission; proof in render_test.go and project/template_source_marker_test.go
 func AssembleSourceWithTemplateSource(segs []Segment, plan map[string]SectionPlan, style CommentStyle, provenance TemplateSource) (SourceText, map[string]string) {
 	var out SourceText
 	if len(segs) > 0 {

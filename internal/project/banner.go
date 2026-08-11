@@ -33,6 +33,7 @@ func injectSourceMarker(content string, sources []string) string {
 	return content[:at+len(banner)] + marker + content[at+len(banner):]
 }
 
+// touches-state: rendering/render-engine:template-source-symbol - root symbol placement after frontmatter and the generated banner; proof in banner_test.go and template_source_marker_test.go
 func injectBanner(content, tid string, styles ...render.CommentStyle) string {
 	// The renderer places a root template symbol first. Lift it out before
 	// framing so YAML frontmatter remains the leading construct, then restore it

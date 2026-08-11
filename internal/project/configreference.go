@@ -440,12 +440,16 @@ func (p *Project) generateConfigReference(files []RenderedFile, eff map[string]b
 	if err != nil { // reachable: an unreadable intro part fails the read here - this is its first render
 		return nil, false, err
 	}
-	return &RenderedFile{Path: rf.Path, Content: rf.Content,
+	wrapped := RenderedFile{Path: rf.Path, Content: rf.Content,
 		stubDefaults: rf.stubDefaults, stubParts: rf.stubParts,
 		markerParts: rf.markerParts, assembled: rf.assembled,
 		partVarRefs: rf.partVarRefs, kind: rf.kind, artifact: rf.artifact,
 		RegenChecked: true, ConsumedInputs: rf.ConsumedInputs, ObservedTemplateID: rf.ObservedTemplateID, Encoder: rf.Encoder,
-		Policy: OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}}, true, nil
+		Policy: OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}}
+	if p.templateSourceRoot() != "" {
+		wrapped.TemplateID, wrapped.TemplateHash, wrapped.ConfigHash = rf.TemplateID, rf.TemplateHash, rf.ConfigHash
+	}
+	return &wrapped, true, nil
 }
 
 // ConfigReferenceModel computes the reference's four typed collections

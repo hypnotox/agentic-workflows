@@ -32,6 +32,7 @@ func TestAssembleSourceLeavesRawPartsProvenanceFree(t *testing.T) {
 	}
 }
 
+// invariant: rendering/render-engine:template-source-symbol (TestAssembleSourceTemplateSourceTransitions)
 func TestAssembleSourceTemplateSourceTransitions(t *testing.T) {
 	src := SourceText{Root: "guide.md", Spans: []SourceSpan{
 		{Source: "guide.md", Text: "before\n"},

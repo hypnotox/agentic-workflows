@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: repository-local-template-source-symbols
-status: Accepted
+status: Implementing
 date: 2026-08-11
 ---
 # ADR-repository-local-template-source-symbols: Repository-Local Template Source Symbols
@@ -62,3 +62,5 @@ Moving the configured source tree or an awf template changes checked-in self-hos
 
 - 2026-08-11: Proposed
 - 2026-08-11: Accepted; content-sha256: ddd49353b01dda515701896774831ac6aebbee7436109a30a980e8664febe288
+- 2026-08-11: Implementing; content-sha256: ddd49353b01dda515701896774831ac6aebbee7436109a30a980e8664febe288
+- 2026-08-11: Applied; operations: add `config/configuration:template-source-root`, update `rendering/render-engine:no-section-marker-leak`, add `rendering/render-engine:template-source-symbol`

@@ -4,7 +4,7 @@
 
 The .awf config tree schema, its serialization, and the anchored path-glob dialect.
 
-**Applicability:** Owning domain selectors: `internal/config/**`, `internal/configspec/**`, `internal/manifest/**`, `internal/migrate/**`, `internal/pathglob/**`. Topic selectors: `internal/config/**`, `internal/configspec/**`, `internal/pathglob/**`. Both domain and topic selectors must match. Run `awf topic config/configuration --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `internal/config/**`, `internal/configspec/**`, `internal/manifest/**`, `internal/migrate/**`, `internal/pathglob/**`, `internal/project/render.go`, `internal/project/staged_drift_test.go`. Topic selectors: `internal/config/**`, `internal/configspec/**`, `internal/pathglob/**`, `internal/project/render.go`, `internal/project/staged_drift_test.go`. Both domain and topic selectors must match. Run `awf topic config/configuration --coverage` for current applicable and owned paths and marker sites.
 
 These packages load, validate, and describe the .awf config tree and the anchored path-glob dialect it uses. The claims below capture the current configuration contracts.
 
@@ -90,6 +90,12 @@ Backing: test
 A sidecar dataDefaults map accepts only boolean controls whose keys name same-key list defaults declared by that catalog artifact. Absence or true keeps the default and false suppresses it; unknown, non-list, differently keyed specialized, and non-boolean entries are rejected, and a present catalog-backed project list value must be a list rather than null or another type.
 Origin: ADR-0236
 Revised-by: ADR-0251
+Backing: test
+
+### `invariant: template-source-root`
+
+The optional `render.templateSourceRoot` is a normalized repository-relative directory fact. When present it enables Markdown template-source symbols only after every emitted root or included source resolves as a regular file in the selected working or staged repository tree; when absent scaffolded configuration and generated adopter bytes remain unchanged.
+Origin: ADR-repository-local-template-source-symbols
 Backing: test
 
 ### `invariant: tag-coverage-note`

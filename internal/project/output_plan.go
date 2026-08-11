@@ -264,6 +264,12 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		}
 		for _, o := range resolvedTargetOutputs(t, cfg.Prefix, slices.Sorted(maps.Keys(cat.Skills))) {
 			declaredInputs := inputs(o.TemplateID)
+			if o.Encoder == MarkdownAgentDialect {
+				declaredInputs, err = markdownInputs(o.TemplateID)
+				if err != nil { // coverage-ignore: validated target-output descriptors own embedded Markdown template identities; markdownInputs error propagation is covered through enabled bridge declarations
+					return nil, err
+				}
+			}
 			for _, input := range o.Inputs {
 				declaredInputs = append(declaredInputs, OutputInput(input))
 			}
@@ -339,7 +345,11 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			}
 		}
 		domainTID := mustDescriptor("domains").tid(d)
-		add(config.DocsDir+"/domains/"+d+".md", domainTID, "generated-domain", inputs(domainTID, authored...))
+		declaredInputs, err := markdownInputs(domainTID, authored...)
+		if err != nil { // coverage-ignore: the domain descriptor owns one validated embedded template identity
+			return nil, err
+		}
+		add(config.DocsDir+"/domains/"+d+".md", domainTID, "generated-domain", declaredInputs)
 	}
 	allMetadata, err := read.Paths(".awf/topics/metadata/")
 	if err != nil {
@@ -350,7 +360,11 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			continue
 		}
 		id := strings.TrimSuffix(strings.TrimPrefix(p, ".awf/topics/metadata/"), ".yaml")
-		add(config.DocsDir+"/topics/"+id+".md", topicTID, "topic:"+id, inputs(topicTID, OutputInput{Path: p, Role: ArtifactTopicMetadata}, OutputInput{Path: ".awf/topics/parts/" + id + "/current-state.md", Role: ArtifactClaimPart}))
+		declaredInputs, err := markdownInputs(topicTID, OutputInput{Path: p, Role: ArtifactTopicMetadata}, OutputInput{Path: ".awf/topics/parts/" + id + "/current-state.md", Role: ArtifactClaimPart})
+		if err != nil { // coverage-ignore: topicTID is a validated compile-time embedded identity
+			return nil, err
+		}
+		add(config.DocsDir+"/topics/"+id+".md", topicTID, "topic:"+id, declaredInputs)
 	}
 	for _, d := range cfg.Domains {
 		topicInputs := []OutputInput{}
@@ -365,7 +379,11 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			}
 		}
 		if len(topicInputs) > 0 {
-			add(config.DocsDir+"/topics/"+d+"/index.md", topicIndexTID, "topic-index:"+d, inputs(topicIndexTID, topicInputs...))
+			declaredInputs, err := markdownInputs(topicIndexTID, topicInputs...)
+			if err != nil { // coverage-ignore: topicIndexTID is a validated compile-time embedded identity
+				return nil, err
+			}
+			add(config.DocsDir+"/topics/"+d+"/index.md", topicIndexTID, "topic-index:"+d, declaredInputs)
 		}
 	}
 	decisionInputs := []OutputInput{}

@@ -65,10 +65,16 @@ Backing: test
 ### `invariant: no-section-marker-leak`
 
 Rendered output never contains awf:section or awf:end markers. The only awf markers a rendered
-file may carry are the generated-by banner, the awf:edit family, and informational awf:source
-comments.
+file may carry are the generated-by banner, the awf:edit family, informational awf:source comments,
+and maintainer-facing awf:template-source comments.
 Origin: ADR-0015
-Revised-by: ADR-0250
+Revised-by: ADR-0250, ADR-repository-local-template-source-symbols
+Backing: test
+
+### `invariant: template-source-symbol`
+
+When `render.templateSourceRoot` is configured, every template-backed declared Markdown output carries renderer-owned `awf:template-source` markers for its root template, included partial entries and returns, and surviving structural sections. The root follows the banner and any reader-facing `awf:source`; frontmatter, in-place bodies, template-less producers, and native-format outputs carry none. The selected working or staged repository tree must resolve every emitted source, and the root participates in affected output config hashes while absent configuration preserves prior bytes.
+Origin: ADR-repository-local-template-source-symbols
 Backing: test
 
 ### `invariant: source-marker-informational`
