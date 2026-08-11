@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-restore-autonomous-effort-management: Restore Autonomous Effort Management](restore-autonomous-effort-management.md) (Proposed)
 
 ## History
 
