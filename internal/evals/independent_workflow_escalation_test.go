@@ -204,7 +204,7 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 			}
 		}
 		effort := read(t, path("effort-workflow"))
-		assertContainsAll(t, target+" autonomous effort creation", effort, "durable continuity materially helps", "choose a faithful outcome, title, and canonical short slug", "awf effort new --slug <slug>", "report the allocated immutable identity", "continue there", "No user confirmation", "later response", "turn-ending authorization", "repeated authorization")
+		assertContainsAll(t, target+" autonomous effort creation", effort, "durable continuity materially helps", "choose a faithful outcome, title, and canonical short slug", "awf effort new --slug <slug>", "report the allocated immutable identity", "continue there", "No user confirmation", "later response", "turn-ending authorization", "or repeated authorization precedes creation")
 		assertOrderedPhrases(t, effort, "durable continuity materially helps", "choose a faithful outcome, title, and canonical short slug", "awf effort new --slug <slug>", "report the allocated immutable identity", "continue there")
 		for _, obsolete := range []string{
 			"clear response in a " +
