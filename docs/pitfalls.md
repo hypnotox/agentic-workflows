@@ -36,7 +36,6 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 | [Enabled linters constrain API shape\, sketch signatures against them](pitfalls/enabled-linters-constrain-api-shape-sketch-signatures-against-them.md) | tooling | static\-linting |  |
 | [gofmt rewrites double backticks in doc comments into curly quotes](pitfalls/gofmt-rewrites-double-backticks-in-doc-comments-into-curly-quotes.md) | tooling | gofmt\-doccomment |  |
 | [GoReleaser aborts on a dirty git tree\; pre\-release artifacts belong outside the worktree](pitfalls/goreleaser-aborts-on-a-dirty-git-tree-pre-release-artifacts-belong-outside-the-worktree.md) | tooling | release\-pipeline |  |
-| [Keep literal placeholder syntax out of guide prose](pitfalls/keep-literal-placeholder-syntax-out-of-guide-prose.md) | rendering | placeholder\-degradation\, agents\-guide |  |
 | [Keep recovery UI writes non\-fatal after session disposal](pitfalls/keep-recovery-ui-writes-non-fatal-after-session-disposal.md) | rendering | target\-seam\, verification\-discipline |  |
 | [Link ADRs by their on\-disk filename\, never by constructing one from the title](pitfalls/link-adrs-by-their-on-disk-filename-never-by-constructing-one-from-the-title.md) | adr\-system | cross\-references\, link\-resolution |  |
 | [Make custom staged\-slice hooks explicit about branch and cleanup](pitfalls/make-custom-staged-slice-hooks-explicit-about-branch-and-cleanup.md) | tooling\, adr\-system | commit\-gate\, worktree\-isolation | ADR-0202 |
@@ -100,7 +99,6 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 - [A token or convention rename must sweep every rendered doc surface](pitfalls/a-token-or-convention-rename-must-sweep-every-rendered-doc-surface.md)
 - [Adding a template var changes adopter behavior and consumer projections](pitfalls/adding-a-template-var-changes-adopter-behavior-and-consumer-projections.md)
 - [An ordered\-phrase assertion cannot reach a site ahead of its first anchor](pitfalls/an-ordered-phrase-assertion-cannot-reach-a-site-ahead-of-its-first-anchor.md)
-- [Keep literal placeholder syntax out of guide prose](pitfalls/keep-literal-placeholder-syntax-out-of-guide-prose.md)
 - [Keep recovery UI writes non\-fatal after session disposal](pitfalls/keep-recovery-ui-writes-non-fatal-after-session-disposal.md)
 - [Obsoleting rendered prose\: sweep parts and whole narratives\, not just templates](pitfalls/obsoleting-rendered-prose-sweep-parts-and-whole-narratives-not-just-templates.md)
 - [Recheck closure assertions after changing catalog edges](pitfalls/recheck-closure-assertions-after-changing-catalog-edges.md)

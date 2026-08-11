@@ -454,9 +454,9 @@
     },
     "docs/agents-md-standard.md": {
       "templateId": "docs/agents-md-standard.md.tmpl",
-      "templateHash": "sha256:110ceafb0494aacc665fc909476b763fc1742768e331a69afa74a9eb62a4d0a1",
+      "templateHash": "sha256:74cf3a13b3a31fe091d2a9b64d95bc099c751b8718e31e094d7b5be1a3909da8",
       "configHash": "sha256:c90eba2191c3d88d6c707d246d8067664f2243691bef8396697e45e4997bd68e",
-      "outputHash": "sha256:217274adbaf638ce862c6ff7a0f1400f1a8123fdbab1ad93db76e89d04c376a9"
+      "outputHash": "sha256:c95ed85219f0d4e69ab125d78d4217909ff11ccb7c6d705b7b55313dc03c5037"
     },
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
@@ -565,8 +565,8 @@
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
       "templateHash": "sha256:d6475aaeadbbed6f56bfc85c4716b8636fea0d5922661201890334a6429b4f85",
-      "configHash": "sha256:2a03b85294e32b5ec8fbd9eb60dbc35cf644366e3e2f7640acd33a8b1538d9a5",
-      "outputHash": "sha256:7436a2d125f8263ce0fe61721e427e4c699919fbc4d0e13e28be40ef02cdce76"
+      "configHash": "sha256:e6ef2fa30b203ca16f5e98043f6a37ff1c892582c52d035a6c880575cf32d7f4",
+      "outputHash": "sha256:36c97f91abcdbe8d398a734b86993adfc04469f4f30730e75bef2603060106b0"
     },
     "docs/pitfalls/a-census-number-is-only-as-good-as-its-stated-query.md": {
       "templateId": "pitfalls/entry.md.tmpl",
@@ -717,12 +717,6 @@
       "templateHash": "sha256:23ea7baa4f2cd0e3a7319448093f2612ca5a7beab8cb0bfc631015eef99be786",
       "configHash": "sha256:c23c152b75ea98123800ab182c51cf696a43305f272d80adb9ceef20770b4584",
       "outputHash": "sha256:8668b4f0038051c1d16f6e0cd7d93c648ab3ea5201ec74f47793dca4c5321650"
-    },
-    "docs/pitfalls/keep-literal-placeholder-syntax-out-of-guide-prose.md": {
-      "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:23ea7baa4f2cd0e3a7319448093f2612ca5a7beab8cb0bfc631015eef99be786",
-      "configHash": "sha256:de6d0185e1b3131a6022e89f0108e05fd5133c016f88714d9e491ede2699492d",
-      "outputHash": "sha256:f53d0cc58a149bbdd710ba5f52221ef0f530903cad53aacebac32b12ed663af0"
     },
     "docs/pitfalls/keep-recovery-ui-writes-non-fatal-after-session-disposal.md": {
       "templateId": "pitfalls/entry.md.tmpl",
