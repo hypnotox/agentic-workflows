@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-unconditional-repository-awf-invocation: Unconditional Repository Awf Invocation](unconditional-repository-awf-invocation.md) (Proposed)
 
 ## History
 
