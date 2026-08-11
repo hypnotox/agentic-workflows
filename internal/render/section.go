@@ -169,10 +169,21 @@ func CheckResidualMarkers(assembled string) error {
 // adopter-owned in-place bytes and remain verbatim by contract.
 func CheckResidualMarkersSource(assembled SourceText) error {
 	var owned strings.Builder
-	for _, span := range assembled.Spans {
-		if span.Source != "" {
-			owned.WriteString(span.Text)
-		}
+	flush := func() error {
+		err := CheckResidualMarkers(owned.String())
+		owned.Reset()
+		return err
 	}
-	return CheckResidualMarkers(owned.String())
+	for _, span := range assembled.Spans {
+		if span.Source == "" {
+			if span.Text != "" {
+				if err := flush(); err != nil {
+					return err
+				}
+			}
+			continue
+		}
+		owned.WriteString(span.Text)
+	}
+	return flush()
 }

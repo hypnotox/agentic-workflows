@@ -160,6 +160,30 @@ func TestAssembleTemplateSourceInPlaceFallbackAndSectionReturn(t *testing.T) {
 	}
 }
 
+func TestInPlaceBodyIsRawNeverTemplated(t *testing.T) {
+	src := SourceText{Root: "guide.md", Spans: []SourceSpan{{Source: "guide.md", Text: "<!-- awf:section body inplace -->\ndefault {{ .prefix }}\n<!-- awf:end -->\n"}}}
+	body := "literal {{ .prefix }} and malformed {{ if }}"
+	plan := map[string]SectionPlan{"body": {InPlace: true, InPlaceFound: true, InPlaceBody: body}}
+	for _, provenance := range []TemplateSource{{}, {Root: "templates"}} {
+		assembled, parts := AssembleSourceWithTemplateSource(ParseSourceSections(src), plan, HTMLComment, provenance)
+		var (
+			got string
+			err error
+		)
+		if provenance.Root == "" {
+			got, err = Execute(assembled.AuthoredText(), sampleData(), parts, "in-place-raw")
+		} else {
+			got, err = ExecuteSourceWithTemplateSource(assembled, sampleData(), parts, "in-place-raw", provenance)
+		}
+		if err != nil {
+			t.Fatalf("provenance %q parsed adopter-owned body: %v", provenance.Root, err)
+		}
+		if !strings.Contains(got, body) || strings.Contains(got, "literal example") {
+			t.Fatalf("provenance %q did not preserve in-place body verbatim: %s", provenance.Root, got)
+		}
+	}
+}
+
 func TestRenderDefault(t *testing.T) {
 	asm, parts := Assemble(ParseSections(tmpl), nil, HTMLComment)
 	out, err := Execute(asm, sampleData(), parts, "test")

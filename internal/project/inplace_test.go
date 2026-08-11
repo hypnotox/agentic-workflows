@@ -34,7 +34,11 @@ func TestReadBackInPlaceBodyExcludesStructuralHeading(t *testing.T) {
 		// Reassembly with the rendered structural line is a fixpoint rather than
 		// duplicating a whitespace-bearing empty-value fallback into the body.
 		segs := parseSections("<!-- awf:section body inplace -->\n" + heading + "\ndefault\n<!-- awf:end -->\n")
-		assembled, _ := assemble(segs, map[string]render.SectionPlan{"body": {InPlace: true, InPlaceFound: true, InPlaceBody: got}}, render.HTMLComment)
+		assembled, parts := assemble(segs, map[string]render.SectionPlan{"body": {InPlace: true, InPlaceFound: true, InPlaceBody: got}}, render.HTMLComment)
+		assembled, err := render.Execute(assembled, nil, parts, "heading fixpoint")
+		if err != nil {
+			t.Fatal(err)
+		}
 		if strings.Count(assembled, heading+"\n") != 1 {
 			t.Fatalf("heading %q duplicated after read-back and reassembly: %q", heading, assembled)
 		}
@@ -351,8 +355,12 @@ func TestInPlaceComposedSyncCheckFixpoint(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		asm, _ := assemble(segs, plan, render.HTMLComment)
-		return asm
+		asm, parts := assemble(segs, plan, render.HTMLComment)
+		output, err := render.Execute(asm, nil, parts, "in-place composed")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return output
 	}
 	drift := func(regenerated string) []manifest.Drift {
 		t.Helper()
@@ -440,8 +448,12 @@ func TestPointerPrefixesMatchRenderedPointers(t *testing.T) {
 		if style == render.HashComment {
 			src = "#!/bin/sh\n" + src
 		}
-		asm, _ := assemble(parseSections(src),
+		asm, parts := assemble(parseSections(src),
 			map[string]render.SectionPlan{"s": {InPlace: true, InPlaceFound: true, InPlaceBody: "x"}}, style)
+		asm, err := render.Execute(asm, nil, parts, "pointer prefixes")
+		if err != nil {
+			t.Fatal(err)
+		}
 		var ptrLine string
 		for _, ln := range strings.Split(asm, "\n") {
 			if strings.Contains(ln, "awf:edit-in-place s") {

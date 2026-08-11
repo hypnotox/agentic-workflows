@@ -196,7 +196,9 @@ func AssembleSourceWithTemplateSource(segs []Segment, plan map[string]SectionPla
 			// is its only provenance: nested include transitions would become part
 			// of the later adopter-owned read-back region.
 			if p.InPlaceFound {
-				out.appendText("", p.InPlaceBody)
+				sent := partSentinel(s.Name + "\x00in-place")
+				parts[sent] = p.InPlaceBody
+				out.appendText("", sent)
 			} else {
 				out.appendText(s.SectionSource, s.Source.AuthoredText())
 			}

@@ -269,6 +269,31 @@ func TestHasMarkerLine(t *testing.T) {
 	}
 }
 
+func TestCheckResidualMarkersSourceDoesNotJoinAcrossRawBody(t *testing.T) {
+	separated := SourceText{Spans: []SourceSpan{
+		{Source: "guide.md", Text: "<!-- awf:"},
+		{Text: "raw body"},
+		{Source: "guide.md", Text: "section body -->"},
+	}}
+	if err := CheckResidualMarkersSource(separated); err != nil {
+		t.Fatalf("raw body boundary reconstructed a synthetic marker: %v", err)
+	}
+	adjacent := SourceText{Spans: []SourceSpan{
+		{Source: "guide.md", Text: "<!-- awf:"},
+		{Source: "partial.md", Text: "section body -->"},
+	}}
+	if err := CheckResidualMarkersSource(adjacent); err == nil {
+		t.Fatal("adjacent renderer-owned spans hid a residual marker")
+	}
+	beforeRaw := SourceText{Spans: []SourceSpan{
+		{Source: "guide.md", Text: "<!-- awf:end -->"},
+		{Text: "raw body"},
+	}}
+	if err := CheckResidualMarkersSource(beforeRaw); err == nil {
+		t.Fatal("renderer-owned residual before a raw boundary was accepted")
+	}
+}
+
 func TestCheckResidualMarkersBareTokenLegal(t *testing.T) {
 	if err := CheckResidualMarkers("A managed doc is a sequence of `awf:section` blocks.\n"); err != nil {
 		t.Errorf("bare backtick-quoted token must be legal, got %v", err)
