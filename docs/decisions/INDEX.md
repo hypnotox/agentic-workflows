@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-root-confined-sync-filesystem-mutations: Root-confined sync filesystem mutations](root-confined-sync-filesystem-mutations.md) (Proposed)
+- [ADR-root-confined-sync-filesystem-mutations: Root-confined sync filesystem mutations](root-confined-sync-filesystem-mutations.md) (Accepted)
 
 ## History
 

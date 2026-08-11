@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: root-confined-sync-filesystem-mutations
-status: Proposed
+status: Accepted
 date: 2026-08-11
 ---
 # ADR-root-confined-sync-filesystem-mutations: Root-confined sync filesystem mutations
@@ -124,3 +124,4 @@ boundary misleading. Other filesystem consumers remain unchanged.
 ## Status history
 
 - 2026-08-11: Proposed
+- 2026-08-11: Accepted; content-sha256: 2f04c7d6ed189b8c5abab0c6794150117a4cb6728079ac9007dea0b4fb9d137f
