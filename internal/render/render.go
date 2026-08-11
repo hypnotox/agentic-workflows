@@ -180,7 +180,9 @@ func AssembleSourceWithTemplateSource(segs []Segment, plan map[string]SectionPla
 	}
 	appendSource := func(source SourceText) {
 		for _, span := range source.Spans {
-			marker(span.Source, "", false)
+			if strings.TrimSpace(span.Text) != "" {
+				marker(span.Source, "", false)
+			}
 			out.appendText(span.Source, span.Text)
 		}
 	}

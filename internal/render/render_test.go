@@ -60,6 +60,21 @@ func TestAssembleSourceTemplateSourceTransitions(t *testing.T) {
 	}
 }
 
+func TestAssembleTemplateSourceSkipsZeroWidthTransitions(t *testing.T) {
+	segments := []Segment{{
+		Source: SourceText{Root: "guide.md", Spans: []SourceSpan{
+			{Source: "guide.md", Text: ""},
+			{Source: "partials/final.md", Text: "final"},
+			{Source: "guide.md", Text: "\n"},
+		}},
+	}}
+	assembled, _ := AssembleSourceWithTemplateSource(segments, nil, HTMLComment, TemplateSource{Root: "templates"})
+	got := assembled.AuthoredText()
+	if strings.Count(got, "templates/guide.md -->") != 1 || strings.Count(got, "templates/partials/final.md -->") != 1 || !strings.HasSuffix(got, "final\n") {
+		t.Fatalf("zero-width spans emitted synthetic transitions:\n%s", got)
+	}
+}
+
 func TestAssembleTemplateSourceInPlaceFallbackAndSectionReturn(t *testing.T) {
 	src := SourceText{Root: "guide.md", Spans: []SourceSpan{
 		{Source: "guide.md", Text: "before\n<!-- awf:section body inplace -->\n"},

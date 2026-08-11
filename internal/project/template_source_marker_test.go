@@ -21,6 +21,7 @@ func TestTemplateSourceMarkerProducerMatrix(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	p.Cfg.Render = nil
 	plain, err := p.OutputPlan(testContext(t))
 	if err != nil {
 		t.Fatal(err)
