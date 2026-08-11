@@ -232,6 +232,10 @@ func TestProductionCodeOutlineApproval(t *testing.T) {
 			implementer := read(t, filepath.Join(root, "."+target, "agents", "implementer.md"))
 			assertContainsAll(t, target+" delegated intake", implementer,
 				"parent-supplied approved boundary", "never recreate the approval interaction", "stops without mutation to report missing evidence to its parent")
+			assertContainsAll(t, target+" phase-owner approved-boundary dispatch", read(t, path("subagent-driven-development")),
+				"provide the complete phase, explicitly identify the parent-supplied approved boundary")
+			assertContainsAll(t, target+" helper approved-boundary dispatch", read(t, path("executing-plans")),
+				"Each brief explicitly identifies the parent-supplied approved boundary")
 			for _, name := range []string{"executing-direct", "tdd", "bugfix", "executing-plans", "subagent-driven-development", "proposing-adr"} {
 				body := read(t, path(name))
 				assertContainsAll(t, target+" "+name+" evidence", body,
