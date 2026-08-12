@@ -34,7 +34,7 @@ This report-only audit may run without an effort. If continuity independently fi
 
 **Pick the audit shape: run the categories inline, or dispatch exploration children per category.** Per `{{ .layout.maintainableCodeDesign }}`, assess whether the requested behavior would create duplication, coupling, representation leakage, or a workaround, and feed the bounded enabling-refactor or larger-work result into ADR scope. For materially larger work, record the user's disposition:
 <!-- awf:include escalation-menu -->
-When both the coupling evidence location is unknown and inline search would pollute the parent context, invoke `{{ .prefix }}-exploring` once per information need with breadth and detail. Keep an exact-known-file or genuinely trivial category check inline. Preserve the categories and the structured output contract. Ground the audit before the categories: run `awf context <the refactor's source and destination paths>` so the coupling findings land in the ADR Context section against current authority.
+When both the coupling evidence location is unknown and inline search would pollute the parent context, invoke `{{ .prefix }}-exploring` once per information need with breadth and detail. Keep an exact-known-file or genuinely trivial category check inline. Preserve the categories and the structured output contract. Ground the audit before the categories: run `./awf context <the refactor's source and destination paths>` so the coupling findings land in the ADR Context section against current authority.
 <!-- awf:include context-orientation -->
 <!-- awf:include context-spill -->
 <!-- awf:end -->

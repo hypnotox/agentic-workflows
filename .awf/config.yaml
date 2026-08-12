@@ -154,7 +154,6 @@ contextIgnore:
   - .gremlins.yaml
 vars:
   activeMdRegenCmd: ./x render
-  awfInvokeCmd: go run ./cmd/awf
   checkCmd: ./x check
   commitGateCmd: ./awf check staged commit
   gateCmd: ./x gate

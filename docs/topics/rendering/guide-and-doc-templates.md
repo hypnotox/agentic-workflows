@@ -11,6 +11,13 @@ Agent-guide and documentation template contracts: section parity, glossary rende
 
 ## Claims
 
+### `invariant: guide-awf-invocation`
+
+The rendered agent guide directs repository-local executable awf commands through `./awf`, including generated-tree rendering and staged verification, while retaining bare product and CLI grammar where no local execution is prescribed.
+Origin: ADR-unconditional-repository-awf-invocation
+Backing: test
+
+
 ### `invariant: agents-doc-section-parity`
 
 The agents-doc template's awf:section marker names match its catalog-declared section list exactly and in order, so a guide section added to one but not the other fails rather than half-landing with a broken override path.

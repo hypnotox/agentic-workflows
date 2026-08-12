@@ -47,10 +47,17 @@ Backing: test
 
 ### `invariant: implementer-context-grounding`
 
-Every managed context-calling skill and the grounding-checker agent body carry the one-sentence spill pointer naming the exact `AWF_CONTEXT_SPILL_V1` notice and the working-with-awf doc's Context spill notices subsection, the contract's single rendered home for byte-length verification and best-effort packet deletion. Brainstorming, orientation, implementation, planning, debugging, test-first, and refactor-orientation calls start with bare `awf context`; ordinary plan and implementation review request `invariants`, `all-rules`, `evidence`, and `pending`; ADR review consumes deterministic typed linked-plan references from an explicit ADR context request; and ADR lifecycle requests `pending` where lifecycle detail is needed. No managed skill prescribes `--full` or `--json`, and the projection-pinning spine test classifies every context-calling skill template and expands the shared spill pointer.
+Every managed context-calling skill and the grounding-checker agent body carry the one-sentence spill pointer naming the exact `AWF_CONTEXT_SPILL_V1` notice and the working-with-awf doc's Context spill notices subsection, the contract's single rendered home for byte-length verification and best-effort packet deletion. Brainstorming, orientation, implementation, planning, debugging, test-first, and refactor-orientation calls start with `./awf context`; ordinary plan and implementation review request `invariants`, `all-rules`, `evidence`, and `pending`; ADR review consumes deterministic typed linked-plan references from an explicit ADR context request; and ADR lifecycle requests `pending` where lifecycle detail is needed. No managed skill prescribes `--full` or `--json`, and the projection-pinning spine test classifies every context-calling skill template and expands the shared spill pointer.
 This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0155
-Revised-by: ADR-0165, ADR-0174, ADR-0187, ADR-0197, ADR-0243, ADR-0255
+Revised-by: ADR-0165, ADR-0174, ADR-0187, ADR-0197, ADR-0243, ADR-0255, ADR-unconditional-repository-awf-invocation
+Backing: test
+
+
+### `invariant: repository-awf-invocation`
+
+Every rendered agent-facing executable awf instruction invokes the unconditional repository-root `./awf` wrapper. Product and CLI grammar, and bootstrap or wrapper PATH resolution, remain bare `awf` where they describe rather than invoke the repository command.
+Origin: ADR-unconditional-repository-awf-invocation
 Backing: test
 
 ### `invariant: mandatory-approval-boundaries`
@@ -117,10 +124,10 @@ Backing: test
 
 ### `invariant: phase-transaction-ownership`
 
-A rendered plan phase is one independently green coherent implementation transaction with an explicit per-phase inline or subagent-driven owner. In Pi branches, a phase owner or commit-disabled helper whose task intentionally operates in a supplied managed worktree passes that path as `verificationCheckout`, omits it for root work, and keeps actual mutation paths explicit; verification selection changes neither parent nor child Pi CWD and leaks no Pi-only wording into other targets. Delegated phase review returns structured coverage evidence: exact phase-closing commit, complete phase scope and reviewed range, verification results, verbatim deviation report, and unreviewed settlement. The parent owns transient evidence and validates branch-tip freshness; evidence loss after context loss, session replacement, or effort-free continuation, or unverifiable freshness, falls back to ordinary terminal review, while divergence, changed authority, reasoned post-review fixes, or material mutation invalidates affected coverage and requires renewed review. Fresh single-phase assurance reviews only unreviewed settlement/integration; multi-phase assurance focuses cross-phase, settlements, and integration. Complete-range `awf audit` and `./x audit-local` always remain, including settlement commits.
+A rendered plan phase is one independently green coherent implementation transaction with an explicit per-phase inline or subagent-driven owner. In Pi branches, a phase owner or commit-disabled helper whose task intentionally operates in a supplied managed worktree passes that path as `verificationCheckout`, omits it for root work, and keeps actual mutation paths explicit; verification selection changes neither parent nor child Pi CWD and leaks no Pi-only wording into other targets. Delegated phase review returns structured coverage evidence: exact phase-closing commit, complete phase scope and reviewed range, verification results, verbatim deviation report, and unreviewed settlement. The parent owns transient evidence and validates branch-tip freshness; evidence loss after context loss, session replacement, or effort-free continuation, or unverifiable freshness, falls back to ordinary terminal review, while divergence, changed authority, reasoned post-review fixes, or material mutation invalidates affected coverage and requires renewed review. Fresh single-phase assurance reviews only unreviewed settlement/integration; multi-phase assurance focuses cross-phase, settlements, and integration. Complete-range `./awf audit` and `./x audit-local` always remain, including settlement commits.
 This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0166
-Revised-by: ADR-0213, ADR-0217, ADR-0243, ADR-0255, ADR-0260
+Revised-by: ADR-0213, ADR-0217, ADR-0243, ADR-0255, ADR-0260, ADR-unconditional-repository-awf-invocation
 Backing: test
 
 ### `invariant: plan-task-detail-modes`

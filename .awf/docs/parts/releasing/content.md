@@ -137,16 +137,16 @@ Use the exact `hypnotox/pi` `fork-v0.81.1-awf.3` build for Pi 0.81.1, or a later
   artifact attestation and cosign signing are deliberately deferred (revisit at 1.0 or on
   adopter demand).
 - **Hand-maintained files.** `.goreleaser.yaml` and the workflow files live outside awf's
-  render/lock set (like `.golangci.yml` and `./x`), so `awf check` does not track them; edit them
+  render/lock set (like `.golangci.yml` and `./x`), so `./awf check` does not track them; edit them
   directly.
 - **Current-state cutover (adopter operation).** Crossing a project to current-state authority is not
   part of cutting an awf release; it is a one-time adopter operation. The preceding bridge release seals
-  the prepared tree into a `bridgeAttestation` lock block; this release's plain `awf upgrade` then
+  the prepared tree into a `bridgeAttestation` lock block; this release's plain `./awf upgrade` then
   consumes that seal, verifying only the sealed HEAD and post-normalization tree digest, journaling the
   migration approval-file deletion and permanent lock at `.awf/current-state-upgrade.journal`, and
   committing the cutover last while discarding the attestation's historical ADR routing payload. It runs no project tests or
   gate, and this binary consumes seals rather than producing them. If a transaction is interrupted,
-  `awf upgrade --recover` rolls it back or cleans it up; if the journal is unusable, restore the working
+  `./awf upgrade --recover` rolls it back or cleans it up; if the journal is unusable, restore the working
   tree from Git and reinstall the bridge release before retrying.
 
 Release verification retains the pinned fork-v0.81.1-awf.3 runtime smoke; unit stubs do not replace that real-runtime check.

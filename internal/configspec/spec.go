@@ -99,7 +99,6 @@ var varAvailability = map[string]string{
 	"commitGateCmd":     "Consumed by the always-rendered commit-msg hook payload.",
 	"testCmd":           "Consumed while a rendered artifact's template references it.",
 	"activeMdRegenCmd":  "Consumed while a rendered artifact's template references it (the decision-index regeneration steps in the chain skills).",
-	"awfInvokeCmd":      "Consumed by the always-rendered runner wrapper template.",
 	"invariantTestPath": "Consumed while a rendered artifact's template references it (the invariant-backing guidance in the decision docs and skills).",
 }
 

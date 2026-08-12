@@ -39,7 +39,7 @@ Workflow judgment precedes this command: discovery creates no effort, and `effor
 - `awf uninstall`: remove the generated footprint (lock-tracked files and the lock); the authored `.awf/` config stays in place while optional effort and worktree residents remain local.
 - `awf version`: print the binary's version.
 
-The always-rendered `./awf` wrapper forwards every CLI verb verbatim: it resolves one awf invocation (the `awfInvokeCmd` var when set, otherwise the bootstrap-pinned binary, otherwise the PATH `awf`) and execs it with all arguments, so there is no rendered verb list to fall behind the CLI. A project may keep a separate command runner for project-specific verbs outside awf's render set.
+The always-rendered `./awf` wrapper forwards every CLI verb verbatim: its standard body resolves the bootstrap-pinned binary first and PATH `awf` second, then execs it with all arguments, so there is no rendered verb list to fall behind the CLI. A repository with local execution semantics overrides the `runner-body` convention part. A project may keep a separate command runner for project-specific verbs outside awf's render set.
 
 ### Context spill notices
 
@@ -66,13 +66,11 @@ built-in targets.
 **Bootstrap.** `bootstrap.enabled` remains the live toggle for the rendered `.awf/bootstrap.sh`, a
 checksum-verified installer that prints the path of this project's pinned awf binary for hooks and
 CI (`"$(bash .awf/bootstrap.sh)" check`). awf always renders five git-hook payloads under
-`.awf/hooks/`: pre-commit, commit-msg, pre-merge-commit, reference-transaction, and pre-push. They are inert scripts you wire into hook setups you own; awf never touches Git configuration. The reference-transaction and pre-push payloads apply optional commit-policy provenance checks only when you configure that policy. Preview intended history first with `awf check commit-policy <revision-or-range>...`; an absent policy remains successful and does not need invented values. For tracked wiring, have each stub resolve `git rev-parse --show-toplevel` and delegate to that worktree's `.awf/hooks/<payload>.sh`, rather than reading a primary checkout. That is safe with either absolute or relative `core.hooksPath` and gives linked worktrees their own policy. These local checks are preflight only; the remote's receiving and protected-branch policy is the final enforcement boundary.
+`.awf/hooks/`: pre-commit, commit-msg, pre-merge-commit, reference-transaction, and pre-push. They are inert scripts you wire into hook setups you own; awf never touches Git configuration. The reference-transaction and pre-push payloads apply optional commit-policy provenance checks only when you configure that policy. Preview intended history first with `./awf check commit-policy <revision-or-range>...`; an absent policy remains successful and does not need invented values. For tracked wiring, have each stub resolve `git rev-parse --show-toplevel` and delegate to that worktree's `.awf/hooks/<payload>.sh`, rather than reading a primary checkout. That is safe with either absolute or relative `core.hooksPath` and gives linked worktrees their own policy. These local checks are preflight only; the remote's receiving and protected-branch policy is the final enforcement boundary.
 
 The `commit-msg` payload is the definitive stale-format ADR merge boundary. An older-format import must match an incoming parent except for sanctioned numbering substitutions and carry adjacent `AWF-Allow-Version: <marker-or-legacy>` and `AWF-Allow-Reason: <nonempty reason>` trailers. Malformed reserved trailers refuse. The refusal preserves the index and `MERGE_HEAD`, so correct the message and run `git commit` instead of repeating the merge; `git merge --no-commit --no-ff` is an optional proactive flow. A true fast-forward needs no stamp, and neither ADR retrofit nor allowance state is permitted.
 
-awf always renders the pure wrapper `awf` at the repo root, a fully awf-owned forwarder that execs
-the configured (`awfInvokeCmd`) or bootstrap-resolved awf with every argument forwarded verbatim;
-your project verbs stay in your own runner.
+awf always renders the pure wrapper `awf` at the repo root. Its standard body resolves the bootstrap-pinned binary before PATH `awf`, while a repository-specific `runner-body` convention part may replace that resolution; either body forwards every argument verbatim. Your project verbs stay in your own runner.
 
 **Current-state topic inputs.** A topic is exactly one strict sidecar at
 `.awf/topics/metadata/<domain>/<topic>.yaml` paired with one authored part at
@@ -83,7 +81,7 @@ one final `## Claims`; each claim starts with exactly `` ### `rule: <slug>` `` o
 `` ### `invariant: <slug>` ``, contains prose, and ends with ordered `Origin`, optional `Revised-by`,
 optional direct `References`, and invariant-only `Backing`/conditional `Verify` lines. Provenance ADR operations must be Applied; the owner may be Implementing, Implemented, or partially Abandoned. Rendering writes `docs/topics/<domain>/<topic>.md` and a sorted
 `docs/topics/<domain>/index.md`; both join the normal lock, drift, collision, and prune lifecycle.
-Run `awf new topic <domain> "<title>"` to create the metadata and part pair. It derives a
+Run `./awf new topic <domain> "<title>"` to create the metadata and part pair. It derives a
 collision-free kebab slug, prints both repository-relative paths, and writes an empty claim shell with
 a valid anchored path placeholder. It does not run sync or mutate config, the lock, or rendered docs.
 Replace the placeholder, revise the generic summary and prose, and add reviewed claims manually; a
@@ -110,7 +108,7 @@ repository-relative directory stating where this repository keeps awf's implemen
 It enables template-source symbols only when every emitted source resolves in the selected working
 or staged tree; omit it in ordinary adopter configuration.
 
-**Pitfalls.** Run `awf new pitfall "<Title>"` to create exactly one canonical authored source
+**Pitfalls.** Run `./awf new pitfall "<Title>"` to create exactly one canonical authored source
 under `.awf/docs/pitfalls/` and print its repository-relative path. The command refuses duplicate
 titles and exclusive path collisions and does not render. Edit the reported source, then run
 `awf render`: `docs/pitfalls.md` is the compact generated index and each
@@ -127,7 +125,7 @@ pitfall leaf names its exact authored source. The ADR index names `derived:autho
 reference names `derived:configspec` and `derived:project-configuration`; target bridges name
 `AGENTS.md`. Generated local docs and section-overridable outputs do not need duplicate markers.
 Authored ADRs, plans, and `local: true` docs are banner-free and remain directly authored. For any
-source change, edit the authority, run `awf render`, run `awf check`, and commit the regenerated
+source change, edit the authority, run `./awf render`, run `./awf check`, and commit the regenerated
 outputs and lock together.
 
 Query a topic as
@@ -286,7 +284,7 @@ task, events, report, present diagnostics, requested and actual models, and avai
 Intermediate activity remains in tool details; only the final report or bounded failure summary
 enters parent model content.
 Brainstorming uses grounding, while brainstorming, debugging, and coupling audits share the exploring skill when its conjunctive dispatch condition holds. Missing or modified
-extension files are `awf check` drift; run `awf render` to repair them.
+extension files are `awf check` drift; run `./awf render` to repair them.
 
 Pi also renders the separate `handoff_session` extension for persisted interactive TUI sessions; it rejects cleanly when the runtime lacks the readonly persisted-session query. Workflow guidance calls it alone with exact `{kickoff}` prose after a required checkpoint and any needed reorientation instruction. The runtime preserves that bounded prose byte-for-byte after two newlines in one visible default-rendered `agent-handoff` custom message whose content begins `Agent-authored handoff context; this is not user input:`; it triggers the replacement turn through replacement-bound `sendMessage`, while Pi's current provider adapter still converts custom content to a user-role message. It revalidates only the pending request and persisted session, preserves old history, leaves the same envelope in failed automatic and recovery editors, never retries automatically, and owns no checkpoint, effort, repository, or filesystem policy.
 
@@ -343,7 +341,7 @@ To write the placeholder syntax literally in a part (for documentation), put a b
 <!-- awf:section sync-and-drift -->
 ## Keeping in sync
 
-After any edit to `.awf/`, run `awf render` to re-render, then `awf check` to confirm no drift, and
+After any edit to `.awf/`, run `./awf render` to re-render, then `./awf check` to confirm no drift, and
 commit the rendered files alongside the config change. Always stage `.awf/awf.lock` with every regenerated output: its atomic manifest is part of one render transaction, not material to slice across independent commits. `awf check` compares each rendered file's
 template and config against `.awf/awf.lock`; a mismatch is `stale` drift. Wire `awf check` and your
 gate into CI so drift and rule violations block a merge.

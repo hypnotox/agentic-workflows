@@ -65,8 +65,9 @@ Backing: test
 
 ### `invariant: runner-resolution-pinned-first`
 
-With `vars.awfInvokeCmd` set, the rendered wrapper execs exactly that command; with it unset, the wrapper resolves the bootstrap-pinned binary when `.awf/bootstrap.sh` exists and falls back to the PATH `awf` otherwise.
+The standard rendered wrapper resolves the bootstrap-pinned binary when `.awf/bootstrap.sh` exists and falls back to PATH `awf` otherwise. Repository-specific execution semantics replace the `runner-body` convention part; no invocation var participates in resolution.
 Origin: ADR-0156
+Revised-by: ADR-unconditional-repository-awf-invocation
 Backing: test
 
 ### `invariant: runner-wrapper-rendered`

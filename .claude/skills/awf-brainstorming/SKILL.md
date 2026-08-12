@@ -24,7 +24,7 @@ Use for a material choice or clarification, and before a hand-authored productio
 <!-- awf:template-source templates/skills/brainstorming/SKILL.md.tmpl -->
 ## Procedure
 
-1. **Orient in the topic.** Invoke `awf-orienting` when its repository-truth moments apply, then run `awf context <relevant paths>`.
+1. **Orient in the topic.** Invoke `awf-orienting` when its repository-truth moments apply, then run `./awf context <relevant paths>`.
 <!-- awf:template-source templates/partials/context-spill.md -->
 On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the working-with-awf doc's Context spill notices contract; treat any other output as the context packet itself.
 <!-- awf:template-source templates/skills/brainstorming/SKILL.md.tmpl -->
@@ -60,7 +60,7 @@ Present the complete design or concise implementation outline after any groundin
 1. Before ADR or plan authoring for a hand-authored production-code change, present the completed design or proportionate implementation outline, explicitly request user approval, then stop and wait. This approval boundary never creates an effort.
 2. If an effort already owns the outcome, validate its immutable slug and exact primary-root-relative `.awf/efforts/<slug>/memory.md`, confirm either legacy `Effort: <slug>` or canonical `effort: <slug>` identity (the canonical form is YAML; the legacy form is deprecated and remains only until active efforts finish), preserve one user-managed writer, and in one writer-owned tool batch run exactly one `./awf effort memory update <slug> --phase "<completed phase>" --next "<immediate next action>"`; it is the sole writer of phase, next action, and time. Persist the presented summary separately before the request. If continuity did not warrant an effort, omit effort and memory fields rather than fabricating them.
 3. If the user rejects or requests changes, revise and persist when applicable, regenerate the summary, explicitly request approval again, then stop. After explicit approval, persist the approval and next action when an effort exists before continuing.
-4. Continue only after the clear later approval response. An executable `awf read plan` projection never creates a checkpoint or handoff boundary. Continue through the target-native successor without claiming session replacement. Repository authority, the one-writer contract, and the full memory protocol live in the workflow doc.
+4. Continue only after the clear later approval response. An executable `./awf read plan` projection never creates a checkpoint or handoff boundary. Continue through the target-native successor without claiming session replacement. Repository authority, the one-writer contract, and the full memory protocol live in the workflow doc.
 
 <!-- awf:template-source templates/skills/brainstorming/SKILL.md.tmpl#definitions -->
 <!-- awf:edit definitions: default; create .awf/skills/parts/brainstorming/definitions.md to override -->

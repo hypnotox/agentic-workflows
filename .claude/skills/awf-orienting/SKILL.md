@@ -39,7 +39,7 @@ When a needed fact's location is unknown and inline search would pollute the par
 <!-- awf:template-source templates/skills/orienting/SKILL.md.tmpl -->
 ## Managed context
 
-Once candidate files are identified, run `awf context <paths>` to resolve their owning domains and the applicable current-state claims; read the topics and any Accepted pending changes it surfaces, and the ADRs behind a claim only when the rationale matters. Apply the shared managed-context discipline above to this call.
+Once candidate files are identified, run `./awf context <paths>` to resolve their owning domains and the applicable current-state claims; read the topics and any Accepted pending changes it surfaces, and the ADRs behind a claim only when the rationale matters. Apply the shared managed-context discipline above to this call.
 <!-- awf:template-source templates/partials/context-spill.md -->
 On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the working-with-awf doc's Context spill notices contract; treat any other output as the context packet itself.
 

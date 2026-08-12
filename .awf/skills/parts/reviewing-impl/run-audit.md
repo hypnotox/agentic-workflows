@@ -6,4 +6,4 @@
    `changelog/CHANGELOG.md` `[Unreleased]` entry) blocks the review from concluding, so
    resolve it, escalating only when its remedy would reach the authority-guided remediation
    boundary above; `Warning` findings are advisory. It is repo-specific dev tooling,
-   deliberately not a rule in the shipped `awf audit`, and it does not run the gate.
+   deliberately not a rule in the shipped `./awf audit`, and it does not run the gate.

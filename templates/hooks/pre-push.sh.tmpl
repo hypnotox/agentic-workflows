@@ -53,6 +53,6 @@ for update in "${updates[@]}"; do
 done
 
 if ((${#targets[@]})); then
-  {{ if .runnerEnabled }}./awf{{ else }}awf{{ end }} check commit-policy "${targets[@]}"
+  ./awf check commit-policy "${targets[@]}"
 fi
-{{ with .vars.gateCmdFull }}{{ . }}{{ else }}{{ with .vars.gateCmd }}{{ . }}{{ else }}{{ with .vars.checkCmd }}{{ . }}{{ else }}{{ if .runnerEnabled }}./awf{{ else }}awf{{ end }} check{{ end }}{{ end }}{{ end }}
+{{ with .vars.gateCmdFull }}{{ . }}{{ else }}{{ with .vars.gateCmd }}{{ . }}{{ else }}{{ with .vars.checkCmd }}{{ . }}{{ else }}./awf check{{ end }}{{ end }}{{ end }}

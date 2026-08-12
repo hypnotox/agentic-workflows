@@ -6,7 +6,7 @@ set -euo pipefail
 {{- with .vars.checkCmd }}
 {{ . }}
 {{- else }}
-{{ if .runnerEnabled }}./awf{{ else }}awf{{ end }} check
+./awf check
 {{- end }}
 {{- with .vars.gateCmd }}
 {{ . }}

@@ -11,7 +11,7 @@
   lines are dropped. No claim states this, so every migration that edits config inherits an unstated
   contract and ADR-0185 had to narrow one claim that had guessed at it. Needs its own small ADR
   covering whether the property is claimed once for the package or restated per migration.
-- Add an advisory `awf audit` rule flagging a code-scoped commit (`fix`, `feat`, `test`,
+- Add an advisory `./awf audit` rule flagging a code-scoped commit (`fix`, `feat`, `test`,
   `refactor` types) that also mutates a `docs/decisions/` ADR body: the shared-index sweep
   pitfall has now recurred four times (2026-07-10 twice, 2026-07-19, 2026-07-23) and three
   of the four occurrences folded ADR content into a code commit, which this rule would have
@@ -24,7 +24,7 @@
   config-domain ADR.
 - Design a structured context result only when a demonstrated consumer can define its contract;
   ADR-0165 deliberately removed speculative JSON rather than preserving a hidden path census.
-- Enforce the plan freeze mechanically: `awf check staged` could refuse a diff that edits a
+- Enforce the plan freeze mechanically: `./awf check staged` could refuse a diff that edits a
   `docs/plans/` file whose HEAD `status:` is `Implemented`. The recorded "record implementation
   deviations before the terminal artifact transaction" pitfall did not prevent the ADR-0151
   session from appending Notes to a frozen plan at review's direction; a prose rule that failed
@@ -48,7 +48,7 @@
   could be flagged, since that is the exact case needing a successor `update` operation. Twice in that
   session the false wording was INHERITED from an earlier record that the correcting pass never
   re-read, so the check would earn its keep on amendments rather than on new claims. Needs its own ADR:
-  it changes what `awf check` rejects, and a false positive on legitimate absolute prose would be
+  it changes what `./awf check` rejects, and a false positive on legitimate absolute prose would be
   expensive.
 - Broaden the task-skill set. Nothing produces a PR title and body from the commits of an
   effort; there is no skill for reviewing an incoming third-party PR, no security-review
@@ -92,9 +92,9 @@
 - The init collision probe over-refuses on artifacts a `--set` trim would deselect.
   Accepted as conservative design; revisit only if an adopter reports hitting it.
 
-- Make `awf effort integrate` fast-forward-only. Keep the already-contained and fast-forward
+- Make `./awf effort integrate` fast-forward-only. Keep the already-contained and fast-forward
   arms and refuse when the target is not an ancestor of the effort tip, naming the recovery:
-  merge the target in the managed worktree, run `awf check staged`, run the gate, commit,
+  merge the target in the managed worktree, run `./awf check staged`, run the gate, commit,
   renew terminal review, retry. The motivation is concurrency, not correctness: the divergent
   path leaves a staged uncommitted merge in the shared receiving checkout across a full gate
   and a renewed terminal review, blocking every other finishing effort for that whole window,
@@ -219,7 +219,7 @@ commands must remain usable from either checkout.
 ## Preserve configured identity for lifecycle Git mutations
 
 The native Git runner deliberately suppresses global and system configuration to prevent repository
-or credential redirection. `awf effort integrate` uses that runner for `git merge --no-ff --no-commit`,
+or credential redirection. `./awf effort integrate` uses that runner for `git merge --no-ff --no-commit`,
 but Git still requires committer identity before it prepares the merge. In a checkout that correctly
 keeps owner identity only in global configuration, integration therefore fails as `merge-conflict`
 with `Committer identity unknown`. A temporary repository-local identity makes the merge proceed but

@@ -200,7 +200,7 @@ func TestStagedAuthorityExecutionOrder(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			body := read(t, path)
 			position := 0
-			for _, phrase := range []string{"the complete transaction", "`awf check staged`", "the project's gate", "wired pre-commit hook enforces both", "only in a clone without wired hooks"} {
+			for _, phrase := range []string{"the complete transaction", "`./awf check staged`", "the project's gate", "wired pre-commit hook enforces both", "only in a clone without wired hooks"} {
 				next := strings.Index(body[position:], phrase)
 				if next < 0 {
 					t.Fatalf("%s missing ordered authority step %q after byte %d", name, phrase, position)

@@ -28,9 +28,9 @@ The approved boundary may be evidenced by retained conversation, user-provenance
 <!-- awf:template-source templates/skills/tdd/SKILL.md.tmpl -->
 TDD may run without an effort. If continuity materially helps, invoke `awf-effort-workflow` before mutation; if an effort already exists, validate its fixed identity and exact `.awf/efforts/<slug>/memory.md`, preserve one writer, and give that context read-only to helpers. Otherwise omit effort and memory fields. Repository and current-state authority remain primary, and standalone memory is forbidden.
 
-1. Run `awf context <the implementation and test paths>`, then write the failing test capturing the wrong (bug) or missing (feature) behaviour. Ground tests, checks, seams, and harness work only in changed behavior, a demonstrated regression, an existing documented contract, or a clearly applicable project invariant; reject speculative test or policy machinery.
+1. Run `./awf context <the implementation and test paths>`, then write the failing test capturing the wrong (bug) or missing (feature) behaviour. Ground tests, checks, seams, and harness work only in changed behavior, a demonstrated regression, an existing documented contract, or a clearly applicable project invariant; reject speculative test or policy machinery.
 <!-- awf:template-source templates/partials/context-orientation.md -->
-Start by querying the explicit paths named above without `--show` or `--full` detail flags, then drill down with `awf topic` where the work touches a claimed surface.
+Start by querying the explicit paths named above without `--show` or `--full` detail flags, then drill down with `./awf topic` where the work touches a claimed surface.
 <!-- awf:template-source templates/partials/context-spill.md -->
 On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the working-with-awf doc's Context spill notices contract; treat any other output as the context packet itself.
 <!-- awf:template-source templates/skills/tdd/SKILL.md.tmpl -->

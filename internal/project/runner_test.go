@@ -15,9 +15,9 @@ import (
 
 // runnerFile renders a project with the given config and returns the rendered
 // awf wrapper (or nil when none is produced).
-func runnerFile(t *testing.T, configYAML string) *RenderedFile {
+func runnerFile(t *testing.T) *RenderedFile {
 	t.Helper()
-	root := scaffold(t, configYAML)
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -41,7 +41,7 @@ func runnerFile(t *testing.T, configYAML string) *RenderedFile {
 // Exactly one wrapper `awf` always renders at the repository root.
 // invariant: rendering/companion-scripts:runner-wrapper-rendered (TestRunnerRendered)
 func TestRunnerRendered(t *testing.T) {
-	if rf := runnerFile(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n"); rf == nil || rf.Path != "awf" {
+	if rf := runnerFile(t); rf == nil || rf.Path != "awf" {
 		t.Fatalf("runner = %#v, want one repo-root awf wrapper", rf)
 	}
 }
@@ -51,7 +51,7 @@ func TestRunnerRendered(t *testing.T) {
 // all arguments verbatim.
 // invariant: rendering/companion-scripts:runner-pure-forwarder (TestRunnerPureForwarder)
 func TestRunnerPureForwarder(t *testing.T) {
-	rf := runnerFile(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
+	rf := runnerFile(t)
 	if rf == nil {
 		t.Fatal("wrapper did not render")
 	}
@@ -76,26 +76,14 @@ func TestRunnerPureForwarder(t *testing.T) {
 	}
 }
 
-// With vars.awfInvokeCmd set the wrapper execs exactly that command; with it
-// unset it probes the bootstrap pin first and falls back to the PATH awf.
+// The standard wrapper probes the bootstrap pin first and falls back to the
+// PATH awf. Repository-specific invocation replaces the runner-body convention
+// part rather than configuring a public render var.
 // invariant: rendering/companion-scripts:runner-resolution-pinned-first (TestRunnerResolutionPinnedFirst)
 func TestRunnerResolutionPinnedFirst(t *testing.T) {
-	configured := runnerFile(t, "prefix: example\nintegrationBranch: main\nvars:\n  awfInvokeCmd: go run ./cmd/awf\n")
-	if configured == nil {
-		t.Fatal("wrapper did not render with awfInvokeCmd set")
-	}
-	if !strings.Contains(configured.Content, "\nexec go run ./cmd/awf \"$@\"\n") {
-		t.Errorf("configured wrapper must exec the awfInvokeCmd verbatim:\n%s", configured.Content)
-	}
-	for _, absent := range []string{".awf/bootstrap.sh", "exec awf \"$@\""} {
-		if strings.Contains(configured.Content, absent) {
-			t.Errorf("configured wrapper must not carry the default resolution %q:\n%s", absent, configured.Content)
-		}
-	}
-
-	fallback := runnerFile(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
+	fallback := runnerFile(t)
 	if fallback == nil {
-		t.Fatal("wrapper did not render with awfInvokeCmd unset")
+		t.Fatal("wrapper did not render")
 	}
 	c := fallback.Content
 	probe := strings.Index(c, `if [ -f .awf/bootstrap.sh ] && pinned="$(bash .awf/bootstrap.sh)"; then`)
@@ -104,13 +92,16 @@ func TestRunnerResolutionPinnedFirst(t *testing.T) {
 	if probe < 0 || pinnedExec < 0 || pathExec < 0 || probe >= pinnedExec || pinnedExec >= pathExec {
 		t.Errorf("default wrapper must probe the bootstrap pin, exec it, then fall back to PATH awf:\n%s", c)
 	}
+	if strings.Contains(c, "awfInvokeCmd") {
+		t.Errorf("default wrapper must not retain the retired invocation var:\n%s", c)
+	}
 }
 
 // The wrapper renders leak-free (no unresolved token, no stray section/marker
 // residue) - the publication-safety contract every awf template meets.
 // invariant: rendering/companion-scripts:runner-render-publication-safe (TestRunnerPublicationSafe)
 func TestRunnerPublicationSafe(t *testing.T) {
-	rf := runnerFile(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
+	rf := runnerFile(t)
 	if rf == nil {
 		t.Fatal("wrapper did not render")
 	}
@@ -396,7 +387,7 @@ func TestRunnerNotASingletonKind(t *testing.T) {
 
 // A convention part authored for the wrapper's awf-owned section (as its
 // `create ... to override` pointer invites) is claimed by the closed-tree sweep, so
-// override renders and `awf check` does not flag `.awf/runner` as unclaimed.
+// override renders and `./awf check` does not flag `.awf/runner` as unclaimed.
 func TestRunnerPartOverrideClaimed(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
 	p, err := Open(testContext(t), root)

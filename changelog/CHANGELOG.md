@@ -8,6 +8,10 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Changed
+
+- Standardized rendered repository-local awf invocations on the unconditional `./awf` wrapper and moved this repository's source execution body into a runner convention part.
+
 ## [0.35.1] - 2026-08-12
 
 ### Bug fixes

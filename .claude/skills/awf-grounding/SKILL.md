@@ -17,7 +17,7 @@ Use this support skill when correctness depends on broad or uncertain repository
 <!-- awf:template-source templates/skills/grounding/SKILL.md.tmpl -->
 ## Procedure
 
-1. Ground guide-first: read the agent guide and applicable current-state authority, then run `awf context <relevant paths>` before dispatch.
+1. Ground guide-first: read the agent guide and applicable current-state authority, then run `./awf context <relevant paths>` before dispatch.
 <!-- awf:template-source templates/partials/context-spill.md -->
 On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the working-with-awf doc's Context spill notices contract; treat any other output as the context packet itself.
 <!-- awf:template-source templates/skills/grounding/SKILL.md.tmpl -->

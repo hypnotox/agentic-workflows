@@ -4,4 +4,4 @@
 # into a hook setup you own, e.g. a .git/hooks/commit-msg stub containing:
 #   exec bash .awf/hooks/commit-msg.sh "$@"
 set -euo pipefail
-{{ with .vars.commitGateCmd }}{{ . }}{{ else }}{{ if .runnerEnabled }}./awf{{ else }}awf{{ end }} check staged commit{{ end }} "$1"
+{{ with .vars.commitGateCmd }}{{ . }}{{ else }}./awf check staged commit{{ end }} "$1"

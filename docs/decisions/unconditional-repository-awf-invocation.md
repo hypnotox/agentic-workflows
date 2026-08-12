@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: unconditional-repository-awf-invocation
-status: Accepted
+status: Implementing
 date: 2026-08-12
 ---
 # ADR-unconditional-repository-awf-invocation: Unconditional Repository Awf Invocation
@@ -91,3 +91,5 @@ a hypothetical consumer would contradict the configuration-surface reduction thi
 
 - 2026-08-12: Proposed
 - 2026-08-12: Accepted; content-sha256: 3e7547693bc14249c8e6bff367fe619216fa394275146c824000894cedbd189d
+- 2026-08-12: Implementing; content-sha256: 3e7547693bc14249c8e6bff367fe619216fa394275146c824000894cedbd189d
+- 2026-08-12: Applied; operations: update `rendering/companion-scripts:runner-resolution-pinned-first`, update `rendering/catalog-and-targets:var-descriptor-set-pinned`, update `rendering/workflow-skill-templates:implementer-context-grounding`, update `rendering/workflow-skill-templates:phase-transaction-ownership`, add `rendering/workflow-skill-templates:repository-awf-invocation`, add `rendering/guide-and-doc-templates:guide-awf-invocation`

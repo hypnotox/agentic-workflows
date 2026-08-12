@@ -33,7 +33,7 @@ Any time behaviour is wrong and the cause is not yet known. Skip only for a one-
 4. **Evaluate continuity when the investigation becomes a change.** Investigation remains effort-free unless durable continuity materially helps. When it does, invoke `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}` before writing a failing test or mutating files. If an effort exists, validate its fixed identity and exact `.awf/efforts/<slug>/memory.md`, preserve one writer, and give exploring children that context read-only; otherwise omit effort and memory fields. Repository sources and current-state documentation remain authoritative, and standalone memory is forbidden.
 
 
-5. **Isolate with a failing test, written first.** Once the defective surface is located, write the smallest possible test that reproduces the failure before touching the fix. The test must fail for the right reason on the unfixed code. {{ if .skills.tdd }}Invoke `{{ .prefix }}-tdd` for the project's test-first discipline.{{ else }}Write it test-first.{{ end }} Before writing the test, run `awf context <the suspect paths>`.
+5. **Isolate with a failing test, written first.** Once the defective surface is located, write the smallest possible test that reproduces the failure before touching the fix. The test must fail for the right reason on the unfixed code. {{ if .skills.tdd }}Invoke `{{ .prefix }}-tdd` for the project's test-first discipline.{{ else }}Write it test-first.{{ end }} Before writing the test, run `./awf context <the suspect paths>`.
 <!-- awf:include context-orientation -->
 <!-- awf:include context-spill -->
 
