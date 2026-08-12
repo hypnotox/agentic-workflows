@@ -68,7 +68,7 @@ func TestLiveTemplateAndCurrentStateRetiredConfigGuidanceAbsent(t *testing.T) {
 			t.Errorf("%s has %d project-local reference(s); want exactly %d unrelated allowed reference(s)", path, got, allowed)
 		}
 	}
-	for _, dir := range []string{"templates", ".awf/topics/parts"} {
+	for _, dir := range []string{"templates", ".awf/topics/parts", ".awf/domains/parts"} {
 		root := filepath.Join(repoRoot, filepath.FromSlash(dir))
 		testsupport.WalkRepoFiles(t, root, func(string) bool { return true }, func(rel string, body []byte) {
 			checkSource(dir+"/"+rel, body)
