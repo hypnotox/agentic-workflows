@@ -41,6 +41,55 @@ func MarshalSkeleton(s Skeleton) ([]byte, error) {
 	return encode(s)
 }
 
+// AppendLocalDoc appends one strict local-document declaration without changing
+// unrelated config structure. It refuses malformed existing declarations and duplicates.
+func AppendLocalDoc(src []byte, doc LocalDoc) ([]byte, error) {
+	if _, err := Parse("", src); err != nil {
+		return nil, err
+	}
+	document, root, err := parseMapping(src)
+	if err != nil { // coverage-ignore: Parse accepted the same YAML mapping immediately above
+		return nil, err
+	}
+	value, index := mapValue(root, "localDocs")
+	entry := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map", Content: []*yaml.Node{
+		strScalar("name"), strScalar(doc.Name),
+		strScalar("title"), strScalar(doc.Title),
+		strScalar("description"), strScalar(doc.Description),
+	}}
+	if value == nil {
+		root.Content = append(root.Content, strScalar("localDocs"), &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq", Content: []*yaml.Node{entry}})
+	} else {
+		if value.Kind != yaml.SequenceNode { // coverage-ignore: strict Parse rejects every non-sequence localDocs value before node mutation
+			return nil, errors.New("config: localDocs must be a sequence")
+		}
+		for _, item := range value.Content {
+			var existing LocalDoc
+			if err := item.Decode(&existing); err != nil { // coverage-ignore: strict Parse decoded every existing item immediately above
+				return nil, fmt.Errorf("config: malformed localDocs: %w", err)
+			}
+			if existing.Name == doc.Name {
+				return nil, fmt.Errorf("config: duplicate localDocs name %q", doc.Name)
+			}
+		}
+		value.Style = 0
+		root.Content[index] = value
+		value.Content = append(value.Content, entry)
+	}
+	out, err := encode(document)
+	if err != nil { // coverage-ignore: decoded yaml.Node trees contain only encoder-supported values
+		return nil, err
+	}
+	parsed, err := Parse("", out)
+	if err != nil { // coverage-ignore: encoding a strict parsed config plus scalar entry cannot fail strict parsing
+		return nil, err
+	}
+	if err := parsed.Validate(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SetArrayMember adds or removes name in the sequence under key in a config.yaml
 // source, via a yaml.Node round-trip that preserves comments and every untouched
 // key (ADR-0026). The edited sequence is normalized to block style, so a flow-style

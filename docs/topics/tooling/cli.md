@@ -13,9 +13,9 @@ The cmd packages and their spec helpers implement the awf command surfaces and t
 
 ### `invariant: cli-creation-and-inventory`
 
-The CLI creates authored ADRs, plans, topics, domains, and pitfalls and lists fixed catalog inventory; no command selects catalog render membership.
+The CLI creates authored ADRs, plans, topics, domains, pitfalls, and additive local documents, and lists fixed catalog inventory; no command selects catalog render membership. `awf new doc <name> <description> [--title <title>]` appends one local-document declaration, renders its output, and reports that repository-relative path without selecting catalog membership.
 Origin: ADR-0254
-Revised-by: ADR-0262
+Revised-by: ADR-0262, ADR-additive-inline-editable-project-local-docs
 Backing: test
 
 ### `invariant: pitfall-scaffold`

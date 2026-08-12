@@ -92,7 +92,7 @@ func TestConfigurationSurfaceGrammar(t *testing.T) {
 	for _, child := range newCommand.Children {
 		children = append(children, child.Name)
 	}
-	if got, want := strings.Join(children, ","), "adr,plan,topic,domain,pitfall"; got != want {
+	if got, want := strings.Join(children, ","), "adr,plan,topic,domain,doc,pitfall"; got != want {
 		t.Fatalf("new children = %q, want %q", got, want)
 	}
 }
@@ -439,8 +439,8 @@ func TestLookup(t *testing.T) {
 	if !ok {
 		t.Fatal("Lookup(new) missing")
 	}
-	if len(newCmd.Children) != 5 {
-		t.Errorf("new has %d children, want 5", len(newCmd.Children))
+	if len(newCmd.Children) != 6 {
+		t.Errorf("new has %d children, want 6", len(newCmd.Children))
 	}
 	if _, ok := newCmd.Child("adr"); !ok {
 		t.Error("new.Child(adr) missing")

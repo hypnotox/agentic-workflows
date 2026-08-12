@@ -11,10 +11,13 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
+
+const localDocumentKind = "doc"
 
 // runNew scaffolds one of the surviving authored artifacts: an ADR, plan,
 // current-state topic, domain, or pitfall. Each arm owns its kind-specific arguments.
@@ -29,13 +32,15 @@ func runNew(ctx context.Context, root, kind string, args []string, stdout io.Wri
 		return newTopic(ctx, root, args, stdout)
 	case kind == "pitfall":
 		return newPitfall(ctx, root, args, stdout)
+	case kind == localDocumentKind:
+		return newDoc(ctx, root, args, "", stdout)
 	case project.IsFreeformDomainKind(kind):
 		if len(args) != 1 {
 			return &usageErr{"usage: awf new domain <name>"}
 		}
 		return runNewDomain(ctx, root, args[0], stdout)
 	default:
-		return &usageErr{fmt.Sprintf("unknown kind %q (want: adr, plan, topic, domain, pitfall)", kind)}
+		return &usageErr{fmt.Sprintf("unknown kind %q (want: adr, plan, topic, domain, pitfall, doc)", kind)}
 	}
 }
 
@@ -73,6 +78,59 @@ func newPlan(ctx context.Context, root string, titleWords []string, stdout io.Wr
 		return err
 	}
 	return writeStatus(stdout, "created: "+path)
+}
+
+func newDoc(ctx context.Context, root string, args []string, title string, stdout io.Writer) error {
+	if len(args) != 2 { // coverage-ignore: clispec enforces exact two positional grammar before dispatch
+		return &usageErr{"usage: awf new doc <name> <description> [--title <title>]"}
+	}
+	if err := gate(ctx, root); err != nil {
+		return err
+	}
+	if title == "" {
+		title = derivedLocalDocTitle(args[0])
+	}
+	doc := config.LocalDoc{Name: args[0], Title: title, Description: args[1]}
+	p, err := project.Open(ctx, root)
+	if err != nil { // coverage-ignore: gate and strict config loading establish the adopted project before this second open
+		return err
+	}
+	output := filepath.Join(root, "docs", filepath.FromSlash(doc.Name)+".md")
+	if _, err := os.Lstat(output); err == nil {
+		return fmt.Errorf("local document destination already exists: %s", filepath.ToSlash(filepath.Join("docs", doc.Name+".md")))
+	} else if !errors.Is(err, os.ErrNotExist) { // coverage-ignore: destination inspection faults are OS failures outside command semantics
+		return fmt.Errorf("inspect local document destination: %w", err)
+	}
+	source, err := os.ReadFile(config.ConfigPath(root))
+	if err != nil { // coverage-ignore: project.Open already read this path; failure requires a concurrent filesystem race
+		return err
+	}
+	updated, err := config.AppendLocalDoc(source, doc)
+	if err != nil { // coverage-ignore: strict config loading proves the source shape before this mutation
+		return err
+	}
+	p.Cfg.LocalDocs = append(p.Cfg.LocalDocs, doc)
+	if _, err := p.OutputPlan(ctx); err != nil { // coverage-ignore: pre-mutation collision planning admits this appended declaration
+		return err
+	}
+	if err := os.WriteFile(config.ConfigPath(root), updated, 0o644); err != nil { // coverage-ignore: config publication failure is an OS fault after planning
+		return err
+	}
+	if err := runSync(ctx, root, io.Discard); err != nil { // coverage-ignore: preflight OutputPlan validated the same configuration and destination
+		return err
+	}
+	return writeStatus(stdout, "created: "+filepath.ToSlash(filepath.Join("docs", doc.Name+".md")))
+}
+
+func derivedLocalDocTitle(name string) string {
+	segment := name[strings.LastIndex(name, "/")+1:]
+	words := strings.Split(segment, "-")
+	for i, word := range words {
+		if word != "" {
+			words[i] = strings.ToUpper(word[:1]) + word[1:]
+		}
+	}
+	return strings.Join(words, " ")
 }
 
 func newPitfall(ctx context.Context, root string, args []string, stdout io.Writer) error {

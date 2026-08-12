@@ -287,6 +287,8 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 		{file: "new.go", owner: "newADR", name: "project.Open"}:                                                           1,
 		{file: "new.go", owner: "newPlan", name: "project.Open"}:                                                          1,
 		{file: "new.go", owner: "newPitfall", name: "project.Open"}:                                                       1,
+		{file: "new.go", owner: "newDoc", name: "project.Open"}:                                                           1,
+		{file: "new.go", owner: "newDoc", name: "runSync"}:                                                                1,
 		{file: "new.go", owner: "newTopic", name: "project.Open"}:                                                         1,
 		{file: "read.go", owner: "runReadPlan", name: "project.Open"}:                                                     1,
 		{file: "topic.go", owner: "runTopic", name: "project.Open"}:                                                       1,

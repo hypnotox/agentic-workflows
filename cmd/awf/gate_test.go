@@ -268,6 +268,7 @@ var gatedProbes = map[string][]string{
 	"new adr":                   {"awf", "new", "adr", "Gate probe"},
 	"new plan":                  {"awf", "new", "plan", "Gate probe"},
 	"new pitfall":               {"awf", "new", "pitfall", "Gate probe"},
+	"new doc":                   {"awf", "new", "doc", "runbooks/gate-probe", "Gate probe"},
 	"new topic":                 {"awf", "new", "topic", "rendering", "gate-probe"},
 	"new domain":                {"awf", "new", "domain", "gate-probe"},
 	"remove":                    {"awf", "remove", "domain", "gate-probe"},

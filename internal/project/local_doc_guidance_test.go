@@ -48,6 +48,21 @@ func TestLocalDocAuthoringGuidance(t *testing.T) {
 }
 
 // invariant: rendering/doc-outputs:local-doc-output-complete (TestLocalDocDiscoveryGuidance)
+func TestLocalDocCommandGuidance(t *testing.T) {
+	root := filepath.Clean(filepath.Join("..", ".."))
+	for _, rel := range []string{"docs/working-with-awf.md", "README.md"} {
+		b, err := os.ReadFile(filepath.Join(root, rel))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, want := range []string{"awf new doc", "<name> <description>", "--title", "Api V2", "docs/<name>.md"} {
+			if !strings.Contains(string(b), want) {
+				t.Errorf("%s lacks %q", rel, want)
+			}
+		}
+	}
+}
+
 func TestLocalDocDiscoveryGuidance(t *testing.T) {
 	root := filepath.Clean(filepath.Join("..", ".."))
 	for _, rel := range []string{"docs/working-with-awf.md"} {

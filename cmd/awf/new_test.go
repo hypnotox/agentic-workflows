@@ -38,6 +38,31 @@ func TestRunNewScaffoldsADR(t *testing.T) {
 	}
 }
 
+// invariant: tooling/cli:cli-creation-and-inventory (TestRunNewDocScaffoldsLocalDocument)
+func TestRunNewDocScaffoldsLocalDocument(t *testing.T) {
+	root := scaffoldProject(t)
+	var out bytes.Buffer
+	if err := newDoc(testContext(t), root, []string{"runbooks/api-v2", "How to operate API v2"}, "", &out); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := out.String(), "status: created: docs/runbooks/api-v2.md\n"; got != want {
+		t.Fatalf("output = %q, want %q", got, want)
+	}
+	cfg, err := config.Load(filepath.Join(root, ".awf"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := cfg.LocalDocs, (config.LocalDocs{{Name: "runbooks/api-v2", Title: "Api V2", Description: "How to operate API v2"}}); !slices.Equal(got, want) {
+		t.Fatalf("localDocs = %#v, want %#v", got, want)
+	}
+	if _, err := os.Stat(filepath.Join(root, "docs/runbooks/api-v2.md")); err != nil {
+		t.Fatal(err)
+	}
+	if err := newDoc(testContext(t), root, []string{"runbooks/api-v2", "Again"}, "API v2", io.Discard); err == nil {
+		t.Fatal("duplicate document accepted")
+	}
+}
+
 func TestRunNewADRError(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx

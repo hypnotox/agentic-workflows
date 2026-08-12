@@ -162,3 +162,4 @@ output identity while permitting additive names outside today's catalog.
 - 2026-08-12: Applied; operations: update `config/configuration:config-expresses-repo-facts-only`, update `config/configuration:no-artifact-selection-surface`, add `config/configuration:local-doc-declarations`, add `rendering/inplace-and-placeholders:local-doc-body-inline`, update `rendering/project-output-plan:output-plan-complete`, add `rendering/sync-and-drift:local-doc-prune-preserved`, update `rendering/sync-and-drift:uninstall-removes-lock-entries`
 - 2026-08-12: Applied; operations: add `rendering/doc-outputs:local-doc-output-complete`, update `rendering/guide-and-doc-templates:document-map-lists-mandatory-docs`
 - 2026-08-12: Reapplied; operations: update `rendering/guide-and-doc-templates:document-map-lists-mandatory-docs`
+- 2026-08-12: Applied; operations: update `tooling/cli:cli-creation-and-inventory`

@@ -168,6 +168,9 @@ var handlers = map[string]handler{
 		if kind == "" && len(args) > 0 {
 			kind, args = args[0], args[1:]
 		}
+		if kind == localDocumentKind {
+			return handlerFailure(newDoc(c.ctx, c.root, args, c.inv.values["--title"], c.stdout))
+		}
 		return handlerFailure(runNew(c.ctx, c.root, kind, args, c.stdout))
 	},
 	"remove": func(c *cmdCtx) handlerResult {

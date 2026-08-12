@@ -300,11 +300,11 @@ var Commands = []Command{
 		Help: Help{Usage: []string{"awf topic <domain>/<topic>[:<claim>] [flags]"}, Description: "Query one current-state topic or claim, active by default. Default output includes", Details: []string{"title and summary for a topic plus claim types, prose, and backing state. Detail", "flags are independent and direct-only. A removed claim identity resolves only", "with --history and returns operation history without an active tombstone. Outside", "an awf project, a static command reference prints without version gating."}, Positionals: []HelpItem{{Name: "<domain>/<topic>[:<claim>]", Description: "current-state topic or claim identifier"}}, Options: []HelpItem{{Name: "--history", Description: "add direct Origin, Revised-by, and Removed-by ADR details"}, {Name: "--references", Description: "add sorted direct incoming and outgoing claim IDs"}, {Name: "--coverage", Description: "add separate domain/topic scopes, current matches, and marker sites"}}},
 	},
 	{
-		Name: "new", Summary: "Scaffold a new artifact: kind in {adr, plan, topic, domain, pitfall}",
+		Name: "new", Summary: "Scaffold a new artifact: kind in {adr, plan, topic, domain, pitfall, doc}",
 		MaxPos: -1, Gating: GatedInHandler,
 		Help: Help{
 			Usage:       []string{"awf new <kind> <args>"},
-			Description: "Scaffold a new artifact. The kind is adr, plan, topic, domain, or pitfall.",
+			Description: "Scaffold a new artifact. The kind is adr, plan, topic, domain, pitfall, or doc.",
 			Positionals: []HelpItem{
 				{Name: "<kind>", Description: "artifact kind"},
 				{Name: "<args>", Description: "arguments required by the selected kind"},
@@ -315,6 +315,7 @@ var Commands = []Command{
 				"awf new topic <domain> \"Some Topic Title\"",
 				"awf new domain <name>",
 				"awf new pitfall \"Some Durable Hazard\"",
+				"awf new doc runbooks/api-v2 \"How to operate API v2\" --title \"API v2\"",
 			},
 			Related: []string{"awf adr number"},
 		},
@@ -334,6 +335,10 @@ var Commands = []Command{
 			{
 				Name: "domain", Summary: "Create a configured domain", MinPos: 1, MaxPos: 1,
 				Help: Help{Usage: []string{"awf new domain <name>"}, Description: "Add a domain and scaffold its current-state convention part."},
+			},
+			{
+				Name: "doc", Summary: "Scaffold one project-local document", ValueFlags: []string{"--title"}, MinPos: 2, MaxPos: 2,
+				Help: Help{Usage: []string{"awf new doc <name> <description> [--title <title>]"}, Description: "Declare, render, and report one project-local document. Without --title, derive it from the final kebab-case name segment.", Positionals: []HelpItem{{Name: "<name>", Description: "lowercase kebab-case path below docs"}, {Name: "<description>", Description: "one-line document description"}}, Options: []HelpItem{{Name: "--title", Description: "<title> explicit document title"}}},
 			},
 			{
 				Name: "pitfall", Summary: "Scaffold one authored pitfall", MinPos: 1, MaxPos: 1,

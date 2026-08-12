@@ -1069,8 +1069,8 @@
     "docs/topics/tooling/cli.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:eba9a87f7f4e993ba8b0fd662f5c13411dbed4e8d2e0dd2f97f2e72f6b61b428",
-      "outputHash": "sha256:1575b7c73bc4b333d3e7b1a0018e0ca8137574ff5996eb34b4ac669e7ea8a23c"
+      "configHash": "sha256:de50d28fea994694bbe2b7468821bb61cb45712dcf77fba231cfe09d094217eb",
+      "outputHash": "sha256:e9289876633f475c25d7d8d5e30ac7b90ca0f3927cd18d4e4eacb37828a10f7f"
     },
     "docs/topics/tooling/commit-policy.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -1158,9 +1158,9 @@
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
-      "templateHash": "sha256:3361734b0579324caf6d227c14f9b535e74f8e172144fe5ecd1ba1d34102043e",
-      "configHash": "sha256:8b09d507ea6969c42023d5a5ede02667187902a6dd257b9a9efb61ff28c725cb",
-      "outputHash": "sha256:c874519656fe2b2febd89a3932d21e7b0d408025008552873e3ec216c5c33426"
+      "templateHash": "sha256:f9a7476b58a21af4e055e09d97b5b49b9fe8a65b530d7d49486d88816acbf71b",
+      "configHash": "sha256:c8e72338f248b0bc355302639e8c56c1e3ebcef845891f4d106459167b59dd7d",
+      "outputHash": "sha256:1a526af1ad6331a187d6a78c890ffcc8eeb36d1986a5b1208d260510d985fd0e"
     }
   }
 }
