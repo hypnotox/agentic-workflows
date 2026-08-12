@@ -40,9 +40,10 @@ uninstalling awf must not silently delete the only copy of authored prose.
 
 1. `decision: additive-local-doc-declarations` Configuration admits one `localDocs` repository-fact
    list. Each entry declares exactly a path-like name beneath the fixed documentation root, a title,
-   and a one-line description. Names are unique, deterministic behavior is independent of list
-   order, and no entry selects, disables, shadows, or changes any standard catalog artifact. Every
-   catalog document continues to render unconditionally. Local documents remain a separate
+   and a one-line description. Names are unique, every deterministic local-document projection is
+   sorted by name, and YAML list order has no behavioral effect. No entry selects, disables,
+   shadows, or changes any standard catalog artifact. Every catalog document continues to render
+   unconditionally. Local documents remain a separate
    config-derived output family rather than joining the catalog or its layout map.
 
 2. `decision: local-doc-name-boundary` A local document name is composed of lowercase kebab-case
@@ -59,10 +60,12 @@ uninstalling awf must not silently delete the only copy of authored prose.
    toggles.
 
 4. `decision: local-doc-managed-coverage` Every local document participates in the ordinary managed
-   output plan, lock, working-tree drift checks, and Markdown reference checks, and appears in the
-   rendered agent guide's document map with its title, path, and description. Changing metadata
-   regenerates awf-owned projections while preserving the inline body. This record does not claim
-   semantic freshness analysis for free-form prose, and it does not widen the deliberately narrower
+   output plan, lock, working-tree drift checks, Markdown link checks, and skill-reference checks,
+   and appears in the rendered agent guide's document map with its title, path, and description.
+   Each output's hash folds in its normalized entry metadata, while the agent guide's hash folds in
+   the sorted complete local-document projection. Changing metadata regenerates only the awf-owned
+   projections that consume it while preserving the inline body. This record does not claim semantic
+   freshness analysis for free-form prose, and it does not widen the deliberately narrower
    staged-drift contract.
 
 5. `decision: scaffold-local-doc-command` `awf new doc <name> <description> [--title <title>]`
@@ -76,8 +79,9 @@ uninstalling awf must not silently delete the only copy of authored prose.
    document whose declaration disappeared, it copies the complete document to a sibling
    `.awf-bak`, retrying numbered suffixes under the existing collision protocol, and reports the
    backup. An absent document needs no backup; an unsafe, unreadable, broken, or escaping path
-   refuses without advancing the lock. The same preservation rule applies to local documents
-   removed by `awf uninstall`; other generated outputs retain their existing uninstall behavior.
+   refuses. The lock advances only after complete preservation and successful removal; a failure in
+   either step retains the old lock. The same preservation rule applies to local documents removed
+   by `awf uninstall`; other generated outputs retain their existing uninstall behavior.
 
 7. `decision: local-doc-guidance-travels` Adopter guidance and the applicable workflow skills teach
    the declaration, scaffold command, inline ownership boundary, checking behavior, reserved
@@ -102,7 +106,9 @@ uninstalling awf must not silently delete the only copy of authored prose.
 Repository-specific documentation becomes a first-class managed output without reopening catalog
 selection. Standard docs stay universal; local docs are an additive statement of repository
 content. A repository can keep runbooks and specialized guidance beside its other docs while awf
-keeps their framing current, exposes them to agents, and checks their references.
+keeps their framing current, exposes them to agents, and checks their references. Every added claim
+in this record is mechanically enforced and lands as a test-backed invariant; the revised
+`config-expresses-repo-facts-only` claim remains the governing rule it already is.
 
 The rendered file is intentionally both output and authoring source for its body. This removes the
 old mirrored convention-part location and makes free-form editing natural, but it also means the
@@ -112,17 +118,31 @@ work and leave recovery files that the user must inspect and eventually remove.
 The central list duplicates a document's metadata outside its body. That duplication is bounded to
 facts awf needs before rendering the body: output identity, heading, and document-map description.
 The body stays entirely free-form. Sorting the projection by name makes list reordering inert, while
-metadata changes affect the local document and the agent-guide projection that consumes them.
+metadata changes affect the local document and the agent-guide projection that consumes them. Each
+entry also grows the agent guide and the context an agent receives; a large declaration set can
+trigger the existing guide-size advisory and creates real context-budget pressure.
+
+The shared shell inherits the render engine's existing missing-key behavior and remains
+publication-safe under empty render values: it emits neither `<no value>` nor unresolved template or
+placeholder tokens. Validation still rejects empty title and description before ordinary rendering,
+so this is defense in depth rather than an alternate accepted metadata state.
 
 A schema generation and config-reference update are required even though existing repositories
-need no new bytes: absence means that the repository declares no local documents. Historical
-selection keys remain retired and forward-ported; this is a new additive shape, not a restoration of
-the old `docs` array or `local` sidecar field.
+need no new bytes: absence means that the repository declares no local documents. Strict parsing,
+render projection, manifest and lock attribution, and config-reference reflection all learn the new
+shape. Upgrade advances the no-byte schema generation and writes the current lock while leaving an
+existing config byte-identical. Historical selection keys remain retired and forward-ported; this is
+a new additive shape, not a restoration of the old `docs` array or `local` sidecar field.
 
 The ordinary in-place guarantees apply to local documents, including regeneration of awf-owned
 framing and preservation of body bytes. Working-tree check provides the full output and reference
 coverage. The narrower staged drift surface continues to compare eligible existing locked outputs
 and does not gain new-output, removal, backup, or link-check semantics through this record.
+
+A future awf release can add a standard document whose output collides with an existing local name.
+That repository then cannot render the ambiguous pair until the local declaration is renamed or an
+upgrade migration supplies an unambiguous repair. This is the accepted cost of reserving standard
+output identity while permitting additive names outside today's catalog.
 
 ## Alternatives Considered
 
