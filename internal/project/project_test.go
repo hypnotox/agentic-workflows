@@ -682,6 +682,19 @@ type readFailureFilesystem struct {
 
 func (f readFailureFilesystem) Read(string) ([]byte, error) { return nil, f.err }
 
+type pathReadWithModeFailureFilesystem struct {
+	syncFilesystem
+	path string
+	err  error
+}
+
+func (f pathReadWithModeFailureFilesystem) ReadWithMode(path string) ([]byte, os.FileMode, error) {
+	if path == f.path {
+		return nil, 0, f.err
+	}
+	return f.syncFilesystem.ReadWithMode(path)
+}
+
 type linkInfoFailureFilesystem struct {
 	syncFilesystem
 	err error
@@ -895,6 +908,52 @@ func TestSyncFilesystemFailuresPreserveErrorIdentity(t *testing.T) {
 				t.Fatalf("error = %v, want %v", err, failure)
 			}
 		})
+	}
+}
+
+// invariant: rendering/sync-and-drift:local-doc-prune-preserved (TestLocalDocPruneUnreadableSourcePreservesRecoveryAndLock)
+func TestLocalDocPruneUnreadableSourcePreservesRecoveryAndLock(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	const local = "docs/runbooks/incident.md"
+	output := filepath.Join(root, filepath.FromSlash(local))
+	before, err := os.ReadFile(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.Cfg.LocalDocs = nil
+	filesystems, closeAll, err := p.openSyncFilesystems()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closeAll()
+	failure := errors.New("unreadable local prune source")
+	filesystems.tracked = pathReadWithModeFailureFilesystem{syncFilesystem: filesystems.tracked, path: local, err: failure}
+	corpus, pitfalls, topics, eff, err := p.deriveOperationStateWithPitfalls()
+	if err != nil {
+		t.Fatal(err)
+	}
+	backups, _, pruned, err := p.syncReportWithPitfalls(testContext(t), nil, filesystems, corpus, pitfalls, topics, eff)
+	if !errors.Is(err, failure) {
+		t.Fatalf("sync error = %v, want %v", err, failure)
+	}
+	if len(backups) != 0 || len(pruned) != 0 {
+		t.Fatalf("failed prune published backups=%v or pruned=%v", backups, pruned)
+	}
+	if got, readErr := os.ReadFile(output); readErr != nil || !bytes.Equal(got, before) {
+		t.Fatalf("source = %q, %v", got, readErr)
+	}
+	if _, statErr := os.Stat(output + ".awf-bak"); !os.IsNotExist(statErr) {
+		t.Fatalf("backup published after unreadable source: %v", statErr)
+	}
+	if got, readErr := os.ReadFile(lockFile(root)); readErr != nil || !strings.Contains(string(got), local) {
+		t.Fatalf("lock = %q, %v", got, readErr)
 	}
 }
 

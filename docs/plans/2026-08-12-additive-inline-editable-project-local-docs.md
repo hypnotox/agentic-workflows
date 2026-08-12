@@ -343,6 +343,7 @@ Record deviations, spike answers, follow-ups, and findings surfaced during imple
 - Phase 2 post-review settlement: the Unreleased changelog now tells adopters about `localDocs`,
   its sole inline-editable body, ordinary managed checks, and `.awf-bak` prune/uninstall recovery.
 - Second Phase 2 post-review settlement: restored collective proof backing for the complete output-plan claim; strengthened recovery tests with real backup bytes; completed prune fault clauses (including injected inspection); added selected-reader local and config-reference render faults; covered resident open and lock-removal failures; and removed the resulting false reachability ignores. The preservation matrices retain exact backup reports, source and lock safety, suffix behavior, absence, unsafe refusal, publication, and removal outcomes.
+- Final Phase 2 assurance settlement: marker-backed local prune testing injects an unreadable source after successful inspection and proves error identity, unchanged source and old lock, and no backup or prune result. Removed false coverage ignores from the reachable runner conditional-unit render failure and corrupt-lock resident local-template preservation; focused tests now exercise both paths.
 - Semantic inspection after settlement covered `docs/working-with-awf.md`, `docs/doc-standard.md`,
   `docs/architecture.md`, `.claude/skills/awf-writing-docs/SKILL.md`,
   `.claude/skills/awf-using-awf/SKILL.md`, `.pi/skills/awf-writing-docs/SKILL.md`, and

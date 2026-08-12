@@ -226,6 +226,7 @@ type uninstallHandle interface {
 
 type uninstallOps struct {
 	open         func(string) (uninstallHandle, error)
+	residentRoot func(context.Context, string) string
 	inspectRoots func(string) ([]string, error)
 	removeFile   func(string) (bool, error)
 	remove       func(string) error
@@ -248,6 +249,7 @@ func asUninstallHandle(handle uninstallHandle) uninstallHandle { return handle }
 func Uninstall(ctx context.Context, root string, preserveTemplate func(string) bool) (UninstallReport, error) {
 	return uninstallWith(ctx, root, preserveTemplate, uninstallOps{
 		open:         productionUninstallOpen,
+		residentRoot: awfgit.ProjectResidentRoot,
 		inspectRoots: InspectRoots,
 		removeFile:   RemoveGeneratedFile,
 		remove:       os.Remove,
@@ -256,7 +258,10 @@ func Uninstall(ctx context.Context, root string, preserveTemplate func(string) b
 
 func uninstallWith(ctx context.Context, root string, preserveTemplate func(string) bool, ops uninstallOps) (UninstallReport, error) {
 	lockPath := config.LockPath(root)
-	residentRoot := awfgit.ProjectResidentRoot(ctx, root)
+	residentRoot := root
+	if ops.residentRoot != nil {
+		residentRoot = ops.residentRoot(ctx, root)
+	}
 	lock, found, err := manifest.LoadOptional(lockPath)
 	if err != nil {
 		return UninstallReport{}, err
@@ -282,9 +287,9 @@ func uninstallWith(ctx context.Context, root string, preserveTemplate func(strin
 		}
 		if preserveTemplate != nil && preserveTemplate(lock.Files[path].TemplateID) {
 			backupRoot, backupPath := root, path
-			if IsResidentPath(path) { // coverage-ignore: project policy recognizes only docs/local.md.tmpl, whose output path is never resident
+			if IsResidentPath(path) {
 				backupRoot = residentRoot
-				backupPath = strings.TrimPrefix(path, config.DirName+"/")
+				backupPath = path
 			}
 			handle, openErr := ops.open(backupRoot)
 			if openErr != nil {

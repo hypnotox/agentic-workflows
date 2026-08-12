@@ -1,6 +1,7 @@
 package resident
 
 import (
+	"context"
 	"errors"
 	"io/fs"
 	"os"
@@ -112,6 +113,39 @@ func TestUninstallPreservesLocalDocuments(t *testing.T) {
 		if _, err := os.Lstat(path); !os.IsNotExist(err) {
 			t.Errorf("%s remains after uninstall: %v", path, err)
 		}
+	}
+}
+
+func TestUninstallPreservesCorruptLocalDocumentInResidentRoot(t *testing.T) {
+	root := t.TempDir()
+	residentRoot := t.TempDir()
+	const local = ".awf/effort-archive/local.md"
+	residentSource := filepath.Join(residentRoot, filepath.FromSlash(local))
+	trackedSentinel := filepath.Join(root, filepath.FromSlash(local))
+	testsupport.WriteFile(t, residentSource, "resident operator body\n")
+	testsupport.WriteFile(t, trackedSentinel, "tracked sentinel\n")
+	if err := (&manifest.Lock{Files: map[string]manifest.Entry{local: {TemplateID: "docs/local.md.tmpl"}}}).Save(config.LockPath(root)); err != nil {
+		t.Fatal(err)
+	}
+	report, err := uninstallWith(testsupport.Context(t), root, func(template string) bool { return template == "docs/local.md.tmpl" }, uninstallOps{
+		open: productionUninstallOpen, residentRoot: func(context.Context, string) string { return residentRoot },
+		inspectRoots: func(string) ([]string, error) { return nil, nil }, removeFile: RemoveGeneratedFile, remove: os.Remove,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Backup{{Path: local, Bak: local + ".awf-bak"}}
+	if !slices.Equal(report.Backups, want) || report.Removed != 1 {
+		t.Fatalf("report = %#v, want backup %#v and one removal", report, want)
+	}
+	if got, readErr := os.ReadFile(residentSource + ".awf-bak"); readErr != nil || string(got) != "resident operator body\n" {
+		t.Fatalf("resident backup = %q, %v", got, readErr)
+	}
+	if _, statErr := os.Lstat(residentSource); !os.IsNotExist(statErr) {
+		t.Fatalf("resident source remains: %v", statErr)
+	}
+	if got, readErr := os.ReadFile(trackedSentinel); readErr != nil || string(got) != "tracked sentinel\n" {
+		t.Fatalf("tracked sentinel = %q, %v", got, readErr)
 	}
 }
 

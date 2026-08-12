@@ -671,7 +671,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 		rf, err := p.renderTarget(unit.kind, "", unit.tid, unit.sections,
 			config.Sidecar{}, p.data(config.Sidecar{}, eff), unit.path, eff,
 			&renderOutputOptions{encoder: PlainAgentDialect})
-		if err != nil { // coverage-ignore: conditional units carry closed embedded identities and fixed empty sidecars
+		if err != nil {
 			return nil, err
 		}
 		out = append(out, rf)
