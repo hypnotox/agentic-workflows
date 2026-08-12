@@ -1,11 +1,15 @@
 package project
 
 import (
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -40,9 +44,17 @@ func TestLocalDocAgentGuideProjection(t *testing.T) {
 		t.Fatal("local document entered Layout.Docs")
 	}
 
-	beforeGuide := configHashOf(t, root, "AGENTS.md")
-	beforeAlpha := configHashOf(t, root, "docs/runbooks/alpha.md")
-	beforeZulu := configHashOf(t, root, "docs/runbooks/zulu.md")
+	beforeLock, err := manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	beforeHashes := map[string]string{}
+	for path, entry := range beforeLock.Files {
+		beforeHashes[path] = entry.ConfigHash
+	}
+	beforeGuide := beforeHashes["AGENTS.md"]
+	beforeAlpha := beforeHashes["docs/runbooks/alpha.md"]
+	beforeZulu := beforeHashes["docs/runbooks/zulu.md"]
 	alphaPath := filepath.Join(root, "docs/runbooks/alpha.md")
 	body, err := os.ReadFile(alphaPath)
 	if err != nil {
@@ -68,6 +80,20 @@ func TestLocalDocAgentGuideProjection(t *testing.T) {
 	}
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
+	}
+	afterLock, err := manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var changed []string
+	for path, before := range beforeHashes {
+		if after := afterLock.Files[path].ConfigHash; after != before {
+			changed = append(changed, path)
+		}
+	}
+	slices.Sort(changed)
+	if want := []string{"AGENTS.md", "docs/runbooks/alpha.md"}; !slices.Equal(changed, want) {
+		t.Fatalf("metadata config-hash changes = %v, want %v", changed, want)
 	}
 	preserved, err := os.ReadFile(alphaPath)
 	if err != nil || !strings.Contains(string(preserved), "preserved bytes") {
@@ -109,28 +135,24 @@ func TestLocalDocReferenceChecksBody(t *testing.T) {
 	if err := os.WriteFile(path, b, 0o644); err != nil {
 		t.Fatal(err)
 	}
+	// A target-specific effective catalog can omit a standard-known skill. Keep
+	// standard knowledge separate so ordinary CheckReport observes the dead
+	// reference from the local output rather than testing the scanner directly.
+	custom := *p.Cat
+	custom.Skills = maps.Clone(p.Cat.Skills)
+	delete(custom.Skills, "tdd")
+	p.Cat = &custom
+	p.standard = catalog.Standard
 	report, err := p.CheckReport(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
-	var link bool
+	var link, skill bool
 	for _, d := range report.Drift {
 		link = link || d.Path == "docs/runbooks/checks.md" && d.Kind == "dead-reference"
+		skill = skill || d.Path == "docs/runbooks/checks.md" && d.Kind == "dead-skill-reference"
 	}
-	if !link {
+	if !link || !skill {
 		t.Fatalf("local body reference drift = %#v", report.Drift)
-	}
-	files, err := p.RenderAll()
-	if err != nil {
-		t.Fatal(err)
-	}
-	var local []RenderedFile
-	for _, file := range files {
-		if file.Path == "docs/runbooks/checks.md" {
-			local = append(local, file)
-		}
-	}
-	if got := p.checkDeadSkillRefs(local, map[string]bool{}); len(got) != 1 || got[0].Path != "docs/runbooks/checks.md" || got[0].Kind != "dead-skill-reference" {
-		t.Fatalf("local body skill-reference drift = %#v", got)
 	}
 }

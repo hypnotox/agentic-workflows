@@ -351,3 +351,13 @@ Record deviations, spike answers, follow-ups, and findings surfaced during imple
   `.pi/skills/awf-using-awf/SKILL.md`. The passages remain coherent, preserve the sole editable
   body and recovery boundary, and do not project Phase 3 agent-guide discovery or Phase 4 scaffold
   command guidance.
+- Phase 3 added-path deviation: `internal/project/catalog_sweep_test.go` was added because template
+  catalog sweep contexts need the new local-document data; it is governed by the agent-guide union
+  and verified by the full gate.
+- Phase 3 post-review settlement: moved the normalized local-document union outside the replaceable
+  `document-map` catalog section while retaining its ordinary convention-part override, added
+  structural custom-section, guide-size, complete hash-census, ordinary reference-report, and
+  collective invariant-proof coverage, and amended the existing Unreleased changelog entry. The
+  correction preserves catalog and Layout independence, the exact Applied two-operation batch, and
+  the Proposed plan and Implementing ADR boundary; it introduces no Phase 4 scaffold guidance or
+  operation.

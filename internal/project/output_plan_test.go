@@ -16,6 +16,7 @@ import (
 )
 
 // invariant: rendering/project-output-plan:output-plan-complete (TestLocalDocsOutputPlan)
+// invariant: rendering/doc-outputs:local-doc-output-complete (TestLocalDocsOutputPlan)
 func TestLocalDocsOutputPlan(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/z\n    title: Z\n    description: Z document.\n  - name: runbooks/a\n    title: A\n    description: A document.\n")
 	p, err := Open(testContext(t), root)

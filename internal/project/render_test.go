@@ -36,6 +36,7 @@ func syncedWorkflowDoc(t *testing.T, body string) string {
 }
 
 // invariant: rendering/inplace-and-placeholders:local-doc-body-inline (TestLocalDocRendersAndPreservesBody)
+// invariant: rendering/doc-outputs:local-doc-output-complete (TestLocalDocRendersAndPreservesBody)
 // invariant: rendering/sync-and-drift:local-doc-prune-preserved (TestLocalDocRendersAndPreservesBody)
 func TestLocalDocRendersAndPreservesBody(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident-response\n    title: Incident response\n    description: Handle incidents.\n")

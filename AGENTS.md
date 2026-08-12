@@ -100,4 +100,6 @@ Use `awf read plan <plan> <P[.T]>` for executable plan scope. For command flags,
 - **Releasing:** [docs/releasing.md](docs/releasing.md), how to cut a release: versioning, artifacts, and the publish process
 - **Roadmap:** [docs/roadmap.md](docs/roadmap.md), uncommitted ideas and future phases
 - **Testing:** [docs/testing.md](docs/testing.md), gate tiers, test layout, what each tier covers
+
+
 Pi provides transient `[session context]` facts before each model call; a discretionary eligible session-replacement choice informs continuation judgment only.

@@ -1,6 +1,7 @@
 package project
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -81,6 +82,59 @@ func TestCheckReportAgentGuideSizeAdvisoryManagedOnly(t *testing.T) {
 		if strings.Contains(note, "AGENTS.md") && strings.Contains(note, "12288") {
 			t.Fatalf("local agents document size note = %q", note)
 		}
+	}
+}
+
+// invariant: rendering/guide-and-doc-templates:agentsdoc-parts (TestAgentsDocDocumentMapPartRetainsLocalDocs)
+// invariant: rendering/doc-outputs:local-doc-output-complete (TestAgentsDocDocumentMapPartRetainsLocalDocs)
+func TestAgentsDocDocumentMapPartRetainsLocalDocs(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/checks\n    title: Checks\n    description: Check local docs.\n", map[string]string{
+		"parts/agents-doc/document-map.md": "## Document map\n\nCustom catalog map content.\n",
+	})
+	got := syncAndReadAgents(t, root)
+	if !strings.Contains(got, "Custom catalog map content.") {
+		t.Fatalf("document-map part did not replace catalog content:\n%s", got)
+	}
+	if strings.Contains(got, "**ADR index:**") {
+		t.Errorf("catalog body remained after replacement:\n%s", got)
+	}
+	line := "- **Checks:** [docs/runbooks/checks.md](docs/runbooks/checks.md), Check local docs."
+	if count := strings.Count(got, line); count != 1 {
+		t.Errorf("local document row count = %d, want 1:\n%s", count, got)
+	}
+}
+
+// invariant: rendering/doc-outputs:local-doc-output-complete (TestLocalDocGuideSize)
+func TestLocalDocGuideSize(t *testing.T) {
+	var entries strings.Builder
+	for i := range 100 {
+		fmt.Fprintf(&entries, "  - name: runbooks/doc-%03d\n    title: Local document %03d\n    description: %s\n", i, i, strings.Repeat("x", 100))
+	}
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n"+entries.String())
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	// Reopening makes the second sync read the in-place local outputs back.
+	p, err = Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	report, err := p.CheckReport(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Drift) != 0 {
+		t.Fatalf("guide-size advisory must remain non-failing: %#v", report.Drift)
+	}
+	if !strings.Contains(strings.Join(report.Notes, "\n"), "12288") {
+		t.Fatalf("expected unchanged 12288-byte advisory: %#v", report.Notes)
 	}
 }
 
