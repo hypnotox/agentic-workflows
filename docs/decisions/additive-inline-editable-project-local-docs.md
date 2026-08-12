@@ -1,0 +1,140 @@
+---
+format: current-state-v4
+slug: additive-inline-editable-project-local-docs
+status: Proposed
+date: 2026-08-12
+---
+# ADR-additive-inline-editable-project-local-docs: Additive Inline-Editable Project-Local Docs
+
+
+## Context
+
+ADR-0251 made every catalog document unconditional and retired project-local artifacts. That was the
+right simplification for a house standard whose served repositories do not vary awf's behavior: the
+old local-doc channel was coupled to artifact selection, effective-catalog synthesis, sidecars, base
+templates, and enable and disable commands. It protected general adopter autonomy after the project
+owner had withdrawn that product premise.
+
+The same record established a different admission test for configuration: a key is justified when
+its steady-state value expresses a fact that genuinely differs between served repositories. The
+set of repository-specific operational and domain documents passes that test. One repository may
+need deployment and rollback runbooks, another a protocol contract, a threat model, or a subsystem
+debugging guide. Making every such document a catalog entry would publish irrelevant empty
+artifacts to every repository. Leaving them entirely outside awf loses the document map, managed
+structure, reference checks, and drift coverage that keep guidance discoverable and mechanically
+sound.
+
+The retired ADR-0091 channel solved that content need, but its representation solved the former
+selection model too: a custom name entered a project-scoped catalog clone, rendered from a base
+template, and obtained its body from a convention part. Restoring that design would also restore
+machinery ADR-0251 intentionally removed. Local documents instead need to be additive to the
+unconditional standard, not selectable members of it.
+
+The in-place editing primitive already provides the fitting ownership boundary. awf can own a
+shared document shell, path, provenance, and heading while reading one adopter-owned body back from
+the rendered output. The output is then the natural and sole authoring location. That last property
+creates a safety obligation absent from ordinary generated files: removing the declaration or
+uninstalling awf must not silently delete the only copy of authored prose.
+
+## Decision
+
+1. `decision: additive-local-doc-declarations` Configuration admits one `localDocs` repository-fact
+   list. Each entry declares exactly a path-like name beneath the fixed documentation root, a title,
+   and a one-line description. Names are unique, deterministic behavior is independent of list
+   order, and no entry selects, disables, shadows, or changes any standard catalog artifact. Every
+   catalog document continues to render unconditionally. Local documents remain a separate
+   config-derived output family rather than joining the catalog or its layout map.
+
+2. `decision: local-doc-name-boundary` A local document name is composed of lowercase kebab-case
+   path segments and does not carry a Markdown suffix. The authored and generated families rooted
+   at `decisions`, `plans`, `domains`, `topics`, and `pitfalls` are reserved, and an exact standard
+   output collision is rejected. Unrelated namespaces such as operations, runbooks, and research
+   remain available. Title and description are explicit, nonblank, single-line metadata.
+
+3. `decision: inline-freeform-local-doc` Every declared local document renders through one shared
+   awf-owned Markdown shell. awf owns its provenance, title heading, framing, output identity, and
+   metadata projection; the adopter owns one unrestricted body edited directly in the rendered
+   file through `awf:edit-in-place`. There are no local-doc sidecars, convention parts, custom
+   templates, frontmatter, declared subsections, tags, ordering controls, or per-document check
+   toggles.
+
+4. `decision: local-doc-managed-coverage` Every local document participates in the ordinary managed
+   output plan, lock, working-tree drift checks, and Markdown reference checks, and appears in the
+   rendered agent guide's document map with its title, path, and description. Changing metadata
+   regenerates awf-owned projections while preserving the inline body. This record does not claim
+   semantic freshness analysis for free-form prose, and it does not widen the deliberately narrower
+   staged-drift contract.
+
+5. `decision: scaffold-local-doc-command` `awf new doc <name> <description> [--title <title>]`
+   validates the declaration and destination, refuses an existing output, adds the config entry,
+   renders the project, and reports the created document. Without `--title`, it derives the title
+   from the final name segment by replacing hyphens with spaces and capitalizing each word; the
+   explicit flag is the answer for acronyms and specialized spelling. The command does not create
+   a sidecar or convention part.
+
+6. `decision: preserve-local-doc-on-removal` Before render prunes a previously managed local
+   document whose declaration disappeared, it copies the complete document to a sibling
+   `.awf-bak`, retrying numbered suffixes under the existing collision protocol, and reports the
+   backup. An absent document needs no backup; an unsafe, unreadable, broken, or escaping path
+   refuses without advancing the lock. The same preservation rule applies to local documents
+   removed by `awf uninstall`; other generated outputs retain their existing uninstall behavior.
+
+7. `decision: local-doc-guidance-travels` Adopter guidance and the applicable workflow skills teach
+   the declaration, scaffold command, inline ownership boundary, checking behavior, reserved
+   namespaces, and removal and uninstall recovery behavior. A feature for durable documentation is
+   incomplete if the standard's routing and authoring guidance cannot lead adopters to it.
+
+## State changes
+
+- update `config/configuration:config-expresses-repo-facts-only`
+- update `config/configuration:no-artifact-selection-surface`
+- add `config/configuration:local-doc-declarations`
+- add `rendering/doc-outputs:local-doc-output-complete`
+- add `rendering/inplace-and-placeholders:local-doc-body-inline`
+- update `rendering/project-output-plan:output-plan-complete`
+- update `rendering/guide-and-doc-templates:document-map-lists-mandatory-docs`
+- add `rendering/sync-and-drift:local-doc-prune-preserved`
+- update `rendering/sync-and-drift:uninstall-removes-lock-entries`
+- update `tooling/cli:cli-creation-and-inventory`
+
+## Consequences
+
+Repository-specific documentation becomes a first-class managed output without reopening catalog
+selection. Standard docs stay universal; local docs are an additive statement of repository
+content. A repository can keep runbooks and specialized guidance beside its other docs while awf
+keeps their framing current, exposes them to agents, and checks their references.
+
+The rendered file is intentionally both output and authoring source for its body. This removes the
+old mirrored convention-part location and makes free-form editing natural, but it also means the
+file cannot be treated as disposable generated output. Removal and uninstall therefore do more
+work and leave recovery files that the user must inspect and eventually remove.
+
+The central list duplicates a document's metadata outside its body. That duplication is bounded to
+facts awf needs before rendering the body: output identity, heading, and document-map description.
+The body stays entirely free-form. Sorting the projection by name makes list reordering inert, while
+metadata changes affect the local document and the agent-guide projection that consumes them.
+
+A schema generation and config-reference update are required even though existing repositories
+need no new bytes: absence means that the repository declares no local documents. Historical
+selection keys remain retired and forward-ported; this is a new additive shape, not a restoration of
+the old `docs` array or `local` sidecar field.
+
+The ordinary in-place guarantees apply to local documents, including regeneration of awf-owned
+framing and preservation of body bytes. Working-tree check provides the full output and reference
+coverage. The narrower staged drift surface continues to compare eligible existing locked outputs
+and does not gain new-output, removal, backup, or link-check semantics through this record.
+
+## Alternatives Considered
+
+| Alternative | Why not chosen |
+|---|---|
+| Restore ADR-0091's catalog synthesis, sidecars, parts, and `docs` selection | It couples a valid repository-content need back to the selection machinery ADR-0251 intentionally removed. |
+| Add every repository-specific document to the standard catalog | It makes unrelated repositories render irrelevant artifacts and mistakes repository content for universal workflow guidance. |
+| Register completely adopter-owned files without rendering them | It can add discovery and reference checks but cannot enforce an awf-owned shell, provenance, heading, or structural drift boundary. |
+| Keep the body in a convention part | It duplicates the document into a less natural authoring path when the existing in-place primitive can safely preserve the rendered body. |
+| Allow arbitrary local-document metadata and sections | It recreates a configurable document framework; name, title, description, and one free-form body satisfy the demonstrated need. |
+| Delete local documents like ordinary generated outputs | The rendered file is the only source of adopter-owned prose, so ordinary pruning and uninstall would cause data loss. |
+
+## Status history
+
+- 2026-08-12: Proposed

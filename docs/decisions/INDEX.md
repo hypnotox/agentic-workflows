@@ -3,6 +3,7 @@
 ## In flight
 
 - [ADR-0270: Retired configuration stays absent from live surfaces](0270-retired-configuration-stays-absent-from-live-surfaces.md) (Proposed)
+- [ADR-additive-inline-editable-project-local-docs: Additive Inline-Editable Project-Local Docs](additive-inline-editable-project-local-docs.md) (Proposed)
 
 ## History
 
