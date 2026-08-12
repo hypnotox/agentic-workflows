@@ -109,7 +109,7 @@ func newDoc(ctx context.Context, root string, args []string, title *string, stdo
 }
 
 func newDocWith(ctx context.Context, root string, args []string, title *string, stdout io.Writer, dependencies localDocDependencies) error {
-	if len(args) != 2 { // coverage-ignore: clispec enforces exact two positional grammar before dispatch
+	if len(args) != 2 {
 		return &usageErr{"usage: awf new doc <name> <description> [--title <title>]"}
 	}
 	if err := gate(ctx, root); err != nil {

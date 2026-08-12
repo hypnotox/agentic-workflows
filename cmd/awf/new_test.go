@@ -76,7 +76,6 @@ func TestRunNewDocRefusesBeforeMutation(t *testing.T) {
 	}{
 		{name: "empty name", docName: "", description: "Description"},
 		{name: "empty description", docName: "runbooks/api", description: ""},
-		{name: "empty explicit title", docName: "runbooks/api", description: "Description", title: localDocTitle("")},
 		{name: "reserved name", docName: "plans/api", description: "Description"},
 		{name: "managed collision", docName: "architecture", description: "Description"},
 		{name: "configured duplicate without destination", docName: "runbooks/api", description: "Again", prepare: func(t *testing.T, root string) {
@@ -110,18 +109,31 @@ func TestRunNewDocRefusesBeforeMutation(t *testing.T) {
 		})
 	}
 
-	t.Run("repeated title flag", func(t *testing.T) {
-		root := scaffoldProject(t)
-		testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
-		beforeConfig := mustReadCLIFile(t, config.ConfigPath(root))
-		var out, errOut bytes.Buffer
-		if code := run([]string{"awf", "new", "doc", "runbooks/api", "Description", "--title", "API", "--title", "Again"}, &out, &errOut); code != 2 {
-			t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
-		}
-		if got := mustReadCLIFile(t, config.ConfigPath(root)); got != beforeConfig {
-			t.Fatal("flag refusal mutated config")
-		}
-	})
+	for _, tc := range []struct {
+		name     string
+		args     []string
+		wantCode int
+	}{
+		{name: "empty explicit title", args: []string{"awf", "new", "doc", "runbooks/api", "Description", "--title", ""}, wantCode: 1},
+		{name: "repeated title flag", args: []string{"awf", "new", "doc", "runbooks/api", "Description", "--title", "API", "--title", "Again"}, wantCode: 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := scaffoldProject(t)
+			testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+			beforeConfig := mustReadCLIFile(t, config.ConfigPath(root))
+			beforeLock := mustReadCLIFile(t, config.LockPath(root))
+			var out, errOut bytes.Buffer
+			if code := run(tc.args, &out, &errOut); code != tc.wantCode {
+				t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+			}
+			if got := mustReadCLIFile(t, config.ConfigPath(root)); got != beforeConfig {
+				t.Fatal("flag refusal mutated config")
+			}
+			if got := mustReadCLIFile(t, config.LockPath(root)); got != beforeLock {
+				t.Fatal("flag refusal mutated lock")
+			}
+		})
+	}
 }
 
 func TestNewDocDependencyFailures(t *testing.T) {
@@ -171,8 +183,6 @@ func TestNewDocDependencyFailures(t *testing.T) {
 		t.Fatal("missing arguments accepted")
 	}
 }
-
-func localDocTitle(value string) *string { return &value }
 
 func assertLocalDocs(t *testing.T, root string, want config.LocalDocs) {
 	t.Helper()
