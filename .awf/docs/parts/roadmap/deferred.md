@@ -33,7 +33,7 @@ Moving the token into item 1 is a content edit to an Implemented ADR, which
 append-only forbids; the alternative, widening the model to admit a
 section-scoped claim, weakens the guarantee that every claim has a rationale
 site. Neither is a mechanical correction, and the token is not wrong today, it
-is merely unanchored, and `./awf check` is silent on it.
+is merely unanchored, and `awf check` is silent on it.
 
 The related shape the citation check declines to resolve is a bare `item N`
 hanging off an ADR reference earlier in the same Decision item (ADR-0131
@@ -55,7 +55,7 @@ The rung-2 candidate is a `cmd/repoaudit` rule over the commit range: when a
 commit message names an ADR with an authoring verb (amends, narrows, reopens,
 flips, implements), the commit must touch that ADR's file. It is mechanical, it
 would have caught the instance above, and repoaudit is the right home rather
-than the shipped `./awf audit`: the rule is about this repo's authoring
+than the shipped `awf audit`: the rule is about this repo's authoring
 discipline, and repoaudit findings can be advisory, which matters because the
 verb detection will have false positives (a commit legitimately citing an ADR
 it does not edit).
@@ -74,7 +74,7 @@ separate commit. The residual case is a direct status flip out of Proposed whose
 mutates digest-covered content, establishing the first stamp over unreviewed content in one
 transaction. A direct terminal flip also freezes that content immediately. The 0154 effort did exactly this when its direct Implemented flip also landed
 the forward-only resolution clause, and only reviewer diligence caught it afterwards. Candidate
-`./awf audit` advisory rule: flag that direct flip shape. Deferred because audit rules ship behind
+`awf audit` advisory rule: flag that direct flip shape. Deferred because audit rules ship behind
 their own decision; the active pitfalls rule still depends on manual review.
 
 ## Decomposing the `internal/project` god object
@@ -128,7 +128,7 @@ A partial-staging commit whose staged subset is drift-inconsistent (a rendered,
 lock, or config hunk left unstaged while the fixing hunk sits in the worktree)
 passes a pre-commit gate that checks the worktree, and lands a broken HEAD. It
 bit this repo at commit a85bd6a and the repo-local hook was extended on
-2026-07-15 to also run `./awf check` on a checkout-index slice, but the shipped
+2026-07-15 to also run `awf check` on a checkout-index slice, but the shipped
 payload (ADR-0048) still checks the worktree, so adopter repos keep the gap.
 
 A fix is feasible and language-agnostic: checkout-index to a temporary tree and

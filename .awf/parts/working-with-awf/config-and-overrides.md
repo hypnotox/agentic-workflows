@@ -4,7 +4,7 @@ Discovery creates no effort. When durable continuity materially helps, `effort-w
 
 Full-replacement workflow, guide, checkpoint, or affected skill parts must re-derive autonomous creation and deliberate switching; default-template projection tests cannot inspect replacement prose.
 
-New plan scaffolds carry `format: plan-v2`, sequential phase and task headings, one final Phase close per phase, task-scoped decisions, and required Definition of done outcomes. Marker-absent historical plans retain legacy checks and are not projected. `./awf read plan <plan> <P[.T]>` accepts an exact filename or stem and canonical positive numeric selector, then prints the source-ordered executable closure.
+New plan scaffolds carry `format: plan-v2`, sequential phase and task headings, one final Phase close per phase, task-scoped decisions, and required Definition of done outcomes. Marker-absent historical plans retain legacy checks and are not projected. `awf read plan <plan> <P[.T]>` accepts an exact filename or stem and canonical positive numeric selector, then prints the source-ordered executable closure.
 
 Plan execution selects `inline` or `subagent-driven` ownership independently per phase. One
 commit-capable owner takes a complete subagent-driven phase from a clean green baseline through its

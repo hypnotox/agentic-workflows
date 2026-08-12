@@ -19,7 +19,7 @@
   lines are dropped. No claim states this, so every migration that edits config inherits an unstated
   contract and ADR-0185 had to narrow one claim that had guessed at it. Needs its own small ADR
   covering whether the property is claimed once for the package or restated per migration.
-- Add an advisory `./awf audit` rule flagging a code-scoped commit (`fix`, `feat`, `test`,
+- Add an advisory `awf audit` rule flagging a code-scoped commit (`fix`, `feat`, `test`,
   `refactor` types) that also mutates a `docs/decisions/` ADR body: the shared-index sweep
   pitfall has now recurred four times (2026-07-10 twice, 2026-07-19, 2026-07-23) and three
   of the four occurrences folded ADR content into a code commit, which this rule would have
@@ -32,7 +32,7 @@
   config-domain ADR.
 - Design a structured context result only when a demonstrated consumer can define its contract;
   ADR-0165 deliberately removed speculative JSON rather than preserving a hidden path census.
-- Enforce the plan freeze mechanically: `./awf check staged` could refuse a diff that edits a
+- Enforce the plan freeze mechanically: `awf check staged` could refuse a diff that edits a
   `docs/plans/` file whose HEAD `status:` is `Implemented`. The recorded "record implementation
   deviations before the terminal artifact transaction" pitfall did not prevent the ADR-0151
   session from appending Notes to a frozen plan at review's direction; a prose rule that failed
@@ -56,7 +56,7 @@
   could be flagged, since that is the exact case needing a successor `update` operation. Twice in that
   session the false wording was INHERITED from an earlier record that the correcting pass never
   re-read, so the check would earn its keep on amendments rather than on new claims. Needs its own ADR:
-  it changes what `./awf check` rejects, and a false positive on legitimate absolute prose would be
+  it changes what `awf check` rejects, and a false positive on legitimate absolute prose would be
   expensive.
 - Broaden the task-skill set. Nothing produces a PR title and body from the commits of an
   effort; there is no skill for reviewing an incoming third-party PR, no security-review
@@ -227,7 +227,7 @@ commands must remain usable from either checkout.
 ## Preserve configured identity for lifecycle Git mutations
 
 The native Git runner deliberately suppresses global and system configuration to prevent repository
-or credential redirection. `./awf effort integrate` uses that runner for `git merge --no-ff --no-commit`,
+or credential redirection. `awf effort integrate` uses that runner for `git merge --no-ff --no-commit`,
 but Git still requires committer identity before it prepares the merge. In a checkout that correctly
 keeps owner identity only in global configuration, integration therefore fails as `merge-conflict`
 with `Committer identity unknown`. A temporary repository-local identity makes the merge proceed but
@@ -280,7 +280,7 @@ Moving the token into item 1 is a content edit to an Implemented ADR, which
 append-only forbids; the alternative, widening the model to admit a
 section-scoped claim, weakens the guarantee that every claim has a rationale
 site. Neither is a mechanical correction, and the token is not wrong today, it
-is merely unanchored, and `./awf check` is silent on it.
+is merely unanchored, and `awf check` is silent on it.
 
 The related shape the citation check declines to resolve is a bare `item N`
 hanging off an ADR reference earlier in the same Decision item (ADR-0131
@@ -302,7 +302,7 @@ The rung-2 candidate is a `cmd/repoaudit` rule over the commit range: when a
 commit message names an ADR with an authoring verb (amends, narrows, reopens,
 flips, implements), the commit must touch that ADR's file. It is mechanical, it
 would have caught the instance above, and repoaudit is the right home rather
-than the shipped `./awf audit`: the rule is about this repo's authoring
+than the shipped `awf audit`: the rule is about this repo's authoring
 discipline, and repoaudit findings can be advisory, which matters because the
 verb detection will have false positives (a commit legitimately citing an ADR
 it does not edit).
@@ -321,7 +321,7 @@ separate commit. The residual case is a direct status flip out of Proposed whose
 mutates digest-covered content, establishing the first stamp over unreviewed content in one
 transaction. A direct terminal flip also freezes that content immediately. The 0154 effort did exactly this when its direct Implemented flip also landed
 the forward-only resolution clause, and only reviewer diligence caught it afterwards. Candidate
-`./awf audit` advisory rule: flag that direct flip shape. Deferred because audit rules ship behind
+`awf audit` advisory rule: flag that direct flip shape. Deferred because audit rules ship behind
 their own decision; the active pitfalls rule still depends on manual review.
 
 ## Decomposing the `internal/project` god object
@@ -375,7 +375,7 @@ A partial-staging commit whose staged subset is drift-inconsistent (a rendered,
 lock, or config hunk left unstaged while the fixing hunk sits in the worktree)
 passes a pre-commit gate that checks the worktree, and lands a broken HEAD. It
 bit this repo at commit a85bd6a and the repo-local hook was extended on
-2026-07-15 to also run `./awf check` on a checkout-index slice, but the shipped
+2026-07-15 to also run `awf check` on a checkout-index slice, but the shipped
 payload (ADR-0048) still checks the worktree, so adopter repos keep the gap.
 
 A fix is feasible and language-agnostic: checkout-index to a temporary tree and

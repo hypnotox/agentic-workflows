@@ -14,7 +14,7 @@ awf always renders self-ignoring `.gitignore` files at `.awf/efforts/`, `.awf/wo
 <!-- awf:section commands -->
 ## Commands
 
-- `awf render`: re-render every artifact from `.awf/` and update `.awf/awf.lock`.
+- `./awf render`: re-render every artifact from `.awf/` and update `.awf/awf.lock`.
 - `awf check`: fail if any rendered file has drifted from the config (also gates the schema version).
 - `awf new domain <name>`: create a configured domain and scaffold its current-state convention part.
 - `awf remove domain <name>`: remove a configured domain, prune rendered output, and report authored residue as orphaned.
@@ -111,7 +111,7 @@ or staged tree; omit it in ordinary adopter configuration.
 **Pitfalls.** Run `./awf new pitfall "<Title>"` to create exactly one canonical authored source
 under `.awf/docs/pitfalls/` and print its repository-relative path. The command refuses duplicate
 titles and exclusive path collisions and does not render. Edit the reported source, then run
-`awf render`: `docs/pitfalls.md` is the compact generated index and each
+`./awf render`: `docs/pitfalls.md` is the compact generated index and each
 `docs/pitfalls/<slug>.md` is a generated leaf. Read the index to choose relevant leaves; never edit
 either generated publication. Deleting the authored source retires the entry when ordinary render
 prunes its row and leaf.
@@ -201,7 +201,7 @@ seeds) or null: an open to-do. Each note has two exits: set a value, or **delete
 to accept the artifact's generic fallback prose; an absent key is read as "considered and
 declined" and never notes again, with the decision auditable in the config's git history and
 reversible by re-adding the key. Deleting a key changes the config hash of the artifacts that
-reference it, so expect a one-time stale flag until the next `awf render`. One caveat: a var a
+reference it, so expect a one-time stale flag until the next `./awf render`. One caveat: a var a
 convention part consumes through a `{{ "{{=awf:gateCmd}}" }}`-style placeholder is a hard
 render error when deleted, not a silent decline: the placeholder contract requires a value;
 re-add the key to recover.

@@ -7,7 +7,7 @@
    - **`go vet ./...`**: catches type-system violations, printf format mismatches, and unreachable code the compiler accepts.
    - **`dlv test ./pkg/... -- -test.run TestX`**: attach Delve to a test binary for breakpoint-level inspection when log output is insufficient.
    - **Print/log debugging**: add `t.Logf(...)` or `fmt.Fprintf(os.Stderr, ...)` inline; remove before committing. For template render bugs, log the `data` map before `tmpl.Execute` to confirm what the renderer sees.
-   - **`.awf/awf.lock`**: the lock file records the rendered content hash; `./awf check` compares on-disk files against it. Inspect the lock directly if `./awf check` reports false drift.
+   - **`.awf/awf.lock`**: the lock file records the rendered content hash; `awf check` compares on-disk files against it. Inspect the lock directly if `awf check` reports false drift.
 
    When the evidence location is unknown and inline search would pollute the parent context, invoke `awf-exploring`. Keep an exact-known-file read or genuinely trivial lookup inline.
 
