@@ -361,3 +361,8 @@ Record deviations, spike answers, follow-ups, and findings surfaced during imple
   correction preserves catalog and Layout independence, the exact Applied two-operation batch, and
   the Proposed plan and Implementing ADR boundary; it introduces no Phase 4 scaffold guidance or
   operation.
+- Final Phase 3 review settlement: document-map heading ownership now produces exactly one heading
+  across default, heading-bearing custom, headingless custom, and dropped catalog variants while
+  preserving local rows outside the replaceable catalog body. The local-doc hash census now compares
+  both lock path sets before its exact changed-hash assertion, so added or removed after-only entries
+  cannot be ignored.

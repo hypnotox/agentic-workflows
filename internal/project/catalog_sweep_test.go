@@ -204,6 +204,12 @@ func singletonTemplateContexts(t *testing.T, p *Project, eff map[string]bool) []
 			data["docs"] = p.resolvedDocs()
 			data["mandatoryDocs"] = p.documentMapDocs()
 			data["localDocs"] = p.localDocumentMapDocs()
+			needsHeading, defaultHeading, err := p.documentMapHeadingPlan(sc)
+			if err != nil {
+				t.Fatalf("document-map heading plan: %v", err)
+			}
+			data["documentMapOwnedHeading"] = needsHeading && len(p.Cfg.LocalDocs) != 0
+			data["documentMapDefaultHeading"] = defaultHeading
 		case entry.Generated:
 			files, err := p.RenderAll()
 			if err != nil {

@@ -70,9 +70,11 @@ Evaluate continuity independently; when durable continuity materially helps, use
 {{- $commandSuffix }}
 <!-- awf:end -->
 
-<!-- awf:section document-map -->
-## Document map
+{{ if .documentMapOwnedHeading }}## Document map
 
+{{ end }}<!-- awf:section document-map -->
+{{ if .documentMapDefaultHeading }}## Document map
+{{ end }}
 - **ADR index:** [{{ .layout.adrReadme }}]({{ .layout.adrReadme }}), architecture decisions and lifecycle.
 - **Decision index:** [{{ .layout.indexMd }}]({{ .layout.indexMd }}), generated status index.
 - **Plans:** [{{ .layout.plansDir }}]({{ .layout.plansDir }}), implementation directives.

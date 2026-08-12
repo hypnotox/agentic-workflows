@@ -86,8 +86,20 @@ func TestLocalDocAgentGuideProjection(t *testing.T) {
 		t.Fatal(err)
 	}
 	var changed []string
-	for path, before := range beforeHashes {
-		if after := afterLock.Files[path].ConfigHash; after != before {
+	paths := map[string]bool{}
+	for path := range beforeLock.Files {
+		paths[path] = true
+	}
+	for path := range afterLock.Files {
+		paths[path] = true
+	}
+	for path := range paths {
+		before, beforeOK := beforeLock.Files[path]
+		after, afterOK := afterLock.Files[path]
+		if !beforeOK || !afterOK {
+			t.Fatalf("lock path set changed at %q: before=%t after=%t", path, beforeOK, afterOK)
+		}
+		if after.ConfigHash != before.ConfigHash {
 			changed = append(changed, path)
 		}
 	}

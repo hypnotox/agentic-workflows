@@ -617,6 +617,12 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	data["docs"] = p.resolvedDocs()
 	data["mandatoryDocs"] = p.documentMapDocs()
 	data["localDocs"] = p.localDocumentMapDocs()
+	needsHeading, defaultHeading, err := p.documentMapHeadingPlan(ad)
+	if err != nil {
+		return nil, err
+	}
+	data["documentMapOwnedHeading"] = needsHeading && len(p.Cfg.LocalDocs) != 0
+	data["documentMapDefaultHeading"] = defaultHeading
 	rf, err := p.renderTarget("agents-doc", "", p.Cat.Docs["agents-doc"].TID,
 		p.Cat.Docs["agents-doc"].Sections, ad, data, "AGENTS.md", eff)
 	if err != nil {
@@ -692,6 +698,31 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	// Duplicate declarations are deliberately retained for OutputPlan to
 	// coalesce or reject from normalized recipes.
 	return out, nil
+}
+
+// documentMapHeadingPlan derives heading ownership from the same override and
+// convention-part selection authority as renderTarget. It reports whether local
+// rows need an awf-owned heading and whether the default catalog supplies one.
+func (p *Project) documentMapHeadingPlan(sc config.Sidecar) (needsHeading, defaultHeading bool, err error) {
+	if override, ok := sc.Sections["document-map"]; ok && override.Drop {
+		return true, false, nil
+	}
+	part, exists, err := p.Cfg.ReadPart("agents-doc", "", "document-map")
+	if err != nil || !exists {
+		return false, true, err
+	}
+	body, err := render.StripAuthoringComments(string(part))
+	if err != nil {
+		return false, false, fmt.Errorf("document-map part: %w", err)
+	}
+	for _, line := range strings.Split(body, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		return line != strings.Repeat("#", 2)+" Document map", false, nil
+	}
+	return true, false, nil
 }
 
 // RenderResidentMarker returns the exact resident marker from the ordinary

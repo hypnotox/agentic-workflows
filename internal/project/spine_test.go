@@ -1995,9 +1995,10 @@ func TestAgentsDocNativeSkillRouter(t *testing.T) {
 			"testCmd": "go test ./...",
 			"gateCmd": "make gate",
 		},
-		"layout": testLayout(),
-		"data":   map[string]any{},
-		"skills": map[string]bool{"brainstorming": true, "adr-lifecycle": true, "tdd": true, "bugfix": true},
+		"layout":                    testLayout(),
+		"data":                      map[string]any{},
+		"skills":                    map[string]bool{"brainstorming": true, "adr-lifecycle": true, "tdd": true, "bugfix": true},
+		"documentMapDefaultHeading": true,
 	}
 	out := renderGolden(t, "agents-doc/AGENTS.md.tmpl", data)
 	for _, phrase := range []string{
