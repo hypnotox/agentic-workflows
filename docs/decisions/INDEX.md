@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-0270: Retired configuration stays absent from live surfaces](0270-retired-configuration-stays-absent-from-live-surfaces.md) (Proposed)
+- [ADR-0270: Retired configuration stays absent from live surfaces](0270-retired-configuration-stays-absent-from-live-surfaces.md) (Accepted)
 
 ## History
 
