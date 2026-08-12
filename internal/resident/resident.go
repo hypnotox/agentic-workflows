@@ -233,7 +233,7 @@ type uninstallOps struct {
 
 func productionUninstallOpen(root string) (uninstallHandle, error) {
 	handle, err := filesystem.Open(root)
-	if err != nil { // coverage-ignore: production composition opens an existing root selected after lock load; injected uninstallOps owns deterministic open-fault coverage
+	if err != nil {
 		return nil, err
 	}
 	return asUninstallHandle(handle), nil
@@ -332,7 +332,7 @@ func uninstallWith(ctx context.Context, root string, preserveTemplate func(strin
 	for _, d := range dirList {
 		_ = os.Remove(d)
 	}
-	if err := ops.remove(lockPath); err != nil { // coverage-ignore: lock was just loaded, so removal fails only on a permission fault root bypasses
+	if err := ops.remove(lockPath); err != nil {
 		return report, fmt.Errorf("remove lock: %w", err)
 	}
 	return report, nil

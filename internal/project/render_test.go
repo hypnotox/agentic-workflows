@@ -36,6 +36,7 @@ func syncedWorkflowDoc(t *testing.T, body string) string {
 }
 
 // invariant: rendering/inplace-and-placeholders:local-doc-body-inline (TestLocalDocRendersAndPreservesBody)
+// invariant: rendering/sync-and-drift:local-doc-prune-preserved (TestLocalDocRendersAndPreservesBody)
 func TestLocalDocRendersAndPreservesBody(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident-response\n    title: Incident response\n    description: Handle incidents.\n")
 	p, err := Open(testContext(t), root)
@@ -89,6 +90,36 @@ func TestLocalDocRendersAndPreservesBody(t *testing.T) {
 	}
 }
 
+// invariant: rendering/sync-and-drift:local-doc-prune-preserved (TestLocalDocPruneUsesFirstFreeBackupSuffix)
+func TestLocalDocPruneUsesFirstFreeBackupSuffix(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	output := filepath.Join(root, "docs/runbooks/incident.md")
+	before, err := os.ReadFile(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(output+".awf-bak", []byte("older\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p.Cfg.LocalDocs = nil
+	backups, _, pruned, err := p.SyncReport(testContext(t))
+	want := Backup{Path: "docs/runbooks/incident.md", Bak: "docs/runbooks/incident.md.awf-bak.1"}
+	if err != nil || !slices.Contains(backups, want) || !slices.Contains(pruned, want.Path) {
+		t.Fatalf("numbered prune = backups %#v, pruned %#v, error %v", backups, pruned, err)
+	}
+	if got, readErr := os.ReadFile(output + ".awf-bak.1"); readErr != nil || string(got) != string(before) {
+		t.Fatalf("numbered backup = %q, %v", got, readErr)
+	}
+}
+
+// invariant: rendering/sync-and-drift:local-doc-prune-preserved (TestLocalDocPruneRejectsSymlinkAndKeepsLock)
 func TestLocalDocPruneRejectsSymlinkAndKeepsLock(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
 	p, err := Open(testContext(t), root)
@@ -112,6 +143,30 @@ func TestLocalDocPruneRejectsSymlinkAndKeepsLock(t *testing.T) {
 	lock, err := os.ReadFile(lockFile(root))
 	if err != nil || !strings.Contains(string(lock), "docs/runbooks/incident.md") {
 		t.Fatalf("lock lost local document after unsafe refusal = %q, %v", lock, err)
+	}
+}
+
+// invariant: rendering/sync-and-drift:local-doc-prune-preserved (TestLocalDocPruneAbsentSourceNeedsNoBackup)
+func TestLocalDocPruneAbsentSourceNeedsNoBackup(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	output := filepath.Join(root, "docs/runbooks/incident.md")
+	if err := os.Remove(output); err != nil {
+		t.Fatal(err)
+	}
+	p.Cfg.LocalDocs = nil
+	backups, _, pruned, err := p.SyncReport(testContext(t))
+	if err != nil || len(backups) != 0 || len(pruned) != 0 {
+		t.Fatalf("absent local prune = backups %#v, pruned %#v, error %v", backups, pruned, err)
+	}
+	if _, err := os.Stat(output + ".awf-bak"); !os.IsNotExist(err) {
+		t.Fatalf("absent local source has backup: %v", err)
 	}
 }
 

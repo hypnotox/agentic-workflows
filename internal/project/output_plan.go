@@ -701,7 +701,7 @@ func (p *Project) outputPlanWithPitfalls(ctx context.Context, corpus adr.Corpus,
 		}
 	}
 	localDocs, err := p.generateLocalDocs(eff)
-	if err != nil { // coverage-ignore: generateLocalDocs uses a closed embedded template with validated local metadata, so its error path is structurally unreachable
+	if err != nil {
 		return nil, err
 	}
 	for _, f := range localDocs {
@@ -744,7 +744,7 @@ func (p *Project) outputPlanWithPitfalls(ctx context.Context, corpus adr.Corpus,
 		}
 	}
 	inputs := slices.Concat(base, pitfallLeaves, domains, topicFiles)
-	if cref, ok, err := p.generateConfigReference(inputs, eff); err != nil { // coverage-ignore: config-reference inputs were produced in this same complete planner pass; its direct render fault is covered at config-reference ownership
+	if cref, ok, err := p.generateConfigReference(inputs, eff); err != nil {
 		return nil, err
 	} else if ok {
 		deps := make([]string, 0, len(inputs))

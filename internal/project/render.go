@@ -956,7 +956,7 @@ func (p *Project) generateLocalDocs(eff map[string]bool) ([]RenderedFile, error)
 		sc := config.Sidecar{Data: map[string]any{"title": local.Title}}
 		rf, err := p.renderTarget("local-doc", local.Name, localDocTID, []string{"body"}, sc,
 			p.data(sc, eff), config.DocsDir+"/"+local.Name+".md", eff)
-		if err != nil { // coverage-ignore: localDocTID is a closed embedded template and local metadata is validated before project open
+		if err != nil {
 			return nil, err
 		}
 		rf.Declarer, rf.DeclarerProjection = "local-doc:"+local.Name, local.Name+"\x00"+local.Title+"\x00"+local.Description

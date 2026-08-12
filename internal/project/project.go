@@ -530,7 +530,7 @@ func (p *Project) syncReportWithPitfalls(ctx context.Context, seed *InitAuthorit
 			// prune - never a silent fall-through to deletion.
 			switch entry.TemplateID {
 			case localDocTID:
-				if info, existsErr := filesystem.LinkInfo(outputPath); existsErr != nil && !errors.Is(existsErr, fs.ErrNotExist) { // coverage-ignore: confined-handle inspection faults require execution-identity filesystem failure; normal missing and unsafe paths have semantic coverage
+				if info, existsErr := filesystem.LinkInfo(outputPath); existsErr != nil && !errors.Is(existsErr, fs.ErrNotExist) {
 					return backups, changes, pruned, fmt.Errorf("inspect pruned local document %s: %w", path, existsErr)
 				} else if existsErr == nil {
 					if info.Mode()&fs.ModeSymlink != 0 {

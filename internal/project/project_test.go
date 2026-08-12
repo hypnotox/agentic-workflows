@@ -689,6 +689,19 @@ type linkInfoFailureFilesystem struct {
 
 func (f linkInfoFailureFilesystem) LinkInfo(string) (os.FileInfo, error) { return nil, f.err }
 
+type pathLinkInfoFailureFilesystem struct {
+	syncFilesystem
+	path string
+	err  error
+}
+
+func (f pathLinkInfoFailureFilesystem) LinkInfo(path string) (os.FileInfo, error) {
+	if path == f.path {
+		return nil, f.err
+	}
+	return f.syncFilesystem.LinkInfo(path)
+}
+
 type chmodFailureFilesystem struct {
 	syncFilesystem
 	err error
@@ -894,6 +907,9 @@ func TestLocalDocPruneFaultsKeepRecoveryAndLock(t *testing.T) {
 		{"backup publication", func(f syncFilesystem, err error) syncFilesystem {
 			return publicationFailureFilesystem{syncFilesystem: f, err: err, calls: new(int)}
 		}},
+		{"inspection", func(f syncFilesystem, err error) syncFilesystem {
+			return pathLinkInfoFailureFilesystem{syncFilesystem: f, path: "docs/runbooks/incident.md", err: err}
+		}},
 		{"removal after backup", func(f syncFilesystem, err error) syncFilesystem {
 			return removalFailureFilesystem{syncFilesystem: f, path: "docs/runbooks/incident.md", err: err}
 		}},
@@ -918,24 +934,26 @@ func TestLocalDocPruneFaultsKeepRecoveryAndLock(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer closeAll()
-			filesystems.tracked = tc.wrap(filesystems.tracked, errors.New(tc.name))
+			failure := errors.New(tc.name)
+			filesystems.tracked = tc.wrap(filesystems.tracked, failure)
 			corpus, pitfalls, topics, eff, err := p.deriveOperationStateWithPitfalls()
 			if err != nil {
 				t.Fatal(err)
 			}
 			_, _, _, err = p.syncReportWithPitfalls(testContext(t), nil, filesystems, corpus, pitfalls, topics, eff)
-			if err == nil || !strings.Contains(err.Error(), tc.name) {
-				t.Fatalf("sync error = %v", err)
+			if !errors.Is(err, failure) {
+				t.Fatalf("sync error = %v, want %v", err, failure)
 			}
 			if got, readErr := os.ReadFile(lockFile(root)); readErr != nil || !strings.Contains(string(got), "docs/runbooks/incident.md") {
 				t.Fatalf("lock = %q, %v", got, readErr)
 			}
-			if tc.name == "backup publication" {
-				if got, readErr := os.ReadFile(output); readErr != nil || !bytes.Equal(got, before) {
-					t.Fatalf("source = %q, %v", got, readErr)
+			if got, readErr := os.ReadFile(output); readErr != nil || !bytes.Equal(got, before) {
+				t.Fatalf("source = %q, %v", got, readErr)
+			}
+			if tc.name == "removal after backup" {
+				if got, readErr := os.ReadFile(output + ".awf-bak"); readErr != nil || !bytes.Equal(got, before) {
+					t.Fatalf("recovery = %q, %v", got, readErr)
 				}
-			} else if got, readErr := os.ReadFile(output + ".awf-bak"); readErr != nil || !bytes.Equal(got, before) {
-				t.Fatalf("recovery = %q, %v", got, readErr)
 			}
 		})
 	}
@@ -1443,6 +1461,7 @@ func TestLayoutUsesFixedDocsRootAndFullCatalog(t *testing.T) {
 }
 
 // invariant: rendering/project-output-plan:full-catalog-render (TestRenderAllRendersFullCatalogForBothTargets)
+// invariant: rendering/project-output-plan:output-plan-complete (TestRenderAllRendersFullCatalogForBothTargets)
 func TestRenderAllRendersFullCatalogForBothTargets(t *testing.T) {
 	cfg := "prefix: example\nintegrationBranch: main\n"
 	root := scaffold(t, cfg)
@@ -1955,6 +1974,7 @@ func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 
 // invariant: rendering/sync-and-drift:sync-mutations-root-confined (TestSyncBackupPublicationRefusesParentSwap)
 // invariant: rendering/sync-and-drift:sync-backs-up-foreign (TestSyncBackupPublicationRefusesParentSwap)
+// invariant: rendering/sync-and-drift:local-doc-prune-preserved (TestSyncBackupPublicationRefusesParentSwap)
 func TestSyncBackupPublicationRefusesParentSwap(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(testContext(t), root)

@@ -149,6 +149,87 @@ func (h faultHandle) LinkInfo(string) (fs.FileInfo, error) { return h.info, h.in
 func (h faultHandle) Backup(string) (string, error)        { return h.backup, h.backupErr }
 func (h faultHandle) Close() error                         { return h.closeErr }
 
+func TestProductionUninstallOpenPropagatesFailure(t *testing.T) {
+	if _, err := productionUninstallOpen(filepath.Join(t.TempDir(), "missing")); err == nil {
+		t.Fatal("production uninstall open accepted missing root")
+	}
+}
+
+func TestUninstallPostBackupRemovalFailurePreservesRecoveryBytesAndLock(t *testing.T) {
+	root := t.TempDir()
+	const local = "docs/local.md"
+	source := filepath.Join(root, filepath.FromSlash(local))
+	testsupport.WriteFile(t, source, "operator-owned bytes\n")
+	if err := os.MkdirAll(filepath.Join(root, config.DirName), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := (&manifest.Lock{Files: map[string]manifest.Entry{local: {TemplateID: "local"}}}).Save(config.LockPath(root)); err != nil {
+		t.Fatal(err)
+	}
+	failure := errors.New("remove failed")
+	report, err := uninstallWith(testsupport.Context(t), root, func(string) bool { return true }, uninstallOps{
+		open: productionUninstallOpen, inspectRoots: func(string) ([]string, error) { return nil, nil },
+		removeFile: func(string) (bool, error) { return false, failure }, remove: os.Remove,
+	})
+	if !errors.Is(err, failure) {
+		t.Fatalf("uninstall error = %v, want %v", err, failure)
+	}
+	if want := []Backup{{Path: local, Bak: local + ".awf-bak"}}; !slices.Equal(report.Backups, want) {
+		t.Fatalf("backups = %#v, want %#v", report.Backups, want)
+	}
+	if got, readErr := os.ReadFile(source + ".awf-bak"); readErr != nil || string(got) != "operator-owned bytes\n" {
+		t.Fatalf("backup = %q, %v", got, readErr)
+	}
+	if got, readErr := os.ReadFile(source); readErr != nil || string(got) != "operator-owned bytes\n" {
+		t.Fatalf("source = %q, %v", got, readErr)
+	}
+	if _, statErr := os.Stat(config.LockPath(root)); statErr != nil {
+		t.Fatalf("lock removed: %v", statErr)
+	}
+}
+
+func TestUninstallOpenAndLockRemovalFailuresPreserveSafetyState(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		ops  func(error) uninstallOps
+	}{
+		{"open", func(failure error) uninstallOps {
+			return uninstallOps{open: func(string) (uninstallHandle, error) { return nil, failure }, inspectRoots: func(string) ([]string, error) { return nil, nil }, removeFile: RemoveGeneratedFile, remove: os.Remove}
+		}},
+		{"lock removal", func(failure error) uninstallOps {
+			return uninstallOps{open: productionUninstallOpen, inspectRoots: func(string) ([]string, error) { return nil, nil }, removeFile: RemoveGeneratedFile, remove: func(string) error { return failure }}
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			const local = "docs/local.md"
+			source := filepath.Join(root, filepath.FromSlash(local))
+			testsupport.WriteFile(t, source, "body\n")
+			if err := os.MkdirAll(filepath.Join(root, config.DirName), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := (&manifest.Lock{Files: map[string]manifest.Entry{local: {TemplateID: "local"}}}).Save(config.LockPath(root)); err != nil {
+				t.Fatal(err)
+			}
+			failure := errors.New(tc.name)
+			report, err := uninstallWith(testsupport.Context(t), root, func(string) bool { return true }, tc.ops(failure))
+			if !errors.Is(err, failure) {
+				t.Fatalf("uninstall error = %v, want %v", err, failure)
+			}
+			if _, statErr := os.Stat(config.LockPath(root)); statErr != nil {
+				t.Fatalf("lock removed: %v", statErr)
+			}
+			if tc.name == "open" {
+				if _, statErr := os.Stat(source); statErr != nil {
+					t.Fatalf("source removed after open failure: %v", statErr)
+				}
+			} else if report.Removed != 1 || len(report.Backups) != 1 {
+				t.Fatalf("lock-removal report = %#v", report)
+			}
+		})
+	}
+}
+
 func TestUninstallLocalDocumentFaultsKeepLock(t *testing.T) {
 	for _, tc := range []struct {
 		name               string

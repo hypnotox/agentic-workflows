@@ -161,6 +161,7 @@ func outputDeclarationParityError(nodes []OutputNode, declarations []OutputDecla
 }
 
 // invariant: rendering/project-output-plan:conditional-unit-single-source (TestOutputDeclarationsMatchThePlan)
+// invariant: rendering/project-output-plan:output-plan-complete (TestOutputDeclarationsMatchThePlan)
 func TestOutputDeclarationsMatchThePlan(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
@@ -399,6 +400,26 @@ type failingReadReader struct{ memoryProjectReader }
 
 func (r failingReadReader) ReadFile(string) ([]byte, bool, error) {
 	return nil, false, errors.New("project-tree read fault")
+}
+
+type faultingProjectReader struct {
+	ProjectTreeReader
+	path      string
+	err       error
+	failAfter int
+	calls     *int
+}
+
+func (r faultingProjectReader) ReadFile(path string) ([]byte, bool, error) {
+	if path == r.path {
+		if r.calls != nil {
+			*r.calls++
+		}
+		if r.failAfter == 0 || r.calls != nil && *r.calls > r.failAfter {
+			return nil, false, r.err
+		}
+	}
+	return r.ProjectTreeReader.ReadFile(path)
 }
 
 // failingPathsReader faults the failAt'th Paths call so each propagation site

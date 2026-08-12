@@ -1,6 +1,7 @@
 package project
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -14,11 +15,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
-// TestOutputPlanPropagatesPreAdoptionEnumerationFault pins that a tree the
-// planner cannot fully read fails the plan rather than producing one built from
-// a truncated enumeration. A pre-adoption tree (no Git worktree) enumerates the
-// filesystem directly, so an unreadable directory there used to be skipped and
-// the plan, and the drift oracle computed from it, silently narrowed.
 // invariant: rendering/project-output-plan:output-plan-complete (TestLocalDocsOutputPlan)
 func TestLocalDocsOutputPlan(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/z\n    title: Z\n    description: Z document.\n  - name: runbooks/a\n    title: A\n    description: A document.\n")
@@ -62,6 +58,11 @@ func TestLocalDocCollisionWithTargetOutputPrecedesRendering(t *testing.T) {
 	}
 }
 
+// TestOutputPlanPropagatesPreAdoptionEnumerationFault pins that a tree the
+// planner cannot fully read fails the plan rather than producing one built from
+// a truncated enumeration. A pre-adoption tree (no Git worktree) enumerates the
+// filesystem directly, so an unreadable directory there used to be skipped and
+// the plan, and the drift oracle computed from it, silently narrowed.
 func TestOutputPlanPropagatesPreAdoptionEnumerationFault(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\ndomains: [rendering]\n")
 	p, err := Open(testContext(t), root)
@@ -291,6 +292,8 @@ func TestOutputPolicyIsExplicit(t *testing.T) {
 	}
 }
 
+// invariant: rendering/project-output-plan:output-plan-complete (TestBridgeRenderIdentity)
+// invariant: rendering/project-output-plan:output-plan-complete (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-runtime:pi-child-process-safety (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/catalog-and-targets:claude-md-bridge (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/sync-and-drift:uninstall-removes-lock-entries (TestCurrentStateOutputPlanMatchesTree)
@@ -380,6 +383,32 @@ func TestOutputPlanTopicNodesHaveLiteralPathsAndInputs(t *testing.T) {
 		}
 	}
 	t.Fatal("literal topic output was absent from the plan")
+}
+
+func TestOutputPlanPropagatesLocalRenderReadFault(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	failure := errors.New("local output read failed")
+	p.read = faultingProjectReader{ProjectTreeReader: filesystemProjectReader{root: root}, path: "docs/runbooks/incident.md", err: failure}
+	if _, err := p.OutputPlan(testContext(t)); !errors.Is(err, failure) {
+		t.Fatalf("output plan error = %v, want %v", err, failure)
+	}
+}
+
+func TestOutputPlanPropagatesConfigReferenceRenderFault(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
+		"parts/config-reference/intro.md": "<!-- awf:comment unclosed\n",
+	})
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.OutputPlan(testContext(t)); err == nil || !strings.Contains(err.Error(), "malformed awf:comment") {
+		t.Fatalf("output plan error = %v", err)
+	}
 }
 
 func TestTargetOutputDeclarationsRejectUnreadableTemplate(t *testing.T) {
