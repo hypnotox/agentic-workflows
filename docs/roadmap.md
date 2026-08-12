@@ -100,9 +100,9 @@
 - The init collision probe over-refuses on artifacts a `--set` trim would deselect.
   Accepted as conservative design; revisit only if an adopter reports hitting it.
 
-- Make `awf effort integrate` fast-forward-only. Keep the already-contained and fast-forward
+- Make `./awf effort integrate` fast-forward-only. Keep the already-contained and fast-forward
   arms and refuse when the target is not an ancestor of the effort tip, naming the recovery:
-  merge the target in the managed worktree, run `awf check staged`, run the gate, commit,
+  merge the target in the managed worktree, run `./awf check staged`, run the gate, commit,
   renew terminal review, retry. The motivation is concurrency, not correctness: the divergent
   path leaves a staged uncommitted merge in the shared receiving checkout across a full gate
   and a renewed terminal review, blocking every other finishing effort for that whole window,
@@ -379,7 +379,7 @@ bit this repo at commit a85bd6a and the repo-local hook was extended on
 payload (ADR-0048) still checks the worktree, so adopter repos keep the gap.
 
 A fix is feasible and language-agnostic: checkout-index to a temporary tree and
-run the pinned `awf check` there, read-only, safer than `git stash
+run the pinned `./awf check` there, read-only, safer than `git stash
 --keep-index`. It is deferred because it changes ADR-0048's deliberately
 minimal, inert payload contract and adds per-commit latency to catch a
 power-user footgun (adopters who stage everything never hit it), so it needs

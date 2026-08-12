@@ -26,8 +26,8 @@ import (
 )
 
 // runnerSections is the pure awf wrapper's single declared section: the body
-// that resolves one awf invocation (vars.awfInvokeCmd, else bootstrap-pinned,
-// else PATH awf) and execs it with all arguments forwarded verbatim (ADR-0156).
+// that resolves the bootstrap-pinned binary first, then PATH awf, and execs it
+// with all arguments forwarded verbatim.
 var runnerSections = []string{"runner-body"}
 
 // hookNames are the git-hook payload scripts the hooks singleton renders as a
@@ -94,7 +94,6 @@ func (p *Project) data(sc config.Sidecar, eff map[string]bool) map[string]any {
 		// safe for publication templates: `with` and `if` treat it as absent.
 		"commitPolicy":  p.Cfg.CommitPolicy,
 		"gatedCommands": gatedCommandsDisplay(),
-		"runnerEnabled": true,
 		// Project-level session-handoff signal for the neutral (guide/singleton
 		// doc) render; per-target renders overwrite it from targetTemplateData
 		// (ADR-0157 Decision 6).

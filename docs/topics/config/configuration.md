@@ -15,19 +15,19 @@ These packages load, validate, and describe the .awf config tree and the anchore
 
 A configuration key exists only for a fact whose steady-state value differs between the repositories awf serves. Preferences about awf behavior and transitional adoption differences are fixed in awf rather than exposed as configuration. Additive `localDocs` records repository-specific document identity and metadata without selecting standard artifacts.
 Origin: ADR-0251
-Revised-by: ADR-additive-inline-editable-project-local-docs
+Revised-by: ADR-0272
 
 ### `invariant: no-artifact-selection-surface`
 
 The live config schema exposes no skills, agents, docs, targets, or docsDir fields and no sidecar local field; strict parsing rejects every retired field rather than honoring it. `localDocs` is an additive output declaration, not an artifact-selection surface.
 Origin: ADR-0251
-Revised-by: ADR-additive-inline-editable-project-local-docs
+Revised-by: ADR-0272
 Backing: test
 
 ### `invariant: local-doc-declarations`
 
 `localDocs` accepts only unique lowercase kebab-case docs-relative names, titles, and one-line descriptions; its normalized projection sorts by name without rewriting authored list order, reserves generated documentation roots, and leaves an absent list valid.
-Origin: ADR-additive-inline-editable-project-local-docs
+Origin: ADR-0272
 Backing: test
 
 ### `invariant: root-sidecar-keys-rejected`

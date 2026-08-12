@@ -132,7 +132,7 @@ bit this repo at commit a85bd6a and the repo-local hook was extended on
 payload (ADR-0048) still checks the worktree, so adopter repos keep the gap.
 
 A fix is feasible and language-agnostic: checkout-index to a temporary tree and
-run the pinned `awf check` there, read-only, safer than `git stash
+run the pinned `./awf check` there, read-only, safer than `git stash
 --keep-index`. It is deferred because it changes ADR-0048's deliberately
 minimal, inert payload contract and adds per-commit latency to catch a
 power-user footgun (adopters who stage everything never hit it), so it needs

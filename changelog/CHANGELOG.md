@@ -10,7 +10,15 @@ query a single version or a range.
 
 ### Features
 
-- Repositories can declare additive `localDocs` whose sole inline-editable Markdown body remains managed by ordinary render and check workflows, appears in the `AGENTS.md` document map, and receives ordinary Markdown-link and skill-reference checks. `awf new doc <name> <description> [--title <title>]` scaffolds the declaration and output, deriving the title from the final kebab-case name segment unless an explicit title is supplied. Removing a declaration or uninstalling awf preserves the complete document at a sibling `.awf-bak` recovery file (with a numbered suffix when needed).
+- Repositories can declare additive `localDocs` whose sole inline-editable Markdown body remains managed by ordinary render and check workflows, appears in the `AGENTS.md` document map, and receives ordinary Markdown-link and skill-reference checks. `./awf new doc <name> <description> [--title <title>]` scaffolds the declaration and output, deriving the title from the final kebab-case name segment unless an explicit title is supplied. Removing a declaration or uninstalling awf preserves the complete document at a sibling `.awf-bak` recovery file (with a numbered suffix when needed).
+
+### Changed
+
+- Standardized rendered repository-local awf invocations on the unconditional `./awf` wrapper and moved this repository's source execution body into a runner convention part.
+
+### Bug fixes
+
+- Default guidance no longer advertises retired project-local skills, agents, docs, or the `local` sidecar field, and historical configuration projection now strips every retired key before strict current-schema decoding.
 
 ## [0.35.1] - 2026-08-12
 

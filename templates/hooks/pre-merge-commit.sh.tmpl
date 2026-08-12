@@ -12,5 +12,5 @@ set -euo pipefail
 {{- with .vars.checkCmd }}
 {{ . }} staged
 {{- else }}
-{{ if .runnerEnabled }}./awf{{ else }}awf{{ end }} check staged
+./awf check staged
 {{- end }}

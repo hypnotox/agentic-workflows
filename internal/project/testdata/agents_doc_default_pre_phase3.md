@@ -6,7 +6,7 @@ This document is the authoritative reference for AI agents working in the `examp
 <!-- awf:edit awf-setup: default; create .awf/parts/agents-doc/awf-setup.md to override -->
 ## Working with awf
 
-This guide and the project's skills, agents, and docs render from [awf](https://github.com/hypnotox/agentic-workflows) configuration in `.awf/`; change generated sources, run `awf render` and `awf check`, and commit generated outputs with their sources. See [docs/working-with-awf.md](docs/working-with-awf.md) for ownership, rendering, and commands.
+This guide and the project's skills, agents, and docs render from [awf](https://github.com/hypnotox/agentic-workflows) configuration in `.awf/`; change generated sources, run `./awf render` and `./awf check`, and commit generated outputs with their sources. See [docs/working-with-awf.md](docs/working-with-awf.md) for ownership, rendering, and commands.
 
 <!-- awf:edit you-and-this-project: default; create .awf/parts/agents-doc/you-and-this-project.md to override -->
 ## You and this project
@@ -27,7 +27,7 @@ Hard rules every change must respect:
 
 - **Append-only ADRs.** Preserve decision history; change current-state claims forward. See `docs/decisions/` and `docs/decisions/INDEX.md`.
 - **Docs travel with the change.** Update reality and its documentation together.
-- **Stage and gate each commit.** Stage the complete transaction; run `awf check staged` and `test-gate`. A wired pre-commit hook enforces both; run them manually only in a clone without wired hooks.
+- **Stage and gate each commit.** Stage the complete transaction; run `./awf check staged` and `test-gate`. A wired pre-commit hook enforces both; run them manually only in a clone without wired hooks.
 
 <!-- awf:edit workflow: default; create .awf/parts/agents-doc/workflow.md to override -->
 ## Workflow

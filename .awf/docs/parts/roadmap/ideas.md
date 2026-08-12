@@ -92,9 +92,9 @@
 - The init collision probe over-refuses on artifacts a `--set` trim would deselect.
   Accepted as conservative design; revisit only if an adopter reports hitting it.
 
-- Make `awf effort integrate` fast-forward-only. Keep the already-contained and fast-forward
+- Make `./awf effort integrate` fast-forward-only. Keep the already-contained and fast-forward
   arms and refuse when the target is not an ancestor of the effort tip, naming the recovery:
-  merge the target in the managed worktree, run `awf check staged`, run the gate, commit,
+  merge the target in the managed worktree, run `./awf check staged`, run the gate, commit,
   renew terminal review, retry. The motivation is concurrency, not correctness: the divergent
   path leaves a staged uncommitted merge in the shared receiving checkout across a full gate
   and a renewed terminal review, blocking every other finishing effort for that whole window,

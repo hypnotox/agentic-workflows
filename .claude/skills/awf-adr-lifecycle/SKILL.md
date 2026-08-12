@@ -49,7 +49,7 @@ One authored transaction may append several Applied or Reapplied batches only ac
 
 An ADR's `## State changes` section is the authoritative link to the topics it governs: either `None.` or a list of `- add`, `- update`, and `- remove` entries, each naming one claim by its qualified `<domain>/<topic>:<slug>` id.
 
-- **At `Accepted`** the operations are settled instruction, amendable under the amendment-until-terminal rules until an Applied event references them. Every operation's destination topic metadata must already exist (an empty topic shell for a pending `add`). The claims describing current reality are unchanged; inspect lifecycle detail where needed with `awf context --show pending <affected paths>`.
+- **At `Accepted`** the operations are settled instruction, amendable under the amendment-until-terminal rules until an Applied event references them. Every operation's destination topic metadata must already exist (an empty topic shell for a pending `add`). The claims describing current reality are unchanged; inspect lifecycle detail where needed with `./awf context --show pending <affected paths>`.
 <!-- awf:template-source templates/partials/context-spill.md -->
 On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the working-with-awf doc's Context spill notices contract; treat any other output as the context packet itself.
 <!-- awf:template-source templates/skills/adr-lifecycle/SKILL.md.tmpl -->
@@ -84,7 +84,7 @@ This skill may run without an effort. Pick the status transition first. If conti
 <!-- awf:template-source templates/skills/adr-lifecycle/SKILL.md.tmpl#procedure-gate -->
 <!-- awf:edit procedure-gate: default; create .awf/skills/parts/adr-lifecycle/procedure-gate.md to override -->
 <!-- awf:template-source templates/skills/adr-lifecycle/SKILL.md.tmpl -->
-5. **Validate the staged transaction.** Stage the complete transaction; the commit requires `awf check staged` and `./x gate` to pass. A wired pre-commit hook enforces both at commit time; run them manually first only in a clone without wired hooks (checkable with `git config core.hooksPath`; when in doubt, run both manually). If either command fails, fix the cause and re-stage before retrying.
+5. **Validate the staged transaction.** Stage the complete transaction; the commit requires `./awf check staged` and `./x gate` to pass. A wired pre-commit hook enforces both at commit time; run them manually first only in a clone without wired hooks (checkable with `git config core.hooksPath`; when in doubt, run both manually). If either command fails, fix the cause and re-stage before retrying.
 
 <!-- awf:template-source templates/skills/adr-lifecycle/SKILL.md.tmpl#commit-templates -->
 <!-- awf:edit commit-templates: default; create .awf/skills/parts/adr-lifecycle/commit-templates.md to override -->

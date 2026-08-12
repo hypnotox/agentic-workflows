@@ -4,7 +4,7 @@ slug: additive-inline-editable-project-local-docs
 status: Implementing
 date: 2026-08-12
 ---
-# ADR-additive-inline-editable-project-local-docs: Additive Inline-Editable Project-Local Docs
+# ADR-0272: Additive Inline-Editable Project-Local Docs
 
 
 ## Context

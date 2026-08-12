@@ -38,7 +38,7 @@ Backing: test
 ### `invariant: local-doc-body-inline`
 
 A declared local document has one unrestricted adopter-owned body between `awf:edit-in-place` and `awf:end`; its shared shell and heading are awf-owned and ordinary in-place readback preserves the body.
-Origin: ADR-additive-inline-editable-project-local-docs
+Origin: ADR-0272
 Backing: test
 
 ### `invariant: in-place-readback`

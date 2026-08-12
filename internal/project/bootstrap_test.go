@@ -278,7 +278,7 @@ func TestUpgradeScriptExecFinal(t *testing.T) {
 	if rf == nil {
 		t.Fatal("expected .awf/upgrade.sh to render when enabled")
 	}
-	// The exec must be the script's final statement: `awf upgrade` rewrites
+	// The exec must be the script's final statement: `./awf upgrade` rewrites
 	// this script truncate-in-place while it runs, and replacing the shell
 	// process before the rewrite is what makes self-modification unreachable.
 	last := ""

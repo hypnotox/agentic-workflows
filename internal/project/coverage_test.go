@@ -151,26 +151,7 @@ func TestDeclaredSections(t *testing.T) {
 	}
 }
 
-// --- RenderAll: local agent skip + malformed-sidecar error branches ---
-
-func TestRenderAllSkipsLocalAgent(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
-		"agents/my-local-agent.yaml": "local: true\n",
-	})
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	files, err := p.RenderAll()
-	if err != nil {
-		t.Fatalf("RenderAll: %v", err)
-	}
-	for _, f := range files {
-		if strings.Contains(f.Path, "my-local-agent") {
-			t.Errorf("local agent must not be rendered: %#v", f)
-		}
-	}
-}
+// --- RenderAll malformed-sidecar error branches ---
 
 func TestRenderAllSurfacesMalformedSidecars(t *testing.T) {
 	cases := []struct {

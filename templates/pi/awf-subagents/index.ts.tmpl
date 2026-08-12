@@ -194,7 +194,7 @@ async function loadAgentContract(deps: ExtensionDependencies, root: string, sour
     throw new Error(`Missing Pi ${source.noun} ${source.relative}. ${source.repair}`);
   }
   const parsed = parseFrontmatter<Record<string, unknown>>(content);
-  if (!parsed.body.trim()) throw new Error(`Pi ${source.noun} ${source.relative} has no instruction body; run awf render.`);
+  if (!parsed.body.trim()) throw new Error(`Pi ${source.noun} ${source.relative} has no instruction body; run ./awf render.`);
   return `${source.prepend}\n\n${parsed.body}`;
 }
 
@@ -202,7 +202,7 @@ function loadReviewer(deps: ExtensionDependencies, root: string, kind: ReviewKin
   return loadAgentContract(deps, root, {
     relative: REVIEWER_PATHS[kind],
     noun: "reviewer",
-    repair: `Enable the matching ${kind}-reviewer agent and run awf render.`,
+    repair: `Enable the matching ${kind}-reviewer agent and run ./awf render.`,
     prepend: `You are the governed ${kind} reviewer. You are report-only: never edit or commit.`,
   });
 }
@@ -216,7 +216,7 @@ function loadImplementer(deps: ExtensionDependencies, root: string, allowCommits
   return loadAgentContract(deps, root, {
     relative: IMPLEMENTER_PATH,
     noun: "implementer",
-    repair: "Enable the implementer agent and run awf render.",
+    repair: "Enable the implementer agent and run ./awf render.",
     prepend: `You are the governed implementation subagent. ${authority}`,
   });
 }
@@ -225,7 +225,7 @@ function loadExplorer(deps: ExtensionDependencies, root: string): Promise<string
   return loadAgentContract(deps, root, {
     relative: EXPLORER_PATH,
     noun: "explorer",
-    repair: "Enable the explorer agent and run awf render.",
+    repair: "Enable the explorer agent and run ./awf render.",
     prepend: "You are the governed exploration subagent. You are report-only: never edit or commit.",
   });
 }
@@ -234,7 +234,7 @@ function loadGroundingChecker(deps: ExtensionDependencies, root: string): Promis
   return loadAgentContract(deps, root, {
     relative: GROUNDING_CHECKER_PATH,
     noun: "grounding-checker",
-    repair: "Enable the grounding-checker agent and run awf render.",
+    repair: "Enable the grounding-checker agent and run ./awf render.",
     prepend: "You are the governed grounding-check subagent. You are report-only: never edit or commit.",
   });
 }

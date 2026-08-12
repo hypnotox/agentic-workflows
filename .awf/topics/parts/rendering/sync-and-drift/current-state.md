@@ -120,7 +120,7 @@ Backing: test
 ### `invariant: local-doc-prune-preserved`
 
 Before prune removes a present outgoing local document, render copies its complete confined file to the first free `.awf-bak` sibling and advances the lock only after backup and removal succeed; unsafe, unreadable, escaping, publication, or removal failures retain the old lock.
-Origin: ADR-additive-inline-editable-project-local-docs
+Origin: ADR-0272
 Backing: test
 
 ### `invariant: target-prune-ancestors`
@@ -134,7 +134,7 @@ Backing: test
 
 awf uninstall removes the in-tree files recorded in the lock and no file outside it, reporting the count it removed. A project-composed recognition policy preserves a present local-document entry through the same confined sibling backup operation before removal.
 Origin: ADR-0148
-Revised-by: ADR-additive-inline-editable-project-local-docs
+Revised-by: ADR-0272
 Backing: test
 
 ### `invariant: coverage-evaluation-unconditional`

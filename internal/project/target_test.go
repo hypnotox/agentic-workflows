@@ -924,8 +924,8 @@ func TestPiImplementRoleArtifact(t *testing.T) {
 	for _, want := range []string{
 		".pi/agents/implementer.md",
 		"loadImplementer",
-		"Enable the implementer agent and run awf render.",
-		"has no instruction body; run awf render.",
+		"Enable the implementer agent and run ./awf render.",
+		"has no instruction body; run ./awf render.",
 		"parseFrontmatter",
 		// Both snapshot directions, the pre-existing one and the new mirror.
 		"before.head !== after.head",
@@ -991,8 +991,8 @@ func TestPiRoleContractLoader(t *testing.T) {
 	for _, want := range []string{
 		"loadExplorer", "loadGroundingChecker",
 		".pi/agents/explorer.md", ".pi/agents/grounding-checker.md",
-		"Enable the explorer agent and run awf render.",
-		"Enable the grounding-checker agent and run awf render.",
+		"Enable the explorer agent and run ./awf render.",
+		"Enable the grounding-checker agent and run ./awf render.",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("Pi extension missing loader element %q", want)

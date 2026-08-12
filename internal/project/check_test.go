@@ -1032,18 +1032,6 @@ func TestCheckTagVocabularyDomainCollision(t *testing.T) {
 	}
 }
 
-// The glossary sibling of TestCheckPropagatesLocalPitfallsError: a local: true
-// glossary sidecar is skipped by the render pass before its data.terms transform
-// runs, so a structurally invalid record list reaches Check's checkGlossary
-// wiring branch rather than failing earlier in the render.
-// A local glossary with valid authored terms passes the blocking glossary check,
-// while malformed standardTerms remains an advisory-only merged-layer fault.
-// CheckReport must propagate that later failure rather than treating its shared
-// output plan as proof that every advisory input was validated.
-// A local: true pitfalls sidecar is skipped by the render pass before its
-// data.pitfalls transform runs, but checkPitfalls reads it regardless, so a
-// structurally invalid entry list reaches Check's wiring branch rather than
-// failing earlier in the render.
 // AdvisoryNotes and ConfigReferenceModel both forward the operation
 // derivation's fault; a malformed ADR reaches each one's wiring branch.
 func TestAdvisoryNotesAndConfigReferenceSurfaceMalformedADR(t *testing.T) {

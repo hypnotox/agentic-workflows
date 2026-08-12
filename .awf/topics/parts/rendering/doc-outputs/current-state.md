@@ -37,7 +37,7 @@ Backing: test
 ### `invariant: local-doc-output-complete`
 
 Every valid local-document declaration produces one separately configured output through normalized metadata, shared-shell render, lock membership, working-tree regeneration drift, Markdown-link and skill-reference scans, and agent-guide discovery. Its body remains in-place preserved, and this ordinary working-tree coverage does not add staged semantics.
-Origin: ADR-additive-inline-editable-project-local-docs
+Origin: ADR-0272
 Backing: test
 
 ### `invariant: pitfall-adr-link-resolved`

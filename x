@@ -118,7 +118,7 @@ case "$cmd" in
     go run ./internal/testsupport/cmd/testtmpclean "$@"
     ;;
   render)
-    # The rendered ./awf wrapper runs awf from source (awfInvokeCmd) so the
+    # The repository runner-body convention part runs awf from source so the
     # dogfooded render always matches the tree.
     ./awf render "$@"
     ;;

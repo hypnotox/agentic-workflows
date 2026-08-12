@@ -268,7 +268,6 @@ var Standard = &Catalog{
 		{Key: "testCmd", Kind: "string", Description: "Command that runs the test suite.", Default: "", Options: []string{"./x test", "go test ./...", "npm test"}},
 		{Key: "commitScopes", Kind: "string", Target: "audit-scopes", Description: "Comma-separated Conventional Commits scopes this project allows. Written to audit.allowedScopes and enforced by awf check staged commit/audit and quoted by the agent guide. Leave empty to accept any scope.", Default: "", Options: []string{"adr,awf,plans"}},
 		{Key: "activeMdRegenCmd", Kind: "string", Description: "Command that regenerates the generated ADR decision index (INDEX.md).", Default: "", Options: []string{"./awf render", "awf render"}},
-		{Key: "awfInvokeCmd", Kind: "string", Description: "Command the rendered ./awf wrapper execs to invoke awf. Leave empty to resolve the bootstrap-pinned binary, falling back to PATH awf.", Default: "", Options: []string{"go run ./cmd/awf"}},
 		{Key: "invariantTestPath", Kind: "string", Description: "Path or glob where invariant-backing tests live.", Default: "", Options: []string{"./internal/..."}},
 	},
 }

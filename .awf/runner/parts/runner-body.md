@@ -1,0 +1,1 @@
+exec go run ./cmd/awf "$@"

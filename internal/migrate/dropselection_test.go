@@ -138,7 +138,6 @@ func TestDropSelectionRefusesLocalArtifactBeforeWriting(t *testing.T) {
 	}
 }
 
-// invariant: config/migrations-and-locks:retired-keys-forward-ported (TestConfigForCurrentSchemaStripsSelectionKeys)
 func TestConfigForCurrentSchemaStripsSelectionKeys(t *testing.T) {
 	src := []byte("prefix: example\nskills: []\nagents: []\ndocs: []\ntargets: [claude]\ndocsDir: docs\n")
 	for generation := 1; generation <= Current(); generation++ {

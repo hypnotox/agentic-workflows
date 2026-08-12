@@ -11,6 +11,13 @@ Agent-guide and documentation template contracts: section parity, glossary rende
 
 ## Claims
 
+### `invariant: guide-awf-invocation`
+
+The rendered agent guide directs repository-local executable awf commands through `./awf`, including generated-tree rendering and staged verification, while retaining bare product and CLI grammar where no local execution is prescribed.
+Origin: ADR-0271
+Backing: test
+
+
 ### `invariant: agents-doc-section-parity`
 
 The agents-doc template's awf:section marker names match its catalog-declared section list exactly and in order, so a guide section added to one but not the other fails rather than half-landing with a broken override path.
@@ -34,7 +41,7 @@ Backing: test
 
 The default document-map body of rendered `AGENTS.md` cites every catalog document-map doc (including the workflow guide, the documentation standard, and the agent-guide authoring standard) with its full title, link, and catalog description. Convention-part replacement and drop retain ordinary section semantics. The normalized name-sorted local-document projection is a non-replaceable agent-guide suffix with each local title, live path link, and description; when the catalog section is dropped, awf emits a fallback Document map heading before that suffix. Local documents remain outside the catalog and `Layout.Docs`.
 Origin: ADR-0148
-Revised-by: ADR-0251, ADR-additive-inline-editable-project-local-docs
+Revised-by: ADR-0251, ADR-0272
 Backing: test
 
 ### `invariant: glossary-table-forced`
@@ -83,9 +90,9 @@ Backing: test
 
 ### `invariant: guide-entry-point-routing`
 
-The rendered guide routes agents to native catalog skills whose exposed descriptions fit the work, without duplicating standard or local skill names, purposes, triggers, kinds, relationships, or a fallback catalog. Empty and missing render data remains coherent, and skill selection stays advisory.
+The rendered guide routes agents to native catalog skills whose exposed descriptions fit the work, without duplicating catalog skill names, purposes, triggers, kinds, relationships, or a fallback catalog. Empty and missing render data remains coherent, and skill selection stays advisory.
 Origin: ADR-0157
-Revised-by: ADR-0167, ADR-0241, ADR-0251
+Revised-by: ADR-0167, ADR-0241, ADR-0251, ADR-0270
 Backing: test
 
 ### `invariant: working-memory-single-home`

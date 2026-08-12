@@ -29,7 +29,7 @@ Backing: test
 
 The deterministic output plan contains every catalog artifact, bridge files, generated documentation, reservations, configured local-document outputs, and exactly three resident-root self-ignoring outputs: efforts, worktrees, and effort-archive. Local documents are a sorted separate family with shared declaration and render identity, ordinary Markdown policy, and per-entry metadata hashes; they do not join the catalog or layout. Its conditional config-tree units share their declaration facts with render dispatch. Resident dynamic descendants are not plan nodes and resolve at the primary root while tracked authority remains invoking-checkout authority; archive descendants are preserved without recursive management.
 Origin: ADR-0124
-Revised-by: ADR-0164, ADR-0167, ADR-0175, ADR-0235, ADR-0251, ADR-0259, ADR-additive-inline-editable-project-local-docs
+Revised-by: ADR-0164, ADR-0167, ADR-0175, ADR-0235, ADR-0251, ADR-0259, ADR-0272
 Backing: test
 
 ### `invariant: full-catalog-render`

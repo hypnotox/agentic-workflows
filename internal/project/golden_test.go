@@ -65,7 +65,7 @@ func TestEndToEndGolden(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(proposingADR), "preserve exactly the frontmatter emitted by `awf new adr`") {
+	if !strings.Contains(string(proposingADR), "preserve exactly the frontmatter emitted by `./awf new adr`") {
 		t.Errorf("project proposing skill lost scaffold authority:\n%s", proposingADR)
 	}
 	adrReviewer, err := os.ReadFile("../../.pi/agents/adr-reviewer.md")

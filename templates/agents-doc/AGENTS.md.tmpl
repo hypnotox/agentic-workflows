@@ -5,7 +5,7 @@ This document is the authoritative reference for AI agents working in {{ with .p
 <!-- awf:section awf-setup -->
 ## Working with awf
 
-This guide and the project's skills, agents, and docs render from [awf](https://github.com/hypnotox/agentic-workflows) configuration in `.awf/`; change generated sources, run `awf render` and `awf check`, and commit generated outputs with their sources. See [{{ .layout.workingWithAwf }}]({{ .layout.workingWithAwf }}) for ownership, rendering, and commands.
+This guide and the project's skills, agents, and docs render from [awf](https://github.com/hypnotox/agentic-workflows) configuration in `.awf/`; change generated sources, run `./awf render` and `./awf check`, and commit generated outputs with their sources. See [{{ .layout.workingWithAwf }}]({{ .layout.workingWithAwf }}) for ownership, rendering, and commands.
 <!-- awf:end -->
 
 <!-- awf:section you-and-this-project -->
@@ -29,7 +29,7 @@ Hard rules every change must respect:
 
 - **Append-only ADRs.** Preserve decision history; change current-state claims forward. See `{{ .layout.adrDir }}/` and `{{ .layout.indexMd }}`.
 - **Docs travel with the change.** Update reality and its documentation together.
-- **Stage and gate each commit.** Stage the complete transaction; run `awf check staged` and {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }}. A wired pre-commit hook enforces both; run them manually only in a clone without wired hooks.
+- **Stage and gate each commit.** Stage the complete transaction; run `./awf check staged` and {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }}. A wired pre-commit hook enforces both; run them manually only in a clone without wired hooks.
 {{- range .data.invariants }}
 {{- if eq .kind "scopes" }}
 - **Conventional Commits{{ with $.commitScopes }}, scopes {{ . }}{{ end }}.** One concern per commit; stage explicitly, no `git add -A`{{ with $.commitScopes }}; the allowed-scope list lives in `audit.allowedScopes`{{ end }}.
@@ -61,7 +61,7 @@ Evaluate continuity independently; when durable continuity materially helps, use
 {{ range .data.commands }}{{ $commandPrefix }}{{ $commandPrefix = "" }}{{ .cmd }}: {{ .desc }}
 {{ $commandSuffix = "```" -}}
 {{- else -}}
-{{- $test := or .vars.testCmd "" }}{{ $gate := or .vars.gateCmd "" }}{{ $check := .vars.checkCmd }}{{ if not $check }}{{ if .runnerEnabled }}{{ $check = "./awf check" }}{{ else }}{{ $check = "awf check" }}{{ end }}{{ end -}}
+{{- $test := or .vars.testCmd "" }}{{ $gate := or .vars.gateCmd "" }}{{ $check := .vars.checkCmd }}{{ if not $check }}{{ $check = "./awf check" }}{{ end -}}
 {{ with $test }}- `{{ . }}`: run the test suite
 {{ end }}{{ if and $gate (ne $gate $test) }}- `{{ $gate }}`: run the gate before committing
 {{ end }}{{ if and $check (ne $check $test) (ne $check $gate) }}- `{{ $check }}`: check rendered files for drift

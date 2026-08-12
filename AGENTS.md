@@ -35,7 +35,7 @@ Hard rules every change must respect:
 
 - **Append-only ADRs.** Preserve decision history; change current-state claims forward. See `docs/decisions/` and `docs/decisions/INDEX.md`.
 - **Docs travel with the change.** Update reality and its documentation together.
-- **Stage and gate each commit.** Stage the complete transaction; run `awf check staged` and `./x gate`. A wired pre-commit hook enforces both; run them manually only in a clone without wired hooks.
+- **Stage and gate each commit.** Stage the complete transaction; run `./awf check staged` and `./x gate`. A wired pre-commit hook enforces both; run them manually only in a clone without wired hooks.
 - **Publication-safe templates.** Keep unset interpolation coherent and token-free. (ADR-0001, ADR-0045)
 - **`awf check` is the drift oracle.** After `.awf/` edits run `./x render && ./x check`; commit generated outputs with their sources.
 - **Conventional Commits, scopes `adr`, `adr-system`, `awf`, `code-design`, `config`, `invariants`, `plans`, `rendering`, `tooling`.** One concern per commit; stage explicitly, no `git add -A`; the allowed-scope list lives in `audit.allowedScopes`.
@@ -69,13 +69,13 @@ Create an effort only when durable continuity materially helps; otherwise work r
 go test ./...: run the test suite
 ./x gate: run the gate before committing
 ./x check: check rendered-file drift
-awf upgrade: migrate the config tree after upgrading awf
-awf audit: report workflow conformance for a commit range
-awf new plan "<Title>": scaffold a dated implementation plan
-awf new pitfall "<Title>": scaffold one authored pitfall source without rendering
+./awf upgrade: migrate the config tree after upgrading awf
+./awf audit: report workflow conformance for a commit range
+./awf new plan "<Title>": scaffold a dated implementation plan
+./awf new pitfall "<Title>": scaffold one authored pitfall source without rendering
 ```
 
-Use `awf read plan <plan> <P[.T]>` for executable plan scope. For command flags, context spills, effort lifecycle, and ADR lifecycle, see [docs/working-with-awf.md](docs/working-with-awf.md) and the selected native skill.
+Use `./awf read plan <plan> <P[.T]>` for executable plan scope. For command flags, context spills, effort lifecycle, and ADR lifecycle, see [docs/working-with-awf.md](docs/working-with-awf.md) and the selected native skill.
 
 
 <!-- awf:template-source templates/agents-doc/AGENTS.md.tmpl#document-map -->

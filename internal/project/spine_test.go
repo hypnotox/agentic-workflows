@@ -376,7 +376,7 @@ func TestImplementerAgent(t *testing.T) {
 		"Never make a check pass by weakening what it proves",
 		"There is nobody to wait for",
 		"That report is the escalation",
-		"`awf check staged`",
+		"`./awf check staged`",
 		"`make gate`",
 		// Each enumerated stopped field and owner step gets its own want, since
 		// section parity catches only whole-section loss, not intra-section drift.
@@ -449,7 +449,7 @@ func TestImplementerAgent(t *testing.T) {
 	if !strings.Contains(inline, "You, the parent executing this plan, resolve a missing or stale phase path") {
 		t.Errorf("executing-plans' raise-concerns imperative lost its explicit subject:\n%s", inline)
 	}
-	for _, subject := range []string{"you preserve the plan's settled", "You run `awf context"} {
+	for _, subject := range []string{"you preserve the plan's settled", "You run `./awf context"} {
 		if !strings.Contains(inline, subject) {
 			t.Errorf("executing-plans lost the explicit subject %q:\n%s", subject, inline)
 		}
@@ -1123,7 +1123,7 @@ func TestCheckpointDigestShape(t *testing.T) {
 			"legacy form is deprecated",
 			"until active efforts finish",
 			"sole writer of phase, next action, and time",
-			"executable `awf read plan` projection never creates a checkpoint or handoff boundary",
+			"executable `./awf read plan` projection never creates a checkpoint or handoff boundary",
 			"## Handoff log",
 		} {
 			if !strings.Contains(body, phrase) {
@@ -1269,22 +1269,22 @@ func TestStagedAuthorityWorkflowTemplates(t *testing.T) {
 	for _, name := range []string{"adr-lifecycle", "executing-plans", "subagent-driven-development"} {
 		t.Run(name, func(t *testing.T) {
 			out := renderSkillGolden(t, name, configured)
-			assertOrderedPhrases(t, out, "the complete transaction", "`awf check staged`", "`./x gate`", "wired pre-commit hook enforces both", "only in a clone without wired hooks")
+			assertOrderedPhrases(t, out, "the complete transaction", "`./awf check staged`", "`./x gate`", "wired pre-commit hook enforces both", "only in a clone without wired hooks")
 		})
 	}
 
 	agents := renderGolden(t, "agents-doc/AGENTS.md.tmpl", configured)
-	assertOrderedPhrases(t, agents, "the complete transaction", "`awf check staged`", "`./x gate`", "wired pre-commit hook enforces both", "only in a clone without wired hooks")
+	assertOrderedPhrases(t, agents, "the complete transaction", "`./awf check staged`", "`./x gate`", "wired pre-commit hook enforces both", "only in a clone without wired hooks")
 
 	fallback := map[string]any{"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}}
 	for _, name := range []string{"adr-lifecycle", "executing-plans", "subagent-driven-development"} {
 		t.Run(name+"-fallback", func(t *testing.T) {
 			out := renderSkillGolden(t, name, fallback)
-			assertOrderedPhrases(t, out, "the complete transaction", "`awf check staged`", "the project's gate", "wired pre-commit hook enforces both", "only in a clone without wired hooks")
+			assertOrderedPhrases(t, out, "the complete transaction", "`./awf check staged`", "the project's gate", "wired pre-commit hook enforces both", "only in a clone without wired hooks")
 		})
 	}
 	fallbackAgents := renderGolden(t, "agents-doc/AGENTS.md.tmpl", fallback)
-	assertOrderedPhrases(t, fallbackAgents, "the complete transaction", "`awf check staged`", "the project's gate", "wired pre-commit hook enforces both", "only in a clone without wired hooks")
+	assertOrderedPhrases(t, fallbackAgents, "the complete transaction", "`./awf check staged`", "the project's gate", "wired pre-commit hook enforces both", "only in a clone without wired hooks")
 }
 
 func TestExecutingPlansTemplate(t *testing.T) {
@@ -1670,7 +1670,7 @@ func TestProposingAdrTemplate(t *testing.T) {
 	}
 
 	// Assert the scaffold-first operations as one ordered procedure.
-	procedure := "Run `awf new adr \"<Title>\"` before any ADR-file mutation. Capture the exact path it creates. Read the exact file it creates, then edit that scaffold in place."
+	procedure := "Run `./awf new adr \"<Title>\"` before any ADR-file mutation. Capture the exact path it creates. Read the exact file it creates, then edit that scaffold in place."
 	if !strings.Contains(out, procedure) {
 		t.Errorf("expected ordered procedure %q in output:\n%s", procedure, out)
 	}
@@ -1687,7 +1687,7 @@ func TestProposingAdrTemplate(t *testing.T) {
 		"post-implementation",
 		"counterfactual",
 		"consent evidence establishes that it is load-bearing and the ADR explains why it is load-bearing",
-		"preserve exactly the frontmatter emitted by `awf new adr`",
+		"preserve exactly the frontmatter emitted by `./awf new adr`",
 		"Before any ADR-file mutation, identify the explicitly accepted decision set",
 		"narrowest durable commitment",
 		"outside the ADR until accepted",
@@ -1840,7 +1840,7 @@ func TestLinkedPlanReviewFreshness(t *testing.T) {
 			t.Errorf("ordinary ADR review missing %q", want)
 		}
 	}
-	assertOrderedPhrases(t, adr, "review converges", "After the review settles, run `awf context --show references <explicit-ADR-path>`", "Invoke ordinary `example-reviewing-plan` separately for every linked plan")
+	assertOrderedPhrases(t, adr, "review converges", "After the review settles, run `./awf context --show references <explicit-ADR-path>`", "Invoke ordinary `example-reviewing-plan` separately for every linked plan")
 	if _, ok := catalog.Standard.Skills["reviewing-plan-"+"resync"]; ok {
 		t.Fatal("retired plan review skill remains in the live catalog")
 	}
@@ -2437,7 +2437,7 @@ var unsetFallbackCases = []fallbackCase{
 			"the effort lifecycle owner",
 			"the project's pitfalls notes",
 			"the project's decision process",
-			"Run `awf new pitfall \"<Title>\"`, then edit the reported authored source under `.awf/docs/pitfalls/`",
+			"Run `./awf new pitfall \"<Title>\"`, then edit the reported authored source under `.awf/docs/pitfalls/`",
 		},
 		ban: []string{"example-reviewing-impl", "example-proposing-adr", "``"},
 	},
@@ -2462,7 +2462,7 @@ var unsetFallbackCases = []fallbackCase{
 	},
 	{
 		tmpl: "skills/adr-lifecycle/SKILL.md.tmpl",
-		want: []string{"the multi-state lifecycle", "Run `awf render` to regenerate", "whose members may appear in any order", "settled review later appends only Implemented"},
+		want: []string{"the multi-state lifecycle", "Run `./awf render` to regenerate", "whose members may appear in any order", "settled review later appends only Implemented"},
 	},
 	{
 		tmpl: "skills/brainstorming/SKILL.md.tmpl",
@@ -2482,7 +2482,7 @@ var unsetFallbackCases = []fallbackCase{
 	},
 	{
 		tmpl: "skills/proposing-adr/SKILL.md.tmpl",
-		want: []string{"follow the ADR template's section order", "Run `awf render` to regenerate"},
+		want: []string{"follow the ADR template's section order", "Run `./awf render` to regenerate"},
 	},
 	{
 		tmpl: "skills/reviewing-adr/SKILL.md.tmpl",

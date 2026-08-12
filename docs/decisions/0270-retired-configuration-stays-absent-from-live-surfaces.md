@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: retired-configuration-stays-absent-from-live-surfaces
-status: Proposed
+status: Implemented
 date: 2026-08-12
 ---
 # ADR-0270: Retired configuration stays absent from live surfaces
@@ -52,3 +52,7 @@ name retired keys when the reference is truthful.
 ## Status history
 
 - 2026-08-12: Proposed
+- 2026-08-12: Accepted; content-sha256: 7d20ef643a97dc5a8e670226102ed8e1c3ff91499352818a7131a6eed1918f73
+- 2026-08-12: Implementing; content-sha256: 7d20ef643a97dc5a8e670226102ed8e1c3ff91499352818a7131a6eed1918f73
+- 2026-08-12: Applied; operations: update `rendering/guide-and-doc-templates:guide-entry-point-routing`, add `rendering/templates:retired-config-guidance-absent`, update `config/migrations-and-locks:retired-keys-forward-ported`, remove `config/migrations-and-locks:toggle-keys-forward-ported`
+- 2026-08-12: Implemented; content-sha256: 7d20ef643a97dc5a8e670226102ed8e1c3ff91499352818a7131a6eed1918f73

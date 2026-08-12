@@ -77,16 +77,6 @@
       "target": "var"
     },
     {
-      "key": "awfInvokeCmd",
-      "kind": "string",
-      "description": "Command the rendered ./awf wrapper execs to invoke awf. Leave empty to resolve the bootstrap-pinned binary, falling back to PATH awf.",
-      "default": "",
-      "options": [
-        "go run ./cmd/awf"
-      ],
-      "target": "var"
-    },
-    {
       "key": "invariantTestPath",
       "kind": "string",
       "description": "Path or glob where invariant-backing tests live.",

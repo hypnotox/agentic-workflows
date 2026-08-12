@@ -2,12 +2,8 @@
 set -euo pipefail
 
 <!-- awf:section runner-body -->
-{{ with .vars.awfInvokeCmd -}}
-exec {{ . }} "$@"
-{{- else -}}
 if [ -f .awf/bootstrap.sh ] && pinned="$(bash .awf/bootstrap.sh)"; then
 	exec "$pinned" "$@"
 fi
 exec awf "$@"
-{{- end }}
 <!-- awf:end -->

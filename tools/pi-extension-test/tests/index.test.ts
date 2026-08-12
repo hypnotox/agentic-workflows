@@ -1015,14 +1015,14 @@ test("the implementation role loads its contract from the rendered agent and fai
   withImplementerDoc(absent, Object.assign(new Error("missing"), { code: "ENOENT" }));
   await assert.rejects(
     call(absent, "subagent_implement", { task: "x", allowCommits: false }),
-    /Missing Pi implementer \.pi\/agents\/implementer\.md\. Enable the implementer agent and run awf render\./,
+    /Missing Pi implementer \.pi\/agents\/implementer\.md\. Enable the implementer agent and run \.\/awf render\./,
   );
 
   const bodyless = harness();
   withImplementerDoc(bodyless, "---\nname: implementer\ndescription: test\n---\n   \n");
   await assert.rejects(
     call(bodyless, "subagent_implement", { task: "x", allowCommits: false }),
-    /has no instruction body; run awf render\./,
+    /has no instruction body; run \.\/awf render\./,
   );
 });
 
@@ -1047,14 +1047,14 @@ test("the exploration role loads its contract from the rendered agent and append
   withAgentDoc(absent, ".pi/agents/explorer.md", ENOENT());
   await assert.rejects(
     call(absent, "subagent_explore", explore),
-    /Missing Pi explorer \.pi\/agents\/explorer\.md\. Enable the explorer agent and run awf render\./,
+    /Missing Pi explorer \.pi\/agents\/explorer\.md\. Enable the explorer agent and run \.\/awf render\./,
   );
 
   const bodyless = harness();
   withAgentDoc(bodyless, ".pi/agents/explorer.md", "---\nname: explorer\ndescription: test\n---\n   \n");
   await assert.rejects(
     call(bodyless, "subagent_explore", explore),
-    /has no instruction body; run awf render\./,
+    /has no instruction body; run \.\/awf render\./,
   );
 });
 
@@ -1072,13 +1072,13 @@ test("the grounding role loads its contract from the rendered agent and fails cl
   withAgentDoc(absent, ".pi/agents/grounding-checker.md", ENOENT());
   await assert.rejects(
     call(absent, "subagent_grounding", { task: "x" }),
-    /Missing Pi grounding-checker \.pi\/agents\/grounding-checker\.md\. Enable the grounding-checker agent and run awf render\./,
+    /Missing Pi grounding-checker \.pi\/agents\/grounding-checker\.md\. Enable the grounding-checker agent and run \.\/awf render\./,
   );
 
   const bodyless = harness();
   withAgentDoc(bodyless, ".pi/agents/grounding-checker.md", "---\nname: grounding-checker\ndescription: test\n---\n   \n");
   await assert.rejects(
     call(bodyless, "subagent_grounding", { task: "x" }),
-    /has no instruction body; run awf render\./,
+    /has no instruction body; run \.\/awf render\./,
   );
 });
