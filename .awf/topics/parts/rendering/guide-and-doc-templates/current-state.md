@@ -23,7 +23,7 @@ Backing: test
 
 ### `invariant: document-map-lists-mandatory-docs`
 
-The document-map section of the rendered `AGENTS.md` always cites every catalog document-map doc (including the workflow guide, the documentation standard, and the agent-guide authoring standard) with its full title, link, and catalog description, then appends the normalized name-sorted local-document union with each local title, live path link, and description. Local documents do not join the catalog or `Layout.Docs`.
+The default document-map body of rendered `AGENTS.md` cites every catalog document-map doc (including the workflow guide, the documentation standard, and the agent-guide authoring standard) with its full title, link, and catalog description. Convention-part replacement and drop retain ordinary section semantics. The normalized name-sorted local-document projection is a non-replaceable agent-guide suffix with each local title, live path link, and description; when the catalog section is dropped, awf emits a fallback Document map heading before that suffix. Local documents remain outside the catalog and `Layout.Docs`.
 Origin: ADR-0148
 Revised-by: ADR-0251, ADR-additive-inline-editable-project-local-docs
 Backing: test

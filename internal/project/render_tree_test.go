@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
 // debuggingVars seeds every var the debugging skill template references so it
@@ -93,12 +91,12 @@ func TestAgentsDocDocumentMapPartRetainsLocalDocs(t *testing.T) {
 	const cfg = "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/checks\n    title: Checks\n    description: Check local docs.\n"
 	const row = "- **Checks:** [docs/runbooks/checks.md](docs/runbooks/checks.md), Check local docs."
 	for _, tc := range []struct {
-		name, sidecar, part, present, absent string
+		name, sidecar, part, want, absent string
 	}{
-		{"default", "", "", "**ADR index:**", ""},
-		{"heading-bearing part", "", "## Document map\n\nCustom catalog map content.\n", "Custom catalog map content.", "**ADR index:**"},
-		{"headingless part", "", "Custom catalog map content.\n", "Custom catalog map content.", "**ADR index:**"},
-		{"dropped section", "sections:\n  document-map:\n    drop: true\n", "", "", "**ADR index:**"},
+		{"default", "", "", "## Document map\n\n- **ADR index:", ""},
+		{"headingless part", "", "Custom catalog map content.\n", "## Document map\nCustom catalog map content.\n\n" + row, "**ADR index:"},
+		{"heading-bearing part", "", "## Document map\n\nCustom catalog map content.\n", "## Document map\n## Document map\n\nCustom catalog map content.\n\n" + row, "**ADR index:"},
+		{"dropped section", "sections:\n  document-map:\n    drop: true\n", "", "## Document map", "**ADR index:"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			files := map[string]string{}
@@ -109,27 +107,21 @@ func TestAgentsDocDocumentMapPartRetainsLocalDocs(t *testing.T) {
 				files["parts/agents-doc/document-map.md"] = tc.part
 			}
 			got := syncAndReadAgents(t, scaffoldFiles(t, cfg, files))
-			if count := strings.Count(got, "## Document map"); count != 1 {
-				t.Fatalf("Document map heading count = %d, want 1:\n%s", count, got)
+			if !strings.Contains(got, tc.want) {
+				t.Fatalf("document-map ordering missing %q:\n%s", tc.want, got)
 			}
-			if count := strings.Count(got, row); count != 1 {
-				t.Fatalf("local document row count = %d, want 1:\n%s", count, got)
-			}
-			if tc.present != "" && !strings.Contains(got, tc.present) {
-				t.Errorf("missing expected content %q:\n%s", tc.present, got)
+			if tc.name == "dropped section" && strings.Index(got, tc.want) > strings.Index(got, row) {
+				t.Fatalf("fallback heading does not precede local rows:\n%s", got)
 			}
 			if tc.absent != "" && strings.Contains(got, tc.absent) {
-				t.Errorf("unexpected catalog content %q:\n%s", tc.absent, got)
+				t.Fatalf("unexpected catalog content %q:\n%s", tc.absent, got)
 			}
 			if strings.Contains(got, "<no value>") {
-				t.Errorf("publication-unsafe guide:\n%s", got)
+				t.Fatalf("publication-unsafe guide:\n%s", got)
 			}
 		})
 	}
-
-	for _, tc := range []struct {
-		name, cfg, sidecar string
-	}{
+	for _, tc := range []struct{ name, cfg, sidecar string }{
 		{"omitted local docs", "prefix: example\nintegrationBranch: main\n", ""},
 		{"empty local docs", "prefix: example\nintegrationBranch: main\nlocalDocs: []\n", ""},
 		{"dropped empty local docs", "prefix: example\nintegrationBranch: main\n", "sections:\n  document-map:\n    drop: true\n"},
@@ -140,48 +132,37 @@ func TestAgentsDocDocumentMapPartRetainsLocalDocs(t *testing.T) {
 				files["agents-doc.yaml"] = tc.sidecar
 			}
 			got := syncAndReadAgents(t, scaffoldFiles(t, tc.cfg, files))
-			if count := strings.Count(got, "## Document map"); count > 1 {
-				t.Fatalf("spurious Document map headings = %d:\n%s", count, got)
+			if strings.Contains(got, "## Document map") && tc.sidecar != "" {
+				t.Fatalf("dropped empty map retained structure:\n%s", got)
 			}
 			if strings.Contains(got, row) || strings.Contains(got, "<no value>") {
-				t.Errorf("empty local docs changed guide publication:\n%s", got)
+				t.Fatalf("empty local docs changed guide publication:\n%s", got)
 			}
 		})
 	}
 }
 
-func TestDocumentMapHeadingPlanPartEdges(t *testing.T) {
-	t.Run("empty part", func(t *testing.T) {
-		root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
-			"parts/agents-doc/document-map.md": "<!-- awf:comment ignored -->\n",
-		})
-		p, err := Open(testContext(t), root)
+// invariant: rendering/doc-outputs:local-doc-output-complete (TestLocalDocGuideSize)
+func TestAgentsDocDefaultEmptyLocalDocsByteInertia(t *testing.T) {
+	const suffix = "<!-- awf:edit document-map: default; create .awf/parts/agents-doc/document-map.md to override -->\n## Document map\n\n- **ADR index:**"
+	for _, cfg := range []string{
+		"prefix: example\nintegrationBranch: main\n",
+		"prefix: example\nintegrationBranch: main\nlocalDocs: []\n",
+	} {
+		got := syncAndReadAgents(t, scaffoldFiles(t, cfg, nil))
+		if !strings.Contains(got, suffix) {
+			t.Fatalf("default document-map boundary changed:\n%s", got)
+		}
+		want, err := os.ReadFile("testdata/agents_doc_default_pre_phase3.md")
 		if err != nil {
 			t.Fatal(err)
 		}
-		needs, defaultHeading, err := p.documentMapHeadingPlan(config.Sidecar{})
-		if err != nil || !needs || defaultHeading {
-			t.Fatalf("empty part heading plan = needs:%t default:%t err:%v", needs, defaultHeading, err)
+		if got != string(want) {
+			t.Fatalf("default empty guide differs from pre-Phase-3 golden: got %d bytes, want %d", len(got), len(want))
 		}
-	})
-	t.Run("malformed authoring comment", func(t *testing.T) {
-		root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
-			"parts/agents-doc/document-map.md": "<!-- awf:comment malformed\n",
-		})
-		p, err := Open(testContext(t), root)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, _, err := p.documentMapHeadingPlan(config.Sidecar{}); err == nil || !strings.Contains(err.Error(), "document-map part") {
-			t.Fatalf("malformed part error = %v", err)
-		}
-		if _, err := p.RenderAll(); err == nil || !strings.Contains(err.Error(), "document-map part") {
-			t.Fatalf("render malformed part error = %v", err)
-		}
-	})
+	}
 }
 
-// invariant: rendering/doc-outputs:local-doc-output-complete (TestLocalDocGuideSize)
 func TestLocalDocGuideSize(t *testing.T) {
 	var entries strings.Builder
 	for i := range 100 {

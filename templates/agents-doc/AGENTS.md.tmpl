@@ -70,11 +70,9 @@ Evaluate continuity independently; when durable continuity materially helps, use
 {{- $commandSuffix }}
 <!-- awf:end -->
 
-{{ if .documentMapOwnedHeading }}## Document map
+<!-- awf:section document-map -->
+## Document map
 
-{{ end }}<!-- awf:section document-map -->
-{{ if .documentMapDefaultHeading }}## Document map
-{{ end }}
 - **ADR index:** [{{ .layout.adrReadme }}]({{ .layout.adrReadme }}), architecture decisions and lifecycle.
 - **Decision index:** [{{ .layout.indexMd }}]({{ .layout.indexMd }}), generated status index.
 - **Plans:** [{{ .layout.plansDir }}]({{ .layout.plansDir }}), implementation directives.
@@ -82,8 +80,9 @@ Evaluate continuity independently; when durable continuity materially helps, use
 {{ end }}{{ range .docs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}), {{ .desc }}
 {{ end }}{{- range .data.docMap }}- **{{ .path }}:** [{{ .path }}]({{ .path }}){{ with .desc }}, {{ . }}{{ end }}
 {{ end -}}
-<!-- awf:end -->
-{{ range .localDocs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}), {{ .desc }}
-{{ end }}
+<!-- awf:end -->{{ if .documentMapFallbackHeading }}
+## Document map
 
+{{ end }}{{ range .localDocs }}{{ "\n" }}- **{{ .title }}:** [{{ .path }}]({{ .path }}), {{ .desc }}
+{{ end -}}
 {{if .targetSessionHandoff}}Pi provides transient `[session context]` facts before each model call; a discretionary eligible session-replacement choice informs continuation judgment only.{{end}}

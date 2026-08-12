@@ -366,3 +366,9 @@ Record deviations, spike answers, follow-ups, and findings surfaced during imple
   preserving local rows outside the replaceable catalog body. The local-doc hash census now compares
   both lock path sets before its exact changed-hash assertion, so added or removed after-only entries
   cannot be ignored.
+- Phase 3 authority correction: ADR-0237 requires the template-owned structural heading independent
+  of convention-part body content. The local suffix consults only the loaded section drop state for
+  its fallback heading; the content-sensitive duplicate part read was removed. The document-map
+  claim is narrowed accordingly, and a pre-Phase-3 golden proves empty-default byte inertia.
+  Staged lifecycle validation required a separate Reapplied event for that already-Applied claim
+  correction; this is a mechanical authority disposition, not an outcome deviation.
