@@ -35,6 +35,14 @@ func withInvocationData(data map[string]any, value map[string]any) map[string]an
 	return copy
 }
 
+func withInvocationTarget(data map[string]any, target Target) map[string]any {
+	copy := withInvocationData(data, data["data"].(map[string]any))
+	for key, value := range target.targetTemplateData() {
+		copy[key] = value
+	}
+	return copy
+}
+
 // renderInvocationSurface deliberately permits literal template syntax that is
 // documented as syntax in catalog docs; invocation checking does not own the
 // general no-token rendering oracle.
@@ -74,25 +82,23 @@ func assertNoBareRepositoryAwfExecution(t *testing.T, surface, body string) {
 func TestRepositoryAwfInvocation(t *testing.T) {
 	data := invocationRenderData()
 
-	guide := renderGolden(t, "agents-doc/AGENTS.md.tmpl", data)
+	guide := renderGolden(t, "agents-doc/AGENTS.md.tmpl", withInvocationTarget(data, piTarget))
 	assertNoBareRepositoryAwfExecution(t, "AGENTS guide", guide)
-	for _, want := range []string{"run `./awf render` and `./awf check`", "run `./awf check staged`"} {
-		if !strings.Contains(guide, want) {
-			t.Errorf("guide lacks repository wrapper command %q", want)
-		}
-	}
 
-	for name, skill := range catalog.Standard.Skills {
-		assertNoBareRepositoryAwfExecution(t, "skill "+name, renderSkillGolden(t, name, withInvocationData(data, skill.Data)))
-	}
-	for name, agent := range catalog.Standard.Agents {
-		assertNoBareRepositoryAwfExecution(t, "agent "+name, renderAgentGolden(t, name, withInvocationData(data, agent.Data)))
-	}
-	for name, doc := range catalog.Standard.Docs {
-		if doc.TID == "" {
-			continue
+	for _, target := range []Target{claudeTarget, piTarget} {
+		targetData := withInvocationTarget(data, target)
+		for name, skill := range catalog.Standard.Skills {
+			assertNoBareRepositoryAwfExecution(t, target.Name+" skill "+name, renderSkillGolden(t, name, withInvocationData(targetData, skill.Data)))
 		}
-		assertNoBareRepositoryAwfExecution(t, "catalog doc "+name, renderInvocationSurface(t, doc.TID, withInvocationData(data, doc.Data)))
+		for name, agent := range catalog.Standard.Agents {
+			assertNoBareRepositoryAwfExecution(t, target.Name+" agent "+name, renderAgentGolden(t, name, withInvocationData(targetData, agent.Data)))
+		}
+		for name, doc := range catalog.Standard.Docs {
+			if doc.TID == "" {
+				continue
+			}
+			assertNoBareRepositoryAwfExecution(t, target.Name+" catalog doc "+name, renderInvocationSurface(t, doc.TID, withInvocationData(targetData, doc.Data)))
+		}
 	}
 	for _, template := range []string{
 		"hooks/commit-msg.sh.tmpl", "hooks/pre-commit.sh.tmpl", "hooks/pre-merge-commit.sh.tmpl",
@@ -117,6 +123,11 @@ func TestRepositoryAwfInvocation(t *testing.T) {
 
 // invariant: rendering/guide-and-doc-templates:guide-awf-invocation (TestGuideAwfInvocation)
 func TestGuideAwfInvocation(t *testing.T) {
-	guide := renderGolden(t, "agents-doc/AGENTS.md.tmpl", invocationRenderData())
+	guide := renderGolden(t, "agents-doc/AGENTS.md.tmpl", withInvocationTarget(invocationRenderData(), piTarget))
 	assertNoBareRepositoryAwfExecution(t, "AGENTS guide", guide)
+	for _, want := range []string{"run `./awf render` and `./awf check`", "run `./awf check staged`"} {
+		if !strings.Contains(guide, want) {
+			t.Errorf("guide lacks repository wrapper command %q", want)
+		}
+	}
 }
