@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-12
 adrs: [additive-inline-editable-project-local-docs]
-status: Proposed
+status: Implemented
 ---
 # Plan: Additive Inline-Editable Project-Local Docs
 

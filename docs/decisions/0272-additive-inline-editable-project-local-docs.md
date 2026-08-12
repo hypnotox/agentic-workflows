@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: additive-inline-editable-project-local-docs
-status: Implementing
+status: Implemented
 date: 2026-08-12
 ---
 # ADR-0272: Additive Inline-Editable Project-Local Docs
@@ -163,3 +163,4 @@ output identity while permitting additive names outside today's catalog.
 - 2026-08-12: Applied; operations: add `rendering/doc-outputs:local-doc-output-complete`, update `rendering/guide-and-doc-templates:document-map-lists-mandatory-docs`
 - 2026-08-12: Reapplied; operations: update `rendering/guide-and-doc-templates:document-map-lists-mandatory-docs`
 - 2026-08-12: Applied; operations: update `tooling/cli:cli-creation-and-inventory`
+- 2026-08-12: Implemented; content-sha256: c20a3f87e2a20820fa2dcf9152a50c87c1a1800b0d253c98cc027e2d211c6264
