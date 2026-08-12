@@ -142,7 +142,7 @@ func TestAgentsDocDocumentMapPartRetainsLocalDocs(t *testing.T) {
 	}
 }
 
-// invariant: rendering/doc-outputs:local-doc-output-complete (TestLocalDocGuideSize)
+// invariant: rendering/doc-outputs:local-doc-output-complete (TestAgentsDocDefaultEmptyLocalDocsByteInertia)
 func TestAgentsDocDefaultEmptyLocalDocsByteInertia(t *testing.T) {
 	const suffix = "<!-- awf:edit document-map: default; create .awf/parts/agents-doc/document-map.md to override -->\n## Document map\n\n- **ADR index:**"
 	for _, cfg := range []string{
@@ -163,6 +163,7 @@ func TestAgentsDocDefaultEmptyLocalDocsByteInertia(t *testing.T) {
 	}
 }
 
+// invariant: rendering/doc-outputs:local-doc-output-complete (TestLocalDocGuideSize)
 func TestLocalDocGuideSize(t *testing.T) {
 	var entries strings.Builder
 	for i := range 100 {

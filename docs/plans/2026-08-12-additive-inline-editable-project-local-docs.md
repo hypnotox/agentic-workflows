@@ -361,14 +361,21 @@ Record deviations, spike answers, follow-ups, and findings surfaced during imple
   correction preserves catalog and Layout independence, the exact Applied two-operation batch, and
   the Proposed plan and Implementing ADR boundary; it introduces no Phase 4 scaffold guidance or
   operation.
-- Final Phase 3 review settlement: document-map heading ownership now produces exactly one heading
-  across default, heading-bearing custom, headingless custom, and dropped catalog variants while
-  preserving local rows outside the replaceable catalog body. The local-doc hash census now compares
-  both lock path sets before its exact changed-hash assertion, so added or removed after-only entries
-  cannot be ignored.
+- Final Phase 3 review settlement: the content-sensitive approach attempted to produce exactly one
+  Document map heading across default, heading-bearing custom, headingless custom, and dropped
+  catalog variants while preserving local rows outside the replaceable catalog body. ADR-0237
+  superseded that approach: the template-owned structural heading remains, and a convention part's
+  authored leading heading is body content that may coexist with it. The local-doc hash census now
+  compares both lock path sets before its exact changed-hash assertion, so added or removed
+  after-only entries cannot be ignored.
 - Phase 3 authority correction: ADR-0237 requires the template-owned structural heading independent
   of convention-part body content. The local suffix consults only the loaded section drop state for
   its fallback heading; the content-sensitive duplicate part read was removed. The document-map
   claim is narrowed accordingly, and a pre-Phase-3 golden proves empty-default byte inertia.
   Staged lifecycle validation required a separate Reapplied event for that already-Applied claim
   correction; this is a mechanical authority disposition, not an outcome deviation.
+- Phase 3 commit-subject deviation: already-landed authority correction commit
+  `584aeb7582b7710e15df43bb9717d3254fba4c91` omitted `(applies ADR batch)` from its subject. Its
+  Reapplied history/event and staged lifecycle validation are correct; the omission is a
+  presentation/audit convention only. The committed settlement transaction is not rewritten, and
+  future application commits must use the suffix.
