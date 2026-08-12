@@ -278,6 +278,74 @@ func TestHandleOperations(t *testing.T) {
 	}
 }
 
+func TestBackupPropagatesSourceReadError(t *testing.T) {
+	failure := errors.New("source read failed")
+	_, err := Backup("source", func(string) ([]byte, fs.FileMode, error) {
+		return nil, 0, failure
+	}, func(string, []byte, fs.FileMode) error {
+		t.Fatal("publish called after source read failure")
+		return nil
+	})
+	if !errors.Is(err, failure) {
+		t.Fatalf("backup error = %v, want %v", err, failure)
+	}
+}
+
+func TestBackupPreservesModeAndSelectsAvailablePath(t *testing.T) {
+	h, root := openFixture(t)
+	if err := os.WriteFile(filepath.Join(root, "source"), []byte("source bytes"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	backup, err := Backup("source", h.ReadWithMode, h.Publish)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if backup != "source.awf-bak" {
+		t.Fatalf("backup path = %q, want source.awf-bak", backup)
+	}
+	contents, err := os.ReadFile(filepath.Join(root, backup))
+	info, statErr := os.Stat(filepath.Join(root, backup))
+	if err != nil || statErr != nil || string(contents) != "source bytes" || info.Mode().Perm() != 0o640 {
+		t.Fatalf("backup = %q, %v, %v", contents, info, errors.Join(err, statErr))
+	}
+}
+
+func TestBackupRetriesOccupiedSuffix(t *testing.T) {
+	h, root := openFixture(t)
+	if err := os.WriteFile(filepath.Join(root, "source"), []byte("source bytes"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "source.awf-bak"), []byte("occupied"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	backup, err := Backup("source", h.ReadWithMode, h.Publish)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if backup != "source.awf-bak.1" {
+		t.Fatalf("backup path = %q, want source.awf-bak.1", backup)
+	}
+	occupied, occupiedErr := os.ReadFile(filepath.Join(root, "source.awf-bak"))
+	contents, readErr := os.ReadFile(filepath.Join(root, backup))
+	if occupiedErr != nil || readErr != nil || string(occupied) != "occupied" || string(contents) != "source bytes" {
+		t.Fatalf("backup collision result = occupied %q backup %q errors %v", occupied, contents, errors.Join(occupiedErr, readErr))
+	}
+}
+
+func TestBackupPropagatesNonCollisionPublicationFailure(t *testing.T) {
+	failure := errors.New("publication failed")
+	calls := 0
+	_, err := Backup("source", func(string) ([]byte, fs.FileMode, error) {
+		return []byte("source bytes"), 0o640, nil
+	}, func(string, []byte, fs.FileMode) error {
+		calls++
+		return failure
+	})
+	if !errors.Is(err, failure) || calls != 1 {
+		t.Fatalf("backup error = %v, publication calls = %d", err, calls)
+	}
+}
+
 func TestReadWithModeUsesOneOpenedFileForBytesAndMode(t *testing.T) {
 	var source []byte
 	testsupport.WalkRepoSources(t, testsupport.RepoRoot(t), func(rel string, body []byte) {
@@ -547,6 +615,9 @@ func filesystemConsumerFinding(rel, src string) string {
 		case *ast.CallExpr:
 			if s, ok := n.Fun.(*ast.SelectorExpr); ok {
 				if id, ok := s.X.(*ast.Ident); ok && bound[id.Name] {
+					capability = true
+				}
+				if id, ok := s.X.(*ast.Ident); ok && imports[id.Name] && s.Sel.Name == "Backup" {
 					capability = true
 				}
 			}

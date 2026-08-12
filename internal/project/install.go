@@ -2,10 +2,10 @@ package project
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 )
 
@@ -20,29 +20,22 @@ func (p *Project) InitCollisions(ctx context.Context) ([]string, error) {
 	return resident.CollisionsAt(p.Root, planned)
 }
 
-// backupFileConfined preserves backup naming and collision retry through the
-// selected sync root. Source bytes and mode come from one confined open.
-func (p *Project) backupFileConfined(rel string, filesystem syncFilesystem) (string, error) {
-	data, mode, err := filesystem.ReadWithMode(rel)
-	if err != nil {
-		return "", fmt.Errorf("read backup source %s: %w", rel, err)
-	}
-	for suffix := 0; ; suffix++ {
-		bak := backupPath(rel, suffix)
-		err := filesystem.Publish(bak, data, mode)
-		if errors.Is(err, os.ErrExist) {
-			continue
-		}
-		if err != nil {
-			return "", fmt.Errorf("publish backup %s from %s: %w", bak, rel, err)
-		}
-		return bak, nil
-	}
-}
-
-func backupPath(base string, suffix int) string {
-	if suffix == 0 {
-		return base + ".awf-bak"
-	}
-	return fmt.Sprintf("%s.awf-bak.%d", base, suffix)
+// backupFileConfined maps the shared confined backup mechanism's result and
+// errors into sync's project-specific reporting contract.
+func (p *Project) backupFileConfined(rel string, fs syncFilesystem) (string, error) {
+	return filesystem.Backup(rel,
+		func(source string) ([]byte, os.FileMode, error) {
+			data, mode, err := fs.ReadWithMode(source)
+			if err != nil {
+				return nil, 0, fmt.Errorf("read backup source %s: %w", source, err)
+			}
+			return data, mode, nil
+		},
+		func(destination string, data []byte, mode os.FileMode) error {
+			if err := fs.Publish(destination, data, mode); err != nil {
+				return fmt.Errorf("publish backup %s from %s: %w", destination, rel, err)
+			}
+			return nil
+		},
+	)
 }

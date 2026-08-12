@@ -101,6 +101,30 @@ func (h *Handle) Publish(path string, contents []byte, mode fs.FileMode) error {
 	return nil
 }
 
+// Backup reads source once, preserving its permission mode, then exclusively
+// publishes a complete sibling backup at source.awf-bak or its first available
+// numbered suffix. The supplied confined callbacks keep source access and
+// publication policy with the caller while this package owns the shared naming
+// and collision protocol.
+func Backup(source string, readWithMode func(string) ([]byte, fs.FileMode, error), publish func(string, []byte, fs.FileMode) error) (string, error) {
+	contents, mode, err := readWithMode(source)
+	if err != nil {
+		return "", err
+	}
+	for suffix := 0; ; suffix++ {
+		destination := source + ".awf-bak"
+		if suffix != 0 {
+			destination = fmt.Sprintf("%s.%d", destination, suffix)
+		}
+		if err := publish(destination, contents, mode); errors.Is(err, fs.ErrExist) {
+			continue
+		} else if err != nil {
+			return "", err
+		}
+		return destination, nil
+	}
+}
+
 // Replace atomically replaces path with one complete file beneath the selected
 // root, preserving the requested final mode.
 func (h *Handle) Replace(destination string, contents []byte, mode fs.FileMode) (returnErr error) {

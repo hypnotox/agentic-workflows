@@ -70,6 +70,10 @@ Pi context events sample the current model window and active branch at request t
   unknown keys fail fast.
 - **`encoding/json`, `crypto/sha256`, process execution, and filesystem primitives** (standard library): parse,
   fingerprint, and validate tracked configuration and local effort state without a database or background daemon.
+  `internal/filesystem` is the sole production home for root-confined access and complete sibling
+  backup publication: it reads one source with its mode, retries exclusive `.awf-bak[.N]`
+  publication on collisions, and returns the selected path while consumers retain their policy and
+  error context.
 - **`text/template`** (standard library): the rendering engine; ADR-0001 owns its
   publication-safety contract.
 - **`github.com/go-git/go-git/v5`** (with `go-billy/v5`): the pure-Go implementation behind the
