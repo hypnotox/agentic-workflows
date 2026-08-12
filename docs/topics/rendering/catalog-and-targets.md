@@ -100,5 +100,5 @@ Backing: test
 
 The catalog's value-carrying string var descriptor keys are exactly the pinned functional set (gateCmd, gateCmdFull, checkCmd, commitGateCmd, testCmd, commitScopes, activeMdRegenCmd, invariantTestPath); no multiselect descriptor controls catalog rendering.
 Origin: ADR-0084
-Revised-by: ADR-0156, ADR-0158, ADR-0210, ADR-0251, ADR-unconditional-repository-awf-invocation
+Revised-by: ADR-0156, ADR-0158, ADR-0210, ADR-0251, ADR-0271
 Backing: test

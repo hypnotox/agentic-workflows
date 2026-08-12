@@ -4,7 +4,7 @@ slug: unconditional-repository-awf-invocation
 status: Implementing
 date: 2026-08-12
 ---
-# ADR-unconditional-repository-awf-invocation: Unconditional Repository Awf Invocation
+# ADR-0271: Unconditional Repository Awf Invocation
 
 
 ## Context

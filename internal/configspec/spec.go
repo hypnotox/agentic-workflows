@@ -62,7 +62,7 @@ type VarEntry struct {
 // DataKey describes one adopter-settable sidecar data: key of one artifact.
 type DataKey struct {
 	Kind        string // "skills", "agents", "docs"
-	Artifact    string // artifact name; "agents-doc" uses kind "docs"; "_base" covers local artifacts
+	Artifact    string // artifact name; "agents-doc" uses kind "docs"
 	Key         string
 	Fields      []string // declared record fields when the value is a list of mappings
 	Description string
@@ -269,7 +269,7 @@ var keys = []Entry{
 	{
 		Path: "sidecar.dataDefaults", Type: "data-key → bool map", Default: "empty: catalog-backed list defaults remain enabled",
 		Description:  "Controls same-key catalog-backed list defaults. An absent key or true keeps the catalog default; false suppresses it so effective content is only the authored project list, or an empty list when none is authored. Explicit true differs from absence only as configuration presence, not effective content.",
-		Availability: "Every entry must name a same-key list default declared by that catalog artifact. Unknown, non-list, local-only, and differently keyed specialized values are invalid.",
+		Availability: "Every entry must name a same-key list default declared by that catalog artifact. Unknown, non-list, and differently keyed specialized values are invalid.",
 	},
 	{
 		Path: "sidecar.sections", Type: "section-name → override map", Default: "empty",

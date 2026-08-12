@@ -23,19 +23,14 @@ Backing: test
 
 ### `invariant: retired-keys-forward-ported`
 
-Historical config bytes have every retired selection key stripped before strict current-schema decoding for every historical generation, so audit and staged checks can read revisions predating schema generation 39.
+Historical config bytes have every retired configuration key stripped before strict current-schema decoding for every historical generation, including the top-level invariants block, audit.baseBranch, generation-38 toggle keys, and selection keys, so audit and staged checks can read every supported historical revision.
 Origin: ADR-0251
+Revised-by: ADR-0270
 Backing: test
 
 ### `invariant: toggle-keys-dropped`
 
 Schema generation 38 removes hooks, runner, the proseGate.enabled and memoryCite.enabled children, nine audit tuning children, and currentState.maxTopicsPerPath, announces each removal it performs, drops a block emptied by removal, and preserves every surviving key, value, comment, and key order.
-Origin: ADR-0253
-Backing: test
-
-### `invariant: toggle-keys-forward-ported`
-
-Historical config bytes have every generation-38 retired key stripped before strict current-schema decoding, so audit and staged checks can read revisions that predate the retirement.
 Origin: ADR-0253
 Backing: test
 

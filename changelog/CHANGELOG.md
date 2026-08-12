@@ -12,6 +12,10 @@ query a single version or a range.
 
 - Standardized rendered repository-local awf invocations on the unconditional `./awf` wrapper and moved this repository's source execution body into a runner convention part.
 
+### Bug fixes
+
+- Default guidance no longer advertises retired project-local skills, agents, docs, or the `local` sidecar field, and historical configuration projection now strips every retired key before strict current-schema decoding.
+
 ## [0.35.1] - 2026-08-12
 
 ### Bug fixes

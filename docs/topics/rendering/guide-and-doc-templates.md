@@ -14,7 +14,7 @@ Agent-guide and documentation template contracts: section parity, glossary rende
 ### `invariant: guide-awf-invocation`
 
 The rendered agent guide directs repository-local executable awf commands through `./awf`, including generated-tree rendering and staged verification, while retaining bare product and CLI grammar where no local execution is prescribed.
-Origin: ADR-unconditional-repository-awf-invocation
+Origin: ADR-0271
 Backing: test
 
 
@@ -90,9 +90,9 @@ Backing: test
 
 ### `invariant: guide-entry-point-routing`
 
-The rendered guide routes agents to native catalog skills whose exposed descriptions fit the work, without duplicating standard or local skill names, purposes, triggers, kinds, relationships, or a fallback catalog. Empty and missing render data remains coherent, and skill selection stays advisory.
+The rendered guide routes agents to native catalog skills whose exposed descriptions fit the work, without duplicating catalog skill names, purposes, triggers, kinds, relationships, or a fallback catalog. Empty and missing render data remains coherent, and skill selection stays advisory.
 Origin: ADR-0157
-Revised-by: ADR-0167, ADR-0241, ADR-0251
+Revised-by: ADR-0167, ADR-0241, ADR-0251, ADR-0270
 Backing: test
 
 ### `invariant: working-memory-single-home`

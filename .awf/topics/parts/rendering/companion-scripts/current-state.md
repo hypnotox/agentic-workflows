@@ -58,7 +58,7 @@ Backing: test
 
 The standard rendered wrapper resolves the bootstrap-pinned binary when `.awf/bootstrap.sh` exists and falls back to PATH `awf` otherwise. Repository-specific execution semantics replace the `runner-body` convention part; no invocation var participates in resolution.
 Origin: ADR-0156
-Revised-by: ADR-unconditional-repository-awf-invocation
+Revised-by: ADR-0271
 Backing: test
 
 ### `invariant: runner-wrapper-rendered`
