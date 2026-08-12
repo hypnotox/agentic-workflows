@@ -87,7 +87,6 @@ func TestDropGateAuditSettingsRejectsMalformedNestedMapping(t *testing.T) {
 	}
 }
 
-// invariant: config/migrations-and-locks:retired-keys-forward-ported (TestConfigForCurrentSchemaDropsAllGateAuditSettings)
 func TestConfigForCurrentSchemaDropsAllGateAuditSettings(t *testing.T) {
 	src := []byte("prefix: example\nhooks: {enabled: true}\nrunner: {enabled: true}\nproseGate: {enabled: true}\nmemoryCite: {enabled: true}\naudit: {allowedTypes: [feat], subjectMaxLength: 1, diffThreshold: 1, dependencyManifests: [go.mod], domainDocStaleness: false, domainCodeStaleness: false, undocumentedDomain: false, plainPunctuation: false, uncommittedChanges: false}\ncurrentState: {maxTopicsPerPath: 1}\n")
 	got, err := ConfigForCurrentSchema(src, 37)

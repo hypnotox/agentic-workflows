@@ -225,8 +225,8 @@ func (p *Project) unsetVarNotes(files []RenderedFile) []string {
 
 // stubNotes reports, per rendered artifact, its unauthored stub content -
 // stub-attributed sections still at default and awf:stub-marked parts. One line
-// per output path: artifacts sharing a template id (local artifacts, the domain
-// docs) each report independently, and a multi-target project prints one line
+// per output path: artifacts sharing a template id, including domain docs,
+// each report independently, and a multi-target project prints one line
 // per target path by design (ADR-0070).
 // touches-state: rendering/doc-outputs:stub-notes-path-keyed - per-output-path stub note; proof in notes_test.go
 func stubNotes(files []RenderedFile) []string {
