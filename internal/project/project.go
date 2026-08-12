@@ -534,10 +534,10 @@ func (p *Project) syncReportWithPitfalls(ctx context.Context, seed *InitAuthorit
 					return backups, changes, pruned, fmt.Errorf("inspect pruned local document %s: %w", path, existsErr)
 				} else if existsErr == nil {
 					if info.Mode()&fs.ModeSymlink != 0 {
-						return backups, changes, pruned, fmt.Errorf("unsafe pruned local document %s", path) // coverage-ignore: an output-plan local document is produced only as a regular confined file; symlink substitution is prevented by the root handle
+						return backups, changes, pruned, fmt.Errorf("unsafe pruned local document %s", path)
 					}
 					bak, bakErr := p.backupFileConfined(outputPath, filesystem)
-					if bakErr != nil { // coverage-ignore: backup publication failure requires an execution-identity filesystem fault; preservation behavior is covered on regular outputs
+					if bakErr != nil {
 						return backups, changes, pruned, fmt.Errorf("back up pruned local document %s: %w", path, bakErr)
 					}
 					backups = append(backups, Backup{Path: path, Bak: bak})

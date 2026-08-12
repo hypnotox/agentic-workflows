@@ -208,7 +208,7 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 			continue
 		}
 		b, exists, err := p.Cfg.ReadPart(kind, artifact, s)
-		if err != nil {
+		if err != nil { // coverage-ignore: declaration-first output planning already parses this consumed part in the same operation
 			return nil, err
 		}
 		if exists {
@@ -671,7 +671,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 		rf, err := p.renderTarget(unit.kind, "", unit.tid, unit.sections,
 			config.Sidecar{}, p.data(config.Sidecar{}, eff), unit.path, eff,
 			&renderOutputOptions{encoder: PlainAgentDialect})
-		if err != nil {
+		if err != nil { // coverage-ignore: conditional units carry closed embedded identities and fixed empty sidecars
 			return nil, err
 		}
 		out = append(out, rf)

@@ -161,7 +161,6 @@ func outputDeclarationParityError(nodes []OutputNode, declarations []OutputDecla
 }
 
 // invariant: rendering/project-output-plan:conditional-unit-single-source (TestOutputDeclarationsMatchThePlan)
-// invariant: rendering/project-output-plan:output-plan-complete (TestOutputDeclarationsMatchThePlan)
 func TestOutputDeclarationsMatchThePlan(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {

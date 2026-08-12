@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"maps"
 	"os"
 	"path/filepath"
@@ -112,9 +113,17 @@ func CollisionsAt(root string, planned []string) ([]string, error) {
 	return collisions, nil
 }
 
+// Backup records one local document preserved during uninstall. Both paths are
+// lock-relative and Bak is the exact first-free sibling chosen by Backup.
+type Backup struct {
+	Path string
+	Bak  string
+}
+
 type UninstallReport struct {
 	Removed        int
 	PreservedRoots []string
+	Backups        []Backup
 }
 
 // Document maps an uninstall result into its complete ordinary presentation.
@@ -135,6 +144,13 @@ func (r UninstallReport) Document() (presentation.Document, error) {
 	for _, root := range r.PreservedRoots {
 		value, err := presentation.Prose("preserved resident data under .awf/" + root)
 		if err != nil { // coverage-ignore: the fixed prefix remains nonempty after normalization of a validated resident-root name
+			return presentation.Document{}, err
+		}
+		notes = append(notes, value)
+	}
+	for _, backup := range r.Backups {
+		value, err := presentation.Prose("backed up " + backup.Path + " to " + backup.Bak)
+		if err != nil { // coverage-ignore: backup paths are confined lock-relative paths
 			return presentation.Document{}, err
 		}
 		notes = append(notes, value)
@@ -202,11 +218,43 @@ func RemoveGeneratedFile(path string) (bool, error) {
 	}
 }
 
+type uninstallHandle interface {
+	LinkInfo(string) (fs.FileInfo, error)
+	Backup(string) (string, error)
+	Close() error
+}
+
+type uninstallOps struct {
+	open         func(string) (uninstallHandle, error)
+	inspectRoots func(string) ([]string, error)
+	removeFile   func(string) (bool, error)
+	remove       func(string) error
+}
+
+func productionUninstallOpen(root string) (uninstallHandle, error) {
+	handle, err := filesystem.Open(root)
+	if err != nil { // coverage-ignore: production composition opens an existing root selected after lock load; injected uninstallOps owns deterministic open-fault coverage
+		return nil, err
+	}
+	return asUninstallHandle(handle), nil
+}
+
+func asUninstallHandle(handle uninstallHandle) uninstallHandle { return handle }
+
 // Uninstall removes awf's generated footprint while preserving dynamic resident
 // state. It is a free function so a broken config does not block it.
 // preserveTemplate is a bounded policy supplied by outer composition.
 // touches-state: rendering/sync-and-drift:uninstall-removes-lock-entries - lock-tracked file removal; proof in resident_test.go
 func Uninstall(ctx context.Context, root string, preserveTemplate func(string) bool) (UninstallReport, error) {
+	return uninstallWith(ctx, root, preserveTemplate, uninstallOps{
+		open:         productionUninstallOpen,
+		inspectRoots: InspectRoots,
+		removeFile:   RemoveGeneratedFile,
+		remove:       os.Remove,
+	})
+}
+
+func uninstallWith(ctx context.Context, root string, preserveTemplate func(string) bool, ops uninstallOps) (UninstallReport, error) {
 	lockPath := config.LockPath(root)
 	residentRoot := awfgit.ProjectResidentRoot(ctx, root)
 	lock, found, err := manifest.LoadOptional(lockPath)
@@ -216,7 +264,7 @@ func Uninstall(ctx context.Context, root string, preserveTemplate func(string) b
 	if !found {
 		return UninstallReport{}, fmt.Errorf("no %s: nothing to uninstall", filepath.Join(config.DirName, "awf.lock"))
 	}
-	preserved, err := InspectRoots(residentRoot)
+	preserved, err := ops.inspectRoots(residentRoot)
 	if err != nil {
 		return UninstallReport{}, err
 	}
@@ -238,12 +286,12 @@ func Uninstall(ctx context.Context, root string, preserveTemplate func(string) b
 				backupRoot = residentRoot
 				backupPath = strings.TrimPrefix(path, config.DirName+"/")
 			}
-			handle, openErr := filesystem.Open(backupRoot)
-			if openErr != nil { // coverage-ignore: lock and root were successfully read first; an Open failure now requires an execution-identity filesystem fault
+			handle, openErr := ops.open(backupRoot)
+			if openErr != nil {
 				return report, fmt.Errorf("open local-document root: %w", openErr)
 			}
 			info, statErr := handle.LinkInfo(backupPath)
-			if statErr != nil && !errors.Is(statErr, os.ErrNotExist) { // coverage-ignore: confined inspection faults require an execution-identity filesystem failure; absent and unsafe paths have semantic coverage
+			if statErr != nil && !errors.Is(statErr, os.ErrNotExist) {
 				_ = handle.Close()
 				return report, fmt.Errorf("inspect local document %s: %w", path, statErr)
 			}
@@ -252,16 +300,18 @@ func Uninstall(ctx context.Context, root string, preserveTemplate func(string) b
 					_ = handle.Close()
 					return report, fmt.Errorf("unsafe local document %s", path)
 				}
-				if _, backupErr := handle.Backup(backupPath); backupErr != nil { // coverage-ignore: backup publication failure requires an execution-identity filesystem fault; regular-file preservation has semantic coverage
+				bak, backupErr := handle.Backup(backupPath)
+				if backupErr != nil {
 					_ = handle.Close()
 					return report, fmt.Errorf("back up local document %s: %w", path, backupErr)
 				}
+				report.Backups = append(report.Backups, Backup{Path: path, Bak: bak})
 			}
-			if closeErr := handle.Close(); closeErr != nil { // coverage-ignore: Close on a just-opened root fails only through an execution-identity filesystem fault
+			if closeErr := handle.Close(); closeErr != nil {
 				return report, fmt.Errorf("close local-document root: %w", closeErr)
 			}
 		}
-		removed, err := RemoveGeneratedFile(abs)
+		removed, err := ops.removeFile(abs)
 		if err != nil {
 			return report, err
 		}
@@ -282,7 +332,7 @@ func Uninstall(ctx context.Context, root string, preserveTemplate func(string) b
 	for _, d := range dirList {
 		_ = os.Remove(d)
 	}
-	if err := os.Remove(lockPath); err != nil { // coverage-ignore: lock was just loaded, so removal fails only on a permission fault root bypasses
+	if err := ops.remove(lockPath); err != nil { // coverage-ignore: lock was just loaded, so removal fails only on a permission fault root bypasses
 		return report, fmt.Errorf("remove lock: %w", err)
 	}
 	return report, nil

@@ -57,6 +57,8 @@ func TestLocalDocDeclarationsValidateAndNormalize(t *testing.T) {
 		t.Fatalf("normalized=%v source=%q", got, c.Source())
 	}
 	for _, bad := range []string{
+		"localDocs: null\n",
+		"localDocs: wrong\n",
 		"localDocs:\n  - name: runbooks/x\n    title: X\n    description: X\n  - name: runbooks/x\n    title: Y\n    description: Y\n",
 		"localDocs:\n  - name: ../x\n    title: X\n    description: X\n",
 		"localDocs:\n  - not-a-mapping\n",

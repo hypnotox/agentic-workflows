@@ -1,6 +1,7 @@
 package project
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"maps"
@@ -661,6 +662,19 @@ func (f publicationFailureFilesystem) Publish(string, []byte, os.FileMode) error
 	return f.err
 }
 
+type removalFailureFilesystem struct {
+	syncFilesystem
+	path string
+	err  error
+}
+
+func (f removalFailureFilesystem) Remove(path string) error {
+	if path == f.path {
+		return f.err
+	}
+	return f.syncFilesystem.Remove(path)
+}
+
 type readFailureFilesystem struct {
 	syncFilesystem
 	err error
@@ -866,6 +880,62 @@ func TestSyncFilesystemFailuresPreserveErrorIdentity(t *testing.T) {
 			_, _, _, err = p.syncReportWithPitfalls(testContext(t), nil, tc.wrap(filesystems, failure), corpus, pitfalls, topics, eff)
 			if !errors.Is(err, failure) {
 				t.Fatalf("error = %v, want %v", err, failure)
+			}
+		})
+	}
+}
+
+// invariant: rendering/sync-and-drift:local-doc-prune-preserved (TestLocalDocPruneFaultsKeepRecoveryAndLock)
+func TestLocalDocPruneFaultsKeepRecoveryAndLock(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		wrap func(syncFilesystem, error) syncFilesystem
+	}{
+		{"backup publication", func(f syncFilesystem, err error) syncFilesystem {
+			return publicationFailureFilesystem{syncFilesystem: f, err: err, calls: new(int)}
+		}},
+		{"removal after backup", func(f syncFilesystem, err error) syncFilesystem {
+			return removalFailureFilesystem{syncFilesystem: f, path: "docs/runbooks/incident.md", err: err}
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
+			p, err := Open(testContext(t), root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := p.Sync(); err != nil {
+				t.Fatal(err)
+			}
+			output := filepath.Join(root, "docs/runbooks/incident.md")
+			before, err := os.ReadFile(output)
+			if err != nil {
+				t.Fatal(err)
+			}
+			p.Cfg.LocalDocs = nil
+			filesystems, closeAll, err := p.openSyncFilesystems()
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer closeAll()
+			filesystems.tracked = tc.wrap(filesystems.tracked, errors.New(tc.name))
+			corpus, pitfalls, topics, eff, err := p.deriveOperationStateWithPitfalls()
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, _, _, err = p.syncReportWithPitfalls(testContext(t), nil, filesystems, corpus, pitfalls, topics, eff)
+			if err == nil || !strings.Contains(err.Error(), tc.name) {
+				t.Fatalf("sync error = %v", err)
+			}
+			if got, readErr := os.ReadFile(lockFile(root)); readErr != nil || !strings.Contains(string(got), "docs/runbooks/incident.md") {
+				t.Fatalf("lock = %q, %v", got, readErr)
+			}
+			if tc.name == "backup publication" {
+				if got, readErr := os.ReadFile(output); readErr != nil || !bytes.Equal(got, before) {
+					t.Fatalf("source = %q, %v", got, readErr)
+				}
+			} else if got, readErr := os.ReadFile(output + ".awf-bak"); readErr != nil || !bytes.Equal(got, before) {
+				t.Fatalf("recovery = %q, %v", got, readErr)
 			}
 		})
 	}

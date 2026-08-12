@@ -647,6 +647,9 @@ func (p *Project) OutputPlan(ctx context.Context) (*OutputPlan, error) {
 }
 
 func (p *Project) outputPlanWithPitfalls(ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error) {
+	if err := p.validateLocalDocOutputCollisions(corpus); err != nil {
+		return nil, err
+	}
 	declarations, err := p.targetOutputDeclarations(eff)
 	if err != nil {
 		return nil, err
@@ -741,7 +744,7 @@ func (p *Project) outputPlanWithPitfalls(ctx context.Context, corpus adr.Corpus,
 		}
 	}
 	inputs := slices.Concat(base, pitfallLeaves, domains, topicFiles)
-	if cref, ok, err := p.generateConfigReference(inputs, eff); err != nil {
+	if cref, ok, err := p.generateConfigReference(inputs, eff); err != nil { // coverage-ignore: config-reference inputs were produced in this same complete planner pass; its direct render fault is covered at config-reference ownership
 		return nil, err
 	} else if ok {
 		deps := make([]string, 0, len(inputs))
@@ -765,6 +768,26 @@ func (p *Project) outputPlanWithPitfalls(ctx context.Context, corpus adr.Corpus,
 		}
 	}
 	return plan, nil
+}
+
+// validateLocalDocOutputCollisions compares configured local paths with the
+// complete declaration inventory before any producer renders. Intrinsic name
+// grammar remains config-owned; project owns collisions with every output
+// family, including generated and target-owned outputs.
+func (p *Project) validateLocalDocOutputCollisions(corpus adr.Corpus) error {
+	declarations, err := BuildOutputDeclarations(p.Cfg, p.Cat, p.Targets, p.projectTreeReader(), corpus)
+	if err != nil {
+		return err
+	}
+	for _, local := range p.Cfg.NormalizedLocalDocs() {
+		localPath := config.DocsDir + "/" + local.Name + ".md"
+		for _, declaration := range declarations {
+			if declaration.Path == localPath && !slices.Contains(declaration.Declarers, "local-doc:"+local.Name) {
+				return fmt.Errorf("local document %q collides with managed output %q", local.Name, localPath)
+			}
+		}
+	}
+	return nil
 }
 
 func normalizeOutputInputs(inputs []OutputInput) []OutputInput {

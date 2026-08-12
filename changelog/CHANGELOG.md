@@ -8,6 +8,10 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Features
+
+- Repositories can declare additive `localDocs` whose sole inline-editable Markdown body remains managed by ordinary render and check workflows. Removing a declaration or uninstalling awf preserves the complete document at a sibling `.awf-bak` recovery file (with a numbered suffix when needed).
+
 ## [0.35.1] - 2026-08-12
 
 ### Bug fixes

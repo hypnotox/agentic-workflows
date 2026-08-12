@@ -65,11 +65,27 @@ type Config struct {
 	MemoryCite        *MemoryCiteConfig   `yaml:"memoryCite"`
 	CommitPolicy      *CommitPolicyConfig `yaml:"commitPolicy"`
 	Render            *RenderConfig       `yaml:"render"`
-	LocalDocs         []LocalDoc          `yaml:"localDocs"`
+	LocalDocs         LocalDocs           `yaml:"localDocs"`
 	root              string              // <project>/.awf, for sidecar/part resolution
 	raw               []byte              // the exact config.yaml bytes Load read, for in-place byte edits
 	read              TreeReader          // selected filesystem or immutable snapshot universe
 	filesystem        bool
+}
+
+// LocalDocs preserves the distinction between an omitted declaration list and
+// an explicitly null or non-list value.
+type LocalDocs []LocalDoc
+
+func (d *LocalDocs) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind != yaml.SequenceNode {
+		return errors.New("localDocs must be a list, not null")
+	}
+	var decoded []LocalDoc
+	if err := node.Decode(&decoded); err != nil {
+		return err
+	}
+	*d = decoded
+	return nil
 }
 
 // LocalDoc declares one project-owned document beneath docs. Its custom decoder
@@ -482,6 +498,17 @@ func ParseTree(awfDir string, b []byte, read TreeReader) (*Config, error) {
 	var source yaml.Node
 	if err := yaml.Unmarshal(b, &source); err != nil { // coverage-ignore: the strict decoder accepted the same YAML bytes above
 		return nil, fmt.Errorf("parse config presence: %w", err)
+	}
+	// yaml.v3 does not dispatch a slice decoder for an explicit null. Inspect
+	// the closed root mapping so omission stays additive while every supplied
+	// localDocs value has the required sequence shape.
+	if len(source.Content) > 0 && source.Content[0].Kind == yaml.MappingNode {
+		mapping := source.Content[0]
+		for i := 0; i+1 < len(mapping.Content); i += 2 {
+			if mapping.Content[i].Value == "localDocs" && mapping.Content[i+1].Kind != yaml.SequenceNode {
+				return nil, errors.New("parse config: localDocs must be a list")
+			}
+		}
 	}
 
 	c.root = awfDir

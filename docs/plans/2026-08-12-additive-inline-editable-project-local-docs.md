@@ -318,3 +318,33 @@ Record deviations, spike answers, follow-ups, and findings surfaced during imple
 - Plan review found that broad positive grep could not prove coherent edit boundaries. Disposition:
   added per-surface guidance tests with explicit negative direct-edit assertions plus recorded
   semantic inspection of the rendered docs and both skill targets.
+- Phase 2 post-review settlement: output collision validation now consults the complete normalized
+  declaration inventory before producer rendering, rather than only catalog documents. This is a
+  reasoned correction under the ADR's collision authority: target-owned and generated outputs are
+  equally ambiguous with a local path, while the local declaration excludes its own declarer.
+- Phase 2 post-review settlement: explicit `localDocs: null` and every non-sequence are rejected
+  by root-node presence inspection because YAML bypasses the collection decoder for null; omission
+  and an empty sequence remain valid and authored list order is not rewritten.
+- Phase 2 post-review settlement: resident uninstall owns structured local backup results and
+  presentation, retaining the exact `.awf-bak[.N]` selected by the shared confined backup operation.
+  A private dependency-composed uninstall seam tests inspection, backup-publication, and
+  post-backup-removal faults without importing project or spelling the local template identity.
+- Phase 2 post-review settlement: dedicated prune and uninstall fault matrices cover complete
+  recovery bytes, first-free suffixes, absence, unsafe/symlink refusal, backup publication and
+  removal failures, reporting, and old-lock retention. Reachable local prune and uninstall fault
+  branches no longer claim structural coverage impossibility.
+- Phase 2 post-review settlement: the complete output-plan invariant now attaches to
+  `TestLocalDocsOutputPlan`, which proves plural sorted local nodes, separate template/declarer
+  identity, ordinary Markdown policy, regeneration, and catalog and layout independence. The
+  local-prune invariant attaches to its dedicated preservation fault matrix, not runner pruning.
+- Phase 2 post-review settlement: staged drift regression proves a coherent staged local config,
+  output, and lock universe is unchanged when the working-tree local output and declaration are
+  removed. It adds no staged removal, new-output, or reference semantics.
+- Phase 2 post-review settlement: the Unreleased changelog now tells adopters about `localDocs`,
+  its sole inline-editable body, ordinary managed checks, and `.awf-bak` prune/uninstall recovery.
+- Semantic inspection after settlement covered `docs/working-with-awf.md`, `docs/doc-standard.md`,
+  `docs/architecture.md`, `.claude/skills/awf-writing-docs/SKILL.md`,
+  `.claude/skills/awf-using-awf/SKILL.md`, `.pi/skills/awf-writing-docs/SKILL.md`, and
+  `.pi/skills/awf-using-awf/SKILL.md`. The passages remain coherent, preserve the sole editable
+  body and recovery boundary, and do not project Phase 3 agent-guide discovery or Phase 4 scaffold
+  command guidance.

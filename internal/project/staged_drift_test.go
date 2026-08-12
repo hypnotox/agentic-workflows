@@ -107,6 +107,51 @@ func TestCheckStagedDriftUsesIndexedTemplateSourceMappings(t *testing.T) {
 	}
 }
 
+func TestCheckStagedDriftLocalDocsUsesIndexUniverse(t *testing.T) {
+	const configYAML = "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n"
+	root := scaffold(t, configYAML)
+	repo := gitfixture.InitRepoAt(t, root)
+	gitfixture.AddAll(t, repo)
+	gitfixture.Commit(t, repo, "config", nil)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	gitfixture.AddAll(t, repo)
+	gitfixture.Commit(t, repo, "local document", nil)
+	// Stage the coherent config, output, and lock universe, then remove its
+	// working-tree local facts. The staged checker must not consult the latter.
+	gitfixture.Stage(t, repo, map[string]string{
+		".awf/config.yaml":          mustReadFile(t, filepath.Join(root, ".awf/config.yaml")),
+		"docs/runbooks/incident.md": mustReadFile(t, filepath.Join(root, "docs/runbooks/incident.md")),
+		".awf/awf.lock":             mustReadFile(t, filepath.Join(root, ".awf/awf.lock")),
+	})
+	before, err := CheckStagedDriftRoot(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(root, "docs/runbooks/incident.md")); err != nil {
+		t.Fatal(err)
+	}
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\n")
+	after, err := CheckStagedDriftRoot(testContext(t), root)
+	if err != nil || !reflect.DeepEqual(after, before) {
+		t.Fatalf("staged local-doc universe contaminated: before=%v after=%v err=%v", before, after, err)
+	}
+}
+
+func mustReadFile(t *testing.T, path string) string {
+	t.Helper()
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
 func TestStagedDriftRenderedOutputInvariant(t *testing.T) {
 	tree, err := snapshot.NewTree([]snapshot.File{
 		{Path: ".awf/efforts/.gitignore", Mode: snapshot.Regular, Bytes: []byte("resident edit")},

@@ -19,6 +19,49 @@ import (
 // a truncated enumeration. A pre-adoption tree (no Git worktree) enumerates the
 // filesystem directly, so an unreadable directory there used to be skipped and
 // the plan, and the drift oracle computed from it, silently narrowed.
+// invariant: rendering/project-output-plan:output-plan-complete (TestLocalDocsOutputPlan)
+func TestLocalDocsOutputPlan(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/z\n    title: Z\n    description: Z document.\n  - name: runbooks/a\n    title: A\n    description: A document.\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan, err := p.OutputPlan(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var paths []string
+	for _, node := range plan.Nodes {
+		if strings.HasPrefix(node.Path, "docs/runbooks/") {
+			paths = append(paths, node.Path)
+			if node.Recipe.TemplateID != localDocTID || !node.Policy.ScanReferences || !node.Policy.ScanSkillReferences || !node.Policy.Regenerate || !strings.HasPrefix(node.Declarers[0], "local-doc:") {
+				t.Fatalf("local node = %#v", node)
+			}
+		}
+	}
+	if !slices.Equal(paths, []string{"docs/runbooks/a.md", "docs/runbooks/z.md"}) {
+		t.Fatalf("local paths = %v", paths)
+	}
+	if _, ok := p.layout().Docs["runbooks/a"]; ok {
+		t.Fatal("local document entered catalog layout")
+	}
+	if p.Cat.Docs["runbooks/a"].TID != "" {
+		t.Fatal("local document entered catalog")
+	}
+}
+
+func TestLocalDocCollisionWithTargetOutputPrecedesRendering(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/x\n    title: X\n    description: X document.\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.Targets = append(p.Targets, Target{Name: "collision", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "docs/runbooks/x.md", TemplateID: "docs/architecture.md.tmpl", Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}})
+	if _, err := p.OutputPlan(testContext(t)); err == nil || !strings.Contains(err.Error(), "collides with managed output") {
+		t.Fatalf("collision error = %v", err)
+	}
+}
+
 func TestOutputPlanPropagatesPreAdoptionEnumerationFault(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\ndomains: [rendering]\n")
 	p, err := Open(testContext(t), root)
@@ -258,7 +301,6 @@ func TestOutputPolicyIsExplicit(t *testing.T) {
 // invariant: rendering/pi-workflows:pi-session-handoff-public-contract (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-runtime:pi-implementation-state-boundary (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-workflows:pi-implementation-batch-exclusivity (TestCurrentStateOutputPlanMatchesTree)
-// invariant: rendering/project-output-plan:output-plan-complete (TestCurrentStateOutputPlanMatchesTree)
 func TestCurrentStateOutputPlanMatchesTree(t *testing.T) {
 	root := filepath.Clean(filepath.Join("..", ".."))
 	p, err := Open(testContext(t), root)
