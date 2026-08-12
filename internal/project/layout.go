@@ -3,6 +3,7 @@ package project
 import (
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -113,10 +114,16 @@ func (p *Project) resolvedDocs() []map[string]any {
 	return out
 }
 
-// documentMapDocs builds the AGENTS.md document-map entries for the mandatory
-// DocumentMap docs from the catalog's title/desc, sorted by name (ADR-0062).
-// Unlike resolvedDocs it is UNCONDITIONAL - a mandatory doc-map line renders
-// from the complete catalog, matching the historically hardcoded lines.
+// documentMapDocs builds the catalog portion of the AGENTS.md map. Layout.Docs
+// remains catalog-only; local documents are a separate output family.
+func localDocsProjection(docs []config.LocalDoc) string {
+	projection := make([]string, 0, len(docs)*3)
+	for _, doc := range docs {
+		projection = append(projection, doc.Name, doc.Title, doc.Description)
+	}
+	return strings.Join(projection, "\x00")
+}
+
 func (p *Project) documentMapDocs() []map[string]any {
 	d := config.DocsDir
 	var names []string
@@ -130,9 +137,21 @@ func (p *Project) documentMapDocs() []map[string]any {
 	for _, name := range names {
 		e := p.Cat.Docs[name]
 		out = append(out, map[string]any{
-			"title": e.Title,
-			"desc":  e.Desc,
-			"path":  d + "/" + e.Path,
+			"name": name, "title": e.Title, "desc": e.Desc, "path": d + "/" + e.Path,
+		})
+	}
+	return out
+}
+
+// localDocumentMapDocs projects configured local documents in normalized name
+// order for the explicit agent-guide document-map union.
+func (p *Project) localDocumentMapDocs() []map[string]any {
+	locals := p.Cfg.NormalizedLocalDocs()
+	out := make([]map[string]any, 0, len(locals))
+	for _, local := range locals {
+		out = append(out, map[string]any{
+			"name": local.Name, "title": local.Title, "desc": local.Description,
+			"path": config.DocsDir + "/" + local.Name + ".md",
 		})
 	}
 	return out

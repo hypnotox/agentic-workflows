@@ -34,6 +34,12 @@ The layout docs map contains exactly every catalog document name and no other ke
 Origin: ADR-0251
 Backing: test
 
+### `invariant: local-doc-output-complete`
+
+Every valid local-document declaration produces one separately configured output through normalized metadata, shared-shell render, lock membership, working-tree regeneration drift, Markdown-link and skill-reference scans, and agent-guide discovery. Its body remains in-place preserved, and this ordinary working-tree coverage does not add staged semantics.
+Origin: ADR-additive-inline-editable-project-local-docs
+Backing: test
+
 ### `invariant: pitfall-adr-link-resolved`
 
 check fails a pitfall entry whose related list names an ADR number with no matching file under docs/decisions/.

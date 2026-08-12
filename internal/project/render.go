@@ -616,6 +616,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	data := p.data(ad, eff)
 	data["docs"] = p.resolvedDocs()
 	data["mandatoryDocs"] = p.documentMapDocs()
+	data["localDocs"] = p.localDocumentMapDocs()
 	rf, err := p.renderTarget("agents-doc", "", p.Cat.Docs["agents-doc"].TID,
 		p.Cat.Docs["agents-doc"].Sections, ad, data, "AGENTS.md", eff)
 	if err != nil {
@@ -629,6 +630,9 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 		}
 	}
 	rf.ConsumedInputs = normalizeOutputInputs(rf.ConsumedInputs)
+	if len(p.Cfg.LocalDocs) != 0 {
+		rf.ConfigHash = manifest.Hash([]byte(rf.ConfigHash + "\x00localDocs=" + localDocsProjection(p.Cfg.NormalizedLocalDocs())))
+	}
 	out = append(out, rf)
 	// Each descriptor-owned bridge is gated on the agents-doc render above. A
 	// target with an empty BridgeFile emits no bridge, so neutral instructions

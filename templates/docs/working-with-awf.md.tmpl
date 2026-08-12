@@ -381,6 +381,10 @@ honors a pre-set `AWF_VERSION` environment value on its own: `AWF_VERSION=1.2.3 
 .awf/bootstrap.sh` fetches that release instead of the pin, which is useful for trialing a version
 before committing to it.
 
+Declared local documents appear in the rendered `AGENTS.md` document map with their title, path,
+and description. Ordinary working-tree `awf check` validates Markdown links and skill references in
+their preserved inline bodies; it does not make them catalog documents or widen staged drift.
+
 The sync prints one provenance line per file whose rendered content actually changed, so a large
 upgrade diff comes with its own triage: `changed <path> (template)` is upstream template churn,
 already pinned by the standard's own per-artifact golden tests, safe to skim; `(config)` means

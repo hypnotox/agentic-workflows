@@ -203,6 +203,7 @@ func singletonTemplateContexts(t *testing.T, p *Project, eff map[string]bool) []
 		case entry.AgentsDoc:
 			data["docs"] = p.resolvedDocs()
 			data["mandatoryDocs"] = p.documentMapDocs()
+			data["localDocs"] = p.localDocumentMapDocs()
 		case entry.Generated:
 			files, err := p.RenderAll()
 			if err != nil {

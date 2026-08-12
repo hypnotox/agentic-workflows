@@ -77,6 +77,7 @@ Evaluate continuity independently; when durable continuity materially helps, use
 - **Decision index:** [{{ .layout.indexMd }}]({{ .layout.indexMd }}), generated status index.
 - **Plans:** [{{ .layout.plansDir }}]({{ .layout.plansDir }}), implementation directives.
 {{ range .mandatoryDocs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}), {{ .desc }}
+{{ end }}{{ range .localDocs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}), {{ .desc }}
 {{ end }}{{ range .docs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}), {{ .desc }}
 {{ end }}{{- range .data.docMap }}- **{{ .path }}:** [{{ .path }}]({{ .path }}){{ with .desc }}, {{ . }}{{ end }}
 {{ end -}}

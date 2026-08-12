@@ -32,9 +32,9 @@ Backing: test
 
 ### `invariant: document-map-lists-mandatory-docs`
 
-The document-map section of the rendered `AGENTS.md` always cites every catalog document-map doc (including the workflow guide, the documentation standard, and the agent-guide authoring standard) with its full title, link, and catalog description.
+The document-map section of the rendered `AGENTS.md` always cites every catalog document-map doc (including the workflow guide, the documentation standard, and the agent-guide authoring standard) with its full title, link, and catalog description, then appends the normalized name-sorted local-document union with each local title, live path link, and description. Local documents do not join the catalog or `Layout.Docs`.
 Origin: ADR-0148
-Revised-by: ADR-0251
+Revised-by: ADR-0251, ADR-additive-inline-editable-project-local-docs
 Backing: test
 
 ### `invariant: glossary-table-forced`

@@ -47,7 +47,11 @@ drift authority. **Pitfalls.** Run `awf new pitfall "<Title>"` to create one can
 source under `.awf/docs/pitfalls/` and report its repository-relative path without rendering. Edit
 that source, then run `awf render`. The compact generated `docs/pitfalls.md` index points to generated
 `docs/pitfalls/<slug>.md` leaves; read them but never edit them. Deleting an authored source retires
-its entry through ordinary render pruning. **Source map.** Section-overridable catalog docs and
+its entry through ordinary render pruning.
+
+Local documents appear in the rendered `AGENTS.md` document map with their title, path, and description. Ordinary working-tree `awf check` validates Markdown links and skill references in their preserved inline bodies; this does not make them catalog documents or widen staged drift.
+
+**Source map.** Section-overridable catalog docs and
 `AGENTS.md` use `awf:edit`. Topic pages name their metadata-and-claim-part pair, while indexes and
 domain navigation name the family globs. Glossary names its sidecar and
 `derived:awf-standard-vocabulary`; the pitfall index names `.awf/docs/pitfalls/*.md`, while each

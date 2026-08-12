@@ -46,3 +46,29 @@ func TestLocalDocAuthoringGuidance(t *testing.T) {
 		}
 	}
 }
+
+// invariant: rendering/doc-outputs:local-doc-output-complete (TestLocalDocDiscoveryGuidance)
+func TestLocalDocDiscoveryGuidance(t *testing.T) {
+	root := filepath.Clean(filepath.Join("..", ".."))
+	for _, rel := range []string{"docs/working-with-awf.md"} {
+		b, err := os.ReadFile(filepath.Join(root, rel))
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := string(b)
+		for _, want := range []string{"AGENTS.md` document map", "Markdown links", "skill references"} {
+			if !strings.Contains(got, want) {
+				t.Errorf("%s lacks %q", rel, want)
+			}
+		}
+	}
+	b, err := os.ReadFile(filepath.Join(root, "docs/working-with-awf.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"does not make them catalog documents", "or widen staged drift"} {
+		if !strings.Contains(string(b), want) {
+			t.Errorf("guide lacks boundary %q", want)
+		}
+	}
+}
