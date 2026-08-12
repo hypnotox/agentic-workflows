@@ -128,7 +128,11 @@ func Current() int { return registry[len(registry)-1].To }
 
 // retiredKeyRemovals is where each retired config key lives, so the
 // port-forward can strip it. An empty parent means a top-level key.
-var retiredKeyRemovals = []struct{ parent, key string }{
+type retiredConfigKey struct{ parent, key string }
+
+var retiredKeyRemovals = []retiredConfigKey{
+	{"", "invariants"},
+	{"audit", "baseBranch"},
 	{"", "workflowTelemetry"},
 	{"currentState", "topicCoverage"},
 	{"currentState", "topicFanout"},

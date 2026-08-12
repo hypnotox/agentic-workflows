@@ -584,7 +584,3 @@ func TestGlossaryTersenessNotesCoversShippedLayer(t *testing.T) {
 		}
 	})
 }
-
-// A local: true glossary sidecar is skipped by the render pass, so a malformed
-// data.terms reaches the advisory's own ingestion instead of failing earlier -
-// the same hole TestCheckPropagatesLocalGlossaryError exploits for checkGlossary.

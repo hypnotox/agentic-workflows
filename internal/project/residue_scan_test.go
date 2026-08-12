@@ -5,6 +5,7 @@ import (
 	"go/parser"
 	"go/token"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -33,6 +34,51 @@ var identityExempt = map[string]bool{
 
 // identityLiterals are the banned repo-identity tokens.
 var identityLiterals = []string{"hypnotox", "agentic-workflows"}
+
+// TestLiveTemplateAndCurrentStateRetiredConfigGuidanceAbsent protects the live
+// shipped guidance surfaces while naming the few unrelated uses of local
+// terminology that remain truthful.
+// invariant: rendering/templates:retired-config-guidance-absent (TestLiveTemplateAndCurrentStateRetiredConfigGuidanceAbsent)
+func TestLiveTemplateAndCurrentStateRetiredConfigGuidanceAbsent(t *testing.T) {
+	root := filepath.Join("..", "..")
+	allowProjectLocal := map[string]int{
+		".awf/topics/parts/config/migrations-and-locks/current-state.md": 2, // historical schema-37 migration fact
+		".awf/topics/parts/rendering/pi-workflows/current-state.md":      2, // Pi preference-file locality
+		"templates/docs/working-with-awf.md.tmpl":                        2, // Pi preference-file locality
+		"templates/pi/awf-subagents/index.ts.tmpl":                       1, // Pi preference-file locality
+	}
+	var paths []string
+	for _, dir := range []string{"templates", ".awf/topics/parts"} {
+		err := filepath.WalkDir(filepath.Join(root, dir), func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if !d.IsDir() {
+				paths = append(paths, filepath.ToSlash(path[len(root)+1:]))
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(paths) < 40 {
+		t.Fatalf("inspected only %d live template/current-state source files", len(paths))
+	}
+	for _, path := range paths {
+		b, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		src := string(b)
+		if strings.Contains(src, "local: true") {
+			t.Errorf("%s presents retired sidecar configuration", path)
+		}
+		if got, allowed := strings.Count(src, "project-local"), allowProjectLocal[path]; got != allowed {
+			t.Errorf("%s has %d project-local reference(s); want exactly %d unrelated allowed reference(s)", path, got, allowed)
+		}
+	}
+}
 
 // TestTemplateSourceResidue scans every embedded template source - all
 // branches of every conditional, which no render-based sweep can cover - and

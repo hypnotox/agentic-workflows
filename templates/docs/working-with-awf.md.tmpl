@@ -125,8 +125,8 @@ navigation name those family globs. Glossary names its sidecar and
 `derived:awf-standard-vocabulary`; the pitfall index names `.awf/docs/pitfalls/*.md`, while each
 pitfall leaf names its exact authored source. The ADR index names `derived:authored-adr-corpus`; the config
 reference names `derived:configspec` and `derived:project-configuration`; target bridges name
-`AGENTS.md`. Generated local docs and section-overridable outputs do not need duplicate markers.
-Authored ADRs, plans, and `local: true` docs are banner-free and remain directly authored. For any
+`AGENTS.md`. Section-overridable outputs do not need duplicate markers.
+Authored ADRs and plans are banner-free and remain directly authored. For any
 source change, edit the authority, run `awf render`, run `awf check`, and commit the regenerated
 outputs and lock together.
 
@@ -207,11 +207,6 @@ reference it, so expect a one-time stale flag until the next `awf render`. One c
 convention part consumes through a `{{ "{{=awf:gateCmd}}" }}`-style placeholder is a hard
 render error when deleted, not a silent decline: the placeholder contract requires a value;
 re-add the key to recover.
-
-**Project-local skills, agents, and docs.** Beyond overriding catalog artifacts, you can define your own.
-Catalog artifacts are shaped with convention parts; their name
-may be nested (`guides/ci`), the body lives at `.awf/docs/parts/<name>/content.md`, and the doc
-joins the document map and dead-link checks like any catalog doc.
 
 ### Pi workflow subagents
 

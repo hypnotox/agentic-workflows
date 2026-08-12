@@ -1,26 +1,16 @@
 package migrate
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
-// retiredConfigKeys is every config key a historical migration once wrote (or an
-// adopter once legitimately set) that the current schema no longer declares.
-//
-// MAINTENANCE OBLIGATION: a migration that retires a config key adds the key
-// here and to retiredKeyRemovals. That is the whole point of this test, so do
-// not skip it.
-var retiredConfigKeys = []struct {
-	name     string
-	fragment string
-}{
-	{"workflowTelemetry", "workflowTelemetry:\n  enabled: true\n"},
-	{"topicCoverage", "currentState:\n  topicCoverage: error\n"},
-	{"topicFanout", "currentState:\n  topicFanout: warn\n"},
-	{"maxClaimsPerTopic", "currentState:\n  maxClaimsPerTopic: 20\n"},
-}
+// retiredKeyRemovals is the production ledger of every config key a historical
+// migration once wrote (or an adopter once legitimately set) that the current
+// schema no longer declares. This test consumes that ledger directly so a
+// forward-port omission cannot hide behind a separate test-only inventory.
 
 // TestConfigForCurrentSchemaParsesEveryRetiredKey is the deterministic backstop
 // for a failure the per-key forward-port tests structurally cannot catch: they
@@ -37,14 +27,26 @@ var retiredConfigKeys = []struct {
 // docs/pitfalls.md has recorded this since ADR-0183 and it recurred anyway at
 // ADR-0194, which is why the rule now lives in a test rather than only in prose.
 func TestConfigForCurrentSchemaParsesEveryRetiredKey(t *testing.T) {
-	const base = "prefix: example\nskills: []\nagents: []\n"
-	for _, tc := range retiredConfigKeys {
-		t.Run(tc.name, func(t *testing.T) {
-			src := []byte(base + tc.fragment)
-			// The current strict parser must reject it, or the fragment is stale
+	const base = "prefix: example\nintegrationBranch: main\n"
+	for _, retired := range retiredKeyRemovals {
+		name := strings.TrimPrefix(retired.parent+".", ".") + retired.key
+		t.Run(name, func(t *testing.T) {
+			value := "retired"
+			if retired.parent == "" {
+				// ConfigForCurrentSchema first edits a historical skills sequence.
+				// A sequence keeps that independent editor precondition valid for
+				// every top-level ledger entry.
+				value = "[]"
+			}
+			fragment := retired.key + ": " + value + "\n"
+			if retired.parent != "" {
+				fragment = retired.parent + ":\n  " + fragment
+			}
+			src := []byte(base + fragment)
+			// The current strict parser must reject it, or the ledger entry is stale
 			// and this subtest would pass without proving anything.
 			if _, err := config.Parse("staged/.awf", src); err == nil {
-				t.Fatalf("%q is still accepted by the current schema; it does not belong in retiredConfigKeys", tc.fragment)
+				t.Fatalf("%q is still accepted by the current schema; it does not belong in retiredKeyRemovals", fragment)
 			}
 			// Every generation, not only those before the removal. A stamped
 			// generation is not proof the removal ever ran: two branches

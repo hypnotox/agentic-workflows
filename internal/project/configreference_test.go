@@ -391,7 +391,7 @@ func TestConfigReferenceNoBareVars(t *testing.T) {
 	}
 }
 
-// The config-reference sidecar is sections/local-only: data: and paths: refuse
+// The config-reference sidecar is sections-only: data: and paths: refuse
 // at open, unknown section names refuse, a declared-section drop renders.
 // invariant: config/configspec-and-reference:config-reference-data-rejected (TestConfigReferenceSidecarRules)
 func TestConfigReferenceSidecarRules(t *testing.T) {

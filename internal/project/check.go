@@ -98,9 +98,7 @@ func (p *Project) glossaryTersenessNotes() ([]string, error) {
 	}
 	// The on-disk sidecar never carries standardTerms, so overlay the catalog
 	// default exactly as render.go does upstream of the transform; without this
-	// the shipped layer would escape the threshold entirely. The ingestion can
-	// still fail here: a local: true sidecar is skipped by the render pass, so
-	// AdvisoryNotes having rendered the doc above does not vouch for it.
+	// the shipped layer would escape the threshold entirely.
 	records, err := mergedGlossaryRecords(withDefaultData(sc, p.Cat.Docs["glossary"].Data, specializedListDataKeys("docs", "glossary")...))
 	if err != nil {
 		return nil, err
@@ -309,8 +307,7 @@ func (p *Project) unusedVarDrift(files []RenderedFile) []manifest.Drift {
 // unusedDataDrift reports, per enabled artifact, the sidecar data: keys its
 // assembled sources reference nowhere, unioned across enabled targets
 // (ADR-0086 Decision 4). Domains are excluded - their sidecars are rejected
-// as paths-only at open. A local: true sidecar renders nothing, so every
-// key reports. A key referenced only inside a dropped section counts as
+// as paths-only at open. A key referenced only inside a dropped section counts as
 // unused: the drop makes it configuration that does nothing.
 func (p *Project) unusedDataDrift(files []RenderedFile) ([]manifest.Drift, error) {
 	type refset struct {
