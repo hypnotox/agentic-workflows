@@ -74,7 +74,7 @@ func withLayoutDefaults(data map[string]any) {
 
 func assertNoLeaks(t *testing.T, out string) {
 	t.Helper()
-	if strings.Contains(out, "awf:section") || strings.Contains(out, "awf:end") {
+	if strings.Contains(out, "<!-- awf:section") || strings.Contains(out, "<!-- awf:end") {
 		t.Errorf("markers leaked:\n%s", out)
 	}
 	if strings.Contains(out, "<no value>") {
@@ -1523,9 +1523,9 @@ func TestUsingAwfTemplate(t *testing.T) {
 		"<!-- awf:edit procedure: default; create  to override -->",
 		"# example-using-awf",
 		"",
-		"`.awf/` is the source. Never hand-edit rendered outputs.",
+		"`.awf/` is the source. Never hand-edit rendered outputs, except a declared local document's body between its `awf:edit-in-place` and `awf:end` markers; awf owns every other byte.",
 		"",
-		"Edit source, render, check, then stage the source, rendered outputs, and `.awf/awf.lock` together; then run the gate. A drift finding carries its own repair hint: follow it rather than guessing at the generated output.",
+		"Edit source or that narrow local body, render, check, then stage the source, rendered outputs, and `.awf/awf.lock` together; then run the gate. Removing a local declaration or uninstalling saves a present document as a sibling `.awf-bak` recovery file. A drift finding carries its own repair hint: follow it rather than guessing at the generated output.",
 		"",
 		"For an upgrade, run the bootstrap script and then perform the residue sweep. `docs/working-with-awf.md` owns detailed commands and generated-tree guidance; `docs/config-reference.md` owns configuration keys and their meanings.",
 		"",
@@ -1549,7 +1549,9 @@ func TestWritingDocsTemplate(t *testing.T) {
 		"<!-- awf:edit procedure: default; create  to override -->",
 		"# example-writing-docs",
 		"",
-		"Select the single document that owns the fact. Read `docs/doc-standard.md` before writing; when another surface owns the detail, reference it rather than restating it. Let the document travel in the commit that makes the fact true.",
+		"Select the single document that owns the fact. Read `docs/doc-standard.md` before writing; when another surface owns the detail, reference it rather than restating it. When no standard document owns a repository-specific fact, declare a `localDocs` item with a name, title, and description; reserved roots are `decisions`, `plans`, `domains`, `topics`, and `pitfalls`. Let the document travel in the commit that makes the fact true.",
+		"",
+		"Author a local document only between its `awf:edit-in-place` and `awf:end` markers; awf owns its heading and shell. Run ordinary render and check after edits. Declaration removal or uninstall preserves a present body in a sibling `.awf-bak` recovery file.",
 		"",
 		"When authoring reaches a file edit, invoke `example-using-awf` for the generated-tree transaction. `docs/doc-standard.md` owns the documentation rules.",
 		"",

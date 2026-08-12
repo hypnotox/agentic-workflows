@@ -106,6 +106,14 @@ func (h *Handle) Publish(path string, contents []byte, mode fs.FileMode) error {
 // numbered suffix. The supplied confined callbacks keep source access and
 // publication policy with the caller while this package owns the shared naming
 // and collision protocol.
+// Backup copies a source beneath this handle to its first free sibling backup.
+func (h *Handle) Backup(source string) (string, error) {
+	if err := validPath(source); err != nil {
+		return "", fmt.Errorf("filesystem: backup %q: %w", source, err)
+	}
+	return Backup(source, h.ReadWithMode, h.Publish)
+}
+
 func Backup(source string, readWithMode func(string) ([]byte, fs.FileMode, error), publish func(string, []byte, fs.FileMode) error) (string, error) {
 	contents, mode, err := readWithMode(source)
 	if err != nil {

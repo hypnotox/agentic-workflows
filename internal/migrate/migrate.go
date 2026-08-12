@@ -80,6 +80,7 @@ var registry = []Migration{
 	{To: effortArchiveGeneration, Name: "effort-archive-root", Apply: treeOnly(applyEffortArchiveRoot)},
 	{To: pitfallCorpusGeneration, Name: "pitfall-corpus", Apply: treeOnly(applyPitfallCorpus)},
 	{To: templateSourceGeneration, Name: "template-source-root", Apply: treeOnly(applyTemplateSourceRoot)},
+	{To: localDocsGeneration, Name: "local-docs", Apply: treeOnly(applyLocalDocs)},
 }
 
 // treeOnly adapts a migration that only rewrites the config tree to the
@@ -114,6 +115,7 @@ func applyCurrentStateTopicSubstrate(root string, w *Changes) error {
 
 const effortArchiveGeneration = 42
 const templateSourceGeneration = 44
+const localDocsGeneration = 45
 
 // applyEffortArchiveRoot creates a schema boundary for the archive marker.
 // Ordinary upgrade sync owns publication of the governed output and lock.
@@ -122,6 +124,9 @@ func applyEffortArchiveRoot(_ string, _ *Changes) error { return nil }
 // applyTemplateSourceRoot deliberately performs no byte rewrite: the optional
 // repository fact is absent-compatible and only a schema boundary is needed.
 func applyTemplateSourceRoot(_ string, _ *Changes) error { return nil }
+
+// applyLocalDocs is no-byte: an absent optional list declares no local docs.
+func applyLocalDocs(_ string, _ *Changes) error { return nil }
 
 // Current is the current schema generation (the highest registered To).
 func Current() int { return registry[len(registry)-1].To }

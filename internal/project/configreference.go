@@ -120,7 +120,8 @@ func (p *Project) currentValueResolvers() map[string]func() string {
 			}
 			return fmt.Sprintf("%d keys, %d set", len(p.Cfg.Vars), set)
 		},
-		"domains": func() string { return strconv.Itoa(len(p.Cfg.Domains)) + " configured" },
+		"localDocs": func() string { return strconv.Itoa(len(p.Cfg.LocalDocs)) + " configured" },
+		"domains":   func() string { return strconv.Itoa(len(p.Cfg.Domains)) + " configured" },
 		"tags": func() string {
 			if len(p.Cfg.Tags) == 0 {
 				return "(none)"

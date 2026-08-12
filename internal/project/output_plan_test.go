@@ -258,6 +258,7 @@ func TestOutputPolicyIsExplicit(t *testing.T) {
 // invariant: rendering/pi-workflows:pi-session-handoff-public-contract (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-runtime:pi-implementation-state-boundary (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-workflows:pi-implementation-batch-exclusivity (TestCurrentStateOutputPlanMatchesTree)
+// invariant: rendering/project-output-plan:output-plan-complete (TestCurrentStateOutputPlanMatchesTree)
 func TestCurrentStateOutputPlanMatchesTree(t *testing.T) {
 	root := filepath.Clean(filepath.Join("..", ".."))
 	p, err := Open(testContext(t), root)

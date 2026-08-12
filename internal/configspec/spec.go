@@ -128,6 +128,20 @@ var keys = []Entry{
 		Availability: "Each key is consumed only while a rendered artifact's template (or a `gateCmd`/`checkCmd` part placeholder) references it, except that `gateCmd` is also consumed by divergent effort-integration guidance.",
 	},
 	{
+		Path: "localDocs", Type: "list of {name, title, description} mappings", Default: "none",
+		Description:  "Additive repository-local documents. Each name is a lowercase kebab-case path below docs without .md; decisions, plans, domains, topics, and pitfalls are reserved. Title and description are nonblank one-line metadata.",
+		Availability: "Always; each entry renders one managed in-place document.",
+	},
+	{
+		Path: "localDocs[].name", Type: "lowercase kebab-case path", Default: "required", Description: "The docs-relative path without .md.", Availability: "Within each localDocs entry.",
+	},
+	{
+		Path: "localDocs[].title", Type: "string", Default: "required", Description: "The awf-owned document heading.", Availability: "Within each localDocs entry.",
+	},
+	{
+		Path: "localDocs[].description", Type: "string", Default: "required", Description: "The one-line document-map description.", Availability: "Within each localDocs entry.",
+	},
+	{
 		Path: "domains", Type: "string list", Default: "none",
 		Description:  "Freeform domain keys. Each renders a generated `docs/domains/<name>.md` doc (a compact topic list plus your `current-state` convention part) and can declare a file territory via the domain sidecar's `paths:`.",
 		Availability: "Always.",

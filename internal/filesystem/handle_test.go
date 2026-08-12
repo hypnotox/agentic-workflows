@@ -278,6 +278,27 @@ func TestHandleOperations(t *testing.T) {
 	}
 }
 
+func TestHandleBackupCopiesConfinedSource(t *testing.T) {
+	h, root := openFixture(t)
+	if err := os.WriteFile(filepath.Join(root, "source"), []byte("source bytes"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	backup, err := h.Backup("source")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if backup != "source.awf-bak" {
+		t.Fatalf("backup path = %q", backup)
+	}
+	contents, err := os.ReadFile(filepath.Join(root, backup))
+	if err != nil || string(contents) != "source bytes" {
+		t.Fatalf("backup contents = %q, %v", contents, err)
+	}
+	if _, err := h.Backup("../escaping"); err == nil {
+		t.Fatal("backup accepted escaping source")
+	}
+}
+
 func TestBackupPropagatesSourceReadError(t *testing.T) {
 	failure := errors.New("source read failed")
 	_, err := Backup("source", func(string) ([]byte, fs.FileMode, error) {

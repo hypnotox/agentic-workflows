@@ -31,6 +31,7 @@ func TestUninstallReportOwnsCompletePresentation(t *testing.T) {
 // A lock entry escaping the repo root (corrupted or malicious lock) must be
 // skipped: the out-of-tree target survives and the empty-dir ancestor walk
 // terminates instead of looping forever below the root.
+// invariant: rendering/sync-and-drift:uninstall-removes-lock-entries (TestUninstallSkipsEscapingLockPaths)
 func TestUninstallSkipsEscapingLockPaths(t *testing.T) {
 	root := t.TempDir()
 	victim := filepath.Join(root, "..", "victim.txt")
@@ -47,7 +48,7 @@ func TestUninstallSkipsEscapingLockPaths(t *testing.T) {
 	if err := lock.Save(config.LockPath(root)); err != nil {
 		t.Fatal(err)
 	}
-	report, err := Uninstall(testsupport.Context(t), root)
+	report, err := Uninstall(testsupport.Context(t), root, nil)
 	if err != nil {
 		t.Fatalf("Uninstall: %v", err)
 	}
@@ -72,6 +73,83 @@ func TestRemoveGeneratedFileAbsentIsNoOp(t *testing.T) {
 	}
 }
 
+// invariant: rendering/sync-and-drift:uninstall-removes-lock-entries (TestUninstallPreservesLocalDocuments)
+func TestUninstallPreservesLocalDocuments(t *testing.T) {
+	root := t.TempDir()
+	const local = "docs/runbooks/incident.md"
+	const ordinary = "docs/ordinary.md"
+	localPath := filepath.Join(root, filepath.FromSlash(local))
+	testsupport.WriteFile(t, localPath, "operator body\n")
+	testsupport.WriteFile(t, filepath.Join(root, filepath.FromSlash(ordinary)), "generated\n")
+	if err := os.MkdirAll(filepath.Join(root, config.DirName), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	lock := &manifest.Lock{Files: map[string]manifest.Entry{
+		local:    {TemplateID: "docs/local.md.tmpl"},
+		ordinary: {},
+	}}
+	if err := lock.Save(config.LockPath(root)); err != nil {
+		t.Fatal(err)
+	}
+	report, err := Uninstall(testsupport.Context(t), root, func(template string) bool { return template == "docs/local.md.tmpl" })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Removed != 2 {
+		t.Fatalf("removed = %d, want 2", report.Removed)
+	}
+	backup, err := os.ReadFile(localPath + ".awf-bak")
+	if err != nil || string(backup) != "operator body\n" {
+		t.Fatalf("local backup = %q, %v", backup, err)
+	}
+	for _, path := range []string{localPath, filepath.Join(root, filepath.FromSlash(ordinary)), config.LockPath(root)} {
+		if _, err := os.Lstat(path); !os.IsNotExist(err) {
+			t.Errorf("%s remains after uninstall: %v", path, err)
+		}
+	}
+}
+
+func TestUninstallRejectsUnsafeLocalDocument(t *testing.T) {
+	root := t.TempDir()
+	localPath := filepath.Join(root, "docs/local.md")
+	if err := os.MkdirAll(filepath.Dir(localPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(t.TempDir(), "outside")
+	testsupport.WriteFile(t, outside, "keep\n")
+	if err := os.Symlink(outside, localPath); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, config.DirName), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := (&manifest.Lock{Files: map[string]manifest.Entry{"docs/local.md": {TemplateID: "docs/local.md.tmpl"}}}).Save(config.LockPath(root)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Uninstall(testsupport.Context(t), root, func(template string) bool { return template == "docs/local.md.tmpl" }); err == nil || !strings.Contains(err.Error(), "unsafe local document") {
+		t.Fatalf("unsafe local document error = %v", err)
+	}
+	if _, err := os.Stat(config.LockPath(root)); err != nil {
+		t.Fatalf("lock removed after unsafe refusal: %v", err)
+	}
+}
+
+func TestUninstallLocalDocumentAbsentNeedsNoBackup(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, config.DirName), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := (&manifest.Lock{Files: map[string]manifest.Entry{"docs/missing.md": {TemplateID: "docs/local.md.tmpl"}}}).Save(config.LockPath(root)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Uninstall(testsupport.Context(t), root, func(template string) bool { return template == "docs/local.md.tmpl" }); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "docs/missing.md.awf-bak")); !os.IsNotExist(err) {
+		t.Fatalf("absent local document has backup: %v", err)
+	}
+}
+
 func TestUninstallRemovalFailureKeepsLock(t *testing.T) {
 	root := t.TempDir()
 	const locked = "generated.md"
@@ -87,7 +165,7 @@ func TestUninstallRemovalFailureKeepsLock(t *testing.T) {
 	if err := lock.Save(config.LockPath(root)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Uninstall(testsupport.Context(t), root); err == nil || !strings.Contains(err.Error(), "remove generated file") {
+	if _, err := Uninstall(testsupport.Context(t), root, nil); err == nil || !strings.Contains(err.Error(), "remove generated file") {
 		t.Fatalf("uninstall error = %v", err)
 	}
 	if _, err := os.Stat(config.LockPath(root)); err != nil {

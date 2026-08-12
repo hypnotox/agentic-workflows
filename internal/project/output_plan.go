@@ -337,6 +337,13 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		}
 		add(out, e.TID, declarer, declaredInputs)
 	}
+	for _, local := range cfg.NormalizedLocalDocs() {
+		declaredInputs, err := markdownInputs(localDocTID)
+		if err != nil { // coverage-ignore: localDocTID is a closed embedded Markdown identity, validated by the template census
+			return nil, err
+		}
+		add(config.DocsDir+"/"+local.Name+".md", localDocTID, "local-doc:"+local.Name, declaredInputs)
+	}
 	for _, entry := range pitfalls.All() {
 		declaredInputs, err := markdownInputs(pitfallEntryTID, OutputInput{Path: entry.SourcePath, Role: ArtifactAuthoredData})
 		if err != nil { // coverage-ignore: the pitfall entry descriptor owns one validated embedded Markdown template identity
@@ -687,6 +694,15 @@ func (p *Project) outputPlanWithPitfalls(ctx context.Context, corpus adr.Corpus,
 		}
 		// coverage-ignore: base output paths are unique by renderAllBase's precondition.
 		if err := add(f, f.TemplateID, deps...); err != nil {
+			return nil, err
+		}
+	}
+	localDocs, err := p.generateLocalDocs(eff)
+	if err != nil { // coverage-ignore: generateLocalDocs uses a closed embedded template with validated local metadata, so its error path is structurally unreachable
+		return nil, err
+	}
+	for _, f := range localDocs {
+		if err := add(f, f.Declarer); err != nil { // coverage-ignore: normalized local names are unique and validation rejects every output collision before render
 			return nil, err
 		}
 	}

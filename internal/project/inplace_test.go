@@ -70,6 +70,7 @@ func TestReadBackInPlaceBodyChangedStructuralHeading(t *testing.T) {
 	}
 }
 
+// invariant: rendering/inplace-and-placeholders:local-doc-body-inline (TestReadBackInPlaceBody)
 func TestReadBackInPlaceBody(t *testing.T) {
 	// invariant: rendering/inplace-and-placeholders:in-place-readback (exact interior, internal blank preserved)
 	t.Run("exact interior, internal blank preserved", func(t *testing.T) {

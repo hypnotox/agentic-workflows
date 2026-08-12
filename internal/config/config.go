@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -64,10 +65,58 @@ type Config struct {
 	MemoryCite        *MemoryCiteConfig   `yaml:"memoryCite"`
 	CommitPolicy      *CommitPolicyConfig `yaml:"commitPolicy"`
 	Render            *RenderConfig       `yaml:"render"`
+	LocalDocs         []LocalDoc          `yaml:"localDocs"`
 	root              string              // <project>/.awf, for sidecar/part resolution
 	raw               []byte              // the exact config.yaml bytes Load read, for in-place byte edits
 	read              TreeReader          // selected filesystem or immutable snapshot universe
 	filesystem        bool
+}
+
+// LocalDoc declares one project-owned document beneath docs. Its custom decoder
+// keeps the record closed even when YAML's permissive mapping decoder changes.
+type LocalDoc struct {
+	Name        string `yaml:"name"`
+	Title       string `yaml:"title"`
+	Description string `yaml:"description"`
+}
+
+func (d *LocalDoc) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind != yaml.MappingNode {
+		return errors.New("localDocs entry must be a mapping")
+	}
+	seen := map[string]bool{}
+	for i := 0; i < len(node.Content); i += 2 {
+		key, value := node.Content[i].Value, node.Content[i+1]
+		if seen[key] {
+			return fmt.Errorf("field %s already set in localDocs entry", key)
+		}
+		seen[key] = true
+		switch key {
+		case "name":
+			if err := decodeStringScalar(value, &d.Name, "localDocs.name"); err != nil {
+				return err
+			}
+		case "title":
+			if err := decodeStringScalar(value, &d.Title, "localDocs.title"); err != nil {
+				return err
+			}
+		case "description":
+			if err := decodeStringScalar(value, &d.Description, "localDocs.description"); err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("field %s not found in type config.LocalDoc", key)
+		}
+	}
+	return nil
+}
+
+// NormalizedLocalDocs returns the deterministic projection without rewriting
+// authored YAML list order.
+func (c *Config) NormalizedLocalDocs() []LocalDoc {
+	out := slices.Clone(c.LocalDocs)
+	slices.SortFunc(out, func(a, b LocalDoc) int { return strings.Compare(a.Name, b.Name) })
+	return out
 }
 
 // RenderConfig holds optional rendering facts.
@@ -622,6 +671,49 @@ func (c *Config) Validate() error {
 	if c.Render != nil {
 		if err := validateTemplateSourceRoot(c.Render.TemplateSourceRoot); err != nil {
 			return err
+		}
+	}
+	seenLocalDocs := map[string]bool{}
+	for i, doc := range c.LocalDocs {
+		if err := validateLocalDoc(doc); err != nil {
+			return fmt.Errorf("localDocs[%d]: %w", i, err)
+		}
+		if seenLocalDocs[doc.Name] {
+			return fmt.Errorf("localDocs[%d]: duplicate name %q", i, doc.Name)
+		}
+		seenLocalDocs[doc.Name] = true
+	}
+	return nil
+}
+
+func validateLocalDoc(doc LocalDoc) error {
+	if err := validateLocalDocName(doc.Name); err != nil {
+		return err
+	}
+	for field, value := range map[string]string{"title": doc.Title, "description": doc.Description} {
+		if strings.TrimSpace(value) == "" || strings.TrimSpace(value) != value || strings.ContainsAny(value, "\r\n") {
+			return fmt.Errorf("localDocs.%s must be nonblank single-line metadata", field)
+		}
+	}
+	return nil
+}
+
+func validateLocalDocName(name string) error {
+	if name == "" || strings.HasSuffix(name, ".md") || strings.Contains(name, "\\") || filepath.IsAbs(name) || path.Clean(name) != name {
+		return fmt.Errorf("localDocs.name %q must be a normalized lowercase kebab-case path without .md", name)
+	}
+	parts := strings.Split(name, "/")
+	for _, segment := range parts {
+		if segment == "" || segment == "." || segment == ".." {
+			return fmt.Errorf("localDocs.name %q must be a normalized lowercase kebab-case path without .md", name)
+		}
+		if err := ValidateArtifactName("localDocs", segment); err != nil {
+			return err
+		}
+	}
+	for _, reserved := range []string{"decisions", "plans", "domains", "topics", "pitfalls"} {
+		if parts[0] == reserved {
+			return fmt.Errorf("localDocs.name %q uses reserved documentation namespace %q", name, reserved)
 		}
 	}
 	return nil

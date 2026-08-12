@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
@@ -203,8 +204,9 @@ func RemoveGeneratedFile(path string) (bool, error) {
 
 // Uninstall removes awf's generated footprint while preserving dynamic resident
 // state. It is a free function so a broken config does not block it.
+// preserveTemplate is a bounded policy supplied by outer composition.
 // touches-state: rendering/sync-and-drift:uninstall-removes-lock-entries - lock-tracked file removal; proof in resident_test.go
-func Uninstall(ctx context.Context, root string) (UninstallReport, error) {
+func Uninstall(ctx context.Context, root string, preserveTemplate func(string) bool) (UninstallReport, error) {
 	lockPath := config.LockPath(root)
 	residentRoot := awfgit.ProjectResidentRoot(ctx, root)
 	lock, found, err := manifest.LoadOptional(lockPath)
@@ -229,6 +231,35 @@ func Uninstall(ctx context.Context, root string) (UninstallReport, error) {
 		abs := filepath.Join(root, path)
 		if IsResidentPath(path) {
 			abs = filepath.Join(residentRoot, filepath.FromSlash(path))
+		}
+		if preserveTemplate != nil && preserveTemplate(lock.Files[path].TemplateID) {
+			backupRoot, backupPath := root, path
+			if IsResidentPath(path) { // coverage-ignore: project policy recognizes only docs/local.md.tmpl, whose output path is never resident
+				backupRoot = residentRoot
+				backupPath = strings.TrimPrefix(path, config.DirName+"/")
+			}
+			handle, openErr := filesystem.Open(backupRoot)
+			if openErr != nil { // coverage-ignore: lock and root were successfully read first; an Open failure now requires an execution-identity filesystem fault
+				return report, fmt.Errorf("open local-document root: %w", openErr)
+			}
+			info, statErr := handle.LinkInfo(backupPath)
+			if statErr != nil && !errors.Is(statErr, os.ErrNotExist) { // coverage-ignore: confined inspection faults require an execution-identity filesystem failure; absent and unsafe paths have semantic coverage
+				_ = handle.Close()
+				return report, fmt.Errorf("inspect local document %s: %w", path, statErr)
+			}
+			if statErr == nil {
+				if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+					_ = handle.Close()
+					return report, fmt.Errorf("unsafe local document %s", path)
+				}
+				if _, backupErr := handle.Backup(backupPath); backupErr != nil { // coverage-ignore: backup publication failure requires an execution-identity filesystem fault; regular-file preservation has semantic coverage
+					_ = handle.Close()
+					return report, fmt.Errorf("back up local document %s: %w", path, backupErr)
+				}
+			}
+			if closeErr := handle.Close(); closeErr != nil { // coverage-ignore: Close on a just-opened root fails only through an execution-identity filesystem fault
+				return report, fmt.Errorf("close local-document root: %w", closeErr)
+			}
 		}
 		removed, err := RemoveGeneratedFile(abs)
 		if err != nil {

@@ -31,7 +31,7 @@ import (
 // Version is the awf release version - the single version authority
 // (ADR-0049): gate comparisons, the lock stamp, the bootstrap pin, and the
 // CLI output all read this const.
-const Version = "0.35.1"
+const Version = "0.36.0"
 
 // BridgeTrancheComplete blocks publication while the two-plan current-state
 // bridge tranche is only partially implemented. Plans 1 and 2 have both landed
@@ -82,6 +82,7 @@ var minVersionBySchema = map[int]string{
 	42: "0.33.0",
 	43: "0.34.0",
 	44: "0.35.1",
+	45: "0.36.0",
 }
 
 // ValidateSchemaMinimumVersion confirms that version is new enough to render a
@@ -527,7 +528,21 @@ func (p *Project) syncReportWithPitfalls(ctx context.Context, seed *InitAuthorit
 			// up before removal for the one-time hand-port instead of vanishing
 			// into git history (ADR-0156 item 9). A backup failure aborts the
 			// prune - never a silent fall-through to deletion.
-			if entry.TemplateID == coOwnedRunnerTID {
+			switch entry.TemplateID {
+			case localDocTID:
+				if info, existsErr := filesystem.LinkInfo(outputPath); existsErr != nil && !errors.Is(existsErr, fs.ErrNotExist) { // coverage-ignore: confined-handle inspection faults require execution-identity filesystem failure; normal missing and unsafe paths have semantic coverage
+					return backups, changes, pruned, fmt.Errorf("inspect pruned local document %s: %w", path, existsErr)
+				} else if existsErr == nil {
+					if info.Mode()&fs.ModeSymlink != 0 {
+						return backups, changes, pruned, fmt.Errorf("unsafe pruned local document %s", path) // coverage-ignore: an output-plan local document is produced only as a regular confined file; symlink substitution is prevented by the root handle
+					}
+					bak, bakErr := p.backupFileConfined(outputPath, filesystem)
+					if bakErr != nil { // coverage-ignore: backup publication failure requires an execution-identity filesystem fault; preservation behavior is covered on regular outputs
+						return backups, changes, pruned, fmt.Errorf("back up pruned local document %s: %w", path, bakErr)
+					}
+					backups = append(backups, Backup{Path: path, Bak: bak})
+				}
+			case coOwnedRunnerTID:
 				if info, existsErr := filesystem.LinkInfo(outputPath); existsErr == nil && info.Mode()&fs.ModeSymlink == 0 {
 					bak, bakErr := p.backupFileConfined(outputPath, filesystem)
 					if bakErr != nil {
@@ -563,6 +578,10 @@ func (p *Project) syncReportWithPitfalls(ctx context.Context, seed *InitAuthorit
 	}
 	return backups, changes, pruned, filesystems.tracked.Replace(lockPath, lockBytes, 0o644)
 }
+
+// IsLocalDocTemplate is the bounded recognition policy outer composition passes
+// to uninstall without leaking the template identity into resident.
+func IsLocalDocTemplate(templateID string) bool { return templateID == localDocTID }
 
 func (p *Project) lockPath() string {
 	return config.LockPath(p.Root)

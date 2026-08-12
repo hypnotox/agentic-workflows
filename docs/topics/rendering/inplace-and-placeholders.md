@@ -35,6 +35,12 @@ A backslash placed immediately before an awf placeholder-token opener in a conve
 Origin: ADR-0148
 Backing: test
 
+### `invariant: local-doc-body-inline`
+
+A declared local document has one unrestricted adopter-owned body between `awf:edit-in-place` and `awf:end`; its shared shell and heading are awf-owned and ordinary in-place readback preserves the body.
+Origin: ADR-additive-inline-editable-project-local-docs
+Backing: test
+
 ### `invariant: in-place-readback`
 
 On both sync and check, an in-place-editable section's body is read back from the existing output file between its awf:edit-in-place pointer and awf's next registered section pointer, excluding the rendered expected structural-heading slot, matched by that pointer's exact expected string rather than any pointer-shaped adopter line, or to end-of-file when it is the last section; when the output is absent or the pointer is missing, the body falls back to the template default.

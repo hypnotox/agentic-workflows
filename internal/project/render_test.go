@@ -4,9 +4,11 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
@@ -31,6 +33,93 @@ func syncedWorkflowDoc(t *testing.T, body string) string {
 		t.Fatal(err)
 	}
 	return string(b)
+}
+
+// invariant: rendering/inplace-and-placeholders:local-doc-body-inline (TestLocalDocRendersAndPreservesBody)
+func TestLocalDocRendersAndPreservesBody(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident-response\n    title: Incident response\n    description: Handle incidents.\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	output := filepath.Join(root, "docs/runbooks/incident-response.md")
+	first, err := os.ReadFile(output)
+	if err != nil || !strings.Contains(string(first), "# Incident response") || !strings.Contains(string(first), "awf:edit-in-place body") {
+		t.Fatalf("first local document = %q, %v", first, err)
+	}
+	body := "operator-owned body\n\nwith spacing\n"
+	edited := strings.Replace(string(first), "<!-- awf:edit-in-place body -->\n\n", "<!-- awf:edit-in-place body -->\n\n"+body, 1)
+	if err := os.WriteFile(output, []byte(edited), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	second, err := os.ReadFile(output)
+	if err != nil || !strings.Contains(string(second), "operator-owned body\n\nwith spacing") {
+		t.Fatalf("preserved local body = %q, %v", second, err)
+	}
+	corpus, err := adr.LoadCorpus(p.decisionsDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	declarations, err := BuildOutputDeclarations(p.Cfg, p.Cat, p.Targets, filesystemProjectReader{root: root}, corpus)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.ContainsFunc(declarations, func(d OutputDeclaration) bool {
+		return d.Path == "docs/runbooks/incident-response.md" && d.TemplateID == localDocTID
+	}) {
+		t.Fatalf("local document declaration missing: %#v", declarations)
+	}
+	p.Cfg.LocalDocs = nil
+	backups, _, pruned, err := p.SyncReport(testContext(t))
+	if err != nil || !slices.Contains(backups, Backup{Path: "docs/runbooks/incident-response.md", Bak: "docs/runbooks/incident-response.md.awf-bak"}) || !slices.Contains(pruned, "docs/runbooks/incident-response.md") {
+		t.Fatalf("local document prune = backups %#v, pruned %#v, error %v", backups, pruned, err)
+	}
+	backup, err := os.ReadFile(output + ".awf-bak")
+	if err != nil || !strings.Contains(string(backup), body) {
+		t.Fatalf("pruned local backup = %q, %v", backup, err)
+	}
+	if _, err := os.Lstat(output); !os.IsNotExist(err) {
+		t.Fatalf("pruned local document remains: %v", err)
+	}
+}
+
+func TestLocalDocPruneRejectsSymlinkAndKeepsLock(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	output := filepath.Join(root, "docs/runbooks/incident.md")
+	if err := os.Remove(output); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("outside", output); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	p.Cfg.LocalDocs = nil
+	if _, _, _, err := p.SyncReport(testContext(t)); err == nil || !strings.Contains(err.Error(), "unsafe pruned local document") {
+		t.Fatalf("symlink local document error = %v", err)
+	}
+	lock, err := os.ReadFile(lockFile(root))
+	if err != nil || !strings.Contains(string(lock), "docs/runbooks/incident.md") {
+		t.Fatalf("lock lost local document after unsafe refusal = %q, %v", lock, err)
+	}
+}
+
+func TestLocalDocRejectsStandardOutputCollision(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: architecture\n    title: Architecture\n    description: Duplicate standard output.\n")
+	if _, err := Open(testContext(t), root); err == nil || !strings.Contains(err.Error(), "collides with standard output") {
+		t.Fatalf("standard-output collision error = %v", err)
+	}
 }
 
 func TestCommitPolicyRenderDataProjection(t *testing.T) {

@@ -129,6 +129,7 @@ func TestRunnerPublicationSafe(t *testing.T) {
 // standard backup path - never clobbering a prior backup - instead of deleting
 // it, and still reports the path as pruned.
 // invariant: rendering/companion-scripts:runner-prune-backup (TestPruneBacksUpCoOwnedRunner)
+// invariant: rendering/sync-and-drift:local-doc-prune-preserved (TestPruneBacksUpCoOwnedRunner)
 func TestPruneBacksUpCoOwnedRunner(t *testing.T) {
 	for _, tc := range []struct {
 		name     string

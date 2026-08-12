@@ -26,6 +26,8 @@ A convention part replaces only its section body. A declared Markdown structural
 
 **Domain paths.** A domain sidecar's `paths:` selectors bound current-state topic ownership within that domain; context and coverage use the same anchored glob dialect. Working-tree and staged loading reject empty, duplicate, or malformed selectors. Historical audit projection intentionally omits domain sidecars, and audit does not infer documentation freshness from changed domain paths.
 
+**Local documents.** Declare repository-specific documentation with `localDocs` in `.awf/config.yaml` when no standard document owns it. Each item has only a lowercase kebab-case docs-relative name, title, and one-line description; `decisions`, `plans`, `domains`, `topics`, and `pitfalls` are reserved. Render `docs/<name>.md`, then edit only its body between `awf:edit-in-place` and `awf:end`; awf owns its shell and heading. Run `awf render` and `awf check` after declaration or body edits. Removing a declaration or uninstalling backs up a present document to a sibling `.awf-bak` recovery file before removal.
+
 **Reading generated source guidance.** The generated-by banner says that awf owns the rendered
 file; it is not an editing instruction. An `awf:edit` pointer identifies the convention part that
 owns one rendered section. An informational `awf:source` comment, when present immediately after

@@ -88,7 +88,7 @@ func TestUninstallPreservesResidentState(t *testing.T) {
 	if err := lock.Save(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
-	report, err := resident.Uninstall(testContext(t), root)
+	report, err := resident.Uninstall(testContext(t), root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +117,7 @@ func TestUninstallRemovesEmptyResidentRoot(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	report, err := resident.Uninstall(testContext(t), root)
+	report, err := resident.Uninstall(testContext(t), root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +161,7 @@ func TestUninstallRejectsUnsafeResidentRoot(t *testing.T) {
 				}
 				t.Cleanup(func() { _ = os.Chmod(efforts, 0o700) })
 			}
-			if _, err := resident.Uninstall(testContext(t), root); err == nil {
+			if _, err := resident.Uninstall(testContext(t), root, nil); err == nil {
 				t.Fatalf("unsafe %s efforts root accepted", kind)
 			}
 			if _, err := os.Stat(lockFile(root)); err != nil {

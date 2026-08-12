@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: additive-inline-editable-project-local-docs
-status: Proposed
+status: Implementing
 date: 2026-08-12
 ---
 # ADR-additive-inline-editable-project-local-docs: Additive Inline-Editable Project-Local Docs
@@ -158,3 +158,5 @@ output identity while permitting additive names outside today's catalog.
 ## Status history
 
 - 2026-08-12: Proposed
+- 2026-08-12: Implementing; content-sha256: c20a3f87e2a20820fa2dcf9152a50c87c1a1800b0d253c98cc027e2d211c6264
+- 2026-08-12: Applied; operations: update `config/configuration:config-expresses-repo-facts-only`, update `config/configuration:no-artifact-selection-surface`, add `config/configuration:local-doc-declarations`, add `rendering/inplace-and-placeholders:local-doc-body-inline`, update `rendering/project-output-plan:output-plan-complete`, add `rendering/sync-and-drift:local-doc-prune-preserved`, update `rendering/sync-and-drift:uninstall-removes-lock-entries`

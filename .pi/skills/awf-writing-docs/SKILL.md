@@ -10,6 +10,8 @@ description: "Use when authoring project documentation: select the document that
 <!-- awf:template-source templates/skills/writing-docs/SKILL.md.tmpl -->
 # awf-writing-docs
 
-Select the single document that owns the fact. Read `docs/doc-standard.md` before writing; when another surface owns the detail, reference it rather than restating it. Let the document travel in the commit that makes the fact true.
+Select the single document that owns the fact. Read `docs/doc-standard.md` before writing; when another surface owns the detail, reference it rather than restating it. When no standard document owns a repository-specific fact, declare a `localDocs` item with a name, title, and description; reserved roots are `decisions`, `plans`, `domains`, `topics`, and `pitfalls`. Let the document travel in the commit that makes the fact true.
+
+Author a local document only between its `awf:edit-in-place` and `awf:end` markers; awf owns its heading and shell. Run ordinary render and check after edits. Declaration removal or uninstall preserves a present body in a sibling `.awf-bak` recovery file.
 
 When authoring reaches a file edit, invoke `awf-using-awf` for the generated-tree transaction. `docs/doc-standard.md` owns the documentation rules.

@@ -81,6 +81,14 @@ func (p *Project) validateAgainstCatalog() error {
 	if err := checkSectionsAllowed("config-reference", "", p.Cat.Docs["config-reference"].Sections, cr.Sections); err != nil {
 		return err
 	}
+	for _, local := range p.Cfg.NormalizedLocalDocs() {
+		output := config.DocsDir + "/" + local.Name + ".md"
+		for name := range p.Cat.Docs {
+			if output == p.docOutPath(name) {
+				return fmt.Errorf("local document %q collides with standard output %q", local.Name, output)
+			}
+		}
+	}
 	return nil
 }
 

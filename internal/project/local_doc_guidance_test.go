@@ -1,0 +1,48 @@
+package project
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+// TestLocalDocAuthoringGuidance proves the shipped docs and both native skill
+// targets describe the declaration, narrow edit boundary, checks, and recovery.
+func TestLocalDocAuthoringGuidance(t *testing.T) {
+	root := filepath.Clean(filepath.Join("..", ".."))
+	for _, rel := range []string{
+		"docs/working-with-awf.md",
+		"docs/doc-standard.md",
+		".claude/skills/awf-writing-docs/SKILL.md",
+		".pi/skills/awf-writing-docs/SKILL.md",
+	} {
+		b, err := os.ReadFile(filepath.Join(root, rel))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, want := range []string{"localDocs", "awf:edit-in-place"} {
+			if !strings.Contains(string(b), want) {
+				t.Errorf("%s lacks %q", rel, want)
+			}
+		}
+	}
+	for _, rel := range []string{"docs/working-with-awf.md", ".claude/skills/awf-writing-docs/SKILL.md", ".claude/skills/awf-using-awf/SKILL.md", ".pi/skills/awf-writing-docs/SKILL.md", ".pi/skills/awf-using-awf/SKILL.md"} {
+		b, err := os.ReadFile(filepath.Join(root, rel))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(b), ".awf-bak") {
+			t.Errorf("%s lacks recovery guidance", rel)
+		}
+	}
+	for _, rel := range []string{".claude/skills/awf-using-awf/SKILL.md", ".pi/skills/awf-using-awf/SKILL.md"} {
+		b, err := os.ReadFile(filepath.Join(root, rel))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(b), "except a declared local document's body") {
+			t.Errorf("%s permits direct edits outside the in-place exception", rel)
+		}
+	}
+}

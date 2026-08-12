@@ -948,6 +948,25 @@ func (p *Project) encodeAgent(t Target, name, body string, data map[string]any) 
 	return encodeMarkdownAgent(a)
 }
 
+// generateLocalDocs owns the separate configured document family. It uses the
+// ordinary in-place renderer but has no catalog entry, sidecar, or layout slot.
+func (p *Project) generateLocalDocs(eff map[string]bool) ([]RenderedFile, error) {
+	out := make([]RenderedFile, 0, len(p.Cfg.LocalDocs))
+	for _, local := range p.Cfg.NormalizedLocalDocs() {
+		sc := config.Sidecar{Data: map[string]any{"title": local.Title}}
+		rf, err := p.renderTarget("local-doc", local.Name, localDocTID, []string{"body"}, sc,
+			p.data(sc, eff), config.DocsDir+"/"+local.Name+".md", eff)
+		if err != nil { // coverage-ignore: localDocTID is a closed embedded template and local metadata is validated before project open
+			return nil, err
+		}
+		rf.Declarer, rf.DeclarerProjection = "local-doc:"+local.Name, local.Name+"\x00"+local.Title+"\x00"+local.Description
+		rf.ConfigHash = manifest.Hash([]byte(rf.ConfigHash + "\x00" + rf.DeclarerProjection))
+		rf.Policy = OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}
+		out = append(out, rf)
+	}
+	return out, nil
+}
+
 func (p *Project) generatePitfallLeaves(corpus pitfall.Corpus, eff map[string]bool) ([]RenderedFile, error) {
 	out := make([]RenderedFile, 0, corpus.Len())
 	for _, entry := range corpus.All() {

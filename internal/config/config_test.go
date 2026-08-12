@@ -30,6 +30,7 @@ func TestConfigRejectsSelectionKeys(t *testing.T) {
 	}
 }
 
+// rule: config/configuration:config-expresses-repo-facts-only (TestLoadParsesRepositoryFacts)
 func TestLoadParsesRepositoryFacts(t *testing.T) {
 	dir := writeConfig(t, "prefix: example\nintegrationBranch: main\nvars:\n  testCmd: go test ./...\ndomains: [rendering]\n")
 	c, err := Load(dir)
@@ -38,6 +39,44 @@ func TestLoadParsesRepositoryFacts(t *testing.T) {
 	}
 	if c.Prefix != "example" || c.Vars["testCmd"] != "go test ./..." || len(c.Domains) != 1 || c.Domains[0] != "rendering" {
 		t.Errorf("Config = %#v", c)
+	}
+}
+
+// invariant: config/configuration:local-doc-declarations (TestLocalDocDeclarationsValidateAndNormalize)
+func TestLocalDocDeclarationsValidateAndNormalize(t *testing.T) {
+	valid := "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident-response\n    title: Incident response\n    description: Handle incidents.\n  - name: operations/deploy\n    title: Deploy\n    description: Deploy safely.\n"
+	c, err := Parse(".awf", []byte(valid))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	got := c.NormalizedLocalDocs()
+	if got[0].Name != "operations/deploy" || !strings.Contains(string(c.Source()), "runbooks/incident-response") {
+		t.Fatalf("normalized=%v source=%q", got, c.Source())
+	}
+	for _, bad := range []string{
+		"localDocs:\n  - name: runbooks/x\n    title: X\n    description: X\n  - name: runbooks/x\n    title: Y\n    description: Y\n",
+		"localDocs:\n  - name: ../x\n    title: X\n    description: X\n",
+		"localDocs:\n  - not-a-mapping\n",
+		"localDocs:\n  - name: x\n    name: y\n    title: X\n    description: X\n",
+		"localDocs:\n  - name: [x]\n    title: X\n    description: X\n",
+		"localDocs:\n  - name: x\n    title: [X]\n    description: X\n",
+		"localDocs:\n  - name: x\n    title: X\n    description: [X]\n",
+		"localDocs:\n  - name: decisions/x\n    title: X\n    description: X\n",
+		"localDocs:\n  - name: runbooks/x.md\n    title: X\n    description: X\n",
+		"localDocs:\n  - name: runbooks/Bad\n    title: X\n    description: X\n",
+		"localDocs:\n  - name: runbooks/x\n    title: \" \"\n    description: X\n",
+		"localDocs:\n  - name: runbooks/x\n    title: X\n    description: X\n    extra: no\n",
+	} {
+		c, err := Parse(".awf", []byte("prefix: example\nintegrationBranch: main\n"+bad))
+		if err == nil {
+			err = c.Validate()
+		}
+		if err == nil {
+			t.Fatalf("accepted invalid local docs %q", bad)
+		}
 	}
 }
 
