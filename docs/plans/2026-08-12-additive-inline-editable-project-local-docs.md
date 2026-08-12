@@ -260,7 +260,7 @@ Completes: ["lifecycle-frozen"]
 
 ### Task 5.1: Freeze the settled ADR and plan after assurance
 Latitude: exact
-Paths: ["docs/decisions/additive-inline-editable-project-local-docs.md", "docs/plans/2026-08-12-additive-inline-editable-project-local-docs.md", "docs/decisions/INDEX.md", ".awf/awf.lock"]
+Paths: ["docs/decisions/0272-additive-inline-editable-project-local-docs.md", "docs/plans/2026-08-12-additive-inline-editable-project-local-docs.md", "docs/decisions/INDEX.md", ".awf/awf.lock"]
 
 Begin only after implementation review has settled or its omission has been explicitly justified by
 the governing workflow. Reconcile actual reasoned deviations and implementation findings into this
