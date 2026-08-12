@@ -379,3 +379,13 @@ Record deviations, spike answers, follow-ups, and findings surfaced during imple
   Reapplied history/event and staged lifecycle validation are correct; the omission is a
   presentation/audit convention only. The committed settlement transaction is not rewritten, and
   future application commits must use the suffix.
+- Phase 4 semantic inspection covered the rendered command passage in `docs/working-with-awf.md`.
+  It teaches `awf new doc <name> <description> [--title <title>]`, `Api V2` derivation,
+  `docs/<name>.md`, inline body editing, ordinary checking, declaration-removal backup, and
+  uninstall recovery.
+- Phase 4 post-review settlement: explicit empty titles now remain distinguishable from an absent
+  flag and fail intrinsic config validation before mutation. A project-owned candidate preflight
+  replaces command-side config mutation, CLI tests cover derived and explicit titles plus every
+  required pre-mutation refusal, and injected dependency tests record the retryable config-only
+  state after a post-publication render failure. The settlement also restores the discovery proof
+  marker and adds the scaffold command to the Unreleased changelog.

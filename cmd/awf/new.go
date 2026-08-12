@@ -33,7 +33,7 @@ func runNew(ctx context.Context, root, kind string, args []string, stdout io.Wri
 	case kind == "pitfall":
 		return newPitfall(ctx, root, args, stdout)
 	case kind == localDocumentKind:
-		return newDoc(ctx, root, args, "", stdout)
+		return newDoc(ctx, root, args, nil, stdout)
 	case project.IsFreeformDomainKind(kind):
 		if len(args) != 1 {
 			return &usageErr{"usage: awf new domain <name>"}
@@ -80,46 +80,75 @@ func newPlan(ctx context.Context, root string, titleWords []string, stdout io.Wr
 	return writeStatus(stdout, "created: "+path)
 }
 
-func newDoc(ctx context.Context, root string, args []string, title string, stdout io.Writer) error {
+type localDocDependencies struct {
+	open        func(context.Context, string) (*project.Project, error)
+	read        func(string) ([]byte, error)
+	append      func([]byte, config.LocalDoc) ([]byte, error)
+	inspect     func(string) (os.FileInfo, error)
+	preflight   func(context.Context, *project.Project, config.LocalDoc) error
+	write       func(string, []byte, os.FileMode) error
+	synchronize func(context.Context, string, io.Writer) error
+}
+
+func productionLocalDocDependencies() localDocDependencies {
+	return localDocDependencies{
+		open:    project.Open,
+		read:    os.ReadFile,
+		append:  config.AppendLocalDoc,
+		inspect: os.Lstat,
+		preflight: func(ctx context.Context, p *project.Project, doc config.LocalDoc) error {
+			return p.PreflightLocalDoc(ctx, doc)
+		},
+		write:       os.WriteFile,
+		synchronize: runSync,
+	}
+}
+
+func newDoc(ctx context.Context, root string, args []string, title *string, stdout io.Writer) error {
+	return newDocWith(ctx, root, args, title, stdout, productionLocalDocDependencies())
+}
+
+func newDocWith(ctx context.Context, root string, args []string, title *string, stdout io.Writer, dependencies localDocDependencies) error {
 	if len(args) != 2 { // coverage-ignore: clispec enforces exact two positional grammar before dispatch
 		return &usageErr{"usage: awf new doc <name> <description> [--title <title>]"}
 	}
 	if err := gate(ctx, root); err != nil {
 		return err
 	}
-	if title == "" {
-		title = derivedLocalDocTitle(args[0])
+	resolvedTitle := derivedLocalDocTitle(args[0])
+	if title != nil {
+		resolvedTitle = *title
 	}
-	doc := config.LocalDoc{Name: args[0], Title: title, Description: args[1]}
-	p, err := project.Open(ctx, root)
-	if err != nil { // coverage-ignore: gate and strict config loading establish the adopted project before this second open
+	doc := config.LocalDoc{Name: args[0], Title: resolvedTitle, Description: args[1]}
+	p, err := dependencies.open(ctx, root)
+	if err != nil {
 		return err
 	}
+	source, err := dependencies.read(config.ConfigPath(root))
+	if err != nil {
+		return err
+	}
+	updated, err := dependencies.append(source, doc)
+	if err != nil {
+		return err
+	}
+	relativeOutput := filepath.ToSlash(filepath.Join("docs", doc.Name+".md"))
 	output := filepath.Join(root, "docs", filepath.FromSlash(doc.Name)+".md")
-	if _, err := os.Lstat(output); err == nil {
-		return fmt.Errorf("local document destination already exists: %s", filepath.ToSlash(filepath.Join("docs", doc.Name+".md")))
-	} else if !errors.Is(err, os.ErrNotExist) { // coverage-ignore: destination inspection faults are OS failures outside command semantics
+	if _, err := dependencies.inspect(output); err == nil {
+		return fmt.Errorf("local document destination already exists: %s", relativeOutput)
+	} else if !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("inspect local document destination: %w", err)
 	}
-	source, err := os.ReadFile(config.ConfigPath(root))
-	if err != nil { // coverage-ignore: project.Open already read this path; failure requires a concurrent filesystem race
+	if err := dependencies.preflight(ctx, p, doc); err != nil {
 		return err
 	}
-	updated, err := config.AppendLocalDoc(source, doc)
-	if err != nil { // coverage-ignore: strict config loading proves the source shape before this mutation
+	if err := dependencies.write(config.ConfigPath(root), updated, 0o644); err != nil {
 		return err
 	}
-	p.Cfg.LocalDocs = append(p.Cfg.LocalDocs, doc)
-	if _, err := p.OutputPlan(ctx); err != nil { // coverage-ignore: pre-mutation collision planning admits this appended declaration
+	if err := dependencies.synchronize(ctx, root, io.Discard); err != nil {
 		return err
 	}
-	if err := os.WriteFile(config.ConfigPath(root), updated, 0o644); err != nil { // coverage-ignore: config publication failure is an OS fault after planning
-		return err
-	}
-	if err := runSync(ctx, root, io.Discard); err != nil { // coverage-ignore: preflight OutputPlan validated the same configuration and destination
-		return err
-	}
-	return writeStatus(stdout, "created: "+filepath.ToSlash(filepath.Join("docs", doc.Name+".md")))
+	return writeStatus(stdout, "created: "+relativeOutput)
 }
 
 func derivedLocalDocTitle(name string) string {

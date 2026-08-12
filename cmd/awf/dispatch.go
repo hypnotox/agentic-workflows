@@ -169,7 +169,11 @@ var handlers = map[string]handler{
 			kind, args = args[0], args[1:]
 		}
 		if kind == localDocumentKind {
-			return handlerFailure(newDoc(c.ctx, c.root, args, c.inv.values["--title"], c.stdout))
+			var title *string
+			if value, present := c.inv.values["--title"]; present {
+				title = &value
+			}
+			return handlerFailure(newDoc(c.ctx, c.root, args, title, c.stdout))
 		}
 		return handlerFailure(runNew(c.ctx, c.root, kind, args, c.stdout))
 	},

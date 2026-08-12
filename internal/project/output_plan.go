@@ -770,6 +770,29 @@ func (p *Project) outputPlanWithPitfalls(ctx context.Context, corpus adr.Corpus,
 	return plan, nil
 }
 
+// PreflightLocalDoc validates one candidate declaration against the complete
+// project output plan without mutating the opened project's configuration.
+func (p *Project) PreflightLocalDoc(ctx context.Context, doc config.LocalDoc) error {
+	candidateConfig := *p.Cfg
+	candidateConfig.LocalDocs = append(slices.Clone(p.Cfg.LocalDocs), doc)
+	_, err := projectWithConfig(p, &candidateConfig).OutputPlan(ctx)
+	return err
+}
+
+func projectWithConfig(p *Project, cfg *config.Config) *Project {
+	return &Project{
+		Root:     p.Root,
+		roots:    p.roots,
+		Cfg:      cfg,
+		Cat:      p.Cat,
+		Targets:  p.Targets,
+		standard: p.standard,
+		read:     p.read,
+		nested:   p.nested,
+		repo:     p.repo,
+	}
+}
+
 // validateLocalDocOutputCollisions compares configured local paths with the
 // complete declaration inventory before any producer renders. Intrinsic name
 // grammar remains config-owned; project owns collisions with every output

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"maps"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
+	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -40,26 +42,146 @@ func TestRunNewScaffoldsADR(t *testing.T) {
 
 // invariant: tooling/cli:cli-creation-and-inventory (TestRunNewDocScaffoldsLocalDocument)
 func TestRunNewDocScaffoldsLocalDocument(t *testing.T) {
-	root := scaffoldProject(t)
-	var out bytes.Buffer
-	if err := newDoc(testContext(t), root, []string{"runbooks/api-v2", "How to operate API v2"}, "", &out); err != nil {
-		t.Fatal(err)
+	t.Run("derived title", func(t *testing.T) {
+		root := scaffoldProject(t)
+		var out bytes.Buffer
+		if err := newDoc(testContext(t), root, []string{"runbooks/api-v2", "How to operate API v2"}, nil, &out); err != nil {
+			t.Fatal(err)
+		}
+		if got, want := out.String(), "status: created: docs/runbooks/api-v2.md\n"; got != want {
+			t.Fatalf("output = %q, want %q", got, want)
+		}
+		assertLocalDocs(t, root, config.LocalDocs{{Name: "runbooks/api-v2", Title: "Api V2", Description: "How to operate API v2"}})
+		if _, err := os.Stat(filepath.Join(root, "docs/runbooks/api-v2.md")); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("explicit title through driver", func(t *testing.T) {
+		root := scaffoldProject(t)
+		testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+		var out, errOut bytes.Buffer
+		if code := run([]string{"awf", "new", "doc", "runbooks/api-v2", "How to operate API v2", "--title", "API v2"}, &out, &errOut); code != 0 {
+			t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+		}
+		assertLocalDocs(t, root, config.LocalDocs{{Name: "runbooks/api-v2", Title: "API v2", Description: "How to operate API v2"}})
+	})
+}
+
+func TestRunNewDocRefusesBeforeMutation(t *testing.T) {
+	for _, tc := range []struct {
+		name, docName, description string
+		title                      *string
+		prepare                    func(*testing.T, string)
+	}{
+		{name: "empty name", docName: "", description: "Description"},
+		{name: "empty description", docName: "runbooks/api", description: ""},
+		{name: "empty explicit title", docName: "runbooks/api", description: "Description", title: localDocTitle("")},
+		{name: "reserved name", docName: "plans/api", description: "Description"},
+		{name: "managed collision", docName: "architecture", description: "Description"},
+		{name: "configured duplicate without destination", docName: "runbooks/api", description: "Again", prepare: func(t *testing.T, root string) {
+			if err := newDoc(testContext(t), root, []string{"runbooks/api", "First"}, nil, io.Discard); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Remove(filepath.Join(root, "docs/runbooks/api.md")); err != nil {
+				t.Fatal(err)
+			}
+		}},
+		{name: "existing unmanaged destination", docName: "runbooks/api", description: "Description", prepare: func(t *testing.T, root string) {
+			testsupport.WriteFile(t, filepath.Join(root, "docs/runbooks/api.md"), "foreign")
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := scaffoldProject(t)
+			if tc.prepare != nil {
+				tc.prepare(t, root)
+			}
+			beforeConfig := mustReadCLIFile(t, config.ConfigPath(root))
+			beforeLock := mustReadCLIFile(t, config.LockPath(root))
+			if err := newDoc(testContext(t), root, []string{tc.docName, tc.description}, tc.title, io.Discard); err == nil {
+				t.Fatal("invalid local document accepted")
+			}
+			if got := mustReadCLIFile(t, config.ConfigPath(root)); got != beforeConfig {
+				t.Fatal("refusal mutated config")
+			}
+			if got := mustReadCLIFile(t, config.LockPath(root)); got != beforeLock {
+				t.Fatal("refusal mutated lock")
+			}
+		})
 	}
-	if got, want := out.String(), "status: created: docs/runbooks/api-v2.md\n"; got != want {
-		t.Fatalf("output = %q, want %q", got, want)
+
+	t.Run("repeated title flag", func(t *testing.T) {
+		root := scaffoldProject(t)
+		testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+		beforeConfig := mustReadCLIFile(t, config.ConfigPath(root))
+		var out, errOut bytes.Buffer
+		if code := run([]string{"awf", "new", "doc", "runbooks/api", "Description", "--title", "API", "--title", "Again"}, &out, &errOut); code != 2 {
+			t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+		}
+		if got := mustReadCLIFile(t, config.ConfigPath(root)); got != beforeConfig {
+			t.Fatal("flag refusal mutated config")
+		}
+	})
+}
+
+func TestNewDocDependencyFailures(t *testing.T) {
+	failure := errors.New("injected failure")
+	for _, step := range []string{"open", "read", "append", "inspect", "preflight", "write", "synchronize"} {
+		t.Run(step, func(t *testing.T) {
+			root := scaffoldProject(t)
+			beforeConfig := mustReadCLIFile(t, config.ConfigPath(root))
+			beforeLock := mustReadCLIFile(t, config.LockPath(root))
+			dependencies := productionLocalDocDependencies()
+			switch step {
+			case "open":
+				dependencies.open = func(context.Context, string) (*project.Project, error) { return nil, failure }
+			case "read":
+				dependencies.read = func(string) ([]byte, error) { return nil, failure }
+			case "append":
+				dependencies.append = func([]byte, config.LocalDoc) ([]byte, error) { return nil, failure }
+			case "inspect":
+				dependencies.inspect = func(string) (os.FileInfo, error) { return nil, failure }
+			case "preflight":
+				dependencies.preflight = func(context.Context, *project.Project, config.LocalDoc) error { return failure }
+			case "write":
+				dependencies.write = func(string, []byte, os.FileMode) error { return failure }
+			case "synchronize":
+				dependencies.synchronize = func(context.Context, string, io.Writer) error { return failure }
+			}
+			if err := newDocWith(testContext(t), root, []string{"runbooks/api", "Description"}, nil, io.Discard, dependencies); !errors.Is(err, failure) {
+				t.Fatalf("error = %v", err)
+			}
+			if got := mustReadCLIFile(t, config.LockPath(root)); got != beforeLock {
+				t.Fatal("failure mutated lock")
+			}
+			gotConfig := mustReadCLIFile(t, config.ConfigPath(root))
+			if step == "synchronize" {
+				if gotConfig == beforeConfig || !strings.Contains(gotConfig, "name: runbooks/api") {
+					t.Fatal("sync failure did not retain the valid declaration for retry")
+				}
+			} else if gotConfig != beforeConfig {
+				t.Fatal("pre-publication failure mutated config")
+			}
+			if _, err := os.Stat(filepath.Join(root, "docs/runbooks/api.md")); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("failure destination state = %v", err)
+			}
+		})
 	}
+	if err := newDocWith(testContext(t), t.TempDir(), nil, nil, io.Discard, localDocDependencies{}); err == nil {
+		t.Fatal("missing arguments accepted")
+	}
+}
+
+func localDocTitle(value string) *string { return &value }
+
+func assertLocalDocs(t *testing.T, root string, want config.LocalDocs) {
+	t.Helper()
 	cfg, err := config.Load(filepath.Join(root, ".awf"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := cfg.LocalDocs, (config.LocalDocs{{Name: "runbooks/api-v2", Title: "Api V2", Description: "How to operate API v2"}}); !slices.Equal(got, want) {
-		t.Fatalf("localDocs = %#v, want %#v", got, want)
-	}
-	if _, err := os.Stat(filepath.Join(root, "docs/runbooks/api-v2.md")); err != nil {
-		t.Fatal(err)
-	}
-	if err := newDoc(testContext(t), root, []string{"runbooks/api-v2", "Again"}, "API v2", io.Discard); err == nil {
-		t.Fatal("duplicate document accepted")
+	if !slices.Equal(cfg.LocalDocs, want) {
+		t.Fatalf("localDocs = %#v, want %#v", cfg.LocalDocs, want)
 	}
 }
 

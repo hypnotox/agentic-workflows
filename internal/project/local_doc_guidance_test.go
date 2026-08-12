@@ -47,7 +47,6 @@ func TestLocalDocAuthoringGuidance(t *testing.T) {
 	}
 }
 
-// invariant: rendering/doc-outputs:local-doc-output-complete (TestLocalDocDiscoveryGuidance)
 func TestLocalDocCommandGuidance(t *testing.T) {
 	root := filepath.Clean(filepath.Join("..", ".."))
 	for _, rel := range []string{"docs/working-with-awf.md", "README.md"} {
@@ -63,6 +62,7 @@ func TestLocalDocCommandGuidance(t *testing.T) {
 	}
 }
 
+// invariant: rendering/doc-outputs:local-doc-output-complete (TestLocalDocDiscoveryGuidance)
 func TestLocalDocDiscoveryGuidance(t *testing.T) {
 	root := filepath.Clean(filepath.Join("..", ".."))
 	for _, rel := range []string{"docs/working-with-awf.md"} {
