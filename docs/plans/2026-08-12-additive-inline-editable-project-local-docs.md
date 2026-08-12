@@ -389,3 +389,8 @@ Record deviations, spike answers, follow-ups, and findings surfaced during imple
   required pre-mutation refusal, and injected dependency tests record the retryable config-only
   state after a post-publication render failure. The settlement also restores the discovery proof
   marker and adds the scaffold command to the Unreleased changelog.
+- Integration reconciliation merged the current integration branch, preserved Implemented ADR-0270
+  retired-key handling and ADR-0271 unconditional `./awf` guidance, composed both Unreleased entries
+  with local docs, and numbered the pending record as ADR-0272. The empty-local-doc guide golden
+  advanced only for ADR-0271's independent command-prefix change, so it continues to prove local-doc
+  omission and an empty list are byte-inert against the current non-local baseline.
