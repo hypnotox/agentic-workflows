@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-0271: Unconditional Repository Awf Invocation](0271-unconditional-repository-awf-invocation.md) (Implementing)
+_No decisions are in flight._
 
 ## History
 
@@ -276,3 +276,4 @@
 - [ADR-0268: Keep Maintainer Context Spill State Outside Configuration](0268-keep-maintainer-context-spill-state-outside-configuration.md) (Implemented)
 - [ADR-0269: Root-confined sync filesystem mutations](0269-root-confined-sync-filesystem-mutations.md) (Implemented)
 - [ADR-0270: Retired configuration stays absent from live surfaces](0270-retired-configuration-stays-absent-from-live-surfaces.md) (Implemented)
+- [ADR-0271: Unconditional Repository Awf Invocation](0271-unconditional-repository-awf-invocation.md) (Implemented)
