@@ -27,9 +27,7 @@ How to cut a release of the `awf` binary. [ADR-0030](decisions/0030-prebuilt-bin
 
    A schema-coupled bump often already changed the version mid-cycle. It changes the const and lock, not the changelog. During development the gate requires descending changelog entries with the newest at or below `project.Version`; releasecheck requires an exact newest-version match and an empty `[Unreleased]`. Stage `.awf/awf.lock` when `./x check` reports it.
 
-3. Complete the [Pi smoke](#pi-smoke) from the release commit. It must pass before tagging; unit and container stubs do not replace it.
-
-4. Push `main`, then tag and push the matching version:
+3. Push `main`, then tag and push the matching version:
 
    ```
    git push origin main
@@ -37,7 +35,7 @@ How to cut a release of the `awf` binary. [ADR-0030](decisions/0030-prebuilt-bin
    git push origin v0.2.0
    ```
 
-5. Watch the `Release` workflow. On success, Releases contains six archives, `checksums.txt`, and curated changelog notes.
+4. Watch the `Release` workflow. On success, Releases contains six archives, `checksums.txt`, and curated changelog notes.
 
 The tag triggers `.github/workflows/release.yml`. It verifies the canonical AGPL-3.0-only license artifacts, tag ancestry on `main`, `project.Version`, the changelog, `./x gate && ./x check`, then extracts notes with `awf changelog --version` and runs GoReleaser. GoReleaser builds linux/darwin/windows archives for amd64/arm64, bundles `LICENSE` and `README.md`, writes `checksums.txt`, and uses those notes through `--release-notes`. It refuses a dirty checkout, including untracked files; workflow artifacts therefore belong under `$RUNNER_TEMP` or a deliberately ignored path. Release notes use `"$RUNNER_TEMP/release-notes.md"`. Commit-derived GoReleaser notes are disabled (ADR-0096).
 
@@ -53,10 +51,6 @@ go run github.com/goreleaser/goreleaser/v2@v2.17.0 release --snapshot --clean
 ```
 
 Keep the command version aligned with workflow `version:`; `cmd/pincheck` enforces the workflow pin (ADR-0079). `--snapshot` writes ignored `dist/` artifacts and does not publish. CI runs both commands in the `release-config` pull-request job.
-
-## Pi smoke
-
-From a clean reviewed commit, run `./x check`, `./x gate`, and independent implementation review. Use `hypnotox/pi` `fork-v0.81.1-awf.3` for Pi 0.81.1, or a later compatible build. In a new session, exercise native skill discovery, exploration, effort-independent bounded-prose handoff, cancellation, and editor recovery. Confirm one hidden `[session context]` line per explicit model request; compact the active branch and confirm the next request refreshes it. Confirm routing and context facts do not persist in history, and extensions take no automatic compaction, handoff, or pressure action. Unit stubs do not replace this smoke.
 
 ## Rollback
 
