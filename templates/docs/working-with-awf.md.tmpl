@@ -264,10 +264,11 @@ and exclusive implementation-tool batching are unchanged.
 Exploration treats breadth as an adaptive maximum. Not-found is successful execution; broad absence
 names the project search universe and searched surfaces. After not-found, inconclusive, unverified,
 or insufficient output, the parent may make a new fresh-context call to correct the task, change
-detail, or widen breadth. Independent exploration calls may execute concurrently, with at most ten
-active children per extension instance; excess calls queue FIFO, queued aborts are removed without
-starting a child, and every child exit releases its slot. Refinement of a prior result remains
-sequential. Grounding, exploration, and review follow a no-mutation prompt policy and can use `bash`;
+detail, or widen breadth. Give each child one independent information need and fan out sibling calls,
+selecting breadth, detail, and model tier per child. A fan-out may combine a large analysis child with
+small targeted paths or summary children. At most ten children are active per extension instance;
+excess calls queue FIFO, queued aborts are removed without starting a child, and every child exit
+releases its slot. Refinement that depends on a prior result remains sequential. Grounding, exploration, and review follow a no-mutation prompt policy and can use `bash`;
 they are not OS-sandboxed. Implementation starts from the project root, must run alone in its parent
 tool batch and sequentially, and may commit only when the orchestrator sets `allowCommits: true`.
 When a task explicitly operates in a supplied managed worktree, the caller sets

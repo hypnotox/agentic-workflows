@@ -1508,6 +1508,9 @@ func TestExploringTemplate(t *testing.T) {
 		for _, want := range []string{
 			"location is unknown and inline search would pollute the parent context",
 			"exact-known-file", "genuinely trivial",
+			"one self-contained task per child", "fan them out as sibling calls",
+			"breadth, detail, and tier independently per child", "large analysis child with small targeted paths or summary children",
+			"refinements that depend on an earlier result stay sequential",
 		} {
 			if !strings.Contains(body, want) {
 				t.Errorf("%s exploring render missing %q:\n%s", label, want, body)

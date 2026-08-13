@@ -523,7 +523,7 @@ func TestBoundedExplorationReporting(t *testing.T) {
 		wants []string
 	}{
 		"rendered exploring guidance": {guidance, []string{
-			"Independent information needs may be sibling-dispatched", "at most ten exploration children", "queues the rest FIFO", "Refinement stays sequential",
+			"one self-contained task per child", "fan them out as sibling calls", "breadth, detail, and tier independently per child", "large analysis child with small targeted paths or summary children", "at most ten exploration children", "queues the rest FIFO", "refinements that depend on an earlier result stay sequential",
 			"targeted < bounded < broad", "targeted locates one declaration, implementation, file, or exact fact", "bounded investigates within a named symbol, package, component, or subsystem", "broad searches across the project search universe, including relevant source, tests, documentation, decisions, and workflow artifacts",
 			"adaptive maximum", "cheapest targeted lookup", "widen only when evidence requires it", "never widen beyond the selected maximum", "If the boundary is exhausted, report that explicitly",
 			"tracked files plus non-ignored untracked working-tree files under the current repository root", "tracked generated and vendored files", "ignored files", ".git", "nested repositories", "external dependencies unless the task explicitly brings one of those surfaces into scope",
