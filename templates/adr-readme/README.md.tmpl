@@ -92,48 +92,63 @@ domains are derived from the `## State changes` operations. Any other key fails 
 <!-- awf:section lifecycle -->
 ## Status and lifecycle
 
+| From | May move to |
+|---|---|
+| Proposed | Accepted, Implementing, Implemented, or Abandoned |
+| Accepted | Implementing, Implemented, or Abandoned |
+| Implementing | Implemented or Abandoned |
+| Implemented or Abandoned | Terminal |
+
 V2, V3, and V4 recognize `Proposed`, `Accepted`, `Implementing`, `Implemented`, and `Abandoned`.
-Proposed may move to any later state; Accepted may move to Implementing, Implemented, or
-Abandoned; Implementing may move only to Implemented or Abandoned. Implemented and Abandoned
-are terminal. Implementing means a nonempty Applied set and permits zero or more Remaining operations.
-Implemented requires every declaration Applied. Abandonment keeps applied operations historical and
-cancels the remainder; its terminal event carries a rationale.
+Implemented and Abandoned are terminal. Implementing means a nonempty Applied set and permits zero
+or more Remaining operations. Implemented requires every declaration Applied. Abandonment keeps
+applied operations historical and cancels the remainder; its terminal event carries a rationale.
 
 Every ADR is routed by its authored format, independent of its number: markerless records use the
-frozen legacy parser, and `current-state-v1`, `current-state-v2`, `current-state-v3`, and `current-state-v4` select
-their matching governed parsers. A pending record must declare the running binary's current format,
-which is how it joins the corpus before it is numbered. Adding a future format means adding its
-parser and transition matrix, registering its schema activation and current marker, updating
-scaffolding, and proving older-format compatibility; it never means adding a number cutoff. There
-is no `Superseded` status.
+frozen legacy parser, and `current-state-v1`, `current-state-v2`, `current-state-v3`, and
+`current-state-v4` select their matching governed parsers. A pending record must declare the running
+binary's current format, which is how it joins the corpus before it is numbered. Adding a future
+format means adding its parser and transition matrix, registering its schema activation and current
+marker, updating scaffolding, and proving older-format compatibility; it never means adding a number
+cutoff. There is no `Superseded` status.
 
-V2, V3, and V4 history is a date-nondecreasing, prefix-append-only event stream. Content stays amendable until
-a terminal status: while Accepted or Implementing an amendment appends
-`- YYYY-MM-DD: Amended; content-sha256: <new digest>`, a status event repeats the latest stamp (or
-establishes the first), and the latest stamp always equals the current content, freezing permanently
-at Implemented or Abandoned. V1 records instead freeze once they leave Proposed. An application
-batch uses exactly
-`- YYYY-MM-DD: Applied; operations: <verb> `<qualified-id>`[, ...]`.
-Operations are nonempty, previously unapplied, duplicate-free membership in any authored order.
-Entering Implementing appends its status then the first Applied event; every later Applied event,
-including the final batch, leaves status Implementing, and settled review later appends only
-Implemented. Direct Implemented transitions use one implicit batch. Throughout Implementing, an
-already-applied add or update may be corrected with `- YYYY-MM-DD: Reapplied; operations: <verb>
-`<qualified-id>`[, ...]`. The operation must have an earlier Applied occurrence, each correction is
-one material checked batch, and provenance stays unchanged; Reapplied removes and terminal
-corrections are refused. Per-claim provenance is ordered by ascending final ADR number. Stable
-history is corrected forward through a successor ADR, never by deleting or mutating a retained event.
+### History and application events
+
+- V2, V3, and V4 history is a date-nondecreasing, prefix-append-only event stream.
+- Content stays amendable until a terminal status: while Accepted or Implementing an amendment appends
+  `- YYYY-MM-DD: Amended; content-sha256: <new digest>`, a status event repeats the latest stamp
+  (or establishes the first), and the latest stamp always equals the current content, freezing
+  permanently at Implemented or Abandoned.
+- V1 records instead freeze once they leave Proposed.
+- An application batch has nonempty, previously unapplied, duplicate-free membership in any authored
+  order. Entering Implementing appends its status then the first Applied event; every later Applied
+  event, including the final batch, leaves status Implementing, and settled review later appends only
+  Implemented. Direct Implemented transitions use one implicit batch.
+
+```text
+- YYYY-MM-DD: Applied; operations: <verb> `<qualified-id>`[, ...]
+- YYYY-MM-DD: Reapplied; operations: <verb> `<qualified-id>`[, ...]
+```
+
+Throughout Implementing, an already-applied add or update may be corrected with a Reapplied event.
+The operation must have an earlier Applied occurrence, each correction is one material checked batch,
+and provenance stays unchanged; Reapplied removes and terminal corrections are refused. Per-claim
+provenance is ordered by ascending final ADR number. Stable history is corrected forward through a
+successor ADR, never by deleting or mutating a retained event.
 <!-- awf:end -->
 
 <!-- awf:section state-changes -->
 ## The Decision and State changes sections
 
-The `## Decision` section is column-zero numbered items sequential from 1. V4 items begin with a unique `decision: lowercase-kebab-slug` marker followed by commitment prose. The slug is stable navigation identity only: it neither grants active authority nor implies supersession or currentness. Older frozen formats remain readable by ordinal only; no machine treats an item as an authority anchor.
+The `## Decision` section is column-zero numbered items sequential from 1. V4 items begin with a
+unique `decision: lowercase-kebab-slug` marker followed by commitment prose. The slug is stable
+navigation identity only: it neither grants active authority nor implies supersession or currentness.
+Older frozen formats remain readable by ordinal only; no machine treats an item as an authority anchor.
 
 The `## State changes` section is the authoritative relationship between the ADR and the topic
-claims it governs. It is either the single word `None.` or a nonempty list, mutually exclusive.
-Each list entry names one claim by its qualified `<domain>/<topic>:<slug>` id, written as one
-inline code span:
+claims it governs. It is either the single word `None.` or a nonempty list, mutually exclusive. Each
+list entry names one claim by its qualified `<domain>/<topic>:<slug>` id, written as one inline code
+span:
 
 - `- add ` `` `<domain>/<topic>:<slug>` `` introduces a claim (a rule or an invariant).
 - `- update ` `` `<domain>/<topic>:<slug>` `` changes an existing claim.
@@ -142,12 +157,19 @@ inline code span:
 One ADR may touch several topics and domains but names each id at most once. Correct an unapplied
 operation by amending it; correct an already-applied add or update with a Reapplied event while the
 record remains in its correction window, not by declaring the operation twice. Otherwise use a
-follow-up ADR or, when identity must change, remove plus add. A rename or move is a remove plus an
-add; a split is one remove plus several adds; a merge is several removes plus one add. A removed id
-is never added again. For each newly appended batch, `awf check staged` verifies every applied operation against its
-matching topic-claim mutation in the same HEAD-to-index pair. Applied operations authorize current
-or removed results immediately; Remaining operations are pending; Canceled operations provide no
-authority. Multiple ADR batches may share a pair only for distinct claim IDs.
+follow-up ADR or, when identity must change, remove plus add.
+
+| Change | Operations |
+|---|---|
+| Rename or move | A remove plus an add |
+| Split | One remove plus several adds |
+| Merge | Several removes plus one add |
+
+A removed id is never added again. For each newly appended batch, `awf check staged` verifies every
+applied operation against its matching topic-claim mutation in the same HEAD-to-index pair. Applied
+operations authorize current or removed results immediately; Remaining operations are pending;
+Canceled operations provide no authority. Multiple ADR batches may share a pair only for distinct
+claim IDs.
 <!-- awf:end -->
 
 <!-- awf:section index -->

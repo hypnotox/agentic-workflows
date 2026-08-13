@@ -1,5 +1,5 @@
-{{=awf:sectionDefault}}
+Generated files are owned by awf. Edit `.awf/`, then render and check.
 
-The rendered `commit-msg` payload makes older-format ADR merge authorization definitive only after Git exposes the assembled index, incoming parents, and final message. A refusal preserves the merge for trailer correction and `git commit` retry; `pre-merge-commit` continues to check only its earlier staged evidence.
+The `commit-msg` payload authorizes older-format ADR merges only after Git exposes the final message and incoming parents. Correct a refusal's trailers and run `git commit`; `pre-merge-commit` checks only earlier staged evidence.
 
-Core `effort-workflow` renders for both built-in targets and directs native persistent checkout or context tooling to the exact existing `.awf/worktrees/<slug>` worktree. It does not create a parallel harness-owned worktree or standalone memory.
+`effort-workflow` uses the existing `.awf/worktrees/<slug>` worktree. It creates neither a parallel worktree nor standalone memory.
