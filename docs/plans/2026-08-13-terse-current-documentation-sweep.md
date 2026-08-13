@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-13
 adrs: []
-status: Proposed
+status: Implemented
 ---
 # Plan: Terse current documentation sweep
 
