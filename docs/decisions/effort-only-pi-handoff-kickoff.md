@@ -24,7 +24,8 @@ current phase, immediate next action, decisions, observations, plan, and worktre
 1. `decision: identify-effort-only` An effort-backed Pi session handoff kickoff identifies only the
    effort with `Continue with effort <slug>.` It does not restate phase or task limits, association
    mechanics, checkpoint-reading procedure, handoff-log procedure, or other continuation scope.
-   The receiving agent resumes through the applicable skills and the effort's durable authority.
+   Skill and effort authority own attachment, reorientation, boundary logging, and autonomous
+   continuation.
 
 ## State changes
 
