@@ -8,6 +8,10 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Others
+
+- Current guides and native workflow prose are shorter while preserving their triggers, authority boundaries, and verification obligations.
+
 ## [0.36.2] - 2026-08-13
 
 ### Bug fixes

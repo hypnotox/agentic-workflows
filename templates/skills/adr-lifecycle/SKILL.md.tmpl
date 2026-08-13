@@ -113,6 +113,6 @@ V4 Decision items begin with a unique inline `decision: <lowercase-kebab-slug>` 
 <!-- awf:section notes -->
 ## Notes
 
-- **Append-only rule:** the `## Status history` is append-only in every state. A V2 body stays amendable until a terminal status, each amendment recorded as an Amended event, then freezes as the historical record; append-only protects rationale, not bookkeeping - a meaning-preserving schema retrofit may migrate its machine-readable encoding.
+- **Append-only rule:** `## Status history` is always append-only; a meaning-preserving schema retrofit may migrate machine-readable encoding.
 - Does not commit on your behalf; surfaces the right edits for you to land.
 <!-- awf:end -->

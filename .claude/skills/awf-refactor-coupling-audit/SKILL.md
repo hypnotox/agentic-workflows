@@ -127,7 +127,7 @@ Report line: `- Cross-package methods / init(): <list or "none">`
 <!-- awf:template-source templates/skills/refactor-coupling-audit/SKILL.md.tmpl -->
 ## Output
 
-The audit's output goes into the ADR's **Context** section under a `### Coupling audit` subsection before the Decision is drafted: one report line per category run, in category order, using the exact report-line format each category above defines.
+The audit's output goes into the ADR's **Context** section under a `### Coupling audit` subsection before the Decision is drafted: one report line per category run, in category order, using the exact report-line format each retained category above defines.
 
 <!-- awf:template-source templates/skills/refactor-coupling-audit/SKILL.md.tmpl#scope-shrink-rule -->
 <!-- awf:edit scope-shrink-rule: default; create .awf/skills/parts/refactor-coupling-audit/scope-shrink-rule.md to override -->

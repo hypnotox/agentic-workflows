@@ -14,9 +14,7 @@
 
 - Use any native skill when its purpose fits.
 
-- Evaluate brainstorming, continuity/effort, grounding, ADR, plan, and implementation-review need independently at intake, then re-evaluate only affected triggers when material facts change.
-
-- Brainstorming fires for material choices or clarification; effort creation fires only when durable continuity materially helps; grounding fires for broad or uncertain repository premises; ADRs fire for load-bearing choices or changed active claims; plans fire when sequencing, coordination, or resumability materially helps.
+- Evaluate brainstorming, continuity/effort, grounding, ADR, plan, and implementation-review need independently at intake, then re-evaluate only affected triggers when material facts change. A plan fires when sequencing, coordination, or resumability materially helps.
 
 - A plan records and operationalizes approved choices rather than inventing speculative structure, checks, or work.
 

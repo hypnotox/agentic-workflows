@@ -29,9 +29,7 @@ You own the project's long-term health, not just the task in front of you: bugs 
 
 - Use any native skill when its purpose fits.
 
-- Evaluate brainstorming, continuity/effort, grounding, ADR, plan, and implementation-review need independently at intake, then re-evaluate only affected triggers when material facts change.
-
-- Brainstorming fires for material choices or clarification; effort creation fires only when durable continuity materially helps; grounding fires for broad or uncertain repository premises; ADRs fire for load-bearing choices or changed active claims; plans fire when sequencing, coordination, or resumability materially helps.
+- Evaluate brainstorming, continuity/effort, grounding, ADR, plan, and implementation-review need independently at intake, then re-evaluate only affected triggers when material facts change. A plan fires when sequencing, coordination, or resumability materially helps.
 
 - A plan records and operationalizes approved choices rather than inventing speculative structure, checks, or work.
 
@@ -202,9 +200,7 @@ Documentation travels with the change that makes it true. When you change behavi
 <!-- awf:edit composing-the-gate: from .awf/parts/workflow/composing-the-gate.md -->
 <!-- awf:template-source templates/docs/workflow.md.tmpl -->
 ## Composing the gate
-`./x gate` must pass before every commit. It runs the profiled tests, coverage checks, Pi extension type and coverage checks, `go vet`, `golangci-lint`, dead-code checking, and workflow-pin checking. See [testing](testing.md) for details.
-
-`./x check` separately checks rendered output and repository policy. The pre-commit hook and CI run both. Use `./x gate timings` for per-stage timing.
+`./x gate` must pass before every commit; [testing](testing.md) owns its checks and `./x gate timings`. `./x check` separately checks rendered output and repository policy; the pre-commit hook and CI run both.
 
 For saved output, preserve the command status: `./x gate > /tmp/gate.log 2>&1; gate_status=$?; exit "$gate_status"`.
 

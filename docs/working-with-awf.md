@@ -3,11 +3,7 @@
 <!-- awf:edit overview: from .awf/parts/working-with-awf/overview.md -->
 <!-- awf:template-source templates/docs/working-with-awf.md.tmpl -->
 # Working with awf
-Generated files are owned by awf. Edit `.awf/`, then render and check.
-
-The `commit-msg` payload authorizes older-format ADR merges only after Git exposes the final message and incoming parents. Correct a refusal's trailers and run `git commit`; `pre-merge-commit` checks only earlier staged evidence.
-
-`effort-workflow` uses the existing `.awf/worktrees/<slug>` worktree. It creates neither a parallel worktree nor standalone memory.
+Generated files are owned by awf. Edit `.awf/`, then render and check. See [workflow](workflow.md) for hook and effort-worktree protocols.
 
 
 <!-- awf:template-source templates/docs/working-with-awf.md.tmpl#commands -->

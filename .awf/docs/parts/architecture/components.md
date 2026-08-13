@@ -5,17 +5,4 @@
 - `internal/snapshot` and `internal/filesystem`: immutable input and confined filesystem boundaries.
 - `cmd/awf`: CLI composition root.
 - Generated Pi extensions: context observation, handoff, and subagent dispatch.
-
-
-### Commands
-
-| Command | Role |
-|---|---|
-| `cmd/awf` | CLI composition root. |
-| `cmd/contextspilllog` | Context spill logging. |
-| `cmd/covercheck` | Coverage checking. |
-| `cmd/deadcodecheck` | Dead-code checking. |
-| `cmd/mutants` | Mutation-test reporting. |
-| `cmd/pincheck` | Dependency pin checking. |
-| `cmd/releasecheck` | Release validation. |
-| `cmd/repoaudit` | Repository audit support. |
+- Auxiliary commands: `cmd/contextspilllog`, `cmd/covercheck`, `cmd/deadcodecheck`, `cmd/mutants`, `cmd/pincheck`, `cmd/releasecheck`, and `cmd/repoaudit`.

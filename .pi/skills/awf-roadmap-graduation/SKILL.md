@@ -7,19 +7,21 @@ description: Use when a docs/roadmap.md entry graduates to an ADR or a PR, or is
 
 # awf-roadmap-graduation
 
-A support skill for moving an item out of `docs/roadmap.md` into an ADR or PR. The substance of the protocol lives in `docs/roadmap.md`'s opening paragraphs. This skill encodes the small procedural sequence that prevents two recurring failure modes: stale roadmap entries that point at already-shipped work, and stale benchmark numbers that migrate into an ADR Context without re-verification.
+A support skill for moving an item out of `docs/roadmap.md` into an ADR or PR, or dropping it, without carrying stale measurements or leaving a stale entry.
 
 <!-- awf:template-source templates/skills/roadmap-graduation/SKILL.md.tmpl#when-fires -->
 <!-- awf:edit when-fires: default; create .awf/skills/parts/roadmap-graduation/when-fires.md to override -->
 <!-- awf:template-source templates/skills/roadmap-graduation/SKILL.md.tmpl -->
 ## When this skill fires
 
-An architectural roadmap item is becoming a Proposed ADR, a smaller "open gap" roadmap item is being implemented in a PR without ADR coverage, or a roadmap item is being explicitly dropped (we decided not to do it).
-
-This is a **support skill**: it sits off the workflow chain.
+Use when a roadmap item becomes an ADR or PR, or is explicitly dropped. This support skill sits outside the workflow chain.
 
 <!-- awf:template-source templates/skills/roadmap-graduation/SKILL.md.tmpl#failure-modes -->
-<!-- awf:edit failure-modes: stub; replace by creating .awf/skills/parts/roadmap-graduation/failure-modes.md -->
+<!-- awf:edit failure-modes: from .awf/skills/parts/roadmap-graduation/failure-modes.md -->
+## Failure modes
+
+- Reusing a stale measurement in the graduating artifact.
+- Leaving a graduated or dropped item on the roadmap.
 
 
 <!-- awf:template-source templates/skills/roadmap-graduation/SKILL.md.tmpl -->
@@ -47,9 +49,11 @@ If the entry cites inline numbers, re-measure on the current code before graduat
 Evaluate continuity independently after identifying and re-verifying the item. Invoke `awf-effort-workflow` before ADR or implementation mutation only when durable continuity materially helps; otherwise graduation remains effort-free.
 
 
-### 4. Graduate in a single commit
-- **Architectural → ADR:** Invoke `awf-proposing-adr`. Remove the roadmap entry in the same commit as the ADR introduction (or, if the ADR ships across multiple commits, in the final implementation commit).
-- **Small → PR:** Implement the change, write the commit body to capture the why (cite the roadmap entry's reasoning), and remove the roadmap entry in the same commit.
+### 4. Graduate
+- **Architectural -> ADR:** Invoke `awf-proposing-adr`.
+- **Small -> PR:** Implement it and capture the roadmap reasoning in the commit body.
+
+Remove the entry in the graduating commit, or the final implementation commit when an ADR spans commits.
 
 <!-- awf:template-source templates/skills/roadmap-graduation/SKILL.md.tmpl#explicit-drop -->
 <!-- awf:edit explicit-drop: default; create .awf/skills/parts/roadmap-graduation/explicit-drop.md to override -->
@@ -60,7 +64,7 @@ Commit with subject `docs(roadmap): drop <item>`; the one-line reason goes in th
 <!-- awf:template-source templates/skills/roadmap-graduation/SKILL.md.tmpl#same-commit -->
 <!-- awf:edit same-commit: default; create .awf/skills/parts/roadmap-graduation/same-commit.md to override -->
 <!-- awf:template-source templates/skills/roadmap-graduation/SKILL.md.tmpl -->
-**Same-commit removal is non-negotiable in every case above.** A graduated entry that lingers reads as still parked; do not defer the deletion to a cleanup pass.
+Never leave a graduated or dropped entry parked for later cleanup.
 
 <!-- awf:template-source templates/skills/roadmap-graduation/SKILL.md.tmpl#doc-currency -->
 <!-- awf:edit doc-currency: default; create .awf/skills/parts/roadmap-graduation/doc-currency.md to override -->
@@ -74,5 +78,5 @@ If the graduated entry mentions a state doc or ADR that needs updating, fold tha
 ## Notes
 
 - Does not commit on your behalf.
-- Authoritative source for roadmap conventions: `docs/roadmap.md` opening paragraph. This skill is a procedural pointer, not a contract restatement.
+- `docs/roadmap.md` owns the backlog; this skill owns graduation procedure.
 - When a roadmap entry's removal lands in the same commit as an ADR, the commit's Conventional Commits scope follows the ADR's domain (e.g. `docs(adr)`), not `(roadmap)`. The roadmap delta is a doc-currency obligation of the ADR, not a separate concern.
