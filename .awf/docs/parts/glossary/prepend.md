@@ -1,1 +1,1 @@
-- **Finishing reservation:** A confined slug-and-internal-UUID-matched effort-directory rename that reserves the slug while restartable finish prepares the complete validated resident for no-replace archival.
+- **Finishing reservation:** A slug-and-internal-UUID-matched effort-directory rename that reserves a slug while restartable finish prepares archival.

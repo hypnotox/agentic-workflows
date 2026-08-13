@@ -7,19 +7,9 @@
 [![License: AGPL-3.0-only](https://img.shields.io/badge/License-AGPL--3.0--only-blue.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-pre--1.0-orange.svg)](#status)
 
-`awf` installs a governed agentic-development workflow in your repository. A small,
-committed `.awf/` tree produces consistent skills, agents, project instructions, and
-documentation for every contributor and agent session.
-
-The CLI is a single Go binary. The workflow is language-agnostic.
-
-## Why awf
-
-Agent workflows often become scattered prompt snippets, local instruction files, and
-rules that no one reviews. They drift away from the project and differ between sessions.
-
-awf treats the workflow as source-controlled configuration. Rendering is deterministic,
-changes are reviewable, and `awf check` detects stale or hand-edited output.
+`awf` is a language-agnostic Go CLI for installing a governed agentic-development
+workflow. A committed `.awf/` tree renders consistent, reviewable guidance, and `awf
+check` detects drift.
 
 ## Highlights
 
@@ -86,13 +76,9 @@ collision. `awf init --force` first saves each replaced file as `<path>.awf-bak`
 └── parts/...                      └── docs/
 ```
 
-Edit the `.awf/` sources, not generated files. `awf render` rebuilds the outputs and
-`awf check` verifies that source and output still agree.
-
-The rendered workflow applies mechanisms independently. A small task can go directly to
-implementation. Work uses brainstorming only when clarification or a material choice is
-needed, an ADR only for a durable decision, and a plan only when sequencing,
-coordination, or resumability adds value.
+Use only the mechanisms the work needs: brainstorm for clarification or a material
+choice, write an ADR for a durable decision, and plan when sequencing, coordination, or
+resumability helps.
 
 ```mermaid
 flowchart LR
@@ -142,10 +128,8 @@ hooks, efforts, and day-to-day commands.
 
 ## Git hooks and CI
 
-awf renders hook payloads under `.awf/hooks/` but never changes your Git configuration.
-Wire them through a hook mechanism you own, and run `awf check` in CI. Projects can also
-enable the rendered `.awf/bootstrap.sh` to run the exact awf release recorded by the
-repository.
+Wire the generated `.awf/hooks/` payloads through your own hook mechanism and run `awf
+check` in CI. Enable `.awf/bootstrap.sh` to use the repository-pinned awf release.
 
 ## Documentation
 
@@ -163,9 +147,7 @@ Use `awf upgrade` when moving an existing project to a newer schema.
 
 ## Contributing
 
-Read [AGENTS.md](AGENTS.md) and [the development guide](docs/development.md). This
-repository uses the workflow it ships: edit sources under `.awf/` when changing generated
-content, then run `./x render`, `./x check`, and `./x gate`.
+Read [AGENTS.md](AGENTS.md) and [the development guide](docs/development.md).
 
 ## License
 

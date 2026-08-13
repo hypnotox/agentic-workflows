@@ -553,8 +553,8 @@
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",
       "templateHash": "sha256:dc751686b557a6bde2147cb6be97788269a3c375bfa64f3eebf5c0e08dc0bb45",
-      "configHash": "sha256:c9f07dd4990efa3b5223dd72b9c631415f0f44870adad77a52e72c56901a6223",
-      "outputHash": "sha256:555294d90dc97c735794ace3dbffc729dd48d0fd976dbb18c1775926434700c3"
+      "configHash": "sha256:7ae36a98bd983a2b3455fff185cd64526fae9300d0a3741a0e80cf62514cd3d0",
+      "outputHash": "sha256:452602f434be03db4730126b46f9e718005f2b2cd9ce72f262f8ec56929cbdbf"
     },
     "docs/maintainable-code-design.md": {
       "templateId": "docs/maintainable-code-design.md.tmpl",
