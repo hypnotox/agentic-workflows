@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-effort-only-pi-handoff-kickoff: Effort-only Pi handoff kickoff](effort-only-pi-handoff-kickoff.md) (Implementing)
+- [ADR-0273: Effort-only Pi handoff kickoff](0273-effort-only-pi-handoff-kickoff.md) (Implementing)
 
 ## History
 

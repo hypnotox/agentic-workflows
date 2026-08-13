@@ -4,7 +4,7 @@ slug: effort-only-pi-handoff-kickoff
 status: Implementing
 date: 2026-08-13
 ---
-# ADR-effort-only-pi-handoff-kickoff: Effort-only Pi handoff kickoff
+# ADR-0273: Effort-only Pi handoff kickoff
 
 ## Context
 
