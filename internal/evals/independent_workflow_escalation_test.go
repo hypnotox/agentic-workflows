@@ -147,6 +147,22 @@ func TestIndependentWorkflowEscalation(t *testing.T) {
 				"evaluate brainstorming, continuity/effort, grounding, ADR, plan, and implementation-review need independently", "load-bearing", "sequencing, coordination, or resumability", "Each written artifact gets a fresh-context review", "line count", "artifact type")
 			assertContainsAll(t, target+" workflow ownership", workflow,
 				"No line count, artifact type, or another mechanism firing selects a trigger", "parent owns inline integration", "one independently green coherent implementation transaction", "A checkpoint never creates an effort", "routine implementation checkpoint occurs only after a phase's closing commit has received report-only review")
+			if target == "pi" {
+				checkpoint := bodies["executing-direct"]
+				assertContainsAll(t, "Pi effort-only handoff", checkpoint,
+					"kickoff exactly `Continue with effort <slug>.`",
+					"kickoff identifies only the effort",
+					"Skill and effort authority own attachment, reorientation, boundary logging, and autonomous continuation")
+				for _, forbidden := range []string{
+					"directing the replacement to read the effort checkpoint",
+					"append the actual boundary to `## Handoff log`",
+					"do not start",
+				} {
+					if strings.Contains(strings.ToLower(checkpoint), strings.ToLower(forbidden)) {
+						t.Errorf("Pi checkpoint kickoff carries procedure or scope %q", forbidden)
+					}
+				}
+			}
 			// docs/workflow.md is a shared fixed-docs artifact, not a target output.
 			// Target-specific workflow assertions above inspect only the requested
 			// target's rendered skills and agents.

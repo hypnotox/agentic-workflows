@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: effort-only-pi-handoff-kickoff
-status: Proposed
+status: Implementing
 date: 2026-08-13
 ---
 # ADR-effort-only-pi-handoff-kickoff: Effort-only Pi handoff kickoff
@@ -53,3 +53,5 @@ already required for effort resumption.
 ## Status history
 
 - 2026-08-13: Proposed
+- 2026-08-13: Implementing; content-sha256: 79f0d24ac7cfd22f553884d1043f256819b80fd17fb0a51577a87ffe1a43a110
+- 2026-08-13: Applied; operations: update `rendering/pi-workflows:pi-session-handoff-workflow`

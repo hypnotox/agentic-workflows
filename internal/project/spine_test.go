@@ -1124,15 +1124,22 @@ func TestCheckpointDigestShape(t *testing.T) {
 			"until active efforts finish",
 			"sole writer of phase, next action, and time",
 			"executable `./awf read plan` projection never creates a checkpoint or handoff boundary",
-			"## Handoff log",
+			"`Continue with effort <slug>.`",
 		} {
 			if !strings.Contains(body, phrase) {
 				t.Errorf("%s missing checkpoint contract %q", partial, phrase)
 			}
 		}
-		for _, direct := range []string{"set `Phase:`", "set `Next:`", "refresh `Updated:`"} {
-			if strings.Contains(body, direct) {
-				t.Errorf("%s directly edits checkpoint metadata with %q", partial, direct)
+		for _, direct := range []string{
+			"set `Phase:`",
+			"set `Next:`",
+			"refresh `Updated:`",
+			"directing the replacement to read the effort checkpoint",
+			"append the actual boundary to `## Handoff log`",
+			"do not start",
+		} {
+			if strings.Contains(strings.ToLower(body), strings.ToLower(direct)) {
+				t.Errorf("%s directly carries handoff procedure or scope %q", partial, direct)
 			}
 		}
 	}
