@@ -45,7 +45,7 @@ data:
       meaning: "Links tying a claim to its ADR history: required `Origin:` and optional ordered `Revised-by:`. They aid navigation, not authority."
       domains: [invariants]
     - term: State changes
-      meaning: "An ADR's frozen operation declaration: `None.` or add, update, and remove entries naming qualified claim ids. Each batch travels with its claim mutations."
+      meaning: "An ADR's operation declaration, with each operation frozen once an Applied event references it: `None.` or add, update, and remove entries naming qualified claim ids. Each batch travels with its claim mutations."
       domains: [adr-system]
     - term: current-state topic
       meaning: "A domain-owned document whose metadata and authored current-state part define claims read by `awf context`, `awf check`, and `awf topic`. Its claims, not ADRs, are current authority."

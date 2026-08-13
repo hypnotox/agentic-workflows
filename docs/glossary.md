@@ -74,7 +74,7 @@
 | sidecar-derived doc | The computed-document model where a render transform derives content from an artifact's sidecar before rendering and config hashing. Unlike regeneration, it does not derive from repository state outside the sidecar. |
 | single home | A policy or mechanism consumed by multiple packages has exactly one implementation in its owning package. |
 | source marker | An informational `awf:source` comment on generated documentation that points to reader-facing authorities without defining an edit boundary or dependency list. |
-| State changes | An ADR's frozen operation declaration: `None.` or add, update, and remove entries naming qualified claim ids. Each batch travels with its claim mutations. |
+| State changes | An ADR's operation declaration, with each operation frozen once an Applied event references it: `None.` or add, update, and remove entries naming qualified claim ids. Each batch travels with its claim mutations. |
 | stub | Must-replace starter content: a section default with the `stub` attribute or a convention part with a whole-line `<!-- awf:stub -->` marker. |
 | sync provenance line | The per-file cause printed when `awf render` changes a rendered file against the previous lock: `template`, `config`, `template+config`, `internal`, `regenerated`, or `added`. |
 | template source residue | awf-specific content surviving in shipped prose: a concrete ADR citation or repo-identity literal outside the pinned exemption list. |
