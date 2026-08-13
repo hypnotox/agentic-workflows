@@ -37,6 +37,35 @@ run_deadcode_gate() {
   go tool deadcode -json ./... | go run ./cmd/deadcodecheck
 }
 
+select_gate_tests() {
+  # One rename-disabled, NUL-delimited index diff is the selection snapshot.
+  # Any Git or parsing uncertainty deliberately retains every test lane.
+  local diff path saw=false
+  diff="$(mktemp)"
+  cleanup_paths+=("$diff")
+  if ! git diff --cached --name-only -z --no-renames >"$diff"; then
+    return 1
+  fi
+  gate_docs_only=true
+  gate_pi_affecting=false
+  while IFS= read -r -d '' path; do
+    if [ -z "$path" ]; then
+      return 1
+    fi
+    saw=true
+    case "$path" in
+      docs/*|README.md|changelog/CHANGELOG.md|.awf/docs/parts/*|templates/docs/*) ;;
+      *) gate_docs_only=false ;;
+    esac
+    # Go code is conservatively Pi-affecting. These non-Go surfaces feed the
+    # generated extension, its runtime inputs, harness, renderer, or runner.
+    case "$path" in
+      *.go|x|go.mod|go.sum|package.json|package-lock.json|.pi/*|.claude/*|.awf/*|templates/*|tools/pi-extension-test/*|internal/project/*|internal/render/*|cmd/*) gate_pi_affecting=true ;;
+    esac
+  done <"$diff"
+  "$saw" || return 1
+}
+
 run_pi_runtime_smoke() {
   local output status
   if output="$(env AWF_PI_RUNTIME_SMOKE=1 go test -json ./internal/project -run '^TestPi(EffortMemoryToolContract|RealRuntimeSmoke)$' -count=1)"; then
@@ -77,10 +106,25 @@ case "$cmd" in
     # The profile is durable (gitignored via *.out) so CI can upload it to
     # Codecov without rerunning the suite, and an interrupted run leaks no
     # tmpfs file (ADR-0196).
+    # The index determines only which test lanes run; all commands continue to
+    # test the working tree. No staged set or any read uncertainty fails closed.
+    if ! select_gate_tests; then
+      gate_docs_only=false
+      gate_pi_affecting=true
+    fi
     prof="coverage.out"
-    run_gate_step go-test env -u AWF_PI_RUNTIME_SMOKE go test ./... -coverpkg=./... -coverprofile="$prof"
-    run_gate_step covercheck go run ./cmd/covercheck "$prof"
-    run_gate_step pi-runtime-smoke run_pi_runtime_smoke
+    if "$gate_docs_only"; then
+      echo "gate: skipping Go tests and coverage for documentation-only staged changes" >&2
+      echo "gate: skipping Pi runtime smoke for documentation-only staged changes" >&2
+    else
+      run_gate_step go-test env -u AWF_PI_RUNTIME_SMOKE go test ./... -coverpkg=./... -coverprofile="$prof"
+      run_gate_step covercheck go run ./cmd/covercheck "$prof"
+      if "$gate_pi_affecting"; then
+        run_gate_step pi-runtime-smoke run_pi_runtime_smoke
+      else
+        echo "gate: skipping Pi runtime smoke for non-Pi staged changes" >&2
+      fi
+    fi
     run_gate_step vet go vet ./...
     # Cross-compile gate: the suite only ever runs on the host platform, so a
     # package that stops building for a contributor's platform is otherwise

@@ -8,6 +8,10 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Features
+
+- `./x gate` now selects test lanes from staged paths: exact documentation-only changes skip tests, ordinary changes skip Pi smoke, and Pi-affecting or uncertain changes run every test lane.
+
 ### Others
 
 - Current guides and native workflow prose are shorter while preserving their triggers, authority boundaries, and verification obligations.

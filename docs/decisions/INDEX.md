@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-0275: Select Gate Tests From Staged Changes](0275-select-gate-tests-from-staged-changes.md) (Accepted)
+_No decisions are in flight._
 
 ## History
 
@@ -280,3 +280,4 @@
 - [ADR-0272: Additive Inline-Editable Project-Local Docs](0272-additive-inline-editable-project-local-docs.md) (Implemented)
 - [ADR-0273: Effort-only Pi handoff kickoff](0273-effort-only-pi-handoff-kickoff.md) (Implemented)
 - [ADR-0274: Select Native Skills for the Next Concrete Action](0274-select-native-skills-for-the-next-concrete-action.md) (Implemented)
+- [ADR-0275: Select Gate Tests From Staged Changes](0275-select-gate-tests-from-staged-changes.md) (Implemented)

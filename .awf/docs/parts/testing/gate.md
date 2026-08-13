@@ -1,9 +1,9 @@
-`./x gate` must be green before every commit. It runs profiled Go tests and writes `coverage.out`, enforces 100% **statement** coverage outside `// coverage-ignore` blocks (ADR-0012), runs Pi-extension strict type checks and 100% statement/branch/function/line coverage, descriptor parity, `go vet`, released-platform cross-compilation, `golangci-lint`, whole-program dead-code checking (ADR-0063), and `cmd/pincheck` (ADR-0079).
+`./x gate` must be green before every commit. It selects test lanes from one NUL-safe, rename-disabled staged-index path snapshot: a nonempty exact documentation-only transaction (`docs/**`, `README.md`, `changelog/CHANGELOG.md`, `.awf/docs/parts/**`, or `templates/docs/**`) skips Go tests, coverage, and Pi runtime smoke; other non-Pi transactions run Go tests and coverage but skip Pi; Pi-affecting or uncertain, empty, unreadable, or unclassifiable snapshots run all tests (ADR-0275). Commands still test the working tree. The gate always runs `go vet`, released-platform cross-compilation, `golangci-lint`, whole-program dead-code checking (ADR-0063), and `cmd/pincheck` (ADR-0079). It writes `coverage.out` when it runs profiled Go tests, enforces 100% **statement** coverage outside `// coverage-ignore` blocks (ADR-0012), and its Pi lane runs Pi-extension strict type checks and 100% statement/branch/function/line coverage and descriptor parity.
 
 | Command | Use |
 |---|---|
 | `./x gate` | Complete deterministic transaction. |
-| `./x gate timings` | Same sequential transaction with elapsed time per attempted stage. |
+| `./x gate timings` | Same selected transaction with elapsed time only for executed stages. |
 | `./x test` | Go suite without the Docker-backed Pi smoke. |
 | `./x pi-test run` | Pi lane alone. |
 

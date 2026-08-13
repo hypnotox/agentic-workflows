@@ -62,11 +62,17 @@ The mutation-report checker exits non-zero when any mutation in its input JSON h
 Origin: ADR-0066
 Backing: test
 
+### `invariant: staged-test-selection`
+
+The command runner reads one NUL-delimited, rename-disabled staged-index name diff and selects test stages conservatively: only the exact documentation allowlist skips Go tests, coverage, and Pi smoke; non-Pi changes skip only Pi; absent, unreadable, malformed, or empty snapshots run all tests. Vet, builds, lint, dead code, and pin checks always run, while timings name only executed stages.
+Origin: ADR-0275
+Backing: test
+
 ### `invariant: pi-extension-container-gate`
 
-The command runner wires a Pi-extension gate lane that runs the extension's tests inside an ephemeral Docker container built from a content-fingerprinted image shared by every checkout, requiring no host Node or npm, leaving behind no container and no volume, and keeping an explicit reset cleanup command available.
+The command runner wires a Pi-extension gate lane that runs the extension's tests inside an ephemeral Docker container built from a content-fingerprinted image shared by every checkout, requiring no host Node or npm, leaving behind no container and no volume, and keeping an explicit reset cleanup command available. Staged test selection runs this lane whenever paths can affect its templates, generated outputs, runtime inputs, harness, dependencies, rendering, targets, configuration, or runner.
 Origin: ADR-0123
-Revised-by: ADR-0198
+Revised-by: ADR-0198, ADR-0275
 Backing: test
 
 ### `invariant: prose-gate-refuses-without-git`
