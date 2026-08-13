@@ -2,92 +2,83 @@
 <!-- awf:template-source templates/docs/testing.md.tmpl -->
 # Testing
 
+A deterministic pre-commit gate runs the project's checks. The documented lanes include minimum-runtime smoke tests.
+
 <!-- awf:template-source templates/docs/testing.md.tmpl#gate -->
 <!-- awf:edit gate: from .awf/docs/parts/testing/gate.md -->
 <!-- awf:template-source templates/docs/testing.md.tmpl -->
-## The gate
+## Gate
+`./x gate` must be green before every commit. It runs profiled Go tests and writes `coverage.out`, enforces 100% **statement** coverage outside `// coverage-ignore` blocks (ADR-0012), runs Pi-extension strict type checks and 100% statement/branch/function/line coverage, descriptor parity, `go vet`, released-platform cross-compilation, `golangci-lint`, whole-program dead-code checking (ADR-0063), and `cmd/pincheck` (ADR-0079).
 
-`./x gate` runs the project's checks and must be green before every commit: the test suite
-with a coverage profile (written durably to `coverage.out` for CI's Codecov upload, ADR-0196),
-a 100% **statement**-coverage floor over non-`// coverage-ignore`
-blocks (ADR-0012), containerized Pi-extension strict type checks and 100% line/function/branch
-coverage across all seven generated Pi TypeScript files, including the selection-gated effort client and association state machine, descriptor cross-runtime parity, `go vet`,
-a cross-compile of `./...` for every released non-host platform,
-`golangci-lint`, a whole-program dead-code check (ADR-0063), and
-the workflow supply-chain pin check (`cmd/pincheck`, ADR-0079). The plain-punctuation scan
-(`awf check repo prose`, ADR-0119) and the unconditional effort-owned-memory citation scan
-(`awf check repo memory`, ADR-0158 updated by ADR-0175)
-are not gate steps: the pre-commit hook payload runs them locally and CI backstops them (ADR-0196). Commit-provenance tests use native Git, real SSH-signed commits, disposable refs and remotes, both absolute and relative `core.hooksPath`, and distinct linked-worktree configuration. They prove allowed commits move refs, unsigned or disallowed identities do not, and pre-push catches a deliberate local reference-hook bypass before the gate. A red gate blocks the commit: fix the cause or revert.
+| Command | Use |
+|---|---|
+| `./x gate` | Complete deterministic transaction. |
+| `./x gate timings` | Same sequential transaction with elapsed time per attempted stage. |
+| `./x test` | Go suite without the Docker-backed Pi smoke. |
+| `./x pi-test run` | Pi lane alone. |
 
-The ordinary profiled Go suite skips the Docker-backed Pi runtime smoke. The gate then enables and runs that named Go proving unit exactly once with test caching disabled, so its test-backed runtime claims remain valid without duplicating the container lane. `./x test` prints the omission and names both `./x pi-test run` for the lane alone and `./x gate` for the complete transaction. Direct non-verbose `go test` remains silent because the Go driver suppresses successful skip output; `go test -v` shows the same guidance. `./x gate timings` runs the identical sequential gate and reports each attempted stage's elapsed wall time without imposing a machine-dependent duration threshold.
+The gate enables `TestPiRealRuntimeSmoke` once with test caching disabled; `./x test` and verbose direct Go tests explain its omission. Plain-punctuation (`awf check repo prose`) and effort-memory (`awf check repo memory`) scans are hook and CI checks, not gate steps. Commit-provenance tests use native Git, SSH-signed commits, disposable refs and remotes, both `core.hooksPath` forms, and linked worktrees. A red gate blocks the commit: fix the cause or revert.
 
-Repository regression tests keep bare `awf context internal/project cmd/awf` and bare `awf context cmd/awf/context.go` within direct delivery, while explicitly requested detail remains complete and spill-capable. Catalog and render tests require native skill discovery, advisory workflow relationships, pruning of disabled outputs, and non-Pi parity. Container tests cover handoff runtime guards, the bounded kickoff schema, UTF-16 length, exact agent-owned custom envelope propagation, default rendering without a duplicate label, custom transcript and current provider user-role behavior, queue and pending-request behavior, the best-effort continuation disposition after successful queueing, the five-second countdown, cancellation, persisted-session revalidation, lineage, cleanup, recovery notices, no-silent-retry behavior, editor fallback, and Pi-only explicit effort association, same-conversation replacement transfer, owner-checked activity recovery, advisory heartbeat, and independent Remote Pi metadata plus capability-gated display-suffix negotiation, authoritative withdrawal, synchronous replay, lifecycle clears, ownership loss, and optional-emission degradation without routing-name fallback. Non-Pi output-plan tests prove those artifacts remain absent. Go suites cover schema-2 resident ordering and crash states, one-winner slug reservation, finish tombstones, real-Git add/integrate/remove topology, protocol output, and generated lifecycle coverage. The TypeScript floor is 100% in statements, branches, functions, and lines; reachable paths are tested through injected dependencies, and exclusions remain only for reasoned unreachable runtime guards.
+### Coverage
 
-### Coverage: statement gate vs line reporting
+`./x gate` is the sole hard coverage gate and measures statement coverage. Codecov reports line coverage, so its figure cannot equal `go tool cover`'s statement figure (ADR-0065).
 
-`./x gate` is the **sole hard coverage gate**, and it measures **statement** coverage. CI
-also uploads to Codecov, which measures **line** coverage (a different metric) so
-Codecov's raw figure does not and cannot equal `go tool cover`'s statement figure;
-the gap is line-vs-statement, not a defect (ADR-0065).
+| Codecov flag | Meaning |
+|---|---|
+| `raw` | Whole-tree line coverage. |
+| `covered` | Line coverage after `covercheck --emit-filtered` removes `// coverage-ignore` blocks. |
 
-CI publishes two Codecov numbers as flags:
+Codecov is informational; the gate blocks merges.
 
-- **`raw`**: line coverage over the whole tree: the honest reality, which climbs only as
-  real branches get covered.
-- **`covered`**: line coverage over the profile with `// coverage-ignore` blocks dropped
-  (~100%): exactly the blocks the gate holds accountable. The filtered profile is emitted
-  by `covercheck --emit-filtered`, reusing the same ignore logic as the gate, so reporter
-  and gate never disagree on what "ignored" means.
+### Mutation testing
 
-Both Codecov statuses are informational: Codecov never blocks a merge; the gate does.
+Coverage proves execution, not useful assertions. Change a condition, comparison, or constant and confirm a test fails; otherwise add the missing assertion.
 
-### Coverage is not verification
+`./x mutants` (ADR-0066) runs deterministic `gremlins` mutation testing against the production diff from `main`; pass a package, such as `./x mutants ./internal/refs`, for a focused run. It is advisory, never a gate step. A timed-out mutant exits nonzero because it can hide survivors; raise `.gremlins.yaml`'s timeout coefficient and rerun. Triage every survivor as a missing assertion or an equivalent mutant.
 
-The 100% floor proves every statement **runs** under test; it does not prove any test
-would **fail** if that statement were wrong. A line can be covered by a test that never
-asserts on its effect: the gate stays green while a broken result slips through. When you
-add or change logic, spot-check it by hand: flip a condition, negate a comparison, or
-change a constant in the source, and confirm a test turns red. If nothing fails, the gap is
-a missing assertion, not missing coverage; add the assertion, then revert the edit. This
-is a deliberate manual habit. `./x mutants` (ADR-0066) makes it reproducible: it runs
-`gremlins` mutation testing under a deterministic config (`.gremlins.yaml`:
-`integration: true`, `workers: 1`, `timeout-coefficient: 20`) and prints the survived
-mutants for you to triage; run it
-with no arguments to check your diff against `main`, or pass a package path (e.g. `./x
-mutants ./internal/refs`) for a deep dive. A timed-out mutant makes the whole run
-untrustworthy (it can hide a real survivor), so the command itself exits non-zero when any
-mutant times out. Raise the timeout coefficient and rerun; you never need to eyeball the
-`Timed out:` count. It stays advisory (never part of the gate) and every survivor still
-needs you to judge whether it is a real gap or an unkillable equivalent mutant.
-
-The strict container lane includes the standalone context-usage output and covers its local formatting, unavailable model-window form, active-branch compactions, per-call refresh, and silent supported operation.
+The strict container lane also covers standalone context usage, including formatting, unavailable model-window output, active-branch compaction, per-call refresh, and silent supported operation.
 
 
 <!-- awf:template-source templates/docs/testing.md.tmpl#tiers -->
 <!-- awf:edit tiers: from .awf/docs/parts/testing/tiers.md -->
 <!-- awf:template-source templates/docs/testing.md.tmpl -->
-## Tiers
+## Tiers and lanes
+awf has one tier: `./x gate` runs every deterministic lane before each commit. `./x gate timings` reports the same transaction; it is not a slower tier.
 
-awf has a single tier: `./x gate` runs everything, including protocol parity, the pinned in-memory Pi 0.81.1 three-factory runtime seam that proves real-request context-line refresh after active-branch compaction, the pinned repository-runtime cache and launcher tests, and strict full-coverage tests for the selection-gated effort association extension. The latter prove capability degradation above the retained 0.81.1 floor: companion capability presence is final authority, with no foreign package publication or installation-topology inference. There is no slower tier to reach for; the whole gate is fast enough to run before every commit. `./x gate timings` runs that identical sequential transaction while reporting each stage's elapsed wall time. The release-only real interactive Pi smoke remains the manual unbacked verification documented in the test layout; it is not mislabeled as a deterministic gate tier.
+| Lane | Proves |
+|---|---|
+| Go | Unit, integration, regression, coverage, vet, lint, dead-code, cross-compile, and pin checks. |
+| Pi container | Protocol parity, strict TypeScript coverage, runtime guards, and the selection-gated effort association. |
+| Pi runtime smoke | The pinned in-memory Pi 0.81.1 seam refreshes request context after active-branch compaction. |
 
-The Pi tier also proves the guarded dynamic active-tool, prompt-guidance, and file-mutation-queue floor against the retained 0.81.1 fork.
+The companion capability is final authority for degradation above the retained 0.81.1 floor; do not infer it from foreign package publication or installation topology. The guarded active-tool, prompt-guidance, and file-mutation-queue floor is also tested against the retained fork.
+
+The release-only interactive Pi smoke is manual verification, not a deterministic gate lane.
 
 
 <!-- awf:template-source templates/docs/testing.md.tmpl#layout -->
 <!-- awf:edit layout: from .awf/docs/parts/testing/layout.md -->
 <!-- awf:template-source templates/docs/testing.md.tmpl -->
-## Test layout
-Focused Go tests cover effort and worktree safety, migration generation 20, session protocol validation, deterministic joins, and resident-root preservation. The Docker-backed `TestPiRealRuntimeSmoke` skips unless the gate explicitly enables it; `./x test` prints actionable standalone and complete-gate commands, while verbose direct Go tests show the same skip reason. The gate executes that proving unit once with caching disabled. Five TestMain suites allocate canonical `home-<decimal>` directories below one per-effective-user root. Before isolating `HOME`, they preserve Go's default `GOPATH` so nested Go commands keep their module cache outside the disposable home. Startup sweeps only homes strictly older than 24 hours; failure to remove the current home maps an otherwise-successful suite to failure. The Pi extension lane covers descriptor projection, bounded prose handoff schema, its exact agent-owned custom envelope, replacement-bound turn trigger, custom transcript/provider-role projection, default label rendering, batch exclusivity, pending-request and queue behavior, countdown and cancellation, persisted-session revalidation, parent-linked replacement, cleanup, editor fallback, recovery notices, minimum-runtime guards, and the Pi-only `using_effort` state machine. The latter covers direct repository-root attach/detach with fixed relative memory and optional managed-worktree paths, owner-checked takeover/recovery, cached directory inspection, heartbeat, restart-detached cleanup, and independent advisory Remote Pi metadata plus capability-gated display-suffix negotiation, replay, lifecycle clears, ownership-loss cleanup, and optional-emission degradation without routing-name fallback. Legacy protocol residents remain read-only fixtures.
+## Layout and test shape
+| Area | Test location and shape |
+|---|---|
+| Go behavior | Focused package tests cover effort/worktree safety, migration, session protocol validation, deterministic joins, resident roots, and real-Git topology. Legacy protocol residents are read-only fixtures. |
+| Pi extension | Container tests cover descriptor projection, bounded handoff, transcript/provider projection, queueing, cancellation, recovery, runtime guards, and `using_effort`. |
+| Git seam | `internal/git/entrypoints_test.go` derives entrypoints and requires a backend-agnostic contract suite for each. Repo walkers keep Git libraries and subprocesses within `internal/git` and `internal/testsupport/gitfixture`. |
+| Test homes | Five `TestMain` suites use canonical `home-<decimal>` homes, retain Go's default `GOPATH`, and sweep only homes older than 24 hours. Failure to remove the current home fails the suite. |
 
-Commit-policy tests cover exact author and committer pairs, complete stable violations, every typed refusal, disabled policy, and model-owned rendering; Git and command integration use genuinely SSH-signed commits to cover repository-width baselines, overlapping ranges, recursive tag peeling, invoking linked-worktree selection, allowed and rejected signers, temporary trust-file cleanup, and stdout/stderr exit mapping without persistent Git configuration. The Git seam adds a contract-suite category: one backend-agnostic suite per entrypoint, asserting what the entrypoint answers rather than how it answers it, so a backend swap is detectable and the current backend is free to change. `internal/git/entrypoints_test.go` derives the entrypoint list from the package source and fails when one lacks a registered suite, which is what keeps the category complete as the seam grows. Two repo-walking tests enforce the boundary from the other side: no production file may import a Git library or construct a git subprocess outside `internal/git` and `internal/testsupport/gitfixture`, and no test file may outside those same two. Both allowlists carry a test asserting that each entry still shields a real finding, so an entry that outlives its reason is removed rather than left widening the carve-out. Both walkers read parsed syntax rather than matching source text, which is what lets them see an `exec.CommandContext(t.Context(), "git", ...)` that a regexp cannot. Three past incidents (the `extensions.worktreeConfig` open refusal, the global-gitignore gap, and the ignored-worktree-root leak) are named regression cases inside those suites rather than free-floating tests.
+`TestPiRealRuntimeSmoke` runs only when the gate enables it and without caching. The Pi association tests cover root attach/detach, fixed relative paths, owner-checked recovery, heartbeat, detached restart cleanup, advisory Remote Pi metadata, capability-gated suffix negotiation, replay, lifecycle clears, ownership loss, and optional-emission degradation. The context suite proves copied request messages, tool-follow-up refresh, active-branch-only compaction, and no persistence to session history.
 
-Parallelism is applied per package rather than swept. `internal/snapshot`, `internal/project`, `internal/effort`, and the fixture package run their converted suites in parallel; `cmd/awf`, `internal/git`, `internal/migrate`, `internal/audit`, and `internal/worktree` do not. The constraint is narrower than "a package containing `t.Setenv`": `t.Setenv` forbids only the calling test from being parallel, and Go already keeps every serial test finished before releasing a parallel one. What actually blocks a package is shared mutable state a parallel test would race on, which for `internal/worktree` is its package-level filesystem-ownership swaps. Where a package is left serial for cheapness rather than necessity, that is a deliberate trade and not a claim that parallelism is unsafe there.
+### Parallelism
 
-Test shape is judgment guided by three defaults (`code-design/test-design` carries the claims; this is the taste beside them). A table test earns its table when the cases share one act-and-assert shape and differ only in data; scenarios with divergent setup or divergent assertions read better flat, and a one-row table is a flat test wearing scaffolding. `t.Fatal` ends a test whose remaining checks depend on the failed step, while `t.Error` lets independent checks accumulate evidence in one run; the choice states a dependency, not a severity. A test stays focused on one observable behaviour: a name that needs "and" to say what it checks is naming two tests, and splitting it is cheaper than reading it twice.
+Run packages in parallel only when their mutable state is independent. `internal/snapshot`, `internal/project`, `internal/effort`, and fixtures do; `cmd/awf`, `internal/git`, `internal/migrate`, `internal/audit`, and `internal/worktree` do not. `t.Setenv` blocks its calling test, not the package; `internal/worktree` remains serial because package-level filesystem-ownership swaps race.
 
-The isolated-TMPDIR real-hook regression proves the hand-written stub removes its staged slice before rendered-payload handoff.
+### Test shape
 
-The Pi extension suite covers transient context usage independently from handoff and subagents, including fresh copied messages, tool-follow-up refresh, active-branch-only compactions, and the shared runtime guard. Its pinned in-memory runtime smoke captures actual provider request contexts across two explicit prompts and proves the hidden context line refreshes after an active-branch compaction without persisting to session messages or entries.
+- Use a table when cases share one act-and-assert shape and differ only in data.
+- Keep divergent setup or assertions flat; a one-row table adds scaffolding.
+- Use `t.Fatal` when later checks depend on the failed step; use `t.Error` for independent evidence.
+- Test one observable behavior. A name requiring "and" usually names two tests.
 
-The Pi extension suite covers the generated memory protocol client and associated-tool index together with the pinned runtime declaration smoke.
+The isolated-TMPDIR real-hook regression proves the handwritten stub removes its staged slice before rendered-payload handoff.
 

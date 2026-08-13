@@ -1,18 +1,15 @@
+Run `./x` at the repository root with no argument for usage. Use rendered `./awf` for awf verbs: it runs source through `.awf/runner/parts/runner-body.md`, not a stale installed binary.
 
-`./x` at the repo root carries the repo-local project verbs; run it with no argument
-for the usage line. awf verbs go through the rendered `./awf` wrapper, which runs awf
-from source through this repository's `.awf/runner/parts/runner-body.md` convention part so the dogfooded render always matches the tree, never a stale installed binary.
-
-| Command | What it does |
+| Command | Purpose |
 |---|---|
-| `./x gate [timings]` | The pre-commit gate: profiled Go tests (writing the durable `coverage.out`, ADR-0196), the 100% statement-coverage floor (`cmd/covercheck`), one explicit uncached Docker-backed Pi runtime smoke with 100% line/function/branch coverage, `go vet`, `golangci-lint`, the whole-program dead-code check (`cmd/deadcodecheck`), and the workflow-pin check (`cmd/pincheck`, ADR-0079). The optional `timings` argument runs the identical sequential transaction and reports elapsed wall time per stage. The prose and memory scans are not gate steps; the pre-commit hook payload runs them locally and CI backstops them (ADR-0196). Focused development may exercise schema-2 efforts with `./awf effort new --slug <slug> "<outcome>"`, `list`, `show`, `finish`, and the separate stateless worktree commands; no standalone memory, lifecycle repair, manual integration, or awf force-discard command remains. |
-| `./x test [args]` | Runs `go test ./...`, passing extra args through, without Docker. It prints that the Pi container was skipped and names `./x pi-test run` for the lane alone and `./x gate` for the complete transaction. |
-| `./x clean-test-tmp [--all]` | Remove managed test homes on Linux and macOS. Without arguments, removes only homes strictly older than 24 hours. `--all` removes every canonical managed home after warning that it can affect concurrent test processes. It reports the manager-owned cleanup summary; a partial cleanup reports its error and exits nonzero. |
-| `./x lint` / `./x fmt` | `golangci-lint run` / `golangci-lint fmt`. |
-| `./x deadcode` | The dead-code check on its own (ADR-0063). |
-| `./x pi-test run|reset` | Run the Pi-extension tests in a throwaway Docker container, or remove the lane's images along with whatever the superseded path-keyed design left behind. Each run copies the source the suite compiles into a fresh container that exits with it, so the lane leaves no container and no volume. The image is keyed by dependency content alone, so every checkout, worktree, and clone shares one. |
-| `awf` commands via `./awf` | The rendered pure wrapper `./awf` forwards every awf CLI verb verbatim, running awf from source through the repository `runner-body` convention part. |
-| `./x mutants [pkg]` | Advisory mutation triage (ADR-0066): the production diff vs `main` by default, or one package with a path argument. Never part of the gate. |
-| `./x audit-local <range>` | Repo-local conformance audit (ADR-0073) via `cmd/repoaudit`: over a required `<base>..<head>`, judged from the range's merge base (a moved base neither blames upstream files nor masks a missing entry), it flags an adopter-facing change with no CHANGELOG `[Unreleased]` entry (Error) and each added-or-touched `coverage-ignore` directive in a production Go file (Warning: re-evaluate the reachability claim). Repo-specific, not rules in the shipped `awf audit`; never gated. |
-| `./awf check commit-policy <revision-or-range>...` | Preview exact author, committer, and SSH-signature provenance after the repository's published baseline. The reference-transaction and pre-push payloads call the same verifier; violations list the allowed owner identity and signer plus reconciliation settings. |
-| `./x build` / `./x install` | `go build -o bin/awf ./cmd/awf` / `go install ./cmd/awf`. |
+| `./x gate [timings]` | Pre-commit gate: profiled Go tests and `coverage.out`, 100% statement coverage, uncached Docker-backed Pi smoke with strict coverage, `go vet`, lint, dead code, and pin checks. `timings` reports the same sequential stages. Prose and memory scans are hook/CI checks, not gate steps. |
+| `./x test [args]` | `go test ./...`, passing arguments through, without Docker. It names `./x pi-test run` and `./x gate` for the skipped lane and complete transaction. |
+| `./x pi-test run\|reset` | Run Pi tests in a throwaway Docker container, or remove lane images. The dependency-keyed image is shared; each run leaves no container or volume. |
+| `./x clean-test-tmp [--all]` | Remove managed Linux/macOS test homes older than 24 hours, or all homes after warning. Partial cleanup exits nonzero. |
+| `./x lint` / `./x fmt` | Run `golangci-lint run` / `golangci-lint fmt`. |
+| `./x deadcode` | Run the dead-code check (ADR-0063). |
+| `./x mutants [pkg]` | Advisory mutation triage against `main` or one package (ADR-0066). |
+| `./x audit-local <range>` | Advisory repository conformance audit via `cmd/repoaudit`; requires `<base>..<head>` and reports missing `[Unreleased]` entries and changed production `coverage-ignore` directives (ADR-0073). |
+| `./awf check commit-policy <revision-or-range>...` | Preview author, committer, and SSH-signature provenance. |
+| `./x build` / `./x install` | Build `bin/awf` / install `./cmd/awf`. |
+| `./awf effort ...` | Create, list, show, or finish schema-2 efforts; worktree commands remain separate and stateless. No standalone memory, lifecycle repair, manual integration, or force-discard command exists. |

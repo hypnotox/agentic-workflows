@@ -1,4 +1,11 @@
+awf has one tier: `./x gate` runs every deterministic lane before each commit. `./x gate timings` reports the same transaction; it is not a slower tier.
 
-awf has a single tier: `./x gate` runs everything, including protocol parity, the pinned in-memory Pi 0.81.1 three-factory runtime seam that proves real-request context-line refresh after active-branch compaction, the pinned repository-runtime cache and launcher tests, and strict full-coverage tests for the selection-gated effort association extension. The latter prove capability degradation above the retained 0.81.1 floor: companion capability presence is final authority, with no foreign package publication or installation-topology inference. There is no slower tier to reach for; the whole gate is fast enough to run before every commit. `./x gate timings` runs that identical sequential transaction while reporting each stage's elapsed wall time. The release-only real interactive Pi smoke remains the manual unbacked verification documented in the test layout; it is not mislabeled as a deterministic gate tier.
+| Lane | Proves |
+|---|---|
+| Go | Unit, integration, regression, coverage, vet, lint, dead-code, cross-compile, and pin checks. |
+| Pi container | Protocol parity, strict TypeScript coverage, runtime guards, and the selection-gated effort association. |
+| Pi runtime smoke | The pinned in-memory Pi 0.81.1 seam refreshes request context after active-branch compaction. |
 
-The Pi tier also proves the guarded dynamic active-tool, prompt-guidance, and file-mutation-queue floor against the retained 0.81.1 fork.
+The companion capability is final authority for degradation above the retained 0.81.1 floor; do not infer it from foreign package publication or installation topology. The guarded active-tool, prompt-guidance, and file-mutation-queue floor is also tested against the retained fork.
+
+The release-only interactive Pi smoke is manual verification, not a deterministic gate lane.

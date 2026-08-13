@@ -1,19 +1,21 @@
 # Testing
 
-<!-- awf:section gate -->
-## The gate
+A deterministic pre-commit gate runs the project's checks. The documented lanes include minimum-runtime smoke tests.
 
-A single gate command runs the project's checks (tests, vet/lint, rendered-file drift, and any generated executable-extension lanes) and must be green before every commit. A red gate blocks the commit: fix the cause or revert. For the always-rendered Pi target, keep strict TypeScript, protocol-parity, coverage, and minimum-runtime smoke tests in the same deterministic gate. If the project configures commit provenance, first preview intended history with `./awf check commit-policy <revision-or-range>...`, then test the reference-transaction and pre-push payloads against disposable refs before adopting their stubs. Exercise stubs from linked worktrees with both absolute and relative `core.hooksPath`; local hooks are preflight, while remote policy remains the final boundary.
+<!-- awf:section gate -->
+## Gate
+
+A single gate command runs the project's checks and must be green before every commit. A red gate blocks the commit: fix the cause or revert.
 <!-- awf:end -->
 
 <!-- awf:section tiers -->
-## Tiers
+## Tiers and lanes
 
-The gate has tiers. A fast tier runs on every commit and covers the common path cheaply; a fuller tier runs the slower, broader checks before merging or releasing. Reach for the fuller tier when a change is risky or cross-cutting, and always before integrating. Generated runtime tests belong in the tier that can enforce them consistently, never in an undocumented manual exception.
+A gate may have fast and full tiers. Put generated runtime lanes in a consistently enforced tier, never an undocumented manual exception.
 <!-- awf:end -->
 
 <!-- awf:section layout stub -->
-## Test layout
+## Layout and test shape
 
 _Describe where tests live and how they map to the code: the directory convention, how unit, integration, and regression tests are named and separated, where generated runtime and cross-language protocol tests live, and where a new test for a given change belongs._
 <!-- awf:end -->

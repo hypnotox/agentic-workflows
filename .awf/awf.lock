@@ -499,8 +499,8 @@
     "docs/development.md": {
       "templateId": "docs/development.md.tmpl",
       "templateHash": "sha256:e99876e3d365ba66edef46749bfa80a81deb82810ccd660f00857e40bf26b108",
-      "configHash": "sha256:61fee5d3ddb4f99efd855b3037399ae6c5ad9cf88e9ed71b7be557bf4d220540",
-      "outputHash": "sha256:52eb9df58d5a9d9c31c239441d5155fe881c682545ffc052bae07c3aa0d91686"
+      "configHash": "sha256:12bbc07b513e96eeb6b0cce80a3948f408e19d42aa67998496bf1dd8460a4d82",
+      "outputHash": "sha256:df64e61f523ba9b9c9197c27a806956660a06cf4770300c8519b91b7516b2a24"
     },
     "docs/doc-standard.md": {
       "templateId": "docs/doc-standard.md.tmpl",
@@ -811,8 +811,8 @@
     "docs/releasing.md": {
       "templateId": "docs/releasing.md.tmpl",
       "templateHash": "sha256:0683f8ceca62d4c5c91ce1058d1e2970f4336aced06b298b7ea3ef8cc328d78c",
-      "configHash": "sha256:0cd28ea6b3f0314e474c7c12e2b19d4d0fcb8200743c2d4751e6b51669167e71",
-      "outputHash": "sha256:fc0911339ada0b45a4bc0baf7bdcb259e3fd33cc9d24c4a0e2d84dff3dee57e5"
+      "configHash": "sha256:4de6fc580e39b222aebe31ff69a751a0571869a2116f1e47fe7b6aa5892def4e",
+      "outputHash": "sha256:1e02ccd278375f46a7381a21f86e685063d0ed9227d1ebdf54138ebcc4936c6e"
     },
     "docs/roadmap.md": {
       "templateId": "docs/roadmap.md.tmpl",
@@ -822,9 +822,9 @@
     },
     "docs/testing.md": {
       "templateId": "docs/testing.md.tmpl",
-      "templateHash": "sha256:6e244f4a67066c087046dd6f8a41f02ccfdf760a9bf5b086166170b0c911662b",
-      "configHash": "sha256:b3def676225cfe03af04a909d518a0dcb54969648914f3b8ba2923392061e73f",
-      "outputHash": "sha256:9043e71da29ddb4b1273c14f50ad95d3b3f261e57ccb082b98f00e470cfef2d4"
+      "templateHash": "sha256:a57a68e1550ff6762ec8021fb14948cf40b221bc228459e70af8e8be4ea16c51",
+      "configHash": "sha256:8e29a02aa4886c4358a132f0f204fa616cfd500342c7b9e7ec197719e11f529b",
+      "outputHash": "sha256:40a43b82bec4abef61b578d7a88e9f29fa97dd24ab9e35ab8364665fe8458364"
     },
     "docs/topics/adr-system/adr-lifecycle.md": {
       "templateId": "topics/topic.md.tmpl",

@@ -4,75 +4,19 @@
 
 <!-- awf:template-source templates/docs/releasing.md.tmpl#content -->
 <!-- awf:edit content: from .awf/docs/parts/releasing/content.md -->
-How to cut a release of the `awf` binary. The distribution model and its rationale are
-[ADR-0030](decisions/0030-prebuilt-binary-distribution-and-release.md); this is the runbook.
+How to cut a release of the `awf` binary. [ADR-0030](decisions/0030-prebuilt-binary-distribution-and-release.md) owns the distribution model.
 
-A release is a `v*` git tag. Pushing the tag triggers `.github/workflows/release.yml`, which
-verifies the canonical AGPL-3.0-only project-license artifacts and that `project.Version` and the
-changelog pin the same release (see Versioning), verifies the tagged commit is on `main`, runs the
-full gate (`./x gate && ./x check`),
-extracts the curated release notes for the tagged version (`awf changelog --version`), then runs
-GoReleaser (`.goreleaser.yaml`) to build cross-platform binaries (linux/darwin/windows ×
-amd64/arm64), package per-OS archives bundling `LICENSE` + `README.md`, write `checksums.txt`,
-and create the GitHub Release whose body is those notes, passed as `--release-notes`. GoReleaser's
-own commit-derived changelog is disabled: deriving notes from commit subjects leaked internal
-commits whose scopes dodged the exclude filters (ADR-0096). GoReleaser refuses a dirty checkout,
-including untracked files. Any preceding release-workflow step writes its artifacts outside the
-checkout, normally under `$RUNNER_TEMP`, or to a deliberately gitignored path; the release-notes
-step uses `"$RUNNER_TEMP/release-notes.md"` for this reason.
+## Release runbook
 
-The effort authority uses each target's
-native no-follow file access, repository lock, and conditional atomic publication primitives: creation
-never overwrites an existing name, while replacement either publishes the expected update or restores
-an unexpected raced destination. On Windows, creation uses MoveFileEx write-through; replacement uses
-ReplaceFileW with its supported zero flags, then reopens the published no-follow file and calls
-FlushFileBuffers. Windows documents no directory-fsync equivalent, so the contract claims atomic
-namespace replacement and an explicit published-file flush, not Unix directory-fsync semantics.
-Prebuilt binary download is the canonical install path;
-`go install` is the source fallback.
-
-## Versioning
-
-awf is pre-1.0; versions are `vMAJOR.MINOR.PATCH` (SemVer). `project.Version`
-(`internal/project/project.go`) is the single version authority (ADR-0049): it drives `awf
-version`, the lock's `AWFVersion`, the bootstrap pin, and the binary-version gate. The git tag
-must equal it; the Release workflow hard-fails on a mismatch before building, so the tag can
-never mint a version the binary does not carry. The workflow also runs `cmd/releasecheck` before packaging. Its project-license verifier requires
-the exact canonical AGPL-3.0-only `LICENSE`, matching README badge and footer, and GoReleaser
-archive inclusion while excluding dependency metadata and retained third-party notices. Its
-changelog pin (ADR-0078) requires the newest entry to equal `project.Version` and the standing
-`[Unreleased]` section to be present and empty, so a tag can neither ship without its own release
-notes nor strand late entries outside them.
-Schema-generation bumps raise the floor
-mechanically: `minVersionBySchema` must contain an entry for the current generation, at or
-below `project.Version`, or the gate fails.
-
-## Cut a release
-
-1. **Confirm `main` is green and clean.** On `main`, working tree clean:
+1. On a clean `main`, verify the release range:
 
    ```
    ./x gate && ./x check && ./awf audit <previous-tag>..HEAD
    ```
 
-   All three must pass (`audit` is advisory but should be clean for a release). The audit
-   range is required and has no default (ADR-0127): use the previous release tag as the base,
-   so the audit covers exactly the commits this release ships, including stale-ADR authorization
-   replay for schema-31-and-later merge commits.
+   All commands must pass. `audit` is advisory but must be clean. The required range starts at the previous tag and includes the commits being shipped, including stale-ADR authorization replay for schema-31-and-later merges.
 
-2. **Verify `project.Version` equals the target version and promote the changelog.** A
-   schema-coupled change bumps the const mid-cycle (ADR-0049 Decision 4), so it often already
-   matches; bump it only when it does not. A mid-cycle bump touches only the const and the
-   lock, never the changelog; the gate holds only ordering (entries strictly descending,
-   newest at or below `project.Version`; ADR-0078). Changes accumulate under a standing
-   `## [Unreleased]` section at the top of `changelog/CHANGELOG.md` as they land, grouped
-   into Breaking changes/Features/Bug fixes/Others by adopter-facing effect (ADR-0041), so
-   the changelog is always release-ready. Now, at release, rename that header to
-   `## [0.2.0] - YYYY-MM-DD` (the real date you tag) and add a fresh empty `## [Unreleased]`
-   above it. `awf changelog` ignores the `[Unreleased]` section (its parser only recognises
-   numeric-versioned headers). A changelog entry is required for every tag; rehearse the
-   release gate locally so a pin violation is caught before the tag exists rather than by
-   the workflow after:
+2. Set `project.Version` in `internal/project/project.go` to the target `MAJOR.MINOR.PATCH`. Promote `changelog/CHANGELOG.md`'s entries: rename `## [Unreleased]` to `## [0.2.0] - YYYY-MM-DD`, then add a new empty `## [Unreleased]` above it. Entries are grouped by adopter-facing effect: Breaking changes, Features, Bug fixes, or Others.
 
    ```
    go run ./cmd/releasecheck
@@ -81,79 +25,58 @@ below `project.Version`, or the gate fails.
    git commit -m "chore(awf): bump version to v0.2.0"
    ```
 
-   (`.awf/awf.lock` co-changes because `AWFVersion` is recorded in the lock; stage it if `./x check`
-   reports it.)
+   A schema-coupled bump often already changed the version mid-cycle. It changes the const and lock, not the changelog. During development the gate requires descending changelog entries with the newest at or below `project.Version`; releasecheck requires an exact newest-version match and an empty `[Unreleased]`. Stage `.awf/awf.lock` when `./x check` reports it.
 
-3. **Push `main`.**
+3. Complete the [Pi smoke](#pi-smoke) from the release commit. It must pass before tagging; unit and container stubs do not replace it.
+
+4. Push `main`, then tag and push the matching version:
 
    ```
    git push origin main
-   ```
-
-4. **Tag and push the tag.**
-
-   ```
    git tag v0.2.0
    git push origin v0.2.0
    ```
 
-   The tag push starts the `Release` workflow. It refuses a tag whose commit is not on
-   `origin/main` and re-runs the gate before building (ADR-0079), so pushing `main` first
-   (step 3) is load-bearing, not just tidy. Watch it in the GitHub Actions tab; on success the
-   release appears under Releases with the six archives, `checksums.txt`, and the changelog.
+5. Watch the `Release` workflow. On success, Releases contains six archives, `checksums.txt`, and curated changelog notes.
 
-## Preview locally (no publish)
+The tag triggers `.github/workflows/release.yml`. It verifies the canonical AGPL-3.0-only license artifacts, tag ancestry on `main`, `project.Version`, the changelog, `./x gate && ./x check`, then extracts notes with `awf changelog --version` and runs GoReleaser. GoReleaser builds linux/darwin/windows archives for amd64/arm64, bundles `LICENSE` and `README.md`, writes `checksums.txt`, and uses those notes through `--release-notes`. It refuses a dirty checkout, including untracked files; workflow artifacts therefore belong under `$RUNNER_TEMP` or a deliberately ignored path. Release notes use `"$RUNNER_TEMP/release-notes.md"`. Commit-derived GoReleaser notes are disabled (ADR-0096).
 
-Validate the GoReleaser config and dry-run the full build without tagging or publishing:
+## Versioning
+
+awf is pre-1.0 and uses `vMAJOR.MINOR.PATCH` SemVer. `project.Version` is the single authority (ADR-0049): it drives `awf version`, lock `AWFVersion`, the bootstrap pin, and the binary-version gate. The tag must match it. `cmd/releasecheck` requires the canonical AGPL-3.0-only `LICENSE`, matching README badge and footer, archive inclusion, a newest changelog entry equal to `project.Version`, and an empty standing `[Unreleased]` section (ADR-0078). `minVersionBySchema` must cover the current schema generation at or below `project.Version`.
+
+## Preview locally
 
 ```
 go run github.com/goreleaser/goreleaser/v2@v2.17.0 check
 go run github.com/goreleaser/goreleaser/v2@v2.17.0 release --snapshot --clean
 ```
 
-The version matches the `version:` input pinned in the workflows; `cmd/pincheck` enforces
-the workflow side; keep these two commands in step by hand (ADR-0079).
+Keep the command version aligned with workflow `version:`; `cmd/pincheck` enforces the workflow pin (ADR-0079). `--snapshot` writes ignored `dist/` artifacts and does not publish. CI runs both commands in the `release-config` pull-request job.
 
-`--snapshot` writes artifacts to `dist/` (gitignored) and skips the GitHub Release. The same two
-commands run on every pull request via the `release-config` job in `.github/workflows/ci.yml`, so a
-broken release config fails CI before any tag is pushed.
+## Pi smoke
 
-## Real Pi extension smoke
+From a clean reviewed commit, run `./x check`, `./x gate`, and independent implementation review. Use `hypnotox/pi` `fork-v0.81.1-awf.3` for Pi 0.81.1, or a later compatible build. In a new session, exercise native skill discovery, exploration, effort-independent bounded-prose handoff, cancellation, and editor recovery. Confirm one hidden `[session context]` line per explicit model request; compact the active branch and confirm the next request refreshes it. Confirm routing and context facts do not persist in history, and extensions take no automatic compaction, handoff, or pressure action. Unit stubs do not replace this smoke.
 
-Use the exact `hypnotox/pi` `fork-v0.81.1-awf.3` build for Pi 0.81.1, or a later compatible build. From a clean reviewed commit, run `./x check`, `./x gate`, and the independent implementation review. Start a new Pi session and exercise native skill discovery, exploration, and effort-independent handoff with bounded kickoff prose. Confirm each explicit model request receives one hidden `[session context]` line, then compact the active branch and confirm the next explicit request refreshes that line with the new compaction count. Exercise discretionary handoff cancellation and editor recovery. Confirm neither routing nor context facts persist in session history, and that the extensions take no automatic compaction, handoff, or other pressure action.
+## Rollback
 
-## Notes
+Delete a bad tag locally and remotely, then delete its GitHub Release:
 
-- **Repo visibility.** The repo is public, so release binaries download without authentication
-  (from the Releases page or via `gh release download v0.2.0`) and
-  `go install github.com/hypnotox/agentic-workflows/cmd/awf@latest` resolves without a token.
-- **Undo a bad tag.** If a tag was pushed in error, delete it locally and remotely, then delete the
-  GitHub Release it created:
+```
+git tag -d v0.2.0
+git push origin :refs/tags/v0.2.0
+gh release delete v0.2.0
+```
 
-  ```
-  git tag -d v0.2.0
-  git push origin :refs/tags/v0.2.0
-  gh release delete v0.2.0
-  ```
+## Security and distribution
 
-- **Tamper posture (ADR-0079).** `checksums.txt` and the bootstrap's SHA-256 check verify
-  download *integrity*, not publisher authenticity: a compromise of the release workflow or
-  its token can rewrite binary and checksums together. The accepted mitigations are the
-  SHA-pinned actions, dependabot currency, and the gate-and-ancestry checks on tag push;
-  artifact attestation and cosign signing are deliberately deferred (revisit at 1.0 or on
-  adopter demand).
-- **Hand-maintained files.** `.goreleaser.yaml` and the workflow files live outside awf's
-  render/lock set (like `.golangci.yml` and `./x`), so `awf check` does not track them; edit them
-  directly.
-- **Current-state cutover (adopter operation).** Crossing a project to current-state authority is not
-  part of cutting an awf release; it is a one-time adopter operation. The preceding bridge release seals
-  the prepared tree into a `bridgeAttestation` lock block; this release's plain `awf upgrade` then
-  consumes that seal, verifying only the sealed HEAD and post-normalization tree digest, journaling the
-  migration approval-file deletion and permanent lock at `.awf/current-state-upgrade.journal`, and
-  committing the cutover last while discarding the attestation's historical ADR routing payload. It runs no project tests or
-  gate, and this binary consumes seals rather than producing them. If a transaction is interrupted,
-  `awf upgrade --recover` rolls it back or cleans it up; if the journal is unusable, restore the working
-  tree from Git and reinstall the bridge release before retrying.
+Prebuilt downloads are canonical; `go install` is the source fallback. The public repository permits unauthenticated downloads, including `gh release download v0.2.0` and `go install github.com/hypnotox/agentic-workflows/cmd/awf@latest`.
 
-Release verification retains the pinned fork-v0.81.1-awf.3 runtime smoke; unit stubs do not replace that real-runtime check.
+`checksums.txt` and the bootstrap SHA-256 check prove integrity, not publisher authenticity. A compromised release workflow or token can replace both. SHA-pinned actions, Dependabot currency, and tag gate-and-ancestry checks are the accepted mitigations; artifact attestation and cosign remain deferred (ADR-0079).
+
+`.goreleaser.yaml` and workflow files are hand-maintained outside the awf render/lock set, like `.golangci.yml` and `./x`.
+
+## Adopter migration: current-state cutover
+
+Current-state cutover is a one-time adopter operation, not release work. The bridge release seals the prepared tree in `bridgeAttestation`; plain `awf upgrade` consumes the seal, verifies sealed HEAD and the post-normalization tree digest, deletes the approval file in a journaled transaction, permanently locks at `.awf/current-state-upgrade.journal`, and commits cutover last. It consumes, never produces, attestations and runs no project test or gate. For interruption, run `awf upgrade --recover`; if the journal is unusable, restore from Git, reinstall the bridge release, and retry.
 
