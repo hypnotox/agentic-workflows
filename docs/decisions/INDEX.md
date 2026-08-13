@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-0276: Select Gate Test Suites Independently](0276-select-gate-test-suites-independently.md) (Proposed)
+- [ADR-0276: Select Gate Test Suites Independently](0276-select-gate-test-suites-independently.md) (Accepted)
 
 ## History
 

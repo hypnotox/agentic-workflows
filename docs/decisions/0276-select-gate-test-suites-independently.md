@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: select-gate-test-suites-independently
-status: Proposed
+status: Accepted
 date: 2026-08-13
 ---
 # ADR-0276: Select Gate Test Suites Independently
@@ -56,3 +56,4 @@ suite category.
 ## Status history
 
 - 2026-08-13: Proposed
+- 2026-08-13: Accepted; content-sha256: 1b882534cf2f385e48470039c6febb1173ab8e834196ec4fe6fd5ce2aa757efc
