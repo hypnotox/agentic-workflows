@@ -4,14 +4,16 @@ Workflow-chain and task-skill template contracts: chain ordering, exploration an
 
 ### `invariant: using-awf-transaction-home`
 
-The rendered `using-awf` support skill is the transaction home for generated-tree maintenance: `.awf/` is the source, rendered outputs are never hand-edited, source edits run through render and check before the source, rendered outputs, and lock are staged together and the gate runs, drift findings provide repair hints, and upgrades run the bootstrap script followed by the residue sweep. It points configuration keys to `docs/config-reference.md` and detailed commands to `docs/working-with-awf.md` without carrying either reference's content.
+The rendered `using-awf` support skill is selected when a generated-tree edit, render, drift repair, or upgrade begins, not while only investigating or planning possible generated-tree work. It is the transaction home for generated-tree maintenance: `.awf/` is the source, rendered outputs are never hand-edited, source edits run through render and check before the source, rendered outputs, and lock are staged together and the gate runs, drift findings provide repair hints, and upgrades run the bootstrap script followed by the residue sweep. It points configuration keys to `docs/config-reference.md` and detailed commands to `docs/working-with-awf.md` without carrying either reference's content.
 Origin: ADR-0246
+Revised-by: ADR-0274
 Backing: test
 
 ### `invariant: writing-docs-delegation`
 
-The rendered `writing-docs` support skill selects the single document that owns a fact, reads `docs/doc-standard.md` before writing, references rather than restates other owned detail, and carries the document in the commit that makes the fact true. File edits invoke `using-awf`; the skill points to but does not restate the documentation standard or generated-tree transaction.
+The rendered `writing-docs` support skill is selected when project-documentation authoring begins, not merely because documentation may need a later update. It selects the single document that owns a fact, reads `docs/doc-standard.md` before writing, references rather than restates other owned detail, and carries the document in the commit that makes the fact true. File edits invoke `using-awf`; the skill points to but does not restate the documentation standard or generated-tree transaction.
 Origin: ADR-0246
+Revised-by: ADR-0274
 Backing: test
 
 ### `invariant: independent-workflow-escalation`
@@ -204,8 +206,9 @@ Backing: test
 
 ### `invariant: orienting-single-home`
 
-The orienting support skill is the single home of the orientation procedure: its rendered body defines the four invocation moments, the guide-first grounding ladder shared as a partial with the grounding-checker contract, multi-child report-only exploration dispatch with one information need per child, the managed context discipline, and effort-resume revalidation that reads the memory file whole and resolves discrepancies in favor of the repository; the skill is single-pass, never a chain gate, never creates an effort, and never commits. Brainstorming's first step invokes it, and proposing-adr and writing-plans carry advisory pointers.
+The orienting support skill is selected when repository orientation begins for fresh work, effort resume, handoff takeover, or a widened working set, not for exact-known-file inspection or merely because later work may need repository context. It is the single home of the orientation procedure: its rendered body defines the four invocation moments, the guide-first grounding ladder shared as a partial with the grounding-checker contract, multi-child report-only exploration dispatch with one information need per child, the managed context discipline, and effort-resume revalidation that reads the memory file whole and resolves discrepancies in favor of the repository; the skill is single-pass, never a chain gate, never creates an effort, and never commits. Brainstorming's first step invokes it, and proposing-adr and writing-plans carry advisory pointers.
 Origin: ADR-0187
+Revised-by: ADR-0274
 Backing: test
 
 ### `invariant: semantic-rendering-review`

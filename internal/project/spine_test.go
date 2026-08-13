@@ -1535,7 +1535,7 @@ func TestUsingAwfTemplate(t *testing.T) {
 	want := strings.Join([]string{
 		"---",
 		"name: example-using-awf",
-		"description: \"Use when maintaining awf's generated tree: edit `.awf/` sources, render outputs, resolve drift, or upgrade awf.\"",
+		"description: \"Load when beginning a generated-tree edit, render, drift repair, or upgrade. Do not load while only investigating or planning possible generated-tree work.\"",
 		"---",
 		"",
 		"<!-- awf:edit procedure: default; create  to override -->",
@@ -1561,7 +1561,7 @@ func TestWritingDocsTemplate(t *testing.T) {
 	want := strings.Join([]string{
 		"---",
 		"name: example-writing-docs",
-		"description: \"Use when authoring project documentation: select the document that owns the fact and keep it current with the change.\"",
+		"description: \"Load when beginning project-documentation authoring. Do not load merely because documentation may need a later update.\"",
 		"---",
 		"",
 		"<!-- awf:edit procedure: default; create  to override -->",
@@ -1586,7 +1586,7 @@ func TestOrientingTemplate(t *testing.T) {
 	if !strings.Contains(out, "name: example-orienting") {
 		t.Errorf("expected 'name: example-orienting' in output:\n%s", out)
 	}
-	for _, want := range []string{"Four moments call for orientation", "Ground guide-first, in order", "`example-exploring`", "A discrepancy resolves in favor of the repository"} {
+	for _, want := range []string{"Load when beginning repository orientation", "Do not load for exact-known-file inspection", "Four moments call for orientation", "Ground guide-first, in order", "`example-exploring`", "A discrepancy resolves in favor of the repository"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("orienting render missing %q:\n%s", want, out)
 		}
@@ -2030,7 +2030,9 @@ func TestAgentsDocNativeSkillRouter(t *testing.T) {
 		"docs/maintainable-code-design.md",
 		"make gate",
 		"Treat exposed native-skill descriptions as routing metadata.",
-		"Load a skill body only when beginning the work it owns; do not preload likely follow-up skills, and load multiple bodies only when they concurrently govern the current step.",
+		"Before loading a skill, identify the next concrete action.",
+		"a possible later edit, render, documentation update, review, or commit does not justify loading its skill now.",
+		"Load multiple bodies only when each independently governs that same next action before another routing decision can occur.",
 	} {
 		if !strings.Contains(out, phrase) {
 			t.Errorf("expected phrase %q in output:\n%s", phrase, out)

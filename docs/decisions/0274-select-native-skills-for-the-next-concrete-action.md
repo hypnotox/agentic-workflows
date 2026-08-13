@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: select-native-skills-for-the-next-concrete-action
-status: Proposed
+status: Implementing
 date: 2026-08-13
 ---
 # ADR-0274: Select Native Skills for the Next Concrete Action
@@ -39,3 +39,6 @@ Agents receive a concrete routing test before loading any body and defer likely 
 ## Status history
 
 - 2026-08-13: Proposed
+- 2026-08-13: Accepted; content-sha256: 559f0fc3e2f3e2a5a5c277319ee29f375ea33d76cc6f874eb2b5a53d2f9b202d
+- 2026-08-13: Implementing; content-sha256: 559f0fc3e2f3e2a5a5c277319ee29f375ea33d76cc6f874eb2b5a53d2f9b202d
+- 2026-08-13: Applied; operations: update `rendering/guide-and-doc-templates:guide-entry-point-routing`, update `rendering/workflow-skill-templates:orienting-single-home`, update `rendering/workflow-skill-templates:using-awf-transaction-home`, update `rendering/workflow-skill-templates:writing-docs-delegation`

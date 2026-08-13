@@ -19,7 +19,9 @@ func TestGuideRoutesNativeSkillsWithoutCatalog(t *testing.T) {
 	out := renderGuide(t, data)
 	for _, want := range []string{
 		"Treat exposed native-skill descriptions as routing metadata.",
-		"Load a skill body only when beginning the work it owns; do not preload likely follow-up skills, and load multiple bodies only when they concurrently govern the current step.",
+		"Before loading a skill, identify the next concrete action.",
+		"a possible later edit, render, documentation update, review, or commit does not justify loading its skill now.",
+		"Load multiple bodies only when each independently governs that same next action before another routing decision can occur.",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("guide does not preserve progressive skill disclosure %q", want)

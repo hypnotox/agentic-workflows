@@ -90,9 +90,9 @@ Backing: test
 
 ### `invariant: guide-entry-point-routing`
 
-The rendered guide routes agents to native catalog skills whose exposed descriptions fit the work, without duplicating catalog skill names, purposes, triggers, kinds, relationships, or a fallback catalog. Empty and missing render data remains coherent, and skill selection stays advisory.
+The rendered guide treats exposed native-skill descriptions as routing metadata and selects against the next concrete action. It loads only bodies that govern that action, never preloads a body for a possible later edit, render, documentation update, review, or commit, and loads multiple bodies only when each independently governs the same next action before another routing decision can occur. It does not duplicate catalog skill names, purposes, triggers, kinds, relationships, or a fallback catalog. Empty and missing render data remains coherent, and skill selection stays advisory.
 Origin: ADR-0157
-Revised-by: ADR-0167, ADR-0241, ADR-0251, ADR-0270
+Revised-by: ADR-0167, ADR-0241, ADR-0251, ADR-0270, ADR-0274
 Backing: test
 
 ### `invariant: working-memory-single-home`
