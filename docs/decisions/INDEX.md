@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-0274: Select Native Skills for the Next Concrete Action](0274-select-native-skills-for-the-next-concrete-action.md) (Proposed)
 
 ## History
 

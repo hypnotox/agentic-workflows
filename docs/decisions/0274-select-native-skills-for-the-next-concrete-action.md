@@ -1,0 +1,41 @@
+---
+format: current-state-v4
+slug: select-native-skills-for-the-next-concrete-action
+status: Proposed
+date: 2026-08-13
+---
+# ADR-0274: Select Native Skills for the Next Concrete Action
+
+
+## Context
+
+Native skill descriptions are exposed before their bodies and serve as routing metadata. The existing guide prohibited preloading likely follow-up skills, but agents could still interpret a task's likely workflow chain as concurrently applicable and load orientation, generated-tree, and documentation bodies before beginning any of those actions. This spends context and weakens the intended progressive disclosure boundary.
+
+## Decision
+
+1. `decision: route-by-next-action` Select native skill bodies against the next concrete action, not the full anticipated workflow chain.
+2. `decision: defer-later-owners` A possible later edit, render, documentation update, review, or commit does not justify loading its owning skill before that action begins.
+3. `decision: constrain-multiple-loads` Load multiple skill bodies only when each independently governs the same next action before another routing decision can occur.
+4. `decision: expose-timing-boundaries` Skill descriptions that commonly over-trigger state when their owned work begins and exclude investigation or known-file inspection that precedes it.
+
+## State changes
+
+- update `rendering/guide-and-doc-templates:guide-entry-point-routing`
+- update `rendering/workflow-skill-templates:orienting-single-home`
+- update `rendering/workflow-skill-templates:using-awf-transaction-home`
+- update `rendering/workflow-skill-templates:writing-docs-delegation`
+
+## Consequences
+
+Agents receive a concrete routing test before loading any body and defer likely follow-up owners until their work actually begins. Legitimately concurrent governance remains possible, but anticipation alone no longer qualifies. Skill descriptions become slightly more explicit because routing timing and exclusions must be visible without loading the body.
+
+## Alternatives Considered
+
+| Alternative | Why not chosen |
+|---|---|
+| Strengthen only the root guide | Commonly over-selected descriptions would still invite premature loading. |
+| Change only skill descriptions | Each description would lack one consistent project-wide selection rule. |
+
+## Status history
+
+- 2026-08-13: Proposed
