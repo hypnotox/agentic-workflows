@@ -23,10 +23,11 @@ the existing behavior of testing working-tree content.
 
 ## Decision
 
-1. `decision: staged-test-selection` The gate selects its test-related stages solely from the staged change set. An absent, empty, unreadable, or unclassifiable staged set selects all tests.
-2. `decision: docs-only-test-skip` A nonempty staged set containing only approved documentation surfaces skips the Go suite, coverage check, and Pi runtime tests. The approved surfaces are repository documentation, the root README, the changelog, authored documentation parts, and documentation templates.
-3. `decision: pi-change-test-selection` A staged set that is not documentation-only runs the Go suite and coverage check. It runs the Pi runtime tests only when a staged path can affect the Pi extension, its generated or runtime inputs, its renderer, its test harness, or the gate runner. The classification is conservative: uncertainty runs the Pi tests.
+1. `decision: staged-test-selection` The gate selects its test-related stages from one staged-index snapshot that safely represents additions, deletions, renames, and arbitrary valid filenames. An absent, empty, unreadable, or unclassifiable staged set selects all tests.
+2. `decision: docs-only-test-skip` A nonempty staged set containing only `docs/**`, `README.md`, `changelog/CHANGELOG.md`, `.awf/docs/parts/**`, or `templates/docs/**` skips the Go suite, coverage check, and Pi runtime tests.
+3. `decision: pi-change-test-selection` A staged set that is not documentation-only runs the Go suite and coverage check. It runs the Pi runtime tests only when a staged path can affect Pi templates or generated extensions, agent runtime inputs, the Pi test harness or its dependencies, rendering or target code, relevant configuration, or `x`. The classification is conservative: uncertainty runs the Pi tests.
 4. `decision: non-test-gates-unconditional` Test selection is only a runtime optimization. Vet, released-platform builds, lint, dead-code analysis, and the workflow-pin check continue to run for every gate invocation.
+5. `decision: selection-observability` The gate prints explicit notices for skipped test stages, and `./x gate timings` reports timings only for stages that execute.
 
 ## State changes
 
