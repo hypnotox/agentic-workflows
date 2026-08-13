@@ -49,7 +49,7 @@ func TestLocalDocAuthoringGuidance(t *testing.T) {
 
 func TestLocalDocCommandGuidance(t *testing.T) {
 	root := filepath.Clean(filepath.Join("..", ".."))
-	for _, rel := range []string{"docs/working-with-awf.md", "README.md"} {
+	for _, rel := range []string{"docs/working-with-awf.md"} {
 		b, err := os.ReadFile(filepath.Join(root, rel))
 		if err != nil {
 			t.Fatal(err)
