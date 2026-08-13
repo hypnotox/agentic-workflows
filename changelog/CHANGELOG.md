@@ -8,6 +8,8 @@ query a single version or a range.
 
 ## [Unreleased]
 
+## [0.37.0] - 2026-08-13
+
 ### Features
 
 - `./x gate` now independently selects test lanes from staged paths: exact documentation-only changes skip both, Pi-only changes run Pi smoke only, Go-only changes run Go tests and coverage only, and overlapping or uncertain changes run both.
