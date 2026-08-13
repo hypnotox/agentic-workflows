@@ -8,6 +8,8 @@ query a single version or a range.
 
 ## [Unreleased]
 
+## [0.36.2] - 2026-08-13
+
 ### Bug fixes
 
 - Native skill guidance now selects bodies for the next concrete action instead of preloading likely later workflow owners, with explicit timing boundaries for orientation, generated-tree maintenance, and documentation authoring.
