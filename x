@@ -40,7 +40,7 @@ run_deadcode_gate() {
 select_gate_tests() {
   # One rename-disabled, NUL-delimited index diff is the selection snapshot.
   # Any Git or parsing uncertainty deliberately retains every test lane.
-  local diff path saw=false
+  local LC_ALL=C diff path size consumed=0 saw=false
   diff="$(mktemp)"
   cleanup_paths+=("$diff")
   if ! git diff --cached --name-only -z --no-renames >"$diff"; then
@@ -53,6 +53,7 @@ select_gate_tests() {
       return 1
     fi
     saw=true
+    consumed=$((consumed + ${#path} + 1))
     case "$path" in
       docs/*|README.md|changelog/CHANGELOG.md|.awf/docs/parts/*|templates/docs/*) ;;
       *) gate_docs_only=false ;;
@@ -63,7 +64,8 @@ select_gate_tests() {
       *.go|x|go.mod|go.sum|package.json|package-lock.json|.pi/*|.claude/*|.awf/*|templates/*|tools/pi-extension-test/*|internal/project/*|internal/render/*|cmd/*) gate_pi_affecting=true ;;
     esac
   done <"$diff"
-  "$saw" || return 1
+  size="$(wc -c <"$diff")" || return 1
+  "$saw" && [ "$consumed" -eq "$size" ] || return 1
 }
 
 run_pi_runtime_smoke() {
