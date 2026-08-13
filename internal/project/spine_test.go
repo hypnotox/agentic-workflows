@@ -1124,11 +1124,16 @@ func TestCheckpointDigestShape(t *testing.T) {
 			"until active efforts finish",
 			"sole writer of phase, next action, and time",
 			"executable `./awf read plan` projection never creates a checkpoint or handoff boundary",
-			"`Continue with effort <slug>.`",
+			"invoke `handoff_session` alone with kickoff exactly `Continue with effort <slug>.`",
+			"The kickoff identifies only the effort: it carries no phase or task limit, association mechanic, resume procedure, or handoff-log instruction.",
+			"Skill and effort authority own attachment, reorientation, boundary logging, and autonomous continuation.",
 		} {
 			if !strings.Contains(body, phrase) {
 				t.Errorf("%s missing checkpoint contract %q", partial, phrase)
 			}
+		}
+		if got := strings.Count(body, "`Continue with effort <slug>.`"); got != 1 {
+			t.Errorf("%s has %d effort kickoff values, want exactly one", partial, got)
 		}
 		for _, direct := range []string{
 			"set `Phase:`",
@@ -1136,6 +1141,9 @@ func TestCheckpointDigestShape(t *testing.T) {
 			"refresh `Updated:`",
 			"directing the replacement to read the effort checkpoint",
 			"append the actual boundary to `## Handoff log`",
+			"attach to it",
+			"read its memory",
+			"continue with phase",
 			"do not start",
 		} {
 			if strings.Contains(strings.ToLower(body), strings.ToLower(direct)) {
