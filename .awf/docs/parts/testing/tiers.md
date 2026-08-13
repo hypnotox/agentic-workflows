@@ -1,4 +1,4 @@
-awf has one tier: `./x gate` always runs its deterministic non-test checks before each commit, while selecting test lanes from staged paths. `./x gate timings` reports only executed stages; it is not a slower tier.
+awf has one tier: `./x gate` always runs its deterministic non-test checks before each commit, while independently selecting Go and Pi test lanes from staged paths. `./x gate timings` reports only executed stages; it is not a slower tier.
 
 | Lane | Proves |
 |---|---|

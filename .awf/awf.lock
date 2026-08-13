@@ -481,7 +481,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:90d047a5c795f8de9b40278403415f29374f19f557a1869c2afd6fb2e1ef4352",
+      "outputHash": "sha256:7b1e9ec6984c39e61454ce315c883723d307d7f07c76c8e0a516b550fc8c673c",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -499,8 +499,8 @@
     "docs/development.md": {
       "templateId": "docs/development.md.tmpl",
       "templateHash": "sha256:e99876e3d365ba66edef46749bfa80a81deb82810ccd660f00857e40bf26b108",
-      "configHash": "sha256:8391c64c3e19b83a14d447cbbaef8ea00547e6c3da8a9d75acfb39dd66cd0232",
-      "outputHash": "sha256:7e9b6f95dae975fccb5c155e6bd6722a27b812b10f075d479e250b66ef46b65b"
+      "configHash": "sha256:36d8a903d129a2c4bec942293868239d9679113d6e4c95b46d302618612094d5",
+      "outputHash": "sha256:a79921aa4bfab054561cad275240e1e6a20f82f247c62603669734ec4a4a09f2"
     },
     "docs/doc-standard.md": {
       "templateId": "docs/doc-standard.md.tmpl",
@@ -823,8 +823,8 @@
     "docs/testing.md": {
       "templateId": "docs/testing.md.tmpl",
       "templateHash": "sha256:a57a68e1550ff6762ec8021fb14948cf40b221bc228459e70af8e8be4ea16c51",
-      "configHash": "sha256:527bfea0594eb8e9109d2012288a7b44b41c028067c420dd4848b2ee26873eb9",
-      "outputHash": "sha256:143f7c6bc0b4907ecc10dbae9816ab5226ee077e39e21949f334d58e4aac3d14"
+      "configHash": "sha256:346dcf886eacc00ed5dc0d53b351ee5dab80d4ae1d4dcc0acbaaca0f002712a2",
+      "outputHash": "sha256:bf170d2552ec508a4ddc9fd676fb894345a1bac85227925778baa033bfa08052"
     },
     "docs/topics/adr-system/adr-lifecycle.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -1135,8 +1135,8 @@
     "docs/topics/tooling/quality-gates.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:8365b0a7a667bea2af44b24c3e8151f0a68d1d5bbc2293a1b7aa628e4fb490c3",
-      "outputHash": "sha256:9004badd8415f233385966170c5317604e7484a47a9bea1040e8adb47449dab4"
+      "configHash": "sha256:49699f46bdc4f79910a22aa72beca3381b9213fb33d43545321dab09a85006a2",
+      "outputHash": "sha256:de868f75c9a443fad0df9df22f80b806b7d4f5e15ec2efe7e6625da5247c8e25"
     },
     "docs/topics/tooling/test-infrastructure.md": {
       "templateId": "topics/topic.md.tmpl",

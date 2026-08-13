@@ -46,22 +46,28 @@ select_gate_tests() {
   if ! git diff --cached --name-only -z --no-renames >"$diff"; then
     return 1
   fi
-  gate_docs_only=true
-  gate_pi_affecting=false
+  gate_go_tests=false
+  gate_pi_tests=false
   while IFS= read -r -d '' path; do
     if [ -z "$path" ]; then
       return 1
     fi
     saw=true
     consumed=$((consumed + ${#path} + 1))
+    # Each recognized category explicitly selects its dependent suites. New or
+    # uncertain paths deliberately select both rather than inheriting a lane.
     case "$path" in
+      # ADR-0275's exact documentation allowlist remains the sole neither lane.
       docs/*|README.md|changelog/CHANGELOG.md|.awf/docs/parts/*|templates/docs/*) ;;
-      *) gate_docs_only=false ;;
-    esac
-    # Go code is conservatively Pi-affecting. These non-Go surfaces feed the
-    # generated extension, its runtime inputs, harness, renderer, or runner.
-    case "$path" in
-      *.go|x|go.mod|go.sum|package.json|package-lock.json|.pi/*|.claude/*|.awf/*|templates/*|tools/pi-extension-test/*|internal/project/*|internal/render/*|cmd/*) gate_pi_affecting=true ;;
+      # Pi templates and generated guidance are consumed by Go tests as well.
+      templates/pi/*|templates/embed.go|.pi/agents/*|.pi/skills/*|x|internal/project/*|internal/render/*|internal/config/*|internal/catalog/*|.awf/*|go.mod|go.sum) gate_go_tests=true; gate_pi_tests=true ;;
+      # These Pi harness proving inputs have direct Go-test consumers.
+      tools/pi-extension-test/container.sh|tools/pi-extension-test/tests/index.test.ts|tools/pi-extension-test/tests/handoff.test.ts) gate_go_tests=true; gate_pi_tests=true ;;
+      # Pi extension and standalone harness inputs have no Go-test consumer.
+      .pi/extensions/*|tools/pi-extension-test/Dockerfile|tools/pi-extension-test/*manifest*|tools/pi-extension-test/*lock*|tools/pi-extension-test/tsconfig*.json|tools/pi-extension-test/fixtures/*|tools/pi-extension-test/tests/*.ts|tools/pi-extension-test/package.json|tools/pi-extension-test/package-lock.json) gate_pi_tests=true ;;
+      # Ordinary Go and Claude-only inputs do not affect the Pi runtime suite.
+      *.go|.claude/*) gate_go_tests=true ;;
+      *) gate_go_tests=true; gate_pi_tests=true ;;
     esac
   done <"$diff"
   size="$(wc -c <"$diff")" || return 1
@@ -111,21 +117,24 @@ case "$cmd" in
     # The index determines only which test lanes run; all commands continue to
     # test the working tree. No staged set or any read uncertainty fails closed.
     if ! select_gate_tests; then
-      gate_docs_only=false
-      gate_pi_affecting=true
+      gate_go_tests=true
+      gate_pi_tests=true
     fi
     prof="coverage.out"
-    if "$gate_docs_only"; then
-      echo "gate: skipping Go tests and coverage for documentation-only staged changes" >&2
-      echo "gate: skipping Pi runtime smoke for documentation-only staged changes" >&2
-    else
+    if "$gate_go_tests"; then
       run_gate_step go-test env -u AWF_PI_RUNTIME_SMOKE go test ./... -coverpkg=./... -coverprofile="$prof"
       run_gate_step covercheck go run ./cmd/covercheck "$prof"
-      if "$gate_pi_affecting"; then
-        run_gate_step pi-runtime-smoke run_pi_runtime_smoke
-      else
-        echo "gate: skipping Pi runtime smoke for non-Pi staged changes" >&2
-      fi
+    elif "$gate_pi_tests"; then
+      echo "gate: skipping Go tests and coverage for Pi-only staged changes" >&2
+    else
+      echo "gate: skipping Go tests and coverage for documentation-only staged changes" >&2
+    fi
+    if "$gate_pi_tests"; then
+      run_gate_step pi-runtime-smoke run_pi_runtime_smoke
+    elif "$gate_go_tests"; then
+      echo "gate: skipping Pi runtime smoke for Go-only staged changes" >&2
+    else
+      echo "gate: skipping Pi runtime smoke for documentation-only staged changes" >&2
     fi
     run_gate_step vet go vet ./...
     # Cross-compile gate: the suite only ever runs on the host platform, so a

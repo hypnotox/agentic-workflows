@@ -169,60 +169,73 @@ fi
 
 // invariant: tooling/quality-gates:staged-test-selection (TestGateRunnerSelectsTestsFromStagedChanges)
 func TestGateRunnerSelectsTestsFromStagedChanges(t *testing.T) {
-	all := []string{"test ./... -coverpkg=./... -coverprofile=coverage.out", "run ./cmd/covercheck coverage.out", "TestPi(EffortMemoryToolContract|RealRuntimeSmoke)"}
-	goOnly := all[:2]
+	goTests := []string{"test ./... -coverpkg=./... -coverprofile=coverage.out", "run ./cmd/covercheck coverage.out"}
+	piTests := []string{"TestPi(EffortMemoryToolContract|RealRuntimeSmoke)"}
+	both := append(slices.Clone(goTests), piTests...)
 	for _, tc := range []struct {
-		name    string
-		paths   []string
-		want    []string
-		notices []string
+		name, path string
+		want       []string
+		notices    []string
 	}{
-		{"docs-only skips all test stages", []string{"docs/guide.md", "README.md", "changelog/CHANGELOG.md", ".awf/docs/parts/a.md", "templates/docs/a.md", "docs/odd name [1].md"}, nil, []string{"gate: skipping Go tests and coverage for documentation-only staged changes", "gate: skipping Pi runtime smoke for documentation-only staged changes"}},
-		{"ordinary non-Pi runs Go tests only", []string{"LICENSE"}, goOnly, []string{"gate: skipping Pi runtime smoke for non-Pi staged changes"}},
-		{"mixed changes run Go tests only", []string{"docs/guide.md", "LICENSE"}, goOnly, []string{"gate: skipping Pi runtime smoke for non-Pi staged changes"}},
+		{"docs-only skips both suites", "docs/odd name [1].md", nil, []string{"gate: skipping Go tests and coverage for documentation-only staged changes", "gate: skipping Pi runtime smoke for documentation-only staged changes"}},
+		{"Pi extension is Pi-only", ".pi/extensions/extension.ts", piTests, []string{"gate: skipping Go tests and coverage for Pi-only staged changes"}},
+		{"Pi harness input without Go consumer is Pi-only", "tools/pi-extension-test/package.json", piTests, []string{"gate: skipping Go tests and coverage for Pi-only staged changes"}},
+		{"ordinary Go is Go-only", "cmd/example/main.go", goTests, []string{"gate: skipping Pi runtime smoke for Go-only staged changes"}},
+		{"Claude input is Go-only", ".claude/agents/reviewer.md", goTests, []string{"gate: skipping Pi runtime smoke for Go-only staged changes"}},
+		{"unknown paths fail closed", "LICENSE", both, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root, logPath := committedGateRunnerFixture(t)
-			write := map[string]string{}
-			for _, path := range tc.paths {
-				write[path] = "changed\n"
-			}
-			gitfixture.Stage(t, gitfixture.At(root), write)
+			gitfixture.Stage(t, gitfixture.At(root), map[string]string{tc.path: "changed\n"})
 			assertGateSelection(t, root, logPath, tc.want, tc.notices)
 		})
 	}
 
+	t.Run("documentation allowlist skips both suites", func(t *testing.T) {
+		root, logPath := committedGateRunnerFixture(t)
+		gitfixture.Stage(t, gitfixture.At(root), map[string]string{
+			"docs/guide.md": "changed\n", "README.md": "changed\n", "changelog/CHANGELOG.md": "changed\n",
+			".awf/docs/parts/a.md": "changed\n", "templates/docs/a.md": "changed\n",
+		})
+		assertGateSelection(t, root, logPath, nil, []string{"gate: skipping Go tests and coverage for documentation-only staged changes", "gate: skipping Pi runtime smoke for documentation-only staged changes"})
+	})
+
 	for _, path := range []string{
-		"templates/pi/extension.ts.tmpl",
-		".pi/extensions/extension.ts",
-		".pi/agents/reviewer.md",
-		"tools/pi-extension-test/package.json",
-		"internal/project/target.go",
-		".awf/config.yaml",
-		"go.mod",
+		"templates/pi/extension.ts.tmpl", ".pi/agents/reviewer.md", ".pi/skills/reviewer/SKILL.md", "x",
+		"internal/project/target.go", "internal/render/template.go", "internal/config/config.go", "internal/catalog/catalog.go", "templates/embed.go",
+		"tools/pi-extension-test/container.sh", "tools/pi-extension-test/tests/index.test.ts", "tools/pi-extension-test/tests/handoff.test.ts",
 	} {
-		t.Run("Pi surface "+strings.ReplaceAll(path, "/", "_"), func(t *testing.T) {
+		t.Run("overlap "+strings.ReplaceAll(path, "/", "_"), func(t *testing.T) {
 			root, logPath := committedGateRunnerFixture(t)
-			gitfixture.Stage(t, gitfixture.At(root), map[string]string{path: "changed\n"})
-			assertGateSelection(t, root, logPath, all, nil)
+			if path == "x" {
+				writeFakeGit(t, root, "printf 'x\\0'\n")
+			} else {
+				gitfixture.Stage(t, gitfixture.At(root), map[string]string{path: "changed\n"})
+			}
+			assertGateSelection(t, root, logPath, both, nil)
 		})
 	}
 
+	t.Run("mixed Pi-only and Go-only changes run both suites", func(t *testing.T) {
+		root, logPath := committedGateRunnerFixture(t)
+		gitfixture.Stage(t, gitfixture.At(root), map[string]string{".pi/extensions/extension.ts": "changed\n", "cmd/example/main.go": "changed\n"})
+		assertGateSelection(t, root, logPath, both, nil)
+	})
 	t.Run("empty and unborn repositories fail closed", func(t *testing.T) {
 		root, logPath := committedGateRunnerFixture(t)
-		assertGateSelection(t, root, logPath, all, nil)
+		assertGateSelection(t, root, logPath, both, nil)
 		unborn, unbornLog := gateRunnerFixture(t)
-		assertGateSelection(t, unborn, unbornLog, all, nil)
+		assertGateSelection(t, unborn, unbornLog, both, nil)
 	})
 	for _, tc := range []struct {
 		name, body string
 		want       []string
 		notices    []string
 	}{
-		{"Git failure fails closed", "exit 17\n", all, nil},
-		{"malformed snapshot fails closed", "printf 'docs/guide.md\\0templates/pi/index.ts'\n", all, nil},
+		{"Git failure fails closed", "exit 17\n", both, nil},
+		{"malformed snapshot fails closed", "printf 'docs/guide.md\\0templates/pi/index.ts'\n", both, nil},
 		{"newline filename remains docs-only", "printf 'docs/line\\nbreak.md\\0'\n", nil, []string{"gate: skipping Go tests and coverage for documentation-only staged changes", "gate: skipping Pi runtime smoke for documentation-only staged changes"}},
-		{"runner path is Pi-affecting", "printf 'x\\0'\n", all, nil},
+		{"space filename remains Pi-only", "printf '.pi/extensions/with space.ts\\0'\n", piTests, []string{"gate: skipping Go tests and coverage for Pi-only staged changes"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root, logPath := committedGateRunnerFixture(t)
@@ -230,14 +243,18 @@ func TestGateRunnerSelectsTestsFromStagedChanges(t *testing.T) {
 			assertGateSelection(t, root, logPath, tc.want, tc.notices)
 		})
 	}
-	t.Run("additions deletions and cross-category rename classify conservatively", func(t *testing.T) {
+	t.Run("additions deletions and rename paths are each classified", func(t *testing.T) {
 		root, logPath := gateRunnerFixture(t)
 		repo := gitfixture.InitRepoAt(t, root)
 		gitfixture.AddAll(t, repo)
-		gitfixture.Commit(t, repo, "fixture", map[string]string{"docs/delete.md": "old\n"})
+		gitfixture.Commit(t, repo, "fixture", map[string]string{"docs/delete.md": "old\n", "cmd/old/main.go": "old\n"})
 		gitfixture.StageRemoval(t, repo, "docs/delete.md")
-		gitfixture.Stage(t, repo, map[string]string{"templates/agents/renamed.md": "old\n"})
-		assertGateSelection(t, root, logPath, all, nil)
+		gitfixture.Stage(t, repo, map[string]string{".pi/extensions/added.ts": "new\n"})
+		if err := os.Rename(filepath.Join(root, "cmd/old/main.go"), filepath.Join(root, ".pi/extensions/renamed.ts")); err != nil {
+			t.Fatal(err)
+		}
+		gitfixture.AddAll(t, repo)
+		assertGateSelection(t, root, logPath, both, nil)
 	})
 }
 
@@ -306,11 +323,15 @@ func assertGateSelection(t *testing.T, root, logPath string, wantTests, wantNoti
 		}
 	}
 	wantTimings := []string{"vet", "build-linux-arm64", "build-darwin-amd64", "build-darwin-arm64", "build-windows-amd64", "build-windows-arm64", "lint", "deadcode", "pincheck"}
-	if len(wantTests) > 0 {
+	if slices.Contains(wantTests, "test ./... -coverpkg=./... -coverprofile=coverage.out") {
 		wantTimings = append([]string{"go-test", "covercheck"}, wantTimings...)
 	}
 	if slices.Contains(wantTests, "TestPi(EffortMemoryToolContract|RealRuntimeSmoke)") {
-		wantTimings = append(wantTimings[:2], append([]string{"pi-runtime-smoke"}, wantTimings[2:]...)...)
+		insert := 0
+		if slices.Contains(wantTests, "test ./... -coverpkg=./... -coverprofile=coverage.out") {
+			insert = 2
+		}
+		wantTimings = append(wantTimings[:insert], append([]string{"pi-runtime-smoke"}, wantTimings[insert:]...)...)
 	}
 	assertTimingLines(t, stderr.String(), wantTimings)
 }

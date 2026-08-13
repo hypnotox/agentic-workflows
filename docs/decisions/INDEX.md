@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-0276: Select Gate Test Suites Independently](0276-select-gate-test-suites-independently.md) (Accepted)
+_No decisions are in flight._
 
 ## History
 
@@ -281,3 +281,4 @@
 - [ADR-0273: Effort-only Pi handoff kickoff](0273-effort-only-pi-handoff-kickoff.md) (Implemented)
 - [ADR-0274: Select Native Skills for the Next Concrete Action](0274-select-native-skills-for-the-next-concrete-action.md) (Implemented)
 - [ADR-0275: Select Gate Tests From Staged Changes](0275-select-gate-tests-from-staged-changes.md) (Implemented)
+- [ADR-0276: Select Gate Test Suites Independently](0276-select-gate-test-suites-independently.md) (Implemented)

@@ -10,7 +10,7 @@ query a single version or a range.
 
 ### Features
 
-- `./x gate` now selects test lanes from staged paths: exact documentation-only changes skip tests, ordinary changes skip Pi smoke, and Pi-affecting or uncertain changes run every test lane.
+- `./x gate` now independently selects test lanes from staged paths: exact documentation-only changes skip both, Pi-only changes run Pi smoke only, Go-only changes run Go tests and coverage only, and overlapping or uncertain changes run both.
 
 ### Others
 

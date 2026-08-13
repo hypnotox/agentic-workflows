@@ -55,15 +55,16 @@ Backing: test
 
 ### `invariant: staged-test-selection`
 
-The command runner reads one NUL-delimited, rename-disabled staged-index name diff and selects test stages conservatively: only the exact documentation allowlist skips Go tests, coverage, and Pi smoke; non-Pi changes skip only Pi; absent, unreadable, malformed, or empty snapshots run all tests. Vet, builds, lint, dead code, and pin checks always run, while timings name only executed stages.
+The command runner reads one NUL-delimited, rename-disabled staged-index name diff and independently selects profiled Go tests with coverage and Pi runtime smoke from explicit dependency categories: the exact documentation allowlist skips both; Pi-only paths run only Pi; Go-only paths run only Go; overlap paths run both; and absent, unreadable, malformed, empty, or unrecognized snapshots run both. Vet, builds, lint, dead code, and pin checks always run, each skipped suite prints an explicit notice, and timings name only executed stages.
 Origin: ADR-0275
+Revised-by: ADR-0276
 Backing: test
 
 ### `invariant: pi-extension-container-gate`
 
-The command runner wires a Pi-extension gate lane that runs the extension's tests inside an ephemeral Docker container built from a content-fingerprinted image shared by every checkout, requiring no host Node or npm, leaving behind no container and no volume, and keeping an explicit reset cleanup command available. Staged test selection runs this lane whenever paths can affect its templates, generated outputs, runtime inputs, harness, dependencies, rendering, targets, configuration, or runner.
+The command runner wires a Pi-extension gate lane that runs the extension's tests inside an ephemeral Docker container built from a content-fingerprinted image shared by every checkout, requiring no host Node or npm, leaving behind no container and no volume, and keeping an explicit reset cleanup command available. Independent staged selection runs this lane for Pi-only and overlap dependencies, including Pi extensions, templates, generated agents and skills, shared rendering/configuration/catalog surfaces, the runner, and Go-consumed harness inputs; uncertain paths run both suites.
 Origin: ADR-0123
-Revised-by: ADR-0198, ADR-0275
+Revised-by: ADR-0198, ADR-0275, ADR-0276
 Backing: test
 
 ### `invariant: prose-gate-refuses-without-git`
