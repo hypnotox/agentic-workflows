@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-0275: Select Gate Tests From Staged Changes](0275-select-gate-tests-from-staged-changes.md) (Proposed)
 
 ## History
 
