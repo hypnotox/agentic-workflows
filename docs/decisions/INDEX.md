@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-0273: Effort-only Pi handoff kickoff](0273-effort-only-pi-handoff-kickoff.md) (Implementing)
+_No decisions are in flight._
 
 ## History
 
@@ -278,3 +278,4 @@
 - [ADR-0270: Retired configuration stays absent from live surfaces](0270-retired-configuration-stays-absent-from-live-surfaces.md) (Implemented)
 - [ADR-0271: Unconditional Repository Awf Invocation](0271-unconditional-repository-awf-invocation.md) (Implemented)
 - [ADR-0272: Additive Inline-Editable Project-Local Docs](0272-additive-inline-editable-project-local-docs.md) (Implemented)
+- [ADR-0273: Effort-only Pi handoff kickoff](0273-effort-only-pi-handoff-kickoff.md) (Implemented)
