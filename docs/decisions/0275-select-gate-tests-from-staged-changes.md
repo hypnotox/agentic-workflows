@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: select-gate-tests-from-staged-changes
-status: Proposed
+status: Accepted
 date: 2026-08-13
 ---
 # ADR-0275: Select Gate Tests From Staged Changes
@@ -61,3 +61,4 @@ selection.
 ## Status history
 
 - 2026-08-13: Proposed
+- 2026-08-13: Accepted; content-sha256: b666a61ff878cb46b3677e8504e5038e2c6623ba561f1c3f2df0a999c2e2c5b7
