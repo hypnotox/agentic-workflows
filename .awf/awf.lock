@@ -474,8 +474,8 @@
     "docs/debugging.md": {
       "templateId": "docs/debugging.md.tmpl",
       "templateHash": "sha256:e09a219c61c2ae22469f616db17ad3bcc028d4dd8434a19364be91ba26d53e17",
-      "configHash": "sha256:8a129c3a1f8f3dc576772eb69df1055a293be8a48ebfbad4533f3957cf2fdd50",
-      "outputHash": "sha256:7c81e5e45ae64d34b8b83ab6caee0b70311b286342f7e93b464a22e30ad07e8d"
+      "configHash": "sha256:4aa9c2db83ad821182058599c8adb7c5f5932d5eaecc3fdc272ed5a742b28141",
+      "outputHash": "sha256:af0325cdedf1ca35edec643a44b60bcd014385d6fcd5419f33c096bdbe6ef6e6"
     },
     "docs/decisions/INDEX.md": {
       "templateId": "",
@@ -817,8 +817,8 @@
     "docs/roadmap.md": {
       "templateId": "docs/roadmap.md.tmpl",
       "templateHash": "sha256:26c7896fbc808c909083ceedc048ea5706a9252d32642d031bd816d7ef1cd511",
-      "configHash": "sha256:26b1f6f49fc082681c54966aa729a7e5bebe2d2c8f67e748fbf87c76dd3003d7",
-      "outputHash": "sha256:518bbbebd63ac66a89286cc8cb2086a8b1569943a615c5fa69f559e5a8fcddb0"
+      "configHash": "sha256:e88334aad60db24ae80d0be2dce94286183d399fdcfb0b4e50eeb836ecc63c07",
+      "outputHash": "sha256:a377757c033f5815351673f170d7f027b3eb635835de374c59d8a5281b34e270"
     },
     "docs/testing.md": {
       "templateId": "docs/testing.md.tmpl",

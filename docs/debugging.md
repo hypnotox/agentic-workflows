@@ -3,15 +3,37 @@
 # Debugging
 
 <!-- awf:template-source templates/docs/debugging.md.tmpl#surfaces -->
-<!-- awf:edit surfaces: stub; replace by creating .awf/docs/parts/debugging/surfaces.md -->
+<!-- awf:edit surfaces: from .awf/docs/parts/debugging/surfaces.md -->
 <!-- awf:template-source templates/docs/debugging.md.tmpl -->
 ## Inspection surfaces
+Use the failing output to choose the next inspection:
 
-_The state you can inspect and how: log locations and verbosity flags, debug endpoints or dumps, and the commands that reveal what the system is actually doing._
+| Need | Command |
+|---|---|
+| Transaction state | `git status --short` and `git diff` |
+| Generated drift | `./awf check repo drift` |
+| Current-state authority | `./awf check repo state`, then `./awf context <affected-path>` and `./awf topic <domain>/<topic>` |
+| Code failure | `./x test`; use `./x gate` for the complete transaction |
+
+Take `<affected-path>` from the refusal and the qualified topic from the context report. See [Working with awf](working-with-awf.md), [Testing](testing.md), and [Development](development.md) for owned procedure.
+
 
 <!-- awf:template-source templates/docs/debugging.md.tmpl#recipes -->
-<!-- awf:edit recipes: stub; replace by creating .awf/docs/parts/debugging/recipes.md -->
+<!-- awf:edit recipes: from .awf/docs/parts/debugging/recipes.md -->
 <!-- awf:template-source templates/docs/debugging.md.tmpl -->
 ## Recipes
+### Rendered drift
 
-_Step-by-step recipes for the most common failure modes. One subsection per symptom: how to reproduce it, where to look, and the usual cause._
+Run `./awf check repo drift` and follow its repair hint. Edit the owning `.awf/` source, run `./awf render`, and recheck; never repair a generated output directly.
+
+### Current-state refusal
+
+Run `./awf check repo state`, then query the affected path with `./awf context <affected-path>`. Use the reported qualified topic with `./awf topic <domain>/<topic>`; change active claims only through their ADR lifecycle.
+
+### Binary-version refusal
+
+Use the repository `./awf` wrapper. If it still refuses, update the pinned awf binary through the documented upgrade flow; do not bypass the compatibility gate.
+
+### Red gate
+
+Run `./x test` for the Go failure and `./x gate` for the complete transaction. Fix the first failing stage or revert the change; do not weaken the check.

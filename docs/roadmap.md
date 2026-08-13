@@ -6,239 +6,67 @@
 <!-- awf:edit ideas: from .awf/docs/parts/roadmap/ideas.md -->
 <!-- awf:template-source templates/docs/roadmap.md.tmpl -->
 ## Ideas
-
-- Design concurrent same-checkout batch helpers only after scope enforcement, incidental-write
-  attribution, failure attribution, and deterministic integration are specified; worktree-isolated
-  and patch-producing parallel workers remain out of scope for the current workflow contract.
+- Design concurrent same-checkout batch helpers only after scope enforcement, incidental-write and failure attribution, and deterministic integration are specified. Worktree-isolated and patch-producing workers remain out of scope for the current workflow contract.
 
 - Add phase-sensitive tool activation so each workflow phase exposes only its relevant tools.
-- Decide whether staged drift can acquire semantics for directory entries, untracked files, config-tree hygiene, and dead-reference probing. A snapshot tree has neither directory entries nor untracked files, so these filesystem-only checks need explicit semantics before joining the blocking staged gate; do not broaden staged drift by implication.
-- Pin what `internal/config`'s editors guarantee about an adopter's `config.yaml`. The `yaml.Node`
-  round-trip ADR-0026 chose preserves every key, value, and comment but canonicalizes layout: a
-  four-space block returns two-space, a sequence item under a surviving key re-indents, and blank
-  lines are dropped. No claim states this, so every migration that edits config inherits an unstated
-  contract and ADR-0185 had to narrow one claim that had guessed at it. Needs its own small ADR
-  covering whether the property is claimed once for the package or restated per migration.
-- Add an advisory `awf audit` rule flagging a code-scoped commit (`fix`, `feat`, `test`,
-  `refactor` types) that also mutates a `docs/decisions/` ADR body: the shared-index sweep
-  pitfall has now recurred four times (2026-07-10 twice, 2026-07-19, 2026-07-23) and three
-  of the four occurrences folded ADR content into a code commit, which this rule would have
-  flagged deterministically; prose prevention has demonstrably failed (needs an ADR: it
-  changes shipped audit behavior).
-- Scope the `config/configuration:tag-coverage-note` claim text to tag-capable legacy ADRs
-  ("each legacy ADR and each pitfall"): the tag-coverage scan now skips all governed ADRs
-  (their closed frontmatter rejects a `tags:` key), so the claim's unqualified "each ADR"
-  drifts further from behavior with every new governed ADR; the mutation needs a
-  config-domain ADR.
-- Design a structured context result only when a demonstrated consumer can define its contract;
-  ADR-0165 deliberately removed speculative JSON rather than preserving a hidden path census.
-- Enforce the plan freeze mechanically: `awf check staged` could refuse a diff that edits a
-  `docs/plans/` file whose HEAD `status:` is `Implemented`. The recorded "record implementation
-  deviations before the terminal artifact transaction" pitfall did not prevent the ADR-0151
-  session from appending Notes to a frozen plan at review's direction; a prose rule that failed
-  twice is the promotion signal for a deterministic check (needs an ADR: it changes check
-  behavior and the plan lifecycle contract). The ADR-0158 effort is the third occurrence and
-  splits the target in two: the remediation half of the pitfall worked (terminal review directed
-  a post-freeze Notes append and the executing session declined it, citing the pitfall), while
-  the prevention half failed again (three deviations reached the freeze commit unrecorded). The
-  phase-transaction-ownership effort is the fourth occurrence: terminal review found two touched
-  paths missing from the frozen inventory and one listed path that was not touched. A refusal to
-  edit a frozen plan would not have prevented either miss. The complementary and cheaper lever is
-  a pre-flip deviation sweep in the execution skills' final-commit step, which
-  is where the omission actually happens; that is a shipped-template change, so it needs its own
-  ADR rather than a local override, on pain of awf diverging from the standard it publishes.
-- A mechanical check for over-broad current-state claim prose. The `claim-prose-no-broader-than-reality`
-  reviewer focus item exists and works: it caught all four over-broad claims in the 2026-07-30 severity
-  session. It prevented none of them, which is the signal to climb from a judgment rung to a
-  deterministic one. Two shapes look mechanizable without natural-language understanding: an absolute
-  quantifier in a claim sentence ("every", "always", "never", "no", "byte-identical") could require an
-  explicit justification marker, and a claim whose sentence is edited while its Origin ADR is frozen
-  could be flagged, since that is the exact case needing a successor `update` operation. Twice in that
-  session the false wording was INHERITED from an earlier record that the correcting pass never
-  re-read, so the check would earn its keep on amendments rather than on new claims. Needs its own ADR:
-  it changes what `awf check` rejects, and a false positive on legitimate absolute prose would be
-  expensive.
-- Broaden the task-skill set. Nothing produces a PR title and body from the commits of an
-  effort; there is no skill for reviewing an incoming third-party PR, no security-review
-  lens, no refactor-execution skill (`refactor-coupling-audit` only scopes the decision),
-  and no dependency-upgrade skill. For the last, a concrete by-hand model exists from
-  2026-07-10: cooldown window, govulncheck reachability triage, SHA-pin bumps, changelog
-  entry.
-- Publish the standard as an artifact. No versioned spec exists (the standard is implied
-  by the renderer and its templates), there is no discoverability surface beyond the
-  GitHub README, and no examples gallery.
-- Audit this repo's own overrides for dogfooding. The principle (user, 2026-07-26): only
-  overwrite what is really needed, otherwise dogfood the shipped defaults, and use
-  template defaults inside overrides so they keep rendering. A survey that day found 7
-  full-replacement parts under `.awf/parts/`, 2 under `.awf/skills/parts/`
-  (retrospective/procedure and debugging/debugging-surfaces are the worrying pair: awf
-  never renders those shipped defaults at all), and 14 under `.awf/docs/parts/`.
-- An advisory for hand-curated prose counts, which drift when the source-of-truth count
-  changes; two recorded occurrences (the agent-guide invariant list and the glossary
-  exemption count).
-- A static-state inventory command enumerating the outstanding bounded candidates of
-  ratchet-scoped code-design claims (today: the shallow `os.Is*` predicate sites,
-  message-text identity assertions, exported error identities no caller matches,
-  undocumented exported declarations, and the global test-seam census),
-  so each ratchet topic can point its existing-violation backlog at a mechanical census
-  instead of prose. The name must not be "awf doctor" without a disambiguating note:
-  ADR-0162 retired that name with a different meaning. Needs its own ADR: it adds a
-  command surface.
-- Two Verify-line tightenings deferred from the ADR-0199/0200 terminal review, for the
-  next ADR that updates these claims: `code-design/outcome-modeling:actionable-outcome-protocol`
-  should verify that a changed axis records what actually moved rather than what was
-  intended and that the remedy renders under the `next action:` prefix, and
-  `code-design/package-composition:package-owns-one-sentence` should verify the ownership
-  statement reads off a single sentence with further detail sentences legal. Both were
-  reverted at review because an applied claim's Verify: line cannot change without an
-  update operation and a same-ADR add+update pair is illegal.
-- Align error-message prefixes across `cmd/awf`, `internal/adr`, and the changelog
-  tooling. Cosmetic, and blocked on deciding which convention wins before any sweep.
-- A plan-reviewer docCurrencyItem for the missing changelog task of an adopter-facing
-  plan, to be added if a second plan ships without one (first occurrence 2026-07-12; the
-  repo-local audit rule already catches the omission, just later than plan review would).
-- The init collision probe over-refuses on artifacts a `--set` trim would deselect.
-  Accepted as conservative design; revisit only if an adopter reports hitting it.
 
-- Make `./awf effort integrate` fast-forward-only. Keep the already-contained and fast-forward
-  arms and refuse when the target is not an ancestor of the effort tip, naming the recovery:
-  merge the target in the managed worktree, run `./awf check staged`, run the gate, commit,
-  renew terminal review, retry. The motivation is concurrency, not correctness: the divergent
-  path leaves a staged uncommitted merge in the shared receiving checkout across a full gate
-  and a renewed terminal review, blocking every other finishing effort for that whole window,
-  while moving the work into the effort worktree collapses the shared critical section to an
-  atomic fast-forward. The predicate already exists, `Ancestor(target, tip)` at
-  `internal/worktree/manager.go:315`; turning that branch point into a precondition is the
-  whole behavioural change. Compare against the receiving checkout's HEAD as `Integrate`
-  already resolves it, or against `integrationBranch` once that key ships. `MergeNoCommit`
-  has exactly one production consumer (`manager.go:333`), so removing the divergent arm makes
-  it dead down through the Runner contract (`manager.go:30`) and `internal/git/lifecycle.go:139`
-  and the dead-code gate forces the deletion. Needs its own ADR: it falsifies the test-backed
-  `tooling/effort-management:managed-worktree-lifecycle` claim, whose text still reads that
-  integration "reports already-contained history, fast-forwards, or starts a divergent
-  `--no-commit` merge", so it carries an update operation. SEQUENCING: this must land after
-  the pending-ADR-numbering decision's final phase, not merely after that decision lands. Both
-  changes rewrite the same lines of `templates/skills/reviewing-impl/SKILL.md.tmpl` step 8
-  (`:75` carries the divergent-merge routing that becomes wrong here; the numbering plan's
-  Task 6.2 rewrites `:72-77`), so authoring them concurrently reproduces exactly the
-  integration collision both are trying to reduce. Deliberately NOT absorbed into the numbering
-  decision: that record was already `Implementing` with its first batch applied when this was
-  raised, its prescription that numbering "runs in the effort worktree after merging the
-  integration branch in" is a usage prescription rather than an assertion about integrate's
-  behaviour, and its integration-branch block plus the branch-independent duplicate-identity
-  check already force numbering without this. Worth doing as the first pending slug ADR once
-  numbering ships, which dogfoods the mechanism on its first real use.
+- Decide whether staged drift has semantics for directory entries, untracked files, config-tree hygiene, and dead-reference probing. A snapshot tree has neither directory entries nor untracked files; define these filesystem-only checks before making them blocking.
+
+- Pin what `internal/config`'s editors guarantee about an adopter's `config.yaml`. ADR-0026 chose `yaml.Node` round-trip preservation of keys, values, and comments while canonicalizing layout; observed changes include four-space to two-space indentation, re-indented sequence items, and dropped blank lines. ADR-0185 had to narrow an unsupported claim. Decide in a small ADR whether this package property is claimed once or per migration.
+
+- Add an advisory `awf audit` rule flagging code-scoped (`fix`, `feat`, `test`, `refactor`) commits that mutate an ADR body. The shared-index sweep pitfall recurred four times (2026-07-10 twice, 2026-07-19, 2026-07-23), with three ADR bodies folded into code commits; prose prevention failed. Needs an ADR because it changes shipped audit behavior.
+
+- Scope the `config/configuration:tag-coverage-note` claim to tag-capable legacy ADRs ("each legacy ADR and each pitfall"). Governed ADRs reject `tags:`, so the current "each ADR" claim drifts with every new governed ADR. Needs a config-domain ADR.
+
+- Design a structured context result only when a demonstrated consumer can define its contract; ADR-0165 removed speculative JSON rather than retain a hidden path census.
+
+- Enforce the plan freeze mechanically. `awf check staged` could refuse edits to a HEAD-Implemented `docs/plans/` file, but that alone would not prevent incomplete frozen inventories. The prose rule failed twice; ADR-0158 exposed three unrecorded deviations, and phase-transaction-ownership found two missing touched paths and one untouched listed path. Prefer a pre-flip deviation sweep in execution skills, where omissions occur; it is a shipped-template change requiring its own ADR. The rejected post-freeze Notes append in ADR-0151 and ADR-0158's declined request show the remediation half worked.
+
+- A mechanical check for over-broad current-state claim prose. `claim-prose-no-broader-than-reality` caught all four claims in the 2026-07-30 severity session but prevented none. Consider requiring explicit justification for absolute quantifiers (`every`, `always`, `never`, `no`, `byte-identical`) and flagging edits to a claim sentence while its Origin ADR is frozen; two corrections inherited false wording without rereading its source. Needs an ADR because it changes `awf check`; false positives on legitimate absolutes are costly.
+
+- Broaden the task-skill set: PR title/body generation from effort commits, third-party PR review, security review, refactor execution, and dependency upgrades. The 2026-07-10 manual upgrade model supplies cooldown, govulncheck reachability triage, SHA-pin bumps, and changelog entry.
+
+- Publish the standard as an artifact: there is no versioned spec, discoverability beyond the GitHub README, or examples gallery.
+
+- Audit this repo's own overrides for dogfooding. The 2026-07-26 principle is to override only what is needed and use template defaults in overrides. That survey found 7 full replacements under `.awf/parts/`, 2 under `.awf/skills/parts/` (notably retrospective/procedure and debugging/debugging-surfaces), and 14 under `.awf/docs/parts/`.
+
+- An advisory for hand-curated prose counts that drift when their source count changes; recorded twice (agent-guide invariant list and glossary exemption count).
+
+- A static-state inventory command for bounded ratchet-scoped code-design candidates: shallow `os.Is*` predicates, message-text identity assertions, unmatched exported error identities, undocumented exported declarations, and the global test-seam census. It should replace prose backlogs with a mechanical census; do not call it "awf doctor" without disambiguation because ADR-0162 retired that name. Needs an ADR because it adds a command.
+
+- Two Verify-line tightenings deferred from ADR-0199/0200 review: `code-design/outcome-modeling:actionable-outcome-protocol` should verify an axis records what moved and the remedy renders under `next action:`; `code-design/package-composition:package-owns-one-sentence` should verify a single-sentence ownership statement while allowing detail sentences. Review reverted both because an applied claim requires an update operation and same-ADR add+update is illegal; take them with the next ADR updating these claims.
+
+- Align error-message prefixes across `cmd/awf`, `internal/adr`, and changelog tooling. Cosmetic; decide the winning convention before a sweep.
+
+- A plan-reviewer docCurrencyItem for an adopter-facing plan missing a changelog task, if a second plan ships without one. First occurrence: 2026-07-12; the repo-local audit already catches it later.
+
+- The init collision probe over-refuses on artifacts a `--set` trim would deselect. Accepted as conservative design; revisit only on adopter report.
+
+- Make `./awf effort integrate` fast-forward-only. Retain already-contained and fast-forward cases; otherwise refuse and direct recovery: merge target in the managed worktree, run `./awf check staged` and the gate, commit, renew terminal review, retry. Divergent `--no-commit` merges leave a shared staged checkout across gate and review; moving them to the effort worktree makes integration an atomic fast-forward. The predicate is `Ancestor(target, tip)` at `internal/worktree/manager.go:315`; compare the receiving HEAD (or `integrationBranch` once shipped). Removing the sole `MergeNoCommit` consumer (`manager.go:333`) makes its Runner and lifecycle path dead, requiring deletion under the dead-code gate. Needs an ADR and update to `tooling/effort-management:managed-worktree-lifecycle`, which currently promises divergent merge. Sequence after the pending-ADR-numbering decision's final phase: both rewrite `templates/skills/reviewing-impl/SKILL.md.tmpl` step 8 (`:75`; numbering Task 6.2 rewrites `:72-77`). Keep separate: numbering was Implementing when raised, its prescription is usage rather than integrate behavior, and its integration-branch and duplicate-identity checks already force numbering. Use the first pending-slug ADR after numbering ships.
 
 ## A required config key reds the before-side of every transition check
 
-`loadTreeCurrentState` validates the HEAD-side config after porting it forward, so a
-key that is required with no in-code default fails the whole before-side load until
-every committed config in range carries it. ADR-0202's `integrationBranch` hit this and
-paid for it with a per-key seeding case in `ConfigForCurrentSchema` (`internal/migrate/
-migrate.go`), the first case in that function to materialize a key rather than remove
-one - which the function's own `retiredKeyRemovals` rationale argues against, since that
-table exists precisely to keep the port-forward a pure parse fix.
-
-The shipped fix is correct and mutation-proven, but it makes the function a growing list
-of per-required-key special cases: the next required key repeats the discovery, and until
-it does, the before-side of every transition check is red for a release cycle. The
-alternative worth settling is that the before-side needs a historical config to PARSE,
-not to satisfy today's validation rules, since coverage is never evaluated from a
-before-side config. That would retire the seeding cases entirely rather than adding one
-per key. Raised by the Phase 3 review of ADR-0202 on 2026-07-31 as a policy question
-rather than a defect.
+`loadTreeCurrentState` validates ported-forward HEAD-side config, so a newly required key without an in-code default makes every before-side config fail until history contains it. ADR-0202 added a per-key `ConfigForCurrentSchema` seed for `integrationBranch`, the first materializing case despite `retiredKeyRemovals` defining that port-forward as a pure parse fix. The mutation-proven fix works, but each new required key repeats the exception and leaves transition checks red for a release cycle. Decide whether before-side config need only parse rather than satisfy current validation; coverage is never evaluated there. Raised as a policy question in ADR-0202 Phase 3 review on 2026-07-31.
 
 ## A claim can carry at most one operation per ADR
 
-`internal/adr/application.go` refuses to apply an operation more than once, and duplicate
-declarations collapse to a single map key, so one ADR can never declare two updates on
-the same claim. That is right for the usual case, but it means a record that has already
-applied an update to a claim cannot correct that claim again, however small the
-correction - the fix has to wait for a different decision record.
-
-The live instance: `config/configuration:config-serialization-owned` asserts a CLOSED
-enumeration of the editors that mutate config.yaml, and it omits `RemoveKey` and
-`RemoveMappingKey`, both of which live migrations use. ADR-0202 already spent its one
-update on that claim (adding `SetString`), so the enumeration stays false until another
-ADR updates it. Worth folding into whatever decision next touches the config editors, and
-worth asking there whether a "closed enumeration" claim should be backed by a
-source-scanning test rather than by prose nobody can mechanically falsify.
+`internal/adr/application.go` permits one operation per claim and duplicate declarations collapse to one map key. `config/configuration:config-serialization-owned` falsely gives a closed editor enumeration that omits migration-used `RemoveKey` and `RemoveMappingKey`; ADR-0202 already spent its update adding `SetString`. Fold correction into the next config-editor ADR, and decide whether a closed enumeration needs a source-scanning proof rather than unfalsifiable prose.
 
 ## A slug colliding with the number namespace is only refused at the scaffold
 
-`Corpus.ByIdentity` routes a four-digit key to the number index and everything else to the
-slug index, so a record whose slug is exactly four digits can only ever be found as a
-number - which it is not. `plan.ADRLink` reads any digits-only `adrs:` entry as a number
-too, so an all-digit slug of any width is unlinkable from a plan.
-
-The scaffold now refuses an all-digit title slug outright (`allDigitSlugRe`,
-`internal/adr/adr.go`), which closes the only path that mints one through awf. A
-hand-authored `2026.md` carrying `slug: 2026` still parses into the corpus and is still
-unreachable by identity. The complete guard belongs on `corpus-single-identity-key`, whose
-text already governs what is a corpus error - but ADR-0202 spent its one operation on that
-claim in batch 1, and a claim carries at most one operation per ADR, so widening it needs a
-later decision record. Worth folding into whatever decision next touches corpus identity,
-and worth asking there whether the number-shaped-slug check belongs beside the existing
-duplicate-key error rather than as a separate rule. Surfaced by the Phase 4 review of
-ADR-0202 on 2026-07-31; the scaffold half landed the same day.
-
+`Corpus.ByIdentity` routes four-digit keys to numbers; `plan.ADRLink` routes every digits-only `adrs:` entry to a number. Thus a hand-authored all-digit slug parses but is unreachable. The scaffold now rejects all-digit title slugs (`allDigitSlugRe`, `internal/adr/adr.go`), but a `2026.md` with `slug: 2026` remains live. Widen `corpus-single-identity-key` in a later ADR because ADR-0202 spent its one operation; decide whether to place the check beside duplicate-key handling. Surfaced in ADR-0202 Phase 4 review on 2026-07-31.
 
 ## Two pending records tie in the appended-batch rank
 
-`adr.IdentityOrder` gives every slug the same rank, above every number, so a pending
-record's newly applied batch sorts after every numbered one. That is the guarantee the
-provenance order needs and it is proven. Two pending records, though, tie with each other
-and the stable sort falls back to corpus order, which is directory order.
-
-The consequence is a narrow false finding. Two pending records in one worktree, whose
-batches are applied in the same commit, where the alphabetically earlier slug revises a
-claim the later one adds, report `an add must be the first operation` even though the
-numbering command's add-before-revise refusal guarantees the adder takes the lower number.
-Verified 2026-08-01: corpus order `[alpha zebra]` reports it, `[zebra alpha]` is clean. The
-author's workaround is to apply the two batches in separate commits.
-
-Imposing a topological order instead would contradict
-`invariants/current-state-authority:provenance-ordered-by-adr-number`, which says slug
-entries compare in authored list order among themselves - and ADR-0202 spent its one
-operation on that claim, so restating it needs a later decision record. Worth folding into
-whatever decision next touches pending provenance order, and worth deciding there whether
-the authored order should instead be something the tree records explicitly, since nothing
-today declares the intended numbering order until the command is invoked. Surfaced by the
-Phase 5 review of ADR-0202 on 2026-08-01.
+`adr.IdentityOrder` ranks all slugs together above numbers; among pending records stable sort falls back to directory order. Two same-commit pending records can therefore falsely report `an add must be the first operation` when alphabetically earlier `alpha` revises a claim later `zebra` adds, though numbering assigns the adder lower number. Verified 2026-08-01: `[alpha zebra]` fails and `[zebra alpha]` passes; current recovery is separate commits. A topological order conflicts with `invariants/current-state-authority:provenance-ordered-by-adr-number`, which requires authored slug-list order, and ADR-0202 spent that claim's operation. Fold into the next pending-provenance ADR and decide whether the tree must record intended numbering order. Surfaced in ADR-0202 Phase 5 review on 2026-08-01.
 
 ## Bind effort mutations to an explicit checkout identity
 
-A Pi session associated with a managed effort deliberately remains rooted in the primary checkout
-and receives the managed-worktree path as context. That keeps integration possible, but every
-ordinary mutating tool call depends on the agent spelling the worktree prefix correctly. During the
-active-pitfalls effort, the parent ran `./x render` from the primary checkout instead of the managed
-worktree; the primary tree happened to be current, so the mistake produced no diff, but the same
-command can rewrite generated outputs and `.awf/awf.lock` in the wrong transaction. The retained
-managed-worktree pitfall had already described this failure shape, so another prose reminder is not
-a sufficient response.
-
-A follow-up should bind pre-integration mutation commands to an invocation-owned checkout identity
-or provide an effort-aware execution seam that refuses an ambiguous primary-checkout mutation while
-a managed worktree owns the active outcome. It must preserve the intentional switch back to the
-primary checkout for integration, worktree removal, retrospective, and finish. This needs design
-because Pi effort association is runtime metadata rather than awf CLI authority, and read-only
-commands must remain usable from either checkout.
+Effort-associated Pi sessions remain rooted at the primary checkout while receiving a managed-worktree path. During active-pitfalls, the parent ran `./x render` in primary; it happened to be current, but the same error can rewrite outputs and `.awf/awf.lock` into the wrong transaction. The managed-worktree pitfall already records the shape, so prose is insufficient. Design invocation-owned checkout binding or an effort-aware seam that refuses ambiguous pre-integration primary mutation, while preserving primary use for integration, removal, retrospective, and finish. Pi association is runtime metadata, and read-only commands must work from either checkout.
 
 ## Preserve configured identity for lifecycle Git mutations
 
-The native Git runner deliberately suppresses global and system configuration to prevent repository
-or credential redirection. `awf effort integrate` uses that runner for `git merge --no-ff --no-commit`,
-but Git still requires committer identity before it prepares the merge. In a checkout that correctly
-keeps owner identity only in global configuration, integration therefore fails as `merge-conflict`
-with `Committer identity unknown`. A temporary repository-local identity makes the merge proceed but
-contradicts this repository's explicit ban on local identity overrides.
-
-A follow-up should let lifecycle mutations receive the validated effective owner identity without
-reopening repository selection, credential, signing, or arbitrary-config injection. Integration
-should also distinguish pre-merge configuration failure from a visible content conflict. Tests must
-cover global-only identity, hostile inherited Git configuration, and a real merge conflict. This
-needs design because the Git seam's isolation is load-bearing and a generic relaxation would weaken
-its control-root and noninteractive guarantees.
+The native Git runner suppresses global and system configuration, but `awf effort integrate`'s `git merge --no-ff --no-commit` still needs committer identity. Global-only owner identity therefore fails as `merge-conflict` with `Committer identity unknown`; a local override works but violates the repository ban. Design a lifecycle path that receives validated effective owner identity without reopening repository selection, credentials, signing, or arbitrary config, and distinguish pre-merge configuration failure from content conflict. Tests must cover global-only identity, hostile inherited config, and real conflicts; Git isolation remains load-bearing.
 
 
 <!-- awf:template-source templates/docs/roadmap.md.tmpl#deferred -->
@@ -247,176 +75,45 @@ its control-root and noninteractive guarantees.
 ## Deferred
 ## Mechanically detecting a nominal invariant proof
 
-`invariant-proof-exercises-its-claim` has now failed to prevent three sessions
-of partially-backed proof markers, the last shipping roughly nine at once and
-hiding a real defect behind a green gate. A standing instance sits in
-`internal/migrate/dropworkflowtelemetry_test.go`, whose
-`workflow-telemetry-config-migration` marker covers a body that only pins the
-current schema generation, while the claim is about generation 21 removing two
-resident roots: the marker exercises nothing it backs, and no gate notices. It has been strengthened from a
-judgement item to an enumerating one, but that is still rung 3: probabilistic,
-and applied only when a reviewer runs.
-
-The rung-2 candidate is mutation testing, which this repo already has tooling
-for (`cmd/mutants`, and the deterministic gremlins recipe in `docs/testing.md`).
-A mutation run scoped to the check and derivation paths would kill a nominal
-proof by construction: mutate the clause, and a marker whose test never
-exercised it stays green. What is unresolved is the cost - a full run is slow
-and advisory-only today - and whether a scoped, gate-wired subset can be made
-fast and deterministic enough to block a commit. Worth an ADR if it can, since
-a proof marker that cannot fail is worse than no marker at all.
+`invariant-proof-exercises-its-claim` failed to prevent three sessions of partial proof markers; the last shipped roughly nine and hid a real defect behind a green gate. `internal/migrate/dropworkflowtelemetry_test.go` marks `workflow-telemetry-config-migration` but only pins current schema generation, not generation 21 removing two resident roots. The reviewer item was strengthened but remains rung 3 and probabilistic. Consider mutation testing through existing `cmd/mutants` and the deterministic gremlins recipe: mutating a claimed clause leaves a nominal marker green. Decide whether a scoped, gate-wired subset can be fast and deterministic enough; full runs are slow and advisory. Needs an ADR if blocking.
 
 ## The rationale site a token cannot address
 
-`docs/decisions/0057-sandboxed-placeholder-substitution-in-convention-parts.md`
-carries a `refines: ADR-0034#1` token that parses with `CarrierItem: 0`: it sits
-in the Decision section but before the first column-0 numbered item, so it has
-no rationale site. ADR-0129 Decision 2 makes the carrier item the addressable
-justification for a claim, and a claim with none is a record that says what
-changed but not why, at the one place the model guarantees an answer.
-
-It is deferred rather than fixed because both repairs need a decision first.
-Moving the token into item 1 is a content edit to an Implemented ADR, which
-append-only forbids; the alternative, widening the model to admit a
-section-scoped claim, weakens the guarantee that every claim has a rationale
-site. Neither is a mechanical correction, and the token is not wrong today, it
-is merely unanchored, and `awf check` is silent on it.
-
-The related shape the citation check declines to resolve is a bare `item N`
-hanging off an ADR reference earlier in the same Decision item (ADR-0131
-Decision 2 records the measurement behind that boundary). Both are the same
-underlying question: how much structure a frozen ADR's prose can be expected
-to carry.
+`docs/decisions/0057-sandboxed-placeholder-substitution-in-convention-parts.md` has `refines: ADR-0034#1` in Decision before any column-0 numbered item, so it parses with `CarrierItem: 0` and has no rationale site. ADR-0129 Decision 2 requires each claim's addressable justification. Repair requires either forbidden content movement in an Implemented ADR or a section-scoped model that weakens the guarantee; `awf check` is silent because the token is not invalid. The related bare `item N` citation shape (ADR-0131 Decision 2 records its measurement) raises the same question of frozen-prose structure.
 
 ## Mechanically catching a commit that does not contain what it claims
 
-Three times now a concurrent session in one checkout has produced a commit
-whose contents do not match its message.
-The 2026-07-19 instance was the worst shape: an ADR amendment the message
-described in detail was absent from the commit, leaving a proof marker
-asserting the opposite of the sentence it was marked as proving. No gate can
-see it. Prose has failed three times, and a code-review focus item now covers
-it, but that is rung 3: probabilistic, and only when a review runs.
-
-The rung-2 candidate is a `cmd/repoaudit` rule over the commit range: when a
-commit message names an ADR with an authoring verb (amends, narrows, reopens,
-flips, implements), the commit must touch that ADR's file. It is mechanical, it
-would have caught the instance above, and repoaudit is the right home rather
-than the shipped `awf audit`: the rule is about this repo's authoring
-discipline, and repoaudit findings can be advisory, which matters because the
-verb detection will have false positives (a commit legitimately citing an ADR
-it does not edit).
-
-Deferred rather than built because the cost is a new rule plus tests at the
-100% floor, and the session that found it was already long. The generalisation
-worth considering at the same time is the inverse direction: a file in the diff
-that no part of the message accounts for, which is what catches a `git add -A`
-sweeping another effort's work.
+Concurrent sessions produced mismatched commit content and messages three times. On 2026-07-19 a described ADR amendment was absent, leaving a proof marker asserting the opposite; no gate detects it. Prose failed three times and review focus is rung 3. Consider a `cmd/repoaudit` range rule: a message naming an ADR with an authoring verb (amends, narrows, reopens, flips, implements) must touch that ADR. It is repo discipline, not shipped `awf audit`, and advisory accommodates verb-detection false positives. Also consider the inverse: changed files unaccounted for in the message, catching `git add -A` cross-effort sweeps. Deferred for a new rule and 100% tests.
 
 ## A direct first-stamp ADR flip can smuggle unreviewed section content
 
-Since ADR-0188, the stamp chain makes every status flip after the first content stamp
-content-pure by validation: a post-Accepted amendment must append its own Amended event in a
-separate commit. The residual case is a direct status flip out of Proposed whose commit also
-mutates digest-covered content, establishing the first stamp over unreviewed content in one
-transaction. A direct terminal flip also freezes that content immediately. The 0154 effort did exactly this when its direct Implemented flip also landed
-the forward-only resolution clause, and only reviewer diligence caught it afterwards. Candidate
-`awf audit` advisory rule: flag that direct flip shape. Deferred because audit rules ship behind
-their own decision; the active pitfalls rule still depends on manual review.
+Since ADR-0188, post-first-stamp status flips are content-pure: a post-Accepted amendment appends its own Amended event in a separate commit. A direct Proposed flip can establish the first stamp over unreviewed content and immediately freeze it. The 0154 effort directly Implemented while adding a forward-only resolution clause, caught only by review. Consider an advisory `awf audit` rule for this shape. It needs a decision because audit rules ship; active-pitfalls remains manual.
 
 ## Decomposing the `internal/project` god object
 
-Decided and executed by ADR-0195: `internal/contextq` (the context query behind
-the `ContextState` seam) and `internal/resident` (resident-root policy and
-anchoring) are carved out, the core keeps the cycle-bound sync engine, and the
-export surface shrank with each carve. The ADR's Context records why the
-sequencing reversed relative to this entry's earlier prescription: the
-boundaries were measured empirically (a cluster map, two verified cycles, a
-per-symbol coupling census), which grounds this package's split more strongly
-than a generic cohesion pattern would, and the direction half of any such
-pattern is already owned by `code-design/dependency-composition`.
-
-What stays open is the generalization, not the split: the deferred
-`receiver-reads-owned-state` rule (a method reads at least one receiver field;
-behaviour that reads none takes parameters instead) remains unowned by any
-topic and belongs to a future package-cohesion pattern that generalizes from
-ADR-0195's evidence rather than gating it. Further decomposition of the
-remaining core is likewise accepted at decision time as future-effort
-territory rather than silent scope; this entry is that record.
+ADR-0195 executed the split: `internal/contextq` owns ContextState querying and `internal/resident` owns resident-root policy and anchoring; the core retains cycle-bound sync. Its empirical cluster map, verified cycles, and per-symbol coupling census justify the reversed sequencing, while `code-design/dependency-composition` owns generic dependency direction. Still open: a future package-cohesion pattern owning `receiver-reads-owned-state` (methods read a receiver field; otherwise take parameters), and any further core decomposition. ADR-0195 accepted both as future effort rather than silent scope.
 
 ## A `coverage-ignore` the profile records as executed is a false ignore
 
-The `coverage-ignore-reachability` review item and the manual pitfalls rule have now failed
-to prevent eight recurrences of a false exclusion. Both are rung-3 and rung-4 controls:
-probabilistic, and applied only when a reviewer runs. One whole subclass is mechanically
-decidable and needs no judgement at all: an exclusion sitting on a guarded body that the
-coverage profile records as EXECUTED is false by construction, because the branch it declares
-unreachable was just reached.
-
-`cmd/covercheck` already parses the profile and already applies the ignore filter, so it holds
-both halves of the comparison; the rule is to fail when a block is both ignored and counted.
-That turns the most common shape into a gate failure at write time rather than a finding a
-reviewer may or may not reach.
-
-What deferred it until now was an unmeasured cost, which the 2026-07-30 state-ownership review
-finally supplied: a sweep found EIGHT excluded-but-covered sites currently in the repository,
-seven of them predating that session. So the work is the rule plus its own tests at the 100%
-floor, plus resolving eight existing sites that span several efforts' territory, each needing
-its own judgement about whether to delete the exclusion or cover the branch. That is a bounded
-but real slice, and it should be one deliberate effort rather than a drive-by.
-
-Worth settling in the same decision: whether the rule is an error or a warning during the
-transition, and whether `./x audit-local`'s existing advisory `coverage-ignore-added` warning is
-subsumed by it or kept as the complementary "touched, re-evaluate" signal.
+The review item and manual rule failed across eight false exclusions. A guarded ignored body recorded as EXECUTED is mechanically false: `cmd/covercheck` already has profile and ignore data, so fail blocks both ignored and counted. The 2026-07-30 sweep found EIGHT current sites, seven predating that session. The work includes the rule, 100% tests, and judgment across eight sites whether to delete each exclusion or cover its branch. Decide in one effort whether it begins as error or warning and whether `./x audit-local`'s `coverage-ignore-added` advisory remains complementary.
 
 ## The rendered pre-commit payload validates the worktree, not the staged slice
 
-A partial-staging commit whose staged subset is drift-inconsistent (a rendered,
-lock, or config hunk left unstaged while the fixing hunk sits in the worktree)
-passes a pre-commit gate that checks the worktree, and lands a broken HEAD. It
-bit this repo at commit a85bd6a and the repo-local hook was extended on
-2026-07-15 to also run `awf check` on a checkout-index slice, but the shipped
-payload (ADR-0048) still checks the worktree, so adopter repos keep the gap.
-
-A fix is feasible and language-agnostic: checkout-index to a temporary tree and
-run the pinned `./awf check` there, read-only, safer than `git stash
---keep-index`. It is deferred because it changes ADR-0048's deliberately
-minimal, inert payload contract and adds per-commit latency to catch a
-power-user footgun (adopters who stage everything never hit it), so it needs
-its own ADR. The user chose repo-local-now, standard-level-recorded on
-2026-07-15.
+A partial staging can leave a drift-inconsistent staged subset while the worktree passes pre-commit, landing broken HEAD. Commit a85bd6a triggered a 2026-07-15 repo-local checkout-index check, but ADR-0048's shipped payload still checks worktree. A language-agnostic fix is temporary checkout-index execution of pinned `./awf check`, read-only and safer than `git stash --keep-index`. It changes ADR-0048's minimal inert payload and adds per-commit latency for a power-user case; needs an ADR. User decision on 2026-07-15: repo-local now, standard recorded.
 
 ## Live-agent outcome evals
 
-The deterministic harness-integrity half shipped as ADR-0053 and ADR-0054: a
-fixture-based eval suite that pins chain handoffs and skill parity without
-executing an agent. The other half, live-agent outcome evals over a golden-task
-corpus (ADR-0017's original framing), stays deferred as cost-prohibitive; the
-field is choking on exactly that cost, which is why the deterministic in-lane
-variant was built instead. Revisit only with a concrete budget and a scoring
-harness design.
+ADR-0053 and ADR-0054 shipped deterministic fixture evals for handoffs and skill parity. Live-agent golden-task outcome evals (ADR-0017's original framing) remain cost-prohibitive; revisit only with a concrete budget and scoring harness.
 
 ## Partial-amendment back-pointer check
 
-When an ADR body cites another ADR's specific Decision item (a partial
-amendment), the cited ADR's `related:` should name the citing ADR, or the
-amendment is invisible from the amended side. The promotion trigger has fired:
-recorded misses at ADR-0065 (missed pointer to ADR-0079) and ADR-0093 (missed
-pointer to ADR-0024), each caught only in retrospective. Deferred because the
-rung is expensive: a detection heuristic over citation prose, tests at the 100%
-floor, and false-positive risk on citations that do not amend. Worth its own
-focused effort, and the ADR-0188 amendable-lifecycle machinery may have changed
-the natural shape of the fix.
+When an ADR cites a specific Decision item as a partial amendment, the cited ADR's `related:` should name the citer. ADR-0065 missed ADR-0079 and ADR-0093 missed ADR-0024; retrospective caught both. Detection needs citation-prose heuristics, 100% tests, and handles non-amending citation false positives. Defer to a focused effort; ADR-0188's amendable lifecycle may change the best design.
 
 ## Unmanaged Go `t.TempDir` directories survive abrupt process death
 
-Managed TestMain homes are bounded below one recoverable root, but arbitrary Go `t.TempDir`
-directories cannot clean up across abrupt process death. The test-temp manager deliberately
-does not select them, so any broader cleanup policy needs a separate safety decision.
+Managed TestMain homes are bounded under a recoverable root, but arbitrary Go `t.TempDir` paths survive abrupt death. The manager deliberately excludes them; any broader cleanup policy requires a separate safety decision.
 
 ## Remove Windows from release and cross-compile policy
 
-A future release-policy change should remove Windows from `.goreleaser.yaml` and the
-cross-compile gate. Test-temp management retains Windows compile compatibility now, but owns
-real behavior only on Linux and macOS; it must not approximate Windows ACL safety.
+A future release-policy change should remove Windows from `.goreleaser.yaml` and cross-compile gating. Test-temp management keeps Windows compile compatibility but supports behavior only on Linux and macOS; do not approximate Windows ACL safety.
 
