@@ -48,7 +48,7 @@ data:
       meaning: "An ADR's frozen operation declaration: `None.` or add, update, and remove entries naming qualified claim ids. Each batch travels with its claim mutations."
       domains: [adr-system]
     - term: current-state topic
-      meaning: "A domain-owned document whose metadata and authored current-state part define claims read by `awf context`, `awf check`, and `awf topic`."
+      meaning: "A domain-owned document whose metadata and authored current-state part define claims read by `awf context`, `awf check`, and `awf topic`. Its claims, not ADRs, are current authority."
       domains: [invariants]
     - term: source marker
       meaning: "An informational `awf:source` comment on generated documentation that points to reader-facing authorities without defining an edit boundary or dependency list."
@@ -108,7 +108,7 @@ data:
       meaning: "A domain's `paths:`-declared anchored-glob file territory, which bounds topic ownership, context, and coverage."
       domains: [config]
     - term: invariant backing
-      meaning: "The ledger-not-proof model: `Backing: test` requires a matching proof-marker comment in a test file, while `Backing: unbacked` forbids one and requires `Verify:`."
+      meaning: "The ledger-not-proof model: `Backing: test` requires a text-matched proof marker but does not prove the test asserts the claim; `Backing: unbacked` forbids a marker and requires `Verify:`."
       domains: [invariants]
     - term: promotion ladder
       meaning: "The retrospective rule that promotes a recurring codifiable observation to the strongest supportable form: invariant, gate or lint rule, review focus, or pitfall."
@@ -162,7 +162,7 @@ data:
       meaning: "One exported git-seam operation: a repository-handle method or a free function before or without an opened repository."
       domains: [tooling]
     - term: contract suite
-      meaning: "A backend-agnostic test that pins a seam entrypoint's answers rather than its implementation, making backend swaps detectable."
+      meaning: "A backend-agnostic test that pins a seam entrypoint's answers rather than its implementation. Cancellation, error-identity, and isolation suites are separate cross-cutting suites."
       domains: [tooling]
     - term: single home
       meaning: "A policy or mechanism consumed by multiple packages has exactly one implementation in its owning package."

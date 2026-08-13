@@ -5,7 +5,7 @@
 
 <!-- awf:template-source templates/docs/glossary.md.tmpl#prepend -->
 <!-- awf:edit prepend: from .awf/docs/parts/glossary/prepend.md -->
-- **Finishing reservation:** A slug-and-internal-UUID-matched effort-directory rename that reserves a slug while restartable finish prepares archival.
+- **Finishing reservation:** A slug-and-internal-UUID-matched effort-directory rename that reserves a slug while restartable finish prepares the complete validated resident for no-replace archival.
 
 
 <!-- awf:template-source templates/docs/glossary.md.tmpl -->
@@ -30,8 +30,8 @@
 | context state | The assembled value consumed by a context query: layout, config, current state, tree, lock, output declarations, and eligible coverage universe. |
 | context tier | The request-sensitive `awf context` projection: bare directories receive tier-0 census, grouping, provenance, and topics; bare exact or Git-selected files also receive tier-1 direct relationships. |
 | continuity notice | A routine checkpoint's informational one-line summary of the completed phase and immediate next action; it does not stop autonomous continuation. |
-| contract suite | A backend-agnostic test that pins a seam entrypoint's answers rather than its implementation, making backend swaps detectable. |
-| current-state topic | A domain-owned document whose metadata and authored current-state part define claims read by `awf context`, `awf check`, and `awf topic`. |
+| contract suite | A backend-agnostic test that pins a seam entrypoint's answers rather than its implementation. Cancellation, error-identity, and isolation suites are separate cross-cutting suites. |
+| current-state topic | A domain-owned document whose metadata and authored current-state part define claims read by `awf context`, `awf check`, and `awf topic`. Its claims, not ADRs, are current authority. |
 | decision index | The generated decisions index listing in-flight ADRs by number, title, and status and terminal ADRs as compact history. It does not infer currentness or render supersession chains. |
 | deletion-as-acknowledgement | The var three-state model: set is configured, present-but-empty is the seeded to-do, and absent is a deliberate permanent decline. |
 | domain paths | A domain's `paths:`-declared anchored-glob file territory, which bounds topic ownership, context, and coverage. |
@@ -47,7 +47,7 @@
 | grab-bag home | A production package or file named for a topical pile, such as util, common, helpers, or misc; new production code and deliberate conversions may not create one. |
 | handoff kickoff | The bounded `{kickoff}` prose passed unchanged to Pi session replacement; workflow guidance supplies checkpoint reorientation. |
 | integration branch | The configured branch for finished-work integration, where ADR authoring allocates numbers; elsewhere authoring produces pending records numbered during integration. |
-| invariant backing | The ledger-not-proof model: `Backing: test` requires a matching proof-marker comment in a test file, while `Backing: unbacked` forbids one and requires `Verify:`. |
+| invariant backing | The ledger-not-proof model: `Backing: test` requires a text-matched proof marker but does not prove the test asserts the claim; `Backing: unbacked` forbids a marker and requires `Verify:`. |
 | linked-plan review freshness | The rule that ordinary full plan review verifies every parsed plan-level `adrs:` link, and substantive ADR corrections settle through ADR review before linked Proposed plans and landed-phase assurance renew. |
 | managed effort worktree | The checkout an effort creates alongside itself, on its own branch, as the default place its work executes. Integrated and removed explicitly when the effort finishes. |
 | mandatory approval check-in | The pre-artifact stop for explicit brainstorming outline approval. Effort creation is not an approval boundary. |
