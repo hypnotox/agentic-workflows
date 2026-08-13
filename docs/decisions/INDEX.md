@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-effort-only-pi-handoff-kickoff: Effort-only Pi handoff kickoff](effort-only-pi-handoff-kickoff.md) (Proposed)
 
 ## History
 
