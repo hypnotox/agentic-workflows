@@ -8,6 +8,8 @@ query a single version or a range.
 
 ## [Unreleased]
 
+## [0.36.1] - 2026-08-13
+
 ### Bug fixes
 
 - Effort-backed Pi handoffs now identify only the effort, leaving association, resume procedure, handoff logging, and autonomous continuation to the rendered skills and effort authority instead of embedding phase-scoped stopping cues in kickoff prose.
