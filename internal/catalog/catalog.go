@@ -159,9 +159,9 @@ func NewView(c *Catalog) View {
 	return View{catalog: cloneCatalog(c)}
 }
 
-// Catalog returns the view-owned catalog. Callers treat the snapshot as
-// read-only; its only mutable alias is confined inside the owning project.
-func (v View) Catalog() *Catalog { return v.catalog }
+// Catalog returns a defensive snapshot of the view. Callers may retain or
+// mutate that snapshot without changing the View or another caller's project.
+func (v View) Catalog() *Catalog { return cloneCatalog(v.catalog) }
 
 func cloneCatalog(src *Catalog) *Catalog {
 	out := &Catalog{

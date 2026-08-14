@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -108,7 +109,7 @@ func structuralHeadingCutoverPopulation(t *testing.T, p *Project) map[string]str
 		}
 		add(kind, artifact, entry.TID)
 	}
-	raw, err := fs.ReadFile(templates.FS, mustDescriptor("domains").tid(""))
+	raw, err := fs.ReadFile(templates.FS, mustDescriptor("domains").templateID(catalog.Standard, ""))
 	if err != nil {
 		t.Fatal(err)
 	}

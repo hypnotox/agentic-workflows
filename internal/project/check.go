@@ -703,7 +703,7 @@ func (p *Project) checkDeadSkillRefs(files []RenderedFile, effective map[string]
 		seen := map[string]bool{}
 		for _, m := range re.FindAllStringSubmatch(refs.WithoutFences(f.Content), -1) {
 			name := m[1]
-			if _, known := p.view.Catalog().Skills[name]; !known || effective[name] || seen[name] {
+			if _, known := p.catalog().Skills[name]; !known || effective[name] || seen[name] {
 				continue
 			}
 			seen[name] = true

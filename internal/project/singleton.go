@@ -71,9 +71,9 @@ type singletonSpec struct {
 }
 
 // plainSingletons is derived from the project-owned catalog view (ADR-0061
-// inv: unified-doc-model): one entry per Mandatory non-agents-doc doc, with
-// tid / output path / sections read from that DocEntry. There is no hand-authored
-// table - adding a mandatory doc is one DocEntry and this loop picks it up.
+// inv: unified-doc-model): one entry per Path-bearing, non-agent, non-generated
+// structural doc, with tid, output path, and sections read from that DocEntry.
+// There is no hand-authored singleton table.
 func plainSingletons(cat *catalog.Catalog) []singletonSpec {
 	var out []singletonSpec
 	for _, k := range slices.Sorted(maps.Keys(cat.Docs)) {
@@ -117,7 +117,7 @@ func (p *Project) liveTemplateEncoders() map[string]AgentDialect {
 	}
 	for _, descriptor := range kindDescriptors {
 		if descriptor.freeformDomain {
-			encoders[descriptor.tid("")] = MarkdownAgentDialect
+			encoders[descriptor.templateID(p.catalog(), "")] = MarkdownAgentDialect
 		}
 	}
 	for name := range p.catalog().Skills {

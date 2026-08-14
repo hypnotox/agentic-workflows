@@ -18,7 +18,7 @@ type kindDescriptor struct {
 	poolNames      func(*catalog.Catalog) []string                 // sorted catalog pool; nil for domains (no pool)
 	sections       func(*catalog.Catalog, string) ([]string, bool) // declared sections + catalog presence
 	outPath        func(t Target, prefix, name string) string      // rendered path; nil for neutral kinds
-	tid            func(name string) string                        // embedded template id
+	templateID     func(*catalog.Catalog, string) string           // embedded template id
 }
 
 // kindDescriptors is the single ordered source of per-kind dispatch (inv:
@@ -27,43 +27,32 @@ type kindDescriptor struct {
 var kindDescriptors = []kindDescriptor{
 	{
 		Plural: "skills", Singular: "skill",
-		poolNames: func(c *catalog.Catalog) []string { return slices.Sorted(maps.Keys(c.Skills)) },
-		sections:  func(c *catalog.Catalog, n string) ([]string, bool) { s, ok := c.Skills[n]; return s.Sections, ok },
-		outPath:   func(t Target, prefix, n string) string { return t.SkillPath(prefix, n) },
-		tid:       func(n string) string { return fmt.Sprintf("skills/%s/SKILL.md.tmpl", n) },
+		poolNames:  func(c *catalog.Catalog) []string { return slices.Sorted(maps.Keys(c.Skills)) },
+		sections:   func(c *catalog.Catalog, n string) ([]string, bool) { s, ok := c.Skills[n]; return s.Sections, ok },
+		outPath:    func(t Target, prefix, n string) string { return t.SkillPath(prefix, n) },
+		templateID: func(_ *catalog.Catalog, n string) string { return fmt.Sprintf("skills/%s/SKILL.md.tmpl", n) },
 	},
 	{
 		Plural: "agents", Singular: "agent",
-		poolNames: func(c *catalog.Catalog) []string { return slices.Sorted(maps.Keys(c.Agents)) },
-		sections:  func(c *catalog.Catalog, n string) ([]string, bool) { a, ok := c.Agents[n]; return a.Sections, ok },
-		outPath:   func(t Target, _, n string) string { return t.AgentPath(n) },
-		tid:       func(n string) string { return fmt.Sprintf("agents/%s.md.tmpl", n) },
+		poolNames:  func(c *catalog.Catalog) []string { return slices.Sorted(maps.Keys(c.Agents)) },
+		sections:   func(c *catalog.Catalog, n string) ([]string, bool) { a, ok := c.Agents[n]; return a.Sections, ok },
+		outPath:    func(t Target, _, n string) string { return t.AgentPath(n) },
+		templateID: func(_ *catalog.Catalog, n string) string { return fmt.Sprintf("agents/%s.md.tmpl", n) },
 	},
 	{
 		Plural: "docs", Singular: "doc",
-		poolNames: func(c *catalog.Catalog) []string { return slices.Sorted(maps.Keys(c.Docs)) },
-		sections:  func(c *catalog.Catalog, n string) ([]string, bool) { d, ok := c.Docs[n]; return d.Sections, ok },
-		outPath:   nil,
-		// Document template identities remain in the project-owned catalog view.
-		tid: func(string) string { return "" }, // coverage-ignore: document template IDs always derive from the project catalog in templateID
+		poolNames:  func(c *catalog.Catalog) []string { return slices.Sorted(maps.Keys(c.Docs)) },
+		sections:   func(c *catalog.Catalog, n string) ([]string, bool) { d, ok := c.Docs[n]; return d.Sections, ok },
+		outPath:    nil,
+		templateID: func(c *catalog.Catalog, n string) string { return c.Docs[n].TID },
 	},
 	{
 		Plural: "domains", Singular: "domain", freeformDomain: true,
-		poolNames: nil, // freeform - no catalog pool
-		sections:  func(c *catalog.Catalog, _ string) ([]string, bool) { return c.DomainDoc.Sections, false },
-		outPath:   nil,
-		tid:       func(string) string { return "domains/domain.md.tmpl" },
+		poolNames:  nil, // freeform - no catalog pool
+		sections:   func(c *catalog.Catalog, _ string) ([]string, bool) { return c.DomainDoc.Sections, false },
+		outPath:    nil,
+		templateID: func(*catalog.Catalog, string) string { return "domains/domain.md.tmpl" },
 	},
-}
-
-// templateID returns a descriptor's template identity. Documents derive theirs
-// from the supplied project catalog because structural docs do not use the
-// name-derived docs/ path.
-func (d kindDescriptor) templateID(c *catalog.Catalog, name string) string {
-	if d.Plural == "docs" {
-		return c.Docs[name].TID
-	}
-	return d.tid(name)
 }
 
 func descriptorByPlural(kind string) (kindDescriptor, bool) {

@@ -133,6 +133,16 @@ func TestLoaderOpenOwnsInjectedCompleteView(t *testing.T) {
 	if p.catalog() == &injected || !reflect.DeepEqual(p.catalog(), &injected) {
 		t.Fatal("Project did not own one equivalent injected catalog snapshot")
 	}
+	second, err := loader.Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	firstSkill := p.catalog().Skills["tdd"]
+	firstSkill.Sections[0] = "changed first project"
+	p.catalog().Skills["tdd"] = firstSkill
+	if second.catalog().Skills["tdd"].Sections[0] == "changed first project" {
+		t.Fatal("Loader-opened projects share a mutable catalog snapshot")
+	}
 }
 
 func TestLoaderOpenDoesNotMutateStandardCatalog(t *testing.T) {

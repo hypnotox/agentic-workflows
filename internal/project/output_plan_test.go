@@ -416,7 +416,7 @@ func TestTargetOutputDeclarationsRejectUnreadableTemplate(t *testing.T) {
 	bad := piTarget
 	bad.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
 	bad.Outputs[0].TemplateID = "missing/target-output.tmpl"
-	p := &Project{Cfg: &config.Config{Prefix: "example"}, view: catalog.NewView(catalog.Standard), Targets: []Target{bad}}
+	p := &Project{Cfg: &config.Config{Prefix: "example"}, cat: catalog.NewView(catalog.Standard).Catalog(), Targets: []Target{bad}}
 	_, err := p.targetOutputDeclarations(nil)
 	t.Logf("target output declaration error = %v", err)
 	if err == nil || !strings.Contains(err.Error(), "read template missing/target-output.tmpl") {
@@ -428,7 +428,7 @@ func TestTargetOutputDeclarationsRejectUnknownRequiredSkill(t *testing.T) {
 	bad := piTarget
 	bad.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
 	bad.Outputs[0].RequiresSkill = "missing"
-	p := &Project{Cfg: &config.Config{Prefix: "example"}, view: catalog.NewView(catalog.Standard), Targets: []Target{bad}}
+	p := &Project{Cfg: &config.Config{Prefix: "example"}, cat: catalog.NewView(catalog.Standard).Catalog(), Targets: []Target{bad}}
 	if _, err := p.targetOutputDeclarations(nil); err == nil || !strings.Contains(err.Error(), "unknown catalog skill") {
 		t.Fatalf("unknown target output requirement error = %v", err)
 	}

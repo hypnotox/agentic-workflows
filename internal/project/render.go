@@ -440,10 +440,14 @@ type renderKindSpec struct {
 }
 
 // skillTID resolves a catalog skill's name-derived template id.
-func (p *Project) skillTID(n string) string { return mustDescriptor("skills").tid(n) }
+func (p *Project) skillTID(n string) string {
+	return mustDescriptor("skills").templateID(p.catalog(), n)
+}
 
 // agentTID resolves a catalog agent's name-derived template id.
-func (p *Project) agentTID(n string) string { return mustDescriptor("agents").tid(n) }
+func (p *Project) agentTID(n string) string {
+	return mustDescriptor("agents").templateID(p.catalog(), n)
+}
 
 // docTID resolves a catalog document's declared template id.
 func (p *Project) docTID(n string) string { return p.catalog().Docs[n].TID }
@@ -1015,7 +1019,7 @@ func (p *Project) generateDomainDocs(topics topic.Corpus, eff map[string]bool) (
 	for _, name := range slices.Sorted(slices.Values(p.Cfg.Domains)) {
 		data := p.data(config.Sidecar{}, eff)
 		data["data"] = map[string]any{"domain": name, "topics": topic.BuildNavigationModel(name, topics.ForDomain(name))}
-		rf, err := p.renderTarget("domains", name, mustDescriptor("domains").tid(name),
+		rf, err := p.renderTarget("domains", name, mustDescriptor("domains").templateID(p.catalog(), name),
 			p.catalog().DomainDoc.Sections, config.Sidecar{}, data,
 			lay.DomainsDir+"/"+name+".md", eff, &renderOutputOptions{sources: []string{
 				".awf/topics/metadata/" + name + "/*.yaml",

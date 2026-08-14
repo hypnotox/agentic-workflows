@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -105,6 +106,14 @@ func TestViewOwnsDeepCatalogSnapshot(t *testing.T) {
 	if standardHasProbe != standardHadProbe {
 		t.Fatal("Standard data changed through complete view alias")
 	}
+
+	returned := view.Catalog()
+	returnedSkill := returned.Skills["tdd"]
+	returnedSkill.Sections[0] = "changed returned snapshot"
+	returned.Skills["tdd"] = returnedSkill
+	if view.Catalog().Skills["tdd"].Sections[0] == "changed returned snapshot" {
+		t.Fatal("View changed through a returned catalog snapshot")
+	}
 }
 
 // TestProjectProductionCatalogBypassesRejected keeps the complete view as the
@@ -155,6 +164,22 @@ func forbidden() { _ = catalog.CompleteView() }
 	if err != nil || len(got) != 1 || got[0] != "project.go:forbidden:CompleteView" {
 		t.Errorf("function-scoped bypass probe = %v, %v", got, err)
 	}
+	aliasSource := `package project
+import cat "github.com/hypnotox/agentic-workflows/internal/catalog"
+func forbidden() { _ = cat.Standard }
+`
+	got, err = projectCatalogBypasses("project.go", []byte(aliasSource))
+	if err != nil || len(got) != 1 || got[0] != "project.go:forbidden:Standard" {
+		t.Errorf("aliased bypass probe = %v, %v", got, err)
+	}
+	dotSource := `package project
+import . "github.com/hypnotox/agentic-workflows/internal/catalog"
+func forbidden() { _ = CompleteView() }
+`
+	got, err = projectCatalogBypasses("project.go", []byte(dotSource))
+	if err != nil || len(got) != 1 || got[0] != "project.go:<import>:dot" {
+		t.Errorf("dot-import bypass probe = %v, %v", got, err)
+	}
 }
 
 func projectCatalogBypasses(filename string, body []byte) ([]string, error) {
@@ -176,7 +201,25 @@ func projectCatalogBypasses(filename string, body []byte) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	catalogName := ""
 	var out []string
+	for _, imported := range file.Imports {
+		path, err := strconv.Unquote(imported.Path.Value)
+		if err != nil {
+			return nil, err
+		}
+		if path != "github.com/hypnotox/agentic-workflows/internal/catalog" {
+			continue
+		}
+		catalogName = "catalog"
+		if imported.Name != nil {
+			catalogName = imported.Name.Name
+			if catalogName == "." {
+				out = append(out, filename+":<import>:dot")
+				return out, nil
+			}
+		}
+	}
 	inspect := func(function string, node ast.Node) {
 		ast.Inspect(node, func(node ast.Node) bool {
 			sel, ok := node.(*ast.SelectorExpr)
@@ -184,7 +227,7 @@ func projectCatalogBypasses(filename string, body []byte) ([]string, error) {
 				return true
 			}
 			pkg, ok := sel.X.(*ast.Ident)
-			if !ok || pkg.Name != "catalog" || allowed[filename][function][sel.Sel.Name] {
+			if !ok || pkg.Name != catalogName || allowed[filename][function][sel.Sel.Name] {
 				return true
 			}
 			out = append(out, filename+":"+function+":"+sel.Sel.Name)

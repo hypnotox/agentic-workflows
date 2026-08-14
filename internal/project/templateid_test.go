@@ -12,6 +12,7 @@ import (
 
 	"golang.org/x/tools/go/packages"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -258,7 +259,9 @@ func fixtureSuffixTrim(name string) string { return strings.TrimSuffix(name, ".s
 	// flagged: the rule turns on spelling an id, not on using one.
 	_, conforming := loadTemplateIDPackages(t, map[string][]byte{fixture: []byte(`package project
 
-func fixtureConformingTID(name string) string { return mustDescriptor("skills").tid(name) }
+func fixtureConformingTID(name string) string {
+	return mustDescriptor("skills").templateID(catalog.Standard, name)
+}
 `)})
 	conformingFindings, _ := templateIDFindings(root, conforming)
 	for _, f := range conformingFindings {
@@ -283,8 +286,8 @@ func TestLiveTemplateIDsResolve(t *testing.T) {
 	}
 	ids := p.liveTemplateIDs()
 	for _, descriptor := range kindDescriptors {
-		if descriptor.freeformDomain && !ids[descriptor.tid("")] {
-			t.Errorf("kind-derived domain template %q is not live", descriptor.tid(""))
+		if descriptor.freeformDomain && !ids[descriptor.templateID(catalog.Standard, "")] {
+			t.Errorf("kind-derived domain template %q is not live", descriptor.templateID(catalog.Standard, ""))
 		}
 	}
 	if ids[coOwnedRunnerTID] {
@@ -306,10 +309,10 @@ func TestLiveTemplateIDsResolve(t *testing.T) {
 	if domainIndex < 0 {
 		t.Fatal("no freeform domain descriptor")
 	}
-	originalDomainTID := kindDescriptors[domainIndex].tid
-	kindDescriptors[domainIndex].tid = func(string) string { return "missing/domain.tmpl" }
+	originalDomainTID := kindDescriptors[domainIndex].templateID
+	kindDescriptors[domainIndex].templateID = func(*catalog.Catalog, string) string { return "missing/domain.tmpl" }
 	domainIDs := p.liveTemplateIDs()
-	kindDescriptors[domainIndex].tid = originalDomainTID
+	kindDescriptors[domainIndex].templateID = originalDomainTID
 	if !domainIDs["missing/domain.tmpl"] {
 		t.Error("a missing kind-derived domain identity escaped the live population")
 	}

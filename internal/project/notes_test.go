@@ -575,7 +575,7 @@ func TestGlossaryTersenessNotesCoversShippedLayer(t *testing.T) {
 		cp := *p.catalog()
 		cp.Docs = maps.Clone(p.catalog().Docs)
 		cp.Docs["glossary"] = e
-		p.view = catalog.NewView(&cp)
+		p.cat = catalog.NewView(&cp).Catalog()
 		notes, err := p.glossaryTersenessNotes()
 		if err != nil {
 			t.Fatal(err)

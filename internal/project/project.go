@@ -153,7 +153,7 @@ type Project struct {
 	roots   resident.Roots
 	Cfg     *config.Config
 	Targets []Target
-	view    catalog.View
+	cat     *catalog.Catalog
 	// read selects an immutable project-tree universe for render inputs. A nil
 	// reader means ordinary filesystem rendering.
 	read ProjectTreeReader
@@ -200,7 +200,8 @@ func (l *Loader) Open(ctx context.Context, root string) (*Project, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
-	if err := catalog.ValidateWorkflowProfiles(l.view.Catalog()); err != nil {
+	cat := l.view.Catalog()
+	if err := catalog.ValidateWorkflowProfiles(cat); err != nil {
 		return nil, err
 	}
 	targets, err := resolveTargets(KnownTargets())
@@ -212,7 +213,7 @@ func (l *Loader) Open(ctx context.Context, root string) (*Project, error) {
 		roots:   resident.NewRoots(root, l.resolveResidentRoot(ctx, root)),
 		Cfg:     cfg,
 		Targets: targets,
-		view:    l.view,
+		cat:     cat,
 		nested:  l.repo != nil && l.repo.IsNested(),
 		repo:    l.repo,
 	}
@@ -249,11 +250,11 @@ func openRootProject(root string) (*Project, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Project{Root: root, roots: resident.NewRoots(root, ""), view: catalog.CompleteView(), nested: prefix != "", repo: repo}, nil
+	return &Project{Root: root, roots: resident.NewRoots(root, ""), cat: catalog.CompleteView().Catalog(), nested: prefix != "", repo: repo}, nil
 }
 
-// catalog returns this project's single view-owned catalog snapshot.
-func (p *Project) catalog() *catalog.Catalog { return p.view.Catalog() }
+// catalog returns this project's one private catalog snapshot.
+func (p *Project) catalog() *catalog.Catalog { return p.cat }
 
 // Backup records a foreign file preserved before sync overwrote its path.
 type Backup struct {

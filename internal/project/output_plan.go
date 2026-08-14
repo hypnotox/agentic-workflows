@@ -235,7 +235,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			if err != nil {
 				return nil, err
 			}
-			tid := mustDescriptor("skills").tid(name)
+			tid := mustDescriptor("skills").templateID(cat, name)
 			sections := cat.Skills[name].Sections
 			input, err := markdownInputs(tid, append([]OutputInput{{Path: ".awf/skills/" + name + ".yaml", Role: ArtifactAuthoredData}}, partInputs("skills", name, sections, sc.Sections)...)...)
 			if err != nil { // coverage-ignore: catalog skill template IDs and embedded sources are validated static authority
@@ -248,7 +248,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			if err != nil {
 				return nil, err
 			}
-			tid := mustDescriptor("agents").tid(name)
+			tid := mustDescriptor("agents").templateID(cat, name)
 			sections := cat.Agents[name].Sections
 			input := inputs(tid, append([]OutputInput{{Path: ".awf/agents/" + name + ".yaml", Role: ArtifactAuthoredData}}, partInputs("agents", name, sections, sc.Sections)...)...)
 			if t.AgentDialect == MarkdownAgentDialect {
@@ -368,7 +368,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 				authored = append(authored, OutputInput{Path: metadataPath, Role: ArtifactTopicMetadata}, OutputInput{Path: ".awf/topics/parts/" + id + "/current-state.md", Role: ArtifactClaimPart})
 			}
 		}
-		domainTID := mustDescriptor("domains").tid(d)
+		domainTID := mustDescriptor("domains").templateID(cat, d)
 		declaredInputs, err := markdownInputs(domainTID, authored...)
 		if err != nil { // coverage-ignore: the domain descriptor owns one validated embedded template identity
 			return nil, err
@@ -785,7 +785,7 @@ func projectWithConfig(p *Project, cfg *config.Config) *Project {
 		roots:   p.roots,
 		Cfg:     cfg,
 		Targets: p.Targets,
-		view:    p.view,
+		cat:     p.cat,
 		read:    p.read,
 		nested:  p.nested,
 		repo:    p.repo,
