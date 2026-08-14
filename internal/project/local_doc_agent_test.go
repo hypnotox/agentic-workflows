@@ -154,7 +154,7 @@ func TestLocalDocReferenceChecksBody(t *testing.T) {
 	custom.Skills = maps.Clone(p.Cat.Skills)
 	delete(custom.Skills, "tdd")
 	p.Cat = &custom
-	p.standard = catalog.Standard
+	p.view = catalog.CompleteView()
 	report, err := p.CheckReport(testContext(t))
 	if err != nil {
 		t.Fatal(err)

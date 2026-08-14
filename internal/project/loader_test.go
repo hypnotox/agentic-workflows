@@ -120,6 +120,21 @@ func TestOpenFallsBackOnUnsafeResidentRoot(t *testing.T) {
 	}
 }
 
+func TestLoaderOpenOwnsInjectedCompleteView(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\n")
+	injected := *catalog.Standard
+	injected.Skills = maps.Clone(catalog.Standard.Skills)
+	loader := NewLoaderWithoutRepository(config.Load, &injected, func(_ context.Context, root string) string { return root })
+	p, err := loader.Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Cat != &injected || p.view.Catalog() != p.Cat {
+		t.Fatal("Project did not retain its one injected catalog view")
+	}
+}
+
 func TestLoaderOpenDoesNotMutateStandardCatalog(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\n")

@@ -109,7 +109,7 @@ type ResolveResidentRoot func(context.Context, string) string
 // Loader owns project-opening policy over explicitly selected dependencies.
 type Loader struct {
 	loadConfigTree      LoadConfigTree
-	standard            *catalog.Catalog
+	view                catalog.View
 	resolveResidentRoot ResolveResidentRoot
 	repo                *awfgit.Repo
 }
@@ -140,7 +140,7 @@ func newLoader(loadConfigTree LoadConfigTree, standard *catalog.Catalog, resolve
 	if resolveResidentRoot == nil {
 		panic("project Loader: missing resolve resident root dependency")
 	}
-	return &Loader{loadConfigTree: loadConfigTree, standard: standard, resolveResidentRoot: resolveResidentRoot, repo: repo}
+	return &Loader{loadConfigTree: loadConfigTree, view: catalog.NewView(standard), resolveResidentRoot: resolveResidentRoot, repo: repo}
 }
 
 type Project struct {
@@ -150,11 +150,11 @@ type Project struct {
 	// resident half is the primary checkout selected by Git's common control
 	// root. Non-Git fixture projects retain Root so ordinary config-only tests
 	// remain useful. Constructed once, where the project is.
-	roots    resident.Roots
-	Cfg      *config.Config
-	Cat      *catalog.Catalog
-	Targets  []Target
-	standard *catalog.Catalog
+	roots   resident.Roots
+	Cfg     *config.Config
+	Cat     *catalog.Catalog
+	Targets []Target
+	view    catalog.View
 	// read selects an immutable project-tree universe for render inputs. A nil
 	// reader means ordinary filesystem rendering.
 	read ProjectTreeReader
@@ -184,9 +184,9 @@ func Open(ctx context.Context, root string) (*Project, error) {
 		return nil, err
 	}
 	if repo == nil {
-		return NewLoaderWithoutRepository(config.Load, catalog.Standard, awfgit.ProjectResidentRoot).Open(ctx, root)
+		return NewLoaderWithoutRepository(config.Load, catalog.CompleteView().Catalog(), awfgit.ProjectResidentRoot).Open(ctx, root)
 	}
-	return NewLoader(config.Load, catalog.Standard, awfgit.ProjectResidentRoot, repo).Open(ctx, root)
+	return NewLoader(config.Load, catalog.CompleteView().Catalog(), awfgit.ProjectResidentRoot, repo).Open(ctx, root)
 }
 
 // Open loads, validates, and derives one project with the Loader's dependencies.
@@ -201,7 +201,7 @@ func (l *Loader) Open(ctx context.Context, root string) (*Project, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
-	if err := catalog.ValidateWorkflowProfiles(l.standard); err != nil {
+	if err := catalog.ValidateWorkflowProfiles(l.view.Catalog()); err != nil {
 		return nil, err
 	}
 	targets, err := resolveTargets(KnownTargets())
@@ -209,15 +209,15 @@ func (l *Loader) Open(ctx context.Context, root string) (*Project, error) {
 		return nil, err
 	}
 	p := &Project{
-		Root:     root,
-		roots:    resident.NewRoots(root, l.resolveResidentRoot(ctx, root)),
-		Cfg:      cfg,
-		Targets:  targets,
-		standard: l.standard,
-		nested:   l.repo != nil && l.repo.IsNested(),
-		repo:     l.repo,
+		Root:    root,
+		roots:   resident.NewRoots(root, l.resolveResidentRoot(ctx, root)),
+		Cfg:     cfg,
+		Targets: targets,
+		view:    l.view,
+		nested:  l.repo != nil && l.repo.IsNested(),
+		repo:    l.repo,
 	}
-	p.Cat = l.standard
+	p.Cat = l.view.Catalog()
 	if err := p.validateAgainstCatalog(); err != nil {
 		return nil, err
 	}
@@ -251,7 +251,8 @@ func openRootProject(root string) (*Project, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Project{Root: root, roots: resident.NewRoots(root, ""), standard: catalog.Standard, nested: prefix != "", repo: repo}, nil
+	view := catalog.CompleteView()
+	return &Project{Root: root, roots: resident.NewRoots(root, ""), Cat: view.Catalog(), view: view, nested: prefix != "", repo: repo}, nil
 }
 
 // Backup records a foreign file preserved before sync overwrote its path.

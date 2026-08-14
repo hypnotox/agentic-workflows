@@ -5,7 +5,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
@@ -21,6 +20,7 @@ type Layout struct {
 	IndexMd    string
 	PlansDir   string
 	Docs       map[string]string // catalog name -> output path (inv: layout-docs-full-catalog)
+	Singletons map[string]string // template key -> output path
 	DomainsDir string
 }
 
@@ -29,9 +29,13 @@ func (p *Project) layout() Layout {
 	dec := d + "/decisions"
 	// Docs maps every catalog document to its unconditional rendered output path.
 	docs := map[string]string{}
+	singletons := map[string]string{}
 	if p.Cat != nil {
-		for name := range p.Cat.Docs {
+		for name, entry := range p.Cat.Docs {
 			docs[name] = p.docOutPath(name)
+			if !entry.AgentsDoc && entry.TemplateKey != "" {
+				singletons[entry.TemplateKey] = p.docOutPath(name)
+			}
 		}
 	}
 	return Layout{
@@ -40,6 +44,7 @@ func (p *Project) layout() Layout {
 		IndexMd:    dec + "/INDEX.md",
 		PlansDir:   d + "/plans",
 		Docs:       docs,
+		Singletons: singletons,
 		DomainsDir: d + "/domains", // inv: domains-dir-given
 	}
 }
@@ -63,12 +68,8 @@ func (l Layout) templateMap() map[string]any {
 		"docs":       docs,
 		"domainsDir": l.DomainsDir,
 	}
-	for _, k := range catalog.SingletonKinds() {
-		e := catalog.Standard.Docs[k]
-		if e.AgentsDoc || e.TemplateKey == "" {
-			continue
-		}
-		m[e.TemplateKey] = l.DocsDir + "/" + e.Path
+	for key, output := range l.Singletons {
+		m[key] = output
 	}
 	return m
 }

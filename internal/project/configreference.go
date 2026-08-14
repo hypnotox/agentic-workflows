@@ -22,11 +22,15 @@ func (p *Project) crefRel() string {
 	return config.DocsDir + "/" + p.Cat.Docs["config-reference"].Path
 }
 
-// PotentialVarConsumers inverts the full catalog's raw template sources into
-// var → sorted consumer labels: the dormant-hint side of the consumption
-// graph (ADR-0088). Raw-source scanning is sound because no partial
-// references .vars - guarded by a test beside the reference's goldens.
+// PotentialVarConsumers inverts the complete catalog's raw template sources
+// into var -> sorted consumer labels for static catalog presentation.
 func PotentialVarConsumers() (map[string][]string, error) {
+	return potentialVarConsumers(catalog.CompleteView().Catalog())
+}
+
+// potentialVarConsumers is the shared inversion over the caller-owned catalog
+// view. Raw-source scanning is sound because no partial references .vars.
+func potentialVarConsumers(cat *catalog.Catalog) (map[string][]string, error) {
 	byVar := map[string]map[string]bool{}
 	add := func(tid string) error {
 		varSet := map[string]bool{}
@@ -41,11 +45,10 @@ func PotentialVarConsumers() (map[string][]string, error) {
 		}
 		return nil
 	}
-	cat := catalog.Standard
 	for _, kind := range []string{"skills", "agents", "docs"} {
 		d, _ := descriptorByPlural(kind)
 		for _, name := range d.poolNames(cat) {
-			if err := add(d.tid(name)); err != nil { // coverage-ignore: see add
+			if err := add(d.templateID(cat, name)); err != nil { // coverage-ignore: see add
 				return nil, err
 			}
 		}
@@ -53,7 +56,7 @@ func PotentialVarConsumers() (map[string][]string, error) {
 	if err := add(cat.Docs["agents-doc"].TID); err != nil { // coverage-ignore: the agents-doc template is always embedded
 		return nil, err
 	}
-	for _, sg := range plainSingletons {
+	for _, sg := range plainSingletons(cat) {
 		if err := add(sg.tid); err != nil { // coverage-ignore: every plainSingletons entry has a backing embedded template
 			return nil, err
 		}
@@ -294,7 +297,7 @@ func (p *Project) configReferenceRows(files []RenderedFile) (ConfigReference, er
 	}
 
 	rendered := renderedVarConsumers(files)
-	potential, err := PotentialVarConsumers()
+	potential, err := potentialVarConsumers(p.Cat)
 	if err != nil { // coverage-ignore: PotentialVarConsumers reads only embedded templates
 		return ConfigReference{}, err
 	}

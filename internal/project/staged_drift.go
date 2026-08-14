@@ -48,9 +48,9 @@ func (p *Project) CheckStagedDrift(ctx context.Context) ([]manifest.Drift, error
 	read := snapshotTreeReader{tree: state.Tree}
 	universe := &Project{
 		Root: p.Root, roots: p.roots, Cfg: state.Cfg, Targets: targets,
-		standard: p.standard, read: read, nested: p.nested, repo: p.repo,
+		view: p.view, read: read, nested: p.nested, repo: p.repo,
 	}
-	universe.Cat = universe.standard
+	universe.Cat = universe.view.Catalog()
 	if err := universe.validateAgainstCatalog(); err != nil {
 		return nil, err
 	}

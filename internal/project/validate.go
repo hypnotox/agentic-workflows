@@ -49,7 +49,7 @@ func (p *Project) validateAgainstCatalog() error {
 	if err := checkSectionsAllowed("agents-doc", "", p.Cat.Docs["agents-doc"].Sections, ad.Sections); err != nil {
 		return err
 	}
-	for _, sg := range plainSingletons {
+	for _, sg := range plainSingletons(p.Cat) {
 		sc, err := p.Cfg.Sidecar(sg.kind, "")
 		if err != nil {
 			return err

@@ -135,3 +135,23 @@ type Catalog struct {
 	Docs      map[string]DocEntry  `yaml:"docs"`
 	Vars      []VarDescriptor      `yaml:"vars"`
 }
+
+// View is the immutable-in-practice catalog selection a composition root gives
+// to one project. This foundation always selects the complete catalog; later
+// selection must remain here rather than letting consumers reconstruct it.
+type View struct{ catalog *Catalog }
+
+// CompleteView returns the one complete, Full-equivalent catalog view.
+func CompleteView() View { return View{catalog: Standard} }
+
+// NewView binds an explicitly composed complete catalog to a project.
+func NewView(c *Catalog) View {
+	if c == nil {
+		panic("catalog view: missing catalog")
+	}
+	return View{catalog: c}
+}
+
+// Catalog returns the view's read-only catalog for existing catalog consumers.
+// Catalog data is compile-time authority and callers must not mutate it.
+func (v View) Catalog() *Catalog { return v.catalog }

@@ -6,6 +6,8 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -23,6 +25,65 @@ func TestCatalogIsCompileTimeSingleSource(t *testing.T) {
 	if len(Standard.Skills) == 0 || len(Standard.Agents) == 0 || len(Standard.Docs) == 0 ||
 		len(SingletonKinds()) == 0 || len(Standard.Vars) == 0 || len(Standard.DomainDoc.Sections) == 0 {
 		t.Fatalf("catalog.Standard is not populated across all kinds")
+	}
+}
+
+// TestCompleteViewPreservesStandard verifies the preparatory view selects every
+// complete-catalog entry and preserves the ordered descriptor population.
+func TestNewViewRejectsNilCatalog(t *testing.T) {
+	defer func() {
+		if got := recover(); got != "catalog view: missing catalog" {
+			t.Fatalf("panic = %v", got)
+		}
+	}()
+	NewView(nil)
+}
+
+func TestCompleteViewPreservesStandard(t *testing.T) {
+	view := CompleteView()
+	if view.Catalog() != Standard {
+		t.Fatal("complete view did not retain the standard catalog authority")
+	}
+	if got, want := view.Catalog().Vars, Standard.Vars; !slices.EqualFunc(got, want, func(a, b VarDescriptor) bool { return reflect.DeepEqual(a, b) }) {
+		t.Fatalf("complete view vars = %#v, want %#v", got, want)
+	}
+	for _, name := range []string{"Skills", "Agents", "Docs"} {
+		var got, want int
+		switch name {
+		case "Skills":
+			got, want = len(view.Catalog().Skills), len(Standard.Skills)
+		case "Agents":
+			got, want = len(view.Catalog().Agents), len(Standard.Agents)
+		case "Docs":
+			got, want = len(view.Catalog().Docs), len(Standard.Docs)
+		}
+		if got != want {
+			t.Errorf("complete view %s count = %d, want %d", name, got, want)
+		}
+	}
+}
+
+// TestProjectProductionCatalogBypassesRejected keeps the complete view as the
+// sole project catalog authority. Composition roots may construct it, but no
+// project production file may reach around its Project-owned value.
+func TestProjectProductionCatalogBypassesRejected(t *testing.T) {
+	root := testsupport.RepoRoot(t)
+	projectDir := filepath.Join(root, "internal", "project")
+	entries, err := os.ReadDir(projectDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") {
+			continue
+		}
+		body, err := os.ReadFile(filepath.Join(projectDir, entry.Name()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(body), "catalog.Standard") {
+			t.Errorf("project production bypass in %s", entry.Name())
+		}
 	}
 }
 

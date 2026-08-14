@@ -653,7 +653,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	// collection, derived into plainSingletons (ADR-0021, ADR-0043, ADR-0059,
 	// ADR-0061).
 	lay := p.layout()
-	for _, sg := range plainSingletons {
+	for _, sg := range plainSingletons(p.Cat) {
 		rfs, err := p.renderKind(renderKindSpec{
 			kind: sg.kind, names: []string{""},
 			tid:      func(string) string { return sg.tid },

@@ -13,9 +13,10 @@ import (
 // invariant: rendering/catalog-and-targets:unified-doc-model (TestUnifiedDocModelProjections)
 // invariant: rendering/singletons-and-payloads:plain-singleton-via-renderkind (TestUnifiedDocModelProjections)
 func TestUnifiedDocModelProjections(t *testing.T) {
+	cat := catalog.CompleteView().Catalog()
 	// (a) SingletonKinds == exactly root and structural output entries.
 	var wantSK []string
-	for k, e := range catalog.Standard.Docs {
+	for k, e := range cat.Docs {
 		if e.AgentsDoc || e.Path != "" {
 			wantSK = append(wantSK, k)
 		}
@@ -28,12 +29,12 @@ func TestUnifiedDocModelProjections(t *testing.T) {
 	// (b) plainSingletons == exactly structural non-generated entries, and
 	// no other kind (the generated config reference renders outside RenderAll).
 	var got []string
-	for _, s := range plainSingletons {
+	for _, s := range plainSingletons(cat) {
 		got = append(got, s.kind)
 	}
 	slices.Sort(got)
 	var wantPS []string
-	for k, e := range catalog.Standard.Docs {
+	for k, e := range cat.Docs {
 		if e.Path != "" && !e.AgentsDoc && !e.Generated {
 			wantPS = append(wantPS, k)
 		}
@@ -45,8 +46,8 @@ func TestUnifiedDocModelProjections(t *testing.T) {
 
 	// (c) every structural non-root entry's TemplateKey/Path lands in templateMap
 	// at the derived docsDir path.
-	tm := (&Project{}).layout().templateMap()
-	for _, e := range catalog.Standard.Docs {
+	tm := (&Project{Cat: cat}).layout().templateMap()
+	for _, e := range cat.Docs {
 		if e.Path == "" || e.AgentsDoc {
 			continue
 		}

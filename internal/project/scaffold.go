@@ -20,7 +20,7 @@ import (
 // ScaffoldConfig generates a .awf/config.yaml with every catalog template's
 // referenced vars, the self-pinning bootstrap, and the resolved commit scopes.
 func ScaffoldConfig(prefix string, vars map[string]string, scopes []string) ([]byte, error) {
-	cat := catalog.Standard
+	cat := catalog.CompleteView().Catalog()
 
 	// Collect referenced var names from every catalog template family - not only
 	// the core ones - so an opt-in target added later renders without <no value>.
@@ -29,14 +29,14 @@ func ScaffoldConfig(prefix string, vars map[string]string, scopes []string) ([]b
 	for _, kind := range []string{"skills", "agents", "docs"} {
 		d, _ := descriptorByPlural(kind)
 		for _, name := range d.poolNames(cat) {
-			if err := collectVars(templates.FS, d.tid(name), varSet); err != nil { // coverage-ignore: every catalog name has a backing template in the embedded FS, so collectVars cannot fail
+			if err := collectVars(templates.FS, d.templateID(cat, name), varSet); err != nil { // coverage-ignore: every catalog name has a backing template in the embedded FS, so collectVars cannot fail
 				return nil, err
 			}
 		}
 	}
 	// Plain singletons (workflow, doc-standard, agents-md-standard included) always
 	// render - their vars must be seeded even though they left cat.Docs (ADR-0043).
-	for _, sg := range plainSingletons {
+	for _, sg := range plainSingletons(cat) {
 		if err := collectVars(templates.FS, sg.tid, varSet); err != nil { // coverage-ignore: every plainSingletons entry has a backing template in the embedded FS, so collectVars cannot fail
 			return nil, err
 		}
@@ -230,12 +230,12 @@ func NeededVars() (map[string]bool, error) {
 }
 
 func neededVarsFromFS(fsys fs.FS) (map[string]bool, error) {
-	cat := catalog.Standard
+	cat := catalog.CompleteView().Catalog()
 	varSet := map[string]bool{}
 	for _, kind := range []string{"skills", "agents", "docs"} {
 		d, _ := descriptorByPlural(kind)
 		for _, n := range d.poolNames(cat) {
-			if err := collectVars(fsys, d.tid(n), varSet); err != nil {
+			if err := collectVars(fsys, d.templateID(cat, n), varSet); err != nil {
 				return nil, err
 			}
 		}
@@ -243,7 +243,7 @@ func neededVarsFromFS(fsys fs.FS) (map[string]bool, error) {
 	if err := collectVars(fsys, cat.Docs["agents-doc"].TID, varSet); err != nil { // coverage-ignore: the agents-doc template is always embedded
 		return nil, err
 	}
-	for _, sg := range plainSingletons {
+	for _, sg := range plainSingletons(cat) {
 		if err := collectVars(fsys, sg.tid, varSet); err != nil { // coverage-ignore: every plainSingletons entry has a backing embedded template
 			return nil, err
 		}

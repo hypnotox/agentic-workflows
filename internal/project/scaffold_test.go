@@ -480,7 +480,7 @@ func TestScaffoldVarsCoverAllReferenced(t *testing.T) {
 	for _, e := range catalog.Standard.Docs {
 		paths = append(paths, e.TID)
 	}
-	for _, sg := range plainSingletons {
+	for _, sg := range plainSingletons(catalog.CompleteView().Catalog()) {
 		paths = append(paths, sg.tid)
 	}
 	for _, path := range paths {

@@ -44,8 +44,8 @@ var kindDescriptors = []kindDescriptor{
 		poolNames: func(c *catalog.Catalog) []string { return slices.Sorted(maps.Keys(c.Docs)) },
 		sections:  func(c *catalog.Catalog, n string) ([]string, bool) { d, ok := c.Docs[n]; return d.Sections, ok },
 		outPath:   nil,
-		// Read the entry's TID: merged-in singletons render from non-docs/ templates.
-		tid: func(n string) string { return catalog.Standard.Docs[n].TID },
+		// Document template identities remain in the project-owned catalog view.
+		tid: func(string) string { return "" }, // coverage-ignore: document template IDs always derive from the project catalog in templateID
 	},
 	{
 		Plural: "domains", Singular: "domain", freeformDomain: true,
@@ -54,6 +54,16 @@ var kindDescriptors = []kindDescriptor{
 		outPath:   nil,
 		tid:       func(string) string { return "domains/domain.md.tmpl" },
 	},
+}
+
+// templateID returns a descriptor's template identity. Documents derive theirs
+// from the supplied project catalog because structural docs do not use the
+// name-derived docs/ path.
+func (d kindDescriptor) templateID(c *catalog.Catalog, name string) string {
+	if d.Plural == "docs" {
+		return c.Docs[name].TID
+	}
+	return d.tid(name)
 }
 
 func descriptorByPlural(kind string) (kindDescriptor, bool) {

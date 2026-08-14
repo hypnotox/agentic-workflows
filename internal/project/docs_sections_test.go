@@ -417,7 +417,7 @@ func TestMaintainableCodeDesignGuide(t *testing.T) {
 func TestAdrSingletonSectionParity(t *testing.T) {
 	cat := catalog.Standard
 	lay := testLayout()
-	for _, sg := range plainSingletons {
+	for _, sg := range plainSingletons(cat) {
 		src, err := fs.ReadFile(templates.FS, sg.tid)
 		if err != nil {
 			t.Fatalf("read %s: %v", sg.tid, err)

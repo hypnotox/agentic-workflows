@@ -442,7 +442,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 					decls[i].Dependencies = append(decls[i].Dependencies, input.Path)
 				}
 			}
-		case catalog.Standard.Docs["config-reference"].TID:
+		case cat.Docs["config-reference"].TID:
 			decisionIndex := config.DocsDir + "/decisions/INDEX.md"
 			for _, candidate := range decls {
 				if candidate.Path != decls[i].Path && candidate.Path != decisionIndex {
@@ -781,15 +781,15 @@ func (p *Project) PreflightLocalDoc(ctx context.Context, doc config.LocalDoc) er
 
 func projectWithConfig(p *Project, cfg *config.Config) *Project {
 	return &Project{
-		Root:     p.Root,
-		roots:    p.roots,
-		Cfg:      cfg,
-		Cat:      p.Cat,
-		Targets:  p.Targets,
-		standard: p.standard,
-		read:     p.read,
-		nested:   p.nested,
-		repo:     p.repo,
+		Root:    p.Root,
+		roots:   p.roots,
+		Cfg:     cfg,
+		Cat:     p.Cat,
+		Targets: p.Targets,
+		view:    p.view,
+		read:    p.read,
+		nested:  p.nested,
+		repo:    p.repo,
 	}
 }
 

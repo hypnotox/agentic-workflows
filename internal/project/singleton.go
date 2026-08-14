@@ -68,17 +68,16 @@ type singletonSpec struct {
 	sections func(*catalog.Catalog) []string
 }
 
-// plainSingletons is derived from the catalog (ADR-0061 inv: unified-doc-model):
-// one entry per Mandatory non-agents-doc doc, with tid / output path / sections
-// read from that DocEntry. There is no hand-authored table - adding a mandatory
-// doc is one DocEntry and this loop picks it up, so a new plain singleton cannot
-// be dropped from the render/validate set by a forgotten table edit.
-var plainSingletons = buildPlainSingletons()
-
-func buildPlainSingletons() []singletonSpec {
+// plainSingletons is derived from the project-owned catalog view (ADR-0061
+// inv: unified-doc-model): one entry per Mandatory non-agents-doc doc, with
+// tid / output path / sections read from that DocEntry. There is no hand-authored
+// table - adding a mandatory doc is one DocEntry and this loop picks it up.
+func plainSingletons(cat *catalog.Catalog) []singletonSpec {
 	var out []singletonSpec
-	for _, k := range catalog.SingletonKinds() {
-		e := catalog.Standard.Docs[k]
+	for k, e := range cat.Docs {
+		if !e.AgentsDoc && e.Path == "" {
+			continue
+		}
 		if e.AgentsDoc || e.Generated {
 			continue
 		}
