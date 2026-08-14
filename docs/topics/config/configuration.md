@@ -15,13 +15,13 @@ These packages load, validate, and describe the .awf config tree and the anchore
 
 Configuration records repository facts, including the selected closed workflow profile. Other awf behavior preferences and transitional adoption differences remain fixed in awf; additive `localDocs` records repository-specific document metadata without selecting standard artifacts.
 Origin: ADR-0251
-Revised-by: ADR-0272, ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0272, ADR-0278
 
 ### `invariant: no-artifact-selection-surface`
 
 The live config schema exposes no selection of individual skills, agents, docs, targets, or docsDir fields and no sidecar local field; strict parsing rejects every retired field. The required profile selects one closed footprint, while `localDocs` only declares additive outputs.
 Origin: ADR-0251
-Revised-by: ADR-0272, ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0272, ADR-0278
 Backing: test
 
 ### `invariant: local-doc-declarations`

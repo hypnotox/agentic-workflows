@@ -30,14 +30,14 @@ Backing: test
 
 For both built-in targets, every selected catalog skill and agent renders once at its descriptor-derived path, while neutral artifacts such as AGENTS.md render once. Target-owned outputs render only for their declaring target when their predicate and selected view include them.
 Origin: ADR-0037
-Revised-by: ADR-0214, ADR-0218, ADR-0251, ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0214, ADR-0218, ADR-0251, ADR-0278
 Backing: test
 
 ### `invariant: output-plan-complete`
 
 The deterministic output plan contains every selected catalog artifact, applicable bridge files, generated documentation, reservations, configured local-document outputs, and the three resident-root markers. Full additionally plans governance outputs; Core omits them while retained historical ADR and plan leaves are not managed outputs.
 Origin: ADR-0124
-Revised-by: ADR-0164, ADR-0167, ADR-0175, ADR-0235, ADR-0251, ADR-0259, ADR-0272, ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0164, ADR-0167, ADR-0175, ADR-0235, ADR-0251, ADR-0259, ADR-0272, ADR-0278
 Backing: test
 
 ### `invariant: inert-sidecar-field-rejected`
@@ -70,7 +70,7 @@ Backing: test
 
 ScaffoldConfig seeds every var referenced by templates in the selected catalog view, so each selected unconditional render starts without an unresolved value.
 Origin: ADR-0022
-Revised-by: ADR-0251, ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0251, ADR-0278
 Backing: test
 
 ### `invariant: shared-output-coalesced`
@@ -119,5 +119,5 @@ Backing: test
 ### `invariant: profile-projected-render`
 
 One configuration-selected catalog view governs every planned output and generated producer; Full is exactly Core plus the governance layer.
-Origin: ADR-introduce-core-and-full-workflow-profiles
+Origin: ADR-0278
 Backing: test

@@ -30,14 +30,14 @@ Backing: test
 
 awf init with non-terminal stdin and no --set or --answers seeds every selected-profile var empty, writes no invariants config, and writes the default Core profile.
 Origin: ADR-0148
-Revised-by: ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0278
 Backing: test
 
 ### `invariant: init-prompts-enabled-vars`
 
 Interactive awf init prompts for the selected profile and vars referenced by that profile's unconditional catalog and singleton templates; the seeded config carries that selected var union as empty keys.
 Origin: ADR-0148
-Revised-by: ADR-0251, ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0251, ADR-0278
 Backing: test
 
 ### `invariant: init-unborn-head-supported`
@@ -49,5 +49,5 @@ Backing: test
 ### `invariant: init-profile-default-core`
 
 Fresh initialization writes profile: core by default and accepts an explicit profile: full answer.
-Origin: ADR-introduce-core-and-full-workflow-profiles
+Origin: ADR-0278
 Backing: test

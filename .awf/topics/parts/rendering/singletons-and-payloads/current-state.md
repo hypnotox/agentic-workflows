@@ -6,7 +6,7 @@ Always-on and toggleable singleton outputs: ADR-system files, bootstrap and hook
 
 A Full render emits docs/decisions/README.md and docs/decisions/template.md from its selected ADR-system singletons; Core does not emit them.
 Origin: ADR-0148
-Revised-by: ADR-0251, ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0251, ADR-0278
 Backing: test
 
 ### `invariant: bootstrap-config-tree-path`

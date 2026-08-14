@@ -63,5 +63,5 @@ Backing: test
 ### `invariant: audit-full-profile-only`
 
 Workflow-conformance audit is a declared Full-only command capability and refuses before handler execution under Core.
-Origin: ADR-introduce-core-and-full-workflow-profiles
+Origin: ADR-0278
 Backing: test

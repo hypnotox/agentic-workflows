@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-introduce-core-and-full-workflow-profiles: Introduce Core and Full workflow profiles](introduce-core-and-full-workflow-profiles.md) (Implementing)
+- [ADR-0278: Introduce Core and Full workflow profiles](0278-introduce-core-and-full-workflow-profiles.md) (Implementing)
 
 ## History
 

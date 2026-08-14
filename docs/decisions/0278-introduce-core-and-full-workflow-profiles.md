@@ -4,7 +4,7 @@ slug: introduce-core-and-full-workflow-profiles
 status: Implementing
 date: 2026-08-14
 ---
-# ADR-introduce-core-and-full-workflow-profiles: Introduce Core and Full workflow profiles
+# ADR-0278: Introduce Core and Full workflow profiles
 
 
 ## Context

@@ -6,7 +6,7 @@ The cmd packages and their spec helpers implement the awf command surfaces and t
 
 The CLI lists fixed catalog inventory and never selects individual catalog membership. Full creates authored ADRs, plans, topics, and domains; both profiles retain pitfalls and additive local documents, while the selected profile controls rendered membership.
 Origin: ADR-0254
-Revised-by: ADR-0262, ADR-0272, ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0262, ADR-0272, ADR-0278
 Backing: test
 
 ### `invariant: pitfall-scaffold`
@@ -78,14 +78,14 @@ Backing: test
 
 Under Full, `awf check` evaluates the current-state topic corpus and propagates error findings to a non-zero result. Core does not load or evaluate that governance corpus.
 Origin: ADR-0007
-Revised-by: ADR-0210, ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0210, ADR-0278
 Backing: test
 
 ### `invariant: check-universe-groups`
 
 The check command groups repository drift, prose, and memory checks in both profiles; Full additionally aggregates current-state and plan-artifact checks. Staged likewise selects its Full governance checks, and outside Git the bare form reports staged unavailable.
 Origin: ADR-0210
-Revised-by: ADR-0217, ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0217, ADR-0278
 Backing: test
 
 ### `invariant: plan-read-command`
@@ -142,7 +142,7 @@ Backing: test
 
 `awf upgrade` runs a full sync on every successful invocation, including zero migrations, re-rendering every managed file in the selected profile.
 Origin: ADR-0085
-Revised-by: ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0278
 Backing: test
 
 ### `invariant: version-compat-gate`

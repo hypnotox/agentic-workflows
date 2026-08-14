@@ -28,7 +28,7 @@ Backing: test
 
 For Full, the decisions directory, ADR index file, and plans directory derive structurally from the fixed `docs` root as `docs/decisions`, `docs/decisions/INDEX.md`, and `docs/plans`; Core does not emit those managed structural outputs.
 Origin: ADR-0148
-Revised-by: ADR-0251, ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0251, ADR-0278
 Backing: test
 
 ### `invariant: docs-root-fixed`
@@ -118,5 +118,5 @@ Backing: test
 ### `invariant: layout-docs-profile-projection`
 
 Layout and document-map derivation expose only documents emitted by the selected profile.
-Origin: ADR-introduce-core-and-full-workflow-profiles
+Origin: ADR-0278
 Backing: test

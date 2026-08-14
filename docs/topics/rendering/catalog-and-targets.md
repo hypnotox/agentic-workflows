@@ -79,14 +79,14 @@ Backing: test
 
 Each built-in target renders every skill and agent in the selected catalog view exactly once at that target's declared path and dialect, and the emitted artifact parses under that runtime's native format. A target-owned skill with a catalog predicate uses the same declaration path and is emitted only when its target and selected view include it.
 Origin: ADR-0122
-Revised-by: ADR-0214, ADR-0218, ADR-0251, ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0214, ADR-0218, ADR-0251, ADR-0278
 Backing: test
 
 ### `invariant: unified-doc-model`
 
 Every selected doc and singleton projection derives from the one selected catalog document collection rather than a separate hand-maintained list. Its singleton kinds equal exactly the selected entries declaring output paths, and each such entry renders under the documentation root at its declared path.
 Origin: ADR-0061
-Revised-by: ADR-0251, ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0251, ADR-0278
 Backing: test
 
 ### `invariant: var-descriptor-parity`
@@ -105,5 +105,5 @@ Backing: test
 ### `invariant: profile-dependency-closure`
 
 The complete catalog projects closed Core and Full views; every selected artifact dependency resolves within its selected view.
-Origin: ADR-introduce-core-and-full-workflow-profiles
+Origin: ADR-0278
 Backing: test

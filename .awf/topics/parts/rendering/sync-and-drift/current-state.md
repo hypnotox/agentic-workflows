@@ -26,7 +26,7 @@ Backing: test
 
 For Full, awf check regenerates the ADR status index at docs/decisions/INDEX.md from current ADR frontmatter and reports divergent on-disk bytes as stale drift. Core has no managed ADR index.
 Origin: ADR-0148
-Revised-by: ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0278
 Backing: test
 
 ### `invariant: check-invalid-frontmatter`
@@ -39,21 +39,21 @@ Backing: test
 
 Every filesystem entry under .awf outside the selected profile's claimed-path model is reported by awf check as orphaned drift, with owned resident roots exempt.
 Origin: ADR-0148
-Revised-by: ADR-0175, ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0175, ADR-0278
 Backing: test
 
 ### `invariant: drift-source-set`
 
 Each rendered file's stored ConfigHash projects only that file's effective inputs and selected profile, so awf check reports it stale only when those inputs changed. A sidecar or part matching no selected artifact or target is an orphan.
 Origin: ADR-0148
-Revised-by: ADR-0251, ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0251, ADR-0278
 Backing: test
 
 ### `invariant: managed-output-attribution`
 
 A reader-injected declaration builder enumerates selected-profile managed writes before rendering, retaining sorted declarers and exact inputs and supplying context source/output edges; those declarations classify their paths as generated.
 Origin: ADR-0148
-Revised-by: ADR-0251, ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0251, ADR-0278
 Backing: test
 
 ### `invariant: ordinary-render-freshness`
@@ -109,7 +109,7 @@ Backing: test
 
 Full awf render writes the ADR status index at docs/decisions/INDEX.md, recording it when ADRs exist and otherwise rendering a placeholder; Core does not emit a managed ADR index.
 Origin: ADR-0148
-Revised-by: ADR-0159, ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0159, ADR-0278
 Backing: test
 
 ### `invariant: sync-mutations-root-confined`
@@ -135,7 +135,7 @@ Backing: test
 
 When a selected target-owned path disappears from the output plan and awf re-syncs, it deletes that path and every resulting empty ancestor directory.
 Origin: ADR-0148
-Revised-by: ADR-0251, ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0251, ADR-0278
 Backing: test
 
 ### `invariant: uninstall-removes-lock-entries`
@@ -149,11 +149,11 @@ Backing: test
 
 Full awf check evaluates current-state topic coverage and fan-out in working and staged paths regardless of a currentState block. Core does not load current-state authority or run those governance checks.
 Origin: ADR-0192
-Revised-by: ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0278
 Backing: test
 
 ### `invariant: profile-config-hash`
 
 The selected profile participates in configuration hashes, while prior lock membership remains the sole pruning authority.
-Origin: ADR-introduce-core-and-full-workflow-profiles
+Origin: ADR-0278
 Backing: test

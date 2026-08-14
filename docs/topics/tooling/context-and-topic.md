@@ -133,5 +133,5 @@ Backing: test
 ### `invariant: context-full-profile-only`
 
 Context and current-state query operations are declared Full-only capabilities and refuse before handler execution under Core.
-Origin: ADR-introduce-core-and-full-workflow-profiles
+Origin: ADR-0278
 Backing: test

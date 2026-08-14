@@ -138,7 +138,7 @@ Backing: test
 
 The lock file carries an integer schemaVersion, and sync stamps the current highest registered migration target, including the profile migration; awfVersion remains an independent tool release string.
 Origin: ADR-0010
-Revised-by: ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0278
 Backing: test
 
 ### `invariant: severity-keys-dropped`
@@ -197,5 +197,5 @@ Backing: test
 ### `invariant: profile-full-migration`
 
 Existing repositories missing the required profile field migrate byte-preservingly and idempotently to profile: full before strict parsing and synchronization.
-Origin: ADR-introduce-core-and-full-workflow-profiles
+Origin: ADR-0278
 Backing: test

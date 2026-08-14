@@ -29,7 +29,7 @@ Backing: test
 
 Workflow intake independently evaluates brainstorming, continuity, grounding, and implementation review in both profiles; Full additionally evaluates ADR and plan governance. Brainstorming solely owns proportionate outline approval before hand-authored production-code mutation, while documentation-only, test-only, generated-output-only, and non-code mechanical work remain autonomous unless another trigger fires.
 Origin: ADR-0243
-Revised-by: ADR-0265, ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0265, ADR-0278
 Backing: test
 
 ### `invariant: bounded-exploration-reporting`
@@ -50,7 +50,7 @@ Backing: test
 
 Full context-calling skills and the grounding-checker carry the shared spill pointer and use `./awf context` where their governance procedure requires it. Core orientation and grounding instead use AGENTS.md, project docs, source, tests, and history without context authority.
 Origin: ADR-0155
-Revised-by: ADR-0165, ADR-0174, ADR-0187, ADR-0197, ADR-0243, ADR-0255, ADR-0271, ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0165, ADR-0174, ADR-0187, ADR-0197, ADR-0243, ADR-0255, ADR-0271, ADR-0278
 Backing: test
 
 ### `invariant: repository-awf-invocation`
@@ -63,21 +63,21 @@ Backing: test
 
 In both profiles, effort-workflow autonomously creates when continuity fires and brainstorming stops for explicit pre-artifact outline approval when it fires for hand-authored production code. Full ADR review continues to linked-plan handling; Core has no ADR or plan workflow.
 Origin: ADR-0152
-Revised-by: ADR-0160, ADR-0167, ADR-0222, ADR-0226, ADR-0232, ADR-0240, ADR-0243, ADR-0265, ADR-0266, ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0160, ADR-0167, ADR-0222, ADR-0226, ADR-0232, ADR-0240, ADR-0243, ADR-0265, ADR-0266, ADR-0278
 Backing: test
 
 ### `invariant: authority-guided-implementation-autonomy`
 
 The shared implementation-autonomy partial serves selected implementation consumers in both profiles. It requires authority-preserving reasoned correction, diagnosis before escalation, approved-boundary preservation, required verification, and no weakened oracle or unrelated cleanup; Full adds its governance-specific closure.
 Origin: ADR-0240
-Revised-by: ADR-0248, ADR-0249, ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0248, ADR-0249, ADR-0278
 Backing: test
 
 ### `invariant: authority-guided-review-remediation`
 
 The shared review spine is the semantic home of finding classification for selected review workflows. It routes mechanical and reasoned corrections autonomously and reserves user-decision for a remediation that would change settled authority; Full adds ADR and plan review governance.
 Origin: ADR-0245
-Revised-by: ADR-0255, ADR-0264, ADR-0265, ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0255, ADR-0264, ADR-0265, ADR-0278
 Backing: test
 
 ### `invariant: memory-checkpoint-chain-coverage`
@@ -92,14 +92,14 @@ Backing: test
 
 Catalog-derived tests render applicable effort workflows for every selected target and prove continuity is independent of brainstorming, artifacts, implementation, and review. `effort-workflow` is the sole lifecycle owner in both profiles; Full adds deferred governance closure.
 Origin: ADR-0175
-Revised-by: ADR-0187, ADR-0197, ADR-0218, ADR-0222, ADR-0225, ADR-0226, ADR-0243, ADR-0266, ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0187, ADR-0197, ADR-0218, ADR-0222, ADR-0225, ADR-0226, ADR-0243, ADR-0266, ADR-0278
 Backing: test
 
 ### `invariant: effort-workflow`
 
 Core `effort-workflow` is the selectable cross-target lifecycle owner when durable continuity materially helps or an effort resumes or finishes. It owns the operational lifecycle without ADR or plan authority; Full adds deferred artifact closure.
 Origin: ADR-0218
-Revised-by: ADR-0225, ADR-0243, ADR-0266, ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0225, ADR-0243, ADR-0266, ADR-0278
 Backing: test
 
 ### `invariant: memory-log-consumer-coverage`
@@ -162,7 +162,7 @@ Backing: test
 
 Brainstorming, TDD, direct execution, subagent-driven development where selected, and bug fixing render concise stage-specific obligations pointing to the maintainable-code guide. Full additionally applies them to ADR and plan stages.
 Origin: ADR-0168
-Revised-by: ADR-0232, ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0232, ADR-0278
 Backing: test
 
 ### `invariant: maintainable-code-subagent-contract`
@@ -205,7 +205,7 @@ Backing: test
 
 The orienting support skill is selected for fresh work, effort resume, handoff takeover, or a widened working set, not exact-known-file inspection. It is the single orientation home: Core uses AGENTS.md, project docs, source, tests, and history; Full additionally uses managed context and current-state authority.
 Origin: ADR-0187
-Revised-by: ADR-0274, ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0274, ADR-0278
 Backing: test
 
 ### `invariant: semantic-rendering-review`
@@ -224,5 +224,5 @@ Backing: test
 ### `invariant: closed-workflow-profiles`
 
 Core renders a closed brainstorm, implement/test, review, effort workflow without Full governance references; Full retains the complete governance workflow.
-Origin: ADR-introduce-core-and-full-workflow-profiles
+Origin: ADR-0278
 Backing: test

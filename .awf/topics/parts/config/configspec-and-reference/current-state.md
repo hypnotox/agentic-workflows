@@ -50,7 +50,7 @@ Backing: test
 
 The hand-authored table of config and sidecar key descriptions is matched by reflection against the config and sidecar struct fields in both directions, including the required profile field. Each entry supplies a non-empty type, default, description, and availability clause.
 Origin: ADR-0148
-Revised-by: ADR-introduce-core-and-full-workflow-profiles
+Revised-by: ADR-0278
 Backing: test
 
 ### `invariant: configspec-var-derivation`
