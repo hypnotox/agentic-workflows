@@ -96,19 +96,19 @@ declined; the generic prose renders).
 - `skill proposing-adr` · `data.adrSections` (catalog default): The required decision-record section names, in order (list); the default is Context through Alternatives Considered.
 - `skill proposing-adr` · `data.adrTriggers` (explicitly suppressed default; project entries only): The project's load-bearing triggers that warrant a decision record (list); the default names the generic boundary/dependency/format/workflow triggers.
 - `skill executing-plans` · `data.e2eSuitePaths`: Where the project's end-to-end suites live (prose or list) for the gate-tier guidance; unset, the generic tier prose renders.
-- `agent adr-reviewer` · `data.focusItems` (catalog default + project entries): The reviewer's project-focus lens items (list of {name, description}); the defaults cover decision clarity, consequences honesty, and claim-topic cohesion.
+- `agent adr-reviewer` · `data.focusItems` (catalog default + project entries): The reviewer's project-focus lens items (list of {name, description}); the selected catalog default contains `consequences-honesty`, `claim-topic-cohesion`.
 - `agent adr-reviewer` · `data.reviewSubject` (catalog default): The one-word subject label the review spine addresses (default: the decision record).
 - `agent adr-reviewer` · `data.readStep` (catalog default): The reviewer's opening read instruction: what to read in full before applying lenses.
 - `agent adr-reviewer` · `data.digestLabel` (catalog default): The label heading the reviewer's returned digest.
 - `agent adr-reviewer` · `data.digestSummary` (catalog default): The digest's summary skeleton: the bullet template the reviewer fills per review.
-- `agent plan-reviewer` · `data.focusItems` (catalog default + project entries): The reviewer's project-focus lens items (list of {name, description}); the defaults cover change-specific executability, dependency order, snapshot-scoped verification, and check-authority taxonomy.
+- `agent plan-reviewer` · `data.focusItems` (catalog default + project entries): The reviewer's project-focus lens items (list of {name, description}); the selected catalog default contains `change-specific-executability`, `dependency-order`, `snapshot-scoped-verification`, `check-authority-taxonomy`.
 - `agent plan-reviewer` · `data.docCurrencyItems` (catalog default + project entries): The doc-currency checks the reviewer applies (list of {check}); the default checks that the plan schedules every doc update its changes invalidate.
 - `agent plan-reviewer` · `data.reviewSubject` (catalog default): The one-word subject label the review spine addresses (default: the plan).
 - `agent plan-reviewer` · `data.readStep` (catalog default): The reviewer's opening read instruction: what to read in full before applying lenses.
 - `agent plan-reviewer` · `data.digestLabel` (catalog default): The label heading the reviewer's returned digest.
 - `agent plan-reviewer` · `data.digestSummary` (catalog default): The digest's summary skeleton: the bullet template the reviewer fills per review.
 - `agent code-reviewer` · `data.correctnessTraps` (catalog default + project entries): The correctness traps the reviewer checks first (list of {description}); the default names error paths and boundary conditions.
-- `agent code-reviewer` · `data.focusItems` (catalog default + project entries): The reviewer's project-focus lens items (list of {name, description}); the defaults cover plan adherence, test coverage, verification-instrument falsifiability, and check-authority taxonomy.
+- `agent code-reviewer` · `data.focusItems` (catalog default + project entries): The reviewer's project-focus lens items (list of {name, description}); the selected catalog default contains `plan-adherence`, `test-coverage`, `verification-instrument-can-fail`, `check-authority-taxonomy`.
 - `agent code-reviewer` · `data.docCurrencyItems` (catalog default + project entries): The doc-currency checks the reviewer applies (list of {check}); the default checks same-commit updates of every doc stating the old behaviour.
 - `agent code-reviewer` · `data.reviewSubject` (catalog default): The one-word subject label the review spine addresses (default: the diff).
 - `agent code-reviewer` · `data.readStep` (catalog default): The reviewer's opening read instruction: what to read in full before applying lenses.

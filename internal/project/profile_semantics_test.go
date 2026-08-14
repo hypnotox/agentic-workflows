@@ -43,7 +43,9 @@ func TestCoreRenderedWorkflowExcludesFullAuthority(t *testing.T) {
 		"kind adr, plan, or code", `StringEnum(["adr", "plan", "code"]`,
 		"ADR", "current-state", "State changes", "governance workflow",
 		"plan authoring", "plan review", "plan is warranted", "creating an ADR or plan",
-		"stale-ADR", "plan-adherence", "plan's stated file paths", "Read every plan, ADR, or state doc",
+		"stale-ADR", "plan-adherence", "plan adherence", "plan's stated file paths", "Read every plan, ADR, or state doc",
+		"`awf new adr`", "`awf audit`", "decisions or plans directory", "Current-state topic ownership",
+		"decisions, plans, domains, topics", "domain sidecars", "`domains` (optional)", "optional `domains`, `tags`",
 	}
 	for _, tc := range []struct {
 		name    string
@@ -53,14 +55,38 @@ func TestCoreRenderedWorkflowExcludesFullAuthority(t *testing.T) {
 		{name: "full", profile: catalog.ProfileFull},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			root := scaffold(t, "prefix: example\nprofile: "+string(tc.profile)+"\nintegrationBranch: main\n")
+			configYAML := "prefix: example\nprofile: " + string(tc.profile) + "\nintegrationBranch: main\n"
+			if tc.profile == catalog.ProfileCore {
+				// Fresh init enables the bootstrap pair. Sync, rather than RenderAll,
+				// also includes generated outputs such as config-reference.md.
+				configYAML += "bootstrap:\n  enabled: true\n"
+			}
+			root := scaffold(t, configYAML)
 			p, err := Open(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
 			}
-			files, err := p.RenderAll()
-			if err != nil {
-				t.Fatal(err)
+			var files []RenderedFile
+			if tc.profile == catalog.ProfileCore {
+				if err := p.Sync(); err != nil {
+					t.Fatal(err)
+				}
+				lock, err := manifest.Load(lockFile(root))
+				if err != nil {
+					t.Fatal(err)
+				}
+				for path := range lock.Files {
+					body, err := os.ReadFile(filepath.Join(root, path))
+					if err != nil {
+						t.Fatalf("read complete Core output %s: %v", path, err)
+					}
+					files = append(files, RenderedFile{Path: path, Content: string(body)})
+				}
+			} else {
+				files, err = p.RenderAll()
+				if err != nil {
+					t.Fatal(err)
+				}
 			}
 			if len(files) == 0 {
 				t.Fatal("selected profile rendered no artifacts")
@@ -91,31 +117,45 @@ func TestCoreRenderedWorkflowExcludesFullAuthority(t *testing.T) {
 }
 
 func TestCoreOperationalReferenceScannerRejectsEveryArtifactClass(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: core\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nprofile: core\nintegrationBranch: main\nbootstrap:\n  enabled: true\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	files, err := p.RenderAll()
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	lock, err := manifest.Load(lockFile(root))
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range []string{
-		"docs/workflow.md",
-		".pi/agents/code-reviewer.md",
-		".claude/skills/example-reviewing-impl/SKILL.md",
-		".awf/hooks/commit-msg.sh",
-		".pi/extensions/awf-subagents/index.ts",
-	} {
+	var files []RenderedFile
+	for path := range lock.Files {
+		body, err := os.ReadFile(filepath.Join(root, path))
+		if err != nil {
+			t.Fatal(err)
+		}
+		files = append(files, RenderedFile{Path: path, Content: string(body)})
+	}
+	mutations := map[string]string{
+		"docs/workflow.md":                               "ADR",
+		".pi/agents/code-reviewer.md":                    "current-state",
+		".claude/skills/example-reviewing-impl/SKILL.md": "State changes",
+		".awf/hooks/commit-msg.sh":                       "governance workflow",
+		".pi/extensions/awf-subagents/index.ts":          "kind adr, plan, or code",
+		".awf/upgrade.sh":                                "current-state cutover",
+		"docs/config-reference.md":                       "`./awf audit",
+	}
+	for path, mutation := range mutations {
 		found := false
 		for _, file := range files {
 			if file.Path != path {
 				continue
 			}
 			found = true
-			file.Content += "\nADR\n"
-			if got := coreOperationalResidual([]RenderedFile{file}, []string{"ADR"}); len(got) != 1 {
-				t.Errorf("scanner accepted injected Full reference in rendered %s: %v", path, got)
+			file.Content += "\n" + mutation + "\n"
+			if got := coreOperationalResidual([]RenderedFile{file}, []string{mutation}); len(got) != 1 {
+				t.Errorf("scanner accepted injected Full reference %q in rendered %s: %v", mutation, path, got)
 			}
 		}
 		if !found {

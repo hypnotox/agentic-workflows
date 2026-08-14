@@ -288,8 +288,22 @@ func (p *Project) configReferenceRows(files []RenderedFile) (ConfigReference, er
 			Path: e.Path, Type: e.Type, Default: e.Default,
 			Description: e.Description, Availability: e.Availability,
 		}
-		if !p.fullProfile() && e.Path == "profile" {
-			row.Description = "Selects the Core operational workflow."
+		if !p.fullProfile() {
+			switch e.Path {
+			case "profile":
+				row.Description = "Selects the Core operational workflow."
+			case "integrationBranch":
+				row.Description = "The branch effort work integrates into. It must be non-empty and free of whitespace and must not start with `-`; slashes are legal, so `release/1.0` is accepted."
+			case "localDocs":
+				row.Description = "Additive repository-local documents. Each name is a lowercase kebab-case path below docs without .md; awf-managed names are reserved. Title and description are nonblank one-line metadata."
+			case "audit.allowedScopes":
+				row.Description = "The project's Conventional Commits scope taxonomy: the single home for commit scopes. Absent means accept any scope; entries are enforced by `awf check staged commit` and quoted by rendered guidance."
+				row.Availability = "Read by `awf check staged commit` and every rendered artifact quoting the scope list."
+			case "sidecar.data":
+				row.Availability = "Keys must be referenced by the artifact's template. An unreferenced key is failing drift; rejected on the config-reference sidecar because its tables are generated."
+			case "sidecar.sections":
+				row.Availability = "Section names must be catalog-declared for the artifact; unknown names refuse at open."
+			}
 		}
 		if strings.HasPrefix(e.Path, "sidecar.") {
 			ref.SidecarFields = append(ref.SidecarFields, row)
@@ -382,7 +396,8 @@ func (p *Project) configReferenceData(files []RenderedFile) (map[string]any, err
 // dataKeyRowsTyped filters described data keys to catalog artifacts and the
 // always-on agents-doc.
 func fullOnlyConfigKey(path string) bool {
-	return path == "domains" || path == "tags" || path == "contextIgnore" || strings.HasPrefix(path, "currentState.")
+	return path == "domains" || path == "tags" || path == "contextIgnore" || path == "sidecar.paths" ||
+		strings.HasPrefix(path, "currentState.") || strings.HasPrefix(path, "memoryCite.")
 }
 
 func (p *Project) dataKeyRowsTyped() ([]DataKeyRow, error) {
@@ -440,7 +455,26 @@ func (p *Project) dataKeyRowsTyped() ([]DataKeyRow, error) {
 		case hasDefault:
 			state = " (catalog default)"
 		}
-		rows = append(rows, DataKeyRow{Artifact: label, Key: d.Key, Description: d.Description, State: state})
+		description := d.Description
+		if !p.fullProfile() && d.Kind == "docs" && d.Artifact == "glossary" && d.Key == "terms" {
+			description = "The glossary's terms as an ordered list of `{term, meaning}` records; the table renders always sorted (case-insensitive, pipes escaped), and an empty term or meaning, an interior newline, an unknown record key, or a case-insensitive duplicate term fails the render naming the offending term. A term here overrides the standard vocabulary awf ships of the same case-insensitive name. Unset, the doc renders the standard vocabulary alone."
+		}
+		if d.Kind == "agents" && d.Key == "focusItems" {
+			var names []string
+			if items, ok := defaultValue.([]any); ok {
+				for _, item := range items {
+					if record, ok := item.(map[string]any); ok {
+						if name, ok := record["name"].(string); ok {
+							names = append(names, "`"+name+"`")
+						}
+					}
+				}
+			}
+			if len(names) > 0 {
+				description = "The reviewer's project-focus lens items (list of {name, description}); the selected catalog default contains " + strings.Join(names, ", ") + "."
+			}
+		}
+		rows = append(rows, DataKeyRow{Artifact: label, Key: d.Key, Description: description, State: state})
 	}
 	return rows, nil
 }
