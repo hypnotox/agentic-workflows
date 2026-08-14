@@ -37,7 +37,7 @@ Workflow judgment precedes this command: discovery creates no effort, and `effor
 - `awf check commit-policy <revision-or-range>...`: preview exact author, committer, and optional SSH-signature provenance for explicit targets after the configured baseline. An absent policy prints one disabled note and succeeds; correct actionable refusals or violations and rerun before policy activation. This command does not install hooks or change repository state.
 - `awf check staged`: run the HEAD-to-index current-state transition and rendered-output drift checks.
 - `awf check staged state`: report current-state authority findings over the HEAD-to-index transition.
-- `awf check staged drift`: render from the staged config and report only stale or hand-edited staged rendered output; other repository drift kinds are out of scope.
+- `awf check staged drift`: render from the staged config and report untracked, stale, or hand-edited staged rendered output; other repository drift kinds are out of scope.
 - `awf check staged commit [FILE]`: directly validate Conventional Commits and definitively authorize any exact incoming-parent older-format ADR using the cleaned final merge-message trailers; it is not part of the staged aggregate and is used by a commit-msg hook.
 ### Other lifecycle commands
 
@@ -113,7 +113,23 @@ To write the placeholder syntax literally in a part (for documentation), put a b
 <!-- awf:edit sync-and-drift: from .awf/parts/working-with-awf/sync-and-drift.md -->
 <!-- awf:template-source templates/docs/working-with-awf.md.tmpl -->
 ## Keeping in sync
-After changing awf sources, run `./awf render`, then stage every generated file and `.awf/awf.lock`. `./awf check` verifies that generated artifacts are indexed as well as current. Git ignore rules do not satisfy this requirement: if a global ignore hides a generated file, add it explicitly with `git add -f <path>`.
+
+After any edit to `.awf/`, run `./awf render` to re-render, then `./awf check` to confirm no drift, and
+commit the rendered files alongside the config change. Always stage `.awf/awf.lock` with every regenerated output: its atomic manifest is part of one render transaction, not material to slice across independent commits. `awf check` compares each rendered file's
+template and config against `.awf/awf.lock`; a mismatch is `stale` drift. Wire `awf check` and your
+gate into CI so drift and rule violations block a merge.
+
+`awf check` also enforces config-tree hygiene: every entry under `.awf/` must be claimed
+(a rendered artifact's sidecar or declared-section parts, a rendered unit, or the skeleton),
+and anything else is failing drift with a repair hint, including sync-written `*.awf-bak`
+collision backups (review and delete them)
+(the resident roots are exempt local state). Configuration must be consumed, too: a non-empty
+`vars:` key or a sidecar `data:` key that no rendered artifact references is flagged, so a
+typo'd override can no longer degrade silently. A `paths:` key outside a domain sidecar, or
+`data:`/`sections:` on a domain sidecar, refuses at project open with the fix
+named.
+
+`awf check` also verifies that generated artifacts are indexed. Git ignore rules do not satisfy this requirement: if a global ignore hides a generated file, add it explicitly with `git add -f <path>`.
 
 
 <!-- awf:template-source templates/docs/working-with-awf.md.tmpl#upgrading -->

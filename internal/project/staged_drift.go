@@ -26,23 +26,23 @@ func CheckStagedDriftRoot(ctx context.Context, root string) ([]manifest.Drift, e
 // output membership plus stale and hand-edited properties against that same index.
 func (p *Project) CheckStagedDrift(ctx context.Context) ([]manifest.Drift, error) {
 	tree, err := p.indexTree(ctx)
-	if err != nil { // coverage-ignore: root construction and index readers are independently covered by staged current-state tests
+	if err != nil {
 		return nil, err
 	}
 	lock, _, err := optionalLockFromTree(tree)
-	if err != nil { // coverage-ignore: invalid lock handling is covered by the command staged-lock tests
+	if err != nil {
 		return nil, err
 	}
 	loaded, cfg, err := loadTreeCurrentState(p.Root, tree, lock)
-	if err != nil { // coverage-ignore: staged config parsing is covered through indexCurrentState
+	if err != nil {
 		return nil, err
 	}
-	if cfg == nil { // coverage-ignore: staged drift is only selected for adopted projects
+	if cfg == nil {
 		return nil, fmt.Errorf("no staged %s/config.yaml", config.DirName)
 	}
 	state := indexState{Loaded: loaded, Tree: tree, Lock: lock, Cfg: cfg}
 	targets, err := resolveTargets(KnownTargets())
-	if err != nil { // coverage-ignore: configured-target validation succeeded and KnownTargets is exhaustively backed by built-in descriptor tests
+	if err != nil { // coverage-ignore: KnownTargets is the closed built-in descriptor set and its resolution is exhaustively validated by target tests
 		return nil, err
 	}
 	read := snapshotTreeReader{tree: state.Tree}
@@ -51,7 +51,7 @@ func (p *Project) CheckStagedDrift(ctx context.Context) ([]manifest.Drift, error
 		standard: p.standard, read: read, nested: p.nested, repo: p.repo,
 	}
 	universe.Cat = universe.standard
-	if err := universe.validateAgainstCatalog(); err != nil { // coverage-ignore: staged catalog validation is covered by index-current-state callers
+	if err := universe.validateAgainstCatalog(); err != nil {
 		return nil, err
 	}
 	effective := map[string]bool{}
@@ -59,11 +59,11 @@ func (p *Project) CheckStagedDrift(ctx context.Context) ([]manifest.Drift, error
 		effective[name] = true
 	}
 	pitfalls, err := universe.loadPitfallCorpus()
-	if err != nil { // coverage-ignore: indexCurrentState and catalog validation already read this immutable staged tree
+	if err != nil {
 		return nil, err
 	}
 	op, err := universe.outputPlanWithPitfalls(ctx, state.Loaded.Corpus, pitfalls, state.Loaded.Topics, effective)
-	if err != nil { // coverage-ignore: immutable staged plan construction failures are covered by ordinary plan tests
+	if err != nil {
 		return nil, err
 	}
 	rendered := map[string]RenderedFile{}
@@ -80,18 +80,20 @@ func (p *Project) CheckStagedDrift(ctx context.Context) ([]manifest.Drift, error
 func checkStagedRenderedFiles(lock *manifest.Lock, rendered map[string]RenderedFile, read ProjectTreeReader, includeResident bool) ([]manifest.Drift, error) {
 	required := map[string]bool{config.DirName + "/awf.lock": true}
 	for _, file := range rendered {
-		if !includeResident && resident.IsResidentPath(file.Path) { // coverage-ignore: nested composition supplies this exclusion before staged rendering
+		if !includeResident && resident.IsResidentPath(file.Path) {
 			continue
 		}
 		required[file.Path] = true
 	}
 	indexed := map[string]bool{}
+	stagedBytes := map[string][]byte{}
 	for path := range required {
-		_, present, err := read.ReadFile(path)
-		if err != nil { // coverage-ignore: snapshot readers return only staged bytes or absence
+		contents, present, err := read.ReadFile(path)
+		if err != nil {
 			return nil, err
 		}
 		indexed[path] = present
+		stagedBytes[path] = contents
 	}
 	var drift []manifest.Drift
 	for _, path := range slices.Sorted(maps.Keys(required)) {
@@ -99,27 +101,23 @@ func checkStagedRenderedFiles(lock *manifest.Lock, rendered map[string]RenderedF
 			drift = append(drift, manifest.Drift{Path: path, Kind: "untracked", Detail: "generated artifact is absent from the Git index; run awf render, then git add -f " + path})
 		}
 	}
-	if lock == nil { // coverage-ignore: absent staged lock is an integration-level staged-drift condition
+	if lock == nil {
 		return drift, nil
 	}
 	for _, path := range slices.Sorted(maps.Keys(lock.Files)) {
-		if !indexed[path] { // coverage-ignore: membership precedence is covered by the required-set loop above
+		file, produced := rendered[path]
+		if !produced {
 			continue
 		}
-		if !includeResident && resident.IsResidentPath(path) { // coverage-ignore: nested residents are excluded before staged comparison
+		if !includeResident && resident.IsResidentPath(path) {
+			continue
+		}
+		if !indexed[path] {
 			continue
 		}
 		entry := lock.Files[path]
-		file, produced := rendered[path]
-		if !produced { // coverage-ignore: non-produced lock entries are outside staged rendered-output comparison
-			continue
-		}
 		if file.Policy.Regenerate {
-			staged, present, err := read.ReadFile(path)
-			if err != nil { // coverage-ignore: snapshot staged paths cannot produce read faults
-				return nil, err
-			}
-			if present && manifest.Hash(staged) != manifest.Hash([]byte(file.Content)) {
+			if manifest.Hash(stagedBytes[path]) != manifest.Hash([]byte(file.Content)) {
 				kind, detail := "stale", "generated output out of date; run awf render"
 				if file.TemplateID != "" {
 					kind, detail = "hand-edited", "staged output differs from the regenerated file; run awf render to restore awf-owned regions"
@@ -136,21 +134,10 @@ func checkStagedRenderedFiles(lock *manifest.Lock, rendered map[string]RenderedF
 			drift = append(drift, finding)
 			continue
 		}
-		staged, present, err := read.ReadFile(path)
-		if err != nil { // coverage-ignore: snapshot staged paths cannot produce read faults
-			return nil, err
-		}
-		if present {
-			if finding, found := classifyFrozenObservedDrift(file, entry, staged, "staged output differs from lock; run awf render to discard the edit, or move it into a .awf convention part to keep it"); found {
-				drift = append(drift, finding)
-			}
+		if finding, found := classifyFrozenObservedDrift(file, entry, stagedBytes[path], "staged output differs from lock; run awf render to discard the edit, or move it into a .awf convention part to keep it"); found {
+			drift = append(drift, finding)
 		}
 	}
-	slices.SortFunc(drift, func(a, b manifest.Drift) int {
-		if order := strings.Compare(a.Path, b.Path); order != 0 {
-			return order
-		}
-		return strings.Compare(a.Kind, b.Kind) // coverage-ignore: one path cannot carry two staged drift kinds
-	})
+	slices.SortFunc(drift, func(a, b manifest.Drift) int { return strings.Compare(a.Path, b.Path) })
 	return drift, nil
 }

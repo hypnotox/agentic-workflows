@@ -241,7 +241,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 		gateCtx, cancel := newGitCommandContext()
 		if err := gateFn(gateCtx, cwd); err != nil {
 			cancel()
-			return dispatchFailure(stdout, stderr, err)
+			if !selectsStagedDrift(top, sub) || !errors.Is(err, errNoStagedLock) {
+				return dispatchFailure(stdout, stderr, err)
+			}
 		}
 		cancel()
 	}
@@ -287,6 +289,10 @@ func newGitCommandContext() (context.Context, context.CancelFunc) {
 //     consume-the-attestation diagnostic; a would-be recovery with no journal is
 //     refused;
 //   - a corrupt lock with no journal defers to the existing ADR-0076 refusal.
+func selectsStagedDrift(top clispec.Command, sub string) bool {
+	return top.Name == "check" && (sub == "staged" || sub == "staged drift")
+}
+
 func guardProjectState(ctx context.Context, root string, cmd clispec.Command, top clispec.Command, sub string, inv invocation) error {
 	if cmd.StateExempt {
 		return nil
@@ -325,6 +331,9 @@ func guardProjectState(ctx context.Context, root string, cmd clispec.Command, to
 		return fmt.Errorf("invalid authority: restore .awf/awf.lock from version control: %w", loadErr)
 	}
 	if !found {
+		if staged && selectsStagedDrift(top, sub) {
+			return nil
+		}
 		return errors.New("pre-tracking authority: use the bridge release to attest before continuing")
 	}
 	state, stateErr := lock.AuthorityState()

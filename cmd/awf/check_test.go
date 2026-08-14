@@ -489,6 +489,94 @@ func TestCheckStagedDriftRenderedOutput(t *testing.T) {
 			t.Fatalf("clean staged drift output = %q", out.String())
 		}
 	})
+
+	t.Run("absent lock and output reach direct and aggregate drift in sorted order", func(t *testing.T) {
+		for _, args := range [][]string{{"awf", "check", "staged", "drift"}, {"awf", "check", "staged"}} {
+			root, repo := setup(t)
+			gitfixture.StageRemoval(t, repo, ".awf/awf.lock", "AGENTS.md")
+			var out, errOut bytes.Buffer
+			if code := runAt(t, root, args, &out, &errOut); code != 1 {
+				t.Fatalf("%v exit = %d, want 1; stdout=%q stderr=%q", args, code, out.String(), errOut.String())
+			}
+			if errOut.Len() != 0 || !strings.Contains(out.String(), "drift | untracked: .awf/awf.lock") || !strings.Contains(out.String(), "drift | untracked: AGENTS.md") {
+				t.Fatalf("%v absent-membership report streams stdout=%q stderr=%q", args, out.String(), errOut.String())
+			}
+			if strings.Index(out.String(), ".awf/awf.lock") > strings.Index(out.String(), "AGENTS.md") {
+				t.Fatalf("%v untracked findings are not path-sorted: %q", args, out.String())
+			}
+		}
+	})
+
+	t.Run("direct state still refuses an absent staged lock", func(t *testing.T) {
+		root, repo := setup(t)
+		gitfixture.StageRemoval(t, repo, ".awf/awf.lock")
+		var out, errOut bytes.Buffer
+		if code := runAt(t, root, []string{"awf", "check", "staged", "state"}, &out, &errOut); code != 1 {
+			t.Fatalf("staged state exit = %d, want 1; stdout=%q stderr=%q", code, out.String(), errOut.String())
+		}
+		if out.Len() != 0 || !strings.Contains(errOut.String(), "pre-tracking authority") {
+			t.Fatalf("staged state absent-lock streams stdout=%q stderr=%q", out.String(), errOut.String())
+		}
+	})
+
+	t.Run("ignored working replacement cannot mask staged deletion", func(t *testing.T) {
+		root, repo := setup(t)
+		gitfixture.StageRemoval(t, repo, "AGENTS.md")
+		if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte("ignored working replacement\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		exclude := filepath.Join(root, ".git", "info", "exclude")
+		if err := os.MkdirAll(filepath.Dir(exclude), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(exclude, []byte("AGENTS.md\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		var out, errOut bytes.Buffer
+		if code := runAt(t, root, []string{"awf", "check", "staged", "drift"}, &out, &errOut); code != 1 {
+			t.Fatalf("ignored replacement exit = %d, want 1; stdout=%q stderr=%q", code, out.String(), errOut.String())
+		}
+		if errOut.Len() != 0 || !strings.Contains(out.String(), "drift | untracked: AGENTS.md") {
+			t.Fatalf("ignored replacement report streams stdout=%q stderr=%q", out.String(), errOut.String())
+		}
+	})
+
+	t.Run("tracked output remains valid after matching an ignore rule", func(t *testing.T) {
+		root, _ := setup(t)
+		exclude := filepath.Join(root, ".git", "info", "exclude")
+		if err := os.MkdirAll(filepath.Dir(exclude), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(exclude, []byte("AGENTS.md\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		var out, errOut bytes.Buffer
+		if code := runAt(t, root, []string{"awf", "check", "staged", "drift"}, &out, &errOut); code != 0 {
+			t.Fatalf("tracked ignored output exit = %d, want 0; stdout=%q stderr=%q", code, out.String(), errOut.String())
+		}
+		if out.String() != completedCheckReport || errOut.Len() != 0 {
+			t.Fatalf("tracked ignored output streams stdout=%q stderr=%q", out.String(), errOut.String())
+		}
+	})
+
+	t.Run("nested adopter excludes resident outputs from staged membership", func(t *testing.T) {
+		repo := gitfixture.InitRepo(t)
+		gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
+		root := filepath.Join(repo.Root(), "nested")
+		testsupport.WriteAwfConfig(t, root, minimalYAML)
+		if err := initializeProject(testContext(t), root, io.Discard); err != nil {
+			t.Fatalf("initialize nested project: %v", err)
+		}
+		gitfixture.AddAll(t, repo)
+		gitfixture.Commit(t, repo, "rendered nested project", nil)
+		var out, errOut bytes.Buffer
+		if code := runAt(t, root, []string{"awf", "check", "staged", "drift"}, &out, &errOut); code != 0 {
+			t.Fatalf("nested staged drift exit = %d, want 0; stdout=%q stderr=%q", code, out.String(), errOut.String())
+		}
+		if out.String() != completedCheckReport || errOut.Len() != 0 {
+			t.Fatalf("nested staged drift streams stdout=%q stderr=%q", out.String(), errOut.String())
+		}
+	})
 }
 
 // invariant: tooling/cli:check-universe-groups (TestRunCheckRunsStagedAfterRepoFailure)
@@ -624,6 +712,20 @@ func TestCheckStagedCommandUsesIndexLockForGateAndAheadNote(t *testing.T) {
 		}
 		if strings.Contains(out.String(), "99.0.0") {
 			t.Fatalf("staged output consulted working lock: %q", out.String())
+		}
+	})
+
+	t.Run("older staged lock produces ahead note", func(t *testing.T) {
+		root := stagedCheckProject(t, map[string]string{
+			".awf/config.yaml": configText,
+			".awf/awf.lock":    lockText("0.3.0", migrate.Current()),
+		}, nil)
+		collection, err := collectCheckStagedSelectionWith(testContext(t), root, planNoteSink{}, false, false, productionCheckStagedDependencies())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(collection.notes) != 1 || !strings.Contains(collection.notes[0], "ahead of this project (rendered by 0.3.0)") {
+			t.Fatalf("older-lock staged notes = %q", collection.notes)
 		}
 	})
 
@@ -879,6 +981,18 @@ func TestRunCheckStagedContinuesAfterStatePresentationFailure(t *testing.T) {
 	}
 	if stdout.Len() != 0 {
 		t.Fatalf("stdout = %q, want suppressed partial report", stdout.String())
+	}
+}
+
+func TestCollectCheckStagedStateOnlyRetainsAbsentLockError(t *testing.T) {
+	root := syncedGitProject(t, checkYAML)
+	gitfixture.StageRemoval(t, gitfixture.At(root), ".awf/awf.lock")
+	collection, err := collectCheckStagedSelectionWith(testContext(t), root, planNoteSink{}, true, false, productionCheckStagedDependencies())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(collection.operational) != 1 || !errors.Is(collection.operational[0], errNoStagedLock) {
+		t.Fatalf("state-only absent-lock operational errors = %v", collection.operational)
 	}
 }
 

@@ -40,7 +40,7 @@ Workflow judgment precedes this command: discovery creates no effort, and `effor
 - `awf check commit-policy <revision-or-range>...`: preview exact author, committer, and optional SSH-signature provenance for explicit targets after the configured baseline. An absent policy prints one disabled note and succeeds; correct actionable refusals or violations and rerun before policy activation. This command does not install hooks or change repository state.
 - `awf check staged`: run the HEAD-to-index current-state transition and rendered-output drift checks.
 - `awf check staged state`: report current-state authority findings over the HEAD-to-index transition.
-- `awf check staged drift`: render from the staged config and report only stale or hand-edited staged rendered output; other repository drift kinds are out of scope.
+- `awf check staged drift`: render from the staged config and report untracked, stale, or hand-edited staged rendered output; other repository drift kinds are out of scope.
 - `awf check staged commit [FILE]`: directly validate Conventional Commits and definitively authorize any exact incoming-parent older-format ADR using the cleaned final merge-message trailers; it is not part of the staged aggregate and is used by a commit-msg hook.
 ### Other lifecycle commands
 

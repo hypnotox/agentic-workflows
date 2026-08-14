@@ -1,6 +1,7 @@
 package project
 
 import (
+	"context"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -157,6 +158,50 @@ func TestCheckStagedDriftLocalDocsUsesIndexUniverse(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(after, before) {
 		t.Fatalf("staged local-doc universe contaminated: before=%v after=%v err=%v", before, after, err)
 	}
+}
+
+func TestCheckStagedDriftOperationalErrors(t *testing.T) {
+	t.Run("cancelled index read", func(t *testing.T) {
+		root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+		repo := gitfixture.InitRepoAt(t, root)
+		gitfixture.AddAll(t, repo)
+		ctx, cancel := context.WithCancel(testContext(t))
+		cancel()
+		if _, err := CheckStagedDriftRoot(ctx, root); err == nil {
+			t.Fatal("cancelled staged index read succeeded")
+		}
+	})
+	t.Run("invalid lock", func(t *testing.T) {
+		repo := gitfixture.InitRepo(t)
+		testsupport.WriteAwfConfig(t, repo.Root(), "prefix: example\nintegrationBranch: main\n")
+		gitfixture.Stage(t, repo, map[string]string{".awf/config.yaml": "prefix: example\nintegrationBranch: main\n", ".awf/awf.lock": "{bad"})
+		if _, err := CheckStagedDriftRoot(testContext(t), repo.Root()); err == nil {
+			t.Fatal("invalid staged lock succeeded")
+		}
+	})
+	t.Run("missing config", func(t *testing.T) {
+		repo := gitfixture.InitRepo(t)
+		if _, err := CheckStagedDriftRoot(testContext(t), repo.Root()); err == nil || !strings.Contains(err.Error(), "no staged .awf/config.yaml") {
+			t.Fatalf("missing staged config error = %v", err)
+		}
+	})
+	t.Run("invalid config", func(t *testing.T) {
+		repo := gitfixture.InitRepo(t)
+		gitfixture.Stage(t, repo, map[string]string{".awf/config.yaml": "prefix: ["})
+		if _, err := CheckStagedDriftRoot(testContext(t), repo.Root()); err == nil {
+			t.Fatal("invalid staged config succeeded")
+		}
+	})
+	t.Run("invalid pitfalls", func(t *testing.T) {
+		repo := gitfixture.InitRepo(t)
+		gitfixture.Stage(t, repo, map[string]string{
+			".awf/config.yaml":          "prefix: example\nintegrationBranch: main\n",
+			".awf/docs/pitfalls/bad.md": "---\ntitle: Bad\nunknown: value\n---\nbody\n",
+		})
+		if _, err := CheckStagedDriftRoot(testContext(t), repo.Root()); err == nil {
+			t.Fatal("invalid staged pitfalls succeeded")
+		}
+	})
 }
 
 func mustReadFile(t *testing.T, path string) string {
