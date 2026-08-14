@@ -17,11 +17,13 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/refs"
 	"github.com/hypnotox/agentic-workflows/internal/render"
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
@@ -403,9 +405,10 @@ func (p *Project) declaredSections(kind, name string) []string {
 // CheckReport is the ordinary check operation's blocking drift and advisory
 // notes, derived from one operation-owned plan parse.
 type CheckReport struct {
-	Drift     []manifest.Drift
-	Notes     []string
-	PlanNotes []string
+	Drift         []manifest.Drift
+	Notes         []string
+	TrackingNotes []string
+	PlanNotes     []string
 }
 
 const agentGuideAdvisoryBytes = 12 * 1024
@@ -450,14 +453,16 @@ func (p *Project) CheckReport(ctx context.Context) (CheckReport, error) {
 	if err != nil {
 		return CheckReport{}, err
 	}
-	drift, err := p.checkWithState(ctx, corpus, pitfalls, topics, eff, plans, op)
+	drift, trackingNotes, err := p.checkWithTrackingState(ctx, corpus, pitfalls, topics, eff, plans, op)
 	if err != nil {
 		return CheckReport{}, err
 	}
 	contextDrift, contextNotes := planArtifactReport(plans, corpus)
 	planDrift = append(planDrift, contextDrift...)
 	notes, err := p.advisoryNotesWithState(corpus, pitfalls, plans, op)
-	return finishCheckReport(drift, planDrift, contextNotes, notes, op, err)
+	report, err := finishCheckReport(drift, planDrift, contextNotes, notes, op, err)
+	report.TrackingNotes = trackingNotes
+	return report, err
 }
 
 func finishCheckReport(drift, planDrift []manifest.Drift, contextNotes, notes []string, op *OutputPlan, err error) (CheckReport, error) {
@@ -474,13 +479,20 @@ func (p *Project) Check(ctx context.Context) ([]manifest.Drift, error) {
 	return report.Drift, err
 }
 
-func (p *Project) checkWithState(ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool, plans []plan.Plan, op *OutputPlan) ([]manifest.Drift, error) {
+func (p *Project) checkWithTrackingState(ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool, plans []plan.Plan, op *OutputPlan) ([]manifest.Drift, []string, error) {
+	trackingDrift, trackingNotes, err := p.checkGeneratedTracking(ctx, op)
+	if err != nil {
+		return nil, nil, err
+	}
 	lock, found, err := manifest.LoadOptional(p.lockPath())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if !found {
-		return nil, errors.New("no lock (run awf render)")
+		if len(trackingDrift) > 0 {
+			return trackingDrift, trackingNotes, nil
+		}
+		return nil, nil, errors.New("no lock (run awf render)")
 	}
 	files := op.writeFiles()
 	rendered := map[string]RenderedFile{}
@@ -488,11 +500,12 @@ func (p *Project) checkWithState(ctx context.Context, corpus adr.Corpus, pitfall
 		rendered[f.Path] = f
 	}
 	var drift []manifest.Drift
-	drift = append(drift, p.checkLockedFiles(lock, rendered)...)
+	drift = append(drift, trackingDrift...)
+	drift = append(drift, p.checkLockedFiles(lock, rendered, trackingDrift)...)
 	// Closed-tree sweep: orphans, strays, backups (ADR-0086 Decision 1).
 	od, err := p.sweepConfigTree(files, topics)
 	if err != nil { // coverage-ignore: the sweep errors only on faults the outputPlan render above would have surfaced first (see its coverage-ignores)
-		return nil, err
+		return nil, nil, err
 	}
 	drift = append(drift, od...)
 
@@ -501,7 +514,7 @@ func (p *Project) checkWithState(ctx context.Context, corpus adr.Corpus, pitfall
 	drift = append(drift, p.unusedVarDrift(files)...)
 	ud, err := p.unusedDataDrift(files)
 	if err != nil { // coverage-ignore: unusedDataDrift re-reads sidecars the render pass in outputPlan already read
-		return nil, err
+		return nil, nil, err
 	}
 	drift = append(drift, ud...)
 
@@ -511,22 +524,68 @@ func (p *Project) checkWithState(ctx context.Context, corpus adr.Corpus, pitfall
 	drift = append(drift, p.checkPlans(corpus, plans)...)
 	pitfallDrift, err := p.checkPitfalls(corpus, pitfalls)
 	if err != nil { // coverage-ignore: the operation supplied its already validated pitfall corpus
-		return nil, err
+		return nil, nil, err
 	}
 	drift = append(drift, pitfallDrift...)
 	glossaryDrift, err := p.checkGlossary()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	drift = append(drift, glossaryDrift...)
 	tagDrift, err := p.checkTagVocabulary(corpus, pitfalls)
 	if err != nil { // coverage-ignore: checkTagVocabulary now fails only through pitfallTagEntries, which reads the same data.pitfalls that checkPitfalls above already read and failed on
-		return nil, err
+		return nil, nil, err
 	}
 	drift = append(drift, tagDrift...)
 	drift = append(drift, p.checkADRRelatedLinks(corpus)...)
 	drift = append(drift, p.checkPendingADRs(ctx, corpus)...)
-	return drift, nil
+	return drift, trackingNotes, nil
+}
+
+// checkGeneratedTracking compares the operation-owned render writes plus the
+// separately written lock against metadata-only index membership. Resident
+// outputs are outside a nested adopter's index authority and remain excluded.
+func (p *Project) checkGeneratedTracking(ctx context.Context, op *OutputPlan) ([]manifest.Drift, []string, error) {
+	repo, err := p.gitRepo()
+	if err != nil {
+		if errors.Is(err, awfgit.ErrNotARepository) {
+			return nil, []string{"generated-artifact tracking is unavailable outside a Git repository"}, nil
+		}
+		// gitRepo currently returns only ErrNotARepository for a nil handle.
+		return nil, nil, err // coverage-ignore: retained fail-closed for a future handle state
+	}
+	indexed, err := repo.IndexPaths(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	present := make(map[string]bool, len(indexed))
+	for _, path := range indexed {
+		present[path] = true
+	}
+	required := map[string]bool{config.DirName + "/awf.lock": true}
+	for _, file := range op.writeFiles() {
+		if p.nested && resident.IsResidentPath(file.Path) {
+			continue
+		}
+		required[file.Path] = true
+	}
+	var drift []manifest.Drift
+	for _, path := range slices.Sorted(maps.Keys(required)) {
+		if !present[path] {
+			drift = append(drift, manifest.Drift{Path: path, Kind: "untracked", Detail: "generated artifact is absent from the Git index; run awf render, then git add -f " + path})
+		}
+	}
+	return drift, nil, nil
+}
+
+func untrackedPaths(drift []manifest.Drift) map[string]bool {
+	paths := map[string]bool{}
+	for _, finding := range drift {
+		if finding.Kind == "untracked" {
+			paths[finding.Path] = true
+		}
+	}
+	return paths
 }
 
 // checkPendingADRs refuses a slug-identified pending record on the integration
@@ -562,7 +621,12 @@ func (p *Project) checkPendingADRs(ctx context.Context, corpus adr.Corpus) []man
 // stale, missing, hand-edited, or invalid-frontmatter. The reverse direction is
 // checked too: a rendered path with no lock entry - an artifact enabled since the
 // last sync - is flagged unsynced rather than silently skipped.
-func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]RenderedFile) []manifest.Drift {
+func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]RenderedFile, tracking ...[]manifest.Drift) []manifest.Drift {
+	var trackingDrift []manifest.Drift
+	if len(tracking) > 0 {
+		trackingDrift = tracking[0]
+	}
+	untracked := untrackedPaths(trackingDrift)
 	var drift []manifest.Drift
 	for _, path := range slices.Sorted(maps.Keys(rendered)) {
 		if _, ok := lock.Files[path]; !ok {
@@ -581,6 +645,9 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 			}
 			onDisk, err := os.ReadFile(p.roots.ResolveOutput(path))
 			if err != nil {
+				if untracked[path] {
+					continue
+				}
 				drift = append(drift, manifest.Drift{Path: path, Kind: "missing", Detail: "file absent; run awf render"})
 				continue
 			}
@@ -610,6 +677,9 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 		}
 		onDisk, err := os.ReadFile(p.roots.ResolveOutput(path))
 		if err != nil {
+			if untracked[path] {
+				continue
+			}
 			drift = append(drift, manifest.Drift{Path: path, Kind: "missing", Detail: "file absent; run awf render"})
 			continue
 		}

@@ -54,6 +54,8 @@ func scaffoldProject(t *testing.T) string {
 	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
 		t.Fatalf("scaffold sync: %v", err)
 	}
+	// Repository drift now requires the rendered transaction to be indexed.
+	gitfixture.AddAll(t, repo)
 	return root
 }
 
@@ -865,7 +867,8 @@ func TestRunUpgradeLegacyAdopterRendersAndChecksClean(t *testing.T) {
 	ctx := testContext(t)
 	// A legacy single-file project migrates to the tree layout, covering the
 	// applied-migrations loop and the terminal sync.
-	root := gitfixture.InitRepo(t).Root()
+	repo := gitfixture.InitRepo(t)
+	root := repo.Root()
 	claude := filepath.Join(root, ".claude")
 	if err := os.MkdirAll(claude, 0o755); err != nil {
 		t.Fatal(err)
@@ -896,6 +899,7 @@ func TestRunUpgradeLegacyAdopterRendersAndChecksClean(t *testing.T) {
 	if !strings.Contains(string(agents), "# example Agent Guide") {
 		t.Errorf("rendered AGENTS.md missing stable heading: %q", agents)
 	}
+	gitfixture.AddAll(t, repo)
 	if err := runCheckRepo(ctx, root, io.Discard); err != nil {
 		t.Fatalf("repository check after upgrade: %v", err)
 	}

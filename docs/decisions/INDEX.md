@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-require-git-tracking-for-generated-artifacts: Require Git Tracking for Generated Artifacts](require-git-tracking-for-generated-artifacts.md) (Accepted)
+- [ADR-require-git-tracking-for-generated-artifacts: Require Git Tracking for Generated Artifacts](require-git-tracking-for-generated-artifacts.md) (Implementing)
 
 ## History
 

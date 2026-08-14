@@ -131,6 +131,36 @@ func checkContext(ctx context.Context) error {
 // paths back onto disk needs.
 func (r *Repo) Root() string { return r.root }
 
+// IsNested reports whether the handle is anchored below its containing
+// repository root. Consumers use this composition fact to preserve output
+// ownership boundaries without reopening the repository.
+func (r *Repo) IsNested() bool { return r.prefix != "" }
+
+// IndexPaths returns sorted, unique stage paths from index metadata, rerooted
+// to the handle's project subtree. It deliberately neither consults ignore
+// rules nor reads blob objects: index membership answers tracking even when a
+// path is now ignored or its blob cannot be read. Repeated conflict stages
+// collapse to their one path because tracking is path membership, not content.
+func (r *Repo) IndexPaths(ctx context.Context) ([]string, error) {
+	if err := checkContext(ctx); err != nil {
+		return nil, err
+	}
+	idx, err := r.repo.Storer.Index()
+	if err != nil {
+		return nil, opaqueWrap("read index", err)
+	}
+	set := map[string]bool{}
+	for _, entry := range idx.Entries {
+		if err := checkContext(ctx); err != nil {
+			return nil, err
+		}
+		if path, ok := rerootPath(entry.Name, r.prefix); ok {
+			set[path] = true
+		}
+	}
+	return sortedPaths(set), nil
+}
+
 // ChangedPaths returns the sorted, unique repo-relative paths changed either in
 // the staged index (staged) or between the two revisions of rangeSpec ("a..b").
 // staged takes precedence; with neither selector the caller should not call

@@ -80,7 +80,16 @@ func productionRepoCheckDependencies() repoCheckDependencies {
 				return cfg, nil
 			}, catalog.Standard, awfgit.ProjectResidentRoot, repo).Open(ctx, root)
 		},
-		checkReport: func(ctx context.Context, p *project.Project) (project.CheckReport, error) { return p.CheckReport(ctx) },
+		checkReport: func(ctx context.Context, p *project.Project) (project.CheckReport, error) {
+			// A composed project always has a root. Keep the exported compatibility
+			// projection as the defensive invalid-project fallback while normal
+			// drift consumes the complete report and its tracking advisory.
+			if p.Root == "" { // coverage-ignore: Loader constructs every production Project with its selected root
+				drift, err := p.Check(ctx)
+				return project.CheckReport{Drift: drift}, err
+			}
+			return p.CheckReport(ctx)
+		},
 		currentState: func(ctx context.Context, p *project.Project) (project.CurrentStateReport, error) {
 			return p.CheckCurrentState(ctx)
 		},
@@ -149,6 +158,7 @@ func repoCheckSystem(root string, aggregate bool, leadingNotes []string, planNot
 				case repoStepDrift:
 					report := inputs.checkReport
 					actions = append(actions, execution.BoundAction{Step: step, Run: func(context.Context) error {
+						inputs.notes = append(inputs.notes, report.TrackingNotes...)
 						if aggregate {
 							inputs.notes = append(inputs.notes, leadingNotes...)
 							inputs.notes = append(inputs.notes, report.Notes...)
@@ -308,15 +318,7 @@ func collectCheckRepoWithPlanNotes(ctx context.Context, root string, planNotes p
 	return collectRepoCheckSelectionWithPlanNotes(ctx, root, []execution.StepID{repoStepDrift, repoStepState, repoStepProse, repoStepMemory}, execution.ContinueOnFailure, true, leadingNotes, planNotes, productionRepoCheckDependencies())
 }
 func runCheckDrift(ctx context.Context, root string, stdout io.Writer) error {
-	deps := productionRepoCheckDependencies()
-	// Preserve Project.Check as the production compatibility projection. It
-	// still derives one complete CheckReport; this adapter discards only notes
-	// before the shared direct action, which has no advisory presentation role.
-	deps.checkReport = func(ctx context.Context, p *project.Project) (project.CheckReport, error) {
-		drift, err := p.Check(ctx)
-		return project.CheckReport{Drift: drift}, err
-	}
-	return runRepoCheckSelection(ctx, root, stdout, []execution.StepID{repoStepDrift}, execution.StopOnFailure, false, deps)
+	return runRepoCheckSelection(ctx, root, stdout, []execution.StepID{repoStepDrift}, execution.StopOnFailure, false, productionRepoCheckDependencies())
 }
 func runCheckState(ctx context.Context, root string, stdout io.Writer) error {
 	return runRepoCheckSelection(ctx, root, stdout, []execution.StepID{repoStepState}, execution.StopOnFailure, false, productionRepoCheckDependencies())

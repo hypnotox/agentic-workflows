@@ -38,14 +38,14 @@ Latitude: exact
 Applying: ["require-git-tracking-for-generated-artifacts:ownership-follows-existing-authorities", "require-git-tracking-for-generated-artifacts:no-git-degrades-narrowly"]
 Paths: ["docs/decisions/require-git-tracking-for-generated-artifacts.md", ".awf/topics/parts/rendering/project-output-plan/current-state.md", ".awf/topics/parts/tooling/cli/current-state.md", ".awf/awf.lock", "docs/topics/rendering/project-output-plan.md", "docs/topics/tooling/cli.md", "docs/decisions/INDEX.md"]
 
-Transition the reviewed ADR from Proposed to Accepted and then to Implementing under the lifecycle handshake. In the same implementing transaction, apply exactly the `update rendering/project-output-plan:check-report-single-plan` and `update tooling/cli:repo-check-capability-plan` operations with matching `Revised-by` provenance and test backing. Describe the one-plan tracking projection, nested resident exclusion, separately included lock, dedicated no-Git drift note, and direct-versus-aggregate presentation boundary without claiming staged enforcement before Phase 2. Render all generated outputs and inspect the changed current-state topic prose for those exact semantics and for contradictions with existing advisory scope.
+Transition the reviewed ADR from Accepted to Implementing under the lifecycle handshake. In the same implementing transaction, apply exactly the `update rendering/project-output-plan:check-report-single-plan` and `update tooling/cli:repo-check-capability-plan` operations with matching `Revised-by` provenance and test backing. Describe the one-plan tracking projection, nested resident exclusion, separately included lock, dedicated no-Git drift note, and direct-versus-aggregate presentation boundary without claiming staged enforcement before Phase 2. Render all generated outputs and inspect the changed current-state topic prose for those exact semantics and for contradictions with existing advisory scope.
 
 ### Phase close
 
 The phase owner verifies the Git seam contract tests, focused project and command check tests, `./awf check staged`, and the project gate, then closes one coherent repository-tracking transaction.
 
 ```commit
-feat(rendering): require tracked generated outputs
+feat(rendering): require tracked generated outputs (applies ADR batch)
 ```
 
 ## Phase 2: Enforce staged generated-artifact tracking
@@ -91,5 +91,7 @@ feat(rendering): verify staged generated tracking
 ## Notes
 
 Inline owners immediately correct stale instructions and record reasoned deviations here. Delegated owners may report rather than edit; the parent supplies the report to phase review and reconciles it with findings in one focused post-review settlement commit before checkpointing or later execution. Record deviations, spike answers, follow-ups, and findings surfaced during implementation.
+
+- Corrected Phase 1 lifecycle wording from Proposed to Accepted to Accepted to Implementing, because the reviewed ADR status is already Accepted. The phase close subject now carries `(applies ADR batch)` to match the lifecycle authority.
 
 After implementation assurance settles, `awf-effort-workflow` owns the terminal artifact transaction: reconcile final deviations and review settlement here, append only the ADR's Implemented status event, change this plan to `status: Implemented`, regenerate the decision index and lock, and commit those lifecycle-only changes together.

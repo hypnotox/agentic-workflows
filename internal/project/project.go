@@ -214,6 +214,7 @@ func (l *Loader) Open(ctx context.Context, root string) (*Project, error) {
 		Cfg:      cfg,
 		Targets:  targets,
 		standard: l.standard,
+		nested:   l.repo != nil && l.repo.IsNested(),
 		repo:     l.repo,
 	}
 	p.Cat = l.standard

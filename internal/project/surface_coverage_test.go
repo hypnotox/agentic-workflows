@@ -107,7 +107,7 @@ func TestCheckWithStatePropagatesMalformedRetainedData(t *testing.T) {
 			if err := os.WriteFile(sidecarPath, []byte(tc.sidecar), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := p.checkWithState(testContext(t), corpus, pitfall.Corpus{}, topics, effective, mustParsePlans(t, p), op); err == nil || !strings.Contains(err.Error(), "must be a list") {
+			if _, _, err := p.checkWithTrackingState(testContext(t), corpus, pitfall.Corpus{}, topics, effective, mustParsePlans(t, p), op); err == nil || !strings.Contains(err.Error(), "must be a list") {
 				t.Fatalf("check-with-state error = %v", err)
 			}
 		})

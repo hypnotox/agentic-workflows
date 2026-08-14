@@ -14,8 +14,10 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
@@ -747,7 +749,7 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 	file := parseCheckSource(t)
 	report := checkFunc(t, file, "CheckReport")
 	directAdvisory := checkFunc(t, file, "AdvisoryNotes")
-	check := checkFunc(t, file, "checkWithState")
+	check := checkFunc(t, file, "checkWithTrackingState")
 	advisory := checkFunc(t, file, "advisoryNotesWithState")
 
 	for _, fn := range []*ast.FuncDecl{report, directAdvisory} {
@@ -821,6 +823,92 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 	}
 }
 
+func TestCheckReportRequiresGeneratedArtifactsInIndex(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	root := repo.Root()
+	testsupport.WriteAwfConfig(t, root, withTestGateCmd("prefix: example\nintegrationBranch: main\nvars: {}\n"))
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := p.syncReport(testContext(t), &InitAuthority{InitializedWithVersion: Version}); err != nil {
+		t.Fatal(err)
+	}
+	gitfixture.AddAll(t, repo)
+	gitfixture.StageRemoval(t, repo, "AGENTS.md", ".awf/awf.lock")
+
+	report, err := p.CheckReport(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, finding := range report.Drift {
+		if finding.Kind == "untracked" {
+			got = append(got, finding.Path)
+		}
+		if (finding.Path == "AGENTS.md" || finding.Path == ".awf/awf.lock") && finding.Kind == "missing" {
+			t.Fatalf("missing duplicates untracked root cause: %#v", report.Drift)
+		}
+	}
+	if joined := strings.Join(got, ","); joined != ".awf/awf.lock,AGENTS.md" {
+		t.Fatalf("untracked findings = %q", joined)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".git", "index"), []byte("garbage"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.CheckReport(testContext(t)); err == nil {
+		t.Fatal("corrupt tracking index accepted")
+	}
+}
+
+func TestCheckLockedFilesSuppressesMissingForUntrackedOutputs(t *testing.T) {
+	root := t.TempDir()
+	p := &Project{roots: resident.NewRoots(root, root)}
+	rendered := map[string]RenderedFile{
+		"regen.md":  {Path: "regen.md", Content: "regen", Policy: OutputPolicy{Regenerate: true}},
+		"normal.md": {Path: "normal.md", Content: "normal"},
+	}
+	lock := &manifest.Lock{Files: map[string]manifest.Entry{
+		"regen.md":  {},
+		"normal.md": {OutputHash: manifest.Hash([]byte("normal"))},
+	}}
+	tracking := []manifest.Drift{{Path: "regen.md", Kind: "untracked"}, {Path: "normal.md", Kind: "untracked"}}
+	if got := p.checkLockedFiles(lock, rendered, tracking); len(got) != 0 {
+		t.Fatalf("untracked missing files = %#v", got)
+	}
+}
+
+func TestCheckGeneratedTrackingNoGitAndNestedResidentExclusion(t *testing.T) {
+	t.Run("no Git", func(t *testing.T) {
+		p := &Project{Root: t.TempDir()}
+		_, notes, err := p.checkGeneratedTracking(testContext(t), &OutputPlan{})
+		if err != nil || len(notes) != 1 || !strings.Contains(notes[0], "unavailable outside a Git repository") {
+			t.Fatalf("no-Git tracking = notes %q, err %v", notes, err)
+		}
+	})
+	t.Run("nested resident output", func(t *testing.T) {
+		fixture := gitfixture.InitRepo(t)
+		root := filepath.Join(fixture.Root(), "nested")
+		gitfixture.Stage(t, fixture, map[string]string{
+			"nested/.awf/awf.lock": "lock\n",
+			"nested/tracked.md":    "tracked\n",
+		})
+		repo, _, err := awfgit.OpenContaining(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		p := &Project{Root: root, nested: true, repo: repo}
+		op := &OutputPlan{Nodes: []OutputNode{
+			{file: &RenderedFile{Path: "tracked.md"}},
+			{file: &RenderedFile{Path: ".awf/efforts/.gitignore"}},
+		}}
+		drift, _, err := p.checkGeneratedTracking(testContext(t), op)
+		if err != nil || len(drift) != 0 {
+			t.Fatalf("nested tracking = %#v, %v", drift, err)
+		}
+	})
+}
+
 func TestCheckReportParsesPlansOnce(t *testing.T) {
 	source, err := os.ReadFile(filepath.Join(testsupport.RepoRoot(t), "internal/project/check.go"))
 	if err != nil {
@@ -828,8 +916,8 @@ func TestCheckReportParsesPlansOnce(t *testing.T) {
 	}
 	text := string(source)
 	checkStart := strings.Index(text, "func (p *Project) CheckReport")
-	checkEnd := strings.Index(text, "\n// Check is the compatibility projection")
-	privateStart := strings.Index(text, "func (p *Project) checkWithState")
+	checkEnd := strings.Index(text, "\nfunc finishCheckReport")
+	privateStart := strings.Index(text, "func (p *Project) checkWithTrackingState")
 	if checkStart < 0 || checkEnd <= checkStart || privateStart < 0 {
 		t.Fatal("check.go source boundaries changed")
 	}

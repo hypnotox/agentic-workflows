@@ -47,8 +47,9 @@ Backing: test
 
 ### `invariant: check-report-single-plan`
 
-Project.CheckReport constructs one operation-owned OutputPlan after deriving its current state and parsed plans, threads that same plan to both drift and advisory projections, and never regenerates domain documents or the config reference inside either projection. Standalone Check, AdvisoryNotes, OutputPlan, and other direct project operations continue to derive their own operation-scoped inputs without a persistent cache.
+Project.CheckReport constructs one operation-owned OutputPlan after deriving its current state and parsed plans, threads that same plan to drift, tracking, and advisory projections, and never regenerates domain documents or the config reference inside either projection. Tracking derives every output-plan write plus the separately written `.awf/awf.lock`, compares them with the Git seam's ignore-independent index metadata, and excludes resident-root outputs only for a nested adopter. Standalone Check, AdvisoryNotes, OutputPlan, and other direct project operations continue to derive their own operation-scoped inputs without a persistent cache.
 Origin: ADR-0223
+Revised-by: ADR-require-git-tracking-for-generated-artifacts
 Backing: test
 
 ### `invariant: output-policy-explicit`

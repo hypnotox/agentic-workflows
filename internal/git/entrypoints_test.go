@@ -37,6 +37,8 @@ var entrypointSuites = map[string]suite{
 	"Root":          {"internal/git", "TestWorkingPaths"},
 	"WorkingPaths":  {"internal/git", "TestWorkingPaths"},
 	"IndexBlobs":    {"internal/git", "TestIndexBlobs"},
+	"IndexPaths":    {"internal/git", "TestIndexPaths"},
+	"IsNested":      {"internal/git", "TestIndexPaths"},
 	"CommitBlobs":   {"internal/git", "TestObjectReadContracts"},
 	"CommitEntries": {"internal/git", "TestCommitEntriesAndBlobsAtContracts"},
 	"CommitBlobsAt": {"internal/git", "TestCommitEntriesAndBlobsAtContracts"},

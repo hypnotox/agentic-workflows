@@ -316,7 +316,7 @@ func assertRepoCheckProductionWiring(t *testing.T) {
 		{"checkrepo.go", "runCheckRepo", []string{"runCheckRepoWithPlanNotes", "planNoteSink{}"}},
 		{"checkrepo.go", "runCheckRepoWithPlanNotes", []string{"collectCheckRepoWithPlanNotes", "renderCheckCollection"}},
 		{"checkrepo.go", "collectCheckRepoWithPlanNotes", []string{"repoStepDrift", "repoStepState", "repoStepProse", "repoStepMemory", "execution.ContinueOnFailure", "true", "productionRepoCheckDependencies()"}},
-		{"checkrepo.go", "runCheckDrift", []string{"repoStepDrift", "execution.StopOnFailure", "false", "p.Check("}},
+		{"checkrepo.go", "runCheckDrift", []string{"repoStepDrift", "execution.StopOnFailure", "false", "productionRepoCheckDependencies()"}},
 		{"checkrepo.go", "runCheckState", []string{"repoStepState", "execution.StopOnFailure", "false", "productionRepoCheckDependencies()"}},
 		{"prosegate.go", "runProseGate", []string{"repoStepProse", "execution.StopOnFailure", "false", "productionRepoCheckDependencies()"}},
 		{"memorygate.go", "runMemoryGate", []string{"repoStepMemory", "execution.StopOnFailure", "false", "productionRepoCheckDependencies()"}},
@@ -392,6 +392,15 @@ func TestAggregateCheckAgentGuideSizeWarning(t *testing.T) {
 	}
 	if got := direct.String(); got != completedCheckReport {
 		t.Fatalf("direct drift output = %q, want no advisory", got)
+	}
+
+	deps = repoCheckTestDependencies(t, cfg, p, project.CheckReport{Notes: []string{"aggregate-only"}, TrackingNotes: []string{"tracking unavailable"}}, project.CurrentStateReport{}, nil, &repoCheckCounters{})
+	var tracking bytes.Buffer
+	if err := runRepoCheckSelection(context.Background(), t.TempDir(), &tracking, []execution.StepID{repoStepDrift}, execution.StopOnFailure, false, deps); err != nil {
+		t.Fatalf("direct tracking advisory: %v", err)
+	}
+	if got, want := tracking.String(), "status: warnings\n\nsummary:\n  findings: 0 errors, 1 warnings\n\nfindings:\n  warnings:\n    advisory | tracking unavailable\n"; got != want {
+		t.Fatalf("direct tracking advisory = %q, want %q", got, want)
 	}
 }
 

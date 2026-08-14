@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -36,6 +37,7 @@ func TestRepoMethodsReturnPreCancelledContext(t *testing.T) {
 		"branches":       func() error { _, err := gitRepo(t, dir).Branches(ctx); return err },
 		"working":        func() error { _, err := gitRepo(t, dir).WorkingPaths(ctx); return err },
 		"index":          func() error { _, err := gitRepo(t, dir).IndexBlobs(ctx); return err },
+		"index paths":    func() error { _, err := gitRepo(t, dir).IndexPaths(ctx); return err },
 		"commit":         func() error { _, err := gitRepo(t, dir).CommitBlobs(ctx, "HEAD"); return err },
 		"commit entries": func() error { _, err := gitRepo(t, dir).CommitEntries(ctx, "HEAD"); return err },
 		"commit selected blobs": func() error {
@@ -106,6 +108,10 @@ func TestRepoMethodsObserveCancellationDuringIteration(t *testing.T) {
 	})
 	assertCanceled("index", 2, func(ctx context.Context) error {
 		_, err := repo.IndexBlobs(ctx)
+		return err
+	})
+	assertCanceled("index paths", 2, func(ctx context.Context) error {
+		_, err := repo.IndexPaths(ctx)
 		return err
 	})
 	assertCanceled("commit blobs", 2, func(ctx context.Context) error {
@@ -1193,6 +1199,52 @@ func TestCommitEntriesAndBlobsAtContracts(t *testing.T) {
 	}
 }
 
+func TestIndexPaths(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"tracked.txt": "tracked\n"})
+	gitfixture.StageFile(t, repo, "ordinary.txt", "ordinary\n", 0o644)
+	gitfixture.StageFile(t, repo, "executable.sh", "executable\n", 0o755)
+	if err := os.Symlink("ordinary.txt", filepath.Join(dir, "link")); err != nil {
+		t.Fatal(err)
+	}
+	gitfixture.Add(t, repo, "link")
+	gitfixture.StageUnmerged(t, repo, "conflict.txt")
+	if err := os.WriteFile(filepath.Join(dir, ".gitignore"), []byte("ignored.txt\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "ignored.txt"), []byte("ignored\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	paths, err := gitRepo(t, dir).IndexPaths(testsupport.Context(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := strings.Join(paths, ","), "conflict.txt,executable.sh,link,ordinary.txt,tracked.txt"; got != want {
+		t.Fatalf("IndexPaths = %q, want %q", got, want)
+	}
+
+	gitfixture.Add(t, repo, ".gitignore")
+	gitfixture.Add(t, repo, "ignored.txt")
+	paths, err = gitRepo(t, dir).IndexPaths(testsupport.Context(t))
+	if err != nil || !slices.Contains(paths, "ignored.txt") {
+		t.Fatalf("tracked ignored IndexPaths = %v, %v", paths, err)
+	}
+
+	nested := gitRepo(t, filepath.Join(dir, "nested"))
+	if !nested.IsNested() {
+		t.Fatal("nested handle IsNested = false")
+	}
+	if paths, err := nested.IndexPaths(testsupport.Context(t)); err != nil || len(paths) != 0 {
+		t.Fatalf("nested IndexPaths = %v, %v", paths, err)
+	}
+	ctx, cancel := context.WithCancel(testsupport.Context(t))
+	cancel()
+	if _, err := gitRepo(t, dir).IndexPaths(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled IndexPaths = %v", err)
+	}
+}
+
 func TestIndexBlobs(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
@@ -1248,6 +1300,9 @@ func TestIndexBlobsErrors(t *testing.T) {
 	gitfixture.Commit(t, repo, "base", map[string]string{"a.txt": "a"})
 	if err := os.WriteFile(filepath.Join(dir, ".git", "index"), []byte("garbage"), 0o644); err != nil {
 		t.Fatal(err)
+	}
+	if _, err := gitRepo(t, dir).IndexPaths(testsupport.Context(t)); err == nil || !strings.Contains(err.Error(), "read index") {
+		t.Fatalf("corrupt index paths: got %v", err)
 	}
 	if _, err := gitRepo(t, dir).IndexBlobs(testsupport.Context(t)); err == nil || !strings.Contains(err.Error(), "read index") {
 		t.Fatalf("corrupt index: got %v", err)
