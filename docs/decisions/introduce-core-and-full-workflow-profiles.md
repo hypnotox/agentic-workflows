@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: introduce-core-and-full-workflow-profiles
-status: Proposed
+status: Accepted
 date: 2026-08-14
 ---
 # ADR-introduce-core-and-full-workflow-profiles: Introduce Core and Full workflow profiles
@@ -103,3 +103,4 @@ Every new profile claim is backed by focused tests. The proof set covers catalog
 ## Status history
 
 - 2026-08-14: Proposed
+- 2026-08-14: Accepted; content-sha256: 688fcda2464327e4b0757961da56c9c50a12c20f25e26f6ccd859ed006118837
