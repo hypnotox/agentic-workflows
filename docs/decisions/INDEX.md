@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-require-git-tracking-for-generated-artifacts: Require Git Tracking for Generated Artifacts](require-git-tracking-for-generated-artifacts.md) (Proposed)
 
 ## History
 
