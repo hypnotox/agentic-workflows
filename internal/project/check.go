@@ -364,7 +364,7 @@ func (p *Project) unusedDataDrift(files []RenderedFile) ([]manifest.Drift, error
 			}
 		}
 	}
-	for _, kind := range catalog.SingletonKinds() {
+	for _, kind := range catalog.SingletonKindsFor(p.catalog()) {
 		if err := check(kind, "", config.DirName+"/"+kind+".yaml"); err != nil { // coverage-ignore: see check's coverage-ignore
 			return nil, err
 		}

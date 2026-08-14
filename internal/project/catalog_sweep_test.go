@@ -191,7 +191,7 @@ func cloneRenderData(in map[string]any) map[string]any {
 func singletonTemplateContexts(t *testing.T, p *Project, eff map[string]bool) []singletonTemplateContext {
 	t.Helper()
 	var contexts []singletonTemplateContext
-	for _, kind := range catalog.SingletonKinds() {
+	for _, kind := range catalog.SingletonKindsFor(p.catalog()) {
 		entry := p.catalog().Docs[kind]
 		sc, err := p.Cfg.Sidecar(kind, "")
 		if err != nil {

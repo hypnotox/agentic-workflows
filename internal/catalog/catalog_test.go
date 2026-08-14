@@ -3,11 +3,13 @@ package catalog
 import (
 	"errors"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
-	"slices"
 	"strings"
 	"testing"
 
@@ -44,87 +46,159 @@ func TestCompleteViewPreservesStandard(t *testing.T) {
 	if view.Catalog() == Standard {
 		t.Fatal("complete view retained a mutable alias to Standard")
 	}
-	if got, want := view.Catalog().Vars, Standard.Vars; !slices.EqualFunc(got, want, func(a, b VarDescriptor) bool { return reflect.DeepEqual(a, b) }) {
-		t.Fatalf("complete view vars = %#v, want %#v", got, want)
-	}
-	for _, name := range []string{"Skills", "Agents", "Docs"} {
-		var got, want int
-		switch name {
-		case "Skills":
-			got, want = len(view.Catalog().Skills), len(Standard.Skills)
-		case "Agents":
-			got, want = len(view.Catalog().Agents), len(Standard.Agents)
-		case "Docs":
-			got, want = len(view.Catalog().Docs), len(Standard.Docs)
-		}
-		if got != want {
-			t.Errorf("complete view %s count = %d, want %d", name, got, want)
-		}
+	if !reflect.DeepEqual(view.Catalog(), Standard) {
+		t.Fatal("complete view does not preserve the complete Standard catalog")
 	}
 }
 
 func TestViewOwnsDeepCatalogSnapshot(t *testing.T) {
 	injected := cloneCatalog(Standard)
 	injectedSkill := injected.Skills["tdd"]
-	injectedSkill.Data["typed"] = []string{"original"}
+	injectedSkill.Data["strings"] = []string{"original"}
+	injectedSkill.Data["numbers"] = []int{1}
+	injectedSkill.Data["labels"] = map[string]string{"value": "original"}
+	injectedSkill.Data["records"] = []map[string]any{{"value": "original"}}
+	injectedSkill.Data["array"] = [1]string{"original"}
+	injectedSkill.Data["direct-nil"] = nil
+	injectedSkill.Data["nil-list"] = []any{nil}
+	var nilMap map[string]string
+	injectedSkill.Data["nil-map"] = nilMap
+	var nilSlice []int
+	injectedSkill.Data["nil-slice"] = nilSlice
+	pointed := []string{"original"}
+	injectedSkill.Data["pointer"] = &pointed
+	var nilPointer *[]string
+	injectedSkill.Data["nil-pointer"] = nilPointer
 	injected.Skills["tdd"] = injectedSkill
 	view := NewView(injected)
-	original := view.Catalog().Skills["tdd"]
 
 	injectedSkill.Sections[0] = "changed input"
-	injectedSkill.Data["nested"] = []any{map[string]any{"value": "changed input"}}
-	injectedSkill.Data["typed"].([]string)[0] = "changed input"
+	injectedSkill.Data["strings"].([]string)[0] = "changed input"
+	injectedSkill.Data["numbers"].([]int)[0] = 2
+	injectedSkill.Data["labels"].(map[string]string)["value"] = "changed input"
+	injectedSkill.Data["records"].([]map[string]any)[0]["value"] = "changed input"
+	pointed[0] = "changed input"
 	injected.Skills["tdd"] = injectedSkill
-	if got := view.Catalog().Skills["tdd"]; !reflect.DeepEqual(got, original) {
-		t.Fatalf("view changed through input alias: %#v", got)
+
+	got := view.Catalog().Skills["tdd"]
+	gotNilMap, mapOK := got.Data["nil-map"].(map[string]string)
+	gotNilSlice, sliceOK := got.Data["nil-slice"].([]int)
+	if got.Sections[0] == "changed input" || got.Data["strings"].([]string)[0] != "original" ||
+		got.Data["numbers"].([]int)[0] != 1 || got.Data["labels"].(map[string]string)["value"] != "original" ||
+		got.Data["records"].([]map[string]any)[0]["value"] != "original" || got.Data["array"].([1]string)[0] != "original" ||
+		got.Data["direct-nil"] != nil || got.Data["nil-list"].([]any)[0] != nil || !mapOK || gotNilMap != nil ||
+		!sliceOK || gotNilSlice != nil || (*got.Data["pointer"].(*[]string))[0] != "original" || got.Data["nil-pointer"] != (*[]string)(nil) {
+		t.Fatalf("view changed through injected reference alias: %#v", got)
 	}
 
-	standardSkill := Standard.Skills["tdd"]
-	viewSkill := CompleteView().Catalog().Skills["tdd"]
-	viewSkill.Sections[0] = "changed view"
-	viewSkill.Data["nested"] = []any{map[string]any{"value": "changed view"}}
-	if got := Standard.Skills["tdd"]; !reflect.DeepEqual(got, standardSkill) {
-		t.Fatalf("Standard changed through complete view alias: %#v", got)
+	standardSection := Standard.Skills["tdd"].Sections[0]
+	_, standardHadProbe := Standard.Skills["tdd"].Data["view-probe"]
+	complete := CompleteView().Catalog()
+	completeSkill := complete.Skills["tdd"]
+	completeSkill.Sections[0] = "changed view"
+	completeSkill.Data["view-probe"] = "changed view"
+	complete.Skills["tdd"] = completeSkill
+	if Standard.Skills["tdd"].Sections[0] != standardSection {
+		t.Fatal("Standard sections changed through complete view alias")
+	}
+	_, standardHasProbe := Standard.Skills["tdd"].Data["view-probe"]
+	if standardHasProbe != standardHadProbe {
+		t.Fatal("Standard data changed through complete view alias")
 	}
 }
 
 // TestProjectProductionCatalogBypassesRejected keeps the complete view as the
-// sole project catalog authority. Only explicit composition roots may acquire
+// sole project catalog authority. Only exact composition functions may acquire
 // it; every other production consumer must read its Project-owned view.
 func TestProjectProductionCatalogBypassesRejected(t *testing.T) {
 	root := testsupport.RepoRoot(t)
 	projectDir := filepath.Join(root, "internal", "project")
-	allowed := map[string]bool{"configreference.go": true, "project.go": true, "scaffold.go": true}
 	entries, err := os.ReadDir(projectDir)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") || allowed[entry.Name()] {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") {
 			continue
 		}
 		body, err := os.ReadFile(filepath.Join(projectDir, entry.Name()))
 		if err != nil {
 			t.Fatal(err)
 		}
-		if bypass := projectCatalogBypass(string(body)); bypass != "" {
-			t.Errorf("project production bypass %s in %s", bypass, entry.Name())
+		bypasses, err := projectCatalogBypasses(entry.Name(), body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, bypass := range bypasses {
+			t.Errorf("project production bypass %s", bypass)
 		}
 	}
-	for _, bypass := range []string{"catalog.Standard", "catalog.CompleteView()", "catalog.NewView("} {
-		if got := projectCatalogBypass("package project\nvar _ = " + bypass); got != bypass {
-			t.Errorf("bypass probe %q returned %q", bypass, got)
+
+	for _, selector := range []string{"Standard", "CompleteView", "NewView", "SingletonKinds"} {
+		source := "package project\nimport \"github.com/hypnotox/agentic-workflows/internal/catalog\"\nfunc forbidden() { _ = catalog." + selector
+		if selector != "Standard" {
+			source += "()"
 		}
+		source += " }\n"
+		got, err := projectCatalogBypasses("project.go", []byte(source))
+		if err != nil || len(got) != 1 || !strings.HasSuffix(got[0], ":"+selector) {
+			t.Errorf("bypass probe %s = %v, %v", selector, got, err)
+		}
+	}
+
+	allowedSource := `package project
+import "github.com/hypnotox/agentic-workflows/internal/catalog"
+func Open() { _ = catalog.CompleteView() }
+func forbidden() { _ = catalog.CompleteView() }
+`
+	got, err := projectCatalogBypasses("project.go", []byte(allowedSource))
+	if err != nil || len(got) != 1 || got[0] != "project.go:forbidden:CompleteView" {
+		t.Errorf("function-scoped bypass probe = %v, %v", got, err)
 	}
 }
 
-func projectCatalogBypass(body string) string {
-	for _, bypass := range []string{"catalog.Standard", "catalog.CompleteView()", "catalog.NewView("} {
-		if strings.Contains(body, bypass) {
-			return bypass
-		}
+func projectCatalogBypasses(filename string, body []byte) ([]string, error) {
+	allowed := map[string]map[string]map[string]bool{
+		"configreference.go": {"PotentialVarConsumers": {"CompleteView": true}},
+		"project.go": {
+			"newLoader":       {"NewView": true},
+			"Open":            {"CompleteView": true},
+			"openRootProject": {"CompleteView": true},
+		},
+		"scaffold.go": {
+			"ScaffoldConfig":   {"CompleteView": true},
+			"neededVarsFromFS": {"CompleteView": true},
+		},
 	}
-	return ""
+	watched := map[string]bool{"Standard": true, "CompleteView": true, "NewView": true, "SingletonKinds": true}
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, filename, body, 0)
+	if err != nil {
+		return nil, err
+	}
+	var out []string
+	inspect := func(function string, node ast.Node) {
+		ast.Inspect(node, func(node ast.Node) bool {
+			sel, ok := node.(*ast.SelectorExpr)
+			if !ok || !watched[sel.Sel.Name] {
+				return true
+			}
+			pkg, ok := sel.X.(*ast.Ident)
+			if !ok || pkg.Name != "catalog" || allowed[filename][function][sel.Sel.Name] {
+				return true
+			}
+			out = append(out, filename+":"+function+":"+sel.Sel.Name)
+			return true
+		})
+	}
+	for _, decl := range file.Decls {
+		if fn, ok := decl.(*ast.FuncDecl); ok {
+			inspect(fn.Name.Name, fn.Body)
+			continue
+		}
+		inspect("<package>", decl)
+	}
+	return out, nil
 }
 
 // Catalog default data must be generic: no default names an awf-repo path or

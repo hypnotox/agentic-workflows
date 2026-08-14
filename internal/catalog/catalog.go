@@ -3,6 +3,7 @@ package catalog
 
 import (
 	"maps"
+	"reflect"
 	"slices"
 )
 
@@ -94,9 +95,12 @@ type DocEntry struct {
 // and entries that declare their own output Path. It is derived from the one doc
 // collection; internal/config.IsSingletonKind reads it for sidecar and part
 // path classification.
-func SingletonKinds() []string {
+func SingletonKinds() []string { return SingletonKindsFor(Standard) }
+
+// SingletonKindsFor returns c's sorted structural singleton kinds.
+func SingletonKindsFor(c *Catalog) []string {
 	var out []string
-	for k, e := range Standard.Docs {
+	for k, e := range c.Docs {
 		if e.AgentsDoc || e.Path != "" {
 			out = append(out, k)
 		}
@@ -207,17 +211,53 @@ func cloneData(src map[string]any) map[string]any {
 }
 
 func cloneDataValue(value any) any {
-	switch value := value.(type) {
-	case map[string]any:
-		return cloneData(value)
-	case []any:
-		out := make([]any, len(value))
-		for i := range value {
-			out[i] = cloneDataValue(value[i])
+	if value == nil {
+		return nil
+	}
+	return cloneReferenceValue(reflect.ValueOf(value)).Interface()
+}
+
+func cloneReferenceValue(value reflect.Value) reflect.Value {
+	switch value.Kind() {
+	case reflect.Interface:
+		if value.IsNil() {
+			return reflect.Zero(value.Type())
+		}
+		out := reflect.New(value.Type()).Elem()
+		out.Set(cloneReferenceValue(value.Elem()))
+		return out
+	case reflect.Map:
+		if value.IsNil() {
+			return reflect.Zero(value.Type())
+		}
+		out := reflect.MakeMapWithSize(value.Type(), value.Len())
+		iter := value.MapRange()
+		for iter.Next() {
+			out.SetMapIndex(cloneReferenceValue(iter.Key()), cloneReferenceValue(iter.Value()))
 		}
 		return out
-	case []string:
-		return slices.Clone(value)
+	case reflect.Slice:
+		if value.IsNil() {
+			return reflect.Zero(value.Type())
+		}
+		out := reflect.MakeSlice(value.Type(), value.Len(), value.Len())
+		for i := range value.Len() {
+			out.Index(i).Set(cloneReferenceValue(value.Index(i)))
+		}
+		return out
+	case reflect.Array:
+		out := reflect.New(value.Type()).Elem()
+		for i := range value.Len() {
+			out.Index(i).Set(cloneReferenceValue(value.Index(i)))
+		}
+		return out
+	case reflect.Pointer:
+		if value.IsNil() {
+			return reflect.Zero(value.Type())
+		}
+		out := reflect.New(value.Type().Elem())
+		out.Elem().Set(cloneReferenceValue(value.Elem()))
+		return out
 	default:
 		return value
 	}

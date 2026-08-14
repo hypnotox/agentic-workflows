@@ -1,10 +1,13 @@
 package project
 
 import (
+	"maps"
 	"slices"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
 // The whole doc surface derives from the single catalog doc collection: output
@@ -22,8 +25,8 @@ func TestUnifiedDocModelProjections(t *testing.T) {
 		}
 	}
 	slices.Sort(wantSK)
-	if sk := catalog.SingletonKinds(); !slices.Equal(sk, wantSK) {
-		t.Errorf("SingletonKinds()=%v, want root/structural entries %v", sk, wantSK)
+	if sk := catalog.SingletonKindsFor(cat); !slices.Equal(sk, wantSK) {
+		t.Errorf("SingletonKindsFor()=%v, want root/structural entries %v", sk, wantSK)
 	}
 
 	// (b) plainSingletons == exactly structural non-generated entries, and
@@ -56,6 +59,21 @@ func TestUnifiedDocModelProjections(t *testing.T) {
 	}
 }
 
+func TestProjectSingletonConsumersUseInjectedView(t *testing.T) {
+	custom := *catalog.CompleteView().Catalog()
+	custom.Docs = maps.Clone(custom.Docs)
+	delete(custom.Docs, "workflow")
+	custom.Docs["custom-singleton"] = catalog.DocEntry{Path: "custom.md", Sections: []string{"body"}}
+	p := &Project{Root: t.TempDir(), Cfg: &config.Config{}, view: catalog.NewView(&custom)}
+	model := p.buildClaimedModel(nil, topic.Corpus{})
+	if model.singletons["workflow"] || !model.singletons["custom-singleton"] {
+		t.Fatalf("project singleton membership = %#v", model.singletons)
+	}
+	if model.files[config.DirName+"/workflow.yaml"] || !model.files[config.DirName+"/custom-singleton.yaml"] {
+		t.Fatalf("project singleton files = %#v", model.files)
+	}
+}
+
 // TestSingletonShapeIgnoresMandatory uses deliberately heterogeneous metadata
 // so a future Mandatory-based membership shortcut fails even if the standard
 // catalog happens to keep those attributes correlated.
@@ -71,6 +89,9 @@ func TestSingletonShapeIgnoresMandatory(t *testing.T) {
 		got[name] = entry.AgentsDoc || entry.Path != ""
 	}
 	want := map[string]bool{"root": true, "structural": true, "named-with-root-sc": false, "named-with-doc-sc": false}
+	if gotKinds := catalog.SingletonKindsFor(&catalog.Catalog{Docs: entries}); !slices.Equal(gotKinds, []string{"root", "structural"}) {
+		t.Fatalf("injected singleton kinds = %v", gotKinds)
+	}
 	for name, expected := range want {
 		if got[name] != expected {
 			t.Errorf("singleton(%s) = %t, want %t", name, got[name], expected)

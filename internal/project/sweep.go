@@ -88,7 +88,7 @@ func (p *Project) buildClaimedModel(files []RenderedFile, topics topic.Corpus) *
 			}
 		}
 	}
-	for _, kind := range catalog.SingletonKinds() {
+	for _, kind := range catalog.SingletonKindsFor(p.catalog()) {
 		m.files[config.DirName+"/"+kind+".yaml"] = true
 		m.singletons[kind] = true
 		m.dirs[config.DirName+"/parts/"+kind] = true
