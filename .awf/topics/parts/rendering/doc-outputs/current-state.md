@@ -17,20 +17,14 @@ Backing: test
 
 ### `invariant: layout-derivation`
 
-The decisions directory, ADR index file, and plans directory derive structurally from the fixed `docs` root as `docs/decisions`, `docs/decisions/INDEX.md`, and `docs/plans`, rather than being independently configurable.
+For Full, the decisions directory, ADR index file, and plans directory derive structurally from the fixed `docs` root as `docs/decisions`, `docs/decisions/INDEX.md`, and `docs/plans`; Core does not emit those managed structural outputs.
 Origin: ADR-0148
-Revised-by: ADR-0251
+Revised-by: ADR-0251, ADR-introduce-core-and-full-workflow-profiles
 Backing: test
 
 ### `invariant: docs-root-fixed`
 
 The documentation root is exactly `docs`, fixed in the binary rather than read from configuration.
-Origin: ADR-0251
-Backing: test
-
-### `invariant: layout-docs-full-catalog`
-
-The layout docs map contains exactly every catalog document name and no other keys: the agent guide maps to `AGENTS.md`, a document declaring `Path` maps to `docs/<Path>`, and every other document maps to `docs/<name>.md`.
 Origin: ADR-0251
 Backing: test
 
@@ -110,4 +104,10 @@ Backing: test
 Opaque generated documentation carries one compact reader-facing `awf:source` marker for topic pages and indexes, domain navigation, glossary, the pitfall index and each exact-source pitfall leaf, the ADR index, config reference, and target bridges. Section-overridable standard docs and AGENTS.md retain their `awf:edit` guidance without duplication; authored ADRs and plans remain banner-free. Marker payloads guide readers and are not exhaustive machine dependencies.
 Origin: ADR-0250
 Revised-by: ADR-0251, ADR-0262
+Backing: test
+
+### `invariant: layout-docs-profile-projection`
+
+Layout and document-map derivation expose only documents emitted by the selected profile.
+Origin: ADR-introduce-core-and-full-workflow-profiles
 Backing: test

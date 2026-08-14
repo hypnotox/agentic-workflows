@@ -602,9 +602,6 @@ func TestAuthorityGuidedImplementationAutonomy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(partial), "{{") {
-		t.Errorf("shared autonomy partial must remain variable-free:\n%s", partial)
-	}
 	for _, line := range strings.Split(string(partial), "\n") {
 		if strings.HasPrefix(strings.TrimSpace(line), "#") {
 			t.Errorf("shared autonomy partial must not interrupt consumer structure with heading %q", line)
@@ -684,9 +681,6 @@ func TestProductionCodeOutlineApprovalProjection(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := string(partial)
-	if strings.Contains(body, "{{") {
-		t.Errorf("outline approval partial must remain variable-free:\n%s", body)
-	}
 	for _, line := range strings.Split(body, "\n") {
 		if strings.HasPrefix(strings.TrimSpace(line), "#") {
 			t.Errorf("outline approval partial must not interrupt consumer structure with heading %q", line)
@@ -1598,7 +1592,7 @@ func TestOrientingSkillContract(t *testing.T) {
 	// The same render proves both the single home and the references that
 	// replaced the three consumer skills' inline copies.
 	config := func(target string) string {
-		return "prefix: example\nintegrationBranch: main\n"
+		return "prefix: example\nprofile: full\nintegrationBranch: main\n"
 	}
 	for _, target := range KnownTargets() {
 		t.Run(target, func(t *testing.T) {
@@ -2392,6 +2386,10 @@ type fallbackCase struct {
 
 var unsetFallbackCases = []fallbackCase{
 	{
+		tmpl: "agents/grounding-checker.md.tmpl",
+		want: []string{"Ground guide-first, in order", "Current-state documentation is what binds"},
+	},
+	{
 		tmpl: "agents/implementer.md.tmpl",
 		want: []string{"the project's gate command"},
 		ban:  []string{"Shortcuts that are never acceptable here", "``"},
@@ -2679,7 +2677,7 @@ func TestRoadmapGraduationTemplate(t *testing.T) {
 // invariant: rendering/guide-and-doc-templates:guide-entry-point-routing (TestGuideOmitsLocalAndStandardSkillMetadata)
 func TestGuideOmitsLocalAndStandardSkillMetadata(t *testing.T) {
 	const localDescription = "Route ultraviolet nebula work through its native procedure."
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", map[string]string{
 		"skills/nebula-router.yaml": "data:\n  description: " + localDescription + "\n",
 	})
 	p, err := Open(testContext(t), root)
@@ -2752,9 +2750,6 @@ func TestAuthorityGuidedReviewRemediation(t *testing.T) {
 	partial, err := fs.ReadFile(templates.FS, "partials/review-remediation-autonomy.md")
 	if err != nil {
 		t.Fatal(err)
-	}
-	if strings.Contains(string(partial), "{{") {
-		t.Errorf("shared review-remediation partial must remain variable-free:\n%s", partial)
 	}
 	for _, line := range strings.Split(string(partial), "\n") {
 		if strings.HasPrefix(strings.TrimSpace(line), "#") {

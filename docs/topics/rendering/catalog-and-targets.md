@@ -77,17 +77,16 @@ Backing: test
 
 ### `invariant: target-dialect-render`
 
-Each built-in target renders every catalog skill and agent exactly once at that target's declared path and dialect, and the emitted artifact parses under that runtime's native format. A closed target descriptor may additionally declare a target-owned skill with a catalog predicate; it uses the same target path, prefix, dialect, provenance, and policy machinery, is absent from every other target, and is planned and rendered by one resolved declaration path.
-Claude Code and Pi each render every skill and agent exactly once at that descriptor's declared path and encoding, and the emitted artifact parses under that runtime's native format. The built-in Claude Code and Pi targets emit Markdown agents while retaining independent descriptor-owned paths, suffixes, capabilities, bridges, wording, and additional outputs.
+Each built-in target renders every skill and agent in the selected catalog view exactly once at that target's declared path and dialect, and the emitted artifact parses under that runtime's native format. A target-owned skill with a catalog predicate uses the same declaration path and is emitted only when its target and selected view include it.
 Origin: ADR-0122
-Revised-by: ADR-0214, ADR-0218, ADR-0251
+Revised-by: ADR-0214, ADR-0218, ADR-0251, ADR-introduce-core-and-full-workflow-profiles
 Backing: test
 
 ### `invariant: unified-doc-model`
 
-Every doc and singleton projection is derived from the single catalog document collection rather than a separate hand-maintained list. The singleton kinds equal exactly the catalog entries declaring their own output paths, the plain singletons equal those non-agents-doc non-generated entries, and each such entry renders under the documentation root at its declared path.
+Every selected doc and singleton projection derives from the one selected catalog document collection rather than a separate hand-maintained list. Its singleton kinds equal exactly the selected entries declaring output paths, and each such entry renders under the documentation root at its declared path.
 Origin: ADR-0061
-Revised-by: ADR-0251
+Revised-by: ADR-0251, ADR-introduce-core-and-full-workflow-profiles
 Backing: test
 
 ### `invariant: var-descriptor-parity`
@@ -101,4 +100,10 @@ Backing: test
 The catalog's value-carrying string var descriptor keys are exactly the pinned functional set (gateCmd, gateCmdFull, checkCmd, commitGateCmd, testCmd, commitScopes, activeMdRegenCmd, invariantTestPath); no multiselect descriptor controls catalog rendering.
 Origin: ADR-0084
 Revised-by: ADR-0156, ADR-0158, ADR-0210, ADR-0251, ADR-0271
+Backing: test
+
+### `invariant: profile-dependency-closure`
+
+The complete catalog projects closed Core and Full views; every selected artifact dependency resolves within its selected view.
+Origin: ADR-introduce-core-and-full-workflow-profiles
 Backing: test

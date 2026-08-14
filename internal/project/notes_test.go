@@ -24,9 +24,9 @@ func TestUnsetVarNotesPresentKeySemantics(t *testing.T) {
 		yaml     string
 		wantNote bool
 	}{
-		"present-empty": {"prefix: example\nintegrationBranch: main\nvars: {testCmd: go test ./..., gateCmd: \"\"}\n", true},
-		"present-null":  {"prefix: example\nintegrationBranch: main\nvars: {testCmd: go test ./..., gateCmd: null}\n", true},
-		"absent":        {"prefix: example\nintegrationBranch: main\nvars: {testCmd: go test ./...}\n", false},
+		"present-empty": {"prefix: example\nprofile: full\nintegrationBranch: main\nvars: {testCmd: go test ./..., gateCmd: \"\"}\n", true},
+		"present-null":  {"prefix: example\nprofile: full\nintegrationBranch: main\nvars: {testCmd: go test ./..., gateCmd: null}\n", true},
+		"absent":        {"prefix: example\nprofile: full\nintegrationBranch: main\nvars: {testCmd: go test ./...}\n", false},
 	} {
 		t.Run(name, func(t *testing.T) {
 			p, err := Open(testContext(t), scaffold(t, tc.yaml))
@@ -54,7 +54,7 @@ func TestUnsetVarNotesPresentKeySemantics(t *testing.T) {
 // Adapter duplicates collapse: with two targets the same skill renders twice
 // under one template id and must produce a single note.
 func TestUnsetVarNotesCollapsesAdapterDuplicates(t *testing.T) {
-	p, err := Open(testContext(t), scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: \"\", testCmd: \"\"}\n"))
+	p, err := Open(testContext(t), scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: \"\", testCmd: \"\"}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestUnsetVarNotesCollapsesAdapterDuplicates(t *testing.T) {
 }
 
 func TestUnsetVarNotesSurfacesRenderError(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n",
+	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n",
 		map[string]string{
 			"skills/tdd.yaml": "data:\n  testSurfaces:\n    - {name: \"<no value>\", kind: k, location: l}\n",
 		})
@@ -91,7 +91,7 @@ func TestUnsetVarNotesSurfacesRenderError(t *testing.T) {
 // RenderAll never does - so a malformed ADR under a declared domain must surface
 // as an error here rather than being swallowed.
 func TestAdvisoryNotesSurfacesDomainDocError(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: [config]\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\ndomains: [config]\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-bad.md"),
 		"---\nstatus: {bad\n---\n# ADR-0001: Bad\n")
 	p, err := Open(testContext(t), root)
@@ -107,7 +107,7 @@ func TestAdvisoryNotesSurfacesDomainDocError(t *testing.T) {
 // per adapter target (inv: stub-notes-path-keyed).
 func TestStubNotesPathKeyedAcrossTargets(t *testing.T) {
 	root := scaffoldFiles(t,
-		"prefix: example\nintegrationBranch: main\nvars: {testCmd: go test ./..., gateCmd: make gate, gateCmdFull: make gate full}\n",
+		"prefix: example\nprofile: full\nintegrationBranch: main\nvars: {testCmd: go test ./..., gateCmd: make gate, gateCmdFull: make gate full}\n",
 		map[string]string{
 			"skills/parts/tdd/notes.md": "<!-- awf:stub -->\nstarter notes\n",
 		})
@@ -162,7 +162,7 @@ func TestStubNotesDefaultsClauseUnit(t *testing.T) {
 // line, sections in template order; a stub-marked part moves its section into
 // the parts clause.
 func TestStubNotesReportsDefaultsAndParts(t *testing.T) {
-	cfg := "prefix: example\nintegrationBranch: main\nvars: {}\n"
+	cfg := "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n"
 	p, err := Open(testContext(t), scaffold(t, cfg))
 	if err != nil {
 		t.Fatal(err)
@@ -194,7 +194,7 @@ func TestStubNotesReportsDefaultsAndParts(t *testing.T) {
 // Domain docs render outside RenderAll; their stub current-state default must
 // still reach the advisory.
 func TestStubNotesDomainDocs(t *testing.T) {
-	p, err := Open(testContext(t), scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: [config]\n"))
+	p, err := Open(testContext(t), scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\ndomains: [config]\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -213,7 +213,7 @@ func TestStubNotesDomainDocs(t *testing.T) {
 // once, under the part path, with the fencing remedy in the note text.
 func TestMarkerNotesPartKeyedAndDeduplicated(t *testing.T) {
 	root := scaffoldFiles(t,
-		"prefix: example\nintegrationBranch: main\nvars: {testCmd: go test ./..., gateCmd: make gate, gateCmdFull: make gate full}\n",
+		"prefix: example\nprofile: full\nintegrationBranch: main\nvars: {testCmd: go test ./..., gateCmd: make gate, gateCmdFull: make gate full}\n",
 		map[string]string{
 			"skills/parts/tdd/notes.md": "some prose\n<!-- awf:section bogus -->\nmore prose\n",
 		})
@@ -264,7 +264,7 @@ func TestMarkerNotesInlineAndFencedSilent(t *testing.T) {
 // Domain docs render outside RenderAll; a marker line in a domain part must
 // still reach the advisory (ADR-0083 Decision 4).
 func TestMarkerNotesDomainDocParts(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: [config]\n",
+	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\ndomains: [config]\n",
 		map[string]string{
 			"domains/parts/config/current-state.md": "state prose\n<!-- awf:end -->\n",
 		})

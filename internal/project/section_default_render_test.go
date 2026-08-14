@@ -13,7 +13,7 @@ import (
 // planSections) would pass both unit halves but fail this.
 // invariant: rendering/render-engine:section-default-splice (TestSectionDefaultPartRendersEndToEnd)
 func TestSectionDefaultPartRendersEndToEnd(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n", map[string]string{
 		"parts/adr-readme/naming.md": "Preamble before the default.\n\n{{=awf:sectionDefault}}\n\nAppendix after the default.\n",
 	})
 	p, err := Open(testContext(t), root)
@@ -43,7 +43,7 @@ func TestSectionDefaultPartRendersEndToEnd(t *testing.T) {
 // pipeline with the ADR-0072 hard error, not render an authoring prompt.
 // invariant: rendering/render-engine:section-default-stub-error (TestSectionDefaultStubPartFailsRender)
 func TestSectionDefaultStubPartFailsRender(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n", map[string]string{
 		"parts/agents-doc/identity.md": "{{=awf:sectionDefault}}\n",
 	})
 	p, err := Open(testContext(t), root)

@@ -13,6 +13,7 @@ check` detects drift.
 
 ## Highlights
 
+- Core and Full workflow profiles: Core for operational coding discipline, Full for governed ADR, plan, and current-state authority
 - A workflow from clarification through implementation, review, and retrospective
 - ADRs for load-bearing decisions and plans when sequencing or coordination helps
 - Fresh-context agents for exploration, grounding, implementation, and review
@@ -55,8 +56,10 @@ awf check
 awf list
 ```
 
-`awf init` creates `.awf/` and renders the workflow. Commit both the source tree and its
-rendered outputs. After changing `.awf/`, render and check again:
+`awf init` creates a Core `.awf/` tree and renders the workflow. Use `awf init --profile full`
+for ADR, plan, current-state, context, and workflow-audit governance. Existing repositories
+upgrade explicitly to Full. Commit both the source tree and its rendered outputs. After changing
+`.awf/`, render and check again:
 
 ```sh
 awf render
@@ -76,9 +79,9 @@ collision. `awf init --force` first saves each replaced file as `<path>.awf-bak`
 └── parts/...                      └── docs/
 ```
 
-Use only the mechanisms the work needs: brainstorm for clarification or a material
-choice, write an ADR for a durable decision, and plan when sequencing, coordination, or
-resumability helps.
+Core supplies brainstorming, implementation, testing, review, efforts, and managed worktrees.
+Full adds ADRs for durable decisions, plans for sequenced work, current-state authority, context,
+and workflow audit.
 
 ```mermaid
 flowchart LR

@@ -14,7 +14,7 @@ var Standard = &Catalog{
 		"grounding": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Check broad or uncertain repository premises from any workflow.", Trigger: "Use when correctness depends on broad or uncertain repository facts.", CommonFollowUps: []string{"brainstorming", "debugging", "refactor-coupling-audit"}}, RequiresAgent: "grounding-checker", Sections: []string{
 			"invocation", "brief-construction-and-dispatch", "finding-classification", "boundaries", "notes",
 		}},
-		"writing-plans": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Turn an approved design into an executable plan.", Trigger: "Use when implementation needs a durable, reviewable plan.", UsuallyFollows: []string{"brainstorming", "proposing-adr"}, CommonFollowUps: []string{"reviewing-plan"}}, Sections: []string{
+		"writing-plans": {FullOnly: true, Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Turn an approved design into an executable plan.", Trigger: "Use when implementation needs a durable, reviewable plan.", UsuallyFollows: []string{"brainstorming", "proposing-adr"}, CommonFollowUps: []string{"reviewing-plan"}}, Sections: []string{
 			"positioning", "when-to-invoke", "conventions-path", "conventions-header",
 			"conventions-tasks", "conventions-no-placeholders", "gate-tier-note",
 			"conventions-test-first", "procedure-confirm-scope", "plan-template-ref",
@@ -22,13 +22,13 @@ var Standard = &Catalog{
 			"terminal-step", "plan-lifecycle", "linked-authority-freshness", "notes",
 		}},
 		"executing-direct": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Implement a clear narrow change directly.", Trigger: "Use when outcome, boundary, and verification are clear and no independent design or plan need fires.", CommonFollowUps: []string{"reviewing-impl", "effort-workflow"}}},
-		"executing-plans": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Implement an accepted plan.", Trigger: "Use when a plan is ready for implementation.", UsuallyFollows: []string{"writing-plans", "reviewing-plan"}, CommonFollowUps: []string{"reviewing-impl", "subagent-driven-development"}}, RequiresAgent: "implementer", Sections: []string{
+		"executing-plans": {FullOnly: true, Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Implement an accepted plan.", Trigger: "Use when a plan is ready for implementation.", UsuallyFollows: []string{"writing-plans", "reviewing-plan"}, CommonFollowUps: []string{"reviewing-impl", "subagent-driven-development"}}, RequiresAgent: "implementer", Sections: []string{
 			"positioning", "when-to-invoke", "procedure-resolve-plan", "procedure-raise-concerns",
 			"procedure-per-task", "tdd-opt-in", "gate-tier-detail", "procedure-adr-final-commit",
 			"procedure-non-adr-final-commit", "terminal-step", "project-invariants", "notes-gate",
 			"notes-auto-commit", "notes-one-concern", "notes-docs-travel", "red-flags",
 		}},
-		"subagent-driven-development": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Implement a plan through reviewed phase owners.", Trigger: "Use when a plan phase benefits from delegated implementation ownership.", UsuallyFollows: []string{"writing-plans", "reviewing-plan"}, CommonFollowUps: []string{"reviewing-impl", "executing-plans"}}, RequiresAgent: "implementer", Sections: []string{
+		"subagent-driven-development": {FullOnly: true, Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Implement a plan through reviewed phase owners.", Trigger: "Use when a plan phase benefits from delegated implementation ownership.", UsuallyFollows: []string{"writing-plans", "reviewing-plan"}, CommonFollowUps: []string{"reviewing-impl", "executing-plans"}}, RequiresAgent: "implementer", Sections: []string{
 			"positioning", "per-task-review-note", "when-to-invoke", "procedure-resolve-plan",
 			"procedure-raise-concerns", "procedure-extract-context", "dispatch-conventions",
 			"procedure-status-handling", "per-task-review", "final-task-adr-flip", "terminal-step",
@@ -57,7 +57,7 @@ var Standard = &Catalog{
 		"orienting": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Ground the session in repository truth before starting, resuming, or widening work.", Trigger: "Use when repository truth is needed while taking up a topic: before brainstorming fresh work, when resuming an effort, or when taking over a handoff.", CommonFollowUps: []string{"brainstorming", "debugging", "writing-plans", "executing-plans"}}, Sections: []string{
 			"when-to-invoke", "guide-ladder", "context-command", "resume-revalidation", "hand-off",
 		}},
-		"proposing-adr": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Author a decision record for a material design choice.", Trigger: "Use when a durable architectural or workflow decision is needed.", UsuallyFollows: []string{"brainstorming"}, CommonFollowUps: []string{"reviewing-adr", "writing-plans"}},
+		"proposing-adr": {FullOnly: true, Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Author a decision record for a material design choice.", Trigger: "Use when a durable architectural or workflow decision is needed.", UsuallyFollows: []string{"brainstorming"}, CommonFollowUps: []string{"reviewing-adr", "writing-plans"}},
 			Sections: []string{
 				"positioning", "when-to-invoke", "conventions", "procedure-number", "procedure-write",
 				"state-doc-update", "procedure-state-changes", "procedure-regen",
@@ -74,7 +74,7 @@ var Standard = &Catalog{
 				},
 			},
 		},
-		"adr-lifecycle": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Apply an ADR lifecycle transition correctly.", Trigger: "Use when transitioning an ADR between lifecycle states.", UsuallyFollows: []string{"proposing-adr", "reviewing-adr"}, CommonFollowUps: []string{"executing-plans", "writing-plans"}},
+		"adr-lifecycle": {FullOnly: true, Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Apply an ADR lifecycle transition correctly.", Trigger: "Use when transitioning an ADR between lifecycle states.", UsuallyFollows: []string{"proposing-adr", "reviewing-adr"}, CommonFollowUps: []string{"executing-plans", "writing-plans"}},
 			Sections: []string{
 				"states", "transitions", "state-changes",
 				"procedure-status-edit", "procedure-claim-mutation", "state-doc-update",
@@ -91,11 +91,11 @@ var Standard = &Catalog{
 			},
 		},
 		"bugfix": {Profile: WorkflowProfile{Kind: WorkflowTask, Purpose: "Apply a fix with a known root cause.", Trigger: "Use when applying a fix whose root cause is already known.", UsuallyFollows: []string{"debugging"}, CommonFollowUps: []string{"reviewing-impl"}}, Sections: []string{"test-tiers", "pitfalls-check", "oracle-note", "memory-checkpoint"}},
-		"reviewing-plan": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Independently review an implementation plan.", Trigger: "Use when a written plan needs review before execution or linked authority changes.", UsuallyFollows: []string{"writing-plans", "reviewing-adr"}, CommonFollowUps: []string{"executing-plans"}}, RequiresAgent: "plan-reviewer", Sections: []string{
+		"reviewing-plan": {FullOnly: true, Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Independently review an implementation plan.", Trigger: "Use when a written plan needs review before execution or linked authority changes.", UsuallyFollows: []string{"writing-plans", "reviewing-adr"}, CommonFollowUps: []string{"executing-plans"}}, RequiresAgent: "plan-reviewer", Sections: []string{
 			"when-fires", "procedure", "artifact-path-detection", "dispatch-subagent",
 			"classify-route-findings", "apply-fixes-commit", "re-review-loop", "hand-off", "notes",
 		}},
-		"reviewing-adr": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Independently review an ADR.", Trigger: "Use when a proposed or amended ADR needs decision-quality review.", UsuallyFollows: []string{"proposing-adr"}, CommonFollowUps: []string{"reviewing-plan", "writing-plans"}}, RequiresAgent: "adr-reviewer", Sections: []string{
+		"reviewing-adr": {FullOnly: true, Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Independently review an ADR.", Trigger: "Use when a proposed or amended ADR needs decision-quality review.", UsuallyFollows: []string{"proposing-adr"}, CommonFollowUps: []string{"reviewing-plan", "writing-plans"}}, RequiresAgent: "adr-reviewer", Sections: []string{
 			"when-fires", "procedure", "artifact-path-detection", "dispatch-subagent",
 			"classify-route-findings", "apply-fixes-commit", "re-review-loop", "status-flip",
 			"hand-off-to-plan-review", "notes",
@@ -113,13 +113,14 @@ var Standard = &Catalog{
 			"category-5-constructors", "category-6-init-visibility", "test-coupling-planning-rule",
 			"output-format", "scope-shrink-rule", "notes",
 		}},
-		"roadmap-graduation": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Move a settled roadmap item out of the roadmap.", Trigger: "Use when a roadmap entry graduates to an ADR or a PR, or is explicitly dropped.", UsuallyFollows: []string{"reviewing-impl"}}, RequiresDoc: "roadmap", Sections: []string{
+		"roadmap-graduation": {FullOnly: true, Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Move a settled roadmap item out of the roadmap.", Trigger: "Use when a roadmap entry graduates to an ADR or a PR, or is explicitly dropped.", UsuallyFollows: []string{"reviewing-impl"}}, RequiresDoc: "roadmap", Sections: []string{
 			"when-fires", "failure-modes", "identify-entry", "reverify-measurements",
 			"graduate-single-commit", "explicit-drop", "same-commit", "doc-currency", "notes",
 		}},
 	},
 	Agents: map[string]AgentSpec{
 		"adr-reviewer": {
+			FullOnly:    true,
 			Name:        "adr-reviewer",
 			Description: "Independent, lens-diverse reviewer for ADRs under {{ .layout.adrDir }}/ in {{ .prefix }} projects.\nReturns structured findings per the shared review-discipline spine.",
 			Sections:    []string{"universal-lenses", "project-focus"},
@@ -135,6 +136,7 @@ var Standard = &Catalog{
 			},
 		},
 		"plan-reviewer": {
+			FullOnly:    true,
 			Name:        "plan-reviewer",
 			Description: "Independent, lens-diverse reviewer for plans under {{ .layout.plansDir }}/ in {{ .prefix }} projects.\nReturns structured findings per the shared review-discipline spine.",
 			Sections:    []string{"universal-lenses", "project-focus", "doc-currency"},
@@ -204,7 +206,7 @@ var Standard = &Catalog{
 			Sections:    []string{"identity", "verification-scope", "return-schema"},
 		},
 	},
-	DomainDoc: TargetSpec{Sections: []string{"current-state"}},
+	DomainDoc: TargetSpec{FullOnly: true, Sections: []string{"current-state"}},
 	Docs: map[string]DocEntry{
 		// Name-derived docs (Mandatory false).
 		"architecture": {Title: "Architecture", Desc: "system shape, packages, key components, dependencies", Sections: []string{"overview", "components", "data-flow", "dependencies"}, TID: "docs/architecture.md.tmpl"},
@@ -245,10 +247,10 @@ var Standard = &Catalog{
 		"agents-doc": {Mandatory: true, AgentsDoc: true, TID: "agents-doc/AGENTS.md.tmpl", Sections: []string{
 			"awf-setup", "you-and-this-project", "identity", "invariants", "workflow", "working-memory", "commands", "document-map",
 		}},
-		"adr-readme":               {Mandatory: true, Path: "decisions/README.md", TemplateKey: "adrReadme", TID: "adr-readme/README.md.tmpl", Sections: []string{"intro", "when", "naming", "frontmatter", "lifecycle", "state-changes", "index"}},
-		"adr-template":             {Mandatory: true, Path: "decisions/template.md", TemplateKey: "adrTemplate", TID: "adr-template/template.md.tmpl", Sections: []string{"frontmatter", "body"}},
-		"plans-readme":             {Mandatory: true, Path: "plans/README.md", TemplateKey: "plansReadme", TID: "plans-readme/README.md.tmpl", Sections: []string{"intro", "naming", "structure"}},
-		"plans-template":           {Mandatory: true, Path: "plans/template.md", TemplateKey: "plansTemplate", TID: "plans-template/template.md.tmpl", Sections: []string{"header", "phases", "verification", "notes"}},
+		"adr-readme":               {FullOnly: true, Mandatory: true, Path: "decisions/README.md", TemplateKey: "adrReadme", TID: "adr-readme/README.md.tmpl", Sections: []string{"intro", "when", "naming", "frontmatter", "lifecycle", "state-changes", "index"}},
+		"adr-template":             {FullOnly: true, Mandatory: true, Path: "decisions/template.md", TemplateKey: "adrTemplate", TID: "adr-template/template.md.tmpl", Sections: []string{"frontmatter", "body"}},
+		"plans-readme":             {FullOnly: true, Mandatory: true, Path: "plans/README.md", TemplateKey: "plansReadme", TID: "plans-readme/README.md.tmpl", Sections: []string{"intro", "naming", "structure"}},
+		"plans-template":           {FullOnly: true, Mandatory: true, Path: "plans/template.md", TemplateKey: "plansTemplate", TID: "plans-template/template.md.tmpl", Sections: []string{"header", "phases", "verification", "notes"}},
 		"maintainable-code-design": {Mandatory: true, DocumentMap: true, Title: "Maintainable Code Design", Desc: "decision framework for cohesive models, explicit boundaries, dependencies, refactoring, and testable design", Path: "maintainable-code-design.md", TemplateKey: "maintainableCodeDesign", TID: "docs/maintainable-code-design.md.tmpl", Sections: []string{"decision-posture", "contextual-heuristics", "semantic-modeling", "readability", "boundaries-and-dependencies", "pattern-toolbox", "preparatory-refactoring", "failure-modes"}},
 		"workflow": {Mandatory: true, DocumentMap: true, Title: "Workflow", Desc: "principles, the brainstorm/ADR/plan chain, commit discipline", Path: "workflow.md", TemplateKey: "workflowRef", TID: "docs/workflow.md.tmpl", Sections: []string{
 			"principles", "chain", "working-memory", "commit-discipline", "doc-currency", "composing-the-gate", "local-hooks", "ci",

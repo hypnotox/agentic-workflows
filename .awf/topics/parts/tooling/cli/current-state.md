@@ -4,9 +4,9 @@ The cmd packages and their spec helpers implement the awf command surfaces and t
 
 ### `invariant: cli-creation-and-inventory`
 
-The CLI creates authored ADRs, plans, topics, domains, pitfalls, and additive local documents, and lists fixed catalog inventory; no command selects catalog render membership. `awf new doc <name> <description> [--title <title>]` appends one local-document declaration, renders its output, and reports that repository-relative path without selecting catalog membership.
+The CLI lists fixed catalog inventory and never selects individual catalog membership. Full creates authored ADRs, plans, topics, and domains; both profiles retain pitfalls and additive local documents, while the selected profile controls rendered membership.
 Origin: ADR-0254
-Revised-by: ADR-0262, ADR-0272
+Revised-by: ADR-0262, ADR-0272, ADR-introduce-core-and-full-workflow-profiles
 Backing: test
 
 ### `invariant: pitfall-scaffold`
@@ -76,16 +76,16 @@ Backing: test
 
 ### `invariant: invariants-in-check`
 
-Running `awf check` evaluates the current-state topic corpus; that evaluation contributes a non-zero result and prints its finding whenever it reports an error-severity issue, and contributes a clean result when it reports none.
+Under Full, `awf check` evaluates the current-state topic corpus and propagates error findings to a non-zero result. Core does not load or evaluate that governance corpus.
 Origin: ADR-0007
-Revised-by: ADR-0210
+Revised-by: ADR-0210, ADR-introduce-core-and-full-workflow-profiles
 Backing: test
 
 ### `invariant: check-universe-groups`
 
-The check command groups checks by subject: repo aggregates drift, state, prose, and memory, while staged aggregates its HEAD-to-index state check, plan-artifact findings and non-failing assignment notes, and excludes the directly-invoked commit-message check. Bare awf check runs both aggregates, repo state and staged state dispatch to distinct handlers, and outside a git repository the bare form runs only repo and reports staged unavailable.
+The check command groups repository drift, prose, and memory checks in both profiles; Full additionally aggregates current-state and plan-artifact checks. Staged likewise selects its Full governance checks, and outside Git the bare form reports staged unavailable.
 Origin: ADR-0210
-Revised-by: ADR-0217
+Revised-by: ADR-0217, ADR-introduce-core-and-full-workflow-profiles
 Backing: test
 
 ### `invariant: plan-read-command`
@@ -140,8 +140,9 @@ Backing: test
 
 ### `invariant: upgrade-always-syncs`
 
-`awf upgrade` runs a full sync on every successful invocation, including the zero-migrations case, where it reports that the config is already at the current schema and still re-renders every managed file.
+`awf upgrade` runs a full sync on every successful invocation, including zero migrations, re-rendering every managed file in the selected profile.
 Origin: ADR-0085
+Revised-by: ADR-introduce-core-and-full-workflow-profiles
 Backing: test
 
 ### `invariant: version-compat-gate`

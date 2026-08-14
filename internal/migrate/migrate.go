@@ -81,6 +81,7 @@ var registry = []Migration{
 	{To: pitfallCorpusGeneration, Name: "pitfall-corpus", Apply: treeOnly(applyPitfallCorpus)},
 	{To: templateSourceGeneration, Name: "template-source-root", Apply: treeOnly(applyTemplateSourceRoot)},
 	{To: localDocsGeneration, Name: "local-docs", Apply: treeOnly(applyLocalDocs)},
+	{To: profileGeneration, Name: "workflow-profile", Apply: treeOnly(applyProfile)},
 }
 
 // treeOnly adapts a migration that only rewrites the config tree to the
@@ -209,6 +210,18 @@ func ConfigForCurrentSchema(src []byte, from int) ([]byte, error) {
 			if !valued {
 				out, err = config.SetString(out, "integrationBranch", "main")
 				if err != nil { // coverage-ignore: HasValue parsed these same bytes as a mapping one statement above, so SetString cannot fail here
+					return nil, fmt.Errorf("migration %q (to %d): %w", migration.Name, migration.To, err)
+				}
+			}
+		}
+		if migration.To == profileGeneration {
+			valued, err := config.HasValue(out, "profile")
+			if err != nil { // coverage-ignore: the current-schema forward-port has already parsed the historical config mapping
+				return nil, fmt.Errorf("migration %q (to %d): %w", migration.Name, migration.To, err)
+			}
+			if !valued {
+				out, err = config.SetString(out, "profile", "full")
+				if err != nil { // coverage-ignore: HasValue parsed this unchanged mapping immediately above
 					return nil, fmt.Errorf("migration %q (to %d): %w", migration.Name, migration.To, err)
 				}
 			}

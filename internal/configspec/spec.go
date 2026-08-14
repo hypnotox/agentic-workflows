@@ -107,6 +107,11 @@ var varAvailability = map[string]string{
 // config structs.
 var keys = []Entry{
 	{
+		Path: "profile", Type: "enum: core or full", Default: "core for fresh init; existing repositories migrate to full",
+		Description:  "Selects one closed workflow footprint. Core provides operational brainstorm, implementation, review, effort, rendering, and quality tooling. Full adds decision records, plans, current-state authority, context, and governance audit.",
+		Availability: "Always; required and visible.",
+	},
+	{
 		Path: "prefix", Type: "string", Default: "none: required, set at init",
 		Description:  "The name prefix for rendered skills: a skill renders to `<prefix>-<name>` (directory and frontmatter name), and rendered prose references skills by that prefixed name. Must be non-empty, without path separators.",
 		Availability: "Always.",

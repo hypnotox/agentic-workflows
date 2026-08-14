@@ -83,6 +83,7 @@ var minVersionBySchema = map[int]string{
 	43: "0.34.0",
 	44: "0.35.1",
 	45: "0.37.0",
+	46: "0.37.0",
 }
 
 // ValidateSchemaMinimumVersion confirms that version is new enough to render a
@@ -197,10 +198,14 @@ func (l *Loader) Open(ctx context.Context, root string) (*Project, error) {
 	if cfg == nil {
 		return nil, errors.New("project Loader: load config tree returned nil config")
 	}
+	if cfg.Profile == "" {
+		return nil, errors.New("profile must be core or full, got empty value")
+	}
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
-	cat := l.view.Catalog()
+	selected := catalog.NewProfileView(l.view.Catalog(), cfg.Profile)
+	cat := selected.Catalog()
 	if err := catalog.ValidateWorkflowProfiles(cat); err != nil {
 		return nil, err
 	}
@@ -255,6 +260,8 @@ func openRootProject(root string) (*Project, error) {
 
 // catalog returns this project's one private catalog snapshot.
 func (p *Project) catalog() *catalog.Catalog { return p.cat }
+
+func (p *Project) fullProfile() bool { return p.Cfg == nil || p.Cfg.Profile != catalog.ProfileCore }
 
 // Backup records a foreign file preserved before sync overwrote its path.
 type Backup struct {
@@ -603,15 +610,20 @@ func (p *Project) lockPath() string {
 // rather than merely serving a stale read. A value that cannot outlive the
 // operation cannot go stale, so no caller has to remember to reset it.
 func (p *Project) deriveOperationStateWithPitfalls() (adr.Corpus, pitfall.Corpus, topic.Corpus, map[string]bool, error) {
-	corpus, err := adr.LoadCorpus(p.decisionsDir())
-	if err != nil {
-		return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
+	corpus := adr.Corpus{}
+	topics := topic.Corpus{}
+	var err error
+	if p.fullProfile() {
+		corpus, err = adr.LoadCorpus(p.decisionsDir())
+		if err != nil {
+			return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
+		}
+		topics, err = topic.LoadCorpus(p.Root, p.Cfg, corpus)
+		if err != nil {
+			return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
+		}
 	}
 	pitfalls, err := p.loadPitfallCorpus()
-	if err != nil {
-		return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
-	}
-	topics, err := topic.LoadCorpus(p.Root, p.Cfg, corpus)
 	if err != nil {
 		return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
 	}

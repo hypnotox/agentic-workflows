@@ -82,6 +82,28 @@ func TestLocalDocDeclarationsValidateAndNormalize(t *testing.T) {
 	}
 }
 
+func TestProfileValidation(t *testing.T) {
+	for _, profile := range []string{"", "minimal", "full"} {
+		cfg, err := Parse(".awf", []byte("prefix: example\nintegrationBranch: main\nprofile: "+profile+"\n"))
+		if err == nil {
+			err = cfg.Validate()
+		}
+		if (profile != "minimal") != (err == nil) {
+			t.Errorf("profile %q validation error = %v", profile, err)
+		}
+	}
+}
+
+func TestCoreProfileRejectsFullGovernanceSources(t *testing.T) {
+	cfg, err := Parse(".awf", []byte("prefix: example\nprofile: core\nintegrationBranch: main\ndomains: [rendering]\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("core accepted domains")
+	}
+}
+
 func TestParseRetainsSuppliedSourceAndStrictness(t *testing.T) {
 	body := []byte("prefix: example\n")
 	c, err := Parse("staged/.awf", body)

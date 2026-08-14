@@ -197,7 +197,7 @@ func testPitfallHashAndOutputLifecycle(t *testing.T) {
 func testPitfallStagedDeclarationParity(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	root := repo.Root()
-	configYAML := withTestGateCmd(pitfallsCfg)
+	configYAML := withTestProfile(withTestGateCmd(pitfallsCfg))
 	gitfixture.Stage(t, repo, map[string]string{
 		".awf/config.yaml":            configYAML,
 		".awf/docs/pitfalls/alpha.md": pitfallSource("Alpha", "", "alpha body\n"),

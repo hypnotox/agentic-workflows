@@ -478,3 +478,24 @@ func TestNoSingleMarkerInitDescriptor(t *testing.T) {
 	}
 	t.Fatalf("currentState.sources has no configuration route from %s to qualified marker %q", testPath, "// "+qualified)
 }
+
+func TestProfileViewRejectsInvalidProfileAndProjectsCore(t *testing.T) {
+	defer func() {
+		if recover() == nil {
+			t.Fatal("NewProfileView accepted invalid profile")
+		}
+	}()
+	_ = NewProfileView(Standard, Profile("other"))
+}
+
+func TestProfileViewCoreOmitsFullOnlyEntries(t *testing.T) {
+	view := StandardProfileView(ProfileCore)
+	for name, spec := range Standard.Skills {
+		_, found := view.Catalog().Skills[name]
+		if found == spec.FullOnly {
+			t.Errorf("core skill membership %q = %v, FullOnly = %v", name, found, spec.FullOnly)
+		}
+	}
+}
+
+// invariant: rendering/catalog-and-targets:profile-dependency-closure (TestCatalogIsCompileTimeSingleSource)

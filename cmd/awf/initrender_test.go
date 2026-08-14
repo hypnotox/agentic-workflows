@@ -144,17 +144,12 @@ func TestEmptyInitRendersCoherently(t *testing.T) {
 	if strings.Contains(checkOut.String(), "dead-skill-reference") {
 		t.Errorf("curated init render has dead skill references:\n%s", checkOut.String())
 	}
-	template, err := os.ReadFile(filepath.Join(root, "docs/decisions/template.md"))
-	if err != nil {
-		t.Fatal(err)
+	if _, err := os.Stat(filepath.Join(root, "docs/decisions/template.md")); !os.IsNotExist(err) {
+		t.Fatalf("default Core init emitted Full-only ADR template: %v", err)
 	}
-	text := string(template)
-	history := strings.Index(text, "## Status history\n")
-	if !strings.Contains(text, "format: current-state-v4") || history < 0 || strings.Index(text, "Implementing; content-sha256") > strings.Index(text, "Applied; operations") {
-		t.Fatalf("empty-init V3 ADR template is not lifecycle-safe:\n%s", text)
-	}
-	if tail := text[history:]; strings.Count(tail, "- YYYY-MM-DD:") != 1 || !strings.Contains(tail, "- YYYY-MM-DD: Proposed") {
-		t.Fatalf("fresh Proposed scaffold includes later events:\n%s", tail)
+	cfg, err := os.ReadFile(filepath.Join(root, ".awf", "config.yaml"))
+	if err != nil || !strings.Contains(string(cfg), "profile: core") {
+		t.Fatalf("default init profile = %q, %v", cfg, err)
 	}
 }
 

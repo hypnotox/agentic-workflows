@@ -98,3 +98,5 @@ func TestSingletonShapeIgnoresMandatory(t *testing.T) {
 		}
 	}
 }
+
+// invariant: rendering/doc-outputs:layout-docs-profile-projection (TestUnifiedDocModelProjections)

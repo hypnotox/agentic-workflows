@@ -47,7 +47,8 @@ type Sidecar struct {
 
 // Config is the skeleton config.yaml: repository facts and render shaping.
 type Config struct {
-	Prefix string `yaml:"prefix"`
+	Prefix  string          `yaml:"prefix"`
+	Profile catalog.Profile `yaml:"profile"`
 	// IntegrationBranch names the branch effort work integrates into. It is
 	// required-explicit and carries no in-code default (the Prefix precedent,
 	// not the DocsDir one): the schema migration writes `integrationBranch:
@@ -656,6 +657,11 @@ func (c *Config) PartPath(kind, artifact, section string) string {
 }
 
 func (c *Config) Validate() error {
+	if c.Profile != "" {
+		if _, err := catalog.ParseProfile(string(c.Profile)); err != nil {
+			return err
+		}
+	}
 	if c.Prefix == "" {
 		return errors.New("prefix must not be empty")
 	}
@@ -664,6 +670,9 @@ func (c *Config) Validate() error {
 	}
 	if err := validateIntegrationBranch(c.IntegrationBranch); err != nil {
 		return err
+	}
+	if c.Profile == catalog.ProfileCore && (len(c.Domains) > 0 || len(c.Tags) > 0 || len(c.ContextIgnore) > 0 || c.CurrentState != nil) {
+		return errors.New("core profile must not retain domains, tags, contextIgnore, or currentState governance sources")
 	}
 	for _, d := range c.Domains {
 		if err := ValidateDomainName(d); err != nil {

@@ -78,7 +78,7 @@ func TestLoaderOpenRejectsNilLoadedConfig(t *testing.T) {
 
 func TestLoaderOpenValidatesBeforeResolvingResidentRoot(t *testing.T) {
 	loader := NewLoaderWithoutRepository(func(string) (*config.Config, error) {
-		return &config.Config{}, nil
+		return &config.Config{Profile: catalog.ProfileFull}, nil
 	}, catalog.Standard, func(context.Context, string) string {
 		t.Fatal("resident resolver called before config validation")
 		return ""
@@ -91,7 +91,7 @@ func TestLoaderOpenValidatesBeforeResolvingResidentRoot(t *testing.T) {
 
 func TestLoaderOpenValidatesInjectedStandardWorkflowProfiles(t *testing.T) {
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	injectedValue := *catalog.Standard
 	injectedValue.Skills = maps.Clone(catalog.Standard.Skills)
 	broken := injectedValue.Skills["tdd"]
@@ -110,7 +110,7 @@ func TestOpenFallsBackOnUnsafeResidentRoot(t *testing.T) {
 	if err := os.Symlink(external, filepath.Join(root, ".awf")); err != nil {
 		t.Fatal(err)
 	}
-	testsupport.WriteFile(t, filepath.Join(external, "config.yaml"), "prefix: example\nintegrationBranch: main\n")
+	testsupport.WriteFile(t, filepath.Join(external, "config.yaml"), "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -122,7 +122,7 @@ func TestOpenFallsBackOnUnsafeResidentRoot(t *testing.T) {
 
 func TestLoaderOpenOwnsInjectedCompleteView(t *testing.T) {
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	injected := *catalog.Standard
 	injected.Skills = maps.Clone(catalog.Standard.Skills)
 	loader := NewLoaderWithoutRepository(config.Load, &injected, func(_ context.Context, root string) string { return root })
@@ -147,7 +147,7 @@ func TestLoaderOpenOwnsInjectedCompleteView(t *testing.T) {
 
 func TestLoaderOpenDoesNotMutateStandardCatalog(t *testing.T) {
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	injectedValue := *catalog.Standard
 	injectedValue.Skills = maps.Clone(catalog.Standard.Skills)
 	injectedValue.Agents = maps.Clone(catalog.Standard.Agents)

@@ -140,7 +140,7 @@ func TestRunConfigOpenError(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: \"\"\n")
+	testsupport.WriteAwfConfig(t, root, "profile: full\nprefix: \"\"\n")
 	if err := runConfig(ctx, root, "", io.Discard); err == nil ||
 		!strings.Contains(err.Error(), "prefix") {
 		t.Errorf("expected the open-time validation error, got %v", err)

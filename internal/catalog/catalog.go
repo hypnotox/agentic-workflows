@@ -2,6 +2,7 @@
 package catalog
 
 import (
+	"fmt"
 	"maps"
 	"reflect"
 	"slices"
@@ -30,6 +31,7 @@ type WorkflowProfile struct {
 // per-target configuration (the domain doc). Data carries the artifact's
 // default render data; sidecars override it per top-level key (ADR-0045).
 type TargetSpec struct {
+	FullOnly bool     `yaml:"fullOnly"`
 	Sections []string `yaml:"sections"`
 	// RequiresSkills names the catalog skills this artifact's template references
 	// unconditionally - rendered into its output even when the referenced skill is
@@ -45,6 +47,7 @@ type TargetSpec struct {
 // Description is a normally rendered template fragment; the instruction body
 // comes from the section-rendered agent template.
 type AgentSpec struct {
+	FullOnly       bool
 	Name           string
 	Description    string
 	Sections       []string       `yaml:"sections"`
@@ -58,6 +61,7 @@ type AgentSpec struct {
 // Data carries the artifact's default render data; sidecars override it per
 // top-level key (ADR-0045).
 type SkillSpec struct {
+	FullOnly      bool     `yaml:"fullOnly"`
 	Sections      []string `yaml:"sections"`
 	RequiresDoc   string   `yaml:"requiresDoc"`
 	RequiresAgent string   `yaml:"requiresAgent"`
@@ -75,6 +79,7 @@ type SkillSpec struct {
 // the AGENTS.md document map lists via .layout.*; AgentsDoc flags the one
 // root-output special case. Title/Desc/Sections/Data are as before.
 type DocEntry struct {
+	FullOnly    bool
 	Title       string
 	Desc        string
 	Sections    []string
@@ -143,20 +148,101 @@ type Catalog struct {
 	Vars      []VarDescriptor      `yaml:"vars"`
 }
 
-// View is the immutable-in-practice catalog selection a composition root gives
-// to one project. It owns a defensive snapshot, so neither the global Standard
-// value nor an injected fixture can change through a project's catalog seam.
-type View struct{ catalog *Catalog }
+// Profile selects one closed workflow footprint from the complete catalog.
+type Profile string
 
-// CompleteView returns one complete, Full-equivalent catalog snapshot.
-func CompleteView() View { return NewView(Standard) }
+const (
+	ProfileCore Profile = "core"
+	ProfileFull Profile = "full"
+)
 
-// NewView snapshots an explicitly composed complete catalog for one project.
-func NewView(c *Catalog) View {
+func ParseProfile(value string) (Profile, error) {
+	profile := Profile(value)
+	if profile != ProfileCore && profile != ProfileFull {
+		return "", fmt.Errorf("profile must be core or full, got %q", value)
+	}
+	return profile, nil
+}
+
+// View is the immutable selected catalog one composition root gives to a project.
+type View struct {
+	catalog *Catalog
+	profile Profile
+}
+
+// CompleteView returns one complete Full catalog snapshot.
+func CompleteView() View { return NewProfileView(Standard, ProfileFull) }
+
+// StandardProfileView projects a profile from the compile-time standard catalog.
+func StandardProfileView(profile Profile) View { return NewProfileView(Standard, profile) }
+
+// NewView preserves the injected-catalog seam as a Full view.
+func NewView(c *Catalog) View { return NewProfileView(c, ProfileFull) }
+
+// NewProfileView projects one closed profile from the complete catalog.
+func NewProfileView(c *Catalog, profile Profile) View {
 	if c == nil {
 		panic("catalog view: missing catalog")
 	}
-	return View{catalog: cloneCatalog(c)}
+	if _, err := ParseProfile(string(profile)); err != nil {
+		panic(err)
+	}
+	selected := cloneCatalog(c)
+	if profile == ProfileCore {
+		projectCore(selected)
+	}
+	return View{catalog: selected, profile: profile}
+}
+
+func projectCore(c *Catalog) {
+	for name, spec := range c.Skills {
+		if spec.FullOnly {
+			delete(c.Skills, name)
+		}
+	}
+	for name, spec := range c.Agents {
+		if spec.FullOnly {
+			delete(c.Agents, name)
+		}
+	}
+	for name, spec := range c.Docs {
+		if spec.FullOnly {
+			delete(c.Docs, name)
+		}
+	}
+	if c.DomainDoc.FullOnly {
+		c.DomainDoc = TargetSpec{}
+	}
+	for name, spec := range c.Skills {
+		spec.Profile.UsuallyFollows = selectedNames(spec.Profile.UsuallyFollows, c.Skills)
+		spec.Profile.CommonFollowUps = selectedNames(spec.Profile.CommonFollowUps, c.Skills)
+		spec.RequiresSkills = selectedNames(spec.RequiresSkills, c.Skills)
+		c.Skills[name] = spec
+	}
+	for name, spec := range c.Agents {
+		spec.RequiresSkills = selectedNames(spec.RequiresSkills, c.Skills)
+		c.Agents[name] = spec
+	}
+	// Governance record-model vocabulary belongs to Full. Operational terms stay.
+	if glossary, ok := c.Docs["glossary"]; ok {
+		if terms, ok := glossary.Data["standardTerms"].([]any); ok {
+			filtered := terms[:0]
+			for _, raw := range terms {
+				entry, _ := raw.(map[string]any)
+				term, _ := entry["term"].(string)
+				if slices.Contains([]string{"current-state topic", "claim", "invariant backing"}, term) {
+					continue
+				}
+				filtered = append(filtered, raw)
+			}
+			glossary.Data["standardTerms"] = filtered
+			c.Docs["glossary"] = glossary
+		}
+	}
+}
+
+func selectedNames(names []string, selected map[string]SkillSpec) []string {
+	return slices.DeleteFunc(slices.Clone(names), func(name string) bool { _, ok := selected[name]; return !ok })
 }
 
 // Catalog returns a defensive snapshot of the view. Callers may retain or

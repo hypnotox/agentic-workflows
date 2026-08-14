@@ -63,13 +63,13 @@ func mustParsePlans(t *testing.T, p *Project) []plan.Plan {
 	return plans
 }
 
-const pitfallsCheckCfg = "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: [rendering]\n"
+const pitfallsCheckCfg = "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\ndomains: [rendering]\n"
 
-const commitSubjectCfg = "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: []\naudit:\n  allowedScopes:\n    - name: awf\n"
+const commitSubjectCfg = "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\ndomains: []\naudit:\n  allowedScopes:\n    - name: awf\n"
 
 // An empty unconditional pitfall corpus yields no project-level drift.
 func TestCheckPitfallsEmpty(t *testing.T) {
-	p, err := Open(testContext(t), scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n"))
+	p, err := Open(testContext(t), scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,11 +122,11 @@ func TestCheckPitfallsStructuralError(t *testing.T) {
 	}
 }
 
-const glossaryCheckCfg = "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: [rendering]\n"
+const glossaryCheckCfg = "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\ndomains: [rendering]\n"
 
 // A disabled glossary doc is never read, so it can yield no drift.
 func TestCheckGlossaryDisabled(t *testing.T) {
-	p, err := Open(testContext(t), scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n"))
+	p, err := Open(testContext(t), scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,7 +207,7 @@ func TestDeriveOperationStateSurfacesMalformedADR(t *testing.T) {
 // member yields tag-vocabulary drift; a fully-conforming corpus yields none.
 // invariant: config/configuration:tag-vocabulary-governed (TestCheckTagVocabulary)
 func TestCheckTagVocabulary(t *testing.T) {
-	cfg := "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: [rendering]\n" +
+	cfg := "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\ndomains: [rendering]\n" +
 		"tags:\n  render-engine: the render engine\n  empty: \"\"\n"
 	root := scaffoldFiles(t, cfg, map[string]string{
 		"docs/pitfalls/p.md": pitfallSource("P", "tags: [render-engine, ghost]\n", "ok\n"),
@@ -236,7 +236,7 @@ func TestCheckTagVocabulary(t *testing.T) {
 
 // An empty/absent vocabulary makes the membership rule inert.
 func TestCheckTagVocabularyInert(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: []\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\ndomains: []\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
 		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
 			testsupport.WithTags("anything"), testsupport.WithTitle("0001: A"),
@@ -255,7 +255,7 @@ func TestCheckTagVocabularyInert(t *testing.T) {
 // proceeds past the ADR loop and pitfallTagEntries short-circuits to no entries;
 // a conforming ADR yields no drift.
 func TestCheckTagVocabularyPitfallsDisabled(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: []\ntags:\n  rendering: the render engine\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\ndomains: []\ntags:\n  rendering: the render engine\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
 		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
 			testsupport.WithTags("rendering"), testsupport.WithTitle("0001: A"),
@@ -274,7 +274,7 @@ func TestCheckTagVocabularyPitfallsDisabled(t *testing.T) {
 // yields none. Unconditional (no vocabulary configured here).
 // invariant: adr-system/adr-lifecycle:adr-related-link-resolved (TestCheckADRRelatedLinks)
 func TestCheckADRRelatedLinks(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: []\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\ndomains: []\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
 		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
 			testsupport.WithRelated(1, 42), testsupport.WithTitle("0001: A"),
@@ -298,7 +298,7 @@ func TestCheckADRRelatedLinks(t *testing.T) {
 // that only checks the simple case.
 // invariant: adr-system/adr-lifecycle:adr-related-ascending (TestCheckADRRelatedAscending)
 func TestCheckADRRelatedAscending(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: []\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\ndomains: []\n")
 	write := func(name, title string, related ...int) {
 		opts := []testsupport.ADROption{testsupport.WithDate("2026-07-13"),
 			testsupport.WithTitle(title), testsupport.WithBody("## Context\nx\n")}
@@ -363,7 +363,7 @@ func TestCheckADRRelatedAscending(t *testing.T) {
 
 // Direct vocabulary projection derives and rejects a malformed corpus source.
 func TestCheckTagVocabularyPitfallStructuralError(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: []\ntags:\n  rendering: x\n",
+	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\ndomains: []\ntags:\n  rendering: x\n",
 		map[string]string{"docs/pitfalls/bad.md": "---\ntitle: Bad\nunknown: value\n---\nbody\n"})
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
 		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
@@ -794,7 +794,7 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 
 	fixture := gitfixture.InitRepo(t)
 	root := fixture.Root()
-	testsupport.WriteAwfConfig(t, root, withTestGateCmd("prefix: example\nintegrationBranch: main\nvars: {}\ndomains: [config]\n"))
+	testsupport.WriteAwfConfig(t, root, withTestGateCmd("prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\ndomains: [config]\n"))
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/parts/config-reference/intro.md"), "<!-- awf:stub -->\nConfig intro.\n<!-- awf:section bogus -->\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -866,7 +866,7 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 
 	nestedFixture := gitfixture.InitRepo(t)
 	nestedRoot := filepath.Join(nestedFixture.Root(), "nested")
-	testsupport.WriteAwfConfig(t, nestedRoot, withTestGateCmd("prefix: example\nintegrationBranch: main\nvars: {}\n"))
+	testsupport.WriteAwfConfig(t, nestedRoot, withTestGateCmd("prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n"))
 	nestedProject, err := Open(testContext(t), nestedRoot)
 	if err != nil {
 		t.Fatal(err)
@@ -890,7 +890,7 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 func TestCheckReportRequiresGeneratedArtifactsInIndex(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	root := repo.Root()
-	testsupport.WriteAwfConfig(t, root, withTestGateCmd("prefix: example\nintegrationBranch: main\nvars: {}\n"))
+	testsupport.WriteAwfConfig(t, root, withTestGateCmd("prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n"))
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -1002,7 +1002,7 @@ func TestCheckGeneratedTrackingNoGitAndNestedResidentExclusion(t *testing.T) {
 	t.Run("nested resident output", func(t *testing.T) {
 		fixture := gitfixture.InitRepo(t)
 		root := filepath.Join(fixture.Root(), "nested")
-		testsupport.WriteAwfConfig(t, root, withTestGateCmd("prefix: example\nintegrationBranch: main\nvars: {}\n"))
+		testsupport.WriteAwfConfig(t, root, withTestGateCmd("prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n"))
 		p, err := Open(testContext(t), root)
 		if err != nil {
 			t.Fatal(err)
@@ -1200,7 +1200,7 @@ func TestCheckProjectsPlanDiagnostics(t *testing.T) {
 // regression, gated exactly; inert when no domains are configured.
 // invariant: config/validation:tag-not-domain-name (TestCheckTagVocabularyDomainCollision)
 func TestCheckTagVocabularyDomainCollision(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: [rendering]\n"+
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\ndomains: [rendering]\n"+
 		"tags:\n  rendering: coarse\n  narrow: a narrow topic\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -1220,7 +1220,7 @@ func TestCheckTagVocabularyDomainCollision(t *testing.T) {
 		t.Fatalf("want tag-domain-collision for rendering, got %+v", drift)
 	}
 	// No domains configured: the collision rule is inert.
-	root2 := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: []\n"+
+	root2 := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\ndomains: []\n"+
 		"tags:\n  rendering: fine when no domains\n")
 	p2, err := Open(testContext(t), root2)
 	if err != nil {
@@ -1563,7 +1563,7 @@ func TestAgentGuideSizeAdvisoryBoundary(t *testing.T) {
 		{name: "over", bytes: 12*1024 + 1, want: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\naudit:\n  allowedScopes:\n    - name: awf\n", map[string]string{"parts/agents-doc/identity.md": "x"})
+			root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\naudit:\n  allowedScopes:\n    - name: awf\n", map[string]string{"parts/agents-doc/identity.md": "x"})
 			p, err := Open(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)

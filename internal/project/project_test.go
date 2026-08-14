@@ -57,7 +57,21 @@ func testLayout() map[string]any {
 // relative to .awf/ (e.g. "skills/tdd.yaml", "skills/parts/x/y.md").
 func scaffoldFiles(t *testing.T, configYAML string, files map[string]string) string {
 	t.Helper()
-	return scaffoldFilesRaw(t, withTestGateCmd(configYAML), files)
+	return scaffoldFilesRaw(t, withTestGateCmd(withTestProfile(configYAML)), files)
+}
+
+func withTestProfile(configYAML string) string {
+	if strings.Contains(configYAML, "profile:") {
+		return configYAML
+	}
+	lines := strings.Split(strings.TrimSuffix(configYAML, "\n"), "\n")
+	for i, line := range lines {
+		if strings.HasPrefix(line, "prefix:") {
+			lines = slices.Insert(lines, i+1, "profile: full")
+			break
+		}
+	}
+	return strings.Join(lines, "\n") + "\n"
 }
 
 func scaffoldFilesRaw(t *testing.T, configYAML string, files map[string]string) string {
@@ -97,7 +111,7 @@ func withTestGateCmd(configYAML string) string {
 }
 
 func TestCommitPolicyManifestProjection(t *testing.T) {
-	const base = "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\n"
+	const base = "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: make gate}\n"
 	root := scaffold(t, base)
 	syncAndLoad := func() *manifest.Lock {
 		t.Helper()
@@ -216,6 +230,7 @@ func configPath(root string) string {
 }
 
 const sampleYAML = `prefix: example
+profile: full
 integrationBranch: main
 vars:
   testCmd: go test ./...
@@ -303,7 +318,7 @@ func TestResidentMigrationsPreserveOwnedRootsThroughProjectSync(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte("prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte("prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	lock := &manifest.Lock{AWFVersion: "0.24.0", SchemaVersion: 20, Files: map[string]manifest.Entry{}, InitializedWithVersion: "0.24.0"}
@@ -365,7 +380,7 @@ func TestResidentMigrationsPreserveOwnedRootsThroughProjectSync(t *testing.T) {
 
 func TestRetiredPlanResyncDuplicateSelectionsUpgradeAndSync(t *testing.T) {
 	root := t.TempDir()
-	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\nskills: [reviewing-plan-resync, reviewing-plan-resync]\nagents: []\ntargets: [claude]\n")
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: test-gate}\nskills: [reviewing-plan-resync, reviewing-plan-resync]\nagents: []\ntargets: [claude]\n")
 	lock := &manifest.Lock{AWFVersion: "0.31.0", SchemaVersion: 37, Files: map[string]manifest.Entry{}, InitializedWithVersion: "0.31.0"}
 	if err := lock.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
 		t.Fatal(err)
@@ -489,7 +504,7 @@ func TestCheckStaleTakesPrecedence(t *testing.T) {
 }
 
 func TestSyncRendersDeclaredDoc(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -913,7 +928,7 @@ func TestSyncFilesystemFailuresPreserveErrorIdentity(t *testing.T) {
 
 // invariant: rendering/sync-and-drift:local-doc-prune-preserved (TestLocalDocPruneUnreadableSourcePreservesRecoveryAndLock)
 func TestLocalDocPruneUnreadableSourcePreservesRecoveryAndLock(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -974,7 +989,7 @@ func TestLocalDocPruneFaultsKeepRecoveryAndLock(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
+			root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
 			p, err := Open(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
@@ -1339,7 +1354,7 @@ func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 
 func TestOpenRejectsUnknownSectionOverride(t *testing.T) {
 	// tdd in the catalog has sections [surfaces, notes]; "bogus" is not declared.
-	cfg := "prefix: example\nintegrationBranch: main\n"
+	cfg := "prefix: example\nprofile: full\nintegrationBranch: main\n"
 	root := scaffoldFiles(t, cfg, map[string]string{
 		"skills/tdd.yaml": "sections:\n  bogus:\n    drop: true\n",
 	})
@@ -1359,7 +1374,7 @@ func TestOpenRejectsUnknownSectionOverride(t *testing.T) {
 
 func TestOpenAllowsValidSectionOverride(t *testing.T) {
 	// "notes" is a declared section for tdd.
-	cfg := "prefix: example\nintegrationBranch: main\n"
+	cfg := "prefix: example\nprofile: full\nintegrationBranch: main\n"
 	root := scaffoldFiles(t, cfg, map[string]string{
 		"skills/tdd.yaml": "sections:\n  notes:\n    drop: true\n",
 	})
@@ -1371,7 +1386,7 @@ func TestOpenAllowsValidSectionOverride(t *testing.T) {
 
 func TestOpenRejectsUnknownAgentSectionOverride(t *testing.T) {
 	// code-reviewer in the catalog has sections universal-lenses/project-focus/doc-currency.
-	cfg := "prefix: example\nintegrationBranch: main\n"
+	cfg := "prefix: example\nprofile: full\nintegrationBranch: main\n"
 	root := scaffoldFiles(t, cfg, map[string]string{
 		"agents/code-reviewer.yaml": "sections:\n  bogus:\n    drop: true\n",
 	})
@@ -1409,7 +1424,7 @@ func TestSyncRendersAgentFromMap(t *testing.T) {
 // trigger here is content that carries the token itself (the ADR-0011/ADR-0014
 // gotcha: prose containing the literal token trips the guard).
 func TestSyncErrorsOnUnresolvedValueToken(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n",
+	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n",
 		map[string]string{
 			"skills/tdd.yaml": "data:\n  testSurfaces:\n    - {name: \"<no value>\", kind: k, location: l}\n",
 		})
@@ -1428,7 +1443,7 @@ func TestSyncErrorsOnUnresolvedValueToken(t *testing.T) {
 
 func TestSyncRendersAgentsDoc(t *testing.T) {
 	t.Run("always-on by default", func(t *testing.T) {
-		root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars:\n  testCmd: go test ./...\n  gateCmd: make gate\n")
+		root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars:\n  testCmd: go test ./...\n  gateCmd: make gate\n")
 		p, err := Open(testContext(t), root)
 		if err != nil {
 			t.Fatalf("Open: %v", err)
@@ -1463,7 +1478,7 @@ func TestLayoutUsesFixedDocsRootAndFullCatalog(t *testing.T) {
 	if l.DomainsDir != "docs/domains" {
 		t.Errorf("domainsDir = %q", l.DomainsDir)
 	}
-	// invariant: rendering/doc-outputs:layout-docs-full-catalog (TestLayoutUsesFixedDocsRootAndFullCatalog)
+	// invariant: rendering/doc-outputs:layout-docs-profile-projection (TestLayoutUsesFixedDocsRootAndFullCatalog)
 	if len(l.Docs) != len(catalog.Standard.Docs) {
 		t.Errorf("Docs has %d entries, want full catalog of %d: %v", len(l.Docs), len(catalog.Standard.Docs), l.Docs)
 	}
@@ -1519,10 +1534,10 @@ func TestLayoutUsesFixedDocsRootAndFullCatalog(t *testing.T) {
 	}
 }
 
-// invariant: rendering/project-output-plan:full-catalog-render (TestRenderAllRendersFullCatalogForBothTargets)
+// invariant: rendering/project-output-plan:profile-projected-render (TestRenderAllRendersFullCatalogForBothTargets)
 // invariant: rendering/project-output-plan:output-plan-complete (TestRenderAllRendersFullCatalogForBothTargets)
 func TestRenderAllRendersFullCatalogForBothTargets(t *testing.T) {
-	cfg := "prefix: example\nintegrationBranch: main\n"
+	cfg := "prefix: example\nprofile: full\nintegrationBranch: main\n"
 	root := scaffold(t, cfg)
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -1583,7 +1598,7 @@ func TestRenderAllRendersFullCatalogForBothTargets(t *testing.T) {
 // invariant: rendering/sync-and-drift:sync-always-writes-active-md (TestSyncGeneratesActiveMDAndCheckDetectsStaleness)
 // invariant: rendering/sync-and-drift:check-active-md-stale (TestSyncGeneratesActiveMDAndCheckDetectsStaleness)
 func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	adrDir := filepath.Join(root, "docs", "decisions")
 	if err := os.MkdirAll(adrDir, 0o755); err != nil {
 		t.Fatal(err)
@@ -1637,7 +1652,7 @@ func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
 
 // invariant: rendering/sync-and-drift:sync-always-writes-active-md (TestSyncRendersPlaceholderIndexMDWithoutADRs)
 func TestSyncRendersPlaceholderIndexMDWithoutADRs(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -1784,7 +1799,7 @@ func TestRegenCheckedAttribute(t *testing.T) {
 
 // invariant: rendering/guide-and-doc-templates:document-map-lists-mandatory-docs (TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally)
 func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)

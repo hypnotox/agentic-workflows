@@ -320,7 +320,7 @@ func TestCheckStagedNoStagedConfig(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-	testsupport.WriteAwfConfig(t, dir, "prefix: example\nintegrationBranch: main\n")
+	testsupport.WriteAwfConfig(t, dir, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	gitfixture.Stage(t, repo, map[string]string{"internal/x.go": "package x\n"})
 	p := openStaged(t, dir)
 	if _, err := p.CheckStaged(testContext(t)); err == nil || !strings.Contains(err.Error(), "no staged") {
@@ -433,7 +433,7 @@ func TestCheckStagedIndexLoadError(t *testing.T) {
 // scaffolded project that is not a git repository.
 func TestCheckStagedOutsideRepo(t *testing.T) {
 	t.Parallel()
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", nil)
+	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", nil)
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -451,12 +451,12 @@ func TestCheckStagedMigratesHistoricalWorkflowTelemetry(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
 	gitfixture.Stage(t, repo, map[string]string{
-		".awf/config.yaml": "prefix: example\nintegrationBranch: main\nworkflowTelemetry:\n  retention: {}\n",
+		".awf/config.yaml": "prefix: example\nprofile: full\nintegrationBranch: main\nworkflowTelemetry:\n  retention: {}\n",
 		".awf/awf.lock":    `{"awfVersion":"0.20.0","schemaVersion":19,"files":{}}`,
 	})
 	gitfixture.Commit(t, repo, "generation 19", nil)
 	gitfixture.Stage(t, repo, map[string]string{
-		".awf/config.yaml": "prefix: example\nintegrationBranch: main\n",
+		".awf/config.yaml": "prefix: example\nprofile: full\nintegrationBranch: main\n",
 		".awf/awf.lock":    `{"awfVersion":"0.20.0","schemaVersion":20,"files":{}}`,
 	})
 	p := openStaged(t, dir)
@@ -470,9 +470,9 @@ func TestCheckStagedRefusesHistoricalMalformedOrDuplicateConfigAndCurrentObsolet
 	for _, tc := range []struct {
 		name, headConfig, headLock, stagedConfig string
 	}{
-		{"historical malformed", "prefix: [\nworkflowTelemetry: {}\n", `{"schemaVersion":19,"files":{}}`, "prefix: example\nintegrationBranch: main\n"},
-		{"historical duplicate", "prefix: example\nintegrationBranch: main\nworkflowTelemetry: {}\nworkflowTelemetry: {}\n", `{"schemaVersion":19,"files":{}}`, "prefix: example\nintegrationBranch: main\n"},
-		{"current obsolete", "prefix: example\nintegrationBranch: main\n", `{"schemaVersion":20,"files":{}}`, "prefix: example\nintegrationBranch: main\nworkflowTelemetry: {}\n"},
+		{"historical malformed", "prefix: [\nworkflowTelemetry: {}\n", `{"schemaVersion":19,"files":{}}`, "prefix: example\nprofile: full\nintegrationBranch: main\n"},
+		{"historical duplicate", "prefix: example\nprofile: full\nintegrationBranch: main\nworkflowTelemetry: {}\nworkflowTelemetry: {}\n", `{"schemaVersion":19,"files":{}}`, "prefix: example\nprofile: full\nintegrationBranch: main\n"},
+		{"current obsolete", "prefix: example\nprofile: full\nintegrationBranch: main\n", `{"schemaVersion":20,"files":{}}`, "prefix: example\nprofile: full\nintegrationBranch: main\nworkflowTelemetry: {}\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			repo := gitfixture.InitRepo(t)
@@ -501,9 +501,9 @@ func TestCheckStagedHeadConfigParseError(t *testing.T) {
 	t.Parallel()
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
-	gitfixture.Stage(t, repo, map[string]string{".awf/config.yaml": "prefix: example\nintegrationBranch: main\n"})
+	gitfixture.Stage(t, repo, map[string]string{".awf/config.yaml": "prefix: example\nprofile: full\nintegrationBranch: main\n"})
 	gitfixture.Commit(t, repo, "head", nil)
-	testsupport.WriteAwfConfig(t, dir, "prefix: example\nintegrationBranch: main\n")
+	testsupport.WriteAwfConfig(t, dir, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	p := openStaged(t, dir)
 	if _, err := p.CheckStaged(testContext(t)); err == nil {
 		t.Fatal("expected a HEAD-side config parse error")
@@ -535,7 +535,7 @@ func TestCheckCommitAuthorizationPropagatesEvidenceErrors(t *testing.T) {
 	t.Run("unborn adopted HEAD", func(t *testing.T) {
 		repo := gitfixture.InitRepo(t)
 		gitfixture.Stage(t, repo, map[string]string{
-			".awf/config.yaml": "prefix: example\nintegrationBranch: main\n",
+			".awf/config.yaml": "prefix: example\nprofile: full\nintegrationBranch: main\n",
 			".awf/awf.lock":    `{"awfVersion":"0.18.0","schemaVersion":31,"files":{}}`,
 			"docs/decisions/0001-first.md": `---
 format: current-state-v4
@@ -770,7 +770,7 @@ func TestAuditTransitionsCollectError(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-	testsupport.WriteAwfConfig(t, dir, "prefix: example\nintegrationBranch: main\n")
+	testsupport.WriteAwfConfig(t, dir, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	p := openStaged(t, dir)
 	if _, _, err := p.Audit(testContext(t), "does-not-exist", "HEAD"); err == nil {
 		t.Fatal("expected an unresolvable-range error")

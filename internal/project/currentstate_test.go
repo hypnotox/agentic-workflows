@@ -43,7 +43,7 @@ func TestCommitAuthorizationResultDiagnostic(t *testing.T) {
 }
 
 func TestLoadTreeCurrentStateRejectsFutureSchema(t *testing.T) {
-	tree, err := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: example\nintegrationBranch: main\n")}})
+	tree, err := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: example\nprofile: full\nintegrationBranch: main\n")}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,6 +175,7 @@ func TestCurrentStateReportRouting(t *testing.T) {
 // wrong shape, and phase 2 puts a proof marker on exactly those tests. Deriving
 // in this direction has no pattern to fall out of sync.
 const csNoPolicyYAML = `prefix: example
+profile: full
 integrationBranch: main
 domains:
   - alpha
@@ -275,7 +276,7 @@ func TestCheckCurrentState(t *testing.T) {
 // invariant: rendering/sync-and-drift:coverage-evaluation-unconditional (TestCheckCurrentStateNoPolicy)
 // invariant: config/configuration:severity-not-configurable (TestCheckCurrentStateNoPolicy)
 func TestCheckCurrentStateNoPolicy(t *testing.T) {
-	cfg := "prefix: example\nintegrationBranch: main\ndomains: [alpha]\n"
+	cfg := "prefix: example\nprofile: full\nintegrationBranch: main\ndomains: [alpha]\n"
 	files := map[string]string{
 		".awf/domains/alpha.yaml": "paths:\n  - internal/**\n",
 		"internal/bar.go":         "package internalx\n",
@@ -316,7 +317,7 @@ func TestCheckStagedRootOutsideRepo(t *testing.T) {
 }
 
 func TestCheckCurrentStateOutsideRepo(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", nil)
+	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", nil)
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -327,7 +328,7 @@ func TestCheckCurrentStateOutsideRepo(t *testing.T) {
 }
 
 func TestCheckCurrentStateNoInvariantClaims(t *testing.T) {
-	p := csRepo(t, "prefix: example\nintegrationBranch: main\n", map[string]string{})
+	p := csRepo(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", map[string]string{})
 	report, err := p.CheckCurrentState(testContext(t))
 	if err != nil {
 		t.Fatalf("current-state check with no invariant claims: %v", err)

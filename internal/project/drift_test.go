@@ -18,7 +18,7 @@ import (
 // rendered file at rel.
 // invariant: rendering/project-output-plan:output-policy-explicit (TestOutputPolicyRoutesMisleadingPathsEndToEnd)
 func TestOutputPolicyRoutesMisleadingPathsEndToEnd(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -121,7 +121,7 @@ func TestCheckLockedFilesClassifiesOrdinaryFreshnessBeforeObservation(t *testing
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+			root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 			p, err := Open(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
@@ -159,7 +159,7 @@ func configHashOf(t *testing.T, root, rel string) string {
 
 func TestRetiredTopicMaximumDoesNotAffectProjection(t *testing.T) {
 	const unrelated = ".claude/skills/example-tdd/SKILL.md"
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: make gate}\n")
 	before := configHashOf(t, root, unrelated)
 	if after := configHashOf(t, root, unrelated); after != before {
 		t.Fatal("fixed topic fan-out budget changed unrelated skill guidance")
@@ -173,7 +173,7 @@ func TestPerTargetDriftProjection(t *testing.T) {
 		bugfix = ".claude/skills/example-bugfix/SKILL.md"
 	)
 	cfg := func(pitfalls string) string {
-		return "prefix: example\nintegrationBranch: main\n" + sprintfVars(pitfalls)
+		return "prefix: example\nprofile: full\nintegrationBranch: main\n" + sprintfVars(pitfalls)
 	}
 	root := scaffoldFiles(t, cfg(""), map[string]string{
 		"skills/tdd.yaml":           "data:\n  testSurfaces:\n    - {name: One, location: a, kind: b}\n",
@@ -198,7 +198,7 @@ func TestPerTargetDriftProjection(t *testing.T) {
 }
 
 func TestSyncPruneSkipsEscapingLockPaths(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	victim := filepath.Join(root, "..", "victim.txt")
 	testsupport.WriteFile(t, victim, "keep me\n")
 	p, err := Open(testContext(t), root)
@@ -232,7 +232,7 @@ func TestSyncPruneSkipsEscapingLockPaths(t *testing.T) {
 // the same orphan scan as per-artifact parts: a typo'd section or an unknown
 // kind must be flagged instead of silently never rendering.
 func TestCheckFlagsOrphanedSingletonParts(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", map[string]string{
 		"parts/workflow/typo-section.md": "stray\n",
 		"parts/nonsense/x.md":            "stray\n",
 		"parts/workflow/principles.md":   "## Principles\n\nLegit override.\n",
@@ -272,7 +272,7 @@ func sprintfVars(pitfalls string) string {
 
 // invariant: config/migrations-and-locks:schema-version-lock (TestSyncStampsSchemaVersion)
 func TestSyncStampsSchemaVersion(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -293,7 +293,7 @@ func TestSyncStampsSchemaVersion(t *testing.T) {
 }
 
 func chainClosureConfig(scope string) string {
-	return "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\naudit:\n  allowedScopes:\n    - " + scope + "\n"
+	return "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: make gate}\naudit:\n  allowedScopes:\n    - " + scope + "\n"
 }
 
 // Editing audit.allowedScopes reflags exactly the artifacts whose assembled
@@ -345,7 +345,7 @@ func TestScopesEditReflagsReferencingArtifacts(t *testing.T) {
 // invariant: rendering/sync-and-drift:part-scopes-in-confighash (TestScopesEditReflagsPlaceholderPart)
 func TestScopesEditReflagsPlaceholderPart(t *testing.T) {
 	cfg := func(meaning string) string {
-		return "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\n" +
+		return "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: make gate}\n" +
 			"audit:\n  allowedScopes:\n    - {name: adr, meaning: " + meaning + "}\n"
 	}
 	root := scaffoldFiles(t, cfg("ADR docs"), map[string]string{
@@ -470,7 +470,7 @@ func TestAuditAndCollisionsRefuseCorruptLock(t *testing.T) {
 // TestScopesEditReflagsPlaceholderPart).
 func TestCommentWrappedScopePlaceholderDoesNotFold(t *testing.T) {
 	cfg := func(meaning string) string {
-		return "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\n" +
+		return "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: make gate}\n" +
 			"audit:\n  allowedScopes:\n    - {name: adr, meaning: " + meaning + "}\n"
 	}
 	root := scaffoldFiles(t, cfg("ADR docs"), map[string]string{

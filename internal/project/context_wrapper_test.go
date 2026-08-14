@@ -205,7 +205,7 @@ func testCheckRunnerSpillAdvisoryTracksNonemptySafeLog(t *testing.T, helper stri
 }
 
 func testContextSpillCacheResidueLeavesConfigTreeClean(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: make gate\n", nil)
+	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars:\n  gateCmd: make gate\n", nil)
 	observability := filepath.Join(root, ".cache", "awf-context")
 	if err := os.MkdirAll(observability, 0o700); err != nil {
 		t.Fatal(err)

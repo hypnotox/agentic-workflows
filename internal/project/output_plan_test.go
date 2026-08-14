@@ -18,7 +18,7 @@ import (
 // invariant: rendering/project-output-plan:output-plan-complete (TestLocalDocsOutputPlan)
 // invariant: rendering/doc-outputs:local-doc-output-complete (TestLocalDocsOutputPlan)
 func TestLocalDocsOutputPlan(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/z\n    title: Z\n    description: Z document.\n  - name: runbooks/a\n    title: A\n    description: A document.\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/z\n    title: Z\n    description: Z document.\n  - name: runbooks/a\n    title: A\n    description: A document.\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -48,7 +48,7 @@ func TestLocalDocsOutputPlan(t *testing.T) {
 }
 
 func TestLocalDocCollisionWithTargetOutputPrecedesRendering(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/x\n    title: X\n    description: X document.\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/x\n    title: X\n    description: X document.\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -65,7 +65,7 @@ func TestLocalDocCollisionWithTargetOutputPrecedesRendering(t *testing.T) {
 // filesystem directly, so an unreadable directory there used to be skipped and
 // the plan, and the drift oracle computed from it, silently narrowed.
 func TestOutputPlanPropagatesPreAdoptionEnumerationFault(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\ndomains: [rendering]\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\ndomains: [rendering]\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -108,7 +108,7 @@ func TestTargetDescriptorValidation(t *testing.T) {
 		if err := target.validate(); err == nil {
 			t.Fatalf("invalid target %#v was accepted", target)
 		}
-		root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+		root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 		p, err := Open(testContext(t), root)
 		if err != nil {
 			t.Fatal(err)
@@ -131,7 +131,7 @@ func TestTargetDescriptorValidation(t *testing.T) {
 
 // invariant: rendering/project-output-plan:bridge-render-identity (TestBridgeRenderIdentity)
 func TestBridgeRenderIdentity(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n", map[string]string{
 		"target-bridge/.yaml": "data: {}\n",
 		"claude/.yaml":        "data: {}\n",
 	})
@@ -236,7 +236,7 @@ func TestBridgeRenderIdentity(t *testing.T) {
 // invariant: rendering/project-output-plan:shared-output-coalesced (TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering)
 // invariant: rendering/pi-runtime:pi-extension-target-render (TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering)
 func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -387,7 +387,7 @@ func TestOutputPlanTopicNodesHaveLiteralPathsAndInputs(t *testing.T) {
 }
 
 func TestOutputPlanPropagatesLocalRenderReadFault(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -400,7 +400,7 @@ func TestOutputPlanPropagatesLocalRenderReadFault(t *testing.T) {
 }
 
 func TestOutputPlanPropagatesConfigReferenceRenderFault(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", map[string]string{
 		"parts/config-reference/intro.md": "<!-- awf:comment unclosed\n",
 	})
 	p, err := Open(testContext(t), root)
@@ -435,7 +435,7 @@ func TestTargetOutputDeclarationsRejectUnknownRequiredSkill(t *testing.T) {
 }
 
 func TestValidateLiveTemplatesRejectsMissingTargetTemplate(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -445,3 +445,5 @@ func TestValidateLiveTemplatesRejectsMissingTargetTemplate(t *testing.T) {
 		t.Fatalf("missing live template error = %v", err)
 	}
 }
+
+// invariant: rendering/project-output-plan:profile-projected-render (TestLocalDocsOutputPlan)

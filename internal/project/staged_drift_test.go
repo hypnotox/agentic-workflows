@@ -110,7 +110,7 @@ func TestStagedDriftTreatsSymlinkAsIndexedMetadata(t *testing.T) {
 
 // invariant: config/configuration:template-source-root (TestCheckStagedDriftUsesIndexedTemplateSourceMappings)
 func TestCheckStagedDriftUsesIndexedTemplateSourceMappings(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	if err := fs.WalkDir(templates.FS, ".", func(name string, entry fs.DirEntry, err error) error {
 		if err != nil || entry.IsDir() {
 			return err
@@ -141,7 +141,7 @@ func TestCheckStagedDriftUsesIndexedTemplateSourceMappings(t *testing.T) {
 	gitfixture.Commit(t, repo, "rendered", nil)
 	// The immutable index enables mappings while the working tree is missing a
 	// required root source. A staged operation must not consult that deletion.
-	gitfixture.Stage(t, repo, map[string]string{".awf/config.yaml": "prefix: example\nintegrationBranch: main\nrender:\n  templateSourceRoot: templates\n"})
+	gitfixture.Stage(t, repo, map[string]string{".awf/config.yaml": "prefix: example\nprofile: full\nintegrationBranch: main\nrender:\n  templateSourceRoot: templates\n"})
 	if err := os.Remove(filepath.Join(root, "templates", "docs", "architecture.md.tmpl")); err != nil {
 		t.Fatal(err)
 	}
@@ -155,7 +155,7 @@ func TestCheckStagedDriftUsesIndexedTemplateSourceMappings(t *testing.T) {
 }
 
 func TestCheckStagedDriftLocalDocsUsesIndexUniverse(t *testing.T) {
-	const configYAML = "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n"
+	const configYAML = "prefix: example\nprofile: full\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n"
 	root := scaffold(t, configYAML)
 	repo := gitfixture.InitRepoAt(t, root)
 	gitfixture.AddAll(t, repo)
@@ -183,7 +183,7 @@ func TestCheckStagedDriftLocalDocsUsesIndexUniverse(t *testing.T) {
 	if err := os.Remove(filepath.Join(root, "docs/runbooks/incident.md")); err != nil {
 		t.Fatal(err)
 	}
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	after, err := CheckStagedDriftRoot(testContext(t), root)
 	if err != nil || !reflect.DeepEqual(after, before) {
 		t.Fatalf("staged local-doc universe contaminated: before=%v after=%v err=%v", before, after, err)
@@ -193,7 +193,7 @@ func TestCheckStagedDriftLocalDocsUsesIndexUniverse(t *testing.T) {
 // invariant: rendering/sync-and-drift:staged-drift-rendered-output (TestCheckStagedDriftOperationalErrors)
 func TestCheckStagedDriftOperationalErrors(t *testing.T) {
 	t.Run("cancelled index read", func(t *testing.T) {
-		root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+		root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 		repo := gitfixture.InitRepoAt(t, root)
 		gitfixture.AddAll(t, repo)
 		ctx, cancel := context.WithCancel(testContext(t))
@@ -204,8 +204,8 @@ func TestCheckStagedDriftOperationalErrors(t *testing.T) {
 	})
 	t.Run("invalid lock", func(t *testing.T) {
 		repo := gitfixture.InitRepo(t)
-		testsupport.WriteAwfConfig(t, repo.Root(), "prefix: example\nintegrationBranch: main\n")
-		gitfixture.Stage(t, repo, map[string]string{".awf/config.yaml": "prefix: example\nintegrationBranch: main\n", ".awf/awf.lock": "{bad"})
+		testsupport.WriteAwfConfig(t, repo.Root(), "prefix: example\nprofile: full\nintegrationBranch: main\n")
+		gitfixture.Stage(t, repo, map[string]string{".awf/config.yaml": "prefix: example\nprofile: full\nintegrationBranch: main\n", ".awf/awf.lock": "{bad"})
 		if _, err := CheckStagedDriftRoot(testContext(t), repo.Root()); err == nil {
 			t.Fatal("invalid staged lock succeeded")
 		}
@@ -226,7 +226,7 @@ func TestCheckStagedDriftOperationalErrors(t *testing.T) {
 	t.Run("invalid pitfalls", func(t *testing.T) {
 		repo := gitfixture.InitRepo(t)
 		gitfixture.Stage(t, repo, map[string]string{
-			".awf/config.yaml":          "prefix: example\nintegrationBranch: main\n",
+			".awf/config.yaml":          "prefix: example\nprofile: full\nintegrationBranch: main\n",
 			".awf/docs/pitfalls/bad.md": "---\ntitle: Bad\nunknown: value\n---\nbody\n",
 		})
 		if _, err := CheckStagedDriftRoot(testContext(t), repo.Root()); err == nil {
@@ -237,7 +237,7 @@ func TestCheckStagedDriftOperationalErrors(t *testing.T) {
 
 // invariant: rendering/sync-and-drift:generated-artifacts-tracked (TestCheckStagedDriftTracksWholeOutputPlan)
 func TestCheckStagedDriftTracksWholeOutputPlan(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	repo := gitfixture.InitRepoAt(t, root)
 	gitfixture.AddAll(t, repo)
 	gitfixture.Commit(t, repo, "staged config", nil)
@@ -377,7 +377,7 @@ func TestStagedDriftRenderedOutputInvariant(t *testing.T) {
 	}
 
 	// Dirty working output and config must not contaminate the staged comparison.
-	const baselineConfig = "prefix: example\nintegrationBranch: main\n"
+	const baselineConfig = "prefix: example\nprofile: full\nintegrationBranch: main\n"
 	projectRoot := scaffold(t, baselineConfig)
 	repo := gitfixture.InitRepoAt(t, projectRoot)
 	gitfixture.AddAll(t, repo)

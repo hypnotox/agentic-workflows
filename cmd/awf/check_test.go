@@ -26,6 +26,7 @@ import (
 )
 
 const checkYAML = `prefix: example
+profile: full
 integrationBranch: main
 vars: {testCmd: go test ./..., gateCmd: make gate}
 `
@@ -352,7 +353,7 @@ func TestRunCheckAheadNotice(t *testing.T) {
 // switches coverage on: ADR-0192 made coverage and fan-out evaluate whether or
 // not the config declares the block.
 func coverageYAML() string {
-	return "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\ndomains: [alpha]\n" +
+	return "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: make gate}\ndomains: [alpha]\n" +
 		"currentState:\n"
 }
 

@@ -27,8 +27,8 @@ You are a developer on {{ with .prefix }}`{{ . }}`{{ else }}this project{{ end }
 <!-- Authoring: see agents-md-standard.md for one terse cross-cutting imperative per rule. -->
 Hard rules every change must respect:
 
-- **Append-only ADRs.** Preserve decision history; change current-state claims forward. See `{{ .layout.adrDir }}/` and `{{ .layout.indexMd }}`.
-- **Docs travel with the change.** Update reality and its documentation together.
+{{ if ne .profile "core" }}- **Append-only ADRs.** Preserve decision history; change current-state claims forward. See `{{ .layout.adrDir }}/` and `{{ .layout.indexMd }}`.
+{{ end }}- **Docs travel with the change.** Update reality and its documentation together.
 - **Stage and gate each commit.** Stage the complete transaction; run `./awf check staged` and {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }}. A wired pre-commit hook enforces both; run them manually only in a clone without wired hooks.
 {{- range .data.invariants }}
 {{- if eq .kind "scopes" }}
@@ -44,7 +44,7 @@ Hard rules every change must respect:
 <!-- awf:section workflow -->
 ## Workflow
 
-Treat exposed native-skill descriptions as routing metadata. Before loading a skill, identify the next concrete action. Load only a skill that governs that action; a possible later edit, render, documentation update, review, or commit does not justify loading its skill now. Load multiple bodies only when each independently governs that same next action before another routing decision can occur. Before hand-authored production-code mutation, obtain an explicitly approved proportionate outline through brainstorming; documentation-only, autonomous test maintenance, generated-output-only, and non-code mechanical work remain independent. Preserve the approved design boundary; see `{{ .layout.maintainableCodeDesign }}`. Route settled content by authority lifetime: durable choices belong in ADRs, active rules in current-state topics, directives in plans, and transient context in effort memory. Conventional Commits; one concern per commit.{{ with .layout.workflowRef }} See [{{ . }}]({{ . }}) for workflow procedure.{{ end }}
+Treat exposed native-skill descriptions as routing metadata. Before loading a skill, identify the next concrete action. Load only a skill that governs that action; a possible later edit, render, documentation update, review, or commit does not justify loading its skill now. Load multiple bodies only when each independently governs that same next action before another routing decision can occur. Before hand-authored production-code mutation, obtain an explicitly approved proportionate outline through brainstorming; documentation-only, autonomous test maintenance, generated-output-only, and non-code mechanical work remain independent. Preserve the approved design boundary; see `{{ .layout.maintainableCodeDesign }}`. {{ if ne .profile "core" }}Route settled content by authority lifetime: durable choices belong in ADRs, active rules in current-state topics, directives in plans, and transient context in effort memory. {{ end }}Conventional Commits; one concern per commit.{{ with .layout.workflowRef }} See [{{ . }}]({{ . }}) for workflow procedure.{{ end }}
 <!-- awf:end -->
 
 <!-- awf:section working-memory -->
@@ -73,10 +73,10 @@ Evaluate continuity independently; when durable continuity materially helps, use
 <!-- awf:section document-map -->
 ## Document map
 
-- **ADR index:** [{{ .layout.adrReadme }}]({{ .layout.adrReadme }}), architecture decisions and lifecycle.
+{{ if ne .profile "core" }}- **ADR index:** [{{ .layout.adrReadme }}]({{ .layout.adrReadme }}), architecture decisions and lifecycle.
 - **Decision index:** [{{ .layout.indexMd }}]({{ .layout.indexMd }}), generated status index.
 - **Plans:** [{{ .layout.plansDir }}]({{ .layout.plansDir }}), implementation directives.
-{{ range .mandatoryDocs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}), {{ .desc }}
+{{ end }}{{ range .mandatoryDocs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}), {{ .desc }}
 {{ end }}{{ range .docs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}), {{ .desc }}
 {{ end }}{{- range .data.docMap }}- **{{ .path }}:** [{{ .path }}]({{ .path }}){{ with .desc }}, {{ . }}{{ end }}
 {{ end -}}

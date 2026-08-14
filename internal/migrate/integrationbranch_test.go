@@ -89,7 +89,7 @@ func TestConfigForCurrentSchemaSeedsHistoricalIntegrationBranch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "prefix: example\nintegrationBranch: main\n"
+	want := "prefix: example\nintegrationBranch: main\nprofile: full\n"
 	if string(got) != want {
 		t.Fatalf("forward-ported config:\ngot  %q\nwant %q", got, want)
 	}
@@ -106,16 +106,16 @@ func TestConfigForCurrentSchemaSeedsHistoricalIntegrationBranch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(kept) != string(own) {
-		t.Fatalf("a present branch must survive the port-forward, got %q", kept)
+	if string(kept) != "prefix: example\nintegrationBranch: trunk\nprofile: full\n" {
+		t.Fatalf("a present branch must survive while later required facts migrate, got %q", kept)
 	}
 	// At or past the generation the branch is skipped entirely.
 	atGen, err := ConfigForCurrentSchema(src, integrationBranchGeneration)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(atGen) != "prefix: example\n" {
-		t.Fatalf("generation %d must not re-apply the seed and must forward-port retired keys, got %q", integrationBranchGeneration, atGen)
+	if string(atGen) != "prefix: example\nprofile: full\n" {
+		t.Fatalf("generation %d must not re-apply the branch seed and must apply later required facts, got %q", integrationBranchGeneration, atGen)
 	}
 }
 

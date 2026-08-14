@@ -8,7 +8,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 )
 
-const pitfallsCfg = "prefix: example\nintegrationBranch: main\nvars: {}\n"
+const pitfallsCfg = "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n"
 
 func pitfallSource(title, extra, body string) string {
 	return "---\ntitle: " + title + "\n" + extra + "---\n" + body

@@ -106,6 +106,7 @@ func (p *Project) currentValueResolvers() map[string]func() string {
 	}
 	res := audit.Resolve(scopes)
 	return map[string]func() string{
+		"profile":           func() string { return "`" + string(p.Cfg.Profile) + "`" },
 		"prefix":            func() string { return "`" + p.Cfg.Prefix + "`" },
 		"integrationBranch": func() string { return "`" + p.Cfg.IntegrationBranch + "`" },
 		"render.templateSourceRoot": func() string {
@@ -280,6 +281,9 @@ func (p *Project) configReferenceRows(files []RenderedFile) (ConfigReference, er
 		return ConfigReference{}, err
 	}
 	for _, e := range configspec.Keys() {
+		if !p.fullProfile() && fullOnlyConfigKey(e.Path) {
+			continue
+		}
 		row := ConfigKeyRow{
 			Path: e.Path, Type: e.Type, Default: e.Default,
 			Description: e.Description, Availability: e.Availability,
@@ -302,6 +306,9 @@ func (p *Project) configReferenceRows(files []RenderedFile) (ConfigReference, er
 		return ConfigReference{}, err
 	}
 	for _, v := range configspec.VarEntries() {
+		if !p.fullProfile() && (v.Key == "activeMdRegenCmd" || v.Key == "invariantTestPath") {
+			continue
+		}
 		consumers := "No catalog artifact references it."
 		if c := rendered[v.Key]; len(c) > 0 {
 			consumers = "Consumed by: " + strings.Join(c, ", ") + "."
@@ -371,9 +378,21 @@ func (p *Project) configReferenceData(files []RenderedFile) (map[string]any, err
 
 // dataKeyRowsTyped filters described data keys to catalog artifacts and the
 // always-on agents-doc.
+func fullOnlyConfigKey(path string) bool {
+	return path == "domains" || path == "tags" || path == "contextIgnore" || strings.HasPrefix(path, "currentState.")
+}
+
 func (p *Project) dataKeyRowsTyped() ([]DataKeyRow, error) {
 	var rows []DataKeyRow
 	for _, d := range configspec.DataKeys() {
+		if d.Artifact != "agents-doc" {
+			_, skill := p.catalog().Skills[d.Artifact]
+			_, agent := p.catalog().Agents[d.Artifact]
+			_, doc := p.catalog().Docs[d.Artifact]
+			if !skill && !agent && !doc {
+				continue
+			}
+		}
 		label := strings.TrimSuffix(d.Kind, "s") + " " + d.Artifact
 		if d.Kind == "docs" && d.Artifact == "agents-doc" {
 			label = "agents-doc"

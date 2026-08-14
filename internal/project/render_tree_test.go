@@ -55,7 +55,7 @@ func syncAndReadAgents(t *testing.T, root string) string {
 
 // invariant: rendering/sync-and-drift:agent-guide-size-advisory (TestCheckReportAgentGuideSizeAdvisoryManagedOnly)
 func TestCheckReportAgentGuideSizeAdvisoryManagedOnly(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n", nil)
+	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n", nil)
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -88,7 +88,7 @@ func TestCheckReportAgentGuideSizeAdvisoryManagedOnly(t *testing.T) {
 // invariant: rendering/guide-and-doc-templates:agentsdoc-parts (TestAgentsDocDocumentMapPartRetainsLocalDocs)
 // invariant: rendering/doc-outputs:local-doc-output-complete (TestAgentsDocDocumentMapPartRetainsLocalDocs)
 func TestAgentsDocDocumentMapPartRetainsLocalDocs(t *testing.T) {
-	const cfg = "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/checks\n    title: Checks\n    description: Check local docs.\n"
+	const cfg = "prefix: example\nprofile: full\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/checks\n    title: Checks\n    description: Check local docs.\n"
 	const row = "- **Checks:** [docs/runbooks/checks.md](docs/runbooks/checks.md), Check local docs."
 	for _, tc := range []struct {
 		name, sidecar, part, want, absent string
@@ -122,9 +122,9 @@ func TestAgentsDocDocumentMapPartRetainsLocalDocs(t *testing.T) {
 		})
 	}
 	for _, tc := range []struct{ name, cfg, sidecar string }{
-		{"omitted local docs", "prefix: example\nintegrationBranch: main\n", ""},
-		{"empty local docs", "prefix: example\nintegrationBranch: main\nlocalDocs: []\n", ""},
-		{"dropped empty local docs", "prefix: example\nintegrationBranch: main\n", "sections:\n  document-map:\n    drop: true\n"},
+		{"omitted local docs", "prefix: example\nprofile: full\nintegrationBranch: main\n", ""},
+		{"empty local docs", "prefix: example\nprofile: full\nintegrationBranch: main\nlocalDocs: []\n", ""},
+		{"dropped empty local docs", "prefix: example\nprofile: full\nintegrationBranch: main\n", "sections:\n  document-map:\n    drop: true\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			files := map[string]string{}
@@ -146,8 +146,8 @@ func TestAgentsDocDocumentMapPartRetainsLocalDocs(t *testing.T) {
 func TestAgentsDocDefaultEmptyLocalDocsByteInertia(t *testing.T) {
 	const suffix = "<!-- awf:edit document-map: default; create .awf/parts/agents-doc/document-map.md to override -->\n## Document map\n\n- **ADR index:**"
 	for _, cfg := range []string{
-		"prefix: example\nintegrationBranch: main\n",
-		"prefix: example\nintegrationBranch: main\nlocalDocs: []\n",
+		"prefix: example\nprofile: full\nintegrationBranch: main\n",
+		"prefix: example\nprofile: full\nintegrationBranch: main\nlocalDocs: []\n",
 	} {
 		got := syncAndReadAgents(t, scaffoldFiles(t, cfg, nil))
 		if !strings.Contains(got, suffix) {
@@ -169,7 +169,7 @@ func TestLocalDocGuideSize(t *testing.T) {
 	for i := range 100 {
 		fmt.Fprintf(&entries, "  - name: runbooks/doc-%03d\n    title: Local document %03d\n    description: %s\n", i, i, strings.Repeat("x", 100))
 	}
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n"+entries.String())
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nlocalDocs:\n"+entries.String())
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -199,7 +199,7 @@ func TestLocalDocGuideSize(t *testing.T) {
 
 // invariant: rendering/guide-and-doc-templates:agentsdoc-parts (TestAgentsDocPartsOverride)
 func TestAgentsDocPartsOverride(t *testing.T) {
-	cfg := "prefix: example\nintegrationBranch: main\n"
+	cfg := "prefix: example\nprofile: full\nintegrationBranch: main\n"
 
 	// Absent → the generic, adopter-neutral default renders publication-safe with
 	// empty invariants/docMap.
@@ -226,7 +226,7 @@ func TestAgentsDocPartsOverride(t *testing.T) {
 // invariant: rendering/guide-and-doc-templates:maintainable-code-design-guide (TestMaintainableCodeDesignPartOverride)
 func TestMaintainableCodeDesignPartOverride(t *testing.T) {
 	const uniqueBody = "The local decision posture owns this change."
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", map[string]string{
 		"parts/maintainable-code-design/decision-posture.md": uniqueBody + "\n",
 	})
 	p, err := Open(testContext(t), root)
@@ -255,7 +255,7 @@ func TestMaintainableCodeDesignPartOverride(t *testing.T) {
 }
 
 func TestConventionPartPrecedence(t *testing.T) {
-	cfg := "prefix: example\nintegrationBranch: main\n" + debuggingVars + ""
+	cfg := "prefix: example\nprofile: full\nintegrationBranch: main\n" + debuggingVars + ""
 	const part = "skills/parts/debugging/debugging-surfaces.md"
 
 	// (1) A convention part present replaces the section body.
@@ -281,7 +281,7 @@ func TestConventionPartPrecedence(t *testing.T) {
 
 // invariant: rendering/render-engine:sidecar-optional (TestSidecarAbsentRendersDefault)
 func TestSidecarAbsentRendersDefault(t *testing.T) {
-	cfg := "prefix: example\nintegrationBranch: main\n" + debuggingVars + ""
+	cfg := "prefix: example\nprofile: full\nintegrationBranch: main\n" + debuggingVars + ""
 	root := scaffold(t, cfg) // no sidecar, no parts
 	out := syncAndReadDebugging(t, root)
 	if strings.Contains(out, "<no value>") {

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/commitmsg"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
@@ -462,6 +463,9 @@ func loadTreeCurrentState(root string, tree *snapshot.Tree, lock *manifest.Lock)
 	}
 	if err := cfg.Validate(); err != nil {
 		return currentstate.Loaded{}, nil, err
+	}
+	if cfg.Profile == catalog.ProfileCore {
+		return currentstate.Loaded{}, cfg, nil
 	}
 	loaded, err := currentstate.LoadFromTree(tree, cfg)
 	if err != nil {

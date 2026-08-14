@@ -17,7 +17,7 @@ import (
 // awf wrapper (or nil when none is produced).
 func runnerFile(t *testing.T) *RenderedFile {
 	t.Helper()
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -130,7 +130,7 @@ func TestPruneBacksUpCoOwnedRunner(t *testing.T) {
 		{"collision-suffixed", true, "x.awf-bak.1"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
+			root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
 			p, err := Open(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
@@ -165,7 +165,7 @@ func TestPruneBacksUpCoOwnedRunner(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			disabled := "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n"
+			disabled := "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n"
 			if err := os.WriteFile(configPath(root), []byte(disabled), 0o644); err != nil {
 				t.Fatal(err)
 			}
@@ -204,7 +204,7 @@ func TestPruneBacksUpCoOwnedRunner(t *testing.T) {
 }
 
 func TestPruneRemovesManagedRunnerSymlinkWithoutTargetAccess(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -250,7 +250,7 @@ func TestPruneRemovesManagedRunnerSymlinkWithoutTargetAccess(t *testing.T) {
 
 // invariant: rendering/companion-scripts:runner-prune-backup (TestRunnerPrunePropagatesBackupFailure)
 func TestRunnerPrunePropagatesBackupFailure(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -389,7 +389,7 @@ func TestRunnerNotASingletonKind(t *testing.T) {
 // `create ... to override` pointer invites) is claimed by the closed-tree sweep, so
 // override renders and `./awf check` does not flag `.awf/runner` as unclaimed.
 func TestRunnerPartOverrideClaimed(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -428,7 +428,7 @@ func TestRunnerPartOverrideClaimed(t *testing.T) {
 // A part path that reads as a directory surfaces as a render error rather
 // than a silent default.
 func TestRunnerPartReadError(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)

@@ -48,7 +48,7 @@ Run the gate.
 `
 
 func TestProjectReadPlanUsesFixedDocsDirectory(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: []\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\ndomains: []\n")
 	path := filepath.Join(root, "docs/plans/2026-08-02-project-seam.md")
 	testsupport.WriteFile(t, path, projectPlanV1)
 	p, err := Open(testContext(t), root)
@@ -178,7 +178,7 @@ func TestProjectReadPlanV2SurfacesCorpusFailureBeforeProjection(t *testing.T) {
 }
 
 func TestProjectReadPlanPreservesTypedErrors(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: []\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\ndomains: []\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs/plans/2026-08-02-project-seam.md"), projectPlanV1)
 	p, err := Open(testContext(t), root)
 	if err != nil {

@@ -129,3 +129,9 @@ Backing: test
 In the coverage report, a directory all of whose scanned tracked descendants are owned by no domain is reported as that single topmost directory with a trailing slash, never as its individual files.
 Origin: ADR-0148
 Backing: test
+
+### `invariant: context-full-profile-only`
+
+Context and current-state query operations are declared Full-only capabilities and refuse before handler execution under Core.
+Origin: ADR-introduce-core-and-full-workflow-profiles
+Backing: test

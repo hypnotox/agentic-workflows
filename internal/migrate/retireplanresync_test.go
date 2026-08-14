@@ -14,11 +14,11 @@ import (
 )
 
 func TestRetirePlanResyncGenerationRegistration(t *testing.T) {
-	if Current() != localDocsGeneration {
-		t.Fatalf("Current() = %d, want %d", Current(), localDocsGeneration)
+	if Current() != profileGeneration {
+		t.Fatalf("Current() = %d, want %d", Current(), profileGeneration)
 	}
 	last := registry[len(registry)-1]
-	if last.To != localDocsGeneration || last.Name != "local-docs" {
+	if last.To != profileGeneration || last.Name != "workflow-profile" {
 		t.Fatalf("last migration = %#v", last)
 	}
 }
@@ -105,7 +105,7 @@ func TestRetirePlanResyncMigrationReportsAndStamps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(applied, []string{"retire-plan-resync-selection", "global-topic-path-ownership", "effort-archive-root", "pitfall-corpus", "template-source-root", "local-docs"}) {
+	if !reflect.DeepEqual(applied, []string{"retire-plan-resync-selection", "global-topic-path-ownership", "effort-archive-root", "pitfall-corpus", "template-source-root", "local-docs", "workflow-profile"}) {
 		t.Fatalf("applied = %v", applied)
 	}
 	texts := make([]string, len(changes))
@@ -121,6 +121,7 @@ func TestRetirePlanResyncMigrationReportsAndStamps(t *testing.T) {
 		"drop-selection: removed docsDir",
 		"drop-selection: removed local from " + filepath.ToSlash(skillSidecar),
 		"drop-selection: removed local from " + filepath.ToSlash(docSidecar),
+		"workflow-profile: selected full for an existing repository",
 		"schema-stamp: updated awf.lock schema version",
 	}) {
 		t.Fatalf("changes = %v", texts)

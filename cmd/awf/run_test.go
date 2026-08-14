@@ -29,6 +29,7 @@ import (
 
 // minimalYAML is a valid tree-config for a scaffolded fixture project.
 const minimalYAML = `prefix: example
+profile: full
 integrationBranch: master
 vars: {testCmd: go test ./..., gateCmd: make gate}
 `
@@ -418,7 +419,7 @@ func testInitFirstADRChecksClean(t *testing.T) {
 			testsupport.SwapVar(t, &isInteractive, func() bool { return false })
 			// The gateCmd answer keeps the scaffold's enabled hooks singleton
 			// valid for the post-init syncs (ADR-0156 Decision 5).
-			if err := runInit(ctx, root, false, false, []string{"gateCmd=make gate"}, "", io.Discard); err != nil {
+			if err := runInit(ctx, root, false, false, []string{"profile=full", "gateCmd=make gate"}, "", io.Discard); err != nil {
 				t.Fatal(err)
 			}
 
@@ -657,6 +658,29 @@ func TestTopLevelCommandFamiliesUseStructuredHelpAndUsageFailures(t *testing.T) 
 				}
 			}()
 		})
+	}
+}
+
+func TestRunRefusesFullOnlyCommandForCoreProfileBeforeStateGuard(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nprofile: core\nintegrationBranch: main\n")
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+	var stdout, stderr bytes.Buffer
+	if code := run([]string{"awf", "audit", "HEAD"}, &stdout, &stderr); code != 1 {
+		t.Fatalf("exit = %d, stderr = %q", code, stderr.String())
+	}
+	if stdout.Len() != 0 || !strings.Contains(stderr.String(), "awf audit is unavailable for the selected core profile") {
+		t.Fatalf("stdout=%q stderr=%q", stdout.String(), stderr.String())
+	}
+	for _, configYAML := range []string{
+		"prefix: example\nprofile: core\nintegrationBranch: main\ndomains: [rendering]\n",
+		"profile: [\n",
+	} {
+		testsupport.WriteAwfConfig(t, root, configYAML)
+		stderr.Reset()
+		if code := run([]string{"awf", "audit", "HEAD"}, &stdout, &stderr); code != 1 {
+			t.Fatalf("invalid capability config exit = %d, stderr = %q", code, stderr.String())
+		}
 	}
 }
 
@@ -1097,12 +1121,11 @@ func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
 	for _, want := range []string{
 		"skill bugfix references unset vars",
 		"skill tdd references unset vars",
-		".pi/skills/001-roadmap-graduation/SKILL.md has unauthored stub content",
 		"docs/architecture.md has unauthored stub content",
 		"step 5: commit .awf/ and the rendered files together",
 	} {
 		if !strings.Contains(out.String(), want) {
-			t.Errorf("init --force full-catalog report missing %q:\n%s", want, out.String())
+			t.Errorf("init --force Core report missing %q:\n%s", want, out.String())
 		}
 	}
 	// Regression: init delegates its backup to the chained sync (one BackupFile path,
@@ -1348,3 +1371,7 @@ func TestInitAndUpgradeRefusePreTrackingAuthority(t *testing.T) {
 		})
 	}
 }
+
+// invariant: tooling/audit-commands:audit-full-profile-only (TestResolveProjectResidentRoot)
+
+// invariant: tooling/context-and-topic:context-full-profile-only (TestResolveProjectResidentRoot)

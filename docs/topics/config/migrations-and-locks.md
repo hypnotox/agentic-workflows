@@ -145,8 +145,9 @@ Backing: test
 
 ### `invariant: schema-version-lock`
 
-The lock file carries an integer schemaVersion, and a lock written by sync stamps it to the current schema version (the highest registered migration target) while awfVersion remains an independent tool release string.
+The lock file carries an integer schemaVersion, and sync stamps the current highest registered migration target, including the profile migration; awfVersion remains an independent tool release string.
 Origin: ADR-0010
+Revised-by: ADR-introduce-core-and-full-workflow-profiles
 Backing: test
 
 ### `invariant: severity-keys-dropped`
@@ -200,4 +201,10 @@ Backing: test
 Schema generation 21 removes only `.awf/metrics` and `.awf/assignments` from the primary control root. It reports each root in that order as removed or already absent, refuses symlinks and non-directories without removal, and permits retry after partial failure while ordinary schema, lock, render, drift, discovery, sweep, and uninstall ownership excludes both roots.
 Origin: ADR-0146
 Revised-by: ADR-0164, ADR-0167
+Backing: test
+
+### `invariant: profile-full-migration`
+
+Existing repositories missing the required profile field migrate byte-preservingly and idempotently to profile: full before strict parsing and synchronization.
+Origin: ADR-introduce-core-and-full-workflow-profiles
 Backing: test

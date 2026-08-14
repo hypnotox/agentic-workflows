@@ -28,23 +28,16 @@ Backing: test
 
 ### `invariant: multi-target-render`
 
-For both built-in targets, every catalog skill and agent renders once at that target's descriptor-derived path, while neutral artifacts such as AGENTS.md render exactly once. A target-owned skill or other output renders only for its declaring target when its declared predicate is satisfied; configured-prefix path derivation, declaration, rendering, coalescing, hashing, pruning, provenance, and policy all use the same resolved descriptor.
-Each adapter artifact renders once for Claude Code and Pi at its descriptor's declared paths - including Claude Code and Pi skills and agents - while neutral artifacts such as `AGENTS.md` render exactly once. Descriptor-specific wording, bridges, capabilities, encodings, and additional outputs remain independently customizable.
+For both built-in targets, every selected catalog skill and agent renders once at its descriptor-derived path, while neutral artifacts such as AGENTS.md render once. Target-owned outputs render only for their declaring target when their predicate and selected view include them.
 Origin: ADR-0037
-Revised-by: ADR-0214, ADR-0218, ADR-0251
+Revised-by: ADR-0214, ADR-0218, ADR-0251, ADR-introduce-core-and-full-workflow-profiles
 Backing: test
 
 ### `invariant: output-plan-complete`
 
-The deterministic output plan contains every catalog artifact, bridge files, generated documentation, reservations, configured local-document outputs, and exactly three resident-root self-ignoring outputs: efforts, worktrees, and effort-archive. Local documents are a sorted separate family with shared declaration and render identity, ordinary Markdown policy, and per-entry metadata hashes; they do not join the catalog or layout. Its conditional config-tree units share their declaration facts with render dispatch. Resident dynamic descendants are not plan nodes and resolve at the primary root while tracked authority remains invoking-checkout authority; archive descendants are preserved without recursive management.
+The deterministic output plan contains every selected catalog artifact, applicable bridge files, generated documentation, reservations, configured local-document outputs, and the three resident-root markers. Full additionally plans governance outputs; Core omits them while retained historical ADR and plan leaves are not managed outputs.
 Origin: ADR-0124
-Revised-by: ADR-0164, ADR-0167, ADR-0175, ADR-0235, ADR-0251, ADR-0259, ADR-0272
-Backing: test
-
-### `invariant: full-catalog-render`
-
-Every output plan includes every catalog skill, agent, and document without consulting a config-derived enable selection, requirement closure, per-document suppression, or local reservation.
-Origin: ADR-0251
+Revised-by: ADR-0164, ADR-0167, ADR-0175, ADR-0235, ADR-0251, ADR-0259, ADR-0272, ADR-introduce-core-and-full-workflow-profiles
 Backing: test
 
 ### `invariant: inert-sidecar-field-rejected`
@@ -75,9 +68,9 @@ Backing: test
 
 ### `invariant: scaffold-seeds-all-vars`
 
-ScaffoldConfig seeds a value for every var referenced by any catalog skill, agent, hook, or doc template, so every unconditional catalog render starts without an unresolved value.
+ScaffoldConfig seeds every var referenced by templates in the selected catalog view, so each selected unconditional render starts without an unresolved value.
 Origin: ADR-0022
-Revised-by: ADR-0251
+Revised-by: ADR-0251, ADR-introduce-core-and-full-workflow-profiles
 Backing: test
 
 ### `invariant: shared-output-coalesced`
@@ -121,4 +114,10 @@ enablement is conditional. Unit-specific data construction, policy, encoding, an
 remain at their owning render seams.
 Origin: ADR-0235
 Revised-by: ADR-0253
+Backing: test
+
+### `invariant: profile-projected-render`
+
+One configuration-selected catalog view governs every planned output and generated producer; Full is exactly Core plus the governance layer.
+Origin: ADR-introduce-core-and-full-workflow-profiles
 Backing: test

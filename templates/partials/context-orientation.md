@@ -1,1 +1,1 @@
-Start by querying the explicit paths named above without `--show` or `--full` detail flags, then drill down with `./awf topic` where the work touches a claimed surface.
+{{if eq .profile "core"}}Read the explicit paths named above, their nearby tests, and the relevant project documentation before widening the search.{{else}}Start by querying the explicit paths named above without `--show` or `--full` detail flags, then drill down with `./awf topic` where the work touches a claimed surface.{{end}}

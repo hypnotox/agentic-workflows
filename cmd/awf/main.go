@@ -16,6 +16,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
+	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/upgrade"
 )
 
@@ -220,6 +221,20 @@ func run(args []string, stdout, stderr io.Writer) int {
 			err = &usageErr{boundedMemoryCommandError(err).Error()}
 		}
 		return dispatchFailure(stdout, stderr, err) // parseArgs only returns usageErr → exit 2
+	}
+	// Profile capability refusal precedes state and version guards and every handler.
+	if cmd.FullOnly || top.FullOnly {
+		cfg, loadErr := config.Load(config.RootDir(cwd))
+		if loadErr == nil {
+			if err := cfg.Validate(); err != nil {
+				return dispatchFailure(stdout, stderr, err)
+			}
+			if err := project.RequireCapability(cfg.Profile, strings.TrimSpace(top.Name+" "+sub), true); err != nil {
+				return dispatchFailure(stdout, stderr, err)
+			}
+		} else if !errors.Is(loadErr, os.ErrNotExist) && migrate.ProjectPresent(cwd) {
+			return dispatchFailure(stdout, stderr, loadErr)
+		}
 	}
 	// A committed current-state journal or attestation makes ordinary project
 	// commands non-operational; the guard refuses them before gating so no state

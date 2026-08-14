@@ -179,7 +179,7 @@ func TestConfigForCurrentSchemaDropsHistoricalSeveritySettings(t *testing.T) {
 	}
 	// The port-forward crosses every later generation too, so it also seeds the
 	// required integrationBranch key (ADR-0202 Decision 6).
-	want := "prefix: example\nintegrationBranch: main\n"
+	want := "prefix: example\nintegrationBranch: main\nprofile: full\n"
 	if string(got) != want {
 		t.Fatalf("forward-ported config:\ngot  %q\nwant %q", got, want)
 	}

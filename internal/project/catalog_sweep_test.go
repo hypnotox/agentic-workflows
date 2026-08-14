@@ -818,3 +818,5 @@ func TestNoOrphanGoldenTest(t *testing.T) {
 		}
 	}
 }
+
+// invariant: rendering/workflow-skill-templates:closed-workflow-profiles (TestCatalogTemplatesDegradeLeakFree)

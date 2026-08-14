@@ -59,3 +59,9 @@ Every finding rank awf reports remains exactly error or warn: one shared two-mem
 Origin: ADR-0183
 Revised-by: ADR-0234
 Backing: test
+
+### `invariant: audit-full-profile-only`
+
+Workflow-conformance audit is a declared Full-only command capability and refuses before handler execution under Core.
+Origin: ADR-introduce-core-and-full-workflow-profiles
+Backing: test

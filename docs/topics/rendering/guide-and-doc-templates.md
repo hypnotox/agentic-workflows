@@ -39,9 +39,9 @@ Backing: test
 
 ### `invariant: document-map-lists-mandatory-docs`
 
-The default document-map body of rendered `AGENTS.md` cites every catalog document-map doc (including the workflow guide, the documentation standard, and the agent-guide authoring standard) with its full title, link, and catalog description. Convention-part replacement and drop retain ordinary section semantics. The normalized name-sorted local-document projection is a non-replaceable agent-guide suffix with each local title, live path link, and description; when the catalog section is dropped, awf emits a fallback Document map heading before that suffix. Local documents remain outside the catalog and `Layout.Docs`.
+The default document-map body of rendered `AGENTS.md` cites every selected catalog document-map doc with its full title, link, and catalog description. The normalized name-sorted local-document projection is a non-replaceable suffix; it remains outside the catalog and `Layout.Docs`.
 Origin: ADR-0148
-Revised-by: ADR-0251, ADR-0272
+Revised-by: ADR-0251, ADR-0272, ADR-introduce-core-and-full-workflow-profiles
 Backing: test
 
 ### `invariant: glossary-table-forced`
@@ -90,17 +90,16 @@ Backing: test
 
 ### `invariant: guide-entry-point-routing`
 
-The rendered guide treats exposed native-skill descriptions as routing metadata and selects against the next concrete action. It loads only bodies that govern that action, never preloads a body for a possible later edit, render, documentation update, review, or commit, and loads multiple bodies only when each independently governs the same next action before another routing decision can occur. It does not duplicate catalog skill names, purposes, triggers, kinds, relationships, or a fallback catalog. Empty and missing render data remains coherent, and skill selection stays advisory.
+The rendered guide treats exposed native-skill descriptions as routing metadata and selects only bodies governing the next concrete action. Core routes its operational workflow without governance bodies; Full additionally routes its selected governance bodies. Empty and missing render data remains coherent, and selection stays advisory.
 Origin: ADR-0157
-Revised-by: ADR-0167, ADR-0241, ADR-0251, ADR-0270, ADR-0274
+Revised-by: ADR-0167, ADR-0241, ADR-0251, ADR-0270, ADR-0274, ADR-introduce-core-and-full-workflow-profiles
 Backing: test
 
 ### `invariant: working-memory-single-home`
 
-Working-memory protocol has one canonical workflow-document home. The root guide carries only slim native-skill routing and states that effort creation depends on durable continuity, while `effort-workflow` alone owns creation through finish. It preserves the one-user-managed-writer boundary without duplicating protocol, topology, or memory-path procedure. Resume verification remains procedurally homed in orienting.
-This claim reflects independent trigger judgment and the single-home effort lifecycle.
+Working-memory protocol has one canonical workflow-document home in both profiles. The root guide carries only slim native-skill routing, while `effort-workflow` alone owns creation through finish and preserves the one-user-managed-writer boundary.
 Origin: ADR-0157
-Revised-by: ADR-0160, ADR-0161, ADR-0164, ADR-0167, ADR-0175, ADR-0187, ADR-0189, ADR-0222, ADR-0226, ADR-0241, ADR-0243
+Revised-by: ADR-0160, ADR-0161, ADR-0164, ADR-0167, ADR-0175, ADR-0187, ADR-0189, ADR-0222, ADR-0226, ADR-0241, ADR-0243, ADR-introduce-core-and-full-workflow-profiles
 Backing: test
 
 ### `invariant: agent-guide-size-budgets`
@@ -111,7 +110,7 @@ Backing: test
 
 ### `invariant: maintainable-code-design-guide`
 
-The standard catalog renders `docs/maintainable-code-design.md` as a mandatory document-map singleton with ordered convention-part sections for decision posture, contextual heuristics, semantic modeling, readability, boundaries and dependencies, an illustrative pattern toolbox, preparatory refactoring, and failure modes. Its canonical language-agnostic, adopter-neutral decision posture makes the simplest sufficient solution the default and permits added abstraction, indirection, validation, test machinery, tooling, cleanup, or process only for requested behavior, a reproduced defect, an existing documented contract, or a clearly applicable project invariant; the agent guide projects this rule concisely. Workflow plan selection is proportionate: plans are for sequencing, coordination, or resumability that materially helps and record approved choices rather than invent speculative work. Empty project data remains coherent and free of repository-specific content.
+Both profiles render `docs/maintainable-code-design.md` as a mandatory document-map singleton with its ordered convention-part sections. Its adopter-neutral decision posture makes the simplest sufficient solution the default; Full additionally supplies plan routing where useful for sequencing, coordination, or resumability.
 Origin: ADR-0168
-Revised-by: ADR-0200, ADR-0232
+Revised-by: ADR-0200, ADR-0232, ADR-introduce-core-and-full-workflow-profiles
 Backing: test

@@ -208,7 +208,7 @@ func TestCheckExemptChildrenRunUnderGuardedProjectState(t *testing.T) {
 		return string(b)
 	}
 	const journal = `{"version":1,"phase":"prepared","finalLockSHA256":"sha256:x","operations":[{"path":".awf/awf.lock","prior":{"present":false,"mode":0,"content":null},"replacement":{"present":false,"mode":0,"content":null}}]}`
-	configText := "prefix: example\nintegrationBranch: main\n"
+	configText := "prefix: example\nprofile: full\nintegrationBranch: main\n"
 
 	// guarded builds a git-backed project in the named guarded state.
 	guarded := func(t *testing.T, journaled bool) string {

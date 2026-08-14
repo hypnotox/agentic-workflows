@@ -83,7 +83,7 @@ func TestProjectRendersStandardAgentMetadataAndBody(t *testing.T) {
 		t.Fatalf("structured agent = name %q description %q body %q", fm.Name, fm.Description, parsedBody)
 	}
 
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	project, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)

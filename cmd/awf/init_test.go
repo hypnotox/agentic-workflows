@@ -169,7 +169,7 @@ func TestInitInteractivePromptWiring(t *testing.T) {
 	origStdin := stdin
 	// gateCmd reads the first value; every later prompt hits EOF and takes its
 	// empty default, so the invariants marker/globs stay unset.
-	stdin = strings.NewReader("make gate\n")
+	stdin = strings.NewReader("core\nmake gate\n")
 	t.Cleanup(func() { stdin = origStdin })
 
 	var out, errb bytes.Buffer
@@ -361,3 +361,5 @@ func TestInitPrintsNotesAndNextSteps(t *testing.T) {
 		}
 	}
 }
+
+// invariant: tooling/init-and-enablement:init-profile-default-core (TestWriteInitDescriptorProtocolBytesAndErrors)

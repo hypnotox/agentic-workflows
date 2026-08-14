@@ -1,6 +1,17 @@
 {
   "descriptors": [
     {
+      "key": "profile",
+      "kind": "enum",
+      "description": "Closed workflow profile: Core operational workflow or Full governance workflow.",
+      "default": "core",
+      "options": [
+        "core",
+        "full"
+      ],
+      "target": "profile"
+    },
+    {
       "key": "gateCmd",
       "kind": "string",
       "description": "Command that runs the full pre-commit gate (tests, lint, coverage).",

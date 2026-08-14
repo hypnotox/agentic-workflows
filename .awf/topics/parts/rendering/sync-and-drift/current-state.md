@@ -24,8 +24,9 @@ Backing: test
 
 ### `invariant: check-active-md-stale`
 
-awf check regenerates the ADR status index at docs/decisions/INDEX.md from the current ADR frontmatter and reports it as stale drift when the on-disk file differs, for example after an ADR's status changes without a re-sync; a synced, unchanged index produces no drift.
+For Full, awf check regenerates the ADR status index at docs/decisions/INDEX.md from current ADR frontmatter and reports divergent on-disk bytes as stale drift. Core has no managed ADR index.
 Origin: ADR-0148
+Revised-by: ADR-introduce-core-and-full-workflow-profiles
 Backing: test
 
 ### `invariant: check-invalid-frontmatter`
@@ -36,23 +37,23 @@ Backing: test
 
 ### `invariant: closed-config-tree`
 
-Every filesystem entry under .awf that falls outside the claimed-path model, with the owned resident roots exempt, is reported by awf check as failing orphaned drift.
+Every filesystem entry under .awf outside the selected profile's claimed-path model is reported by awf check as orphaned drift, with owned resident roots exempt.
 Origin: ADR-0148
-Revised-by: ADR-0175
+Revised-by: ADR-0175, ADR-introduce-core-and-full-workflow-profiles
 Backing: test
 
 ### `invariant: drift-source-set`
 
-Each rendered file's stored ConfigHash is a per-target projection over only that file's own effective inputs (the skeleton fields it reads, its sidecar, and its consumed parts), so awf check reports a file stale only when one of its own inputs changed since the last sync and never flags unrelated targets; a sidecar or part file matching no catalog or declared target is reported as an orphan.
+Each rendered file's stored ConfigHash projects only that file's effective inputs and selected profile, so awf check reports it stale only when those inputs changed. A sidecar or part matching no selected artifact or target is an orphan.
 Origin: ADR-0148
-Revised-by: ADR-0251
+Revised-by: ADR-0251, ADR-introduce-core-and-full-workflow-profiles
 Backing: test
 
 ### `invariant: managed-output-attribution`
 
-A reader-injected declaration builder enumerates managed writes before rendering, retains their sorted declarers and exact config, sidecar, convention-part, topic, and generated inputs, and supplies context artifact source/output edges; managed declarations classify their paths as generated.
+A reader-injected declaration builder enumerates selected-profile managed writes before rendering, retaining sorted declarers and exact inputs and supplying context source/output edges; those declarations classify their paths as generated.
 Origin: ADR-0148
-Revised-by: ADR-0251
+Revised-by: ADR-0251, ADR-introduce-core-and-full-workflow-profiles
 Backing: test
 
 ### `invariant: ordinary-render-freshness`
@@ -106,9 +107,9 @@ Backing: test
 
 ### `invariant: sync-always-writes-active-md`
 
-awf render writes the ADR status index at docs/decisions/INDEX.md for every decisions directory, recording it in the lock when the directory holds ADRs and rendering a placeholder index when it holds none.
+Full awf render writes the ADR status index at docs/decisions/INDEX.md, recording it when ADRs exist and otherwise rendering a placeholder; Core does not emit a managed ADR index.
 Origin: ADR-0148
-Revised-by: ADR-0159
+Revised-by: ADR-0159, ADR-introduce-core-and-full-workflow-profiles
 Backing: test
 
 ### `invariant: sync-mutations-root-confined`
@@ -132,9 +133,9 @@ Backing: test
 
 ### `invariant: target-prune-ancestors`
 
-When a rendered target-owned path disappears from the output plan and awf re-syncs, it deletes that path and every resulting empty ancestor directory, not only the immediate parent.
+When a selected target-owned path disappears from the output plan and awf re-syncs, it deletes that path and every resulting empty ancestor directory.
 Origin: ADR-0148
-Revised-by: ADR-0251
+Revised-by: ADR-0251, ADR-introduce-core-and-full-workflow-profiles
 Backing: test
 
 ### `invariant: uninstall-removes-lock-entries`
@@ -146,6 +147,13 @@ Backing: test
 
 ### `invariant: coverage-evaluation-unconditional`
 
-The awf check current-state report evaluates topic coverage and topic fan-out for every adopted tree, in the working-tree path and the staged path alike, independent of whether the config declares a currentState block; a tree declaring no block evaluates against the same defaults as a tree that declares one and sets nothing in it.
+Full awf check evaluates current-state topic coverage and fan-out in working and staged paths regardless of a currentState block. Core does not load current-state authority or run those governance checks.
 Origin: ADR-0192
+Revised-by: ADR-introduce-core-and-full-workflow-profiles
+Backing: test
+
+### `invariant: profile-config-hash`
+
+The selected profile participates in configuration hashes, while prior lock membership remains the sole pruning authority.
+Origin: ADR-introduce-core-and-full-workflow-profiles
 Backing: test

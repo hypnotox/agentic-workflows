@@ -21,7 +21,7 @@ Use this support skill when correctness depends on broad or uncertain repository
 <!-- awf:section finding-classification -->
 ## Finding classification
 
-Return findings to the invoking workflow without mutation or recursive dispatch. Classify each finding as mechanical, reasoned, or user-decision; the invoking workflow resolves it under repository and current-state authority.
+Return findings to the invoking workflow without mutation or recursive dispatch. Classify each finding as mechanical, reasoned, or user-decision; the invoking workflow resolves it under {{if eq .profile "core"}}project documentation, source, tests, and repository history{{else}}repository and current-state authority{{end}}.
 <!-- awf:end -->
 
 <!-- awf:section boundaries -->

@@ -8,7 +8,7 @@ import (
 // over the rendered set (INDEX.md/domain docs are irrelevant to these fixtures).
 func deadSkillRefs(t *testing.T, files map[string]string) []string {
 	t.Helper()
-	p, err := Open(testContext(t), scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n", files))
+	p, err := Open(testContext(t), scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n", files))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,9 +79,9 @@ func TestTaskSkillsOnlyConfigHasNoDeadRefs(t *testing.T) {
 	}
 }
 
-// invariant: rendering/project-output-plan:full-catalog-render (TestEffectiveSkillsMembership)
+// invariant: rendering/project-output-plan:profile-projected-render (TestEffectiveSkillsMembership)
 func TestEffectiveSkillsMembership(t *testing.T) {
-	p, err := Open(testContext(t), scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n"))
+	p, err := Open(testContext(t), scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}

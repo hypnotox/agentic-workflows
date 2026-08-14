@@ -39,7 +39,7 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 	if _, independentlySelectable := catalog.Standard.Skills["using-effort"]; independentlySelectable {
 		t.Fatal("using-effort companion became independently selectable")
 	}
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -142,7 +142,7 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 
 // invariant: rendering/pi-workflows:pi-effort-memory-tools (TestPiEffortMemoryToolContract)
 func TestPiEffortMemoryToolContract(t *testing.T) {
-	selected := explorationRenderedByPath(t, "prefix: example\nintegrationBranch: main\n")
+	selected := explorationRenderedByPath(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	index := selected[".pi/extensions/awf-effort/index.ts"]
 	client := selected[".pi/extensions/awf-effort/client.ts"]
 	guidance := selected[".pi/skills/example-using-effort/SKILL.md"]
@@ -306,7 +306,7 @@ func TestPiRealRuntimeSmoke(t *testing.T) {
 }
 
 func TestTargetOutputRenderError(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -411,7 +411,7 @@ func TestPiSubagentModelWizardRender(t *testing.T) {
 }
 
 func explorationFixtureConfig(target string) string {
-	return "prefix: example\nintegrationBranch: main\n"
+	return "prefix: example\nprofile: full\nintegrationBranch: main\n"
 }
 
 func explorationRenderedByPath(t *testing.T, config string) map[string]string {
@@ -512,7 +512,7 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 
 // invariant: rendering/workflow-skill-templates:bounded-exploration-reporting (TestBoundedExplorationReporting)
 func TestBoundedExplorationReporting(t *testing.T) {
-	files := explorationRenderedByPath(t, "prefix: example\nintegrationBranch: main\n")
+	files := explorationRenderedByPath(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	guidance := files[".pi/skills/example-exploring/SKILL.md"]
 	prompt := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	explorer := renderAgentGolden(t, "explorer", map[string]any{
@@ -562,7 +562,7 @@ func TestBoundedExplorationReporting(t *testing.T) {
 
 func renderPiExtensionFile(t *testing.T, name string) string {
 	t.Helper()
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -758,7 +758,7 @@ func TestMultiTargetRender(t *testing.T) {
 
 // invariant: rendering/workflow-skill-templates:maintainable-code-subagent-contract (TestMaintainableCodeMultiTargetParity)
 func TestMaintainableCodeMultiTargetParity(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -830,7 +830,7 @@ const (
 
 // invariant: rendering/workflow-skill-templates:semantic-rendering-review (TestSemanticRenderingReviewMultiTargetAuthority)
 func TestSemanticRenderingReviewMultiTargetAuthority(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)

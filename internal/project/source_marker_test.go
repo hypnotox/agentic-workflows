@@ -14,7 +14,7 @@ import (
 // inputs: markers are informational and never alter machine dependencies.
 // invariant: rendering/doc-outputs:opaque-doc-source-guidance (TestSourceMarkerFamilyMatrix)
 func TestSourceMarkerFamilyMatrix(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: ./x gate\ndomains: [rendering]\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars:\n  gateCmd: ./x gate\ndomains: [rendering]\n", map[string]string{
 		"domains/rendering.yaml":       "paths: ['internal/**']\n",
 		"docs/glossary.yaml":           "data:\n  standardTerms:\n  terms:\n",
 		"docs/pitfalls/fixture.md":     pitfallSource("Fixture pitfall", "domains: [rendering]\n", "first body\n"),

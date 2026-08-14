@@ -49,7 +49,7 @@ func TestTemplateSourceRootCurrentValue(t *testing.T) {
 }
 
 func TestLiveStateAuthorityRejectsOmissionAndWrongClass(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -133,7 +133,7 @@ func TestConfigReferencePresentationRejectsInvalidRows(t *testing.T) {
 // A minimal project still renders coherent prose - no empty table skeletons,
 // no unresolved tokens (the publication-safe degradation for generated docs).
 func TestConfigReferenceEmptyStateDegrades(t *testing.T) {
-	root, _ := syncedProject(t, "prefix: example\nintegrationBranch: main\n", nil)
+	root, _ := syncedProject(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", nil)
 	b, err := os.ReadFile(filepath.Join(root, "docs/config-reference.md"))
 	if err != nil {
 		t.Fatal(err)
@@ -217,7 +217,7 @@ func TestConfigReferenceDerivedLiveValues(t *testing.T) {
 		}
 	}
 
-	absent := "prefix: example\nintegrationBranch: main\n"
+	absent := "prefix: example\nprofile: full\nintegrationBranch: main\n"
 	assertValues(t, absent, map[string]string{
 		"tags": "(none)", "contextIgnore": "(none)",
 		"commitPolicy.grandfatheredThrough": "(none)",
@@ -268,7 +268,7 @@ commitPolicy:
 }
 
 func TestConfigReferenceListLayerStates(t *testing.T) {
-	base := "prefix: example\nintegrationBranch: main\n"
+	base := "prefix: example\nprofile: full\nintegrationBranch: main\n"
 	for _, tc := range []struct {
 		name, sidecar, want string
 	}{
@@ -302,7 +302,7 @@ func TestConfigReferenceListLayerStates(t *testing.T) {
 		})
 	}
 
-	_, glossaryProject := syncedProject(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
+	_, glossaryProject := syncedProject(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", map[string]string{
 		"docs/glossary.yaml": "data:\n  terms:\n    - {term: Local, meaning: Project-specific term.}\n",
 	})
 	glossaryModel, err := glossaryProject.ConfigReferenceModel(testContext(t))

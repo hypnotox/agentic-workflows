@@ -22,6 +22,21 @@ type errReader struct{}
 
 func (errReader) Read([]byte) (int, error) { return 0, errors.New("boom") }
 
+func TestResolveInitSeparatesProfileFromVars(t *testing.T) {
+	descriptors := []catalog.VarDescriptor{{Key: "gateCmd", Kind: "string"}}
+	vars, _, profile, err := ResolveInit(descriptors, nil, strings.NewReader(""), &strings.Builder{}, false, nil)
+	if err != nil || profile != catalog.ProfileCore || vars[ProfileDescriptor.Key] != "" {
+		t.Fatalf("vars=%v profile=%q err=%v", vars, profile, err)
+	}
+	_, _, profile, err = ResolveInit(descriptors, map[string]string{ProfileDescriptor.Key: "full"}, strings.NewReader(""), &strings.Builder{}, false, nil)
+	if err != nil || profile != catalog.ProfileFull {
+		t.Fatalf("explicit profile=%q err=%v", profile, err)
+	}
+	if _, _, _, err := ResolveInit(descriptors, map[string]string{ProfileDescriptor.Key: "other"}, strings.NewReader(""), &strings.Builder{}, false, nil); err == nil {
+		t.Fatal("invalid profile accepted")
+	}
+}
+
 func TestResolveSilentSeedsEmpty(t *testing.T) {
 	vars, _, err := Resolve(descs(), nil, strings.NewReader(""), &strings.Builder{}, false, nil)
 	if err != nil {

@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
@@ -46,9 +47,10 @@ func (p *Project) CheckStagedDrift(ctx context.Context) ([]manifest.Drift, error
 		return nil, err
 	}
 	read := snapshotTreeReader{tree: state.Tree}
+	selected := catalog.NewProfileView(p.catalog(), state.Cfg.Profile).Catalog()
 	universe := &Project{
 		Root: p.Root, roots: p.roots, Cfg: state.Cfg, Targets: targets,
-		cat: p.cat, read: read, nested: p.nested, repo: p.repo,
+		cat: selected, read: read, nested: p.nested, repo: p.repo,
 	}
 	if err := universe.validateAgainstCatalog(); err != nil {
 		return nil, err

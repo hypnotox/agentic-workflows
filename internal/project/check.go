@@ -34,9 +34,12 @@ func (p *Project) AdvisoryNotes(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	plans, err := plan.ParseDir(filepath.Join(p.Root, config.DocsDir, "plans"))
-	if err != nil {
-		return nil, err
+	plans := []plan.Plan{}
+	if p.fullProfile() {
+		plans, err = plan.ParseDir(filepath.Join(p.Root, config.DocsDir, "plans"))
+		if err != nil {
+			return nil, err
+		}
 	}
 	op, err := p.outputPlanWithPitfalls(ctx, corpus, pitfalls, topics, eff)
 	if err != nil {
@@ -434,7 +437,11 @@ func (p *Project) CheckReport(ctx context.Context) (CheckReport, error) {
 	if err != nil {
 		return CheckReport{}, err
 	}
-	plans, parseErr := plan.ParseDir(filepath.Join(p.Root, config.DocsDir, "plans"))
+	plans := []plan.Plan{}
+	var parseErr error
+	if p.fullProfile() {
+		plans, parseErr = plan.ParseDir(filepath.Join(p.Root, config.DocsDir, "plans"))
+	}
 	var planDrift []manifest.Drift
 	if parseErr != nil {
 		var diagnostics *plan.DiagnosticsError
@@ -456,8 +463,12 @@ func (p *Project) CheckReport(ctx context.Context) (CheckReport, error) {
 	if err != nil {
 		return CheckReport{}, err
 	}
-	contextDrift, contextNotes := planArtifactReport(plans, corpus)
-	planDrift = append(planDrift, contextDrift...)
+	contextNotes := []string(nil)
+	if p.fullProfile() {
+		contextDrift, notes := planArtifactReport(plans, corpus)
+		contextNotes = notes
+		planDrift = append(planDrift, contextDrift...)
+	}
 	notes, err := p.advisoryNotesWithState(corpus, pitfalls, plans, op)
 	report, err := finishCheckReport(drift, planDrift, contextNotes, notes, op, err)
 	report.TrackingNotes = trackingNotes
@@ -514,7 +525,9 @@ func (p *Project) checkWithTrackingState(ctx context.Context, corpus adr.Corpus,
 	drift = append(drift, p.checkDeadRefs(files)...)
 	drift = append(drift, p.checkDeadSkillRefs(files, eff)...)
 
-	drift = append(drift, p.checkPlans(corpus, plans)...)
+	if p.fullProfile() {
+		drift = append(drift, p.checkPlans(corpus, plans)...)
+	}
 	pitfallDrift, err := p.checkPitfalls(corpus, pitfalls)
 	if err != nil { // coverage-ignore: the operation supplied its already validated pitfall corpus
 		return nil, nil, err
@@ -530,8 +543,10 @@ func (p *Project) checkWithTrackingState(ctx context.Context, corpus adr.Corpus,
 		return nil, nil, err
 	}
 	drift = append(drift, tagDrift...)
-	drift = append(drift, p.checkADRRelatedLinks(corpus)...)
-	drift = append(drift, p.checkPendingADRs(ctx, corpus)...)
+	if p.fullProfile() {
+		drift = append(drift, p.checkADRRelatedLinks(corpus)...)
+		drift = append(drift, p.checkPendingADRs(ctx, corpus)...)
+	}
 	return drift, trackingNotes, nil
 }
 

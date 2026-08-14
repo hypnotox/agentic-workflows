@@ -39,7 +39,9 @@ type Command struct {
 	// (ADR-0159 Decision 5). It is read from the resolved command, so a group
 	// child carries it independently of its parent.
 	StateExempt bool
-	Children    []Command
+	// FullOnly declares governance capability at the dispatch boundary.
+	FullOnly bool
+	Children []Command
 }
 
 // Help is structured command help. The specification owns its semantic data;
@@ -192,7 +194,7 @@ var Commands = []Command{
 				Children: []Command{
 					{Name: "drift", Summary: "Report stale or hand-edited rendered output", MaxPos: 0,
 						Help: Help{Usage: []string{"awf check repo drift"}, Description: "Re-render in memory and report stale or hand-edited output."}},
-					{Name: "state", Summary: "Report current-state authority findings", MaxPos: 0,
+					{Name: "state", Summary: "Report current-state authority findings", MaxPos: 0, FullOnly: true,
 						Help: Help{Usage: []string{"awf check repo state"}, Description: "Check current-state authority over the working tree."}},
 					{Name: "prose", Summary: "Scan tracked text files for typographic punctuation, blocking", MaxPos: 0,
 						Help: Help{Usage: []string{"awf check repo prose"}, Description: "Scan the project's tracked text files for typographic punctuation."}},
@@ -203,7 +205,7 @@ var Commands = []Command{
 			{Name: "staged", Summary: "Verify staged transition properties", MaxPos: -1,
 				Help: Help{Usage: []string{"awf check staged [subcommand]"}, Description: "Run the staged transition and rendered-output drift checks. The commit child is", Details: []string{"directly invoked by a commit-msg hook and is not part of the aggregate."}},
 				Children: []Command{
-					{Name: "state", Summary: "Report staged current-state transition findings", MaxPos: 0,
+					{Name: "state", Summary: "Report staged current-state transition findings", MaxPos: 0, FullOnly: true,
 						Help: Help{Usage: []string{"awf check staged state"}, Description: "Validate the HEAD-to-index current-state transition."}},
 					{Name: "drift", Summary: "Compare staged config with staged rendered output", MaxPos: 0,
 						Help: Help{Usage: []string{"awf check staged drift"}, Description: "Report stale or hand-edited rendered output in the staged tree."}},
@@ -219,13 +221,13 @@ var Commands = []Command{
 		MaxPos: 0, Gating: Gated,
 		Help: Help{Usage: []string{"awf read <subcommand>"}, Description: "Read a bounded executable projection from a parsed project artifact."},
 		Children: []Command{
-			{Name: "plan", Summary: "Read one exact plan phase or task projection", MinPos: 2, MaxPos: 2,
+			{Name: "plan", Summary: "Read one exact plan phase or task projection", MinPos: 2, MaxPos: 2, FullOnly: true,
 				Help: Help{Usage: []string{"awf read plan <plan> <P[.T]>"}, Description: "Resolve <plan> as an exact filename or exact filename stem under the configured", Details: []string{"plans directory. P selects a complete phase; P.T selects one task plus its phase", "closure. Plan-v2 always includes task-scoped Decisions and phase outcomes; plan-v1", "retains its original closure. Selectors are canonical positive integers, and failures", "list available exact plan names or selectors."}, Positionals: []HelpItem{{Name: "<plan>", Description: "exact plan filename or filename stem"}, {Name: "<P[.T]>", Description: "canonical positive phase or phase.task selector"}}}},
 		},
 	},
 	{
 		Name: "audit", Summary: "Report workflow-conformance findings over a commit range (advisory)",
-		MinPos: 1, MaxPos: 1, Gating: Gated,
+		FullOnly: true, MinPos: 1, MaxPos: 1, Gating: Gated,
 		Help: Help{Usage: []string{"awf audit <base>|<a>..<b>"}, Description: "Report advisory workflow-conformance findings over an explicit commit range; never gates.", Details: []string{"The range is required: a bare <base> means <base>..HEAD, or give a two-sided <a>..<b>.", "There is no default range, so an audit never reports over commits nobody named."}, Positionals: []HelpItem{{Name: "<base>", Description: "base revision for the audit range"}, {Name: "<a>", Description: "left revision for a two-sided range"}, {Name: "<b>", Description: "right revision for a two-sided range"}}},
 	},
 	{
@@ -272,7 +274,7 @@ var Commands = []Command{
 		},
 	},
 	{
-		Name: "adr", Summary: "ADR lifecycle operations", MaxPos: 0, Gating: Gated,
+		Name: "adr", Summary: "ADR lifecycle operations", MaxPos: 0, Gating: Gated, FullOnly: true,
 		Help: Help{Usage: []string{"awf adr <subcommand>"}, Description: "Perform an ADR lifecycle operation that the corpus, not the author, owns."},
 		Children: []Command{
 			{Name: "number", Summary: "Number pending ADRs at integration", MinPos: 0, MaxPos: -1,
@@ -290,12 +292,12 @@ var Commands = []Command{
 		Help: Help{Usage: []string{"awf config [<key-or-var>]"}, Description: "Print the configuration reference: every config key, var, sidecar field, and", Details: []string{"data key with descriptions, defaults, and availability. Inside an awf project", "the output adds live state (current values and which catalog artifacts consume", "each var). Outside one, a static catalog-wide reference prints.", "With an argument, print just that entry (a config key path like", "audit.allowedScopes, a var name like gateCmd, a sidecar field like", "sidecar.dataDefaults, or a data key name)."}, Positionals: []HelpItem{{Name: "<key-or-var>", Description: "config key, var, sidecar field, or data key"}}},
 	},
 	{
-		Name: "context", Summary: "Orient by request with compact current-state impact reports",
+		Name: "context", Summary: "Orient by request with compact current-state impact reports", FullOnly: true,
 		BoolFlags: []string{"--staged", "--uncovered", "--full"}, ValueFlags: []string{"--range", "--show"}, Repeatable: []string{"--show"}, MaxPos: -1, Gating: GatedInHandler,
 		Help: Help{Usage: []string{"awf context [<path>...] [--show <facet>]... [--full] [--staged] [--range <a>..<b>] [--uncovered]"}, Description: "Report request-oriented current-state impact. Bare directories use tier 0:", Details: []string{"census, compact groups, classification, compact provenance, domains, topics,", "per-topic invariant/rule counts, and bounded pending summaries. Bare exact files", "and Git-selected staged/range files add tier-1 relationships declared on that", "file, rendering only non-empty State, Touches, and Proofs marker-kind sets.", "Groups of at most three list every member and larger groups disclose no paths.", "Repeat --show with one of relationships, invariants, all-rules, evidence,", "selectors, references, pending, or artifacts. relationships expands a directory's", "aggregated direct relationships; invariants and all-rules expand non-direct claim", "summaries. evidence and references only enrich claims already visible through a", "tier or authority facet. Only artifacts may refine directory grouping. --full is", "exactly the normalized union of all eight facets. --show and --full cannot be", "combined with --uncovered. JSON is not supported.", "The complete human rendering is written unchanged through 8,192 bytes. Larger", "results spill to an owner-only temporary file outside the repository and stdout", "receives AWF_CONTEXT_SPILL_V1, its decimal byte count and text format, followed", "by the absolute path. A caller that receives the notice owns deletion.", "Provide paths explicitly, or resolve sorted exact files from Git with --staged", "or --range <a>..<b>. With --uncovered, positional args are optional scan roots;", "--range is not accepted."}, Positionals: []HelpItem{{Name: "<path>", Description: "repository path or directory to orient against"}}, Options: []HelpItem{{Name: "--show", Description: "<facet>        add one bounded detail facet (repeatable)"}, {Name: "--full", Description: "add all eight facets"}, {Name: "--staged", Description: "use the staged index universe"}, {Name: "--range", Description: "<a>..<b>      use paths changed between revisions a and b"}, {Name: "--uncovered", Description: "report unowned and uncovered paths"}}},
 	},
 	{
-		Name: "topic", Summary: "Query current claims, history, references, and applicability",
+		Name: "topic", Summary: "Query current claims, history, references, and applicability", FullOnly: true,
 		BoolFlags: []string{"--history", "--references", "--coverage"}, MinPos: 1, MaxPos: 1, Gating: GatedInHandler,
 		Help: Help{Usage: []string{"awf topic <domain>/<topic>[:<claim>] [flags]"}, Description: "Query one current-state topic or claim, active by default. Default output includes", Details: []string{"title and summary for a topic plus claim types, prose, and backing state. Detail", "flags are independent and direct-only. A removed claim identity resolves only", "with --history and returns operation history without an active tombstone. Outside", "an awf project, a static command reference prints without version gating."}, Positionals: []HelpItem{{Name: "<domain>/<topic>[:<claim>]", Description: "current-state topic or claim identifier"}}, Options: []HelpItem{{Name: "--history", Description: "add direct Origin, Revised-by, and Removed-by ADR details"}, {Name: "--references", Description: "add sorted direct incoming and outgoing claim IDs"}, {Name: "--coverage", Description: "add separate domain/topic scopes, current matches, and marker sites"}}},
 	},
@@ -321,19 +323,19 @@ var Commands = []Command{
 		},
 		Children: []Command{
 			{
-				Name: "adr", Summary: "Scaffold a new ADR", MinPos: 1, MaxPos: -1,
+				Name: "adr", Summary: "Scaffold a new ADR", MinPos: 1, MaxPos: -1, FullOnly: true,
 				Help: Help{Usage: []string{"awf new adr <title>..."}, Description: "Scaffold a new ADR under docs/decisions from the rendered template, with its", Details: []string{"date and title heading filled in. The identity depends on the branch: on the", "configured integrationBranch the record gets the next sequential number", "(NNNN-<slug>.md), and anywhere else it is written as a pending record named", "<slug>.md, which awf adr number numbers at integration time.", "The title must not slugify to a reserved name (readme, index, template), to a", "slug already used in the corpus, or to something opening with four digits and a", "hyphen, which would read as a number."}, Positionals: []HelpItem{{Name: "<title>", Description: "human-readable artifact title"}}},
 			},
 			{
-				Name: "plan", Summary: "Scaffold a new plan", MinPos: 1, MaxPos: -1,
+				Name: "plan", Summary: "Scaffold a new plan", MinPos: 1, MaxPos: -1, FullOnly: true,
 				Help: Help{Usage: []string{"awf new plan <title>..."}, Description: "Scaffold a new plan under docs/plans, date-prefixed (no sequential number),", Details: []string{"from the rendered plans template with its date and title heading filled in."}, Positionals: []HelpItem{{Name: "<title>", Description: "human-readable artifact title"}}},
 			},
 			{
-				Name: "topic", Summary: "Scaffold paired current-state topic inputs", MinPos: 2, MaxPos: -1,
+				Name: "topic", Summary: "Scaffold paired current-state topic inputs", MinPos: 2, MaxPos: -1, FullOnly: true,
 				Help: Help{Usage: []string{"awf new topic <domain> <title>..."}, Description: "Scaffold paired topic metadata and authored current-state inputs without syncing.", Details: []string{"Edit the path placeholder and author reviewed claims manually."}, Positionals: []HelpItem{{Name: "<domain>", Description: "current-state domain identifier"}, {Name: "<title>", Description: "human-readable artifact title"}}},
 			},
 			{
-				Name: "domain", Summary: "Create a configured domain", MinPos: 1, MaxPos: 1,
+				Name: "domain", Summary: "Create a configured domain", MinPos: 1, MaxPos: 1, FullOnly: true,
 				Help: Help{Usage: []string{"awf new domain <name>"}, Description: "Add a domain and scaffold its current-state convention part."},
 			},
 			{
@@ -350,7 +352,7 @@ var Commands = []Command{
 		Name: "remove", Summary: "Remove a configured domain",
 		MaxPos: -1, Gating: GatedInHandler,
 		Help: Help{Usage: []string{"awf remove domain <name>"}, Description: "Remove a configured domain, prune its rendered output, and report authored files left orphaned."},
-		Children: []Command{{Name: "domain", Summary: "Remove a configured domain", MinPos: 1, MaxPos: 1,
+		Children: []Command{{Name: "domain", Summary: "Remove a configured domain", MinPos: 1, MaxPos: 1, FullOnly: true,
 			Help: Help{Usage: []string{"awf remove domain <name>"}, Description: "Remove a configured domain."}}},
 	},
 	{

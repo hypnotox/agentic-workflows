@@ -35,7 +35,7 @@ func TestPitfallScaffoldCLIContract(t *testing.T) {
 	t.Run("committed-cleanup-outcome", TestNewPitfallCommittedCleanupOutcomeIsActionableAndDoesNotAdvance)
 	t.Run("load-and-directory-errors", func(t *testing.T) {
 		t.Run("malformed corpus", func(t *testing.T) {
-			root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
+			root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n")
 			dir := filepath.Join(root, ".awf/docs/pitfalls")
 			if err := os.MkdirAll(dir, 0o755); err != nil {
 				t.Fatal(err)
@@ -52,7 +52,7 @@ func TestPitfallScaffoldCLIContract(t *testing.T) {
 			}
 		})
 		t.Run("source directory is a file", func(t *testing.T) {
-			root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
+			root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n")
 			dir := filepath.Join(root, ".awf/docs/pitfalls")
 			if err := os.MkdirAll(filepath.Dir(dir), 0o755); err != nil {
 				t.Fatal(err)
@@ -69,7 +69,7 @@ func TestPitfallScaffoldCLIContract(t *testing.T) {
 			}
 		})
 		t.Run("nested source and injected read or walk failures", func(t *testing.T) {
-			root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
+			root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n")
 			dir := filepath.Join(root, ".awf/docs/pitfalls/nested")
 			if err := os.MkdirAll(dir, 0o755); err != nil {
 				t.Fatal(err)
@@ -104,7 +104,7 @@ func TestPitfallScaffoldCLIContract(t *testing.T) {
 			}
 		})
 		t.Run("mkdir failure", func(t *testing.T) {
-			root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
+			root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n")
 			p, err := Open(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
@@ -118,7 +118,7 @@ func TestPitfallScaffoldCLIContract(t *testing.T) {
 		})
 	})
 	t.Run("refusals-and-suffix-gap", func(t *testing.T) {
-		root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
+		root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n")
 		dir := filepath.Join(root, ".awf/docs/pitfalls")
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatal(err)
@@ -152,7 +152,7 @@ func TestNewPitfallPublicationFailureLeavesDestinationAbsent(t *testing.T) {
 	if _, err := (&Project{Root: filepath.Join(t.TempDir(), "missing")}).NewPitfall("Unopened"); err == nil {
 		t.Fatal("missing project root opened for pitfall scaffold")
 	}
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -172,7 +172,7 @@ func TestNewPitfallPublicationFailureLeavesDestinationAbsent(t *testing.T) {
 }
 
 func TestNewPitfallCommittedCleanupOutcomeIsActionableAndDoesNotAdvance(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -282,7 +282,7 @@ func TestNewPitfallRootConfinement(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
+			root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n")
 			p, err := Open(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
@@ -305,7 +305,7 @@ func TestNewPitfallRootConfinement(t *testing.T) {
 
 // invariant: tooling/cli:pitfall-scaffold (TestNewPitfallScaffoldContract)
 func TestNewPitfallScaffoldContract(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -346,7 +346,7 @@ func TestNewPitfallScaffoldContract(t *testing.T) {
 
 // invariant: tooling/cli:pitfall-scaffold (TestNewPitfallExclusiveRaceRefusesThenRetryReallocates)
 func TestNewPitfallExclusiveRaceRefusesThenRetryReallocates(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -470,17 +470,18 @@ func TestScaffoldVarsCoverAllReferenced(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	core := catalog.StandardProfileView(catalog.ProfileCore).Catalog()
 	var paths []string
-	for name := range catalog.Standard.Skills {
+	for name := range core.Skills {
 		paths = append(paths, "skills/"+name+"/SKILL.md.tmpl")
 	}
-	for name := range catalog.Standard.Agents {
+	for name := range core.Agents {
 		paths = append(paths, "agents/"+name+".md.tmpl")
 	}
-	for _, e := range catalog.Standard.Docs {
+	for _, e := range core.Docs {
 		paths = append(paths, e.TID)
 	}
-	for _, sg := range plainSingletons(catalog.CompleteView().Catalog()) {
+	for _, sg := range plainSingletons(core) {
 		paths = append(paths, sg.tid)
 	}
 	for _, path := range paths {
@@ -493,6 +494,12 @@ func TestScaffoldVarsCoverAllReferenced(t *testing.T) {
 				t.Errorf("scaffold vars missing %q from %s", name, path)
 			}
 		}
+	}
+}
+
+func TestScaffoldConfigForProfileRejectsUnknownProfile(t *testing.T) {
+	if _, err := ScaffoldConfigForProfile("example", nil, nil, catalog.Profile("other")); err == nil {
+		t.Fatal("unknown profile accepted")
 	}
 }
 

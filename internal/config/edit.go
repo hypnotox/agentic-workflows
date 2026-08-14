@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"gopkg.in/yaml.v3"
 )
 
@@ -17,7 +18,8 @@ import (
 // `x: null` and decode back to a nil value that renders as "<no value>", tripping
 // the publication-safe check (ADR-0026 Decision 3).
 type Skeleton struct {
-	Prefix string `yaml:"prefix"`
+	Prefix  string          `yaml:"prefix"`
+	Profile catalog.Profile `yaml:"profile"`
 	// IntegrationBranch is written explicitly because the key is required and
 	// carries no in-code default (ADR-0202 Decision 6): a scaffold omitting it
 	// would emit a config that fails its own validation on the next open.

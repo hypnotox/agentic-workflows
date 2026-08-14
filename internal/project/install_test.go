@@ -295,7 +295,7 @@ func TestInitCollisionsSurfacesPlannedOutputsError(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(awf, "config.yaml"),
-		[]byte("prefix: awf\nintegrationBranch: main\n"), 0o644); err != nil {
+		[]byte("prefix: awf\nprofile: full\nintegrationBranch: main\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	// A malformed ADR makes generateIndexMD (inside PlannedOutputs) fail.

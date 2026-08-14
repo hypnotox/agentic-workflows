@@ -24,12 +24,12 @@ func TestWriteFileCreatesParentDirs(t *testing.T) {
 
 func TestWriteAwfConfig(t *testing.T) {
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\n")
 	got, err := os.ReadFile(filepath.Join(root, ".awf", "config.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(got) != "prefix: example\n" {
+	if string(got) != "prefix: example\nprofile: full\nintegrationBranch: main\n" {
 		t.Errorf("WriteAwfConfig content = %q", got)
 	}
 }

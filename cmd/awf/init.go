@@ -28,7 +28,7 @@ func runInitWithProjectLoader(ctx context.Context, root string, force, describe 
 	cat := catalog.Standard
 	descs := cat.Vars
 	if describe {
-		out, err := initspec.Describe(descs)
+		out, err := initspec.Describe(initspec.InitDescriptors(descs))
 		if err != nil { // coverage-ignore: descriptors marshal to JSON; cannot fail
 			return err
 		}
@@ -88,13 +88,14 @@ func runInitWithProjectLoader(ctx context.Context, root string, force, describe 
 	}
 	var vars map[string]string
 	var scopes []string
+	profile := catalog.ProfileCore
 	ignoredAnswers := configExists && len(answers) > 0
 	if configExists {
 		// Descriptor answers only feed the scaffold; resolving them here would
 		// prompt for (or silently accept) values init then discards.
 	} else {
 		var rerr error
-		vars, scopes, rerr = initspec.Resolve(descs, answers, stdin, stdout, isInteractive(), project.NeededVars)
+		vars, scopes, profile, rerr = initspec.ResolveInit(descs, answers, stdin, stdout, isInteractive(), project.NeededVars)
 		if rerr != nil {
 			return rerr
 		}
@@ -105,7 +106,7 @@ func runInitWithProjectLoader(ctx context.Context, root string, force, describe 
 		if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil { // coverage-ignore: entering this block needs cfgPath absent, which precludes a parent collision making MkdirAll fail
 			return err
 		}
-		scaffold, err := project.ScaffoldConfig(filepath.Base(root), vars, scopes)
+		scaffold, err := project.ScaffoldConfigForProfile(filepath.Base(root), vars, scopes, profile)
 		if err != nil { // coverage-ignore: ScaffoldConfig renders a static template over a dir basename; cannot fail in practice
 			return err
 		}

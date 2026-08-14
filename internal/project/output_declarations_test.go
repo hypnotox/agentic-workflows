@@ -303,7 +303,7 @@ func TestPitfallDeclarationPlanDependencyParity(t *testing.T) {
 }
 
 func TestOutputPlanObservesConsumedInputsIndependently(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n"+debuggingVars+"", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n"+debuggingVars+"", map[string]string{
 		"skills/debugging.yaml":                        "data: {}\n",
 		"skills/parts/debugging/debugging-surfaces.md": "Observed part.\n",
 	})

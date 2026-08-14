@@ -1,9 +1,11 @@
 package project
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/clispec"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 )
@@ -42,5 +44,27 @@ func TestGatedCommandsDisplay(t *testing.T) {
 	}
 	if got := p.data(config.Sidecar{}, map[string]bool{})["gatedCommands"]; got != want {
 		t.Errorf("agent-guide gatedCommands = %q, want %q", got, want)
+	}
+}
+
+// invariant: tooling/cli:gated-commands-generated (TestRequireCapabilityRefusesCoreFullOnlyCommands)
+func TestRequireCapabilityRefusesCoreFullOnlyCommands(t *testing.T) {
+	err := RequireCapability(catalog.ProfileCore, "audit", true)
+	var refusal *CapabilityError
+	if !errors.As(err, &refusal) {
+		t.Fatalf("error = %v, want CapabilityError", err)
+	}
+	if refusal.Error() != "awf audit is unavailable for the selected core profile" {
+		t.Fatalf("error = %q", refusal)
+	}
+	diagnostic, err := refusal.Diagnostic()
+	if err != nil || diagnostic.State != "configuration" || diagnostic.Condition != refusal.Error() {
+		t.Fatalf("diagnostic = %#v, %v", diagnostic, err)
+	}
+	if err := RequireCapability(catalog.ProfileFull, "audit", true); err != nil {
+		t.Fatalf("full refusal = %v", err)
+	}
+	if err := RequireCapability(catalog.ProfileCore, "render", false); err != nil {
+		t.Fatalf("shared refusal = %v", err)
 	}
 }
