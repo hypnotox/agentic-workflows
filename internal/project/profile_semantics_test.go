@@ -41,8 +41,9 @@ func TestCoreRenderedWorkflowExcludesFullAuthority(t *testing.T) {
 		"durable ADR, plan", "completes deferred artifact transitions",
 		"agent guide, ADRs", "ADR, plan, or code reviewer",
 		"kind adr, plan, or code", `StringEnum(["adr", "plan", "code"]`,
-		"stale-ADR", "older-format ADR", "plan-adherence",
-		"plan's stated file paths", "Read every plan, ADR, or state doc",
+		"ADR", "current-state", "State changes", "governance workflow",
+		"plan authoring", "plan review", "plan is warranted", "creating an ADR or plan",
+		"stale-ADR", "plan-adherence", "plan's stated file paths", "Read every plan, ADR, or state doc",
 	}
 	for _, tc := range []struct {
 		name    string
@@ -90,14 +91,35 @@ func TestCoreRenderedWorkflowExcludesFullAuthority(t *testing.T) {
 }
 
 func TestCoreOperationalReferenceScannerRejectsEveryArtifactClass(t *testing.T) {
-	for _, tc := range []RenderedFile{
-		{Path: "docs/workflow.md", Content: "stale-ADR"},
-		{Path: ".pi/agents/code-reviewer.md", Content: "plan-adherence"},
-		{Path: ".claude/skills/example-reviewing-impl/SKILL.md", Content: "Read every plan, ADR, or state doc"},
-		{Path: ".awf/hooks/commit-msg.sh", Content: "older-format ADR"},
+	root := scaffold(t, "prefix: example\nprofile: core\nintegrationBranch: main\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, err := p.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{
+		"docs/workflow.md",
+		".pi/agents/code-reviewer.md",
+		".claude/skills/example-reviewing-impl/SKILL.md",
+		".awf/hooks/commit-msg.sh",
+		".pi/extensions/awf-subagents/index.ts",
 	} {
-		if got := coreOperationalResidual([]RenderedFile{tc}, []string{tc.Content}); len(got) != 1 {
-			t.Errorf("scanner accepted injected Full reference in %s: %v", tc.Path, got)
+		found := false
+		for _, file := range files {
+			if file.Path != path {
+				continue
+			}
+			found = true
+			file.Content += "\nADR\n"
+			if got := coreOperationalResidual([]RenderedFile{file}, []string{"ADR"}); len(got) != 1 {
+				t.Errorf("scanner accepted injected Full reference in rendered %s: %v", path, got)
+			}
+		}
+		if !found {
+			t.Errorf("rendered mutation target %s missing", path)
 		}
 	}
 }

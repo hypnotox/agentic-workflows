@@ -106,7 +106,7 @@ See [the workflow guide](docs/workflow.md) for the full decision criteria.
 <!-- awf:clispec-commands:start -->
 | Command | Purpose |
 |---|---|
-| `awf init [flags]` | Scaffold .awf/ and render the full catalog |
+| `awf init [flags]` | Scaffold .awf/ and render the selected profile |
 | `awf render` | Re-render after a template or config change |
 | `awf check` | Verify the repository and staged universes |
 | `awf read <subcommand>` | Read an executable projection from a parsed artifact |

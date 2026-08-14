@@ -578,7 +578,7 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
       const currentLines = scopeInvalid.length > 0 ? scopeInvalid.map(invalidText) : Object.entries(scope.values).map(([key, value]) => `${key}: ${value}`);
       const proceed = await ctx.ui.confirm(
         "Current subagent model preferences",
-        `${scope.path}\n${currentLines.join("\n") || "(empty)"}\n\nEffective routing now:\n${routingPreview(state.project, state.global, state).join("\n")}\n\nThis wizard configures child routing only; the parent session remains the mastermind for brainstorming and plan authoring. Configure this scope now?`,
+        `${scope.path}\n${currentLines.join("\n") || "(empty)"}\n\nEffective routing now:\n${routingPreview(state.project, state.global, state).join("\n")}\n\nThis wizard configures child routing only; the parent session remains the mastermind for brainstorming and {{if ne .profile "core"}}plan authoring{{else}}implementation approval{{end}}. Configure this scope now?`,
       );
       if (!proceed) return canceled();
       const presetIssues: string[] = [];

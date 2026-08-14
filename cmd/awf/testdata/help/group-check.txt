@@ -7,7 +7,7 @@ help:
     awf check repo [subcommand]
     awf check staged [subcommand]
     awf check commit-policy <revision-or-range>...
-  description: Bare check runs both universes. The repo universe checks drift, current state,
+  description: Bare check runs both universes. The repo universe checks drift, profile-applicable authority,
   details:
     and the opt-in scans; the staged universe validates the HEAD-to-index transition.
     Outside a Git repository bare check runs the repo universe and reports that the

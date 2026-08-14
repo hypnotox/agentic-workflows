@@ -5,7 +5,7 @@ help:
     awf <command> [flags]
   commands:
     commands:
-      init | Scaffold .awf/ and render the full catalog
+      init | Scaffold .awf/ and render the selected profile
       render | Re-render after a template or config change
       check | Verify the repository and staged universes
       read | Read an executable projection from a parsed artifact
@@ -35,7 +35,7 @@ help:
       staged:
         state | Report staged current-state transition findings
         drift | Compare staged config with staged rendered output
-        commit | Validate one commit message and stale-ADR merge authorization, blocking
+        commit | Validate one commit message and profile-applicable merge authorization, blocking
     read:
       commands:
         plan | Read one exact plan phase or task projection

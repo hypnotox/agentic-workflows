@@ -4,7 +4,7 @@ When multiple lenses flag the same `location` for the same underlying issue, emi
 
 ## Review procedure
 
-1. {{if eq .profile "core"}}Read the diff in full (`git diff baseSha..headSha`) and every requirement or project document referenced by name in the brief.{{else}}{{ with .data.readStep }}{{ . }}{{ else }}Read the artifact in full. Read every doc it references by name.{{ end }}{{end}}
+1. {{ with .data.readStep }}{{ . }}{{ else }}Read the artifact in full. Read every doc it references by name.{{ end }}
 1. Run all universal lenses plus any project-specific focus items.
 1. Dedup overlapping findings.
 1. Classify each finding as mechanical / reasoned / user-decision.

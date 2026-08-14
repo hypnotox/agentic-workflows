@@ -22,6 +22,21 @@ func writeConfig(t *testing.T, body string) string {
 	return dir
 }
 
+func TestConfigValidateRejectsInvalidPrefix(t *testing.T) {
+	for _, tc := range []struct {
+		prefix string
+		want   string
+	}{
+		{"", "prefix must not be empty"},
+		{"bad/test", `prefix "bad/test" must not contain path separators`},
+	} {
+		cfg := Config{Profile: catalog.ProfileCore, Prefix: tc.prefix, IntegrationBranch: "main"}
+		if err := cfg.Validate(); err == nil || err.Error() != tc.want {
+			t.Errorf("Validate(%q) = %v, want %q", tc.prefix, err, tc.want)
+		}
+	}
+}
+
 // invariant: config/configuration:no-artifact-selection-surface (TestConfigRejectsSelectionKeys)
 func TestConfigRejectsSelectionKeys(t *testing.T) {
 	for _, key := range []string{"skills", "agents", "docs", "targets", "docsDir"} {

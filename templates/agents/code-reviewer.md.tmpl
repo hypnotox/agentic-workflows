@@ -34,18 +34,10 @@ When the brief requests phase review, append a structured coverage summary after
 {{ with .data.correctnessTraps }}{{ range . }}
 - {{ .description }}
 {{ end }}{{ end }}
-{{if eq .profile "core"}}**approved-boundary-adherence**: the diff matches the approved scope and content; unexplained drift is a finding.
-
-**test-coverage**: behaviour changes carry tests in the same commit; no assertion is weakened to pass.
-
-**verification-instrument-can-fail**: every added or changed mechanical check has a negative case or temporary falsification proving the mutation landed before its passing verdict counts.
-
-**check-purpose**: every material check names the behavior or repository property it proves; flag choreography-only enforcement with no such obligation.
-
-{{else}}{{ with .data.focusItems }}{{ range . }}
+{{ with .data.focusItems }}{{ range . }}
 **{{ .name }}**: {{ .description }}
 
-{{ end }}{{ end }}{{end}}
+{{ end }}{{ end }}
 <!-- awf:end -->
 
 <!-- awf:section doc-currency -->

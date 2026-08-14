@@ -24,17 +24,20 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-func TestAuditConfigTreatsPreProfileSnapshotAsFull(t *testing.T) {
+func TestAuditConfigTreatsOnlyPreProfileSnapshotAsFull(t *testing.T) {
 	tree := auditTree(t, []snapshot.File{{
 		Path: ".awf/config.yaml", Mode: snapshot.Regular,
 		Bytes: []byte("prefix: test\nintegrationBranch: main\n"),
 	}})
-	cfg, err := auditConfig(t.TempDir(), auditSelection(t, tree), &manifest.Lock{SchemaVersion: 46})
+	cfg, err := auditConfig(t.TempDir(), auditSelection(t, tree), &manifest.Lock{SchemaVersion: 45})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if cfg.Profile != catalog.ProfileFull {
-		t.Fatalf("historical profile = %q, want Full", cfg.Profile)
+		t.Fatalf("pre-profile historical profile = %q, want Full", cfg.Profile)
+	}
+	if _, err := auditConfig(t.TempDir(), auditSelection(t, tree), &manifest.Lock{SchemaVersion: 46}); err == nil {
+		t.Fatal("profile-schema historical config without profile accepted")
 	}
 }
 
@@ -1265,7 +1268,7 @@ func TestAuditPropagatesHistoricalCancellation(t *testing.T) {
 						if len(events)-1 == cancelAfterRead {
 							cancel()
 						}
-						return []awfgit.IndexBlob{{Path: ".awf/config.yaml", Mode: awfgit.BlobRegular, Bytes: []byte("prefix: test\nintegrationBranch: main\n")}}, nil
+						return []awfgit.IndexBlob{{Path: ".awf/config.yaml", Mode: awfgit.BlobRegular, Bytes: []byte("prefix: test\nprofile: full\nintegrationBranch: main\n")}}, nil
 					})
 				if err == nil {
 					_, err = state.currentState()
@@ -1651,7 +1654,7 @@ func TestHistoricalStateUsesPolicyProjectionAndReusesIrrelevantCommits(t *testin
 	t.Run("production reduced loader preserves ordinary findings", func(t *testing.T) {
 		repo := gitfixture.InitRepo(t)
 		base := gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{
-			".awf/config.yaml": "prefix: test\nintegrationBranch: master\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: [\"internal/**/*_test.go\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n",
+			".awf/config.yaml": "prefix: test\nprofile: full\nintegrationBranch: master\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: [\"internal/**/*_test.go\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n",
 		})
 		gitfixture.Commit(t, repo, "not conventional", map[string]string{"internal/code.go": "package internal\n"})
 		gitfixture.Commit(t, repo, "feat(awf): malformed marker", map[string]string{
@@ -1673,7 +1676,7 @@ func TestHistoricalStateUsesPolicyProjectionAndReusesIrrelevantCommits(t *testin
 	t.Run("merge relevance stays outside ordinary rules", func(t *testing.T) {
 		repo := gitfixture.InitRepo(t)
 		base := gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{
-			".awf/config.yaml": "prefix: test\nintegrationBranch: master\n",
+			".awf/config.yaml": "prefix: test\nprofile: full\nintegrationBranch: master\n",
 		})
 		main := gitfixture.Merge(t, repo, "feat(awf): main")
 		gitfixture.CheckoutNewBranch(t, repo, "feature", base)
@@ -1705,7 +1708,7 @@ func TestHistoricalStateUsesPolicyProjectionAndReusesIrrelevantCommits(t *testin
 		main := gitfixture.Merge(t, repo, "feat(awf): main")
 		gitfixture.CheckoutNewBranch(t, repo, "feature", base)
 		feature := gitfixture.Commit(t, repo, "feat(awf): feature", map[string]string{
-			".awf/config.yaml":        "prefix: test\nintegrationBranch: master\ntargets: [claude]\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: [\"internal/**/*_test.go\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n",
+			".awf/config.yaml":        "prefix: test\nprofile: full\nintegrationBranch: master\ntargets: [claude]\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: [\"internal/**/*_test.go\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n",
 			".awf/domains/alpha.yaml": "unknown: [\n",
 			"internal/proof_test.go":  "package internal\n// invariant: alpha/one:missing (TestMissing)\nfunc TestMissing() {}\n",
 		})
@@ -1819,7 +1822,7 @@ func TestHistoricalStateSelectsOnlyAuthorityBlobs(t *testing.T) {
 		{Path: "nested/docs/decisions/0002-nested.md", Mode: awfgit.BlobRegular},
 	}
 	bodies := map[string][]byte{
-		configPath:                            []byte("prefix: test\nintegrationBranch: main\ntargets: [claude]\ndomains: [alpha]\n"),
+		configPath:                            []byte("prefix: test\nprofile: full\nintegrationBranch: main\ntargets: [claude]\ndomains: [alpha]\n"),
 		lockPath:                              []byte(lock),
 		".awf/topics/metadata/alpha/one.yaml": []byte("title: One\nsummary: O.\npaths: [\"internal/**\"]\n"),
 		".awf/topics/parts/alpha/one/current-state.md": []byte(historicalTopicPart("0001")),
@@ -1836,7 +1839,7 @@ func TestHistoricalStateSelectsOnlyAuthorityBlobs(t *testing.T) {
 		wantErr    bool
 	}{
 		{"default", base, string(bodies[configPath]), lock, [][]string{{configPath, lockPath}, {".awf/topics/metadata/alpha/one.yaml", ".awf/topics/parts/alpha/one/current-state.md", "docs/decisions/0001-one.md"}}, false},
-		{"custom docs config still uses docs authority", base, "prefix: test\nintegrationBranch: main\ntargets: [claude]\ndomains: [alpha]\ndocsDir: records\n", lock, [][]string{{configPath, lockPath}, {".awf/topics/metadata/alpha/one.yaml", ".awf/topics/parts/alpha/one/current-state.md", "docs/decisions/0001-one.md"}}, false},
+		{"custom docs config still uses docs authority", base, "prefix: test\nprofile: full\nintegrationBranch: main\ntargets: [claude]\ndomains: [alpha]\ndocsDir: records\n", lock, [][]string{{configPath, lockPath}, {".awf/topics/metadata/alpha/one.yaml", ".awf/topics/parts/alpha/one/current-state.md", "docs/decisions/0001-one.md"}}, false},
 		{"absent config", base[1:], "", lock, nil, false},
 		{"absent lock", append([]awfgit.TreeEntry{base[0]}, base[2:]...), string(bodies[configPath]), "", [][]string{{configPath}, {".awf/topics/metadata/alpha/one.yaml", ".awf/topics/parts/alpha/one/current-state.md", "docs/decisions/0001-one.md"}}, false},
 		{"symlink authority", append([]awfgit.TreeEntry{{Path: configPath, Mode: awfgit.BlobSymlink}}, base[1:]...), string(bodies[configPath]), lock, [][]string{{configPath, lockPath}}, true},
@@ -1938,7 +1941,7 @@ func TestLoadSelectedRevisionRejectsIncompleteOrUnscannableEvidence(t *testing.T
 		{Path: configPath, Mode: awfgit.BlobRegular},
 		{Path: "docs/decisions/0001-one.md", Mode: awfgit.BlobRegular},
 	}
-	configBlob := awfgit.IndexBlob{Path: configPath, Mode: awfgit.BlobRegular, Bytes: []byte("prefix: test\nintegrationBranch: main\ntargets: [claude]\ndomains: []\n")}
+	configBlob := awfgit.IndexBlob{Path: configPath, Mode: awfgit.BlobRegular, Bytes: []byte("prefix: test\nprofile: full\nintegrationBranch: main\ntargets: [claude]\ndomains: []\n")}
 	load := func(blobs ...[]awfgit.IndexBlob) func(context.Context, string, []string) ([]awfgit.IndexBlob, error) {
 		calls := 0
 		return func(context.Context, string, []string) ([]awfgit.IndexBlob, error) {

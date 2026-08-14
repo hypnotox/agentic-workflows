@@ -213,6 +213,20 @@ func projectCore(c *Catalog) {
 	if c.DomainDoc.FullOnly {
 		c.DomainDoc = TargetSpec{}
 	}
+	if workflow, ok := c.Docs["workflow"]; ok {
+		workflow.Desc = "principles, the brainstorm -> implement/test -> review chain, continuity, and commit discipline"
+		c.Docs["workflow"] = workflow
+	}
+	if reviewer, ok := c.Agents["code-reviewer"]; ok {
+		reviewer.Data["focusItems"] = []any{
+			map[string]any{"name": "approved-boundary-adherence", "description": "the diff matches the approved scope and content; unexplained drift is a finding"},
+			map[string]any{"name": "test-coverage", "description": "behaviour changes carry tests in the same commit; no assertion is weakened to pass"},
+			map[string]any{"name": "verification-instrument-can-fail", "description": "every added or changed mechanical check has a negative case or temporary falsification proving the mutation landed before its passing verdict counts"},
+			map[string]any{"name": "check-purpose", "description": "every material check names the behavior or repository property it proves; flag choreography-only enforcement with no such obligation"},
+		}
+		reviewer.Data["readStep"] = "Read the diff in full (`git diff baseSha..headSha`) and every requirement or project document referenced by name in the brief."
+		c.Agents["code-reviewer"] = reviewer
+	}
 	for name, spec := range c.Skills {
 		spec.Profile.UsuallyFollows = selectedNames(spec.Profile.UsuallyFollows, c.Skills)
 		spec.Profile.CommonFollowUps = selectedNames(spec.Profile.CommonFollowUps, c.Skills)

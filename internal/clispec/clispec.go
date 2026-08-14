@@ -172,10 +172,10 @@ func helpItems(label string, items []HelpItem) (presentation.RecordGroup, error)
 // touches-state: tooling/cli:cli-command-spec-single-source - sole command-table source; proofs in clispec_test.go and readme_test.go
 var Commands = []Command{
 	{
-		Name: "init", Summary: "Scaffold .awf/ and render the full catalog",
+		Name: "init", Summary: "Scaffold .awf/ and render the selected profile",
 		BoolFlags: []string{"--force", "--describe"}, ValueFlags: []string{"--set", "--answers"},
 		Repeatable: []string{"--set"}, MaxPos: 0, Gating: Ungated,
-		Help: Help{Usage: []string{"awf init [flags]"}, Description: "Scaffold a .awf/ config tree and render the full catalog into the project.", Options: []HelpItem{{Name: "--force", Description: "overwrite colliding files, backing each up to <path>.awf-bak"}, {Name: "--describe", Description: "print the fillable value descriptors as JSON and exit"}, {Name: "--set", Description: "k=v      set a value non-interactively (repeatable)"}, {Name: "--answers", Description: "FILE read values from a JSON/YAML answers file: a flat key→value map of descriptor keys (see --describe)"}}},
+		Help: Help{Usage: []string{"awf init [flags]"}, Description: "Scaffold a .awf/ config tree and render the selected profile into the project.", Options: []HelpItem{{Name: "--force", Description: "overwrite colliding files, backing each up to <path>.awf-bak"}, {Name: "--describe", Description: "print the fillable value descriptors as JSON and exit"}, {Name: "--set", Description: "k=v      set a value non-interactively (repeatable)"}, {Name: "--answers", Description: "FILE read values from a JSON/YAML answers file: a flat key→value map of descriptor keys (see --describe)"}}},
 	},
 	{
 		Name: "render", Summary: "Re-render after a template or config change",
@@ -185,12 +185,12 @@ var Commands = []Command{
 	{
 		Name: "check", Summary: "Verify the repository and staged universes",
 		MaxPos: -1, Gating: Gated,
-		Help: Help{Usage: []string{"awf check", "awf check repo [subcommand]", "awf check staged [subcommand]", "awf check commit-policy <revision-or-range>..."}, Description: "Bare check runs both universes. The repo universe checks drift, current state,", Details: []string{"and the opt-in scans; the staged universe validates the HEAD-to-index transition.", "Outside a Git repository bare check runs the repo universe and reports that the", "staged universe is unavailable."}},
+		Help: Help{Usage: []string{"awf check", "awf check repo [subcommand]", "awf check staged [subcommand]", "awf check commit-policy <revision-or-range>..."}, Description: "Bare check runs both universes. The repo universe checks drift, profile-applicable authority,", Details: []string{"and the opt-in scans; the staged universe validates the HEAD-to-index transition.", "Outside a Git repository bare check runs the repo universe and reports that the", "staged universe is unavailable."}},
 		Children: []Command{
 			{Name: "commit-policy", Summary: "Verify exact commit provenance for explicit targets", MinPos: 1, MaxPos: -1,
 				Help: Help{Usage: []string{"awf check commit-policy <revision-or-range>..."}, Description: "Verify every unique commit reachable from explicit targets after the configured baseline. An absent policy reports one disabled-policy note and succeeds.", Positionals: []HelpItem{{Name: "<revision-or-range>", Description: "commit revision or range to verify"}}}},
 			{Name: "repo", Summary: "Verify repository properties", MaxPos: -1,
-				Help: Help{Usage: []string{"awf check repo [subcommand]"}, Description: "Run the repository universe: drift, current-state, prose, and memory checks."},
+				Help: Help{Usage: []string{"awf check repo [subcommand]"}, Description: "Run the repository universe: drift, profile-applicable authority, prose, and memory checks."},
 				Children: []Command{
 					{Name: "drift", Summary: "Report stale or hand-edited rendered output", MaxPos: 0,
 						Help: Help{Usage: []string{"awf check repo drift"}, Description: "Re-render in memory and report stale or hand-edited output."}},
@@ -209,8 +209,8 @@ var Commands = []Command{
 						Help: Help{Usage: []string{"awf check staged state"}, Description: "Validate the HEAD-to-index current-state transition."}},
 					{Name: "drift", Summary: "Compare staged config with staged rendered output", MaxPos: 0,
 						Help: Help{Usage: []string{"awf check staged drift"}, Description: "Report stale or hand-edited rendered output in the staged tree."}},
-					{Name: "commit", Summary: "Validate one commit message and stale-ADR merge authorization, blocking", MaxPos: 1, StateExempt: true,
-						Help: Help{Usage: []string{"awf check staged commit [<FILE>]"}, Description: "Validate one commit message against the Conventional Commits rules and", Details: []string{"definitively validate stale-format ADR merge authorization. Reads FILE (the", "path a commit-msg hook passes as $1) or stdin and cleans it git-style. Merge and", "autosquash subjects are exempt only from Conventional Commits. An older-format", "ADR introduced by a real merge must qualify against an incoming MERGE_HEAD", "parent and carry an adjacent AWF-Allow-Version / nonempty AWF-Allow-Reason pair", "in the final trailer block; malformed reserved trailers refuse. Refusal leaves", "the staged index, message, and merge state unchanged so correcting the trailers", "and rerunning git commit finishes the existing merge. awf installs no hook; wire", "this into your own commit-msg hook (the always-rendered inert", ".awf/hooks/commit-msg.sh payload runs it once you wire that hook)."}, Positionals: []HelpItem{{Name: "[<FILE>]", Description: "commit message file; reads stdin when omitted"}}}},
+					{Name: "commit", Summary: "Validate one commit message and profile-applicable merge authorization, blocking", MaxPos: 1, StateExempt: true,
+						Help: Help{Usage: []string{"awf check staged commit [<FILE>]"}, Description: "Validate one commit message against shared commit rules and any profile-applicable", Details: []string{"merge authorization. Reads FILE (the path a commit-msg hook passes as $1) or", "stdin and cleans it git-style. Merge and autosquash subjects are exempt only", "from Conventional Commits. A refusal leaves the staged index, message, and merge", "state unchanged so correcting the message and rerunning git commit finishes the", "existing merge. awf installs no hook; wire this into your own commit-msg hook", "(the always-rendered inert .awf/hooks/commit-msg.sh payload runs it once wired)."}, Positionals: []HelpItem{{Name: "[<FILE>]", Description: "commit message file; reads stdin when omitted"}}}},
 				},
 			},
 		},

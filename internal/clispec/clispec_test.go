@@ -20,7 +20,7 @@ func helpText(c Command) string {
 	return strings.Join(parts, " ")
 }
 
-func TestCheckCommitSpecIncludesStaleMergeAuthorization(t *testing.T) {
+func TestCheckCommitSpecDescribesProfileApplicableAuthorization(t *testing.T) {
 	check, ok := Lookup("check")
 	if !ok {
 		t.Fatal("missing check")
@@ -33,10 +33,10 @@ func TestCheckCommitSpecIncludesStaleMergeAuthorization(t *testing.T) {
 	if !ok {
 		t.Fatal("missing check staged commit")
 	}
-	if !strings.Contains(commit.Summary, "stale-ADR merge authorization") {
+	if !strings.Contains(commit.Summary, "profile-applicable merge authorization") {
 		t.Fatalf("summary = %q", commit.Summary)
 	}
-	for _, text := range []string{"MERGE_HEAD", "AWF-Allow-Version", "AWF-Allow-Reason", "unchanged", "git commit"} {
+	for _, text := range []string{"shared commit rules", "profile-applicable", "unchanged", "git commit"} {
 		if !strings.Contains(helpText(commit), text) {
 			t.Errorf("help missing %q", text)
 		}

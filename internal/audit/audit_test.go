@@ -509,7 +509,7 @@ func TestAuditReplaysStaleMergeTrailers(t *testing.T) {
 		repo := gitfixture.InitRepo(t)
 		base := gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{
 			"nested/.awf/awf.lock":    `{"awfVersion":"v0.18.0","schemaVersion":31,"files":{}}`,
-			"nested/.awf/config.yaml": "prefix: test\nintegrationBranch: master\ntargets: [claude]\n",
+			"nested/.awf/config.yaml": "prefix: test\nprofile: full\nintegrationBranch: master\ntargets: [claude]\n",
 		})
 		main := gitfixture.Commit(t, repo, "feat(awf): main", map[string]string{"nested/main.txt": "main\n"})
 		gitfixture.CheckoutNewBranch(t, repo, "feature", base)
@@ -548,7 +548,7 @@ func staleAuditRepo(t *testing.T, schema int) (gitfixture.Fixture, string) {
 	lock := `{"awfVersion":"v0.18.0","schemaVersion":` + strconv.Itoa(schema) + `,"files":{}}`
 	base := gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{
 		".awf/awf.lock":    lock,
-		".awf/config.yaml": "prefix: test\nintegrationBranch: master\ntargets: [claude]\n",
+		".awf/config.yaml": "prefix: test\nprofile: full\nintegrationBranch: master\ntargets: [claude]\n",
 	})
 	return repo, base
 }
@@ -563,7 +563,7 @@ func TestAuditSnapshotReadersAndErrors(t *testing.T) {
 	}
 	tree := auditTree(t, []snapshot.File{
 		{Path: ".awf/awf.lock", Mode: snapshot.Regular, Bytes: []byte(`{"awfVersion":"v0.18.0","schemaVersion":31,"files":{}}`)},
-		{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: test\nintegrationBranch: master\ntargets: [claude]\n")},
+		{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: test\nprofile: full\nintegrationBranch: master\ntargets: [claude]\n")},
 		{Path: ".awf/parts/a.md", Mode: snapshot.Regular, Bytes: []byte("part")},
 		{Path: ".awf/parts/link.md", Mode: snapshot.Symlink, Bytes: []byte("part")},
 	})
@@ -607,10 +607,10 @@ func TestAuditSnapshotReadersAndErrors(t *testing.T) {
 	}
 	for _, files := range [][]snapshot.File{
 		{{Path: ".awf/config.yaml", Mode: snapshot.Symlink, Bytes: []byte("config")}},
-		{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: test\nintegrationBranch: master\nunknown: 1\n")}},
-		{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: test\nintegrationBranch: master\n")}, {Path: "docs/decisions/0001-bad.md", Mode: snapshot.Regular, Bytes: []byte("---\nformat: unknown\n---\n")}},
+		{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: test\nprofile: full\nintegrationBranch: master\nunknown: 1\n")}},
+		{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: test\nprofile: full\nintegrationBranch: master\n")}, {Path: "docs/decisions/0001-bad.md", Mode: snapshot.Regular, Bytes: []byte("---\nformat: unknown\n---\n")}},
 		{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: bad/test\nintegrationBranch: master\n")}},
-		{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: test\nintegrationBranch: master\n")}, {Path: ".awf/awf.lock", Mode: snapshot.Regular, Bytes: []byte("{")}},
+		{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: test\nprofile: full\nintegrationBranch: master\n")}, {Path: ".awf/awf.lock", Mode: snapshot.Regular, Bytes: []byte("{")}},
 	} {
 		if _, err := auditUniverseFromTree(t.TempDir(), auditTree(t, files)); err == nil {
 			t.Fatalf("invalid audit universe accepted: %#v", files)
@@ -915,7 +915,7 @@ func TestRunNestedAdopterUsesEmptyStateBeforeCreation(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	base := gitfixture.Commit(t, repo, "feat(awf): containing repository", map[string]string{"outside.txt": "outside\n"})
 	head := gitfixture.Commit(t, repo, "feat(awf): create nested adopter", map[string]string{
-		"nested/.awf/config.yaml": "prefix: nested\nintegrationBranch: main\n",
+		"nested/.awf/config.yaml": "prefix: nested\nprofile: full\nintegrationBranch: main\n",
 	})
 
 	findings, count, err := Run(testContext(t), filepath.Join(repo.Root(), "nested"), base, head, Inputs{})
@@ -929,7 +929,7 @@ func TestRunNestedAdopterUsesEmptyStateBeforeCreation(t *testing.T) {
 func TestRunLoadsOnlySelectedCommittedBlobs(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	base := gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{
-		".awf/config.yaml": "prefix: test\nintegrationBranch: main\n",
+		".awf/config.yaml": "prefix: test\nprofile: full\nintegrationBranch: main\n",
 		"unrelated.txt":    "unselected committed bytes\n",
 	})
 	head := gitfixture.Commit(t, repo, "feat(awf): code", map[string]string{"code.go": "package code\n"})

@@ -47,7 +47,7 @@ Present the complete design or concise implementation outline after any groundin
 <!-- awf:end -->
 
 <!-- awf:section definitions -->
-A load-bearing decision remains meaningful after implementation.{{ with .data.loadBearingExamples }} Examples:{{ range . }} {{ .item }};{{ end }}{{ end }} A plan is warranted only when sequencing, coordination, or resumability materially helps.{{ with .data.errorBoundaries }} Consider configured error boundaries:{{ range . }} {{ .name }};{{ end }}{{ end }}
+A load-bearing decision remains meaningful after implementation.{{ with .data.loadBearingExamples }} Examples:{{ range . }} {{ .item }};{{ end }}{{ end }}{{if ne .profile "core"}} A plan is warranted only when sequencing, coordination, or resumability materially helps.{{else}} Use the approved boundary directly for implementation.{{end}}{{ with .data.errorBoundaries }} Consider configured error boundaries:{{ range . }} {{ .name }};{{ end }}{{ end }}
 <!-- awf:end -->
 
 <!-- awf:section anti-patterns -->

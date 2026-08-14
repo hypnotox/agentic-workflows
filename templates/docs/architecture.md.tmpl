@@ -3,7 +3,7 @@
 <!-- awf:section overview stub -->
 ## Overview
 
-awf renders a repository's governed workflow from committed `.awf/` configuration. The Go CLI validates, renders, and checks that configuration; generated target artifacts provide the agent-facing workflow. Its resident-data boundaries keep local effort and worktree state outside managed output.{{ with .commitPolicy }} Commit-policy configuration is consumed by the architecture's verification boundary.{{ end }}
+awf renders a repository's selected workflow from committed `.awf/` configuration. The Go CLI validates, renders, and checks that configuration; generated target artifacts provide the agent-facing workflow. Its resident-data boundaries keep local effort and worktree state outside managed output.{{ with .commitPolicy }} Commit-policy configuration is consumed by the architecture's verification boundary.{{ end }}
 <!-- awf:end -->
 
 <!-- awf:section components stub -->
@@ -11,8 +11,8 @@ awf renders a repository's governed workflow from committed `.awf/` configuratio
 
 - `cmd/awf`: CLI composition root; auxiliary commands may provide repository checks and diagnostics.
 - `internal/project`: configuration loading, rendering, output planning, and repository checks.
-- `internal/adr`, `internal/currentstate`, and `internal/plan`: durable decision, live-authority, and plan parsing.
-- `internal/effort` and `internal/worktree`: local effort residents and Git-backed topology.
+{{if ne .profile "core"}}- `internal/adr`, `internal/currentstate`, and `internal/plan`: durable decision, live-authority, and plan parsing.
+{{end}}- `internal/effort` and `internal/worktree`: local effort residents and Git-backed topology.
 - `internal/git`: the sole semantic Git boundary.
 - Generated Pi extensions: bounded subagent dispatch, context observation, and session handoff.
 <!-- awf:end -->
@@ -20,7 +20,7 @@ awf renders a repository's governed workflow from committed `.awf/` configuratio
 <!-- awf:section data-flow stub -->
 ## Data flow
 
-A command loads `.awf/`, derives an output plan, and renders or checks the managed files. `.awf/awf.lock` records the render transaction. Current-state checks read working or staged authority; audit reads selected committed history through `internal/git`. Effort residents and worktrees remain local state outside rendered output.
+A command loads `.awf/`, derives an output plan, and renders or checks the managed files. `.awf/awf.lock` records the render transaction.{{if ne .profile "core"}} Current-state checks read working or staged authority; audit reads selected committed history through `internal/git`.{{end}} Effort residents and worktrees remain local state outside rendered output.
 <!-- awf:end -->
 
 <!-- awf:section dependencies stub -->

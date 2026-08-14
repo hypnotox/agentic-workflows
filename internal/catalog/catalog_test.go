@@ -490,10 +490,25 @@ func TestProfileViewRejectsInvalidProfileAndProjectsCore(t *testing.T) {
 
 func TestProfileViewCoreOmitsFullOnlyEntries(t *testing.T) {
 	view := StandardProfileView(ProfileCore)
+	projected := view.Catalog()
 	for name, spec := range Standard.Skills {
-		_, found := view.Catalog().Skills[name]
+		_, found := projected.Skills[name]
 		if found == spec.FullOnly {
 			t.Errorf("core skill membership %q = %v, FullOnly = %v", name, found, spec.FullOnly)
+		}
+	}
+	if got := projected.Docs["workflow"].Desc; strings.Contains(got, "ADR") || strings.Contains(got, "plan") {
+		t.Errorf("Core workflow description retains Full concepts: %q", got)
+	}
+	reviewer := projected.Agents["code-reviewer"]
+	if got, _ := reviewer.Data["readStep"].(string); strings.Contains(got, "ADR") || strings.Contains(got, "plan") || strings.Contains(got, "state doc") {
+		t.Errorf("Core reviewer read step retains Full concepts: %q", got)
+	}
+	for _, raw := range reviewer.Data["focusItems"].([]any) {
+		item := raw.(map[string]any)
+		text := fmt.Sprint(item["name"], " ", item["description"])
+		if strings.Contains(text, "plan") || strings.Contains(text, "state") {
+			t.Errorf("Core reviewer focus retains Full concepts: %q", text)
 		}
 	}
 }

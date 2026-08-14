@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
-	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/commitmsg"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
@@ -951,12 +950,6 @@ func auditConfig(root string, selection *snapshot.Selection, lock *manifest.Lock
 	cfg, err := config.ParseTree(config.RootDir(root), data, auditSelectionReader{selection})
 	if err != nil {
 		return nil, err
-	}
-	// Historical revisions predate the required profile field. They represent
-	// the formerly sole governance footprint, which is now Full; current-tree
-	// parsing remains strict in config.Config.Validate.
-	if cfg.Profile == "" {
-		cfg.Profile = catalog.ProfileFull
 	}
 	if err := cfg.Validate(); err != nil {
 		return nil, err
