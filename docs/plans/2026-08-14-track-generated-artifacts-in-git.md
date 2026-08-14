@@ -3,7 +3,7 @@ format: plan-v2
 date: 2026-08-14
 adrs:
   - require-git-tracking-for-generated-artifacts
-status: Proposed
+status: Implemented
 ---
 # Plan: Track Generated Artifacts in Git
 
