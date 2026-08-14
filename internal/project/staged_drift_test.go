@@ -25,7 +25,10 @@ func TestStagedDriftClassifiesFreshnessBeforeObservation(t *testing.T) {
 	rendered := map[string]RenderedFile{
 		path: {Path: path, Content: "fresh render", TemplateHash: "template", ConfigHash: "config"},
 	}
-	want := []manifest.Drift{{Path: path, Kind: "stale", Detail: "rendered output out of date; run awf render"}}
+	want := []manifest.Drift{
+		{Path: ".awf/awf.lock", Kind: "untracked", Detail: "generated artifact is absent from the Git index; run awf render, then git add -f .awf/awf.lock"},
+		{Path: path, Kind: "stale", Detail: "rendered output out of date; run awf render"},
+	}
 	assertStale := func(t *testing.T, reader ProjectTreeReader) {
 		t.Helper()
 		got, err := checkStagedRenderedFiles(lock, rendered, reader, true)
@@ -48,17 +51,30 @@ func TestStagedDriftClassifiesFreshnessBeforeObservation(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		assertStale(t, snapshotTreeReader{tree: tree})
+		got, err := checkStagedRenderedFiles(lock, rendered, snapshotTreeReader{tree: tree}, true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		wantMissing := []manifest.Drift{
+			{Path: ".awf/awf.lock", Kind: "untracked", Detail: "generated artifact is absent from the Git index; run awf render, then git add -f .awf/awf.lock"},
+			{Path: path, Kind: "untracked", Detail: "generated artifact is absent from the Git index; run awf render, then git add -f " + path},
+		}
+		if !reflect.DeepEqual(got, wantMissing) {
+			t.Fatalf("staged missing membership = %#v, want %#v", got, wantMissing)
+		}
 	})
 	t.Run("before read failure", func(t *testing.T) {
 		root := t.TempDir()
 		if err := os.Mkdir(filepath.Join(root, path), 0o755); err != nil {
 			t.Fatal(err)
 		}
-		assertStale(t, filesystemProjectReader{root: root})
+		if _, err := checkStagedRenderedFiles(lock, rendered, filesystemProjectReader{root: root}, true); err == nil {
+			t.Fatal("staged membership erased reader failure")
+		}
 	})
 }
 
+// invariant: rendering/sync-and-drift:generated-artifacts-tracked (TestStagedDriftRenderedOutputInvariant)
 // invariant: rendering/sync-and-drift:staged-drift-rendered-output (TestStagedDriftRenderedOutputInvariant)
 // invariant: rendering/sync-and-drift:ordinary-render-freshness (TestStagedDriftRenderedOutputInvariant)
 // invariant: config/configuration:template-source-root (TestCheckStagedDriftUsesIndexedTemplateSourceMappings)
@@ -154,6 +170,7 @@ func mustReadFile(t *testing.T, path string) string {
 
 func TestStagedDriftRenderedOutputInvariant(t *testing.T) {
 	tree, err := snapshot.NewTree([]snapshot.File{
+		{Path: ".awf/awf.lock", Mode: snapshot.Regular, Bytes: []byte("lock")},
 		{Path: ".awf/efforts/.gitignore", Mode: snapshot.Regular, Bytes: []byte("resident edit")},
 		{Path: ".awf/orphan.yaml", Mode: snapshot.Regular, Bytes: []byte("config hygiene orphan")},
 		{Path: "stale.awf-bak", Mode: snapshot.Regular, Bytes: []byte("stale backup")},
@@ -213,7 +230,8 @@ func TestStagedDriftRenderedOutputInvariant(t *testing.T) {
 	want := []manifest.Drift{
 		{Path: "ordinary-binary", Kind: "stale", Detail: "rendered output out of date; run awf render"},
 		{Path: "ordinary-edit", Kind: "hand-edited", Detail: "staged output differs from lock; run awf render to discard the edit, or move it into a .awf convention part to keep it"},
-		{Path: "ordinary-stale", Kind: "stale", Detail: "template or config changed; run awf render"},
+		{Path: "ordinary-missing", Kind: "untracked", Detail: "generated artifact is absent from the Git index; run awf render, then git add -f ordinary-missing"},
+		{Path: "ordinary-stale", Kind: "untracked", Detail: "generated artifact is absent from the Git index; run awf render, then git add -f ordinary-stale"},
 		{Path: "regen-edit", Kind: "hand-edited", Detail: "staged output differs from the regenerated file; run awf render to restore awf-owned regions"},
 		{Path: "regen-stale", Kind: "stale", Detail: "generated output out of date; run awf render"},
 	}

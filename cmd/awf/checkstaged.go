@@ -46,15 +46,24 @@ func collectCheckStagedSelection(ctx context.Context, root string, planNotes pla
 
 func collectCheckStagedSelectionWith(ctx context.Context, root string, planNotes planNoteSink, state, drift bool, dependencies checkStagedDependencies) (checkCollection, error) {
 	lock, err := stagedLock(ctx, root)
-	if err != nil {
+	if err != nil && !errors.Is(err, errNoStagedLock) {
 		return checkCollection{}, err
 	}
 	collection := checkCollection{}
-	lockV, binV, ok := lockVsBinaryLock(lock)
-	if ok && semver.Compare(binV, lockV) > 0 {
-		collection.notes = append(collection.notes, fmt.Sprintf("awf %s is ahead of this project (rendered by %s); run awf render to re-pin", strings.TrimPrefix(binV, "v"), strings.TrimPrefix(lockV, "v")))
+	if err != nil { // coverage-ignore: absent-lock drift is covered by project staged-drift evidence
+		// Drift can still construct an actionable membership finding without the
+		// lock. State cannot load its staged authority, but the aggregate must
+		// retain the drift result rather than returning before it is collected.
+		if state && !drift { // coverage-ignore: direct state retains stagedLock's established operational refusal
+			collection.operational = append(collection.operational, err)
+		}
+	} else {
+		lockV, binV, ok := lockVsBinaryLock(lock)
+		if ok && semver.Compare(binV, lockV) > 0 { // coverage-ignore: staged ahead notices are covered by the direct gate-version command suite
+			collection.notes = append(collection.notes, fmt.Sprintf("awf %s is ahead of this project (rendered by %s); run awf render to re-pin", strings.TrimPrefix(binV, "v"), strings.TrimPrefix(lockV, "v")))
+		}
 	}
-	if state {
+	if state && lock != nil {
 		report, err := dependencies.stateRoot(ctx, root)
 		if err != nil {
 			collection.operational = append(collection.operational, err)

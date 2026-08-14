@@ -1033,8 +1033,8 @@
     "docs/topics/rendering/sync-and-drift.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:9d738e2c10946bc2fdce33419f33ce76f5de340fa4f50a4787febeaa72e6136b",
-      "outputHash": "sha256:e0ece5a25610a8acd5a07944280dd7bd1fae49d62ad52df6e9e4120865dbb171"
+      "configHash": "sha256:1f70331486d5f2cd30371e6c540f4e40a4f47c4e339c5a88f4cead3f1894dddb",
+      "outputHash": "sha256:fbc3b95653fe60b598e21128bcbe98aba5e19afc68fe59326a5d87c3612e021e"
     },
     "docs/topics/rendering/templates.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -1159,8 +1159,8 @@
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
       "templateHash": "sha256:0e2f9769df541e58283fac21329f0e0d0764da599e8c0a2c0d526bab788ff7fd",
-      "configHash": "sha256:5e65d86a7eb362bffd09fc625ddb541d73ce64794c6c3e95a2be6df78bb41d84",
-      "outputHash": "sha256:0cc9332ca82859adfb431d4234996adfe7b57a0d0c00210ec6dadddca5ad7350"
+      "configHash": "sha256:ef9c94229c95109c1558e609a0ab2f2805d2c271d4433212d35a5cca0d3e5845",
+      "outputHash": "sha256:497d0ce96587632b414b6b5ab70e0009a10a1752092fd295e7b59ee9a5921bbf"
     }
   }
 }

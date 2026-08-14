@@ -110,24 +110,11 @@ To write the placeholder syntax literally in a part (for documentation), put a b
 \{{=awf:commitScopeTable}} renders as the literal {{=awf:commitScopeTable}}.
 
 <!-- awf:template-source templates/docs/working-with-awf.md.tmpl#sync-and-drift -->
-<!-- awf:edit sync-and-drift: default; create .awf/parts/working-with-awf/sync-and-drift.md to override -->
+<!-- awf:edit sync-and-drift: from .awf/parts/working-with-awf/sync-and-drift.md -->
 <!-- awf:template-source templates/docs/working-with-awf.md.tmpl -->
 ## Keeping in sync
+After changing awf sources, run `./awf render`, then stage every generated file and `.awf/awf.lock`. `./awf check` verifies that generated artifacts are indexed as well as current. Git ignore rules do not satisfy this requirement: if a global ignore hides a generated file, add it explicitly with `git add -f <path>`.
 
-After any edit to `.awf/`, run `./awf render` to re-render, then `./awf check` to confirm no drift, and
-commit the rendered files alongside the config change. Always stage `.awf/awf.lock` with every regenerated output: its atomic manifest is part of one render transaction, not material to slice across independent commits. `awf check` compares each rendered file's
-template and config against `.awf/awf.lock`; a mismatch is `stale` drift. Wire `awf check` and your
-gate into CI so drift and rule violations block a merge.
-
-`awf check` also enforces config-tree hygiene: every entry under `.awf/` must be claimed
-(a rendered artifact's sidecar or declared-section parts, a rendered unit, or the skeleton),
-and anything else is failing drift with a repair hint, including sync-written `*.awf-bak`
-collision backups (review and delete them)
-(the resident roots are exempt local state). Configuration must be consumed, too: a non-empty
-`vars:` key or a sidecar `data:` key that no rendered artifact references is flagged, so a
-typo'd override can no longer degrade silently. A `paths:` key outside a domain sidecar, or
-`data:`/`sections:` on a domain sidecar, refuses at project open with the fix
-named.
 
 <!-- awf:template-source templates/docs/working-with-awf.md.tmpl#upgrading -->
 <!-- awf:edit upgrading: default; create .awf/parts/working-with-awf/upgrading.md to override -->

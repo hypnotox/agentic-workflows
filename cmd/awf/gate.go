@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -100,6 +101,8 @@ func stagedTree(ctx context.Context, root string) (*snapshot.Tree, error) {
 	return snapshot.IndexTree(ctx, repo)
 }
 
+var errNoStagedLock = errors.New("no staged lock")
+
 func stagedLock(ctx context.Context, root string) (*manifest.Lock, error) {
 	tree, err := stagedTree(ctx, root)
 	if err != nil {
@@ -107,7 +110,7 @@ func stagedLock(ctx context.Context, root string) (*manifest.Lock, error) {
 	}
 	file, ok := tree.Lookup(config.DirName + "/awf.lock")
 	if !ok {
-		return nil, fmt.Errorf("no staged %s/awf.lock", config.DirName)
+		return nil, fmt.Errorf("%w: no staged %s/awf.lock", errNoStagedLock, config.DirName)
 	}
 	lock, err := manifest.Parse(file.Bytes)
 	if err != nil {

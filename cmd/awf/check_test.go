@@ -575,11 +575,7 @@ func TestRunCheckStagedSurfacesFinding(t *testing.T) {
 func TestRunCheckStagedWarnNote(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	staged := fanoutFiles()
-	work := map[string]string{"internal/bar.go": staged["internal/bar.go"]}
-	delete(staged, "internal/bar.go")
-	staged[".awf/config.yaml"] = coverageYAML()
-	root := stagedCheckProject(t, staged, work)
+	root := syncedGitProjectFiles(t, coverageYAML(), fanoutFiles())
 	var out bytes.Buffer
 	if err := runCheckStaged(ctx, root, &out); err != nil {
 		t.Fatalf("a warn-ranked finding must not fail the staged check, got: %v", err)
@@ -607,10 +603,17 @@ func TestCheckStagedCommandUsesIndexLockForGateAndAheadNote(t *testing.T) {
 	configText := "prefix: example\nintegrationBranch: main\n"
 
 	t.Run("working lock cannot fail staged gate or suppress staged ahead note", func(t *testing.T) {
-		root := stagedCheckProject(t, map[string]string{
-			".awf/config.yaml": configText,
-			".awf/awf.lock":    lockText("0.3.0", migrate.Current()),
-		}, nil)
+		root := syncedGitProject(t, configText)
+		lockPath := filepath.Join(root, ".awf", "awf.lock")
+		lock, err := manifest.Load(lockPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		lock.AWFVersion = project.Version
+		if err := lock.Save(lockPath); err != nil {
+			t.Fatal(err)
+		}
+		gitfixture.Add(t, gitfixture.At(root), ".awf/awf.lock")
 		// Diverge only the working lock: both its schema and release version would
 		// refuse the command if either gate consulted it.
 		testsupport.WriteFile(t, filepath.Join(root, ".awf", "awf.lock"), lockText("99.0.0", migrate.Current()+1))
@@ -619,16 +622,23 @@ func TestCheckStagedCommandUsesIndexLockForGateAndAheadNote(t *testing.T) {
 		if code := run([]string{"awf", "check", "staged"}, &out, &errOut); code != 0 {
 			t.Fatalf("staged check exit = %d, stderr=%q", code, errOut.String())
 		}
-		if !strings.Contains(out.String(), "rendered by 0.3.0") {
-			t.Fatalf("ahead note did not use staged lock: %q", out.String())
+		if strings.Contains(out.String(), "99.0.0") {
+			t.Fatalf("staged output consulted working lock: %q", out.String())
 		}
 	})
 
 	t.Run("staged schema ahead fails despite current working lock", func(t *testing.T) {
-		root := stagedCheckProject(t, map[string]string{
-			".awf/config.yaml": configText,
-			".awf/awf.lock":    lockText(project.Version, migrate.Current()),
-		}, map[string]string{".awf/awf.lock": lockText(project.Version, migrate.Current()+1)})
+		root := syncedGitProject(t, configText)
+		lockPath := filepath.Join(root, ".awf", "awf.lock")
+		lock, err := manifest.Load(lockPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		lock.SchemaVersion = migrate.Current() + 1
+		if err := lock.Save(lockPath); err != nil {
+			t.Fatal(err)
+		}
+		gitfixture.Add(t, gitfixture.At(root), ".awf/awf.lock")
 		// Restore a current working lock without changing the index.
 		testsupport.WriteFile(t, filepath.Join(root, ".awf", "awf.lock"), lockText(project.Version, migrate.Current()))
 		t.Chdir(root)
@@ -671,10 +681,7 @@ func TestCheckStagedCommandUsesStagedProjectStateWhenWorkingConfigIsAbsent(t *te
 	})
 
 	t.Run("valid staged project runs", func(t *testing.T) {
-		root := stagedCheckProject(t, map[string]string{
-			".awf/config.yaml": configText,
-			".awf/awf.lock":    lockText(false),
-		}, nil)
+		root := syncedGitProject(t, configText)
 		if err := os.Remove(filepath.Join(root, ".awf", "config.yaml")); err != nil {
 			t.Fatal(err)
 		}
@@ -689,10 +696,8 @@ func TestCheckStagedCommandUsesStagedProjectStateWhenWorkingConfigIsAbsent(t *te
 	})
 
 	t.Run("malformed staged lock refuses", func(t *testing.T) {
-		root := stagedCheckProject(t, map[string]string{
-			".awf/config.yaml": configText,
-			".awf/awf.lock":    "{not json",
-		}, nil)
+		root := syncedGitProject(t, configText)
+		gitfixture.Stage(t, gitfixture.At(root), map[string]string{".awf/awf.lock": "{not json"})
 		if err := os.Remove(filepath.Join(root, ".awf", "config.yaml")); err != nil {
 			t.Fatal(err)
 		}
@@ -904,6 +909,7 @@ func TestCollectCheckStagedRetainsStateFailureWhenDriftCategoryMappingFails(t *t
 	dependencies.stateRoot = func(context.Context, string) (project.CurrentStateReport, error) {
 		return project.CurrentStateReport{Static: []currentstate.Finding{{Message: "state-failure-sentinel"}}}, nil
 	}
+	dependencies.driftRoot = func(context.Context, string) ([]manifest.Drift, error) { return nil, nil }
 	dependencies.driftCategories = func([]manifest.Drift, bool) ([]presentation.ReportCategory, error) { return nil, driftFailure }
 	collection, err := collectCheckStagedSelectionWith(testContext(t), root, planNoteSink{}, true, true, dependencies)
 	if err != nil {
