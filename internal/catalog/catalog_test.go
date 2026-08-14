@@ -28,8 +28,6 @@ func TestCatalogIsCompileTimeSingleSource(t *testing.T) {
 	}
 }
 
-// TestCompleteViewPreservesStandard verifies the preparatory view selects every
-// complete-catalog entry and preserves the ordered descriptor population.
 func TestNewViewRejectsNilCatalog(t *testing.T) {
 	defer func() {
 		if got := recover(); got != "catalog view: missing catalog" {
@@ -39,10 +37,12 @@ func TestNewViewRejectsNilCatalog(t *testing.T) {
 	NewView(nil)
 }
 
+// TestCompleteViewPreservesStandard verifies the preparatory view selects every
+// complete-catalog entry and preserves the ordered descriptor population.
 func TestCompleteViewPreservesStandard(t *testing.T) {
 	view := CompleteView()
-	if view.Catalog() != Standard {
-		t.Fatal("complete view did not retain the standard catalog authority")
+	if view.Catalog() == Standard {
+		t.Fatal("complete view retained a mutable alias to Standard")
 	}
 	if got, want := view.Catalog().Vars, Standard.Vars; !slices.EqualFunc(got, want, func(a, b VarDescriptor) bool { return reflect.DeepEqual(a, b) }) {
 		t.Fatalf("complete view vars = %#v, want %#v", got, want)
@@ -63,28 +63,68 @@ func TestCompleteViewPreservesStandard(t *testing.T) {
 	}
 }
 
+func TestViewOwnsDeepCatalogSnapshot(t *testing.T) {
+	injected := cloneCatalog(Standard)
+	injectedSkill := injected.Skills["tdd"]
+	injectedSkill.Data["typed"] = []string{"original"}
+	injected.Skills["tdd"] = injectedSkill
+	view := NewView(injected)
+	original := view.Catalog().Skills["tdd"]
+
+	injectedSkill.Sections[0] = "changed input"
+	injectedSkill.Data["nested"] = []any{map[string]any{"value": "changed input"}}
+	injectedSkill.Data["typed"].([]string)[0] = "changed input"
+	injected.Skills["tdd"] = injectedSkill
+	if got := view.Catalog().Skills["tdd"]; !reflect.DeepEqual(got, original) {
+		t.Fatalf("view changed through input alias: %#v", got)
+	}
+
+	standardSkill := Standard.Skills["tdd"]
+	viewSkill := CompleteView().Catalog().Skills["tdd"]
+	viewSkill.Sections[0] = "changed view"
+	viewSkill.Data["nested"] = []any{map[string]any{"value": "changed view"}}
+	if got := Standard.Skills["tdd"]; !reflect.DeepEqual(got, standardSkill) {
+		t.Fatalf("Standard changed through complete view alias: %#v", got)
+	}
+}
+
 // TestProjectProductionCatalogBypassesRejected keeps the complete view as the
-// sole project catalog authority. Composition roots may construct it, but no
-// project production file may reach around its Project-owned value.
+// sole project catalog authority. Only explicit composition roots may acquire
+// it; every other production consumer must read its Project-owned view.
 func TestProjectProductionCatalogBypassesRejected(t *testing.T) {
 	root := testsupport.RepoRoot(t)
 	projectDir := filepath.Join(root, "internal", "project")
+	allowed := map[string]bool{"configreference.go": true, "project.go": true, "scaffold.go": true}
 	entries, err := os.ReadDir(projectDir)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") || allowed[entry.Name()] {
 			continue
 		}
 		body, err := os.ReadFile(filepath.Join(projectDir, entry.Name()))
 		if err != nil {
 			t.Fatal(err)
 		}
-		if strings.Contains(string(body), "catalog.Standard") {
-			t.Errorf("project production bypass in %s", entry.Name())
+		if bypass := projectCatalogBypass(string(body)); bypass != "" {
+			t.Errorf("project production bypass %s in %s", bypass, entry.Name())
 		}
 	}
+	for _, bypass := range []string{"catalog.Standard", "catalog.CompleteView()", "catalog.NewView("} {
+		if got := projectCatalogBypass("package project\nvar _ = " + bypass); got != bypass {
+			t.Errorf("bypass probe %q returned %q", bypass, got)
+		}
+	}
+}
+
+func projectCatalogBypass(body string) string {
+	for _, bypass := range []string{"catalog.Standard", "catalog.CompleteView()", "catalog.NewView("} {
+		if strings.Contains(body, bypass) {
+			return bypass
+		}
+	}
+	return ""
 }
 
 // Catalog default data must be generic: no default names an awf-repo path or

@@ -1,7 +1,10 @@
 // Package catalog is the compile-time Go value declaring the standard's skills, agents, and docs.
 package catalog
 
-import "slices"
+import (
+	"maps"
+	"slices"
+)
 
 // WorkflowKind classifies a governed workflow body.
 type WorkflowKind string
@@ -137,21 +140,85 @@ type Catalog struct {
 }
 
 // View is the immutable-in-practice catalog selection a composition root gives
-// to one project. This foundation always selects the complete catalog; later
-// selection must remain here rather than letting consumers reconstruct it.
+// to one project. It owns a defensive snapshot, so neither the global Standard
+// value nor an injected fixture can change through a project's catalog seam.
 type View struct{ catalog *Catalog }
 
-// CompleteView returns the one complete, Full-equivalent catalog view.
-func CompleteView() View { return View{catalog: Standard} }
+// CompleteView returns one complete, Full-equivalent catalog snapshot.
+func CompleteView() View { return NewView(Standard) }
 
-// NewView binds an explicitly composed complete catalog to a project.
+// NewView snapshots an explicitly composed complete catalog for one project.
 func NewView(c *Catalog) View {
 	if c == nil {
 		panic("catalog view: missing catalog")
 	}
-	return View{catalog: c}
+	return View{catalog: cloneCatalog(c)}
 }
 
-// Catalog returns the view's read-only catalog for existing catalog consumers.
-// Catalog data is compile-time authority and callers must not mutate it.
+// Catalog returns the view-owned catalog. Callers treat the snapshot as
+// read-only; its only mutable alias is confined inside the owning project.
 func (v View) Catalog() *Catalog { return v.catalog }
+
+func cloneCatalog(src *Catalog) *Catalog {
+	out := &Catalog{
+		Skills:    maps.Clone(src.Skills),
+		Agents:    maps.Clone(src.Agents),
+		DomainDoc: src.DomainDoc,
+		Docs:      maps.Clone(src.Docs),
+		Vars:      slices.Clone(src.Vars),
+	}
+	out.DomainDoc.Sections = slices.Clone(src.DomainDoc.Sections)
+	out.DomainDoc.RequiresSkills = slices.Clone(src.DomainDoc.RequiresSkills)
+	out.DomainDoc.Data = cloneData(src.DomainDoc.Data)
+	for name, spec := range out.Skills {
+		spec.Sections = slices.Clone(spec.Sections)
+		spec.RequiresSkills = slices.Clone(spec.RequiresSkills)
+		spec.Data = cloneData(spec.Data)
+		spec.Profile.UsuallyFollows = slices.Clone(spec.Profile.UsuallyFollows)
+		spec.Profile.CommonFollowUps = slices.Clone(spec.Profile.CommonFollowUps)
+		out.Skills[name] = spec
+	}
+	for name, spec := range out.Agents {
+		spec.Sections = slices.Clone(spec.Sections)
+		spec.RequiresSkills = slices.Clone(spec.RequiresSkills)
+		spec.Data = cloneData(spec.Data)
+		out.Agents[name] = spec
+	}
+	for name, entry := range out.Docs {
+		entry.Sections = slices.Clone(entry.Sections)
+		entry.Data = cloneData(entry.Data)
+		out.Docs[name] = entry
+	}
+	for i := range out.Vars {
+		out.Vars[i].Options = slices.Clone(out.Vars[i].Options)
+	}
+	return out
+}
+
+func cloneData(src map[string]any) map[string]any {
+	if src == nil {
+		return nil
+	}
+	out := make(map[string]any, len(src))
+	for key, value := range src {
+		out[key] = cloneDataValue(value)
+	}
+	return out
+}
+
+func cloneDataValue(value any) any {
+	switch value := value.(type) {
+	case map[string]any:
+		return cloneData(value)
+	case []any:
+		out := make([]any, len(value))
+		for i := range value {
+			out[i] = cloneDataValue(value[i])
+		}
+		return out
+	case []string:
+		return slices.Clone(value)
+	default:
+		return value
+	}
+}

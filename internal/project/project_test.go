@@ -1453,7 +1453,7 @@ func TestSyncRendersAgentsDoc(t *testing.T) {
 // invariant: rendering/doc-outputs:layout-derivation (TestLayoutUsesFixedDocsRootAndFullCatalog)
 // invariant: rendering/doc-outputs:docs-root-fixed (TestLayoutUsesFixedDocsRootAndFullCatalog)
 func TestLayoutUsesFixedDocsRootAndFullCatalog(t *testing.T) {
-	p := &Project{Cfg: &config.Config{}, Cat: catalog.Standard}
+	p := &Project{Cfg: &config.Config{}, view: catalog.NewView(catalog.Standard)}
 	l := p.layout()
 	if l.DocsDir != config.DocsDir || l.ADRDir != "docs/decisions" ||
 		l.IndexMd != "docs/decisions/INDEX.md" || l.PlansDir != "docs/plans" {

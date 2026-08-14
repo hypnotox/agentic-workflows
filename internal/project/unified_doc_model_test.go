@@ -32,7 +32,6 @@ func TestUnifiedDocModelProjections(t *testing.T) {
 	for _, s := range plainSingletons(cat) {
 		got = append(got, s.kind)
 	}
-	slices.Sort(got)
 	var wantPS []string
 	for k, e := range cat.Docs {
 		if e.Path != "" && !e.AgentsDoc && !e.Generated {
@@ -46,7 +45,7 @@ func TestUnifiedDocModelProjections(t *testing.T) {
 
 	// (c) every structural non-root entry's TemplateKey/Path lands in templateMap
 	// at the derived docsDir path.
-	tm := (&Project{Cat: cat}).layout().templateMap()
+	tm := (&Project{view: catalog.NewView(cat)}).layout().templateMap()
 	for _, e := range cat.Docs {
 		if e.Path == "" || e.AgentsDoc {
 			continue

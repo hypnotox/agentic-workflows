@@ -130,8 +130,8 @@ func TestLoaderOpenOwnsInjectedCompleteView(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.Cat != &injected || p.view.Catalog() != p.Cat {
-		t.Fatal("Project did not retain its one injected catalog view")
+	if p.catalog() == &injected || !reflect.DeepEqual(p.catalog(), &injected) {
+		t.Fatal("Project did not own one equivalent injected catalog snapshot")
 	}
 }
 

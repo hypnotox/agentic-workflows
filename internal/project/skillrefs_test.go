@@ -89,7 +89,7 @@ func TestEffectiveSkillsMembership(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for name := range p.Cat.Skills {
+	for name := range p.catalog().Skills {
 		if !eff[name] {
 			t.Errorf("catalog skill %q missing from effective set", name)
 		}

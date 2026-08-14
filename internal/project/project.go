@@ -152,7 +152,6 @@ type Project struct {
 	// remain useful. Constructed once, where the project is.
 	roots   resident.Roots
 	Cfg     *config.Config
-	Cat     *catalog.Catalog
 	Targets []Target
 	view    catalog.View
 	// read selects an immutable project-tree universe for render inputs. A nil
@@ -217,7 +216,6 @@ func (l *Loader) Open(ctx context.Context, root string) (*Project, error) {
 		nested:  l.repo != nil && l.repo.IsNested(),
 		repo:    l.repo,
 	}
-	p.Cat = l.view.Catalog()
 	if err := p.validateAgainstCatalog(); err != nil {
 		return nil, err
 	}
@@ -251,9 +249,11 @@ func openRootProject(root string) (*Project, error) {
 	if err != nil {
 		return nil, err
 	}
-	view := catalog.CompleteView()
-	return &Project{Root: root, roots: resident.NewRoots(root, ""), Cat: view.Catalog(), view: view, nested: prefix != "", repo: repo}, nil
+	return &Project{Root: root, roots: resident.NewRoots(root, ""), view: catalog.CompleteView(), nested: prefix != "", repo: repo}, nil
 }
+
+// catalog returns this project's single view-owned catalog snapshot.
+func (p *Project) catalog() *catalog.Catalog { return p.view.Catalog() }
 
 // Backup records a foreign file preserved before sync overwrote its path.
 type Backup struct {

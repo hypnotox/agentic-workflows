@@ -128,12 +128,12 @@ func TestTemplateSourceRootChangesOnlyActivatedMarkdownConfigHash(t *testing.T) 
 		}
 	}
 	sc := config.Sidecar{}
-	plain, err := p.renderTarget("adr-readme", "", tid, p.Cat.Docs["adr-readme"].Sections, sc, p.data(sc, map[string]bool{}), "out.md", map[string]bool{})
+	plain, err := p.renderTarget("adr-readme", "", tid, p.catalog().Docs["adr-readme"].Sections, sc, p.data(sc, map[string]bool{}), "out.md", map[string]bool{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	p.Cfg.Render = &config.RenderConfig{TemplateSourceRoot: "templates"}
-	active, err := p.renderTarget("adr-readme", "", tid, p.Cat.Docs["adr-readme"].Sections, sc, p.data(sc, map[string]bool{}), "out.md", map[string]bool{})
+	active, err := p.renderTarget("adr-readme", "", tid, p.catalog().Docs["adr-readme"].Sections, sc, p.data(sc, map[string]bool{}), "out.md", map[string]bool{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -29,7 +29,7 @@ func (p *Project) ListDocument(kindFilter string) (presentation.Document, error)
 				entries = []string{"none"}
 			}
 		} else {
-			entries, _ = CatalogNames(p.Cat, kind)
+			entries, _ = CatalogNames(p.catalog(), kind)
 			for i, name := range entries {
 				if sidecar, err := p.Cfg.Sidecar(plural, name); err == nil && (sidecar.Data != nil || sidecar.Sections != nil) {
 					entries[i] = name + " (tuned)"

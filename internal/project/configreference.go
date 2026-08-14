@@ -19,7 +19,7 @@ import (
 // crefRel is the generated config reference's project-relative output path,
 // derived from its catalog entry like every doc path.
 func (p *Project) crefRel() string {
-	return config.DocsDir + "/" + p.Cat.Docs["config-reference"].Path
+	return config.DocsDir + "/" + p.catalog().Docs["config-reference"].Path
 }
 
 // PotentialVarConsumers inverts the complete catalog's raw template sources
@@ -297,7 +297,7 @@ func (p *Project) configReferenceRows(files []RenderedFile) (ConfigReference, er
 	}
 
 	rendered := renderedVarConsumers(files)
-	potential, err := potentialVarConsumers(p.Cat)
+	potential, err := potentialVarConsumers(p.catalog())
 	if err != nil { // coverage-ignore: PotentialVarConsumers reads only embedded templates
 		return ConfigReference{}, err
 	}
@@ -382,11 +382,11 @@ func (p *Project) dataKeyRowsTyped() ([]DataKeyRow, error) {
 		var declared map[string]any
 		switch d.Kind {
 		case "skills":
-			declared = p.Cat.Skills[d.Artifact].Data
+			declared = p.catalog().Skills[d.Artifact].Data
 		case "agents":
-			declared = p.Cat.Agents[d.Artifact].Data
+			declared = p.catalog().Agents[d.Artifact].Data
 		case "docs":
-			declared = p.Cat.Docs[d.Artifact].Data
+			declared = p.catalog().Docs[d.Artifact].Data
 		}
 		sidecarKind, sidecarName := d.Kind, d.Artifact
 		if d.Artifact == "agents-doc" {
@@ -438,8 +438,8 @@ func (p *Project) generateConfigReference(files []RenderedFile, eff map[string]b
 		return nil, false, err
 	}
 	data["data"] = collections
-	rf, err := p.renderTarget("config-reference", "", p.Cat.Docs["config-reference"].TID,
-		p.Cat.Docs["config-reference"].Sections, sc, data, p.crefRel(), eff,
+	rf, err := p.renderTarget("config-reference", "", p.catalog().Docs["config-reference"].TID,
+		p.catalog().Docs["config-reference"].Sections, sc, data, p.crefRel(), eff,
 		&renderOutputOptions{sources: []string{"derived:configspec", "derived:project-configuration"}})
 	if err != nil {
 		return nil, false, err

@@ -120,7 +120,7 @@ func (p *Project) commitScopesDisplay() string {
 // effectiveSkills returns the unconditional full catalog skill set.
 func (p *Project) effectiveSkills() (map[string]bool, error) {
 	eff := map[string]bool{}
-	for name := range p.Cat.Skills {
+	for name := range p.catalog().Skills {
 		if _, err := p.Cfg.Sidecar("skills", name); err != nil { // coverage-ignore: declaration-first planning just parsed this catalog skill sidecar
 			return nil, err
 		}
@@ -446,7 +446,7 @@ func (p *Project) skillTID(n string) string { return mustDescriptor("skills").ti
 func (p *Project) agentTID(n string) string { return mustDescriptor("agents").tid(n) }
 
 // docTID resolves a catalog document's declared template id.
-func (p *Project) docTID(n string) string { return p.Cat.Docs[n].TID }
+func (p *Project) docTID(n string) string { return p.catalog().Docs[n].TID }
 
 func (p *Project) renderKind(spec renderKindSpec, eff map[string]bool) ([]RenderedFile, error) {
 	var out []RenderedFile
@@ -512,11 +512,11 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	var out []RenderedFile
 	// Neutral: docs render once - the output path is docsDir-relative, not adapter-placed.
 	docsRfs, err := p.renderKind(renderKindSpec{
-		kind: "docs", names: catalog.NameDerivedDocNames(p.Cat),
+		kind: "docs", names: catalog.NameDerivedDocNames(p.catalog()),
 		tid:      p.docTID,
-		sections: func(n string) []string { return p.Cat.Docs[n].Sections },
+		sections: func(n string) []string { return p.catalog().Docs[n].Sections },
 		outPath:  func(_ Target, n string) string { return p.docOutPath(n) },
-		defaults: func(n string) map[string]any { return p.Cat.Docs[n].Data },
+		defaults: func(n string) map[string]any { return p.catalog().Docs[n].Data },
 		transform: func(n string, sc config.Sidecar) (config.Sidecar, error) {
 			if n == "pitfalls" {
 				return pitfallIndexSidecar(sc, pitfalls), nil
@@ -548,22 +548,22 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	// Adapter: skills + agents render once per fixed target (inv: multi-target-render).
 	// touches-state: rendering/project-output-plan:multi-target-render - skills/agents render once per fixed target; proof in target_test.go
 	for _, t := range p.Targets {
-		skillNames := slices.Sorted(maps.Keys(p.Cat.Skills))
+		skillNames := slices.Sorted(maps.Keys(p.catalog().Skills))
 		skillPath := func(t Target, n string) string { return t.SkillPath(p.Cfg.Prefix, n) }
 		for _, spec := range []renderKindSpec{
 			{
 				kind: "skills", names: skillNames, target: t,
 				tid:      p.skillTID,
-				sections: func(n string) []string { return p.Cat.Skills[n].Sections },
+				sections: func(n string) []string { return p.catalog().Skills[n].Sections },
 				outPath:  skillPath,
-				defaults: func(n string) map[string]any { return p.Cat.Skills[n].Data },
+				defaults: func(n string) map[string]any { return p.catalog().Skills[n].Data },
 			},
 			{
-				kind: "agents", names: slices.Sorted(maps.Keys(p.Cat.Agents)), target: t,
+				kind: "agents", names: slices.Sorted(maps.Keys(p.catalog().Agents)), target: t,
 				tid:      p.agentTID,
-				sections: func(n string) []string { return p.Cat.Agents[n].Sections },
+				sections: func(n string) []string { return p.catalog().Agents[n].Sections },
 				outPath:  func(t Target, n string) string { return t.AgentPath(n) },
-				defaults: func(n string) map[string]any { return p.Cat.Agents[n].Data },
+				defaults: func(n string) map[string]any { return p.catalog().Agents[n].Data },
 				encode: func(n, body string, data map[string]any) (string, error) {
 					return p.encodeAgent(t, n, body, data)
 				},
@@ -611,18 +611,18 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	if err != nil { // coverage-ignore: declaration-first planning just parsed the agents-doc sidecar
 		return nil, err
 	}
-	ad = withDefaultData(ad, p.Cat.Docs["agents-doc"].Data)
+	ad = withDefaultData(ad, p.catalog().Docs["agents-doc"].Data)
 	data := p.data(ad, eff)
 	data["docs"] = p.resolvedDocs()
 	data["mandatoryDocs"] = p.documentMapDocs()
 	data["localDocs"] = p.localDocumentMapDocs()
 	data["documentMapFallbackHeading"] = len(p.Cfg.LocalDocs) != 0 && ad.Sections["document-map"].Drop
-	rf, err := p.renderTarget("agents-doc", "", p.Cat.Docs["agents-doc"].TID,
-		p.Cat.Docs["agents-doc"].Sections, ad, data, "AGENTS.md", eff)
+	rf, err := p.renderTarget("agents-doc", "", p.catalog().Docs["agents-doc"].TID,
+		p.catalog().Docs["agents-doc"].Sections, ad, data, "AGENTS.md", eff)
 	if err != nil {
 		return nil, err
 	}
-	for _, name := range slices.Sorted(maps.Keys(p.Cat.Docs)) {
+	for _, name := range slices.Sorted(maps.Keys(p.catalog().Docs)) {
 		if ok, sidecarErr := p.Cfg.HasSidecar("docs", name); sidecarErr != nil { // coverage-ignore: declaration-first planning already read every catalog doc sidecar from the same filesystem invocation
 			return nil, sidecarErr
 		} else if ok {
@@ -653,13 +653,13 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	// collection, derived into plainSingletons (ADR-0021, ADR-0043, ADR-0059,
 	// ADR-0061).
 	lay := p.layout()
-	for _, sg := range plainSingletons(p.Cat) {
+	for _, sg := range plainSingletons(p.catalog()) {
 		rfs, err := p.renderKind(renderKindSpec{
 			kind: sg.kind, names: []string{""},
 			tid:      func(string) string { return sg.tid },
-			sections: func(string) []string { return sg.sections(p.Cat) },
+			sections: func(string) []string { return sg.sections(p.catalog()) },
 			outPath:  func(Target, string) string { return sg.outPath(lay) },
-			defaults: func(string) map[string]any { return p.Cat.Docs[sg.kind].Data },
+			defaults: func(string) map[string]any { return p.catalog().Docs[sg.kind].Data },
 		}, eff)
 		if err != nil {
 			return nil, err
@@ -941,11 +941,11 @@ func (p *Project) observeRenderInputs(kind, artifact, tid, outPath string, plan 
 // encodeAgent renders catalog metadata with normal template data and combines it
 // with the independently section-rendered instruction body in the target dialect.
 func (p *Project) encodeAgent(t Target, name, body string, data map[string]any) (string, error) {
-	description, err := render.Execute(p.Cat.Agents[name].Description, data, nil, "agent description")
+	description, err := render.Execute(p.catalog().Agents[name].Description, data, nil, "agent description")
 	if err != nil {
 		return "", err
 	}
-	a := agent{Name: p.Cat.Agents[name].Name, Description: description, Body: body}
+	a := agent{Name: p.catalog().Agents[name].Name, Description: description, Body: body}
 	if t.AgentDialect != MarkdownAgentDialect {
 		return "", fmt.Errorf("unknown agent dialect %q", t.AgentDialect)
 	}
@@ -1016,7 +1016,7 @@ func (p *Project) generateDomainDocs(topics topic.Corpus, eff map[string]bool) (
 		data := p.data(config.Sidecar{}, eff)
 		data["data"] = map[string]any{"domain": name, "topics": topic.BuildNavigationModel(name, topics.ForDomain(name))}
 		rf, err := p.renderTarget("domains", name, mustDescriptor("domains").tid(name),
-			p.Cat.DomainDoc.Sections, config.Sidecar{}, data,
+			p.catalog().DomainDoc.Sections, config.Sidecar{}, data,
 			lay.DomainsDir+"/"+name+".md", eff, &renderOutputOptions{sources: []string{
 				".awf/topics/metadata/" + name + "/*.yaml",
 				".awf/topics/parts/" + name + "/*/current-state.md",

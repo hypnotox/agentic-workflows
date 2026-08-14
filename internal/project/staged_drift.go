@@ -50,12 +50,11 @@ func (p *Project) CheckStagedDrift(ctx context.Context) ([]manifest.Drift, error
 		Root: p.Root, roots: p.roots, Cfg: state.Cfg, Targets: targets,
 		view: p.view, read: read, nested: p.nested, repo: p.repo,
 	}
-	universe.Cat = universe.view.Catalog()
 	if err := universe.validateAgainstCatalog(); err != nil {
 		return nil, err
 	}
 	effective := map[string]bool{}
-	for name := range universe.Cat.Skills {
+	for name := range universe.catalog().Skills {
 		effective[name] = true
 	}
 	pitfalls, err := universe.loadPitfallCorpus()

@@ -158,7 +158,7 @@ func TestListDocumentRetainedInventory(t *testing.T) {
 }
 
 func TestListDocumentPropagatesInvalidCatalogEntry(t *testing.T) {
-	p := &Project{Cfg: &config.Config{}, Cat: &catalog.Catalog{Skills: map[string]catalog.SkillSpec{"bad\nentry": {}}}}
+	p := &Project{Cfg: &config.Config{}, view: catalog.NewView(&catalog.Catalog{Skills: map[string]catalog.SkillSpec{"bad\nentry": {}}})}
 	if _, err := p.ListDocument("skill"); err == nil {
 		t.Fatal("invalid catalog entry reached the list presentation")
 	}

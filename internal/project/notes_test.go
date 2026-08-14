@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -564,17 +565,17 @@ func TestGlossaryTersenessNotesCoversShippedLayer(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		// p.Cat's Docs map is this project's own clone, but the rest of this
+		// p.catalog()'s Docs map is this project's own clone, but the rest of this
 		// Project reads it, so swap in a local copy rather than mutating the
 		// project's catalog mid-test.
-		e := p.Cat.Docs["glossary"]
+		e := p.catalog().Docs["glossary"]
 		e.Data = map[string]any{"standardTerms": []any{
 			map[string]any{"term": "shipped-bloat", "meaning": strings.Repeat("x", glossaryMeaningMax+1)},
 		}}
-		cp := *p.Cat
-		cp.Docs = maps.Clone(p.Cat.Docs)
+		cp := *p.catalog()
+		cp.Docs = maps.Clone(p.catalog().Docs)
 		cp.Docs["glossary"] = e
-		p.Cat = &cp
+		p.view = catalog.NewView(&cp)
 		notes, err := p.glossaryTersenessNotes()
 		if err != nil {
 			t.Fatal(err)

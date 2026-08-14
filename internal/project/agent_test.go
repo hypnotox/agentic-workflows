@@ -63,9 +63,9 @@ func TestEncodeAgentRejectsInvalidMetadata(t *testing.T) {
 
 // invariant: rendering/catalog-and-targets:structured-agent-encoding (TestProjectRendersStandardAgentMetadataAndBody)
 func TestProjectRendersStandardAgentMetadataAndBody(t *testing.T) {
-	p := &Project{Cat: &catalog.Catalog{Agents: map[string]catalog.AgentSpec{
+	p := &Project{view: catalog.NewView(&catalog.Catalog{Agents: map[string]catalog.AgentSpec{
 		"reviewer": {Name: "literal-reviewer", Description: "Rendered {{ .audience }} description."},
-	}}}
+	}})}
 	// The body deliberately begins with valid but conflicting frontmatter. A
 	// structured encoder preserves it as instructions; an implementation that
 	// reparses an intermediate Markdown artifact would substitute this decoy.
@@ -106,9 +106,9 @@ func TestProjectRendersStandardAgentMetadataAndBody(t *testing.T) {
 func TestProjectEncodeAgentRejectsUnknownDialect(t *testing.T) {
 	t.Parallel()
 
-	p := &Project{Cat: &catalog.Catalog{Agents: map[string]catalog.AgentSpec{
+	p := &Project{view: catalog.NewView(&catalog.Catalog{Agents: map[string]catalog.AgentSpec{
 		"reviewer": {Name: "reviewer", Description: "description"},
-	}}}
+	}})}
 	if _, err := p.encodeAgent(Target{AgentDialect: "unknown"}, "reviewer", "# reviewer\n", map[string]any{}); err == nil {
 		t.Fatal("encodeAgent accepted an unknown dialect")
 	}
@@ -117,9 +117,9 @@ func TestProjectEncodeAgentRejectsUnknownDialect(t *testing.T) {
 func TestProjectEncodeMarkdownAgentRejectsInvalidDescriptionTemplate(t *testing.T) {
 	t.Parallel()
 
-	p := &Project{Cat: &catalog.Catalog{Agents: map[string]catalog.AgentSpec{
+	p := &Project{view: catalog.NewView(&catalog.Catalog{Agents: map[string]catalog.AgentSpec{
 		"reviewer": {Name: "reviewer", Description: "{{"},
-	}}}
+	}})}
 	if _, err := p.encodeAgent(claudeTarget, "reviewer", "# reviewer\n", map[string]any{}); err == nil {
 		t.Fatal("encodeMarkdownAgent accepted an invalid description template")
 	}

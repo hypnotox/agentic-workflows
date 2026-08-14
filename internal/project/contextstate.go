@@ -56,8 +56,7 @@ func (p *Project) ContextState(ctx context.Context) (ContextState, error) {
 	if err != nil { // coverage-ignore: configured-target validation succeeded and KnownTargets is exhaustively backed by built-in descriptor tests
 		return ContextState{}, err
 	}
-	universe.Cat = universe.view.Catalog()
-	declarations, err := BuildOutputDeclarations(ws.Cfg, universe.Cat, universe.Targets, snapshotTreeReader{tree: ws.Tree}, ws.Loaded.Corpus)
+	declarations, err := BuildOutputDeclarations(ws.Cfg, universe.catalog(), universe.Targets, snapshotTreeReader{tree: ws.Tree}, ws.Loaded.Corpus)
 	if err != nil { // coverage-ignore: the snapshot-local catalog and every declaration input were already parsed from this immutable tree
 		return ContextState{}, err
 	}
@@ -85,8 +84,7 @@ func StagedContextState(ctx context.Context, root string) (ContextState, error) 
 		return ContextState{}, err
 	}
 	universe := &Project{Root: root, Cfg: state.Cfg, Targets: targets, view: p.view, repo: p.repo}
-	universe.Cat = universe.view.Catalog()
-	declarations, err := BuildOutputDeclarations(state.Cfg, universe.Cat, universe.Targets, snapshotTreeReader{tree: state.Tree}, state.Loaded.Corpus)
+	declarations, err := BuildOutputDeclarations(state.Cfg, universe.catalog(), universe.Targets, snapshotTreeReader{tree: state.Tree}, state.Loaded.Corpus)
 	if err != nil { // coverage-ignore: the staged snapshot-local catalog and every declaration input were already parsed from this immutable tree
 		return ContextState{}, err
 	}

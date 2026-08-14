@@ -1,6 +1,8 @@
 package project
 
 import (
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
@@ -74,7 +76,8 @@ type singletonSpec struct {
 // table - adding a mandatory doc is one DocEntry and this loop picks it up.
 func plainSingletons(cat *catalog.Catalog) []singletonSpec {
 	var out []singletonSpec
-	for k, e := range cat.Docs {
+	for _, k := range slices.Sorted(maps.Keys(cat.Docs)) {
+		e := cat.Docs[k]
 		if !e.AgentsDoc && e.Path == "" {
 			continue
 		}
@@ -117,13 +120,13 @@ func (p *Project) liveTemplateEncoders() map[string]AgentDialect {
 			encoders[descriptor.tid("")] = MarkdownAgentDialect
 		}
 	}
-	for name := range p.Cat.Skills {
+	for name := range p.catalog().Skills {
 		encoders[p.skillTID(name)] = MarkdownAgentDialect
 	}
-	for name := range p.Cat.Agents {
+	for name := range p.catalog().Agents {
 		encoders[p.agentTID(name)] = MarkdownAgentDialect
 	}
-	for _, entry := range p.Cat.Docs {
+	for _, entry := range p.catalog().Docs {
 		encoders[entry.TID] = MarkdownAgentDialect
 	}
 	for _, target := range p.Targets {

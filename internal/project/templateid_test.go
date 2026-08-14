@@ -317,10 +317,10 @@ func TestLiveTemplateIDsResolve(t *testing.T) {
 		t.Error("missing kind-derived domain fixture unexpectedly resolves")
 	}
 
-	missing := p.Cat.Docs["architecture"]
+	missing := p.catalog().Docs["architecture"]
 	missing.TID = "missing/live-template.tmpl"
-	p.Cat.Docs["missing-live-fixture"] = missing
-	defer delete(p.Cat.Docs, "missing-live-fixture")
+	p.catalog().Docs["missing-live-fixture"] = missing
+	defer delete(p.catalog().Docs, "missing-live-fixture")
 	if _, err := p.OutputPlan(testContext(t)); err == nil || !strings.Contains(err.Error(), "missing/live-template.tmpl") {
 		t.Fatalf("missing live template error = %v", err)
 	}
@@ -347,7 +347,7 @@ func TestLiveTemplateEncodersFollowDeclarations(t *testing.T) {
 			t.Errorf("resident template %q encoder = %q, want plain", tid, encoders[tid])
 		}
 	}
-	for _, entry := range p.Cat.Docs {
+	for _, entry := range p.catalog().Docs {
 		if encoders[entry.TID] != MarkdownAgentDialect {
 			t.Errorf("catalog doc template %q encoder = %q, want Markdown", entry.TID, encoders[entry.TID])
 		}

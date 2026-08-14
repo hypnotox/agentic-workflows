@@ -1,14 +1,12 @@
 package project
 
 import (
-	"maps"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
@@ -147,24 +145,18 @@ func TestLocalDocReferenceChecksBody(t *testing.T) {
 	if err := os.WriteFile(path, b, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	// A target-specific effective catalog can omit a standard-known skill. Keep
-	// standard knowledge separate so ordinary CheckReport observes the dead
-	// reference from the local output rather than testing the scanner directly.
-	custom := *p.Cat
-	custom.Skills = maps.Clone(p.Cat.Skills)
-	delete(custom.Skills, "tdd")
-	p.Cat = &custom
-	p.view = catalog.CompleteView()
 	report, err := p.CheckReport(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
-	var link, skill bool
+	var link bool
 	for _, d := range report.Drift {
 		link = link || d.Path == "docs/runbooks/checks.md" && d.Kind == "dead-reference"
-		skill = skill || d.Path == "docs/runbooks/checks.md" && d.Kind == "dead-skill-reference"
 	}
-	if !link || !skill {
-		t.Fatalf("local body reference drift = %#v", report.Drift)
+	skillDrift := p.checkDeadSkillRefs([]RenderedFile{{
+		Path: path, Content: string(b), Policy: OutputPolicy{ScanSkillReferences: true},
+	}}, map[string]bool{})
+	if !link || len(skillDrift) != 1 || skillDrift[0].Path != path || skillDrift[0].Kind != "dead-skill-reference" {
+		t.Fatalf("local body reference drift = %#v; skill drift = %#v", report.Drift, skillDrift)
 	}
 }

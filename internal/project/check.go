@@ -100,7 +100,7 @@ func (p *Project) glossaryTersenessNotes() ([]string, error) {
 	// The on-disk sidecar never carries standardTerms, so overlay the catalog
 	// default exactly as render.go does upstream of the transform; without this
 	// the shipped layer would escape the threshold entirely.
-	records, err := mergedGlossaryRecords(withDefaultData(sc, p.Cat.Docs["glossary"].Data, specializedListDataKeys("docs", "glossary")...))
+	records, err := mergedGlossaryRecords(withDefaultData(sc, p.catalog().Docs["glossary"].Data, specializedListDataKeys("docs", "glossary")...))
 	if err != nil {
 		return nil, err
 	}
@@ -358,7 +358,7 @@ func (p *Project) unusedDataDrift(files []RenderedFile) ([]manifest.Drift, error
 		if d.Plural == "domains" {
 			continue
 		}
-		for _, name := range d.poolNames(p.Cat) {
+		for _, name := range d.poolNames(p.catalog()) {
 			if err := check(d.Plural, name, config.DirName+"/"+d.Plural+"/"+name+".yaml"); err != nil { // coverage-ignore: see check's coverage-ignore
 				return nil, err
 			}
@@ -395,7 +395,7 @@ func artifactLabel(tid string) string {
 // declaredSections returns the catalog-declared section names for a target.
 func (p *Project) declaredSections(kind, name string) []string {
 	if d, ok := descriptorByPlural(kind); ok && d.sections != nil {
-		s, _ := d.sections(p.Cat, name)
+		s, _ := d.sections(p.catalog(), name)
 		return s
 	}
 	return nil

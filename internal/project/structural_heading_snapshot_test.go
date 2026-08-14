@@ -95,13 +95,13 @@ func structuralHeadingCutoverPopulation(t *testing.T, p *Project) map[string]str
 			entries[path] = segment.Heading
 		}
 	}
-	for name := range p.Cat.Skills {
+	for name := range p.catalog().Skills {
 		add("skills", name, p.skillTID(name))
 	}
-	for name := range p.Cat.Agents {
+	for name := range p.catalog().Agents {
 		add("agents", name, p.agentTID(name))
 	}
-	for name, entry := range p.Cat.Docs {
+	for name, entry := range p.catalog().Docs {
 		kind, artifact := "docs", name
 		if entry.Mandatory {
 			kind, artifact = name, ""

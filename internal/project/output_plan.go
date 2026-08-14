@@ -589,10 +589,10 @@ func (p *Project) targetOutputDeclarations(eff map[string]bool) (map[string]targ
 		if err := t.validate(); err != nil {
 			return nil, err
 		}
-		if err := validateTargetOutputRequirements(t, p.Cat); err != nil {
+		if err := validateTargetOutputRequirements(t, p.catalog()); err != nil {
 			return nil, err
 		}
-		for _, o := range resolvedTargetOutputs(t, p.Cfg.Prefix, slices.Sorted(maps.Keys(p.Cat.Skills))) {
+		for _, o := range resolvedTargetOutputs(t, p.Cfg.Prefix, slices.Sorted(maps.Keys(p.catalog().Skills))) {
 			src, err := fs.ReadFile(templates.FS, o.TemplateID)
 			if err != nil { // coverage-ignore: TestTargetOutputDeclarationsRejectUnreadableTemplate proves this error; Go's embedded-filesystem profile does not attribute its return block.
 				return nil, fmt.Errorf("read template %s: %w", o.TemplateID, err)
@@ -784,7 +784,6 @@ func projectWithConfig(p *Project, cfg *config.Config) *Project {
 		Root:    p.Root,
 		roots:   p.roots,
 		Cfg:     cfg,
-		Cat:     p.Cat,
 		Targets: p.Targets,
 		view:    p.view,
 		read:    p.read,
@@ -798,7 +797,7 @@ func projectWithConfig(p *Project, cfg *config.Config) *Project {
 // grammar remains config-owned; project owns collisions with every output
 // family, including generated and target-owned outputs.
 func (p *Project) validateLocalDocOutputCollisions(corpus adr.Corpus) error {
-	declarations, err := BuildOutputDeclarations(p.Cfg, p.Cat, p.Targets, p.projectTreeReader(), corpus)
+	declarations, err := BuildOutputDeclarations(p.Cfg, p.catalog(), p.Targets, p.projectTreeReader(), corpus)
 	if err != nil {
 		return err
 	}

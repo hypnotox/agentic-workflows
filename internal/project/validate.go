@@ -43,13 +43,13 @@ func (p *Project) validateAgainstCatalog() error {
 	if len(ad.Paths) > 0 {
 		return errors.New("agents-doc: paths: is read only from domain sidecars; remove it from .awf/agents-doc.yaml")
 	}
-	if err := validateCatalogListData("agents-doc.yaml", ad, p.Cat.Docs["agents-doc"].Data); err != nil {
+	if err := validateCatalogListData("agents-doc.yaml", ad, p.catalog().Docs["agents-doc"].Data); err != nil {
 		return err
 	}
-	if err := checkSectionsAllowed("agents-doc", "", p.Cat.Docs["agents-doc"].Sections, ad.Sections); err != nil {
+	if err := checkSectionsAllowed("agents-doc", "", p.catalog().Docs["agents-doc"].Sections, ad.Sections); err != nil {
 		return err
 	}
-	for _, sg := range plainSingletons(p.Cat) {
+	for _, sg := range plainSingletons(p.catalog()) {
 		sc, err := p.Cfg.Sidecar(sg.kind, "")
 		if err != nil {
 			return err
@@ -57,10 +57,10 @@ func (p *Project) validateAgainstCatalog() error {
 		if len(sc.Paths) > 0 {
 			return fmt.Errorf("%s: paths: is read only from domain sidecars; remove it from .awf/%s.yaml", sg.kind, sg.kind)
 		}
-		if err := validateCatalogListData(sg.kind+".yaml", sc, p.Cat.Docs[sg.kind].Data); err != nil {
+		if err := validateCatalogListData(sg.kind+".yaml", sc, p.catalog().Docs[sg.kind].Data); err != nil {
 			return err
 		}
-		if err := checkSectionsAllowed(sg.kind, "", sg.sections(p.Cat), sc.Sections); err != nil {
+		if err := checkSectionsAllowed(sg.kind, "", sg.sections(p.catalog()), sc.Sections); err != nil {
 			return err
 		}
 	}
@@ -78,12 +78,12 @@ func (p *Project) validateAgainstCatalog() error {
 	if len(cr.Paths) > 0 {
 		return errors.New("config-reference: paths: is read only from domain sidecars; remove it from .awf/config-reference.yaml")
 	}
-	if err := checkSectionsAllowed("config-reference", "", p.Cat.Docs["config-reference"].Sections, cr.Sections); err != nil {
+	if err := checkSectionsAllowed("config-reference", "", p.catalog().Docs["config-reference"].Sections, cr.Sections); err != nil {
 		return err
 	}
 	for _, local := range p.Cfg.NormalizedLocalDocs() {
 		output := config.DocsDir + "/" + local.Name + ".md"
-		for name := range p.Cat.Docs {
+		for name := range p.catalog().Docs {
 			if output == p.docOutPath(name) {
 				return fmt.Errorf("local document %q collides with standard output %q", local.Name, output)
 			}
@@ -94,7 +94,7 @@ func (p *Project) validateAgainstCatalog() error {
 
 // checkKindAgainstCatalog validates every catalog artifact's shaping sidecar.
 func (p *Project) checkKindAgainstCatalog(d kindDescriptor) error {
-	for _, name := range d.poolNames(p.Cat) {
+	for _, name := range d.poolNames(p.catalog()) {
 		sc, err := p.Cfg.Sidecar(d.Plural, name)
 		if err != nil {
 			return err
@@ -102,10 +102,10 @@ func (p *Project) checkKindAgainstCatalog(d kindDescriptor) error {
 		if len(sc.Paths) > 0 {
 			return fmt.Errorf("%s %q: paths: is read only from domain sidecars; remove it from .awf/%s/%s.yaml", d.Singular, name, d.Plural, name)
 		}
-		if err := validateCatalogListData(d.Plural+"/"+name+".yaml", sc, catalogData(p.Cat, d.Plural, name), specializedListDataKeys(d.Plural, name)...); err != nil {
+		if err := validateCatalogListData(d.Plural+"/"+name+".yaml", sc, catalogData(p.catalog(), d.Plural, name), specializedListDataKeys(d.Plural, name)...); err != nil {
 			return err
 		}
-		if declared, ok := d.sections(p.Cat, name); ok {
+		if declared, ok := d.sections(p.catalog(), name); ok {
 			if err := checkSectionsAllowed(d.Plural, name, declared, sc.Sections); err != nil {
 				return err
 			}

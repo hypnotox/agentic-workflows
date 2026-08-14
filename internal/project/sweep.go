@@ -77,7 +77,7 @@ func (p *Project) buildClaimedModel(files []RenderedFile, topics topic.Corpus) *
 		m.artifacts[kind] = map[string]bool{}
 		names := p.Cfg.Domains
 		if d.poolNames != nil {
-			names = d.poolNames(p.Cat)
+			names = d.poolNames(p.catalog())
 		}
 		for _, name := range names {
 			m.artifacts[kind][name] = true
@@ -92,7 +92,7 @@ func (p *Project) buildClaimedModel(files []RenderedFile, topics topic.Corpus) *
 		m.files[config.DirName+"/"+kind+".yaml"] = true
 		m.singletons[kind] = true
 		m.dirs[config.DirName+"/parts/"+kind] = true
-		for _, sec := range p.Cat.Docs[kind].Sections {
+		for _, sec := range p.catalog().Docs[kind].Sections {
 			m.files[config.DirName+"/parts/"+kind+"/"+sec+".md"] = true
 		}
 	}

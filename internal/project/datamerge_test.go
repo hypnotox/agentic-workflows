@@ -145,11 +145,11 @@ func TestCatalogDataChangesConfigHash(t *testing.T) {
 		return ""
 	}
 	before := hashOf()
-	spec := p.Cat.Skills["tdd"]
+	spec := p.catalog().Skills["tdd"]
 	spec.Data = map[string]any{"testSurfaces": []any{
 		map[string]any{"name": "Changed", "kind": "unit", "location": "here"},
 	}}
-	p.Cat.Skills["tdd"] = spec
+	p.catalog().Skills["tdd"] = spec
 	after := hashOf()
 	if before == after {
 		t.Fatalf("ConfigHash unchanged after catalog default-data change: %s", before)

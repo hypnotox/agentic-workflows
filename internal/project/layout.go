@@ -30,8 +30,8 @@ func (p *Project) layout() Layout {
 	// Docs maps every catalog document to its unconditional rendered output path.
 	docs := map[string]string{}
 	singletons := map[string]string{}
-	if p.Cat != nil {
-		for name, entry := range p.Cat.Docs {
+	if p.catalog() != nil {
+		for name, entry := range p.catalog().Docs {
 			docs[name] = p.docOutPath(name)
 			if !entry.AgentsDoc && entry.TemplateKey != "" {
 				singletons[entry.TemplateKey] = p.docOutPath(name)
@@ -76,7 +76,7 @@ func (l Layout) templateMap() map[string]any {
 
 // docOutPath is the catalog-declared output path for a managed doc.
 func (p *Project) docOutPath(name string) string {
-	e := p.Cat.Docs[name]
+	e := p.catalog().Docs[name]
 	if e.AgentsDoc {
 		return "AGENTS.md"
 	}
@@ -97,14 +97,14 @@ func (p *Project) decisionsDir() string {
 func (p *Project) resolvedDocs() []map[string]any {
 	out := []map[string]any{}
 	var names []string
-	for name, e := range p.Cat.Docs {
+	for name, e := range p.catalog().Docs {
 		if !e.AgentsDoc && e.Path == "" {
 			names = append(names, name)
 		}
 	}
 	sort.Strings(names)
 	for _, name := range names {
-		spec := p.Cat.Docs[name]
+		spec := p.catalog().Docs[name]
 		out = append(out, map[string]any{
 			"name":  name,
 			"title": spec.Title,
@@ -128,7 +128,7 @@ func localDocsProjection(docs []config.LocalDoc) string {
 func (p *Project) documentMapDocs() []map[string]any {
 	d := config.DocsDir
 	var names []string
-	for name, e := range p.Cat.Docs {
+	for name, e := range p.catalog().Docs {
 		if e.DocumentMap {
 			names = append(names, name)
 		}
@@ -136,7 +136,7 @@ func (p *Project) documentMapDocs() []map[string]any {
 	sort.Strings(names)
 	out := make([]map[string]any, 0, len(names))
 	for _, name := range names {
-		e := p.Cat.Docs[name]
+		e := p.catalog().Docs[name]
 		out = append(out, map[string]any{
 			"name": name, "title": e.Title, "desc": e.Desc, "path": d + "/" + e.Path,
 		})

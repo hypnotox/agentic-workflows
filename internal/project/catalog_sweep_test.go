@@ -192,7 +192,7 @@ func singletonTemplateContexts(t *testing.T, p *Project, eff map[string]bool) []
 	t.Helper()
 	var contexts []singletonTemplateContext
 	for _, kind := range catalog.SingletonKinds() {
-		entry := p.Cat.Docs[kind]
+		entry := p.catalog().Docs[kind]
 		sc, err := p.Cfg.Sidecar(kind, "")
 		if err != nil {
 			t.Fatalf("read %s sidecar: %v", kind, err)

@@ -179,7 +179,7 @@ func TestOutputDeclarationsMatchThePlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	declarations, err := BuildOutputDeclarations(p.Cfg, p.Cat, p.Targets, filesystemProjectReader{root: p.Root}, corpus)
+	declarations, err := BuildOutputDeclarations(p.Cfg, p.catalog(), p.Targets, filesystemProjectReader{root: p.Root}, corpus)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -230,7 +230,7 @@ func TestEnabledMarkdownDeclarationsMatchObservedTemplateSources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	declarations, err := BuildOutputDeclarations(p.Cfg, p.Cat, p.Targets, filesystemProjectReader{root: p.Root}, corpus)
+	declarations, err := BuildOutputDeclarations(p.Cfg, p.catalog(), p.Targets, filesystemProjectReader{root: p.Root}, corpus)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -265,7 +265,7 @@ func TestPitfallDeclarationPlanDependencyParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	declarations, err := BuildOutputDeclarations(p.Cfg, p.Cat, p.Targets, filesystemProjectReader{root: root}, corpus)
+	declarations, err := BuildOutputDeclarations(p.Cfg, p.catalog(), p.Targets, filesystemProjectReader{root: root}, corpus)
 	if err != nil {
 		t.Fatal(err)
 	}

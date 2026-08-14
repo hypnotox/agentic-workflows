@@ -68,7 +68,7 @@ func TestLocalDocRendersAndPreservesBody(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	declarations, err := BuildOutputDeclarations(p.Cfg, p.Cat, p.Targets, filesystemProjectReader{root: root}, corpus)
+	declarations, err := BuildOutputDeclarations(p.Cfg, p.catalog(), p.Targets, filesystemProjectReader{root: root}, corpus)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -339,7 +339,7 @@ func TestRenderTargetTemplateSourceActivation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.renderTarget("adr-readme", "", tid, p.Cat.Docs["adr-readme"].Sections, config.Sidecar{}, p.data(config.Sidecar{}, map[string]bool{}), "docs/decisions/README.md", map[string]bool{}); err == nil || !strings.Contains(err.Error(), "templates/"+commentOnlySource) {
+	if _, err := p.renderTarget("adr-readme", "", tid, p.catalog().Docs["adr-readme"].Sections, config.Sidecar{}, p.data(config.Sidecar{}, map[string]bool{}), "docs/decisions/README.md", map[string]bool{}); err == nil || !strings.Contains(err.Error(), "templates/"+commentOnlySource) {
 		t.Fatalf("missing comment-only include mapping error = %v", err)
 	}
 	commentOnlyPath := filepath.Join(root, "templates", filepath.FromSlash(commentOnlySource))
@@ -349,7 +349,7 @@ func TestRenderTargetTemplateSourceActivation(t *testing.T) {
 	if err := os.WriteFile(commentOnlyPath, []byte(commentOnlyText.String()), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	rf, err := p.renderTarget("adr-readme", "", tid, p.Cat.Docs["adr-readme"].Sections, config.Sidecar{}, p.data(config.Sidecar{}, map[string]bool{}), "docs/decisions/README.md", map[string]bool{})
+	rf, err := p.renderTarget("adr-readme", "", tid, p.catalog().Docs["adr-readme"].Sections, config.Sidecar{}, p.data(config.Sidecar{}, map[string]bool{}), "docs/decisions/README.md", map[string]bool{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -357,7 +357,7 @@ func TestRenderTargetTemplateSourceActivation(t *testing.T) {
 		t.Fatalf("provenance render did not validate then strip the comment-only include: %s", rf.Content)
 	}
 	p.Cfg.Render.TemplateSourceRoot = "missing"
-	if _, err := p.renderTarget("adr-readme", "", tid, p.Cat.Docs["adr-readme"].Sections, config.Sidecar{}, p.data(config.Sidecar{}, map[string]bool{}), "docs/decisions/README.md", map[string]bool{}); err == nil {
+	if _, err := p.renderTarget("adr-readme", "", tid, p.catalog().Docs["adr-readme"].Sections, config.Sidecar{}, p.data(config.Sidecar{}, map[string]bool{}), "docs/decisions/README.md", map[string]bool{}); err == nil {
 		t.Fatal("unresolved configured source root accepted")
 	}
 }
@@ -445,7 +445,7 @@ func TestRenderTargetStructuralHeadingFollowsOutputEncoder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	entry := p.Cat.Docs["architecture"]
+	entry := p.catalog().Docs["architecture"]
 	cases := []struct {
 		name        string
 		options     *renderOutputOptions
@@ -510,7 +510,7 @@ func TestCaptureStructuralHeadingsReportsDefaultExpressionOmittedByOverride(t *t
 	}
 	data := p.data(sc, map[string]bool{})
 	data["layout"] = nil
-	entry := p.Cat.Docs["workflow"]
+	entry := p.catalog().Docs["workflow"]
 	if _, targetErr := p.renderTarget("docs", "workflow", entry.TID, entry.Sections, sc, data, "out.md", map[string]bool{}); targetErr == nil || !strings.Contains(targetErr.Error(), "render "+entry.TID+" headings: execute template") {
 		t.Fatalf("renderTarget capture error = %v", targetErr)
 	}
