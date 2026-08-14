@@ -11,7 +11,15 @@ First adoption seals only `initializedWithVersion` in the lock. Each ADR declare
 awf always renders self-ignoring `.gitignore` files at `.awf/efforts/`, `.awf/worktrees/`, and `.awf/effort-archive/`. The tracked root rule is the only rendered artifact; dynamic descendants are repository-local resident state. Render, drift, nested-adopter discovery, and uninstall preserve these roots without recursion. Archive descendants are ignored, unmanaged, non-authoritative, and manually disposable.
 <!-- awf:end -->
 
-<!-- awf:section commands -->
+{{if eq .profile "core"}}## Commands
+
+- `./awf render`: render the selected operational workflow from `.awf/` and update `.awf/awf.lock`.
+- `./awf check`: report render drift, prose, memory, and ordinary repository checks.
+- `./awf upgrade`: migrate configuration and re-render the selected profile.
+- `awf effort`: create, integrate, remove, and finish durable operational work.
+
+Use `.awf/` sources and convention parts to customize the generated workflow; then re-render and commit the resulting managed outputs and lock together. Project documentation, source, tests, and repository history are the authority for Core work.
+{{else}}<!-- awf:section commands -->
 ## Commands
 
 ### Render and catalog
@@ -407,4 +415,4 @@ drift check and commit the config and rendered files together.
 
 {{if .targetSessionHandoff}}Pi renders five governed TypeScript outputs: context usage, handoff, and subagent index, routing, and runner. Context usage is a standalone transient observation with a deterministic unavailable form; it neither persists facts nor triggers a pressure action.{{end}}
 
-Pi extensions require the retained 0.81.1 fork runtime APIs, including dynamic active tools and the shared file-mutation queue; incompatible runtimes receive one actionable notice before registration.
+Pi extensions require the retained 0.81.1 fork runtime APIs, including dynamic active tools and the shared file-mutation queue; incompatible runtimes receive one actionable notice before registration.{{- end}}

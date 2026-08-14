@@ -48,21 +48,40 @@ func TestGatedCommandsDisplay(t *testing.T) {
 }
 
 // invariant: tooling/cli:gated-commands-generated (TestRequireCapabilityRefusesCoreFullOnlyCommands)
+// invariant: tooling/audit-commands:audit-full-profile-only (TestRequireCapabilityRefusesCoreFullOnlyCommands)
+// invariant: tooling/context-and-topic:context-full-profile-only (TestRequireCapabilityRefusesCoreFullOnlyCommands)
 func TestRequireCapabilityRefusesCoreFullOnlyCommands(t *testing.T) {
-	err := RequireCapability(catalog.ProfileCore, "audit", true)
-	var refusal *CapabilityError
-	if !errors.As(err, &refusal) {
-		t.Fatalf("error = %v, want CapabilityError", err)
+	var fullOnly []string
+	var visit func(prefix string, commands []clispec.Command)
+	visit = func(prefix string, commands []clispec.Command) {
+		for _, command := range commands {
+			name := strings.TrimSpace(prefix + " " + command.Name)
+			if command.FullOnly {
+				fullOnly = append(fullOnly, name)
+			}
+			visit(name, command.Children)
+		}
 	}
-	if refusal.Error() != "awf audit is unavailable for the selected core profile" {
-		t.Fatalf("error = %q", refusal)
+	visit("", clispec.Commands)
+	if len(fullOnly) == 0 {
+		t.Fatal("command specification declares no Full-only capability")
 	}
-	diagnostic, err := refusal.Diagnostic()
-	if err != nil || diagnostic.State != "configuration" || diagnostic.Condition != refusal.Error() {
-		t.Fatalf("diagnostic = %#v, %v", diagnostic, err)
-	}
-	if err := RequireCapability(catalog.ProfileFull, "audit", true); err != nil {
-		t.Fatalf("full refusal = %v", err)
+	for _, name := range fullOnly {
+		err := RequireCapability(catalog.ProfileCore, name, true)
+		var refusal *CapabilityError
+		if !errors.As(err, &refusal) {
+			t.Errorf("%s: error = %v, want CapabilityError", name, err)
+			continue
+		}
+		if refusal.Error() != "awf "+name+" is unavailable for the selected core profile" {
+			t.Errorf("%s: error = %q", name, refusal)
+		}
+		if _, err := refusal.Diagnostic(); err != nil {
+			t.Errorf("%s: diagnostic = %v", name, err)
+		}
+		if err := RequireCapability(catalog.ProfileFull, name, true); err != nil {
+			t.Errorf("%s: Full refusal = %v", name, err)
+		}
 	}
 	if err := RequireCapability(catalog.ProfileCore, "render", false); err != nil {
 		t.Fatalf("shared refusal = %v", err)

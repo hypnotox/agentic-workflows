@@ -24,7 +24,7 @@ Use for a material choice or clarification, and before a hand-authored productio
 <!-- awf:template-source templates/skills/brainstorming/SKILL.md.tmpl -->
 ## Procedure
 
-1. **Orient in the topic.** Invoke `awf-orienting` when its repository-truth moments apply, then run `./awf context <relevant paths>`.
+1. **Orient in the topic.** Invoke `awf-orienting` when its repository-truth moments apply. Then run `./awf context <relevant paths>`.
 <!-- awf:template-source templates/partials/context-spill.md -->
 On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the working-with-awf doc's Context spill notices contract; treat any other output as the context packet itself.
 <!-- awf:template-source templates/skills/brainstorming/SKILL.md.tmpl -->

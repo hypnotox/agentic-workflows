@@ -198,9 +198,6 @@ func (l *Loader) Open(ctx context.Context, root string) (*Project, error) {
 	if cfg == nil {
 		return nil, errors.New("project Loader: load config tree returned nil config")
 	}
-	if cfg.Profile == "" {
-		return nil, errors.New("profile must be core or full, got empty value")
-	}
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}

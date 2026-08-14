@@ -173,4 +173,23 @@ func TestRetiredTelemetryTemplateValuesDoNotAffectConfigHash(t *testing.T) {
 	}
 }
 
-// invariant: rendering/sync-and-drift:profile-config-hash (TestDataDefaultsConfigurationChangesConfigHash)
+// invariant: rendering/sync-and-drift:profile-config-hash (TestProfileChangesConfigHash)
+func TestProfileChangesConfigHash(t *testing.T) {
+	root := scaffold(t, "prefix: example\nprofile: core\nintegrationBranch: main\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	core, err := p.artifactConfigHash("plain", config.Sidecar{}, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.Cfg.Profile = "full"
+	full, err := p.artifactConfigHash("plain", config.Sidecar{}, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if core == full {
+		t.Fatalf("profile did not participate in config hash: %q", core)
+	}
+}

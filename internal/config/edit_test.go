@@ -7,12 +7,12 @@ import (
 )
 
 func TestAppendLocalDoc(t *testing.T) {
-	src := "# lead\nprefix: example # keep\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/old\n    title: Old\n    description: Old document.\nvars:\n  x: y\n"
+	src := "# lead\nprefix: example # keep\nprofile: full\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/old\n    title: Old\n    description: Old document.\nvars:\n  x: y\n"
 	got, err := AppendLocalDoc([]byte(src), LocalDoc{Name: "runbooks/api-v2", Title: "API v2", Description: "How to operate API v2"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "# lead\nprefix: example # keep\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/old\n    title: Old\n    description: Old document.\n  - name: runbooks/api-v2\n    title: API v2\n    description: How to operate API v2\nvars:\n  x: y\n"
+	want := "# lead\nprefix: example # keep\nprofile: full\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/old\n    title: Old\n    description: Old document.\n  - name: runbooks/api-v2\n    title: API v2\n    description: How to operate API v2\nvars:\n  x: y\n"
 	if string(got) != want {
 		t.Fatalf("AppendLocalDoc = %q, want %q", got, want)
 	}
@@ -34,7 +34,7 @@ func TestAppendLocalDoc(t *testing.T) {
 	if _, err := AppendLocalDoc(got, LocalDoc{Name: "runbooks/api-v2", Title: "Again", Description: "Again"}); err == nil {
 		t.Fatal("AppendLocalDoc accepted duplicate")
 	}
-	created, err := AppendLocalDoc([]byte("prefix: example\nintegrationBranch: main\n"), LocalDoc{Name: "runbooks/new", Title: "New", Description: "New document"})
+	created, err := AppendLocalDoc([]byte("prefix: example\nprofile: full\nintegrationBranch: main\n"), LocalDoc{Name: "runbooks/new", Title: "New", Description: "New document"})
 	if err != nil || !strings.Contains(string(created), "localDocs:\n  - name: runbooks/new") {
 		t.Fatalf("AppendLocalDoc absent list = %q, %v", created, err)
 	}

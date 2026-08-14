@@ -288,6 +288,9 @@ func (p *Project) configReferenceRows(files []RenderedFile) (ConfigReference, er
 			Path: e.Path, Type: e.Type, Default: e.Default,
 			Description: e.Description, Availability: e.Availability,
 		}
+		if !p.fullProfile() && e.Path == "profile" {
+			row.Description = "Selects the Core operational workflow."
+		}
 		if strings.HasPrefix(e.Path, "sidecar.") {
 			ref.SidecarFields = append(ref.SidecarFields, row)
 			continue

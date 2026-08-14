@@ -88,6 +88,7 @@ func TestInitExplicitAnswersWin(t *testing.T) {
 // seeds every var empty and writes no invariants config - byte-identical to the
 // pre-feature seed-empty output.
 // invariant: tooling/init-and-enablement:init-noninteractive-default (TestInitNonInteractiveDefault)
+// invariant: tooling/init-and-enablement:init-profile-default-core (TestInitNonInteractiveDefault)
 func TestInitNonInteractiveDefault(t *testing.T) {
 	root := t.TempDir()
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
@@ -102,6 +103,9 @@ func TestInitNonInteractiveDefault(t *testing.T) {
 	}
 	if strings.Contains(cfg, "invariants:") {
 		t.Errorf("silent init should not write an invariants config:\n%s", cfg)
+	}
+	if !strings.Contains(cfg, "profile: core") {
+		t.Errorf("silent init did not select Core by default:\n%s", cfg)
 	}
 }
 
@@ -361,5 +365,3 @@ func TestInitPrintsNotesAndNextSteps(t *testing.T) {
 		}
 	}
 }
-
-// invariant: tooling/init-and-enablement:init-profile-default-core (TestWriteInitDescriptorProtocolBytesAndErrors)

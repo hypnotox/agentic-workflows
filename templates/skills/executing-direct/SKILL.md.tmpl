@@ -5,11 +5,11 @@ description: Implement an understood narrow change directly, verify it, and rout
 
 # {{ .prefix }}-executing-direct
 
-The direct implementation chain node for work whose clear outcome, solution shape, boundary, and verification warrant neither an ADR nor a plan.
+The direct implementation chain node for work whose clear outcome, solution shape, boundary, and verification{{if ne .profile "core"}} warrant neither an ADR nor a plan{{else}} are already approved and direct{{end}}.
 
 ## When to invoke
 
-Invoke when the outcome, solution shape, boundary, and verification are clear, and no independent need for brainstorming, an ADR, or a plan fires. If a material choice or clarification is needed, invoke brainstorming; if an ADR or plan is warranted, use that workflow instead.
+Invoke when the outcome, solution shape, boundary, and verification are clear, and no independent need for brainstorming{{if ne .profile "core"}}, an ADR, or a plan{{end}} fires. If a material choice or clarification is needed, invoke brainstorming;{{if ne .profile "core"}} if an ADR or plan is warranted, use that workflow instead.{{end}}
 
 <!-- awf:include production-code-outline-approval -->
 
@@ -23,11 +23,11 @@ Invoke when the outcome, solution shape, boundary, and verification are clear, a
 
 <!-- awf:include checkpoint-routine -->
 
-6. Evaluate review independently. Invoke `{{ .prefix }}-reviewing-impl` for meaningful breadth, non-obvious logic, contract or compatibility effects, migrations, security, concurrency, data-loss risk, substantive verification judgment, or uncertainty. Skip only locally obvious, low-risk, directly verified work where independent review is unlikely to find meaningful hidden consequences. Effort-backed work returns to `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}` after assurance settles or is explicitly skipped. For effort-free work, the parent owns any applicable deferred ADR/plan terminal artifact transaction after assurance settles or is explicitly skipped, using `{{ .prefix }}-adr-lifecycle`, the gate, and audit obligations; otherwise it concludes after verification.
+6. Evaluate review independently. Invoke `{{ .prefix }}-reviewing-impl` for meaningful breadth, non-obvious logic, contract or compatibility effects, migrations, security, concurrency, data-loss risk, substantive verification judgment, or uncertainty. Skip only locally obvious, low-risk, directly verified work where independent review is unlikely to find meaningful hidden consequences. Effort-backed work returns to `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}` after assurance settles or is explicitly skipped.{{if ne .profile "core"}} For effort-free work, the parent owns any applicable deferred ADR/plan terminal artifact transaction after assurance settles or is explicitly skipped, using `{{ .prefix }}-adr-lifecycle`, the gate, and audit obligations; otherwise it concludes after verification.{{else}} For effort-free work, it concludes after verification.{{end}}
 
 ## Boundaries
 
 <!-- awf:include implementation-autonomy -->
 - Re-evaluate brainstorming if implementation exposes a material choice or clarification, and return there when it fires rather than silently expanding scope or accepting a workaround.
-- Re-evaluate planning when sequencing, coordination, or resumability may materially help; write a plan only when that independent need fires.
+{{if ne .profile "core"}}- Re-evaluate planning when sequencing, coordination, or resumability may materially help; write a plan only when that independent need fires.{{end}}
 - Preserve unrelated work in the checkout.

@@ -445,5 +445,3 @@ func TestValidateLiveTemplatesRejectsMissingTargetTemplate(t *testing.T) {
 		t.Fatalf("missing live template error = %v", err)
 	}
 }
-
-// invariant: rendering/project-output-plan:profile-projected-render (TestLocalDocsOutputPlan)

@@ -20,7 +20,7 @@ The test-first discipline as a project-owned support skill.
 
 TDD may run without an effort. If continuity materially helps, invoke `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}` before mutation; if an effort already exists, validate its fixed identity and exact `.awf/efforts/<slug>/memory.md`, preserve one writer, and give that context read-only to helpers. Otherwise omit effort and memory fields. {{if eq .profile "core"}}Project documentation, source, tests, and repository history{{else}}Repository and current-state authority{{end}} remain primary, and standalone memory is forbidden.
 
-1. Run `./awf context <the implementation and test paths>`, then write the failing test capturing the wrong (bug) or missing (feature) behaviour. Ground tests, checks, seams, and harness work only in changed behavior, a demonstrated regression, an existing documented contract, or a clearly applicable project invariant; reject speculative test or policy machinery.
+1. {{if ne .profile "core"}}Run `./awf context <the implementation and test paths>`, then {{end}}write the failing test capturing the wrong (bug) or missing (feature) behaviour. Ground tests, checks, seams, and harness work only in changed behavior, a demonstrated regression, an existing documented contract, or a clearly applicable project invariant; reject speculative test or policy machinery.
 <!-- awf:include context-orientation -->
 <!-- awf:include context-spill -->
 2. Run it and confirm it fails for the right reason{{ with .vars.testCmd }}: `{{ . }}`{{ end }}.

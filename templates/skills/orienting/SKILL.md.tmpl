@@ -13,7 +13,7 @@ Four moments call for orientation:
 1. **Fresh work:** before brainstorming when repository truth is needed for the outcome.
 2. **Effort resume:** taking up an in-progress effort in a new session, after context summarization, or on re-entering a managed worktree.
 3. **Handoff takeover:** receiving work another session checkpointed.
-4. **Mid-chain re-orientation:** the working set widens into unexamined files or domains, or a durable artifact (an ADR's Context or State changes, a plan's tasks) is about to cite repository facts not verified in the current session.
+4. **Mid-chain re-orientation:** the working set widens into unexamined files{{if ne .profile "core"}} or domains, or a durable artifact (an ADR's Context or State changes, a plan's tasks){{end}} is about to cite repository facts not verified in the current session.
 
 This is a support skill: single-pass and advisory, never a chain gate or prerequisite. Orienting never creates an effort, never commits. When resuming an existing effort, validate its fixed identity and owned memory; it resumes only while work remains within its outcome. Only the effort's one user-managed writer may correct stale checkpoint prose, and children never edit shared working memory. {{if eq .profile "core"}}Project documentation, source, tests, and repository history remain authoritative{{else}}Repository sources and current-state documentation remain authoritative{{end}} over checkpoint prose, and standalone memory is forbidden.
 <!-- awf:end -->
@@ -29,18 +29,18 @@ When a needed fact's location is unknown and inline search would pollute the par
 <!-- awf:section context-command -->
 ## Managed context
 
-Once candidate files are identified, run `./awf context <paths>` to resolve their owning domains and the applicable current-state claims; read the topics and any Accepted pending changes it surfaces, and the ADRs behind a claim only when the rationale matters. Apply the shared managed-context discipline above to this call.
+{{if ne .profile "core"}}Once candidate files are identified, run `./awf context <paths>` to resolve their owning domains and the applicable current-state claims; read the topics and any Accepted pending changes it surfaces, and the ADRs behind a claim only when the rationale matters. Apply the shared managed-context discipline above to this call.{{else}}Once candidate files are identified, read the relevant project documentation, source, tests, and history directly.{{end}}
 <!-- awf:include context-spill -->
 <!-- awf:end -->
 
 <!-- awf:section resume-revalidation -->
 ## Resume revalidation
 
-When resuming an effort or taking over a handoff, read the effort's memory file at `.awf/efforts/<slug>/memory.md` whole: its header (`Effort:`, `Phase:`, `Next:`, `Updated:`), its brief, its decision log including every `Record:` block present, its observations, and its handoff log. A decision already settled there is not yours to re-decide. Then verify every load-bearing claim against repository truth before acting on it: commits landed since the checkpoint (`git log` since `Updated:`), worktree topology versus what memory describes (`git worktree list`), cited decision-record statuses against the decision index, and cited plan and file existence. A discrepancy resolves in favor of the repository. Only the effort's one user-managed writer corrects the stale checkpoint before continuing; a dispatched child never edits it.
+When resuming an effort or taking over a handoff, read the effort's memory file at `.awf/efforts/<slug>/memory.md` whole: its header (`Effort:`, `Phase:`, `Next:`, `Updated:`), its brief, its decision log including every `Record:` block present, its observations, and its handoff log. A decision already settled there is not yours to re-decide. Then verify every load-bearing claim against repository truth before acting on it: commits landed since the checkpoint (`git log` since `Updated:`), worktree topology versus what memory describes (`git worktree list`),{{if ne .profile "core"}} cited decision-record statuses against the decision index, and cited plan and{{end}} file existence. A discrepancy resolves in favor of the repository. Only the effort's one user-managed writer corrects the stale checkpoint before continuing; a dispatched child never edits it.
 <!-- awf:end -->
 
 <!-- awf:section hand-off -->
 ## Hand-off
 
-Orientation produces understanding, never commits. Route onward to whichever skill fits the work: brainstorming for fresh design, debugging for a defect, plan execution to continue an accepted plan, plan or ADR writing when a durable artifact is next.
+Orientation produces understanding, never commits. Route onward to whichever skill fits the work: brainstorming for fresh design, debugging for a defect,{{if ne .profile "core"}} plan execution to continue an accepted plan, plan or ADR writing when a durable artifact is next.{{else}} or direct implementation when the approved boundary is clear.{{end}}
 <!-- awf:end -->

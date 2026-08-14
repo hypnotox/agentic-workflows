@@ -429,3 +429,42 @@ func TestStagedDriftRenderedOutputInvariant(t *testing.T) {
 		t.Fatalf("staged config did not drive rendered-output drift: %v", drift)
 	}
 }
+
+// TestCheckStagedDriftProjectsFullFromAWorkingCoreTree proves the index
+// universe is selected from the immutable complete catalog, not the Core
+// working Project that opened the check.
+// invariant: rendering/project-output-plan:profile-projected-render (TestCheckStagedDriftProjectsFullFromAWorkingCoreTree)
+func TestCheckStagedDriftProjectsFullFromAWorkingCoreTree(t *testing.T) {
+	root := scaffold(t, "prefix: example\nprofile: core\nintegrationBranch: main\n")
+	repo := gitfixture.InitRepoAt(t, root)
+	core, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := core.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	gitfixture.AddAll(t, repo)
+	gitfixture.Commit(t, repo, "core baseline", nil)
+
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nprofile: full\nintegrationBranch: main\nvars:\n  gateCmd: test-gate\n")
+	full, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := full.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	gitfixture.AddAll(t, repo)
+
+	// CheckStagedDriftRoot opens this restored Core working tree before reading
+	// the Full index. A working-tree-derived catalog would omit Full outputs.
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nprofile: core\nintegrationBranch: main\nvars:\n  gateCmd: test-gate\n")
+	drift, err := CheckStagedDriftRoot(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(drift) != 0 {
+		t.Fatalf("Core working tree contaminated coherent Full index: %#v", drift)
+	}
+}

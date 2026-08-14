@@ -1,20 +1,20 @@
 ---
 name: {{ .prefix }}-refactor-coupling-audit
 description: >
-  Use before finalising the scope of a refactor ADR that moves files between
+  Use before finalising {{if ne .profile "core"}}the scope of a refactor ADR{{else}}a cross-package refactor{{end}} that moves files between
   packages or inverts dependencies. Runs the coupling audit so
-  findings land in the ADR Context section before the Decision is drafted.
+  findings {{if ne .profile "core"}}land in the ADR Context section before the Decision is drafted{{else}}shape the approved implementation boundary{{end}}.
   Self-contained; does not gate the workflow chain.
 ---
 
 # {{ .prefix }}-refactor-coupling-audit
 
-A support skill for refactor ADRs. Runs (or dispatches) the coupling audit before the ADR scope is finalised. The audit's output is a structured listing that lands in the ADR's Context section so scope reflects the real coupling surface, not the assumed one.
+A support skill for cross-package refactors. Runs (or dispatches) the coupling audit before {{if ne .profile "core"}}the ADR{{else}}implementation{{end}} scope is finalised. The audit's structured output makes the approved scope reflect the real coupling surface, not the assumed one.
 
 <!-- awf:section when-to-invoke -->
 ## When to invoke
 
-Before finalising the Context section of a refactor ADR that:
+Before finalising {{if ne .profile "core"}}the Context section of a refactor ADR{{else}}the approved boundary of a cross-package refactor{{end}} that:
 
 1. Moves a file (or set of files) between packages.
 2. Inverts a dependency (introduces an interface in the original package so a subpackage can hold the implementation).
@@ -22,7 +22,7 @@ Before finalising the Context section of a refactor ADR that:
 
 Skip when the refactor is contained within one package (no cross-package coupling to audit) or when the refactor is a pure rename without coupling shifts.
 
-This is a **support skill**: it sits off the workflow chain and does not gate it. Its output feeds the ADR's Context section before {{ if index .skills "proposing-adr" }}`{{ .prefix }}-proposing-adr`{{ else }}the project's decision process{{ end }} finalises the Decision.
+This is a **support skill**: it sits off the workflow chain and does not gate it. Its output feeds {{if ne .profile "core"}}the ADR's Context section before {{ if index .skills "proposing-adr" }}`{{ .prefix }}-proposing-adr`{{ else }}the project's decision process{{ end }} finalises the Decision{{else}}the approved implementation boundary before mutation{{end}}.
 <!-- awf:end -->
 
 <!-- awf:section audit-shape-selection -->
@@ -32,9 +32,9 @@ This is a **support skill**: it sits off the workflow chain and does not gate it
 
 This report-only audit may run without an effort. If continuity independently fired, validate the fixed effort identity and exact `.awf/efforts/<slug>/memory.md` and receive that context read-only; otherwise omit effort and memory fields. It never creates an effort, becomes a second writer, or edits shared memory. If changed facts newly make continuity useful, return to the invoking workflow to invoke `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}`. {{if eq .profile "core"}}Project documentation, source, tests, and repository history remain authoritative{{else}}Repository sources and current-state documentation remain authoritative{{end}}, and standalone memory is forbidden.
 
-**Pick the audit shape: run the categories inline, or dispatch exploration children per category.** Per `{{ .layout.maintainableCodeDesign }}`, assess whether the requested behavior would create duplication, coupling, representation leakage, or a workaround, and feed the bounded enabling-refactor or larger-work result into ADR scope. For materially larger work, record the user's disposition:
+**Pick the audit shape: run the categories inline, or dispatch exploration children per category.** Per `{{ .layout.maintainableCodeDesign }}`, assess whether the requested behavior would create duplication, coupling, representation leakage, or a workaround, and feed the bounded enabling-refactor or larger-work result into {{if ne .profile "core"}}ADR scope{{else}}the approved implementation scope{{end}}. For materially larger work, record the user's disposition:
 <!-- awf:include escalation-menu -->
-When both the coupling evidence location is unknown and inline search would pollute the parent context, invoke `{{ .prefix }}-exploring` once per information need with breadth and detail. Keep an exact-known-file or genuinely trivial category check inline. Preserve the categories and the structured output contract. Ground the audit before the categories: run `./awf context <the refactor's source and destination paths>` so the coupling findings land in the ADR Context section against current authority.
+When both the coupling evidence location is unknown and inline search would pollute the parent context, invoke `{{ .prefix }}-exploring` once per information need with breadth and detail. Keep an exact-known-file or genuinely trivial category check inline. Preserve the categories and the structured output contract.{{if ne .profile "core"}} Ground the audit before the categories: run `./awf context <the refactor's source and destination paths>` so the coupling findings land in the ADR Context section against current authority.{{else}} Ground against project documentation, source, tests, and history before the categories.{{end}}
 <!-- awf:include context-orientation -->
 <!-- awf:include context-spill -->
 <!-- awf:end -->
@@ -60,7 +60,7 @@ grep -rn "<MovedSymbol>" <original-package-path>/
 
 Grep your language's test files (e.g. `*_test.go`, `*.spec.ts`) separately from production code. Test files often use moved symbols as helpers in **unrelated** tests; the test-coupling profile differs from production coupling and is routinely larger.
 
-Capture **N** (production call sites) and **M** (test call sites) separately, both destined for the ADR Context section. M is typically larger than N and is the bigger implementation surprise if not enumerated up-front: production code can move cleanly (N small) while test code explodes (M large), shipping a sprawling test diff that was not on the radar.
+Capture **N** (production call sites) and **M** (test call sites) separately{{if ne .profile "core"}}, both destined for the ADR Context section{{end}}. M is typically larger than N and is the bigger implementation surprise if not enumerated up-front: production code can move cleanly (N small) while test code explodes (M large), shipping a sprawling test diff that was not on the radar.
 
 Report line: `- Sibling tests: N=<number>, M=<number>`
 
@@ -143,19 +143,19 @@ Report line: `- Cross-package methods / init(): <list or "none">`
 <!-- awf:section output-format -->
 ## Output
 
-The audit's output goes into the ADR's **Context** section under a `### Coupling audit` subsection before the Decision is drafted: one report line per category run, in category order, using the exact report-line format each retained category above defines.
+The audit's output {{if ne .profile "core"}}goes into the ADR's **Context** section under a `### Coupling audit` subsection before the Decision is drafted{{else}}is reported to the approved implementation owner before mutation{{end}}: one report line per category run, in category order, using the exact report-line format each retained category above defines.
 <!-- awf:end -->
 
 <!-- awf:section scope-shrink-rule -->
 ## Scope shrink rule
 
-If the audit reveals the refactor is larger than the ADR's originally proposed scope, **shrink the scope** with a Context-section amendment to the still-`Proposed` ADR (`docs(adr): amend NNNN, defer X`) recording what was deferred and why, before implementation starts. Do not proceed with an underscoped ADR.
+If the audit reveals the refactor is larger than {{if ne .profile "core"}}the ADR's originally proposed scope, **shrink the scope** with a Context-section amendment to the still-`Proposed` ADR (`docs(adr): amend NNNN, defer X`) recording what was deferred and why{{else}}the approved boundary, return to brainstorming to revise and re-approve that boundary{{end}} before implementation starts. Do not proceed with underscoped work.
 <!-- awf:end -->
 
 <!-- awf:section notes -->
 ## Notes
 
 1. This skill is the authoritative source for the audit categories.
-2. Does not commit on your behalf; its output is content the ADR author lands into the ADR.
+2. Does not commit on your behalf; its output is {{if ne .profile "core"}}content the ADR author lands into the ADR{{else}}evidence for the implementation owner{{end}}.
 3. A project narrows the audit by dropping categories in the skill sidecar (`sections: <category-id>: {drop: true}`); recurring project-specific coupling surprises are captured via a convention part overriding the matching category section.
 <!-- awf:end -->

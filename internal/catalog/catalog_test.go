@@ -199,6 +199,7 @@ func projectCatalogBypasses(filename string, body []byte) ([]string, error) {
 			"Open":            {"CompleteView": true},
 			"openRootProject": {"CompleteView": true},
 		},
+		"staged_drift.go": {"(*Project).CheckStagedDrift": {"CompleteView": true}},
 		"scaffold.go": {
 			"ScaffoldConfig":   {"CompleteView": true},
 			"neededVarsFromFS": {"CompleteView": true},
@@ -497,5 +498,3 @@ func TestProfileViewCoreOmitsFullOnlyEntries(t *testing.T) {
 		}
 	}
 }
-
-// invariant: rendering/catalog-and-targets:profile-dependency-closure (TestCatalogIsCompileTimeSingleSource)

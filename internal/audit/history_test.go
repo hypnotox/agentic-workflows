@@ -13,6 +13,7 @@ import (
 	"unsafe"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
@@ -22,6 +23,20 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
+
+func TestAuditConfigTreatsPreProfileSnapshotAsFull(t *testing.T) {
+	tree := auditTree(t, []snapshot.File{{
+		Path: ".awf/config.yaml", Mode: snapshot.Regular,
+		Bytes: []byte("prefix: test\nintegrationBranch: main\n"),
+	}})
+	cfg, err := auditConfig(t.TempDir(), auditSelection(t, tree), &manifest.Lock{SchemaVersion: 46})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Profile != catalog.ProfileFull {
+		t.Fatalf("historical profile = %q, want Full", cfg.Profile)
+	}
+}
 
 // Legacy focused assertions use these test-only adapters; production replay
 // always executes the single interleaved graph schedule through run.

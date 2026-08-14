@@ -124,7 +124,9 @@ You own the project's long-term health, not just the task in front of you: bugs 
 
 - Brainstorming retains the single mandatory pre-artifact outline approval check-in, stopping for explicit approval and persisting it only when an effort exists.
 
-- Settled ADR review continues autonomously to linked-plan handling or the independently selected implementation path. After a persisted formal phase or approval checkpoint, or another safe resumable point whose immediate successor can start independently, Pi judges retained-context relevance and successor work from currently available context and compaction evidence.
+- Settled ADR review continues autonomously to linked-plan handling or the independently selected implementation path.
+
+- After a persisted formal phase or approval checkpoint, or another safe resumable point whose immediate successor can start independently, Pi judges retained-context relevance and successor work from currently available context and compaction evidence.
 
 - No fixed threshold controls the choice: it either continues autonomously in-session or requests replacement.
 

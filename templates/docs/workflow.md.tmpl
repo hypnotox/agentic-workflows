@@ -94,7 +94,7 @@ For the detailed criteria of when a decision is load-bearing enough to warrant a
 
 - New memories use closed YAML frontmatter with `effort`, `phase`, `next`, and `updated`; an exact legacy four-line header migrates on its first structured update.
 
-- Resume from `phase` and `next` only after revalidating them against the repository sources and current-state documentation, which remain authoritative over checkpoint prose; the rendered orienting skill's resume-revalidation section is the procedural home of that check.
+- Resume from `phase` and `next` only after revalidating them against the repository sources{{if ne .profile "core"}} and current-state documentation{{end}}, which remain authoritative over checkpoint prose; the rendered orienting skill's resume-revalidation section is the procedural home of that check.
 
 - One effort has one user-managed writer; reviewers, explorers, grounding children, and helpers never edit its memory.
 
@@ -115,7 +115,9 @@ For the detailed criteria of when a decision is load-bearing enough to warrant a
 
 - Brainstorming retains the single mandatory pre-artifact outline approval check-in, stopping for explicit approval and persisting it only when an effort exists.
 
-- Settled ADR review continues autonomously to linked-plan handling or the independently selected implementation path.{{if .targetSessionHandoff}} After a persisted formal phase or approval checkpoint, or another safe resumable point whose immediate successor can start independently, Pi judges retained-context relevance and successor work from currently available context and compaction evidence.
+{{if ne .profile "core"}}- Settled ADR review continues autonomously to linked-plan handling or the independently selected implementation path.
+
+{{end}}{{if .targetSessionHandoff}}- After a persisted formal phase or approval checkpoint, or another safe resumable point whose immediate successor can start independently, Pi judges retained-context relevance and successor work from currently available context and compaction evidence.
 
 - No fixed threshold controls the choice: it either continues autonomously in-session or requests replacement.
 

@@ -1371,7 +1371,3 @@ func TestInitAndUpgradeRefusePreTrackingAuthority(t *testing.T) {
 		})
 	}
 }
-
-// invariant: tooling/audit-commands:audit-full-profile-only (TestResolveProjectResidentRoot)
-
-// invariant: tooling/context-and-topic:context-full-profile-only (TestResolveProjectResidentRoot)

@@ -1534,7 +1534,6 @@ func TestLayoutUsesFixedDocsRootAndFullCatalog(t *testing.T) {
 	}
 }
 
-// invariant: rendering/project-output-plan:profile-projected-render (TestRenderAllRendersFullCatalogForBothTargets)
 // invariant: rendering/project-output-plan:output-plan-complete (TestRenderAllRendersFullCatalogForBothTargets)
 func TestRenderAllRendersFullCatalogForBothTargets(t *testing.T) {
 	cfg := "prefix: example\nprofile: full\nintegrationBranch: main\n"

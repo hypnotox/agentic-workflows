@@ -657,10 +657,8 @@ func (c *Config) PartPath(kind, artifact, section string) string {
 }
 
 func (c *Config) Validate() error {
-	if c.Profile != "" {
-		if _, err := catalog.ParseProfile(string(c.Profile)); err != nil {
-			return err
-		}
+	if _, err := catalog.ParseProfile(string(c.Profile)); err != nil {
+		return err
 	}
 	if c.Prefix == "" {
 		return errors.New("prefix must not be empty")

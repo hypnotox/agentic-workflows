@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -44,7 +45,7 @@ func TestLoadParsesRepositoryFacts(t *testing.T) {
 
 // invariant: config/configuration:local-doc-declarations (TestLocalDocDeclarationsValidateAndNormalize)
 func TestLocalDocDeclarationsValidateAndNormalize(t *testing.T) {
-	valid := "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident-response\n    title: Incident response\n    description: Handle incidents.\n  - name: operations/deploy\n    title: Deploy\n    description: Deploy safely.\n"
+	valid := "prefix: example\nprofile: full\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident-response\n    title: Incident response\n    description: Handle incidents.\n  - name: operations/deploy\n    title: Deploy\n    description: Deploy safely.\n"
 	c, err := Parse(".awf", []byte(valid))
 	if err != nil {
 		t.Fatal(err)
@@ -72,7 +73,7 @@ func TestLocalDocDeclarationsValidateAndNormalize(t *testing.T) {
 		"localDocs:\n  - name: runbooks/x\n    title: \" \"\n    description: X\n",
 		"localDocs:\n  - name: runbooks/x\n    title: X\n    description: X\n    extra: no\n",
 	} {
-		c, err := Parse(".awf", []byte("prefix: example\nintegrationBranch: main\n"+bad))
+		c, err := Parse(".awf", []byte("prefix: example\nprofile: full\nintegrationBranch: main\n"+bad))
 		if err == nil {
 			err = c.Validate()
 		}
@@ -83,14 +84,26 @@ func TestLocalDocDeclarationsValidateAndNormalize(t *testing.T) {
 }
 
 func TestProfileValidation(t *testing.T) {
-	for _, profile := range []string{"", "minimal", "full"} {
-		cfg, err := Parse(".awf", []byte("prefix: example\nintegrationBranch: main\nprofile: "+profile+"\n"))
-		if err == nil {
-			err = cfg.Validate()
-		}
-		if (profile != "minimal") != (err == nil) {
-			t.Errorf("profile %q validation error = %v", profile, err)
-		}
+	for _, tc := range []struct {
+		name  string
+		body  string
+		valid bool
+	}{
+		{name: "missing", body: "prefix: example\nintegrationBranch: main\n"},
+		{name: "empty", body: "prefix: example\nintegrationBranch: main\nprofile: \n"},
+		{name: "invalid", body: "prefix: example\nintegrationBranch: main\nprofile: minimal\n"},
+		{name: "core", body: "prefix: example\nintegrationBranch: main\nprofile: core\n", valid: true},
+		{name: "full", body: "prefix: example\nintegrationBranch: main\nprofile: full\n", valid: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg, err := Parse(".awf", []byte(tc.body))
+			if err == nil {
+				err = cfg.Validate()
+			}
+			if (err == nil) != tc.valid {
+				t.Fatalf("profile validation error = %v, valid=%v", err, tc.valid)
+			}
+		})
 	}
 }
 
@@ -417,12 +430,12 @@ func TestValidateRejectsPathInPrefix(t *testing.T) {
 // invariant: config/validation:domain-name-validated (TestValidateRejectsBadDomainName)
 func TestValidateRejectsBadDomainName(t *testing.T) {
 	for _, bad := range []string{"", "../evil", "foo/bar", "a\\b"} {
-		c := &Config{Prefix: "x", IntegrationBranch: "main", Domains: []string{bad}}
+		c := &Config{Prefix: "x", Profile: catalog.ProfileFull, IntegrationBranch: "main", Domains: []string{bad}}
 		if err := c.Validate(); err == nil {
 			t.Errorf("expected error for domain name %q", bad)
 		}
 	}
-	ok := &Config{Prefix: "x", IntegrationBranch: "main", Domains: []string{"rendering", "config"}}
+	ok := &Config{Prefix: "x", Profile: catalog.ProfileFull, IntegrationBranch: "main", Domains: []string{"rendering", "config"}}
 	if err := ok.Validate(); err != nil {
 		t.Errorf("clean domain names should validate, got: %v", err)
 	}
@@ -464,6 +477,7 @@ func TestCurrentStatePresence(t *testing.T) {
 // invariant: config/configuration:severity-not-configurable (TestCurrentStateStrictValidation)
 func TestCurrentStateStrictValidation(t *testing.T) {
 	valid := `prefix: x
+profile: full
 integrationBranch: main
 currentState:
   sources:
@@ -494,7 +508,7 @@ currentState:
 		{"malformed test glob", "  testGlobs: ['[']\n", "malformed"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			parsed, err := Parse("staged/.awf", []byte("prefix: x\nintegrationBranch: main\ncurrentState:\n"+tc.fragment))
+			parsed, err := Parse("staged/.awf", []byte("prefix: x\nprofile: full\nintegrationBranch: main\ncurrentState:\n"+tc.fragment))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -587,14 +601,14 @@ func TestIntegrationBranchValidation(t *testing.T) {
 		{"leading dash", "-force", `must not start with "-"`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			c := &Config{Prefix: "x", IntegrationBranch: tc.branch}
+			c := &Config{Prefix: "x", Profile: catalog.ProfileFull, IntegrationBranch: tc.branch}
 			if err := c.Validate(); err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("Validate = %v, want error containing %q", err, tc.want)
 			}
 		})
 	}
 	for _, branch := range []string{"main", "master", "release/1.0"} {
-		c := &Config{Prefix: "x", IntegrationBranch: branch}
+		c := &Config{Prefix: "x", Profile: catalog.ProfileFull, IntegrationBranch: branch}
 		if err := c.Validate(); err != nil {
 			t.Errorf("branch %q rejected: %v", branch, err)
 		}
@@ -641,7 +655,7 @@ func TestCommitPolicyValidation(t *testing.T) {
 	if err := validateCommitPolicy(valid, validateOpenSSHPublicKey); err != nil {
 		t.Fatalf("valid commit policy rejected: %v", err)
 	}
-	cfg := &Config{Prefix: "x", IntegrationBranch: "main", CommitPolicy: valid}
+	cfg := &Config{Prefix: "x", Profile: catalog.ProfileFull, IntegrationBranch: "main", CommitPolicy: valid}
 	if err := cfg.Validate(); err != nil {
 		t.Fatalf("config rejected valid commit policy: %v", err)
 	}
@@ -651,7 +665,7 @@ func TestCommitPolicyValidation(t *testing.T) {
 	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "commitPolicy.grandfatheredThrough") {
 		t.Fatalf("config validation = %v, want commit-policy error", err)
 	}
-	base := "prefix: x\nintegrationBranch: main\n"
+	base := "prefix: x\nprofile: full\nintegrationBranch: main\n"
 	decodeCases := []struct {
 		name string
 		body string
@@ -777,11 +791,11 @@ func TestValidateTemplateSourceRoot(t *testing.T) {
 			t.Fatalf("validate %q succeeded", root)
 		}
 	}
-	cfg, err := Parse(t.TempDir(), []byte("prefix: example\nintegrationBranch: main\nrender:\n  templateSourceRoot: templates\n"))
+	cfg, err := Parse(t.TempDir(), []byte("prefix: example\nprofile: full\nintegrationBranch: main\nrender:\n  templateSourceRoot: templates\n"))
 	if err != nil || cfg.Validate() != nil {
 		t.Fatalf("configured root rejected: %v / %v", err, cfg.Validate())
 	}
-	if err := (&Config{Prefix: "example", IntegrationBranch: "main", Render: &RenderConfig{}}).Validate(); err == nil {
+	if err := (&Config{Prefix: "example", Profile: catalog.ProfileFull, IntegrationBranch: "main", Render: &RenderConfig{}}).Validate(); err == nil {
 		t.Fatal("present empty template source root accepted")
 	}
 }

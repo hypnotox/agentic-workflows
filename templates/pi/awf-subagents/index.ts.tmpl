@@ -58,9 +58,9 @@ export const GROUNDING_TOOLS = EXPLORE_TOOLS;
 export const REVIEW_TOOLS = ["read", "grep", "find", "ls", "bash"] as const;
 export const IMPLEMENT_TOOLS = ["read", "bash", "edit", "write", "grep", "find", "ls"] as const;
 export const REVIEWER_PATHS = {
-  adr: ".pi/agents/adr-reviewer.md",
+{{if ne .profile "core"}}  adr: ".pi/agents/adr-reviewer.md",
   plan: ".pi/agents/plan-reviewer.md",
-  code: ".pi/agents/code-reviewer.md",
+{{end}}  code: ".pi/agents/code-reviewer.md",
 } as const;
 export const IMPLEMENTER_PATH = ".pi/agents/implementer.md";
 export const EXPLORER_PATH = ".pi/agents/explorer.md";
