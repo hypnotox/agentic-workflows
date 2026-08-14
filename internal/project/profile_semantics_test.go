@@ -12,6 +12,18 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
+func coreOperationalResidual(files []RenderedFile, forbidden []string) []string {
+	var residual []string
+	for _, file := range files {
+		for _, phrase := range forbidden {
+			if strings.Contains(file.Content, phrase) {
+				residual = append(residual, file.Path+": "+phrase)
+			}
+		}
+	}
+	return residual
+}
+
 // TestCoreRenderedWorkflowExcludesFullAuthority expands every selected artifact
 // for both targets. It deliberately scans operational references instead of
 // ordinary prose such as an adopter discussing its own historical documents.
@@ -29,6 +41,8 @@ func TestCoreRenderedWorkflowExcludesFullAuthority(t *testing.T) {
 		"durable ADR, plan", "completes deferred artifact transitions",
 		"agent guide, ADRs", "ADR, plan, or code reviewer",
 		"kind adr, plan, or code", `StringEnum(["adr", "plan", "code"]`,
+		"stale-ADR", "older-format ADR", "plan-adherence",
+		"plan's stated file paths", "Read every plan, ADR, or state doc",
 	}
 	for _, tc := range []struct {
 		name    string
@@ -52,14 +66,8 @@ func TestCoreRenderedWorkflowExcludesFullAuthority(t *testing.T) {
 			}
 
 			var residual []string
-			for _, file := range files {
-				if tc.profile == catalog.ProfileCore {
-					for _, forbidden := range forbiddenCoreOperationalReferences {
-						if strings.Contains(file.Content, forbidden) {
-							residual = append(residual, file.Path+": "+forbidden)
-						}
-					}
-				}
+			if tc.profile == catalog.ProfileCore {
+				residual = coreOperationalResidual(files, forbiddenCoreOperationalReferences)
 			}
 			// The non-empty rendered population is the checked success sentinel:
 			// only then does an empty residual set prove semantic absence.
@@ -81,10 +89,37 @@ func TestCoreRenderedWorkflowExcludesFullAuthority(t *testing.T) {
 	}
 }
 
+func TestCoreOperationalReferenceScannerRejectsEveryArtifactClass(t *testing.T) {
+	for _, tc := range []RenderedFile{
+		{Path: "docs/workflow.md", Content: "stale-ADR"},
+		{Path: ".pi/agents/code-reviewer.md", Content: "plan-adherence"},
+		{Path: ".claude/skills/example-reviewing-impl/SKILL.md", Content: "Read every plan, ADR, or state doc"},
+		{Path: ".awf/hooks/commit-msg.sh", Content: "older-format ADR"},
+	} {
+		if got := coreOperationalResidual([]RenderedFile{tc}, []string{tc.Content}); len(got) != 1 {
+			t.Errorf("scanner accepted injected Full reference in %s: %v", tc.Path, got)
+		}
+	}
+}
+
 // TestProfileTransitionPreservesHistoryAndRestoresGovernance exercises the
 // working-tree Full -> Core -> Full path, including each native target.
 // invariant: rendering/project-output-plan:profile-projected-render (TestProfileTransitionPreservesHistoryAndRestoresGovernance)
 func TestProfileTransitionPreservesHistoryAndRestoresGovernance(t *testing.T) {
+	const coreConfig = "prefix: example\nprofile: core\nintegrationBranch: main\nvars:\n  gateCmd: test-gate\n"
+	cleanCoreRoot := scaffold(t, coreConfig)
+	cleanCore, err := Open(testContext(t), cleanCoreRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cleanCore.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	cleanCoreLock, err := manifest.Load(lockFile(cleanCoreRoot))
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", map[string]string{
 		"parts/adr-template/body.md": "Full-only ADR template override.\n",
 	})
@@ -133,7 +168,7 @@ func TestProfileTransitionPreservesHistoryAndRestoresGovernance(t *testing.T) {
 
 	// Core must receive no Full-only source. The deleted part is representative
 	// of the profile-owned .awf sources that must not become dormant layers.
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nprofile: core\nintegrationBranch: main\nvars:\n  gateCmd: test-gate\n")
+	testsupport.WriteAwfConfig(t, root, coreConfig)
 	if err := os.Remove(filepath.Join(root, ".awf", "parts", "adr-template", "body.md")); err != nil {
 		t.Fatal(err)
 	}
@@ -148,17 +183,17 @@ func TestProfileTransitionPreservesHistoryAndRestoresGovernance(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(coreLock.Files) >= len(fullMembership) {
-		t.Fatalf("Core lock did not remove the Full layer: core=%d full=%d", len(coreLock.Files), len(fullMembership))
+	if len(coreLock.Files) != len(cleanCoreLock.Files) {
+		t.Fatalf("transitioned Core lock differs from clean Core: transitioned=%d clean=%d", len(coreLock.Files), len(cleanCoreLock.Files))
 	}
-	for path := range coreLock.Files {
-		if _, ok := fullMembership[path]; !ok {
-			t.Errorf("Core lock gained non-Full member %s", path)
+	for path := range cleanCoreLock.Files {
+		if _, ok := coreLock.Files[path]; !ok {
+			t.Errorf("transitioned Core lock omitted clean Core member %s", path)
 		}
 	}
-	for _, path := range []string{"AGENTS.md", ".pi/skills/example-reviewing-impl/SKILL.md", ".claude/skills/example-reviewing-impl/SKILL.md"} {
-		if _, ok := coreLock.Files[path]; !ok {
-			t.Errorf("Core lock lost operational member %s", path)
+	for path := range coreLock.Files {
+		if _, ok := cleanCoreLock.Files[path]; !ok {
+			t.Errorf("transitioned Core lock retained non-Core member %s", path)
 		}
 	}
 	for path, want := range historical {

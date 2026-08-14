@@ -10,7 +10,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/commitmsg"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -74,6 +76,26 @@ func TestIsExemptSubject(t *testing.T) {
 		if isExemptSubject(s) {
 			t.Errorf("expected %q not exempt", s)
 		}
+	}
+}
+
+func TestRunCommitGateCoreSkipsFullAuthorization(t *testing.T) {
+	dependencies := defaultCommitGateDependencies()
+	dependencies.openProject = func(context.Context, string) (*project.Project, error) {
+		return &project.Project{Cfg: &config.Config{Profile: catalog.ProfileCore}}, nil
+	}
+	called := false
+	dependencies.authorize = func(context.Context, *project.Project, commitmsg.Message) (project.CommitAuthorizationResult, error) {
+		called = true
+		return project.CommitAuthorizationResult{}, errors.New("Full authorization reached")
+	}
+	var out bytes.Buffer
+	err := runCommitGateWithDependencies(testContext(t), t.TempDir(), writeMsg(t, "feat: Core commit\n\nAWF-Allow-Version: legacy\n"), nil, &out, dependencies)
+	if err != nil {
+		t.Fatalf("Core commit gate consulted Full authorization: %v", err)
+	}
+	if called || out.Len() != 0 {
+		t.Fatalf("Core authorization called=%v output=%q", called, out.String())
 	}
 }
 

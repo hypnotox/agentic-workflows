@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/audit"
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/commitmsg"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/git"
@@ -51,9 +52,9 @@ func openCommitGateProjectFromDisk(ctx context.Context, root string) (*project.P
 
 // runCommitGate validates one commit message and returns an error (mapped to a
 // non-zero exit) on any violation, so a commit-msg hook calling it blocks the
-// commit. It applies the shared Conventional Commits rule, the definitive
-// stale-merge authorization check, and a scan of every cleaned message for a
-// citation of a specific working-memory file (ADR-0158). The
+// commit. It applies the shared Conventional Commits rule and a scan of every
+// cleaned message for a citation of a specific working-memory file (ADR-0158).
+// Full additionally applies the definitive stale-merge authorization check. The
 // git-generated-subject exemption scopes the Conventional Commits check alone:
 // git writes the subject, but a person may edit a merge or autosquash body, so
 // the citation and authorization checks apply to every recorded message. The
@@ -111,6 +112,9 @@ func runCommitGateWithDependencies(ctx context.Context, root, msgPath string, st
 				return fmt.Errorf("check staged commit: rejected %q", msg.Subject)
 			}
 		}
+	}
+	if p.Cfg.Profile == catalog.ProfileCore {
+		return nil
 	}
 	result, authErr := dependencies.authorize(ctx, p, msg)
 	if result.Category != "" {

@@ -1,4 +1,4 @@
-Always-on and toggleable singleton outputs: ADR-system files, bootstrap and hook payloads, resident-root gitignores, and executable-mode rules. The commit-msg payload remains a thin delegate to the definitive commit-message and stale-ADR merge authorization gate; pre-merge-commit remains a thin staged check because Git has not exposed the final message and parents at that earlier hook.
+Always-on and toggleable singleton outputs: ADR-system files, bootstrap and hook payloads, resident-root gitignores, and executable-mode rules. The commit-msg payload remains a thin delegate to the profile-selected commit-message gate: Core checks shared commit rules, while Full also enforces stale-ADR merge authorization. Pre-merge-commit remains a thin staged check because Git has not exposed the final message and parents at that earlier hook.
 
 ## Claims
 

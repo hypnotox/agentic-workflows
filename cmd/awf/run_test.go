@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -686,21 +687,44 @@ func TestRunRefusesFullOnlyCommandForCoreProfileBeforeStateGuard(t *testing.T) {
 
 func TestRunDispatchesEveryFullOnlyCommandFamilyByProfile(t *testing.T) {
 	cases := []struct {
-		name string
-		args []string
+		name       string
+		args       []string
+		fullCode   int
+		fullOutput string
 	}{
-		{"check repo state", []string{"awf", "check", "repo", "state"}},
-		{"check staged state", []string{"awf", "check", "staged", "state"}},
-		{"read plan", []string{"awf", "read", "plan", "missing", "1"}},
-		{"audit", []string{"awf", "audit", "HEAD"}},
-		{"adr", []string{"awf", "adr", "number"}},
-		{"context", []string{"awf", "context", "README.md"}},
-		{"topic", []string{"awf", "topic", "rendering/missing"}},
-		{"new adr", []string{"awf", "new", "adr", "Dispatch Proof"}},
-		{"new plan", []string{"awf", "new", "plan", "Dispatch Proof"}},
-		{"new topic", []string{"awf", "new", "topic", "rendering", "Dispatch Proof"}},
-		{"new domain", []string{"awf", "new", "domain", "dispatch-proof"}},
-		{"remove domain", []string{"awf", "remove", "domain", "rendering"}},
+		{"check repo state", []string{"awf", "check", "repo", "state"}, 0, "findings: 0 errors, 0 warnings"},
+		{"check staged state", []string{"awf", "check", "staged", "state"}, 0, "findings: 0 errors, 0 warnings"},
+		{"read plan", []string{"awf", "read", "plan", "missing", "1"}, 1, `plan name "missing" not found`},
+		{"audit", []string{"awf", "audit", "HEAD"}, 1, "scope: 0 commit(s) in HEAD..HEAD"},
+		{"adr", []string{"awf", "adr", "number"}, 1, "no pending ADR to number"},
+		{"context", []string{"awf", "context", "README.md"}, 0, "context: live state for this project"},
+		{"topic", []string{"awf", "topic", "rendering/missing"}, 1, `current-state topic "rendering/missing" not found`},
+		{"new adr", []string{"awf", "new", "adr", "Dispatch Proof"}, 0, "status: created:"},
+		{"new plan", []string{"awf", "new", "plan", "Dispatch Proof"}, 0, "status: created:"},
+		{"new topic", []string{"awf", "new", "topic", "rendering", "Dispatch Proof"}, 1, `topic domain "rendering" is not configured`},
+		{"new domain", []string{"awf", "new", "domain", "dispatch-proof"}, 0, "added docs/domains/dispatch-proof.md"},
+		{"remove domain", []string{"awf", "remove", "domain", "rendering"}, 1, `domain "rendering" is not configured`},
+	}
+	var declared []string
+	var visit func(string, []clispec.Command)
+	visit = func(prefix string, commands []clispec.Command) {
+		for _, command := range commands {
+			name := strings.TrimSpace(prefix + " " + command.Name)
+			if command.FullOnly {
+				declared = append(declared, name)
+			}
+			visit(name, command.Children)
+		}
+	}
+	visit("", clispec.Commands)
+	var pinned []string
+	for _, tc := range cases {
+		pinned = append(pinned, tc.name)
+	}
+	slices.Sort(declared)
+	slices.Sort(pinned)
+	if !slices.Equal(pinned, declared) {
+		t.Fatalf("Full-only dispatch matrix drifted: pinned=%v declared=%v", pinned, declared)
 	}
 	for _, tc := range cases {
 		t.Run(tc.name+" core refusal", func(t *testing.T) {
@@ -717,8 +741,9 @@ func TestRunDispatchesEveryFullOnlyCommandFamilyByProfile(t *testing.T) {
 			testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 			var stdout, stderr bytes.Buffer
 			code := run(tc.args, &stdout, &stderr)
-			if code == 2 || strings.Contains(stderr.String(), "is unavailable for the selected") {
-				t.Fatalf("Full command did not reach its handler: exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+			combined := stdout.String() + stderr.String()
+			if code != tc.fullCode || !strings.Contains(combined, tc.fullOutput) || strings.Contains(stderr.String(), "is unavailable for the selected") {
+				t.Fatalf("Full command did not produce its handler-specific result: exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 			}
 		})
 	}
