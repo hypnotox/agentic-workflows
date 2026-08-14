@@ -744,6 +744,7 @@ func callsMethodWithIdent(fn *ast.FuncDecl, method, argument string) bool {
 }
 
 // invariant: rendering/project-output-plan:check-report-single-plan (TestCheckReportBuildsOneOutputPlan)
+// invariant: rendering/sync-and-drift:generated-artifacts-tracked (TestCheckReportBuildsOneOutputPlan)
 func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 	file := parseCheckSource(t)
 	for _, declaration := range file.Decls {
@@ -885,6 +886,7 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 	}
 }
 
+// invariant: rendering/sync-and-drift:generated-artifacts-tracked (TestCheckReportRequiresGeneratedArtifactsInIndex)
 func TestCheckReportRequiresGeneratedArtifactsInIndex(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	root := repo.Root()
@@ -988,6 +990,7 @@ func TestCheckLockedFilesSuppressesMissingForUntrackedOutputs(t *testing.T) {
 	}
 }
 
+// invariant: rendering/sync-and-drift:generated-artifacts-tracked (TestCheckGeneratedTrackingNoGitAndNestedResidentExclusion)
 func TestCheckGeneratedTrackingNoGitAndNestedResidentExclusion(t *testing.T) {
 	t.Run("no Git", func(t *testing.T) {
 		p := &Project{Root: t.TempDir()}

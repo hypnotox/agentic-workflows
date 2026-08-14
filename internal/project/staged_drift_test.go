@@ -6,9 +6,11 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
@@ -160,6 +162,7 @@ func TestCheckStagedDriftLocalDocsUsesIndexUniverse(t *testing.T) {
 	}
 }
 
+// invariant: rendering/sync-and-drift:staged-drift-rendered-output (TestCheckStagedDriftOperationalErrors)
 func TestCheckStagedDriftOperationalErrors(t *testing.T) {
 	t.Run("cancelled index read", func(t *testing.T) {
 		root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
@@ -202,6 +205,49 @@ func TestCheckStagedDriftOperationalErrors(t *testing.T) {
 			t.Fatal("invalid staged pitfalls succeeded")
 		}
 	})
+}
+
+// invariant: rendering/sync-and-drift:generated-artifacts-tracked (TestCheckStagedDriftTracksWholeOutputPlan)
+func TestCheckStagedDriftTracksWholeOutputPlan(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+	repo := gitfixture.InitRepoAt(t, root)
+	gitfixture.AddAll(t, repo)
+	gitfixture.Commit(t, repo, "staged config", nil)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	corpus, pitfalls, topics, effective, err := p.deriveOperationStateWithPitfalls()
+	if err != nil {
+		t.Fatal(err)
+	}
+	op, err := p.outputPlanWithPitfalls(testContext(t), corpus, pitfalls, topics, effective)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{config.DirName + "/awf.lock"}
+	for _, output := range op.writeFiles() {
+		want = append(want, output.Path)
+	}
+	slices.Sort(want)
+
+	drift, err := CheckStagedDriftRoot(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := make([]string, 0, len(drift))
+	for _, finding := range drift {
+		if finding.Kind != "untracked" {
+			t.Fatalf("whole-plan staged tracking produced non-membership drift: %#v", finding)
+		}
+		got = append(got, finding.Path)
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("staged tracking paths differ from every OutputPlan write plus lock:\n got %q\nwant %q", got, want)
+	}
 }
 
 func mustReadFile(t *testing.T, path string) string {
