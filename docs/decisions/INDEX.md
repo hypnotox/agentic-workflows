@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-introduce-core-and-full-workflow-profiles: Introduce Core and Full workflow profiles](introduce-core-and-full-workflow-profiles.md) (Proposed)
 
 ## History
 
