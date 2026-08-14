@@ -32,13 +32,14 @@ Generated output can no longer pass awf verification merely because ignored work
 
 The check must inspect index metadata in addition to rendering and filesystem state. An untracked path takes precedence over a simultaneous missing-file classification so one path receives one actionable root-cause finding. The lock requires an explicit check because it is not an output-plan node, and staged preparation must preserve an actionable result when that lock itself is absent.
 
-Tracked files remain valid when a later ignore rule matches them because ignore rules do not change index membership. Repositories with unmerged indexes or unreadable index metadata fail operationally rather than producing a confident tracking result. Outside Git, adopters receive an advisory instead of losing the repository drift checks that do not require Git.
+Tracked files remain valid when a later ignore rule matches them because ignore rules do not change index membership. Unreadable index metadata prevents a confident tracking result. Outside Git, adopters receive an advisory instead of losing the repository drift checks that do not require Git. For a nested adopter, resident-root self-ignore outputs remain outside tracking enforcement because they live outside the adopted subtree's index authority; this accepted gap preserves the existing resident ownership boundary.
 
 ## Alternatives Considered
 
 | Alternative | Why not chosen |
 |---|---|
 | Infer tracking from the working-tree status universe | That universe intentionally mixes tracked files with visible untracked files and excludes ignored untracked files, so it cannot answer index membership directly. |
+| Derive the required set solely from `.awf/awf.lock` | The lock describes the previous render transaction, can omit newly planned outputs, and cannot establish tracking of the lock itself. |
 | Reuse the complete staged blob snapshot for every check | Reading all blob contents is unnecessary for membership and couples the tracking question to blob readability. |
 | Invoke `git ls-files` once per generated path | Repeated subprocess queries are inefficient and bypass the backend-neutral semantic seam. |
 
