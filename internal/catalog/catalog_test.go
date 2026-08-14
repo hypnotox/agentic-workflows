@@ -180,6 +180,15 @@ func forbidden() { _ = CompleteView() }
 	if err != nil || len(got) != 1 || got[0] != "project.go:<import>:dot" {
 		t.Errorf("dot-import bypass probe = %v, %v", got, err)
 	}
+	methodSource := `package project
+import "github.com/hypnotox/agentic-workflows/internal/catalog"
+type Project struct{}
+func (Project) Open() { _ = catalog.CompleteView() }
+`
+	got, err = projectCatalogBypasses("project.go", []byte(methodSource))
+	if err != nil || len(got) != 1 || got[0] != "project.go:(Project).Open:CompleteView" {
+		t.Errorf("method-identity bypass probe = %v, %v", got, err)
+	}
 }
 
 func projectCatalogBypasses(filename string, body []byte) ([]string, error) {
@@ -236,12 +245,36 @@ func projectCatalogBypasses(filename string, body []byte) ([]string, error) {
 	}
 	for _, decl := range file.Decls {
 		if fn, ok := decl.(*ast.FuncDecl); ok {
-			inspect(fn.Name.Name, fn.Body)
+			inspect(functionIdentity(fn), fn.Body)
 			continue
 		}
 		inspect("<package>", decl)
 	}
 	return out, nil
+}
+
+func functionIdentity(fn *ast.FuncDecl) string {
+	if fn.Recv == nil || len(fn.Recv.List) == 0 {
+		return fn.Name.Name
+	}
+	return "(" + receiverIdentity(fn.Recv.List[0].Type) + ")." + fn.Name.Name
+}
+
+func receiverIdentity(expr ast.Expr) string {
+	switch expr := expr.(type) {
+	case *ast.Ident:
+		return expr.Name
+	case *ast.StarExpr:
+		return "*" + receiverIdentity(expr.X)
+	case *ast.IndexExpr:
+		return receiverIdentity(expr.X)
+	case *ast.IndexListExpr:
+		return receiverIdentity(expr.X)
+	case *ast.SelectorExpr:
+		return receiverIdentity(expr.X) + "." + expr.Sel.Name
+	default:
+		return "<receiver>"
+	}
 }
 
 // Catalog default data must be generic: no default names an awf-repo path or
