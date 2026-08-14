@@ -610,11 +610,7 @@ func (p *Project) checkPendingADRs(ctx context.Context, corpus adr.Corpus) []man
 // stale, missing, hand-edited, or invalid-frontmatter. The reverse direction is
 // checked too: a rendered path with no lock entry - an artifact enabled since the
 // last sync - is flagged unsynced rather than silently skipped.
-func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]RenderedFile, tracking ...[]manifest.Drift) []manifest.Drift {
-	var trackingDrift []manifest.Drift
-	if len(tracking) > 0 {
-		trackingDrift = tracking[0]
-	}
+func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]RenderedFile, trackingDrift []manifest.Drift) []manifest.Drift {
 	untracked := untrackedPaths(trackingDrift)
 	var drift []manifest.Drift
 	for _, path := range slices.Sorted(maps.Keys(rendered)) {

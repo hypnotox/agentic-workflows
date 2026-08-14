@@ -309,7 +309,7 @@ func TestCheckLockedFilesInPlaceRegenDrift(t *testing.T) {
 	if err := os.WriteFile(xPath, []byte(canonical), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if d := p.checkLockedFiles(lock, rendered); len(d) != 0 {
+	if d := p.checkLockedFiles(lock, rendered, nil); len(d) != 0 {
 		t.Errorf("a matching in-place file must not drift, got %v", d)
 	}
 
@@ -318,7 +318,7 @@ func TestCheckLockedFilesInPlaceRegenDrift(t *testing.T) {
 	if err := os.WriteFile(xPath, []byte(tampered), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	d := p.checkLockedFiles(lock, rendered)
+	d := p.checkLockedFiles(lock, rendered, nil)
 	if len(d) != 1 || d[0].Kind != "hand-edited" {
 		t.Fatalf("a tampered awf region must drift hand-edited, got %v", d)
 	}
@@ -327,7 +327,7 @@ func TestCheckLockedFilesInPlaceRegenDrift(t *testing.T) {
 	if err := os.Remove(xPath); err != nil {
 		t.Fatal(err)
 	}
-	d = p.checkLockedFiles(lock, rendered)
+	d = p.checkLockedFiles(lock, rendered, nil)
 	if len(d) != 1 || d[0].Kind != "missing" {
 		t.Fatalf("an absent in-place file → missing, got %v", d)
 	}
@@ -369,7 +369,7 @@ func TestInPlaceComposedSyncCheckFixpoint(t *testing.T) {
 			"out.md": {RegenChecked: true, OutputHash: manifest.Hash([]byte(regenerated))},
 		}}
 		rendered := map[string]RenderedFile{"out.md": {Path: "out.md", Content: regenerated, RegenChecked: true, TemplateID: "in-place/composed.tmpl", Policy: OutputPolicy{Regenerate: true}}}
-		return p.checkLockedFiles(lock, rendered)
+		return p.checkLockedFiles(lock, rendered, nil)
 	}
 	write := func(content string) {
 		t.Helper()

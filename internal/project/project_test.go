@@ -1673,7 +1673,7 @@ func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
 	lock := &manifest.Lock{Files: map[string]manifest.Entry{
 		skillPath: {OutputHash: manifest.Hash([]byte(broken))},
 	}}
-	drift := p.checkLockedFiles(lock, map[string]RenderedFile{skillPath: file})
+	drift := p.checkLockedFiles(lock, map[string]RenderedFile{skillPath: file}, nil)
 	want := []manifest.Drift{{Path: skillPath, Kind: "invalid-frontmatter", Detail: "frontmatter name is empty"}}
 	if !slices.Equal(drift, want) {
 		t.Errorf("invalid-frontmatter drift = %#v, want %#v", drift, want)

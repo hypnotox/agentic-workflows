@@ -806,25 +806,42 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	untracked := map[string]bool{}
-	for _, finding := range reportValue.Drift {
-		if finding.Kind == "untracked" {
-			untracked[finding.Path] = true
+	expectedTrackingPaths := func(p *Project) []string {
+		t.Helper()
+		corpus, pitfalls, topics, effective, err := p.deriveOperationStateWithPitfalls()
+		if err != nil {
+			t.Fatal(err)
 		}
+		op, err := p.outputPlanWithPitfalls(testContext(t), corpus, pitfalls, topics, effective)
+		if err != nil {
+			t.Fatal(err)
+		}
+		required := map[string]bool{config.DirName + "/awf.lock": true}
+		for _, output := range op.writeFiles() {
+			if p.nested && resident.IsResidentPath(output.Path) {
+				continue
+			}
+			required[output.Path] = true
+		}
+		paths := make([]string, 0, len(required))
+		for path := range required {
+			paths = append(paths, path)
+		}
+		slices.Sort(paths)
+		return paths
 	}
-	for _, want := range []string{
-		".awf/awf.lock",
-		".awf/effort-archive/.gitignore",
-		".awf/efforts/.gitignore",
-		".awf/worktrees/.gitignore",
-		".claude/skills/example-tdd/SKILL.md",
-		".pi/skills/example-tdd/SKILL.md",
-		"AGENTS.md",
-		"docs/architecture.md",
-	} {
-		if !untracked[want] {
-			t.Errorf("CheckReport tracking projection omitted heterogeneous planned output %q", want)
+	reportTrackingPaths := func(report CheckReport) []string {
+		var paths []string
+		for _, finding := range report.Drift {
+			if finding.Kind == "untracked" {
+				paths = append(paths, finding.Path)
+			}
 		}
+		slices.Sort(paths)
+		return paths
+	}
+	if got, want := reportTrackingPaths(reportValue), expectedTrackingPaths(p); !slices.Equal(got, want) {
+		t.Errorf("top-level CheckReport tracking paths differ from every OutputPlan write plus lock:\n got %q\nwant %q", got, want)
 	}
 	directNotes, err := p.AdvisoryNotes(testContext(t))
 	if err != nil {
@@ -863,10 +880,8 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, finding := range nestedReport.Drift {
-		if finding.Kind == "untracked" && resident.IsResidentPath(finding.Path) {
-			t.Errorf("nested CheckReport tracking projection included resident output: %#v", finding)
-		}
+	if got, want := reportTrackingPaths(nestedReport), expectedTrackingPaths(nestedProject); !slices.Equal(got, want) {
+		t.Errorf("nested CheckReport tracking paths differ from every non-resident OutputPlan write plus lock:\n got %q\nwant %q", got, want)
 	}
 }
 

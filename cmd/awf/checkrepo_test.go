@@ -20,6 +20,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 type repoCheckCounters struct {
@@ -249,6 +250,32 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		}
 		if got, want := aggregate.String(), "status: warnings\n\nsummary:\n  findings: 0 errors, 2 warnings\n\nfindings:\n  warnings:\n    advisory | tracking unavailable\n    advisory | aggregate-only\n"; got != want {
 			t.Fatalf("aggregate tracking advisory = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("production no-Git tracking note preserves direct and aggregate boundaries", func(t *testing.T) {
+		root := t.TempDir()
+		testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {testCmd: \"\", gateCmd: make gate}\n")
+		if err := initializeProject(testContext(t), root, io.Discard); err != nil {
+			t.Fatalf("initialize no-Git project: %v", err)
+		}
+
+		const trackingNote = "generated-artifact tracking is unavailable outside a Git repository"
+		const aggregateOnlyNote = "skill tdd references unset vars: testCmd"
+		var direct bytes.Buffer
+		if err := runCheckDrift(testContext(t), root, &direct); err != nil {
+			t.Fatalf("direct no-Git drift: %v", err)
+		}
+		if got := direct.String(); !strings.Contains(got, trackingNote) || strings.Contains(got, aggregateOnlyNote) {
+			t.Fatalf("direct no-Git drift did not preserve tracking-only advisory boundary: %q", got)
+		}
+
+		var aggregate bytes.Buffer
+		if err := runRepoCheckSelection(testContext(t), root, &aggregate, []execution.StepID{repoStepDrift}, execution.ContinueOnFailure, true, productionRepoCheckDependencies()); err != nil {
+			t.Fatalf("aggregate no-Git drift projection: %v", err)
+		}
+		if got := aggregate.String(); !strings.Contains(got, trackingNote) || !strings.Contains(got, aggregateOnlyNote) {
+			t.Fatalf("aggregate no-Git repo check did not compose tracking and render advisories: %q", got)
 		}
 	})
 
