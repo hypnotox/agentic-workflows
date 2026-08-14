@@ -70,14 +70,18 @@ func (p *Project) CheckStagedDrift(ctx context.Context) ([]manifest.Drift, error
 	for _, file := range op.writeFiles() {
 		rendered[file.Path] = file
 	}
-	return checkStagedRenderedFiles(state.Lock, rendered, read, !p.nested)
+	indexed := map[string]bool{}
+	for _, file := range state.Tree.List() {
+		indexed[file.Path] = true
+	}
+	return checkStagedRenderedFiles(state.Lock, rendered, read, indexed, !p.nested)
 }
 
 // checkStagedRenderedFiles intentionally has no structural drift branches.
 // Missing, orphaned, unsynced, invalid-frontmatter, and other repo-only kinds
 // are outside the staged rendered-output comparison. Membership is the one
 // exception: every planned write and the separately written lock must be indexed.
-func checkStagedRenderedFiles(lock *manifest.Lock, rendered map[string]RenderedFile, read ProjectTreeReader, includeResident bool) ([]manifest.Drift, error) {
+func checkStagedRenderedFiles(lock *manifest.Lock, rendered map[string]RenderedFile, read ProjectTreeReader, indexed map[string]bool, includeResident bool) ([]manifest.Drift, error) {
 	required := map[string]bool{config.DirName + "/awf.lock": true}
 	for _, file := range rendered {
 		if !includeResident && resident.IsResidentPath(file.Path) {
@@ -85,14 +89,15 @@ func checkStagedRenderedFiles(lock *manifest.Lock, rendered map[string]RenderedF
 		}
 		required[file.Path] = true
 	}
-	indexed := map[string]bool{}
 	stagedBytes := map[string][]byte{}
 	for path := range required {
-		contents, present, err := read.ReadFile(path)
+		if !indexed[path] {
+			continue
+		}
+		contents, _, err := read.ReadFile(path)
 		if err != nil {
 			return nil, err
 		}
-		indexed[path] = present
 		stagedBytes[path] = contents
 	}
 	var drift []manifest.Drift

@@ -19,6 +19,14 @@ import (
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
+func snapshotMembership(tree *snapshot.Tree) map[string]bool {
+	indexed := map[string]bool{}
+	for _, file := range tree.List() {
+		indexed[file.Path] = true
+	}
+	return indexed
+}
+
 // invariant: rendering/sync-and-drift:ordinary-render-freshness (TestStagedDriftClassifiesFreshnessBeforeObservation)
 func TestStagedDriftClassifiesFreshnessBeforeObservation(t *testing.T) {
 	const path = "ordinary-output"
@@ -32,9 +40,9 @@ func TestStagedDriftClassifiesFreshnessBeforeObservation(t *testing.T) {
 		{Path: ".awf/awf.lock", Kind: "untracked", Detail: "generated artifact is absent from the Git index; run awf render, then git add -f .awf/awf.lock"},
 		{Path: path, Kind: "stale", Detail: "rendered output out of date; run awf render"},
 	}
-	assertStale := func(t *testing.T, reader ProjectTreeReader) {
+	assertStale := func(t *testing.T, reader ProjectTreeReader, indexed map[string]bool) {
 		t.Helper()
-		got, err := checkStagedRenderedFiles(lock, rendered, reader, true)
+		got, err := checkStagedRenderedFiles(lock, rendered, reader, indexed, true)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -47,14 +55,14 @@ func TestStagedDriftClassifiesFreshnessBeforeObservation(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		assertStale(t, snapshotTreeReader{tree: tree})
+		assertStale(t, snapshotTreeReader{tree: tree}, snapshotMembership(tree))
 	})
 	t.Run("before missing", func(t *testing.T) {
 		tree, err := snapshot.NewTree(nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		got, err := checkStagedRenderedFiles(lock, rendered, snapshotTreeReader{tree: tree}, true)
+		got, err := checkStagedRenderedFiles(lock, rendered, snapshotTreeReader{tree: tree}, snapshotMembership(tree), true)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -71,10 +79,33 @@ func TestStagedDriftClassifiesFreshnessBeforeObservation(t *testing.T) {
 		if err := os.Mkdir(filepath.Join(root, path), 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := checkStagedRenderedFiles(lock, rendered, filesystemProjectReader{root: root}, true); err == nil {
+		if _, err := checkStagedRenderedFiles(lock, rendered, filesystemProjectReader{root: root}, map[string]bool{path: true}, true); err == nil {
 			t.Fatal("staged membership erased reader failure")
 		}
 	})
+}
+
+func TestStagedDriftTreatsSymlinkAsIndexedMetadata(t *testing.T) {
+	const path = "generated-output"
+	tree, err := snapshot.NewTree([]snapshot.File{
+		{Path: config.DirName + "/awf.lock", Mode: snapshot.Regular, Bytes: []byte("lock")},
+		{Path: path, Mode: snapshot.Symlink, Bytes: []byte("target")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock := &manifest.Lock{Files: map[string]manifest.Entry{path: {}}}
+	rendered := map[string]RenderedFile{
+		path: {Path: path, Content: "generated", TemplateID: "template", Policy: OutputPolicy{Regenerate: true}},
+	}
+	got, err := checkStagedRenderedFiles(lock, rendered, snapshotTreeReader{tree: tree}, snapshotMembership(tree), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []manifest.Drift{{Path: path, Kind: "hand-edited", Detail: "staged output differs from the regenerated file; run awf render to restore awf-owned regions"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("staged symlink drift = %#v, want %#v", got, want)
+	}
 }
 
 // invariant: config/configuration:template-source-root (TestCheckStagedDriftUsesIndexedTemplateSourceMappings)
@@ -311,7 +342,7 @@ func TestStagedDriftRenderedOutputInvariant(t *testing.T) {
 		"bad-attribution.md":      {Path: "bad-attribution.md", Content: "unattributed", TemplateHash: "template", ConfigHash: "config"},
 	}
 
-	got, err := checkStagedRenderedFiles(lock, rendered, snapshotTreeReader{tree: tree}, false)
+	got, err := checkStagedRenderedFiles(lock, rendered, snapshotTreeReader{tree: tree}, snapshotMembership(tree), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -337,11 +368,11 @@ func TestStagedDriftRenderedOutputInvariant(t *testing.T) {
 	faultLock := &manifest.Lock{Files: map[string]manifest.Entry{"fault": {OutputHash: manifest.Hash(nil)}}}
 	faultReader := filesystemProjectReader{root: root}
 	faultRendered := map[string]RenderedFile{"fault": {Path: "fault"}}
-	if _, err := checkStagedRenderedFiles(faultLock, faultRendered, faultReader, true); err == nil {
+	if _, err := checkStagedRenderedFiles(faultLock, faultRendered, faultReader, map[string]bool{"fault": true}, true); err == nil {
 		t.Fatal("staged comparison erased an ordinary output read fault")
 	}
 	faultRendered["fault"] = RenderedFile{Path: "fault", Policy: OutputPolicy{Regenerate: true}}
-	if _, err := checkStagedRenderedFiles(faultLock, faultRendered, faultReader, true); err == nil {
+	if _, err := checkStagedRenderedFiles(faultLock, faultRendered, faultReader, map[string]bool{"fault": true}, true); err == nil {
 		t.Fatal("staged comparison erased a regenerated output read fault")
 	}
 
