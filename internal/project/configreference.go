@@ -34,7 +34,7 @@ func potentialVarConsumers(cat *catalog.Catalog) (map[string][]string, error) {
 	byVar := map[string]map[string]bool{}
 	add := func(tid string) error {
 		varSet := map[string]bool{}
-		if err := collectVars(templates.FS, tid, varSet); err != nil { // coverage-ignore: every catalog name has a backing embedded template
+		if err := collectVars(templates.FS, tid, varSet); err != nil {
 			return err
 		}
 		for v := range varSet {
@@ -48,7 +48,7 @@ func potentialVarConsumers(cat *catalog.Catalog) (map[string][]string, error) {
 	for _, kind := range []string{"skills", "agents", "docs"} {
 		d, _ := descriptorByPlural(kind)
 		for _, name := range d.poolNames(cat) {
-			if err := add(d.templateID(cat, name)); err != nil { // coverage-ignore: see add
+			if err := add(d.templateID(cat, name)); err != nil {
 				return nil, err
 			}
 		}
@@ -298,7 +298,7 @@ func (p *Project) configReferenceRows(files []RenderedFile) (ConfigReference, er
 
 	rendered := renderedVarConsumers(files)
 	potential, err := potentialVarConsumers(p.catalog())
-	if err != nil { // coverage-ignore: PotentialVarConsumers reads only embedded templates
+	if err != nil {
 		return ConfigReference{}, err
 	}
 	for _, v := range configspec.VarEntries() {

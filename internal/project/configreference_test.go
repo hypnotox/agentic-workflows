@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/configspec"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
@@ -21,6 +22,19 @@ vars:
   gateCmd: make gate
   checkCmd:
 `
+
+func TestConfigReferenceRowsPropagatesInjectedTemplateReadError(t *testing.T) {
+	root := scaffold(t, crefYAML)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.cat.Skills["missing-template"] = catalog.SkillSpec{}
+	_, err = p.configReferenceRows(nil)
+	if err == nil || !strings.Contains(err.Error(), "skills/missing-template/SKILL.md.tmpl") {
+		t.Fatalf("config reference template error = %v", err)
+	}
+}
 
 // invariant: config/configspec-and-reference:live-state-projection-explicit (TestLiveStateAuthorityRejectsOmissionAndWrongClass)
 func TestTemplateSourceRootCurrentValue(t *testing.T) {
