@@ -414,7 +414,7 @@ func TestRunnerPartOverrideClaimed(t *testing.T) {
 	if !strings.Contains(string(wrapper), "custom-awf") {
 		t.Errorf("runner-body part override not applied:\n%s", wrapper)
 	}
-	drift, err := p.Check(testContext(t))
+	drift, err := checkProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -516,7 +516,7 @@ func TestInitProducesCleanSyncableProject(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	if drift, err := p.Check(testContext(t)); err != nil || len(drift) != 0 {
+	if drift, err := checkProject(p, testContext(t)); err != nil || len(drift) != 0 {
 		t.Fatalf("check = %#v, %v", drift, err)
 	}
 }

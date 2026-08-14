@@ -73,13 +73,13 @@ func TestDomainDocStaleOnTopicAdd(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
-	if drift, _ := p.Check(testContext(t)); len(drift) != 0 {
+	if drift, _ := checkProject(p, testContext(t)); len(drift) != 0 {
 		t.Fatalf("expected clean after sync, got: %#v", drift)
 	}
 	// Add a NEW topic to the rendering domain without re-syncing: the domain
 	// doc's topic navigation now differs from the on-disk copy.
 	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
-	drift, err := p.Check(testContext(t))
+	drift, err := checkProject(p, testContext(t))
 	if err != nil {
 		t.Fatalf("Check: %v", err)
 	}
@@ -98,7 +98,7 @@ func TestDomainDocMissingWhenDeleted(t *testing.T) {
 	if err := os.Remove(filepath.Join(root, "docs", "domains", "rendering.md")); err != nil {
 		t.Fatal(err)
 	}
-	drift, _ := p.Check(testContext(t))
+	drift, _ := checkProject(p, testContext(t))
 	if !hasDrift(drift, "docs/domains/rendering.md", "missing") {
 		t.Errorf("expected rendering.md missing after delete, got: %#v", drift)
 	}
@@ -119,7 +119,7 @@ func TestDomainDocOrphanedWhenDomainRemoved(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	drift, _ := p2.Check(testContext(t))
+	drift, _ := checkProject(p2, testContext(t))
 	if !hasDrift(drift, "docs/domains/rendering.md", "orphaned") {
 		t.Errorf("expected rendering.md orphaned after domain removal, got: %#v", drift)
 	}
@@ -156,7 +156,7 @@ func TestDomainPartOrphan(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
-	drift, err := p.Check(testContext(t))
+	drift, err := checkProject(p, testContext(t))
 	if err != nil {
 		t.Fatalf("Check: %v", err)
 	}

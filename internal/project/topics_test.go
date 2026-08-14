@@ -315,7 +315,7 @@ func TestTopicRenderLifecycle(t *testing.T) {
 	}
 	// Metadata and part changes are both stale until sync.
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/metadata/rendering/zeta.yaml"), "title: Zeta changed\nsummary: Current Zeta contracts.\npaths: [\"internal/**\"]\n")
-	drift, err := p.Check(testContext(t))
+	drift, err := checkProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -326,7 +326,7 @@ func TestTopicRenderLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/parts/rendering/zeta/current-state.md"), "Changed.\n\n## Claims\n")
-	drift, err = p.Check(testContext(t))
+	drift, err = checkProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -413,7 +413,7 @@ func TestTopicCorpusRefusalAndSweep(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.Check(testContext(t))
+	drift, err := checkProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}

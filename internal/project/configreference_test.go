@@ -336,7 +336,7 @@ func TestConfigReferenceRegenDrift(t *testing.T) {
 	}
 	assertDrift := func(kind string) {
 		t.Helper()
-		drift, err := p.Check(testContext(t))
+		drift, err := checkProject(p, testContext(t))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -437,7 +437,7 @@ func TestConfigReferencePartReadFault(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, ".awf/parts/config-reference/intro.md"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.Check(testContext(t)); err == nil {
+	if _, err := checkProject(p, testContext(t)); err == nil {
 		t.Error("Check should surface the part-read fault")
 	}
 	if err := p.Sync(); err == nil {

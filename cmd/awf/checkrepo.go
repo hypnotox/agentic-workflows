@@ -81,13 +81,6 @@ func productionRepoCheckDependencies() repoCheckDependencies {
 			}, catalog.Standard, awfgit.ProjectResidentRoot, repo).Open(ctx, root)
 		},
 		checkReport: func(ctx context.Context, p *project.Project) (project.CheckReport, error) {
-			// A composed project always has a root. Keep the exported compatibility
-			// projection as the defensive invalid-project fallback while normal
-			// drift consumes the complete report and its tracking advisory.
-			if p.Root == "" { // coverage-ignore: Loader constructs every production Project with its selected root
-				drift, err := p.Check(ctx)
-				return project.CheckReport{Drift: drift}, err
-			}
 			return p.CheckReport(ctx)
 		},
 		currentState: func(ctx context.Context, p *project.Project) (project.CurrentStateReport, error) {

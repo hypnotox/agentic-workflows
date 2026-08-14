@@ -14,7 +14,6 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
-	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
@@ -164,7 +163,7 @@ func TestCheckGlossaryValidatesDomains(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	full, err := p.Check(testContext(t))
+	full, err := checkProject(p, testContext(t))
 	if err != nil {
 		t.Fatalf("Check: %v", err)
 	}
@@ -593,7 +592,7 @@ func TestCheckReportsPendingADROnIntegrationBranch(t *testing.T) {
 	// discovered one integration attempt at a time.
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/still-pending.md"), pendingADRFixture("still-pending"))
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/also-pending.md"), pendingADRFixture("also-pending"))
-	drift, err := p.Check(testContext(t))
+	drift, err := checkProject(p, testContext(t))
 	if err != nil {
 		t.Fatalf("Check: %v", err)
 	}
@@ -834,10 +833,45 @@ func TestCheckReportRequiresGeneratedArtifactsInIndex(t *testing.T) {
 	if _, _, _, err := p.syncReport(testContext(t), &InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatal(err)
 	}
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	excludes := filepath.Join(home, "global-ignore")
+	if err := os.WriteFile(excludes, []byte("AGENTS.md\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, ".gitconfig"), []byte("[core]\n\texcludesfile = "+excludes+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	working, err := p.repo.WorkingPaths(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slices.Contains(working, "AGENTS.md") {
+		t.Fatalf("global ignore did not hide untracked generated output: %v", working)
+	}
+	report, err := p.CheckReport(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.ContainsFunc(report.Drift, func(finding manifest.Drift) bool {
+		return finding.Path == "AGENTS.md" && finding.Kind == "untracked"
+	}) {
+		t.Fatalf("globally ignored generated output was not reported: %#v", report.Drift)
+	}
+
 	gitfixture.AddAll(t, repo)
+	report, err = p.CheckReport(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slices.ContainsFunc(report.Drift, func(finding manifest.Drift) bool {
+		return finding.Path == "AGENTS.md" && finding.Kind == "untracked"
+	}) {
+		t.Fatalf("tracked ignored generated output reported untracked: %#v", report.Drift)
+	}
 	gitfixture.StageRemoval(t, repo, "AGENTS.md", ".awf/awf.lock")
 
-	report, err := p.CheckReport(testContext(t))
+	report, err = p.CheckReport(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -889,22 +923,26 @@ func TestCheckGeneratedTrackingNoGitAndNestedResidentExclusion(t *testing.T) {
 	t.Run("nested resident output", func(t *testing.T) {
 		fixture := gitfixture.InitRepo(t)
 		root := filepath.Join(fixture.Root(), "nested")
-		gitfixture.Stage(t, fixture, map[string]string{
-			"nested/.awf/awf.lock": "lock\n",
-			"nested/tracked.md":    "tracked\n",
-		})
-		repo, _, err := awfgit.OpenContaining(root)
+		testsupport.WriteAwfConfig(t, root, withTestGateCmd("prefix: example\nintegrationBranch: main\nvars: {}\n"))
+		p, err := Open(testContext(t), root)
 		if err != nil {
 			t.Fatal(err)
 		}
-		p := &Project{Root: root, nested: true, repo: repo}
-		op := &OutputPlan{Nodes: []OutputNode{
-			{file: &RenderedFile{Path: "tracked.md"}},
-			{file: &RenderedFile{Path: ".awf/efforts/.gitignore"}},
-		}}
-		drift, _, err := p.checkGeneratedTracking(testContext(t), op)
-		if err != nil || len(drift) != 0 {
-			t.Fatalf("nested tracking = %#v, %v", drift, err)
+		if !p.nested {
+			t.Fatal("Loader.Open did not preserve the containing-repository prefix")
+		}
+		if _, _, _, err := p.syncReport(testContext(t), &InitAuthority{InitializedWithVersion: Version}); err != nil {
+			t.Fatal(err)
+		}
+		gitfixture.AddAll(t, fixture)
+		report, err := p.CheckReport(testContext(t))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, finding := range report.Drift {
+			if finding.Kind == "untracked" && resident.IsResidentPath(finding.Path) {
+				t.Fatalf("nested resident output reported untracked: %#v", report.Drift)
+			}
 		}
 	})
 }
@@ -1070,7 +1108,7 @@ func TestCheckProjectsPlanDiagnostics(t *testing.T) {
 	}
 	testsupport.WriteFile(t, filepath.Join(root, "docs/plans/2026-07-12-broken.md"),
 		"---\nstatus: [unterminated\n---\n# Plan: Broken\n")
-	drift, err := p.Check(testContext(t))
+	drift, err := checkProject(p, testContext(t))
 	if err != nil {
 		t.Fatalf("Check: %v", err)
 	}

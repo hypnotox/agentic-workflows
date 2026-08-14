@@ -246,7 +246,7 @@ func TestCheckFlagsOrphanedSingletonParts(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.Check(testContext(t))
+	drift, err := checkProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -317,7 +317,7 @@ func TestScopesEditReflagsReferencingArtifacts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p2.Check(testContext(t))
+	drift, err := checkProject(p2, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -363,7 +363,7 @@ func TestScopesEditReflagsPlaceholderPart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p2.Check(testContext(t))
+	drift, err := checkProject(p2, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -421,13 +421,13 @@ func TestCheckSplitsMissingVsCorrupt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.Check(testContext(t)); err == nil || strings.Contains(err.Error(), "no lock") || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
+	if _, err := checkProject(p, testContext(t)); err == nil || strings.Contains(err.Error(), "no lock") || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
 		t.Fatalf("corrupt lock misreported: %v", err)
 	}
 	if err := os.Remove(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.Check(testContext(t)); err == nil || !strings.Contains(err.Error(), "no lock (run awf render)") {
+	if _, err := checkProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "no lock (run awf render)") {
 		t.Fatalf("missing lock lost its message: %v", err)
 	}
 }
@@ -488,7 +488,7 @@ func TestCommentWrappedScopePlaceholderDoesNotFold(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p2.Check(testContext(t))
+	drift, err := checkProject(p2, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -507,7 +507,7 @@ func TestTopicMetadataAndPartBothDriveDrift(t *testing.T) {
 		t.Fatal(err)
 	}
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/metadata/rendering/contracts.yaml"), "title: Changed\nsummary: Current Contracts contracts.\npaths: [\"internal/**\"]\n")
-	drift, err := p.Check(testContext(t))
+	drift, err := checkProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -49,3 +49,4 @@ Tracked files remain valid when a later ignore rule matches them because ignore 
 - 2026-08-14: Accepted; content-sha256: 0ad8861284941a9cec14426f00b4eb59d055a05c06d50dda46470c758536b0fb
 - 2026-08-14: Implementing; content-sha256: 0ad8861284941a9cec14426f00b4eb59d055a05c06d50dda46470c758536b0fb
 - 2026-08-14: Applied; operations: update `rendering/project-output-plan:check-report-single-plan`, update `tooling/cli:repo-check-capability-plan`
+- 2026-08-14: Reapplied; operations: update `rendering/project-output-plan:check-report-single-plan`

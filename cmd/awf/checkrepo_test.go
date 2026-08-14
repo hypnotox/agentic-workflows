@@ -402,6 +402,15 @@ func TestAggregateCheckAgentGuideSizeWarning(t *testing.T) {
 	if got, want := tracking.String(), "status: warnings\n\nsummary:\n  findings: 0 errors, 1 warnings\n\nfindings:\n  warnings:\n    advisory | tracking unavailable\n"; got != want {
 		t.Fatalf("direct tracking advisory = %q, want %q", got, want)
 	}
+
+	deps = repoCheckTestDependencies(t, cfg, p, project.CheckReport{Notes: []string{"aggregate-only"}, TrackingNotes: []string{"tracking unavailable"}}, project.CurrentStateReport{}, nil, &repoCheckCounters{})
+	var aggregate bytes.Buffer
+	if err := runRepoCheckSelection(context.Background(), t.TempDir(), &aggregate, []execution.StepID{repoStepDrift}, execution.ContinueOnFailure, true, deps); err != nil {
+		t.Fatalf("aggregate tracking advisory: %v", err)
+	}
+	if got, want := aggregate.String(), "status: warnings\n\nsummary:\n  findings: 0 errors, 2 warnings\n\nfindings:\n  warnings:\n    advisory | tracking unavailable\n    advisory | aggregate-only\n"; got != want {
+		t.Fatalf("aggregate tracking advisory = %q, want %q", got, want)
+	}
 }
 
 func formattedFunctionBody(t *testing.T, path, name string) string {

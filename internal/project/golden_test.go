@@ -141,7 +141,7 @@ func TestEndToEndGolden(t *testing.T) {
 	}
 
 	// A fresh check on the synced tree is clean.
-	drift, err := p.Check(testContext(t))
+	drift, err := checkProject(p, testContext(t))
 	if err != nil || len(drift) != 0 {
 		t.Errorf("expected clean check, got drift=%#v err=%v", drift, err)
 	}

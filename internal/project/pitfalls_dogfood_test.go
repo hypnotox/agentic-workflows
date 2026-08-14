@@ -250,7 +250,7 @@ func outputNodeAt(t *testing.T, plan *OutputPlan, path string) OutputNode {
 
 func assertPitfallDrift(t *testing.T, p *Project, path, kind string) {
 	t.Helper()
-	drift, err := p.Check(testContext(t))
+	drift, err := checkProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}

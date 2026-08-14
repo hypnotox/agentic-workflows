@@ -22,7 +22,7 @@ func commandWiringErrs(t *testing.T, configYAML string) (syncErr, checkErr error
 		t.Fatalf("init must stay exempt from command-wiring validation, got: %v", err)
 	}
 	_, _, _, syncErr = p.SyncReport(testContext(t))
-	_, checkErr = p.Check(testContext(t))
+	_, checkErr = checkProject(p, testContext(t))
 	return syncErr, checkErr
 }
 

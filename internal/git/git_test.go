@@ -1231,12 +1231,13 @@ func TestIndexPaths(t *testing.T) {
 		t.Fatalf("tracked ignored IndexPaths = %v, %v", paths, err)
 	}
 
+	gitfixture.Stage(t, repo, map[string]string{"nested/inside.txt": "inside\n"})
 	nested := gitRepo(t, filepath.Join(dir, "nested"))
 	if !nested.IsNested() {
 		t.Fatal("nested handle IsNested = false")
 	}
-	if paths, err := nested.IndexPaths(testsupport.Context(t)); err != nil || len(paths) != 0 {
-		t.Fatalf("nested IndexPaths = %v, %v", paths, err)
+	if paths, err := nested.IndexPaths(testsupport.Context(t)); err != nil || !slices.Equal(paths, []string{"inside.txt"}) {
+		t.Fatalf("nested IndexPaths = %v, %v, want rerooted inside.txt only", paths, err)
 	}
 	ctx, cancel := context.WithCancel(testsupport.Context(t))
 	cancel()

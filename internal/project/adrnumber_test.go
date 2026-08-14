@@ -426,7 +426,7 @@ func TestNumberPendingADRsIgnoresUnrelatedDrift(t *testing.T) {
 		t.Fatal(err)
 	}
 	testsupport.WriteFile(t, rendered, string(body)+"\nhand-edited drift\n")
-	drift, err := p.Check(testContext(t))
+	drift, err := checkProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}

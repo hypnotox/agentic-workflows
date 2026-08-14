@@ -45,13 +45,13 @@ func TestTemporaryAdopterRenderDriftLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reopen fixture: %v", err)
 	}
-	if drift, err := p.Check(testContext(t)); err != nil || len(drift) != 0 {
+	if drift, err := checkProject(p, testContext(t)); err != nil || len(drift) != 0 {
 		t.Fatalf("initial check: drift=%v err=%v", drift, err)
 	}
 	if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte("tampered\n"), 0o644); err != nil {
 		t.Fatalf("tamper AGENTS.md: %v", err)
 	}
-	drift, err := p.Check(testContext(t))
+	drift, err := checkProject(p, testContext(t))
 	if err != nil {
 		t.Fatalf("check tampered fixture: %v", err)
 	}
@@ -61,7 +61,7 @@ func TestTemporaryAdopterRenderDriftLifecycle(t *testing.T) {
 	if _, _, _, err := p.SyncReport(testContext(t)); err != nil {
 		t.Fatalf("repair fixture: %v", err)
 	}
-	if drift, err := p.Check(testContext(t)); err != nil || len(drift) != 0 {
+	if drift, err := checkProject(p, testContext(t)); err != nil || len(drift) != 0 {
 		t.Fatalf("final check: drift=%v err=%v", drift, err)
 	}
 }

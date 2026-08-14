@@ -799,7 +799,7 @@ func TestRunCheckErrorPaths(t *testing.T) {
 		}
 	})
 	t.Run("check-error-malformed-adr", func(t *testing.T) {
-		// A malformed ADR makes p.Check() (INDEX.md generation) error.
+		// A malformed ADR makes Project.CheckReport (INDEX.md generation) error.
 		root := scaffoldProject(t)
 		adrDir := filepath.Join(root, "docs", "decisions")
 		if err := os.MkdirAll(adrDir, 0o755); err != nil {

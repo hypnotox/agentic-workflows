@@ -8,6 +8,10 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Features
+
+- Repository drift checks now require every generated output and `.awf/awf.lock` to be present in Git's index, report ignored untracked artifacts explicitly, retain tracked files that later match ignore rules, exclude nested-adopter resident outputs, and report tracking as unavailable without disabling filesystem drift checks outside Git.
+
 ## [0.37.0] - 2026-08-13
 
 ### Features

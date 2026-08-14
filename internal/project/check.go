@@ -17,7 +17,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
-	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
@@ -473,12 +472,6 @@ func finishCheckReport(drift, planDrift []manifest.Drift, contextNotes, notes []
 	return CheckReport{Drift: append(drift, planDrift...), Notes: notes, PlanNotes: contextNotes}, nil
 }
 
-// Check is the compatibility projection of CheckReport's blocking drift.
-func (p *Project) Check(ctx context.Context) ([]manifest.Drift, error) {
-	report, err := p.CheckReport(ctx)
-	return report.Drift, err
-}
-
 func (p *Project) checkWithTrackingState(ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool, plans []plan.Plan, op *OutputPlan) ([]manifest.Drift, []string, error) {
 	trackingDrift, trackingNotes, err := p.checkGeneratedTracking(ctx, op)
 	if err != nil {
@@ -546,13 +539,9 @@ func (p *Project) checkWithTrackingState(ctx context.Context, corpus adr.Corpus,
 // separately written lock against metadata-only index membership. Resident
 // outputs are outside a nested adopter's index authority and remain excluded.
 func (p *Project) checkGeneratedTracking(ctx context.Context, op *OutputPlan) ([]manifest.Drift, []string, error) {
-	repo, err := p.gitRepo()
-	if err != nil {
-		if errors.Is(err, awfgit.ErrNotARepository) {
-			return nil, []string{"generated-artifact tracking is unavailable outside a Git repository"}, nil
-		}
-		// gitRepo currently returns only ErrNotARepository for a nil handle.
-		return nil, nil, err // coverage-ignore: retained fail-closed for a future handle state
+	repo := p.repo
+	if repo == nil {
+		return nil, []string{"generated-artifact tracking is unavailable outside a Git repository"}, nil
 	}
 	indexed, err := repo.IndexPaths(ctx)
 	if err != nil {

@@ -334,13 +334,13 @@ func TestCheckChildrenErrorPaths(t *testing.T) {
 
 	t.Run("drift render error", func(t *testing.T) {
 		// A data value spelling the no-value token makes the in-memory re-render
-		// fail, so p.Check() returns an error rather than a drift list.
+		// fail, so Project.CheckReport returns an error rather than a drift list.
 		root := t.TempDir()
 		testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {}\n")
 		testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "tdd.yaml"),
 			"data:\n  testSurfaces:\n    - {name: \"<no value>\", kind: k, location: l}\n")
 		if err := runCheckDrift(ctx, root, io.Discard); err == nil {
-			t.Fatal("expected check repo drift to surface the render error from p.Check()")
+			t.Fatal("expected check repo drift to surface the render error from Project.CheckReport")
 		}
 	})
 

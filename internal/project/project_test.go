@@ -426,7 +426,7 @@ func TestCheckCleanAfterSync(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.Check(testContext(t))
+	drift, err := checkProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -442,7 +442,7 @@ func TestCheckDetectsHandEdit(t *testing.T) {
 	_ = p.Sync()
 	skill := filepath.Join(root, ".claude/skills/example-tdd/SKILL.md")
 	_ = os.WriteFile(skill, []byte("hand edited\n"), 0o644)
-	drift, _ := p.Check(testContext(t))
+	drift, _ := checkProject(p, testContext(t))
 	if len(drift) == 0 || drift[0].Kind != "hand-edited" {
 		t.Errorf("expected hand-edited drift, got %#v", drift)
 	}
@@ -470,7 +470,7 @@ func TestCheckStaleTakesPrecedence(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, skillPath), []byte("hand edited\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.Check(testContext(t))
+	drift, err := checkProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1612,7 +1612,7 @@ func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
 	if entryPos < 0 || entryPos < inflightPos {
 		t.Errorf("INDEX.md missing the ADR entry under In flight:\n%s", index)
 	}
-	if drift, err := p.Check(testContext(t)); err != nil || len(drift) != 0 {
+	if drift, err := checkProject(p, testContext(t)); err != nil || len(drift) != 0 {
 		t.Fatalf("expected clean check after sync, got drift=%#v err=%v", drift, err)
 	}
 
@@ -1620,7 +1620,7 @@ func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
 	// on-disk INDEX.md is now stale.
 	adr2 := strings.Replace(adrBody, "status: Accepted", "status: Implemented", 1)
 	testsupport.WriteFile(t, filepath.Join(adrDir, "0001-first.md"), adr2)
-	drift, err := p.Check(testContext(t))
+	drift, err := checkProject(p, testContext(t))
 	if err != nil {
 		t.Fatalf("Check: %v", err)
 	}
@@ -1652,7 +1652,7 @@ func TestSyncRendersPlaceholderIndexMDWithoutADRs(t *testing.T) {
 	if !strings.Contains(string(got), "No decisions recorded yet") {
 		t.Errorf("expected placeholder index, got:\n%s", got)
 	}
-	if drift, err := p.Check(testContext(t)); err != nil || len(drift) != 0 {
+	if drift, err := checkProject(p, testContext(t)); err != nil || len(drift) != 0 {
 		t.Errorf("expected clean check with no ADRs, got drift=%#v err=%v", drift, err)
 	}
 }

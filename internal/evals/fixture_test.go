@@ -1,6 +1,7 @@
 package evals
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"sort"
@@ -17,6 +18,11 @@ import (
 // Rendered skill dirs are ".claude/skills/<evalPrefix>-<name>/SKILL.md"; agents
 // are unprefixed at ".claude/agents/<name>.md".
 const evalPrefix = "example"
+
+func checkProject(p *project.Project, ctx context.Context) ([]manifest.Drift, error) {
+	report, err := p.CheckReport(ctx)
+	return report.Drift, err
+}
 
 // loadCatalog loads the embedded catalog or fails the test.
 func loadCatalog(t *testing.T) *catalog.Catalog {
@@ -135,7 +141,7 @@ func TestFullCatalogCoverage(t *testing.T) {
 					t.Errorf("catalog doc %q not rendered at %s: %v", name, path, err)
 				}
 			}
-			if drift, err := p.Check(testsupport.Context(t)); err != nil || len(drift) != 0 {
+			if drift, err := checkProject(p, testsupport.Context(t)); err != nil || len(drift) != 0 {
 				t.Fatalf("initial check: drift=%v err=%v", drift, err)
 			}
 
@@ -143,7 +149,7 @@ func TestFullCatalogCoverage(t *testing.T) {
 			if err := os.Remove(filepath.Join(root, filepath.FromSlash(missing))); err != nil {
 				t.Fatalf("remove %s: %v", missing, err)
 			}
-			drift, err := p.Check(testsupport.Context(t))
+			drift, err := checkProject(p, testsupport.Context(t))
 			if err != nil {
 				t.Fatalf("check missing output: %v", err)
 			}
@@ -153,14 +159,14 @@ func TestFullCatalogCoverage(t *testing.T) {
 			if _, _, _, err := p.SyncReport(testsupport.Context(t)); err != nil {
 				t.Fatalf("repair missing output: %v", err)
 			}
-			if drift, err := p.Check(testsupport.Context(t)); err != nil || len(drift) != 0 {
+			if drift, err := checkProject(p, testsupport.Context(t)); err != nil || len(drift) != 0 {
 				t.Fatalf("check repaired missing output: drift=%v err=%v", drift, err)
 			}
 
 			if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte("tampered\n"), 0o644); err != nil {
 				t.Fatalf("tamper AGENTS.md: %v", err)
 			}
-			drift, err = p.Check(testsupport.Context(t))
+			drift, err = checkProject(p, testsupport.Context(t))
 			if err != nil {
 				t.Fatalf("check stale output: %v", err)
 			}
@@ -170,7 +176,7 @@ func TestFullCatalogCoverage(t *testing.T) {
 			if _, _, _, err := p.SyncReport(testsupport.Context(t)); err != nil {
 				t.Fatalf("repair stale output: %v", err)
 			}
-			if drift, err := p.Check(testsupport.Context(t)); err != nil || len(drift) != 0 {
+			if drift, err := checkProject(p, testsupport.Context(t)); err != nil || len(drift) != 0 {
 				t.Fatalf("final check: drift=%v err=%v", drift, err)
 			}
 

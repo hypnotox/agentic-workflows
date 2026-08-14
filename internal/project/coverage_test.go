@@ -313,7 +313,7 @@ func TestCheckFailsWithoutLock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.Check(testContext(t)); err == nil {
+	if _, err := checkProject(p, testContext(t)); err == nil {
 		t.Fatal("expected Check to fail when no lock exists")
 	}
 }
@@ -329,7 +329,7 @@ func TestCheckSurfacesRenderError(t *testing.T) {
 	}
 	// Corrupt a sidecar so the post-lock RenderAll inside Check fails.
 	corruptSidecar(t, root, "skills/tdd.yaml")
-	if _, err := p.Check(testContext(t)); err == nil {
+	if _, err := checkProject(p, testContext(t)); err == nil {
 		t.Fatal("expected Check to surface the RenderAll error")
 	}
 }
@@ -349,7 +349,7 @@ func TestCheckFlagsFileWhereKindDirBelongs(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".awf", "domains"), []byte("not a dir\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.Check(testContext(t))
+	drift, err := checkProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -407,7 +407,7 @@ func TestCheckReportsMissingRenderedFile(t *testing.T) {
 	if err := os.Remove(filepath.Join(root, ".claude", "skills", "example-tdd", "SKILL.md")); err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.Check(testContext(t))
+	drift, err := checkProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -434,7 +434,7 @@ func TestCheckFailsOnMalformedADRIndex(t *testing.T) {
 	// Introduce a malformed ADR; Check regenerates the index and fails.
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-bad.md"),
 		"---\nstatus: [unterminated\n---\n# ADR-0001: Bad\n")
-	if _, err := p.Check(testContext(t)); err == nil {
+	if _, err := checkProject(p, testContext(t)); err == nil {
 		t.Fatal("expected Check to fail regenerating the index from a malformed ADR")
 	}
 }
@@ -455,7 +455,7 @@ func TestCheckReportsMissingActiveMD(t *testing.T) {
 	if err := os.Remove(filepath.Join(root, "docs", "decisions", "INDEX.md")); err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.Check(testContext(t))
+	drift, err := checkProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -490,7 +490,7 @@ func TestCheckDetectsDeadReference(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.Check(testContext(t))
+	drift, err := checkProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -523,7 +523,7 @@ func TestCheckDeadRefsAbsoluteAndEscapingTargets(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.Check(testContext(t))
+	drift, err := checkProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
