@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-14
 adrs: [introduce-core-and-full-workflow-profiles]
-status: Proposed
+status: Implemented
 ---
 # Plan: Core and Full workflow profiles
 

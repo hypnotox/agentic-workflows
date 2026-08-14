@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-0278: Introduce Core and Full workflow profiles](0278-introduce-core-and-full-workflow-profiles.md) (Implementing)
+_No decisions are in flight._
 
 ## History
 
@@ -283,3 +283,4 @@
 - [ADR-0275: Select Gate Tests From Staged Changes](0275-select-gate-tests-from-staged-changes.md) (Implemented)
 - [ADR-0276: Select Gate Test Suites Independently](0276-select-gate-test-suites-independently.md) (Implemented)
 - [ADR-0277: Require Git Tracking for Generated Artifacts](0277-require-git-tracking-for-generated-artifacts.md) (Implemented)
+- [ADR-0278: Introduce Core and Full workflow profiles](0278-introduce-core-and-full-workflow-profiles.md) (Implemented)
