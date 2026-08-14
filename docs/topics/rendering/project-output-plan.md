@@ -58,7 +58,7 @@ Backing: test
 
 Project.CheckReport constructs one operation-owned OutputPlan after deriving its current state and parsed plans, threads that same plan to drift, tracking, and advisory projections, and never regenerates domain documents or the config reference inside either projection. Tracking derives every output-plan write plus the separately written `.awf/awf.lock`, compares them with the Git seam's ignore-independent index metadata, and excludes resident-root outputs only for a nested adopter. AdvisoryNotes, OutputPlan, and other direct project operations continue to derive their own operation-scoped inputs without a persistent cache; the redundant drift-only Check projection is retired so every repository-check consumer retains tracking advisories.
 Origin: ADR-0223
-Revised-by: ADR-require-git-tracking-for-generated-artifacts
+Revised-by: ADR-0277
 Backing: test
 
 ### `invariant: output-policy-explicit`

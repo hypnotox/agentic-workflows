@@ -114,7 +114,7 @@ Backing: test
 
 The direct drift, state, prose, and memory repository checks and their aggregate select from one closed capability plan. One operation loads working config once, conditionally opens one Project from that prepared config, derives one complete CheckReport and one working CurrentStateReport when selected, and captures one shared stage-0 index whenever either always-on scanner is selected; scanner-only selections acquire no unrelated capability. Repository drift presents its dedicated non-failing generated-artifact tracking-unavailable note both directly and in the aggregate, while aggregate-only render advisories remain absent from direct drift. The aggregate preserves version and advisory order, executes selected steps in capability-plan order, and presents their findings in deterministic `errors` then `warnings` categories with source order preserved within each category rather than across categories. It continues after action errors and returns the first, while any preparation failure executes no step; the three working, current-state, and index universes never substitute for one another.
 Origin: ADR-0223
-Revised-by: ADR-0234, ADR-0253, ADR-require-git-tracking-for-generated-artifacts
+Revised-by: ADR-0234, ADR-0253, ADR-0277
 Backing: test
 
 ### `invariant: single-os-exit`

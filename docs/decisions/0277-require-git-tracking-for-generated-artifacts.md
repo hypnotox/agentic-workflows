@@ -4,7 +4,7 @@ slug: require-git-tracking-for-generated-artifacts
 status: Implementing
 date: 2026-08-14
 ---
-# ADR-require-git-tracking-for-generated-artifacts: Require Git Tracking for Generated Artifacts
+# ADR-0277: Require Git Tracking for Generated Artifacts
 
 
 ## Context

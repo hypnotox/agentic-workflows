@@ -94,14 +94,14 @@ Backing: test
 ### `invariant: generated-artifacts-tracked`
 
 Repository and staged drift require every output-plan write and `.awf/awf.lock` in the Git index, independently of ignore rules. An absent indexed path reports blocking `untracked` drift before `missing`; tracked files remain valid when ignored. Repository drift reports a non-failing tracking-unavailable advisory outside Git, while nested adopters exclude resident outputs outside their subtree index authority.
-Origin: ADR-require-git-tracking-for-generated-artifacts
+Origin: ADR-0277
 Backing: test
 
 ### `invariant: staged-drift-rendered-output`
 
 `awf check staged drift` renders from the staged config and compares staged generated outputs for index membership, stale content, and hand edits. An absent staged output or lock reports blocking `untracked` drift without consulting working-tree bytes; an invalid staged lock remains an operational failure.
 Origin: ADR-0210
-Revised-by: ADR-require-git-tracking-for-generated-artifacts
+Revised-by: ADR-0277
 Backing: test
 
 ### `invariant: sync-always-writes-active-md`
