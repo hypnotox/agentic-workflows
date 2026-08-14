@@ -787,11 +787,11 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
   pi.registerTool({
     name: "subagent_review",
     label: "Review Subagent",
-    description: "Run one governed report-only ADR, plan, or code reviewer in fresh context. Omit model for configured or inherited routing; use an exact tier provider/model-id only for deliberate override. Omission is the only default form.",
-    promptSnippet: "Delegate governed ADR, plan, or code review to fresh context",
-    promptGuidelines: ["Use subagent_review with kind adr, plan, or code and a self-contained review brief. Omit model for configured or inherited routing; use the selected tier's exact provider/model-id only for deliberate override. Omit the model field to use configured or inherited routing."],
+    description: "Run one governed report-only {{if ne .profile "core"}}ADR, plan, or code reviewer{{else}}code reviewer{{end}} in fresh context. Omit model for configured or inherited routing; use an exact tier provider/model-id only for deliberate override. Omission is the only default form.",
+    promptSnippet: "Delegate governed {{if ne .profile "core"}}ADR, plan, or code review{{else}}code review{{end}} to fresh context",
+    promptGuidelines: ["Use subagent_review with kind {{if ne .profile "core"}}adr, plan, or code{{else}}code{{end}} and a self-contained review brief. Omit model for configured or inherited routing; use the selected tier's exact provider/model-id only for deliberate override. Omit the model field to use configured or inherited routing."],
     parameters: Type.Object({
-      kind: StringEnum(["adr", "plan", "code"] as const),
+      kind: StringEnum([{{if ne .profile "core"}}"adr", "plan", {{end}}"code"] as const),
       task: Type.String({ minLength: 1 }),
       model: Type.Optional(MODEL_REFERENCE_SCHEMA),
     }, { additionalProperties: false }),

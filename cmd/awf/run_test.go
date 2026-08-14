@@ -684,6 +684,46 @@ func TestRunRefusesFullOnlyCommandForCoreProfileBeforeStateGuard(t *testing.T) {
 	}
 }
 
+func TestRunDispatchesEveryFullOnlyCommandFamilyByProfile(t *testing.T) {
+	cases := []struct {
+		name string
+		args []string
+	}{
+		{"check repo state", []string{"awf", "check", "repo", "state"}},
+		{"check staged state", []string{"awf", "check", "staged", "state"}},
+		{"read plan", []string{"awf", "read", "plan", "missing", "1"}},
+		{"audit", []string{"awf", "audit", "HEAD"}},
+		{"adr", []string{"awf", "adr", "number"}},
+		{"context", []string{"awf", "context", "README.md"}},
+		{"topic", []string{"awf", "topic", "rendering/missing"}},
+		{"new adr", []string{"awf", "new", "adr", "Dispatch Proof"}},
+		{"new plan", []string{"awf", "new", "plan", "Dispatch Proof"}},
+		{"new topic", []string{"awf", "new", "topic", "rendering", "Dispatch Proof"}},
+		{"new domain", []string{"awf", "new", "domain", "dispatch-proof"}},
+		{"remove domain", []string{"awf", "remove", "domain", "rendering"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name+" core refusal", func(t *testing.T) {
+			root := t.TempDir()
+			testsupport.WriteAwfConfig(t, root, "prefix: example\nprofile: core\nintegrationBranch: main\n")
+			testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+			var stdout, stderr bytes.Buffer
+			if code := run(tc.args, &stdout, &stderr); code != 1 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "is unavailable for the selected core profile") {
+				t.Fatalf("exit/output did not prove capability refusal: stdout=%q stderr=%q", stdout.String(), stderr.String())
+			}
+		})
+		t.Run(tc.name+" full dispatch", func(t *testing.T) {
+			root := scaffoldProject(t)
+			testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+			var stdout, stderr bytes.Buffer
+			code := run(tc.args, &stdout, &stderr)
+			if code == 2 || strings.Contains(stderr.String(), "is unavailable for the selected") {
+				t.Fatalf("Full command did not reach its handler: exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+			}
+		})
+	}
+}
+
 func TestRunGetwdError(t *testing.T) {
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return "", errors.New("boom") })
 	var out, errb bytes.Buffer

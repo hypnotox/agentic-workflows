@@ -154,7 +154,10 @@ type Project struct {
 	roots   resident.Roots
 	Cfg     *config.Config
 	Targets []Target
-	cat     *catalog.Catalog
+	// completeCat retains the Loader-injected complete catalog so alternate
+	// repository universes can select another profile without consulting globals.
+	completeCat *catalog.Catalog
+	cat         *catalog.Catalog
 	// read selects an immutable project-tree universe for render inputs. A nil
 	// reader means ordinary filesystem rendering.
 	read ProjectTreeReader
@@ -201,7 +204,8 @@ func (l *Loader) Open(ctx context.Context, root string) (*Project, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
-	selected := catalog.NewProfileView(l.view.Catalog(), cfg.Profile)
+	completeCat := l.view.Catalog()
+	selected := catalog.NewProfileView(completeCat, cfg.Profile)
 	cat := selected.Catalog()
 	if err := catalog.ValidateWorkflowProfiles(cat); err != nil {
 		return nil, err
@@ -211,13 +215,14 @@ func (l *Loader) Open(ctx context.Context, root string) (*Project, error) {
 		return nil, err
 	}
 	p := &Project{
-		Root:    root,
-		roots:   resident.NewRoots(root, l.resolveResidentRoot(ctx, root)),
-		Cfg:     cfg,
-		Targets: targets,
-		cat:     cat,
-		nested:  l.repo != nil && l.repo.IsNested(),
-		repo:    l.repo,
+		Root:        root,
+		roots:       resident.NewRoots(root, l.resolveResidentRoot(ctx, root)),
+		Cfg:         cfg,
+		Targets:     targets,
+		completeCat: completeCat,
+		cat:         cat,
+		nested:      l.repo != nil && l.repo.IsNested(),
+		repo:        l.repo,
 	}
 	if err := p.validateAgainstCatalog(); err != nil {
 		return nil, err
@@ -252,11 +257,15 @@ func openRootProject(root string) (*Project, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Project{Root: root, roots: resident.NewRoots(root, ""), cat: catalog.CompleteView().Catalog(), nested: prefix != "", repo: repo}, nil
+	completeCat := catalog.CompleteView().Catalog()
+	return &Project{Root: root, roots: resident.NewRoots(root, ""), completeCat: completeCat, cat: completeCat, nested: prefix != "", repo: repo}, nil
 }
 
-// catalog returns this project's one private catalog snapshot.
+// catalog returns this project's one private selected-catalog snapshot.
 func (p *Project) catalog() *catalog.Catalog { return p.cat }
+
+// completeCatalog returns the private complete-catalog dependency supplied at composition.
+func (p *Project) completeCatalog() *catalog.Catalog { return p.completeCat }
 
 func (p *Project) fullProfile() bool { return p.Cfg == nil || p.Cfg.Profile != catalog.ProfileCore }
 

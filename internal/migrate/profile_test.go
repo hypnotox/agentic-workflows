@@ -13,6 +13,11 @@ func TestProfileMigrationProof(t *testing.T) {
 	if err != nil || string(again) != string(got) {
 		t.Fatalf("idempotence got %q err %v", again, err)
 	}
+	currentMissing := []byte("prefix: x\nintegrationBranch: main\n")
+	current, err := ConfigForCurrentSchema(currentMissing, 46)
+	if err != nil || string(current) != string(currentMissing) {
+		t.Fatalf("current schema synthesized Full: got %q err %v", current, err)
+	}
 	if _, err := ConfigForCurrentSchema([]byte("["), 45); err == nil {
 		t.Fatal("malformed historical config accepted")
 	}

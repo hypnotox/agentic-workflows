@@ -47,13 +47,15 @@ func (p *Project) CheckStagedDrift(ctx context.Context) ([]manifest.Drift, error
 		return nil, err
 	}
 	read := snapshotTreeReader{tree: state.Tree}
-	// The staged universe always selects from the complete immutable catalog.
-	// p may describe a differently profiled working tree, so reusing p.catalog()
-	// would make Core -> Full staged validation permanently lose the Full layer.
-	selected := catalog.NewProfileView(catalog.CompleteView().Catalog(), state.Cfg.Profile).Catalog()
+	// The staged universe always selects from the complete immutable catalog
+	// injected into p. It may describe a differently profiled working tree, so
+	// reusing p.catalog() would make Core -> Full staged validation lose the Full
+	// layer, while consulting the global catalog would discard injected entries.
+	completeCat := p.completeCatalog()
+	selected := catalog.NewProfileView(completeCat, state.Cfg.Profile).Catalog()
 	universe := &Project{
 		Root: p.Root, roots: p.roots, Cfg: state.Cfg, Targets: targets,
-		cat: selected, read: read, nested: p.nested, repo: p.repo,
+		completeCat: completeCat, cat: selected, read: read, nested: p.nested, repo: p.repo,
 	}
 	if err := universe.validateAgainstCatalog(); err != nil {
 		return nil, err

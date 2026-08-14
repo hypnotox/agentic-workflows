@@ -3,6 +3,7 @@ package project
 import (
 	"context"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -10,7 +11,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
@@ -434,6 +437,39 @@ func TestStagedDriftRenderedOutputInvariant(t *testing.T) {
 // universe is selected from the immutable complete catalog, not the Core
 // working Project that opened the check.
 // invariant: rendering/project-output-plan:profile-projected-render (TestCheckStagedDriftProjectsFullFromAWorkingCoreTree)
+func TestCheckStagedDriftPreservesInjectedCompleteCatalog(t *testing.T) {
+	root := scaffold(t, "prefix: example\nprofile: core\nintegrationBranch: main\n")
+	repo := gitfixture.InitRepoAt(t, root)
+	repoHandle, _, err := awfgit.OpenContaining(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	injected := *catalog.Standard
+	injected.Skills = maps.Clone(catalog.Standard.Skills)
+	tdd := injected.Skills["tdd"]
+	tdd.FullOnly = true
+	injected.Skills["tdd"] = tdd
+	loader := NewLoader(config.Load, &injected, func(_ context.Context, root string) string { return root }, repoHandle)
+	p, err := loader.Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".pi", "skills", "example-tdd", "SKILL.md")); !os.IsNotExist(err) {
+		t.Fatalf("injected Core catalog unexpectedly rendered tdd: %v", err)
+	}
+	gitfixture.AddAll(t, repo)
+	drift, err := p.CheckStagedDrift(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(drift) != 0 {
+		t.Fatalf("staged reprojection discarded injected complete catalog: %#v", drift)
+	}
+}
+
 func TestCheckStagedDriftProjectsFullFromAWorkingCoreTree(t *testing.T) {
 	root := scaffold(t, "prefix: example\nprofile: core\nintegrationBranch: main\n")
 	repo := gitfixture.InitRepoAt(t, root)

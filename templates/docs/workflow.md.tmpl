@@ -151,11 +151,11 @@ For the detailed criteria of when a decision is load-bearing enough to warrant a
 ### Finish and prohibitions
 
 
-- Never commit the file or cite a concrete owned-memory path in a durable ADR, plan, or commit message; the bare efforts directory and angle-bracket placeholder form remain legal.
+- Never commit the file or cite a concrete owned-memory path in a durable {{if ne .profile "core"}}ADR, plan,{{else}}project record{{end}} or commit message; the bare efforts directory and angle-bracket placeholder form remain legal.
 
 - Optional `activity.json` is advisory and may make older binaries unable to read the effort, but never gates unrelated show, list, or finish commands.
 
-- After implementation assurance settles or is explicitly skipped, `effort-workflow` integrates a managed-worktree effort, activates review after any divergent merge, completes deferred artifact transitions, removes path, registration, and branch, invokes retrospective, and runs `./awf effort finish <slug>` last.{{if .targetSessionHandoff}} Handoff validates only dual-format identity; it does not validate mutable metadata, parse state or activity, select an effort, or mutate memory.{{end}}
+- After implementation assurance settles or is explicitly skipped, `effort-workflow` integrates a managed-worktree effort, activates review after any divergent merge, {{if ne .profile "core"}}completes deferred artifact transitions, {{end}}removes path, registration, and branch, invokes retrospective, and runs `./awf effort finish <slug>` last.{{if .targetSessionHandoff}} Handoff validates only dual-format identity; it does not validate mutable metadata, parse state or activity, select an effort, or mutate memory.{{end}}
 
 <!-- awf:end -->
 
@@ -168,7 +168,7 @@ Use Conventional Commits, one concern per commit. Stage files explicitly rather 
 <!-- awf:section doc-currency -->
 ## Documentation currency
 
-Documentation travels with the change that makes it true. When you change behaviour, update the affected docs (this file, the agent guide, ADRs, and any reference tables) in the same commit.
+Documentation travels with the change that makes it true. When you change behaviour, update the affected docs (this file, the agent guide, {{if ne .profile "core"}}ADRs, and {{end}}any reference tables) in the same commit.
 <!-- awf:end -->
 
 <!-- awf:section composing-the-gate -->

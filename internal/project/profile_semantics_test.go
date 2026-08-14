@@ -1,12 +1,14 @@
 package project
 
 import (
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -15,6 +17,19 @@ import (
 // ordinary prose such as an adopter discussing its own historical documents.
 // invariant: rendering/catalog-and-targets:profile-dependency-closure (TestCoreRenderedWorkflowExcludesFullAuthority)
 func TestCoreRenderedWorkflowExcludesFullAuthority(t *testing.T) {
+	// These are bound operational spellings, not authority words in ordinary
+	// adopter prose. Each entry names an executable command, artifact identity,
+	// reviewer schema, or workflow instruction that Core must not expose.
+	forbiddenCoreOperationalReferences := []string{
+		"`./awf context", "`./awf adr", "`./awf plan", "`./awf audit",
+		"example-proposing-adr", "example-writing-plans", "example-reviewing-plan",
+		"example-executing-plans", "example-subagent-driven-development", "example-adr-lifecycle",
+		"adr-reviewer", "plan-reviewer",
+		"Before ADR or plan authoring", "effort-free ADR evidence",
+		"durable ADR, plan", "completes deferred artifact transitions",
+		"agent guide, ADRs", "ADR, plan, or code reviewer",
+		"kind adr, plan, or code", `StringEnum(["adr", "plan", "code"]`,
+	}
 	for _, tc := range []struct {
 		name    string
 		profile catalog.Profile
@@ -36,21 +51,20 @@ func TestCoreRenderedWorkflowExcludesFullAuthority(t *testing.T) {
 				t.Fatal("selected profile rendered no artifacts")
 			}
 
+			var residual []string
 			for _, file := range files {
 				if tc.profile == catalog.ProfileCore {
-					for _, forbidden := range []string{
-						"./awf context", "./awf adr", "./awf plan", "./awf audit",
-						"current-state", "current-state authority", "decision index", "State changes",
-						"refactor ADR", "ADR Context", "ADR scope", "plan Notes", "pending ADR", "ADR review", "plan review", "`Implemented` flip",
-						"-proposing-adr", "-writing-plans", "-reviewing-plan",
-						"-executing-plans", "-subagent-driven-development", "-adr-lifecycle",
-						"adr-reviewer", "plan-reviewer",
-					} {
+					for _, forbidden := range forbiddenCoreOperationalReferences {
 						if strings.Contains(file.Content, forbidden) {
-							t.Errorf("Core output %s retains Full-only operational reference %q", file.Path, forbidden)
+							residual = append(residual, file.Path+": "+forbidden)
 						}
 					}
 				}
+			}
+			// The non-empty rendered population is the checked success sentinel:
+			// only then does an empty residual set prove semantic absence.
+			if tc.profile == catalog.ProfileCore && len(residual) != 0 {
+				t.Fatalf("Core retained Full-only operational references: %v", residual)
 			}
 
 			if tc.profile == catalog.ProfileFull {
@@ -94,6 +108,11 @@ func TestProfileTransitionPreservesHistoryAndRestoresGovernance(t *testing.T) {
 	if err := full.Sync(); err != nil {
 		t.Fatal(err)
 	}
+	fullLock, err := manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fullMembership := maps.Clone(fullLock.Files)
 	for _, path := range []string{
 		".claude/skills/example-proposing-adr/SKILL.md",
 		".pi/skills/example-proposing-adr/SKILL.md",
@@ -124,6 +143,23 @@ func TestProfileTransitionPreservesHistoryAndRestoresGovernance(t *testing.T) {
 	}
 	if err := core.Sync(); err != nil {
 		t.Fatal(err)
+	}
+	coreLock, err := manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(coreLock.Files) >= len(fullMembership) {
+		t.Fatalf("Core lock did not remove the Full layer: core=%d full=%d", len(coreLock.Files), len(fullMembership))
+	}
+	for path := range coreLock.Files {
+		if _, ok := fullMembership[path]; !ok {
+			t.Errorf("Core lock gained non-Full member %s", path)
+		}
+	}
+	for _, path := range []string{"AGENTS.md", ".pi/skills/example-reviewing-impl/SKILL.md", ".claude/skills/example-reviewing-impl/SKILL.md"} {
+		if _, ok := coreLock.Files[path]; !ok {
+			t.Errorf("Core lock lost operational member %s", path)
+		}
 	}
 	for path, want := range historical {
 		got, err := os.ReadFile(filepath.Join(root, path))
@@ -167,6 +203,18 @@ func TestProfileTransitionPreservesHistoryAndRestoresGovernance(t *testing.T) {
 	}
 	if err := full.Sync(); err != nil {
 		t.Fatalf("Full did not restore governance after history correction: %v", err)
+	}
+	restoredLock, err := manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(restoredLock.Files) != len(fullMembership) {
+		t.Fatalf("Full lock membership size was not restored: restored=%d initial=%d", len(restoredLock.Files), len(fullMembership))
+	}
+	for path := range fullMembership {
+		if _, ok := restoredLock.Files[path]; !ok {
+			t.Errorf("Full lock membership did not restore %s", path)
+		}
 	}
 	for _, path := range []string{
 		".claude/skills/example-proposing-adr/SKILL.md",
