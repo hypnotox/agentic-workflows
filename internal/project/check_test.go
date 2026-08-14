@@ -746,6 +746,12 @@ func callsMethodWithIdent(fn *ast.FuncDecl, method, argument string) bool {
 // invariant: rendering/project-output-plan:check-report-single-plan (TestCheckReportBuildsOneOutputPlan)
 func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 	file := parseCheckSource(t)
+	for _, declaration := range file.Decls {
+		function, ok := declaration.(*ast.FuncDecl)
+		if ok && function.Recv != nil && function.Name.Name == "Check" {
+			t.Fatal("retired Project.Check compatibility projection is present")
+		}
+	}
 	report := checkFunc(t, file, "CheckReport")
 	directAdvisory := checkFunc(t, file, "AdvisoryNotes")
 	check := checkFunc(t, file, "checkWithTrackingState")
@@ -785,11 +791,10 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 		}
 	}
 
-	root := scaffoldFiles(t,
-		"prefix: example\nintegrationBranch: main\nvars: {}\ndomains: [config]\n",
-		map[string]string{
-			"parts/config-reference/intro.md": "<!-- awf:stub -->\nConfig intro.\n<!-- awf:section bogus -->\n",
-		})
+	fixture := gitfixture.InitRepo(t)
+	root := fixture.Root()
+	testsupport.WriteAwfConfig(t, root, withTestGateCmd("prefix: example\nintegrationBranch: main\nvars: {}\ndomains: [config]\n"))
+	testsupport.WriteFile(t, filepath.Join(root, ".awf/parts/config-reference/intro.md"), "<!-- awf:stub -->\nConfig intro.\n<!-- awf:section bogus -->\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -800,6 +805,26 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 	reportValue, err := p.CheckReport(testContext(t))
 	if err != nil {
 		t.Fatal(err)
+	}
+	untracked := map[string]bool{}
+	for _, finding := range reportValue.Drift {
+		if finding.Kind == "untracked" {
+			untracked[finding.Path] = true
+		}
+	}
+	for _, want := range []string{
+		".awf/awf.lock",
+		".awf/effort-archive/.gitignore",
+		".awf/efforts/.gitignore",
+		".awf/worktrees/.gitignore",
+		".claude/skills/example-tdd/SKILL.md",
+		".pi/skills/example-tdd/SKILL.md",
+		"AGENTS.md",
+		"docs/architecture.md",
+	} {
+		if !untracked[want] {
+			t.Errorf("CheckReport tracking projection omitted heterogeneous planned output %q", want)
+		}
 	}
 	directNotes, err := p.AdvisoryNotes(testContext(t))
 	if err != nil {
@@ -818,6 +843,29 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 		marker := "part .awf/parts/config-reference/intro.md contains a marker-shaped line"
 		if got := strings.Count(joined, marker); got != 1 {
 			t.Errorf("%s marker note multiplicity = %d, want deduplicated 1:\n%s", name, got, joined)
+		}
+	}
+
+	nestedFixture := gitfixture.InitRepo(t)
+	nestedRoot := filepath.Join(nestedFixture.Root(), "nested")
+	testsupport.WriteAwfConfig(t, nestedRoot, withTestGateCmd("prefix: example\nintegrationBranch: main\nvars: {}\n"))
+	nestedProject, err := Open(testContext(t), nestedRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !nestedProject.nested {
+		t.Fatal("nested project did not preserve its containing-repository prefix")
+	}
+	if err := nestedProject.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	nestedReport, err := nestedProject.CheckReport(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, finding := range nestedReport.Drift {
+		if finding.Kind == "untracked" && resident.IsResidentPath(finding.Path) {
+			t.Errorf("nested CheckReport tracking projection included resident output: %#v", finding)
 		}
 	}
 }
@@ -909,6 +957,19 @@ func TestCheckLockedFilesSuppressesMissingForUntrackedOutputs(t *testing.T) {
 	tracking := []manifest.Drift{{Path: "regen.md", Kind: "untracked"}, {Path: "normal.md", Kind: "untracked"}}
 	if got := p.checkLockedFiles(lock, rendered, tracking); len(got) != 0 {
 		t.Fatalf("untracked missing files = %#v", got)
+	}
+	for path := range rendered {
+		if err := os.Mkdir(filepath.Join(root, path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got := p.checkLockedFiles(lock, rendered, tracking)
+	if len(got) != 2 || !slices.ContainsFunc(got, func(finding manifest.Drift) bool {
+		return finding.Path == "regen.md" && finding.Kind == "missing"
+	}) || !slices.ContainsFunc(got, func(finding manifest.Drift) bool {
+		return finding.Path == "normal.md" && finding.Kind == "missing"
+	}) {
+		t.Fatalf("non-not-exist read errors suppressed as untracked root causes: %#v", got)
 	}
 }
 

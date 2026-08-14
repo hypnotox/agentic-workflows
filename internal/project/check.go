@@ -634,7 +634,7 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 			}
 			onDisk, err := os.ReadFile(p.roots.ResolveOutput(path))
 			if err != nil {
-				if untracked[path] {
+				if errors.Is(err, os.ErrNotExist) && untracked[path] {
 					continue
 				}
 				drift = append(drift, manifest.Drift{Path: path, Kind: "missing", Detail: "file absent; run awf render"})
@@ -666,7 +666,7 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 		}
 		onDisk, err := os.ReadFile(p.roots.ResolveOutput(path))
 		if err != nil {
-			if untracked[path] {
+			if errors.Is(err, os.ErrNotExist) && untracked[path] {
 				continue
 			}
 			drift = append(drift, manifest.Drift{Path: path, Kind: "missing", Detail: "file absent; run awf render"})

@@ -1216,7 +1216,11 @@ func TestIndexPaths(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "ignored.txt"), []byte("ignored\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	paths, err := gitRepo(t, dir).IndexPaths(testsupport.Context(t))
+	rootHandle := gitRepo(t, dir)
+	if rootHandle.IsNested() {
+		t.Fatal("repository-root handle IsNested = true")
+	}
+	paths, err := rootHandle.IndexPaths(testsupport.Context(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1241,7 +1245,7 @@ func TestIndexPaths(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(testsupport.Context(t))
 	cancel()
-	if _, err := gitRepo(t, dir).IndexPaths(ctx); !errors.Is(err, context.Canceled) {
+	if _, err := rootHandle.IndexPaths(ctx); !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancelled IndexPaths = %v", err)
 	}
 }

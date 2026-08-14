@@ -228,6 +228,30 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		}
 	})
 
+	t.Run("tracking notes appear directly and compose with aggregate advisories", func(t *testing.T) {
+		cfg := &config.Config{}
+		p := &project.Project{Root: "tracking-note-project", Cfg: cfg}
+		report := project.CheckReport{Notes: []string{"aggregate-only"}, TrackingNotes: []string{"tracking unavailable"}}
+
+		deps := repoCheckTestDependencies(t, cfg, p, report, project.CurrentStateReport{}, nil, &repoCheckCounters{})
+		var direct bytes.Buffer
+		if err := runRepoCheckSelection(context.Background(), t.TempDir(), &direct, []execution.StepID{repoStepDrift}, execution.StopOnFailure, false, deps); err != nil {
+			t.Fatalf("direct tracking advisory: %v", err)
+		}
+		if got, want := direct.String(), "status: warnings\n\nsummary:\n  findings: 0 errors, 1 warnings\n\nfindings:\n  warnings:\n    advisory | tracking unavailable\n"; got != want {
+			t.Fatalf("direct tracking advisory = %q, want %q", got, want)
+		}
+
+		deps = repoCheckTestDependencies(t, cfg, p, report, project.CurrentStateReport{}, nil, &repoCheckCounters{})
+		var aggregate bytes.Buffer
+		if err := runRepoCheckSelection(context.Background(), t.TempDir(), &aggregate, []execution.StepID{repoStepDrift}, execution.ContinueOnFailure, true, deps); err != nil {
+			t.Fatalf("aggregate tracking advisory: %v", err)
+		}
+		if got, want := aggregate.String(), "status: warnings\n\nsummary:\n  findings: 0 errors, 2 warnings\n\nfindings:\n  warnings:\n    advisory | tracking unavailable\n    advisory | aggregate-only\n"; got != want {
+			t.Fatalf("aggregate tracking advisory = %q, want %q", got, want)
+		}
+	})
+
 	t.Run("disabled aggregate scanners prepare no index", func(t *testing.T) {
 		cfg := &config.Config{}
 		p := &project.Project{Root: "working-project-sentinel", Cfg: cfg}
@@ -392,24 +416,6 @@ func TestAggregateCheckAgentGuideSizeWarning(t *testing.T) {
 	}
 	if got := direct.String(); got != completedCheckReport {
 		t.Fatalf("direct drift output = %q, want no advisory", got)
-	}
-
-	deps = repoCheckTestDependencies(t, cfg, p, project.CheckReport{Notes: []string{"aggregate-only"}, TrackingNotes: []string{"tracking unavailable"}}, project.CurrentStateReport{}, nil, &repoCheckCounters{})
-	var tracking bytes.Buffer
-	if err := runRepoCheckSelection(context.Background(), t.TempDir(), &tracking, []execution.StepID{repoStepDrift}, execution.StopOnFailure, false, deps); err != nil {
-		t.Fatalf("direct tracking advisory: %v", err)
-	}
-	if got, want := tracking.String(), "status: warnings\n\nsummary:\n  findings: 0 errors, 1 warnings\n\nfindings:\n  warnings:\n    advisory | tracking unavailable\n"; got != want {
-		t.Fatalf("direct tracking advisory = %q, want %q", got, want)
-	}
-
-	deps = repoCheckTestDependencies(t, cfg, p, project.CheckReport{Notes: []string{"aggregate-only"}, TrackingNotes: []string{"tracking unavailable"}}, project.CurrentStateReport{}, nil, &repoCheckCounters{})
-	var aggregate bytes.Buffer
-	if err := runRepoCheckSelection(context.Background(), t.TempDir(), &aggregate, []execution.StepID{repoStepDrift}, execution.ContinueOnFailure, true, deps); err != nil {
-		t.Fatalf("aggregate tracking advisory: %v", err)
-	}
-	if got, want := aggregate.String(), "status: warnings\n\nsummary:\n  findings: 0 errors, 2 warnings\n\nfindings:\n  warnings:\n    advisory | tracking unavailable\n    advisory | aggregate-only\n"; got != want {
-		t.Fatalf("aggregate tracking advisory = %q, want %q", got, want)
 	}
 }
 
