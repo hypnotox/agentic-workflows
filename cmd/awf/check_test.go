@@ -452,6 +452,7 @@ func stagedCheckProject(t *testing.T, commit, stageOnly map[string]string) strin
 	return dir
 }
 
+// invariant: rendering/sync-and-drift:generated-artifacts-tracked (TestCheckStagedDriftRenderedOutput)
 // invariant: rendering/sync-and-drift:staged-drift-rendered-output (TestCheckStagedDriftRenderedOutput)
 func TestCheckStagedDriftRenderedOutput(t *testing.T) {
 	setup := func(t *testing.T) (string, gitfixture.Fixture) {

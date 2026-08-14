@@ -77,9 +77,6 @@ func TestStagedDriftClassifiesFreshnessBeforeObservation(t *testing.T) {
 	})
 }
 
-// invariant: rendering/sync-and-drift:generated-artifacts-tracked (TestStagedDriftRenderedOutputInvariant)
-// invariant: rendering/sync-and-drift:staged-drift-rendered-output (TestStagedDriftRenderedOutputInvariant)
-// invariant: rendering/sync-and-drift:ordinary-render-freshness (TestStagedDriftRenderedOutputInvariant)
 // invariant: config/configuration:template-source-root (TestCheckStagedDriftUsesIndexedTemplateSourceMappings)
 func TestCheckStagedDriftUsesIndexedTemplateSourceMappings(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
@@ -259,6 +256,9 @@ func mustReadFile(t *testing.T, path string) string {
 	return string(b)
 }
 
+// invariant: rendering/sync-and-drift:generated-artifacts-tracked (TestStagedDriftRenderedOutputInvariant)
+// invariant: rendering/sync-and-drift:staged-drift-rendered-output (TestStagedDriftRenderedOutputInvariant)
+// invariant: rendering/sync-and-drift:ordinary-render-freshness (TestStagedDriftRenderedOutputInvariant)
 func TestStagedDriftRenderedOutputInvariant(t *testing.T) {
 	tree, err := snapshot.NewTree([]snapshot.File{
 		{Path: ".awf/awf.lock", Mode: snapshot.Regular, Bytes: []byte("lock")},

@@ -91,6 +91,7 @@ func TestRepoCheckCategoryFailuresPropagate(t *testing.T) {
 	}
 }
 
+// invariant: rendering/sync-and-drift:generated-artifacts-tracked (TestRepoCheckCapabilityPlan)
 // invariant: tooling/cli:repo-check-capability-plan (TestRepoCheckCapabilityPlan)
 func TestRepoCheckCapabilityPlan(t *testing.T) {
 	t.Run("aggregate prepares each capability once and preserves successful output order", func(t *testing.T) {
