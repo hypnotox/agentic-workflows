@@ -22,15 +22,15 @@ import (
 // digits. The `ADR-NNNN` authoring placeholder never matches.
 var residueADRRe = regexp.MustCompile(`ADR-[0-9]{4}`)
 
-// identityExempt lists the template files whose repo-identity literal is a
-// reference to awf-the-product, not residue: the bootstrap unit's download
-// sources (installer and upgrade porcelain) and the agent guide's awf-home
-// link. Entries fail when stale; extending the list is a successor-ADR act
-// (ADR-0082 Decision 2, extended by ADR-0085 Decision 5, pinned at three by ADR-0131).
+// identityExempt lists template files whose repo-identity literal is a
+// required reference to awf or to the pi-tools prerequisite, not residue.
+// Entries fail when stale.
 var identityExempt = map[string]bool{
 	"bootstrap/awf-bootstrap.sh.tmpl": true,
 	"bootstrap/awf-upgrade.sh.tmpl":   true,
 	"agents-doc/AGENTS.md.tmpl":       true,
+	"docs/working-with-awf.md.tmpl":   true,
+	"pi/awf-subagents/index.ts.tmpl":  true,
 }
 
 // identityLiterals are the banned repo-identity tokens.
@@ -110,11 +110,13 @@ func TestTemplateSourceResidue(t *testing.T) {
 	// The marker sits on the assertion rather than on the var it guards, so the
 	// proof site contains the check that proves it (ADR-0131 Task 3.3).
 	// invariant: rendering/sync-and-drift:residue-exemptions-pinned-three (TestTemplateSourceResidue)
-	if len(identityExempt) != 3 ||
+	if len(identityExempt) != 5 ||
 		!identityExempt["bootstrap/awf-bootstrap.sh.tmpl"] ||
 		!identityExempt["bootstrap/awf-upgrade.sh.tmpl"] ||
-		!identityExempt["agents-doc/AGENTS.md.tmpl"] {
-		t.Error("identity-exemption list must name exactly the bootstrap, upgrade, and agents-doc templates - extending it requires a successor ADR (ADR-0082, pinned at three by ADR-0131)")
+		!identityExempt["agents-doc/AGENTS.md.tmpl"] ||
+		!identityExempt["docs/working-with-awf.md.tmpl"] ||
+		!identityExempt["pi/awf-subagents/index.ts.tmpl"] {
+		t.Error("identity-exemption list must name exactly the bootstrap, upgrade, agents-doc, and two pi-tools prerequisite templates")
 	}
 	used := map[string]bool{}
 	err := fs.WalkDir(templates.FS, ".", func(path string, d fs.DirEntry, err error) error {

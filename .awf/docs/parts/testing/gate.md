@@ -7,7 +7,7 @@
 | `./x test` | Go suite without the Docker-backed Pi smoke. |
 | `./x pi-test run` | Pi lane alone. |
 
-The gate enables `TestPiRealRuntimeSmoke` once with test caching disabled; `./x test` and verbose direct Go tests explain its omission. Plain-punctuation (`awf check repo prose`) and effort-memory (`awf check repo memory`) scans are hook and CI checks, not gate steps. Commit-provenance tests use native Git, SSH-signed commits, disposable refs and remotes, both `core.hooksPath` forms, and linked worktrees. A red gate blocks the commit: fix the cause or revert.
+The gate enables `TestPiRealRuntimeSmoke` once with test caching disabled; `./x test` and verbose direct Go tests explain its omission. The deterministic Pi lane uses a protocol-v2 contract double to prove generated adapter negotiation, native awf skill discovery and routing delivery, and retained effort integration. It does not install, pin, or behavior-test external `pi-tools` mechanics. Plain-punctuation (`awf check repo prose`) and effort-memory (`awf check repo memory`) scans are hook and CI checks, not gate steps. Commit-provenance tests use native Git, SSH-signed commits, disposable refs and remotes, both `core.hooksPath` forms, and linked worktrees. A red gate blocks the commit: fix the cause or revert.
 
 ### Coverage
 
@@ -26,4 +26,4 @@ Coverage proves execution, not useful assertions. Change a condition, comparison
 
 `./x mutants` (ADR-0066) runs deterministic `gremlins` mutation testing against the production diff from `main`; pass a package, such as `./x mutants ./internal/refs`, for a focused run. It is advisory, never a gate step. A timed-out mutant exits nonzero because it can hide survivors; raise `.gremlins.yaml`'s timeout coefficient and rerun. Triage every survivor as a missing assertion or an equivalent mutant.
 
-The strict container lane also covers standalone context usage, including formatting, unavailable model-window output, active-branch compaction, per-call refresh, and silent supported operation.
+The strict container lane covers awf's rendered profile contract, routing and Git policy, handshake outcomes, generated-output boundary, and retained effort behavior. General context usage, handoff, scheduling, subprocess supervision, and progress rendering are assured by `pi-tools`, not duplicated in awf tests.

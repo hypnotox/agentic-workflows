@@ -89,7 +89,7 @@ func TestSourceMarkerFamilyMatrix(t *testing.T) {
 		".pi/skills/example-tdd/SKILL.md",
 		".claude/agents/code-reviewer.md",
 		".pi/agents/code-reviewer.md",
-		".pi/extensions/awf-context-usage/index.ts",
+		".pi/extensions/awf-subagents/index.ts",
 		".awf/hooks/pre-commit.sh",
 	} {
 		content, ok := byPath[path]

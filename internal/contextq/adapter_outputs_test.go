@@ -15,9 +15,17 @@ import (
 // item 8); its proof markers are valid anywhere inside currentState.testGlobs.
 
 // invariant: rendering/adapter-outputs:generated-adapter-runtime-ownership (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
-// invariant: rendering/pi-runtime:pi-child-tool-boundaries (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
+// invariant: rendering/pi-runtime:pi-tools-integration-boundary (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
+// invariant: rendering/pi-runtime:pi-real-runtime-smoke (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
+// invariant: rendering/pi-runtime:pi-minimum-runtime (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
+// invariant: rendering/pi-runtime:pi-implementation-state-boundary (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
+// invariant: rendering/pi-workflows:pi-extension-editor-quiet-strip (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
+// invariant: rendering/pi-workflows:pi-implementation-batch-exclusivity (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
+// invariant: rendering/pi-workflows:pi-subagent-model-preferences (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
+// invariant: rendering/pi-workflows:pi-subagent-model-routing (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
+// invariant: rendering/pi-workflows:pi-implement-role-artifact (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
+// invariant: rendering/pi-workflows:pi-role-contract-loader (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
 // invariant: rendering/project-output-plan:multi-target-render (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
-// invariant: rendering/pi-workflows:pi-subagent-failure-details (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
 // invariant: rendering/workflow-skill-templates:bounded-exploration-reporting (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
 // invariant: rendering/pi-workflows:pi-dedicated-grounding-dispatch (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
 // invariant: rendering/workflow-skill-templates:cross-runtime-exploration-dispatch (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
@@ -34,7 +42,7 @@ func TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion(t *testing.
 		t.Fatal(err)
 	}
 	q := New(state)
-	for _, extension := range []string{".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-context-usage/index.ts"} {
+	for _, extension := range []string{".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-effort/index.ts"} {
 		result := q.ContextForOptions([]string{extension}, ContextOptions{Selection: SelectionExplicit})
 		if len(result.Requests) != 1 || result.Requests[0].Exact == nil || result.Requests[0].Exact.Context.Classification != pathGeneratedOutput {
 			t.Fatalf("extension classification = %#v", result.Requests)

@@ -134,7 +134,8 @@ func TestPiExtensionContainerGateWiring(t *testing.T) {
 		// The docker binary stays injectable for testing.
 		`${AWF_PI_TEST_DOCKER:-docker}`,
 		// The standalone context entrypoint is explicitly measured at full coverage.
-		`--include='.pi/extensions/awf-context-usage/index.ts'`,
+		`--include='.pi/extensions/awf-subagents/index.ts'`,
+		`--include='.pi/extensions/awf-subagents/model-routing.ts'`,
 		`--lines=100 --functions=100 --branches=100`,
 	} {
 		if !strings.Contains(sh, want) {

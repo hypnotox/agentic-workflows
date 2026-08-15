@@ -7,7 +7,9 @@
     "moduleResolution": "Bundler",
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
-    "types": ["node"]
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": { "pi-tools/subagent-profile": ["fixtures/pi-tools-subagent-profile.d.ts"] }
   },
   "include": ["tests/**/*.ts", "../../.pi/extensions/**/*.ts"]
 }

@@ -7,41 +7,29 @@ Pi workflow contracts: subagent tools, session handoff, native skills, explorati
 
 **Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/pitfall/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `.pi/extensions/**`, `internal/catalog/**`, `templates/**`. Both domain and topic selectors must match. Run `awf topic rendering/pi-workflows --coverage` for current applicable and owned paths and marker sites.
 
-Pi workflow contracts: governed subagent tools, session handoff, native skills, and structured exploration dispatch.
+Pi workflow contracts: awf profile policy, effort integration, native skills, and workflow guidance.
 
 ## Claims
 
-### `invariant: pi-session-handoff-lifecycle`
-
-Pi handoff retains its model-tool batch exclusivity, supported persisted-TUI check, single-use pending request, private FIFO queued command, terminating tool result, five-second countdown, cancellation, parent-linked session creation, old-history preservation, prepared-child cleanup, pre- and post-replacement failure boundary, automatic kickoff, editor fallback, visible recovery notice, and no-silent-retry behavior. A matched replacement submits one visible default-rendered `agent-handoff` custom transcript message through replacement-bound `sendMessage` with `triggerTurn:true`; its exact ownership prefix occurs once and editor and recovery paths use the same envelope. Post-countdown revalidation covers the matching pending request and active persisted-session state; the runtime does not infer, read, validate, mutate, or mention effort memory.
-Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0164, ADR-0167, ADR-0175, ADR-0209, ADR-0218, ADR-0219, ADR-0231
-Backing: test
-
 ### `invariant: pi-dedicated-grounding-dispatch`
 
-In the generated Pi extension and skills, the reusable grounding support skill dispatches through the existing dedicated grounding tool whenever its independent repository-premise trigger fires, while general exploration and coupling audits use the exploration tool, and no non-Pi target's rendered output contains either Pi subagent tool name.
+The generated Pi adapter and workflow skills dispatch reusable independent repository-premise checks through the dedicated grounding profile whenever the grounding support trigger fires, while general exploration and coupling audits use exploration. No non-Pi target's rendered output contains either Pi subagent tool name.
 Origin: ADR-0148
-Revised-by: ADR-0243
+Revised-by: ADR-0243, ADR-0279
 Backing: test
 
 ### `invariant: pi-extension-editor-quiet-strip`
 
-Every governed Pi extension file carries the ts-nocheck directive on the line immediately after the provenance banner, and the container test harness deterministically strips that exact directive from every extension TypeScript file in its ephemeral copy after source copy and before running the TypeScript compiler.
+Every governed retained Pi extension file carries the ts-nocheck directive on the line immediately after the provenance banner, and the container harness deterministically strips that exact directive from every copied extension TypeScript file after source copy and before strict compilation.
 Origin: ADR-0148
+Revised-by: ADR-0279
 Backing: test
 
 ### `invariant: pi-implementation-batch-exclusivity`
 
-Pi correlates each tool preflight with the current leaf assistant tool-call id, blocks every member of a reconstructable batch that mixes implementation with siblings, and blocks only implementation when trustworthy batch context is unavailable.
+The implementation profile declares one active call and fail-closed parent-batch exclusivity, so it cannot share a parent tool batch with siblings. Pi-tools owns enforcement of that declaration, cancellation, queueing, and execution confinement; awf retains the profile declaration and commit-policy hooks.
 Origin: ADR-0148
-Backing: test
-
-### `invariant: pi-session-handoff-public-contract`
-
-Pi handoff's entire public input is exactly one required `kickoff` string property with no additional properties. It trims kickoff only to establish nonempty content, retains the public `maxLength: 1000` schema bound and execution-time 1,000-UTF-16-code-unit check, and preserves the accepted prose byte-for-byte after the two newlines in the `Agent-authored handoff context; this is not user input:` envelope. The persisted transcript role is custom with custom type `agent-handoff` and visible default rendering, while Pi's current provider adapter still converts that content to a user-role message. It accepts no memory path or other repository, filesystem, effort, ownership, link, size, encoding, header, or identity input.
-Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0162, ADR-0164, ADR-0167, ADR-0175, ADR-0189, ADR-0209, ADR-0218, ADR-0219, ADR-0231
+Revised-by: ADR-0279
 Backing: test
 
 ### `invariant: pi-session-handoff-workflow`
@@ -82,29 +70,23 @@ Backing: test
 
 ### `invariant: pi-structured-exploration-contract`
 
-The generated Pi extension exposes exactly four closed-schema roles, each with optional exact model routing; implementation alone also accepts optional `verificationCheckout` as commit-policy identity without changing process CWD or task mutation paths. Exploration retains required task, breadth, and detail and runs through the ten-active FIFO limiter without changing the other process boundaries.
+The generated adapter atomically registers exactly four closed-schema profiles, each with optional exact model routing. Implementation alone also accepts optional `verificationCheckout` as commit-policy identity without changing process CWD or task mutation paths. Exploration retains required task, breadth, and detail and declares ten active calls; grounding and review also declare ten, while implementation declares one and parent-batch exclusivity.
 Origin: ADR-0148
-Revised-by: ADR-0260
-Backing: test
-
-### `invariant: pi-subagent-failure-details`
-
-In the generated Pi extension, expected failures that occur after a child process has started return a marked error result that preserves bounded progress and diagnostics through a tool_result middleware hook instead of throwing, while retaining cancellation, cleanup, and implementation-commit-policy behavior.
-Origin: ADR-0148
+Revised-by: ADR-0260, ADR-0279
 Backing: test
 
 ### `invariant: pi-subagent-model-preferences`
 
-The generated Pi extension merges user-global and gitignored project-local preferences per field for the shared default, every grounding, exploration, review, and implementation role, and the small, standard, and large tiers. Completeness requires every field explicitly after merging; missing fields remain valid and visible, while any malformed, overlong, unregistered, unauthenticated, unavailable, or unreadable configured field blocks all implicit routing and leaves valid explicit calls usable. Preference and registry state reloads at preflight and again immediately before child startup.
+The generated adapter merges user-global and gitignored project-local preferences per field for the shared default, every grounding, exploration, review, and implementation role, and the small, standard, and large tiers. Completeness requires every field explicitly after merging; missing fields remain valid and visible, while malformed, overlong, unregistered, unauthenticated, unavailable, or unreadable configured fields block all implicit routing and leave valid explicit calls usable. Preference and registry state reload once for every profile invocation before pi-tools queue acquisition; no post-queue awf reload remains.
 Origin: ADR-0151
-Revised-by: ADR-0173
+Revised-by: ADR-0173, ADR-0279
 Backing: test
 
 ### `invariant: pi-subagent-model-routing`
 
-Every Pi subagent role accepts only omission or an exact registry-valid provider/model-id of at most 256 printable-ASCII characters, excluding space and DEL. The tool schemas and preference parsing derive that form from one shared pattern constant, so the two layers cannot diverge, and within the permitted charset the bound is the same count whether measured in code points, UTF-16 units, or UTF-8 bytes. Omission alone requests configured role routing and parent fallback, and is displayed with a label the shared form check rejects, so a displayed value can never be copied back as a usable argument. Default, auto, inherit parent, and other sentinel values reject with an omit-the-field repair and are never normalized, and an overlong reference reports overlong before any form rejection. Queue acquisition is followed by preference and registry revalidation immediately before child startup, failures never fall through, thinking remains inherited for child clamping, and diagnostics report requested, resolved, and actual models with routing source.
+Every profile accepts only omission or an exact registry-valid provider/model-id of at most 256 printable-ASCII characters, excluding space and DEL. The schemas and preference parser derive that form from one shared pattern constant. Omission alone requests configured role routing and parent fallback; sentinel values reject with an omit-the-field repair and are never normalized, and overlong references report overlong before form rejection. Async selection reloads preferences against the session-owned live registry, reports requested and resolved routing facts, and returns a concrete model for pi-tools to validate again before execution.
 Origin: ADR-0148
-Revised-by: ADR-0151, ADR-0173, ADR-0176
+Revised-by: ADR-0151, ADR-0173, ADR-0176, ADR-0279
 Backing: test
 
 ### `invariant: pi-subagent-model-wizard`
@@ -116,31 +98,14 @@ Backing: test
 
 ### `invariant: pi-implement-role-artifact`
 
-The generated Pi extension builds the implementation child's role prompt from the rendered implementer agent at its `.pi/agents/` path, prepending the commit-authority role line for the call's mode. The before-and-after Git snapshot targets the resolved verification checkout while the child runner stays at the project root. It fails a commit-capable call whose selected HEAD is unchanged, naming the checkout, required stopped inventory, and explicit `verificationCheckout` retry repair; it retains the commit-forbidden violation while naming the selected checkout, plus cancellation, cleanup, and bounded-diagnostic reporting. The generic implementer role contract carries no Pi-only checkout routing duty.
+The generated adapter builds the implementation profile prompt from the rendered implementer agent at its `.pi/agents/` path through the shared loader, strips frontmatter, and prepends the call's commit-authority line. Before and after Git snapshots target the resolved verification checkout while preparation CWD remains the project root. A commit-capable unchanged HEAD names the checkout, required stopped inventory, and explicit `verificationCheckout` retry repair; a no-commit changed HEAD retains its violation without auto-reverting. The generic implementer role contract carries no Pi-only checkout-routing duty.
 Origin: ADR-0177
-Revised-by: ADR-0179, ADR-0260
-Backing: test
-
-### `invariant: pi-subagent-progress-bounds`
-
-The generated Pi extension retains at most 20 display events of at most 2 KiB each, reports cumulative omitted-event counts and truncation explicitly, and never keeps a second raw child-transcript store.
-Origin: ADR-0148
-Backing: test
-
-### `invariant: pi-subagent-progress-context-isolation`
-
-The generated Pi extension carries intermediate child activity only in bounded tool details, never appending it to parent model-visible content or custom session messages, and a subagent tool's final content contains only the child report or a bounded failure summary.
-Origin: ADR-0148
-Backing: test
-
-### `invariant: pi-subagent-progress-rendering`
-
-In the generated Pi extension, every public subagent tool's collapsed view renders status, recent bounded activity, omission state, and available usage, and its expanded view additionally renders the task, retained activity, the final report, present diagnostics, and available usage from the same structured details without changing execution.
-Origin: ADR-0148
+Revised-by: ADR-0179, ADR-0260, ADR-0279
 Backing: test
 
 ### `invariant: pi-role-contract-loader`
 
-The generated Pi extension loads every dispatched role's contract from its rendered agent artifact through one shared loader that reads the file, strips frontmatter, prepends the role's per-call authority line, and fails with an actionable enable-and-render repair naming that role on a missing file or an empty instruction body. No dispatched role's prose remains inline in the extension.
+Every dispatched profile loads its role contract from the rendered agent artifact through one shared loader that reads the file, strips frontmatter, prepends role-specific per-call authority, and fails with an actionable enable-and-render repair naming the role when the file is missing or its instruction body is empty. No dispatched role prose remains inline in the adapter.
 Origin: ADR-0179
+Revised-by: ADR-0279
 Backing: test

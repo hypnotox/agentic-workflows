@@ -1,51 +1,37 @@
-The Pi runtime floor and its boundaries: child-process safety, tool boundaries, target rendering, and real-runtime smoke coverage.
+The Pi runtime floor and the awf/pi-tools ownership boundary.
 
 ## Claims
 
-### `invariant: pi-child-process-safety`
-
-In the generated Pi subagent extension, every child exit path removes the temporary role prompt and its listeners, cancellation escalates from TERM to KILL based on the observed process exit, and child errors preserve bounded diagnostics.
-Origin: ADR-0148
-Backing: test
-
-### `invariant: pi-child-tool-boundaries`
-
-Pi subagent children use an explicitly selected validated model, a validated configured preference, or inherit the parent; inherit the parent's thinking level; receive fixed role allowlists excluding extension tools; and enforce fixed retained-output limits with explicit truncation diagnostics.
-Origin: ADR-0148
-Revised-by: ADR-0151
-Backing: test
-
-### `invariant: pi-context-usage-injection`
-
-Before every Pi model call, including tool-follow-up calls, the standalone context-usage extension appends exactly one non-persisted model-facing line reporting current tokens against the active model window and the compaction count from the active session branch. It formats finite values below 1,000 as rounded integers, values from 1,000 in trimmed one-decimal base-1,000 `k` units, and values from 1,000,000 in trimmed one-decimal base-1,000,000 `m` units; computes percentage by rounding `tokens / contextWindow * 100`; and emits the deterministic unknown-token or unavailable-window form. The extension never persists a message or entry, writes a file or telemetry record, changes UI, triggers a model turn, compaction, warning, or handoff, or recommends a pressure threshold.
-Origin: ADR-0209
-Backing: test
-
 ### `invariant: pi-extension-target-render`
 
-The fixed Pi target renders the standalone context-usage and handoff entrypoints plus the subagent index, bounded model-routing module, and runner with provenance; `effort-workflow` additionally renders the Pi-target-owned `using-effort` skill and `awf-effort` index/client pair through the same output predicate. The effort client alone strictly invokes and decodes activity protocol v2 and owner-scoped memory protocol v1 through bounded transport; its index owns direct serialized association, fixed-path transient context, dynamic memory-tool activation, Pi file-queue participation, heartbeat/shutdown lifecycle, and Remote Pi translation. Context usage owns transient per-model-call usage facts, handoff owns parent-linked main-session replacement, model routing owns pure preference policy, and the subagent entrypoint retains tool registration, queueing, process lifecycle, and runtime integration. No telemetry or workflow-router output renders, and every file follows normal output-plan, drift, cleanup, target-sensitive hash, generated-checkout, adopter-example, editor-quiet, and container-coverage semantics.
+The fixed Pi target renders the awf subagent profile adapter and bounded model-routing module with provenance; `effort-workflow` additionally renders the Pi-target-owned `using-effort` skill and `awf-effort` index/client pair through the same output predicate. The effort client alone strictly invokes and decodes activity protocol v2 and owner-scoped memory protocol v1 through bounded transport; its index owns direct serialized association, fixed-path transient context, dynamic memory-tool activation, Pi file-queue participation, heartbeat/shutdown lifecycle, and Remote Pi translation. The profile adapter owns protocol-v2 registration, role policy, model routing, and Git policy, while independently installed pi-tools owns general context usage, handoff, scheduling, child execution, confinement, execution facts, and presentation. No awf context-usage, handoff, runner, telemetry, workflow-router, scheduler, process-supervisor, or progress-renderer output renders, and every retained file follows normal output-plan, drift, cleanup, target-sensitive hash, generated-checkout, adopter-example, editor-quiet, and container-coverage semantics.
 Origin: ADR-0148
-Revised-by: ADR-0162, ADR-0164, ADR-0167, ADR-0173, ADR-0209, ADR-0218, ADR-0225, ADR-0239, ADR-0251
+Revised-by: ADR-0162, ADR-0164, ADR-0167, ADR-0173, ADR-0209, ADR-0218, ADR-0225, ADR-0239, ADR-0251, ADR-0279
 Backing: test
 
 ### `invariant: pi-implementation-state-boundary`
 
-Pi implementation subagent calls serialize against one another and enforce the caller-selected commit permission against an optional invocation-owned verification checkout, defaulting to the project root. An explicit identity resolves relative to the project root after one leading `@` is removed, canonicalizes filesystem aliases, and must be an exact live checkout root whose Git common directory matches the project root. For a linked checkout, the absolute Git directory's `gitdir` backlink must canonically identify the selected checkout's non-symlink regular `.git` file; copied pointers, selected-entry symlinks, and other invalid identities refuse before child dispatch without worktree enumeration or `git worktree list` parsing. Both snapshots and permission directions use the resolved checkout and expose it in structured details and diagnostics, while parent and child Pi CWD and role loading remain rooted; effort association and mutation routing remain unchanged, and mutation paths stay task-explicit. A changed selected HEAD under a no-commit permission is a policy violation without auto-reverting, and an unverifiable omitted-root checkout reports commit verification unavailable.
+The implementation profile serializes against itself and enforces caller-selected commit permission against an optional invocation-owned verification checkout, defaulting to the project root. An explicit identity resolves relative to the project root after one leading `@` is removed, canonicalizes filesystem aliases, and must be an exact live checkout root whose Git common directory matches the project root. For a linked checkout, the absolute Git directory's `gitdir` backlink must canonically identify the selected checkout's non-symlink regular `.git` file; copied pointers, selected-entry symlinks, and other invalid identities refuse before dispatch without worktree enumeration or `git worktree list` parsing. `beforeRun` and `afterRun` snapshot the resolved checkout and expose both snapshots in structured profile data while parent and child CWD and rendered role loading remain rooted. A changed selected HEAD under no-commit permission and an unchanged selected HEAD under commit permission are terminal policy failures with accurate checkout repair; unverifiable snapshots report commit verification unavailable.
 Origin: ADR-0148
-Revised-by: ADR-0260
+Revised-by: ADR-0260, ADR-0279
 Backing: test
 
 ### `invariant: pi-minimum-runtime`
 
-Generated Pi extension entrypoints require the retained lock-pinned fork-v0.81.1-awf.3 runtime (embedded version 0.81.1) APIs used by context usage, subagents, handoff, and effort memory tools. This includes `getActiveTools`, `setActiveTools`, tool prompt guidance, and `withFileMutationQueue`; one actionable incompatibility notice occurs before functional registration when any required API is absent. The direct `using_effort` companion needs no `changeCwd` capability; optional Remote Pi events remain advisory. Supported operation emits no compatibility warning.
+The retained awf effort entrypoint requires the adopter-supplied compatible Pi runtime APIs it directly uses, including active-tool access and the package-exported real-path file-mutation queue; its existing actionable incompatibility guard and numeric 0.81.1 floor remain scoped to that output. The direct `using_effort` companion needs no `changeCwd` capability and optional Remote Pi events remain advisory. The profile adapter has no package-version read or Pi minimum-runtime guard; it instead requires independently installed pi-tools protocol v2, treats final profile registration as compatibility, and reports one actionable no-fallback failure when capability is missing, incompatible, late, or rejected.
 Origin: ADR-0148
-Revised-by: ADR-0162, ADR-0167, ADR-0209, ADR-0218, ADR-0219, ADR-0225, ADR-0239
+Revised-by: ADR-0162, ADR-0167, ADR-0209, ADR-0218, ADR-0219, ADR-0225, ADR-0239, ADR-0279
 Backing: test
 
 ### `invariant: pi-real-runtime-smoke`
 
-Pinned Pi runtime smoke covers generated TypeScript loading, native Pi skill discovery, prose-only effort-independent handoff, before-agent-start routing-card delivery, and transient context-usage delivery into actual model requests with refresh after an active-branch compaction. Routing and context facts do not persist as session messages, and telemetry, workflow-router, selection, context-usage UI, and automatic pressure-action surfaces remain absent.
+The deterministic pinned-runtime smoke covers generated TypeScript loading, native Pi skill discovery, protocol-v2 profile negotiation through a contract double, live model-routing selection and rendered role preparation, and retained effort tool registration. The strict lane also covers adapter policy and effort behavior at 100 percent while pi-tools proves general context, handoff, scheduling, execution, confinement, execution-fact, and presentation mechanics. Awf's gate neither imports nor pins a pi-tools runtime checkout.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0161, ADR-0162, ADR-0164, ADR-0167, ADR-0173, ADR-0209
-Backing: unbacked
-Verify: Run `./x pi-test run` to exercise native Pi skill discovery, prose-only effort-independent handoff, routing-card delivery, and per-request context-usage refresh after compaction in the pinned Pi runtime without persisted routing or context messages, telemetry, workflow routing, selection, context-usage UI, or automatic pressure actions.
+Revised-by: ADR-0149, ADR-0161, ADR-0162, ADR-0164, ADR-0167, ADR-0173, ADR-0209, ADR-0279
+Backing: test
+
+### `invariant: pi-tools-integration-boundary`
+
+Awf subscribes to protocol-v2 capability and registration-result events during extension factory initialization and emits a correlated request with one stable registration id. A compatible capability atomically receives all four awf profiles with default suppression. Missing, incompatible, late, and rejected registration produce one actionable no-fallback notice. pi-tools owns general context usage, handoff, child execution, scheduling, confinement, execution facts, and presentation.
+Origin: ADR-0279
+Backing: test

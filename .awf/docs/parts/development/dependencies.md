@@ -14,4 +14,4 @@ For volatile mechanisms, compose at the outer boundary that knows production and
 | `gremlins` | Advisory mutation testing (ADR-0066). |
 | Pi lane dependencies | Pinned Node, TypeScript, Pi ai/TUI 0.81.1, TypeBox, and checksummed `fork-v0.81.1-awf.3` in `tools/pi-extension-test/`. Docker builds a content-keyed shared image and uses throwaway copies, with no host npm state or volume. |
 
-Pi is adopter-supplied, not an awf binary dependency. The checked test artifact retains the numeric 0.81.1 floor and lock-pinned integrity.
+Pi and `hypnotox/pi-tools` are adopter-supplied, not awf binary dependencies. Install `pi-tools` independently at an unpinned revision; successful protocol-v2 negotiation and final profile registration, rather than a package revision, define compatibility. `pi-tools` owns general context usage, handoff, scheduling, child execution, confinement, execution facts, and presentation. Awf owns the rendered profile adapter, workflow policy, and effort integration. The checked Pi artifact retains the numeric 0.81.1 floor and lock-pinned integrity only for awf-owned runtime integration.

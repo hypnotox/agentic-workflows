@@ -1,11 +1,11 @@
 | Area | Test location and shape |
 |---|---|
 | Go behavior | Focused package tests cover effort/worktree safety, migration, session protocol validation, deterministic joins, resident roots, and real-Git topology. Legacy protocol residents are read-only fixtures. |
-| Pi extension | Container tests cover descriptor projection, bounded handoff, transcript/provider projection, queueing, cancellation, recovery, runtime guards, and `using_effort`. |
+| Pi extension | Container tests cover generated protocol-v2 profile negotiation through a contract double, adapter schemas and policy, model routing, native awf skill delivery, Git audits, and retained `using_effort` integration. External `pi-tools` mechanics are not reproduced. |
 | Git seam | `internal/git/entrypoints_test.go` derives entrypoints and requires a backend-agnostic contract suite for each. Repo walkers keep Git libraries and subprocesses within `internal/git` and `internal/testsupport/gitfixture`. |
 | Test homes | Five `TestMain` suites use canonical `home-<decimal>` homes, retain Go's default `GOPATH`, and sweep only homes older than 24 hours. Failure to remove the current home fails the suite. |
 
-`TestPiRealRuntimeSmoke` runs only when the gate enables it and without caching. The Pi association tests cover root attach/detach, fixed relative paths, owner-checked recovery, heartbeat, detached restart cleanup, advisory Remote Pi metadata, capability-gated suffix negotiation, replay, lifecycle clears, ownership loss, and optional-emission degradation. The context suite proves copied request messages, tool-follow-up refresh, active-branch-only compaction, and no persistence to session history.
+`TestPiRealRuntimeSmoke` runs only when the gate enables it and without caching. The Pi association tests cover root attach/detach, fixed relative paths, owner-checked recovery, heartbeat, detached restart cleanup, advisory Remote Pi metadata, capability-gated suffix negotiation, replay, lifecycle clears, ownership loss, and optional-emission degradation. Adapter tests prove successful and failed protocol-v2 negotiation, no-fallback behavior, profile routing delivery, and generated role discovery without testing external context, handoff, scheduling, execution, or presentation internals.
 
 ### Parallelism
 

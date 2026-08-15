@@ -76,8 +76,8 @@ func TestExplorationConsumerToPiToolSeam(t *testing.T) {
 		t.Error("Pi exploring skill does not invoke subagent_explore")
 	}
 	extension := read(t, filepath.Join(root, ".pi", "extensions", "awf-subagents", "index.ts"))
-	if !strings.Contains(extension, `name: "subagent_explore"`) {
-		t.Error("Pi extension does not register subagent_explore")
+	if !strings.Contains(extension, `toolName: "subagent_explore"`) || !strings.Contains(extension, `id: "awf-explore"`) {
+		t.Error("Pi profile adapter does not register the awf exploration role")
 	}
 }
 

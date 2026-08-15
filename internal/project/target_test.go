@@ -55,7 +55,7 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 		}
 	}
 	expectedExtensions := map[string]bool{}
-	for _, path := range []string{".pi/extensions/awf-context-usage/index.ts", ".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/model-routing.ts", ".pi/extensions/awf-subagents/runner.ts", ".pi/extensions/awf-effort/index.ts", ".pi/extensions/awf-effort/client.ts"} {
+	for _, path := range []string{".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/model-routing.ts", ".pi/extensions/awf-effort/index.ts", ".pi/extensions/awf-effort/client.ts"} {
 		expectedExtensions[path] = true
 		content, ok := extensions[path]
 		if !ok {
@@ -103,12 +103,12 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 			}
 		}
 	}
-	contextUsage := extensions[".pi/extensions/awf-context-usage/index.ts"]
-	handoff := extensions[".pi/extensions/awf-handoff/index.ts"]
 	index := extensions[".pi/extensions/awf-subagents/index.ts"]
 	routing := extensions[".pi/extensions/awf-subagents/model-routing.ts"]
-	if !strings.Contains(contextUsage, "registerContextUsage(pi") || !strings.Contains(handoff, "registerHandoff(pi") || !strings.Contains(index, "registerSubagentTools(pi") {
-		t.Fatal("Pi extension entrypoints are not registered")
+	for _, want := range []string{"registerSubagentTools(pi", "PROTOCOL_VERSION = 2", "ProfileDefinition[]", "pi-tools:subagent-profiles:request", "pi-tools:subagent-profiles:capability", "pi-tools:subagent-profiles:registration-result", "suppressDefault: true", "awf provides no fallback"} {
+		if !strings.Contains(index, want) {
+			t.Errorf("Pi profile adapter missing %q", want)
+		}
 	}
 	for _, owned := range []string{"export const PREFERENCE_FIELDS", "export function parsePreferenceSource", "export async function loadPreferenceState", "export function effectivePreferenceState", "export function resolveChildModel", "export function buildRoutingCard"} {
 		if !strings.Contains(routing, owned) {
@@ -240,31 +240,6 @@ func templateSource(t *testing.T, tid string) string {
 	return string(src)
 }
 
-func TestPiMinimumRuntime(t *testing.T) {
-	for _, name := range []string{"awf-context-usage/index.ts", "awf-handoff/index.ts", "awf-subagents/index.ts"} {
-		out := renderPiExtensionFile(t, name)
-		for _, want := range []string{"MIN_PI_VERSION", "guardMinimumRuntime", "awf.pi.minimum-runtime-notified", "Upgrade Pi and reload."} {
-			if !strings.Contains(out, want) {
-				t.Errorf("%s missing minimum-runtime guard %q", name, want)
-			}
-		}
-	}
-}
-
-func TestPiContextUsageInjection(t *testing.T) {
-	out := renderPiExtensionFile(t, "awf-context-usage/index.ts")
-	for _, want := range []string{"pi.on(\"context\"", "[session context]", "unknown/", "unavailable;", "getContextUsage()", "getBranch()", "entry.type===\"compaction\"", "customType:\"awf-context-usage\"", "display:false"} {
-		if !strings.Contains(out, want) {
-			t.Errorf("context usage output missing %q", want)
-		}
-	}
-	for _, banned := range []string{"appendEntry(", "registerTool(", "registerCommand(", "queueCommand(", "handoff_session", "telemetry"} {
-		if strings.Contains(out, banned) {
-			t.Errorf("context usage output retains side effect %q", banned)
-		}
-	}
-}
-
 // invariant: rendering/pi-workflows:pi-subagent-model-routing (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-workflows:pi-subagent-model-preferences (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-workflows:pi-subagent-model-wizard (TestPiRealRuntimeSmoke)
@@ -272,9 +247,9 @@ func TestPiContextUsageInjection(t *testing.T) {
 // invariant: rendering/pi-workflows:pi-native-workflow-skills (TestPiRealRuntimeSmoke)
 // invariant: rendering/project-output-plan:multi-target-render (TestPiRealRuntimeSmoke)
 // invariant: rendering/catalog-and-targets:target-dialect-render (TestPiRealRuntimeSmoke)
-// invariant: rendering/pi-workflows:pi-session-handoff-lifecycle (TestPiRealRuntimeSmoke)
-// invariant: rendering/pi-workflows:pi-session-handoff-public-contract (TestPiRealRuntimeSmoke)
-// invariant: rendering/pi-runtime:pi-context-usage-injection (TestPiRealRuntimeSmoke)
+// removed-invariant (TestPiRealRuntimeSmoke)
+// removed-invariant (TestPiRealRuntimeSmoke)
+// removed-invariant (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-runtime:pi-minimum-runtime (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-runtime:pi-implementation-state-boundary (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-workflows:pi-implement-role-artifact (TestPiRealRuntimeSmoke)
@@ -332,7 +307,7 @@ func TestTargetOutputRenderError(t *testing.T) {
 // invariant: rendering/pi-workflows:pi-dedicated-grounding-dispatch (TestPiStructuredExplorationContractRender)
 func TestPiStructuredExplorationContractRender(t *testing.T) {
 	body := renderPiExtensionFile(t, "awf-subagents/index.ts")
-	for _, want := range []string{"subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement", "verificationCheckout: Type.Optional(Type.String())", "Omit verificationCheckout for the project root", "MAX_EXPLORATION_CONCURRENCY = 10", "queues the rest FIFO with abort-aware removal"} {
+	for _, want := range []string{"ProfileDefinition[]", "subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement", "verificationCheckout: Type.Optional(Type.String())", "Omit verificationCheckout for the project root", "MAX_EXPLORATION_CONCURRENCY = 10", "concurrency: MAX_EXPLORATION_CONCURRENCY", "exclusiveParentBatch: true", "PROTOCOL_VERSION = 2"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("Pi subagent extension missing %q", want)
 		}
@@ -356,8 +331,7 @@ func TestPiSubagentModelRoutingRender(t *testing.T) {
 		"pattern: MODEL_REFERENCE_PATTERN", "MODEL_REFERENCE_FORM = new RegExp(MODEL_REFERENCE_PATTERN)",
 		"!MODEL_REFERENCE_FORM.test(value)",
 		"Exact provider/model-id in printable ASCII", "default, auto, and inherit parent are invalid",
-		"Omit the model field to use configured or inherited routing.", "const finalSelected = await refreshAndResolve",
-		"requestedModel", "resolvedModel", "thinkingLevel",
+		"Omit the model field to use configured or inherited routing.", "const selectModel = async", "session!.modelRegistry", "context.parent?.model ?? session!.model", "ConcreteModel",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("Pi model routing render missing %q", want)
@@ -374,12 +348,8 @@ func TestPiSubagentModelRoutingRender(t *testing.T) {
 	if got := strings.Count(routing, `pattern: "`); got != 0 {
 		t.Errorf("model-routing.ts inlines a literal JSON-Schema pattern %d times, want the shared MODEL_REFERENCE_PATTERN constant only", got)
 	}
-	// ADR-0176: the omitted-model display label must not be a usable argument.
-	if !strings.Contains(body, `: "(configured or inherited)";`) {
-		t.Error("omitted-model display label is not the non-parseable phrase")
-	}
-	if strings.Contains(body, `: "inherit parent";`) {
-		t.Error("omitted-model display label still renders a rejected sentinel value")
+	if !strings.Contains(body, "Omission is the only default form.") {
+		t.Error("profile guidance does not preserve omission as the only default model form")
 	}
 }
 
@@ -390,7 +360,7 @@ func TestPiSubagentModelPreferencesRender(t *testing.T) {
 		`PREFERENCE_FIELDS = ["default", ...PREFERENCE_ROLES, ...PREFERENCE_TIERS]`,
 		`type SourceReason = "read-error" | "malformed-json" | "non-object" | "unknown-key"`,
 		`type FieldReason = "malformed" | "overlong" | "unregistered" | "unauthenticated" | "unavailable"`,
-		"await loadPreferenceState(deps, ctx.modelRegistry)", "new WeakSet<object>()", "ctx.sessionManager",
+		"loadPreferenceState(deps,", "session.modelRegistry", "new WeakSet<object>()", "ctx.sessionManager",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("Pi model preference render missing %q", want)
@@ -402,7 +372,7 @@ func TestPiSubagentModelWizardRender(t *testing.T) {
 	body := renderPiExtensionFile(t, "awf-subagents/index.ts") + renderPiExtensionFile(t, "awf-subagents/model-routing.ts")
 	for _, want := range []string{
 		`small: "openai-codex/gpt-5.6-luna"`, `standard: "openai-codex/gpt-5.6-terra"`, `large: "openai-codex/gpt-5.6-sol"`,
-		"Role defaults:", "Tier mappings:", "Missing:", "Invalid:", "modified concurrently", "mode: 0o600", "await loadPreferenceState(deps, ctx.modelRegistry)",
+		"Role defaults:", "Tier mappings:", "Missing:", "Invalid:", "modified concurrently", "mode: 0o600", "loadPreferenceState(deps,", "session.modelRegistry",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("Pi model wizard render missing %q", want)
@@ -531,9 +501,8 @@ func TestBoundedExplorationReporting(t *testing.T) {
 			"Ground every material claim with file/line evidence", "Not found within <breadth> boundary: <what was searched>", "successful execution", "one concise next refinement", "broad absence report must name the project search universe and searched surfaces", "Distinguish inconclusive and unverified outcomes from absence",
 			"new fresh-context call to correct the task, change report detail, or widen breadth",
 		}},
-		"Pi per-call suffix": {prompt, []string{
-			"at most ten active exploration children", "queues the rest FIFO with abort-aware removal",
-			"Selected breadth maximum:", "Selected report detail:",
+		"Pi profile guidance": {prompt, []string{
+			"Selected breadth maximum:", "Selected report detail:", "concurrency: MAX_EXPLORATION_CONCURRENCY", "profileDataSchema",
 		}},
 		"explorer agent": {explorer, []string{
 			"independent information needs concurrently", "refinement of an earlier result stays sequential",
@@ -594,7 +563,7 @@ func TestTargetDescriptorCustomization(t *testing.T) {
 		BridgeTemplate: bridgeTID,
 		Capabilities:   []Capability{CapabilitySubagentTools, CapabilitySessionHandoff},
 		Outputs: []TargetOutput{{
-			Path: ".custom/extension.ts", TemplateID: "pi/awf-context-usage/index.ts.tmpl",
+			Path: ".custom/extension.ts", TemplateID: "pi/awf-subagents/index.ts.tmpl",
 			Producer: TargetOutputTemplate, Encoder: PlainAgentDialect,
 			Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true,
 		}},
@@ -923,13 +892,13 @@ func TestPiImplementRoleArtifact(t *testing.T) {
 	src := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	for _, want := range []string{
 		".pi/agents/implementer.md",
-		"loadImplementer",
+		"loadAgentContract",
+		"relative: IMPLEMENTER_PATH",
 		"Enable the implementer agent and run ./awf render.",
 		"has no instruction body; run ./awf render.",
 		"parseFrontmatter",
-		// Both snapshot directions, the pre-existing one and the new mirror.
-		"before.head !== after.head",
-		"before.head === after.head",
+		"const changed = state.before.available && after.available && state.before.head !== after.head",
+		"commitVerification: state.before.available && after.available ? \"verified\" : \"unavailable\"",
 		"commit-capable but created no commit",
 		"committed despite allowCommits=false",
 		"resolveVerificationCheckout",
@@ -960,36 +929,14 @@ func TestPiImplementRoleArtifact(t *testing.T) {
 			t.Errorf("generic implementer role gained Pi-only verification metadata %q", piOnly)
 		}
 	}
-	behavior, err := os.ReadFile(filepath.Join(repoRootDir(t), "tools/pi-extension-test/tests/index.test.ts"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, want := range []string{
-		"implementation verification defaults to the root without changing runner cwd",
-		"a linked-worktree HEAD advance satisfies owner verification while root and runner cwd stay fixed",
-		"selected checkout canonicalizes one leading at-sign and filesystem aliases",
-		"selected checkout preserves significant trailing path whitespace",
-		"selected checkout detects a forbidden commit and names its resolved identity",
-		"invalid explicit verification identities refuse before child dispatch",
-		"omitted verification retains unavailable commit policy outside Git",
-		"a commit-capable implementation that leaves selected HEAD unchanged names retry repair",
-		`label: "copied linked-worktree pointer"`,
-		`label: "copied primary pointer"`,
-		`label: "selected dot-git symlink"`,
-		"ADMIN_BACKLINK",
-		"isSymbolicLink",
-	} {
-		if !strings.Contains(string(behavior), want) {
-			t.Errorf("TypeScript implementation-verification behavior contract missing %q", want)
-		}
-	}
 }
 
 // invariant: rendering/pi-workflows:pi-role-contract-loader (TestPiRoleContractLoader)
 func TestPiRoleContractLoader(t *testing.T) {
 	body := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	for _, want := range []string{
-		"loadExplorer", "loadGroundingChecker",
+		"loadAgentContract", "source: ContractSource",
+		"relative: EXPLORER_PATH", "relative: GROUNDING_CHECKER_PATH",
 		".pi/agents/explorer.md", ".pi/agents/grounding-checker.md",
 		"Enable the explorer agent and run ./awf render.",
 		"Enable the grounding-checker agent and run ./awf render.",
@@ -1006,56 +953,6 @@ func TestPiRoleContractLoader(t *testing.T) {
 	} {
 		if strings.Contains(body, banned) {
 			t.Errorf("role prose survived inline in the extension: %q", banned)
-		}
-	}
-}
-
-func TestHandoffLifecycleIndependentOfEffortState(t *testing.T) {
-	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
-	for _, want := range []string{"let pending", "queueCommand(\"awf-handoff-continue\"", "Fresh-session handoff", "parentSession:old", "prepared?.cleanup?.()", "if(pending!==request)", "pending=undefined"} {
-		if !strings.Contains(out, want) {
-			t.Errorf("handoff lifecycle output missing %q", want)
-		}
-	}
-	body, err := os.ReadFile(filepath.Join(repoRootDir(t), "tools/pi-extension-test/tests/handoff.test.ts"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, want := range []string{
-		"handoff rejects a continuation whose pending request changes during countdown",
-		"wrong continuation token preserves the valid pending request",
-		"handoff preserves lineage and does not silently retry",
-	} {
-		if !strings.Contains(string(body), want) {
-			t.Errorf("TypeScript lifecycle behavior contract missing %q", want)
-		}
-	}
-}
-
-func TestHandoffPublicKickoffContract(t *testing.T) {
-	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
-	for _, want := range []string{"kickoff:Type.String({maxLength:1000})", "params.kickoff.length>1000", "remote-pi:notification-disposition.v1", "additionalProperties:false"} {
-		if !strings.Contains(out, want) {
-			t.Errorf("handoff public contract missing %q", want)
-		}
-	}
-	body, err := os.ReadFile(filepath.Join(repoRootDir(t), "tools/pi-extension-test/tests/handoff.test.ts"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, want := range []string{
-		"handoff schema exposes only required bounded kickoff prose",
-		`"😀".repeat(500)`,
-		`"😀".repeat(501)`,
-		"handoff marks a successfully queued continuation as non-terminal",
-	} {
-		if !strings.Contains(string(body), want) {
-			t.Errorf("TypeScript public-contract behavior case missing %q", want)
-		}
-	}
-	for _, banned := range []string{"memoryPath", "validateMemoryPath", "runAwf", "state.json", "assignment", "selected-effort", "telemetry", "adopt"} {
-		if strings.Contains(out, banned) {
-			t.Errorf("handoff public contract retains %q", banned)
 		}
 	}
 }

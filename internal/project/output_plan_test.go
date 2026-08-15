@@ -84,8 +84,8 @@ func TestOutputPlanPropagatesPreAdoptionEnumerationFault(t *testing.T) {
 }
 
 // invariant: rendering/project-output-plan:target-capabilities-closed (TestTargetDescriptorValidation)
-// invariant: rendering/pi-workflows:pi-subagent-progress-bounds (TestTargetDescriptorValidation)
-// invariant: rendering/pi-workflows:pi-subagent-progress-rendering (TestTargetDescriptorValidation)
+// removed-invariant (TestTargetDescriptorValidation)
+// removed-invariant (TestTargetDescriptorValidation)
 func TestTargetDescriptorValidation(t *testing.T) {
 	for _, target := range []Target{
 		{Name: "bad", BridgeFile: "X"},
@@ -149,7 +149,7 @@ func TestBridgeRenderIdentity(t *testing.T) {
 		BridgeTemplate: bridgeTID,
 		Capabilities:   []Capability{CapabilitySubagentTools, CapabilitySessionHandoff},
 		Outputs: []TargetOutput{{
-			Path: ".custom/extension.ts", TemplateID: "pi/awf-context-usage/index.ts.tmpl",
+			Path: ".custom/extension.ts", TemplateID: "pi/awf-subagents/index.ts.tmpl",
 			Producer: TargetOutputTemplate, Encoder: PlainAgentDialect,
 			Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true,
 		}},
@@ -295,14 +295,14 @@ func TestOutputPolicyIsExplicit(t *testing.T) {
 
 // invariant: rendering/project-output-plan:output-plan-complete (TestBridgeRenderIdentity)
 // invariant: rendering/project-output-plan:output-plan-complete (TestCurrentStateOutputPlanMatchesTree)
-// invariant: rendering/pi-runtime:pi-child-process-safety (TestCurrentStateOutputPlanMatchesTree)
+// removed-invariant (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/catalog-and-targets:claude-md-bridge (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/sync-and-drift:uninstall-removes-lock-entries (TestCurrentStateOutputPlanMatchesTree)
-// invariant: rendering/pi-workflows:pi-session-handoff-lifecycle (TestCurrentStateOutputPlanMatchesTree)
-// invariant: rendering/pi-workflows:pi-subagent-progress-context-isolation (TestCurrentStateOutputPlanMatchesTree)
+// removed-invariant (TestCurrentStateOutputPlanMatchesTree)
+// removed-invariant (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-workflows:pi-subagent-model-routing (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-workflows:pi-subagent-model-preferences (TestCurrentStateOutputPlanMatchesTree)
-// invariant: rendering/pi-workflows:pi-session-handoff-public-contract (TestCurrentStateOutputPlanMatchesTree)
+// removed-invariant (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-runtime:pi-implementation-state-boundary (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-workflows:pi-implementation-batch-exclusivity (TestCurrentStateOutputPlanMatchesTree)
 func TestCurrentStateOutputPlanMatchesTree(t *testing.T) {

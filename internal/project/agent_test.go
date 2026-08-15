@@ -93,7 +93,7 @@ func TestProjectRendersStandardAgentMetadataAndBody(t *testing.T) {
 		t.Fatal(err)
 	}
 	for i := range files {
-		if files[i].Path == ".pi/extensions/awf-context-usage/index.ts" {
+		if files[i].Path == ".pi/extensions/awf-subagents/index.ts" {
 			if files[i].Encoder != PlainAgentDialect {
 				t.Fatalf("Pi target-owned encoder = %q", files[i].Encoder)
 			}

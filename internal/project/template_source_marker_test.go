@@ -87,7 +87,7 @@ func TestTemplateSourceMarkerProducerMatrix(t *testing.T) {
 	if index == nil || index.ObservedTemplateID != "" || strings.Contains(index.Content, "awf:template-source") {
 		t.Fatalf("template-less ADR index gained attribution: %#v", index)
 	}
-	for _, path := range []string{".awf/hooks/pre-commit.sh", ".pi/extensions/awf-context-usage/index.ts"} {
+	for _, path := range []string{".awf/hooks/pre-commit.sh", ".pi/extensions/awf-subagents/index.ts"} {
 		if node := activeByPath[path]; node.file == nil || strings.Contains(node.file.Content, "awf:template-source") {
 			t.Errorf("native-format output %s gained attribution", path)
 		}

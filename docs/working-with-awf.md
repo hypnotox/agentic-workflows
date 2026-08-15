@@ -169,6 +169,6 @@ parts, and newly rendered surfaces worth wiring up (fresh hook payloads, for exa
 changelog --since <previous version>` lists every adopter-facing change in between. Then run the
 drift check and commit the config and rendered files together.
 
-Pi renders five governed TypeScript outputs: context usage, handoff, and subagent index, routing, and runner. Context usage is a standalone transient observation with a deterministic unavailable form; it neither persists facts nor triggers a pressure action.
+Pi renders its profile adapter and model-routing module, plus conditional effort integration. Install `hypnotox/pi-tools` independently for context usage, handoff, execution, scheduling, and presentation; successful protocol-v2 capability and final profile registration are the compatibility check, with actionable no-fallback failure.
 
-Pi extensions require the retained 0.81.1 fork runtime APIs, including dynamic active tools and the shared file-mutation queue; incompatible runtimes receive one actionable notice before registration.
+The conditional awf effort extension requires the retained compatible Pi runtime APIs, including dynamic active tools and the shared file-mutation queue; the profile adapter instead depends only on successful pi-tools protocol-v2 negotiation.
