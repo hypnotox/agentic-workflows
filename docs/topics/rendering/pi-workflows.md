@@ -70,9 +70,9 @@ Backing: test
 
 ### `invariant: pi-structured-exploration-contract`
 
-The generated adapter atomically registers exactly four closed-schema profiles, each with optional exact model routing. Implementation alone also accepts optional `verificationCheckout` as commit-policy identity without changing process CWD or task mutation paths. Exploration retains required task, breadth, and detail and declares ten active calls; grounding and review also declare ten, while implementation declares one and parent-batch exclusivity.
+The generated Full adapter atomically registers exactly six closed-schema profiles and Core registers exactly four, each with optional exact model routing. Every reviewer included by the selected workflow profile has a dedicated profile and tool with no kind argument: Full includes ADR, plan, and code review, while Core includes code review only. One shared review-profile factory owns their common preparation and policy, the shared `review` model-preference role governs every reviewer, and each review profile independently declares ten active calls. Implementation alone also accepts optional `verificationCheckout` as commit-policy identity without changing process CWD or task mutation paths. Exploration retains required task, breadth, and detail and declares ten active calls; grounding also declares ten, while implementation declares one and parent-batch exclusivity.
 Origin: ADR-0148
-Revised-by: ADR-0260, ADR-0279
+Revised-by: ADR-0260, ADR-0279, ADR-0280
 Backing: test
 
 ### `invariant: pi-subagent-model-preferences`

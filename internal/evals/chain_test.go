@@ -85,14 +85,14 @@ func TestPiReviewerDispatchNamesToolAndRenderedReviewer(t *testing.T) {
 	cat := loadCatalog(t)
 	root := syncFullCatalogForTarget(t, cat, "pi")
 	extension := read(t, filepath.Join(root, ".pi", "extensions", "awf-subagents", "index.ts"))
-	for _, tc := range []struct{ skill, agent string }{
-		{"reviewing-impl", "code-reviewer"},
-		{"reviewing-adr", "adr-reviewer"},
-		{"reviewing-plan", "plan-reviewer"},
+	for _, tc := range []struct{ skill, agent, tool string }{
+		{"reviewing-impl", "code-reviewer", "subagent_review_code"},
+		{"reviewing-adr", "adr-reviewer", "subagent_review_adr"},
+		{"reviewing-plan", "plan-reviewer", "subagent_review_plan"},
 	} {
 		body := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-"+tc.skill, "SKILL.md"))
-		if !namesOnInvocationLine(body, "subagent_review") || !strings.Contains(extension, tc.agent+".md") {
-			t.Errorf("Pi skill %q does not connect subagent_review to %q", tc.skill, tc.agent)
+		if !namesOnInvocationLine(body, tc.tool) || !strings.Contains(extension, tc.agent+".md") {
+			t.Errorf("Pi skill %q does not connect %s to %q", tc.skill, tc.tool, tc.agent)
 		}
 		if got := strings.Count(body, "omit the `model` field to use configured role routing"); got != 2 {
 			t.Errorf("Pi skill %q has %d deliberate selection rules, want primary and verify rules", tc.skill, got)

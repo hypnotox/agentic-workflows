@@ -26,7 +26,7 @@ function registry(refs:string[]=["p/model"]) { const entries=new Map(refs.map(re
 test("protocol-v2 registration is factory-time, atomic, correlated, and terminal notices are once-only", async()=>{
  const h=harness(); assert.equal(h.request().name,"pi-tools:subagent-profiles:request"); assert.equal(h.request().v.protocolVersion,2);
  h.capability({protocolVersion:2,correlationId:"other",register:()=>assert.fail("foreign")}); assert.equal(h.batch(),undefined);
- const profiles=register(h); assert.equal(h.batch().registrationId,"awf:subagent-profiles:v2"); assert.equal(h.batch().suppressDefault,true); assert.equal(profiles.length,4); assert.deepEqual(profiles.map(p=>p.concurrency),[10,10,10,1]); assert.equal(profiles[3].exclusiveParentBatch,true);
+ const profiles=register(h); assert.equal(h.batch().registrationId,"awf:subagent-profiles:v2"); assert.equal(h.batch().suppressDefault,true); assert.equal(profiles.length,6); assert.deepEqual(profiles.map(p=>p.concurrency),[10,10,10,10,10,1]); assert.equal(profiles[5].exclusiveParentBatch,true);
  await h.hooks.session_start({},h.ctx); await new Promise<void>((resolve) => setTimeout(resolve,0)); assert.equal(h.notices.length,0);
  const rejected=harness(); rejected.eventHandlers["pi-tools:subagent-profiles:registration-result"]({protocolVersion:2,registrationId:"awf:subagent-profiles:v2",state:"rejected",reason:"no"}); await rejected.hooks.session_start({},rejected.ctx); await new Promise<void>((resolve) => setTimeout(resolve,0)); assert.equal(rejected.notices.length,1); assert.match(rejected.notices[0][0],/no/);
  const missing=harness(); await missing.hooks.session_start({},missing.ctx); await new Promise<void>((resolve) => setTimeout(resolve,0)); assert.equal(missing.notices.length,1); assert.match(missing.notices[0][0],/missing, late, or incompatible/);
@@ -34,11 +34,11 @@ test("protocol-v2 registration is factory-time, atomic, correlated, and terminal
 
 test("profiles retain exact schemas, rendered contracts, routing selection, metadata, and commit policy", async()=>{
  const values=all(); const h=harness({[global]:JSON.stringify(values)}); for(const ref of Object.values(values))h.add(ref); const ps=register(h); await h.hooks.session_start({},h.ctx);
- for(const p of ps) assert.equal(Value.Check(p.parameters, p.id==="awf-explore"?{task:"x",breadth:"targeted",detail:"paths"}:p.id==="awf-review"?{task:"x",kind:"code"}:p.id==="awf-implement"?{task:"x",allowCommits:false}:{task:"x"}),true);
- const contexts:any[]=[{args:{task:"x"},parent:{model:h.ctx.model}},{args:{task:"x",breadth:"broad",detail:"analysis"},parent:{model:h.ctx.model}},{args:{task:"x",kind:"code"},parent:{model:h.ctx.model}},{args:{task:"x",allowCommits:false},parent:{model:h.ctx.model}}];
- for(let i=0;i<ps.length;i++){ const p=ps[i]; const c=contexts[i]; const selected=await p.selectModel(c); assert.equal(`${selected.provider}/${selected.id}`, Object.values(values)[i===1?2:i===2?3:i===3?4:1]); const state=await p.beforeRun?.(c); const prepared=await p.prepare(c); assert.match(prepared.systemPrompt,/body/); assert.equal(prepared.cwd,root); if(p.afterRun) { const out=await p.afterRun({state:"completed"},state); assert.ok(out.profileData); } }
+ for(const p of ps) assert.equal(Value.Check(p.parameters, p.id==="awf-explore"?{task:"x",breadth:"targeted",detail:"paths"}:p.id==="awf-implement"?{task:"x",allowCommits:false}:{task:"x"}),true);
+ const contexts:any[]=[{args:{task:"x"},parent:{model:h.ctx.model}},{args:{task:"x",breadth:"broad",detail:"analysis"},parent:{model:h.ctx.model}},{args:{task:"x"},parent:{model:h.ctx.model}},{args:{task:"x"},parent:{model:h.ctx.model}},{args:{task:"x"},parent:{model:h.ctx.model}},{args:{task:"x",allowCommits:false},parent:{model:h.ctx.model}}];
+ for(let i=0;i<ps.length;i++){ const p=ps[i]; const c=contexts[i]; const selected=await p.selectModel(c); const preferenceIndex=i===0?1:i===1?2:i<5?3:4; assert.equal(`${selected.provider}/${selected.id}`, Object.values(values)[preferenceIndex]); const state=await p.beforeRun?.(c); const prepared=await p.prepare(c); assert.match(prepared.systemPrompt,/body/); assert.equal(prepared.cwd,root); if(p.afterRun) { const out=await p.afterRun({state:"completed"},state); assert.ok(out.profileData); } }
  assert.deepEqual(await ps[0].selectModel({args:{task:"x",model:"p/model"},parent:{model:h.ctx.model}}),{provider:"p",id:"model",thinkingLevels:["off","minimal","low","medium","high","xhigh","max"]});
- const before=await ps[3].beforeRun(contexts[3]); const failure=await ps[3].afterRun({state:"completed"},before); assert.equal(failure.failure,undefined);
+ const before=await ps[5].beforeRun(contexts[5]); const failure=await ps[5].afterRun({state:"completed"},before); assert.equal(failure.failure,undefined);
 });
 
 test("routing preferences strictly parse, merge, validate, resolve, preview, and bound cards", async()=>{

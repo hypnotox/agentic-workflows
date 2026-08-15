@@ -125,7 +125,8 @@ test("pinned Pi runtime discovers awf skills and delivers protocol-v2 routing wi
   assert.equal(toolsInstalled, false);
   assert.equal(finalRegistration, undefined);
   assert.deepEqual(registeredBatch.profiles.map((profile: any) => profile.toolName), [
-    "subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement",
+    "subagent_grounding", "subagent_explore", "subagent_review_adr", "subagent_review_plan",
+    "subagent_review_code", "subagent_implement",
   ]);
 
   const loadedExtensions = loader.getExtensions().extensions;

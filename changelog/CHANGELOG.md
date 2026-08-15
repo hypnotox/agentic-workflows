@@ -8,6 +8,10 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Breaking changes
+
+- Pi review dispatch now gives every enabled reviewer a dedicated task-only profile: Full exposes `subagent_review_adr`, `subagent_review_plan`, and `subagent_review_code`, while Core exposes only `subagent_review_code`. The generic `subagent_review` tool and its required `kind` argument are removed without an alias.
+
 ## [0.38.0] - 2026-08-15
 
 ### Features

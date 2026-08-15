@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: dedicated-pi-reviewer-profiles
-status: Accepted
+status: Implementing
 date: 2026-08-16
 ---
 # ADR-0280: Dedicated Pi reviewer profiles
@@ -24,10 +24,12 @@ profile also makes the existing review concurrency limit apply independently to 
 
 ## Decision
 
-1. `decision: one-profile-per-reviewer` Register `awf-review-adr`, `awf-review-plan`, and
-   `awf-review-code` as distinct pi-tools profiles exposed respectively as `subagent_review_adr`,
-   `subagent_review_plan`, and `subagent_review_code`. Each tool has a closed schema containing the
-   review task and optional exact model override, with no reviewer-kind argument.
+1. `decision: one-profile-per-reviewer` Give every reviewer included by the selected workflow
+   profile its own pi-tools profile and tool. Full registers `awf-review-adr`, `awf-review-plan`, and
+   `awf-review-code`, exposed respectively as `subagent_review_adr`, `subagent_review_plan`, and
+   `subagent_review_code`; Core registers only the code pair because it includes no ADR or plan
+   reviewer. Each tool has a closed schema containing the review task and optional exact model
+   override, with no reviewer-kind argument.
 2. `decision: retire-generic-review-tool` Remove the generic `subagent_review` tool and its
    `awf-review` profile without a compatibility alias. Rendered workflow guidance names the
    dedicated tool at each governed dispatch site.
@@ -44,7 +46,7 @@ profile also makes the existing review concurrency limit apply independently to 
 
 ## Consequences
 
-Runtime profile details and queues identify the reviewer that actually ran. Each public tool has a
+Runtime profile details and queues identify the reviewer that actually ran, while Core remains free of Full-only ADR and plan operations. Each public tool has a
 narrow schema, invalid kind-to-contract combinations disappear, and reviewer-specific behavior can
 change without expanding a shared dispatch switch. Existing callers must adopt the dedicated tool
 names immediately because no legacy alias remains.
@@ -71,3 +73,6 @@ publication-safety contract.
 
 - 2026-08-16: Proposed
 - 2026-08-16: Accepted; content-sha256: 840471fb3f0f8804452553cb1201163e9356da72b3e79bcfab1901e17ceb8987
+- 2026-08-16: Amended; content-sha256: ce40ac4fed2f2587ecd583fc8afde2304c1274e6b7bd4c2c9da19cd7c0690288
+- 2026-08-16: Implementing; content-sha256: ce40ac4fed2f2587ecd583fc8afde2304c1274e6b7bd4c2c9da19cd7c0690288
+- 2026-08-16: Applied; operations: update `rendering/pi-workflows:pi-structured-exploration-contract`

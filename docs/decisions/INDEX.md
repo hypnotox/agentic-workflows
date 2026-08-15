@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-0280: Dedicated Pi reviewer profiles](0280-dedicated-pi-reviewer-profiles.md) (Accepted)
+- [ADR-0280: Dedicated Pi reviewer profiles](0280-dedicated-pi-reviewer-profiles.md) (Implementing)
 
 ## History
 
