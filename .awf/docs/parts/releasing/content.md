@@ -2,19 +2,18 @@ How to cut a release of the `awf` binary. [ADR-0030](decisions/0030-prebuilt-bin
 
 ## Release runbook
 
-1. On a clean `main`, verify the release range:
+1. On a clean `main`, audit the release range:
 
    ```
-   ./x gate && ./x check && ./awf audit <previous-tag>..HEAD
+   ./awf audit <previous-tag>..HEAD
    ```
 
-   All commands must pass. `audit` is advisory but must be clean. The required range starts at the previous tag and includes the commits being shipped, including stale-ADR authorization replay for schema-31-and-later merges.
+   The audit is advisory but must be clean. The required range starts at the previous tag and includes the commits being shipped, including stale-ADR authorization replay for schema-31-and-later merges. Commit and push gates keep `main` verified; the tag workflow verifies the release again.
 
 2. Set `project.Version` in `internal/project/project.go` to the target `MAJOR.MINOR.PATCH`. Promote `changelog/CHANGELOG.md`'s entries: rename `## [Unreleased]` to `## [0.2.0] - YYYY-MM-DD`, then add a new empty `## [Unreleased]` above it. Entries are grouped by adopter-facing effect: Breaking changes, Features, Bug fixes, or Others.
 
    ```
    go run ./cmd/releasecheck
-   ./x gate && ./x check
    git add internal/project/project.go changelog/CHANGELOG.md .awf/awf.lock
    git commit -m "chore(awf): bump version to v0.2.0"
    ```
