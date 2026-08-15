@@ -55,8 +55,9 @@ shared total because each profile owns its own ten-call limit; this is an accept
 making each reviewer a genuine scheduling identity.
 
 Implementation updates the generated workflow skills, profile contract tests, and dispatch eval
-assertions together. Affected templates retain coherent unset-variable rendering without unresolved
-value tokens, with render coverage preserving the existing publication-safety contract.
+assertions together. Affected templates retain `missingkey=zero` and render coherent output without unresolved or
+no-value tokens when variables are empty strings, with render coverage preserving the existing
+publication-safety contract.
 
 ## Alternatives Considered
 
