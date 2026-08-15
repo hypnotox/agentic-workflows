@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: depend-on-pi-tools-for-general-pi-tooling
-status: Proposed
+status: Accepted
 date: 2026-08-15
 ---
 # ADR-0279: Depend on pi-tools for general Pi tooling
@@ -94,3 +94,4 @@ path. Contract tests on both sides reduce drift without coupling awf's gate to a
 ## Status history
 
 - 2026-08-15: Proposed
+- 2026-08-15: Accepted; content-sha256: 42f2da3bc64001924042a9599f68c9a2bee88bb8b36326542b5bd0b79a7d104a
