@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: dedicated-pi-reviewer-profiles
-status: Implementing
+status: Implemented
 date: 2026-08-16
 ---
 # ADR-0280: Dedicated Pi reviewer profiles
@@ -76,3 +76,4 @@ publication-safety contract.
 - 2026-08-16: Amended; content-sha256: ce40ac4fed2f2587ecd583fc8afde2304c1274e6b7bd4c2c9da19cd7c0690288
 - 2026-08-16: Implementing; content-sha256: ce40ac4fed2f2587ecd583fc8afde2304c1274e6b7bd4c2c9da19cd7c0690288
 - 2026-08-16: Applied; operations: update `rendering/pi-workflows:pi-structured-exploration-contract`
+- 2026-08-16: Implemented; content-sha256: ce40ac4fed2f2587ecd583fc8afde2304c1274e6b7bd4c2c9da19cd7c0690288

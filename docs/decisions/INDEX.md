@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-0280: Dedicated Pi reviewer profiles](0280-dedicated-pi-reviewer-profiles.md) (Implementing)
+_No decisions are in flight._
 
 ## History
 
@@ -285,3 +285,4 @@
 - [ADR-0277: Require Git Tracking for Generated Artifacts](0277-require-git-tracking-for-generated-artifacts.md) (Implemented)
 - [ADR-0278: Introduce Core and Full workflow profiles](0278-introduce-core-and-full-workflow-profiles.md) (Implemented)
 - [ADR-0279: Depend on pi-tools for general Pi tooling](0279-depend-on-pi-tools-for-general-pi-tooling.md) (Implemented)
+- [ADR-0280: Dedicated Pi reviewer profiles](0280-dedicated-pi-reviewer-profiles.md) (Implemented)
