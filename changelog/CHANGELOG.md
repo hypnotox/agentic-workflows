@@ -8,6 +8,8 @@ query a single version or a range.
 
 ## [Unreleased]
 
+## [0.38.0] - 2026-08-15
+
 ### Features
 
 - Pi adopters now install the unpinned `pi-tools` prerequisite independently. awf no longer renders its general context-usage, handoff, or subprocess-runner extensions; it registers only its four workflow-specific grounding, exploration, review, and implementation profiles through the protocol-v2 handshake, with no fallback when capability or final registration is unavailable.
