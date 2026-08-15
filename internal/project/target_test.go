@@ -366,6 +366,25 @@ func TestPiStructuredExplorationContractRender(t *testing.T) {
 	if !strings.Contains(grounding, "`grounding-checker` agent") {
 		t.Fatal("Claude grounding dispatch lost its target-native agent")
 	}
+
+	core := renderPiExtensionFileForProfile(t, "awf-subagents/index.ts", catalog.ProfileCore)
+	if got := strings.Count(core, `id: "awf-`); got != 4 {
+		t.Fatalf("Core Pi profile definitions = %d, want exactly 4", got)
+	}
+	for _, tool := range []string{"subagent_grounding", "subagent_explore", "subagent_review_code", "subagent_implement"} {
+		if got := strings.Count(core, `toolName: "`+tool+`"`); got != 1 {
+			t.Errorf("Core %s tool-name declarations = %d, want exactly 1", tool, got)
+		}
+	}
+	for _, forbidden := range []string{`id: "awf-review-adr"`, `id: "awf-review-plan"`, `toolName: "subagent_review_adr"`, `toolName: "subagent_review_plan"`, `toolName: "subagent_review"`, "kind: StringEnum("} {
+		if strings.Contains(core, forbidden) {
+			t.Errorf("Core Pi adapter retained excluded review contract %q", forbidden)
+		}
+	}
+	codeReview := piProfileDefinitionLine(t, core, "awf-review-code")
+	if !strings.Contains(piProfileDefinitionLine(t, core, "shared-review-factory"), `parameters: Type.Object({ task: Type.String({ minLength: 1 }), model: Type.Optional(MODEL_REFERENCE_SCHEMA) }, { additionalProperties: false })`) || !strings.Contains(codeReview, `toolName: "subagent_review_code"`) {
+		t.Error("Core code-review profile lost its task-only shared-factory contract")
+	}
 }
 
 func piProfileDefinitionLine(t *testing.T, body, id string) string {
@@ -590,7 +609,12 @@ func TestBoundedExplorationReporting(t *testing.T) {
 
 func renderPiExtensionFile(t *testing.T, name string) string {
 	t.Helper()
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	return renderPiExtensionFileForProfile(t, name, catalog.ProfileFull)
+}
+
+func renderPiExtensionFileForProfile(t *testing.T, name string, profile catalog.Profile) string {
+	t.Helper()
+	root := scaffold(t, "prefix: example\nprofile: "+string(profile)+"\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
