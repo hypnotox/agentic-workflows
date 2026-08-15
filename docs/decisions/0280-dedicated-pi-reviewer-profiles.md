@@ -24,14 +24,17 @@ profile also makes the existing review concurrency limit apply independently to 
 
 ## Decision
 
-1. `decision: one-profile-per-reviewer` Register the ADR, plan, and code reviewers as distinct
-   pi-tools profiles exposed respectively as `subagent_review_adr`, `subagent_review_plan`, and
-   `subagent_review_code`. Each tool has a closed schema containing the review task and optional
-   exact model override, with no reviewer-kind argument.
+1. `decision: one-profile-per-reviewer` Register `awf-review-adr`, `awf-review-plan`, and
+   `awf-review-code` as distinct pi-tools profiles exposed respectively as `subagent_review_adr`,
+   `subagent_review_plan`, and `subagent_review_code`. Each tool has a closed schema containing the
+   review task and optional exact model override, with no reviewer-kind argument.
 2. `decision: retire-generic-review-tool` Remove the generic `subagent_review` tool and its
    `awf-review` profile without a compatibility alias. Rendered workflow guidance names the
    dedicated tool at each governed dispatch site.
-3. `decision: preserve-shared-review-policy` All three reviewer profiles retain the shared
+3. `decision: shared-review-profile-factory` Construct the three dedicated profiles through one
+   shared review-profile factory so their common preparation and policy retain one implementation
+   home.
+4. `decision: preserve-shared-review-policy` All three reviewer profiles retain the shared
    report-only tool boundary and `review` model-preference role. Each profile independently permits
    ten active calls under pi-tools' profile-scoped scheduler.
 
@@ -50,6 +53,10 @@ The model-preference file and wizard stay stable: one `review` preference still 
 reviewer. The maximum number of simultaneous reviews across different kinds can exceed the prior
 shared total because each profile owns its own ten-call limit; this is an accepted consequence of
 making each reviewer a genuine scheduling identity.
+
+Implementation updates the generated workflow skills, profile contract tests, and dispatch eval
+assertions together. Affected templates retain coherent unset-variable rendering without unresolved
+value tokens, with render coverage preserving the existing publication-safety contract.
 
 ## Alternatives Considered
 
