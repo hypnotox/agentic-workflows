@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: depend-on-pi-tools-for-general-pi-tooling
-status: Implementing
+status: Implemented
 date: 2026-08-15
 ---
 # ADR-0279: Depend on pi-tools for general Pi tooling
@@ -96,3 +96,4 @@ path. Contract tests on both sides reduce drift without coupling awf's gate to a
 - 2026-08-15: Accepted; content-sha256: 42f2da3bc64001924042a9599f68c9a2bee88bb8b36326542b5bd0b79a7d104a
 - 2026-08-15: Implementing; content-sha256: 42f2da3bc64001924042a9599f68c9a2bee88bb8b36326542b5bd0b79a7d104a
 - 2026-08-15: Applied; operations: remove `rendering/pi-runtime:pi-child-process-safety`, remove `rendering/pi-runtime:pi-child-tool-boundaries`, remove `rendering/pi-runtime:pi-context-usage-injection`, update `rendering/pi-runtime:pi-extension-target-render`, update `rendering/pi-runtime:pi-implementation-state-boundary`, update `rendering/pi-runtime:pi-minimum-runtime`, update `rendering/pi-runtime:pi-real-runtime-smoke`, add `rendering/pi-runtime:pi-tools-integration-boundary`, remove `rendering/pi-workflows:pi-session-handoff-lifecycle`, update `rendering/pi-workflows:pi-dedicated-grounding-dispatch`, update `rendering/pi-workflows:pi-extension-editor-quiet-strip`, update `rendering/pi-workflows:pi-implementation-batch-exclusivity`, remove `rendering/pi-workflows:pi-session-handoff-public-contract`, update `rendering/pi-workflows:pi-structured-exploration-contract`, remove `rendering/pi-workflows:pi-subagent-failure-details`, update `rendering/pi-workflows:pi-subagent-model-preferences`, update `rendering/pi-workflows:pi-subagent-model-routing`, update `rendering/pi-workflows:pi-implement-role-artifact`, remove `rendering/pi-workflows:pi-subagent-progress-bounds`, remove `rendering/pi-workflows:pi-subagent-progress-context-isolation`, remove `rendering/pi-workflows:pi-subagent-progress-rendering`, update `rendering/pi-workflows:pi-role-contract-loader`
+- 2026-08-15: Implemented; content-sha256: 42f2da3bc64001924042a9599f68c9a2bee88bb8b36326542b5bd0b79a7d104a

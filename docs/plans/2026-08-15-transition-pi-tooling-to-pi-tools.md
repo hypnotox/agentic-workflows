@@ -3,7 +3,7 @@ format: plan-v2
 date: 2026-08-15
 adrs:
   - depend-on-pi-tools-for-general-pi-tooling
-status: Proposed
+status: Implemented
 ---
 # Plan: Transition Pi tooling to pi-tools
 
