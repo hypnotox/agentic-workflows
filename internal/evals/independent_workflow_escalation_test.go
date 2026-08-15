@@ -263,13 +263,39 @@ func TestGroundingSupportOwnership(t *testing.T) {
 	cat := loadCatalog(t)
 	pi := syncFullCatalogForTarget(t, cat, "pi")
 	claude := syncFullCatalogForTarget(t, cat, "claude")
+	piAdapter := read(t, filepath.Join(pi, ".pi", "extensions", "awf-subagents", "index.ts"))
 	piGrounding := read(t, filepath.Join(pi, ".pi", "skills", evalPrefix+"-grounding", "SKILL.md"))
+	piExploring := read(t, filepath.Join(pi, ".pi", "skills", evalPrefix+"-exploring", "SKILL.md"))
+	piCouplingAudit := read(t, filepath.Join(pi, ".pi", "skills", evalPrefix+"-refactor-coupling-audit", "SKILL.md"))
 	claudeGrounding := read(t, skillPath(claude, "grounding"))
-	if !strings.Contains(piGrounding, "subagent_grounding") {
-		t.Error("Pi grounding does not use the dedicated grounding tool")
+
+	assertContainsAll(t, "Pi grounding profile", piAdapter,
+		`toolName: "subagent_grounding"`,
+		`parameters: Type.Object({ task: Type.String({ minLength: 1 }), model: Type.Optional(MODEL_REFERENCE_SCHEMA) }, { additionalProperties: false })`,
+		"Use subagent_grounding whenever the rendered grounding support contract calls for repository-premise checks",
+		"include the complete grounding brief in task")
+	assertContainsAll(t, "Pi grounding skill", piGrounding,
+		"guide-first", "AWF_CONTEXT_SPILL_V1", "Call `subagent_grounding` exactly once", "brief in `task`", "omit the `model` field")
+	assertContainsAll(t, "Pi exploration skill", piExploring,
+		"Call `subagent_explore` for each child", "required task, breadth, and detail", "fan them out as sibling calls")
+	assertContainsAll(t, "Pi coupling audit exploration routing", piCouplingAudit,
+		"invoke `"+evalPrefix+"-exploring` once per information need", "breadth and detail", "Keep an exact-known-file or genuinely trivial category check inline")
+
+	for _, name := range sortedKeys(cat.Skills) {
+		body := read(t, skillPath(claude, name))
+		for _, piTool := range []string{"subagent_grounding", "subagent_explore"} {
+			if strings.Contains(body, piTool) {
+				t.Errorf("Claude skill %s leaks Pi tool name %q", name, piTool)
+			}
+		}
 	}
-	if strings.Contains(claudeGrounding, "subagent_grounding") {
-		t.Error("Claude grounding leaks Pi tool name")
+	for _, name := range sortedKeys(cat.Agents) {
+		body := read(t, agentPath(claude, name))
+		for _, piTool := range []string{"subagent_grounding", "subagent_explore"} {
+			if strings.Contains(body, piTool) {
+				t.Errorf("Claude agent %s leaks Pi tool name %q", name, piTool)
+			}
+		}
 	}
 	assertContainsAll(t, "Claude grounding", claudeGrounding, "grounding-checker", "guide-first", "AWF_CONTEXT_SPILL_V1")
 }

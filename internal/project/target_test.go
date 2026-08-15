@@ -302,7 +302,40 @@ func TestTargetOutputRenderError(t *testing.T) {
 // invariant: rendering/pi-workflows:pi-structured-exploration-contract (TestPiStructuredExplorationContractRender)
 func TestPiStructuredExplorationContractRender(t *testing.T) {
 	body := renderPiExtensionFile(t, "awf-subagents/index.ts")
-	for _, want := range []string{"ProfileDefinition[]", "subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement", "verificationCheckout: Type.Optional(Type.String())", "Omit verificationCheckout for the project root", "MAX_EXPLORATION_CONCURRENCY = 10", "concurrency: MAX_EXPLORATION_CONCURRENCY", "exclusiveParentBatch: true", "PROTOCOL_VERSION = 2", "COMMIT_VERIFICATION_SCHEMA", "ROUTING_PROFILE_DATA_FIELDS"} {
+	if got := strings.Count(body, `{ id: "awf-`); got != 4 {
+		t.Fatalf("Pi profile definitions = %d, want exactly 4", got)
+	}
+	if got := strings.Count(body, "toolName:"); got != 4 {
+		t.Fatalf("Pi public tool-name declarations = %d, want exactly 4", got)
+	}
+	profiles := []struct {
+		id, tool, parameters, concurrency string
+		exclusive                         bool
+	}{
+		{"awf-grounding", "subagent_grounding", `task: Type.String({ minLength: 1 }), model: Type.Optional(MODEL_REFERENCE_SCHEMA)`, "concurrency: MAX_GROUNDING_CONCURRENCY", false},
+		{"awf-explore", "subagent_explore", `task: Type.String({ minLength: 1 }), breadth: StringEnum(["targeted", "bounded", "broad"] as const), detail: StringEnum(["paths", "summary", "analysis"] as const), model: Type.Optional(MODEL_REFERENCE_SCHEMA)`, "concurrency: MAX_EXPLORATION_CONCURRENCY", false},
+		{"awf-review", "subagent_review", `kind: StringEnum(["adr", "plan", "code"] as const), task: Type.String({ minLength: 1 }), model: Type.Optional(MODEL_REFERENCE_SCHEMA)`, "concurrency: MAX_REVIEW_CONCURRENCY", false},
+		{"awf-implement", "subagent_implement", `task: Type.String({ minLength: 1 }), allowCommits: Type.Boolean(), verificationCheckout: Type.Optional(Type.String()), model: Type.Optional(MODEL_REFERENCE_SCHEMA)`, "concurrency: 1", true},
+	}
+	for _, profile := range profiles {
+		t.Run(profile.id, func(t *testing.T) {
+			line := piProfileDefinitionLine(t, body, profile.id)
+			if got := strings.Count(body, `toolName: "`+profile.tool+`"`); got != 1 {
+				t.Errorf("%s tool-name declarations = %d, want exactly 1", profile.id, got)
+			}
+			closedSchema := "parameters: Type.Object({ " + profile.parameters + " }, { additionalProperties: false })"
+			if !strings.Contains(line, closedSchema) {
+				t.Errorf("%s public schema is not the exact closed required/optional field contract %q", profile.id, closedSchema)
+			}
+			if !strings.Contains(line, profile.concurrency) {
+				t.Errorf("%s missing concurrency contract %q", profile.id, profile.concurrency)
+			}
+			if got := strings.Contains(line, "exclusiveParentBatch: true"); got != profile.exclusive {
+				t.Errorf("%s exclusivity = %v, want %v", profile.id, got, profile.exclusive)
+			}
+		})
+	}
+	for _, want := range []string{"const MAX_GROUNDING_CONCURRENCY = 10", "const MAX_EXPLORATION_CONCURRENCY = 10", "const MAX_REVIEW_CONCURRENCY = 10", "PROTOCOL_VERSION = 2", "COMMIT_VERIFICATION_SCHEMA", "ROUTING_PROFILE_DATA_FIELDS", "Omit verificationCheckout for the project root"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("Pi subagent extension missing %q", want)
 		}
@@ -322,6 +355,18 @@ func TestPiStructuredExplorationContractRender(t *testing.T) {
 	if !strings.Contains(grounding, "`grounding-checker` agent") {
 		t.Fatal("Claude grounding dispatch lost its target-native agent")
 	}
+}
+
+func piProfileDefinitionLine(t *testing.T, body, id string) string {
+	t.Helper()
+	needle := `{ id: "` + id + `"`
+	for _, line := range strings.Split(body, "\n") {
+		if strings.Contains(line, needle) {
+			return line
+		}
+	}
+	t.Fatalf("missing Pi profile definition %q", id)
+	return ""
 }
 
 func TestPiSubagentModelRoutingRender(t *testing.T) {
@@ -940,23 +985,40 @@ func TestPiRoleContractLoader(t *testing.T) {
 	body := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	for _, want := range []string{
 		"loadAgentContract", "source: ContractSource",
-		"relative: EXPLORER_PATH", "relative: GROUNDING_CHECKER_PATH",
-		".pi/agents/explorer.md", ".pi/agents/grounding-checker.md",
-		"Enable the explorer agent and run ./awf render.",
-		"Enable the grounding-checker agent and run ./awf render.",
+		`adr: ".pi/agents/adr-reviewer.md"`, `plan: ".pi/agents/plan-reviewer.md"`, `code: ".pi/agents/code-reviewer.md"`,
+		`IMPLEMENTER_PATH = ".pi/agents/implementer.md"`, `EXPLORER_PATH = ".pi/agents/explorer.md"`, `GROUNDING_CHECKER_PATH = ".pi/agents/grounding-checker.md"`,
+		"relative: GROUNDING_CHECKER_PATH", "relative: EXPLORER_PATH", "relative: REVIEWER_PATHS[c.args.kind as ReviewKind]", "relative: IMPLEMENTER_PATH",
+		"You are the governed grounding-check subagent. You are report-only: never edit or commit.",
+		"You are the governed exploration subagent. You are report-only: never edit or commit.",
+		"You are the governed ${c.args.kind} reviewer. You are report-only: never edit or commit.",
+		"You are the governed implementation subagent.", "Commits are forbidden; do not change HEAD. You are a helper.",
+		"Enable the grounding-checker agent and run ./awf render.", "Enable the explorer agent and run ./awf render.",
+		"Enable the matching ${c.args.kind}-reviewer agent and run ./awf render.", "Enable the implementer agent and run ./awf render.",
+		"Missing Pi ${source.noun} ${source.relative}. ${source.repair}",
+		"has no instruction body; run ./awf render.",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("Pi extension missing loader element %q", want)
 		}
 	}
-	// The opening clause of each body as it lived in the old inline prompt, so a
-	// branch left behind fails loudly rather than silently duplicating a contract.
+	if got := strings.Count(body, "systemPrompt: await loadAgentContract(deps, root, source)"); got != 1 {
+		t.Errorf("shared role-contract loader calls = %d, want exactly 1 prepare-boundary call", got)
+	}
+	if got := strings.Count(body, "prepare: (c: any) => prepare("); got != 4 {
+		t.Errorf("profiles using the shared role prepare/loader boundary = %d, want 4", got)
+	}
+	// These durable role clauses belong only to rendered agent artifacts. Their
+	// absence here prevents a loader cutover from retaining a second prose owner.
 	for _, banned := range []string{
-		"You are a fresh-context exploration subagent. Read files",
-		"You are a fresh-context grounding-check subagent. Read and run",
+		"You are a fresh-context exploration subagent. Read files and run evidence-producing commands only.",
+		"You are a fresh-context grounding-check subagent. Read and run evidence-producing commands",
+		"Independent, lens-diverse reviewer for ADRs",
+		"Independent, lens-diverse reviewer for plans",
+		"Independent reviewer for implementation diffs, separate from the implementer.",
+		"You are a fresh-context implementation subagent dispatched to carry out one scoped change.",
 	} {
 		if strings.Contains(body, banned) {
-			t.Errorf("role prose survived inline in the extension: %q", banned)
+			t.Errorf("rendered role prose is duplicated inline in the extension: %q", banned)
 		}
 	}
 }
