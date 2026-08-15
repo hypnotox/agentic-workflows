@@ -450,7 +450,6 @@ func TestCheckCleanAfterSync(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-runtime:pi-extension-target-render (TestCheckDetectsHandEdit)
 func TestCheckDetectsHandEdit(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, _ := Open(testContext(t), root)

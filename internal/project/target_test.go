@@ -240,20 +240,14 @@ func templateSource(t *testing.T, tid string) string {
 	return string(src)
 }
 
+// invariant: rendering/pi-runtime:pi-real-runtime-smoke (TestPiRealRuntimeSmoke)
+// invariant: rendering/pi-runtime:pi-minimum-runtime (TestPiRealRuntimeSmoke)
+// invariant: rendering/pi-runtime:pi-implementation-state-boundary (TestPiRealRuntimeSmoke)
+// invariant: rendering/pi-runtime:pi-tools-integration-boundary (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-workflows:pi-subagent-model-routing (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-workflows:pi-subagent-model-preferences (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-workflows:pi-subagent-model-wizard (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-workflows:pi-effort-session-association (TestPiRealRuntimeSmoke)
-// invariant: rendering/pi-workflows:pi-native-workflow-skills (TestPiRealRuntimeSmoke)
-// invariant: rendering/project-output-plan:multi-target-render (TestPiRealRuntimeSmoke)
-// invariant: rendering/catalog-and-targets:target-dialect-render (TestPiRealRuntimeSmoke)
-// removed-invariant (TestPiRealRuntimeSmoke)
-// removed-invariant (TestPiRealRuntimeSmoke)
-// removed-invariant (TestPiRealRuntimeSmoke)
-// invariant: rendering/pi-runtime:pi-minimum-runtime (TestPiRealRuntimeSmoke)
-// invariant: rendering/pi-runtime:pi-implementation-state-boundary (TestPiRealRuntimeSmoke)
-// invariant: rendering/pi-workflows:pi-implement-role-artifact (TestPiRealRuntimeSmoke)
-// invariant: rendering/pi-workflows:pi-structured-exploration-contract (TestPiRealRuntimeSmoke)
 var (
 	piRuntimeSmokeOnce   sync.Once
 	piRuntimeSmokeOutput []byte
@@ -304,12 +298,18 @@ func TestTargetOutputRenderError(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-workflows:pi-dedicated-grounding-dispatch (TestPiStructuredExplorationContractRender)
+// invariant: rendering/pi-workflows:pi-implementation-batch-exclusivity (TestPiStructuredExplorationContractRender)
+// invariant: rendering/pi-workflows:pi-structured-exploration-contract (TestPiStructuredExplorationContractRender)
 func TestPiStructuredExplorationContractRender(t *testing.T) {
 	body := renderPiExtensionFile(t, "awf-subagents/index.ts")
-	for _, want := range []string{"ProfileDefinition[]", "subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement", "verificationCheckout: Type.Optional(Type.String())", "Omit verificationCheckout for the project root", "MAX_EXPLORATION_CONCURRENCY = 10", "concurrency: MAX_EXPLORATION_CONCURRENCY", "exclusiveParentBatch: true", "PROTOCOL_VERSION = 2"} {
+	for _, want := range []string{"ProfileDefinition[]", "subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement", "verificationCheckout: Type.Optional(Type.String())", "Omit verificationCheckout for the project root", "MAX_EXPLORATION_CONCURRENCY = 10", "concurrency: MAX_EXPLORATION_CONCURRENCY", "exclusiveParentBatch: true", "PROTOCOL_VERSION = 2", "COMMIT_VERIFICATION_SCHEMA", "ROUTING_PROFILE_DATA_FIELDS"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("Pi subagent extension missing %q", want)
+		}
+	}
+	for _, forbidden := range []string{"createLimiter", ".acquire(", "Exploration subagent was aborted while queued"} {
+		if strings.Contains(body, forbidden) {
+			t.Errorf("Pi adapter retained awf-owned scheduling mechanic %q", forbidden)
 		}
 	}
 	claude := explorationRenderedByPath(t, explorationFixtureConfig("claude"))
@@ -888,6 +888,7 @@ func TestPlannedOutputsSurfacesRenderError(t *testing.T) {
 	}
 }
 
+// invariant: rendering/pi-workflows:pi-implement-role-artifact (TestPiImplementRoleArtifact)
 func TestPiImplementRoleArtifact(t *testing.T) {
 	src := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	for _, want := range []string{
@@ -897,8 +898,11 @@ func TestPiImplementRoleArtifact(t *testing.T) {
 		"Enable the implementer agent and run ./awf render.",
 		"has no instruction body; run ./awf render.",
 		"parseFrontmatter",
-		"const changed = state.before.available && after.available && state.before.head !== after.head",
-		"commitVerification: state.before.available && after.available ? \"verified\" : \"unavailable\"",
+		"const verified = state.before.available && after.available",
+		"const changed = verified && state.before.head !== after.head",
+		"state.allowCommits && verified && !changed",
+		"commitVerification: verified ? \"verified\" : \"unavailable\"",
+		"commitVerification: COMMIT_VERIFICATION_SCHEMA",
 		"commit-capable but created no commit",
 		"committed despite allowCommits=false",
 		"resolveVerificationCheckout",

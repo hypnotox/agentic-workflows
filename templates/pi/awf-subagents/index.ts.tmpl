@@ -71,53 +71,6 @@ function projectRoot(extensionFile: string): string { return resolve(dirname(ext
 function errorText(error: unknown): string { return error instanceof Error ? error.message : String(error); }
 function errorCode(error: unknown): string | undefined { return typeof error === "object" && error !== null ? (error as { code?: string }).code : undefined; }
 
-export function createLimiter(limit: number) {
-  let active = 0;
-  const waiters: Array<{
-    signal: AbortSignal | undefined;
-    onAbort: () => void;
-    resolve: (release: () => void) => void;
-    reject: (reason: Error) => void;
-  }> = [];
-  const makeRelease = () => {
-    let released = false;
-    return () => {
-      if (released) return;
-      released = true;
-      active--;
-      const waiter = waiters.shift();
-      if (!waiter) return;
-      waiter.signal?.removeEventListener("abort", waiter.onAbort);
-      active++;
-      waiter.resolve(makeRelease());
-    };
-  };
-  return {
-    acquire(signal: AbortSignal | undefined): Promise<() => void> {
-      if (signal?.aborted) return Promise.reject(new Error("Exploration subagent was aborted while queued"));
-      if (active < limit) {
-        active++;
-        return Promise.resolve(makeRelease());
-      }
-      return new Promise((resolve, reject) => {
-        const waiter = {
-          signal,
-          resolve,
-          reject,
-          onAbort: () => {
-            const index = waiters.indexOf(waiter);
-            if (index >= 0) waiters.splice(index, 1);
-            signal?.removeEventListener("abort", waiter.onAbort);
-            reject(new Error("Exploration subagent was aborted while queued"));
-          },
-        };
-        waiters.push(waiter);
-        signal?.addEventListener("abort", waiter.onAbort, { once: true });
-      });
-    },
-  };
-}
-
 // A dispatched role's contract is a rendered agent artifact rather than a literal
 // string here, so the durable prose is reviewable and drift-checked. Three
 // behaviours are shared by every role that loads one: the missing-file error
@@ -219,6 +172,25 @@ const RESULT_EVENT = "pi-tools:subagent-profiles:registration-result";
 const MAX_GROUNDING_CONCURRENCY = 10;
 const MAX_REVIEW_CONCURRENCY = 10;
 type Role = "grounding" | "explore" | "review" | "implement";
+type ResolutionSource = "requested" | "project-role" | "global-role" | "project-default" | "global-default" | "inherited";
+interface InvocationRouting {
+  requestedModel: string | null;
+  resolvedProvider: string;
+  resolvedModel: string;
+  resolutionSource: ResolutionSource;
+}
+const RESOLUTION_SOURCE_SCHEMA = StringEnum(["requested", "project-role", "global-role", "project-default", "global-default", "inherited"] as const);
+const ROUTING_PROFILE_DATA_FIELDS = {
+  requestedModel: Type.Union([Type.String(), Type.Null()]),
+  resolvedProvider: Type.String(),
+  resolvedModel: Type.String(),
+  resolutionSource: RESOLUTION_SOURCE_SCHEMA,
+};
+const GIT_SNAPSHOT_SCHEMA = Type.Union([
+  Type.Object({ available: Type.Literal(false) }, { additionalProperties: false }),
+  Type.Object({ available: Type.Literal(true), head: Type.String(), status: Type.String() }, { additionalProperties: false }),
+]);
+const COMMIT_VERIFICATION_SCHEMA = StringEnum(["verified", "unavailable"] as const);
 
 /** Registers awf workflow policy through pi-tools; it never starts or renders a child itself. */
 export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependencies): void {
@@ -246,12 +218,24 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
     else return;
     preferenceNotices.add(identity);
   };
+  const invocationRouting = new WeakMap<object, InvocationRouting>();
   const selectModel = async (context: any, role: Role): Promise<ConcreteModel> => {
     const state = await reloadState();
     notifyPreferenceState(state);
     // pi-tools validates this concrete selection against its ProfileContext registry again.
     const selected = resolveChildModel(session!.modelRegistry, context.parent?.model ?? session!.model, role, context.args.model, state);
+    invocationRouting.set(context, {
+      requestedModel: selected.requested ?? null,
+      resolvedProvider: selected.model.provider,
+      resolvedModel: selected.model.id,
+      resolutionSource: selected.source,
+    });
     return { provider: selected.model.provider, id: selected.model.id, thinkingLevels: ["off", "minimal", "low", "medium", "high", "xhigh", "max"] };
+  };
+  const routingFor = (context: object): InvocationRouting => {
+    const routing = invocationRouting.get(context);
+    if (!routing) throw new Error("pi-tools profile lifecycle called beforeRun without completing selectModel for the same invocation context.");
+    return routing;
   };
   pi.on("before_agent_start", async (event: any) => {
     const selected = Array.isArray(event.systemPromptOptions?.selectedTools) ? event.systemPromptOptions.selectedTools : pi.getActiveTools?.();
@@ -386,17 +370,17 @@ const SLOT_GUIDANCE: Array<{ key: PreferenceField; guidance: string }> = [
     },
   });
   const prepare = async (context: any, tools: readonly string[], source: ContractSource) => ({
-    cwd: root, prompt: context.args.task, toolPolicy: { mode: "allowlist", tools: [...tools] },
+    cwd: root, prompt: context.args.task, toolPolicy: { mode: "allowlist" as const, tools: [...tools] },
     systemPrompt: await loadAgentContract(deps, root, source),
   });
   const profiles: ProfileDefinition[] = [
-    { id: "awf-grounding", toolName: "subagent_grounding", label: "Grounding Subagent", description: "Run one fresh-context, no-mutation grounding check. Omit model for configured or inherited routing; use an exact tier provider/model-id only for deliberate override. Omission is the only default form.", promptSnippet: "Ground an agreed design against source and project constraints", promptGuidelines: ["Use subagent_grounding whenever the rendered grounding support contract calls for repository-premise checks; include the complete grounding brief in task. Omit model for configured or inherited routing; use the selected tier's exact provider/model-id only for deliberate override. Omit the model field to use configured or inherited routing."], parameters: Type.Object({ task: Type.String({ minLength: 1 }), model: Type.Optional(MODEL_REFERENCE_SCHEMA) }, { additionalProperties: false }), profileDataSchema: Type.Object({}, { additionalProperties: false }), concurrency: MAX_GROUNDING_CONCURRENCY, selectModel: (c: any) => selectModel(c, "grounding"), prepare: (c: any) => prepare(c, GROUNDING_TOOLS, { relative: GROUNDING_CHECKER_PATH, repair: "Enable the grounding-checker agent and run ./awf render.", noun: "grounding-checker", prepend: "You are the governed grounding-check subagent. You are report-only: never edit or commit." }) },
-    { id: "awf-explore", toolName: "subagent_explore", label: "Explore Subagent", description: "Run one fresh-context, no-mutation exploration child. Omit model for configured or inherited routing; use an exact tier provider/model-id only for deliberate override. Omission is the only default form.", promptSnippet: "Delegate a self-contained read-oriented investigation to fresh context", promptGuidelines: ["Use subagent_explore for one scoped investigation; include all required context in task. Omit model for configured or inherited routing; use the selected tier's exact provider/model-id only for deliberate override. Omit the model field to use configured or inherited routing."], parameters: Type.Object({ task: Type.String({ minLength: 1 }), breadth: StringEnum(["targeted", "bounded", "broad"] as const), detail: StringEnum(["paths", "summary", "analysis"] as const), model: Type.Optional(MODEL_REFERENCE_SCHEMA) }, { additionalProperties: false }), profileDataSchema: Type.Object({ breadth: Type.String(), detail: Type.String() }, { additionalProperties: false }), concurrency: MAX_EXPLORATION_CONCURRENCY, selectModel: (c: any) => selectModel(c, "explore"), beforeRun: (c: any) => ({ breadth: c.args.breadth, detail: c.args.detail }), prepare: (c: any) => prepare(c, EXPLORE_TOOLS, { relative: EXPLORER_PATH, repair: "Enable the explorer agent and run ./awf render.", noun: "explorer", prepend: `You are the governed exploration subagent. You are report-only: never edit or commit.\nSelected breadth maximum: ${c.args.breadth}\nSelected report detail: ${c.args.detail}` }), afterRun: (_o: any, state: any) => ({ profileData: state }) },
-    { id: "awf-review", toolName: "subagent_review", label: "Review Subagent", description: "Run one governed report-only {{if ne .profile "core"}}ADR, plan, or code reviewer{{else}}code reviewer{{end}} in fresh context. Omit model for configured or inherited routing; use an exact tier provider/model-id only for deliberate override. Omission is the only default form.", promptSnippet: "Delegate governed {{if ne .profile "core"}}ADR, plan, or code review{{else}}code review{{end}} to fresh context", promptGuidelines: ["Use subagent_review with kind {{if ne .profile "core"}}adr, plan, or code{{else}}code{{end}} and a self-contained review brief. Omit model for configured or inherited routing; use the selected tier's exact provider/model-id only for deliberate override. Omit the model field to use configured or inherited routing."], parameters: Type.Object({ kind: StringEnum([{{if ne .profile "core"}}"adr", "plan", {{end}}"code"] as const), task: Type.String({ minLength: 1 }), model: Type.Optional(MODEL_REFERENCE_SCHEMA) }, { additionalProperties: false }), profileDataSchema: Type.Object({ kind: Type.String() }, { additionalProperties: false }), concurrency: MAX_REVIEW_CONCURRENCY, selectModel: (c: any) => selectModel(c, "review"), beforeRun: (c: any) => ({ kind: c.args.kind }), prepare: (c: any) => prepare(c, REVIEW_TOOLS, { relative: REVIEWER_PATHS[c.args.kind as ReviewKind], repair: `Enable the matching ${c.args.kind}-reviewer agent and run ./awf render.`, noun: "reviewer", prepend: `You are the governed ${c.args.kind} reviewer. You are report-only: never edit or commit.` }), afterRun: (_o: any, state: any) => ({ profileData: state }) },
-    { id: "awf-implement", toolName: "subagent_implement", label: "Implementation Subagent", description: "Run one serialized implementation child while verifying commit policy in the caller-selected project checkout. Call this tool alone in its parent tool batch. Omit verificationCheckout for the project root. Omit model for configured or inherited routing; use an exact tier provider/model-id only for deliberate override. Omission is the only model default form.", promptSnippet: "Delegate one sequential implementation task to fresh context", promptGuidelines: ["Call subagent_implement alone in a tool batch, never in parallel; set allowCommits explicitly. Set verificationCheckout when implementation intentionally targets a managed worktree; this changes verification identity only, not parent or child CWD. Omit it for root work. Omit model for configured or inherited routing; use the selected tier's exact provider/model-id only for deliberate override. Omit the model field to use configured or inherited routing."], parameters: Type.Object({ task: Type.String({ minLength: 1 }), allowCommits: Type.Boolean(), verificationCheckout: Type.Optional(Type.String()), model: Type.Optional(MODEL_REFERENCE_SCHEMA) }, { additionalProperties: false }), profileDataSchema: Type.Object({ allowCommits: Type.Boolean(), verificationCheckout: Type.String(), before: Type.Unknown(), after: Type.Unknown() }, { additionalProperties: false }), concurrency: 1, exclusiveParentBatch: true, selectModel: (c: any) => selectModel(c, "implement"), beforeRun: async (c: any) => {
+    { id: "awf-grounding", toolName: "subagent_grounding", label: "Grounding Subagent", description: "Run one fresh-context, no-mutation grounding check. Omit model for configured or inherited routing; use an exact tier provider/model-id only for deliberate override. Omission is the only default form.", promptSnippet: "Ground an agreed design against source and project constraints", promptGuidelines: ["Use subagent_grounding whenever the rendered grounding support contract calls for repository-premise checks; include the complete grounding brief in task. Omit model for configured or inherited routing; use the selected tier's exact provider/model-id only for deliberate override. Omit the model field to use configured or inherited routing."], parameters: Type.Object({ task: Type.String({ minLength: 1 }), model: Type.Optional(MODEL_REFERENCE_SCHEMA) }, { additionalProperties: false }), profileDataSchema: Type.Object({ ...ROUTING_PROFILE_DATA_FIELDS }, { additionalProperties: false }), concurrency: MAX_GROUNDING_CONCURRENCY, selectModel: (c: any) => selectModel(c, "grounding"), beforeRun: (c: any) => routingFor(c), prepare: (c: any) => prepare(c, GROUNDING_TOOLS, { relative: GROUNDING_CHECKER_PATH, repair: "Enable the grounding-checker agent and run ./awf render.", noun: "grounding-checker", prepend: "You are the governed grounding-check subagent. You are report-only: never edit or commit." }), afterRun: (_o: any, state: any) => ({ profileData: state }) },
+    { id: "awf-explore", toolName: "subagent_explore", label: "Explore Subagent", description: "Run one fresh-context, no-mutation exploration child. Omit model for configured or inherited routing; use an exact tier provider/model-id only for deliberate override. Omission is the only default form.", promptSnippet: "Delegate a self-contained read-oriented investigation to fresh context", promptGuidelines: ["Use subagent_explore for one scoped investigation; include all required context in task. Omit model for configured or inherited routing; use the selected tier's exact provider/model-id only for deliberate override. Omit the model field to use configured or inherited routing."], parameters: Type.Object({ task: Type.String({ minLength: 1 }), breadth: StringEnum(["targeted", "bounded", "broad"] as const), detail: StringEnum(["paths", "summary", "analysis"] as const), model: Type.Optional(MODEL_REFERENCE_SCHEMA) }, { additionalProperties: false }), profileDataSchema: Type.Object({ ...ROUTING_PROFILE_DATA_FIELDS, breadth: StringEnum(["targeted", "bounded", "broad"] as const), detail: StringEnum(["paths", "summary", "analysis"] as const) }, { additionalProperties: false }), concurrency: MAX_EXPLORATION_CONCURRENCY, selectModel: (c: any) => selectModel(c, "explore"), beforeRun: (c: any) => ({ ...routingFor(c), breadth: c.args.breadth, detail: c.args.detail }), prepare: (c: any) => prepare(c, EXPLORE_TOOLS, { relative: EXPLORER_PATH, repair: "Enable the explorer agent and run ./awf render.", noun: "explorer", prepend: `You are the governed exploration subagent. You are report-only: never edit or commit.\nSelected breadth maximum: ${c.args.breadth}\nSelected report detail: ${c.args.detail}` }), afterRun: (_o: any, state: any) => ({ profileData: state }) },
+    { id: "awf-review", toolName: "subagent_review", label: "Review Subagent", description: "Run one governed report-only {{if ne .profile "core"}}ADR, plan, or code reviewer{{else}}code reviewer{{end}} in fresh context. Omit model for configured or inherited routing; use an exact tier provider/model-id only for deliberate override. Omission is the only default form.", promptSnippet: "Delegate governed {{if ne .profile "core"}}ADR, plan, or code review{{else}}code review{{end}} to fresh context", promptGuidelines: ["Use subagent_review with kind {{if ne .profile "core"}}adr, plan, or code{{else}}code{{end}} and a self-contained review brief. Omit model for configured or inherited routing; use the selected tier's exact provider/model-id only for deliberate override. Omit the model field to use configured or inherited routing."], parameters: Type.Object({ kind: StringEnum([{{if ne .profile "core"}}"adr", "plan", {{end}}"code"] as const), task: Type.String({ minLength: 1 }), model: Type.Optional(MODEL_REFERENCE_SCHEMA) }, { additionalProperties: false }), profileDataSchema: Type.Object({ ...ROUTING_PROFILE_DATA_FIELDS, kind: StringEnum([{{if ne .profile "core"}}"adr", "plan", {{end}}"code"] as const) }, { additionalProperties: false }), concurrency: MAX_REVIEW_CONCURRENCY, selectModel: (c: any) => selectModel(c, "review"), beforeRun: (c: any) => ({ ...routingFor(c), kind: c.args.kind }), prepare: (c: any) => prepare(c, REVIEW_TOOLS, { relative: REVIEWER_PATHS[c.args.kind as ReviewKind], repair: `Enable the matching ${c.args.kind}-reviewer agent and run ./awf render.`, noun: "reviewer", prepend: `You are the governed ${c.args.kind} reviewer. You are report-only: never edit or commit.` }), afterRun: (_o: any, state: any) => ({ profileData: state }) },
+    { id: "awf-implement", toolName: "subagent_implement", label: "Implementation Subagent", description: "Run one serialized implementation child while verifying commit policy in the caller-selected project checkout. Call this tool alone in its parent tool batch. Omit verificationCheckout for the project root. Omit model for configured or inherited routing; use an exact tier provider/model-id only for deliberate override. Omission is the only model default form.", promptSnippet: "Delegate one sequential implementation task to fresh context", promptGuidelines: ["Call subagent_implement alone in a tool batch, never in parallel; set allowCommits explicitly. Set verificationCheckout when implementation intentionally targets a managed worktree; this changes verification identity only, not parent or child CWD. Omit it for root work. Omit model for configured or inherited routing; use the selected tier's exact provider/model-id only for deliberate override. Omit the model field to use configured or inherited routing."], parameters: Type.Object({ task: Type.String({ minLength: 1 }), allowCommits: Type.Boolean(), verificationCheckout: Type.Optional(Type.String()), model: Type.Optional(MODEL_REFERENCE_SCHEMA) }, { additionalProperties: false }), profileDataSchema: Type.Object({ ...ROUTING_PROFILE_DATA_FIELDS, allowCommits: Type.Boolean(), verificationCheckout: Type.String(), before: GIT_SNAPSHOT_SCHEMA, after: GIT_SNAPSHOT_SCHEMA, commitVerification: COMMIT_VERIFICATION_SCHEMA }, { additionalProperties: false }), concurrency: 1, exclusiveParentBatch: true, selectModel: (c: any) => selectModel(c, "implement"), beforeRun: async (c: any) => {
       const verificationCheckout = await resolveVerificationCheckout(pi, deps, root, c.args.verificationCheckout);
-      return { allowCommits: c.args.allowCommits, verificationCheckout, before: await snapshot(pi, verificationCheckout) };
-    }, prepare: (c: any) => prepare(c, IMPLEMENT_TOOLS, { relative: IMPLEMENTER_PATH, repair: "Enable the implementer agent and run ./awf render.", noun: "implementer", prepend: `You are the governed implementation subagent. ${c.args.allowCommits ? "Commits are allowed when the task requests them; you are the phase owner." : "Commits are forbidden; do not change HEAD. You are a helper."}` }), afterRun: async (_outcome: ExecutionOutcome, state: any) => { const after = await snapshot(pi, state.verificationCheckout); const changed = state.before.available && after.available && state.before.head !== after.head; const failure = !state.allowCommits && changed ? `Implementation committed despite allowCommits=false (HEAD ${state.before.head} -> ${after.head}) in verification checkout ${state.verificationCheckout}; changes were not reverted.` : state.allowCommits && !changed ? `Implementation was commit-capable but created no commit in ${state.verificationCheckout} (HEAD unchanged at ${state.before.head}). If work occurred in another registered worktree, retry with verificationCheckout set to that checkout root. A stopped report must carry the working-tree status, work completed, work remaining, the named failing check with its actual output, and what was already tried.` : undefined; return { ...(failure ? { failure } : {}), profileData: { ...state, after, commitVerification: state.before.available && after.available ? "verified" : "unavailable" } }; } },
+      return { ...routingFor(c), allowCommits: c.args.allowCommits, verificationCheckout, before: await snapshot(pi, verificationCheckout) };
+    }, prepare: (c: any) => prepare(c, IMPLEMENT_TOOLS, { relative: IMPLEMENTER_PATH, repair: "Enable the implementer agent and run ./awf render.", noun: "implementer", prepend: `You are the governed implementation subagent. ${c.args.allowCommits ? "Commits are allowed when the task requests them; you are the phase owner." : "Commits are forbidden; do not change HEAD. You are a helper."}` }), afterRun: async (_outcome: ExecutionOutcome, state: any) => { const after = await snapshot(pi, state.verificationCheckout); const verified = state.before.available && after.available; const changed = verified && state.before.head !== after.head; const failure = !state.allowCommits && changed ? `Implementation committed despite allowCommits=false (HEAD ${state.before.head} -> ${after.head}) in verification checkout ${state.verificationCheckout}; changes were not reverted.` : state.allowCommits && verified && !changed ? `Implementation was commit-capable but created no commit in ${state.verificationCheckout} (HEAD unchanged at ${state.before.head}). If work occurred in another registered worktree, retry with verificationCheckout set to that checkout root. A stopped report must carry the working-tree status, work completed, work remaining, the named failing check with its actual output, and what was already tried.` : undefined; return { ...(failure ? { failure } : {}), profileData: { ...state, after, commitVerification: verified ? "verified" : "unavailable" } }; } },
   ];
   const register = (capability: ProfileCapability) => {
     if (capability.correlationId !== undefined && capability.correlationId !== correlationId) return;
@@ -406,7 +390,7 @@ const SLOT_GUIDANCE: Array<{ key: PreferenceField; guidance: string }> = [
     if (receipt.state === "rejected" || receipt.state === "late") report(receipt.reason ?? receipt.state);
   };
   pi.events?.on?.(CAPABILITY_EVENT, (capability: any) => register(capability as ProfileCapability));
-  pi.events?.on?.(RESULT_EVENT, (result: any) => { result = result as ProfileRegistrationResult & { correlationId?: string }; if (result.registrationId !== REGISTRATION_ID || (result.correlationId !== undefined && result.correlationId !== correlationId)) return; if (result.protocolVersion !== PROTOCOL_VERSION || result.state !== "registered") report(result.reason ?? "registration rejected"); else registered = true; });
+  pi.events?.on?.(RESULT_EVENT, (result: any) => { result = result as ProfileRegistrationResult; if (result.registrationId !== REGISTRATION_ID) return; if (result.protocolVersion !== PROTOCOL_VERSION || result.state !== "registered") report(result.reason ?? "registration rejected"); else registered = true; });
   const correlationId = randomUUID();
   pi.events?.emit?.(REQUEST_EVENT, { protocolVersion: PROTOCOL_VERSION, correlationId });
   pi.on("session_start", (_event: any, ctx: any) => { session = { modelRegistry: ctx.modelRegistry, model: ctx.model, ui: ctx.ui, sessionManager: ctx.sessionManager }; queueMicrotask(() => { if (reportedReason !== undefined) report(reportedReason); else if (!registered) report("missing, late, or incompatible capability"); }); });

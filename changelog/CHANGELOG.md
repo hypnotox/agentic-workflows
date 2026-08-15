@@ -10,6 +10,7 @@ query a single version or a range.
 
 ### Features
 
+- Pi adopters now install the unpinned `pi-tools` prerequisite independently. awf no longer renders its general context-usage, handoff, or subprocess-runner extensions; it registers only its four workflow-specific grounding, exploration, review, and implementation profiles through the protocol-v2 handshake, with no fallback when capability or final registration is unavailable.
 - New projects now default to a closed Core workflow profile with brainstorming, implementation, testing, review, efforts, and managed worktrees; Full adds ADR, plan, current-state, context, and workflow-audit governance, and existing repositories migrate explicitly to Full.
 - Repository and staged drift checks now require every generated output and `.awf/awf.lock` in Git's index, report staged deletion, ignored untracked replacement, and absent-lock failures as `untracked`, retain tracked files that later match ignore rules, exclude nested-adopter resident outputs, and report tracking as unavailable without disabling filesystem drift checks outside Git.
 

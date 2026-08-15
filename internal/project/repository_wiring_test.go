@@ -81,7 +81,6 @@ exit 0
 // still go green while orphaning one container, volume, and image per worktree.
 //
 // invariant: tooling/quality-gates:pi-extension-container-gate (TestPiExtensionContainerGateWiring)
-// invariant: rendering/pi-runtime:pi-extension-target-render (TestPiExtensionContainerGateWiring)
 func TestPiExtensionContainerGateWiring(t *testing.T) {
 	rawX, err := os.ReadFile("../../x")
 	if err != nil {
@@ -188,7 +187,6 @@ func TestPiExtensionContainerGateWiring(t *testing.T) {
 // skips the file, so only this static assertion enforces the coupling.
 //
 // invariant: rendering/pi-workflows:pi-extension-editor-quiet-strip (TestPiExtensionEditorQuietStrip)
-// invariant: rendering/pi-runtime:pi-extension-target-render (TestPiExtensionEditorQuietStrip)
 func TestPiExtensionEditorQuietStrip(t *testing.T) {
 	// Enumerate from the target descriptor, not from a directory walk. A walk
 	// cannot notice a governed file that stopped being rendered. The temporary
