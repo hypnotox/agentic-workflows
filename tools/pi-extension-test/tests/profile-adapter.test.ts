@@ -24,6 +24,7 @@ function harness(options:{files?:Record<string,string|Error>;answers?:Answer[];a
 const complete=(prefix="p/model")=>Object.fromEntries(PREFERENCE_FIELDS.map(k=>[k,prefix]));
 const context=(args:any)=>({args,parent:{model:{provider:"parent",id:"model"}}});
 const flush=()=>new Promise<void>(r=>queueMicrotask(r));
+const nextTask=()=>new Promise<void>(resolve=>setTimeout(resolve,0));
 function checkoutGit(before="a",after="b",common=COMMON){let heads=0;return(args:string[],cwd:string)=>{if(args.includes("--show-toplevel"))return{code:0,stdout:`${cwd}\n`};if(args.includes("--git-common-dir"))return{code:0,stdout:`${cwd===ROOT?COMMON:common}\n`};if(args.includes("--absolute-git-dir"))return{code:0,stdout:`${cwd===ROOT?COMMON:ADMIN}\n`};if(args.includes("HEAD"))return{code:0,stdout:`${heads++?after:before}\n`};if(args[0]==="status")return{code:0,stdout:" M x\n"};return{code:1,stdout:""};};}
 
 test("negotiation correlations, receipts, results, deferred and once-only reporting",async()=>{
@@ -31,14 +32,15 @@ test("negotiation correlations, receipts, results, deferred and once-only report
  h.events.get("pi-tools:subagent-profiles:capability")({protocolVersion:2,correlationId:"foreign",register:()=>assert.fail()});
  h.events.get("pi-tools:subagent-profiles:capability")({protocolVersion:1,register:()=>assert.fail()});
  h.events.get("pi-tools:subagent-profiles:capability")({protocolVersion:2,register:null});
- await h.start();await flush();assert.equal(h.notices.length,1);assert.match(h.notices[0][0],/incompatible capability/);
+ await h.start();await nextTask();assert.equal(h.notices.length,1);assert.match(h.notices[0][0],/incompatible capability/);
  h.events.get("pi-tools:subagent-profiles:capability")({protocolVersion:2,correlationId:cid,register:()=>({state:"late"})});await flush();assert.equal(h.notices.length,1);
- for(const receipt of [{state:"rejected",reason:"receipt no"},{state:"late"},{state:"registered"}]){const x=harness();x.register(receipt);await x.start();await flush();assert.equal(x.notices.length,receipt.state==="registered"?0:1);}
+ for(const receipt of [{state:"rejected",reason:"receipt no"},{state:"late"},{state:"registered"}]){const x=harness();x.register(receipt);await x.start();await nextTask();assert.equal(x.notices.length,receipt.state==="registered"?0:1);}
  for(const result of [
   {registrationId:"other",protocolVersion:2,state:"rejected"},
   {registrationId:"awf:subagent-profiles:v2",protocolVersion:1,state:"registered"},{registrationId:"awf:subagent-profiles:v2",protocolVersion:2,state:"rejected",reason:"result no"},{registrationId:"awf:subagent-profiles:v2",protocolVersion:2,state:"registered"}
- ]){const x=harness();x.events.get("pi-tools:subagent-profiles:registration-result")(result);await x.start();await flush();if(result.registrationId==="awf:subagent-profiles:v2"&&result.protocolVersion===2&&result.state==="registered")assert.equal(x.notices.length,0);}
- const missing=harness();await missing.start();await flush();assert.match(missing.notices[0][0],/missing, late/);
+ ]){const x=harness();x.events.get("pi-tools:subagent-profiles:registration-result")(result);await x.start();await nextTask();if(result.registrationId==="awf:subagent-profiles:v2"&&result.protocolVersion===2&&result.state==="registered")assert.equal(x.notices.length,0);}
+ const pending=harness();pending.register({state:"pending"});await pending.start();pending.events.get("pi-tools:subagent-profiles:registration-result")({protocolVersion:2,registrationId:"awf:subagent-profiles:v2",state:"registered"});await nextTask();assert.equal(pending.notices.length,0);
+ const missing=harness();await missing.start();await nextTask();assert.match(missing.notices[0][0],/missing, late/);
 });
 
 test("live session, preference notices, routing hook precedence, fallback, overflow, and dedupe",async()=>{

@@ -394,7 +394,7 @@ const SLOT_GUIDANCE: Array<{ key: PreferenceField; guidance: string }> = [
   pi.events?.on?.(RESULT_EVENT, (result: any) => { result = result as ProfileRegistrationResult; if (result.registrationId !== REGISTRATION_ID) return; if (result.protocolVersion !== PROTOCOL_VERSION || result.state !== "registered") report(result.reason ?? "registration rejected"); else registered = true; });
   const correlationId = randomUUID();
   pi.events?.emit?.(REQUEST_EVENT, { protocolVersion: PROTOCOL_VERSION, correlationId });
-  pi.on("session_start", (_event: any, ctx: any) => { session = { modelRegistry: ctx.modelRegistry, model: ctx.model, ui: ctx.ui, sessionManager: ctx.sessionManager }; queueMicrotask(() => { if (reportedReason !== undefined) report(reportedReason); else if (!registered) report("missing, late, or incompatible capability"); }); });
+  pi.on("session_start", (_event: any, ctx: any) => { session = { modelRegistry: ctx.modelRegistry, model: ctx.model, ui: ctx.ui, sessionManager: ctx.sessionManager }; setTimeout(() => { if (reportedReason !== undefined) report(reportedReason); else if (!registered) report("missing, late, or incompatible capability"); }, 0); });
 }
 
 export default async function (pi: ExtensionAPI): Promise<void> {

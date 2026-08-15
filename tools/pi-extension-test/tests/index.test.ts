@@ -27,9 +27,9 @@ test("protocol-v2 registration is factory-time, atomic, correlated, and terminal
  const h=harness(); assert.equal(h.request().name,"pi-tools:subagent-profiles:request"); assert.equal(h.request().v.protocolVersion,2);
  h.capability({protocolVersion:2,correlationId:"other",register:()=>assert.fail("foreign")}); assert.equal(h.batch(),undefined);
  const profiles=register(h); assert.equal(h.batch().registrationId,"awf:subagent-profiles:v2"); assert.equal(h.batch().suppressDefault,true); assert.equal(profiles.length,4); assert.deepEqual(profiles.map(p=>p.concurrency),[10,10,10,1]); assert.equal(profiles[3].exclusiveParentBatch,true);
- await h.hooks.session_start({},h.ctx); await new Promise<void>((resolve) => queueMicrotask(resolve)); assert.equal(h.notices.length,0);
- const rejected=harness(); rejected.eventHandlers["pi-tools:subagent-profiles:registration-result"]({protocolVersion:2,registrationId:"awf:subagent-profiles:v2",state:"rejected",reason:"no"}); await rejected.hooks.session_start({},rejected.ctx); await new Promise<void>((resolve) => queueMicrotask(resolve)); assert.equal(rejected.notices.length,1); assert.match(rejected.notices[0][0],/no/);
- const missing=harness(); await missing.hooks.session_start({},missing.ctx); await new Promise<void>((resolve) => queueMicrotask(resolve)); await new Promise<void>((resolve) => queueMicrotask(resolve)); assert.equal(missing.notices.length,1); assert.match(missing.notices[0][0],/missing, late, or incompatible/);
+ await h.hooks.session_start({},h.ctx); await new Promise<void>((resolve) => setTimeout(resolve,0)); assert.equal(h.notices.length,0);
+ const rejected=harness(); rejected.eventHandlers["pi-tools:subagent-profiles:registration-result"]({protocolVersion:2,registrationId:"awf:subagent-profiles:v2",state:"rejected",reason:"no"}); await rejected.hooks.session_start({},rejected.ctx); await new Promise<void>((resolve) => setTimeout(resolve,0)); assert.equal(rejected.notices.length,1); assert.match(rejected.notices[0][0],/no/);
+ const missing=harness(); await missing.hooks.session_start({},missing.ctx); await new Promise<void>((resolve) => setTimeout(resolve,0)); assert.equal(missing.notices.length,1); assert.match(missing.notices[0][0],/missing, late, or incompatible/);
 });
 
 test("profiles retain exact schemas, rendered contracts, routing selection, metadata, and commit policy", async()=>{

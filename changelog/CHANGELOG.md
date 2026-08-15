@@ -14,6 +14,10 @@ query a single version or a range.
 - New projects now default to a closed Core workflow profile with brainstorming, implementation, testing, review, efforts, and managed worktrees; Full adds ADR, plan, current-state, context, and workflow-audit governance, and existing repositories migrate explicitly to Full.
 - Repository and staged drift checks now require every generated output and `.awf/awf.lock` in Git's index, report staged deletion, ignored untracked replacement, and absent-lock failures as `untracked`, retain tracked files that later match ignore rules, exclude nested-adopter resident outputs, and report tracking as unavailable without disabling filesystem drift checks outside Git.
 
+### Bug fixes
+
+- Pi profile registration now waits through the complete startup-handler turn before reporting a missing `pi-tools` capability, avoiding a false incompatibility notice when final registration arrives later in the same startup dispatch.
+
 ## [0.37.0] - 2026-08-13
 
 ### Features
