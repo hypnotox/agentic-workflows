@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: dedicated-pi-reviewer-profiles
-status: Proposed
+status: Accepted
 date: 2026-08-16
 ---
 # ADR-0280: Dedicated Pi reviewer profiles
@@ -70,3 +70,4 @@ publication-safety contract.
 ## Status history
 
 - 2026-08-16: Proposed
+- 2026-08-16: Accepted; content-sha256: 840471fb3f0f8804452553cb1201163e9356da72b3e79bcfab1901e17ceb8987
