@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-0280: Dedicated Pi reviewer profiles](0280-dedicated-pi-reviewer-profiles.md) (Proposed)
 
 ## History
 
