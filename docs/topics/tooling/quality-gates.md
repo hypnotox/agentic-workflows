@@ -66,7 +66,7 @@ Backing: test
 
 The command runner reads one NUL-delimited, rename-disabled staged-index name diff and independently selects profiled Go tests with coverage and Pi runtime smoke from explicit dependency categories. The exact documentation allowlist, exact `internal/project/VERSION`, and exact root `.awf/awf.lock` select neither suite; Pi-only paths run only Pi; Go-only paths run only Go; overlap paths run both; and absent, unreadable, malformed, empty, or unrecognized snapshots run both. Neighboring project and `.awf` paths retain their overlap classification. Versioncheck, vet, builds, lint, dead code, and pin checks always run; each skipped suite prints an explicit notice, and timings name only executed stages.
 Origin: ADR-0275
-Revised-by: ADR-0276, ADR-test-free-local-release-preparation
+Revised-by: ADR-0276, ADR-0284
 Backing: test
 
 ### `invariant: pi-extension-container-gate`

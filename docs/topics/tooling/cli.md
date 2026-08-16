@@ -127,7 +127,7 @@ Backing: test
 
 The newline-terminated `internal/project/VERSION` file is the command-line tool's single version authority. The binary embeds it as `project.Version`; version reporting, lock stamping, bootstrap pinning, changelog checks, and schema compatibility consume that exact value, while build provenance remains display-only. The unconditional versioncheck gate rejects noncanonical file bytes, a divergent exposed value, invalid no-`v` SemVer, a missing current schema minimum, or a binary version below that minimum.
 Origin: ADR-0049
-Revised-by: ADR-test-free-local-release-preparation
+Revised-by: ADR-0284
 Backing: test
 
 ### `invariant: stub-advisory-nonfailing`

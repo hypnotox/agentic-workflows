@@ -4,7 +4,7 @@ slug: test-free-local-release-preparation
 status: Implementing
 date: 2026-08-16
 ---
-# ADR-test-free-local-release-preparation: Test-free local release preparation
+# ADR-0284: Test-free local release preparation
 
 
 ## Context
