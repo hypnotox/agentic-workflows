@@ -25,3 +25,8 @@
 # clobbering it on render. That is a local rescue copy of superseded content, so
 # it is never committed; one reached main before this rule existed.
 *.awf-bak
+
+# Host Pi-lane dependencies and its successful-install identity are checkout-local.
+tools/pi-extension-test/node_modules/
+tools/pi-extension-test/.host-deps-*.ok
+tools/pi-extension-test/.host-lane.lock/

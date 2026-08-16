@@ -8,6 +8,11 @@ set -euo pipefail
 # (a managed .awf/worktrees/ tree) leaks that checkout's paths into this one's
 # findings, pointing at files that vanish when the worktree is removed.
 export GOLANGCI_LINT_CACHE="${PWD}/.cache/golangci-lint"
+# Go's tests isolate HOME, but the nested real Pi smoke still needs the NVM
+# location discovered by this host process. CI has no NVM and falls through to
+# its setup-node runtime when this path does not exist.
+: "${AWF_PI_TEST_NVM_DIR:=${NVM_DIR:-$HOME/.nvm}}"
+export AWF_PI_TEST_NVM_DIR
 
 cleanup_paths=()
 cleanup() {
@@ -62,9 +67,9 @@ select_gate_tests() {
       # Pi templates and generated guidance are consumed by Go tests as well.
       templates/pi/*|templates/embed.go|.pi/agents/*|.pi/skills/*|x|internal/project/*|internal/render/*|internal/config/*|internal/catalog/*|.awf/*|go.mod|go.sum) gate_go_tests=true; gate_pi_tests=true ;;
       # These Pi harness proving inputs have direct Go-test consumers.
-      tools/pi-extension-test/container.sh|tools/pi-extension-test/tests/index.test.ts|tools/pi-extension-test/tests/handoff.test.ts) gate_go_tests=true; gate_pi_tests=true ;;
+      .nvmrc|tools/pi-extension-test/run.sh|tools/pi-extension-test/tests/index.test.ts|tools/pi-extension-test/tests/handoff.test.ts) gate_go_tests=true; gate_pi_tests=true ;;
       # Pi extension and standalone harness inputs have no Go-test consumer.
-      .pi/extensions/*|tools/pi-extension-test/Dockerfile|tools/pi-extension-test/*manifest*|tools/pi-extension-test/*lock*|tools/pi-extension-test/tsconfig*.json|tools/pi-extension-test/fixtures/*|tools/pi-extension-test/tests/*.ts|tools/pi-extension-test/package.json|tools/pi-extension-test/package-lock.json) gate_pi_tests=true ;;
+      .pi/extensions/*|tools/pi-extension-test/*manifest*|tools/pi-extension-test/*lock*|tools/pi-extension-test/tsconfig*.json|tools/pi-extension-test/fixtures/*|tools/pi-extension-test/tests/*.ts|tools/pi-extension-test/package.json|tools/pi-extension-test/package-lock.json) gate_pi_tests=true ;;
       # Ordinary Go and Claude-only inputs do not affect the Pi runtime suite.
       *.go|.claude/*) gate_go_tests=true ;;
       *) gate_go_tests=true; gate_pi_tests=true ;;
@@ -108,9 +113,9 @@ case "$cmd" in
     # Sequential gate: profiled tests + 100% coverage check + the explicitly
     # enabled uncached Pi runtime smoke + vet + lint. The coverage step
     # (ADR-0012) fails below 100% of non-ignored statements; -coverpkg=./... so
-    # every package contributes. Ordinary Go runs skip the Docker-backed smoke;
+    # every package contributes. Ordinary Go runs skip the host Pi lane;
     # this gate invokes both proving units below while their shared helper runs
-    # the container exactly once.
+    # the host lane exactly once.
     # The profile is durable (gitignored via *.out) so CI can upload it to
     # Codecov without rerunning the suite, and an interrupted run leaks no
     # tmpfs file (ADR-0196).
@@ -166,7 +171,7 @@ case "$cmd" in
     go tool golangci-lint fmt "$@"
     ;;
   test)
-    echo "test: Pi container skipped; run './x pi-test run' alone or './x gate' to include it" >&2
+    echo "test: Pi host lane skipped; run './x pi-test run' alone or './x gate' to include it" >&2
     env -u AWF_PI_RUNTIME_SMOKE go test ./... "$@"
     ;;
   clean-test-tmp)
@@ -201,11 +206,11 @@ case "$cmd" in
     ;;
   pi-test)
     action="${1:-run}"
-    if [ "$#" -gt 1 ]; then
-      echo "usage: ./x pi-test <run|reset>" >&2
+    if [ "$#" -gt 1 ] || [ "$action" != run ]; then
+      echo "usage: ./x pi-test <run>" >&2
       exit 2
     fi
-    tools/pi-extension-test/container.sh "$action"
+    tools/pi-extension-test/run.sh "$action"
     ;;
   build)
     go build -o bin/awf ./cmd/awf
@@ -239,7 +244,7 @@ case "$cmd" in
     go run ./cmd/repoaudit "$@"
     ;;
   *)
-    echo "usage: ./x <gate [timings]|lint|fmt|test|clean-test-tmp [--all]|deadcode|render|check|context|pi-test <run|reset>|build|install|mutants|audit-local>" >&2
+    echo "usage: ./x <gate [timings]|lint|fmt|test|clean-test-tmp [--all]|deadcode|render|check|context|pi-test <run>|build|install|mutants|audit-local>" >&2
     exit 2
     ;;
 esac

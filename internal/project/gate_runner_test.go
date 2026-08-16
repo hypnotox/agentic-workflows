@@ -82,7 +82,7 @@ func TestGateRunnerModes(t *testing.T) {
 	}
 
 	testErr, testStatus, testLines := run(nil, "test", "-run", "TestOne")
-	const notice = "test: Pi container skipped; run './x pi-test run' alone or './x gate' to include it\n"
+	const notice = "test: Pi host lane skipped; run './x pi-test run' alone or './x gate' to include it\n"
 	if testStatus != 0 || testErr != notice {
 		t.Errorf("x test: status=%d stderr=%q", testStatus, testErr)
 	}
@@ -203,7 +203,7 @@ func TestGateRunnerSelectsTestsFromStagedChanges(t *testing.T) {
 	for _, path := range []string{
 		"templates/pi/extension.ts.tmpl", ".pi/agents/reviewer.md", ".pi/skills/reviewer/SKILL.md", "x",
 		"internal/project/target.go", "internal/render/template.go", "internal/config/config.go", "internal/catalog/catalog.go", "templates/embed.go",
-		"tools/pi-extension-test/container.sh", "tools/pi-extension-test/tests/index.test.ts", "tools/pi-extension-test/tests/handoff.test.ts",
+		".nvmrc", "tools/pi-extension-test/run.sh", "tools/pi-extension-test/tests/index.test.ts", "tools/pi-extension-test/tests/handoff.test.ts",
 	} {
 		t.Run("overlap "+strings.ReplaceAll(path, "/", "_"), func(t *testing.T) {
 			root, logPath := committedGateRunnerFixture(t)

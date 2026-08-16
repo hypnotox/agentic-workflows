@@ -1,6 +1,6 @@
 These packages and the command runner enforce the deterministic quality gates: coverage, prose punctuation, working-memory citations, and the gate tiers. The claims below capture the current gate contracts.
 
-The Pi container lane enforces 100% line, function, and branch coverage for every generated Pi extension, including context usage, without reachable-branch ignores.
+The Pi host lane enforces 100% line, function, and branch coverage for every generated Pi extension, including context usage, without reachable-branch ignores.
 
 ## Claims
 
@@ -62,9 +62,9 @@ Backing: test
 
 ### `invariant: pi-extension-container-gate`
 
-The command runner wires a Pi-extension gate lane that runs the extension's tests inside an ephemeral Docker container built from a content-fingerprinted image shared by every checkout, requiring no host Node or npm, leaving behind no container and no volume, and keeping an explicit reset cleanup command available. Independent staged selection runs this lane for Pi-only and overlap dependencies, including Pi extensions, templates, generated agents and skills, shared rendering/configuration/catalog surfaces, the runner, and Go-consumed harness inputs; uncertain paths run both suites.
+The command runner wires a pinned-host-Node Pi-extension lane. NVM selects exact v24.19.0 locally without downloading, while CI accepts the same exact setup-node runtime. The checkout-local lock serializes dependency preparation and the complete lane; `npm ci --ignore-scripts` publishes a reusable tree only after success under a fingerprint of the pin, manifests, exact Node/npm versions, OS, and architecture. Every run uses a narrow temporary copy with only Pi extensions, agents, skills, harness inputs, and minimal metadata, links that tree, and leaves operator-local Pi state untouched. Independent staged selection runs this lane for Pi-only and overlap dependencies, including `.nvmrc`, the host runner, Pi extensions, templates, generated agents and skills, shared rendering/configuration/catalog surfaces, and Go-consumed harness inputs; uncertain paths run both suites.
 Origin: ADR-0123
-Revised-by: ADR-0198, ADR-0275, ADR-0276
+Revised-by: ADR-0198, ADR-0275, ADR-0276, ADR-0281
 Backing: test
 
 ### `invariant: prose-gate-refuses-without-git`

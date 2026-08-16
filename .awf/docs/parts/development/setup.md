@@ -2,12 +2,12 @@
 |---|---|
 | Go 1.26+ | See `go.mod`. |
 | Native Git | Required at runtime and in tests. |
-| Docker | `./x gate` builds the Pi-extension test container on first use. |
+| Node v24.19.0 and npm | `.nvmrc` pins the Pi lane runtime. Local NVM selects it without downloading; run `nvm install v24.19.0` if absent. |
 | `hypnotox/pi-tools` for Pi use | Install independently at any protocol-v2-compatible revision; awf does not pin it. |
 
 For adopter Pi sessions, compatibility means a successful protocol-v2 capability handshake and final awf profile registration. Missing, incompatible, late, or rejected negotiation reports an actionable prerequisite error and activates no awf fallback. The awf effort extension separately requires a compatible adopter-supplied Pi runtime.
 
-No host Node, npm, `node_modules`, services, environment variables, or model credentials are required.
+The Pi lane requires the pinned host Node and npm, but no services, environment variables, or model credentials.
 
 ```sh
 git clone <repo>

@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: host-node-pi-extension-test-lane
-status: Accepted
+status: Implementing
 date: 2026-08-16
 ---
 # ADR-0281: Host Node Pi extension test lane
@@ -93,3 +93,6 @@ they addressed; this decision changes current authority forward rather than rewr
 
 - 2026-08-16: Proposed
 - 2026-08-16: Accepted; content-sha256: bc80ea8b4bb4189070a07586065748ae5beb62d7a6fa1334a376c7243698a22d
+- 2026-08-16: Implementing; content-sha256: bc80ea8b4bb4189070a07586065748ae5beb62d7a6fa1334a376c7243698a22d
+- 2026-08-16: Applied; operations: update `tooling/quality-gates:pi-extension-container-gate`
+- 2026-08-16: Applied; operations: update `rendering/pi-workflows:pi-extension-editor-quiet-strip`

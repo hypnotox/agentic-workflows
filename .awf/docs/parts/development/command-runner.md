@@ -3,8 +3,8 @@ Run `./x` at the repository root with no argument for usage. Use rendered `./awf
 | Command | Purpose |
 |---|---|
 | `./x gate [timings]` | Pre-commit gate: staged documentation-only transactions skip both test lanes; Pi-only changes run Pi smoke only; Go-only changes run Go tests and coverage only; overlapping or uncertain changes run both. Vet, builds, lint, dead code, and pin checks always run. `timings` reports only executed stages. Prose and memory scans are hook/CI checks, not gate steps. |
-| `./x test [args]` | `go test ./...`, passing arguments through, without Docker. It names `./x pi-test run` and `./x gate` for the skipped lane and complete transaction. |
-| `./x pi-test run\|reset` | Run Pi tests in a throwaway Docker container, or remove lane images. The dependency-keyed image is shared; each run leaves no container or volume. |
+| `./x test [args]` | `go test ./...`, passing arguments through, without the host Pi lane. It names `./x pi-test run` and `./x gate` for the skipped lane and complete transaction. |
+| `./x pi-test run` | Run Pi tests on the pinned host Node runtime. The lane lock serializes each checkout; every run uses a narrow throwaway workspace. |
 | `./x clean-test-tmp [--all]` | Remove managed Linux/macOS test homes older than 24 hours, or all homes after warning. Partial cleanup exits nonzero. |
 | `./x lint` / `./x fmt` | Run `golangci-lint run` / `golangci-lint fmt`. |
 | `./x deadcode` | Run the dead-code check (ADR-0063). |

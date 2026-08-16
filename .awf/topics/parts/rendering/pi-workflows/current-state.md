@@ -11,9 +11,9 @@ Backing: test
 
 ### `invariant: pi-extension-editor-quiet-strip`
 
-Every governed retained Pi extension file carries the ts-nocheck directive on the line immediately after the provenance banner, and the container harness deterministically strips that exact directive from every copied extension TypeScript file after source copy and before strict compilation.
+Every governed retained Pi extension file carries the ts-nocheck directive on the line immediately after the provenance banner, and the host harness deterministically strips that exact directive from every copied extension TypeScript file after source copy and before strict compilation.
 Origin: ADR-0148
-Revised-by: ADR-0279
+Revised-by: ADR-0279, ADR-0281
 Backing: test
 
 ### `invariant: pi-implementation-batch-exclusivity`

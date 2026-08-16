@@ -10,12 +10,12 @@
 |---|---|
 | Go 1.26+ | See `go.mod`. |
 | Native Git | Required at runtime and in tests. |
-| Docker | `./x gate` builds the Pi-extension test container on first use. |
+| Node v24.19.0 and npm | `.nvmrc` pins the Pi lane runtime. Local NVM selects it without downloading; run `nvm install v24.19.0` if absent. |
 | `hypnotox/pi-tools` for Pi use | Install independently at any protocol-v2-compatible revision; awf does not pin it. |
 
 For adopter Pi sessions, compatibility means a successful protocol-v2 capability handshake and final awf profile registration. Missing, incompatible, late, or rejected negotiation reports an actionable prerequisite error and activates no awf fallback. The awf effort extension separately requires a compatible adopter-supplied Pi runtime.
 
-No host Node, npm, `node_modules`, services, environment variables, or model credentials are required.
+The Pi lane requires the pinned host Node and npm, but no services, environment variables, or model credentials.
 
 ```sh
 git clone <repo>
@@ -36,8 +36,8 @@ Run `./x` at the repository root with no argument for usage. Use rendered `./awf
 | Command | Purpose |
 |---|---|
 | `./x gate [timings]` | Pre-commit gate: staged documentation-only transactions skip both test lanes; Pi-only changes run Pi smoke only; Go-only changes run Go tests and coverage only; overlapping or uncertain changes run both. Vet, builds, lint, dead code, and pin checks always run. `timings` reports only executed stages. Prose and memory scans are hook/CI checks, not gate steps. |
-| `./x test [args]` | `go test ./...`, passing arguments through, without Docker. It names `./x pi-test run` and `./x gate` for the skipped lane and complete transaction. |
-| `./x pi-test run\|reset` | Run Pi tests in a throwaway Docker container, or remove lane images. The dependency-keyed image is shared; each run leaves no container or volume. |
+| `./x test [args]` | `go test ./...`, passing arguments through, without the host Pi lane. It names `./x pi-test run` and `./x gate` for the skipped lane and complete transaction. |
+| `./x pi-test run` | Run Pi tests on the pinned host Node runtime. The lane lock serializes each checkout; every run uses a narrow throwaway workspace. |
 | `./x clean-test-tmp [--all]` | Remove managed Linux/macOS test homes older than 24 hours, or all homes after warning. Partial cleanup exits nonzero. |
 | `./x lint` / `./x fmt` | Run `golangci-lint run` / `golangci-lint fmt`. |
 | `./x deadcode` | Run the dead-code check (ADR-0063). |
@@ -66,7 +66,7 @@ For volatile mechanisms, compose at the outer boundary that knows production and
 | `golangci-lint` | Lint and format. |
 | `deadcode` | Dead-code gate (ADR-0063). |
 | `gremlins` | Advisory mutation testing (ADR-0066). |
-| Pi lane dependencies | Pinned Node, TypeScript, Pi ai/TUI 0.81.1, TypeBox, and checksummed `fork-v0.81.1-awf.3` in `tools/pi-extension-test/`. Docker builds a content-keyed shared image and uses throwaway copies, with no host npm state or volume. |
+| Pi lane dependencies | Pinned Node, TypeScript, Pi ai/TUI 0.81.1, TypeBox, and checksummed `fork-v0.81.1-awf.3` in `tools/pi-extension-test/`. The host lane installs its lockfile into a checkout-local tree with `npm ci --ignore-scripts`, validates a Node/npm/platform fingerprint, and uses narrow throwaway copies. |
 
 Pi and `hypnotox/pi-tools` are adopter-supplied, not awf binary dependencies. Install `pi-tools` independently at an unpinned revision; successful protocol-v2 negotiation and final profile registration, rather than a package revision, define compatibility. `pi-tools` owns general context usage, handoff, scheduling, child execution, confinement, execution facts, and presentation. Awf owns the rendered profile adapter, workflow policy, and effort integration. The checked Pi artifact retains the numeric 0.81.1 floor and lock-pinned integrity only for awf-owned runtime integration.
 
