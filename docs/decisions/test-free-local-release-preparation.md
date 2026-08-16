@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: test-free-local-release-preparation
-status: Proposed
+status: Accepted
 date: 2026-08-16
 ---
 # ADR-test-free-local-release-preparation: Test-free local release preparation
@@ -81,3 +81,4 @@ and generated-authority guard.
 ## Status history
 
 - 2026-08-16: Proposed
+- 2026-08-16: Accepted; content-sha256: 295dbd2886e0843f32f004681cf118330e1e3ff2e743f840c208495853f58f5b

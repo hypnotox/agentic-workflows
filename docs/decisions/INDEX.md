@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-test-free-local-release-preparation: Test-free local release preparation](test-free-local-release-preparation.md) (Proposed)
+- [ADR-test-free-local-release-preparation: Test-free local release preparation](test-free-local-release-preparation.md) (Accepted)
 
 ## History
 
