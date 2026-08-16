@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-0281: Host Node Pi extension test lane](0281-host-node-pi-extension-test-lane.md) (Proposed)
 
 ## History
 
