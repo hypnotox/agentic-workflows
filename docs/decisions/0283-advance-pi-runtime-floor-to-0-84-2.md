@@ -29,9 +29,9 @@ existing Pi tests before this decision was proposed.
 ## Decision
 
 1. `decision: pi-0-84-2-floor` Set Pi 0.84.2 as the minimum supported runtime for awf's retained Pi effort integration. Older Pi runtimes are no longer supported by that output.
-2. `decision: aligned-pi-verification` Verify the retained Pi integration against one coherent Pi 0.84.2 SDK family while keeping independently installed adopter pi-tools compatibility protocol-based rather than revision-based.
-3. `decision: source-only-recorder-boundary` Permit the Pi test lane to pin and consume the source-only `pi-tools/testing` boundary for generic Pi API recordings without importing or behavior-testing the adopter pi-tools runtime.
-4. `decision: six-profile-registration` Preserve atomic protocol-v2 registration of the current six governed awf profiles; the runtime-floor change does not alter profile policy or behavior.
+2. `decision: aligned-pi-verification` Pin the Pi test graph to pi-ai and pi-tui 0.84.2 and the checksummed `fork-v0.84.2.2` pi-coding-agent release asset, whose embedded upstream version is 0.84.2. Keep independently installed adopter pi-tools compatibility protocol-based rather than revision-based.
+3. `decision: source-only-recorder-boundary` Pin the test-only source dependency to pi-tools v0.3.0 and directly use `createExtensionRecorder` as the shared owner of generic Pi API, event, context, UI, model-registry, command, tool, active-tool, and execution recordings. Keep awf-specific filesystem, Git, preference, routing, effort, UUID, and transport fixtures local, create no awf-owned recorder copy or adapter, and do not import or behavior-test the adopter pi-tools runtime.
+4. `decision: preserved-integration-semantics` Preserve atomic protocol-v2 registration of the current six governed awf profiles and leave profile, routing, effort, and protocol behavior unchanged. Retain Node v24.19.0 as the test runtime baseline.
 
 ## State changes
 
@@ -47,9 +47,11 @@ keeping filesystem, Git, routing, effort, and transport policy local.
 
 Adopters using Pi 0.81.1 must upgrade before using the retained effort output. The dependency update
 therefore requires renewed strict type checking, extension coverage, and real SDK smoke evidence for
-profile negotiation and effort integration. The source-only recorder pin is test infrastructure; it
-does not become a pi-tools runtime pin or broaden awf's assurance into external scheduling, child
-execution, confinement, or presentation mechanics.
+profile negotiation and effort integration. Because the recorder export is TypeScript source,
+future recorder upgrades remain coupled to awf's pinned Pi type graph and can require coordinated
+SDK pin changes plus renewed type and coverage verification. The source-only recorder pin is test
+infrastructure; it does not become a pi-tools runtime pin or broaden awf's assurance into external
+scheduling, child execution, confinement, or presentation mechanics.
 
 ## Alternatives Considered
 
@@ -58,6 +60,7 @@ execution, confinement, or presentation mechanics.
 | Backport the recorder to Pi 0.81.1 | It preserves an obsolete awf runtime floor and makes pi-tools carry compatibility work after the maintained fork has advanced. |
 | Add a separate Pi 0.84.2 recorder lane | It leaves awf with two Pi SDK generations, duplicate dependency policy, and a runtime proof that does not match its shared test seam. |
 | Bump only pi-tools without importing the recorder | The existing type-only profile API gains little, and calling that a recorder migration would overstate the result. |
+| Raise the Pi floor but retain awf's local generic fixtures | It leaves duplicated generic Pi recording machinery instead of adopting its shared owner. |
 | Copy or locally adapt the recorder | It forks a generic Pi testing concern whose shared owner is pi-tools. |
 
 ## Status history
