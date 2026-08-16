@@ -13,7 +13,7 @@ The standard workflow templates instructed every Full-profile adopter to run `./
 
 ## Decision
 
-1. `decision: repository-local-instructions-stay-local` Shipped templates and rendered adopter surfaces name only workflow commands the standard provides; repository-local instructions remain in self-hosted convention overrides.
+1. `decision: repository-local-instructions-stay-local` Shipped standard sources and portable, unaugmented adopter outputs must not require repository-local commands or tools.
 
 ## State changes
 
