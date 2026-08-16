@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-0282: Keep Repository-Local Instructions Out of Shipped Surfaces](0282-keep-repository-local-instructions-out-of-shipped-surfaces.md) (Proposed)
 
 ## History
 
