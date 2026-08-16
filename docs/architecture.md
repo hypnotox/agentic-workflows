@@ -20,7 +20,7 @@ awf renders workflow guidance from committed `.awf/` configuration. The CLI owns
 - `internal/snapshot` and `internal/filesystem`: immutable input and confined filesystem boundaries.
 - `cmd/awf`: CLI composition root.
 - Generated Pi extensions: an awf-owned protocol-v2 profile adapter and retained effort integration. Independently installed, unpinned `hypnotox/pi-tools` owns general context usage, handoff, scheduling, child execution, confinement, execution facts, and presentation; successful handshake and final profile registration define compatibility, with an actionable no-fallback failure otherwise.
-- Auxiliary commands: `cmd/contextspilllog`, `cmd/covercheck`, `cmd/deadcodecheck`, `cmd/mutants`, `cmd/pincheck`, `cmd/releasecheck`, and `cmd/repoaudit`.
+- Auxiliary commands: `cmd/contextspilllog`, `cmd/covercheck`, `cmd/deadcodecheck`, `cmd/mutants`, `cmd/pincheck`, `cmd/releasecheck`, `cmd/repoaudit`, and `cmd/versioncheck`.
 
 
 <!-- awf:template-source templates/docs/architecture.md.tmpl#data-flow -->

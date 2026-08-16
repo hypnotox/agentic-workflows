@@ -3,6 +3,7 @@ package project
 
 import (
 	"context"
+	_ "embed"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -28,10 +29,14 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-// Version is the awf release version - the single version authority
-// (ADR-0049): gate comparisons, the lock stamp, the bootstrap pin, and the
-// CLI output all read this const.
-const Version = "0.39.0"
+// versionFile is the single embedded version authority.
+//
+//go:embed VERSION
+var versionFile string
+
+// Version is the awf release version. Gate comparisons, the lock stamp, the
+// bootstrap pin, and CLI output all read this value (ADR-0049).
+var Version = strings.TrimSuffix(versionFile, "\n")
 
 // BridgeTrancheComplete blocks publication while the two-plan current-state
 // bridge tranche is only partially implemented. Plans 1 and 2 have both landed
@@ -98,6 +103,26 @@ func ValidateSchemaMinimumVersion(schema int, version string) error {
 		return fmt.Errorf("awf %s cannot render schema generation %d; requires awf %s or newer", version, schema, minimum)
 	}
 	return nil
+}
+
+// CheckVersionAuthority validates the embedded version and its compatibility
+// with the current config schema generation.
+func CheckVersionAuthority() error {
+	return validateVersionAuthority(versionFile, Version, migrate.Current())
+}
+
+func validateVersionAuthority(raw, exposed string, schema int) error {
+	if !strings.HasSuffix(raw, "\n") || strings.Count(raw, "\n") != 1 {
+		return errors.New("canonical version file must contain one version followed by one newline")
+	}
+	embedded := strings.TrimSuffix(raw, "\n")
+	if exposed != embedded {
+		return fmt.Errorf("embedded version %q does not match project.Version %q", embedded, exposed)
+	}
+	if canonical := semver.Canonical("v" + exposed); canonical != "v"+exposed {
+		return fmt.Errorf("project.Version %q is not a canonical semantic version without a v prefix", exposed)
+	}
+	return ValidateSchemaMinimumVersion(schema, exposed)
 }
 
 // LoadConfigTree loads one project's configuration tree.

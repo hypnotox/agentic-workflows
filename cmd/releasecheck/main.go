@@ -51,9 +51,10 @@ func run(root, changelogFS fs.FS, stdout, stderr io.Writer, bridgeTrancheComplet
 			entries[0].Version, project.Version)
 		fails++
 	}
-	// Ordering is the gate test's job (inv: changelog-monotonic), but release CI
-	// runs no tests - re-check it here so a mis-sorted file cannot make a stray
-	// newer entry pass as pinned merely because entries[0] matched.
+	// Ordering is ordinarily the gate test's job (inv: changelog-monotonic), but
+	// releasecheck remains a self-contained local pre-tag rehearsal. Re-check it
+	// here so a mis-sorted file cannot make a stray newer entry pass as pinned
+	// merely because entries[0] matched.
 	for i := 0; i+1 < len(entries); i++ {
 		if semver.Compare("v"+entries[i].Version, "v"+entries[i+1].Version) <= 0 {
 			fmt.Fprintf(stderr, "releasecheck: changelog entries out of order: %s is not strictly newer than %s\n",

@@ -16,15 +16,17 @@ How to cut a release of the `awf` binary. [ADR-0030](decisions/0030-prebuilt-bin
 
    The audit is advisory but must be clean. The required range starts at the previous tag and includes the commits being shipped, including stale-ADR authorization replay for schema-31-and-later merges. Commit and push gates keep `main` verified; the tag workflow verifies the release again.
 
-2. Set `project.Version` in `internal/project/project.go` to the target `MAJOR.MINOR.PATCH`. Promote `changelog/CHANGELOG.md`'s entries: rename `## [Unreleased]` to `## [0.2.0] - YYYY-MM-DD`, then add a new empty `## [Unreleased]` above it. Entries are grouped by adopter-facing effect: Breaking changes, Features, Bug fixes, or Others.
+2. Set `internal/project/VERSION` to the target `MAJOR.MINOR.PATCH` with its standing newline. Promote `changelog/CHANGELOG.md`'s entries: rename `## [Unreleased]` to `## [0.2.0] - YYYY-MM-DD`, then add a new empty `## [Unreleased]` above it. Entries are grouped by adopter-facing effect: Breaking changes, Features, Bug fixes, or Others.
 
    ```
+   printf '0.2.0\n' > internal/project/VERSION
+   ./x render
    go run ./cmd/releasecheck
-   git add internal/project/project.go changelog/CHANGELOG.md .awf/awf.lock
+   git add internal/project/VERSION changelog/CHANGELOG.md .awf/awf.lock
    git commit -m "chore(awf): bump version to v0.2.0"
    ```
 
-   A schema-coupled bump often already changed the version mid-cycle. It changes the const and lock, not the changelog. During development the gate requires descending changelog entries with the newest at or below `project.Version`; releasecheck requires an exact newest-version match and an empty `[Unreleased]`. Stage `.awf/awf.lock` when `./x check` reports it.
+   A schema-coupled bump often already changed the version mid-cycle. It changes the version file and lock, not the changelog. During development the gate requires descending changelog entries with the newest at or below `project.Version`; releasecheck requires an exact newest-version match and an empty `[Unreleased]`. The canonical three-file release-prep transaction skips Go and Pi test suites locally while versioncheck and every static gate still run. The clean tag checkout later fails safe to both suites and reruns the complete gate before publication.
 
 3. Push `main`, then tag and push the matching version:
 
@@ -40,7 +42,7 @@ The tag triggers `.github/workflows/release.yml`. It verifies the canonical AGPL
 
 ## Versioning
 
-awf is pre-1.0 and uses `vMAJOR.MINOR.PATCH` SemVer. `project.Version` is the single authority (ADR-0049): it drives `awf version`, lock `AWFVersion`, the bootstrap pin, and the binary-version gate. The tag must match it. `cmd/releasecheck` requires the canonical AGPL-3.0-only `LICENSE`, matching README badge and footer, archive inclusion, a newest changelog entry equal to `project.Version`, and an empty standing `[Unreleased]` section (ADR-0078). `minVersionBySchema` must cover the current schema generation at or below `project.Version`.
+awf is pre-1.0 and uses `vMAJOR.MINOR.PATCH` SemVer. The newline-terminated `internal/project/VERSION`, embedded as `project.Version`, is the single authority (ADR-0049): it drives `awf version`, lock `AWFVersion`, the bootstrap pin, and the binary-version gate. The tag must match it. `cmd/releasecheck` requires the canonical AGPL-3.0-only `LICENSE`, matching README badge and footer, archive inclusion, a newest changelog entry equal to `project.Version`, and an empty standing `[Unreleased]` section (ADR-0078). `minVersionBySchema` must cover the current schema generation at or below `project.Version`.
 
 ## Preview locally
 

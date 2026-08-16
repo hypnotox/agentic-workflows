@@ -62,8 +62,8 @@ select_gate_tests() {
     # Each recognized category explicitly selects its dependent suites. New or
     # uncertain paths deliberately select both rather than inheriting a lane.
     case "$path" in
-      # ADR-0275's exact documentation allowlist remains the sole neither lane.
-      docs/*|README.md|changelog/CHANGELOG.md|.awf/docs/parts/*|templates/docs/*) ;;
+      # Exact test-free data and documentation inputs select neither suite.
+      docs/*|README.md|changelog/CHANGELOG.md|.awf/docs/parts/*|templates/docs/*|internal/project/VERSION|.awf/awf.lock) ;;
       # Pi templates and generated guidance are consumed by Go tests as well.
       templates/pi/*|templates/embed.go|.pi/agents/*|.pi/skills/*|x|internal/project/*|internal/render/*|internal/config/*|internal/catalog/*|.awf/*|go.mod|go.sum) gate_go_tests=true; gate_pi_tests=true ;;
       # These Pi harness proving inputs have direct Go-test consumers.
@@ -125,6 +125,7 @@ case "$cmd" in
       gate_go_tests=true
       gate_pi_tests=true
     fi
+    run_gate_step versioncheck go run ./cmd/versioncheck
     prof="coverage.out"
     if "$gate_go_tests"; then
       run_gate_step go-test env -u AWF_PI_RUNTIME_SMOKE go test ./... -coverpkg=./... -coverprofile="$prof"
@@ -132,14 +133,14 @@ case "$cmd" in
     elif "$gate_pi_tests"; then
       echo "gate: skipping Go tests and coverage for Pi-only staged changes" >&2
     else
-      echo "gate: skipping Go tests and coverage for documentation-only staged changes" >&2
+      echo "gate: skipping Go tests and coverage for test-free staged changes" >&2
     fi
     if "$gate_pi_tests"; then
       run_gate_step pi-runtime-smoke run_pi_runtime_smoke
     elif "$gate_go_tests"; then
       echo "gate: skipping Pi runtime smoke for Go-only staged changes" >&2
     else
-      echo "gate: skipping Pi runtime smoke for documentation-only staged changes" >&2
+      echo "gate: skipping Pi runtime smoke for test-free staged changes" >&2
     fi
     run_gate_step vet go vet ./...
     # Cross-compile gate: the suite only ever runs on the host platform, so a

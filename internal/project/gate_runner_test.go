@@ -68,7 +68,7 @@ func TestGateRunnerModes(t *testing.T) {
 		t.Fatalf("ordinary gate printed timings: %q", ordinaryErr)
 	}
 	wantLabels := []string{
-		"go-test", "covercheck", "pi-runtime-smoke", "vet",
+		"versioncheck", "go-test", "covercheck", "pi-runtime-smoke", "vet",
 		"build-linux-arm64", "build-darwin-amd64", "build-darwin-arm64",
 		"build-windows-amd64", "build-windows-arm64", "lint", "deadcode", "pincheck",
 	}
@@ -93,6 +93,7 @@ func TestGateRunnerModes(t *testing.T) {
 	for _, tc := range []struct {
 		name, failure, timing, forbidden string
 	}{
+		{"versioncheck", "run ./cmd/versioncheck", "versioncheck", "test ./..."},
 		{"vet", "vet ./...", "vet", "build ./..."},
 		{"deadcode producer", "tool deadcode -json ./...", "deadcode", "run ./cmd/pincheck"},
 		{"deadcode consumer", "run ./cmd/deadcodecheck", "deadcode", "run ./cmd/pincheck"},
@@ -177,7 +178,7 @@ func TestGateRunnerSelectsTestsFromStagedChanges(t *testing.T) {
 		want       []string
 		notices    []string
 	}{
-		{"docs-only skips both suites", "docs/odd name [1].md", nil, []string{"gate: skipping Go tests and coverage for documentation-only staged changes", "gate: skipping Pi runtime smoke for documentation-only staged changes"}},
+		{"docs-only skips both suites", "docs/odd name [1].md", nil, []string{"gate: skipping Go tests and coverage for test-free staged changes", "gate: skipping Pi runtime smoke for test-free staged changes"}},
 		{"Pi extension is Pi-only", ".pi/extensions/extension.ts", piTests, []string{"gate: skipping Go tests and coverage for Pi-only staged changes"}},
 		{"Pi harness input without Go consumer is Pi-only", "tools/pi-extension-test/package.json", piTests, []string{"gate: skipping Go tests and coverage for Pi-only staged changes"}},
 		{"ordinary Go is Go-only", "cmd/example/main.go", goTests, []string{"gate: skipping Pi runtime smoke for Go-only staged changes"}},
@@ -197,12 +198,22 @@ func TestGateRunnerSelectsTestsFromStagedChanges(t *testing.T) {
 			"docs/guide.md": "changed\n", "README.md": "changed\n", "changelog/CHANGELOG.md": "changed\n",
 			".awf/docs/parts/a.md": "changed\n", "templates/docs/a.md": "changed\n",
 		})
-		assertGateSelection(t, root, logPath, nil, []string{"gate: skipping Go tests and coverage for documentation-only staged changes", "gate: skipping Pi runtime smoke for documentation-only staged changes"})
+		assertGateSelection(t, root, logPath, nil, []string{"gate: skipping Go tests and coverage for test-free staged changes", "gate: skipping Pi runtime smoke for test-free staged changes"})
+	})
+
+	t.Run("release preparation inputs skip both suites", func(t *testing.T) {
+		root, logPath := committedGateRunnerFixture(t)
+		gitfixture.Stage(t, gitfixture.At(root), map[string]string{
+			"internal/project/VERSION": "0.40.0\n",
+			".awf/awf.lock":            "changed\n",
+			"changelog/CHANGELOG.md":   "changed\n",
+		})
+		assertGateSelection(t, root, logPath, nil, []string{"gate: skipping Go tests and coverage for test-free staged changes", "gate: skipping Pi runtime smoke for test-free staged changes"})
 	})
 
 	for _, path := range []string{
 		"templates/pi/extension.ts.tmpl", ".pi/agents/reviewer.md", ".pi/skills/reviewer/SKILL.md", "x",
-		"internal/project/target.go", "internal/render/template.go", "internal/config/config.go", "internal/catalog/catalog.go", "templates/embed.go",
+		"internal/project/target.go", "internal/project/VERSION.bak", ".awf/config.yaml", "internal/render/template.go", "internal/config/config.go", "internal/catalog/catalog.go", "templates/embed.go",
 		".nvmrc", "tools/pi-extension-test/run.sh", "tools/pi-extension-test/tests/index.test.ts", "tools/pi-extension-test/tests/handoff.test.ts",
 	} {
 		t.Run("overlap "+strings.ReplaceAll(path, "/", "_"), func(t *testing.T) {
@@ -234,7 +245,7 @@ func TestGateRunnerSelectsTestsFromStagedChanges(t *testing.T) {
 	}{
 		{"Git failure fails closed", "exit 17\n", both, nil},
 		{"malformed snapshot fails closed", "printf 'docs/guide.md\\0templates/pi/index.ts'\n", both, nil},
-		{"newline filename remains docs-only", "printf 'docs/line\\nbreak.md\\0'\n", nil, []string{"gate: skipping Go tests and coverage for documentation-only staged changes", "gate: skipping Pi runtime smoke for documentation-only staged changes"}},
+		{"newline filename remains docs-only", "printf 'docs/line\\nbreak.md\\0'\n", nil, []string{"gate: skipping Go tests and coverage for test-free staged changes", "gate: skipping Pi runtime smoke for test-free staged changes"}},
 		{"space filename remains Pi-only", "printf '.pi/extensions/with space.ts\\0'\n", piTests, []string{"gate: skipping Go tests and coverage for Pi-only staged changes"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -310,7 +321,7 @@ func assertGateSelection(t *testing.T, root, logPath string, wantTests, wantNoti
 		}
 	}
 	for _, stage := range []string{
-		"vet ./...",
+		"run ./cmd/versioncheck", "vet ./...",
 		"goos=linux|goarch=arm64|pi=|build ./...",
 		"goos=darwin|goarch=amd64|pi=|build ./...",
 		"goos=darwin|goarch=arm64|pi=|build ./...",
@@ -322,17 +333,14 @@ func assertGateSelection(t *testing.T, root, logPath string, wantTests, wantNoti
 			t.Errorf("unconditional stage %q did not run: %q", stage, joined)
 		}
 	}
-	wantTimings := []string{"vet", "build-linux-arm64", "build-darwin-amd64", "build-darwin-arm64", "build-windows-amd64", "build-windows-arm64", "lint", "deadcode", "pincheck"}
+	wantTimings := []string{"versioncheck"}
 	if slices.Contains(wantTests, "test ./... -coverpkg=./... -coverprofile=coverage.out") {
-		wantTimings = append([]string{"go-test", "covercheck"}, wantTimings...)
+		wantTimings = append(wantTimings, "go-test", "covercheck")
 	}
 	if slices.Contains(wantTests, "TestPi(EffortMemoryToolContract|RealRuntimeSmoke)") {
-		insert := 0
-		if slices.Contains(wantTests, "test ./... -coverpkg=./... -coverprofile=coverage.out") {
-			insert = 2
-		}
-		wantTimings = append(wantTimings[:insert], append([]string{"pi-runtime-smoke"}, wantTimings[insert:]...)...)
+		wantTimings = append(wantTimings, "pi-runtime-smoke")
 	}
+	wantTimings = append(wantTimings, "vet", "build-linux-arm64", "build-darwin-amd64", "build-darwin-arm64", "build-windows-amd64", "build-windows-arm64", "lint", "deadcode", "pincheck")
 	assertTimingLines(t, stderr.String(), wantTimings)
 }
 
@@ -356,6 +364,7 @@ func normalizeDeadcodePipeline(lines []string) []string {
 func assertGateInvocations(t *testing.T, lines []string) {
 	t.Helper()
 	want := []string{
+		"goos=|goarch=|pi=|run ./cmd/versioncheck",
 		"goos=|goarch=|pi=|test ./... -coverpkg=./... -coverprofile=coverage.out",
 		"goos=|goarch=|pi=|run ./cmd/covercheck coverage.out",
 		"goos=|goarch=|pi=1|test -json ./internal/project -run ^TestPi(EffortMemoryToolContract|RealRuntimeSmoke)$ -count=1",

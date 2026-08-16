@@ -8,6 +8,10 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Others
+
+- Local release preparation now stores the version in a dedicated data file, so its version, changelog, and generated-lock commit skips Go and Pi test suites while retaining version validation, static gates, and the complete tag-time gate.
+
 ## [0.39.0] - 2026-08-16
 
 ### Breaking changes

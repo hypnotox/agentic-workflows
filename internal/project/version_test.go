@@ -23,8 +23,8 @@ func TestSchemaMinimumVersionAuthority(t *testing.T) {
 	// hard-coded generation stops naming the current one the moment a migration
 	// registers. Pinning migrate.Current() keeps this assertion pointed at the
 	// generation the claim is about, on every future bump.
-	if got := minVersionBySchema[migrate.Current()]; got != Version {
-		t.Fatalf("generation-%d minimum version = %q, want %s", migrate.Current(), got, Version)
+	if err := ValidateSchemaMinimumVersion(migrate.Current(), Version); err != nil {
+		t.Fatalf("current schema minimum: %v", err)
 	}
 	if got := minVersionBySchema[38]; got != "0.31.0" {
 		t.Fatalf("generation-38 minimum version = %q, want 0.31.0", got)
@@ -42,6 +42,38 @@ func TestSchemaMinimumVersionAuthority(t *testing.T) {
 	}
 	if err := ValidateSchemaMinimumVersion(migrate.Current()+1, Version); err == nil || !strings.Contains(err.Error(), "no minimum") {
 		t.Fatalf("unmapped schema error = %v", err)
+	}
+}
+
+func TestVersionAuthority(t *testing.T) {
+	for _, tc := range []struct {
+		name, raw, exposed, want string
+		schema                   int
+	}{
+		{"valid", "0.39.0\n", "0.39.0", "", migrate.Current()},
+		{"missing newline", "0.39.0", "0.39.0", "canonical version file", migrate.Current()},
+		{"extra newline", "0.39.0\n\n", "0.39.0", "canonical version file", migrate.Current()},
+		{"prefixed version", "v0.39.0\n", "v0.39.0", "canonical semantic version", migrate.Current()},
+		{"leading zero", "0.039.0\n", "0.039.0", "canonical semantic version", migrate.Current()},
+		{"divergent exposed value", "0.39.0\n", "0.38.0", "embedded version", migrate.Current()},
+		{"missing schema mapping", "0.39.0\n", "0.39.0", "no minimum", migrate.Current() + 1},
+		{"below schema floor", "0.23.0\n", "0.23.0", "requires awf 0.24.0", 20},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateVersionAuthority(tc.raw, tc.exposed, tc.schema)
+			if tc.want == "" {
+				if err != nil {
+					t.Fatal(err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("error = %v, want %q", err, tc.want)
+			}
+		})
+	}
+	if err := CheckVersionAuthority(); err != nil {
+		t.Fatalf("repository version authority: %v", err)
 	}
 }
 
