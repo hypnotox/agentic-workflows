@@ -67,7 +67,7 @@ select_gate_tests() {
       # Pi templates and generated guidance are consumed by Go tests as well.
       templates/pi/*|templates/embed.go|.pi/agents/*|.pi/skills/*|x|internal/project/*|internal/render/*|internal/config/*|internal/catalog/*|.awf/*|go.mod|go.sum) gate_go_tests=true; gate_pi_tests=true ;;
       # These Pi harness proving inputs have direct Go-test consumers.
-      .nvmrc|tools/pi-extension-test/run.sh|tools/pi-extension-test/coordinate.mjs|tools/pi-extension-test/tests/index.test.ts|tools/pi-extension-test/tests/handoff.test.ts) gate_go_tests=true; gate_pi_tests=true ;;
+      .nvmrc|tools/pi-extension-test/run.sh|tools/pi-extension-test/coordinate.mjs|tools/pi-extension-test/lockrun/*|tools/pi-extension-test/tests/index.test.ts|tools/pi-extension-test/tests/handoff.test.ts) gate_go_tests=true; gate_pi_tests=true ;;
       # Pi extension and standalone harness inputs have no Go-test consumer.
       .pi/extensions/*|tools/pi-extension-test/*manifest*|tools/pi-extension-test/*lock*|tools/pi-extension-test/tsconfig*.json|tools/pi-extension-test/fixtures/*|tools/pi-extension-test/tests/*.ts|tools/pi-extension-test/package.json|tools/pi-extension-test/package-lock.json) gate_pi_tests=true ;;
       # Ordinary Go and Claude-only inputs do not affect the Pi runtime suite.

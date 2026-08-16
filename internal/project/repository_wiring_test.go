@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 )
@@ -15,8 +14,6 @@ import (
 // runtime. Its reusable lockfile installation is checkout-local, while each test
 // run gets a narrow temporary source copy. These static assertions bind the
 // runner's durable boundaries without requiring an installed NVM or npm.
-//
-// invariant: tooling/quality-gates:pi-extension-container-gate (TestPiExtensionContainerGateWiring)
 func TestPiExtensionHostRunnerWorkerSeams(t *testing.T) {
 	// The worker boundary is executable with fake commands, so ordinary Go tests
 	// need neither a developer NVM nor npm nor Node.
@@ -32,16 +29,24 @@ func TestPiExtensionHostRunnerWorkerSeams(t *testing.T) {
 	}
 	for path, body := range map[string]string{
 		".pi/extensions/example.ts":            "// @ts-nocheck\nexport const x = 1\n",
+		".pi/unrelated-secret":                 "must not enter the workspace\n",
+		"root-only":                            "must not enter the workspace\n",
 		"tools/pi-extension-test/package.json": "{}\n", "tools/pi-extension-test/package-lock.json": "{}\n", "tools/pi-extension-test/tsconfig.json": "{}\n",
 	} {
 		if err := os.WriteFile(filepath.Join(root, path), []byte(body), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
-	for _, bin := range []string{"c8", "tsc", "tsx"} {
+	for _, bin := range []string{"c8", "tsx"} {
 		if err := os.WriteFile(filepath.Join(tool, "node_modules/.bin", bin), []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
 			t.Fatal(err)
 		}
+	}
+	// The fake compiler makes an ordering mutation observable and rejects source
+	// outside the intentionally narrow workspace.
+	tsc := "#!/bin/sh\nif grep -R '// @ts-nocheck' .pi/extensions >/dev/null || [ -e .pi/unrelated-secret ] || [ -e root-only ]; then exit 9; fi\n"
+	if err := os.WriteFile(filepath.Join(tool, "node_modules/.bin/tsc"), []byte(tsc), 0o755); err != nil {
+		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(tool, ".host-deps-fingerprint.ok"), []byte("fingerprint\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -50,7 +55,11 @@ func TestPiExtensionHostRunnerWorkerSeams(t *testing.T) {
 	if err := os.Mkdir(fake, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(fake, "node"), []byte("#!/bin/sh\nif [ \"$1\" = --version ]; then echo v24.19.0; elif [ \"$1\" = - ]; then cat >/dev/null; echo fingerprint; else exit 0; fi\n"), 0o755); err != nil {
+	if err := os.WriteFile(filepath.Join(fake, "node"), []byte("#!/bin/sh\nif [ \"$1\" = --version ]; then echo v24.19.0; elif [ \"$1\" = - ]; then body=$(cat); case \"$body\" in *spawnSync*) echo \"${FAKE_FINGERPRINT:-fingerprint}\";; *) find .pi/extensions -name '*.ts' -exec sed -i '/^\\/\\/ @ts-nocheck$/d' {} +;; esac; else exit 0; fi\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	npm := "#!/bin/sh\ncase \"$1\" in --version) echo 1;; ci) [ \"${FAKE_NPM_FAIL:-0}\" = 1 ] && exit 7; echo ci >>\"$AWF_FAKE_NPM_COUNT\"; mkdir -p node_modules/.bin; for bin in c8 tsx; do printf '#!/bin/sh\\nexit 0\\n' >node_modules/.bin/$bin; chmod +x node_modules/.bin/$bin; done; printf '%s' \"$FAKE_TSC\" >node_modules/.bin/tsc; chmod +x node_modules/.bin/tsc;; *) exit 2;; esac\n"
+	if err := os.WriteFile(filepath.Join(fake, "npm"), []byte(npm), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	script := filepath.Join(tool, "run.sh")
@@ -61,12 +70,9 @@ func TestPiExtensionHostRunnerWorkerSeams(t *testing.T) {
 	if err := os.WriteFile(script, raw, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	gate := filepath.Join(root, "start")
-	if err := os.WriteFile(gate, nil, 0o600); err != nil {
-		t.Fatal(err)
-	}
+	count := filepath.Join(root, "npm-ci-count")
 	cmd := exec.Command("bash", script)
-	cmd.Env = append(os.Environ(), "AWF_PI_TEST_ROOT="+root, "AWF_PI_TEST_SKIP_NVM=1", "AWF_PI_TEST_WORKER=1", "AWF_PI_TEST_MANAGER_PID="+strconv.Itoa(os.Getpid()), "AWF_PI_TEST_START_GATE="+gate, "PATH="+fake+":"+os.Getenv("PATH"))
+	cmd.Env = append(os.Environ(), "AWF_PI_TEST_ROOT="+root, "AWF_PI_TEST_SKIP_NVM=1", "AWF_PI_TEST_WORKER=1", "AWF_FAKE_NPM_COUNT="+count, "FAKE_TSC="+tsc, "PATH="+fake+":"+os.Getenv("PATH"))
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("warm worker failed: %v\n%s", err, output)
 	}
@@ -74,16 +80,56 @@ func TestPiExtensionHostRunnerWorkerSeams(t *testing.T) {
 	if err != nil || !strings.Contains(string(original), "// @ts-nocheck") {
 		t.Fatalf("worker mutated source: %q, %v", original, err)
 	}
+	// Mutation confirmation: moving the execution invocation after tsc makes the
+	// fake compiler see ts-nocheck and fail, rather than merely matching its
+	// function declaration in a static order check.
+	late := filepath.Join(tool, "late.sh")
+	mutated := strings.Replace(string(raw), "  strip_ts_nocheck\n  node_modules/.bin/tsc", "  node_modules/.bin/tsc\n  strip_ts_nocheck", 1)
+	if mutated == string(raw) {
+		t.Fatal("strip-order mutation did not apply")
+	}
+	if err := os.WriteFile(late, []byte(mutated), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cmd = exec.Command("bash", late)
+	cmd.Env = append(os.Environ(), "AWF_PI_TEST_ROOT="+root, "AWF_PI_TEST_SKIP_NVM=1", "AWF_PI_TEST_WORKER=1", "AWF_FAKE_NPM_COUNT="+count, "FAKE_TSC="+tsc, "PATH="+fake+":"+os.Getenv("PATH"))
+	if output, err := cmd.CombinedOutput(); err == nil {
+		t.Fatalf("late strip mutation unexpectedly passed:\n%s", output)
+	}
 	leaks, err := filepath.Glob(filepath.Join(tool, ".host-deps.*"))
 	if err != nil || len(leaks) != 0 {
 		t.Fatalf("temporary marker leaks: %v, %v", leaks, err)
+	}
+	// A changed fingerprint invalidates the marker and performs a cold install.
+	cmd = exec.Command("bash", script)
+	cmd.Env = append(os.Environ(), "AWF_PI_TEST_ROOT="+root, "AWF_PI_TEST_SKIP_NVM=1", "AWF_PI_TEST_WORKER=1", "AWF_FAKE_NPM_COUNT="+count, "FAKE_TSC="+tsc, "FAKE_FINGERPRINT=changed", "PATH="+fake+":"+os.Getenv("PATH"))
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("fingerprint invalidation failed: %v\n%s", err, output)
+	}
+	installs, err := os.ReadFile(count)
+	if err != nil || strings.Count(string(installs), "ci\n") != 1 {
+		t.Fatalf("fingerprint change must reinstall once: %q, %v", installs, err)
+	}
+	// A failed cold install publishes neither a success marker nor a temporary one.
+	cmd = exec.Command("bash", script)
+	cmd.Env = append(os.Environ(), "AWF_PI_TEST_ROOT="+root, "AWF_PI_TEST_SKIP_NVM=1", "AWF_PI_TEST_WORKER=1", "AWF_FAKE_NPM_COUNT="+count, "FAKE_TSC="+tsc, "FAKE_FINGERPRINT=failed", "FAKE_NPM_FAIL=1", "PATH="+fake+":"+os.Getenv("PATH"))
+	if output, err := cmd.CombinedOutput(); err == nil {
+		t.Fatalf("failed install unexpectedly passed:\n%s", output)
+	}
+	markers, err := filepath.Glob(filepath.Join(tool, ".host-deps-*.ok"))
+	if err != nil || len(markers) != 0 {
+		t.Fatalf("failed install left success markers: %v, %v", markers, err)
+	}
+	leaks, err = filepath.Glob(filepath.Join(tool, ".host-deps.*"))
+	if err != nil || len(leaks) != 0 {
+		t.Fatalf("failed install left temporary markers: %v, %v", leaks, err)
 	}
 	// The CI control bypasses NVM selection, not the exact pin oracle.
 	if err := os.WriteFile(filepath.Join(fake, "node"), []byte("#!/bin/sh\nif [ \"$1\" = --version ]; then echo v0.0.0; else exit 0; fi\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	cmd = exec.Command("bash", script)
-	cmd.Env = append(os.Environ(), "AWF_PI_TEST_ROOT="+root, "AWF_PI_TEST_SKIP_NVM=1", "PATH="+fake+":"+os.Getenv("PATH"))
+	cmd.Env = append(os.Environ(), "AWF_PI_TEST_ROOT="+root, "AWF_PI_TEST_SKIP_NVM=1", "AWF_PI_TEST_WORKER=1", "PATH="+fake+":"+os.Getenv("PATH"))
 	if output, err := cmd.CombinedOutput(); err == nil || !strings.Contains(string(output), "does not match v24.19.0") {
 		t.Fatalf("CI exact-version rejection: %v\n%s", err, output)
 	}
@@ -100,13 +146,14 @@ func TestPiExtensionHostRunnerWorkerSeams(t *testing.T) {
 		t.Fatal(err)
 	}
 	cmd = exec.Command("bash", script)
-	cmd.Env = append(os.Environ(), "AWF_PI_TEST_ROOT="+root, "AWF_PI_TEST_NVM_DIR="+nvm, "PATH="+fake+":"+os.Getenv("PATH"))
+	cmd.Env = append(os.Environ(), "AWF_PI_TEST_ROOT="+root, "AWF_PI_TEST_NVM_DIR="+nvm, "AWF_PI_TEST_WORKER=1", "PATH="+fake+":"+os.Getenv("PATH"))
 	if output, err := cmd.CombinedOutput(); err == nil || !strings.Contains(string(output), "nvm install v24.19.0") {
 		t.Fatalf("missing NVM guidance: %v\n%s", err, output)
 	}
 }
 
-func TestPiExtensionContainerGateWiring(t *testing.T) {
+// invariant: tooling/quality-gates:pi-extension-container-gate (TestPiExtensionHostLaneGateWiring)
+func TestPiExtensionHostLaneGateWiring(t *testing.T) {
 	rawX, err := os.ReadFile("../../x")
 	if err != nil {
 		t.Fatalf("read x: %v", err)
@@ -130,7 +177,7 @@ func TestPiExtensionContainerGateWiring(t *testing.T) {
 	for _, want := range []string{
 		"nvm install $pinned_node", ".nvmrc", "npm ci --ignore-scripts",
 		"package-lock.json", "node_modules", "node --version", "spawnSync(\"npm\"",
-		"os.platform()", "os.arch()", "AWF_PI_TEST_SKIP_NVM", "coordinate.mjs", "kill -0", "AWF_PI_TEST_START_GATE",
+		"os.platform()", "os.arch()", "AWF_PI_TEST_SKIP_NVM", "lockrun", ".host-lane.lock", "AWF_PI_TEST_WORKER=1",
 		"mktemp -d", "cp -a \"$root/.pi/extensions\"", "cp -a \"$root/.pi/agents\"",
 		"cp -a \"$root/.pi/skills\"", "ln -s \"$tool_dir/node_modules\" \"$workspace/node_modules\"",
 		"readFileSync(path)", "field(`file:", "bytes.length", "// @ts-nocheck", "tsc -p tools/pi-extension-test/tsconfig.json",
@@ -245,8 +292,14 @@ func TestPiExtensionEditorQuietStrip(t *testing.T) {
 	prepare = prepare[:prepEnd]
 
 	copyAt := strings.Index(prepare, `cp -a "$root/.pi/extensions"`)
-	stripAt := strings.Index(sh, "strip_ts_nocheck")
-	compileAt := strings.Index(sh, "tsc -p tools/pi-extension-test/tsconfig.json")
+	// Match the calls in the execution subshell, not either function declaration.
+	executionStart := strings.Index(sh, "(\n  cd \"$workspace\"")
+	if executionStart < 0 {
+		t.Fatal("the host runner must execute the workspace subshell")
+	}
+	execution := sh[executionStart:]
+	stripAt := strings.Index(execution, "\n  strip_ts_nocheck\n")
+	compileAt := strings.Index(execution, "\n  node_modules/.bin/tsc -p tools/pi-extension-test/tsconfig.json")
 	if copyAt < 0 {
 		t.Fatal("the host runner must copy extension source into the ephemeral workspace")
 	}
@@ -256,8 +309,8 @@ func TestPiExtensionEditorQuietStrip(t *testing.T) {
 	if compileAt < 0 {
 		t.Fatal("the host runner must run the TypeScript compiler")
 	}
-	if copyAt >= stripAt || stripAt >= compileAt {
-		t.Errorf("the host runner must strip after the source copy and before tsc, got copy=%d strip=%d tsc=%d", copyAt, stripAt, compileAt)
+	if stripAt >= compileAt {
+		t.Errorf("the host runner must strip before tsc in the execution subshell, got strip=%d tsc=%d", stripAt, compileAt)
 	}
 
 	// The claim quantifies over EVERY governed extension file, so the scope that

@@ -5,6 +5,13 @@ root="${AWF_PI_TEST_ROOT:-$(git rev-parse --show-toplevel)}"
 tool_dir="$root/tools/pi-extension-test"
 pinned_node="$(tr -d '[:space:]' <"$root/.nvmrc")"
 
+# The helper holds a kernel advisory lock for the complete worker. Its inherited
+# descriptor remains locked in any surviving descendant, so no user-space owner
+# record, stale deletion, or nested acquisition is needed.
+if [ "${AWF_PI_TEST_WORKER:-0}" != "1" ]; then
+  exec go run "$tool_dir/lockrun" "$tool_dir/.host-lane.lock" env AWF_PI_TEST_WORKER=1 bash "$0"
+fi
+
 # Local runs select the repository pin through NVM when it is present. CI sets
 # AWF_PI_TEST_SKIP_NVM=1 after setup-node has installed that exact pin; bypassing
 # selection never bypasses the exact node --version check below.
@@ -26,18 +33,6 @@ if [ "$(node --version)" != "$pinned_node" ]; then
   exit 1
 fi
 
-if [ "${AWF_PI_TEST_WORKER:-0}" != "1" ]; then
-  exec node "$tool_dir/coordinate.mjs" "$0" "$root" "$tool_dir"
-fi
-
-# A worker is born in the manager-created process group but remains behind this
-# gate until the lock records that group. A manager death before publication
-# therefore cannot leave an unaccounted worker using checkout dependencies.
-while [ ! -e "$AWF_PI_TEST_START_GATE" ]; do
-  if ! kill -0 "$AWF_PI_TEST_MANAGER_PID" 2>/dev/null; then exit 1; fi
-  sleep 0.05
-done
-if ! kill -0 "$AWF_PI_TEST_MANAGER_PID" 2>/dev/null; then exit 1; fi
 
 workspace=""
 tmp_marker=""

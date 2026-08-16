@@ -29,4 +29,4 @@
 # Host Pi-lane dependencies and its successful-install identity are checkout-local.
 tools/pi-extension-test/node_modules/
 tools/pi-extension-test/.host-deps-*.ok
-tools/pi-extension-test/.host-lane.lock/
+tools/pi-extension-test/.host-lane.lock
