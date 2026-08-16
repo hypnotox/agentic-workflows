@@ -36,6 +36,10 @@ var identityExempt = map[string]bool{
 // identityLiterals are the banned repo-identity tokens.
 var identityLiterals = []string{"hypnotox", "agentic-workflows"}
 
+// repoLocalInstructionLiterals name awf-repository-only tooling that shipped
+// templates must never instruct adopters to run.
+var repoLocalInstructionLiterals = []string{"./x ", "cmd/repoaudit"}
+
 // TestLiveTemplateAndCurrentStateRetiredConfigGuidanceAbsent protects both raw
 // live guidance sources and the default rendered adopter documentation while
 // naming the few unrelated uses of local terminology that remain truthful.
@@ -142,6 +146,11 @@ func TestTemplateSourceResidue(t *testing.T) {
 				used[path] = true
 			} else {
 				t.Errorf("%s carries repo-identity literal %q outside the exemption list (ADR-0082)", path, lit)
+			}
+		}
+		for _, lit := range repoLocalInstructionLiterals {
+			if strings.Contains(src, lit) {
+				t.Errorf("%s instructs adopters to run repository-local tooling %q", path, lit)
 			}
 		}
 		return nil

@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: keep-repository-local-instructions-out-of-shipped-surfaces
-status: Proposed
+status: Implemented
 date: 2026-08-16
 ---
 # ADR-0282: Keep Repository-Local Instructions Out of Shipped Surfaces
@@ -33,3 +33,4 @@ Adopter workflow instructions remain executable without copying awf's private co
 ## Status history
 
 - 2026-08-16: Proposed
+- 2026-08-16: Implemented; content-sha256: 17c36b29fd99a12d19b154de8c7125b2b9e77ce1ce171cb3a4a18853854fdb6e

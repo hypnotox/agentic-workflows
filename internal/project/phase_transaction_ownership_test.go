@@ -100,7 +100,7 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 			"redispatch the complete revised phase", "stop for user input", "dirty-state inventory",
 			"recovery verification", "blind successor instruction",
 			"single phase reviews unreviewed settlement or integration", "multiple phases focus cross-phase composition, settlements, and integration",
-			"awf audit", "./x audit-local", "complete final range", "including settlement commits")
+			"awf audit", "complete final range", "including settlement commits")
 		assertAll("readme",
 			"exactly one execution mode: `inline` or `subagent-driven`", "one independently green coherent implementation transaction", "ordered steps",
 			"change-specific dependencies", "generic baseline protocol",
@@ -249,10 +249,13 @@ func TestFreshPhaseAssuranceReuseContract(t *testing.T) {
 		}
 		for _, name := range []string{"inline executor", "delegated executor", "terminal assurance"} {
 			body := surfaces[name]
-			for _, want := range []string{"single phase", "unreviewed settlement", "multiple phases", "cross-phase", "settlement", "integration", "awf audit", "./x audit-local", "complete final", "including settlement commits"} {
+			for _, want := range []string{"single phase", "unreviewed settlement", "multiple phases", "cross-phase", "settlement", "integration", "awf audit", "complete final", "including settlement commits"} {
 				if !strings.Contains(body, want) {
 					t.Errorf("%s/%s missing reuse or audit clause %q", variant, name, want)
 				}
+			}
+			if strings.Contains(body, "audit-local") || strings.Contains(body, "cmd/repoaudit") {
+				t.Errorf("%s/%s leaks awf repository-local audit instructions", variant, name)
 			}
 		}
 		if !strings.Contains(surfaces["implementer"], "complete phase scope performed and every changed path") {

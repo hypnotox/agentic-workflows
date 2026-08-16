@@ -38,7 +38,7 @@ Skip review only for a locally obvious, low-risk, directly verified change where
 <!-- awf:end -->
 
 <!-- awf:section run-audit -->
-{{if ne .profile "core"}}5. Run `./awf audit ${baseSha}..${headSha}` and `./x audit-local ${baseSha}..${headSha}` after findings settle, over the complete final range including settlement commits. Diagnose and resolve Error findings before assurance concludes; surface advisory Warnings. Audit never replaces the gate or drift check.{{else}}5. Run the project gate after findings settle.{{end}}
+{{if ne .profile "core"}}5. Run `./awf audit ${baseSha}..${headSha}` after findings settle, over the complete final range including settlement commits. Diagnose and resolve Error findings before assurance concludes; surface advisory Warnings. Audit never replaces the gate or drift check.{{else}}5. Run the project gate after findings settle.{{end}}
 <!-- awf:end -->
 
 <!-- awf:section re-review-loop -->

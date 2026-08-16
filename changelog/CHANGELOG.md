@@ -14,6 +14,10 @@ query a single version or a range.
 
 - Pi review dispatch now gives every enabled reviewer a dedicated task-only profile: Full exposes `subagent_review_adr`, `subagent_review_plan`, and `subagent_review_code`, while Core exposes only `subagent_review_code`. The generic `subagent_review` tool and its required `kind` argument are removed without an alias.
 
+### Bug fixes
+
+- Shipped workflow skills no longer instruct adopters to run awf's repository-only `./x audit-local` command.
+
 ## [0.38.0] - 2026-08-15
 
 ### Features

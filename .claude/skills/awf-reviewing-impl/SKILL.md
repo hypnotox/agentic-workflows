@@ -63,7 +63,7 @@ Dispatch the `code-reviewer` once as an independent target-native fresh-context 
 <!-- awf:template-source templates/skills/reviewing-impl/SKILL.md.tmpl#run-audit -->
 <!-- awf:edit run-audit: from .awf/skills/parts/reviewing-impl/run-audit.md -->
 <!-- awf:template-source templates/skills/reviewing-impl/SKILL.md.tmpl -->
-5. Run `./awf audit ${baseSha}..${headSha}` and `./x audit-local ${baseSha}..${headSha}` after findings settle, over the complete final range including settlement commits. Diagnose and resolve Error findings before assurance concludes; surface advisory Warnings. Audit never replaces the gate or drift check.
+5. Run `./awf audit ${baseSha}..${headSha}` after findings settle, over the complete final range including settlement commits. Diagnose and resolve Error findings before assurance concludes; surface advisory Warnings. Audit never replaces the gate or drift check.
 
    Then also run the repo-local audit: `./x audit-local ${baseSha}..${headSha}` (the repo's
    own `cmd/repoaudit`, ADR-0073) over the same session range. It mirrors this same finding
