@@ -1,21 +1,24 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-root="$(git rev-parse --show-toplevel)"
+root="${AWF_PI_TEST_ROOT:-$(git rev-parse --show-toplevel)}"
 tool_dir="$root/tools/pi-extension-test"
 pinned_node="$(tr -d '[:space:]' <"$root/.nvmrc")"
 
-# A local NVM installation is authoritative for selecting the repository pin.
-# CI deliberately has no NVM: setup-node has already supplied the exact runtime.
-nvm_home="${AWF_PI_TEST_NVM_DIR:-${NVM_DIR:-$HOME/.nvm}}"
-if [ ! -s "$nvm_home/nvm.sh" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then nvm_home="$HOME/.nvm"; fi
-if [ -s "$nvm_home/nvm.sh" ]; then
-  export NVM_DIR="$nvm_home"
-  # shellcheck source=/dev/null
-  . "$NVM_DIR/nvm.sh" --no-use
-  if ! nvm use "$pinned_node" >/dev/null 2>&1; then
-    echo "pi-extension-test: install the pinned runtime with: nvm install $pinned_node" >&2
-    exit 1
+# Local runs select the repository pin through NVM when it is present. CI sets
+# AWF_PI_TEST_SKIP_NVM=1 after setup-node has installed that exact pin; bypassing
+# selection never bypasses the exact node --version check below.
+if [ "${AWF_PI_TEST_SKIP_NVM:-0}" != "1" ]; then
+  nvm_home="${AWF_PI_TEST_NVM_DIR:-${NVM_DIR:-$HOME/.nvm}}"
+  if [ ! -s "$nvm_home/nvm.sh" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then nvm_home="$HOME/.nvm"; fi
+  if [ -s "$nvm_home/nvm.sh" ]; then
+    export NVM_DIR="$nvm_home"
+    # shellcheck source=/dev/null
+    . "$NVM_DIR/nvm.sh" --no-use
+    if ! nvm use "$pinned_node" >/dev/null 2>&1; then
+      echo "pi-extension-test: install the pinned runtime with: nvm install $pinned_node" >&2
+      exit 1
+    fi
   fi
 fi
 if [ "$(node --version)" != "$pinned_node" ]; then
@@ -23,37 +26,50 @@ if [ "$(node --version)" != "$pinned_node" ]; then
   exit 1
 fi
 
-lock_dir="$tool_dir/.host-lane.lock"
-owner="$lock_dir/pid"
-acquire_lock() {
-  while ! mkdir "$lock_dir" 2>/dev/null; do
-    if [ -r "$owner" ] && ! kill -0 "$(cat "$owner")" 2>/dev/null; then
-      stale_lock="$lock_dir.stale.$$"
-      if mv "$lock_dir" "$stale_lock" 2>/dev/null; then
-        rm -rf "$stale_lock"
-      fi
-      continue
-    fi
-    sleep 1
-  done
-  printf '%s\n' "$$" >"$owner"
-}
-release_lock() { rm -rf "$lock_dir"; }
-acquire_lock
-trap release_lock EXIT
+if [ "${AWF_PI_TEST_WORKER:-0}" != "1" ]; then
+  exec node "$tool_dir/coordinate.mjs" "$0" "$root" "$tool_dir"
+fi
 
-fingerprint="$({
-  node -e '
+# A worker is born in the manager-created process group but remains behind this
+# gate until the lock records that group. A manager death before publication
+# therefore cannot leave an unaccounted worker using checkout dependencies.
+while [ ! -e "$AWF_PI_TEST_START_GATE" ]; do
+  if ! kill -0 "$AWF_PI_TEST_MANAGER_PID" 2>/dev/null; then exit 1; fi
+  sleep 0.05
+done
+if ! kill -0 "$AWF_PI_TEST_MANAGER_PID" 2>/dev/null; then exit 1; fi
+
+workspace=""
+tmp_marker=""
+cleanup_worker() {
+  [ -z "$workspace" ] || rm -rf "$workspace"
+  [ -z "$tmp_marker" ] || rm -f "$tmp_marker"
+}
+trap cleanup_worker EXIT
+trap 'cleanup_worker; exit 1' INT TERM HUP
+
+fingerprint="$(node - "$root/.nvmrc" "$tool_dir/package.json" "$tool_dir/package-lock.json" <<'NODE'
 const { createHash } = require("node:crypto");
 const { readFileSync } = require("node:fs");
+const { spawnSync } = require("node:child_process");
 const os = require("node:os");
 const hash = createHash("sha256");
-for (const file of process.argv.slice(1)) hash.update(readFileSync(file));
-hash.update(`node=${process.version}\nnpm=${process.env.npm_config_user_agent || ""}\nos=${os.platform()}\narch=${os.arch()}\n`);
+const field = (name, value) => {
+  const bytes = Buffer.isBuffer(value) ? value : Buffer.from(value);
+  hash.update(Buffer.from(`${name}:${bytes.length}:`));
+  hash.update(bytes);
+  hash.update(Buffer.from("\\n"));
+};
+for (const path of process.argv.slice(2)) field(`file:${path.split("/").pop()}`, readFileSync(path));
+const npm = spawnSync("npm", ["--version"], { encoding: "utf8" });
+if (npm.status !== 0) process.exit(npm.status || 1);
+field("node", process.version);
+field("npm", npm.stdout.trim());
+field("os", os.platform());
+field("arch", os.arch());
 process.stdout.write(hash.digest("hex"));
-' "$root/.nvmrc" "$tool_dir/package.json" "$tool_dir/package-lock.json"
-  npm --version
-} | sha256sum | cut -d' ' -f1)"
+NODE
+)"
 marker="$tool_dir/.host-deps-${fingerprint}.ok"
 required_bins=(c8 tsc tsx)
 deps_ready=true
@@ -72,11 +88,10 @@ if ! "$deps_ready"; then
   tmp_marker="$(mktemp "$tool_dir/.host-deps.XXXXXX")"
   printf '%s\n' "$fingerprint" >"$tmp_marker"
   mv "$tmp_marker" "$marker"
+  tmp_marker=""
 fi
 
 workspace="$(mktemp -d "${TMPDIR:-/tmp}/awf-pi-extension-test.XXXXXX")"
-cleanup_workspace() { rm -rf "$workspace"; }
-trap 'cleanup_workspace; release_lock' EXIT
 copy_workspace() {
   mkdir -p "$workspace/.pi" "$workspace/tools/pi-extension-test"
   cp -a "$root/.pi/extensions" "$workspace/.pi/extensions"
@@ -89,13 +104,24 @@ copy_workspace() {
 copy_workspace
 
 strip_ts_nocheck() {
-  find .pi/extensions -type f -name '*.ts' -print0 | sort -z | xargs -0 node -e '
+  node - <<'NODE'
 const fs = require("node:fs");
-for (const path of process.argv.slice(1)) {
-  const lines = fs.readFileSync(path, "utf8").split("\n");
-  fs.writeFileSync(path, lines.filter((line) => line !== "// @ts-nocheck").join("\n"));
+const path = require("node:path");
+const root = ".pi/extensions";
+const files = [];
+const visit = (dir) => {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    const target = path.join(dir, entry.name);
+    if (entry.isDirectory()) visit(target);
+    else if (entry.isFile() && target.endsWith(".ts")) files.push(target);
+  }
+};
+visit(root);
+for (const target of files.sort()) {
+  const lines = fs.readFileSync(target, "utf8").split("\n");
+  fs.writeFileSync(target, lines.filter((line) => line !== "// @ts-nocheck").join("\n"));
 }
-'
+NODE
 }
 (
   cd "$workspace"
@@ -107,6 +133,6 @@ for (const path of process.argv.slice(1)) {
     --include='.pi/extensions/awf-effort/index.ts' \
     --include='.pi/extensions/awf-effort/client.ts' \
     --exclude='tools/pi-extension-test/tests/*.ts' \
-    --check-coverage --lines=100 --functions=100 --branches=100 \
+    --check-coverage --statements=100 --lines=100 --functions=100 --branches=100 \
     node --import tsx --test --experimental-test-isolation=none tools/pi-extension-test/tests/*.test.ts
 )

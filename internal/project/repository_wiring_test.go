@@ -4,7 +4,9 @@ import (
 	"errors"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -15,6 +17,95 @@ import (
 // runner's durable boundaries without requiring an installed NVM or npm.
 //
 // invariant: tooling/quality-gates:pi-extension-container-gate (TestPiExtensionContainerGateWiring)
+func TestPiExtensionHostRunnerWorkerSeams(t *testing.T) {
+	// The worker boundary is executable with fake commands, so ordinary Go tests
+	// need neither a developer NVM nor npm nor Node.
+	root := t.TempDir()
+	tool := filepath.Join(root, "tools", "pi-extension-test")
+	for _, dir := range []string{filepath.Join(root, ".pi/extensions"), filepath.Join(root, ".pi/agents"), filepath.Join(root, ".pi/skills"), filepath.Join(tool, "tests"), filepath.Join(tool, "fixtures"), filepath.Join(tool, "node_modules/.bin")} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(root, ".nvmrc"), []byte("v24.19.0\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for path, body := range map[string]string{
+		".pi/extensions/example.ts":            "// @ts-nocheck\nexport const x = 1\n",
+		"tools/pi-extension-test/package.json": "{}\n", "tools/pi-extension-test/package-lock.json": "{}\n", "tools/pi-extension-test/tsconfig.json": "{}\n",
+	} {
+		if err := os.WriteFile(filepath.Join(root, path), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, bin := range []string{"c8", "tsc", "tsx"} {
+		if err := os.WriteFile(filepath.Join(tool, "node_modules/.bin", bin), []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(tool, ".host-deps-fingerprint.ok"), []byte("fingerprint\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	fake := filepath.Join(root, "fake-bin")
+	if err := os.Mkdir(fake, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(fake, "node"), []byte("#!/bin/sh\nif [ \"$1\" = --version ]; then echo v24.19.0; elif [ \"$1\" = - ]; then cat >/dev/null; echo fingerprint; else exit 0; fi\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	script := filepath.Join(tool, "run.sh")
+	raw, err := os.ReadFile("../../tools/pi-extension-test/run.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(script, raw, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	gate := filepath.Join(root, "start")
+	if err := os.WriteFile(gate, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("bash", script)
+	cmd.Env = append(os.Environ(), "AWF_PI_TEST_ROOT="+root, "AWF_PI_TEST_SKIP_NVM=1", "AWF_PI_TEST_WORKER=1", "AWF_PI_TEST_MANAGER_PID="+strconv.Itoa(os.Getpid()), "AWF_PI_TEST_START_GATE="+gate, "PATH="+fake+":"+os.Getenv("PATH"))
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("warm worker failed: %v\n%s", err, output)
+	}
+	original, err := os.ReadFile(filepath.Join(root, ".pi/extensions/example.ts"))
+	if err != nil || !strings.Contains(string(original), "// @ts-nocheck") {
+		t.Fatalf("worker mutated source: %q, %v", original, err)
+	}
+	leaks, err := filepath.Glob(filepath.Join(tool, ".host-deps.*"))
+	if err != nil || len(leaks) != 0 {
+		t.Fatalf("temporary marker leaks: %v, %v", leaks, err)
+	}
+	// The CI control bypasses NVM selection, not the exact pin oracle.
+	if err := os.WriteFile(filepath.Join(fake, "node"), []byte("#!/bin/sh\nif [ \"$1\" = --version ]; then echo v0.0.0; else exit 0; fi\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cmd = exec.Command("bash", script)
+	cmd.Env = append(os.Environ(), "AWF_PI_TEST_ROOT="+root, "AWF_PI_TEST_SKIP_NVM=1", "PATH="+fake+":"+os.Getenv("PATH"))
+	if output, err := cmd.CombinedOutput(); err == nil || !strings.Contains(string(output), "does not match v24.19.0") {
+		t.Fatalf("CI exact-version rejection: %v\n%s", err, output)
+	}
+	if err := os.WriteFile(filepath.Join(fake, "node"), []byte("#!/bin/sh\nif [ \"$1\" = --version ]; then echo v24.19.0; elif [ \"$1\" = - ]; then cat >/dev/null; echo fingerprint; else exit 0; fi\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Local NVM remains authoritative by default and provides pin guidance.
+	nvm := filepath.Join(root, "nvm")
+	if err := os.Mkdir(nvm, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(nvm, "nvm.sh"), []byte("nvm() { return 1; }\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cmd = exec.Command("bash", script)
+	cmd.Env = append(os.Environ(), "AWF_PI_TEST_ROOT="+root, "AWF_PI_TEST_NVM_DIR="+nvm, "PATH="+fake+":"+os.Getenv("PATH"))
+	if output, err := cmd.CombinedOutput(); err == nil || !strings.Contains(string(output), "nvm install v24.19.0") {
+		t.Fatalf("missing NVM guidance: %v\n%s", err, output)
+	}
+}
+
 func TestPiExtensionContainerGateWiring(t *testing.T) {
 	rawX, err := os.ReadFile("../../x")
 	if err != nil {
@@ -38,18 +129,18 @@ func TestPiExtensionContainerGateWiring(t *testing.T) {
 	}
 	for _, want := range []string{
 		"nvm install $pinned_node", ".nvmrc", "npm ci --ignore-scripts",
-		"package-lock.json", "node_modules", "node --version", "npm --version",
-		"os.platform()", "os.arch()", "mkdir \"$lock_dir\"", "kill -0",
+		"package-lock.json", "node_modules", "node --version", "spawnSync(\"npm\"",
+		"os.platform()", "os.arch()", "AWF_PI_TEST_SKIP_NVM", "coordinate.mjs", "kill -0", "AWF_PI_TEST_START_GATE",
 		"mktemp -d", "cp -a \"$root/.pi/extensions\"", "cp -a \"$root/.pi/agents\"",
 		"cp -a \"$root/.pi/skills\"", "ln -s \"$tool_dir/node_modules\" \"$workspace/node_modules\"",
-		"process.argv", "// @ts-nocheck", "tsc -p tools/pi-extension-test/tsconfig.json",
-		"--lines=100 --functions=100 --branches=100",
+		"readFileSync(path)", "field(`file:", "bytes.length", "// @ts-nocheck", "tsc -p tools/pi-extension-test/tsconfig.json",
+		"--statements=100 --lines=100 --functions=100 --branches=100", "tmp_marker=\"\"", "cleanup_worker", "readdirSync", "localeCompare",
 	} {
 		if !strings.Contains(sh, want) {
 			t.Errorf("host runner missing %q", want)
 		}
 	}
-	for _, banned := range []string{"docker", "reset)", "Dockerfile", "sed -i"} {
+	for _, banned := range []string{"docker", "reset)", "Dockerfile", "sed -i", "sha256sum", "sort -z"} {
 		if strings.Contains(strings.ToLower(sh), strings.ToLower(banned)) {
 			t.Errorf("host runner retains %q", banned)
 		}
@@ -172,7 +263,7 @@ func TestPiExtensionEditorQuietStrip(t *testing.T) {
 	// The claim quantifies over EVERY governed extension file, so the scope that
 	// feeds the strip is as load-bearing as the strip itself: narrowing the find
 	// would leave some file unstripped while the sed literal above still matched.
-	if !strings.Contains(sh, `find .pi/extensions -type f -name '*.ts'`) {
-		t.Error("the strip must cover every governed extension TypeScript file (ADR-0148)")
+	if !strings.Contains(sh, `const root = ".pi/extensions"`) || !strings.Contains(sh, "readdirSync(dir, { withFileTypes: true })") {
+		t.Error("the portable strip must recursively cover every governed extension TypeScript file (ADR-0148)")
 	}
 }
