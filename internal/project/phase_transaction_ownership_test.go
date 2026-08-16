@@ -2,6 +2,8 @@ package project
 
 import (
 	"maps"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -188,6 +190,30 @@ func TestPiManagedWorktreeVerificationGuidance(t *testing.T) {
 	} {
 		if strings.Contains(body, "verificationCheckout") || strings.Contains(body, "parent and child Pi CWD") {
 			t.Errorf("non-Pi %s guidance leaked Pi verification identity", name)
+		}
+	}
+}
+
+// invariant: rendering/workflow-skill-templates:phase-transaction-ownership (TestSelfHostedAuditLocalOverrides)
+func TestSelfHostedAuditLocalOverrides(t *testing.T) {
+	repoRoot := filepath.Join("..", "..")
+	for _, path := range []string{
+		".awf/skills/parts/executing-plans/terminal-step.md",
+		".awf/skills/parts/reviewing-impl/run-audit.md",
+		".awf/skills/parts/subagent-driven-development/terminal-step.md",
+		".claude/skills/awf-executing-plans/SKILL.md",
+		".claude/skills/awf-reviewing-impl/SKILL.md",
+		".claude/skills/awf-subagent-driven-development/SKILL.md",
+		".pi/skills/awf-executing-plans/SKILL.md",
+		".pi/skills/awf-reviewing-impl/SKILL.md",
+		".pi/skills/awf-subagent-driven-development/SKILL.md",
+	} {
+		body, err := os.ReadFile(filepath.Join(repoRoot, filepath.FromSlash(path)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(body), "./x audit-local") {
+			t.Errorf("self-hosted audit surface %s lost the repository-local audit", path)
 		}
 	}
 }

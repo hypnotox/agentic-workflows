@@ -40,6 +40,15 @@ var identityLiterals = []string{"hypnotox", "agentic-workflows"}
 // templates must never instruct adopters to run.
 var repoLocalInstructionLiterals = []string{"./x ", "cmd/repoaudit"}
 
+func repositoryLocalInstruction(src string) string {
+	for _, lit := range repoLocalInstructionLiterals {
+		if strings.Contains(src, lit) {
+			return lit
+		}
+	}
+	return ""
+}
+
 // TestLiveTemplateAndCurrentStateRetiredConfigGuidanceAbsent protects both raw
 // live guidance sources and the default rendered adopter documentation while
 // naming the few unrelated uses of local terminology that remain truthful.
@@ -148,10 +157,8 @@ func TestTemplateSourceResidue(t *testing.T) {
 				t.Errorf("%s carries repo-identity literal %q outside the exemption list (ADR-0082)", path, lit)
 			}
 		}
-		for _, lit := range repoLocalInstructionLiterals {
-			if strings.Contains(src, lit) {
-				t.Errorf("%s instructs adopters to run repository-local tooling %q", path, lit)
-			}
+		if lit := repositoryLocalInstruction(src); lit != "" {
+			t.Errorf("%s instructs adopters to run repository-local tooling %q", path, lit)
 		}
 		return nil
 	})
@@ -162,6 +169,24 @@ func TestTemplateSourceResidue(t *testing.T) {
 		if !used[path] {
 			t.Errorf("stale identity exemption %q - the template no longer carries a repo-identity literal; remove the entry via a successor ADR", path)
 		}
+	}
+}
+
+func TestRepositoryLocalInstructionDetection(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		src  string
+		want string
+	}{
+		{name: "portable", src: "run ./awf audit", want: ""},
+		{name: "repository runner", src: "run ./x custom-check", want: "./x "},
+		{name: "repository command", src: "invoke cmd/repoaudit", want: "cmd/repoaudit"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := repositoryLocalInstruction(tc.src); got != tc.want {
+				t.Fatalf("repositoryLocalInstruction(%q) = %q, want %q", tc.src, got, tc.want)
+			}
+		})
 	}
 }
 
@@ -216,6 +241,9 @@ func TestCatalogDataResidue(t *testing.T) {
 				if strings.Contains(s, lit) {
 					t.Errorf("%s carries repo-identity literal %q (ADR-0082)", site, lit)
 				}
+			}
+			if lit := repositoryLocalInstruction(s); lit != "" {
+				t.Errorf("%s instructs adopters to run repository-local tooling %q", site, lit)
 			}
 		}
 	}

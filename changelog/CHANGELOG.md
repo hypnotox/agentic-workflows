@@ -16,7 +16,7 @@ query a single version or a range.
 
 ### Bug fixes
 
-- Shipped workflow skills no longer instruct adopters to run awf's repository-only `./x audit-local` command.
+- Shipped workflow skills and configuration suggestions no longer name commands from awf's repository-only `./x` runner.
 
 ## [0.38.0] - 2026-08-15
 

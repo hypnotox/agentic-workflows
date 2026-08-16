@@ -17,7 +17,6 @@
       "description": "Command that runs the full pre-commit gate (tests, lint, coverage).",
       "default": "",
       "options": [
-        "./x gate",
         "make gate",
         "go test ./..."
       ],
@@ -29,7 +28,7 @@
       "description": "Command for the full/extended gate tier, if the project has one.",
       "default": "",
       "options": [
-        "./x gate full"
+        "make gate-full"
       ],
       "target": "var"
     },
@@ -40,7 +39,7 @@
       "default": "",
       "options": [
         "./awf check",
-        "./x check"
+        "make check"
       ],
       "target": "var"
     },
@@ -60,9 +59,9 @@
       "description": "Command that runs the test suite.",
       "default": "",
       "options": [
-        "./x test",
         "go test ./...",
-        "npm test"
+        "npm test",
+        "make test"
       ],
       "target": "var"
     },
