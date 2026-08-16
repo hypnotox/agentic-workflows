@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: advance-pi-runtime-floor-to-0-84-2
-status: Proposed
+status: Accepted
 date: 2026-08-16
 ---
 # ADR-0283: Advance Pi Runtime Floor to 0.84.2
@@ -66,3 +66,4 @@ scheduling, child execution, confinement, or presentation mechanics.
 ## Status history
 
 - 2026-08-16: Proposed
+- 2026-08-16: Accepted; content-sha256: 4defee43911882a35de4bc821b657c51bfa200209bb3ffbc1112d74abebdf9fa
