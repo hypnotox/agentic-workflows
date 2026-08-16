@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { mkdir } from "node:fs/promises";
 import { Value } from "typebox/value";
+import { createExtensionRecorder } from "pi-tools/testing";
 import { EventEmitter } from "node:events";
 import { activity, createChildMemoryExecutor, EffortProtocolError, MEMORY_CLOSE_DELAY_MS, MEMORY_KILL_DELAY_MS, MEMORY_STDERR_MAX, MEMORY_STDOUT_MAX, memoryEdit, memoryRead, memoryUpdate, productionChildMemoryDependencies } from "../../../.pi/extensions/awf-effort/client.ts";
 import { initTheme } from "@earendil-works/pi-coding-agent";
@@ -45,9 +46,10 @@ test("client strictly rejects transport, closed envelopes, facts, and outcomes",
 });
 
 function harness(replies: any[] = [], opts: { directory?: any; emitThrows?: boolean; factoryCapabilities?: unknown; active?: string[]; queue?: any; memoryExec?: any } = {}) {
+ const recorder = createExtensionRecorder(); void recorder;
   const tools = new Map<string, any>(), hooks = new Map<string, any>(), listeners = new Map<string, any>(); const events: any[] = [], calls: any[] = [], options: any[] = [], queueCalls: any[] = [];
   let active = [...(opts.active ?? [])]; const queue = opts.queue ?? (async (path: string, work: any) => { queueCalls.push(path); return work(); }); const pi: any = { getActiveTools: () => active, setActiveTools: (value: string[]) => { active = [...value]; }, registerTool: (value: any) => tools.set(value.name, value), on: (name: string, hook: any) => hooks.set(name, hook), events: { emit: (name: string, payload: any) => { if (opts.emitThrows) throw new Error("emit"); events.push([name, payload]); if (name === "remote-pi:capabilities:request" && Object.hasOwn(opts, "factoryCapabilities")) listeners.get("remote-pi:capabilities")(opts.factoryCapabilities); }, on: (name: string, hook: any) => listeners.set(name, hook) }, exec: async (_: string, args: string[], option: any) => { calls.push(args); options.push(option); const reply = replies.shift() ?? success(args[2] as any, args[5], args[3]); if (reply instanceof Error) throw reply; return { code: 0, stdout: typeof reply === "string" ? reply : line(reply), stderr: "" }; } };
-  let n = 0; registerEffort(pi, { uuid: () => n++ ? OTHER : OWNER, isDirectory: opts.directory ?? (async () => true), packageVersion: "0.81.1", fileMutationQueue: queue, memoryExec: opts.memoryExec });
+  let n = 0; registerEffort(pi, { uuid: () => n++ ? OTHER : OWNER, isDirectory: opts.directory ?? (async () => true), packageVersion: "0.84.2", fileMutationQueue: queue, memoryExec: opts.memoryExec });
   const tool = () => tools.get("using_effort"); const ctx = { cwd: "/repo" };
   return { pi, tools, hooks, listeners, events, calls, options, queueCalls, active: () => active, tool, ctx };
 }
@@ -146,7 +148,7 @@ test("using_effort serializes overlapping invocations in invocation order", asyn
     if (args[2] === "detach") return { code: 0, stdout: line({ schemaVersion: 2, condition: "detached" }), stderr: "" };
     return { code: 0, stdout: line(success("attached", OWNER, "second")), stderr: "" };
   } };
-  registerEffort(pi, { uuid: () => OWNER, isDirectory: async () => false, packageVersion: "0.81.1", fileMutationQueue: async (_path, work) => work() });
+  registerEffort(pi, { uuid: () => OWNER, isDirectory: async () => false, packageVersion: "0.84.2", fileMutationQueue: async (_path, work) => work() });
   const execute = tools.get("using_effort").execute;
   const first = execute("first", { effort: "first" }, new AbortController().signal, () => {}, { cwd: "/repo" });
   await firstInvoked;
@@ -168,7 +170,7 @@ test("using_effort serializes overlapping invocations in invocation order", asyn
     if (args[2] === "detach") return { code: 0, stdout: line({ schemaVersion: 2, condition: "detached" }), stderr: "" };
     return { code: 0, stdout: line(refusal("missing")), stderr: "" };
   } };
-  registerEffort(failurePi, { uuid: () => OWNER, isDirectory: async () => false, packageVersion: "0.81.1", fileMutationQueue: async (_path, work) => work() });
+  registerEffort(failurePi, { uuid: () => OWNER, isDirectory: async () => false, packageVersion: "0.84.2", fileMutationQueue: async (_path, work) => work() });
   const failureExecute = failureTools.get("using_effort").execute;
   const attached = failureExecute("first", { effort: "first" }, new AbortController().signal, () => {}, { cwd: "/repo" });
   await failureInvoked;
@@ -221,7 +223,7 @@ test("remote Pi display suffix capability, replay, lifecycle clears, and failure
   await defaultTool.execute("id", { effort: "demo" }, new AbortController().signal, () => {}, { cwd: "/tmp" });
   let missingDirectoryTool: any; await effortExtension({ getActiveTools:()=>[], setActiveTools:()=>{}, on:()=>{}, exec: standalone.exec, registerTool: (tool: any) => { if(tool.name==="using_effort") missingDirectoryTool = tool } });
   await missingDirectoryTool.execute("id", { effort: "missing-dir" }, new AbortController().signal, () => {}, { cwd: "/definitely-missing" });
-  assert.throws(() => registerEffort({ on:()=>{}, exec: async () => ({ stdout: "" }), registerTool: () => {}, getActiveTools:()=>[], setActiveTools:()=>{} } as any, { uuid: () => "bad", packageVersion: "0.81.1", fileMutationQueue: async (_path, work) => work() }), /lowercase UUIDv4/);
+  assert.throws(() => registerEffort({ on:()=>{}, exec: async () => ({ stdout: "" }), registerTool: () => {}, getActiveTools:()=>[], setActiveTools:()=>{} } as any, { uuid: () => "bad", packageVersion: "0.84.2", fileMutationQueue: async (_path, work) => work() }), /lowercase UUIDv4/);
   const h = harness([success(), { schemaVersion: 2, condition: "detached" }, success("attached", OWNER, "other"), { schemaVersion: 2, condition: "detached" }]);
   assert.deepEqual(h.events, [["remote-pi:capabilities:request", undefined]]);
   assert.equal(typeof h.listeners.get("remote-pi:capabilities"), "function"); assert.equal(typeof h.listeners.get("remote-pi:display-suffix:request"), "function");
@@ -457,7 +459,7 @@ test("production stdin child executor writes stdin and uses detached direct spaw
 
 test("effort runtime guard checks actual version, active-tool methods, and package-exported queue before registration", async () => {
   const marker = Symbol.for("awf.pi.minimum-runtime-notified"); const original = (globalThis as any)[marker];
-  const guarded = (overrides: any = {}, deps: any = {}) => { const tools: any[] = []; const hooks = new Map<string, any>(); const notices: any[] = []; const pi: any = { on: (name: string, hook: any) => hooks.set(name, hook), registerTool: (tool: any) => tools.push(tool), exec: async () => ({ stdout: "" }), getActiveTools: () => [], setActiveTools: () => {}, ...overrides }; registerEffort(pi, { packageVersion: "0.81.1", fileMutationQueue: async (_path, work) => work(), ...deps }); return { tools, hooks, notices, start: () => hooks.get("session_start")?.({}, { ui: { notify: (...args: any[]) => notices.push(args) } }) }; };
+  const guarded = (overrides: any = {}, deps: any = {}) => { const tools: any[] = []; const hooks = new Map<string, any>(); const notices: any[] = []; const pi: any = { on: (name: string, hook: any) => hooks.set(name, hook), registerTool: (tool: any) => tools.push(tool), exec: async () => ({ stdout: "" }), getActiveTools: () => [], setActiveTools: () => {}, ...overrides }; registerEffort(pi, { packageVersion: "0.84.2", fileMutationQueue: async (_path, work) => work(), ...deps }); return { tools, hooks, notices, start: () => hooks.get("session_start")?.({}, { ui: { notify: (...args: any[]) => notices.push(args) } }) }; };
   try {
     delete (globalThis as any)[marker]; const old = guarded({}, { packageVersion: "0.80.0" }); assert.deepEqual(old.tools, []); await old.start(); assert.match(old.notices[0][0], /found 0.80.0/); await old.start(); assert.equal(old.notices.length, 1);
     delete (globalThis as any)[marker]; const helper = guarded({}, { fileMutationQueue: undefined }); assert.deepEqual(helper.tools, []); await helper.start(); assert.match(helper.notices[0][0], /withFileMutationQueue/); await helper.start(); assert.equal(helper.notices.length, 1);
@@ -470,7 +472,7 @@ test("effort runtime guard checks actual version, active-tool methods, and packa
 test("default effort registration derives package facts and guards missing or unreadable runtime exports", async () => {
   const makePi = () => { const tools: any[] = []; const hooks = new Map<string, any>(); let active: string[] = []; return { tools, hooks, pi: { on: (name: string, hook: any) => hooks.set(name, hook), registerTool: (tool: any) => tools.push(tool), exec: async () => ({ stdout: "" }), getActiveTools: () => active, setActiveTools: (value: string[]) => { active = value; } } as any }; };
   const queue = async (_path: string, work: any) => work();
-  const supported = makePi(); await registerDefaultEffort(supported.pi, { getPackageDir: () => "/pkg", withFileMutationQueue: queue }, (async (path: any, encoding: any) => { assert.equal(path, "/pkg/package.json"); assert.equal(encoding, "utf8"); return JSON.stringify({ version: "0.81.1" }); }) as any); assert.equal(supported.tools.length, 4);
+  const supported = makePi(); await registerDefaultEffort(supported.pi, { getPackageDir: () => "/pkg", withFileMutationQueue: queue }, (async (path: any, encoding: any) => { assert.equal(path, "/pkg/package.json"); assert.equal(encoding, "utf8"); return JSON.stringify({ version: "0.84.2" }); }) as any); assert.equal(supported.tools.length, 4);
   const marker = Symbol.for("awf.pi.minimum-runtime-notified"); const original = (globalThis as any)[marker];
   try {
     delete (globalThis as any)[marker]; const unreadable = makePi(); await registerDefaultEffort(unreadable.pi, {}, (async () => { throw new Error("read"); }) as any); assert.deepEqual(unreadable.tools, []); const notices: any[] = []; await unreadable.hooks.get("session_start")({}, { ui: { notify: (...args: any[]) => notices.push(args) } }); assert.match(notices[0][0], /found unknown/);
@@ -480,7 +482,7 @@ test("default effort registration derives package facts and guards missing or un
 
 test("default memory adapter routes owner-scoped read to pi.exec and edit stdin to the child adapter", async () => {
   const tools = new Map<string, any>(); let active: string[] = []; const calls: any[] = []; const pi: any = { on: () => {}, getActiveTools: () => active, setActiveTools: (value: string[]) => { active = value; }, registerTool: (tool: any) => tools.set(tool.name, tool), exec: async (_command: string, argv: readonly string[]) => { calls.push(argv); return { code: 0, stdout: line(argv[1] === "activity" ? success("attached", OWNER, "demo") : memoryReadReply()), stderr: "" }; } };
-  registerEffort(pi, { uuid: () => OWNER, packageVersion: "0.81.1", fileMutationQueue: async (_path, work) => work(), isDirectory: async () => false }); const ctx = { cwd: "/definitely-missing" }; const signal = new AbortController().signal;
+  registerEffort(pi, { uuid: () => OWNER, packageVersion: "0.84.2", fileMutationQueue: async (_path, work) => work(), isDirectory: async () => false }); const ctx = { cwd: "/definitely-missing" }; const signal = new AbortController().signal;
   await tools.get("using_effort").execute("id", { effort: "demo" }, signal, () => {}, ctx); assert.equal(lastText(await tools.get("effort_memory_read").execute("id", {}, signal, () => {}, ctx)), "line\n"); assert.equal(calls.at(-1)[1], "memory");
   await assert.rejects(tools.get("effort_memory_edit").execute("id", { edits: [{ oldText: "old", newText: "new" }] }, signal, () => {}, ctx), /execution failed/);
 });

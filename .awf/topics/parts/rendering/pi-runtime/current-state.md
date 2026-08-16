@@ -18,20 +18,21 @@ Backing: test
 
 ### `invariant: pi-minimum-runtime`
 
-The retained awf effort entrypoint requires the adopter-supplied compatible Pi runtime APIs it directly uses, including active-tool access and the package-exported real-path file-mutation queue; its existing actionable incompatibility guard and numeric 0.81.1 floor remain scoped to that output. The direct `using_effort` companion needs no `changeCwd` capability and optional Remote Pi events remain advisory. The profile adapter has no package-version read or Pi minimum-runtime guard; it instead requires independently installed pi-tools protocol v2, treats final profile registration as compatibility, and reports one actionable no-fallback failure when capability is missing, incompatible, late, or rejected.
+The retained awf effort entrypoint requires the adopter-supplied compatible Pi runtime APIs it directly uses, including active-tool access and the package-exported real-path file-mutation queue; its actionable incompatibility guard and numeric 0.84.2 floor remain scoped to that output, with pi-ai and pi-tui 0.84.2 and the checksummed fork-v0.84.2.2 artifact as its proof graph. The direct `using_effort` companion needs no `changeCwd` capability and optional Remote Pi events remain advisory. The profile adapter has no package-version read or Pi minimum-runtime guard; it instead requires independently installed pi-tools protocol v2, treats final profile registration as compatibility, and reports one actionable no-fallback failure when capability is missing, incompatible, late, or rejected.
 Origin: ADR-0148
-Revised-by: ADR-0162, ADR-0167, ADR-0209, ADR-0218, ADR-0219, ADR-0225, ADR-0239, ADR-0279
+Revised-by: ADR-0162, ADR-0167, ADR-0209, ADR-0218, ADR-0219, ADR-0225, ADR-0239, ADR-0279, ADR-0283
 Backing: test
 
 ### `invariant: pi-real-runtime-smoke`
 
-The deterministic pinned-runtime smoke covers generated TypeScript loading, native Pi skill discovery, protocol-v2 profile negotiation through a contract double, live model-routing selection and rendered role preparation, and retained effort tool registration. The strict lane also covers adapter policy and effort behavior at 100 percent while pi-tools proves general context, handoff, scheduling, execution, confinement, execution-fact, and presentation mechanics. Awf's gate neither imports nor pins a pi-tools runtime checkout.
+The deterministic pinned-runtime smoke covers generated TypeScript loading, native Pi skill discovery, protocol-v2 profile negotiation through a contract double, live model-routing selection and rendered role preparation, and retained effort tool registration. The strict lane directly composes source-only pi-tools/testing v0.3.0 recordings for generic Pi seams and covers adapter policy and effort behavior at 100 percent; the real SDK smoke remains the proof of generated extension loading, six-profile negotiation, model-routing delivery, native skill discovery, and effort registration on the pinned fork. Awf neither imports nor behavior-tests an adopter pi-tools runtime.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0161, ADR-0162, ADR-0164, ADR-0167, ADR-0173, ADR-0209, ADR-0279
+Revised-by: ADR-0149, ADR-0161, ADR-0162, ADR-0164, ADR-0167, ADR-0173, ADR-0209, ADR-0279, ADR-0283
 Backing: test
 
 ### `invariant: pi-tools-integration-boundary`
 
-Awf subscribes to protocol-v2 capability and registration-result events during extension factory initialization and emits a correlated request with one stable registration id. A compatible capability atomically receives all four awf profiles with default suppression. Missing, incompatible, late, and rejected registration produce one actionable no-fallback notice. pi-tools owns general context usage, handoff, child execution, scheduling, confinement, execution facts, and presentation.
+Awf subscribes to protocol-v2 capability and registration-result events during extension factory initialization and emits a correlated request with one stable registration id. A compatible capability atomically receives all six awf profiles with default suppression. Missing, incompatible, late, and rejected registration produce one actionable no-fallback notice. Source-only pi-tools/testing v0.3.0 owns generic test recordings, while an independently installed adopter pi-tools runtime remains protocol-v2 compatible rather than revision-pinned and owns general context usage, handoff, child execution, scheduling, confinement, execution facts, and presentation.
 Origin: ADR-0279
+Revised-by: ADR-0283
 Backing: test

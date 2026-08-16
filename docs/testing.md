@@ -17,7 +17,7 @@ A deterministic pre-commit gate runs the project's checks. The documented lanes 
 | `./x test` | Go suite without the host Pi smoke. |
 | `./x pi-test run` | Pi lane alone. |
 
-The gate enables `TestPiRealRuntimeSmoke` once with test caching disabled; `./x test` and verbose direct Go tests explain its omission. The deterministic Pi lane uses a protocol-v2 contract double to prove generated adapter negotiation, native awf skill discovery and routing delivery, and retained effort integration. It does not install, pin, or behavior-test external `pi-tools` mechanics. Plain-punctuation (`awf check repo prose`) and effort-memory (`awf check repo memory`) scans are hook and CI checks, not gate steps. Commit-provenance tests use native Git, SSH-signed commits, disposable refs and remotes, both `core.hooksPath` forms, and linked worktrees. A red gate blocks the commit: fix the cause or revert.
+The gate enables `TestPiRealRuntimeSmoke` once with test caching disabled; `./x test` and verbose direct Go tests explain its omission. The deterministic Pi lane uses a protocol-v2 contract double to prove generated adapter negotiation, native awf skill discovery and routing delivery, and retained effort integration. It pins source-only `pi-tools/testing` v0.3.0 for generic recorder seams, while it does not install, pin, or behavior-test an external adopter `pi-tools` runtime. Plain-punctuation (`awf check repo prose`) and effort-memory (`awf check repo memory`) scans are hook and CI checks, not gate steps. Commit-provenance tests use native Git, SSH-signed commits, disposable refs and remotes, both `core.hooksPath` forms, and linked worktrees. A red gate blocks the commit: fix the cause or revert.
 
 ### Coverage
 
@@ -51,7 +51,7 @@ awf has one tier: `./x gate` always runs its deterministic non-test checks befor
 | Pi host | Protocol-v2 profile-contract negotiation, strict TypeScript coverage, adapter policy, generated native skill routing, and effort association. |
 | Pi runtime smoke | Generated adapter delivery through a contract double plus retained awf effort integration on the pinned in-memory Pi seam where applicable. |
 
-A successful capability handshake and final profile registration are the `pi-tools` compatibility test; there is no awf fallback and no revision pin. External general context, handoff, scheduling, execution, and rendering mechanics belong to `pi-tools` assurance. The retained 0.81.1 active-tool and file-mutation-queue floor applies only to awf-owned effort integration.
+A successful capability handshake and final profile registration are the `pi-tools` compatibility test; there is no awf fallback and no revision pin. External general context, handoff, scheduling, execution, and rendering mechanics belong to `pi-tools` assurance. The strict lane uses source-only `pi-tools/testing` v0.3.0 to record generic Pi API, event, context, UI, model-registry, command, tool, active-tool, and execution seams; it does not behavior-test external scheduling, child execution, confinement, or presentation. The retained 0.84.2 active-tool and file-mutation-queue floor applies only to awf-owned effort integration.
 
 The release-only interactive Pi smoke is manual verification, not a deterministic gate lane.
 
@@ -63,7 +63,7 @@ The release-only interactive Pi smoke is manual verification, not a deterministi
 | Area | Test location and shape |
 |---|---|
 | Go behavior | Focused package tests cover effort/worktree safety, migration, session protocol validation, deterministic joins, resident roots, and real-Git topology. Legacy protocol residents are read-only fixtures. |
-| Pi extension | Container tests cover generated protocol-v2 profile negotiation through a contract double, adapter schemas and policy, model routing, native awf skill delivery, Git audits, and retained `using_effort` integration. External `pi-tools` mechanics are not reproduced. |
+| Pi extension | Container tests cover generated protocol-v2 profile negotiation through a contract double, adapter schemas and policy, model routing, native awf skill delivery, Git audits, and retained `using_effort` integration. Generic Pi recordings use source-only `pi-tools/testing` v0.3.0; external `pi-tools` scheduling, child execution, confinement, and presentation mechanics are not reproduced. |
 | Git seam | `internal/git/entrypoints_test.go` derives entrypoints and requires a backend-agnostic contract suite for each. Repo walkers keep Git libraries and subprocesses within `internal/git` and `internal/testsupport/gitfixture`. |
 | Test homes | Five `TestMain` suites use canonical `home-<decimal>` homes, retain Go's default `GOPATH`, and sweep only homes older than 24 hours. Failure to remove the current home fails the suite. |
 

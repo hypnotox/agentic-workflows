@@ -1,7 +1,7 @@
 | Area | Test location and shape |
 |---|---|
 | Go behavior | Focused package tests cover effort/worktree safety, migration, session protocol validation, deterministic joins, resident roots, and real-Git topology. Legacy protocol residents are read-only fixtures. |
-| Pi extension | Container tests cover generated protocol-v2 profile negotiation through a contract double, adapter schemas and policy, model routing, native awf skill delivery, Git audits, and retained `using_effort` integration. External `pi-tools` mechanics are not reproduced. |
+| Pi extension | Container tests cover generated protocol-v2 profile negotiation through a contract double, adapter schemas and policy, model routing, native awf skill delivery, Git audits, and retained `using_effort` integration. Generic Pi recordings use source-only `pi-tools/testing` v0.3.0; external `pi-tools` scheduling, child execution, confinement, and presentation mechanics are not reproduced. |
 | Git seam | `internal/git/entrypoints_test.go` derives entrypoints and requires a backend-agnostic contract suite for each. Repo walkers keep Git libraries and subprocesses within `internal/git` and `internal/testsupport/gitfixture`. |
 | Test homes | Five `TestMain` suites use canonical `home-<decimal>` homes, retain Go's default `GOPATH`, and sweep only homes older than 24 hours. Failure to remove the current home fails the suite. |
 

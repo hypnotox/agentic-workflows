@@ -1,5 +1,5 @@
 // Retained entrypoints use this floor. The optional using_effort companion also requires active-tool APIs and the package-exported real-path file-mutation queue; Remote events remain advisory publication only.
-export const MIN_PI_VERSION = "0.81.1";
+export const MIN_PI_VERSION = "0.84.2";
 const MINIMUM_RUNTIME_NOTICE = Symbol.for("awf.pi.minimum-runtime-notified");
 export interface MinimumRuntimeDependencies { packageVersion: string; }
 export type MinimumRuntimeAPI = "on" | "eventsOn" | "eventsEmit" | "appendEntry" | "registerTool" | "registerCommand" | "queueCommand" | "exec" | "getThinkingLevel" | "getActiveTools" | "setActiveTools";

@@ -105,7 +105,7 @@ test("pinned Pi runtime discovers awf skills and delivers protocol-v2 routing wi
     },
     (pi: any) => registerSubagentTools(pi, deps),
     (pi: any) => registerEffort(pi, {
-      packageVersion: "0.81.1", fileMutationQueue: withFileMutationQueue,
+      packageVersion: "0.84.2", fileMutationQueue: withFileMutationQueue,
       memoryExec: async () => { throw new Error("runtime smoke does not invoke effort transport"); },
     }),
   ];

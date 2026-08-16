@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { Value } from "typebox/value";
+import { createExtensionRecorder, createRecordingEventBus } from "pi-tools/testing";
 import { registerSubagentTools, type ExtensionDependencies } from "../../../.pi/extensions/awf-subagents/index.ts";
 import * as routing from "../../../.pi/extensions/awf-subagents/model-routing.ts";
 
@@ -11,14 +12,14 @@ const agent = (name: string) => `/repo/.pi/agents/${name}.md`;
 const all = (prefix = "p") => Object.fromEntries(routing.PREFERENCE_FIELDS.map((field) => [field, `${prefix}/${field}`]));
 
 function harness(files: Record<string, string> = {}) {
- const eventHandlers: Record<string, (value:any)=>void> = {}; const hooks: Record<string, any> = {}; let request:any; let batch:any; const notices:any[]=[]; const commands:any={}; const models=new Map<string,any>(); const available=new Set<string>();
- const add=(ref:string, auth=true, present=true) => { const [provider,id]=ref.split("/"); models.set(ref,{provider,id,name:id,auth}); if(present) available.add(ref); };
+ const eventBus=createRecordingEventBus(); const recorder:any=createExtensionRecorder({eventBus,exec:async (_:string,args:string[])=>args.includes("HEAD")?{code:0,stdout:"a\n",stderr:"",killed:false}:{code:0,stdout:"",stderr:"",killed:false}} as any);
+ const models:any[]=recorder.modelRegistry.models, available:any[]=recorder.modelRegistry.available; const modelMap=new Map<string,any>(), availableSet=new Set<string>();
+ const add=(ref:string, auth=true, present=true) => { const [provider,id]=ref.split("/"); const model={provider,id,name:id,auth}; models.push(model); modelMap.set(ref,model); if(present){available.push(model);availableSet.add(ref);} };
  add("parent/model"); add("p/model");
- const pi:any={events:{on:(name:string, f:any)=>eventHandlers[name]=f,emit:(name:string,v:any)=>request={name,v}},on:(name:string,f:any)=>hooks[name]=f,registerCommand:(name:string,c:any)=>commands[name]=c,getActiveTools:()=>[],exec:async (_:string,args:string[])=>args.includes("HEAD")?{code:0,stdout:"a\n"}:{code:0,stdout:""}};
  const deps:ExtensionDependencies={extensionFile:"/repo/.pi/extensions/awf-subagents/index.ts",agentDir:"/agent",configDirName:".pi",readFile:async(path:string)=> { if(path.endsWith(".md")) return "---\nname: x\n---\nbody"; if(path in files)return files[path]; throw Object.assign(new Error("missing"),{code:"ENOENT"});},writeFile:async()=>{},mkdir:async()=>{},rename:async()=>{},unlink:async()=>{},realpath:async p=>p,lstat:async()=>({isFile:()=>true,isSymbolicLink:()=>false})};
- const ctx:any={mode:"tui",model:{provider:"parent",id:"model"},modelRegistry:{find:(p:string,i:string)=>models.get(`${p}/${i}`),hasConfiguredAuth:(m:any)=>m.auth!==false,getAvailable:()=>[...available].map(k=>models.get(k)),getAll:()=>[...models.values()]},ui:{notify:(...x:any[])=>notices.push(x),select:async()=>undefined,confirm:async()=>false},sessionManager:{}};
- registerSubagentTools(pi,deps);
- return {pi,deps,ctx,eventHandlers,hooks,request:()=>request,batch:()=>batch,setBatch:(x:any)=>batch=x,notices,commands,add,models,available, capability:(x:any)=>eventHandlers["pi-tools:subagent-profiles:capability"](x)};
+ const ctx:any=recorder.makeContext({cwd:root,model:{provider:"parent",id:"model"},modelRegistry:{...recorder.modelRegistry.registry,hasConfiguredAuth:(m:any)=>m.auth!==false},sessionManager:{}} as any);
+ registerSubagentTools(recorder.api,deps); let batch:any;
+ return {pi:recorder.api,deps,ctx,get eventHandlers(){return new Proxy({}, {get:(_,name:string)=>(value:any)=>eventBus.emit(name,value)}) as any;},get hooks(){return Object.fromEntries([...recorder.handlers.entries()].map(([name,handlers]:any)=>[name,handlers[0]]));},request:()=>{const e:any=recorder.emissions.at(-1);return e&&{name:e[0],v:e[1]};},batch:()=>batch,setBatch:(x:any)=>batch=x,get notices(){return recorder.ui.calls.filter((c:any)=>c.name==="notify").map((c:any)=>c.args);},get commands(){return Object.fromEntries(recorder.commands.map((c:any)=>[c.name,c.command]));},add,models:{delete:(ref:string)=>{const m=modelMap.get(ref); modelMap.delete(ref); const i=models.indexOf(m);if(i>=0)models.splice(i,1);const j=available.indexOf(m);if(j>=0)available.splice(j,1);availableSet.delete(ref);},get:(ref:string)=>modelMap.get(ref)},available:availableSet,capability:(x:any)=>eventBus.emit("pi-tools:subagent-profiles:capability",x)} as any;
 }
 function register(h:ReturnType<typeof harness>) { h.capability({protocolVersion:2,register:(value:any)=>{h.setBatch(value);return {state:"registered"};}}); return h.batch().profiles as any[]; }
 function registry(refs:string[]=["p/model"]) { const entries=new Map(refs.map(ref=>{const [provider,id]=ref.split("/");return [ref,{provider,id,auth:true}]})); return {find:(p:string,i:string)=>entries.get(`${p}/${i}`),hasConfiguredAuth:(m:any)=>m.auth!==false,getAvailable:()=>[...entries.values()]}; }

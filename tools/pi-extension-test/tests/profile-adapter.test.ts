@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { Value } from "typebox/value";
+import { createExtensionRecorder } from "pi-tools/testing";
 import extension, { registerSubagentTools, type ExtensionDependencies } from "../../../.pi/extensions/awf-subagents/index.ts";
 import { PREFERENCE_FIELDS, RECOMMENDED_PRESET } from "../../../.pi/extensions/awf-subagents/model-routing.ts";
 
@@ -10,6 +11,7 @@ const err=(message:string,code="EIO")=>Object.assign(new Error(message),{code});
 type Answer=unknown|((h:any)=>unknown);
 
 function harness(options:{files?:Record<string,string|Error>;answers?:Answer[];activeTools?:any;sessionManager?:any;exec?:(args:string[],cwd:string,index:number)=>any;realpath?:(p:string)=>Promise<string>;lstat?:(p:string)=>Promise<any>}={}) {
+ const recorder = createExtensionRecorder(); void recorder;
  const files=options.files??{}, answers=[...(options.answers??[])], events=new Map<string,any>(), hooks=new Map<string,any>(), commands=new Map<string,any>();
  const notices:any[]=[], prompts:any[]=[], writes:any[]=[], execs:any[]=[], models=new Map<string,any>(), available=new Set<string>(); let request:any, batch:any;
  const add=(ref:string,auth=true,present=true)=>{const slash=ref.indexOf("/"), m={provider:ref.slice(0,slash),id:ref.slice(slash+1),name:ref.slice(slash+1),auth};models.set(ref,m);if(present)available.add(ref);}; add("parent/model"); add("p/model");
