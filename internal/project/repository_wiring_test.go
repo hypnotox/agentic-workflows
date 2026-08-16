@@ -146,7 +146,7 @@ func TestPiExtensionHostRunnerWorkerSeams(t *testing.T) {
 		t.Fatal(err)
 	}
 	cmd = exec.Command("bash", script)
-	cmd.Env = append(os.Environ(), "AWF_PI_TEST_ROOT="+root, "AWF_PI_TEST_NVM_DIR="+nvm, "AWF_PI_TEST_WORKER=1", "PATH="+fake+":"+os.Getenv("PATH"))
+	cmd.Env = append(os.Environ(), "AWF_PI_TEST_ROOT="+root, "AWF_PI_TEST_NVM_DIR="+nvm, "AWF_PI_TEST_SKIP_NVM=0", "AWF_PI_TEST_WORKER=1", "PATH="+fake+":"+os.Getenv("PATH"))
 	if output, err := cmd.CombinedOutput(); err == nil || !strings.Contains(string(output), "nvm install v24.19.0") {
 		t.Fatalf("missing NVM guidance: %v\n%s", err, output)
 	}
