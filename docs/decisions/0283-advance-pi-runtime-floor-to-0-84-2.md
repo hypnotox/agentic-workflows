@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: advance-pi-runtime-floor-to-0-84-2
-status: Implementing
+status: Implemented
 date: 2026-08-16
 ---
 # ADR-0283: Advance Pi Runtime Floor to 0.84.2
@@ -69,3 +69,4 @@ scheduling, child execution, confinement, or presentation mechanics.
 - 2026-08-16: Accepted; content-sha256: 4defee43911882a35de4bc821b657c51bfa200209bb3ffbc1112d74abebdf9fa
 - 2026-08-16: Implementing; content-sha256: 4defee43911882a35de4bc821b657c51bfa200209bb3ffbc1112d74abebdf9fa
 - 2026-08-16: Applied; operations: update `rendering/pi-runtime:pi-minimum-runtime`, update `rendering/pi-runtime:pi-real-runtime-smoke`, update `rendering/pi-runtime:pi-tools-integration-boundary`
+- 2026-08-16: Implemented; content-sha256: 4defee43911882a35de4bc821b657c51bfa200209bb3ffbc1112d74abebdf9fa

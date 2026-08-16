@@ -3,7 +3,7 @@ format: plan-v2
 date: 2026-08-16
 adrs:
   - 0283
-status: Proposed
+status: Implemented
 ---
 # Plan: Migrate Pi Runtime and Extension Recorder
 
