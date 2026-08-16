@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { Value } from "typebox/value";
 import { createExtensionRecorder, createRecordingEventBus } from "pi-tools/testing";
@@ -13,16 +14,25 @@ const all = (prefix = "p") => Object.fromEntries(routing.PREFERENCE_FIELDS.map((
 
 function harness(files: Record<string, string> = {}) {
  const eventBus=createRecordingEventBus(); const recorder:any=createExtensionRecorder({eventBus,exec:async (_:string,args:string[])=>args.includes("HEAD")?{code:0,stdout:"a\n",stderr:"",killed:false}:{code:0,stdout:"",stderr:"",killed:false}} as any);
- const models:any[]=recorder.modelRegistry.models, available:any[]=recorder.modelRegistry.available; const modelMap=new Map<string,any>(), availableSet=new Set<string>();
- const add=(ref:string, auth=true, present=true) => { const [provider,id]=ref.split("/"); const model={provider,id,name:id,auth}; models.push(model); modelMap.set(ref,model); if(present){available.push(model);availableSet.add(ref);} };
+ recorder.modelRegistry.configuredAuth=true;
+ const add=(ref:string, _auth=true, present=true) => { const [provider,id]=ref.split("/"); recorder.modelRegistry.add({provider,id,name:id,api:"openai-completions"},present); };
  add("parent/model"); add("p/model");
  const deps:ExtensionDependencies={extensionFile:"/repo/.pi/extensions/awf-subagents/index.ts",agentDir:"/agent",configDirName:".pi",readFile:async(path:string)=> { if(path.endsWith(".md")) return "---\nname: x\n---\nbody"; if(path in files)return files[path]; throw Object.assign(new Error("missing"),{code:"ENOENT"});},writeFile:async()=>{},mkdir:async()=>{},rename:async()=>{},unlink:async()=>{},realpath:async p=>p,lstat:async()=>({isFile:()=>true,isSymbolicLink:()=>false})};
- const ctx:any=recorder.makeContext({cwd:root,model:{provider:"parent",id:"model"},modelRegistry:{...recorder.modelRegistry.registry,hasConfiguredAuth:(m:any)=>m.auth!==false},sessionManager:{}} as any);
- registerSubagentTools(recorder.api,deps); let batch:any;
- return {pi:recorder.api,deps,ctx,get eventHandlers(){return new Proxy({}, {get:(_,name:string)=>(value:any)=>eventBus.emit(name,value)}) as any;},get hooks(){return Object.fromEntries([...recorder.handlers.entries()].map(([name,handlers]:any)=>[name,handlers[0]]));},request:()=>{const e:any=recorder.emissions.at(-1);return e&&{name:e[0],v:e[1]};},batch:()=>batch,setBatch:(x:any)=>batch=x,get notices(){return recorder.ui.calls.filter((c:any)=>c.name==="notify").map((c:any)=>c.args);},get commands(){return Object.fromEntries(recorder.commands.map((c:any)=>[c.name,c.command]));},add,models:{delete:(ref:string)=>{const m=modelMap.get(ref); modelMap.delete(ref); const i=models.indexOf(m);if(i>=0)models.splice(i,1);const j=available.indexOf(m);if(j>=0)available.splice(j,1);availableSet.delete(ref);},get:(ref:string)=>modelMap.get(ref)},available:availableSet,capability:(x:any)=>eventBus.emit("pi-tools:subagent-profiles:capability",x)} as any;
+ const ctx:any=recorder.makeContext({cwd:root,model:recorder.modelRegistry.registry.find("parent","model"),sessionManager:{}} as any);
+ void recorder.install((pi:any)=>registerSubagentTools(pi,deps)); let batch:any;
+ return {pi:recorder.api,deps,ctx,get eventHandlers(){return new Proxy({}, {get:(_,name:string)=>(value:any)=>eventBus.emit(name,value)}) as any;},get hooks(){return Object.fromEntries([...recorder.handlers.entries()].map(([name,handlers]:any)=>[name,handlers[0]]));},request:()=>{const e:any=recorder.emissions.at(-1);return e&&{name:e[0],v:e[1]};},batch:()=>batch,setBatch:(x:any)=>batch=x,get notices(){return recorder.ui.calls.filter((c:any)=>c.name==="notify").map((c:any)=>c.args);},get commands(){return Object.fromEntries(recorder.commands.map((c:any)=>[c.name,c.command]));},add,models:{delete:(ref:string)=>{const [provider,id]=ref.split("/");recorder.modelRegistry.remove(provider,id);}},capability:(x:any)=>eventBus.emit("pi-tools:subagent-profiles:capability",x)} as any;
 }
 function register(h:ReturnType<typeof harness>) { h.capability({protocolVersion:2,register:(value:any)=>{h.setBatch(value);return {state:"registered"};}}); return h.batch().profiles as any[]; }
 function registry(refs:string[]=["p/model"]) { const entries=new Map(refs.map(ref=>{const [provider,id]=ref.split("/");return [ref,{provider,id,auth:true}]})); return {find:(p:string,i:string)=>entries.get(`${p}/${i}`),hasConfiguredAuth:(m:any)=>m.auth!==false,getAvailable:()=>[...entries.values()]}; }
+
+test("required Pi suites install the shared recorder rather than bypassing it", async () => {
+ for (const suite of ["index.test.ts", "profile-adapter.test.ts", "using-effort.test.ts"]) {
+  const source = await readFile(new URL(`./${suite}`, import.meta.url), "utf8");
+  assert.match(source, /from "pi-tools\/testing"/);
+  assert.match(source, /createExtensionRecorder/);
+  assert.match(source, /\.install\(/);
+ }
+});
 
 test("protocol-v2 registration is factory-time, atomic, correlated, and terminal notices are once-only", async()=>{
  const h=harness(); assert.equal(h.request().name,"pi-tools:subagent-profiles:request"); assert.equal(h.request().v.protocolVersion,2);

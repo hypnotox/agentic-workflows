@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Breaking changes
 
+- The awf-owned Pi effort extension now requires Pi 0.84.2 or a later compatible build; adopters on the former 0.81.1 floor must upgrade.
+
 - The Pi extension test lane now requires exact host Node v24.19.0 and npm. `./x pi-test run` uses NVM when available, a checkout-local lockfile dependency tree, and a narrow temporary workspace; Docker and `pi-test reset` are removed.
 
 - Pi review dispatch now gives every enabled reviewer a dedicated task-only profile: Full exposes `subagent_review_adr`, `subagent_review_plan`, and `subagent_review_code`, while Core exposes only `subagent_review_code`. The generic `subagent_review` tool and its required `kind` argument are removed without an alias.

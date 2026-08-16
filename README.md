@@ -43,7 +43,7 @@ awf fallback. `pi-tools` owns general context usage, handoff, and subagent execu
 renders the workflow-specific profile adapter and, when enabled, its effort integration.
 
 The awf-owned effort extension requires the APIs provided by the
-[`fork-v0.84.2-awf.3` Pi release](https://github.com/hypnotox/pi/releases/tag/fork-v0.84.2-awf.3)
+[`fork-v0.84.2.2` Pi release](https://github.com/hypnotox/pi/releases/tag/fork-v0.84.2.2)
 or a later compatible build. See all
 [Pi fork releases](https://github.com/hypnotox/pi/releases) for downloadable versions.
 

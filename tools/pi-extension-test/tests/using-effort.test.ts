@@ -45,16 +45,22 @@ test("client strictly rejects transport, closed envelopes, facts, and outcomes",
   assert.deepEqual(argv, ["effort", "activity", "detach", "demo", "--owner", OWNER, "--json"]); assert.equal(new EffortProtocolError("x").name, "EffortProtocolError");
 });
 
-function harness(replies: any[] = [], opts: { directory?: any; emitThrows?: boolean; factoryCapabilities?: unknown; active?: string[]; queue?: any; memoryExec?: any } = {}) {
- const recorder = createExtensionRecorder(); void recorder;
-  const tools = new Map<string, any>(), hooks = new Map<string, any>(), listeners = new Map<string, any>(); const events: any[] = [], calls: any[] = [], options: any[] = [], queueCalls: any[] = [];
-  let active = [...(opts.active ?? [])]; const queue = opts.queue ?? (async (path: string, work: any) => { queueCalls.push(path); return work(); }); const pi: any = { getActiveTools: () => active, setActiveTools: (value: string[]) => { active = [...value]; }, registerTool: (value: any) => tools.set(value.name, value), on: (name: string, hook: any) => hooks.set(name, hook), events: { emit: (name: string, payload: any) => { if (opts.emitThrows) throw new Error("emit"); events.push([name, payload]); if (name === "remote-pi:capabilities:request" && Object.hasOwn(opts, "factoryCapabilities")) listeners.get("remote-pi:capabilities")(opts.factoryCapabilities); }, on: (name: string, hook: any) => listeners.set(name, hook) }, exec: async (_: string, args: string[], option: any) => { calls.push(args); options.push(option); const reply = replies.shift() ?? success(args[2] as any, args[5], args[3]); if (reply instanceof Error) throw reply; return { code: 0, stdout: typeof reply === "string" ? reply : line(reply), stderr: "" }; } };
-  let n = 0; registerEffort(pi, { uuid: () => n++ ? OTHER : OWNER, isDirectory: opts.directory ?? (async () => true), packageVersion: "0.84.2", fileMutationQueue: queue, memoryExec: opts.memoryExec });
-  const tool = () => tools.get("using_effort"); const ctx = { cwd: "/repo" };
-  return { pi, tools, hooks, listeners, events, calls, options, queueCalls, active: () => active, tool, ctx };
+function harness(replies: any[] = [], opts: { directory?: any; emitThrows?: boolean; factoryCapabilities?: unknown; active?: string[]; queue?: any; memoryExec?: any } = {}): any {
+  let recorder: any;
+  recorder = createExtensionRecorder({ activeTools: opts.active, exec: async (_command, args) => { let reply = replies.shift() ?? success(args[2] as any, args[5], args[3]); if (typeof reply === "function") reply = await reply(args); if (reply instanceof Error) throw reply; return { code: 0, stdout: typeof reply === "string" ? reply : line(reply), stderr: "", killed: false }; } });
+  const queueCalls: any[] = [];
+  const queue = opts.queue ?? (async (path: string, work: any) => { queueCalls.push(path); return work(); });
+  if (Object.hasOwn(opts, "factoryCapabilities")) recorder.api.events.on("remote-pi:capabilities:request", () => recorder.api.events.emit("remote-pi:capabilities", opts.factoryCapabilities));
+  if (opts.emitThrows) (recorder.api.events as any).emit = () => { throw new Error("emit"); };
+  let n = 0; registerEffort(recorder.api as any, { uuid: () => n++ ? OTHER : OWNER, isDirectory: opts.directory ?? (async () => true), packageVersion: "0.84.2", fileMutationQueue: queue, memoryExec: opts.memoryExec });
+  const tool = () => recorder.tools.find((value:any) => value.name === "using_effort");
+  const ctx = recorder.makeContext({ cwd: "/repo" });
+  const hook = (name: string) => recorder.handlers.get(name)?.at(-1);
+  return { recorder, pi: recorder.api, hooks: { get: hook }, listeners: { get: (name: string) => (payload?: unknown) => recorder.api.events.emit(name, payload) }, get events() { return recorder.emissions.filter(([name]:any) => name !== "remote-pi:capabilities"); }, get calls() { return recorder.apiCalls.filter((call:any) => call.name === "exec").map((call:any) => call.args[1]); }, get options() { return recorder.apiCalls.filter((call:any) => call.name === "exec").map((call:any) => call.args[2]); }, queueCalls, active: () => recorder.activeTools, tool, ctx };
 }
-async function request(h: any, args: any, signal = new AbortController().signal) { return h.tool().execute("id", args, signal, () => {}, h.ctx); }
+async function request(h: any, args: any, signal = new AbortController().signal) { return h.recorder.invokeToolDirect("using_effort", args, { id: "id", signal, onUpdate: () => {}, context: h.ctx }); }
 function lastText(r: any) { return r.content[0].text; }
+function recordedTool(h: any, name: string): any { return h.recorder.tools.find((candidate: any) => candidate.name === name); }
 
 test("client covers sentinel metadata, exact condition shapes, and cancellation transport", async () => {
   const sentinel = success(); sentinel.memory.updated = "Not yet updated.";
@@ -138,49 +144,33 @@ test("association lifecycle covers idle turns, malformed heartbeat facts, and se
 });
 
 test("using_effort serializes overlapping invocations in invocation order", async () => {
-  let releaseFirst!: () => void;
-  let firstStarted!: () => void;
+  let releaseFirst!: () => void, firstStarted!: () => void;
   const firstSettled = new Promise<void>(resolve => { releaseFirst = resolve; });
   const firstInvoked = new Promise<void>(resolve => { firstStarted = resolve; });
-  const tools = new Map<string, any>(); const hooks = new Map<string, any>(); const calls: string[][] = [];
-  let active:string[]=[]; const pi: any = { getActiveTools:()=>active, setActiveTools:(x:string[])=>{active=[...x]}, withFileMutationQueue:async(_p:string,f:any)=>f(), registerTool: (tool: any) => tools.set(tool.name, tool), on: (name: string, hook: any) => hooks.set(name, hook), exec: async (_: string, args: string[]) => {
-    calls.push(args); if (calls.length === 1) { firstStarted(); await firstSettled; return { code: 0, stdout: line(success("attached", OWNER, "first")), stderr: "" }; }
-    if (args[2] === "detach") return { code: 0, stdout: line({ schemaVersion: 2, condition: "detached" }), stderr: "" };
-    return { code: 0, stdout: line(success("attached", OWNER, "second")), stderr: "" };
-  } };
-  registerEffort(pi, { uuid: () => OWNER, isDirectory: async () => false, packageVersion: "0.84.2", fileMutationQueue: async (_path, work) => work() });
-  const execute = tools.get("using_effort").execute;
-  const first = execute("first", { effort: "first" }, new AbortController().signal, () => {}, { cwd: "/repo" });
+  const serial = harness([async () => { firstStarted(); await firstSettled; return success("attached", OWNER, "first"); }, { schemaVersion: 2, condition: "detached" }, success("attached", OWNER, "second")], { directory: async () => false });
+  const first = request(serial, { effort: "first" });
   await firstInvoked;
-  const second = execute("second", { effort: "second" }, new AbortController().signal, () => {}, { cwd: "/repo" });
-  assert.deepEqual(calls.map(args => args[2]), ["attach"], "second binary invocation began before the first settled");
+  const second = request(serial, { effort: "second" });
+  assert.deepEqual(serial.calls.map((args: string[]) => args[2]), ["attach"], "second binary invocation began before the first settled");
   releaseFirst();
   assert.equal(lastText(await first), "Attached to first.");
   assert.equal(lastText(await second), "Attached to second.");
-  assert.deepEqual(calls.map(args => args[2]), ["attach", "detach", "attach"]);
-  assert.match(hooks.get("context")({ messages: [] }, { cwd: "/repo" }).messages[0].content, /active=second/, "successful switch did not retain the second association");
+  assert.deepEqual(serial.calls.map((args: string[]) => args[2]), ["attach", "detach", "attach"]);
+  assert.match(serial.hooks.get("context")({ messages: [] }, serial.ctx).messages[0].content, /active=second/, "successful switch did not retain the second association");
 
-  let releaseFailure!: () => void;
-  let failureStarted!: () => void;
+  let releaseFailure!: () => void, failureStarted!: () => void;
   const failureSettled = new Promise<void>(resolve => { releaseFailure = resolve; });
   const failureInvoked = new Promise<void>(resolve => { failureStarted = resolve; });
-  const failureTools = new Map<string, any>(); const failureHooks = new Map<string, any>(); const failureCalls: string[][] = [];
-  let failureActive:string[]=[]; const failurePi: any = { getActiveTools:()=>failureActive, setActiveTools:(x:string[])=>{failureActive=[...x]}, withFileMutationQueue:async(_p:string,f:any)=>f(), registerTool: (tool: any) => failureTools.set(tool.name, tool), on: (name: string, hook: any) => failureHooks.set(name, hook), exec: async (_: string, args: string[]) => {
-    failureCalls.push(args); if (failureCalls.length === 1) { failureStarted(); await failureSettled; return { code: 0, stdout: line(success("attached", OWNER, "first")), stderr: "" }; }
-    if (args[2] === "detach") return { code: 0, stdout: line({ schemaVersion: 2, condition: "detached" }), stderr: "" };
-    return { code: 0, stdout: line(refusal("missing")), stderr: "" };
-  } };
-  registerEffort(failurePi, { uuid: () => OWNER, isDirectory: async () => false, packageVersion: "0.84.2", fileMutationQueue: async (_path, work) => work() });
-  const failureExecute = failureTools.get("using_effort").execute;
-  const attached = failureExecute("first", { effort: "first" }, new AbortController().signal, () => {}, { cwd: "/repo" });
+  const failure = harness([async () => { failureStarted(); await failureSettled; return success("attached", OWNER, "first"); }, { schemaVersion: 2, condition: "detached" }, refusal("missing")], { directory: async () => false });
+  const attached = request(failure, { effort: "first" });
   await failureInvoked;
-  const refused = failureExecute("second", { effort: "second" }, new AbortController().signal, () => {}, { cwd: "/repo" });
-  assert.deepEqual(failureCalls.map(args => args[2]), ["attach"], "failed switch began before the first attach settled");
+  const refused = request(failure, { effort: "second" });
+  assert.deepEqual(failure.calls.map((args: string[]) => args[2]), ["attach"], "failed switch began before the first attach settled");
   releaseFailure();
   await attached;
   assert.match(lastText(await refused), /operation/);
-  assert.deepEqual(failureCalls.map(args => args[2]), ["attach", "detach", "attach"]);
-  assert.equal(failureHooks.get("context")({ messages: [] }, { cwd: "/repo" }), undefined, "refused switch retained the detached prior association");
+  assert.deepEqual(failure.calls.map((args: string[]) => args[2]), ["attach", "detach", "attach"]);
+  assert.equal(failure.hooks.get("context")({ messages: [] }, failure.ctx), undefined, "refused switch retained the detached prior association");
 });
 
 test("factory negotiation is synchronous and suffix changes preserve the complete association", async () => {
@@ -218,12 +208,15 @@ test("ownership loss clears suffix and thrown optional emissions preserve heartb
 });
 
 test("remote Pi display suffix capability, replay, lifecycle clears, and failures remain advisory", async () => {
-  let defaultTool: any; const standalone: any = { getActiveTools:()=>[], setActiveTools:()=>{}, on:()=>{}, exec: async (_: string, argv: string[]) => ({ stdout: line(success("attached", argv[5], argv[3])) }), registerTool: (tool: any) => { if(tool.name==="using_effort") defaultTool = tool } }; await effortExtension(standalone); // default factory is intentionally usable
+  const defaultRecorder = createExtensionRecorder({ exec: async (_command, argv) => ({ code: 0, stdout: line(success("attached", argv[5], argv[3])), stderr: "", killed: false }) });
+  await defaultRecorder.install(effortExtension as any); // default factory is intentionally usable
   await mkdir("/tmp/.awf/worktrees/demo", { recursive: true });
-  await defaultTool.execute("id", { effort: "demo" }, new AbortController().signal, () => {}, { cwd: "/tmp" });
-  let missingDirectoryTool: any; await effortExtension({ getActiveTools:()=>[], setActiveTools:()=>{}, on:()=>{}, exec: standalone.exec, registerTool: (tool: any) => { if(tool.name==="using_effort") missingDirectoryTool = tool } });
-  await missingDirectoryTool.execute("id", { effort: "missing-dir" }, new AbortController().signal, () => {}, { cwd: "/definitely-missing" });
-  assert.throws(() => registerEffort({ on:()=>{}, exec: async () => ({ stdout: "" }), registerTool: () => {}, getActiveTools:()=>[], setActiveTools:()=>{} } as any, { uuid: () => "bad", packageVersion: "0.84.2", fileMutationQueue: async (_path, work) => work() }), /lowercase UUIDv4/);
+  await defaultRecorder.invokeToolDirect("using_effort", { effort: "demo" }, { context: defaultRecorder.makeContext({ cwd: "/tmp" }) });
+  const missingDirectoryRecorder = createExtensionRecorder({ exec: async (_command, argv) => ({ code: 0, stdout: line(success("attached", argv[5], argv[3])), stderr: "", killed: false }) });
+  await missingDirectoryRecorder.install(effortExtension as any);
+  await missingDirectoryRecorder.invokeToolDirect("using_effort", { effort: "missing-dir" }, { context: missingDirectoryRecorder.makeContext({ cwd: "/definitely-missing" }) });
+  const invalidOwnerRecorder = createExtensionRecorder({ exec: async () => ({ code: 0, stdout: "", stderr: "", killed: false }) });
+  assert.throws(() => registerEffort(invalidOwnerRecorder.api as any, { uuid: () => "bad", packageVersion: "0.84.2", fileMutationQueue: async (_path, work) => work() }), /lowercase UUIDv4/);
   const h = harness([success(), { schemaVersion: 2, condition: "detached" }, success("attached", OWNER, "other"), { schemaVersion: 2, condition: "detached" }]);
   assert.deepEqual(h.events, [["remote-pi:capabilities:request", undefined]]);
   assert.equal(typeof h.listeners.get("remote-pi:capabilities"), "function"); assert.equal(typeof h.listeners.get("remote-pi:display-suffix:request"), "function");
@@ -378,9 +371,9 @@ test("memory tools stay inactive while detached, preserve unrelated tools, carry
   const replies = [memoryReadReply(), memoryEditPreviewReply(), memoryEditReply(), memoryUpdatePreviewReply(), memoryUpdateReply()];
   const memoryExec = async (_command: string, argv: readonly string[], options: any) => ({ code: 0, stdout: line(replies.shift()), stderr: "" });
   const h = harness([success(), { schemaVersion: 2, condition: "detached" }], { active: ["read", "effort_memory_read"], memoryExec });
-  h.hooks.get("session_start")({}); assert.deepEqual(h.active(), ["read"]); assert.equal(h.tools.size, 4);
-  for (const name of ["effort_memory_read", "effort_memory_edit", "effort_memory_update"]) { const tool = h.tools.get(name); assert.equal(Array.isArray(tool.promptGuidelines), true); assert.match(tool.promptGuidelines[0], new RegExp(name)); }
-  const readParameters = h.tools.get("effort_memory_read").parameters; const editParameters = h.tools.get("effort_memory_edit").parameters; const updateParameters = h.tools.get("effort_memory_update").parameters;
+  h.hooks.get("session_start")({}); assert.deepEqual(h.active(), ["read"]); assert.equal(h.recorder.tools.length, 4);
+  for (const name of ["effort_memory_read", "effort_memory_edit", "effort_memory_update"]) { const tool = recordedTool(h, name); assert.equal(Array.isArray(tool.promptGuidelines), true); assert.match(tool.promptGuidelines[0], new RegExp(name)); }
+  const readParameters = recordedTool(h, "effort_memory_read").parameters; const editParameters = recordedTool(h, "effort_memory_edit").parameters; const updateParameters = recordedTool(h, "effort_memory_update").parameters;
   assert.equal(Value.Check(readParameters, { offset: 1, limit: 2 }), true); assert.equal(Value.Check(readParameters, { path: "x" }), false); assert.equal(Value.Check(readParameters, { offset: 0 }), false);
   assert.equal(Value.Check(editParameters, { edits: [{ oldText: "x", newText: "" }] }), true);
   for (const invalid of [{}, { edits: [] }, { edits: [{ oldText: "", newText: "x" }] }, { edits: [{ oldText: "x", newText: "", extra: true }] }, { edits: [{ oldText: "x", newText: "" }], path: "x" }]) assert.equal(Value.Check(editParameters, invalid), false);
@@ -388,14 +381,14 @@ test("memory tools stay inactive while detached, preserve unrelated tools, carry
   for (const invalid of [{ phase: "" }, { next: "x".repeat(501) }, { phase: "Build", path: "x" }]) assert.equal(Value.Check(updateParameters, invalid), false);
   await request(h, { effort: "demo" }); assert.deepEqual(h.active(), ["read", "effort_memory_read", "effort_memory_edit", "effort_memory_update"]);
   const signal = new AbortController().signal;
-  assert.equal(lastText(await h.tools.get("effort_memory_read").execute("id", {}, signal, () => {}, h.ctx)), "line\n");
-  assert.equal(lastText(await h.tools.get("effort_memory_edit").execute("edit-1", { edits: [{ oldText: "old", newText: "new" }] }, signal, () => {}, h.ctx)), "Replaced 1 block(s) in effort memory.");
-  assert.equal(lastText(await h.tools.get("effort_memory_update").execute("update-1", { phase: "Done" }, signal, () => {}, h.ctx)), "Memory metadata updated.");
+  assert.equal(lastText(await recordedTool(h, "effort_memory_read").execute("id", {}, signal, () => {}, h.ctx)), "line\n");
+  assert.equal(lastText(await recordedTool(h, "effort_memory_edit").execute("edit-1", { edits: [{ oldText: "old", newText: "new" }] }, signal, () => {}, h.ctx)), "Replaced 1 block(s) in effort memory.");
+  assert.equal(lastText(await recordedTool(h, "effort_memory_update").execute("update-1", { phase: "Done" }, signal, () => {}, h.ctx)), "Memory metadata updated.");
   assert.deepEqual(h.queueCalls, ["/repo/.awf/efforts/demo/memory.md", "/repo/.awf/efforts/demo/memory.md"], "preview entered the real-path file mutation queue");
   await request(h, { detach: true }); assert.deepEqual(h.active(), ["read"]);
-  await assert.rejects(h.tools.get("effort_memory_read").execute("id", {}, signal, () => {}, h.ctx), /Attach an effort/);
-  await assert.rejects(h.tools.get("effort_memory_edit").execute("edit-2", { edits: [{ oldText: "old", newText: "new" }] }, signal, () => {}, h.ctx), /Attach an effort/);
-  await assert.rejects(h.tools.get("effort_memory_update").execute("id", {}, signal, () => {}, h.ctx), /phase or next/);
+  await assert.rejects(recordedTool(h, "effort_memory_read").execute("id", {}, signal, () => {}, h.ctx), /Attach an effort/);
+  await assert.rejects(recordedTool(h, "effort_memory_edit").execute("edit-2", { edits: [{ oldText: "old", newText: "new" }] }, signal, () => {}, h.ctx), /Attach an effort/);
+  await assert.rejects(recordedTool(h, "effort_memory_update").execute("id", {}, signal, () => {}, h.ctx), /phase or next/);
 });
 
 test("memory operations serialize with association changes until the complete operation settles", async () => {
@@ -403,7 +396,7 @@ test("memory operations serialize with association changes until the complete op
   const readSettled = new Promise<void>((resolve) => { releaseRead = resolve; }); const readInvoked = new Promise<void>((resolve) => { readStarted = resolve; });
   const h = harness([success(), { schemaVersion: 2, condition: "detached" }], { active: ["read"], memoryExec: async () => { readStarted(); await readSettled; return { code: 0, stdout: line(memoryReadReply()), stderr: "" }; } });
   await request(h, { effort: "demo" });
-  const signal = new AbortController().signal; const reading = h.tools.get("effort_memory_read").execute("read", {}, signal, () => {}, h.ctx); await readInvoked;
+  const signal = new AbortController().signal; const reading = recordedTool(h, "effort_memory_read").execute("read", {}, signal, () => {}, h.ctx); await readInvoked;
   const detaching = request(h, { detach: true }); await Promise.resolve();
   assert.deepEqual(h.calls.map((args: string[]) => args[2]), ["attach"], "detach began before the memory operation settled"); assert.deepEqual(h.active(), ["read", "effort_memory_read", "effort_memory_edit", "effort_memory_update"]);
   releaseRead(); assert.equal(lastText(await reading), "line\n"); assert.equal(lastText(await detaching), "Detached.");
@@ -414,13 +407,13 @@ test("memory refusals render the memory axis and ownership losses clear only com
   for (const condition of ["not-owner", "missing", "unsafe-activity"]) {
     const memoryExec = async () => ({ code: 0, stdout: line(memoryOutcome(condition)), stderr: "" });
     const h = harness([success()], { active: ["read"], memoryExec }); await request(h, { effort: "demo" });
-    const result = await h.tools.get("effort_memory_read").execute("id", {}, new AbortController().signal, () => {}, h.ctx);
+    const result = await recordedTool(h, "effort_memory_read").execute("id", {}, new AbortController().signal, () => {}, h.ctx);
     assert.match(lastText(result), /changedMemory=false/); assert.equal(lastText(result).includes("changedActivity"), false); assert.deepEqual(h.active(), ["read"]); assert.equal(h.hooks.get("context")({ messages: [] }, h.ctx), undefined);
   }
   const retained = harness([success()], { memoryExec: async () => ({ code: 0, stdout: line(memoryOutcome("invalid-memory")), stderr: "" }) }); await request(retained, { effort: "demo" });
-  const refusal = await retained.tools.get("effort_memory_read").execute("id", {}, new AbortController().signal, () => {}, retained.ctx); assert.match(lastText(refusal), /changedMemory=false/); assert.ok(retained.hooks.get("context")({ messages: [] }, retained.ctx));
+  const refusal = await recordedTool(retained, "effort_memory_read").execute("id", {}, new AbortController().signal, () => {}, retained.ctx); assert.match(lastText(refusal), /changedMemory=false/); assert.ok(retained.hooks.get("context")({ messages: [] }, retained.ctx));
   const uncertain = harness([success()], { memoryExec: async () => ({ code: 0, stdout: line(memoryOutcome("memory-failure")), stderr: "" }) }); await request(uncertain, { effort: "demo" });
-  assert.match(lastText(await uncertain.tools.get("effort_memory_read").execute("id", {}, new AbortController().signal, () => {}, uncertain.ctx)), /cause=publication uncertain/);
+  assert.match(lastText(await recordedTool(uncertain, "effort_memory_read").execute("id", {}, new AbortController().signal, () => {}, uncertain.ctx)), /cause=publication uncertain/);
 });
 
 test("explicit detach and unsafe heartbeat clear association and memory tools", async () => {
@@ -470,26 +463,26 @@ test("effort runtime guard checks actual version, active-tool methods, and packa
 });
 
 test("default effort registration derives package facts and guards missing or unreadable runtime exports", async () => {
-  const makePi = () => { const tools: any[] = []; const hooks = new Map<string, any>(); let active: string[] = []; return { tools, hooks, pi: { on: (name: string, hook: any) => hooks.set(name, hook), registerTool: (tool: any) => tools.push(tool), exec: async () => ({ stdout: "" }), getActiveTools: () => active, setActiveTools: (value: string[]) => { active = value; } } as any }; };
+  const makePi = () => { const recorder:any = createExtensionRecorder({exec:async()=>({code:0,stdout:"",stderr:"",killed:false})}); return { tools: recorder.tools, hooks: recorder.handlers, pi: recorder.api }; };
   const queue = async (_path: string, work: any) => work();
   const supported = makePi(); await registerDefaultEffort(supported.pi, { getPackageDir: () => "/pkg", withFileMutationQueue: queue }, (async (path: any, encoding: any) => { assert.equal(path, "/pkg/package.json"); assert.equal(encoding, "utf8"); return JSON.stringify({ version: "0.84.2" }); }) as any); assert.equal(supported.tools.length, 4);
   const marker = Symbol.for("awf.pi.minimum-runtime-notified"); const original = (globalThis as any)[marker];
   try {
-    delete (globalThis as any)[marker]; const unreadable = makePi(); await registerDefaultEffort(unreadable.pi, {}, (async () => { throw new Error("read"); }) as any); assert.deepEqual(unreadable.tools, []); const notices: any[] = []; await unreadable.hooks.get("session_start")({}, { ui: { notify: (...args: any[]) => notices.push(args) } }); assert.match(notices[0][0], /found unknown/);
+    delete (globalThis as any)[marker]; const unreadable = makePi(); await registerDefaultEffort(unreadable.pi, {}, (async () => { throw new Error("read"); }) as any); assert.deepEqual(unreadable.tools, []); const notices: any[] = []; await unreadable.hooks.get("session_start")[0]({}, { ui: { notify: (...args: any[]) => notices.push(args) } }); assert.match(notices[0][0], /found unknown/);
     delete (globalThis as any)[marker]; const malformed = makePi(); await registerDefaultEffort(malformed.pi, { getPackageDir: () => "/pkg", withFileMutationQueue: queue }, (async () => JSON.stringify({ version: 81 })) as any); assert.deepEqual(malformed.tools, []);
   } finally { if (original === undefined) delete (globalThis as any)[marker]; else (globalThis as any)[marker] = original; }
 });
 
 test("default memory adapter routes owner-scoped read to pi.exec and edit stdin to the child adapter", async () => {
-  const tools = new Map<string, any>(); let active: string[] = []; const calls: any[] = []; const pi: any = { on: () => {}, getActiveTools: () => active, setActiveTools: (value: string[]) => { active = value; }, registerTool: (tool: any) => tools.set(tool.name, tool), exec: async (_command: string, argv: readonly string[]) => { calls.push(argv); return { code: 0, stdout: line(argv[1] === "activity" ? success("attached", OWNER, "demo") : memoryReadReply()), stderr: "" }; } };
-  registerEffort(pi, { uuid: () => OWNER, packageVersion: "0.84.2", fileMutationQueue: async (_path, work) => work(), isDirectory: async () => false }); const ctx = { cwd: "/definitely-missing" }; const signal = new AbortController().signal;
-  await tools.get("using_effort").execute("id", { effort: "demo" }, signal, () => {}, ctx); assert.equal(lastText(await tools.get("effort_memory_read").execute("id", {}, signal, () => {}, ctx)), "line\n"); assert.equal(calls.at(-1)[1], "memory");
-  await assert.rejects(tools.get("effort_memory_edit").execute("id", { edits: [{ oldText: "old", newText: "new" }] }, signal, () => {}, ctx), /execution failed/);
+  const calls: any[] = []; const recorder:any=createExtensionRecorder({exec:async(_command:string,argv:readonly string[])=>{calls.push(argv);return {code:0,stdout:line(argv[1]==="activity"?success("attached",OWNER,"demo"):memoryReadReply()),stderr:"",killed:false};}});
+  registerEffort(recorder.api, { uuid: () => OWNER, packageVersion: "0.84.2", fileMutationQueue: async (_path, work) => work(), isDirectory: async () => false }); const ctx = recorder.makeContext({cwd:"/definitely-missing"}); const signal = new AbortController().signal;
+  await recorder.invokeToolDirect("using_effort",{effort:"demo"},{id:"id",signal,context:ctx}); assert.equal(lastText(await recorder.invokeToolDirect("effort_memory_read",{},{id:"id",signal,context:ctx})), "line\n"); assert.equal(calls.at(-1)[1], "memory");
+  await assert.rejects(recorder.invokeToolDirect("effort_memory_edit",{edits:[{oldText:"old",newText:"new"}]},{id:"id",signal,context:ctx}), /execution failed/);
 });
 
 test("memory rendering numbers multiple next actions on its own mutation axis", async () => {
   const memoryExec = async () => ({ code: 0, stdout: line({ ...memoryOutcome("invalid-memory"), outcome: { ...memoryOutcome("invalid-memory").outcome, nextActions: ["first", "second"] } }), stderr: "" });
-  const h = harness([success()], { memoryExec }); await request(h, { effort: "demo" }); const text = lastText(await h.tools.get("effort_memory_read").execute("id", {}, new AbortController().signal, () => {}, h.ctx)); assert.match(text, /1\. first 2\. second/);
+  const h = harness([success()], { memoryExec }); await request(h, { effort: "demo" }); const text = lastText(await recordedTool(h, "effort_memory_read").execute("id", {}, new AbortController().signal, () => {}, h.ctx)); assert.match(text, /1\. first 2\. second/);
 });
 
 test("memory client covers optional argument branches, aggregate request cap, and UTF-8 diagnostic truncation", async () => {
@@ -562,7 +555,7 @@ test("mutation call rendering previews once per key, serializes, invalidates asy
   const gates: Array<(reply: any) => void> = []; const calls: string[][] = [];
   const memoryExec = async (_command: string, argv: readonly string[]) => { calls.push([...argv]); return new Promise<any>((resolve) => gates.push((reply) => resolve({ code: 0, stdout: line(reply), stderr: "" }))); };
   const h = harness([success()], { memoryExec }); await request(h, { effort: "demo" });
-  const tool = h.tools.get("effort_memory_edit"); assert.equal(tool.renderShell, "self");
+  const tool = recordedTool(h, "effort_memory_edit"); assert.equal(tool.renderShell, "self");
   const context = rowContext({ args: editArgs });
   const row = tool.renderCall(editArgs, fakeTheme, context);
   assert.match(rowText(row), /toolPendingBg/); assert.match(rowText(row), /\[toolTitle\]\*edit memory\*/);
@@ -597,7 +590,7 @@ test("mutation execution awaits the rendered preview, queues only the mutation, 
   const calls: string[][] = []; const replies: any[] = [previewDiff(), memoryEditReply({ diff: { text: "-7 old\n+7 new", firstChangedLine: 7, truncated: false } })];
   const memoryExec = async (_command: string, argv: readonly string[]) => { calls.push([...argv]); return { code: 0, stdout: line(replies.shift()), stderr: "" }; };
   const h = harness([success()], { memoryExec }); await request(h, { effort: "demo" });
-  const tool = h.tools.get("effort_memory_edit"); const context = rowContext({ args: editArgs, toolCallId: "call-7" });
+  const tool = recordedTool(h, "effort_memory_edit"); const context = rowContext({ args: editArgs, toolCallId: "call-7" });
   const row = tool.renderCall(editArgs, fakeTheme, context); await settle();
   assert.match(rowText(row), /\+6 new/, "the legacy-offset preview was not rendered verbatim");
   const result = await tool.execute("call-7", editArgs, new AbortController().signal, () => {}, h.ctx);
@@ -621,7 +614,7 @@ test("an authoritative result latches the row against a preview that settles aft
     ? new Promise<any>((resolve) => gates.push((reply) => resolve({ code: 0, stdout: line(reply), stderr: "" })))
     : { code: 0, stdout: line(memoryEditReply({ diff: { text: "-7 old\n+7 new\n", firstChangedLine: 7, truncated: false } })), stderr: "" };
   const h = harness([success()], { memoryExec }); await request(h, { effort: "demo" });
-  const tool = h.tools.get("effort_memory_edit"); const context = rowContext({ args: editArgs, toolCallId: "call-latch" });
+  const tool = recordedTool(h, "effort_memory_edit"); const context = rowContext({ args: editArgs, toolCallId: "call-latch" });
   const row = tool.renderCall(editArgs, fakeTheme, context); await settle();
   assert.equal(gates.length, 1, "the call-time preview never started");
   const result = { content: [{ type: "text", text: "Replaced 1 block(s) in effort memory." }], details: memoryEditReply({ diff: { text: "-7 old\n+7 new\n", firstChangedLine: 7, truncated: false } }) };
@@ -651,13 +644,13 @@ test("preview refusal and transport failure fail before mutation and clear only 
     const calls: string[][] = []; const reply = condition === "no-match" ? memoryOutcome("no-match", false, { edit: { index: 0 } }) : memoryOutcome(condition);
     const memoryExec = async (_command: string, argv: readonly string[]) => { calls.push([...argv]); return { code: 0, stdout: line(reply), stderr: "" }; };
     const h = harness([success()], { memoryExec }); await request(h, { effort: "demo" });
-    await assert.rejects(h.tools.get("effort_memory_edit").execute("id", editArgs, new AbortController().signal, () => {}, h.ctx), /changedMemory=false/);
+    await assert.rejects(recordedTool(h, "effort_memory_edit").execute("id", editArgs, new AbortController().signal, () => {}, h.ctx), /changedMemory=false/);
     assert.deepEqual(calls.map((argv) => argv.includes("--preview")), [true], "mutation ran after a refused preview");
     assert.deepEqual(h.queueCalls, []);
     assert.equal(Boolean(h.hooks.get("context")({ messages: [] }, h.ctx)), retained);
   }
   const broken = harness([success()], { memoryExec: async () => { throw new Error("spawn"); } }); await request(broken, { effort: "demo" });
-  await assert.rejects(broken.tools.get("effort_memory_update").execute("id", { next: "Review" }, new AbortController().signal, () => {}, broken.ctx), /execution failed/);
+  await assert.rejects(recordedTool(broken, "effort_memory_update").execute("id", { next: "Review" }, new AbortController().signal, () => {}, broken.ctx), /execution failed/);
   assert.deepEqual(broken.queueCalls, [], "mutation ran after a failed preview transport");
 });
 
@@ -665,7 +658,7 @@ test("update preview omits the timestamp row while its authoritative result carr
   const calls: string[][] = []; const replies: any[] = [memoryUpdatePreviewReply({ diff: { text: "-2 phase: Build\n+2 phase: Done", firstChangedLine: 2, truncated: false } }), memoryUpdateReply({ diff: { text: "-2 phase: Build\n+2 phase: Done\n-5 updated: old\n+5 updated: new", firstChangedLine: 2, truncated: false } }), memoryUpdatePreviewReply()];
   const memoryExec = async (_command: string, argv: readonly string[]) => { calls.push([...argv]); return { code: 0, stdout: line(replies.shift()), stderr: "" }; };
   const h = harness([success()], { memoryExec }); await request(h, { effort: "demo" });
-  const tool = h.tools.get("effort_memory_update");
+  const tool = recordedTool(h, "effort_memory_update");
   const context = rowContext({ args: { phase: "Done" }, toolCallId: "update-9" });
   tool.renderCall({ phase: "Done" }, fakeTheme, context); await settle();
   const previewed = rowText(context.state.callComponent);
@@ -688,7 +681,7 @@ test("update preview omits the timestamp row while its authoritative result carr
 test("mutation result rendering replaces preview state with refusals, errors, empty diffs, and rebuilt rows", async () => {
   const h = harness([success()], { memoryExec: async () => ({ code: 0, stdout: line(memoryEditPreviewReply({ diff: { text: "", firstChangedLine: null, truncated: true } })), stderr: "" }) });
   await request(h, { effort: "demo" });
-  const tool = h.tools.get("effort_memory_edit"); const context = rowContext({ args: editArgs });
+  const tool = recordedTool(h, "effort_memory_edit"); const context = rowContext({ args: editArgs });
   const row = tool.renderCall(editArgs, fakeTheme, context); await settle();
   const noop = rowText(row); assert.match(noop, /edit memory/); assert.match(noop, /Diff truncated for display\./);
   assert.equal((row as any).body, undefined, "an empty diff rendered a blank raw body under the stable header");
@@ -709,7 +702,7 @@ test("a call-time preview failure marks the row without ever reaching the mutati
   const calls: string[][] = [];
   const memoryExec = async (_command: string, argv: readonly string[]) => { calls.push([...argv]); return { code: 0, stdout: line(memoryOutcome("no-match", false, { edit: { index: 0 } })), stderr: "" }; };
   const h = harness([success()], { memoryExec }); await request(h, { effort: "demo" });
-  const tool = h.tools.get("effort_memory_edit"); const context = rowContext({ args: editArgs, toolCallId: "call-fail" });
+  const tool = recordedTool(h, "effort_memory_edit"); const context = rowContext({ args: editArgs, toolCallId: "call-fail" });
   const row = tool.renderCall(editArgs, fakeTheme, context); await settle();
   assert.equal(context.invalidations, 1);
   const failed = rowText(row);
@@ -723,7 +716,7 @@ test("retained preview state stays bounded and is keyed by the working directory
   const calls: string[][] = [];
   const memoryExec = async (_command: string, argv: readonly string[]) => { calls.push([...argv]); return { code: 0, stdout: line(previewDiff()), stderr: "" }; };
   const h = harness([success()], { memoryExec }); await request(h, { effort: "demo" });
-  const tool = h.tools.get("effort_memory_edit");
+  const tool = recordedTool(h, "effort_memory_edit");
   // A call rendered in an abandoned turn never executes and so never settles; only the insertion bound reclaims it.
   const rendered = 33;
   for (let index = 0; index < rendered; index++) tool.renderCall(editArgs, fakeTheme, rowContext({ args: editArgs, toolCallId: `bounded-${index}` }));
@@ -743,7 +736,7 @@ test("retained preview state stays bounded and is keyed by the working directory
 test("an asynchronous preview redraw failure leaves the row rather than rejecting", async () => {
   const h = harness([success()], { memoryExec: async () => ({ code: 0, stdout: line(previewDiff()), stderr: "" }) });
   await request(h, { effort: "demo" });
-  const tool = h.tools.get("effort_memory_edit");
+  const tool = recordedTool(h, "effort_memory_edit");
   // The call-time render succeeds; only the asynchronous redraw that follows the preview fails.
   let foregrounds = 0;
   const flakyTheme = { ...fakeTheme, fg: (color: string, value: string) => { foregrounds++; if (foregrounds > 1) throw new Error("theme unavailable"); return `[${color}]${value}`; } };
