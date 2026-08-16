@@ -30,7 +30,7 @@ Add `TestGateRunnerModes`, a focused Go fixture that copies the root `x` into an
 - `./x gate full`, unknown gate arguments, and extra gate arguments fail with the gate usage text and invoke no stage;
 - `./x test` prints exactly `test: Pi container skipped; run './x pi-test run' alone or './x gate' to include it` to stderr before forwarding its arguments to `go test ./...`.
 
-Keep `TestPiExtensionHostLaneGateWiring` as the static ownership proof. Strengthen it to assert the explicit gate command selects only `TestPiRealRuntimeSmoke`, disables Go test caching with `-count=1`, supplies the opt-in environment value, and does not directly add a second `container.sh run` inside the gate arm. Extend the existing Sundial runner assertions to prove its `gate` arm rejects `full`, unknown values, and extra arguments rather than silently accepting them; preserve the `test` arm's existing forwarding of arguments to `go test ./...`.
+Keep `TestPiExtensionContainerGateWiring` as the static ownership proof. Strengthen it to assert the explicit gate command selects only `TestPiRealRuntimeSmoke`, disables Go test caching with `-count=1`, supplies the opt-in environment value, and does not directly add a second `container.sh run` inside the gate arm. Extend the existing Sundial runner assertions to prove its `gate` arm rejects `full`, unknown values, and extra arguments rather than silently accepting them; preserve the `test` arm's existing forwarding of arguments to `go test ./...`.
 
 ### Task 1.2: Make the Pi runtime proof explicit, singular, and uncached
 Latitude: exact
