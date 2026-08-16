@@ -29,13 +29,15 @@ and generated-authority guard.
 
 ## Decision
 
-1. `decision: embedded-version-authority` Replace the hand-edited Go version constant with one
-   embedded plain-text version authority while retaining `project.Version` as the value consumed by
+1. `decision: embedded-version-authority` Replace the hand-edited Go version constant with
+   `internal/project/VERSION` as the one embedded plain-text version authority while retaining
+   `project.Version` as the value consumed by
    the CLI, lock stamping, bootstrap pinning, changelog checks, and schema compatibility. No build
    metadata or other input becomes a competing version authority. This revises ADR-0049's constant
    representation without changing its single-authority semantics.
-2. `decision: exact-release-input-selection` The staged test selector treats only the exact embedded
-   version authority and exact root `.awf/awf.lock` as inputs that select neither test suite. Existing
+2. `decision: exact-release-input-selection` The staged test selector treats only exact
+   `internal/project/VERSION` and exact root `.awf/awf.lock` as inputs that select neither test suite.
+   Existing
    documentation-only behavior is unchanged. Neighboring, mixed, unknown, unreadable, malformed,
    and empty selections retain their existing explicit or fail-safe behavior. This refines ADR-0275
    and ADR-0276 without weakening their uncertainty policy.
