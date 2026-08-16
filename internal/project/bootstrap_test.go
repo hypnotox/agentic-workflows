@@ -37,6 +37,7 @@ func bootstrapFile(t *testing.T, configYAML string) *RenderedFile {
 }
 
 // invariant: rendering/companion-scripts:bootstrap-env-override (TestBootstrapEnvOverrideDefaultsToRenderingVersion)
+// invariant: tooling/cli:single-version-authority (TestBootstrapEnvOverrideDefaultsToRenderingVersion)
 func TestBootstrapEnvOverrideDefaultsToRenderingVersion(t *testing.T) {
 	rf := bootstrapFile(t, "prefix: example\nprofile: full\nintegrationBranch: main\nbootstrap:\n  enabled: true\n")
 	if rf == nil {

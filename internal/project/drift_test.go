@@ -271,6 +271,7 @@ func sprintfVars(pitfalls string) string {
 }
 
 // invariant: config/migrations-and-locks:schema-version-lock (TestSyncStampsSchemaVersion)
+// invariant: tooling/cli:single-version-authority (TestSyncStampsSchemaVersion)
 func TestSyncStampsSchemaVersion(t *testing.T) {
 	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)

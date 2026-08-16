@@ -121,6 +121,7 @@ func TestAwfVersionSingleAuthority(t *testing.T) {
 	}
 }
 
+// invariant: tooling/cli:single-version-authority (TestVersionLine)
 func TestVersionLine(t *testing.T) {
 	if got, want := versionLine(nil, false), project.Version; got != want {
 		t.Errorf("versionLine(no build info) = %q, want %q", got, want)

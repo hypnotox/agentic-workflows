@@ -20,6 +20,7 @@ import (
 // the changelog - entries accumulate under [Unreleased] until the release-prep
 // promotion - and the exact match is enforced at release time by cmd/releasecheck.
 // invariant: tooling/changelog-and-release:changelog-monotonic (TestChangelogMonotonicOrder)
+// invariant: tooling/cli:single-version-authority (TestChangelogMonotonicOrder)
 func TestChangelogMonotonicOrder(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx

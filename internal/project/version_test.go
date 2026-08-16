@@ -12,6 +12,7 @@ import (
 )
 
 // invariant: config/migrations-and-locks:schema-min-version (TestSchemaMinimumVersionAuthority)
+// invariant: tooling/cli:single-version-authority (TestSchemaMinimumVersionAuthority)
 func TestSchemaMinimumVersionAuthority(t *testing.T) {
 	for schema, minimum := range minVersionBySchema {
 		if err := ValidateSchemaMinimumVersion(schema, minimum); err != nil {
@@ -45,6 +46,7 @@ func TestSchemaMinimumVersionAuthority(t *testing.T) {
 	}
 }
 
+// invariant: tooling/cli:single-version-authority (TestVersionAuthority)
 func TestVersionAuthority(t *testing.T) {
 	for _, tc := range []struct {
 		name, raw, exposed, want string

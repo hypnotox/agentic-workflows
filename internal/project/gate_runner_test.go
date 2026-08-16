@@ -201,15 +201,38 @@ func TestGateRunnerSelectsTestsFromStagedChanges(t *testing.T) {
 		assertGateSelection(t, root, logPath, nil, []string{"gate: skipping Go tests and coverage for test-free staged changes", "gate: skipping Pi runtime smoke for test-free staged changes"})
 	})
 
-	t.Run("release preparation inputs skip both suites", func(t *testing.T) {
-		root, logPath := committedGateRunnerFixture(t)
-		gitfixture.Stage(t, gitfixture.At(root), map[string]string{
+	for _, tc := range []struct {
+		name  string
+		files map[string]string
+	}{
+		{"exact version authority", map[string]string{"internal/project/VERSION": "0.40.0\n"}},
+		{"exact root lock", map[string]string{".awf/awf.lock": "changed\n"}},
+		{"release preparation inputs", map[string]string{
 			"internal/project/VERSION": "0.40.0\n",
 			".awf/awf.lock":            "changed\n",
 			"changelog/CHANGELOG.md":   "changed\n",
+		}},
+	} {
+		t.Run(tc.name+" skips both suites", func(t *testing.T) {
+			root, logPath := committedGateRunnerFixture(t)
+			gitfixture.Stage(t, gitfixture.At(root), tc.files)
+			assertGateSelection(t, root, logPath, nil, []string{"gate: skipping Go tests and coverage for test-free staged changes", "gate: skipping Pi runtime smoke for test-free staged changes"})
 		})
-		assertGateSelection(t, root, logPath, nil, []string{"gate: skipping Go tests and coverage for test-free staged changes", "gate: skipping Pi runtime smoke for test-free staged changes"})
-	})
+	}
+
+	for _, tc := range []struct {
+		name  string
+		files map[string]string
+	}{
+		{"version plus unknown", map[string]string{"internal/project/VERSION": "0.40.0\n", "LICENSE": "changed\n"}},
+		{"lock plus neighboring awf source", map[string]string{".awf/awf.lock": "changed\n", ".awf/config.yaml": "changed\n"}},
+	} {
+		t.Run(tc.name+" runs both suites", func(t *testing.T) {
+			root, logPath := committedGateRunnerFixture(t)
+			gitfixture.Stage(t, gitfixture.At(root), tc.files)
+			assertGateSelection(t, root, logPath, both, nil)
+		})
+	}
 
 	for _, path := range []string{
 		"templates/pi/extension.ts.tmpl", ".pi/agents/reviewer.md", ".pi/skills/reviewer/SKILL.md", "x",
