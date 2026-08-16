@@ -8,6 +8,8 @@ query a single version or a range.
 
 ## [Unreleased]
 
+## [0.39.0] - 2026-08-16
+
 ### Breaking changes
 
 - The awf-owned Pi effort extension now requires Pi 0.84.2 or a later compatible build; adopters on the former 0.81.1 floor must upgrade.
