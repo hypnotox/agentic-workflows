@@ -15,10 +15,10 @@ Go-first contributor environment with no host Node or npm requirement. ADR-0198 
 container ephemeral and content-keyed to eliminate persistent-container leaks, checkout-path image
 multiplication, and unsafe full-repository copies.
 
-That local-environment constraint no longer serves this repository. Its development environment
-already uses npm broadly, and NVM can give local execution the same explicit Node version as CI.
-Docker now contributes an image build, cleanup surface, and Docker-specific proof machinery without
-providing a test semantic that the suite needs.
+That local-environment constraint no longer serves this repository. The repository now accepts
+pinned host Node and npm as prerequisites for this lane, and NVM can give local execution the same
+explicit Node version as CI. Docker now contributes an image build, cleanup surface, and
+Docker-specific proof machinery without providing a test semantic that the suite needs.
 
 Removing Docker must not weaken the useful guarantees it happened to provide. The dependency tree
 must still derive from the lockfile rather than ambient packages, generated sources must still be
@@ -30,13 +30,16 @@ to remain consistent across macOS development and Linux CI.
 
 1. `decision: host-node-lane` Run the Pi-extension suite directly on the host with no Docker
    prerequisite. Host Node and npm are repository development prerequisites for this lane.
-2. `decision: exact-lts-pin` Pin one exact latest-LTS Node release in the repository. Local NVM
-   selection and CI setup consume that single pin, so neither a moving LTS alias nor an independently
-   maintained CI version can change the runtime implicitly.
+2. `decision: exact-lts-pin` Pin Node v24.19.0, the selected latest-LTS release, exactly in the
+   repository. Local NVM selection and CI setup consume that single pin, so neither a moving LTS
+   alias nor an independently maintained CI version can change the runtime implicitly. Local
+   execution never downloads the runtime silently: when NVM lacks the pinned version, it fails with
+   an actionable `nvm install v24.19.0` instruction.
 3. `decision: lockfile-owned-dependencies` Resolve all Pi-test tools and packages from the harness's
-   lockfile-installed dependency tree. A reusable installation is valid only for its dependency
-   inputs, exact Node and npm versions, operating system, and architecture; no global npm package
-   participates.
+   lockfile-installed dependency tree through `npm ci --ignore-scripts`. A reusable installation is
+   valid only for its dependency inputs, exact Node and npm versions, operating system, and
+   architecture; no global npm package participates and dependency preparation runs no package
+   lifecycle scripts.
 4. `decision: serialized-checkout-lane` Serialize the complete Pi lane per checkout. A concurrent
    invocation waits, and stale ownership can be recovered, so dependency replacement cannot race a
    test resolving from the same tree.
@@ -46,6 +49,8 @@ to remain consistent across macOS development and Linux CI.
 6. `decision: retained-assurance` Retain strict TypeScript compilation, 100 percent statement,
    branch, function, and line coverage, staged-path lane selection, and deterministic local and CI
    execution.
+7. `decision: retire-docker-cleanup` Retire the Pi lane's reset and Docker-object cleanup capability.
+   A host lane creates no lane-owned Docker state for those operations to manage.
 
 ## State changes
 
@@ -80,6 +85,7 @@ they addressed; this decision changes current authority forward rather than rewr
 | Keep the ephemeral Docker lane | Preserves a no-Node host, but retains infrastructure that no test semantic requires. |
 | Run directly against ambient Node and packages | Smallest script, but makes runtime and dependency drift invisible. |
 | Pin the moving NVM LTS alias | Automatically follows releases, but makes an unchanged checkout nondeterministic. |
+| Install dependencies cleanly on every invocation | Avoids reusable-tree validation, but repeats a costly installation even when every dependency input is unchanged. |
 | Give every concurrent run an isolated dependency tree | Preserves concurrency at the cost of repeated installs and broader cache ownership. |
 | Fail immediately when the checkout is busy | Simpler than waiting, but makes ordinary overlapping gate activity unnecessarily brittle. |
 
