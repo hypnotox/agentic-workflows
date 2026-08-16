@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-0283: Advance Pi Runtime Floor to 0.84.2](0283-advance-pi-runtime-floor-to-0-84-2.md) (Proposed)
 
 ## History
 
