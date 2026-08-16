@@ -144,7 +144,7 @@ func TestFormatProvenance(t *testing.T) {
 	}{
 		{"empty", debug.BuildInfo{}, ""},
 		{"devel skipped", debug.BuildInfo{Main: debug.Module{Version: "(devel)"}}, ""},
-		{"const echo skipped", debug.BuildInfo{Main: debug.Module{Version: "v" + project.Version}}, ""},
+		{"authority echo skipped", debug.BuildInfo{Main: debug.Module{Version: "v" + project.Version}}, ""},
 		{"pseudo version kept", debug.BuildInfo{Main: debug.Module{Version: "v9.9.9-pre"}}, "v9.9.9-pre"},
 		{"revision truncated", debug.BuildInfo{
 			Settings: []debug.BuildSetting{{Key: "vcs.revision", Value: long}},

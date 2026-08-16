@@ -72,7 +72,7 @@ func awfVersion() string {
 }
 
 // formatProvenance renders display-only build metadata - the module version
-// when it adds information beyond the const, and the short VCS revision
+// when it adds information beyond the embedded project version, and the short VCS revision
 // (ADR-0049 Decision 2).
 func formatProvenance(info *debug.BuildInfo) string {
 	var parts []string

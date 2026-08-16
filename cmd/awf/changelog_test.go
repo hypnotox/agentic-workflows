@@ -15,9 +15,9 @@ import (
 )
 
 // TestChangelogMonotonicOrder keeps the changelog ordered without pinning it to the
-// version const (ADR-0078): entries must be strictly descending by semver and the
-// newest entry must not exceed project.Version. Mid-cycle the const may run ahead of
-// the changelog - entries accumulate under [Unreleased] until the release-prep
+// embedded version value (ADR-0078): entries must be strictly descending by semver and
+// the newest entry must not exceed project.Version. Mid-cycle that value may run ahead
+// of the changelog - entries accumulate under [Unreleased] until the release-prep
 // promotion - and the exact match is enforced at release time by cmd/releasecheck.
 // invariant: tooling/changelog-and-release:changelog-monotonic (TestChangelogMonotonicOrder)
 // invariant: tooling/cli:single-version-authority (TestChangelogMonotonicOrder)
