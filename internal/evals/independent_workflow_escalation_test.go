@@ -129,7 +129,10 @@ func TestIndependentWorkflowEscalation(t *testing.T) {
 				}
 			}
 			assertContainsAll(t, target+" orienting", bodies["orienting"],
-				"repository truth is needed", "Fresh work", "Effort resume", "Handoff takeover", "Mid-chain re-orientation")
+				"repository truth is needed", "Fresh work", "Effort resume", "Handoff takeover", "Mid-chain re-orientation",
+				"Orientation does not authorize mutation", "change's size, including minimal, is never an exception")
+			assertContainsAll(t, target+" direct routing and transaction", bodies["executing-direct"],
+				"Load this skill before directly mutating files", "Complete one coherent transaction with verification and a commit")
 			if strings.Contains(bodies["orienting"], "non-trivial") {
 				t.Errorf("%s orienting retains non-trivial classifier", target)
 			}

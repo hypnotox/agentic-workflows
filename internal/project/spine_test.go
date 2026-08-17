@@ -2027,6 +2027,8 @@ func TestAgentsDocNativeSkillRouter(t *testing.T) {
 		"Before loading a skill, identify the next concrete action.",
 		"a possible later edit, render, documentation update, review, or commit does not justify loading its skill now.",
 		"Load multiple bodies only when each independently governs that same next action before another routing decision can occur.",
+		"Before any mutation, load the native skill that governs that action.",
+		"Change size, including a minimal change, never excuses this routing step.",
 	} {
 		if !strings.Contains(out, phrase) {
 			t.Errorf("expected phrase %q in output:\n%s", phrase, out)

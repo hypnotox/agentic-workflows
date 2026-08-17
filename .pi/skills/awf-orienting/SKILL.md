@@ -55,4 +55,4 @@ When resuming an effort or taking over a handoff, read the effort's memory file 
 <!-- awf:template-source templates/skills/orienting/SKILL.md.tmpl -->
 ## Hand-off
 
-Orientation produces understanding, never commits. Route onward to whichever skill fits the work: brainstorming for fresh design, debugging for a defect, plan execution to continue an accepted plan, plan or ADR writing when a durable artifact is next.
+Orientation produces understanding and never commits. Orientation does not authorize mutation. Before changing files, load the native skill that governs the next concrete action; a change's size, including minimal, is never an exception. Route onward to whichever skill fits the work: brainstorming for fresh design, debugging for a defect, direct implementation when its approved boundary is clear, plan execution to continue an accepted plan, plan or ADR writing when a durable artifact is next.

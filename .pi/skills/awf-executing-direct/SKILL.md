@@ -11,7 +11,7 @@ The direct implementation chain node for work whose clear outcome, solution shap
 
 ## When to invoke
 
-Invoke when the outcome, solution shape, boundary, and verification are clear, and no independent need for brainstorming, an ADR, or a plan fires. If a material choice or clarification is needed, invoke brainstorming; if an ADR or plan is warranted, use that workflow instead.
+Load this skill before directly mutating files when the outcome, solution shape, boundary, and verification are clear, and no independent need for brainstorming, an ADR, or a plan fires. If a material choice or clarification is needed, invoke brainstorming; if an ADR or plan is warranted, use that workflow instead.
 
 <!-- awf:template-source templates/partials/production-code-outline-approval.md -->
 Before any hand-authored production-code mutation, including mechanical production refactors and tests that prepare a production change, require explicit outline approval. Documentation-only work, test-only maintenance that does not prepare a production change, generated-output-only work, and non-code mechanical work remain autonomous unless another independent trigger fires.
@@ -24,7 +24,7 @@ The approved boundary may be evidenced by retained conversation, user-provenance
 1. Before mutation, evaluate continuity independently. This skill may run without an effort. If continuity materially helps, invoke `awf-effort-workflow`; if an effort already exists, validate its fixed identity and exact `.awf/efforts/<slug>/memory.md`, preserve one writer, and use its managed worktree when present. Otherwise omit effort and memory fields. Repository sources and current-state documentation remain authoritative. Re-read any settled design brief and, per `docs/maintainable-code-design.md`, assess bounded enabling refactoring before editing and preserve settled boundaries.
 2. Implement only the agreed change. Add or update focused tests, and keep documentation current in the same change.
 3. Run the project's required formatting and verification commands. Fix the cause of every failure; do not weaken expected behavior.
-4. Follow the project's commit discipline unless the caller explicitly requires a larger approved change set in one commit or forbids commits.
+4. Complete one coherent transaction with verification and a commit, following the project's commit discipline, unless the caller explicitly requires a larger approved change set in one commit or forbids commits.
 5. For an effort-backed outcome, after each independently resumable committed and reviewed change run the routine checkpoint below before continuing.
 
 <!-- awf:template-source templates/partials/checkpoint-routine.md -->
