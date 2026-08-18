@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-0285: Silence Prose Binary Skips](0285-silence-prose-binary-skips.md) (Proposed)
 
 ## History
 
