@@ -8,6 +8,8 @@ query a single version or a range.
 
 ## [Unreleased]
 
+## [0.39.2] - 2026-08-18
+
 ### Bug fixes
 
 - Prose checks silently skip non-UTF-8 files instead of reporting one warning per binary path.
