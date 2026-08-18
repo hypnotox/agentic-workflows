@@ -13,7 +13,7 @@ The prose gate skips non-UTF-8 staged files because they cannot be safely scanne
 
 ## Decision
 
-1. `decision: silence-binary-skips` The prose gate silently skips files that are not valid UTF-8. It continues to report banned punctuation in text files and retains the existing exemption behavior.
+1. `decision: silence-binary-skips` The prose gate silently skips files that are not valid UTF-8. It continues to report banned punctuation in text files with the existing failure and exit-status behavior, and retains the existing exemption behavior.
 
 ## State changes
 
