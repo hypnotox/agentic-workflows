@@ -70,7 +70,7 @@ func TestProseGateClean(t *testing.T) {
 	}
 }
 
-func TestProseGateReportsSkippedBinaries(t *testing.T) {
+func TestProseGateSilentlySkipsBinaries(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	root := proseGateRepo(t, "", map[string]string{
@@ -82,13 +82,8 @@ func TestProseGateReportsSkippedBinaries(t *testing.T) {
 	if err := runProseGate(ctx, root, &out); err != nil {
 		t.Fatalf("binary exclusions must not fail an otherwise-clean command: %v", err)
 	}
-	text := out.String()
-	first, second := strings.Index(text, "skipped binary: a.bin"), strings.Index(text, "skipped binary: z.bin")
-	if first < 0 || second < 0 || first > second {
-		t.Errorf("skipped binary paths must be printed in sorted order: %q", text)
-	}
-	if !strings.Contains(text, "status: warnings") {
-		t.Errorf("structured warning report missing after binary reports: %q", text)
+	if out.String() != completedCheckReport {
+		t.Errorf("binary exclusions must be silent: %q", out.String())
 	}
 }
 

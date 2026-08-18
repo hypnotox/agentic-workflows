@@ -76,8 +76,9 @@ Backing: test
 
 ### `invariant: prose-gate-tracked-file-scan`
 
-The prose scanner reports each banned typographic codepoint found in a text file with the file path and occurrence count, ordered by path and then by codepoint. Files that are not valid UTF-8 are skipped and reported separately, and a finding matching a configured path, codepoint, and optional count exemption is suppressed.
+The prose scanner reports each banned typographic codepoint found in a text file with the file path and occurrence count, ordered by path and then by codepoint. Files that are not valid UTF-8 are silently skipped, and a finding matching a configured path, codepoint, and optional count exemption is suppressed.
 Origin: ADR-0119
+Revised-by: ADR-0285
 Backing: test
 
 ### `invariant: testsupport-zero-internal-deps`

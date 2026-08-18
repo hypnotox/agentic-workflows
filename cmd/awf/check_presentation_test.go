@@ -23,6 +23,28 @@ func TestCheckReportRejectsInvalidPresentationValues(t *testing.T) {
 	}
 }
 
+func TestCheckReportIncludesWarnings(t *testing.T) {
+	check, err := presentation.Prose("check")
+	if err != nil {
+		t.Fatal(err)
+	}
+	detail, err := presentation.Prose("warning")
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err := presentation.NewRecord(check, detail)
+	if err != nil {
+		t.Fatal(err)
+	}
+	report, err := checkReport(nil, []presentation.ReportCategory{{Label: "warnings", Schema: []string{"check", "detail"}, Records: []presentation.Record{record}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Status != "warnings" {
+		t.Errorf("status = %q, want warnings", report.Status)
+	}
+}
+
 func TestCheckReportRejectsUnknownCategory(t *testing.T) {
 	_, err := checkReport(nil, []presentation.ReportCategory{{Label: "unexpected"}})
 	if err == nil || !strings.Contains(err.Error(), `unknown check report category "unexpected"`) {

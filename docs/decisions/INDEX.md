@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-0285: Silence Prose Binary Skips](0285-silence-prose-binary-skips.md) (Proposed)
+_No decisions are in flight._
 
 ## History
 
@@ -290,3 +290,4 @@
 - [ADR-0282: Keep Repository-Local Instructions Out of Shipped Surfaces](0282-keep-repository-local-instructions-out-of-shipped-surfaces.md) (Implemented)
 - [ADR-0283: Advance Pi Runtime Floor to 0.84.2](0283-advance-pi-runtime-floor-to-0-84-2.md) (Implemented)
 - [ADR-0284: Test-free local release preparation](0284-test-free-local-release-preparation.md) (Implemented)
+- [ADR-0285: Silence Prose Binary Skips](0285-silence-prose-binary-skips.md) (Implemented)

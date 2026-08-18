@@ -2,16 +2,9 @@ package prosegate
 
 import "github.com/hypnotox/agentic-workflows/internal/presentation"
 
-// Categories maps prose scan results into their check-report vocabulary.
-func Categories(findings []Finding, skipped []string) ([]presentation.ReportCategory, error) {
-	warnings := make([]presentation.Record, 0, len(skipped))
-	for _, path := range skipped {
-		record, err := record("skipped binary: " + path)
-		if err != nil { // coverage-ignore: the fixed skipped-binary diagnostic prefix makes every formatted path nonempty
-			return nil, err
-		}
-		warnings = append(warnings, record)
-	}
+// Categories maps prose findings into their check-report vocabulary. Binary
+// files are skipped by Scan but intentionally have no user-facing diagnostic.
+func Categories(findings []Finding, _ []string) ([]presentation.ReportCategory, error) {
 	errors := make([]presentation.Record, 0, len(findings))
 	for _, finding := range findings {
 		record, err := record(Format(finding))
@@ -23,9 +16,6 @@ func Categories(findings []Finding, skipped []string) ([]presentation.ReportCate
 	categories := []presentation.ReportCategory{}
 	if len(errors) > 0 {
 		categories = append(categories, presentation.ReportCategory{Label: "errors", Schema: []string{"check", "detail"}, Records: errors})
-	}
-	if len(warnings) > 0 {
-		categories = append(categories, presentation.ReportCategory{Label: "warnings", Schema: []string{"check", "detail"}, Records: warnings})
 	}
 	return categories, nil
 }

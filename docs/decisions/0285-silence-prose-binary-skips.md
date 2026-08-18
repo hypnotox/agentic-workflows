@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: silence-prose-binary-skips
-status: Proposed
+status: Implemented
 date: 2026-08-18
 ---
 # ADR-0285: Silence Prose Binary Skips
@@ -33,3 +33,4 @@ Clean prose checks no longer produce warnings for tracked binary assets. The gat
 ## Status history
 
 - 2026-08-18: Proposed
+- 2026-08-18: Implemented; content-sha256: f8f55d9ffbbc8df9d850e03f832543964a000bf6aadecd91cb2988b6cd60aa6c
