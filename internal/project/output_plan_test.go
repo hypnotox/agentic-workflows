@@ -47,6 +47,47 @@ func TestLocalDocsOutputPlan(t *testing.T) {
 	}
 }
 
+// A local document's only section is edit-in-place, so once its output exists the
+// next render reads that output back to preserve the authored body. The
+// declaration must project that self-input; otherwise declaration/plan parity
+// holds on the first render (output absent) and breaks on every render after it.
+//
+// invariant: rendering/project-output-plan:output-plan-complete (TestLocalDocDeclarationDeclaresExistingOutputInput)
+// invariant: rendering/doc-outputs:local-doc-output-complete (TestLocalDocDeclarationDeclaresExistingOutputInput)
+func TestLocalDocDeclarationDeclaresExistingOutputInput(t *testing.T) {
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
+	const outPath = "docs/runbooks/incident.md"
+	testsupport.WriteFile(t, filepath.Join(root, "docs", "runbooks", "incident.md"),
+		"# Incident\n\n<!-- awf:edit-in-place body -->\nauthored body\n")
+
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan, err := p.OutputPlan(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	corpus, _, _, _, err := p.deriveOperationStateWithPitfalls()
+	if err != nil {
+		t.Fatal(err)
+	}
+	declarations, err := BuildOutputDeclarations(p.Cfg, p.catalog(), p.Targets, filesystemProjectReader{root: p.Root}, corpus)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := outputDeclarationParityError(plan.Nodes, declarations); err != nil {
+		t.Fatal(err)
+	}
+	i := slices.IndexFunc(declarations, func(d OutputDeclaration) bool { return d.Path == outPath })
+	if i < 0 {
+		t.Fatalf("local document missing from declarations")
+	}
+	if !slices.Contains(declarations[i].Inputs, OutputInput{Path: outPath, Role: ArtifactManagedOutput}) {
+		t.Fatalf("declared inputs = %v", declarations[i].Inputs)
+	}
+}
+
 func TestLocalDocCollisionWithTargetOutputPrecedesRendering(t *testing.T) {
 	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/x\n    title: X\n    description: X document.\n")
 	p, err := Open(testContext(t), root)
@@ -381,16 +422,32 @@ func TestOutputPlanTopicNodesHaveLiteralPathsAndInputs(t *testing.T) {
 	t.Fatal("literal topic output was absent from the plan")
 }
 
+// A local document's output is read twice on the way to a plan: the declaration
+// pass observes whether the in-place body exists, then the render pass reads it
+// back. Each read has its own propagation path, so each must surface its fault
+// rather than be erased by the other's success.
 func TestOutputPlanPropagatesLocalRenderReadFault(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	failure := errors.New("local output read failed")
-	p.read = faultingProjectReader{ProjectTreeReader: filesystemProjectReader{root: root}, path: "docs/runbooks/incident.md", err: failure}
-	if _, err := p.OutputPlan(testContext(t)); !errors.Is(err, failure) {
-		t.Fatalf("output plan error = %v, want %v", err, failure)
+	for _, tc := range []struct {
+		name      string
+		failAfter int
+	}{
+		{"declaration pass", 0},
+		{"render pass", 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
+			p, err := Open(testContext(t), root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			failure := errors.New("local output read failed")
+			calls := 0
+			p.read = faultingProjectReader{ProjectTreeReader: filesystemProjectReader{root: root},
+				path: "docs/runbooks/incident.md", err: failure, failAfter: tc.failAfter, calls: &calls}
+			if _, err := p.OutputPlan(testContext(t)); !errors.Is(err, failure) {
+				t.Fatalf("output plan error = %v, want %v", err, failure)
+			}
+		})
 	}
 }
 

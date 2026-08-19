@@ -338,11 +338,16 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		add(out, e.TID, declarer, declaredInputs)
 	}
 	for _, local := range cfg.NormalizedLocalDocs() {
-		declaredInputs, err := markdownInputs(localDocTID)
+		// A local document's only section is edit-in-place, so a present output is
+		// read back to preserve the authored body and is genuinely an input to its
+		// own next render. The authored-input filter drops it on the first render,
+		// when the output is still absent, exactly as the renderer does.
+		outPath := config.DocsDir + "/" + local.Name + ".md"
+		declaredInputs, err := markdownInputs(localDocTID, OutputInput{Path: outPath, Role: ArtifactManagedOutput})
 		if err != nil { // coverage-ignore: localDocTID is a closed embedded Markdown identity, validated by the template census
 			return nil, err
 		}
-		add(config.DocsDir+"/"+local.Name+".md", localDocTID, "local-doc:"+local.Name, declaredInputs)
+		add(outPath, localDocTID, "local-doc:"+local.Name, declaredInputs)
 	}
 	for _, entry := range pitfalls.All() {
 		declaredInputs, err := markdownInputs(pitfallEntryTID, OutputInput{Path: entry.SourcePath, Role: ArtifactAuthoredData})
@@ -748,7 +753,7 @@ func (p *Project) outputPlanWithPitfalls(ctx context.Context, corpus adr.Corpus,
 			}
 		}
 	}
-	inputs := slices.Concat(base, pitfallLeaves, domains, topicFiles)
+	inputs := slices.Concat(base, localDocs, pitfallLeaves, domains, topicFiles)
 	if cref, ok, err := p.generateConfigReference(inputs, eff); err != nil {
 		return nil, err
 	} else if ok {
