@@ -632,7 +632,7 @@ func TestAuthorityGuidedImplementationAutonomy(t *testing.T) {
 		"commit-capable owner may add an omitted path",
 		"necessary to complete the approved outcome",
 		"An omitted path alone is not a reason to stop",
-		"Do not replan the approved outcome, broaden material scope, overturn settled structural choices, weaken an oracle, or perform unrelated cleanup",
+		"Do not replan the approved outcome, broaden material scope, overturn settled durable choices, weaken an oracle, or perform unrelated cleanup",
 		"authorities conflict or must change",
 		"approved outcome or material scope must change",
 		"genuine unresolved design fork remains",
@@ -640,6 +640,7 @@ func TestAuthorityGuidedImplementationAutonomy(t *testing.T) {
 		"required verification remains unreachable after reasonable diagnosis and remediation",
 	}
 	obsolete := []string{
+		"overturn settled structural choices",
 		"If a newly discovered need affects behavior, scope, structure, dependencies, patterns, checks, or testing strategy",
 		"complete approval-requiring invalidating-source report",
 	}

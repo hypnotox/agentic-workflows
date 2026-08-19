@@ -161,4 +161,6 @@ findings here only when another phase, reviewer, or terminal assurance can rely 
   ordering now binds only a named protected property across template and catalog-backed reviewer
   surfaces, delegated execution preserves settled durable choices, and marker-backed tests cover
   every shared clause, Core autonomy, route regrouping with landed-scope preservation, and the
-  revised plan and code review lenses.
+  revised plan and code review lenses. The single verify pass found one remaining shared autonomy
+  clause that protected all structural choices; the parent narrowed it to settled durable choices
+  and added an old-phrase rejection without changing the approved boundary.
