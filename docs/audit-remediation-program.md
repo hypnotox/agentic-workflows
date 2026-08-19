@@ -31,21 +31,60 @@ has moved, update the issue rather than reinterpreting it silently.
 
 The audit is an external opinion. These rulings bind its adoption:
 
-- **One issue at a time.** Select the first `READY` issue whose dependencies are complete. Do not
-  implement adjacent issues in the same transaction unless the selected issue requires the pair.
+- **One issue per effort and transaction.** Independent dependency-complete issues in an approved
+  parallel batch may run concurrently. Never combine adjacent issue outcomes merely because their
+  source surfaces overlap.
 - **AF-002 is accepted.** The universal production-mutation approval gate is replaced by a
   material-decision boundary.
-- **AF-007 and RF-009 are undecided.** Both are recognised targets but neither premise is adopted.
-  Each requires an explicit owner decision before implementation; neither blocks its dependants from
-  proceeding on their other grounds.
+- **AF-007 is accepted with punctuation restraint.** Keep a language-agnostic tracked-text guard,
+  but replace the seven-codepoint ban with the narrower policy in its implementation boundary below.
+- **RF-007 is residual cleanup.** RF-002 through RF-006 move the tests for behaviour they relocate;
+  RF-007 performs the final residual ownership census and cleanup.
+- **RF-014 is split.** RF-014A owns Program A residue. RF-014B owns compatibility residue after the
+  support-floor and managed-repository gates.
+- **RF-009 remains a deferred decision.** Decide thresholds, critical surfaces, and any ratchet only
+  after RF-007 establishes the post-refactor evidence baseline.
 - **No new workflow layer.** Do not answer a finding with another profile, rigor mode, depth knob,
   router, second plan format, lifecycle state, or a skill that restates an existing principle.
+
+The owner approved these boundaries and the parallel topology before this document was authored.
+An issue effort consumes that approval rather than reopening it. Revalidation may change paths,
+mechanisms, or status; return to the owner only when repository evidence exposes a new material
+choice outside the boundary.
 
 ## Status vocabulary
 
 `COMPLETE` has met its target and carries a completion report. `READY` may begin when dependencies
 are complete. `BLOCKED` needs its named prerequisite. `CONDITIONAL` begins only when its stated
 condition holds. `DECISION` needs an owner ruling on its premise before any implementation.
+
+## Orchestrator contract
+
+One orchestrator schedules issue efforts and serializes integration. Before dispatch, it:
+
+1. Revalidates the issue against current repository authority and the external audit acceptance
+   criteria. The repository, this document's owner decisions, and then the external audit control,
+   in that order.
+2. Confirms every listed dependency and real-world condition, and checks active efforts, worktrees,
+   and agent ownership so the issue is not already running.
+3. Supplies one implementation agent with the issue ID, its external acceptance criteria, its
+   boundary below, the starting commit, and required completion-report shape.
+4. Gives the issue its own effort, branch, worktree, and single writer under the ordinary effort
+   workflow. Agents do not share effort memory or mutate another issue's worktree.
+
+The implementation agent may ground, author required ADRs or plans, implement, verify, review, and
+commit within the approved boundary. It does not start another audit issue. A changed local route is
+not a deviation when the protected outcome holds. A newly discovered durable choice, safety or
+compatibility conflict, verification reduction, or material scope expansion returns to the
+orchestrator for owner resolution.
+
+Integration is a single-writer queue even when implementation runs concurrently. For each completed
+issue, the orchestrator incorporates current `main`, resolves authoritative-source conflicts,
+rerenders instead of hand-merging generated outputs, runs the full checks and gate, integrates one
+issue, records its completion report, and only then advances the next integration. The orchestrator
+revalidates still-running efforts after each integration. Common generated outputs and lock files do
+not alone prohibit parallel source work; shared semantic ownership or a shared active current-state
+claim does.
 
 ## Program A: adopter-facing contract
 
@@ -61,22 +100,59 @@ change, not its literal execution choreography.
 | AF-004 | P1 | COMPLETE | Clean integration operative in every implementation and review path | AF-001 |
 | AF-005 | P1 | COMPLETE | Review blocks concrete maintainability risk, not aesthetic preference | AF-003, AF-004 |
 | AF-006 | P1 | READY | Strongest practical durable oracle replaces absolute test-first blocking | AF-001 |
-| AF-007 | P2 | DECISION | Plain punctuation leaves hard governance | AF-001, owner ruling |
+| AF-007 | P2 | READY | Punctuation restraint replaces the seven-codepoint ban | AF-001 |
 | AF-008 | P2 | READY | Core and Full read as governance footprints, not rigor modes | AF-001 |
 | AF-009 | P2 | READY | Pi runtime protocol owned by a target-specific reference, not generic workflow docs | AF-001 |
-| AF-010 | P2 | BLOCKED | Operative prose states rule, flexible detail, stop condition, required evidence | AF-002..AF-009 |
+| AF-010 | P2 | BLOCKED | Residual operative prose states rule, flexible detail, stop condition, and evidence | AF-006..AF-009 |
 | AF-011 | P2 | BLOCKED | Daily-use documentation separated from rare recovery and migration protocol | AF-009 |
-| AF-012 | P2 | BLOCKED | A new concept must remove or subsume an existing one; vocabulary culled | AF-010, AF-011 |
-| AF-013 | P1 | BLOCKED | Blocking checks separated from warning and information by protected property | AF-005, AF-007 |
+| AF-012 | P2 | BLOCKED | Demonstrably redundant workflow concepts and vocabulary consolidated | AF-010, AF-011 |
+| AF-013 | P1 | BLOCKED | Blocking checks separated from warnings and unranked notes by protected property | AF-005, AF-007 |
 | AF-014B | P1 | BLOCKED | Outcome-oriented behaviour scenarios cover the changed contract | AF-002..AF-013 |
 
 ### Protected contract
 
-The vocabulary AF-001 must establish. Protected: requested outcome, settled durable choices,
-material scope, externally observable behaviour, compatibility, safety, applicable active project
-rules, required verification strength, prohibited shortcuts. Implementation detail unless made
-load-bearing: phase and task boundaries, order, local names, file and symbol inventories, helper
+The vocabulary AF-001 established remains controlling. Protected: requested outcome, settled durable
+choices, material scope, externally observable behaviour, compatibility, safety, applicable active
+project rules, required verification strength, prohibited shortcuts. Implementation detail unless
+made load-bearing: phase and task boundaries, order, local names, file and symbol inventories, helper
 allocation, execution mode, command sequence, commit decomposition, non-load-bearing mechanism.
+
+### Pre-approved Program A boundaries
+
+- **AF-006:** Establish one canonical strongest-practical durable-oracle rule. Prefer an automated
+  red-then-green regression, permit the strongest reproducible alternative only with a concrete
+  reason, and never weaken expected behaviour or verification strength. Exclude test-framework,
+  coverage-policy, gate, and package refactors.
+- **AF-007:** Prefer ordinary punctuation and sentence structure. Scan every tracked text file and
+  skip binaries; do not depend on language-specific comment detection. A blank-line-delimited text
+  block is a paragraph. Reject every en dash. Permit zero, one, or two em-dash codepoints per
+  paragraph and reject three or more. Permit both forms of ellipsis and all curly quotes. Retain
+  path-and-codepoint exemptions for quotations, frozen records, and text discussing a guarded
+  character. Retire the curly-quote restriction so normal `gofmt` doc-comment output is valid.
+  Amend or supersede the existing plain-punctuation ADR and active claims; defer only proven dead or
+  compatibility machinery to RF-014A or RF-014B.
+- **AF-008:** Correct terminology and prove Core and Full parity. Do not rename the `profile` config
+  key, add migration, or imply a different correctness, autonomy, maintainability, or review bar.
+- **AF-009:** Move Pi protocol to one target-specific owner and leave capability-neutral continuity
+  rules in generic workflow authority. Lose no runtime detail, duplicate no generic contract, and
+  leave the broader daily-versus-recovery information architecture to AF-011.
+- **AF-011:** Classify daily, advanced lifecycle, runtime, recovery, and config-reference material;
+  move each fact to its most specific existing owner and keep one-hop navigation. Add a document only
+  when no existing owner fits, and leave no duplicate after a move.
+- **AF-013:** Inventory each check by protected property and exit behaviour. Preserve the existing
+  Error and Warning ranks and use existing unranked notes for information unless a new caller
+  contract proves another rank necessary. Do not add configurable severity or perform RF-004's
+  checker decomposition.
+- **AF-010:** Run after AF-011 and AF-013 in the approved topology. Inventory residual contradictions
+  and dense operative passages after AF-006 through AF-009 have landed; rewrite only that residue
+  into rule, flexible detail, stop condition, and evidence. Do not perform a blind corpus rewrite or
+  change settled semantics.
+- **AF-012:** Apply the existing proportional-simplicity and no-new-layer authority. Remove or merge
+  only concepts, fields, terms, or skills proven not to drive distinct behaviour. Add no duplicate
+  doctrine, arbitrary target count, or concept-budget checker.
+- **AF-014B:** Map the required scenarios against AF-014A and all deterministic evaluations added by
+  AF-002 through AF-013, then add only uncovered behaviour. Do not create another evaluation
+  framework or require a live paid model.
 
 ### Program A milestone
 
@@ -87,13 +163,11 @@ plan detail while the protected contract holds; bounded enabling refactoring is 
 implementation scope; every primary implementation path evaluates one-home ownership, duplicated
 policy, obsolete paths, dependency direction, representation boundaries, and residual debt; review
 blocks concrete risk only; a valid bugfix is not blocked solely because an automated red test is
-impractical; Core and Full imply no difference in correctness, autonomy, or maintainability; generic
-workflow docs teach no Pi-specific protocol as universal; daily documentation requires no rare
-recovery protocol; blocking checks name a near-objective protected property; generated Core and Full
-artifacts for Pi and Claude express one doctrine; regression scenarios cover the changed behaviour.
-
-AF-007 is undecided, so the milestone condition concerning typographic punctuation as an
-adopter-facing hard failure is suspended pending that ruling.
+impractical; punctuation restraint replaces the seven-codepoint ban; Core and Full imply no
+difference in correctness, autonomy, or maintainability; generic workflow docs teach no Pi-specific
+protocol as universal; daily documentation requires no rare recovery protocol; blocking checks name
+a near-objective protected property; generated Core and Full artifacts for Pi and Claude express one
+doctrine; regression scenarios cover the changed behaviour.
 
 ## Program B: repository architecture
 
@@ -103,21 +177,74 @@ correction is allowed without unrelated cleanup riding along.
 
 | ID | Sev | Status | Target outcome | Depends on |
 |---|---|---|---|---|
-| RF-001 | P1 | BLOCKED | Declared dependency direction and one named semantic owner per extraction | Program A milestone |
+| RF-001 | P1 | BLOCKED | Concrete dependency direction and one named semantic owner per extraction | Program A milestone |
 | RF-008A | P1 | BLOCKED | Durable private compatibility policy and a real support-floor inventory | Program A milestone |
 | RF-008B | P1 | CONDITIONAL | Obsolete compatibility pruned below the support floor | RF-008A, managed repos upgraded |
-| RF-002 | P1 | BLOCKED | Immutable project state separated from operations | RF-001 |
-| RF-003 | P1 | BLOCKED | One publisher owning output planning, rendering, backup, and publication | RF-002 |
+| RF-002 | P1 | BLOCKED | Residual project state separated from operations | RF-001 |
+| RF-003 | P1 | BLOCKED | One application owner for output planning and publication coordination | RF-002 |
 | RF-004 | P1 | BLOCKED | Check aggregation separated from check policy; severity in the result model | AF-013, RF-002 |
 | RF-005 | P1 | BLOCKED | Current-state coordination extracted from project orchestration | RF-002 |
 | RF-006 | P1 | BLOCKED | `cmd/awf` reduced to parse, compose, invoke, render, exit | RF-002..RF-005 |
-| RF-007 | P2 | BLOCKED | Giant tests split by observable behaviour and semantic owner | Touched by RF-002..RF-006 |
-| RF-009 | P1 | DECISION | Critical-path coverage thresholds and a ratchet replace repository-wide 100 percent | RF-007, owner ruling |
-| RF-014 | P2 | CONDITIONAL | Deprecated machinery left by Program A deleted | AF-007, AF-013, RF-008 |
-| RF-010 | P2 | BLOCKED | Current code comments explain invariants, not historical plans and tranches | Main refactors complete |
+| RF-007 | P2 | BLOCKED | Residual giant tests split by observable behaviour and semantic owner | RF-002..RF-006 |
+| RF-009 | P1 | DECISION | Post-refactor critical-path coverage policy and regression control | RF-007, owner ruling |
+| RF-014A | P2 | BLOCKED | Obsolete Program A machinery deleted | Program A milestone |
+| RF-014B | P2 | CONDITIONAL | Obsolete compatibility residue deleted | RF-008B, compatibility removals applicable |
+| RF-010 | P2 | BLOCKED | Current code comments explain invariants, not historical plans and tranches | RF-002..RF-007, compatibility lane closed |
 | RF-011 | P2 | BLOCKED | Roadmap, known issues, and research separated by owner | Program A milestone |
 | RF-012 | P2 | BLOCKED | Tag vocabulary culled to terms with a real consumer | RF-011 |
-| RF-013 | P2 | CONDITIONAL | Documented remote enforcement matches configured GitHub policy | Reverify current policy |
+| RF-013 | P2 | BLOCKED | Documented remote enforcement matches configured GitHub policy | Program A milestone, live policy verification |
+
+### Pre-approved Program B boundaries
+
+- **RF-001:** Write the concrete extraction dependency map, forbidden reverse dependencies, boundary
+  values, and named owners needed by RF-002 through RF-006. Reuse current architecture authority;
+  do not restate it, move implementation files, or introduce a plugin framework.
+- **RF-008A:** Inventory actual managed-repository schema generations, ADR and effort formats,
+  bootstrap pins, installed versions, and upgrade constraints before proposing the support floor.
+  Guess no repository or floor. The inventory and protected policy shape are pre-approved; the exact
+  durable support floor remains an owner decision when evidence is available.
+- **RF-011:** Reclassify the current roadmap corpus rather than assume no separation exists. Keep
+  strategy in the roadmap, reproducible defects with completion criteria, and unresolved experiments
+  in research with decision triggers. Move without duplication and use managed document ownership.
+- **RF-013:** Inspect live branch protection and rulesets. Either configure the enforcement the docs
+  claim or narrow the claim to reality. Source badges and prose are not proof of remote policy.
+- **RF-014A:** After the Program A milestone, remove only obsolete Program A commands, config,
+  exemptions, terminology, protocol fragments, tests, and transition paths. Prove each item dead;
+  leave support-floor residue to RF-014B.
+- **RF-008B:** Begin only after RF-008A and verified managed-repository upgrades. Keep one explicit
+  migration route from the supported floor, make unsupported inputs fail clearly, and remove only
+  compatibility below that floor.
+- **RF-014B:** Remove compatibility residue only after RF-008B and only where the inventory proves it
+  obsolete. Record inapplicable candidates rather than forcing deletion.
+- **RF-002:** Treat current architecture as partly established and decompose the residual broad
+  `Project` state and receiver surface. Preserve loader ownership and explicit dependencies. Add no
+  greenfield framework, service locator, speculative interface, or test-only production seam.
+- **RF-003:** Establish one application-level publishing coordinator and result model for output-plan
+  and publication orchestration. Consume the existing atomic `filepublication` mechanism; do not
+  absorb or duplicate filesystem, Git, rendering-syntax, or presentation seams without a separate
+  material decision.
+- **RF-004:** Give each check one semantic owner and keep aggregation policy-free, ordered, and
+  explicit about severity and protected property. Preserve working and staged universes, output, and
+  exit behaviour. Add no plugin framework.
+- **RF-005:** Extract application-level current-state coordination while preserving ADR and topic
+  domain owners, snapshot ownership, and the Git seam. Do not replace `Project` with another service
+  locator.
+- **RF-006:** Move application behaviour behind focused operations so command handlers parse,
+  compose, invoke, render, and map exits. Preserve help and command-spec ownership. Add no all-purpose
+  `Application` object.
+- **RF-012:** Keep only tags with a demonstrated retrieval, validation, or ownership consumer. Remove
+  references with each tag and choose no arbitrary target count. Do not combine this issue with
+  RF-011's document movement.
+- **RF-007:** RF-002 through RF-006 move tests with the behaviour they relocate. After those issues,
+  inventory the remaining giant tests and split only residual mixed ownership. Preserve behaviour,
+  helpers with a real shared home, runtime, and isolation.
+- **RF-010:** After the refactors and compatibility lane close, replace comments that cite plans,
+  tasks, or tranches with current invariants, constraints, or removal conditions. Keep useful ADR
+  rationale and avoid unrelated prose churn.
+- **RF-009:** Defer the policy ruling until RF-007 provides the post-refactor behaviour-owner,
+  coverage, exclusion, and mutation evidence. Preserve strong evidence for critical safety and state
+  behaviour, prevent unexplained regression, and never weaken an oracle to improve a metric. No
+  threshold, package set, or ratchet percentage is pre-approved.
 
 ### Program B start gate
 
@@ -125,19 +252,48 @@ Program A milestone complete; generated artifacts stable under the new doctrine;
 regression tests; no known adopter-facing contradiction remains; compatibility support policy decided
 or explicitly deferred; the refactor target dependency map written before files move.
 
-## Wave sequence
+## Parallel wave sequence
 
-- **A0 governing authority:** AF-001, AF-014A.
-- **A1 valid autonomous implementation:** AF-002, AF-003, AF-004.
-- **A2 assurance and verification:** AF-005, AF-006.
-- **A3 remove false strictness:** AF-007 (pending ruling), AF-008, AF-009.
-- **A4 simplify and stabilise:** AF-010, AF-011, AF-012, AF-013, AF-014B.
-- **B0 prepare:** RF-001, RF-008A; RF-011 may run independently after the milestone.
-- **B1 reduce compatibility surface:** upgrade managed repositories, RF-008B, RF-014 as applicable.
-- **B2 separate state and operations:** RF-002, RF-003, RF-005.
-- **B3 decompose checks and CLI:** RF-004, RF-006.
-- **B4 verification reform:** RF-007 incrementally during B2 and B3, then RF-009 (pending ruling).
-- **B5 cleanup:** RF-010, RF-011 if outstanding, RF-012, RF-013.
+A wave is a scheduling boundary, not a transaction. Each issue remains its own effort and commit
+history. Items joined by `||` may implement concurrently; integrations remain serial.
+
+- **A-F1:** AF-006 || AF-007 || AF-008.
+- **A-F2:** AF-009 after AF-008 integrates.
+- **A-F3:** AF-011 || AF-013 after their dependencies integrate.
+- **A-F4:** AF-010, then AF-012, then AF-014B and the Program A milestone, sequentially.
+- **B-F1:** after the milestone, RF-001 || RF-008A || RF-011 || RF-013.
+- **B-F2 cleanup lane:** RF-014A; then RF-008B and RF-014B when their external conditions hold.
+  Do not overlap this lane with architecture refactors. If managed upgrades remain outstanding,
+  preserve required wrappers and continue only architecture work that does not invalidate them.
+- **B-F3:** RF-002 || RF-012 after their dependencies and applicable cleanup integrate.
+- **B-F4:** RF-003, RF-004, RF-005, RF-006, RF-007, and RF-010 sequentially. The orchestrator may
+  choose the order of RF-003 through RF-005 after RF-002, but they do not implement concurrently.
+- **B-F5:** RF-009 owner ruling and any resulting implementation after RF-007 evidence exists.
+
+## Child implementation brief
+
+The orchestrator gives each implementation agent a self-contained brief with this content:
+
+```text
+Implement audit issue <ID> only.
+
+Starting commit: <sha>
+Authoritative issue boundary: docs/audit-remediation-program.md, section
+"Pre-approved Program <A-or-B> boundaries", item <ID>.
+External acceptance criteria: the <ID> section of
+agentic-workflows-full-audit-and-remediation-program.md.
+
+Repository authority outranks both. Revalidate named paths and premises before editing. The owner has
+approved the issue outcome, exclusions, and parallel topology recorded in the sequencing authority;
+do not reopen those choices. Stop only for a newly exposed material decision, unmet dependency or
+condition, authority conflict, safety or compatibility change, verification reduction, or scope
+expansion.
+
+Use one issue effort and transaction. Do not begin another audit issue. Follow generated-source,
+ADR, plan, implementation, review, gate, and commit workflows as they apply. At completion, return
+the required completion report with exact range, changed owners and paths, verification results,
+deviations, residual debt, and newly unblocked issues.
+```
 
 ## Strictness to preserve
 
