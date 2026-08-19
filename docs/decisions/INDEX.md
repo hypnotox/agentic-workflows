@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-make-clean-integration-operative: Make Clean Integration Operative](make-clean-integration-operative.md) (Proposed)
 
 ## History
 
