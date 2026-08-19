@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-0288: Make Clean Integration Operative](0288-make-clean-integration-operative.md) (Implementing)
+_No decisions are in flight._
 
 ## History
 
@@ -293,3 +293,4 @@
 - [ADR-0285: Silence Prose Binary Skips](0285-silence-prose-binary-skips.md) (Implemented)
 - [ADR-0286: Govern the protected contract not the execution route](0286-govern-the-protected-contract-not-the-execution-route.md) (Implemented)
 - [ADR-0287: Make Plans Mutable Execution Guidance](0287-make-plans-mutable-execution-guidance.md) (Implemented)
+- [ADR-0288: Make Clean Integration Operative](0288-make-clean-integration-operative.md) (Implemented)
