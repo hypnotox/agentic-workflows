@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-19
 adrs: [make-plans-mutable-execution-guidance]
-status: Proposed
+status: Implemented
 ---
 # Plan: Implement Mutable Plan Execution Guidance
 
