@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: make-review-enforce-concrete-maintainability-risks
-status: Proposed
+status: Implementing
 date: 2026-08-19
 ---
 # ADR-make-review-enforce-concrete-maintainability-risks: Make Review Enforce Concrete Maintainability Risks
@@ -105,3 +105,5 @@ implementation-and-plan risk threshold.
 ## Status history
 
 - 2026-08-19: Proposed
+- 2026-08-19: Implementing; content-sha256: 73f45bb87e7e8115e0b6a5ed859464aa4e5fba1bb604b2d726d176918cf5ad89
+- 2026-08-19: Applied; operations: add `rendering/workflow-skill-templates:concrete-maintainability-review`, update `rendering/workflow-skill-templates:maintainable-code-review-lenses`, update `rendering/workflow-skill-templates:authority-guided-review-remediation`

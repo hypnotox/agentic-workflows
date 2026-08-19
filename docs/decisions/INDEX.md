@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-make-review-enforce-concrete-maintainability-risks: Make Review Enforce Concrete Maintainability Risks](make-review-enforce-concrete-maintainability-risks.md) (Proposed)
+- [ADR-make-review-enforce-concrete-maintainability-risks: Make Review Enforce Concrete Maintainability Risks](make-review-enforce-concrete-maintainability-risks.md) (Implementing)
 
 ## History
 

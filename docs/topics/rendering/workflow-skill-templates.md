@@ -87,9 +87,9 @@ Backing: test
 
 ### `invariant: authority-guided-review-remediation`
 
-The shared review spine is the semantic home of finding classification for selected review workflows. It routes mechanical and reasoned corrections autonomously and reserves user-decision for a remediation that would change settled authority; Full adds ADR and plan review governance.
+The shared review spine remains the semantic home of finding classification for selected review workflows. The shared concrete-maintainability contract makes implementation and plan dispatchers reject risk-free preferences before classification, choose authority-preserving clean local remedies autonomously, and route a genuinely new material choice or changed approved boundary through brainstorming independently of severity; only a true authority deviation is user-decision. Full adds ADR and plan review governance, while ADR review remains outside the concrete-risk threshold.
 Origin: ADR-0245
-Revised-by: ADR-0255, ADR-0264, ADR-0265, ADR-0278
+Revised-by: ADR-0255, ADR-0264, ADR-0265, ADR-0278, ADR-make-review-enforce-concrete-maintainability-risks
 Backing: test
 
 ### `invariant: memory-checkpoint-chain-coverage`
@@ -176,6 +176,12 @@ One heading-free shared partial is the sole operative home for proportional clea
 Origin: ADR-0288
 Backing: test
 
+### `invariant: concrete-maintainability-review`
+
+One heading-free shared partial is the sole operative owner of concrete maintainability-review admissibility and evidence. Code reviewer, plan reviewer, reviewing-impl, and reviewing-plan each include it exactly once; it renders coherently for applicable Core and Full Pi and Claude consumers. It admits only findings with semantic owner, affected location, concrete risk, smallest clean remediation, and existing classification, maps those through the unchanged six-field schema while severity remains informational, rejects risk-free aesthetic preferences as non-admissible, preserves clean local autonomy and one verify pass, and routes a changed approved boundary through brainstorming independently of severity. ADR review and AF-013 severity separation remain outside the contract.
+Origin: ADR-make-review-enforce-concrete-maintainability-risks
+Backing: test
+
 ### `invariant: maintainable-code-stage-coverage`
 
 Brainstorming, TDD, direct execution, inline and delegated plan execution, plan writing and review, implementation review, and bug fixing apply the shared clean-integration rule while retaining concise stage-specific obligations. Full-only plan consumers remain absent from Core.
@@ -206,9 +212,9 @@ Backing: test
 
 ### `invariant: maintainable-code-review-lenses`
 
-Plan review checks that protected structural choices and necessary enabling refactors are explicit, dependency-ordered where a protected property requires it, bounded, approved or durably dispositioned when larger, and verifiable without treating recorded route choreography as authority; code review checks cohesion, coupling, dependency direction, representation leakage, duplicated policy, testability, needless indirection, protected-contract conformance, and coherent transactions rather than literal planned phase grouping. Both apply the shared clean-integration rule and explicit one-home ownership, obsolete-path, dependency-direction, representation-boundary, and residual-debt lenses without defining or changing finding severity or blocking policy. ADR review applies the structural lens only when a decision changes a semantic model, representation, ownership, module, or package boundary, dependency direction, or comparable structural contract. All reviewer agents remain report-only. Plan and code review flag unapproved or unjustified machinery and do not demand additions merely because more abstraction, cleanup, testing, or validation is imaginable.
+Plan review checks that protected structural choices and necessary enabling refactors are explicit, dependency-ordered where a protected property requires it, bounded, approved or durably dispositioned when larger, and verifiable without treating recorded route choreography as authority; code review checks cohesion, coupling, dependency direction, representation leakage, duplicated policy, testability, needless indirection, protected-contract conformance, and coherent transactions rather than literal planned phase grouping. The shared concrete-maintainability contract admits an implementation or plan finding only with semantic owner, affected location, concrete risk, smallest clean remediation, and the existing classification, mapped through `issue`, `location`, `suggested_fix`, and `classification`; severity remains informational. Both apply the shared clean-integration rule and explicit one-home ownership, obsolete-path, dependency-direction, representation-boundary, and residual-debt lenses. ADR review applies the structural lens only when a decision changes a semantic model, representation, ownership, module, or package boundary, dependency direction, or comparable structural contract, and remains outside the concrete-risk threshold. All reviewer agents remain report-only. Plan and code review flag unapproved or unjustified machinery and do not demand additions merely because more abstraction, cleanup, testing, or validation is imaginable.
 Origin: ADR-0168
-Revised-by: ADR-0232, ADR-0287, ADR-0288
+Revised-by: ADR-0232, ADR-0287, ADR-0288, ADR-make-review-enforce-concrete-maintainability-risks
 Backing: test
 
 ### `invariant: explorer-and-grounding-role-contracts`

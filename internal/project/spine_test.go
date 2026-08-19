@@ -609,6 +609,72 @@ func renderSkillGolden(t *testing.T, skill string, data map[string]any) string {
 	return renderGolden(t, "skills/"+skill+"/SKILL.md.tmpl", data)
 }
 
+// invariant: rendering/workflow-skill-templates:concrete-maintainability-review (TestConcreteMaintainabilityReview)
+func TestConcreteMaintainabilityReview(t *testing.T) {
+	const partialPath = "partials/review-maintainability-risk.md"
+	partial, err := fs.ReadFile(templates.FS, partialPath)
+	if err != nil {
+		t.Fatalf("concrete maintainability shared home is absent: read %s: %v", partialPath, err)
+	}
+	body := string(partial)
+	for _, line := range strings.Split(body, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "#") {
+			t.Errorf("concrete maintainability partial must be heading-free, found %q", line)
+		}
+	}
+	for _, want := range []string{
+		"semantic owner", "affected location", "concrete maintainability risk", "smallest clean remediation", "classification",
+		"`location`", "`issue`", "`suggested_fix`", "`classification`", "severity remains informational",
+		"future divergence", "ambiguous ownership", "hidden parallel policy", "inappropriate dependency", "representation leakage", "wrong model", "unbounded debt", "reduced verification strength",
+		"aesthetic", "non-admissible", "competing clean local remedies", "brainstorming", "ADR review", "AF-013", "one bounded verify pass",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("concrete maintainability shared home missing %q", want)
+		}
+	}
+	consumers := []string{
+		"agents/code-reviewer.md.tmpl", "agents/plan-reviewer.md.tmpl",
+		"skills/reviewing-impl/SKILL.md.tmpl", "skills/reviewing-plan/SKILL.md.tmpl",
+	}
+	for _, consumer := range consumers {
+		raw, readErr := fs.ReadFile(templates.FS, consumer)
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		if got := strings.Count(string(raw), "<!-- awf:include review-maintainability-risk -->"); got != 1 {
+			t.Errorf("%s has %d concrete-maintainability includes, want 1", consumer, got)
+		}
+	}
+	for _, forbidden := range []string{"agents/adr-reviewer.md.tmpl", "skills/reviewing-adr/SKILL.md.tmpl"} {
+		raw, readErr := fs.ReadFile(templates.FS, forbidden)
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		if strings.Contains(string(raw), "review-maintainability-risk") {
+			t.Errorf("ADR review unexpectedly consumes concrete-maintainability contract: %s", forbidden)
+		}
+	}
+	for name, data := range map[string]map[string]any{
+		"configured": {"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}, "skills": map[string]bool{}, "targetSubagentTools": true},
+		"empty":      {"prefix": "", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}, "skills": map[string]bool{}},
+	} {
+		for _, consumer := range consumers {
+			var out string
+			if strings.HasPrefix(consumer, "agents/") {
+				out = renderAgentGolden(t, strings.TrimSuffix(strings.TrimPrefix(consumer, "agents/"), ".md.tmpl"), data)
+			} else {
+				out = renderSkillGolden(t, strings.Split(consumer, "/")[1], data)
+			}
+			assertNoLeaks(t, out)
+			for _, want := range []string{"semantic owner", "concrete maintainability risk", "non-admissible"} {
+				if !strings.Contains(out, want) {
+					t.Errorf("%s/%s missing concrete-maintainability semantic %q", name, consumer, want)
+				}
+			}
+		}
+	}
+}
+
 // invariant: rendering/workflow-skill-templates:clean-integration (TestCleanIntegrationContract)
 func TestCleanIntegrationContract(t *testing.T) {
 	const partialPath = "partials/clean-integration.md"

@@ -20,6 +20,8 @@ This full review owns linked-authority freshness; it does not select plans or AD
 
 <!-- awf:include review-remediation-autonomy -->
 
+<!-- awf:include review-maintainability-risk -->
+
 <!-- awf:include clean-integration -->
 
 ## Procedure
@@ -50,7 +52,7 @@ This skill may run without an effort. If continuity independently fired, validat
 <!-- awf:end -->
 
 <!-- awf:section classify-route-findings -->
-4. **Surface the digest, then route the findings.** Display the digest the `plan-reviewer` agent returns to the user. Then route the classified findings by classification kind, not severity:
+4. **Surface the digest, then route the findings.** Display the digest the `plan-reviewer` agent returns to the user. Validate each maintainability finding against the concrete-risk evidence above and reject a risk-free preference as non-admissible before classification routing. Then route admissible classified findings by classification kind, not severity:
    - **mechanical**: this skill applies directly.
    - **reasoned**: this skill applies with a one-line rationale.
    - **user-decision**: route the finding through `{{ .prefix }}-brainstorming` with the cited affected authority and wait at its pre-artifact approval boundary.

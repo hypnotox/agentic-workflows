@@ -14,6 +14,8 @@ query a single version or a range.
 
 ### Features
 
+- Implementation and plan review now admit maintainability findings only when they identify semantic ownership, location, concrete risk, smallest clean remediation, and existing classification. Risk-free aesthetic preferences are rejected without a new severity or disposition; ADR review and severity policy are unchanged.
+
 - Clean integration is operative across design, planning, implementation, and review: one proportional rule requires semantic ownership, bounded enabling refactoring, practical obsolete-path retirement, moving verification surfaces, and explicit residual debt while preserving YAGNI.
 
 - Plan execution routes are mutable while the protected contract stays fixed; plan owners may revise non-load-bearing choreography and stop for reapproval only when the protected contract would change.

@@ -929,6 +929,43 @@ func TestSemanticRenderingReviewMultiTargetAuthority(t *testing.T) {
 	}
 }
 
+// invariant: rendering/workflow-skill-templates:concrete-maintainability-review (TestConcreteMaintainabilityReviewTargetParity)
+func TestConcreteMaintainabilityReviewTargetParity(t *testing.T) {
+	for _, profile := range []catalog.Profile{catalog.ProfileCore, catalog.ProfileFull} {
+		t.Run(string(profile), func(t *testing.T) {
+			files := explorationRenderedByPath(t, "prefix: example\nprofile: "+string(profile)+"\nintegrationBranch: main\n")
+			for _, target := range []string{"pi", "claude"} {
+				t.Run(target, func(t *testing.T) {
+					for _, path := range []string{
+						"." + target + "/skills/example-reviewing-impl/SKILL.md",
+						"." + target + "/agents/code-reviewer.md",
+					} {
+						out := files[path]
+						for _, want := range []string{"semantic owner", "concrete maintainability risk", "non-admissible", "severity remains informational"} {
+							if !strings.Contains(out, want) {
+								t.Errorf("%s missing concrete-maintainability semantic %q", path, want)
+							}
+						}
+						if strings.Contains(out, "<no value>") {
+							t.Errorf("%s contains unresolved no-value token", path)
+						}
+					}
+					if profile == catalog.ProfileFull {
+						for _, path := range []string{
+							"." + target + "/skills/example-reviewing-plan/SKILL.md",
+							"." + target + "/agents/plan-reviewer.md",
+						} {
+							if out := files[path]; !strings.Contains(out, "smallest clean remediation") || !strings.Contains(out, "brainstorming") {
+								t.Errorf("%s missing Full concrete-maintainability semantics", path)
+							}
+						}
+					}
+				})
+			}
+		})
+	}
+}
+
 // invariant: rendering/workflow-skill-templates:clean-integration (TestCleanIntegrationTargetParity)
 func TestCleanIntegrationTargetParity(t *testing.T) {
 	for _, profile := range []catalog.Profile{catalog.ProfileCore, catalog.ProfileFull} {
