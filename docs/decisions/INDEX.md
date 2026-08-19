@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-govern-the-protected-contract-not-the-execution-route: Govern the protected contract not the execution route](govern-the-protected-contract-not-the-execution-route.md) (Implementing)
+- [ADR-0286: Govern the protected contract not the execution route](0286-govern-the-protected-contract-not-the-execution-route.md) (Implementing)
 
 ## History
 

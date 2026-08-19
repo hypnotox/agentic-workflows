@@ -4,7 +4,7 @@ slug: govern-the-protected-contract-not-the-execution-route
 status: Implementing
 date: 2026-08-19
 ---
-# ADR-govern-the-protected-contract-not-the-execution-route: Govern the protected contract not the execution route
+# ADR-0286: Govern the protected contract not the execution route
 
 
 ## Context

@@ -19,14 +19,14 @@ Backing: test
 ### `invariant: protected-contract-over-route`
 
 The protected-contract doctrine has exactly one authored definition, in the shared `protected-contract` partial: the workflow governs a change's protected contract, being the requested outcome, the explicitly settled durable choices, the material scope, the externally observable behaviour, the compatibility and safety constraints, the required verification strength, the prohibited shortcuts, and every constraint an active project rule places on one of these, while everything else about how the change is carried out is a route the implementation owner may choose and revise. Precedence is decided per constraint rather than per rule, so one rule may be protected in its protected clauses and subordinate in its route clauses. Both profiles carry the same definition. The rendered workflow document carries it by rendering that partial; the rendered agent guide carries only its thesis sentence, in a paragraph linking that document, and no other rendered surface carries the thesis or either defining clause.
-Origin: ADR-govern-the-protected-contract-not-the-execution-route
+Origin: ADR-0286
 Backing: test
 
 ### `invariant: independent-workflow-escalation`
 
 Workflow intake independently evaluates brainstorming, continuity, grounding, and implementation review in both profiles; Full additionally evaluates ADR and plan governance. Brainstorming solely owns proportionate outline approval, and its boundary is an unresolved material decision rather than the act of mutating production code, so a routine change whose protected contract is already settled proceeds without an approval stop whatever kind of file it touches.
 Origin: ADR-0243
-Revised-by: ADR-0265, ADR-0278, ADR-govern-the-protected-contract-not-the-execution-route
+Revised-by: ADR-0265, ADR-0278, ADR-0286
 Backing: test
 
 ### `invariant: bounded-exploration-reporting`
@@ -60,7 +60,7 @@ Backing: test
 
 In both profiles, effort-workflow autonomously creates when continuity fires and brainstorming stops for explicit pre-artifact outline approval when an unresolved material decision fires it. Full ADR review continues to linked-plan handling; Core has no ADR or plan workflow.
 Origin: ADR-0152
-Revised-by: ADR-0160, ADR-0167, ADR-0222, ADR-0226, ADR-0232, ADR-0240, ADR-0243, ADR-0265, ADR-0266, ADR-0278, ADR-govern-the-protected-contract-not-the-execution-route
+Revised-by: ADR-0160, ADR-0167, ADR-0222, ADR-0226, ADR-0232, ADR-0240, ADR-0243, ADR-0265, ADR-0266, ADR-0278, ADR-0286
 Backing: test
 
 ### `invariant: authority-guided-implementation-autonomy`
