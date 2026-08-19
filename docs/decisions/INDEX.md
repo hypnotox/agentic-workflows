@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-govern-the-protected-contract-not-the-execution-route: Govern the protected contract not the execution route](govern-the-protected-contract-not-the-execution-route.md) (Proposed)
 
 ## History
 
