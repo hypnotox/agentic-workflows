@@ -651,9 +651,38 @@ func TestCleanIntegrationContract(t *testing.T) {
 		if got := strings.Count(rawBody, "<!-- awf:include clean-integration -->"); got != 1 {
 			t.Errorf("%s has %d clean-integration includes, want 1", consumer, got)
 		}
-		if strings.Contains(rawBody, "current and target owner") {
-			t.Errorf("%s duplicates authored clean-integration doctrine instead of including its shared home", consumer)
+	}
+	for _, root := range []string{"skills", "agents", "partials"} {
+		err := fs.WalkDir(templates.FS, root, func(path string, entry fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if entry.IsDir() || path == partialPath {
+				return nil
+			}
+			raw, readErr := fs.ReadFile(templates.FS, path)
+			if readErr != nil {
+				return readErr
+			}
+			if cleanIntegrationParallelDoctrine(string(raw)) {
+				t.Errorf("%s contains a parallel clean-integration operative rule", path)
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
 		}
+	}
+	for name, candidate := range map[string]string{
+		"direct-copy": "determine the current and target owner, choose the narrowest clean integration point, remove the obsolete or parallel path, and state residual debt",
+		"paraphrase":  "identify where behavior belongs now and where it should belong, choose a narrow entry point, remove the superseded route, and record remaining debt",
+	} {
+		if !cleanIntegrationParallelDoctrine(candidate) {
+			t.Errorf("%s parallel doctrine escaped the single-home detector", name)
+		}
+	}
+	if cleanIntegrationParallelDoctrine("Preserve the approved owner and report unrelated cleanup.") {
+		t.Error("legitimate stage-local protocol was misclassified as parallel doctrine")
 	}
 
 	variants := map[string]map[string]any{
@@ -676,6 +705,23 @@ func TestCleanIntegrationContract(t *testing.T) {
 			}
 		}
 	}
+}
+
+func cleanIntegrationParallelDoctrine(body string) bool {
+	lower := strings.ToLower(body)
+	groups := []bool{
+		(strings.Contains(lower, "current") && strings.Contains(lower, "target") && strings.Contains(lower, "owner")) || (strings.Contains(lower, "belongs now") && strings.Contains(lower, "should belong")),
+		strings.Contains(lower, "clean integration point") || strings.Contains(lower, "narrow entry point"),
+		strings.Contains(lower, "obsolete or parallel path") || strings.Contains(lower, "superseded route"),
+		strings.Contains(lower, "residual debt") || strings.Contains(lower, "remaining debt"),
+	}
+	matched := 0
+	for _, group := range groups {
+		if group {
+			matched++
+		}
+	}
+	return matched >= 3
 }
 
 // invariant: rendering/workflow-skill-templates:authority-guided-implementation-autonomy (TestAuthorityGuidedImplementationAutonomy)
@@ -1052,6 +1098,12 @@ func TestMaintainableCodeStageCoverage(t *testing.T) {
 		}},
 		"bugfix": {wants: []string{
 			"docs/maintainable-code-design.md", "unsuitable model or boundary", "bounded enabling work that prevents a workaround", "For materially larger work, route the disposition through the active workflow's design discussion", "perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated", "root-cause fix, not the symptom", "one concern per commit", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
+		}},
+		"reviewing-plan": {wants: []string{
+			"docs/maintainable-code-design.md", "current and target owner", "residual debt", "report-only judge", "full mode",
+		}},
+		"reviewing-impl": {wants: []string{
+			"docs/maintainable-code-design.md", "current and target owner", "residual debt", "independent assurance", "report-only findings",
 		}},
 	}
 	for skill, contract := range cases {

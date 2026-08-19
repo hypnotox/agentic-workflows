@@ -127,3 +127,13 @@ review findings another phase, reviewer, or terminal assurance can rely on. Afte
 assurance settles, `awf-effort-workflow` reconciles those records, appends only the ADR's Implemented
 event, changes this plan to `status: Implemented`, renders the decision index and lock, and commits
 that lifecycle-only transaction before managed-topology removal.
+
+- Phase review found that the initial deterministic evaluations asserted shared prose rather than
+  scenario-specific outcomes, the single-home test scanned only the consumer manifest, reviewer
+  stages were not independently covered by their named claim test, and reviewer lens wording could
+  be read as suppressing the required informational severity field. The settlement adds input and
+  outcome fixtures with mutation checks, scans the complete authored skill, agent, and partial
+  surface with direct and paraphrased negative cases, covers both review stages, and clarifies that
+  clean-integration lenses do not define or change severity or blocking policy. The review-lens
+  claim correction is recorded through its Reapplied event; the approved AF-005 boundary is
+  unchanged.
