@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-19
 adrs: [make-review-enforce-concrete-maintainability-risks]
-status: Proposed
+status: Implemented
 ---
 # Plan: Implement Concrete Maintainability Review
 

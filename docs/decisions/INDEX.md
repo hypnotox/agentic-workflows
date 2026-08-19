@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-0289: Make Review Enforce Concrete Maintainability Risks](0289-make-review-enforce-concrete-maintainability-risks.md) (Implementing)
+_No decisions are in flight._
 
 ## History
 
@@ -294,3 +294,4 @@
 - [ADR-0286: Govern the protected contract not the execution route](0286-govern-the-protected-contract-not-the-execution-route.md) (Implemented)
 - [ADR-0287: Make Plans Mutable Execution Guidance](0287-make-plans-mutable-execution-guidance.md) (Implemented)
 - [ADR-0288: Make Clean Integration Operative](0288-make-clean-integration-operative.md) (Implemented)
+- [ADR-0289: Make Review Enforce Concrete Maintainability Risks](0289-make-review-enforce-concrete-maintainability-risks.md) (Implemented)
