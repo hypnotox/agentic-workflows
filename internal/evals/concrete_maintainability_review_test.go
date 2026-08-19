@@ -13,24 +13,34 @@ type maintainabilityFacts struct {
 	changedBoundary       bool
 }
 
+type maintainabilityFinding struct {
+	focus          string
+	severity       string
+	location       string
+	issue          string
+	suggestedFix   string
+	classification string
+}
+
 // invariant: rendering/workflow-skill-templates:concrete-maintainability-review (TestConcreteMaintainabilityReviewScenarios)
 func TestConcreteMaintainabilityReviewScenarios(t *testing.T) {
 	scenarios := []struct {
 		name    string
 		facts   maintainabilityFacts
 		want    string
+		risk    string
 		clauses []string
 	}{
-		{"dual-ownership", maintainabilityFacts{concreteRisk: true}, "actionable", []string{"semantic owner", "affected location", "concrete maintainability risk", "smallest clean remediation", "classification"}},
-		{"duplicated-policy", maintainabilityFacts{concreteRisk: true}, "actionable", []string{"future divergence", "hidden parallel policy"}},
-		{"dependency-inversion", maintainabilityFacts{concreteRisk: true}, "actionable", []string{"inappropriate dependency"}},
-		{"representation-leakage", maintainabilityFacts{concreteRisk: true}, "actionable", []string{"representation leakage"}},
-		{"wrong-model-workaround", maintainabilityFacts{concreteRisk: true}, "actionable", []string{"wrong model"}},
-		{"unbounded-debt", maintainabilityFacts{concreteRisk: true}, "actionable", []string{"unbounded debt"}},
-		{"reduced-verification", maintainabilityFacts{concreteRisk: true}, "actionable", []string{"reduced verification strength"}},
-		{"aesthetic-preference", maintainabilityFacts{aestheticOnly: true}, "reject", []string{"pure aesthetic", "non-admissible"}},
-		{"competing-clean-options", maintainabilityFacts{competingCleanOptions: true}, "autonomous", []string{"competing clean local remedies", "approved boundary"}},
-		{"material-boundary", maintainabilityFacts{changedBoundary: true}, "brainstorm", []string{"changed approved boundary", "brainstorming", "independently of severity"}},
+		{"dual-ownership", maintainabilityFacts{concreteRisk: true}, "actionable", "future divergence", []string{"semantic owner", "affected location", "concrete maintainability risk", "smallest clean remediation", "classification"}},
+		{"duplicated-policy", maintainabilityFacts{concreteRisk: true}, "actionable", "hidden parallel policy", []string{"future divergence", "hidden parallel policy"}},
+		{"dependency-inversion", maintainabilityFacts{concreteRisk: true}, "actionable", "inappropriate dependency", []string{"inappropriate dependency"}},
+		{"representation-leakage", maintainabilityFacts{concreteRisk: true}, "actionable", "representation leakage", []string{"representation leakage"}},
+		{"wrong-model-workaround", maintainabilityFacts{concreteRisk: true}, "actionable", "wrong model", []string{"wrong model"}},
+		{"unbounded-debt", maintainabilityFacts{concreteRisk: true}, "actionable", "unbounded debt", []string{"unbounded debt"}},
+		{"reduced-verification", maintainabilityFacts{concreteRisk: true}, "actionable", "reduced verification strength", []string{"reduced verification strength"}},
+		{"aesthetic-preference", maintainabilityFacts{aestheticOnly: true}, "reject", "", []string{"pure aesthetic", "non-admissible"}},
+		{"competing-clean-options", maintainabilityFacts{competingCleanOptions: true}, "autonomous", "", []string{"competing clean local remedies", "approved boundary"}},
+		{"material-boundary", maintainabilityFacts{changedBoundary: true}, "brainstorm", "", []string{"changed approved boundary", "brainstorming", "independently of severity"}},
 	}
 	for _, profile := range []string{"core", "full"} {
 		t.Run(profile, func(t *testing.T) {
@@ -42,6 +52,9 @@ func TestConcreteMaintainabilityReviewScenarios(t *testing.T) {
 							if got := maintainabilityDisposition(body, scenario.facts, scenario.clauses...); got != scenario.want {
 								t.Errorf("%s/%s %s: got %q, want %q", target, consumer, scenario.name, got, scenario.want)
 							}
+							if scenario.facts.concreteRisk {
+								assertMaintainabilityFinding(t, target+"/"+consumer+"/"+scenario.name, maintainabilityFindingFromContract(body, scenario.risk), scenario.risk)
+							}
 							for _, clause := range scenario.clauses {
 								mutated := strings.ReplaceAll(body, clause, "missing-governing-clause")
 								if got := maintainabilityDisposition(mutated, scenario.facts, scenario.clauses...); got == scenario.want {
@@ -49,10 +62,51 @@ func TestConcreteMaintainabilityReviewScenarios(t *testing.T) {
 								}
 							}
 						}
+						for _, mapping := range maintainabilityFieldMappings() {
+							mutated := strings.ReplaceAll(body, mapping, "missing-field-mapping")
+							if finding := maintainabilityFindingFromContract(mutated, "future divergence"); finding.location != "" || finding.issue != "" || finding.suggestedFix != "" || finding.classification != "" {
+								t.Errorf("%s/%s still constructs mapped finding without %q: %#v", target, consumer, mapping, finding)
+							}
+						}
 					}
 				})
 			}
 		})
+	}
+}
+
+func maintainabilityFieldMappings() []string {
+	return []string{
+		"`location` records the affected location",
+		"`issue` names the semantic owner and concrete risk",
+		"`suggested_fix` names the smallest clean remediation",
+		"`classification` records remediation ownership",
+	}
+}
+
+func maintainabilityFindingFromContract(body, risk string) maintainabilityFinding {
+	for _, mapping := range maintainabilityFieldMappings() {
+		if !strings.Contains(body, mapping) {
+			return maintainabilityFinding{}
+		}
+	}
+	if !strings.Contains(body, risk) || !strings.Contains(body, "six-field schema") || !strings.Contains(body, "severity remains informational") {
+		return maintainabilityFinding{}
+	}
+	return maintainabilityFinding{
+		focus:          "maintainable-design",
+		severity:       "concern",
+		location:       "owner/file.go:42",
+		issue:          "policy owner risks " + risk,
+		suggestedFix:   "consolidate at the existing owner",
+		classification: "reasoned",
+	}
+}
+
+func assertMaintainabilityFinding(t *testing.T, label string, got maintainabilityFinding, risk string) {
+	t.Helper()
+	if got.focus != "maintainable-design" || got.severity != "concern" || got.location != "owner/file.go:42" || !strings.Contains(got.issue, "policy owner") || !strings.Contains(got.issue, risk) || got.suggestedFix != "consolidate at the existing owner" || got.classification != "reasoned" {
+		t.Errorf("%s produced incorrectly mapped six-field finding: %#v", label, got)
 	}
 }
 

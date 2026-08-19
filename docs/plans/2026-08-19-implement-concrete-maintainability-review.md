@@ -137,3 +137,11 @@ reconciles those records, appends only the ADR's Implemented event, changes this
 `status: Implemented`, renders the decision index and lock, and commits that lifecycle-only
 transaction before managed-topology removal. The AF-005 completion report follows integration and
 terminal artifact closure so its recorded range and verification evidence are final.
+
+- Phase review found that the scenario oracle inferred outcomes from global substring presence, the
+  single-home proof scanned only expected consumers, and the two revised claims lacked direct proof
+  of their new field-mapping and dispatcher clauses. The settlement models the unchanged six-field
+  finding explicitly with per-field mutations, scans the complete template corpus for consumers and
+  parallel policy, and extends the claim-specific tests for risk admission, dispatcher validation,
+  local autonomy, material routing, informational severity, and ADR-review exclusion. These are
+  verification-strength corrections inside the approved contract; they do not change its semantics.

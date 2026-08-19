@@ -579,7 +579,15 @@ func TestMaintainableCodeReviewLenses(t *testing.T) {
 	for name, out := range outputs {
 		wants := append([]string{"docs/maintainable-code-design.md", "Report-only"}, contracts[name]...)
 		if name != "adr" {
-			wants = append(wants, "one-home ownership", "obsolete-path", "dependency-direction", "representation-boundary", "residual-debt")
+			wants = append(wants,
+				"one-home ownership", "obsolete-path", "dependency-direction", "representation-boundary", "residual-debt",
+				"actionable findings digest", "semantic owner", "concrete maintainability risk",
+				"`location` records the affected location", "`issue` names the semantic owner and concrete risk",
+				"`suggested_fix` names the smallest clean remediation", "`classification` records remediation ownership",
+				"severity remains informational", "pure aesthetic", "non-admissible",
+			)
+		} else if strings.Contains(out, "actionable findings digest") || strings.Contains(out, "review-maintainability-risk") {
+			t.Errorf("ADR reviewer unexpectedly carries implementation-and-plan risk threshold:\n%s", out)
 		}
 		for _, want := range wants {
 			if !strings.Contains(out, want) {
@@ -636,22 +644,42 @@ func TestConcreteMaintainabilityReview(t *testing.T) {
 		"agents/code-reviewer.md.tmpl", "agents/plan-reviewer.md.tmpl",
 		"skills/reviewing-impl/SKILL.md.tmpl", "skills/reviewing-plan/SKILL.md.tmpl",
 	}
+	expectedConsumers := make(map[string]bool, len(consumers))
 	for _, consumer := range consumers {
-		raw, readErr := fs.ReadFile(templates.FS, consumer)
-		if readErr != nil {
-			t.Fatal(readErr)
+		expectedConsumers[consumer] = true
+	}
+	actualConsumers := map[string]int{}
+	err = fs.WalkDir(templates.FS, ".", func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
 		}
-		if got := strings.Count(string(raw), "<!-- awf:include review-maintainability-risk -->"); got != 1 {
-			t.Errorf("%s has %d concrete-maintainability includes, want 1", consumer, got)
+		if entry.IsDir() {
+			return nil
+		}
+		raw, readErr := fs.ReadFile(templates.FS, path)
+		if readErr != nil {
+			return readErr
+		}
+		source := string(raw)
+		if count := strings.Count(source, "<!-- awf:include review-maintainability-risk -->"); count > 0 {
+			actualConsumers[path] = count
+		}
+		if path != partialPath && strings.Contains(source, "concrete maintainability risk") && strings.Contains(source, "smallest clean remediation") && strings.Contains(source, "non-admissible") {
+			t.Errorf("%s duplicates the operative concrete-maintainability threshold", path)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for path, count := range actualConsumers {
+		if !expectedConsumers[path] || count != 1 {
+			t.Errorf("unexpected concrete-maintainability consumer %s with %d includes", path, count)
 		}
 	}
-	for _, forbidden := range []string{"agents/adr-reviewer.md.tmpl", "skills/reviewing-adr/SKILL.md.tmpl"} {
-		raw, readErr := fs.ReadFile(templates.FS, forbidden)
-		if readErr != nil {
-			t.Fatal(readErr)
-		}
-		if strings.Contains(string(raw), "review-maintainability-risk") {
-			t.Errorf("ADR review unexpectedly consumes concrete-maintainability contract: %s", forbidden)
+	for consumer := range expectedConsumers {
+		if actualConsumers[consumer] != 1 {
+			t.Errorf("%s has %d concrete-maintainability includes, want 1", consumer, actualConsumers[consumer])
 		}
 	}
 	for name, data := range map[string]map[string]any{
@@ -3153,6 +3181,33 @@ func TestAuthorityGuidedReviewRemediation(t *testing.T) {
 			t.Errorf("shared review-remediation partial must not interrupt consumer structure with heading %q", line)
 		}
 	}
+
+	riskPartial, err := fs.ReadFile(templates.FS, "partials/review-maintainability-risk.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	riskRoutingClauses := []string{
+		"reject a risk-free preference as a non-admissible reviewer-contract violation",
+		"select autonomously among competing clean local remedies",
+		"Route a genuinely new material choice or changed approved boundary through brainstorming independently of severity",
+		"only a true authority deviation is a `user-decision` finding",
+	}
+	for _, clause := range riskRoutingClauses {
+		if !strings.Contains(string(riskPartial), clause) {
+			t.Errorf("maintainability dispatcher contract missing %q", clause)
+		}
+		mutated := strings.ReplaceAll(string(riskPartial), clause, "missing-risk-routing-clause")
+		if strings.Contains(mutated, clause) {
+			t.Errorf("maintainability dispatcher mutation failed to remove %q", clause)
+		}
+	}
+	adrSkill, err := fs.ReadFile(templates.FS, "skills/reviewing-adr/SKILL.md.tmpl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(adrSkill), "review-maintainability-risk") || strings.Contains(string(adrSkill), "non-admissible reviewer-contract violation") {
+		t.Errorf("ADR review unexpectedly carries dispatcher concrete-risk contract")
+	}
 	// Exactly the three tokens ExpandIncludes rejects inside a partial.
 	for _, token := range []string{"awf:section", "awf:end", "awf:include"} {
 		if strings.Contains(string(partial), token) {
@@ -3263,6 +3318,19 @@ func TestAuthorityGuidedReviewRemediation(t *testing.T) {
 			}
 			if want := routingWants[skill]; !strings.Contains(out, want) {
 				t.Errorf("%s/%s missing routing replacement %q", variant, skill, want)
+			}
+			if skill == "reviewing-adr" {
+				for _, forbidden := range riskRoutingClauses {
+					if strings.Contains(out, forbidden) {
+						t.Errorf("%s/%s unexpectedly carries concrete-risk dispatcher clause %q", variant, skill, forbidden)
+					}
+				}
+			} else {
+				for _, want := range riskRoutingClauses {
+					if !strings.Contains(out, want) {
+						t.Errorf("%s/%s missing concrete-risk dispatcher clause %q", variant, skill, want)
+					}
+				}
 			}
 		}
 	}
