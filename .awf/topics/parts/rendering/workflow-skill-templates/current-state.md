@@ -161,18 +161,24 @@ Ordinary full plan review resolves and verifies every ADR in parsed plan-level `
 Origin: ADR-0255
 Backing: test
 
+### `invariant: clean-integration`
+
+One heading-free shared partial is the sole operative home for proportional clean integration. It points to the maintainable-code-design guide as canonical doctrine and requires applicable design, planning, implementation, and review consumers to determine the current and target owner, narrowest clean integration point, bounded enabling refactor, practical obsolete-path removal or migration, moving verification surfaces, and reasoned residual debt. Necessary bounded enabling work stays inside scope unless it creates a durable choice, increases risk, changes external behavior, or expands the requested outcome. The rule preserves YAGNI, rejects unrelated cleanup, speculative flexibility, and test-shaped production design, and renders coherently through every applicable Core and Full Pi and Claude consumer.
+Origin: ADR-make-clean-integration-operative
+Backing: test
+
 ### `invariant: maintainable-code-stage-coverage`
 
-Brainstorming, TDD, direct execution, subagent-driven development where selected, and bug fixing render concise stage-specific obligations pointing to the maintainable-code guide. Full additionally applies them to ADR and plan stages.
+Brainstorming, TDD, direct execution, inline and delegated plan execution, plan writing and review, implementation review, and bug fixing apply the shared clean-integration rule while retaining concise stage-specific obligations. Full-only plan consumers remain absent from Core.
 Origin: ADR-0168
-Revised-by: ADR-0232, ADR-0278
+Revised-by: ADR-0232, ADR-0278, ADR-make-clean-integration-operative
 Backing: test
 
 ### `invariant: maintainable-code-subagent-contract`
 
-Every scoped implementation brief carries only the task-relevant semantic boundaries and ownership, representations and translation points, dependency direction, preparatory-refactor decision, prohibited bolt-on shortcuts, and validation expectations; the implementer makes authority-preserving reasoned detail revisions with a structured completed report without becoming a second planner, broadening scope, or performing unrelated cleanup. A phase owner may add a necessary omitted path and records it only when another owner or reviewer can rely on that material revision, while a helper reports but never modifies an unassigned path. Inline plan execution extracts the same context for its current task.
+Every scoped implementation brief carries only the task-relevant semantic boundaries and ownership, representations and translation points, dependency direction, clean-integration and preparatory-refactor decisions, prohibited bolt-on shortcuts, validation expectations, and any reasoned residual debt; the implementer makes authority-preserving reasoned detail revisions with a structured completed report without becoming a second planner, broadening scope, or performing unrelated cleanup. A phase owner may add a necessary omitted path and records it only when another owner or reviewer can rely on that material revision, while a helper reports but never modifies an unassigned path. Inline plan execution extracts the same context and applies the shared clean-integration rule for its current task.
 Origin: ADR-0168
-Revised-by: ADR-0240, ADR-0248, ADR-0287
+Revised-by: ADR-0240, ADR-0248, ADR-0287, ADR-make-clean-integration-operative
 Backing: test
 
 ### `invariant: deliberate-subagent-model-selection`
@@ -184,16 +190,16 @@ Backing: test
 
 ### `invariant: implementer-role-contract`
 
-The rendered implementer agent body states its two authority modes, that the dispatched task is the complete scope, that the agent guide's invariants and commands bind while its skill catalog and chain routing do not, that reaching green is the job and no assertion or golden may be weakened to hide a failure, that no interactive channel exists so escalation is a returned inventory, the commit-capable owner's explicit-stage, staged-check, gate, single-commit procedure, and a closed two-outcome return whose stopped outcome requires working-tree status, work completed, work remaining, the named failing check with its actual output, and what was already tried. A phase owner may add a necessary omitted path inside the authority-guided boundary instead of stopping for path omission alone and reports it only when another owner or reviewer can rely on that material change; a helper never modifies an unassigned path and reports the need for parent resolution. The completed outcome inventories deviations or `none`; stopped reserves persistent verification failure or a narrow authority, outcome, scope, ambiguity, or safety boundary while retaining the shared inventory and closed two-outcome contract. The subagent-driven-development and executing-plans skills name that agent in every dispatch branch, and their parent-facing imperatives for raising concerns, preserving the plan's settled design, running the context command, and inventorying batch returns each carry an explicit subject. The body renders coherently with unset data and carries no runtime tool-name token.
+The rendered implementer agent body states its two authority modes, that the dispatched task is the complete scope, that the agent guide's invariants and commands bind while its skill catalog and chain routing do not, that reaching green is the job and no assertion or golden may be weakened to hide a failure, that no interactive channel exists so escalation is a returned inventory, the commit-capable owner's explicit-stage, staged-check, gate, single-commit procedure, and a closed two-outcome return whose stopped outcome requires working-tree status, work completed, work remaining, the named failing check with its actual output, and what was already tried. It applies the shared clean-integration rule inside the dispatched boundary. A phase owner may add a necessary omitted path inside the authority-guided boundary instead of stopping for path omission alone and reports it only when another owner or reviewer can rely on that material change; a helper never modifies an unassigned path and reports the need for parent resolution. The completed outcome inventories deviations or `none`; stopped reserves persistent verification failure or a narrow authority, outcome, scope, ambiguity, or safety boundary while retaining the shared inventory and closed two-outcome contract. The subagent-driven-development and executing-plans skills name that agent in every dispatch branch, and their parent-facing imperatives for raising concerns, preserving the plan's settled design, running the context command, and inventorying batch returns each carry an explicit subject. The body renders coherently with unset data and carries no runtime tool-name token.
 Origin: ADR-0177
-Revised-by: ADR-0179, ADR-0232, ADR-0240, ADR-0248, ADR-0287
+Revised-by: ADR-0179, ADR-0232, ADR-0240, ADR-0248, ADR-0287, ADR-make-clean-integration-operative
 Backing: test
 
 ### `invariant: maintainable-code-review-lenses`
 
-Plan review checks that protected structural choices and necessary enabling refactors are explicit, dependency-ordered where a protected property requires it, bounded, approved or durably dispositioned when larger, and verifiable without treating recorded route choreography as authority; code review checks cohesion, coupling, dependency direction, representation leakage, duplicated policy, testability, needless indirection, protected-contract conformance, and coherent transactions rather than literal planned phase grouping; ADR review applies the same structural lens only when a decision changes a semantic model, representation, ownership, module, or package boundary, dependency direction, or comparable structural contract. All reviewer agents remain report-only. Plan and code review flag unapproved or unjustified machinery and do not demand additions merely because more abstraction, cleanup, testing, or validation is imaginable.
+Plan review checks that protected structural choices and necessary enabling refactors are explicit, dependency-ordered where a protected property requires it, bounded, approved or durably dispositioned when larger, and verifiable without treating recorded route choreography as authority; code review checks cohesion, coupling, dependency direction, representation leakage, duplicated policy, testability, needless indirection, protected-contract conformance, and coherent transactions rather than literal planned phase grouping. Both apply the shared clean-integration rule and explicit one-home ownership, obsolete-path, dependency-direction, representation-boundary, and residual-debt lenses without assigning AF-005 finding severity. ADR review applies the structural lens only when a decision changes a semantic model, representation, ownership, module, or package boundary, dependency direction, or comparable structural contract. All reviewer agents remain report-only. Plan and code review flag unapproved or unjustified machinery and do not demand additions merely because more abstraction, cleanup, testing, or validation is imaginable.
 Origin: ADR-0168
-Revised-by: ADR-0232, ADR-0287
+Revised-by: ADR-0232, ADR-0287, ADR-make-clean-integration-operative
 Backing: test
 
 ### `invariant: explorer-and-grounding-role-contracts`

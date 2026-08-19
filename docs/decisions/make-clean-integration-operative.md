@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: make-clean-integration-operative
-status: Proposed
+status: Implementing
 date: 2026-08-19
 ---
 # ADR-make-clean-integration-operative: Make Clean Integration Operative
@@ -103,3 +103,5 @@ abstraction remain prohibited.
 ## Status history
 
 - 2026-08-19: Proposed
+- 2026-08-19: Implementing; content-sha256: 71e89d7ba2396a1a707f6b1323e9cbccbdc787a243bb2613f84af44d41cd51d5
+- 2026-08-19: Applied; operations: add `rendering/workflow-skill-templates:clean-integration`, update `rendering/workflow-skill-templates:maintainable-code-stage-coverage`, update `rendering/workflow-skill-templates:maintainable-code-subagent-contract`, update `rendering/workflow-skill-templates:implementer-role-contract`, update `rendering/workflow-skill-templates:maintainable-code-review-lenses`, update `rendering/guide-and-doc-templates:maintainable-code-design-guide`

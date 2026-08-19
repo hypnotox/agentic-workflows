@@ -392,6 +392,8 @@ func TestImplementerAgent(t *testing.T) {
 		"what you already tried, so the next attempt does not repeat it",
 		"There is no third outcome",
 		"The invariants, conventions, and commands in the repository's agent guide bind you",
+		"current and target owner",
+		"residual debt",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("expected contract phrase %q in output:\n%s", want, out)
@@ -575,7 +577,11 @@ func TestMaintainableCodeReviewLenses(t *testing.T) {
 		},
 	}
 	for name, out := range outputs {
-		for _, want := range append([]string{"docs/maintainable-code-design.md", "Report-only"}, contracts[name]...) {
+		wants := append([]string{"docs/maintainable-code-design.md", "Report-only"}, contracts[name]...)
+		if name != "adr" {
+			wants = append(wants, "one-home ownership", "obsolete-path", "dependency-direction", "representation-boundary", "residual-debt")
+		}
+		for _, want := range wants {
 			if !strings.Contains(out, want) {
 				t.Errorf("%s reviewer missing %q:\n%s", name, want, out)
 			}
@@ -601,6 +607,75 @@ func TestMaintainableCodeReviewLenses(t *testing.T) {
 func renderSkillGolden(t *testing.T, skill string, data map[string]any) string {
 	t.Helper()
 	return renderGolden(t, "skills/"+skill+"/SKILL.md.tmpl", data)
+}
+
+// invariant: rendering/workflow-skill-templates:clean-integration (TestCleanIntegrationContract)
+func TestCleanIntegrationContract(t *testing.T) {
+	const partialPath = "partials/clean-integration.md"
+	partial, err := fs.ReadFile(templates.FS, partialPath)
+	if err != nil {
+		t.Fatalf("clean-integration shared home is absent: read %s: %v", partialPath, err)
+	}
+	body := string(partial)
+	for _, line := range strings.Split(body, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "#") {
+			t.Errorf("clean-integration partial must be heading-free, found %q", line)
+		}
+	}
+	for _, want := range []string{
+		"maintainable-code-design.md", "current and target owner", "narrowest clean integration point",
+		"bounded enabling refactor", "obsolete or parallel path", "verification surfaces", "residual debt",
+		"YAGNI", "unrelated cleanup", "test-shaped production design", "separate material decision",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("clean-integration shared home missing %q", want)
+		}
+	}
+
+	// This explicit manifest is intentionally consumer-owned rather than inferred
+	// from text: new consumers must make their ownership visible here.
+	consumers := []string{
+		"skills/brainstorming/SKILL.md.tmpl", "skills/writing-plans/SKILL.md.tmpl",
+		"skills/executing-direct/SKILL.md.tmpl", "skills/executing-plans/SKILL.md.tmpl",
+		"skills/subagent-driven-development/SKILL.md.tmpl", "skills/bugfix/SKILL.md.tmpl",
+		"skills/tdd/SKILL.md.tmpl", "skills/reviewing-plan/SKILL.md.tmpl",
+		"skills/reviewing-impl/SKILL.md.tmpl", "agents/implementer.md.tmpl",
+		"agents/plan-reviewer.md.tmpl", "agents/code-reviewer.md.tmpl",
+	}
+	for _, consumer := range consumers {
+		raw, err := fs.ReadFile(templates.FS, consumer)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rawBody := string(raw)
+		if got := strings.Count(rawBody, "<!-- awf:include clean-integration -->"); got != 1 {
+			t.Errorf("%s has %d clean-integration includes, want 1", consumer, got)
+		}
+		if strings.Contains(rawBody, "current and target owner") {
+			t.Errorf("%s duplicates authored clean-integration doctrine instead of including its shared home", consumer)
+		}
+	}
+
+	variants := map[string]map[string]any{
+		"configured": {"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}, "skills": map[string]bool{"reviewing-impl": true}, "targetSubagentTools": true},
+		"empty":      {"prefix": "", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}, "skills": map[string]bool{}},
+	}
+	for variant, data := range variants {
+		for _, consumer := range consumers {
+			var out string
+			if strings.HasPrefix(consumer, "agents/") {
+				out = renderAgentGolden(t, strings.TrimSuffix(strings.TrimPrefix(consumer, "agents/"), ".md.tmpl"), data)
+			} else {
+				out = renderSkillGolden(t, strings.Split(consumer, "/")[1], data)
+			}
+			assertNoLeaks(t, out)
+			for _, want := range []string{"current and target owner", "residual debt"} {
+				if !strings.Contains(out, want) {
+					t.Errorf("%s/%s missing clean-integration semantic %q", variant, consumer, want)
+				}
+			}
+		}
+	}
 }
 
 // invariant: rendering/workflow-skill-templates:authority-guided-implementation-autonomy (TestAuthorityGuidedImplementationAutonomy)
@@ -1083,6 +1158,8 @@ func TestMaintainableCodeSubagentContract(t *testing.T) {
 		"Do not replan the approved outcome, broaden material scope",
 		"or perform unrelated cleanup",
 		"`deviations: none` or each deviation with changed detail, rationale, governing authority, and verification",
+		"current and target owner",
+		"residual debt",
 	} {
 		if !strings.Contains(implementer, want) {
 			t.Errorf("implementer contract missing authority-preserving deviation clause %q:\n%s", want, implementer)
@@ -1096,6 +1173,11 @@ func TestMaintainableCodeSubagentContract(t *testing.T) {
 	}
 	if !strings.Contains(inline, "Each brief explicitly identifies the parent-supplied approved boundary") {
 		t.Errorf("inline helper dispatch omits the parent-supplied approved boundary:\n%s", inline)
+	}
+	for _, want := range []string{"current and target owner", "residual debt"} {
+		if !strings.Contains(inline, want) {
+			t.Errorf("inline helper dispatch omits clean-integration semantic %q:\n%s", want, inline)
+		}
 	}
 }
 

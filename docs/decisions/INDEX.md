@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-make-clean-integration-operative: Make Clean Integration Operative](make-clean-integration-operative.md) (Proposed)
+- [ADR-make-clean-integration-operative: Make Clean Integration Operative](make-clean-integration-operative.md) (Implementing)
 
 ## History
 

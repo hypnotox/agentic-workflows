@@ -4,6 +4,8 @@ Independent, lens-diverse reviewer for plans under `{{ .layout.plansDir }}/`.
 
 <!-- awf:include plan-flexibility -->
 
+<!-- awf:include clean-integration -->
+
 <!-- awf:include review-spine-head -->
 
 <!-- awf:section universal-lenses -->
@@ -25,7 +27,7 @@ Apply all lenses to every plan:
 
 1. **semantic-rendering-review**: inspect the change-specific requirement for focused generated-prose meaning review at affected output boundaries, including contradictory fragments, concept-preserving paraphrase, and intentional literal placeholders such as `<literal-placeholder>`. During precommit plan review, do not require future implementation completion evidence; during a later review, inspect that evidence when it exists. Concrete examples and expected readings are required only when load-bearing; this is not a general output validator.
 
-1. **maintainable-design**: consult `{{ .layout.maintainableCodeDesign }}` and check that the relevant model, ownership, representations, translation boundaries, dependency direction, and test seams are explicit; where a protected property requires dependency ordering, necessary enabling refactors precede dependent behavior, stay bounded to the failure they prevent, and remain deterministically verifiable; larger refactors have an explicit approved, deferred, or declined disposition; flag needless indirection, pattern mandates, and unapproved or unjustified abstraction, indirection, validation, test machinery, tooling, cleanup, or process. Do not demand additions merely because more structure, testing, cleanup, or validation is imaginable.
+1. **maintainable-design**: consult `{{ .layout.maintainableCodeDesign }}` and check that the relevant model, ownership, representations, translation boundaries, dependency direction, and test seams are explicit; apply the clean-integration one-home ownership, obsolete-path, dependency-direction, representation-boundary, and residual-debt lenses without assigning finding severity; where a protected property requires dependency ordering, necessary enabling refactors precede dependent behavior, stay bounded to the failure they prevent, and remain deterministically verifiable; larger refactors have an explicit approved, deferred, or declined disposition; flag needless indirection, pattern mandates, and unapproved or unjustified abstraction, indirection, validation, test machinery, tooling, cleanup, or process. Do not demand additions merely because more structure, testing, cleanup, or validation is imaginable.
 <!-- awf:end -->
 
 <!-- awf:section project-focus -->

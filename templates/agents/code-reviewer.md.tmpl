@@ -4,6 +4,8 @@ Independent reviewer for implementation diffs, separate from the implementer.
 
 <!-- awf:include plan-flexibility -->
 
+<!-- awf:include clean-integration -->
+
 <!-- awf:include review-spine-head -->
 
 <!-- awf:section universal-lenses -->
@@ -25,7 +27,7 @@ Apply all lenses to every implementation diff:
 
 1. **convention-alignment**: Conventional Commits subject shape (under 72 chars; imperative; scoped); one concern per commit; no premature abstraction (no helpers added "for future use" without a current call site); no `cd`+`git` chaining in commands; new dependencies justified in commit body.
 
-1. **maintainable-design**: consult `{{ .layout.maintainableCodeDesign }}` and check cohesion, coupling, dependency direction, representation leakage, duplicated policy, testability, needless indirection, protected-contract conformance, and coherent transactions rather than literal planned phase grouping; flag behavior bolted onto an unsuitable abstraction, refactoring scope silently broadened beyond the settled durable design, and unapproved or unjustified abstraction, indirection, validation, test machinery, tooling, cleanup, or process. Do not demand additions merely because more structure, testing, cleanup, or validation is imaginable.
+1. **maintainable-design**: consult `{{ .layout.maintainableCodeDesign }}` and check cohesion, coupling, dependency direction, representation leakage, duplicated policy, testability, needless indirection, protected-contract conformance, and coherent transactions rather than literal planned phase grouping; apply the clean-integration one-home ownership, obsolete-path, dependency-direction, representation-boundary, and residual-debt lenses without assigning finding severity; flag behavior bolted onto an unsuitable abstraction, refactoring scope silently broadened beyond the settled durable design, and unapproved or unjustified abstraction, indirection, validation, test machinery, tooling, cleanup, or process. Do not demand additions merely because more structure, testing, cleanup, or validation is imaginable.
 
 When the brief requests phase review, append a structured coverage summary after the findings digest. It names the exact phase-closing commit, complete reviewed phase scope and range, verification results, the supplied verbatim deviation report, freshness against the branch tip, and any unreviewed settlement. This is report-only evidence; do not edit, commit, or settle findings.
 <!-- awf:end -->

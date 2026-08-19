@@ -14,6 +14,8 @@ query a single version or a range.
 
 ### Features
 
+- Clean integration is operative across design, planning, implementation, and review: one proportional rule requires semantic ownership, bounded enabling refactoring, practical obsolete-path retirement, moving verification surfaces, and explicit residual debt while preserving YAGNI.
+
 - Plan execution routes are mutable while the protected contract stays fixed; plan owners may revise non-load-bearing choreography and stop for reapproval only when the protected contract would change.
 
 - The rendered workflow document states one protected-contract doctrine: the workflow governs a change's protected contract, while phase and task shape, ordering, inventories, execution mode, and commit decomposition are a route its owner may revise. Precedence is decided per constraint, so one project rule can be binding in its protected clauses and subordinate in its route clauses.

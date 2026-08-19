@@ -275,6 +275,23 @@ func TestMaintainableCodeDesignGuide(t *testing.T) {
 	}
 }
 
+// invariant: rendering/guide-and-doc-templates:maintainable-code-design-guide (TestMaintainableCodeGuideRetainsDoctrineOwnership)
+func TestMaintainableCodeGuideRetainsDoctrineOwnership(t *testing.T) {
+	out := renderGolden(t, "docs/maintainable-code-design.md.tmpl", map[string]any{
+		"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{},
+	})
+	for _, want := range []string{"canonical doctrine", "clean integration", "proportional"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("maintainable-code guide does not state clean-integration doctrine ownership %q:\n%s", want, out)
+		}
+	}
+	for _, operative := range []string{"current and target owner", "narrowest clean integration point", "obsolete or parallel path"} {
+		if strings.Contains(out, operative) {
+			t.Errorf("maintainable-code guide duplicates clean-integration operative clause %q", operative)
+		}
+	}
+}
+
 // invariant: rendering/catalog-and-targets:adr-singleton-section-parity (TestAdrSingletonSectionParity)
 func TestAdrSingletonSectionParity(t *testing.T) {
 	cat := catalog.Standard

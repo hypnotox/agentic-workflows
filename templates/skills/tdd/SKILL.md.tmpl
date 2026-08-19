@@ -25,6 +25,7 @@ TDD may run without an effort. If continuity materially helps, invoke `{{ if ind
 <!-- awf:include context-spill -->
 2. Run it and confirm it fails for the right reason{{ with .vars.testCmd }}: `{{ . }}`{{ end }}.
 3. Before implementing, per `{{ .layout.maintainableCodeDesign }}`, assess whether a bounded enabling refactor prevents duplication, coupling, representation leakage, or a workaround.
+<!-- awf:include clean-integration -->
 <!-- awf:include implementation-autonomy -->
 Route materially larger work through {{ if .skills.brainstorming }}`{{ .prefix }}-brainstorming`{{ else }}the active workflow's design discussion{{ end }} to
 <!-- awf:include escalation-menu -->

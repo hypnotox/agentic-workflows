@@ -36,6 +36,8 @@ On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the w
 <!-- awf:template-source templates/skills/tdd/SKILL.md.tmpl -->
 2. Run it and confirm it fails for the right reason: `go test ./...`.
 3. Before implementing, per `docs/maintainable-code-design.md`, assess whether a bounded enabling refactor prevents duplication, coupling, representation leakage, or a workaround.
+<!-- awf:template-source templates/partials/clean-integration.md -->
+Apply clean integration proportionally under the canonical doctrine in `docs/maintainable-code-design.md`: determine the current and target owner, the narrowest clean integration point, any bounded enabling refactor, the obsolete or parallel path to remove or migrate when practical, the verification surfaces that move with the change, and any residual debt with its reason. A simple change may need no refactor and a few sentences rather than a fixed checklist. Necessary bounded enabling work that prevents duplicated policy, inappropriate coupling, representation leakage, or a workaround is inside scope; return to the material-decision boundary for work that creates a durable choice, increases risk, changes external behavior, or expands the requested outcome, because it requires a separate material decision. Preserve YAGNI: reject unrelated cleanup and speculative flexibility, remove or migrate obsolete paths when practical or state residual debt, and reject test-shaped production design when an existing real seam suffices.
 <!-- awf:template-source templates/partials/implementation-autonomy.md -->
 **Authority-guided implementation autonomy.**
 

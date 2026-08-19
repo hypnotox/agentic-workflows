@@ -16,6 +16,7 @@ Load this skill before directly mutating files when the outcome, solution shape,
 ## Procedure
 
 1. Before mutation, evaluate continuity independently. This skill may run without an effort. If continuity materially helps, invoke `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}`; if an effort already exists, validate its fixed identity and exact `.awf/efforts/<slug>/memory.md`, preserve one writer, and use its managed worktree when present. Otherwise omit effort and memory fields. {{if eq .profile "core"}}Project documentation, source, tests, and repository history remain authoritative{{else}}Repository sources and current-state documentation remain authoritative{{end}}. Re-read any settled design brief and, per `{{ .layout.maintainableCodeDesign }}`, assess bounded enabling refactoring before editing and preserve settled boundaries.
+<!-- awf:include clean-integration -->
 2. Implement only the agreed change. Add or update focused tests, and keep documentation current in the same change.
 3. Run the project's required formatting and verification commands. Fix the cause of every failure; do not weaken expected behavior.
 4. Complete one coherent transaction with verification and a commit, following the project's commit discipline, unless the caller explicitly requires a larger approved change set in one commit or forbids commits.

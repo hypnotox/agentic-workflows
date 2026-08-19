@@ -929,6 +929,44 @@ func TestSemanticRenderingReviewMultiTargetAuthority(t *testing.T) {
 	}
 }
 
+// invariant: rendering/workflow-skill-templates:clean-integration (TestCleanIntegrationTargetParity)
+func TestCleanIntegrationTargetParity(t *testing.T) {
+	for _, profile := range []catalog.Profile{catalog.ProfileCore, catalog.ProfileFull} {
+		t.Run(string(profile), func(t *testing.T) {
+			files := explorationRenderedByPath(t, "prefix: example\nprofile: "+string(profile)+"\nintegrationBranch: main\n")
+			for _, target := range []string{"pi", "claude"} {
+				t.Run(target, func(t *testing.T) {
+					skills := []string{"brainstorming", "executing-direct", "bugfix", "tdd", "reviewing-impl"}
+					agents := []string{"implementer", "code-reviewer"}
+					if profile == catalog.ProfileFull {
+						skills = append(skills, "writing-plans", "executing-plans", "subagent-driven-development", "reviewing-plan")
+						agents = append(agents, "plan-reviewer")
+					}
+					for _, skill := range skills {
+						path := "." + target + "/skills/example-" + skill + "/SKILL.md"
+						if out := files[path]; !strings.Contains(out, "current and target owner") || !strings.Contains(out, "residual debt") {
+							t.Errorf("%s missing applicable clean-integration semantics", path)
+						}
+					}
+					for _, agent := range agents {
+						path := "." + target + "/agents/" + agent + ".md"
+						if out := files[path]; !strings.Contains(out, "current and target owner") || !strings.Contains(out, "residual debt") {
+							t.Errorf("%s missing applicable clean-integration semantics", path)
+						}
+					}
+					if profile == catalog.ProfileCore {
+						for _, absent := range []string{"writing-plans", "executing-plans", "subagent-driven-development", "reviewing-plan"} {
+							if _, ok := files["."+target+"/skills/example-"+absent+"/SKILL.md"]; ok {
+								t.Errorf("Core unexpectedly rendered Full-only clean-integration consumer %s", absent)
+							}
+						}
+					}
+				})
+			}
+		})
+	}
+}
+
 func TestResolveTargetsRejectsUnknown(t *testing.T) {
 	root := scaffold(t, "prefix: awf\nintegrationBranch: main\n  - nope\n")
 	if _, err := Open(testContext(t), root); err == nil {
