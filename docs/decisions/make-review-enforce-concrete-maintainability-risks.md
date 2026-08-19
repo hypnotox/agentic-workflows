@@ -58,13 +58,20 @@ whether implementation or plan detail creates a concrete maintainability risk.
    Full, Pi, and Claude projections. Keep the maintainable-code-design guide as doctrine owner.
 
 5. `decision: preserve-review-boundaries` Preserve report-only reviewer agents, the existing
-   classification model, consensus adherence, autonomous authority-preserving remediation, and the
-   single bounded verify pass. Do not extend this decision to ADR review or introduce AF-013's later
-   severity separation.
+   classification model, autonomous authority-preserving remediation, and the single bounded verify
+   pass. Do not extend this decision to ADR review or introduce AF-013's later severity separation.
+
+6. `decision: deterministic-contract-proof` Back the shared contract with deterministic tests that
+   prove Core and Full plus Pi and Claude projection parity, coherent missingkey=zero rendering with
+   empty variables and no `<no value>` token, the accepted evidence mapping, classification autonomy,
+   dispatcher rejection of risk-free preferences, and outcome scenarios for concrete risk, competing
+   clean local options, and the material-decision boundary.
 
 ## State changes
 
+- add `rendering/workflow-skill-templates:concrete-maintainability-review`
 - update `rendering/workflow-skill-templates:maintainable-code-review-lenses`
+- update `rendering/workflow-skill-templates:authority-guided-review-remediation`
 
 ## Consequences
 
@@ -89,7 +96,7 @@ implementation-and-plan risk threshold.
 
 | Alternative | Why not chosen |
 |---|---|
-| Add owner and risk keys to every finding schema | It expands all reviewer contracts when the existing fields can carry the required evidence. |
+| Add owner and risk keys to every finding schema | Retaining the schema avoids a migration across all reviewer contracts, but makes evidence conformance prose-based and therefore dependent on semantic tests and dispatcher validation. |
 | Add a severity-routed advisory finding disposition | Severity is intentionally informational today, and changing that model belongs to AF-013. |
 | Let risk-free preferences remain as nits | Dispatchers apply mechanical and reasoned findings regardless of severity, so the preference would still demand remediation. |
 | Repeat the threshold in each reviewer and dispatcher | Parallel wording could diverge and recreate ambiguous policy ownership. |
