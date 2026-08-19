@@ -59,7 +59,7 @@ change, not its literal execution choreography.
 | AF-002 | P1 | COMPLETE | Approval required only at a material-decision boundary, not at every production mutation | AF-001 |
 | AF-003 | P1 | COMPLETE | Plans bind outcome, durable decisions, scope, safety, and verification; route is mutable | AF-001 |
 | AF-004 | P1 | COMPLETE | Clean integration operative in every implementation and review path | AF-001 |
-| AF-005 | P1 | READY | Review blocks concrete maintainability risk, not aesthetic preference | AF-003, AF-004 |
+| AF-005 | P1 | COMPLETE | Review blocks concrete maintainability risk, not aesthetic preference | AF-003, AF-004 |
 | AF-006 | P1 | READY | Strongest practical durable oracle replaces absolute test-first blocking | AF-001 |
 | AF-007 | P2 | DECISION | Plain punctuation leaves hard governance | AF-001, owner ruling |
 | AF-008 | P2 | READY | Core and Full read as governance footprints, not rigor modes | AF-001 |
@@ -230,6 +230,42 @@ abstraction; oracle strength.
   preserved the approved outcome.
 - **Unblocked:** AF-005 is `READY` and is the next A2 issue. AF-006 remains `READY`; later issues keep
   their named blockers, and AF-007 remains `DECISION` pending an owner ruling.
+
+### AF-005
+
+- **Range:** Prior program state `7884424da`; implementation range `7884424da..721a228f0`.
+- **Protected contract:** ADR-0289 admits an implementation- or plan-review maintainability concern
+  to the actionable digest only when it names the semantic owner, affected location, concrete risk,
+  smallest clean remediation, and existing classification. It preserves the six-field schema,
+  informational severity, autonomous clean local choice, the material-decision boundary,
+  report-only reviewers, and one verify pass while leaving ADR review and AF-013 severity separation
+  outside scope.
+- **Clean integration:** `templates/partials/review-maintainability-risk.md` is the single operative
+  home and the maintainable-code-design guide remains doctrine owner. Exactly the code reviewer,
+  plan reviewer, implementation-review skill, and plan-review skill consume the threshold; their
+  obsolete policy disclaimers are retired, and no parallel threshold, new disposition, production
+  indirection, or issue-local residual debt remains.
+- **Files changed:** The shared partial and four authored consumers define producer and dispatcher
+  behavior; generated Pi and Claude outputs project it; the workflow-skill current-state claims, ADR,
+  plan, index, lock, topic documentation, and changelog record authority, provenance, rendered state,
+  and adopter-visible behavior. `internal/project` proves one home, exact consumers, empty-data
+  rendering, claim-specific clauses, and Core and Full plus Pi and Claude parity;
+  `internal/evals` proves concrete-risk, field-mapping, rejection, autonomy, and material-routing
+  outcomes.
+- **Verification:** Focused project and deterministic evaluation tests passed; `./awf check staged`
+  and `./x gate` passed for implementation, settlement, numbering, and terminal transactions with
+  100 percent statement coverage, zero audit issues, no production dead code, and pinned workflow
+  references. `./awf audit 7884424da..721a228f0` and
+  `./x audit-local 7884424da..721a228f0` reported clean.
+- **Deviations:** ADR review removed one authority-free preservation clause and made accepted proof,
+  current-state, and empty-rendering obligations explicit. Implementation review found that initial
+  proof relied on global substrings and an expected-only consumer census; settlement added explicit
+  six-field modeling, clause mutations, complete-corpus single-home detection, and direct proof for
+  both revised claims. The verify pass found no residual issue, and these corrections preserved the
+  approved boundary.
+- **Unblocked:** AF-006 remains `READY` and is the next A2 issue. AF-013 still waits on AF-007's owner
+  ruling despite its AF-005 dependency now being complete; AF-008 and AF-009 remain `READY`, and later
+  issues retain their named blockers.
 
 Close each later issue with the same evidence: identity; baseline and final range; protected contract;
 clean integration; files changed with reason; verification commands and results; material deviations;
