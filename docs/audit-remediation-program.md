@@ -43,9 +43,9 @@ The audit is an external opinion. These rulings bind its adoption:
 
 ## Status vocabulary
 
-`READY` may begin when dependencies are complete. `BLOCKED` needs its named prerequisite.
-`CONDITIONAL` begins only when its stated condition holds. `DECISION` needs an owner ruling on its
-premise before any implementation.
+`COMPLETE` has met its target and carries a completion report. `READY` may begin when dependencies
+are complete. `BLOCKED` needs its named prerequisite. `CONDITIONAL` begins only when its stated
+condition holds. `DECISION` needs an owner ruling on its premise before any implementation.
 
 ## Program A: adopter-facing contract
 
@@ -54,16 +54,16 @@ change, not its literal execution choreography.
 
 | ID | Sev | Status | Target outcome | Depends on |
 |---|---|---|---|---|
-| AF-001 | P1 | READY | One high-altitude doctrine separating protected contract from flexible route | None |
-| AF-014A | P1 | BLOCKED | Deterministic regression tests that fail against choreography-first guidance | AF-001 wording |
-| AF-002 | P1 | BLOCKED | Approval required only at a material-decision boundary, not at every production mutation | AF-001 |
-| AF-003 | P1 | BLOCKED | Plans bind outcome, durable decisions, scope, safety, and verification; route is mutable | AF-001 |
-| AF-004 | P1 | BLOCKED | Clean integration operative in every implementation and review path | AF-001 |
+| AF-001 | P1 | COMPLETE | One high-altitude doctrine separating protected contract from flexible route | None |
+| AF-014A | P1 | COMPLETE | Deterministic regression tests that fail against choreography-first guidance | AF-001 wording |
+| AF-002 | P1 | COMPLETE | Approval required only at a material-decision boundary, not at every production mutation | AF-001 |
+| AF-003 | P1 | READY | Plans bind outcome, durable decisions, scope, safety, and verification; route is mutable | AF-001 |
+| AF-004 | P1 | READY | Clean integration operative in every implementation and review path | AF-001 |
 | AF-005 | P1 | BLOCKED | Review blocks concrete maintainability risk, not aesthetic preference | AF-003, AF-004 |
-| AF-006 | P1 | BLOCKED | Strongest practical durable oracle replaces absolute test-first blocking | AF-001 |
+| AF-006 | P1 | READY | Strongest practical durable oracle replaces absolute test-first blocking | AF-001 |
 | AF-007 | P2 | DECISION | Plain punctuation leaves hard governance | AF-001, owner ruling |
-| AF-008 | P2 | BLOCKED | Core and Full read as governance footprints, not rigor modes | AF-001 |
-| AF-009 | P2 | BLOCKED | Pi runtime protocol owned by a target-specific reference, not generic workflow docs | AF-001 |
+| AF-008 | P2 | READY | Core and Full read as governance footprints, not rigor modes | AF-001 |
+| AF-009 | P2 | READY | Pi runtime protocol owned by a target-specific reference, not generic workflow docs | AF-001 |
 | AF-010 | P2 | BLOCKED | Operative prose states rule, flexible detail, stop condition, required evidence | AF-002..AF-009 |
 | AF-011 | P2 | BLOCKED | Daily-use documentation separated from rare recovery and migration protocol | AF-009 |
 | AF-012 | P2 | BLOCKED | A new concept must remove or subsume an existing one; vocabulary culled | AF-010, AF-011 |
@@ -149,10 +149,32 @@ verification; current-state authority consistency; ADR Decisions at high altitud
 active project rules from historical ADR prose; single-writer shared memory; refusal of speculative
 abstraction; oracle strength.
 
-## Per-issue completion report
+## Per-issue completion reports
 
-Close each issue with: issue identity; baseline and final commit range; protected contract preserved
-(outcome, durable decisions, safety and compatibility, verification strength); clean integration
-(previous owner, final owner, enabling refactor, obsolete path retired, residual debt); files changed
-with reason; each verification command and its result; material deviations; newly unblocked issues
-and remaining blockers. Do not report success without naming the verification that proves it.
+### AF-001, AF-002, and AF-014A
+
+- **Range:** Audit baseline `50bd6412f`; implementation range `9f04451e7..3cce22f02`.
+- **Protected contract:** ADR-0286 records the doctrine and material-decision approval boundary. The
+  transaction preserves safety, compatibility, project authority, and verification strength.
+- **Clean integration:** `templates/partials/protected-contract.md` is the doctrine owner;
+  `templates/partials/outline-approval.md` owns the approval rule. The production-mutation trigger,
+  artifact-class carve-outs, and superseded partial name are retired. No issue-local residual debt
+  remains.
+- **Files changed:** The two shared partials and their workflow, guide, plan, agent, and skill
+  consumers carry the contract; generated Pi and Claude outputs project it; `internal/project` and
+  `internal/evals` prove both footprints and runtimes; ADR, current-state, lock, and changelog files
+  record authority, provenance, rendering state, and adopter-visible behavior.
+- **Verification:** `./awf check staged` reported zero findings; `./x gate` passed with 100 percent
+  statement coverage, zero audit issues, no production dead code, and all workflow references
+  pinned; `./x audit-local 9f04451e7..3cce22f02` reported clean.
+- **Deviations:** AF-002 moved into this transaction by owner direction because landing it later
+  would leave the new doctrine contradicted by the standing universal gate. Review narrowed the
+  single-home claim to its proven consumer set and renamed its approval partial without changing
+  the protected outcome.
+- **Unblocked:** AF-003, AF-004, AF-006, AF-008, and AF-009 are `READY`. AF-005 and later dependent
+  items remain blocked on their named prerequisites; AF-007 remains `DECISION` pending an owner
+  ruling.
+
+Close each later issue with the same evidence: identity; baseline and final range; protected contract;
+clean integration; files changed with reason; verification commands and results; material deviations;
+and newly unblocked issues and remaining blockers.
