@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-strongest-practical-durable-oracle: Strongest practical durable oracle](strongest-practical-durable-oracle.md) (Proposed)
 
 ## History
 
