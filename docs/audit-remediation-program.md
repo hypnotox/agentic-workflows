@@ -57,7 +57,7 @@ change, not its literal execution choreography.
 | AF-001 | P1 | COMPLETE | One high-altitude doctrine separating protected contract from flexible route | None |
 | AF-014A | P1 | COMPLETE | Deterministic regression tests that fail against choreography-first guidance | AF-001 wording |
 | AF-002 | P1 | COMPLETE | Approval required only at a material-decision boundary, not at every production mutation | AF-001 |
-| AF-003 | P1 | READY | Plans bind outcome, durable decisions, scope, safety, and verification; route is mutable | AF-001 |
+| AF-003 | P1 | COMPLETE | Plans bind outcome, durable decisions, scope, safety, and verification; route is mutable | AF-001 |
 | AF-004 | P1 | READY | Clean integration operative in every implementation and review path | AF-001 |
 | AF-005 | P1 | BLOCKED | Review blocks concrete maintainability risk, not aesthetic preference | AF-003, AF-004 |
 | AF-006 | P1 | READY | Strongest practical durable oracle replaces absolute test-first blocking | AF-001 |
@@ -174,6 +174,32 @@ abstraction; oracle strength.
 - **Unblocked:** AF-003, AF-004, AF-006, AF-008, and AF-009 are `READY`. AF-005 and later dependent
   items remain blocked on their named prerequisites; AF-007 remains `DECISION` pending an owner
   ruling.
+
+### AF-003
+
+- **Range:** Prior program state `ef5352f27`; implementation range `ef5352f27..3b556b885`.
+- **Protected contract:** ADR-0287 makes a plan bind its linked durable decisions, Definition of Done
+  outcomes, and the protected contract from ADR-0286 while leaving non-load-bearing route detail
+  revisable. Typed authority, scope confinement, lifecycle, safety, compatibility, independently
+  green transactions, and verification strength remain enforced.
+- **Clean integration:** `templates/partials/plan-flexibility.md` is the single plan-specific route
+  authority. Existing plan authoring, execution, reviewer, and helper surfaces retain their owned
+  protocol and point to that rule. Universal route-ordering and path-deviation clauses are retired,
+  and batch examples are optional without weakening deterministic confinement or post-checks. No
+  issue-local residual debt remains.
+- **Files changed:** Plan, workflow, execution, agent, and autonomy templates project the rule;
+  generated Pi and Claude outputs carry it in the applicable footprint; `internal/plan`,
+  `internal/project`, and `internal/evals` prove parser and behavioral contracts; ADR, plan,
+  current-state, lock, and changelog files record authority, provenance, rendered state, and
+  adopter-visible behavior.
+- **Verification:** Focused parser, project, and deterministic evaluation tests passed across Core
+  and Full and Pi and Claude; `./awf check staged` and `./x gate` passed for the application and
+  settlement transactions; `./x audit-local 005d1ae8d..3b556b885` reported clean.
+- **Deviations:** Rendering moved the workflow include to the non-overridden Principles section;
+  review also removed residual universal ordering and structural-choice clauses and strengthened
+  claim proof. These corrections preserved the approved protected-contract boundary.
+- **Unblocked:** AF-004 is the next A1 issue. AF-005 remains blocked only on AF-004; later issues keep
+  their named blockers, and AF-007 remains `DECISION` pending an owner ruling.
 
 Close each later issue with the same evidence: identity; baseline and final range; protected contract;
 clean integration; files changed with reason; verification commands and results; material deviations;
