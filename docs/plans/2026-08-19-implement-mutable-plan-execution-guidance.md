@@ -150,3 +150,8 @@ findings here only when another phase, reviewer, or terminal assurance can rely 
   consumers, while Core remains plan-free and retains route autonomy through its existing
   protected-contract and implementation-autonomy surfaces. This preserves the approved
   cross-footprint semantics without leaking Full governance into Core.
+- During rendering, `.awf/parts/workflow/chain.md` proved to override the generic workflow chain,
+  while convention-part bodies do not expand include directives. The phase owner therefore moved
+  the shared include to the workflow's non-overridden Principles section instead of duplicating its
+  prose in the project override. This source correction preserves the approved single-rule design
+  and verifies the rendered workflow boundary another reviewer can rely on.

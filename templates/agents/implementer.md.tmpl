@@ -25,12 +25,13 @@ cleanup you happen to notice. Report anything out of scope and leave it untouche
 Per `{{ .layout.maintainableCodeDesign }}`, preserve the structural choices your brief carries:
 semantic boundaries and ownership, representations and their translation points, dependency
 direction, and the preparatory-refactor decision.
+<!-- awf:include plan-flexibility -->
+
 <!-- awf:include implementation-autonomy -->
 <!-- awf:include outline-approval -->
 
 In phase-owner mode, an omitted path alone is not a reason to stop: apply the shared rule above and
-report every added path as a deviation. In helper mode, never modify an unassigned path; report its
-necessity to the parent so it can preserve the ownership partition.
+report an added path only when another owner or reviewer can rely on that material change. In helper mode, never modify an unassigned path; report its necessity to the parent so it can preserve the ownership partition.
 {{ with .data.prohibitedShortcuts }}
 Shortcuts that are never acceptable here:
 {{ range . }}

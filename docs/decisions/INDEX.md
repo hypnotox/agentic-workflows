@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-make-plans-mutable-execution-guidance: Make Plans Mutable Execution Guidance](make-plans-mutable-execution-guidance.md) (Proposed)
+- [ADR-make-plans-mutable-execution-guidance: Make Plans Mutable Execution Guidance](make-plans-mutable-execution-guidance.md) (Implementing)
 
 ## History
 

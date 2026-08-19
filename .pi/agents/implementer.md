@@ -37,12 +37,19 @@ cleanup you happen to notice. Report anything out of scope and leave it untouche
 Per `docs/maintainable-code-design.md`, preserve the structural choices your brief carries:
 semantic boundaries and ownership, representations and their translation points, dependency
 direction, and the preparatory-refactor decision.
+<!-- awf:template-source templates/partials/plan-flexibility.md -->
+**Plan flexibility.**
+
+The protected-contract rule in the workflow document governs what a plan may not change. The plan records the best known route at authoring time, not a binding implementation choreography. A commit-capable owner may merge, split, reorder, add, remove, or replace recorded route detail while the protected contract holds. A path omitted from the plan is not alone a reason to stop, and a stale listed path need not be touched. Reapproval is required only when the protected contract would change or an unresolved material decision appears.
+
+Reconcile a Proposed plan only when another phase or reviewer could rely on stale material instructions. Inconsequential and independently local edits require no deviation record. A delegated owner reports material cross-owner revisions for parent reconciliation. A helper remains confined to its assigned paths and gains no scope, commit, review, checkpoint, handoff, or outcome authority from route flexibility.
+
 <!-- awf:template-source templates/partials/implementation-autonomy.md -->
 **Authority-guided implementation autonomy.**
 
 Resolve implementation findings autonomously when applicable ADRs, current-state claims, and repository authority determine a compliant correction that preserves the approved outcome, material scope, settled durable boundaries, and required verification. Diagnose a source contradiction, correctness or safety concern, review finding, blocker symptom, or failed check before treating it as an escalation.
 
-A reasoned non-mechanical deviation records its changed detail, rationale, governing authority, and verification. A commit-capable phase owner may add an omitted path when it is necessary to complete the approved outcome and remains inside those authority, scope, boundary, and verification limits, and reports every added path as a reasoned deviation. An omitted path alone is not a reason to stop. Do not replan the approved outcome, broaden material scope, overturn settled structural choices, weaken an oracle, or perform unrelated cleanup.
+A reasoned non-mechanical deviation that another owner or reviewer can rely on records its changed detail, rationale, governing authority, and verification. A commit-capable owner may add an omitted path when it is necessary to complete the approved outcome and remains inside those authority, scope, boundary, and verification limits. An omitted path alone is not a reason to stop. Do not replan the approved outcome, broaden material scope, overturn settled structural choices, weaken an oracle, or perform unrelated cleanup.
 
 Stop and report through the active workflow only when authorities conflict or must change, the approved outcome or material scope must change, a genuine unresolved design fork remains, safe or correct completion inside the boundary is impossible, or required verification remains unreachable after reasonable diagnosis and remediation.
 <!-- awf:template-source templates/partials/outline-approval.md -->
@@ -52,8 +59,7 @@ The approved boundary may be evidenced by retained conversation, user-provenance
 
 <!-- awf:template-source templates/agents/implementer.md.tmpl -->
 In phase-owner mode, an omitted path alone is not a reason to stop: apply the shared rule above and
-report every added path as a deviation. In helper mode, never modify an unassigned path; report its
-necessity to the parent so it can preserve the ownership partition.
+report an added path only when another owner or reviewer can rely on that material change. In helper mode, never modify an unassigned path; report its necessity to the parent so it can preserve the ownership partition.
 
 Shortcuts that are never acceptable here:
 

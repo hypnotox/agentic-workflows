@@ -12,6 +12,13 @@ description: Use to write a change-specific implementation plan for a complex aw
 
 Writes a plan to `docs/plans/YYYY-MM-DD-<topic>.md` per the awf plan convention. The plan is the change-specific execution record: observable outcomes, authority links, material boundaries, ordering dependencies, focused evidence, and confinement where ambiguity or helpers require it. Workflow skills and agents own generic execution protocol. The durable design lives in linked ADRs when any exist; link through `adrs:` rather than duplicating rationale. If planning discovers a new choice that remains meaningful after implementation, return to ADR authoring instead of hiding it in a task.
 
+<!-- awf:template-source templates/partials/plan-flexibility.md -->
+**Plan flexibility.**
+
+The protected-contract rule in the workflow document governs what a plan may not change. The plan records the best known route at authoring time, not a binding implementation choreography. A commit-capable owner may merge, split, reorder, add, remove, or replace recorded route detail while the protected contract holds. A path omitted from the plan is not alone a reason to stop, and a stale listed path need not be touched. Reapproval is required only when the protected contract would change or an unresolved material decision appears.
+
+Reconcile a Proposed plan only when another phase or reviewer could rely on stale material instructions. Inconsequential and independently local edits require no deviation record. A delegated owner reports material cross-owner revisions for parent reconciliation. A helper remains confined to its assigned paths and gains no scope, commit, review, checkpoint, handoff, or outcome authority from route flexibility.
+
 <!-- awf:template-source templates/partials/outline-approval.md -->
 An approval boundary is triggered by an unresolved material decision, never by the act of mutating production code. A material decision exists when the requested outcome is materially ambiguous, when viable approaches carry meaningfully different durable consequences, when it is unsettled whether externally observable behaviour, compatibility, safety, or material scope should change, when repository authority contradicts the request, when a required verification oracle would have to be weakened, when an irreversible or destructive action is not already authorized, or when the clean implementation exposes a separate load-bearing decision. Routine implementation detail creates no approval boundary, whatever kind of file it touches; a concise outline stays useful whenever it aids clarity.
 
@@ -130,7 +137,7 @@ On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the w
 <!-- awf:template-source templates/skills/writing-plans/SKILL.md.tmpl -->
 ## Notes
 
-- Inline owners immediately correct stale instructions and record reasoned deviations in Notes. Delegated owners report rather than edit; after phase review the parent reconciles the report and findings in one focused settlement commit before checkpointing or later execution.
+- Apply the shared plan-flexibility rule to Notes reconciliation. Delegated owners report material cross-owner revisions rather than editing the plan; after phase review the parent reconciles required plan changes and findings in one focused settlement commit before checkpointing or later execution.
 
 - For a V2 ADR, assign each operation to an explicit direct, first, middle, or final application transaction; name exact sequences, claim mutations, and the Abandoned cancellation result where relevant. Do not defer all operations to one final commit unless the direct path is intentional.
 - A plan carries its own two-state `status:` frontmatter, independent of any linked ADR's status. It is **mutable while `status: Proposed`** through review and implementation, where findings are noted as they surface, and **freezes at `status: Implemented`** only in the deferred terminal transaction after assurance settles or is explicitly skipped. `effort-workflow` owns that transaction for effort-backed work; the effort-free execution parent owns it otherwise. In awf's usual flow a plan and its ADR(s) co-flip there, but the plan's freeze keys off its own status, not the ADR's.

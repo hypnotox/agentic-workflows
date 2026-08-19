@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: make-plans-mutable-execution-guidance
-status: Proposed
+status: Implementing
 date: 2026-08-19
 ---
 # ADR-make-plans-mutable-execution-guidance: Make Plans Mutable Execution Guidance
@@ -130,3 +130,5 @@ lifecycle. It does not begin AF-004's clean-integration changes or AF-005's revi
 ## Status history
 
 - 2026-08-19: Proposed
+- 2026-08-19: Implementing; content-sha256: 77cd10cb7437550b1d96b6381104f7461fc5efb94625020bebd14fbcf935bc10
+- 2026-08-19: Applied; operations: add `rendering/workflow-skill-templates:plan-flexibility`, update `rendering/workflow-skill-templates:phase-transaction-ownership`, update `rendering/workflow-skill-templates:plan-task-detail-modes`, update `rendering/workflow-skill-templates:maintainable-code-subagent-contract`, update `rendering/workflow-skill-templates:implementer-role-contract`, update `rendering/workflow-skill-templates:maintainable-code-review-lenses`

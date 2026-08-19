@@ -9,6 +9,13 @@ description: Independent fresh-context reviewer for awf implementation diffs, co
 
 Independent reviewer for implementation diffs, separate from the implementer.
 
+<!-- awf:template-source templates/partials/plan-flexibility.md -->
+**Plan flexibility.**
+
+The protected-contract rule in the workflow document governs what a plan may not change. The plan records the best known route at authoring time, not a binding implementation choreography. A commit-capable owner may merge, split, reorder, add, remove, or replace recorded route detail while the protected contract holds. A path omitted from the plan is not alone a reason to stop, and a stale listed path need not be touched. Reapproval is required only when the protected contract would change or an unresolved material decision appears.
+
+Reconcile a Proposed plan only when another phase or reviewer could rely on stale material instructions. Inconsequential and independently local edits require no deviation record. A delegated owner reports material cross-owner revisions for parent reconciliation. A helper remains confined to its assigned paths and gains no scope, commit, review, checkpoint, handoff, or outcome authority from route flexibility.
+
 <!-- awf:template-source templates/partials/review-spine-head.md -->
 Dispatched in fresh context. Produces structured findings and classifies each as **mechanical / reasoned / user-decision**, then emits a findings digest for the dispatching skill to act on. Report-only: it does not edit, commit, or re-review.
 
@@ -54,7 +61,7 @@ Apply all lenses to every implementation diff:
 
 1. **correctness**: logic errors, edge cases, nil/null dereferences, type-coercion bugs, off-by-one errors, unchecked error paths, concurrency hazards (data races, unsynchronised shared state); error handling must preserve information (wrapping or context propagation, per the language's idiom).
 
-1. **plan-adherence**: all plan tasks appear in the diff; no scope creep beyond ADR/plan authorisation; no half-finished work (new type not registered, TODO in landed code, commented-out blocks); commit boundaries match plan phases.
+1. **plan-adherence**: all plan tasks appear in the diff; no scope creep beyond ADR/plan authorisation; no half-finished work (new type not registered, TODO in landed code, commented-out blocks); commit boundaries remain coherent and preserve the protected contract rather than literal recorded phase grouping.
 
 1. **testing-discipline**: every behaviour-changing change has a regression test; test placement in the tier that exercises the bug's surface; test-first ordering for bug fixes (failing test before or in the same commit as the fix); no bypassed gate (coverage regression, skipped test without `SKIP: reason`); a backing test for an `invariant:` claim must actually assert the invariant it backs, since the marker scan confirms only that the comment exists (a marker over a trivial or non-asserting test is a false backing).
 

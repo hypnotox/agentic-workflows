@@ -11,6 +11,13 @@ description: >
 
 Independent, lens-diverse reviewer for plans under `docs/plans/`.
 
+<!-- awf:template-source templates/partials/plan-flexibility.md -->
+**Plan flexibility.**
+
+The protected-contract rule in the workflow document governs what a plan may not change. The plan records the best known route at authoring time, not a binding implementation choreography. A commit-capable owner may merge, split, reorder, add, remove, or replace recorded route detail while the protected contract holds. A path omitted from the plan is not alone a reason to stop, and a stale listed path need not be touched. Reapproval is required only when the protected contract would change or an unresolved material decision appears.
+
+Reconcile a Proposed plan only when another phase or reviewer could rely on stale material instructions. Inconsequential and independently local edits require no deviation record. A delegated owner reports material cross-owner revisions for parent reconciliation. A helper remains confined to its assigned paths and gains no scope, commit, review, checkpoint, handoff, or outcome authority from route flexibility.
+
 <!-- awf:template-source templates/partials/review-spine-head.md -->
 Dispatched in fresh context. Produces structured findings and classifies each as **mechanical / reasoned / user-decision**, then emits a findings digest for the dispatching skill to act on. Report-only: it does not edit, commit, or re-review.
 
@@ -88,7 +95,7 @@ Apply all lenses to every plan:
 **check-authority-taxonomy**: classify each material check as an authority, state, or choreography check; preserve authority checks, require state checks to be no stricter than the durable property they prove, and flag choreography-only enforcement with no named authority or state obligation
 
 
-**plan-v2-schema-exactness**: Reject conditional or optional tasks, missing contract-bearing `Latitude: exact`, misplaced or unknown task fields, and spikes with implementation bodies or no Notes target.
+**plan-v2-schema-exactness**: Reject conditional or optional tasks, misplaced or unknown task fields, and spikes with implementation bodies or no Notes target. Treat `Latitude: exact` as an optional aid, and require ordering only when an actual dependency constrains authority, outcome ownership, scope, safety, compatibility, lifecycle, or verification.
 
 
 **quoted-command-output-is-rerun**: a plan that quotes a command and its expected output states a checkable fact: RUN it rather than reasoning about it, and never write a corrected number you have not observed. A review of the ADR-0128 plan "corrected" a `grep -rn adr.ParseDir(` count from 10 to 12 on the theory that two `coverage-ignore` comments matched; they read `adr.ParseDir here`, with no opening paren, so the pattern never matched them and BOTH the before and after numbers shipped wrong. An unverified correction makes a plan less accurate than leaving it alone, because the executor now trusts it. Escalate rather than correct when a plan asserts a literal COUNT at all: prefer a terminal-state assertion (the finding count reaches zero, the grep returns nothing, the drift check is clean), because a count is a measurement of a corpus that moves and a stale one fails misleadingly rather than loudly. The 2026-07-19 retrofit-D plan showed the compound form: its headline total was a merge-base measurement, its item/slug split was wrong at every commit, its sibling plan carried a third figure, and because four later figures were derived from the total, one stale measurement made every phase unverifiable. Correcting such numbers one at a time treats the symptom; the fix is to delete them in favour of the command

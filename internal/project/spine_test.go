@@ -366,7 +366,7 @@ func TestImplementerAgent(t *testing.T) {
 		"act as a helper and say so in your report",
 		"Your brief is the whole job",
 		"In phase-owner mode, an omitted path alone is not a reason to stop",
-		"report every added path as a deviation",
+		"report an added path only when another owner or reviewer can rely on that material change",
 		"In helper mode, never modify an unassigned path",
 		"necessity to the parent so it can preserve the ownership partition",
 		"adding an abstraction with no current call site",
@@ -621,10 +621,9 @@ func TestAuthorityGuidedImplementationAutonomy(t *testing.T) {
 		"applicable ADRs, current-state claims, and repository authority",
 		"approved outcome, material scope, settled durable boundaries, and required verification",
 		"Diagnose a source contradiction, correctness or safety concern, review finding, blocker symptom, or failed check",
-		"reasoned non-mechanical deviation records its changed detail, rationale, governing authority, and verification",
-		"commit-capable phase owner may add an omitted path",
+		"reasoned non-mechanical deviation that another owner or reviewer can rely on records its changed detail, rationale, governing authority, and verification",
+		"commit-capable owner may add an omitted path",
 		"necessary to complete the approved outcome",
-		"reports every added path as a reasoned deviation",
 		"An omitted path alone is not a reason to stop",
 		"Do not replan the approved outcome, broaden material scope, overturn settled structural choices, weaken an oracle, or perform unrelated cleanup",
 		"authorities conflict or must change",
@@ -664,7 +663,7 @@ func TestAuthorityGuidedImplementationAutonomy(t *testing.T) {
 				}
 			}
 			if consumer == "skills/executing-plans/SKILL.md.tmpl" {
-				for _, want := range []string{"amend the mutable plan immediately", "record the reasoned deviation in Notes"} {
+				for _, want := range []string{"Amend the mutable plan", "only when another phase or reviewer can rely on that material instruction"} {
 					if !strings.Contains(out, want) {
 						t.Errorf("%s/%s missing inline reconciliation directive %q", variant, consumer, want)
 					}
@@ -960,7 +959,7 @@ func TestMaintainableCodeStageCoverage(t *testing.T) {
 			"docs/maintainable-code-design.md", "bounded enabling refactor", "duplication, coupling, representation leakage, or a workaround", "Route materially larger work through the active workflow's design discussion", "perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated", "smallest behavior-proving, model-supporting seam", "force representation leakage or needless indirection", "confirm it fails for the right reason", "minimal change to pass", "Ground tests, checks, seams, and harness work only in changed behavior, a demonstrated regression, an existing documented contract, or a clearly applicable project invariant", "reject speculative test or policy machinery", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
 		}},
 		"executing-plans": {wants: []string{
-			"docs/maintainable-code-design.md", "preserve the plan's settled structural choices", "bounded enabling refactor", "reassess if grounded source contradicts them", "stop rather than bolt correctness onto the wrong abstraction", "do not drift from the plan", "Each brief explicitly identifies the parent-supplied approved boundary", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
+			"docs/maintainable-code-design.md", "preserve the plan's settled durable choices", "bounded enabling refactor", "reassess if grounded source contradicts them", "stop rather than bolt correctness onto the wrong abstraction", "Each brief explicitly identifies the parent-supplied approved boundary", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
 		}},
 		"executing-direct": {wants: []string{
 			"docs/maintainable-code-design.md", "assess bounded enabling refactoring before editing", "preserve settled boundaries", "no independent need for brainstorming", "material choice or clarification", "Re-evaluate planning", "only when that independent need fires", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
@@ -1067,11 +1066,10 @@ func TestMaintainableCodeSubagentContract(t *testing.T) {
 	for _, want := range []string{
 		"Resolve implementation findings autonomously",
 		"applicable ADRs, current-state claims, and repository authority",
-		"reasoned non-mechanical deviation records its changed detail, rationale, governing authority, and verification",
-		"commit-capable phase owner may add an omitted path",
-		"reports every added path as a reasoned deviation",
+		"reasoned non-mechanical deviation that another owner or reviewer can rely on records its changed detail, rationale, governing authority, and verification",
+		"commit-capable owner may add an omitted path",
 		"An omitted path alone is not a reason to stop",
-		"report every added path as a deviation",
+		"report an added path only when another owner or reviewer can rely on that material change",
 		"In helper mode, never modify an unassigned path",
 		"necessity to the parent so it can preserve the ownership partition",
 		"Do not replan the approved outcome, broaden material scope",

@@ -2,6 +2,8 @@
 
 Independent reviewer for implementation diffs, separate from the implementer.
 
+<!-- awf:include plan-flexibility -->
+
 <!-- awf:include review-spine-head -->
 
 <!-- awf:section universal-lenses -->
@@ -11,7 +13,7 @@ Apply all lenses to every implementation diff:
 
 1. **correctness**: logic errors, edge cases, nil/null dereferences, type-coercion bugs, off-by-one errors, unchecked error paths, concurrency hazards (data races, unsynchronised shared state); error handling must preserve information (wrapping or context propagation, per the language's idiom).
 
-1. **{{if eq .profile "core"}}scope{{else}}plan{{end}}-adherence**: all {{if eq .profile "core"}}approved work{{else}}plan tasks{{end}} appear in the diff; no scope creep beyond {{if eq .profile "core"}}the approved boundary{{else}}ADR/plan authorisation{{end}}; no half-finished work (new type not registered, TODO in landed code, commented-out blocks); commit boundaries {{if eq .profile "core"}}remain coherent{{else}}match plan phases{{end}}.
+1. **{{if eq .profile "core"}}scope{{else}}plan{{end}}-adherence**: all {{if eq .profile "core"}}approved work{{else}}plan tasks{{end}} appear in the diff; no scope creep beyond {{if eq .profile "core"}}the approved boundary{{else}}ADR/plan authorisation{{end}}; no half-finished work (new type not registered, TODO in landed code, commented-out blocks); commit boundaries remain coherent{{if ne .profile "core"}} and preserve the protected contract rather than literal recorded phase grouping{{end}}.
 
 1. **testing-discipline**: every behaviour-changing change has a regression test; test placement in the tier that exercises the bug's surface; test-first ordering for bug fixes (failing test before or in the same commit as the fix); no bypassed gate (coverage regression, skipped test without `SKIP: reason`); a backing test for an `invariant:` claim must actually assert the invariant it backs, since the marker scan confirms only that the comment exists (a marker over a trivial or non-asserting test is a false backing).
 

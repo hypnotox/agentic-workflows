@@ -730,8 +730,8 @@ func validateTask(path string, task Task, body string) error {
 		return structuralError(path, "relationship", fmt.Sprintf("task %d.%d Question requires Kind: spike", task.Phase, task.Number))
 	}
 	if f.Kind == TaskBatch {
-		if len(f.Paths) == 0 || f.Representative == "" || f.Edge == "" || f.PostCheck == "" {
-			return structuralError(path, "relationship", fmt.Sprintf("batch %d.%d requires Paths, Representative, Edge, and Post-check", task.Phase, task.Number))
+		if len(f.Paths) == 0 || f.PostCheck == "" {
+			return structuralError(path, "relationship", fmt.Sprintf("batch %d.%d requires Paths and Post-check", task.Phase, task.Number))
 		}
 	} else if f.Representative != "" || f.Edge != "" {
 		return structuralError(path, "relationship", fmt.Sprintf("task %d.%d Representative and Edge require Kind: batch", task.Phase, task.Number))

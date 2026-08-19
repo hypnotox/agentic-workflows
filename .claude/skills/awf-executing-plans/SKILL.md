@@ -12,6 +12,14 @@ description: Use to execute a written awf plan phase by phase while the parent o
 
 The inline implementation chain iterates plan phases. Inline is selected per phase, so a mixed plan can hand subagent-driven phases to its companion.
 
+<!-- awf:template-source templates/partials/plan-flexibility.md -->
+**Plan flexibility.**
+
+The protected-contract rule in the workflow document governs what a plan may not change. The plan records the best known route at authoring time, not a binding implementation choreography. A commit-capable owner may merge, split, reorder, add, remove, or replace recorded route detail while the protected contract holds. A path omitted from the plan is not alone a reason to stop, and a stale listed path need not be touched. Reapproval is required only when the protected contract would change or an unresolved material decision appears.
+
+Reconcile a Proposed plan only when another phase or reviewer could rely on stale material instructions. Inconsequential and independently local edits require no deviation record. A delegated owner reports material cross-owner revisions for parent reconciliation. A helper remains confined to its assigned paths and gains no scope, commit, review, checkpoint, handoff, or outcome authority from route flexibility.
+
+
 <!-- awf:template-source templates/skills/executing-plans/SKILL.md.tmpl#when-to-invoke -->
 <!-- awf:edit when-to-invoke: default; create .awf/skills/parts/executing-plans/when-to-invoke.md to override -->
 <!-- awf:template-source templates/skills/executing-plans/SKILL.md.tmpl -->
@@ -35,18 +43,18 @@ The approved boundary may be evidenced by retained conversation, user-provenance
 <!-- awf:template-source templates/skills/executing-plans/SKILL.md.tmpl#procedure-raise-concerns -->
 <!-- awf:edit procedure-raise-concerns: default; create .awf/skills/parts/executing-plans/procedure-raise-concerns.md to override -->
 <!-- awf:template-source templates/skills/executing-plans/SKILL.md.tmpl -->
-2. You, the parent executing this plan, resolve a missing or stale phase path, check, closing subject, or local instruction when repository authority determines it, amend the mutable plan immediately, record the reasoned deviation in Notes, and continue. Use the shared authority boundary when a genuine unresolved design fork remains.
+2. You, the parent executing this plan, resolve a missing or stale phase path, check, closing subject, or local instruction when repository authority determines it. Amend the mutable plan and record the reasoned deviation in Notes only when another phase or reviewer can rely on that material instruction, then continue. Use the shared authority boundary when a genuine unresolved design fork remains.
 
 <!-- awf:template-source templates/skills/executing-plans/SKILL.md.tmpl#procedure-per-task -->
 <!-- awf:edit procedure-per-task: default; create .awf/skills/parts/executing-plans/procedure-per-task.md to override -->
 <!-- awf:template-source templates/skills/executing-plans/SKILL.md.tmpl -->
-3. **Iterate phases, not tasks.** Per `docs/maintainable-code-design.md`, you preserve the plan's settled structural choices, including a bounded enabling refactor; reassess if grounded source contradicts them, stop rather than bolt correctness onto the wrong abstraction, and do not drift from the plan.
+3. **Iterate phases, not tasks.** Per `docs/maintainable-code-design.md`, you preserve the plan's settled durable choices, including a bounded enabling refactor; reassess if grounded source contradicts them, and stop rather than bolt correctness onto the wrong abstraction.
 <!-- awf:template-source templates/partials/implementation-autonomy.md -->
 **Authority-guided implementation autonomy.**
 
 Resolve implementation findings autonomously when applicable ADRs, current-state claims, and repository authority determine a compliant correction that preserves the approved outcome, material scope, settled durable boundaries, and required verification. Diagnose a source contradiction, correctness or safety concern, review finding, blocker symptom, or failed check before treating it as an escalation.
 
-A reasoned non-mechanical deviation records its changed detail, rationale, governing authority, and verification. A commit-capable phase owner may add an omitted path when it is necessary to complete the approved outcome and remains inside those authority, scope, boundary, and verification limits, and reports every added path as a reasoned deviation. An omitted path alone is not a reason to stop. Do not replan the approved outcome, broaden material scope, overturn settled structural choices, weaken an oracle, or perform unrelated cleanup.
+A reasoned non-mechanical deviation that another owner or reviewer can rely on records its changed detail, rationale, governing authority, and verification. A commit-capable owner may add an omitted path when it is necessary to complete the approved outcome and remains inside those authority, scope, boundary, and verification limits. An omitted path alone is not a reason to stop. Do not replan the approved outcome, broaden material scope, overturn settled structural choices, weaken an oracle, or perform unrelated cleanup.
 
 Stop and report through the active workflow only when authorities conflict or must change, the approved outcome or material scope must change, a genuine unresolved design fork remains, safe or correct completion inside the boundary is impossible, or required verification remains unreachable after reasonable diagnosis and remediation.
 <!-- awf:template-source templates/skills/executing-plans/SKILL.md.tmpl -->
@@ -63,7 +71,7 @@ For an `inline` phase, the parent owns every ordered task, integration, staged c
 3. Resolve checkpoint attention by kind. Route a new material decision or changed approved boundary through the active workflow to brainstorming, which owns the approval interaction. Separately, report a correctness or safety concern, blocker, or failed required verification through the active workflow only when it remains unresolved after that workflow's required diagnosis and authority-guided remediation. In either case name the issue, options, recommendation, and blocked next action, then stop.
 4. Otherwise state a one-line continuity notice and continue. For effort-backed work include the exact slug and owned path. An executable `./awf read plan` projection never creates a checkpoint or handoff boundary. Continue through the target-native successor without claiming session replacement. Repository authority, the one-writer contract, the file skeleton, and the full protocol live in the workflow doc.
 <!-- awf:template-source templates/partials/phase-loop-continuation.md -->
-After a settled-phase checkpoint that does not require user attention, continue the plan loop without returning control to the user: select the next unfinished phase and execute it according to its declared mode, handing it to the companion skill when needed. A phase-complete report is not a plan-complete stopping point. Enter terminal assurance only after every phase is settled.
+After a settled-phase checkpoint that does not require user attention, continue the plan loop without returning control to the user: select the next unfinished phase and use its recorded mode unless a cleaner route calls for revising it, handing it to the companion skill when needed. A phase-complete report is not a plan-complete stopping point. Enter terminal assurance only after every phase is settled.
 
 <!-- awf:template-source templates/skills/executing-plans/SKILL.md.tmpl -->
 If an implementer stops dirty, first inventory `git status --short`, diff, completed and remaining work, and failed checks. Choose exactly one: complete inline; restore the known green baseline and restart the complete revised phase; or stop for required user input. An explicit ownership transfer includes the complete revised phase, inventory, completed and remaining work, and recovery verification. Never issue a blind successor instruction for one task or dispatch over a dirty checkout.

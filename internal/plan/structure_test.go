@@ -114,6 +114,26 @@ func TestPlanV1StructureValidated(t *testing.T) {
 	t.Run("fenced headings", TestPlanV1RetiredHeadingInsideFenceIsOpaque)
 }
 
+func TestPlanV2BatchOptionalExamples(t *testing.T) {
+	dir := t.TempDir()
+	withoutExamples := strings.ReplaceAll(v1Plan,
+		"Representative: Cover normal input.\nEdge: Cover invalid input.\n", "")
+	withoutExamples = strings.Replace(withoutExamples, "format: plan-v1", "format: plan-v2", 1)
+	withoutExamples = strings.Replace(withoutExamples, "- A valid plan parses and projects.", "- `dod: valid-plan` A valid plan parses and projects.", 1)
+	writePlan(t, dir, "2026-08-02-example.md", withoutExamples)
+	plans, err := plan.ParseDir(dir)
+	if err != nil {
+		t.Fatalf("ParseDir batch without optional examples: %v", err)
+	}
+	batch := plans[0].Phases[0].Tasks[0].Fields
+	if batch.Kind != plan.TaskBatch || len(batch.Paths) == 0 || batch.PostCheck == "" {
+		t.Fatalf("parsed batch = %#v", batch)
+	}
+	if batch.Representative != "" || batch.Edge != "" {
+		t.Fatalf("optional examples unexpectedly populated: %#v", batch)
+	}
+}
+
 func TestPlanDiagnosticRendering(t *testing.T) {
 	withoutPath := (&plan.Diagnostic{Category: "structure", Detail: "broken"}).Error()
 	if withoutPath != "plan structure: broken" {
@@ -167,7 +187,7 @@ func TestPlanV1Diagnostics(t *testing.T) {
 		{"noncontiguous field", replaceOnceForTest(v1Plan, "Kind: batch", "\nKind: batch"), "field", "task 1.1 field Kind is not contiguous below its heading"},
 		{"bad kind", replaceOnceForTest(v1Plan, "Kind: batch", "Kind: other"), "field", "task 1.1 Kind must be spike or batch"},
 		{"bad latitude", replaceOnceForTest(v1Plan, "Latitude: exact", "Latitude: approximate"), "field", "task 1.1 Latitude must be exact"},
-		{"batch relationship", replaceOnceForTest(v1Plan, "Representative: Cover normal input.\n", ""), "relationship", "batch 1.1 requires Paths, Representative, Edge, and Post-check"},
+		{"batch relationship", replaceOnceForTest(v1Plan, "Paths: [\"glob:internal/plan/*.go\", \"pathspec::(top)internal/plan\", \"docs/plans/template.md\"]\n", ""), "relationship", "batch 1.1 requires Paths and Post-check"},
 		{"glob post-check", withoutBatchOnlyFields(v1Plan), "relationship", "task 1.1 requires Post-check for batch, glob, or pathspec scope"},
 		{"spike question missing", replaceOnceForTest(v1Plan, "Question: Which errors are stable?\n", ""), "relationship", "spike 1.2 requires Question"},
 		{"spike batch field", replaceOnceForTest(v1Plan, "Question: Which errors are stable?", "Question: Which errors are stable?\nPaths: [\"internal/plan\"]"), "relationship", "spike 1.2 forbids batch fields"},

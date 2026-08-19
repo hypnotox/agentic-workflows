@@ -14,6 +14,8 @@ description: >
 Terminal step of `{{ .prefix }}-writing-plans`, and the ordinary freshness owner after a linked ADR changes. For a new plan it runs before the first commit against an explicit path and selected working-tree snapshot. For an existing Proposed plan it runs after the amended ADR's review settles. The `plan-reviewer` subagent is a report-only judge: it reads the plan and every ADR resolved from parsed plan-level `adrs:`, runs all universal lenses, classifies each finding as mechanical / reasoned / user-decision, and returns a findings digest. This skill dispatches that agent, applies the fixes, runs a single verify pass, gates on user-decision findings, and chains to the next node.
 
 This full review owns linked-authority freshness; it does not select plans or ADRs by modification time, session implication, or an assumed one-to-one relationship.
+
+<!-- awf:include plan-flexibility -->
 <!-- awf:end -->
 
 <!-- awf:include review-remediation-autonomy -->

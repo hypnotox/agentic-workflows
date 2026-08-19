@@ -98,6 +98,121 @@ var planTaskDetailContractClauses = []string{
 	"any helper partition exhaustively assigns every affected site to the parent or exactly one helper, keeps helper subsets path-disjoint, shared files parent-owned, and mutating commands confined to the assigned subset",
 }
 
+var planFlexibilityClauses = []string{
+	"The plan records the best known route at authoring time, not a binding implementation choreography.",
+	"A commit-capable owner may merge, split, reorder, add, remove, or replace recorded route detail while the protected contract holds.",
+	"A path omitted from the plan is not alone a reason to stop, and a stale listed path need not be touched.",
+	"Reapproval is required only when the protected contract would change or an unresolved material decision appears.",
+	"Reconcile a Proposed plan only when another phase or reviewer could rely on stale material instructions.",
+	"Inconsequential and independently local edits require no deviation record.",
+}
+
+// invariant: rendering/workflow-skill-templates:plan-flexibility (TestPlanFlexibilityContract)
+func TestPlanFlexibilityContract(t *testing.T) {
+	root := testsupport.RepoRoot(t)
+	partialPath := filepath.Join(root, "templates", "partials", "plan-flexibility.md")
+	partialRaw, err := os.ReadFile(partialPath)
+	if err != nil {
+		t.Fatalf("read canonical plan-flexibility partial: %v", err)
+	}
+	partial := string(partialRaw)
+	assertPlanFlexibilityClauses(t, "canonical partial", partial)
+	if strings.Contains(partial, "ADR-0286") {
+		t.Errorf("adopter-portable plan-flexibility partial contains concrete ADR token:\n%s", partial)
+	}
+
+	consumers := []string{
+		"templates/docs/workflow.md.tmpl",
+		"templates/plans-readme/README.md.tmpl",
+		"templates/plans-template/template.md.tmpl",
+		"templates/skills/writing-plans/SKILL.md.tmpl",
+		"templates/skills/reviewing-plan/SKILL.md.tmpl",
+		"templates/skills/executing-plans/SKILL.md.tmpl",
+		"templates/skills/subagent-driven-development/SKILL.md.tmpl",
+		"templates/agents/plan-reviewer.md.tmpl",
+		"templates/agents/implementer.md.tmpl",
+		"templates/agents/code-reviewer.md.tmpl",
+	}
+	for _, name := range consumers {
+		raw, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(name)))
+		if err != nil {
+			t.Fatalf("read consumer %s: %v", name, err)
+		}
+		if got := strings.Count(string(raw), "<!-- awf:include plan-flexibility -->"); got != 1 {
+			t.Errorf("%s plan-flexibility include count = %d, want 1", name, got)
+		}
+	}
+
+	definitionCount := 0
+	err = filepath.WalkDir(filepath.Join(root, "templates"), func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		definitionCount += strings.Count(string(raw), planFlexibilityClauses[0])
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if definitionCount != 1 {
+		t.Errorf("plan-flexibility authored definition count = %d, want 1", definitionCount)
+	}
+
+	rendered := []string{
+		"docs/workflow.md", "docs/plans/README.md", "docs/plans/template.md",
+		".pi/skills/awf-writing-plans/SKILL.md", ".pi/skills/awf-reviewing-plan/SKILL.md",
+		".pi/skills/awf-executing-plans/SKILL.md", ".pi/skills/awf-subagent-driven-development/SKILL.md",
+		".claude/skills/awf-writing-plans/SKILL.md", ".claude/skills/awf-reviewing-plan/SKILL.md",
+		".claude/skills/awf-executing-plans/SKILL.md", ".claude/skills/awf-subagent-driven-development/SKILL.md",
+		".pi/agents/plan-reviewer.md", ".pi/agents/implementer.md", ".pi/agents/code-reviewer.md",
+		".claude/agents/plan-reviewer.md", ".claude/agents/implementer.md", ".claude/agents/code-reviewer.md",
+	}
+	for _, name := range rendered {
+		body := readPlanPolicyFile(t, root, name)
+		assertPlanFlexibilityClauses(t, name, body)
+		if strings.Contains(body, "<no value>") {
+			t.Errorf("%s leaks unresolved template data", name)
+		}
+	}
+
+	for _, mutation := range []struct{ name, from, to string }{
+		{"route made binding", planFlexibilityClauses[0], "The plan is binding implementation choreography."},
+		{"path omission stops", planFlexibilityClauses[2], "A path omitted from the plan requires a stop."},
+		{"all edits recorded", planFlexibilityClauses[5], "Every local edit requires a deviation record."},
+	} {
+		t.Run(mutation.name, func(t *testing.T) {
+			mutated := strings.Replace(partial, mutation.from, mutation.to, 1)
+			if missingPlanFlexibilityClauses(mutated) == nil {
+				t.Fatalf("contract accepted semantic inversion %q", mutation.to)
+			}
+		})
+	}
+}
+
+func assertPlanFlexibilityClauses(t *testing.T, name, body string) {
+	t.Helper()
+	for _, clause := range missingPlanFlexibilityClauses(body) {
+		t.Errorf("%s missing plan-flexibility clause %q", name, clause)
+	}
+}
+
+func missingPlanFlexibilityClauses(body string) []string {
+	var missing []string
+	for _, clause := range planFlexibilityClauses {
+		if !strings.Contains(body, clause) {
+			missing = append(missing, clause)
+		}
+	}
+	return missing
+}
+
 func TestPlanningVerificationGuidanceStayAligned(t *testing.T) {
 	defaultWriter := renderSkillGolden(t, "writing-plans", map[string]any{
 		"prefix": "example",
@@ -345,10 +460,10 @@ func TestPlanDeviationReconciliationGuidanceStayAligned(t *testing.T) {
 	for name, body := range surfaces {
 		normalized := strings.Join(strings.Fields(body), " ")
 		assertOrderedPhrases(t, normalized,
-			"Inline owners immediately",
-			"reasoned deviations",
+			"plan-flexibility rule",
 			"Delegated owners",
-			"report rather than edit",
+			"material cross-owner revisions",
+			"rather than editing the plan",
 			"phase review",
 			"focused",
 			"settlement commit",
