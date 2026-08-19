@@ -26,9 +26,10 @@ One rule contradicts that substance outright. Explicit outline approval is curre
 every hand-authored production-code mutation, including a mechanical production refactor and a test
 that prepares a production change. The trigger is the act of touching production code, not the
 presence of an unresolved decision, so a fully specified routine change with no open question still
-stops for a ceremonial approval. That rule is carried in the agent guide's Workflow section, the workflow
-document's chain section, and a shared approval partial, and is backed by two current-state claims.
-The agent guide sentence is the highest-precedence surface an agent reads and no claim backs it.
+stops for a ceremonial approval. That rule is carried in the agent guide's Workflow section, the
+workflow document's chain section, and a shared approval partial, and is backed by two
+current-state claims. The agent guide sentence is the highest-precedence surface an agent reads,
+and no claim backs it.
 
 The two changes are recorded together because separating them would leave the doctrine standing
 beside a rule that contradicts it.
@@ -38,21 +39,26 @@ beside a rule that contradicts it.
 1. `decision: protected-contract-governs` The workflow governs a change's protected contract: the
    requested outcome, the explicitly settled durable choices, the material scope, the externally
    observable behaviour, the compatibility and safety constraints, the required verification
-   strength, the prohibited shortcuts, and the active project rules that constrain any of these,
-   which include generated-source ownership, drift detection, path and worktree confinement, and
-   current-state authority.
+   strength, the prohibited shortcuts, and every constraint an active project rule places on one of
+   these, which includes generated-source ownership, drift detection, path and worktree
+   confinement, and current-state authority.
 
-2. `decision: route-is-implementation-detail` Everything else is the execution route, which an
-   implementation owner may choose and revise while the protected contract holds: phase and task
-   boundaries, their order, local names, file and symbol inventories, helper allocation, execution
-   mode, exact command sequence, commit decomposition, and non-load-bearing mechanism choice. An
-   active project rule that constrains only the execution route is subordinate to the protected
-   contract; it does not become protected merely by being an active rule, and a settled decision
-   makes a route detail binding only by stating that it is load-bearing.
+2. `decision: route-is-implementation-detail` Everything else about how the change is carried out is
+   the execution route, which an implementation owner may choose and revise while the protected
+   contract holds: phase and task boundaries, their order, local names, file and symbol
+   inventories, helper allocation, execution mode, exact command sequence, commit decomposition,
+   and non-load-bearing mechanism choice. Precedence is decided per constraint, not per rule: a
+   clause of an active project rule that bears only on how the change is carried out is subordinate
+   to the protected contract, so one rule may be protected in its protected clauses and subordinate
+   in its route clauses. A route detail becomes binding only when a settled decision states that it
+   is load-bearing.
 
-3. `decision: doctrine-single-home` One surface states the doctrine's definition and every other
-   surface reaches it by reference. No second surface may define, qualify, or narrow it, so no
-   surface can drift from it.
+3. `decision: doctrine-single-home` The doctrine has one authored definition. Every other surface
+   carries it only by rendering that single source or by pointing at it, never by stating,
+   qualifying, or narrowing a version of its own, so no surface can drift from it. The `add`
+   operation below declares an invariant with `Backing: test`, proven in the implementing
+   transaction by the template-contract test that verifies the single authored definition and its
+   projection to every intended consumer.
 
 4. `decision: material-decision-approval` A user approval boundary is triggered by an unresolved
    material decision, never by the act of mutating production code. A material decision exists when
@@ -92,14 +98,15 @@ The delegated-owner contract is unchanged and now reads as a consequence of the 
 a separate rule: a delegate consumes the parent-supplied protected contract, never recreates the
 approval interaction, and stops to report when that contract is absent or must change.
 
-Three claim operations are therefore sufficient. Because item 3 governs only where the doctrine is
+Three claim operations cover the definition home. Because item 3 governs only where the doctrine is
 defined, the shared implementation-autonomy and review-remediation partials keep their existing
-delegate-facing wording and their backing claims are untouched; only a surface that would define,
-qualify, or narrow the doctrine would need one.
+delegate-facing wording and their backing claims are untouched. Consumer surfaces are a separate
+question: where a consuming surface's backing claim enumerates its rendered body content, landing
+the doctrine there takes its own `update` operation, added when the consumer set is settled.
 
 Single home has a standing cost. Every future workflow surface must carry a reference where it could
 previously have stated the rule inline, which cuts against the agent guide's size-bounded
-self-contained style, and every existing consuming surface is re-pointed in this same transaction.
+self-contained style.
 
 The accepted risk is that removing a mandatory stop makes an agent's own judgment of materiality
 load-bearing. A misjudgement now proceeds where it previously paused. The mitigation is that the
