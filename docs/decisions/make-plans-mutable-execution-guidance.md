@@ -9,11 +9,8 @@ date: 2026-08-19
 
 ## Context
 
-ADR-0286 establishes that the workflow protects the requested outcome, durable choices, material
-scope, externally observable behaviour, compatibility, safety, active project constraints,
-verification strength, and prohibited shortcuts. Phase and task boundaries, order, file and symbol
-inventories, helper allocation, execution mode, commands, commit decomposition, and
-non-load-bearing mechanisms are the execution route and remain revisable.
+ADR-0286 defines the protected contract, distinguishes it from the revisable execution route, and
+requires every other surface to point to that single authored doctrine rather than restating it.
 
 The plan system predates that authority and gives mixed instructions. Current authoring guidance
 already calls `Latitude`, batch kind, `Representative`, and `Edge` optional aids and permits a phase
@@ -37,35 +34,41 @@ preserves machine-relevant structure, and changes only route authority.
 
 ## Decision
 
-1. `decision: plan-binds-protected-contract` Under ADR-0286, a plan is binding for the requested
-   outcome, its explicitly linked durable Decisions, material scope, externally observable
-   behaviour, compatibility and safety constraints, required verification strength, prohibited
-   shortcuts, and Definition of Done outcomes. A plan is the best known execution route at
-   authoring time, not independent authority for phase or task boundaries, order, path inventories,
-   local mechanisms, helper allocation, execution mode, local names, exact commands, or commit
-   decomposition unless a settled decision explicitly makes one of those details load-bearing.
+1. `decision: plan-binds-protected-contract` A plan binds the protected contract defined by
+   ADR-0286. Its plan-specific authority consists of its linked durable Decisions and its assignment
+   of Definition of Done outcomes. The plan records the best known execution route at authoring
+   time; recorded route metadata is not independent authority unless a settled decision explicitly
+   makes a detail load-bearing.
 
 2. `decision: route-revision-without-reapproval` A plan owner may merge, split, reorder, add, remove,
-   or replace route detail while the protected contract holds. A path omitted from the plan is not
-   alone a stop condition, and a stale listed path need not be touched. Reapproval is required only
-   when the protected contract would change or an unresolved material decision appears, never for a
-   cleaner equivalent route.
+   or replace recorded route detail while the protected contract holds. A path omitted from the plan
+   is not alone a stop condition, and a stale listed path need not be touched. Reapproval is required
+   only when the protected contract would change or an unresolved material decision appears, never
+   for a cleaner equivalent route.
 
 3. `decision: material-plan-reconciliation` One shared plan-flexibility rule owns the plan-specific
    consequences of ADR-0286 and points to that doctrine rather than defining a version of its own.
-   An owner records a route revision only when it materially changes implementation organization,
-   path ownership, local mechanism, or work another phase or reviewer can rely on. Inconsequential
-   local edits require no deviation record. While a plan remains Proposed, its owner amends stale
-   material instructions before a later owner could rely on them; delegated owners report such
-   revisions for parent reconciliation.
+   An owner records a route revision only when another phase or reviewer can rely on the affected
+   implementation organization, path ownership, or local mechanism. Inconsequential and
+   independently local edits require no deviation record. While a plan remains Proposed, its owner
+   amends stale material instructions before a later owner could rely on them; delegated owners
+   report such revisions for parent reconciliation.
 
 4. `decision: structure-must-protect-a-property` Keep plan fields and parser enforcement only when
    they serve authority resolution, outcome ownership, material scope or confinement, lifecycle,
    safety, compatibility, or verification. Preserve existing historical grammar and the current
    machine-relevant roles of phase and task identity, Decision references, execution projection,
    Advances and Completes, necessary Paths, deterministic post-checks, independently green
-   transactions, and phase-closing commit fences. Detail that supplies examples or route
-   choreography but protects none of those properties remains optional and non-binding.
+   transactions, and phase-closing commit fences. Plans record ordering only where an actual
+   dependency constrains a protected property; absence of such a dependency is not a review defect.
+   Optional examples remain optional, so a batch does not require `Representative` or `Edge` when
+   its Paths and deterministic Post-check already confine and verify the population.
+
+5. `decision: plan-flexibility-proof` The added plan-flexibility invariant has `Backing: test`.
+   Deterministic scenarios cover permitted route revisions, protected-contract stops, Proposed-plan
+   reconciliation, and optional batch examples across Core and Full and both supported runtimes.
+   Every affected template renders coherently with empty variables under missingkey-zero semantics
+   and emits no unresolved token.
 
 ## State changes
 
@@ -102,9 +105,17 @@ The parser becomes less uniform where optional examples no longer accompany ever
 intentional: examples may help a human understand a broad population, but they are not a mechanical
 substitute for Paths and a deterministic Post-check.
 
+The claim operations divide by owned contract. The new `plan-flexibility` claim owns the single
+plan-specific rule and its consumer and scenario coverage. `phase-transaction-ownership` changes so
+a planned phase remains independently green without making its recorded grouping immutable.
+`plan-task-detail-modes` changes the authority and enforcement of route fields.
+`maintainable-code-subagent-contract` and `implementer-role-contract` narrow deviation reporting to
+parent reconciliation without weakening helper confinement. `maintainable-code-review-lenses`
+changes plan review from recorded-choreography adherence to protected-contract adherence.
+
 This decision does not relax the gate, verification strength, current-state authority, generated
-source ownership, worktree confinement, phase review freshness, or plan lifecycle. It does not begin
-AF-004's clean-integration changes or AF-005's review-severity policy.
+source ownership, missingkey-zero rendering, worktree confinement, phase review freshness, or plan
+lifecycle. It does not begin AF-004's clean-integration changes or AF-005's review-severity policy.
 
 ## Alternatives Considered
 
