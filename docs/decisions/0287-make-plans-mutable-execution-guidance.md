@@ -4,7 +4,7 @@ slug: make-plans-mutable-execution-guidance
 status: Implementing
 date: 2026-08-19
 ---
-# ADR-make-plans-mutable-execution-guidance: Make Plans Mutable Execution Guidance
+# ADR-0287: Make Plans Mutable Execution Guidance
 
 
 ## Context

@@ -34,7 +34,7 @@ Backing: test
 ### `invariant: plan-flexibility`
 
 The shared `plan-flexibility` partial is the single authored home of plan-specific route authority in Full. It points to the workflow document's protected-contract rule, treats the plan as the best known route at authoring time, permits commit-capable owners to revise recorded route detail while that contract holds, and requires Proposed-plan reconciliation only for material instructions another phase or reviewer can rely on. It preserves helper confinement and sends protected-contract changes through the ordinary material-decision boundary. Full plan documentation, authoring, review, execution, plan-reviewer, implementer, and code-reviewer surfaces project the rule in both runtimes; Core remains plan-free and carries no plan-governance projection. Deterministic scenarios prove permitted route revisions, protected-contract stops, cross-owner reconciliation, optional batch examples, the consumer partition, and coherent empty-data rendering.
-Origin: ADR-make-plans-mutable-execution-guidance
+Origin: ADR-0287
 Backing: test
 
 ### `invariant: independent-workflow-escalation`
@@ -135,14 +135,14 @@ Backing: test
 A recorded plan phase is the current route grouping for one independently green coherent implementation transaction with an explicit inline or subagent-driven owner; a commit-capable plan owner may regroup that route before execution while landed closing commits and review evidence retain their exact scope. In Pi branches, a phase owner or commit-disabled helper whose task intentionally operates in a supplied managed worktree passes that path as `verificationCheckout`, omits it for root work, and keeps actual mutation paths explicit; verification selection changes neither parent nor child Pi CWD and leaks no Pi-only wording into other targets. Delegated phase review returns structured coverage evidence: exact phase-closing commit, complete phase scope and reviewed range, verification results, verbatim deviation report, and unreviewed settlement. The parent owns transient evidence and validates branch-tip freshness; evidence loss after context loss, session replacement, or effort-free continuation, or unverifiable freshness, falls back to ordinary terminal review, while divergence, changed authority, reasoned post-review fixes, or material mutation invalidates affected coverage and requires renewed review. Fresh single-phase assurance reviews only unreviewed settlement/integration; multi-phase assurance focuses cross-phase, settlements, and integration. Complete-range `./awf audit` always remains, including settlement commits. Shipped adopter templates never name awf's repository-local audit; self-hosted convention parts add it only to this repository's rendered skills.
 This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0166
-Revised-by: ADR-0213, ADR-0217, ADR-0243, ADR-0255, ADR-0260, ADR-0271, ADR-0282, ADR-make-plans-mutable-execution-guidance
+Revised-by: ADR-0213, ADR-0217, ADR-0243, ADR-0255, ADR-0260, ADR-0271, ADR-0282, ADR-0287
 Backing: test
 
 ### `invariant: plan-task-detail-modes`
 
 The rendered plan-authoring skill, plan reviewer, implementation-plans README, and plan template require change-specific observable outcomes, authority links, material boundaries, actual ordering dependencies, focused evidence, and confinement where ambiguity or helpers require it. They retain typed Applying, Context, execution mode, phase close, Advances, Completes, and necessary Paths while treating Latitude, batch kind, Representative, and Edge as optional aids; batches require Paths and deterministic Post-check but not example fields, and historical grammar remains accepted. Commit-capable owners may resolve authority-determined local symbols, helper/test structure, necessary omitted paths, and other recorded route detail inside the protected contract, while commit-disabled helpers remain confined. Their plan-v2 vocabulary defines contiguous `Applying:` and `Context:` task fields as nonempty JSON string arrays that are omitted rather than written as `[]`, uses retained pending ADR slugs with V4 stable Decision slugs or frozen pre-V4 `#N` selectors, requires slugged `dod:` Definition-of-done bullets, and assigns outcome contribution and final ownership through nonempty phase `Advances:` and `Completes:` arrays. Review checks substantive Applying coverage, Context misuse, and final Completes ownership while treating Proposed-plan coverage findings as advisory and historical Decision prose as distinct from current-state authority. Task projections keep their scope notice, Phase close, Advances, and Completes as phase-owner context without transferring task-helper authority. The surfaces also define contiguous task fields for exactness, spikes, batches, affected paths, and deterministic post-checks; require `Paths:` whenever scope is ambiguous, always including a batch; require `Post-check:` for every batch and every glob or pathspec scope; preserve the no-placeholder boundary for implementation tasks; forbid conditional and optional tasks; require one coherent green transaction and an inline or subagent-driven owner per phase; and keep any helper partition exhaustive, path-disjoint, shared-file-safe, and command-confined. A spike is question-only, records its answer in Notes, cannot own a phase, and sequences dependent work into a later phase. Every surface renders coherently with empty variables.
 Origin: ADR-0148
-Revised-by: ADR-0157, ADR-0166, ADR-0211, ADR-0217, ADR-0255, ADR-make-plans-mutable-execution-guidance
+Revised-by: ADR-0157, ADR-0166, ADR-0211, ADR-0217, ADR-0255, ADR-0287
 Backing: test
 
 ### `invariant: reviewers-report-only`
@@ -181,7 +181,7 @@ Backing: test
 
 Every scoped implementation brief carries only the task-relevant semantic boundaries and ownership, representations and translation points, dependency direction, preparatory-refactor decision, prohibited bolt-on shortcuts, and validation expectations; the implementer makes authority-preserving reasoned detail revisions with a structured completed report without becoming a second planner, broadening scope, or performing unrelated cleanup. A phase owner may add a necessary omitted path and records it only when another owner or reviewer can rely on that material revision, while a helper reports but never modifies an unassigned path. Inline plan execution extracts the same context for its current task.
 Origin: ADR-0168
-Revised-by: ADR-0240, ADR-0248, ADR-make-plans-mutable-execution-guidance
+Revised-by: ADR-0240, ADR-0248, ADR-0287
 Backing: test
 
 ### `invariant: deliberate-subagent-model-selection`
@@ -195,14 +195,14 @@ Backing: test
 
 The rendered implementer agent body states its two authority modes, that the dispatched task is the complete scope, that the agent guide's invariants and commands bind while its skill catalog and chain routing do not, that reaching green is the job and no assertion or golden may be weakened to hide a failure, that no interactive channel exists so escalation is a returned inventory, the commit-capable owner's explicit-stage, staged-check, gate, single-commit procedure, and a closed two-outcome return whose stopped outcome requires working-tree status, work completed, work remaining, the named failing check with its actual output, and what was already tried. A phase owner may add a necessary omitted path inside the authority-guided boundary instead of stopping for path omission alone and reports it only when another owner or reviewer can rely on that material change; a helper never modifies an unassigned path and reports the need for parent resolution. The completed outcome inventories deviations or `none`; stopped reserves persistent verification failure or a narrow authority, outcome, scope, ambiguity, or safety boundary while retaining the shared inventory and closed two-outcome contract. The subagent-driven-development and executing-plans skills name that agent in every dispatch branch, and their parent-facing imperatives for raising concerns, preserving the plan's settled design, running the context command, and inventorying batch returns each carry an explicit subject. The body renders coherently with unset data and carries no runtime tool-name token.
 Origin: ADR-0177
-Revised-by: ADR-0179, ADR-0232, ADR-0240, ADR-0248, ADR-make-plans-mutable-execution-guidance
+Revised-by: ADR-0179, ADR-0232, ADR-0240, ADR-0248, ADR-0287
 Backing: test
 
 ### `invariant: maintainable-code-review-lenses`
 
 Plan review checks that protected structural choices and necessary enabling refactors are explicit, dependency-ordered where a protected property requires it, bounded, approved or durably dispositioned when larger, and verifiable without treating recorded route choreography as authority; code review checks cohesion, coupling, dependency direction, representation leakage, duplicated policy, testability, needless indirection, protected-contract conformance, and coherent transactions rather than literal planned phase grouping; ADR review applies the same structural lens only when a decision changes a semantic model, representation, ownership, module, or package boundary, dependency direction, or comparable structural contract. All reviewer agents remain report-only. Plan and code review flag unapproved or unjustified machinery and do not demand additions merely because more abstraction, cleanup, testing, or validation is imaginable.
 Origin: ADR-0168
-Revised-by: ADR-0232, ADR-make-plans-mutable-execution-guidance
+Revised-by: ADR-0232, ADR-0287
 Backing: test
 
 ### `invariant: explorer-and-grounding-role-contracts`
