@@ -4,7 +4,7 @@ slug: make-review-enforce-concrete-maintainability-risks
 status: Implementing
 date: 2026-08-19
 ---
-# ADR-make-review-enforce-concrete-maintainability-risks: Make Review Enforce Concrete Maintainability Risks
+# ADR-0289: Make Review Enforce Concrete Maintainability Risks
 
 
 ## Context
