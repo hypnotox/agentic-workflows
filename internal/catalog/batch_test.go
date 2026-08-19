@@ -25,6 +25,7 @@ func TestPlanReviewerChangeSpecificExecutabilitySanctionsBatch(t *testing.T) {
 	}
 	for _, clause := range []string{
 		"inline or subagent-driven", "green transaction", "change-specific outcomes",
+		"ordering dependencies only where they protect a named authority, outcome, scope, safety, compatibility, lifecycle, or verification property",
 		"focused evidence", "batch kind", "optional aids", "ambiguous populations",
 		"exhaustive Paths", "deterministic Post-check", "commit-capable owners",
 		"helpers remain path-confined and commit-disabled", "duplicated generic execution protocol",
@@ -33,7 +34,7 @@ func TestPlanReviewerChangeSpecificExecutabilitySanctionsBatch(t *testing.T) {
 			t.Errorf("change-specific-executability missing %q: %q", clause, desc)
 		}
 	}
-	for _, forbidden := range []string{"coupled phase", "coupled-phase", "one commit per task", "exact paths, symbols, commands"} {
+	for _, forbidden := range []string{"coupled phase", "coupled-phase", "one commit per task", "exact paths, symbols, commands", "material boundaries, ordering dependencies, focused evidence"} {
 		if strings.Contains(desc, forbidden) {
 			t.Errorf("change-specific-executability retains %q: %q", forbidden, desc)
 		}

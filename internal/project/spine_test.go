@@ -213,7 +213,8 @@ func TestPlanReviewerAgent(t *testing.T) {
 		"maintainable-design",
 		"docs/maintainable-code-design.md",
 		"model, ownership, representations, translation boundaries, dependency direction, and test seams",
-		"ordered before dependent behavior",
+		"where a protected property requires dependency ordering",
+		"necessary enabling refactors precede dependent behavior",
 		"bounded to the failure they prevent",
 		"deterministically verifiable",
 		"approved, deferred, or declined disposition",
@@ -275,7 +276,7 @@ func TestCodeReviewerAgent(t *testing.T) {
 		"plan-adherence",
 		"maintainable-design",
 		"docs/maintainable-code-design.md",
-		"cohesion, coupling, dependency direction, representation leakage, duplicated policy, testability, needless indirection, and conformance to the settled design",
+		"cohesion, coupling, dependency direction, representation leakage, duplicated policy, testability, needless indirection, protected-contract conformance, and coherent transactions rather than literal planned phase grouping",
 		"behavior bolted onto an unsuitable abstraction",
 		"refactoring scope silently broadened",
 	}
@@ -559,12 +560,12 @@ func TestMaintainableCodeReviewLenses(t *testing.T) {
 	contracts := map[string][]string{
 		"plan": {
 			"model", "ownership", "representations", "translation boundaries", "dependency direction", "test seams",
-			"ordered before dependent behavior", "bounded to the failure they prevent", "deterministically verifiable",
+			"where a protected property requires dependency ordering", "necessary enabling refactors precede dependent behavior", "bounded to the failure they prevent", "deterministically verifiable",
 			"approved, deferred, or declined disposition", "needless indirection", "pattern mandates", "unapproved or unjustified abstraction, indirection, validation, test machinery, tooling, cleanup, or process", "Do not demand additions merely because more structure, testing, cleanup, or validation is imaginable",
 		},
 		"code": {
 			"cohesion", "coupling", "dependency direction", "representation leakage", "duplicated policy", "testability",
-			"needless indirection", "conformance to the settled design", "behavior bolted onto an unsuitable abstraction",
+			"needless indirection", "protected-contract conformance", "coherent transactions rather than literal planned phase grouping", "behavior bolted onto an unsuitable abstraction",
 			"refactoring scope silently broadened", "unapproved or unjustified abstraction, indirection, validation, test machinery, tooling, cleanup, or process", "Do not demand additions merely because more structure, testing, cleanup, or validation is imaginable",
 		},
 		"adr": {
@@ -578,6 +579,12 @@ func TestMaintainableCodeReviewLenses(t *testing.T) {
 			if !strings.Contains(out, want) {
 				t.Errorf("%s reviewer missing %q:\n%s", name, want, out)
 			}
+		}
+		if forbidden := map[string]string{
+			"plan": "necessary enabling refactors are ordered before dependent behavior",
+			"code": "conformance to the settled design",
+		}[name]; forbidden != "" && strings.Contains(out, forbidden) {
+			t.Errorf("%s reviewer retains route-binding review rule %q", name, forbidden)
 		}
 		for _, line := range strings.Split(out, "\n") {
 			directive := strings.TrimLeft(strings.TrimSpace(line), "-*#0123456789. )")
@@ -965,7 +972,7 @@ func TestMaintainableCodeStageCoverage(t *testing.T) {
 			"docs/maintainable-code-design.md", "assess bounded enabling refactoring before editing", "preserve settled boundaries", "no independent need for brainstorming", "material choice or clarification", "Re-evaluate planning", "only when that independent need fires", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
 		}},
 		"subagent-driven-development": {wants: []string{
-			"docs/maintainable-code-design.md", "preserve the plan's settled structural choices", "bounded enabling refactor", "reassess them if grounded source contradicts them", "stop and escalate rather than accept a bolt-on workaround", "Sequential dispatch only, never parallel", "complete phase", "explicitly identify the parent-supplied approved boundary", "allowCommits: true", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
+			"docs/maintainable-code-design.md", "preserve the plan's settled durable choices", "bounded enabling refactor", "reassess them if grounded source contradicts them", "stop and escalate rather than accept a bolt-on workaround", "Sequential dispatch only, never parallel", "complete phase", "explicitly identify the parent-supplied approved boundary", "allowCommits: true", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
 		}},
 		"bugfix": {wants: []string{
 			"docs/maintainable-code-design.md", "unsuitable model or boundary", "bounded enabling work that prevents a workaround", "For materially larger work, route the disposition through the active workflow's design discussion", "perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated", "root-cause fix, not the symptom", "one concern per commit", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",

@@ -48,7 +48,7 @@ The approved boundary may be evidenced by retained conversation, user-provenance
 <!-- awf:template-source templates/skills/subagent-driven-development/SKILL.md.tmpl#procedure-extract-context -->
 <!-- awf:edit procedure-extract-context: default; create .awf/skills/parts/subagent-driven-development/procedure-extract-context.md to override -->
 <!-- awf:template-source templates/skills/subagent-driven-development/SKILL.md.tmpl -->
-3. Per `docs/maintainable-code-design.md`, preserve the plan's settled structural choices, including a bounded enabling refactor; reassess them if grounded source contradicts them and stop and escalate rather than accept a bolt-on workaround.
+3. Per `docs/maintainable-code-design.md`, preserve the plan's settled durable choices, including a bounded enabling refactor; reassess them if grounded source contradicts them and stop and escalate rather than accept a bolt-on workaround.
 <!-- awf:template-source templates/partials/implementation-autonomy.md -->
 **Authority-guided implementation autonomy.**
 
@@ -62,7 +62,7 @@ Extract the complete phase: goal, ordered tasks, exact paths, semantic boundary 
 <!-- awf:template-source templates/partials/context-spill.md -->
 On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the working-with-awf doc's Context spill notices contract; treat any other output as the context packet itself.
 <!-- awf:template-source templates/skills/subagent-driven-development/SKILL.md.tmpl -->
-The owner preserves the settled design or reports invalidating source facts; does not replan, broaden the task, or perform unrelated cleanup.
+The owner preserves the settled durable design or reports invalidating source facts; does not replan, broaden the task, or perform unrelated cleanup.
 <!-- awf:template-source templates/skills/subagent-driven-development/SKILL.md.tmpl#dispatch-conventions -->
 <!-- awf:edit dispatch-conventions: default; create .awf/skills/parts/subagent-driven-development/dispatch-conventions.md to override -->
 <!-- awf:template-source templates/skills/subagent-driven-development/SKILL.md.tmpl -->

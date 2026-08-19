@@ -41,11 +41,14 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 			}
 			for _, forbidden := range []string{
 				"<no value>", "{{", "one commit per task", "one subagent per task",
-				"fresh context per task", "continue Task X",
+				"fresh context per task", "continue Task X", "recorded plan phases are immutable",
 			} {
 				if strings.Contains(output, forbidden) {
 					t.Errorf("%s/%s retains forbidden %q", variant, name, forbidden)
 				}
+			}
+			if !strings.Contains(output, "merge, split, reorder, add, remove, or replace recorded route detail") {
+				t.Errorf("%s/%s does not permit pre-execution route regrouping", variant, name)
 			}
 		}
 		assertAll := func(name string, clauses ...string) {

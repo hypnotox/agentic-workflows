@@ -99,12 +99,15 @@ var planTaskDetailContractClauses = []string{
 }
 
 var planFlexibilityClauses = []string{
+	"The protected-contract rule in the workflow document governs what a plan may not change.",
 	"The plan records the best known route at authoring time, not a binding implementation choreography.",
 	"A commit-capable owner may merge, split, reorder, add, remove, or replace recorded route detail while the protected contract holds.",
 	"A path omitted from the plan is not alone a reason to stop, and a stale listed path need not be touched.",
 	"Reapproval is required only when the protected contract would change or an unresolved material decision appears.",
 	"Reconcile a Proposed plan only when another phase or reviewer could rely on stale material instructions.",
 	"Inconsequential and independently local edits require no deviation record.",
+	"A delegated owner reports material cross-owner revisions for parent reconciliation.",
+	"A helper remains confined to its assigned paths and gains no scope, commit, review, checkpoint, handoff, or outcome authority from route flexibility.",
 }
 
 // invariant: rendering/workflow-skill-templates:plan-flexibility (TestPlanFlexibilityContract)
@@ -183,9 +186,15 @@ func TestPlanFlexibilityContract(t *testing.T) {
 	}
 
 	for _, mutation := range []struct{ name, from, to string }{
-		{"route made binding", planFlexibilityClauses[0], "The plan is binding implementation choreography."},
-		{"path omission stops", planFlexibilityClauses[2], "A path omitted from the plan requires a stop."},
-		{"all edits recorded", planFlexibilityClauses[5], "Every local edit requires a deviation record."},
+		{"doctrine pointer removed", planFlexibilityClauses[0], "The plan alone defines what may not change."},
+		{"route made binding", planFlexibilityClauses[1], "The plan is binding implementation choreography."},
+		{"route revision forbidden", planFlexibilityClauses[2], "A commit-capable owner must preserve every recorded route detail."},
+		{"path omission stops", planFlexibilityClauses[3], "A path omitted from the plan requires a stop."},
+		{"route change requires approval", planFlexibilityClauses[4], "Every route change requires reapproval."},
+		{"all cross-owner edits recorded", planFlexibilityClauses[5], "Reconcile a Proposed plan after every edit."},
+		{"all edits recorded", planFlexibilityClauses[6], "Every local edit requires a deviation record."},
+		{"delegated reconciliation removed", planFlexibilityClauses[7], "A delegated owner leaves material cross-owner revisions unreported."},
+		{"helper confinement removed", planFlexibilityClauses[8], "Route flexibility grants helpers scope and outcome authority."},
 	} {
 		t.Run(mutation.name, func(t *testing.T) {
 			mutated := strings.Replace(partial, mutation.from, mutation.to, 1)
@@ -265,7 +274,7 @@ func assertPlanTaskDetailContract(t *testing.T, surface planPolicySurface) {
 }
 
 var planScaffoldDetailContractClauses = []string{
-	"state the change-specific observable outcome, relevant authority links, material boundary, ordering dependency, focused evidence, and any necessary confinement",
+	"state the change-specific observable outcome, relevant authority links, material boundary, any ordering dependency that protects a named authority, outcome, scope, safety, compatibility, lifecycle, or verification property, focused evidence, and any necessary confinement",
 	"recognized fields are `kind`, `latitude`, `question`, `applying`, `context`, `paths`, `representative`, `edge`, and `post-check`",
 	"`applying` and `context` require nonempty json string arrays and are omitted rather than written as `[]`",
 	"`latitude`, `kind: batch`, `representative`, and `edge` are optional aids",

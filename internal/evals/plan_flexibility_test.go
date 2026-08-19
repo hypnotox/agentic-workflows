@@ -85,6 +85,15 @@ func assertPlanFlexibilityScenarios(t *testing.T, name, body string) {
 
 func assertCorePlanGovernanceAbsent(t *testing.T, root, target string) {
 	t.Helper()
+	workflow := read(t, filepath.Join(root, "docs", "workflow.md"))
+	for _, want := range []string{
+		"Everything else about how the change is carried out is the route",
+		"An implementation owner chooses and revises the route while the protected contract holds.",
+	} {
+		if !strings.Contains(workflow, want) {
+			t.Errorf("core workflow lost protected-contract route autonomy %q", want)
+		}
+	}
 	for _, name := range []string{"writing-plans", "reviewing-plan", "executing-plans", "subagent-driven-development"} {
 		path := planSkillPath(root, target, name)
 		if _, err := os.Stat(path); err == nil {
@@ -97,6 +106,16 @@ func assertCorePlanGovernanceAbsent(t *testing.T, root, target string) {
 		body := read(t, planAgentPath(root, target, name))
 		if strings.Contains(body, "best known route at authoring time") || strings.Contains(body, "plan-flexibility") {
 			t.Errorf("core %s %s leaks Full plan governance", target, name)
+		}
+		if name == "implementer" {
+			for _, want := range []string{
+				"Resolve implementation findings autonomously when the approved boundary",
+				"An omitted path alone is not a reason to stop.",
+			} {
+				if !strings.Contains(body, want) {
+					t.Errorf("core %s implementer lost implementation autonomy %q", target, want)
+				}
+			}
 		}
 	}
 }

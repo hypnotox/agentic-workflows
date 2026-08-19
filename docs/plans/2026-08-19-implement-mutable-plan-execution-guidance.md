@@ -155,3 +155,10 @@ findings here only when another phase, reviewer, or terminal assurance can rely 
   the shared include to the workflow's non-overridden Principles section instead of duplicating its
   prose in the project override. This source correction preserves the approved single-rule design
   and verifies the rendered workflow boundary another reviewer can rely on.
+- Phase review found residual universal ordering language, one delegated-execution instruction that
+  still bound recorded structural route detail, and proof gaps in the revised invariant claims. The
+  parent treated these as authority-preserving reasoned corrections under the approved design:
+  ordering now binds only a named protected property across template and catalog-backed reviewer
+  surfaces, delegated execution preserves settled durable choices, and marker-backed tests cover
+  every shared clause, Core autonomy, route regrouping with landed-scope preservation, and the
+  revised plan and code review lenses.
