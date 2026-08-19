@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-0286: Govern the protected contract not the execution route](0286-govern-the-protected-contract-not-the-execution-route.md) (Implementing)
+_No decisions are in flight._
 
 ## History
 
@@ -291,3 +291,4 @@
 - [ADR-0283: Advance Pi Runtime Floor to 0.84.2](0283-advance-pi-runtime-floor-to-0-84-2.md) (Implemented)
 - [ADR-0284: Test-free local release preparation](0284-test-free-local-release-preparation.md) (Implemented)
 - [ADR-0285: Silence Prose Binary Skips](0285-silence-prose-binary-skips.md) (Implemented)
+- [ADR-0286: Govern the protected contract not the execution route](0286-govern-the-protected-contract-not-the-execution-route.md) (Implemented)
