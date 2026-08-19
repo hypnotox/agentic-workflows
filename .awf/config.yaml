@@ -182,3 +182,7 @@ commitPolicy:
     - principal: hypnotox@pm.me
       key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF8DILJOI+TMmpnFxH0vS+3WuhYyFZHRIMfPfiLZYK18
 integrationBranch: main
+localDocs:
+  - name: audit-remediation-program
+    title: Audit Remediation Program
+    description: External audit remediation backlog and wave sequencing, transient until every issue is closed
