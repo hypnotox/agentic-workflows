@@ -137,3 +137,8 @@ that lifecycle-only transaction before managed-topology removal.
   clean-integration lenses do not define or change severity or blocking policy. The review-lens
   claim correction is recorded through its Reapplied event; the approved AF-005 boundary is
   unchanged.
+- The single verify pass found that scenario inputs and outcomes were still diagnostic labels over one
+  shared prose match. The residual settlement now evaluates each input through a distinct accepted
+  disposition, rejects its prohibited counterpart, mutation-checks every governing clause, and
+  separately covers durable choice, risk increase, external behavior change, and outcome expansion.
+  This strengthens the approved proof without changing operative semantics.
