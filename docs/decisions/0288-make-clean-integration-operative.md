@@ -4,7 +4,7 @@ slug: make-clean-integration-operative
 status: Implementing
 date: 2026-08-19
 ---
-# ADR-make-clean-integration-operative: Make Clean Integration Operative
+# ADR-0288: Make Clean Integration Operative
 
 
 ## Context

@@ -470,7 +470,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:3ba001c56272719fe4395221534b7406dd5426f355de52ad3e14e34f5df3fe89",
+      "outputHash": "sha256:f8a1584f017f33fb44a48eb1d94c58c830b8547fe35758af4d92c0aab3793035",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -974,8 +974,8 @@
     "docs/topics/rendering/guide-and-doc-templates.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:f602077fd81fffd4e118ba7b4fc45ec366226acbaa60ca938428daaee1831a02",
-      "outputHash": "sha256:4a7fa2935d025d7b1ef0e2bd4eab0fa191d4645cb00f00cc2869187bb871fc19"
+      "configHash": "sha256:28a720682d2bfd45ca16b5555aa92c0fab9d7773bdef4b13eadb3d1f4873b7c6",
+      "outputHash": "sha256:6079b19cfd09f7a5f4fa6a6d552e5a4667282495b684cbbc166c9fcf3afe0c44"
     },
     "docs/topics/rendering/index.md": {
       "templateId": "topics/index.md.tmpl",
@@ -1034,8 +1034,8 @@
     "docs/topics/rendering/workflow-skill-templates.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:eb2b4b3b05ade14d948f91ecd1ddecfb0d0a5d3f606a1b3da3023d0796e9a2b0",
-      "outputHash": "sha256:0d475dc41dbd08ad8d97f6cc29eac920927f891b1b44b1222a1293056e1ccbda"
+      "configHash": "sha256:935a2d5b149354366da50106a91f6da9d7616a4b1f04650f30650f83f7e0e3b4",
+      "outputHash": "sha256:fc5a543dcd5b9ff27be48302a72cb5c11c40e3f5cef5dc40eef1757914cce167"
     },
     "docs/topics/tooling/audit-and-snapshots.md": {
       "templateId": "topics/topic.md.tmpl",

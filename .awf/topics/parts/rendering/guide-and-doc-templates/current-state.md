@@ -103,5 +103,5 @@ Backing: test
 
 Both profiles render `docs/maintainable-code-design.md` as a mandatory document-map singleton with its ordered convention-part sections. The guide is the canonical adopter-neutral maintainable-design doctrine and makes the simplest sufficient solution the default; the separate shared clean-integration rule applies that doctrine proportionally through workflow consumers without duplicating it. Full additionally supplies plan routing where useful for sequencing, coordination, or resumability.
 Origin: ADR-0168
-Revised-by: ADR-0200, ADR-0232, ADR-0278, ADR-make-clean-integration-operative
+Revised-by: ADR-0200, ADR-0232, ADR-0278, ADR-0288
 Backing: test
