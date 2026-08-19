@@ -12,9 +12,9 @@ You own the project's long-term health, not just the task in front of you: bugs 
 <!-- awf:template-source templates/partials/protected-contract.md -->
 **The protected contract.**
 
-The workflow governs a change's protected contract, not its execution route. Protected: the requested outcome, the explicitly settled durable choices, the material scope, the externally observable behaviour, the compatibility and safety constraints, the required verification strength, the prohibited shortcuts, and every constraint an active project rule places on one of these.
+The workflow governs a change's protected contract, not its execution route. Protected: the requested outcome, the explicitly settled durable choices, the material scope, the externally observable behaviour, the compatibility and safety constraints, the required verification strength, the prohibited shortcuts, and every constraint an active project rule places on one of these, which includes generated-source ownership, drift detection, and path and worktree confinement, and current-state authority.
 
-Everything else about how the change is carried out is the route: phase and task boundaries, their order, local names, file and symbol inventories, helper allocation, execution mode, exact command sequence, commit decomposition, and non-load-bearing mechanism choice. An implementation owner chooses and revises the route while the protected contract holds, and a cleaner route to the same protected outcome is never a deviation to justify.
+Everything else about how the change is carried out is the route: phase and task boundaries, their order, local names, file and symbol inventories, helper allocation, execution mode, exact command sequence, commit decomposition, and non-load-bearing mechanism choice. An implementation owner chooses and revises the route while the protected contract holds.
 
 Precedence is decided per constraint, not per rule. A clause that bears only on how a change is carried out is subordinate to the protected contract, so one rule may be protected in its protected clauses and subordinate in its route clauses. A route detail binds only when a settled decision states that it is load-bearing.
 
@@ -55,8 +55,6 @@ Precedence is decided per constraint, not per rule. A clause that bears only on 
 - An unresolved material decision, not the act of mutating production code, is what brainstorming stops for; it alone presents a proportionate outline and obtains explicit approval, and a routine change whose protected contract is already settled proceeds without that stop.
 
 - Retained conversation, user-provenance effort Decision-log evidence, or an explicit request to execute a named plan whose Architecture summary supplies the outline each establish that boundary; delegated owners consume the parent-supplied boundary without another approval interaction.
-
-- Documentation-only work, test-only maintenance that does not prepare production work, generated-output-only work, and non-code mechanical work remain autonomous unless an independent trigger fires.
 
 - The approval boundary precedes ADR and plan authoring, while effort, grounding, ADR, plan, and review triggers remain independent.
 

@@ -16,7 +16,7 @@ The test-first discipline as a project-owned support skill.
 
 ## Procedure
 
-<!-- awf:include production-code-outline-approval -->
+<!-- awf:include outline-approval -->
 
 TDD may run without an effort. If continuity materially helps, invoke `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}` before mutation; if an effort already exists, validate its fixed identity and exact `.awf/efforts/<slug>/memory.md`, preserve one writer, and give that context read-only to helpers. Otherwise omit effort and memory fields. {{if eq .profile "core"}}Project documentation, source, tests, and repository history{{else}}Repository and current-state authority{{end}} remain primary, and standalone memory is forbidden.
 

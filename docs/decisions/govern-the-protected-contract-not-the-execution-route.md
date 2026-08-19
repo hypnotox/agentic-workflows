@@ -63,8 +63,9 @@ beside a rule that contradicts it.
 4. `decision: material-decision-approval` A user approval boundary is triggered by an unresolved
    material decision, never by the act of mutating production code. A material decision exists when
    the requested outcome is materially ambiguous, when viable approaches carry meaningfully
-   different durable consequences, when externally observable behaviour or compatibility or safety
-   or material scope would change, when repository authority contradicts the request, when a
+   different durable consequences, when it is unsettled whether externally observable behaviour,
+   compatibility, safety, or material scope should change, when repository authority contradicts the
+   request, when a
    required verification oracle would have to be weakened, when an irreversible or destructive
    action is not already authorized, or when the clean implementation exposes a separate
    load-bearing decision. Routine implementation detail creates no approval boundary.
@@ -132,3 +133,5 @@ semantics; the doctrine describes no runtime-specific protocol.
 - 2026-08-19: Proposed
 - 2026-08-19: Implementing; content-sha256: d8f5636a6248f4d8c4ea8acb7da35d787082157cb6ba0a4a4a569ca2dd577381
 - 2026-08-19: Applied; operations: add `rendering/workflow-skill-templates:protected-contract-over-route`, update `rendering/workflow-skill-templates:independent-workflow-escalation`, update `rendering/workflow-skill-templates:mandatory-approval-boundaries`
+- 2026-08-19: Amended; content-sha256: 7032da4ea0229be2a9e37d04a5055667b1f69bb4a9e35a5f3ca191946f50b81e
+- 2026-08-19: Reapplied; operations: add `rendering/workflow-skill-templates:protected-contract-over-route`

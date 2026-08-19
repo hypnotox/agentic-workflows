@@ -8,6 +8,14 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Breaking changes
+
+- The approval boundary is an unresolved material decision rather than any hand-authored production-code change. A routine change whose outcome, design, scope, safety, and verification are already settled now proceeds without an approval stop, whatever kind of file it touches, and the per-artifact carve-out for documentation, test, and generated-output work is removed because the general rule already covers it.
+
+### Features
+
+- The rendered workflow document states one protected-contract doctrine: the workflow governs a change's protected contract, while phase and task shape, ordering, inventories, execution mode, and commit decomposition are a route its owner may revise. Precedence is decided per constraint, so one project rule can be binding in its protected clauses and subordinate in its route clauses.
+
 ## [0.39.2] - 2026-08-18
 
 ### Bug fixes

@@ -18,7 +18,7 @@ Invoke for an accepted plan with an `inline` phase. Read every phase's declared 
 <!-- awf:section procedure-resolve-plan -->
 ## Procedure
 
-<!-- awf:include production-code-outline-approval -->
+<!-- awf:include outline-approval -->
 
 1. Resolve the mutable plan and read its complete phase structure. This skill may run without an effort. If continuity independently fired, validate its immutable slug and exact `.awf/efforts/<slug>/memory.md`, confirm either legacy `Effort: <slug>` or canonical `effort: <slug>` identity (the legacy form is deprecated and remains only until active efforts finish), preserve one user-managed writer, and use the managed worktree when present; otherwise omit effort and memory fields. If changed facts newly make continuity useful, invoke `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}` before further mutation. A fresh owner assigned one phase or task may run `./awf read plan <plan> <P[.T]>` for its executable closure, including the generated task scope notice, phase-owned Advances and Completes outcomes, Notes, and Phase close; all are phase-owner context only; projection changes neither phase ownership nor checkpoint boundaries and never gives a task helper commit, review, checkpoint, handoff, or outcome authority. {{if eq .profile "core"}}Project documentation, source, tests, and repository history remain authoritative{{else}}Repository sources and current-state documentation remain authoritative{{end}}, and standalone memory is forbidden.
 <!-- awf:end -->

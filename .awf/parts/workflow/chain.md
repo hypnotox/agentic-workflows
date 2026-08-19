@@ -32,8 +32,6 @@
 
 - Retained conversation, user-provenance effort Decision-log evidence, or an explicit request to execute a named plan whose Architecture summary supplies the outline each establish that boundary; delegated owners consume the parent-supplied boundary without another approval interaction.
 
-- Documentation-only work, test-only maintenance that does not prepare production work, generated-output-only work, and non-code mechanical work remain autonomous unless an independent trigger fires.
-
 - The approval boundary precedes ADR and plan authoring, while effort, grounding, ADR, plan, and review triggers remain independent.
 
 - This is one workflow, with no profiles, depth controls, routers, classifiers, or runtime policy knobs.

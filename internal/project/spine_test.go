@@ -683,7 +683,7 @@ func TestAuthorityGuidedImplementationAutonomy(t *testing.T) {
 // invariant: rendering/workflow-skill-templates:independent-workflow-escalation (TestProductionCodeOutlineApprovalProjection)
 // invariant: rendering/workflow-skill-templates:mandatory-approval-boundaries (TestProductionCodeOutlineApprovalProjection)
 func TestProductionCodeOutlineApprovalProjection(t *testing.T) {
-	partial, err := fs.ReadFile(templates.FS, "partials/production-code-outline-approval.md")
+	partial, err := fs.ReadFile(templates.FS, "partials/outline-approval.md")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -697,7 +697,7 @@ func TestProductionCodeOutlineApprovalProjection(t *testing.T) {
 		"An approval boundary is triggered by an unresolved material decision, never by the act of mutating production code",
 		"the requested outcome is materially ambiguous",
 		"viable approaches carry meaningfully different durable consequences",
-		"externally observable behaviour or compatibility or safety or material scope would change",
+		"it is unsettled whether externally observable behaviour, compatibility, safety, or material scope should change",
 		"repository authority contradicts the request",
 		"a required verification oracle would have to be weakened",
 		"an irreversible or destructive action is not already authorized",
@@ -733,8 +733,32 @@ func TestProductionCodeOutlineApprovalProjection(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := strings.Count(string(raw), "<!-- awf:include production-code-outline-approval -->"); got != 1 {
+		if got := strings.Count(string(raw), "<!-- awf:include outline-approval -->"); got != 1 {
 			t.Errorf("%s has %d outline approval includes, want 1", consumer, got)
+		}
+	}
+	// The approval-boundary claim's user-facing stop renders from the checkpoint
+	// partial, not from the intake partial above. Without this the claim is
+	// nominal: reverting the checkpoint trigger alone left the suite green.
+	checkpoint, err := fs.ReadFile(templates.FS, "partials/checkpoint-approval.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkpointBody := string(checkpoint)
+	for _, want := range []string{
+		"Before ADR or plan authoring that would resolve an unresolved material decision",
+		"Before beginning a change whose material decision is unresolved",
+	} {
+		if !strings.Contains(checkpointBody, want) {
+			t.Errorf("checkpoint approval partial missing material-decision trigger %q", want)
+		}
+	}
+	for _, retired := range []string{
+		"Before ADR or plan authoring for a hand-authored production-code change",
+		"Before beginning a hand-authored production-code change",
+	} {
+		if strings.Contains(checkpointBody, retired) {
+			t.Errorf("checkpoint approval partial retains retired artifact-class trigger %q", retired)
 		}
 	}
 	for templateID, direct := range map[string]string{
@@ -752,11 +776,12 @@ func TestProductionCodeOutlineApprovalProjection(t *testing.T) {
 }
 
 // The doctrine has exactly one authored definition, and every other surface
-// renders that source or points at it. A second independent statement is the
-// drift the single-home commitment exists to prevent, so this pins the
-// definition's content, proves no other template states it, and checks the
-// rendered projection under both governance footprints: the workflow document
-// carries the definition, the agent guide only reaches it.
+// renders that source or points at it. The proof runs over RENDERED surfaces in
+// both governance footprints rather than the template tree, because convention
+// parts under .awf/ are rendered surfaces too and a template-only scan cannot
+// see them. The agent guide is allowed to carry the thesis sentence inline for
+// its self-contained style, so that assertion is derived from the definition
+// itself and the two copies cannot drift apart.
 //
 // invariant: rendering/workflow-skill-templates:protected-contract-over-route (TestProtectedContractDoctrineSingleHome)
 func TestProtectedContractDoctrineSingleHome(t *testing.T) {
@@ -771,16 +796,16 @@ func TestProtectedContractDoctrineSingleHome(t *testing.T) {
 			t.Errorf("protected-contract partial must not interrupt consumer structure with heading %q", line)
 		}
 	}
-	// Each clause carries distinct weight: the protected set, the route set, and
-	// the per-constraint precedence rule that decides a mixed rule. Dropping any
-	// one of them leaves a doctrine that cannot adjudicate the conflict it exists for.
+	// Each clause carries distinct weight: the protected set including the four
+	// protections the governing record's reassurance rests on, the route set, and
+	// the per-constraint precedence rule that decides a mixed rule.
 	definition := []string{
 		"The workflow governs a change's protected contract, not its execution route",
 		"the requested outcome, the explicitly settled durable choices, the material scope",
 		"the required verification strength, the prohibited shortcuts, and every constraint an active project rule places on one of these",
+		"which includes generated-source ownership, drift detection, and path and worktree confinement",
 		"Everything else about how the change is carried out is the route",
 		"phase and task boundaries, their order, local names, file and symbol inventories, helper allocation, execution mode",
-		"a cleaner route to the same protected outcome is never a deviation to justify",
 		"Precedence is decided per constraint, not per rule",
 		"one rule may be protected in its protected clauses and subordinate in its route clauses",
 		"A route detail binds only when a settled decision states that it is load-bearing",
@@ -790,30 +815,12 @@ func TestProtectedContractDoctrineSingleHome(t *testing.T) {
 			t.Errorf("protected-contract partial missing %q", want)
 		}
 	}
-
-	// Single home: no other template may state the definition itself.
-	const defining = "Precedence is decided per constraint, not per rule"
-	var statedIn []string
-	if err := fs.WalkDir(templates.FS, ".", func(name string, entry fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if entry.IsDir() || name == source {
-			return nil
-		}
-		raw, readErr := fs.ReadFile(templates.FS, name)
-		if readErr != nil {
-			return readErr
-		}
-		if strings.Contains(string(raw), defining) {
-			statedIn = append(statedIn, name)
-		}
-		return nil
-	}); err != nil {
-		t.Fatal(err)
-	}
-	if len(statedIn) != 0 {
-		t.Errorf("doctrine defined outside its single home in %v", statedIn)
+	thesis := definition[0]
+	// Clauses no surface but the doctrine's rendered home may carry. The thesis is
+	// excluded: the agent guide carries it as its pointer text, checked below.
+	exclusive := []string{
+		"Precedence is decided per constraint, not per rule",
+		"the required verification strength, the prohibited shortcuts, and every constraint an active project rule places on one of these",
 	}
 	workflowTemplate, err := fs.ReadFile(templates.FS, "docs/workflow.md.tmpl")
 	if err != nil {
@@ -839,24 +846,67 @@ func TestProtectedContractDoctrineSingleHome(t *testing.T) {
 			for _, f := range files {
 				rendered[f.Path] = f.Content
 			}
-			workflow, ok := rendered["docs/workflow.md"]
+			workflowPath := p.layout().Singletons["workflowRef"]
+			workflow, ok := rendered[workflowPath]
 			if !ok {
-				t.Fatal("rendered workflow document absent")
+				t.Fatalf("rendered workflow document %q absent", workflowPath)
 			}
-			for _, want := range definition {
-				if !strings.Contains(workflow, want) {
-					t.Errorf("rendered workflow document missing doctrine clause %q", want)
+			want := definition
+			if profile != catalog.ProfileCore {
+				want = append(append([]string{}, definition...), "and current-state authority")
+			}
+			for _, clause := range want {
+				if !strings.Contains(workflow, clause) {
+					t.Errorf("rendered workflow document missing doctrine clause %q", clause)
+				}
+			}
+			// Core has no current-state authority to protect, so the Full-only
+			// protection must not leak into the Core footprint.
+			if profile == catalog.ProfileCore && strings.Contains(workflow, "current-state authority") {
+				t.Error("Core workflow document names Full-only current-state authority")
+			}
+			// No second rendered surface may carry a defining clause. The thesis is
+			// additionally legal in the agent guide, which carries it under a link;
+			// any third surface stating it is a standalone copy.
+			for clause, allowed := range map[string]map[string]bool{
+				exclusive[0]: {workflowPath: true},
+				exclusive[1]: {workflowPath: true},
+				thesis:       {workflowPath: true, "AGENTS.md": true},
+			} {
+				var carriers []string
+				for path, content := range rendered {
+					if !allowed[path] && strings.Contains(content, clause) {
+						carriers = append(carriers, path)
+					}
+				}
+				if len(carriers) != 0 {
+					sort.Strings(carriers)
+					t.Errorf("doctrine clause %q defined outside its rendered home in %v", clause, carriers)
 				}
 			}
 			guide, ok := rendered["AGENTS.md"]
 			if !ok {
 				t.Fatal("rendered agent guide absent")
 			}
-			if !strings.Contains(guide, "The workflow governs a change's protected contract, not its execution route") {
-				t.Error("rendered agent guide does not reach the doctrine")
+			if !strings.Contains(guide, thesis) {
+				t.Errorf("rendered agent guide does not carry the doctrine thesis %q", thesis)
 			}
-			if strings.Contains(guide, defining) {
-				t.Error("rendered agent guide restates the doctrine instead of referencing it")
+			// Carrying the thesis is only legal because the guide points at the
+			// doctrine's home from the same paragraph. Scoping to that line matters:
+			// the document map always links the workflow document, so a guide-wide
+			// search is satisfied by a link that has nothing to do with the doctrine.
+			var thesisLine string
+			for _, line := range strings.Split(guide, "\n") {
+				if strings.Contains(line, thesis) {
+					thesisLine = line
+					break
+				}
+			}
+			if thesisLine == "" {
+				t.Fatalf("rendered agent guide does not carry the doctrine thesis %q", thesis)
+			}
+			if !strings.Contains(thesisLine, "]("+workflowPath+")") {
+				t.Errorf("agent guide states the doctrine without linking %q in the same paragraph", workflowPath)
 			}
 		})
 	}

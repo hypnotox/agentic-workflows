@@ -18,7 +18,7 @@ When the root cause is known and a fix is ready to land. Two callers in practice
 
 ## Procedure
 
-<!-- awf:include production-code-outline-approval -->
+<!-- awf:include outline-approval -->
 
 This skill may run without an effort. If continuity materially helps, invoke `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}` before mutation; if an effort exists, validate its fixed identity and exact `.awf/efforts/<slug>/memory.md`, preserve one writer, and give children that context read-only. Otherwise omit effort and memory fields. {{if eq .profile "core"}}Project documentation, source, tests, and repository history remain authoritative{{else}}Repository sources and current-state documentation remain authoritative{{end}}, and standalone memory is forbidden.
 
