@@ -39,9 +39,8 @@ second maintainability doctrine.
 
 2. `decision: clean-integration-questions` Every primary implementation and review path determines
    the current and target owner, the narrowest clean integration point, any bounded enabling
-   refactor, the obsolete or parallel path to remove or migrate when practical, the tests, docs,
-   generated outputs, migrations, and compatibility surfaces that move with the change, and any
-   residual debt with its reason.
+   refactor, the obsolete or parallel path to remove or migrate when practical, the accompanying
+   verification surfaces that move with the change, and any residual debt with its reason.
 
 3. `decision: bounded-refactor-inside-scope` A bounded refactor necessary to prevent duplicated
    policy, inappropriate coupling, representation leakage, or a workaround is inside the selected
@@ -53,13 +52,13 @@ second maintainability doctrine.
    unrelated cleanup and speculative flexibility, and do not distort production design for test
    convenience when an existing real seam suffices.
 
-5. `decision: operative-consumer-and-proof` Project the shared rule through primary brainstorming,
-   planning, direct and delegated implementation, bugfix, TDD, plan review, and implementation
-   review surfaces, including their delegated agents. Prove one authored home, proportional
-   behavior, coherent empty-data rendering, and equivalent applicable behavior across governance
-   footprints and supported runtimes. Review applies explicit one-home, obsolete-path,
-   dependency-direction, representation-boundary, and residual-debt lenses without deciding
-   AF-005's finding-severity policy.
+5. `decision: operative-consumer-and-proof` Keep brainstorming and plan writing aware of clean
+   integration, and project the shared rule through primary direct and delegated implementation,
+   bugfix, TDD, plan review, and implementation review surfaces, including their delegated agents.
+   Prove one authored home, proportional behavior, coherent empty-data rendering, and equivalent
+   applicable behavior across governance footprints and supported runtimes. Review applies explicit
+   one-home, obsolete-path, dependency-direction, representation-boundary, and residual-debt lenses
+   without deciding AF-005's finding-severity policy.
 
 ## State changes
 
@@ -96,7 +95,7 @@ abstraction remain prohibited.
 
 | Alternative | Why not chosen |
 |---|---|
-| Expand the guide and leave consumers with general references | A general reference preserves the current superficial-compliance gap and supplies no common operative rule. |
+| Put doctrine and the operative rule in the guide, with consumers referencing its exact section | Separating adopter-neutral design doctrine from workflow action keeps the guide cohesive while giving every stage one reusable operative rule. |
 | Copy the integration questions into every skill and agent | Parallel doctrine would drift and violate the single-home rule. |
 | Make every maintainability improvement part of the selected change | This would authorize unbounded cleanup and conflict with YAGNI and the protected-contract boundary. |
 | Define blocking severity with the review lenses | AF-005 owns the dependent decision about concrete review risk and blocking policy. |
