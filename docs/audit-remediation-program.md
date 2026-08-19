@@ -58,8 +58,8 @@ change, not its literal execution choreography.
 | AF-014A | P1 | COMPLETE | Deterministic regression tests that fail against choreography-first guidance | AF-001 wording |
 | AF-002 | P1 | COMPLETE | Approval required only at a material-decision boundary, not at every production mutation | AF-001 |
 | AF-003 | P1 | COMPLETE | Plans bind outcome, durable decisions, scope, safety, and verification; route is mutable | AF-001 |
-| AF-004 | P1 | READY | Clean integration operative in every implementation and review path | AF-001 |
-| AF-005 | P1 | BLOCKED | Review blocks concrete maintainability risk, not aesthetic preference | AF-003, AF-004 |
+| AF-004 | P1 | COMPLETE | Clean integration operative in every implementation and review path | AF-001 |
+| AF-005 | P1 | READY | Review blocks concrete maintainability risk, not aesthetic preference | AF-003, AF-004 |
 | AF-006 | P1 | READY | Strongest practical durable oracle replaces absolute test-first blocking | AF-001 |
 | AF-007 | P2 | DECISION | Plain punctuation leaves hard governance | AF-001, owner ruling |
 | AF-008 | P2 | READY | Core and Full read as governance footprints, not rigor modes | AF-001 |
@@ -199,6 +199,36 @@ abstraction; oracle strength.
   review also removed residual universal ordering and structural-choice clauses and strengthened
   claim proof. These corrections preserved the approved protected-contract boundary.
 - **Unblocked:** AF-004 is the next A1 issue. AF-005 remains blocked only on AF-004; later issues keep
+  their named blockers, and AF-007 remains `DECISION` pending an owner ruling.
+
+### AF-004
+
+- **Range:** Prior program state `2d2fafbb4`; implementation range `2d2fafbb4..259fbea66`.
+- **Protected contract:** ADR-0288 makes clean integration operative across design, planning,
+  implementation, and review while preserving the maintainable-code-design guide as canonical
+  doctrine, the material-decision boundary, protected-contract authority, YAGNI, compatibility,
+  safety, and verification strength. It does not adopt AF-005 finding-severity or blocking policy.
+- **Clean integration:** `templates/partials/clean-integration.md` is the single operative home.
+  Applicable skills and delegated agents determine semantic ownership, the narrow integration point,
+  bounded enabling work, practical obsolete-path retirement or migration, moving verification
+  surfaces, and reasoned residual debt. Fragmented operative prompts are retired while stage-local
+  protocol remains. No issue-local residual debt remains.
+- **Files changed:** The canonical guide and agent-guide templates establish doctrine and routing;
+  implementation, planning, review, bugfix, and TDD templates consume the shared rule; generated Pi
+  and Claude outputs project it; current-state claims and ADR history record authority and
+  provenance; `internal/project` and `internal/evals` prove one home, explicit consumers,
+  proportional outcomes, negative dispositions, empty-data rendering, and cross-footprint and
+  cross-runtime behavior; the changelog records the adopter-visible change.
+- **Verification:** Focused project and deterministic evaluation tests passed; `./awf check staged`
+  and `./x gate` passed with 100 percent statement coverage, zero audit issues, no production dead
+  code, and pinned workflow references; `./awf audit 2d2fafbb4..259fbea66` and
+  `./x audit-local 2d2fafbb4..259fbea66` reported clean.
+- **Deviations:** ADR review explicitly added brainstorming and plan writing to the approved consumer
+  boundary. Implementation review strengthened single-home detection, reviewer-stage proof, and
+  input-to-disposition mutation scenarios, and clarified that maintainability lenses preserve the
+  informational severity field without defining severity or blocking policy. These corrections
+  preserved the approved outcome.
+- **Unblocked:** AF-005 is `READY` and is the next A2 issue. AF-006 remains `READY`; later issues keep
   their named blockers, and AF-007 remains `DECISION` pending an owner ruling.
 
 Close each later issue with the same evidence: identity; baseline and final range; protected contract;
