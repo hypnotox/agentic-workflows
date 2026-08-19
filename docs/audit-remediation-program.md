@@ -79,9 +79,12 @@ compatibility conflict, verification reduction, or material scope expansion retu
 orchestrator for owner resolution.
 
 Integration is a single-writer queue even when implementation runs concurrently. For each completed
-issue, the orchestrator incorporates current `main`, resolves authoritative-source conflicts,
-rerenders instead of hand-merging generated outputs, runs the full checks and gate, integrates one
-issue, records its completion report, and only then advances the next integration. The orchestrator
+issue, the orchestrator first incorporates current `main` into the issue branch, resolves
+authoritative-source conflicts, rerenders instead of hand-merging generated outputs, and runs the
+full checks and gate. It then confirms that settled independent assurance covers the final issue tip
+and combined history; divergence, changed authority, reasoned post-review fixes, or material
+interactions require renewed review. Only with fresh assurance does it integrate the issue, complete
+terminal lifecycle work, record the completion report, and advance the queue. The orchestrator
 revalidates still-running efforts after each integration. Common generated outputs and lock files do
 not alone prohibit parallel source work; shared semantic ownership or a shared active current-state
 claim does.
@@ -102,8 +105,8 @@ change, not its literal execution choreography.
 | AF-006 | P1 | READY | Strongest practical durable oracle replaces absolute test-first blocking | AF-001 |
 | AF-007 | P2 | READY | Punctuation restraint replaces the seven-codepoint ban | AF-001 |
 | AF-008 | P2 | READY | Core and Full read as governance footprints, not rigor modes | AF-001 |
-| AF-009 | P2 | READY | Pi runtime protocol owned by a target-specific reference, not generic workflow docs | AF-001 |
-| AF-010 | P2 | BLOCKED | Residual operative prose states rule, flexible detail, stop condition, and evidence | AF-006..AF-009 |
+| AF-009 | P2 | BLOCKED | Pi runtime protocol owned by a target-specific reference, not generic workflow docs | AF-001, AF-008 |
+| AF-010 | P2 | BLOCKED | Residual operative prose states rule, flexible detail, stop condition, and evidence | AF-006..AF-009, AF-011, AF-013 |
 | AF-011 | P2 | BLOCKED | Daily-use documentation separated from rare recovery and migration protocol | AF-009 |
 | AF-012 | P2 | BLOCKED | Demonstrably redundant workflow concepts and vocabulary consolidated | AF-010, AF-011 |
 | AF-013 | P1 | BLOCKED | Blocking checks separated from warnings and unranked notes by protected property | AF-005, AF-007 |
@@ -280,14 +283,18 @@ Implement audit issue <ID> only.
 Starting commit: <sha>
 Authoritative issue boundary: docs/audit-remediation-program.md, section
 "Pre-approved Program <A-or-B> boundaries", item <ID>.
-External acceptance criteria: the <ID> section of
-agentic-workflows-full-audit-and-remediation-program.md.
+External acceptance criteria, pasted verbatim by the orchestrator:
+<complete external audit section for ID>
+
+Owner-decision evidence, pasted verbatim by the orchestrator:
+<applicable user-provenance approvals and presented boundary>
 
 Repository authority outranks both. Revalidate named paths and premises before editing. The owner has
 approved the issue outcome, exclusions, and parallel topology recorded in the sequencing authority;
-do not reopen those choices. Stop only for a newly exposed material decision, unmet dependency or
-condition, authority conflict, safety or compatibility change, verification reduction, or scope
-expansion.
+do not reopen those choices. Preserve the supplied approval evidence in the issue effort's decision
+log and every review brief that evaluates consensus adherence. Stop only for a newly exposed material
+decision, unmet dependency or condition, authority conflict, safety or compatibility change,
+verification reduction, or scope expansion.
 
 Use one issue effort and transaction. Do not begin another audit issue. Follow generated-source,
 ADR, plan, implementation, review, gate, and commit workflows as they apply. At completion, return
