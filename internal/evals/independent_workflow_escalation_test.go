@@ -178,7 +178,7 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 			return skillPath(root, name)
 		}
 		brainstorming := read(t, path("brainstorming"))
-		assertContainsAll(t, target+" brainstorming approval", brainstorming, "before a hand-authored production-code change", "Present the complete design", "explicitly request approval", "stop", "clear later approval response")
+		assertContainsAll(t, target+" brainstorming approval", brainstorming, "material choice or clarification is unresolved", "Present the complete design", "explicitly request approval", "stop", "clear later approval response")
 		assertOrderedPhrases(t, brainstorming, "Present the complete design", "explicitly request approval", "stop", "clear later approval response")
 		adrReview := read(t, path("reviewing-adr"))
 		assertContainsAll(t, target+" autonomous ADR hand-off", adrReview,
@@ -317,19 +317,20 @@ func TestProductionCodeOutlineApproval(t *testing.T) {
 			}
 			brainstorming := read(t, path("brainstorming"))
 			assertContainsAll(t, target+" outline owner", brainstorming,
-				"description: Use before hand-authored production-code changes", "concise implementation outline", "fuller material-choice design", "explicit outline approval")
+				"description: Use when a material decision is unresolved", "concise implementation outline", "fuller material-choice design", "explicit approval")
 
 			for _, name := range []string{"executing-direct", "tdd", "bugfix", "executing-plans", "subagent-driven-development"} {
 				assertContainsAll(t, target+" "+name+" outline intake", read(t, path(name)),
-					"hand-authored production-code", "mechanical production refactors", "tests that prepare a production change", "explicit outline approval")
+					"unresolved material decision, never by the act of mutating production code",
+					"Routine implementation detail creates no approval boundary, whatever kind of file it touches")
 			}
 			for _, name := range []string{"writing-plans", "proposing-adr"} {
 				assertContainsAll(t, target+" "+name+" artifact intake", read(t, path(name)),
-					"explicit outline approval", "Architecture summary")
+					"unresolved material decision", "Architecture summary")
 			}
 			implementer := read(t, filepath.Join(root, "."+target, "agents", "implementer.md"))
 			assertContainsAll(t, target+" delegated intake", implementer,
-				"parent-supplied approved boundary", "never recreate the approval interaction", "stops without mutation to report missing evidence to its parent")
+				"parent-supplied protected contract", "never recreate the approval interaction", "stops without mutation to report to its parent when that contract is absent or must change")
 			assertContainsAll(t, target+" phase-owner approved-boundary dispatch", read(t, path("subagent-driven-development")),
 				"provide the complete phase, explicitly identify the parent-supplied approved boundary")
 			assertContainsAll(t, target+" helper approved-boundary dispatch", read(t, path("executing-plans")),
@@ -339,9 +340,12 @@ func TestProductionCodeOutlineApproval(t *testing.T) {
 				assertContainsAll(t, target+" "+name+" evidence", body,
 					"retained conversation", "Decision-log evidence", "explicit request to execute a named plan", "Architecture summary")
 			}
-			for _, exclusion := range []string{"Documentation-only", "test-only maintenance", "generated-output-only", "non-code mechanical"} {
-				if !strings.Contains(read(t, path("executing-direct")), exclusion) {
-					t.Errorf("%s direct intake omits autonomous exclusion %q", target, exclusion)
+			// The general rule already leaves documentation, test, and generated-output
+			// work autonomous, so the retired per-artifact carve-out list must be gone
+			// rather than merely unenforced.
+			for _, retired := range []string{"mechanical production refactors", "tests that prepare a production change", "generated-output-only work, and non-code mechanical work remain autonomous"} {
+				if strings.Contains(read(t, path("executing-direct")), retired) {
+					t.Errorf("%s direct intake retains retired universal-approval wording %q", target, retired)
 				}
 			}
 		})

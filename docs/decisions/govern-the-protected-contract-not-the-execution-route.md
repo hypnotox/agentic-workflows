@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: govern-the-protected-contract-not-the-execution-route
-status: Proposed
+status: Implementing
 date: 2026-08-19
 ---
 # ADR-govern-the-protected-contract-not-the-execution-route: Govern the protected contract not the execution route
@@ -130,3 +130,5 @@ semantics; the doctrine describes no runtime-specific protocol.
 ## Status history
 
 - 2026-08-19: Proposed
+- 2026-08-19: Implementing; content-sha256: d8f5636a6248f4d8c4ea8acb7da35d787082157cb6ba0a4a4a569ca2dd577381
+- 2026-08-19: Applied; operations: add `rendering/workflow-skill-templates:protected-contract-over-route`, update `rendering/workflow-skill-templates:independent-workflow-escalation`, update `rendering/workflow-skill-templates:mandatory-approval-boundaries`

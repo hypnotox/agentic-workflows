@@ -17,7 +17,7 @@ State the outcome and, in one line, its non-goals.
 
 ## Architecture summary
 
-State the execution structure and dependency direction without repeating ADR rationale. For hand-authored production-code work, preserve the user-approved proportionate outline here so an explicit request to execute this named plan can supply approval evidence.
+State the execution structure and dependency direction without repeating ADR rationale. When a material decision was resolved by an approved outline, preserve that outline here so an explicit request to execute this named plan can supply the approval evidence.
 
 <!-- awf:template-source templates/plans-template/template.md.tmpl#phases -->
 <!-- awf:edit phases: default; create .awf/parts/plans-template/phases.md to override -->

@@ -28,7 +28,7 @@
 
 - Universal repository authority, documentation, verification, and commit obligations apply regardless of which mechanisms fire.
 
-- Before hand-authored production-code mutation, including a mechanical production refactor or a test preparing that change, brainstorming alone presents a proportionate outline and obtains explicit approval.
+- An unresolved material decision, not the act of mutating production code, is what brainstorming stops for; it alone presents a proportionate outline and obtains explicit approval, and a routine change whose protected contract is already settled proceeds without that stop.
 
 - Retained conversation, user-provenance effort Decision-log evidence, or an explicit request to execute a named plan whose Architecture summary supplies the outline each establish that boundary; delegated owners consume the parent-supplied boundary without another approval interaction.
 

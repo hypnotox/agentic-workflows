@@ -674,7 +674,14 @@ func TestAuthorityGuidedImplementationAutonomy(t *testing.T) {
 	}
 }
 
+// The approval boundary is an unresolved material decision, not the act of
+// mutating production code. This pins both halves: the new trigger and its
+// enumerated material-decision cases must be present, and the retired
+// artifact-class trigger must be gone. Asserting only the absence of the old
+// wording would pass against a partial that says nothing at all.
+//
 // invariant: rendering/workflow-skill-templates:independent-workflow-escalation (TestProductionCodeOutlineApprovalProjection)
+// invariant: rendering/workflow-skill-templates:mandatory-approval-boundaries (TestProductionCodeOutlineApprovalProjection)
 func TestProductionCodeOutlineApprovalProjection(t *testing.T) {
 	partial, err := fs.ReadFile(templates.FS, "partials/production-code-outline-approval.md")
 	if err != nil {
@@ -687,13 +694,34 @@ func TestProductionCodeOutlineApprovalProjection(t *testing.T) {
 		}
 	}
 	for _, want := range []string{
-		"hand-authored production-code mutation", "mechanical production refactors", "tests that prepare a production change",
-		"Documentation-only", "test-only maintenance", "generated-output-only", "non-code mechanical",
+		"An approval boundary is triggered by an unresolved material decision, never by the act of mutating production code",
+		"the requested outcome is materially ambiguous",
+		"viable approaches carry meaningfully different durable consequences",
+		"externally observable behaviour or compatibility or safety or material scope would change",
+		"repository authority contradicts the request",
+		"a required verification oracle would have to be weakened",
+		"an irreversible or destructive action is not already authorized",
+		"the clean implementation exposes a separate load-bearing decision",
+		"Routine implementation detail creates no approval boundary, whatever kind of file it touches",
 		"retained conversation", "Decision-log evidence", "explicit request to execute a named plan", "Architecture summary",
-		"brainstorming is the sole owner", "parent-supplied approved boundary", "never recreate the approval interaction", "stops without mutation to report missing evidence to its parent",
+		"brainstorming is the sole owner", "parent-supplied protected contract", "never recreate the approval interaction",
+		"stops without mutation to report to its parent when that contract is absent or must change",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("outline approval partial missing %q", want)
+		}
+	}
+	// The retired trigger made the artifact class the boundary. Its carve-out
+	// list existed only to undo that, so both must be gone: the general rule
+	// already leaves documentation, test, and generated-output work autonomous.
+	for _, retired := range []string{
+		"mechanical production refactors",
+		"tests that prepare a production change",
+		"Documentation-only work, test-only maintenance",
+		"generated-output-only work, and non-code mechanical work remain autonomous",
+	} {
+		if strings.Contains(body, retired) {
+			t.Errorf("outline approval partial retains retired universal-approval wording %q", retired)
 		}
 	}
 	for _, consumer := range []string{
@@ -720,6 +748,117 @@ func TestProductionCodeOutlineApprovalProjection(t *testing.T) {
 		if strings.Contains(string(raw), direct) {
 			t.Errorf("%s retains direct larger-work user route %q", templateID, direct)
 		}
+	}
+}
+
+// The doctrine has exactly one authored definition, and every other surface
+// renders that source or points at it. A second independent statement is the
+// drift the single-home commitment exists to prevent, so this pins the
+// definition's content, proves no other template states it, and checks the
+// rendered projection under both governance footprints: the workflow document
+// carries the definition, the agent guide only reaches it.
+//
+// invariant: rendering/workflow-skill-templates:protected-contract-over-route (TestProtectedContractDoctrineSingleHome)
+func TestProtectedContractDoctrineSingleHome(t *testing.T) {
+	const source = "partials/protected-contract.md"
+	partial, err := fs.ReadFile(templates.FS, source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(partial)
+	for _, line := range strings.Split(body, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "#") {
+			t.Errorf("protected-contract partial must not interrupt consumer structure with heading %q", line)
+		}
+	}
+	// Each clause carries distinct weight: the protected set, the route set, and
+	// the per-constraint precedence rule that decides a mixed rule. Dropping any
+	// one of them leaves a doctrine that cannot adjudicate the conflict it exists for.
+	definition := []string{
+		"The workflow governs a change's protected contract, not its execution route",
+		"the requested outcome, the explicitly settled durable choices, the material scope",
+		"the required verification strength, the prohibited shortcuts, and every constraint an active project rule places on one of these",
+		"Everything else about how the change is carried out is the route",
+		"phase and task boundaries, their order, local names, file and symbol inventories, helper allocation, execution mode",
+		"a cleaner route to the same protected outcome is never a deviation to justify",
+		"Precedence is decided per constraint, not per rule",
+		"one rule may be protected in its protected clauses and subordinate in its route clauses",
+		"A route detail binds only when a settled decision states that it is load-bearing",
+	}
+	for _, want := range definition {
+		if !strings.Contains(body, want) {
+			t.Errorf("protected-contract partial missing %q", want)
+		}
+	}
+
+	// Single home: no other template may state the definition itself.
+	const defining = "Precedence is decided per constraint, not per rule"
+	var statedIn []string
+	if err := fs.WalkDir(templates.FS, ".", func(name string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() || name == source {
+			return nil
+		}
+		raw, readErr := fs.ReadFile(templates.FS, name)
+		if readErr != nil {
+			return readErr
+		}
+		if strings.Contains(string(raw), defining) {
+			statedIn = append(statedIn, name)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if len(statedIn) != 0 {
+		t.Errorf("doctrine defined outside its single home in %v", statedIn)
+	}
+	workflowTemplate, err := fs.ReadFile(templates.FS, "docs/workflow.md.tmpl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Count(string(workflowTemplate), "<!-- awf:include protected-contract -->"); got != 1 {
+		t.Errorf("workflow template has %d protected-contract includes, want 1", got)
+	}
+
+	// Both footprints carry the same doctrine; neither is a lighter standard.
+	for _, profile := range []catalog.Profile{catalog.ProfileCore, catalog.ProfileFull} {
+		t.Run(string(profile), func(t *testing.T) {
+			root := scaffold(t, "prefix: example\nprofile: "+string(profile)+"\nintegrationBranch: main\n")
+			p, err := Open(testContext(t), root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			files, err := p.RenderAll()
+			if err != nil {
+				t.Fatal(err)
+			}
+			rendered := map[string]string{}
+			for _, f := range files {
+				rendered[f.Path] = f.Content
+			}
+			workflow, ok := rendered["docs/workflow.md"]
+			if !ok {
+				t.Fatal("rendered workflow document absent")
+			}
+			for _, want := range definition {
+				if !strings.Contains(workflow, want) {
+					t.Errorf("rendered workflow document missing doctrine clause %q", want)
+				}
+			}
+			guide, ok := rendered["AGENTS.md"]
+			if !ok {
+				t.Fatal("rendered agent guide absent")
+			}
+			if !strings.Contains(guide, "The workflow governs a change's protected contract, not its execution route") {
+				t.Error("rendered agent guide does not reach the doctrine")
+			}
+			if strings.Contains(guide, defining) {
+				t.Error("rendered agent guide restates the doctrine instead of referencing it")
+			}
+		})
 	}
 }
 
