@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-separate-blocking-checks-from-advisories: Separate blocking checks from advisories](separate-blocking-checks-from-advisories.md) (Proposed)
 
 ## History
 
