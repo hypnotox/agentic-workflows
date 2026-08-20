@@ -30,14 +30,14 @@ Backing: test
 
 awf init with non-terminal stdin and no --set or --answers seeds every selected-governance-footprint var empty, writes no invariants config, and writes the default `profile: core` selection.
 Origin: ADR-0148
-Revised-by: ADR-0278, ADR-define-core-and-full-as-governance-footprints
+Revised-by: ADR-0278, ADR-0292
 Backing: test
 
 ### `invariant: init-prompts-enabled-vars`
 
 Interactive awf init prompts for the governance footprint and vars referenced by that footprint's unconditional catalog and singleton templates; the seeded config carries that selected var union as empty keys.
 Origin: ADR-0148
-Revised-by: ADR-0251, ADR-0278, ADR-define-core-and-full-as-governance-footprints
+Revised-by: ADR-0251, ADR-0278, ADR-0292
 Backing: test
 
 ### `invariant: init-unborn-head-supported`

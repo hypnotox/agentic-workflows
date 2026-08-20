@@ -32,7 +32,7 @@ Workflow judgment precedes this command: discovery creates no effort, and `effor
 - `awf check repo`: run the repository-property aggregate. Its `drift` and `state` children inspect the working tree, while `prose` and `memory` scan the tracked index corpus.
 - `awf check repo drift`: report stale or hand-edited rendered output, including the config-tree hygiene sweep.
 - `awf check repo state`: report current-state authority findings over the working tree.
-- `awf check repo prose`: always scan tracked text files for typographic punctuation substitutes and exit non-zero on any finding; `proseGate.exemptions` records accepted path-and-codepoint exceptions.
+- `awf check repo prose`: always scan tracked text files, silently skip binaries, reject every en dash, and reject paragraphs containing more than two em dashes; ellipses and curly quotes are permitted, while `proseGate.exemptions` records accepted path-and-codepoint exceptions for guarded characters.
 - `awf check repo memory`: always scan staged decisions and plans for a concrete `.awf/efforts/<slug>/memory.md` citation and exit non-zero on any finding; the bare directory and angle-bracket slug placeholders remain legal, and `memoryCite.exemptions` records accepted path exceptions.
 - `awf check commit-policy <revision-or-range>...`: preview exact author, committer, and optional SSH-signature provenance for explicit targets after the configured baseline. An absent policy prints one disabled note and succeeds; correct actionable refusals or violations and rerun before policy activation. This command does not install hooks or change repository state.
 - `awf check staged`: run the HEAD-to-index current-state transition and rendered-output drift checks.

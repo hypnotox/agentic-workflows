@@ -64,6 +64,19 @@ Ambiguity, competing clean options, severity, structural character, and the fact
 
 When the brief carries consent evidence, check the plan against it. Effort-backed evidence is the pasted user-provenance decision-log entries, including whatever `Record:` blocks exist; effort-free ADR evidence is the explicitly approved design summary. A contradiction or change to accepted semantics is always a `user-decision` finding, never silently absorbed: `location` cites the deviating plan passage, `issue` names the deviation, and `suggested_fix` carries the escalation phrasing "we decided X; during <phase> we found Z; recommend Y, approve?". Removing an unaccepted surplus commitment restores the accepted decision set and is an authority-preserving `reasoned` correction, not a consensus deviation; disclose the removal and keep any worthwhile suggestion outside the artifact until accepted. A brief without either form of consent evidence leaves this check idle, and repository facts never substitute for consent.
 
+<!-- awf:template-source templates/partials/durable-oracle.md -->
+Every behaviour-changing fix requires the strongest practical durable oracle. The normal and preferred path is an automated regression test observed failing for the right reason and then passing. When that path is impractical, state a concrete reason, preserve or improve verification strength, and retain the strongest safe, reproducible alternative. Never weaken expected behaviour. Never weaken verification strength. Fix the root cause rather than the symptom.
+
+Use this evidence order as guidance, not a requirement to mechanically attempt every earlier option:
+
+1. An automated regression test observed red then green.
+2. A deterministic integration or reproduction harness.
+3. A contract or invariant test that directly exercises the failure.
+4. Use scripted, reproducible manual verification with recorded inputs and expected result.
+5. An explicit explanation of why durable automation is unavailable, plus the strongest safe evidence that can be retained.
+
+For a nondeterministic race, stress or invariant evidence may be the strongest practical oracle. For a destructive migration defect, use safe fixture or dry-run evidence rather than unsafe reproduction. An alternative is legal because the preferred path is impractical, not merely inconvenient, and its reason and retained evidence must make any verification-strength judgment reviewable.
+
 <!-- awf:template-source templates/agents/plan-reviewer.md.tmpl#universal-lenses -->
 <!-- awf:edit universal-lenses: default; create .awf/agents/parts/plan-reviewer/universal-lenses.md to override -->
 <!-- awf:template-source templates/agents/plan-reviewer.md.tmpl -->
@@ -81,7 +94,7 @@ Apply all lenses to every plan:
 
 1. **convention-alignment**: Conventional Commits subject shape (under 72 chars; imperative; scoped); one concern per commit; no premature abstraction (no helpers added "for future use" without a current call site); no `cd`+`git` chaining in commands; deviations from established package patterns flagged.
 
-1. **testing-discipline**: behaviour-changing tasks have regression tests; test placement in the tier that exercises the bug's surface; test-first ordering for bug fixes (failing test before or in the same commit as the fix); new invariants extend the invariant test suite where one exists.
+1. **testing-discipline**: non-fix behaviour-changing tasks have regression tests; fix tasks establish the strongest practical durable oracle described above before implementation; ordinary deterministic defects require an observed red-then-green automated regression test, while a fix alternative requires a concrete impracticality reason and evidence that preserves or improves verification strength; new invariants extend the invariant test suite where one exists.
 
 1. **semantic-rendering-review**: inspect the change-specific requirement for focused generated-prose meaning review at affected output boundaries, including contradictory fragments, concept-preserving paraphrase, and intentional literal placeholders such as `<literal-placeholder>`. During precommit plan review, do not require future implementation completion evidence; during a later review, inspect that evidence when it exists. Concrete examples and expected readings are required only when load-bearing; this is not a general output validator.
 

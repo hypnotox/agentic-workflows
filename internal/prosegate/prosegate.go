@@ -1,7 +1,6 @@
-// Package prosegate scans a project's tracked text files for the seven banned
-// typographic punctuation substitutes (ADR-0119). It is the presence-level
-// counterpart to the net-increase audit rule in internal/audit: this package
-// answers "is the tree clean", not "did this commit make it worse".
+// Package prosegate enforces punctuation restraint across a project's tracked
+// text files. It rejects en dashes and paragraphs containing three or more em
+// dashes while permitting ellipses and curly quotes.
 package prosegate
 
 import (
@@ -12,16 +11,18 @@ import (
 	"unicode/utf8"
 )
 
-// Banned maps each banned rune to its display name. Each key is written as an
-// escape, never as the character: this file is itself a tracked file the scan
-// reads, so a typed glyph here would make the scanner fail its own gate.
-// internal/project/residue_scan_test.go's bannedRunes map is the precedent and
-// must stay in agreement with this one. Notation (arrows, mathematical symbols,
-// accented letters) is deliberately absent: this is a closed blocklist of
-// substitutes for ASCII punctuation, never an ASCII-only allowlist.
-var Banned = map[rune]string{
-	'\u2014': "em-dash (U+2014)",
-	'\u2013': "en-dash (U+2013)",
+const (
+	emDash = '\u2014'
+	enDash = '\u2013'
+)
+
+// codepointNames includes the two guarded codepoints and the five retired
+// codepoints accepted in existing exemption configuration. Retired exemptions
+// are inert: compatibility parsing must not turn a policy relaxation into a
+// configuration failure.
+var codepointNames = map[rune]string{
+	emDash:   "em-dash (U+2014)",
+	enDash:   "en-dash (U+2013)",
 	'\u2026': "ellipsis (U+2026)",
 	'\u2018': "left single quote (U+2018)",
 	'\u2019': "right single quote (U+2019)",
@@ -29,25 +30,35 @@ var Banned = map[rune]string{
 	'\u201d': "right double quote (U+201D)",
 }
 
-// Exemption permits a codepoint in a path, optionally pinning its count.
+// Exemption permits a guarded codepoint in a path, optionally pinning its
+// whole-file occurrence count.
 type Exemption struct {
 	Path      string
 	Codepoint rune
 	Count     *int
 }
 
-// Finding is one banned codepoint in one file, with the number found. Pinned is
-// non-nil when an exemption pinned a count that did not match, carrying the pin
-// (which may legitimately be zero); nil when the codepoint was not exempt at all.
+// Finding is one punctuation-restraint violation. Paragraph is nonzero for an
+// em-dash threshold violation and identifies the blank-line-delimited text
+// block within the file. Pinned is non-nil for an exemption count mismatch.
 type Finding struct {
-	Path   string
-	Rune   rune
-	Count  int
-	Pinned *int
+	Path      string
+	Rune      rune
+	Count     int
+	Paragraph int
+	Pinned    *int
 }
 
-// ParseCodepoint turns a "U+2014" spelling into its rune. It rejects anything
-// outside the banned set, so a typo cannot silently widen an exemption.
+// ViolationCounts is the comparable policy measure used by the historical
+// advisory: all en dashes plus em dashes beyond the allowance of two in each
+// paragraph.
+type ViolationCounts struct {
+	EnDashes     int
+	EmDashExcess int
+}
+
+// ParseCodepoint turns a "U+2014" spelling into its rune. It accepts the five
+// formerly guarded codepoints so existing adopter exemptions remain compatible.
 func ParseCodepoint(s string) (rune, error) {
 	if !strings.HasPrefix(s, "U+") {
 		return 0, fmt.Errorf("codepoint %q: want the form U+2014", s)
@@ -57,8 +68,8 @@ func ParseCodepoint(s string) (rune, error) {
 		return 0, fmt.Errorf("codepoint %q: %w", s, err)
 	}
 	r := rune(n)
-	if _, ok := Banned[r]; !ok {
-		return 0, fmt.Errorf("codepoint %q is not one of the seven banned substitutes", s)
+	if _, ok := codepointNames[r]; !ok {
+		return 0, fmt.Errorf("codepoint %q is not a guarded or compatibility punctuation codepoint", s)
 	}
 	return r, nil
 }
@@ -69,9 +80,55 @@ type File struct {
 	Bytes []byte
 }
 
-// Scan reports every banned rune in the supplied staged files outside the
-// exemptions. Files whose contents are not valid UTF-8 are skipped: a
-// default-deny gate must not guess at binary input.
+type paragraphCount struct {
+	number   int
+	emDashes int
+}
+
+// CountViolations measures the guarded punctuation in text. A whitespace-only
+// line is blank, CRLF and LF delimit paragraphs identically, and empty blocks
+// between consecutive blank lines are ignored.
+func CountViolations(text string) ViolationCounts {
+	counts := ViolationCounts{EnDashes: strings.Count(text, string(enDash))}
+	for _, paragraph := range emDashParagraphs(text) {
+		if paragraph.emDashes > 2 {
+			counts.EmDashExcess += paragraph.emDashes - 2
+		}
+	}
+	return counts
+}
+
+func emDashParagraphs(text string) []paragraphCount {
+	lines := strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
+	var out []paragraphCount
+	paragraph := 0
+	inParagraph := false
+	emDashes := 0
+	flush := func() {
+		if !inParagraph {
+			return
+		}
+		out = append(out, paragraphCount{number: paragraph, emDashes: emDashes})
+		inParagraph = false
+		emDashes = 0
+	}
+	for _, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			flush()
+			continue
+		}
+		if !inParagraph {
+			paragraph++
+			inParagraph = true
+		}
+		emDashes += strings.Count(line, string(emDash))
+	}
+	flush()
+	return out
+}
+
+// Scan reports punctuation-restraint violations in the supplied staged text
+// files. Files whose contents are not valid UTF-8 are silently skipped.
 func Scan(files []File, exemptions []Exemption) ([]Finding, []string, error) {
 	type key struct {
 		path string
@@ -79,43 +136,65 @@ func Scan(files []File, exemptions []Exemption) ([]Finding, []string, error) {
 	}
 	exempt := map[key]*int{}
 	for _, e := range exemptions {
+		// Exemptions for formerly guarded punctuation remain accepted but inert.
+		if e.Codepoint != emDash && e.Codepoint != enDash {
+			continue
+		}
 		exempt[key{e.Path, e.Codepoint}] = e.Count
 	}
+
 	actual := map[key]int{}
+	processed := map[key]bool{}
+	var out []Finding
 	var skipped []string
 	for _, file := range files {
 		if !utf8.Valid(file.Bytes) {
 			skipped = append(skipped, file.Path)
 			continue
 		}
-		for _, r := range string(file.Bytes) {
-			if _, bad := Banned[r]; bad {
-				actual[key{file.Path, r}]++
+		text := string(file.Bytes)
+		for _, guarded := range []rune{emDash, enDash} {
+			k := key{file.Path, guarded}
+			count := strings.Count(text, string(guarded))
+			actual[k] = count
+			processed[k] = true
+			pin, ok := exempt[k]
+			if ok {
+				if pin != nil && *pin != count {
+					out = append(out, Finding{Path: file.Path, Rune: guarded, Count: count, Pinned: pin})
+				}
+				continue
+			}
+			switch guarded {
+			case enDash:
+				if count > 0 {
+					out = append(out, Finding{Path: file.Path, Rune: guarded, Count: count})
+				}
+			case emDash:
+				for _, paragraph := range emDashParagraphs(text) {
+					if paragraph.emDashes >= 3 {
+						out = append(out, Finding{Path: file.Path, Rune: guarded, Count: paragraph.emDashes, Paragraph: paragraph.number})
+					}
+				}
 			}
 		}
 	}
-
-	var out []Finding
-	for k, n := range actual {
-		pin, ok := exempt[k]
-		switch {
-		case !ok:
-			out = append(out, Finding{Path: k.path, Rune: k.rune, Count: n})
-		case pin != nil && *pin != n:
-			out = append(out, Finding{Path: k.path, Rune: k.rune, Count: n, Pinned: pin})
-		}
-	}
 	for k, pin := range exempt {
-		if pin != nil && actual[k] == 0 && *pin != 0 {
-			out = append(out, Finding{Path: k.path, Rune: k.rune, Count: 0, Pinned: pin})
+		if processed[k] || pin == nil || *pin == 0 {
+			continue
 		}
+		out = append(out, Finding{Path: k.path, Rune: k.rune, Count: actual[k], Pinned: pin})
 	}
+
 	sort.Strings(skipped)
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Path != out[j].Path {
 			return out[i].Path < out[j].Path
 		}
-		return out[i].Rune < out[j].Rune
+		if out[i].Rune != out[j].Rune {
+			return out[i].Rune < out[j].Rune
+		}
+		return out[i].Paragraph < out[j].Paragraph
 	})
 	return out, skipped, nil
 }
@@ -124,8 +203,12 @@ func Scan(files []File, exemptions []Exemption) ([]Finding, []string, error) {
 func Format(f Finding) string {
 	if f.Pinned != nil {
 		return fmt.Sprintf("%s: %s appears %d time(s); the exemption pins %d",
-			f.Path, Banned[f.Rune], f.Count, *f.Pinned)
+			f.Path, codepointNames[f.Rune], f.Count, *f.Pinned)
 	}
-	return fmt.Sprintf("%s: %s appears %d time(s); use plain punctuation",
-		f.Path, Banned[f.Rune], f.Count)
+	if f.Rune == emDash && f.Paragraph > 0 {
+		return fmt.Sprintf("%s: paragraph %d contains %s %d time(s); use at most two per paragraph",
+			f.Path, f.Paragraph, codepointNames[f.Rune], f.Count)
+	}
+	return fmt.Sprintf("%s: %s appears %d time(s); en dashes are not permitted",
+		f.Path, codepointNames[f.Rune], f.Count)
 }

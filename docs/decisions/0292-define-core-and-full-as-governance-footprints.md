@@ -4,7 +4,7 @@ slug: define-core-and-full-as-governance-footprints
 status: Implementing
 date: 2026-08-20
 ---
-# ADR-define-core-and-full-as-governance-footprints: Define Core and Full as governance footprints
+# ADR-0292: Define Core and Full as governance footprints
 
 
 ## Context

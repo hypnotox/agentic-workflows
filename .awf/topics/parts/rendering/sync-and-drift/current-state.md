@@ -39,21 +39,21 @@ Backing: test
 
 Every filesystem entry under .awf outside the selected governance footprint's claimed-path model is reported by awf check as orphaned drift, with owned resident roots exempt.
 Origin: ADR-0148
-Revised-by: ADR-0175, ADR-0278, ADR-define-core-and-full-as-governance-footprints
+Revised-by: ADR-0175, ADR-0278, ADR-0292
 Backing: test
 
 ### `invariant: drift-source-set`
 
 Each rendered file's stored ConfigHash projects only that file's effective inputs and selected governance footprint, so awf check reports it stale only when those inputs changed. A sidecar or part matching no selected artifact or target is an orphan.
 Origin: ADR-0148
-Revised-by: ADR-0251, ADR-0278, ADR-define-core-and-full-as-governance-footprints
+Revised-by: ADR-0251, ADR-0278, ADR-0292
 Backing: test
 
 ### `invariant: managed-output-attribution`
 
 A reader-injected declaration builder enumerates selected-governance-footprint managed writes before rendering, retaining sorted declarers and exact inputs and supplying context source/output edges; those declarations classify their paths as generated.
 Origin: ADR-0148
-Revised-by: ADR-0251, ADR-0278, ADR-define-core-and-full-as-governance-footprints
+Revised-by: ADR-0251, ADR-0278, ADR-0292
 Backing: test
 
 ### `invariant: ordinary-render-freshness`
@@ -156,5 +156,5 @@ Backing: test
 
 The selected governance footprint participates in configuration hashes through the retained `profile` value, while prior lock membership remains the sole pruning authority.
 Origin: ADR-0278
-Revised-by: ADR-define-core-and-full-as-governance-footprints
+Revised-by: ADR-0292
 Backing: test

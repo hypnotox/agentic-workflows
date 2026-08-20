@@ -409,20 +409,18 @@ type BootstrapConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 
-// ProseGateConfig configures exemptions for `awf check repo prose` (ADR-0119),
-// which always scans every tracked text file for the seven banned typographic
-// punctuation substitutes. A nil *ProseGateConfig means no paths or codepoints
-// are exempt.
+// ProseGateConfig configures exemptions for `awf check repo prose`, which
+// always scans every tracked text file for punctuation-restraint violations. A
+// nil *ProseGateConfig means no paths or guarded codepoints are exempt.
 type ProseGateConfig struct {
 	Exemptions []ProseExemption `yaml:"exemptions"`
 }
 
-// ProseExemption exempts one codepoint in one path. Codepoint is spelled
-// "U+2014", never the character itself: config.yaml is a tracked file the scan
-// reads, so a typed glyph here would be a finding against the file that
-// configures the exemptions. A nil Count permits any number of occurrences; a
-// non-nil Count pins the expected number, so an added occurrence in an exempt
-// file still fails.
+// ProseExemption exempts one guarded codepoint in one path. Codepoint is
+// spelled "U+2014", never the character itself. A nil Count permits any number
+// of occurrences; a non-nil Count pins the expected number, so an added
+// occurrence in an exempt file still fails. Former ellipsis and curly-quote
+// exemptions remain accepted as inert compatibility input.
 type ProseExemption struct {
 	Path      string `yaml:"path"`
 	Codepoint string `yaml:"codepoint"`

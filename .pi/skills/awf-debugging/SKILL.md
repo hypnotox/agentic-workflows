@@ -11,7 +11,20 @@ description: >
 
 # awf-debugging
 
-Self-contained systematic debugging for awf. The discipline below encodes the project-specific surfaces that a generic debugging skill would not. The meta-pattern is fixed: form a falsifiable hypothesis, validate it against the real system, loop until the root cause (not the symptom) is confirmed, then isolate with a failing test before touching any fix.
+Self-contained systematic debugging for awf. The discipline below encodes the project-specific surfaces that a generic debugging skill would not. The meta-pattern is fixed: form a falsifiable hypothesis, validate it against the real system, loop until the root cause (not the symptom) is confirmed, then establish durable evidence before touching any fix.
+
+<!-- awf:template-source templates/partials/durable-oracle.md -->
+Every behaviour-changing fix requires the strongest practical durable oracle. The normal and preferred path is an automated regression test observed failing for the right reason and then passing. When that path is impractical, state a concrete reason, preserve or improve verification strength, and retain the strongest safe, reproducible alternative. Never weaken expected behaviour. Never weaken verification strength. Fix the root cause rather than the symptom.
+
+Use this evidence order as guidance, not a requirement to mechanically attempt every earlier option:
+
+1. An automated regression test observed red then green.
+2. A deterministic integration or reproduction harness.
+3. A contract or invariant test that directly exercises the failure.
+4. Use scripted, reproducible manual verification with recorded inputs and expected result.
+5. An explicit explanation of why durable automation is unavailable, plus the strongest safe evidence that can be retained.
+
+For a nondeterministic race, stress or invariant evidence may be the strongest practical oracle. For a destructive migration defect, use safe fixture or dry-run evidence rather than unsafe reproduction. An alternative is legal because the preferred path is impractical, not merely inconvenient, and its reason and retained evidence must make any verification-strength judgment reviewable.
 
 <!-- awf:template-source templates/skills/debugging/SKILL.md.tmpl#symptom-list -->
 <!-- awf:edit symptom-list: default; create .awf/skills/parts/debugging/symptom-list.md to override -->
@@ -20,7 +33,7 @@ Self-contained systematic debugging for awf. The discipline below encodes the pr
 <!-- awf:template-source templates/skills/debugging/SKILL.md.tmpl -->
 ## When to invoke
 
-Any time behaviour is wrong and the cause is not yet known. Skip only for a one-line fix whose failing test already exists and whose cause is obvious (invoke `awf-bugfix` directly in that case). If the bug reveals a load-bearing design gap rather than a straightforward defect, escalate to `awf-brainstorming` after confirming the root cause.
+Any time behaviour is wrong and the cause is not yet known. Skip only for a one-line fix whose cause is obvious and whose strongest practical durable oracle is already established (invoke `awf-bugfix` directly in that case). If the bug reveals a load-bearing design gap rather than a straightforward defect, escalate to `awf-brainstorming` after confirming the root cause.
 
 ## Procedure
 
@@ -49,10 +62,10 @@ Any time behaviour is wrong and the cause is not yet known. Skip only for a one-
 <!-- awf:template-source templates/skills/debugging/SKILL.md.tmpl#test-isolation -->
 <!-- awf:edit test-isolation: default; create .awf/skills/parts/debugging/test-isolation.md to override -->
 <!-- awf:template-source templates/skills/debugging/SKILL.md.tmpl -->
-4. **Evaluate continuity when the investigation becomes a change.** Investigation remains effort-free unless durable continuity materially helps. When it does, invoke `awf-effort-workflow` before writing a failing test or mutating files. If an effort exists, validate its fixed identity and exact `.awf/efforts/<slug>/memory.md`, preserve one writer, and give exploring children that context read-only; otherwise omit effort and memory fields. Repository sources and current-state documentation remain authoritative, and standalone memory is forbidden.
+4. **Evaluate continuity when the investigation becomes a change.** Investigation remains effort-free unless durable continuity materially helps. When it does, invoke `awf-effort-workflow` before establishing fix evidence or mutating files. If an effort exists, validate its fixed identity and exact `.awf/efforts/<slug>/memory.md`, preserve one writer, and give exploring children that context read-only; otherwise omit effort and memory fields. Repository sources and current-state documentation remain authoritative, and standalone memory is forbidden.
 
 
-5. **Isolate with a failing test, written first.** Once the defective surface is located, write the smallest possible test that reproduces the failure before touching the fix. The test must fail for the right reason on the unfixed code. Invoke `awf-tdd` for the project's test-first discipline. Before writing the test, run `./awf context <the suspect paths>`.
+5. **Establish the strongest practical durable oracle.** Once the defective surface is located, exercise the selected evidence against the unfixed behaviour before touching the fix. Use the preferred automated red-then-green path for an ordinary deterministic defect; otherwise record the concrete impracticality reason and strongest reproducible alternative. Invoke `awf-tdd` for the project's durable verification discipline. First run `./awf context <the suspect paths>`.
 <!-- awf:template-source templates/partials/context-orientation.md -->
 Start by querying the explicit paths named above without `--show` or `--full` detail flags, then drill down with `./awf topic` where the work touches a claimed surface.
 <!-- awf:template-source templates/partials/context-spill.md -->
@@ -62,14 +75,14 @@ On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the w
 <!-- awf:template-source templates/skills/debugging/SKILL.md.tmpl -->
 6. **Fix the root cause, not the symptom.** Do not stop when the error disappears; confirm the underlying cause is addressed. Then verify with `./x gate`.
 
-7. **Hand off.** When the root cause is confirmed and the failing test is in place, invoke `awf-bugfix` for the fix + commit + review discipline. If investigation reveals a design gap rather than a defect, invoke `awf-brainstorming` instead.
+7. **Hand off.** When the root cause is confirmed and the durable oracle is established, invoke `awf-bugfix` for the fix + commit + review discipline. If investigation reveals a design gap rather than a defect, invoke `awf-brainstorming` instead.
 
 <!-- awf:template-source templates/skills/debugging/SKILL.md.tmpl#oracle-invariant -->
 <!-- awf:edit oracle-invariant: default; create .awf/skills/parts/debugging/oracle-invariant.md to override -->
 <!-- awf:template-source templates/skills/debugging/SKILL.md.tmpl -->
 ## Oracle invariant
 
-The oracle defines correctness. A fix that adjusts expected output to match wrong behaviour instead of correcting the root cause is itself a regression. Never modify expected outputs unless the specification has genuinely changed.
+The durable-oracle rule above defines correctness. A fix that adjusts expected output to match wrong behaviour instead of correcting the root cause is itself a regression. Never modify expected outputs unless the specification has genuinely changed.
 
 
 <!-- awf:template-source templates/skills/debugging/SKILL.md.tmpl#devdb-note -->

@@ -350,35 +350,56 @@ func TestRulePlainPunctuation(t *testing.T) {
 	dash, dots := "\u2014", "\u2026"
 	endash, ldq := "\u2013", "\u201c"
 
-	// A rising count warns, naming the file, the codepoint, and the commit.
-	got := rulePlainPunctuation(change("docs/decisions/0001-x.md", "plain", "an "+dash+" dash"), in)
+	// One or two em dashes in a paragraph, ellipses, and curly quotes are silent.
+	for name, text := range map[string]string{
+		"one em dash":   "a" + dash + "b",
+		"two em dashes": "a" + dash + "b" + dash + "c",
+		"ellipsis":      "wait" + dots,
+		"curly quote":   ldq + "quoted\u201d",
+	} {
+		t.Run(name, func(t *testing.T) {
+			if f := rulePlainPunctuation(change("docs/x.md", "plain", text), in); len(f) != 0 {
+				t.Fatalf("permitted punctuation must be silent, got %v", f)
+			}
+		})
+	}
+
+	// Rising en-dash count or paragraph em-dash excess warns, naming the file,
+	// violation measure, and commit.
+	got := rulePlainPunctuation(change("docs/decisions/0001-x.md", "plain", "a"+dash+"b"+dash+"c"+dash+"d"), in)
 	// invariant: tooling/audit-and-snapshots:audit-plain-punctuation (TestRulePlainPunctuation)
 	if len(got) != 1 || got[0].Rule != "plain-punctuation" || got[0].Severity != severity.Warn ||
-		got[0].Commit != "abc1234" || !strings.Contains(got[0].Detail, "em-dash (U+2014)") ||
+		got[0].Commit != "abc1234" || !strings.Contains(got[0].Detail, "em-dash excess (0 to 1)") ||
 		!strings.Contains(got[0].Detail, "docs/decisions/0001-x.md") {
-		t.Fatalf("want 1 warning naming the file and the em-dash, got %v", got)
+		t.Fatalf("want 1 warning naming the file and em-dash excess, got %v", got)
 	}
-	// Risen runes are named in sorted order: map iteration order is not
-	// deterministic, so the rule sorts before joining and this pins that. Four
-	// runes, not two: two entries fall in sorted order by chance often enough
-	// that a two-rune case lets an unsorted join pass about a quarter of runs.
-	multi := rulePlainPunctuation(change("docs/x.md", "plain", "a"+dash+"b"+dots+"c"+endash+"d"+ldq+"e"), in)
+	multi := rulePlainPunctuation(change("docs/x.md", "plain", "a"+dash+"b"+dash+"c"+dash+"d "+endash), in)
 	if len(multi) != 1 || !strings.Contains(multi[0].Detail,
-		"ellipsis (U+2026) (0 to 1), em-dash (U+2014) (0 to 1), en-dash (U+2013) (0 to 1), left double quote (U+201C) (0 to 1)") {
-		t.Fatalf("want all four risen runes named in sorted order, got %v", multi)
+		"em-dash excess (0 to 1), en-dash (U+2013) (0 to 1)") {
+		t.Fatalf("want both risen measures named in stable order, got %v", multi)
 	}
-	// An unchanged count is silent: grandfathering is emergent, not configured.
-	if f := rulePlainPunctuation(change("docs/plans/p.md", "a"+dash+"b", "c"+dash+"d"), in); len(f) != 0 {
-		t.Errorf("net-zero swap should be silent, got %v", f)
+	// Three em dashes split across paragraphs remain restrained.
+	if f := rulePlainPunctuation(change("docs/plans/p.md", "plain", "a"+dash+"b\n\nc"+dash+"d\n\ne"+dash+"f"), in); len(f) != 0 {
+		t.Errorf("paragraph-local restraint should be silent, got %v", f)
 	}
-	// A falling count is silent.
-	if f := rulePlainPunctuation(change("docs/plans/p.md", "a"+dash+"b"+dash+"c", "a"+dash+"b"), in); len(f) != 0 {
-		t.Errorf("a removal should be silent, got %v", f)
+	// Excess is summed across paragraphs: one paragraph contributes one and a
+	// second contributes two, rather than the later paragraph replacing the first.
+	summed := "a" + dash + "b" + dash + "c" + dash + "d\n\n" +
+		"e" + dash + "f" + dash + "g" + dash + "h" + dash + "i"
+	if f := rulePlainPunctuation(change("docs/summed.md", "plain", summed), in); len(f) != 1 || !strings.Contains(f[0].Detail, "em-dash excess (0 to 3)") {
+		t.Errorf("multiple violating paragraphs must contribute summed excess, got %v", f)
 	}
-	// A new file has empty OldText, so every occurrence in it is new.
-	added := []Commit{{Hash: "d", Changes: []FileChange{{Path: "docs/x.md", Action: Added, NewText: "a " + dots + " b"}}}}
-	if f := rulePlainPunctuation(added, in); len(f) != 1 || !strings.Contains(f[0].Detail, "ellipsis (U+2026)") {
-		t.Fatalf("want 1 warning naming the ellipsis on an added file, got %v", f)
+	// Unchanged or falling violation measures are silent.
+	if f := rulePlainPunctuation(change("docs/plans/p.md", "a"+dash+"b"+dash+"c"+dash+"d", "w"+dash+"x"+dash+"y"+dash+"z"), in); len(f) != 0 {
+		t.Errorf("unchanged excess should be silent, got %v", f)
+	}
+	if f := rulePlainPunctuation(change("docs/plans/p.md", "a"+endash+"b", "plain"), in); len(f) != 0 {
+		t.Errorf("a violation removal should be silent, got %v", f)
+	}
+	// A new file has empty OldText, so a violation in it is new.
+	added := []Commit{{Hash: "d", Changes: []FileChange{{Path: "docs/x.md", Action: Added, NewText: "a " + endash + " b"}}}}
+	if f := rulePlainPunctuation(added, in); len(f) != 1 || !strings.Contains(f[0].Detail, "en-dash (U+2013)") {
+		t.Fatalf("want 1 warning naming the en dash on an added file, got %v", f)
 	}
 	// A generated path is skipped: its glyphs are its source's fault.
 	if f := rulePlainPunctuation(change("docs/decisions/INDEX.md", "", "a"+dash+"b"), in); len(f) != 0 {
@@ -398,7 +419,7 @@ func TestRulePlainPunctuation(t *testing.T) {
 		t.Errorf("deleted file should be skipped, got %v", f)
 	}
 	// No audit setting suppresses this rule.
-	if f := rulePlainPunctuation(change("docs/x.md", "", "a"+dash+"b"), Inputs{DocsDir: "docs"}); len(f) != 1 {
+	if f := rulePlainPunctuation(change("docs/x.md", "", "a"+endash+"b"), Inputs{DocsDir: "docs"}); len(f) != 1 {
 		t.Errorf("unconditional rule returned %v", f)
 	}
 	// Unset DocsDir is inert.
@@ -630,8 +651,8 @@ func TestRangeEvaluatorStreamsEveryOrdinaryRuleState(t *testing.T) {
 		{Path: "docs/decisions/0137-x.md", Action: Added, NewText: auditV1(t, "Accepted")},
 		adrChange(Added, "Implemented", "tooling, ghost"),
 		{Path: "internal/a.go", Added: 1},
-		{Path: "docs/readme.md", OldText: "plain", NewText: string(rune(0x2014))},
-		{Path: "docs/generated.md", Added: 99, OldText: "plain", NewText: string(rune(0x2014))},
+		{Path: "docs/readme.md", OldText: "plain", NewText: string(rune(0x2013))},
+		{Path: "docs/generated.md", Added: 99, OldText: "plain", NewText: string(rune(0x2013))},
 	}})
 	findings := evaluator.findings()
 	for _, rule := range []string{"adr-frontmatter", "adr-status-cochange", "plan-for-large-change", "plain-punctuation"} {
@@ -647,7 +668,7 @@ func TestRangeEvaluatorStreamsEveryOrdinaryRuleState(t *testing.T) {
 }
 
 func TestRangeEvaluatorPreservesFrozenGroupedFindings(t *testing.T) {
-	dash := string(rune(0x2014))
+	endash := string(rune(0x2013))
 	in := Inputs{Settings: Settings{}, GeneratedPaths: map[string]bool{"docs/generated.md": true, "internal/generated.go": true}, ADRDir: "docs/decisions", DocsDir: "docs", IndexMd: "docs/decisions/INDEX.md", PlansDir: "docs/plans"}
 	t.Run("every ordinary group in final order", func(t *testing.T) {
 		status := strings.Replace(auditV1(t, "Implemented"), "date:", "domains: [tooling, ghost]\ndate:", 1)
@@ -658,17 +679,17 @@ func TestRangeEvaluatorPreservesFrozenGroupedFindings(t *testing.T) {
 			{Path: "docs/decisions/0137-status.md", Action: Added, NewText: status},
 			{Path: "internal/a.go", Added: 1},
 			{Path: "internal/generated.go", Added: 99},
-			{Path: "docs/rise.md", OldText: "plain", NewText: dash},
-			{Path: "docs/fall.md", OldText: dash, NewText: "plain"},
-			{Path: "docs/stable.md", OldText: dash, NewText: dash},
-			{Path: "docs/generated.md", OldText: "plain", NewText: dash},
+			{Path: "docs/rise.md", OldText: "plain", NewText: endash},
+			{Path: "docs/fall.md", OldText: endash, NewText: "plain"},
+			{Path: "docs/stable.md", OldText: endash, NewText: endash},
+			{Path: "docs/generated.md", OldText: "plain", NewText: endash},
 		}})
 		want := []Finding{
 			{Severity: severity.Error, Rule: "conventional-commits", Commit: "one", Subject: "not conventional", Detail: "subject is not Conventional Commits (type(scope)?: subject)"},
 			{Severity: severity.Error, Rule: "adr-status-cochange", Commit: "one", Subject: "not conventional", Detail: "0137-status.md status set/changed without INDEX.md in the same commit"},
 			{Severity: severity.Warn, Rule: "adr-frontmatter", Commit: "one", Subject: "not conventional", Detail: "bad.md frontmatter does not parse; ADR status rules skipped for it"},
 			{Severity: severity.Warn, Rule: "plan-for-large-change", Detail: "branch changes 402 non-generated lines (> 400) with no plan under docs/plans"},
-			{Severity: severity.Warn, Rule: "plain-punctuation", Commit: "one", Subject: "not conventional", Detail: "docs/rise.md adds typographic punctuation: em-dash (U+2014) (0 to 1); authored prose uses plain punctuation (a colon, semicolon, comma, or parentheses; an ASCII hyphen for a range; three periods for elision)"},
+			{Severity: severity.Warn, Rule: "plain-punctuation", Commit: "one", Subject: "not conventional", Detail: "docs/rise.md adds punctuation-restraint violations: en-dash (U+2013) (0 to 1); prefer ordinary punctuation and use at most two em dashes per paragraph"},
 		}
 		if got := evaluator.findings(); !slices.Equal(got, want) {
 			t.Fatalf("incremental findings = %#v, want %#v", got, want)
@@ -709,7 +730,7 @@ func TestRangeEvaluatorPreservesFrozenGroupedFindings(t *testing.T) {
 		if got := evaluator.findings(); got != nil {
 			t.Fatalf("empty findings = %#v, want nil", got)
 		}
-		evaluator.observe(Commit{Subject: "feat: enabled", Changes: []FileChange{{Path: "go.mod", Added: 100}, {Path: "docs/rise.md", NewText: dash}, adrChange(Added, "Implemented", "ghost")}})
+		evaluator.observe(Commit{Subject: "feat: enabled", Changes: []FileChange{{Path: "go.mod", Added: 100}, {Path: "docs/rise.md", NewText: endash}, adrChange(Added, "Implemented", "ghost")}})
 		if got := evaluator.findings(); len(got) != 1 || got[0].Rule != "dependency-adr" {
 			t.Fatalf("unconditional dependency finding = %#v", got)
 		}

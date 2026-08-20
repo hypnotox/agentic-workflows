@@ -13,9 +13,9 @@ These packages read git history, build immutable tree snapshots, and audit workf
 
 ### `invariant: audit-advisories-always-run`
 
-The plain-punctuation and uncommitted-changes rules always evaluate; plain-punctuation emits Warning findings and uncommitted-changes emits an Error.
+The plain-punctuation and uncommitted-changes rules always evaluate; plain-punctuation emits Warning findings only for rising punctuation-restraint violations, and uncommitted-changes emits an Error.
 Origin: ADR-0253
-Revised-by: ADR-0256
+Revised-by: ADR-0256, ADR-0290
 Backing: test
 
 ### `invariant: audit-thresholds-fixed`
@@ -77,9 +77,9 @@ Backing: test
 
 ### `invariant: audit-plain-punctuation`
 
-awf audit emits a Warning for each commit in which a non-generated markdown file under the documentation root has a rising banned-codepoint count, naming the file and the risen codepoints in sorted order, and emits nothing when the count is unchanged or falls, when the path is generated, or when the file lies outside the documentation root.
+awf audit compares old and new text for each non-generated Markdown file under the documentation root and emits a Warning when the en-dash count or total em-dash excess rises. Total em-dash excess sums each blank-line-delimited paragraph's count beyond two. The finding names the file and risen measures in sorted order; permitted ellipses, curly quotes, and restrained em dashes are silent, as are unchanged or falling measures, generated paths, and paths outside the documentation root.
 Origin: ADR-0117
-Revised-by: ADR-0253
+Revised-by: ADR-0253, ADR-0290
 Backing: test
 
 ### `invariant: audit-plan-threshold-warn`

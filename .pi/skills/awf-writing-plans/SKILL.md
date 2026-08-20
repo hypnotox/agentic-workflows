@@ -24,6 +24,19 @@ An approval boundary is triggered by an unresolved material decision, never by t
 
 The approved boundary may be evidenced by retained conversation, user-provenance effort Decision-log evidence, or an explicit request to execute a named plan whose Architecture summary supplies the outline. When a material decision is unresolved and no such evidence exists, an interactive chain owner invokes brainstorming before mutation; brainstorming is the sole owner of the proportionate outline and approval interaction. A delegated owner consumes the parent-supplied protected contract, must never recreate the approval interaction, and stops without mutation to report to its parent when that contract is absent or must change.
 
+<!-- awf:template-source templates/partials/durable-oracle.md -->
+Every behaviour-changing fix requires the strongest practical durable oracle. The normal and preferred path is an automated regression test observed failing for the right reason and then passing. When that path is impractical, state a concrete reason, preserve or improve verification strength, and retain the strongest safe, reproducible alternative. Never weaken expected behaviour. Never weaken verification strength. Fix the root cause rather than the symptom.
+
+Use this evidence order as guidance, not a requirement to mechanically attempt every earlier option:
+
+1. An automated regression test observed red then green.
+2. A deterministic integration or reproduction harness.
+3. A contract or invariant test that directly exercises the failure.
+4. Use scripted, reproducible manual verification with recorded inputs and expected result.
+5. An explicit explanation of why durable automation is unavailable, plus the strongest safe evidence that can be retained.
+
+For a nondeterministic race, stress or invariant evidence may be the strongest practical oracle. For a destructive migration defect, use safe fixture or dry-run evidence rather than unsafe reproduction. An alternative is legal because the preferred path is impractical, not merely inconvenient, and its reason and retained evidence must make any verification-strength judgment reviewable.
+
 <!-- awf:template-source templates/skills/writing-plans/SKILL.md.tmpl#when-to-invoke -->
 <!-- awf:edit when-to-invoke: default; create .awf/skills/parts/writing-plans/when-to-invoke.md to override -->
 <!-- awf:template-source templates/skills/writing-plans/SKILL.md.tmpl -->
@@ -82,7 +95,7 @@ Per `docs/workflow.md`: use a plan when sequencing, coordination, or resumabilit
 <!-- awf:template-source templates/skills/writing-plans/SKILL.md.tmpl#conventions-test-first -->
 <!-- awf:edit conventions-test-first: default; create .awf/skills/parts/writing-plans/conventions-test-first.md to override -->
 <!-- awf:template-source templates/skills/writing-plans/SKILL.md.tmpl -->
-- **Test-first for bugs:** add a failing test as its own task before the fix task.
+- **Durable oracle for bugs:** plan the strongest practical durable evidence before the fix task. An ordinary deterministic defect gets an automated regression test task that is observed red then green. When that path is impractical, the evidence task records the concrete reason and strongest reproducible alternative without reducing verification strength.
 
 ## Procedure
 

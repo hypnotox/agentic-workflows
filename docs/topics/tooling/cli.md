@@ -15,7 +15,7 @@ The cmd packages and their spec helpers implement the awf command surfaces and t
 
 The CLI lists fixed catalog inventory and never selects individual catalog membership. Full creates authored ADRs, plans, topics, and domains; both governance footprints retain pitfalls and additive local documents, while the selected footprint controls rendered membership.
 Origin: ADR-0254
-Revised-by: ADR-0262, ADR-0272, ADR-0278, ADR-define-core-and-full-as-governance-footprints
+Revised-by: ADR-0262, ADR-0272, ADR-0278, ADR-0292
 Backing: test
 
 ### `invariant: pitfall-scaffold`
@@ -94,7 +94,7 @@ Backing: test
 
 The check command groups repository drift, prose, and memory checks in both governance footprints; Full additionally aggregates current-state and plan-artifact checks. Staged likewise selects its Full governance checks, and outside Git the bare form reports staged unavailable.
 Origin: ADR-0210
-Revised-by: ADR-0217, ADR-0278, ADR-define-core-and-full-as-governance-footprints
+Revised-by: ADR-0217, ADR-0278, ADR-0292
 Backing: test
 
 ### `invariant: plan-read-command`
@@ -152,7 +152,7 @@ Backing: test
 
 `awf upgrade` runs a full sync on every successful invocation, including zero migrations, re-rendering every managed file in the selected governance footprint.
 Origin: ADR-0085
-Revised-by: ADR-0278, ADR-define-core-and-full-as-governance-footprints
+Revised-by: ADR-0278, ADR-0292
 Backing: test
 
 ### `invariant: version-compat-gate`

@@ -121,7 +121,7 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		cfg := &config.Config{ProseGate: &config.ProseGateConfig{}, MemoryCite: &config.MemoryCiteConfig{}}
 		p := &project.Project{Root: "working-project-sentinel", Cfg: cfg}
 		tree, err := snapshot.NewTree([]snapshot.File{
-			{Path: "prose-index-sentinel.txt", Bytes: []byte("bad \u2014")},
+			{Path: "prose-index-sentinel.txt", Bytes: []byte("bad \u2013")},
 			{Path: "docs/decisions/memory-index-sentinel.md", Bytes: []byte(".awf/efforts/example/memory.md")},
 		})
 		if err != nil {
@@ -161,7 +161,7 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		if got, want := *counts, (repoCheckCounters{loads: 1, opens: 1, reports: 1, states: 1, indexes: 1}); got != want {
 			t.Fatalf("capability counts = %+v, want %+v", got, want)
 		}
-		const want = "status: failed\n\nsummary:\n  findings: 4 errors, 1 warnings\n\nfindings:\n  errors:\n    drift | changed: working-drift-sentinel: working bytes\n    current-state | current-state-sentinel\n    prose | prose-index-sentinel.txt: em-dash (U+2014) appears 1 time(s); use plain punctuation\n    memory | docs/decisions/memory-index-sentinel.md: 1 effort-owned memory citation(s) on line(s) 1; name the .awf/efforts/ directory, use an angle-bracket slug placeholder, or remove the ephemeral file citation\n  warnings:\n    advisory | working-advisory-sentinel\n"
+		const want = "status: failed\n\nsummary:\n  findings: 4 errors, 1 warnings\n\nfindings:\n  errors:\n    drift | changed: working-drift-sentinel: working bytes\n    current-state | current-state-sentinel\n    prose | prose-index-sentinel.txt: en-dash (U+2013) appears 1 time(s); en dashes are not permitted\n    memory | docs/decisions/memory-index-sentinel.md: 1 effort-owned memory citation(s) on line(s) 1; name the .awf/efforts/ directory, use an angle-bracket slug placeholder, or remove the ephemeral file citation\n  warnings:\n    advisory | working-advisory-sentinel\n"
 		if got := out.String(); got != want {
 			t.Fatalf("output = %q, want %q", got, want)
 		}

@@ -1,18 +1,13 @@
 package project
 
 import (
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"testing"
 
-	changelogfs "github.com/hypnotox/agentic-workflows/changelog"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/templates"
@@ -268,122 +263,5 @@ func TestCatalogDataResidue(t *testing.T) {
 	}
 	for _, v := range cat.Vars {
 		check("var "+v.Key, append([]string{v.Description, v.Default}, v.Options...))
-	}
-}
-
-// bannedRunes are the seven typographic punctuation substitutes banned from
-// emitted prose (ADR-0115). Each key is written as an escape so this file states
-// the rule without typing the glyphs it bans. Notation (arrows, mathematical
-// symbols, accented letters) is deliberately absent: this is a closed blocklist
-// of substitutes for ASCII punctuation, never an ASCII-only allowlist.
-var bannedRunes = map[rune]string{
-	'\u2014': "em-dash (U+2014)",
-	'\u2013': "en-dash (U+2013)",
-	'\u2026': "ellipsis (U+2026)",
-	'\u2018': "left single quote (U+2018)",
-	'\u2019': "right single quote (U+2019)",
-	'\u201c': "left double quote (U+201C)",
-	'\u201d': "right double quote (U+201D)",
-}
-
-// scanEmbedded reports every banned rune in every file of an embedded FS and
-// returns the number of files inspected, at most one report per rune per file.
-func scanEmbedded(t *testing.T, label string, fsys fs.FS) int {
-	t.Helper()
-	seen := 0
-	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			return nil
-		}
-		seen++
-		b, err := fs.ReadFile(fsys, path)
-		if err != nil {
-			return err
-		}
-		flagged := map[rune]bool{}
-		for _, r := range string(b) {
-			if name, bad := bannedRunes[r]; bad && !flagged[r] {
-				flagged[r] = true
-				t.Errorf("%s: %s contains the %s; emitted prose uses plain punctuation (ADR-0115)", label, path, name)
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return seen
-}
-
-// scanGoLiterals reports every banned rune in a string literal of every non-test
-// Go file under dir and returns the number of files inspected. Comments are
-// deliberately not inspected: gofmt rewrites a double-backtick pair into U+201C,
-// so scanning them would pit this gate against gofmt (ADR-0115 Decision item 4).
-func scanGoLiterals(t *testing.T, dir string) int {
-	t.Helper()
-	seen := 0
-	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
-			return nil
-		}
-		seen++
-		fset := token.NewFileSet()
-		file, perr := parser.ParseFile(fset, path, nil, 0)
-		if perr != nil {
-			t.Fatalf("parse %s: %v", path, perr)
-		}
-		ast.Inspect(file, func(n ast.Node) bool {
-			lit, ok := n.(*ast.BasicLit)
-			if !ok || lit.Kind != token.STRING {
-				return true
-			}
-			val, uerr := strconv.Unquote(lit.Value)
-			if uerr != nil {
-				val = lit.Value
-			}
-			flagged := map[rune]bool{}
-			for _, r := range val {
-				if name, bad := bannedRunes[r]; bad && !flagged[r] {
-					flagged[r] = true
-					t.Errorf("%s:%d: string literal contains the %s; emitted prose uses plain punctuation (ADR-0115)",
-						path, fset.Position(lit.Pos()).Line, name)
-				}
-			}
-			return true
-		})
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return seen
-}
-
-// TestEmittedProseNoTypographicSubstitutes scans the three surfaces awf ships:
-// the embedded template FS, the embedded changelog FS, and every string literal
-// in production Go under internal/ and cmd/. Each surface carries a seen-count
-// guard, so a mis-anchored walk fails rather than passing vacuously. Adopter
-// content, and this repository's authored ADR and plan bodies, are out of scope:
-// the ban covers what awf ships, in awf's own voice (ADR-0115).
-// invariant: tooling/quality-gates:emitted-prose-no-typographic-substitutes (TestEmittedProseNoTypographicSubstitutes)
-func TestEmittedProseNoTypographicSubstitutes(t *testing.T) {
-	if n := scanEmbedded(t, "templates", templates.FS); n < 40 {
-		t.Fatalf("inspected only %d embedded template file(s); expected the whole tree - did the FS move?", n)
-	}
-	if n := scanEmbedded(t, "changelog", changelogfs.FS); n < 1 {
-		t.Fatalf("inspected only %d embedded changelog file(s); expected CHANGELOG.md - did the embed move?", n)
-	}
-	goFiles := 0
-	for _, dir := range []string{"../../internal", "../../cmd"} {
-		goFiles += scanGoLiterals(t, dir)
-	}
-	if goFiles < 60 {
-		t.Fatalf("inspected only %d production Go file(s) under internal/ and cmd/; expected the whole tree - did the anchor move?", goFiles)
 	}
 }

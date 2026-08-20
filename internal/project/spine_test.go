@@ -703,6 +703,155 @@ func TestConcreteMaintainabilityReview(t *testing.T) {
 	}
 }
 
+// invariant: rendering/workflow-skill-templates:strongest-practical-durable-oracle (TestStrongestPracticalDurableOracleContract)
+func TestStrongestPracticalDurableOracleContract(t *testing.T) {
+	const partialPath = "partials/durable-oracle.md"
+	partial, err := fs.ReadFile(templates.FS, partialPath)
+	if err != nil {
+		t.Fatalf("durable-oracle shared home is absent: read %s: %v", partialPath, err)
+	}
+	body := string(partial)
+	for _, line := range strings.Split(body, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "#") {
+			t.Errorf("durable-oracle partial must be heading-free, found %q", line)
+		}
+	}
+	for _, want := range []string{
+		"strongest practical durable oracle", "normal and preferred path",
+		"observed failing for the right reason and then passing", "concrete reason",
+		"preserve or improve verification strength", "strongest safe, reproducible alternative",
+		"deterministic integration or reproduction harness", "contract or invariant test",
+		"scripted, reproducible manual verification", "recorded inputs and expected result",
+		"durable automation is unavailable", "strongest safe evidence that can be retained",
+		"stress or invariant evidence", "safe fixture or dry-run evidence",
+		"Never weaken expected behaviour", "Never weaken verification strength",
+		"root cause rather than the symptom", "guidance, not a requirement to mechanically attempt",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("durable-oracle shared home missing %q", want)
+		}
+	}
+
+	consumers := []string{
+		"skills/bugfix/SKILL.md.tmpl", "skills/tdd/SKILL.md.tmpl",
+		"skills/debugging/SKILL.md.tmpl", "skills/writing-plans/SKILL.md.tmpl",
+		"agents/plan-reviewer.md.tmpl", "agents/code-reviewer.md.tmpl",
+		"docs/testing.md.tmpl",
+	}
+	expected := make(map[string]bool, len(consumers))
+	for _, consumer := range consumers {
+		expected[consumer] = true
+	}
+	actual := map[string]int{}
+	for _, root := range []string{"skills", "agents", "docs", "partials"} {
+		err := fs.WalkDir(templates.FS, root, func(path string, entry fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if entry.IsDir() {
+				return nil
+			}
+			raw, readErr := fs.ReadFile(templates.FS, path)
+			if readErr != nil {
+				return readErr
+			}
+			rawBody := string(raw)
+			if count := strings.Count(rawBody, "<!-- awf:include durable-oracle -->"); count > 0 {
+				actual[path] = count
+			}
+			if path != partialPath && !expected[path] && durableOracleParallelDoctrine(rawBody) {
+				t.Errorf("%s contains a parallel durable-oracle policy home", path)
+			}
+			if path != partialPath && strings.Contains(rawBody, "Every behaviour-changing fix requires the strongest practical durable oracle") {
+				t.Errorf("%s copies the canonical durable-oracle rule", path)
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, consumer := range consumers {
+		if actual[consumer] != 1 {
+			t.Errorf("%s has %d durable-oracle includes, want 1", consumer, actual[consumer])
+		}
+		raw, err := fs.ReadFile(templates.FS, consumer)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rawBody := string(raw)
+		for _, retired := range []string{
+			"fixes ship with a regression test",
+			"Isolate with a failing test, written first",
+			"must fail for the right reason on the unfixed code",
+			"every behaviour-changing change has a regression test",
+			"**testing-discipline**: behaviour-changing tasks have regression tests",
+		} {
+			if strings.Contains(rawBody, retired) {
+				t.Errorf("%s retains universal red-first rule %q", consumer, retired)
+			}
+		}
+	}
+	for path, count := range actual {
+		if !expected[path] {
+			t.Errorf("unexpected durable-oracle consumer %s with %d includes", path, count)
+		}
+	}
+	for name, candidate := range map[string]string{
+		"direct-copy": "The strongest practical durable oracle uses red then green as the preferred path; an alternative needs a concrete reason and must preserve verification strength.",
+		"paraphrase":  "Use the most durable evidence: prefer observed red then green, require a concrete reason for any alternative, and keep verification at least as strong.",
+	} {
+		if !durableOracleParallelDoctrine(candidate) {
+			t.Errorf("%s parallel durable-oracle doctrine escaped the single-home detector", name)
+		}
+	}
+	if durableOracleParallelDoctrine("An ordinary fix uses its regression test; record an alternative harness when needed.") {
+		t.Error("legitimate stage-local durable-oracle procedure was misclassified as a parallel policy home")
+	}
+
+	tddSource, err := fs.ReadFile(templates.FS, "skills/tdd/SKILL.md.tmpl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(tddSource), "alternative-oracle path does not widen to features") {
+		t.Error("TDD alternative path is not explicitly confined to fixes")
+	}
+	for _, reviewer := range []string{"agents/code-reviewer.md.tmpl", "agents/plan-reviewer.md.tmpl"} {
+		raw, err := fs.ReadFile(templates.FS, reviewer)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(raw), "non-fix behaviour-changing") {
+			t.Errorf("%s does not preserve regression evidence for non-fix behavior changes", reviewer)
+		}
+	}
+
+	for name, data := range map[string]map[string]any{
+		"configured": {"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}, "skills": map[string]bool{}},
+		"empty":      {"prefix": "", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}, "skills": map[string]bool{}},
+	} {
+		for _, consumer := range consumers {
+			out := renderGolden(t, consumer, data)
+			assertNoLeaks(t, out)
+			for _, want := range []string{"strongest practical durable oracle", "concrete reason", "Never weaken expected behaviour"} {
+				if !strings.Contains(out, want) {
+					t.Errorf("%s/%s missing durable-oracle semantic %q", name, consumer, want)
+				}
+			}
+		}
+	}
+}
+
+func durableOracleParallelDoctrine(body string) bool {
+	lower := strings.ToLower(body)
+	strongest := (strings.Contains(lower, "strongest practical") && strings.Contains(lower, "durable oracle")) || strings.Contains(lower, "most durable evidence")
+	preferredRedGreen := strings.Contains(lower, "red") && strings.Contains(lower, "green") && (strings.Contains(lower, "prefer") || strings.Contains(lower, "normal path"))
+	concreteReason := strings.Contains(lower, "concrete reason")
+	strength := strings.Contains(lower, "preserve verification strength") || strings.Contains(lower, "keep verification at least as strong")
+	alternative := strings.Contains(lower, "alternative")
+	return strongest && preferredRedGreen && concreteReason && strength && alternative
+}
+
 // invariant: rendering/workflow-skill-templates:clean-integration (TestCleanIntegrationContract)
 func TestCleanIntegrationContract(t *testing.T) {
 	const partialPath = "partials/clean-integration.md"
@@ -1180,7 +1329,7 @@ func TestMaintainableCodeStageCoverage(t *testing.T) {
 			"docs/maintainable-code-design.md", "settled model and ownership, boundaries, dependency direction, representation translations, refactor decision, prohibited shortcuts, and validation", "ordered executable tasks", "self-contained", "no prior conversation context", "sequencing, coordination, or resumability materially helps", "records and operationalizes approved choices", "rather than inventing speculative structure, checks, or work",
 		}},
 		"tdd": {wants: []string{
-			"docs/maintainable-code-design.md", "bounded enabling refactor", "duplication, coupling, representation leakage, or a workaround", "Route materially larger work through the active workflow's design discussion", "perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated", "smallest behavior-proving, model-supporting seam", "force representation leakage or needless indirection", "confirm it fails for the right reason", "minimal change to pass", "Ground tests, checks, seams, and harness work only in changed behavior, a demonstrated regression, an existing documented contract, or a clearly applicable project invariant", "reject speculative test or policy machinery", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
+			"docs/maintainable-code-design.md", "bounded enabling refactor", "duplication, coupling, representation leakage, or a workaround", "Route materially larger work through the active workflow's design discussion", "perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated", "smallest behavior-proving, model-supporting seam", "force representation leakage or needless indirection", "confirm it fails for the right reason", "minimal root-cause change", "Ground tests, checks, seams, and harness work only in changed behavior, a demonstrated regression, an existing documented contract, or a clearly applicable project invariant", "reject speculative test or policy machinery", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
 		}},
 		"executing-plans": {wants: []string{
 			"docs/maintainable-code-design.md", "preserve the plan's settled durable choices", "bounded enabling refactor", "reassess if grounded source contradicts them", "stop rather than bolt correctness onto the wrong abstraction", "Each brief explicitly identifies the parent-supplied approved boundary", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
@@ -1855,9 +2004,11 @@ func TestTddTemplate(t *testing.T) {
 	}
 
 	loadBearing := []string{
+		"strongest practical durable oracle",
 		"confirm it fails for the right reason: `go test ./...`",
+		"record the concrete reason automated red-first is impractical",
 		"Run the gate: `./x gate`",
-		"A test never observed failing proves nothing.",
+		"a test never observed failing proves nothing.",
 		"Fix the code, not the oracle.",
 	}
 	for _, phrase := range loadBearing {
@@ -1888,8 +2039,9 @@ func TestDebuggingTemplate(t *testing.T) {
 	// Assert load-bearing phrases unique to debugging
 	loadBearing := []string{
 		"falsifiable hypothesis",
-		"reproduces the failure",
+		"unfixed behaviour",
 		"root cause",
+		"strongest practical durable oracle",
 		"example-bugfix",
 		"example-brainstorming",
 	}
@@ -1902,7 +2054,7 @@ func TestDebuggingTemplate(t *testing.T) {
 		"**Form one falsifiable hypothesis.**",
 		"Invoke `example-exploring`",
 		"Pick the cheapest oracle",
-		"**Isolate with a failing test, written first.**",
+		"**Establish the strongest practical durable oracle.**",
 	}
 	position := -1
 	for _, phrase := range ordered {
@@ -2838,7 +2990,7 @@ var unsetFallbackCases = []fallbackCase{
 		tmpl: "skills/bugfix/SKILL.md.tmpl",
 		want: []string{
 			"confirm it with a falsifiable check before touching code",
-			"Write the failing test first",
+			"Exercise the selected evidence against the unfixed behaviour",
 			"The project's gate is the default",
 			"the project's docs",
 			"Evaluate implementation review independently",
@@ -2850,10 +3002,10 @@ var unsetFallbackCases = []fallbackCase{
 	{
 		tmpl: "skills/debugging/SKILL.md.tmpl",
 		want: []string{
-			"fix it directly with a regression test in that case",
-			"Write it test-first.",
+			"apply it directly under the durable-oracle rule in that case",
+			"Apply the durable-oracle rule above directly.",
 			"the project's gate",
-			"apply the fix with its regression test",
+			"apply the fix under the durable-oracle rule",
 			"a design discussion before changing behaviour",
 		},
 		ban: []string{"example-bugfix", "example-tdd", "example-brainstorming", "``"},

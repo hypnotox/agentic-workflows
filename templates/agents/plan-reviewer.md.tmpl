@@ -10,6 +10,8 @@ Independent, lens-diverse reviewer for plans under `{{ .layout.plansDir }}/`.
 
 <!-- awf:include review-spine-head -->
 
+<!-- awf:include durable-oracle -->
+
 <!-- awf:section universal-lenses -->
 ## Universal lenses
 
@@ -25,7 +27,7 @@ Apply all lenses to every plan:
 
 1. **convention-alignment**: Conventional Commits subject shape (under 72 chars; imperative; scoped); one concern per commit; no premature abstraction (no helpers added "for future use" without a current call site); no `cd`+`git` chaining in commands; deviations from established package patterns flagged.
 
-1. **testing-discipline**: behaviour-changing tasks have regression tests; test placement in the tier that exercises the bug's surface; test-first ordering for bug fixes (failing test before or in the same commit as the fix); new invariants extend the invariant test suite where one exists.
+1. **testing-discipline**: non-fix behaviour-changing tasks have regression tests; fix tasks establish the strongest practical durable oracle described above before implementation; ordinary deterministic defects require an observed red-then-green automated regression test, while a fix alternative requires a concrete impracticality reason and evidence that preserves or improves verification strength; new invariants extend the invariant test suite where one exists.
 
 1. **semantic-rendering-review**: inspect the change-specific requirement for focused generated-prose meaning review at affected output boundaries, including contradictory fragments, concept-preserving paraphrase, and intentional literal placeholders such as `<literal-placeholder>`. During precommit plan review, do not require future implementation completion evidence; during a later review, inspect that evidence when it exists. Concrete examples and expected readings are required only when load-bearing; this is not a general output validator.
 

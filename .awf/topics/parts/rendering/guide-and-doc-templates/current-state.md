@@ -83,14 +83,14 @@ Backing: test
 
 The rendered guide treats exposed native-skill descriptions as routing metadata and selects only bodies governing the next concrete action. Core routes the operational workflow without Full-only governance bodies; Full adds its selected governance bodies without changing the workflow's correctness, autonomy, maintainability, or review-quality bar. Empty and missing render data remains coherent, and selection stays advisory.
 Origin: ADR-0157
-Revised-by: ADR-0167, ADR-0241, ADR-0251, ADR-0270, ADR-0274, ADR-0278, ADR-define-core-and-full-as-governance-footprints
+Revised-by: ADR-0167, ADR-0241, ADR-0251, ADR-0270, ADR-0274, ADR-0278, ADR-0292
 Backing: test
 
 ### `invariant: working-memory-single-home`
 
 Working-memory protocol has one canonical workflow-document home in both governance footprints. The root guide carries only slim native-skill routing, while `effort-workflow` alone owns creation through finish and preserves the one-user-managed-writer boundary.
 Origin: ADR-0157
-Revised-by: ADR-0160, ADR-0161, ADR-0164, ADR-0167, ADR-0175, ADR-0187, ADR-0189, ADR-0222, ADR-0226, ADR-0241, ADR-0243, ADR-0278, ADR-define-core-and-full-as-governance-footprints
+Revised-by: ADR-0160, ADR-0161, ADR-0164, ADR-0167, ADR-0175, ADR-0187, ADR-0189, ADR-0222, ADR-0226, ADR-0241, ADR-0243, ADR-0278, ADR-0292
 Backing: test
 
 ### `invariant: agent-guide-size-budgets`
@@ -103,5 +103,5 @@ Backing: test
 
 Both governance footprints render `docs/maintainable-code-design.md` as a mandatory document-map singleton with its ordered convention-part sections. The guide is the canonical adopter-neutral maintainable-design doctrine and makes the simplest sufficient solution the default; the separate shared clean-integration rule applies that doctrine proportionally through workflow consumers without duplicating it. Full additionally supplies plan routing where useful for sequencing, coordination, or resumability without changing the maintainability bar.
 Origin: ADR-0168
-Revised-by: ADR-0200, ADR-0232, ADR-0278, ADR-0288, ADR-define-core-and-full-as-governance-footprints
+Revised-by: ADR-0200, ADR-0232, ADR-0278, ADR-0288, ADR-0292
 Backing: test

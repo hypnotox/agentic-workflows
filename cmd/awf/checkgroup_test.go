@@ -79,7 +79,7 @@ func TestCheckScannersAlwaysRun(t *testing.T) {
 	const prosePath = "docs/prose.md"
 	const memoryPath = "docs/plans/memory.md"
 	violations := map[string]string{
-		prosePath:  "an em dash \u2014 here\n",
+		prosePath:  "an en dash \u2013 here\n",
 		memoryPath: cite() + "\n",
 	}
 	root := syncedGitProject(t, checkYAML)
@@ -107,7 +107,7 @@ func TestCheckScannersAlwaysRun(t *testing.T) {
 		}
 	}
 
-	exemptYAML := checkYAML + "proseGate:\n  exemptions:\n    - path: " + prosePath + "\n      codepoint: U+2014\n      count: 1\nmemoryCite:\n  exemptions:\n    - path: " + memoryPath + "\n      count: 1\n"
+	exemptYAML := checkYAML + "proseGate:\n  exemptions:\n    - path: " + prosePath + "\n      codepoint: U+2013\n      count: 1\nmemoryCite:\n  exemptions:\n    - path: " + memoryPath + "\n      count: 1\n"
 	exemptRoot := syncedGitProject(t, exemptYAML)
 	gitfixture.Stage(t, gitfixture.At(exemptRoot), violations)
 	for _, args := range [][]string{{"awf", "check", "repo"}, {"awf", "check", "repo", "prose"}, {"awf", "check", "repo", "memory"}} {

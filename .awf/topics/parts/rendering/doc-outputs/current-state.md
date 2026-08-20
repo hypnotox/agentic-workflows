@@ -110,5 +110,5 @@ Backing: test
 
 Layout and document-map derivation expose only documents emitted by the selected governance footprint.
 Origin: ADR-0278
-Revised-by: ADR-define-core-and-full-as-governance-footprints
+Revised-by: ADR-0292
 Backing: test

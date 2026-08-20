@@ -30,7 +30,7 @@ help:
       repo:
         drift | Report stale or hand-edited rendered output
         state | Report current-state authority findings
-        prose | Scan tracked text files for typographic punctuation, blocking
+        prose | Enforce punctuation restraint in tracked text, blocking
         memory | Scan staged decision records for working-memory citations, blocking
       staged:
         state | Report staged current-state transition findings

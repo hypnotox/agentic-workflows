@@ -62,6 +62,19 @@ Ambiguity, competing clean options, severity, structural character, and the fact
 
 When the brief carries consent evidence, check the diff against it. Effort-backed evidence is the pasted user-provenance decision-log entries, including whatever `Record:` blocks exist; effort-free ADR evidence is the explicitly approved design summary. A contradiction or change to accepted semantics is always a `user-decision` finding, never silently absorbed: `location` cites the deviating diff passage, `issue` names the deviation, and `suggested_fix` carries the escalation phrasing "we decided X; during <phase> we found Z; recommend Y, approve?". Removing an unaccepted surplus commitment restores the accepted decision set and is an authority-preserving `reasoned` correction, not a consensus deviation; disclose the removal and keep any worthwhile suggestion outside the artifact until accepted. A brief without either form of consent evidence leaves this check idle, and repository facts never substitute for consent.
 
+<!-- awf:template-source templates/partials/durable-oracle.md -->
+Every behaviour-changing fix requires the strongest practical durable oracle. The normal and preferred path is an automated regression test observed failing for the right reason and then passing. When that path is impractical, state a concrete reason, preserve or improve verification strength, and retain the strongest safe, reproducible alternative. Never weaken expected behaviour. Never weaken verification strength. Fix the root cause rather than the symptom.
+
+Use this evidence order as guidance, not a requirement to mechanically attempt every earlier option:
+
+1. An automated regression test observed red then green.
+2. A deterministic integration or reproduction harness.
+3. A contract or invariant test that directly exercises the failure.
+4. Use scripted, reproducible manual verification with recorded inputs and expected result.
+5. An explicit explanation of why durable automation is unavailable, plus the strongest safe evidence that can be retained.
+
+For a nondeterministic race, stress or invariant evidence may be the strongest practical oracle. For a destructive migration defect, use safe fixture or dry-run evidence rather than unsafe reproduction. An alternative is legal because the preferred path is impractical, not merely inconvenient, and its reason and retained evidence must make any verification-strength judgment reviewable.
+
 <!-- awf:template-source templates/agents/code-reviewer.md.tmpl#universal-lenses -->
 <!-- awf:edit universal-lenses: default; create .awf/agents/parts/code-reviewer/universal-lenses.md to override -->
 <!-- awf:template-source templates/agents/code-reviewer.md.tmpl -->
@@ -73,7 +86,7 @@ Apply all lenses to every implementation diff:
 
 1. **plan-adherence**: all plan tasks appear in the diff; no scope creep beyond ADR/plan authorisation; no half-finished work (new type not registered, TODO in landed code, commented-out blocks); commit boundaries remain coherent and preserve the protected contract rather than literal recorded phase grouping.
 
-1. **testing-discipline**: every behaviour-changing change has a regression test; test placement in the tier that exercises the bug's surface; test-first ordering for bug fixes (failing test before or in the same commit as the fix); no bypassed gate (coverage regression, skipped test without `SKIP: reason`); a backing test for an `invariant:` claim must actually assert the invariant it backs, since the marker scan confirms only that the comment exists (a marker over a trivial or non-asserting test is a false backing).
+1. **testing-discipline**: every non-fix behaviour-changing change has a regression test; every fix retains the strongest practical durable oracle described above; ordinary deterministic defects carry observed red-then-green automated regression evidence; any fix alternative carries a concrete impracticality reason and evidence showing verification strength was preserved or improved; no bypassed gate (coverage regression, skipped test without `SKIP: reason`); a backing test for an `invariant:` claim must actually assert the invariant it backs, since the marker scan confirms only that the comment exists (a marker over a trivial or non-asserting test is a false backing).
 
 1. **doc-currency (impl-level)**: workflow/convention docs and the rendered agent guide stay current. Every newly appended Applied event travels with exactly its matching claim mutations; current-state topic and domain-doc updates land when a domain shifts.
 

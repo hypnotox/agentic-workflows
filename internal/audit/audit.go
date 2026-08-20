@@ -18,6 +18,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
+	"github.com/hypnotox/agentic-workflows/internal/prosegate"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
 
@@ -139,16 +140,18 @@ func (e *rangeEvaluator) observe(c awfgit.Commit) {
 			}
 		}
 		if ch.Action != awfgit.Deleted && strings.HasSuffix(ch.Path, ".md") && underDir(ch.Path, e.in.DocsDir) && !e.in.GeneratedPaths[ch.Path] {
-			before, after := countBanned(ch.OldText), countBanned(ch.NewText)
+			before := prosegate.CountViolations(ch.OldText)
+			after := prosegate.CountViolations(ch.NewText)
 			var risen []string
-			for r, name := range bannedProseRunes {
-				if after[r] > before[r] {
-					risen = append(risen, fmt.Sprintf("%s (%d to %d)", name, before[r], after[r]))
-				}
+			if after.EmDashExcess > before.EmDashExcess {
+				risen = append(risen, fmt.Sprintf("em-dash excess (%d to %d)", before.EmDashExcess, after.EmDashExcess))
+			}
+			if after.EnDashes > before.EnDashes {
+				risen = append(risen, fmt.Sprintf("en-dash (U+2013) (%d to %d)", before.EnDashes, after.EnDashes))
 			}
 			if len(risen) != 0 {
 				slices.Sort(risen)
-				e.punctuation = append(e.punctuation, finding(severity.Warn, "plain-punctuation", c, fmt.Sprintf("%s adds typographic punctuation: %s; authored prose uses plain punctuation (a colon, semicolon, comma, or parentheses; an ASCII hyphen for a range; three periods for elision)", ch.Path, strings.Join(risen, ", "))))
+				e.punctuation = append(e.punctuation, finding(severity.Warn, "plain-punctuation", c, fmt.Sprintf("%s adds punctuation-restraint violations: %s; prefer ordinary punctuation and use at most two em dashes per paragraph", ch.Path, strings.Join(risen, ", "))))
 			}
 		}
 	}
@@ -201,30 +204,6 @@ func checkConventionalCommit(c awfgit.Commit, s Settings, scopeSeverity severity
 	}
 	if n := utf8.RuneCountInString(c.Subject); n > subjectMaxLength {
 		out = append(out, finding(severity.Error, "conventional-commits", c, fmt.Sprintf("subject %d chars > %d", n, subjectMaxLength)))
-	}
-	return out
-}
-
-// bannedProseRunes are the typographic punctuation substitutes the documentation
-// standard bans. Each is written as an escape so this file states the rule
-// without typing the glyphs it bans.
-var bannedProseRunes = map[rune]string{
-	'\u2014': "em-dash (U+2014)",
-	'\u2013': "en-dash (U+2013)",
-	'\u2026': "ellipsis (U+2026)",
-	'\u2018': "left single quote (U+2018)",
-	'\u2019': "right single quote (U+2019)",
-	'\u201c': "left double quote (U+201C)",
-	'\u201d': "right double quote (U+201D)",
-}
-
-// countBanned tallies each banned rune in s.
-func countBanned(s string) map[rune]int {
-	out := map[rune]int{}
-	for _, r := range s {
-		if _, bad := bannedProseRunes[r]; bad {
-			out[r]++
-		}
 	}
 	return out
 }
