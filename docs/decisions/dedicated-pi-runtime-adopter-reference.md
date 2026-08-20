@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: dedicated-pi-runtime-adopter-reference
-status: Proposed
+status: Accepted
 date: 2026-08-20
 ---
 # ADR-dedicated-pi-runtime-adopter-reference: Dedicated Pi runtime adopter reference
@@ -52,3 +52,4 @@ link checks, and document-map entry must remain covered together.
 ## Status history
 
 - 2026-08-20: Proposed
+- 2026-08-20: Accepted; content-sha256: 642d213ebf57d49278b4aafc1781cd64e55d87697d40cecc0d8bcf982c3db522

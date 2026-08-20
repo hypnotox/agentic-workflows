@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-dedicated-pi-runtime-adopter-reference: Dedicated Pi runtime adopter reference](dedicated-pi-runtime-adopter-reference.md) (Proposed)
+- [ADR-dedicated-pi-runtime-adopter-reference: Dedicated Pi runtime adopter reference](dedicated-pi-runtime-adopter-reference.md) (Accepted)
 
 ## History
 
