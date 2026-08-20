@@ -12,6 +12,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
@@ -142,6 +143,28 @@ func TestLoaderOpenOwnsInjectedCompleteView(t *testing.T) {
 	p.catalog().Skills["tdd"] = firstSkill
 	if second.catalog().Skills["tdd"].Sections[0] == "changed first project" {
 		t.Fatal("Loader-opened projects share a mutable catalog snapshot")
+	}
+}
+
+func TestProjectStateDefensivelyOwnsTargetSnapshots(t *testing.T) {
+	source := []Target{{
+		Name: "target", Capabilities: []Capability{CapabilitySubagentTools},
+		Outputs: []TargetOutput{{Path: "output", Inputs: []TargetOutputInput{{Path: "input", Role: ArtifactTemplate}}}},
+	}}
+	state := newProjectState("root", resident.NewRoots("root", "resident"), false, &config.Config{}, catalog.Standard, catalog.Standard, source)
+	source[0].Capabilities[0] = CapabilitySessionHandoff
+	source[0].Outputs[0].Path = "mutated"
+	source[0].Outputs[0].Inputs[0].Path = "mutated"
+	first := state.resolvedTargets()
+	if first[0].Capabilities[0] != CapabilitySubagentTools || first[0].Outputs[0].Path != "output" || first[0].Outputs[0].Inputs[0].Path != "input" {
+		t.Fatalf("project state retained a target construction alias: %#v", first)
+	}
+	first[0].Capabilities[0] = CapabilityEffortSessions
+	first[0].Outputs[0].Path = "returned mutation"
+	first[0].Outputs[0].Inputs[0].Path = "returned mutation"
+	second := state.resolvedTargets()
+	if second[0].Capabilities[0] != CapabilitySubagentTools || second[0].Outputs[0].Path != "output" || second[0].Outputs[0].Inputs[0].Path != "input" {
+		t.Fatalf("resolvedTargets returned a nested alias: %#v", second)
 	}
 }
 

@@ -962,24 +962,65 @@ func TestFactsDeepCopiesConfigurationAndDropsLoadingRepresentation(t *testing.T)
 	cfg.Tags["tag"] = "changed"
 	cfg.ContextIgnore[0] = "changed"
 	cfg.CurrentState.Sources[0].Globs[0] = "changed"
+	cfg.CurrentState.TestGlobs[0] = "changed"
 	cfg.Audit.AllowedScopes[0].Name = "changed"
+	cfg.Bootstrap.Enabled = false
 	*cfg.ProseGate.Exemptions[0].Count = 3
+	cfg.MemoryCite.Exemptions[0].Path = "changed"
+	*cfg.MemoryCite.Exemptions[0].Count = 4
 	cfg.CommitPolicy.AllowedIdentities[0].Name = "changed"
+	cfg.CommitPolicy.AllowedSigners[0].Principal = "changed"
+	cfg.Render.TemplateSourceRoot = "changed"
 	cfg.LocalDocs[0].Name = "changed"
 	cfg.Vars["nested"].(map[string]any)["slice"].([]any)[0] = "changed"
 	array := cfg.Vars["array"].([1]any)
 	array[0] = "changed"
 	cfg.Vars["array"] = array
 	got := facts.Config()
-	if got.Domains[0] != "domain" || got.Tags["tag"] != "meaning" || got.ContextIgnore[0] != "**/ignored" || got.CurrentState.Sources[0].Globs[0] != "**/*.go" || got.Audit.AllowedScopes[0].Name != "code" || *got.ProseGate.Exemptions[0].Count != 2 || got.CommitPolicy.AllowedIdentities[0].Name != "n" || got.LocalDocs[0].Name != "runbook" || got.Vars["nested"].(map[string]any)["slice"].([]any)[0] != "value" || got.Vars["array"].([1]any)[0] != "array value" {
+	if got.Domains[0] != "domain" || got.Tags["tag"] != "meaning" || got.ContextIgnore[0] != "**/ignored" || got.CurrentState.Sources[0].Globs[0] != "**/*.go" || got.CurrentState.TestGlobs[0] != "**/*_test.go" || got.Audit.AllowedScopes[0].Name != "code" || !got.Bootstrap.Enabled || *got.ProseGate.Exemptions[0].Count != 2 || got.MemoryCite.Exemptions[0].Path != "y" || *got.MemoryCite.Exemptions[0].Count != 2 || got.CommitPolicy.AllowedIdentities[0].Name != "n" || got.CommitPolicy.AllowedSigners[0].Principal != "p" || got.Render.TemplateSourceRoot != "templates" || got.LocalDocs[0].Name != "runbook" || got.Vars["nested"].(map[string]any)["slice"].([]any)[0] != "value" || got.Vars["array"].([1]any)[0] != "array value" {
 		t.Fatalf("facts retained a mutable config alias: %#v", got)
 	}
 	got.Domains[0] = "returned mutation"
-	if facts.Config().Domains[0] != "domain" {
-		t.Fatal("Facts.Config returned an alias")
+	got.Tags["tag"] = "returned mutation"
+	got.CurrentState.TestGlobs[0] = "returned mutation"
+	got.Audit.AllowedScopes[0].Name = "returned mutation"
+	got.Bootstrap.Enabled = false
+	*got.ProseGate.Exemptions[0].Count = 5
+	got.MemoryCite.Exemptions[0].Path = "returned mutation"
+	got.CommitPolicy.AllowedIdentities[0].Name = "returned mutation"
+	got.CommitPolicy.AllowedSigners[0].Principal = "returned mutation"
+	got.Render.TemplateSourceRoot = "returned mutation"
+	got.LocalDocs[0].Name = "returned mutation"
+	got.Vars["nested"].(map[string]any)["slice"].([]any)[0] = "returned mutation"
+	again := facts.Config()
+	if again.Domains[0] != "domain" || again.Tags["tag"] != "meaning" || again.CurrentState.TestGlobs[0] != "**/*_test.go" || again.Audit.AllowedScopes[0].Name != "code" || !again.Bootstrap.Enabled || *again.ProseGate.Exemptions[0].Count != 2 || again.MemoryCite.Exemptions[0].Path != "y" || again.CommitPolicy.AllowedIdentities[0].Name != "n" || again.CommitPolicy.AllowedSigners[0].Principal != "p" || again.Render.TemplateSourceRoot != "templates" || again.LocalDocs[0].Name != "runbook" || again.Vars["nested"].(map[string]any)["slice"].([]any)[0] != "value" {
+		t.Fatal("Facts.Config returned a nested alias")
 	}
 	if got.root != "" || got.raw != nil || got.read != nil || got.filesystem {
 		t.Fatal("facts retained loading representation")
+	}
+}
+
+func TestFactsPreserveCommitPolicyListPresence(t *testing.T) {
+	present, err := Parse(".awf", []byte("prefix: x\nintegrationBranch: main\ncommitPolicy:\n  allowedIdentities: []\n  allowedSigners: []\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	presentFacts := NewFacts(present).Config()
+	if !presentFacts.CommitPolicy.allowedIdentitiesSet || !presentFacts.CommitPolicy.allowedSignersSet {
+		t.Fatal("Facts lost present optional-list markers")
+	}
+	absent, err := Parse(".awf", []byte("prefix: x\nintegrationBranch: main\ncommitPolicy:\n  requireSignedCommits: false\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	absentFacts := NewFacts(absent).Config()
+	if absentFacts.CommitPolicy.allowedIdentitiesSet || absentFacts.CommitPolicy.allowedSignersSet {
+		t.Fatal("Facts invented absent optional-list markers")
+	}
+	bound := present.OperationTree().Bind(NewFacts(present))
+	if !bound.CommitPolicy.allowedIdentitiesSet || !bound.CommitPolicy.allowedSignersSet {
+		t.Fatal("OperationTree.Bind lost optional-list markers")
 	}
 }
 

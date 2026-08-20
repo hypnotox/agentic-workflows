@@ -29,7 +29,7 @@ var stateOwnershipPatterns = []string{"./internal/project", "./internal/contextq
 // forbids. The conforming constructions are Loader.Open, the two ContextState
 // constructors, contextq.New, and resident.NewRoots.
 var watchedLongLivedTypes = map[string]map[string]bool{
-	"github.com/hypnotox/agentic-workflows/internal/project":  {"Project": true, "ContextState": true},
+	"github.com/hypnotox/agentic-workflows/internal/project":  {"Project": true, "projectState": true, "ContextState": true},
 	"github.com/hypnotox/agentic-workflows/internal/contextq": {"Query": true},
 	"github.com/hypnotox/agentic-workflows/internal/resident": {"Roots": true},
 }
@@ -416,6 +416,10 @@ func (p *Project) mutationWritesAfterConstruction() {
 	p.Root = "mutated"
 }
 
+func (s *projectState) mutationWritesStateAfterConstruction() {
+	s.nested = true
+}
+
 func mutationConstructsLocally(rootDir string) *Project {
 	built := &Project{Root: rootDir}
 	built.Cfg = nil
@@ -455,6 +459,7 @@ func (q *Query) mutationReplacesStateAfterConstruction(state project.ContextStat
 	}
 	for _, want := range []string{
 		"mutationWritesAfterConstruction writes p.Root",
+		"mutationWritesStateAfterConstruction writes s.nested",
 		"mutationWritesViaPointer takes the address of p.Root",
 		"mutationOverwritesWholeValue replaces the whole value p",
 		"mutationReplacesStateAfterConstruction writes q.state",
@@ -480,6 +485,41 @@ func (q *Query) mutationReplacesStateAfterConstruction(state project.ContextStat
 	if !directFlagged {
 		t.Error("a direct producer call bypassing deriveOperationState escaped the producer scan")
 	}
+}
+
+func retainsOperationDependency(typ types.Type, seen map[types.Type]bool) bool {
+	if seen[typ] {
+		return false
+	}
+	seen[typ] = true
+	switch value := typ.(type) {
+	case *types.Named:
+		if obj := value.Obj(); obj.Pkg() != nil {
+			key := obj.Pkg().Path() + "." + obj.Name()
+			if key == "github.com/hypnotox/agentic-workflows/internal/config.TreeReader" ||
+				key == "github.com/hypnotox/agentic-workflows/internal/config.OperationTree" ||
+				key == "github.com/hypnotox/agentic-workflows/internal/git.Repo" ||
+				key == "github.com/hypnotox/agentic-workflows/internal/project.ProjectTreeReader" {
+				return true
+			}
+		}
+		return retainsOperationDependency(value.Underlying(), seen)
+	case *types.Pointer:
+		return retainsOperationDependency(value.Elem(), seen)
+	case *types.Array:
+		return retainsOperationDependency(value.Elem(), seen)
+	case *types.Slice:
+		return retainsOperationDependency(value.Elem(), seen)
+	case *types.Map:
+		return retainsOperationDependency(value.Key(), seen) || retainsOperationDependency(value.Elem(), seen)
+	case *types.Struct:
+		for i := range value.NumFields() {
+			if retainsOperationDependency(value.Field(i).Type(), seen) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // TestProjectStateBoundary pins the Phase 1 loaded-fact boundary: state keeps
@@ -513,9 +553,31 @@ func TestProjectStateBoundary(t *testing.T) {
 		if field.Exported() {
 			t.Errorf("projectState exports mutable field %s", field.Name())
 		}
-		typeName := types.TypeString(field.Type(), func(*types.Package) string { return "" })
-		if strings.Contains(typeName, "Repo") || strings.Contains(typeName, "ProjectTreeReader") {
+		typeName := types.TypeString(field.Type(), func(pkg *types.Package) string { return pkg.Path() })
+		if retainsOperationDependency(field.Type(), map[types.Type]bool{}) {
 			t.Errorf("projectState retains operation dependency %s %s", field.Name(), typeName)
+		}
+	}
+
+	projectPkg := state.Obj().Pkg()
+	for _, name := range []string{"ProjectTreeReader"} {
+		if typ := projectPkg.Scope().Lookup(name).Type(); !retainsOperationDependency(typ, map[types.Type]bool{}) {
+			t.Errorf("boundary detector did not reject project.%s", name)
+		}
+	}
+	for _, imported := range projectPkg.Imports() {
+		if imported.Path() != "github.com/hypnotox/agentic-workflows/internal/config" && imported.Path() != "github.com/hypnotox/agentic-workflows/internal/git" {
+			continue
+		}
+		names := []string{"TreeReader", "OperationTree"}
+		if imported.Path() == "github.com/hypnotox/agentic-workflows/internal/git" {
+			names = []string{"Repo"}
+		}
+		for _, name := range names {
+			obj := imported.Scope().Lookup(name)
+			if obj == nil || !retainsOperationDependency(obj.Type(), map[types.Type]bool{}) {
+				t.Errorf("boundary detector did not reject %s.%s", imported.Path(), name)
+			}
 		}
 	}
 }

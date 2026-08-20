@@ -49,7 +49,25 @@ type Sidecar struct {
 // Facts is the immutable, configuration-owned snapshot consumed outside this
 // package. It deliberately excludes parsing and filesystem state; callers get
 // a fresh deep copy for each observation.
-type Facts struct{ config Config }
+type Facts struct{ data factsData }
+
+type factsData struct {
+	Prefix            string
+	Profile           catalog.Profile
+	IntegrationBranch string
+	Vars              map[string]any
+	Domains           []string
+	Tags              map[string]string
+	ContextIgnore     []string
+	CurrentState      *CurrentStateConfig
+	Audit             *AuditConfig
+	Bootstrap         *BootstrapConfig
+	ProseGate         *ProseGateConfig
+	MemoryCite        *MemoryCiteConfig
+	CommitPolicy      *CommitPolicyConfig
+	Render            *RenderConfig
+	LocalDocs         LocalDocs
+}
 
 // NewFacts copies every reference-shaped configuration value and discards the
 // loading representation. Validation remains the responsibility of Loaders.
@@ -58,16 +76,24 @@ func NewFacts(cfg *Config) Facts {
 		return Facts{}
 	}
 	copy := cloneConfig(*cfg)
-	copy.root = ""
-	copy.raw = nil
-	copy.read = nil
-	copy.filesystem = false
-	return Facts{config: copy}
+	return Facts{data: factsData{
+		Prefix: copy.Prefix, Profile: copy.Profile, IntegrationBranch: copy.IntegrationBranch,
+		Vars: copy.Vars, Domains: copy.Domains, Tags: copy.Tags, ContextIgnore: copy.ContextIgnore,
+		CurrentState: copy.CurrentState, Audit: copy.Audit, Bootstrap: copy.Bootstrap,
+		ProseGate: copy.ProseGate, MemoryCite: copy.MemoryCite, CommitPolicy: copy.CommitPolicy,
+		Render: copy.Render, LocalDocs: copy.LocalDocs,
+	}}
 }
 
 // Config returns a defensive copy of the loaded configuration facts.
 func (f Facts) Config() *Config {
-	copy := cloneConfig(f.config)
+	copy := cloneConfig(Config{
+		Prefix: f.data.Prefix, Profile: f.data.Profile, IntegrationBranch: f.data.IntegrationBranch,
+		Vars: f.data.Vars, Domains: f.data.Domains, Tags: f.data.Tags, ContextIgnore: f.data.ContextIgnore,
+		CurrentState: f.data.CurrentState, Audit: f.data.Audit, Bootstrap: f.data.Bootstrap,
+		ProseGate: f.data.ProseGate, MemoryCite: f.data.MemoryCite, CommitPolicy: f.data.CommitPolicy,
+		Render: f.data.Render, LocalDocs: f.data.LocalDocs,
+	})
 	return &copy
 }
 
