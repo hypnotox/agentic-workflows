@@ -27,8 +27,6 @@ data:
     - term: safe resumable point
       meaning: "A durable checkpoint whose immediate successor can start independently."
       domains: [rendering]
-    - term: mandatory approval check-in
-      meaning: "The pre-artifact stop for explicit brainstorming outline approval. Effort creation is not an approval boundary."
     - term: anchored glob
       meaning: "awf's glob dialect, where a pattern matches a full slash-separated repo-relative path: `*.go` is top-level, `**/*.go` any depth, and `cmd/**` a subtree."
       domains: [config]

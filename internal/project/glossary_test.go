@@ -233,6 +233,16 @@ func TestGlossaryMergesStandardVocabulary(t *testing.T) {
 		if !strings.Contains(out, "| Term | Meaning |") || !strings.Contains(out, "| effort |") {
 			t.Errorf("shipped rows missing:\n%s", out)
 		}
+		for _, want := range []string{"finish archives the complete resident", "when a material decision is unresolved"} {
+			if !strings.Contains(out, want) {
+				t.Errorf("shipped vocabulary missing current workflow meaning %q:\n%s", want, out)
+			}
+		}
+		for _, stale := range []string{"deleted at finish", "always stops, however clear"} {
+			if strings.Contains(out, stale) {
+				t.Errorf("shipped vocabulary retains obsolete meaning %q:\n%s", stale, out)
+			}
+		}
 	})
 
 	t.Run("a project term overrides the shipped term of the same name", func(t *testing.T) {

@@ -38,6 +38,10 @@ query a single version or a range.
 
 - The rendered workflow document states one protected-contract doctrine: the workflow governs a change's protected contract, while phase and task shape, ordering, inventories, execution mode, and commit decomposition are a route its owner may revise. Precedence is decided per constraint, so one project rule can be binding in its protected clauses and subordinate in its route clauses.
 
+### Bug fixes
+
+- Shipped glossary fallback now reflects that effort finish archives the complete resident and that brainstorming outline approval occurs only when a material decision is unresolved.
+
 ## [0.39.2] - 2026-08-18
 
 ### Bug fixes
