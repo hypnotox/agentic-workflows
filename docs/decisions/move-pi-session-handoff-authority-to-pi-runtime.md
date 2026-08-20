@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: move-pi-session-handoff-authority-to-pi-runtime
-status: Implementing
+status: Implemented
 date: 2026-08-20
 ---
 # ADR-move-pi-session-handoff-authority-to-pi-runtime: Move Pi Session Handoff Authority to Pi Runtime
@@ -73,3 +73,4 @@ lands.
 - 2026-08-20: Implementing; content-sha256: 2203d2c20263c63fcf75901e18af43ca8b41e053c10e0cb9af5badfceb5d9f06
 - 2026-08-20: Applied; operations: remove `rendering/pi-workflows:pi-session-handoff-workflow`, add `rendering/pi-runtime:pi-session-handoff-workflow`, update `rendering/guide-and-doc-templates:working-memory-single-home`, update `rendering/workflow-skill-templates:memory-checkpoint-chain-coverage`, update `rendering/pi-workflows:using-effort-skill`
 - 2026-08-20: Reapplied; operations: add `rendering/pi-runtime:pi-session-handoff-workflow`
+- 2026-08-20: Implemented; content-sha256: 2203d2c20263c63fcf75901e18af43ca8b41e053c10e0cb9af5badfceb5d9f06

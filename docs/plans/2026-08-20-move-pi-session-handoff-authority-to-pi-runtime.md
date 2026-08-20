@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-20
 adrs: [move-pi-session-handoff-authority-to-pi-runtime]
-status: Proposed
+status: Implemented
 ---
 # Plan: Move Pi Session Handoff Authority to Pi Runtime
 
