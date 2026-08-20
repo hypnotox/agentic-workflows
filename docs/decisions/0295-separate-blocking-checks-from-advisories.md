@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: separate-blocking-checks-from-advisories
-status: Implementing
+status: Implemented
 date: 2026-08-20
 ---
 # ADR-0295: Separate blocking checks from advisories
@@ -146,3 +146,4 @@ decomposition.
 - 2026-08-20: Accepted; content-sha256: 1908a27d2ea0e97c534adbd67a376b8be22a43d1e4c2ea50da9d7979aedbc721
 - 2026-08-20: Implementing; content-sha256: 1908a27d2ea0e97c534adbd67a376b8be22a43d1e4c2ea50da9d7979aedbc721
 - 2026-08-20: Applied; operations: add `tooling/cli:check-severity-by-protected-property`, add `tooling/quality-gates:gate-severity-by-protected-property`, update `tooling/cli:repo-check-capability-plan`, update `tooling/cli:terseness-advisory-nonfailing`, update `tooling/audit-commands:severity-single-spelling`, update `tooling/quality-gates:prose-gate-tracked-file-scan`, update `rendering/inplace-and-placeholders:unused-var-drift`, update `rendering/inplace-and-placeholders:unused-data-drift`, update `rendering/doc-outputs:glossary-terseness-advisory`, update `config/configuration:tag-coverage-note`, update `config/configuration:tag-frequency-note`, update `adr-system/plan-artifacts:plan-v2-assignment-advisories`, update `rendering/sync-and-drift:agent-guide-size-advisory`
+- 2026-08-20: Implemented; content-sha256: 1908a27d2ea0e97c534adbd67a376b8be22a43d1e4c2ea50da9d7979aedbc721

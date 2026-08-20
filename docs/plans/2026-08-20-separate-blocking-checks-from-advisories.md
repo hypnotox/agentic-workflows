@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-20
 adrs: [separate-blocking-checks-from-advisories]
-status: Proposed
+status: Implemented
 ---
 # Plan: Separate Blocking Checks From Advisories
 

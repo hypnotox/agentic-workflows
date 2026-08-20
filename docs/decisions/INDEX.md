@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-0295: Separate blocking checks from advisories](0295-separate-blocking-checks-from-advisories.md) (Implementing)
+_No decisions are in flight._
 
 ## History
 
@@ -300,3 +300,4 @@
 - [ADR-0292: Define Core and Full as governance footprints](0292-define-core-and-full-as-governance-footprints.md) (Implemented)
 - [ADR-0293: Move Pi Session Handoff Authority to Pi Runtime](0293-move-pi-session-handoff-authority-to-pi-runtime.md) (Implemented)
 - [ADR-0294: Dedicated Pi runtime adopter reference](0294-dedicated-pi-runtime-adopter-reference.md) (Implemented)
+- [ADR-0295: Separate blocking checks from advisories](0295-separate-blocking-checks-from-advisories.md) (Implemented)
