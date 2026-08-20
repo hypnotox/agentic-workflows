@@ -141,7 +141,7 @@ func TestLoaderOpenOwnsInjectedCompleteView(t *testing.T) {
 	firstSkill := p.state.catalog().Skills["tdd"]
 	firstSkill.Sections[0] = "changed first project"
 	p.state.catalog().Skills["tdd"] = firstSkill
-	if projectCatalog(second).Skills["tdd"].Sections[0] == "changed first project" {
+	if projectCatalog(renderInputsForTest(second)).Skills["tdd"].Sections[0] == "changed first project" {
 		t.Fatal("Loader-opened projects share a mutable catalog snapshot")
 	}
 }

@@ -12,17 +12,17 @@ import (
 // InitCollisions returns planned output paths that already exist on disk and are
 // not recorded in the prior lock (i.e. not awf-managed). An awf-managed path that
 // already exists is not a collision - re-init is idempotent.
-func InitCollisionsOperation(p *Project, ctx context.Context) ([]string, error) {
-	planned, err := PlannedOutputsOperation(p, ctx)
+func initCollisions(p renderInputs, ctx context.Context) ([]string, error) {
+	planned, err := plannedOutputs(p, ctx)
 	if err != nil {
 		return nil, err
 	}
-	return resident.CollisionsAt(p.Root, planned)
+	return resident.CollisionsAt(p.root(), planned)
 }
 
 // backupFileConfined maps the shared confined backup mechanism's result and
 // errors into sync's project-specific reporting contract.
-func backupFileConfined(p *Project, rel string, fs syncFilesystem) (string, error) {
+func backupFileConfined(rel string, fs syncFilesystem) (string, error) {
 	return filesystem.Backup(rel,
 		func(source string) ([]byte, os.FileMode, error) {
 			data, mode, err := fs.ReadWithMode(source)

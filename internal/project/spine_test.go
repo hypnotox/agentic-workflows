@@ -1218,7 +1218,7 @@ func TestProtectedContractDoctrineSingleHome(t *testing.T) {
 			for _, f := range files {
 				rendered[f.Path] = f.Content
 			}
-			workflowPath := layout(p).Singletons["workflowRef"]
+			workflowPath := layout(renderInputsForTest(p)).Singletons["workflowRef"]
 			workflow, ok := rendered[workflowPath]
 			if !ok {
 				t.Fatalf("rendered workflow document %q absent", workflowPath)

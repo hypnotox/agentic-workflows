@@ -14,11 +14,11 @@ import (
 
 // consumedParts returns the absolute paths of the convention parts an artifact
 // consumed; editing any reflags the artifact's drift.
-func consumedParts(p *Project, kind, artifact string, plan map[string]render.SectionPlan) []string {
+func consumedParts(p renderInputs, kind, artifact string, plan map[string]render.SectionPlan) []string {
 	var paths []string
 	for sec, sp := range plan {
 		if sp.HasPart {
-			paths = append(paths, p.Cfg.PartPath(kind, artifact, sec))
+			paths = append(paths, p.cfg.PartPath(kind, artifact, sec))
 		}
 	}
 	return paths
@@ -27,11 +27,11 @@ func consumedParts(p *Project, kind, artifact string, plan map[string]render.Sec
 // artifactConfigHash projects the drift signal onto one rendered file: the prefix, the
 // subset of vars the assembled template references, the artifact's sidecar (marshalled),
 // and the bytes of every convention part it consumed - in deterministic order.
-func artifactConfigHash(p *Project, assembled string, sc config.Sidecar, partPaths []string, _ map[string]bool, targets ...Target) (string, error) {
+func artifactConfigHash(p renderInputs, assembled string, sc config.Sidecar, partPaths []string, _ map[string]bool, targets ...Target) (string, error) {
 	refs := render.ReferencedVars(assembled)
 	proj := map[string]any{
-		"prefix":  p.Cfg.Prefix,
-		"profile": p.Cfg.Profile,
+		"prefix":  p.cfg.Prefix,
+		"profile": p.cfg.Profile,
 		"layout":  layout(p).templateMap(),
 	}
 	if len(targets) != 0 {
@@ -50,13 +50,13 @@ func artifactConfigHash(p *Project, assembled string, sc config.Sidecar, partPat
 	}
 	vs := map[string]any{}
 	for _, r := range refs {
-		vs[r] = p.Cfg.Vars[r]
+		vs[r] = p.cfg.Vars[r]
 	}
 	proj["vars"] = vs
 	if render.ReferencesCommitPolicy(assembled) {
 		// Only consumers fold the normalized typed policy. This keeps unrelated
 		// outputs and adopters with no policy byte-stable.
-		proj["commitPolicy"] = p.Cfg.CommitPolicy
+		proj["commitPolicy"] = p.cfg.CommitPolicy
 	}
 	// A template that reads .commitScopes re-renders when audit.allowedScopes
 	// changes; folding the resolved list in flags it stale (ADR-0051).
@@ -65,7 +65,7 @@ func artifactConfigHash(p *Project, assembled string, sc config.Sidecar, partPat
 	sort.Strings(partPaths)
 	parts := map[string]string{}
 	for _, pp := range partPaths {
-		b, err := p.Cfg.ReadPartPath(pp)
+		b, err := p.cfg.ReadPartPath(pp)
 		if err != nil {
 			return "", err
 		}
@@ -86,7 +86,7 @@ func artifactConfigHash(p *Project, assembled string, sc config.Sidecar, partPat
 	}
 	proj["parts"] = parts
 	if foldScopes {
-		proj["commitScopes"] = audit.Resolve(config.AuditScopes(p.Cfg.Audit)).AllowedScopes
+		proj["commitScopes"] = audit.Resolve(config.AuditScopes(p.cfg.Audit)).AllowedScopes
 	}
 	enc, err := yaml.Marshal(proj)
 	if err != nil { // coverage-ignore: proj holds only YAML-sourced, marshalable values; yaml.Marshal cannot fail here

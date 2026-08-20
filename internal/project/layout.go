@@ -24,7 +24,7 @@ type Layout struct {
 	DomainsDir string
 }
 
-func layout(p *Project) Layout {
+func layout(p renderInputs) Layout {
 	d := config.DocsDir
 	dec := d + "/decisions"
 	// Docs maps every catalog document to its unconditional rendered output path.
@@ -75,7 +75,7 @@ func (l Layout) templateMap() map[string]any {
 }
 
 // docOutPath is the catalog-declared output path for a managed doc.
-func docOutPath(p *Project, name string) string {
+func docOutPath(p renderInputs, name string) string {
 	e := projectCatalog(p).Docs[name]
 	if e.AgentsDoc {
 		return "AGENTS.md"
@@ -88,13 +88,13 @@ func docOutPath(p *Project, name string) string {
 }
 
 // decisionsDir is the absolute ADR decisions directory.
-func decisionsDir(p *Project) string {
-	return filepath.Join(p.Root, config.DocsDir, "decisions")
+func decisionsDir(root string) string {
+	return filepath.Join(root, config.DocsDir, "decisions")
 }
 
 // resolvedDocs builds the non-singleton Document-map entries for the agents-doc
 // template from the full catalog, annotated with title and description.
-func resolvedDocs(p *Project) []map[string]any {
+func resolvedDocs(p renderInputs) []map[string]any {
 	out := []map[string]any{}
 	var names []string
 	for name, e := range projectCatalog(p).Docs {
@@ -125,7 +125,7 @@ func localDocsProjection(docs []config.LocalDoc) string {
 	return strings.Join(projection, "\x00")
 }
 
-func documentMapDocs(p *Project) []map[string]any {
+func documentMapDocs(p renderInputs) []map[string]any {
 	d := config.DocsDir
 	var names []string
 	for name, e := range projectCatalog(p).Docs {
@@ -146,8 +146,8 @@ func documentMapDocs(p *Project) []map[string]any {
 
 // localDocumentMapDocs projects configured local documents in normalized name
 // order for the explicit agent-guide document-map union.
-func localDocumentMapDocs(p *Project) []map[string]any {
-	locals := p.Cfg.NormalizedLocalDocs()
+func localDocumentMapDocs(p renderInputs) []map[string]any {
+	locals := p.cfg.NormalizedLocalDocs()
 	out := make([]map[string]any, 0, len(locals))
 	for _, local := range locals {
 		out = append(out, map[string]any{

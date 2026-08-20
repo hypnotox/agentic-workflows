@@ -16,15 +16,15 @@ type commitPolicyRepository interface {
 }
 
 // VerifyCommitPolicy evaluates explicit revisions through this invoking project's configured policy.
-func VerifyCommitPolicyOperation(p *Project, ctx context.Context, targets []string) commitpolicy.Outcome {
-	if p.Cfg.CommitPolicy == nil {
+func verifyCommitPolicyFacade(cfg *config.Config, root string, repository *awfgit.Repo, ctx context.Context, targets []string) commitpolicy.Outcome {
+	if cfg.CommitPolicy == nil {
 		return commitpolicy.Outcome{Disabled: true}
 	}
-	repo, err := gitRepo(p)
+	repo, err := gitRepo(root, repository)
 	if err != nil {
 		return refused(commitpolicy.LinkedWorktreeFailure, "open invoking worktree", err)
 	}
-	return verifyCommitPolicy(ctx, policyFromConfig(p.Cfg.CommitPolicy), p.Cfg.CommitPolicy.GrandfatheredThrough, targets, repo)
+	return verifyCommitPolicy(ctx, policyFromConfig(cfg.CommitPolicy), cfg.CommitPolicy.GrandfatheredThrough, targets, repo)
 }
 
 func verifyCommitPolicy(ctx context.Context, policy commitpolicy.Policy, baseline string, targets []string, repo commitPolicyRepository) commitpolicy.Outcome {
@@ -99,11 +99,11 @@ func policyFromConfig(cfg *config.CommitPolicyConfig) commitpolicy.Policy {
 }
 
 // CommitPolicyPresentation maps one verifier outcome using the project configuration.
-func CommitPolicyPresentationOperation(p *Project, outcome commitpolicy.Outcome) (presentation.Document, error) {
-	if p.Cfg.CommitPolicy == nil {
+func commitPolicyPresentation(cfg *config.Config, outcome commitpolicy.Outcome) (presentation.Document, error) {
+	if cfg.CommitPolicy == nil {
 		return commitpolicy.Presentation(commitpolicy.Policy{}, outcome)
 	}
-	return commitpolicy.Presentation(policyFromConfig(p.Cfg.CommitPolicy), outcome)
+	return commitpolicy.Presentation(policyFromConfig(cfg.CommitPolicy), outcome)
 }
 
 // VerifyCommitPolicyAt resolves the invoking worktree and returns its typed outcome

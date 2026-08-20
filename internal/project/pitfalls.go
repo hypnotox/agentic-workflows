@@ -13,7 +13,7 @@ import (
 
 const pitfallsSourceDir = config.DirName + "/docs/pitfalls"
 
-func loadPitfallCorpus(p *Project) (pitfall.Corpus, error) {
+func loadPitfallCorpus(p renderInputs) (pitfall.Corpus, error) {
 	return loadPitfallCorpusFrom(projectTreeReader(p))
 }
 

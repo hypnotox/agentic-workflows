@@ -38,7 +38,7 @@ func TestLocalDocAgentGuideProjection(t *testing.T) {
 			t.Fatalf("document-map link target %s: %v", path, err)
 		}
 	}
-	if _, ok := layout(p).Docs["runbooks/alpha"]; ok {
+	if _, ok := layout(renderInputsForTest(p)).Docs["runbooks/alpha"]; ok {
 		t.Fatal("local document entered Layout.Docs")
 	}
 
@@ -153,7 +153,7 @@ func TestLocalDocReferenceChecksBody(t *testing.T) {
 	for _, d := range report.Drift {
 		link = link || d.Path == "docs/runbooks/checks.md" && d.Kind == "dead-reference"
 	}
-	skillDrift := checkDeadSkillRefs(p, []RenderedFile{{
+	skillDrift := checkDeadSkillRefs(renderInputsForTest(p), []RenderedFile{{
 		Path: path, Content: string(b), Policy: OutputPolicy{ScanSkillReferences: true},
 	}}, map[string]bool{})
 	if !link || len(skillDrift) != 1 || skillDrift[0].Path != path || skillDrift[0].Kind != "dead-skill-reference" {

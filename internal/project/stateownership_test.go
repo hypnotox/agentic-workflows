@@ -363,8 +363,8 @@ func TestProjectDerivedStateOwnership(t *testing.T) {
 	// Exactly the deriving entries call deriveOperationStateWithPitfalls, each once, so a
 	// nested re-derivation is a failure rather than an invisible regression.
 	wantEntries := map[string]bool{
-		"CheckReportOperation": true, "syncReport": true, "AdvisoryNotesOperation": true,
-		"ConfigReferenceModelOperation": true, "OutputPlanOperation": true, "ReadPlanOperation": true,
+		"checkReport": true, "syncReport": true, "advisoryNotes": true,
+		"configReferenceModel": true, "outputPlan": true,
 	}
 	entries := derivingEntries(production)
 	for name, count := range entries {
@@ -384,13 +384,17 @@ func TestProjectDerivedStateOwnership(t *testing.T) {
 	// from a function that derives on its own operation's behalf. Counting the
 	// aggregate alone would miss a consumer calling a producer directly.
 	//
+	// numberingCorpus and readPlan are the entries beside the aggregate deriver,
+	// and only for the ADR corpus. readPlan's root-only plan projection needs
+	// no rendering universe.
+	//
 	// numberingCorpus is the one entry beside the aggregate deriver, and only
 	// for the ADR corpus. Numbering needs a duplicate-identity corpus as data
 	// rather than as an abort (ADR-0202 item 12), which is the opposite of what
 	// deriveOperationStateWithPitfalls owes every other consumer, so it cannot enter
 	// through it. The set is pinned exactly, so a consumer re-deriving a value
 	// that was threaded to it still fails here.
-	producerOwners := map[string]bool{"deriveOperationStateWithPitfalls": true, "numberingCorpus": true}
+	producerOwners := map[string]bool{"deriveOperationStateWithPitfalls": true, "numberingCorpus": true, "readPlan": true}
 	for producer, owners := range producerCallSites(production) {
 		for _, owner := range owners {
 			if !producerOwners[owner] {
@@ -433,11 +437,11 @@ func (p *Project) mutationWritesViaPointer() {
 }
 
 func (p *Project) mutationRederivesNested() {
-	_, _, _, _, _ = deriveOperationStateWithPitfalls(p)
+	_, _, _, _, _ = deriveOperationStateWithPitfalls(newRenderInputs(&projectState{}, p.Cfg, p.read))
 }
 
 func (p *Project) mutationRederivesCorpusDirectly() (adr.Corpus, error) {
-	return adr.LoadCorpus(decisionsDir(p))
+	return adr.LoadCorpus(decisionsDir("fixture-root"))
 }
 
 func (p *Project) mutationOverwritesWholeValue() {
@@ -633,7 +637,7 @@ type boundaryMutation struct {
 }
 `)})
 	for _, pkg := range mutated {
-		if pkg.PkgPath != projectImportPath {
+		if pkg.PkgPath != "github.com/hypnotox/agentic-workflows/internal/project" {
 			continue
 		}
 		probe := pkg.Types.Scope().Lookup("boundaryMutation")

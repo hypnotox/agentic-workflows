@@ -251,11 +251,11 @@ func TestCheckStagedDriftTracksWholeOutputPlan(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	corpus, pitfalls, topics, effective, err := deriveOperationStateWithPitfalls(p)
+	corpus, pitfalls, topics, effective, err := deriveOperationStateWithPitfalls(renderInputsForTest(p))
 	if err != nil {
 		t.Fatal(err)
 	}
-	op, err := outputPlanWithPitfalls(p, testContext(t), corpus, pitfalls, topics, effective)
+	op, err := outputPlanWithPitfalls(renderInputsForTest(p), testContext(t), corpus, pitfalls, topics, effective)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -191,26 +191,26 @@ func cloneRenderData(in map[string]any) map[string]any {
 func singletonTemplateContexts(t *testing.T, p *Project, eff map[string]bool) []singletonTemplateContext {
 	t.Helper()
 	var contexts []singletonTemplateContext
-	for _, kind := range catalog.SingletonKindsFor(projectCatalog(p)) {
-		entry := projectCatalog(p).Docs[kind]
+	for _, kind := range catalog.SingletonKindsFor(projectCatalog(renderInputsForTest(p))) {
+		entry := projectCatalog(renderInputsForTest(p)).Docs[kind]
 		sc, err := p.Cfg.Sidecar(kind, "")
 		if err != nil {
 			t.Fatalf("read %s sidecar: %v", kind, err)
 		}
 		sc = withDefaultData(sc, entry.Data)
-		data := projectData(p, sc, eff)
+		data := projectData(renderInputsForTest(p), sc, eff)
 		switch {
 		case entry.AgentsDoc:
-			data["docs"] = resolvedDocs(p)
-			data["mandatoryDocs"] = documentMapDocs(p)
-			data["localDocs"] = localDocumentMapDocs(p)
+			data["docs"] = resolvedDocs(renderInputsForTest(p))
+			data["mandatoryDocs"] = documentMapDocs(renderInputsForTest(p))
+			data["localDocs"] = localDocumentMapDocs(renderInputsForTest(p))
 			data["documentMapFallbackHeading"] = len(p.Cfg.LocalDocs) != 0 && sc.Sections["document-map"].Drop
 		case entry.Generated:
 			files, err := p.RenderAll()
 			if err != nil {
 				t.Fatal(err)
 			}
-			collections, err := configReferenceData(p, files)
+			collections, err := configReferenceData(renderInputsForTest(p), files)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -219,7 +219,7 @@ func singletonTemplateContexts(t *testing.T, p *Project, eff map[string]bool) []
 		contexts = append(contexts, singletonTemplateContext{tid: entry.TID, data: data, dataArtifact: kind})
 	}
 	for _, unit := range conditionalUnits() {
-		contexts = append(contexts, singletonTemplateContext{tid: unit.tid, data: projectData(p, config.Sidecar{}, eff)})
+		contexts = append(contexts, singletonTemplateContext{tid: unit.tid, data: projectData(renderInputsForTest(p), config.Sidecar{}, eff)})
 	}
 	return contexts
 }
@@ -608,7 +608,7 @@ func TestSingletonConditionalKeysUseLiveRenderContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, _, eff, err := deriveOperationStateWithPitfalls(p)
+	_, _, _, eff, err := deriveOperationStateWithPitfalls(renderInputsForTest(p))
 	if err != nil {
 		t.Fatal(err)
 	}

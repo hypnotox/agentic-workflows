@@ -47,17 +47,17 @@ type ContextState struct {
 // derives the catalog, targets, and layout from is built from the snapshot's
 // own configuration rather than the caller's, so the query answers about the
 // tree it was given.
-func ContextStateOperation(p *Project, ctx context.Context) (ContextState, error) {
-	ws, err := workingCurrentState(p, ctx)
+func contextState(state *projectState, repo *awfgit.Repo, ctx context.Context) (ContextState, error) {
+	ws, err := workingCurrentState(state.invokingRoot, repo, ctx)
 	if err != nil {
 		return ContextState{}, err
 	}
-	universe := &Project{Root: p.Root, Cfg: ws.Cfg, cat: p.cat, repo: p.repo}
-	universe.Targets, err = resolveTargets(KnownTargets())
+	universe := newRenderInputs(state, ws.Cfg, snapshotTreeReader{tree: ws.Tree})
+	targets, err := resolveTargets(KnownTargets())
 	if err != nil { // coverage-ignore: configured-target validation succeeded and KnownTargets is exhaustively backed by built-in descriptor tests
 		return ContextState{}, err
 	}
-	declarations, err := BuildOutputDeclarations(ws.Cfg, projectCatalog(universe), universe.Targets, snapshotTreeReader{tree: ws.Tree}, ws.Loaded.Corpus)
+	declarations, err := BuildOutputDeclarations(ws.Cfg, projectCatalog(universe), targets, snapshotTreeReader{tree: ws.Tree}, ws.Loaded.Corpus)
 	if err != nil { // coverage-ignore: the snapshot-local catalog and every declaration input were already parsed from this immutable tree
 		return ContextState{}, err
 	}
@@ -76,8 +76,8 @@ func StagedContextState(ctx context.Context, root string) (ContextState, error) 
 	if err != nil {
 		return ContextState{}, err
 	}
-	p := stagedProject(root, repo, prefix)
-	state, err := indexCurrentState(p, ctx)
+	p := stagedProject(root, prefix)
+	state, err := indexCurrentState(p.root(), repo, ctx)
 	if err != nil {
 		return ContextState{}, err
 	}
@@ -85,8 +85,8 @@ func StagedContextState(ctx context.Context, root string) (ContextState, error) 
 	if err != nil { // coverage-ignore: configured-target validation succeeded and KnownTargets is exhaustively backed by built-in descriptor tests
 		return ContextState{}, err
 	}
-	universe := &Project{Root: root, Cfg: state.Cfg, Targets: targets, cat: p.cat, repo: p.repo}
-	declarations, err := BuildOutputDeclarations(state.Cfg, projectCatalog(universe), universe.Targets, snapshotTreeReader{tree: state.Tree}, state.Loaded.Corpus)
+	universe := newRenderInputs(p.state, state.Cfg, snapshotTreeReader{tree: state.Tree})
+	declarations, err := BuildOutputDeclarations(state.Cfg, projectCatalog(universe), targets, snapshotTreeReader{tree: state.Tree}, state.Loaded.Corpus)
 	if err != nil { // coverage-ignore: the staged snapshot-local catalog and every declaration input were already parsed from this immutable tree
 		return ContextState{}, err
 	}
@@ -107,8 +107,8 @@ type indexState struct {
 }
 
 // indexCurrentState loads the staged ADR/topic view from the index tree.
-func indexCurrentState(p *Project, ctx context.Context) (indexState, error) {
-	tree, err := indexTree(p, ctx)
+func indexCurrentState(root string, repo *awfgit.Repo, ctx context.Context) (indexState, error) {
+	tree, err := indexTree(root, repo, ctx)
 	if err != nil {
 		return indexState{}, err
 	}
@@ -116,7 +116,7 @@ func indexCurrentState(p *Project, ctx context.Context) (indexState, error) {
 	if err != nil {
 		return indexState{}, err
 	}
-	loaded, cfg, err := loadTreeCurrentState(p.Root, tree, lock)
+	loaded, cfg, err := loadTreeCurrentState(root, tree, lock)
 	if err != nil {
 		return indexState{}, err
 	}

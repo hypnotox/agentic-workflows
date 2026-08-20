@@ -164,7 +164,7 @@ func TestPlanSectionsInPlacePartExclusive(t *testing.T) {
 		t.Fatal(err)
 	}
 	segs := parseSections("<!-- awf:section s inplace -->\nDEFAULT\n<!-- awf:end -->\n")
-	_, err = planSections(p, "skills", "foo", []string{"s"}, nil, segs, "out.md", render.HTMLComment)
+	_, err = planSections(renderInputsForTest(p), "skills", "foo", []string{"s"}, nil, segs, "out.md", render.HTMLComment)
 	if err == nil || !strings.Contains(err.Error(), "in-place-editable and must not also have a convention part") {
 		t.Fatalf("want a section-source-exclusive error, got %v", err)
 	}
@@ -184,7 +184,7 @@ func TestPlanSectionsInPlacePartReadError(t *testing.T) {
 		t.Fatal(err)
 	}
 	segs := parseSections("<!-- awf:section s inplace -->\nDEFAULT\n<!-- awf:end -->\n")
-	if _, err := planSections(p, "skills", "foo", []string{"s"}, nil, segs, "out.md", render.HTMLComment); err == nil {
+	if _, err := planSections(renderInputsForTest(p), "skills", "foo", []string{"s"}, nil, segs, "out.md", render.HTMLComment); err == nil {
 		t.Fatal("in-place part read error accepted")
 	}
 }
@@ -199,7 +199,7 @@ func TestPlanSectionsInPlaceOutputReadError(t *testing.T) {
 		t.Fatal(err)
 	}
 	segs := parseSections("<!-- awf:section s inplace -->\nDEFAULT\n<!-- awf:end -->\n")
-	if _, err := planSections(p, "skills", "foo", []string{"s"}, nil, segs, "out.md", render.HTMLComment); err == nil || !strings.Contains(err.Error(), "read output out.md") {
+	if _, err := planSections(renderInputsForTest(p), "skills", "foo", []string{"s"}, nil, segs, "out.md", render.HTMLComment); err == nil || !strings.Contains(err.Error(), "read output out.md") {
 		t.Fatalf("in-place output read error = %v", err)
 	}
 }
@@ -216,7 +216,7 @@ func TestObserveRenderInputsInPlaceOutput(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "out.md"), []byte("existing\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	inputs, err := observeRenderInputs(p, "skills", "foo", "skills/foo/SKILL.md.tmpl", "out.md", map[string]render.SectionPlan{"s": {InPlace: true}})
+	inputs, err := observeRenderInputs(renderInputsForTest(p), "skills", "foo", "skills/foo/SKILL.md.tmpl", "out.md", map[string]render.SectionPlan{"s": {InPlace: true}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -235,7 +235,7 @@ func TestObserveRenderInputsInPlaceOutput(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(root, "out.md"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := observeRenderInputs(p, "skills", "foo", "skills/foo/SKILL.md.tmpl", "out.md", map[string]render.SectionPlan{"s": {InPlace: true}}); err == nil {
+	if _, err := observeRenderInputs(renderInputsForTest(p), "skills", "foo", "skills/foo/SKILL.md.tmpl", "out.md", map[string]render.SectionPlan{"s": {InPlace: true}}); err == nil {
 		t.Fatal("observed in-place output read fault was erased")
 	}
 }
@@ -254,7 +254,7 @@ func TestPlanSectionsInPlaceReadBack(t *testing.T) {
 	declared := []string{"s", "next"}
 
 	// Absent output → in-place with an empty body (Assemble uses the default).
-	plan, err := planSections(p, "skills", "foo", declared, nil, segs, "out.md", render.HTMLComment)
+	plan, err := planSections(renderInputsForTest(p), "skills", "foo", declared, nil, segs, "out.md", render.HTMLComment)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -270,7 +270,7 @@ func TestPlanSectionsInPlaceReadBack(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "out.md"), []byte(out), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	plan, err = planSections(p, "skills", "foo", declared, nil, segs, "out.md", render.HTMLComment)
+	plan, err = planSections(renderInputsForTest(p), "skills", "foo", declared, nil, segs, "out.md", render.HTMLComment)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -309,7 +309,7 @@ func TestCheckLockedFilesInPlaceRegenDrift(t *testing.T) {
 	if err := os.WriteFile(xPath, []byte(canonical), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if d := checkLockedFiles(p, lock, rendered, nil); len(d) != 0 {
+	if d := checkLockedFiles(renderInputsForTest(p).residentRoots(), lock, rendered, nil); len(d) != 0 {
 		t.Errorf("a matching in-place file must not drift, got %v", d)
 	}
 
@@ -318,7 +318,7 @@ func TestCheckLockedFilesInPlaceRegenDrift(t *testing.T) {
 	if err := os.WriteFile(xPath, []byte(tampered), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	d := checkLockedFiles(p, lock, rendered, nil)
+	d := checkLockedFiles(renderInputsForTest(p).residentRoots(), lock, rendered, nil)
 	if len(d) != 1 || d[0].Kind != "hand-edited" {
 		t.Fatalf("a tampered awf region must drift hand-edited, got %v", d)
 	}
@@ -327,7 +327,7 @@ func TestCheckLockedFilesInPlaceRegenDrift(t *testing.T) {
 	if err := os.Remove(xPath); err != nil {
 		t.Fatal(err)
 	}
-	d = checkLockedFiles(p, lock, rendered, nil)
+	d = checkLockedFiles(renderInputsForTest(p).residentRoots(), lock, rendered, nil)
 	if len(d) != 1 || d[0].Kind != "missing" {
 		t.Fatalf("an absent in-place file → missing, got %v", d)
 	}
@@ -352,7 +352,7 @@ func TestInPlaceComposedSyncCheckFixpoint(t *testing.T) {
 
 	regenerate := func() string {
 		t.Helper()
-		plan, err := planSections(p, "skills", "foo", declared, nil, segs, "out.md", render.HTMLComment, map[string]string{"s": "## Owned heading"})
+		plan, err := planSections(renderInputsForTest(p), "skills", "foo", declared, nil, segs, "out.md", render.HTMLComment, map[string]string{"s": "## Owned heading"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -369,7 +369,7 @@ func TestInPlaceComposedSyncCheckFixpoint(t *testing.T) {
 			"out.md": {RegenChecked: true, OutputHash: manifest.Hash([]byte(regenerated))},
 		}}
 		rendered := map[string]RenderedFile{"out.md": {Path: "out.md", Content: regenerated, RegenChecked: true, TemplateID: "in-place/composed.tmpl", Policy: OutputPolicy{Regenerate: true}}}
-		return checkLockedFiles(p, lock, rendered, nil)
+		return checkLockedFiles(renderInputsForTest(p).residentRoots(), lock, rendered, nil)
 	}
 	write := func(content string) {
 		t.Helper()
@@ -489,7 +489,7 @@ func TestInPlaceRegionKeepsAuthoringCommentShapedLine(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "out.md"), []byte(out), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	plan, err := planSections(p, "skills", "foo", declared, nil, segs, "out.md", render.HTMLComment)
+	plan, err := planSections(renderInputsForTest(p), "skills", "foo", declared, nil, segs, "out.md", render.HTMLComment)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -513,11 +513,11 @@ func TestTemplateSourceSectionMarkerProjection(t *testing.T) {
 	}
 
 	p := &Project{Cfg: &config.Config{}}
-	if root := templateSourceRoot(p); root != "" {
+	if root := templateSourceRoot(renderInputsForTest(p)); root != "" {
 		t.Fatalf("absent render root = %q", root)
 	}
 	p.Cfg.Render = &config.RenderConfig{TemplateSourceRoot: "templates"}
-	if root := templateSourceRoot(p); root != "templates" {
+	if root := templateSourceRoot(renderInputsForTest(p)); root != "templates" {
 		t.Fatalf("configured render root = %q", root)
 	}
 }

@@ -4,7 +4,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 )
 
 // Sync renders and writes the project like SyncReport, discarding the backup,
@@ -14,7 +16,7 @@ import (
 func (p *Project) Sync() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	_, found, err := manifest.LoadOptional(lockPath(p))
+	_, found, err := manifest.LoadOptional(lockPath(p.Root))
 	if err != nil {
 		return err
 	}
@@ -38,4 +40,44 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		return nil, err
 	}
 	return op.writeFiles(), nil
+}
+
+func testTargets(p *Project) []Target {
+	return p.state.resolvedTargets()
+}
+
+func setTestTargets(p *Project, targets []Target) {
+	state := *p.state
+	state.targets = cloneTargets(targets)
+	p.state = &state
+}
+
+func setTestRoots(p *Project, roots resident.Roots) {
+	state := *p.state
+	state.roots = roots
+	p.state = &state
+}
+
+func renderInputsForTest(p *Project) renderInputs {
+	state := p.state
+	if state == nil {
+		selected := p.cat
+		if selected == nil {
+			selected = p.completeCat
+		}
+		if selected == nil {
+			selected = catalog.Standard
+		}
+		state = &projectState{
+			invokingRoot: p.Root,
+			roots:        p.roots,
+			nested:       p.nested,
+			targets:      cloneTargets(p.Targets),
+		}
+		if selected != nil {
+			state.selectedCat = catalog.NewView(selected)
+			state.completeCat = catalog.NewView(selected)
+		}
+	}
+	return newRenderInputs(state, p.Cfg, p.read)
 }

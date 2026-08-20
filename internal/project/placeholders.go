@@ -36,7 +36,7 @@ const awfEscSentinel = "\x00awf-esc\x00"
 // config/render context. A key is present only when its value is non-empty
 // (ADR-0057): an empty value makes the key "not available", so a part using it
 // hard-errors instead of rendering nothing.
-func placeholderRegistry(p *Project) (map[string]string, error) {
+func placeholderRegistry(p renderInputs) (map[string]string, error) {
 	reg := map[string]string{}
 	put := func(k, v string) {
 		if v != "" {
@@ -47,12 +47,12 @@ func placeholderRegistry(p *Project) (map[string]string, error) {
 	put("commitScopeTable", commitScopeTable(p))
 	put("commitScopeSentence", commitScopeSentence(p))
 	put("gatedCommands", gatedCommandsDisplay())
-	put("prefix", p.Cfg.Prefix)
+	put("prefix", p.cfg.Prefix)
 	put("sectionDefault", render.SectionDefaultSentinel)
-	if v, ok := p.Cfg.Vars["gateCmd"].(string); ok {
+	if v, ok := p.cfg.Vars["gateCmd"].(string); ok {
 		put("gateCmd", v)
 	}
-	if v, ok := p.Cfg.Vars["checkCmd"].(string); ok {
+	if v, ok := p.cfg.Vars["checkCmd"].(string); ok {
 		put("checkCmd", v)
 	}
 	for k, v := range reg {
@@ -67,8 +67,8 @@ func placeholderRegistry(p *Project) (map[string]string, error) {
 
 // commitScopeTable renders the allowed scopes as a markdown name|meaning table,
 // or "" when scopes are accept-any (ADR-0056 meanings, ADR-0057 consumer).
-func commitScopeTable(p *Project) string {
-	scopes := audit.Resolve(config.AuditScopes(p.Cfg.Audit)).AllowedScopes
+func commitScopeTable(p renderInputs) string {
+	scopes := audit.Resolve(config.AuditScopes(p.cfg.Audit)).AllowedScopes
 	if len(scopes) == 0 {
 		return ""
 	}
@@ -82,7 +82,7 @@ func commitScopeTable(p *Project) string {
 
 // commitScopeSentence renders a self-contained sentence naming the allowed
 // scopes, or "" when scopes are accept-any.
-func commitScopeSentence(p *Project) string {
+func commitScopeSentence(p renderInputs) string {
 	list := commitScopesDisplay(p)
 	if list == "" {
 		return ""
@@ -94,7 +94,7 @@ func commitScopeSentence(p *Project) string {
 // body with its registry value. An unknown or empty-valued key, or any residual
 // {{=awf token surviving substitution, is a hard error (ADR-0057).
 // touches-state: rendering/inplace-and-placeholders:part-placeholder-sandboxed - placeholder substitution + residual guard; proof in placeholders_test.go
-func substitutePlaceholders(p *Project, partName, body string, reg map[string]string) (string, error) {
+func substitutePlaceholders(partName, body string, reg map[string]string) (string, error) {
 	if !strings.Contains(body, "{{=") {
 		return body, nil
 	}

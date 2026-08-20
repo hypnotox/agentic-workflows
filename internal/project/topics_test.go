@@ -104,7 +104,7 @@ func TestTopicsPropagatesMalformedCorpus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, _, err := deriveOperationStateWithPitfalls(p); err == nil {
+	if _, _, _, _, err := deriveOperationStateWithPitfalls(renderInputsForTest(p)); err == nil {
 		t.Fatal("malformed topic corpus accepted")
 	}
 
@@ -114,7 +114,7 @@ func TestTopicsPropagatesMalformedCorpus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, _, err := deriveOperationStateWithPitfalls(withBadADR); err == nil {
+	if _, _, _, _, err := deriveOperationStateWithPitfalls(renderInputsForTest(withBadADR)); err == nil {
 		t.Fatal("malformed ADR corpus accepted by topic loader")
 	}
 }

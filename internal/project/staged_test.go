@@ -518,7 +518,8 @@ func TestCheckCommitAuthorizationPropagatesEvidenceErrors(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		return stagedProject(root, repo, prefix)
+		_ = prefix
+		return &Project{Root: root, repo: repo}
 	}
 	t.Run("no checkout", func(t *testing.T) {
 		if _, err := (&Project{Root: t.TempDir()}).CheckCommitAuthorization(testContext(t), msg); err == nil {

@@ -86,11 +86,11 @@ func (r snapshotTreeReader) Paths(prefix string) ([]string, error) {
 	return out, nil // an in-memory tree has no read to fault
 }
 
-func projectTreeReader(p *Project) ProjectTreeReader {
+func projectTreeReader(p renderInputs) ProjectTreeReader {
 	if p.read != nil {
 		return p.read
 	}
-	return filesystemProjectReader{root: p.Root}
+	return filesystemProjectReader{root: p.root()}
 }
 
 type filesystemProjectReader struct{ root string }
@@ -590,16 +590,16 @@ func resolvedTargetOutputs(t Target, prefix string, selected []string) []TargetO
 
 // targetOutputDeclarations reads recipe inputs but never executes a template.
 // Thus a collision is reported before any producer renders its output.
-func targetOutputDeclarations(p *Project, eff map[string]bool) (map[string]targetOutputDeclaration, error) {
+func targetOutputDeclarations(p renderInputs, eff map[string]bool) (map[string]targetOutputDeclaration, error) {
 	out := map[string]targetOutputDeclaration{}
-	for _, t := range p.Targets {
+	for _, t := range p.targets() {
 		if err := t.validate(); err != nil {
 			return nil, err
 		}
 		if err := validateTargetOutputRequirements(t, projectCatalog(p)); err != nil {
 			return nil, err
 		}
-		for _, o := range resolvedTargetOutputs(t, p.Cfg.Prefix, slices.Sorted(maps.Keys(projectCatalog(p).Skills))) {
+		for _, o := range resolvedTargetOutputs(t, p.cfg.Prefix, slices.Sorted(maps.Keys(projectCatalog(p).Skills))) {
 			src, err := fs.ReadFile(templates.FS, o.TemplateID)
 			if err != nil { // coverage-ignore: TestTargetOutputDeclarationsRejectUnreadableTemplate proves this error; Go's embedded-filesystem profile does not attribute its return block.
 				return nil, fmt.Errorf("read template %s: %w", o.TemplateID, err)
@@ -645,7 +645,7 @@ func targetOutputDeclarations(p *Project, eff map[string]bool) (map[string]targe
 // set at its own entry and threads them to every producer that needs one. An
 // operation that already derived them enters through outputPlan instead, so one
 // lifecycle call performs each derivation exactly once.
-func OutputPlanOperation(p *Project, ctx context.Context) (*OutputPlan, error) {
+func outputPlan(p renderInputs, ctx context.Context) (*OutputPlan, error) {
 	corpus, pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
 	if err != nil { // coverage-ignore: direct compatibility entry; lifecycle entries derive this corpus before calling the threaded planner
 		return nil, err
@@ -653,7 +653,7 @@ func OutputPlanOperation(p *Project, ctx context.Context) (*OutputPlan, error) {
 	return outputPlanWithPitfalls(p, ctx, corpus, pitfalls, topics, eff)
 }
 
-func outputPlanWithPitfalls(p *Project, ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error) {
+func outputPlanWithPitfalls(p renderInputs, ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error) {
 	if err := validateLocalDocOutputCollisions(p, corpus); err != nil {
 		return nil, err
 	}
@@ -730,7 +730,7 @@ func outputPlanWithPitfalls(p *Project, ctx context.Context, corpus adr.Corpus, 
 	domains := []RenderedFile{}
 	if fullProfile(p) {
 		var topicDeps map[string][]string
-		topicFiles, topicDeps, err = generateTopicDocs(p, ctx, topics)
+		topicFiles, topicDeps, err = generateTopicDocs(p, topics)
 		if err != nil {
 			return nil, err
 		}
@@ -782,36 +782,25 @@ func outputPlanWithPitfalls(p *Project, ctx context.Context, corpus adr.Corpus, 
 
 // PreflightLocalDoc validates one candidate declaration against the complete
 // project output plan without mutating the opened project's configuration.
-func PreflightLocalDocOperation(p *Project, ctx context.Context, doc config.LocalDoc) error {
-	candidateConfig := *p.Cfg
-	candidateConfig.LocalDocs = append(slices.Clone(p.Cfg.LocalDocs), doc)
-	_, err := projectWithConfig(p, &candidateConfig).OutputPlan(ctx)
+func preflightLocalDoc(p renderInputs, ctx context.Context, doc config.LocalDoc) error {
+	candidateConfig := *p.cfg
+	candidateConfig.LocalDocs = append(slices.Clone(p.cfg.LocalDocs), doc)
+	candidate := p
+	candidate.cfg = &candidateConfig
+	_, err := outputPlan(candidate, ctx)
 	return err
-}
-
-func projectWithConfig(p *Project, cfg *config.Config) *Project {
-	return &Project{
-		Root:    p.Root,
-		roots:   p.roots,
-		Cfg:     cfg,
-		Targets: p.Targets,
-		cat:     p.cat,
-		read:    p.read,
-		nested:  p.nested,
-		repo:    p.repo,
-	}
 }
 
 // validateLocalDocOutputCollisions compares configured local paths with the
 // complete declaration inventory before any producer renders. Intrinsic name
 // grammar remains config-owned; project owns collisions with every output
 // family, including generated and target-owned outputs.
-func validateLocalDocOutputCollisions(p *Project, corpus adr.Corpus) error {
-	declarations, err := BuildOutputDeclarations(p.Cfg, projectCatalog(p), p.Targets, projectTreeReader(p), corpus)
+func validateLocalDocOutputCollisions(p renderInputs, corpus adr.Corpus) error {
+	declarations, err := BuildOutputDeclarations(p.cfg, projectCatalog(p), p.targets(), projectTreeReader(p), corpus)
 	if err != nil {
 		return err
 	}
-	for _, local := range p.Cfg.NormalizedLocalDocs() {
+	for _, local := range p.cfg.NormalizedLocalDocs() {
 		localPath := config.DocsDir + "/" + local.Name + ".md"
 		for _, declaration := range declarations {
 			if declaration.Path == localPath && !slices.Contains(declaration.Declarers, "local-doc:"+local.Name) {
@@ -837,21 +826,25 @@ func normalizeOutputInputs(inputs []OutputInput) []OutputInput {
 }
 
 // PlannedOutputs returns plan write paths.
-func PlannedOutputsOperation(p *Project, ctx context.Context) ([]string, error) {
-	op, err := OutputPlanOperation(p, ctx)
+func plannedOutputs(p renderInputs, ctx context.Context) ([]string, error) {
+	op, err := outputPlan(p, ctx)
 	if err != nil {
 		return nil, err
 	}
+	return plannedOutputPaths(op), nil
+}
+
+func plannedOutputPaths(op *OutputPlan) []string {
 	var paths []string
 	for _, n := range op.Nodes {
 		paths = append(paths, n.Path)
 	}
-	return paths, nil
+	return paths
 }
 
 // validateLiveTemplates verifies that every identity derived from the live
 // declaration owners resolves in the shipped embedded filesystem.
-func validateLiveTemplates(p *Project) error {
+func validateLiveTemplates(p renderInputs) error {
 	for tid := range liveTemplateIDs(p) {
 		if _, err := fs.Stat(templates.FS, tid); err != nil {
 			return fmt.Errorf("read template %s: %w", tid, err)

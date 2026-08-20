@@ -137,16 +137,16 @@ func TestDeclaredSections(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := declaredSections(p, "skills", "tdd"); len(got) == 0 {
+	if got := declaredSections(renderInputsForTest(p), "skills", "tdd"); len(got) == 0 {
 		t.Error("expected tdd to declare sections")
 	}
-	if got := declaredSections(p, "agents", "code-reviewer"); len(got) == 0 {
+	if got := declaredSections(renderInputsForTest(p), "agents", "code-reviewer"); len(got) == 0 {
 		t.Error("expected code-reviewer to declare sections")
 	}
-	if got := declaredSections(p, "docs", "architecture"); len(got) == 0 {
+	if got := declaredSections(renderInputsForTest(p), "docs", "architecture"); len(got) == 0 {
 		t.Error("expected architecture to declare sections")
 	}
-	if got := declaredSections(p, "bogus-kind", "x"); got != nil {
+	if got := declaredSections(renderInputsForTest(p), "bogus-kind", "x"); got != nil {
 		t.Errorf("unknown kind should yield nil, got %v", got)
 	}
 }
@@ -227,7 +227,7 @@ func TestRenderTargetEncoderError(t *testing.T) {
 		t.Fatal(err)
 	}
 	sc := config.Sidecar{}
-	if _, err := renderTarget(p, resident.RootNames()[0], "", residentGitignoreTID(resident.RootNames()[0]), nil, sc, projectData(p, sc, mustDeriveSkills(t, p)), ".awf/efforts/.gitignore", mustDeriveSkills(t, p), &renderOutputOptions{encode: func(string) (string, error) {
+	if _, err := renderTarget(renderInputsForTest(p), resident.RootNames()[0], "", residentGitignoreTID(resident.RootNames()[0]), nil, sc, projectData(renderInputsForTest(p), sc, mustDeriveSkills(t, p)), ".awf/efforts/.gitignore", mustDeriveSkills(t, p), &renderOutputOptions{encode: func(string) (string, error) {
 		return "", errors.New("encode failure")
 	}}); err == nil {
 		t.Fatal("expected renderTarget to return the encoder error")
@@ -241,7 +241,7 @@ func TestRenderTargetMissingTemplate(t *testing.T) {
 		t.Fatal(err)
 	}
 	sc := config.Sidecar{}
-	if _, err := renderTarget(p, "skills", "ghost", "skills/ghost/SKILL.md.tmpl", nil, sc, projectData(p, sc, mustDeriveSkills(t, p)), ".claude/skills/example-ghost/SKILL.md", mustDeriveSkills(t, p)); err == nil {
+	if _, err := renderTarget(renderInputsForTest(p), "skills", "ghost", "skills/ghost/SKILL.md.tmpl", nil, sc, projectData(renderInputsForTest(p), sc, mustDeriveSkills(t, p)), ".claude/skills/example-ghost/SKILL.md", mustDeriveSkills(t, p)); err == nil {
 		t.Fatal("expected renderTarget to fail reading a nonexistent template")
 	}
 }
@@ -254,7 +254,7 @@ func TestArtifactConfigHashUnreadablePart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := artifactConfigHash(p, "body", config.Sidecar{}, []string{filepath.Join(root, "does", "not", "exist.md")}, mustDeriveSkills(t, p)); err == nil {
+	if _, err := artifactConfigHash(renderInputsForTest(p), "body", config.Sidecar{}, []string{filepath.Join(root, "does", "not", "exist.md")}, mustDeriveSkills(t, p)); err == nil {
 		t.Fatal("expected artifactConfigHash to fail reading a missing part file")
 	}
 }
@@ -376,7 +376,9 @@ func TestSyncPrunesRemovedTargetTree(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".claude", "unrelated.txt"), []byte("keep\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	p.Targets = nil
+	state := *p.state
+	state.targets = nil
+	p.state = &state
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}

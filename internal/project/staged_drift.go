@@ -21,14 +21,14 @@ func CheckStagedDriftRoot(ctx context.Context, root string) ([]manifest.Drift, e
 	if err != nil {
 		return nil, err
 	}
-	p := stagedProject(root, repo, prefix)
-	return p.CheckStagedDrift(ctx)
+	p := stagedProject(root, prefix)
+	return (&Project{state: p.state, Cfg: p.cfg, read: p.read, repo: repo}).CheckStagedDrift(ctx)
 }
 
 // CheckStagedDrift renders from the index configuration and compares generated
 // output membership plus stale and hand-edited properties against that same index.
-func CheckStagedDriftOperation(p *Project, ctx context.Context) ([]manifest.Drift, error) {
-	tree, err := indexTree(p, ctx)
+func checkStagedDrift(p renderInputs, repo *awfgit.Repo, ctx context.Context) ([]manifest.Drift, error) {
+	tree, err := indexTree(p.root(), repo, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +36,7 @@ func CheckStagedDriftOperation(p *Project, ctx context.Context) ([]manifest.Drif
 	if err != nil {
 		return nil, err
 	}
-	loaded, cfg, err := loadTreeCurrentState(p.Root, tree, lock)
+	loaded, cfg, err := loadTreeCurrentState(p.root(), tree, lock)
 	if err != nil {
 		return nil, err
 	}
@@ -55,10 +55,20 @@ func CheckStagedDriftOperation(p *Project, ctx context.Context) ([]manifest.Drif
 	// layer, while consulting the global catalog would discard injected entries.
 	completeCat := completeProjectCatalog(p)
 	selected := catalog.NewProfileView(completeCat, state.Cfg.Profile).Catalog()
-	universe := &Project{
-		Root: p.Root, roots: p.roots, Cfg: state.Cfg, Targets: targets,
-		completeCat: completeCat, cat: selected, read: read, nested: p.nested, repo: p.repo,
+	facts, err := config.NewFacts(state.Cfg)
+	if err != nil { // coverage-ignore: loadTreeCurrentState already parsed semantic config data
+		return nil, err
 	}
+	universeState := &projectState{
+		invokingRoot: p.root(),
+		roots:        p.residentRoots(),
+		nested:       p.isNested(),
+		facts:        facts,
+		selectedCat:  catalog.NewProfileView(selected, catalog.ProfileFull),
+		completeCat:  catalog.NewProfileView(completeCat, catalog.ProfileFull),
+		targets:      cloneTargets(targets),
+	}
+	universe := newRenderInputs(universeState, state.Cfg, read)
 	if err := validateAgainstCatalog(universe); err != nil {
 		return nil, err
 	}
@@ -82,7 +92,7 @@ func CheckStagedDriftOperation(p *Project, ctx context.Context) ([]manifest.Drif
 	for _, file := range state.Tree.List() {
 		indexed[file.Path] = true
 	}
-	return checkStagedRenderedFiles(state.Lock, rendered, read, indexed, !p.nested)
+	return checkStagedRenderedFiles(state.Lock, rendered, read, indexed, !p.isNested())
 }
 
 // checkStagedRenderedFiles intentionally has no structural drift branches.

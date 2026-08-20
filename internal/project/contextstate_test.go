@@ -8,7 +8,7 @@ import "testing"
 // the only route that reaches the snapshot failure directly.
 func TestIndexCurrentStatePropagatesSnapshotFailure(t *testing.T) {
 	t.Parallel()
-	if _, err := indexCurrentState(&Project{Root: t.TempDir()}, testContext(t)); err == nil {
+	if _, err := indexCurrentState(t.TempDir(), nil, testContext(t)); err == nil {
 		t.Fatal("index current state accepted a non-repository")
 	}
 }

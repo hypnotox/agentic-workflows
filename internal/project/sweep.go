@@ -45,7 +45,7 @@ func (m *claimedModel) claimedDir(dir string) bool {
 // and the plan write files (whose .awf/-prefixed paths are exactly the
 // enabled config-tree render units - the model derives from the same code
 // path that writes them, per the ADR's dual-bookkeeping consequence).
-func buildClaimedModel(p *Project, files []RenderedFile, topics topic.Corpus) *claimedModel {
+func buildClaimedModel(p renderInputs, files []RenderedFile, topics topic.Corpus) *claimedModel {
 	m := &claimedModel{
 		files: map[string]bool{
 			config.DirName + "/config.yaml":                   true,
@@ -75,7 +75,7 @@ func buildClaimedModel(p *Project, files []RenderedFile, topics topic.Corpus) *c
 		m.dirs[config.DirName+"/"+kind] = true
 		m.dirs[config.DirName+"/"+kind+"/parts"] = true
 		m.artifacts[kind] = map[string]bool{}
-		names := p.Cfg.Domains
+		names := p.cfg.Domains
 		if d.poolNames != nil {
 			names = d.poolNames(projectCatalog(p))
 		}
@@ -108,7 +108,7 @@ func buildClaimedModel(p *Project, files []RenderedFile, topics topic.Corpus) *c
 	m.dirs[config.DirName+"/topics"] = true
 	m.dirs[config.DirName+"/topics/metadata"] = true
 	m.dirs[config.DirName+"/topics/parts"] = true
-	for _, domain := range p.Cfg.Domains {
+	for _, domain := range p.cfg.Domains {
 		m.dirs[config.DirName+"/topics/metadata/"+domain] = true
 		m.dirs[config.DirName+"/topics/parts/"+domain] = true
 	}
@@ -168,15 +168,15 @@ func (m *claimedModel) classify(rel string, isDir bool) manifest.Drift {
 // are wholly exempt. It subsumes the pre-ADR-0086 orphan sweep: wrong-name
 // sidecars/parts and undeclared sections keep their detail strings
 // (inv: drift-source-set; ADR-0011 section-orphan-flagged).
-func sweepConfigTree(p *Project, files []RenderedFile, topics topic.Corpus) ([]manifest.Drift, error) {
+func sweepConfigTree(p renderInputs, files []RenderedFile, topics topic.Corpus) ([]manifest.Drift, error) {
 	m := buildClaimedModel(p, files, topics)
 	var drift []manifest.Drift
-	walkErr := filepath.WalkDir(filepath.Join(p.Root, config.DirName), func(path string, de fs.DirEntry, err error) error {
+	walkErr := filepath.WalkDir(filepath.Join(p.root(), config.DirName), func(path string, de fs.DirEntry, err error) error {
 		if err != nil { // coverage-ignore: Check requires the lock inside .awf, so the tree exists; a mid-walk error is a permission fault a test cannot trigger
 			return err
 		}
-		rel, rerr := filepath.Rel(p.Root, path)
-		if rerr != nil { // coverage-ignore: path is always under p.Root
+		rel, rerr := filepath.Rel(p.root(), path)
+		if rerr != nil { // coverage-ignore: path is always under p.root()
 			return rerr
 		}
 		rel = filepath.ToSlash(rel)
@@ -187,7 +187,7 @@ func sweepConfigTree(p *Project, files []RenderedFile, topics topic.Corpus) ([]m
 			// Dynamic residents exist only at the primary control root. A linked
 			// checkout's same-named tree is not resident authority and must not be
 			// silently exempted from its tracked config sweep.
-			if resident.IsResidentPath(rel) && p.Root == p.roots.Resident {
+			if resident.IsResidentPath(rel) && p.root() == p.residentRoots().Resident {
 				return filepath.SkipDir
 			}
 			if m.claimedDir(rel) {

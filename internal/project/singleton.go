@@ -110,9 +110,9 @@ type conditionalUnit struct {
 // render authority together with its declared representation. Recognition-only
 // identities are intentionally absent. This keeps structural parsing and the
 // exhaustive census on the same declaration owners as output planning.
-func liveTemplateEncoders(p *Project) map[string]AgentDialect {
+func liveTemplateEncoders(p renderInputs) map[string]AgentDialect {
 	encoders := map[string]AgentDialect{topicTID: MarkdownAgentDialect, topicIndexTID: MarkdownAgentDialect, pitfallEntryTID: MarkdownAgentDialect}
-	if len(p.Cfg.LocalDocs) != 0 {
+	if len(p.cfg.LocalDocs) != 0 {
 		encoders[localDocTID] = MarkdownAgentDialect
 	}
 	for _, descriptor := range kindDescriptors {
@@ -129,7 +129,7 @@ func liveTemplateEncoders(p *Project) map[string]AgentDialect {
 	for _, entry := range projectCatalog(p).Docs {
 		encoders[entry.TID] = MarkdownAgentDialect
 	}
-	for _, target := range p.Targets {
+	for _, target := range p.targets() {
 		if target.BridgeTemplate != "" {
 			encoders[target.BridgeTemplate] = MarkdownAgentDialect
 		}
@@ -147,7 +147,7 @@ func liveTemplateEncoders(p *Project) map[string]AgentDialect {
 }
 
 // liveTemplateIDs is the identity-only projection used by completeness checks.
-func liveTemplateIDs(p *Project) map[string]bool {
+func liveTemplateIDs(p renderInputs) map[string]bool {
 	ids := map[string]bool{}
 	for tid := range liveTemplateEncoders(p) {
 		ids[tid] = true

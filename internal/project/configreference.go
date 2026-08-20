@@ -18,7 +18,7 @@ import (
 
 // crefRel is the generated config reference's project-relative output path,
 // derived from its catalog entry like every doc path.
-func crefRel(p *Project) string {
+func crefRel(p renderInputs) string {
 	return config.DocsDir + "/" + projectCatalog(p).Docs["config-reference"].Path
 }
 
@@ -99,80 +99,80 @@ func renderedVarConsumers(files []RenderedFile) map[string][]string {
 
 // currentValueResolvers couples each live classification to the function that
 // computes its project value. Static keys have no resolver.
-func currentValueResolvers(p *Project) map[string]func() string {
+func currentValueResolvers(p renderInputs) map[string]func() string {
 	var scopes []config.ScopeSpec
-	if p.Cfg.Audit != nil {
-		scopes = p.Cfg.Audit.AllowedScopes
+	if p.cfg.Audit != nil {
+		scopes = p.cfg.Audit.AllowedScopes
 	}
 	res := audit.Resolve(scopes)
 	return map[string]func() string{
-		"profile":           func() string { return "`" + string(p.Cfg.Profile) + "`" },
-		"prefix":            func() string { return "`" + p.Cfg.Prefix + "`" },
-		"integrationBranch": func() string { return "`" + p.Cfg.IntegrationBranch + "`" },
+		"profile":           func() string { return "`" + string(p.cfg.Profile) + "`" },
+		"prefix":            func() string { return "`" + p.cfg.Prefix + "`" },
+		"integrationBranch": func() string { return "`" + p.cfg.IntegrationBranch + "`" },
 		"render.templateSourceRoot": func() string {
-			if p.Cfg.Render == nil {
+			if p.cfg.Render == nil {
 				return "(none)"
 			}
-			return "`" + p.Cfg.Render.TemplateSourceRoot + "`"
+			return "`" + p.cfg.Render.TemplateSourceRoot + "`"
 		},
 		"vars": func() string {
 			set := 0
-			for _, v := range p.Cfg.Vars {
+			for _, v := range p.cfg.Vars {
 				if v != nil && v != "" {
 					set++
 				}
 			}
-			return fmt.Sprintf("%d keys, %d set", len(p.Cfg.Vars), set)
+			return fmt.Sprintf("%d keys, %d set", len(p.cfg.Vars), set)
 		},
-		"localDocs": func() string { return strconv.Itoa(len(p.Cfg.LocalDocs)) + " configured" },
-		"domains":   func() string { return strconv.Itoa(len(p.Cfg.Domains)) + " configured" },
+		"localDocs": func() string { return strconv.Itoa(len(p.cfg.LocalDocs)) + " configured" },
+		"domains":   func() string { return strconv.Itoa(len(p.cfg.Domains)) + " configured" },
 		"tags": func() string {
-			if len(p.Cfg.Tags) == 0 {
+			if len(p.cfg.Tags) == 0 {
 				return "(none)"
 			}
-			return strconv.Itoa(len(p.Cfg.Tags)) + " tags"
+			return strconv.Itoa(len(p.cfg.Tags)) + " tags"
 		},
 		"contextIgnore": func() string {
-			if len(p.Cfg.ContextIgnore) == 0 {
+			if len(p.cfg.ContextIgnore) == 0 {
 				return "(none)"
 			}
-			return strconv.Itoa(len(p.Cfg.ContextIgnore)) + " patterns"
+			return strconv.Itoa(len(p.cfg.ContextIgnore)) + " patterns"
 		},
 		"commitPolicy.grandfatheredThrough": func() string {
-			if p.Cfg.CommitPolicy == nil || p.Cfg.CommitPolicy.GrandfatheredThrough == "" {
+			if p.cfg.CommitPolicy == nil || p.cfg.CommitPolicy.GrandfatheredThrough == "" {
 				return "(none)"
 			}
-			return "`" + p.Cfg.CommitPolicy.GrandfatheredThrough + "`"
+			return "`" + p.cfg.CommitPolicy.GrandfatheredThrough + "`"
 		},
 		"commitPolicy.allowedIdentities": func() string {
-			if p.Cfg.CommitPolicy == nil || len(p.Cfg.CommitPolicy.AllowedIdentities) == 0 {
+			if p.cfg.CommitPolicy == nil || len(p.cfg.CommitPolicy.AllowedIdentities) == 0 {
 				return "(none)"
 			}
-			return strconv.Itoa(len(p.Cfg.CommitPolicy.AllowedIdentities)) + " identities"
+			return strconv.Itoa(len(p.cfg.CommitPolicy.AllowedIdentities)) + " identities"
 		},
 		"commitPolicy.requireSignedCommits": func() string {
-			if p.Cfg.CommitPolicy == nil {
+			if p.cfg.CommitPolicy == nil {
 				return "false (default)"
 			}
-			return strconv.FormatBool(p.Cfg.CommitPolicy.RequireSignedCommits)
+			return strconv.FormatBool(p.cfg.CommitPolicy.RequireSignedCommits)
 		},
 		"commitPolicy.allowedSigners": func() string {
-			if p.Cfg.CommitPolicy == nil || len(p.Cfg.CommitPolicy.AllowedSigners) == 0 {
+			if p.cfg.CommitPolicy == nil || len(p.cfg.CommitPolicy.AllowedSigners) == 0 {
 				return "(none)"
 			}
-			return strconv.Itoa(len(p.Cfg.CommitPolicy.AllowedSigners)) + " signers"
+			return strconv.Itoa(len(p.cfg.CommitPolicy.AllowedSigners)) + " signers"
 		},
 		"currentState.sources": func() string {
-			if p.Cfg.CurrentState == nil || len(p.Cfg.CurrentState.Sources) == 0 {
+			if p.cfg.CurrentState == nil || len(p.cfg.CurrentState.Sources) == 0 {
 				return "(none)"
 			}
-			return strconv.Itoa(len(p.Cfg.CurrentState.Sources)) + " sources"
+			return strconv.Itoa(len(p.cfg.CurrentState.Sources)) + " sources"
 		},
 		"currentState.testGlobs": func() string {
-			if p.Cfg.CurrentState == nil || len(p.Cfg.CurrentState.TestGlobs) == 0 {
+			if p.cfg.CurrentState == nil || len(p.cfg.CurrentState.TestGlobs) == 0 {
 				return "(none)"
 			}
-			return strconv.Itoa(len(p.Cfg.CurrentState.TestGlobs)) + " globs"
+			return strconv.Itoa(len(p.cfg.CurrentState.TestGlobs)) + " globs"
 		},
 		"audit.allowedScopes": func() string {
 			if len(res.AllowedScopes) == 0 {
@@ -181,19 +181,19 @@ func currentValueResolvers(p *Project) map[string]func() string {
 			return strconv.Itoa(len(res.AllowedScopes)) + " scopes"
 		},
 		"bootstrap.enabled": func() string {
-			return strconv.FormatBool(p.Cfg.Bootstrap != nil && p.Cfg.Bootstrap.Enabled)
+			return strconv.FormatBool(p.cfg.Bootstrap != nil && p.cfg.Bootstrap.Enabled)
 		},
 		"proseGate.exemptions": func() string {
-			if p.Cfg.ProseGate == nil || len(p.Cfg.ProseGate.Exemptions) == 0 {
+			if p.cfg.ProseGate == nil || len(p.cfg.ProseGate.Exemptions) == 0 {
 				return "(none)"
 			}
-			return fmt.Sprintf("%d entries", len(p.Cfg.ProseGate.Exemptions))
+			return fmt.Sprintf("%d entries", len(p.cfg.ProseGate.Exemptions))
 		},
 		"memoryCite.exemptions": func() string {
-			if p.Cfg.MemoryCite == nil || len(p.Cfg.MemoryCite.Exemptions) == 0 {
+			if p.cfg.MemoryCite == nil || len(p.cfg.MemoryCite.Exemptions) == 0 {
 				return "(none)"
 			}
-			return fmt.Sprintf("%d entries", len(p.Cfg.MemoryCite.Exemptions))
+			return fmt.Sprintf("%d entries", len(p.cfg.MemoryCite.Exemptions))
 		},
 	}
 }
@@ -224,8 +224,8 @@ func validateLiveStateAuthority(classes map[string]configspec.LiveStateClass, re
 
 // varState renders the three-way var state: set, present-but-empty (an open
 // to-do), or absent (the deliberate decline).
-func varState(p *Project, key string) string {
-	v, ok := p.Cfg.Vars[key]
+func varState(p renderInputs, key string) string {
+	v, ok := p.cfg.Vars[key]
 	switch {
 	case !ok:
 		return "absent, declined; the generic prose renders"
@@ -273,7 +273,7 @@ type ConfigReference struct {
 // configReferenceRows builds the four reference collections as struct rows -
 // the single implementation behind both the `awf config` live model and, via
 // configReferenceData's map adaptation, the doc generator's template input.
-func configReferenceRows(p *Project, files []RenderedFile) (ConfigReference, error) {
+func configReferenceRows(p renderInputs, files []RenderedFile) (ConfigReference, error) {
 	var ref ConfigReference
 	classes := configspec.LiveStateClassifications()
 	resolvers := currentValueResolvers(p)
@@ -352,7 +352,7 @@ func configReferenceRows(p *Project, files []RenderedFile) (ConfigReference, err
 // docs/config-reference.md cannot silently diverge; the render drift oracle
 // pins the adaptation. files is the consumption input: the output plan's
 // write files plus the generated domain docs.
-func configReferenceData(p *Project, files []RenderedFile) (map[string]any, error) {
+func configReferenceData(p renderInputs, files []RenderedFile) (map[string]any, error) {
 	ref, err := configReferenceRows(p, files)
 	if err != nil { // coverage-ignore: configReferenceRows fails only on the embedded-template and sidecar re-reads its own body already coverage-ignores
 		return nil, err
@@ -400,7 +400,7 @@ func fullOnlyConfigKey(path string) bool {
 		strings.HasPrefix(path, "currentState.") || strings.HasPrefix(path, "memoryCite.")
 }
 
-func dataKeyRowsTyped(p *Project) ([]DataKeyRow, error) {
+func dataKeyRowsTyped(p renderInputs) ([]DataKeyRow, error) {
 	var rows []DataKeyRow
 	for _, d := range configspec.DataKeys() {
 		if d.Artifact != "agents-doc" {
@@ -429,7 +429,7 @@ func dataKeyRowsTyped(p *Project) ([]DataKeyRow, error) {
 		if d.Artifact == "agents-doc" {
 			sidecarKind, sidecarName = "agents-doc", ""
 		}
-		sc, err := p.Cfg.Sidecar(sidecarKind, sidecarName)
+		sc, err := p.cfg.Sidecar(sidecarKind, sidecarName)
 		if err != nil { // coverage-ignore: these sidecars were already read by the render pass in outputPlan
 			return nil, err
 		}
@@ -483,8 +483,8 @@ func dataKeyRowsTyped(p *Project) ([]DataKeyRow, error) {
 // (ADR-class: generated index, no template/config hashes - drift is checked
 // by regeneration). files is the consumption input (the plan write files plus
 // generated domain docs).
-func generateConfigReference(p *Project, files []RenderedFile, eff map[string]bool) (*RenderedFile, bool, error) {
-	sc, err := p.Cfg.Sidecar("config-reference", "")
+func generateConfigReference(p renderInputs, files []RenderedFile, eff map[string]bool) (*RenderedFile, bool, error) {
+	sc, err := p.cfg.Sidecar("config-reference", "")
 	if err != nil { // coverage-ignore: validation already read this sidecar at open
 		return nil, false, err
 	}
@@ -515,7 +515,7 @@ func generateConfigReference(p *Project, files []RenderedFile, eff map[string]bo
 // ConfigReferenceModel computes the reference's four typed collections
 // (ConfigKeys, VarEntries, SidecarFields, DataKeys) with live project state -
 // the `awf config` command's data source.
-func ConfigReferenceModelOperation(p *Project, ctx context.Context) (ConfigReference, error) {
+func configReferenceModel(p renderInputs, ctx context.Context) (ConfigReference, error) {
 	corpus, pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
 	if err != nil {
 		return ConfigReference{}, err

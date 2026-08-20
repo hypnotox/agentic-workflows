@@ -10,6 +10,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
@@ -21,8 +22,8 @@ import (
 // QueryTopic assembles one read-only topic or claim projection from one
 // intrinsically routed working snapshot. Active state and operation history therefore
 // cannot come from different worktree universes.
-func QueryTopicOperation(p *Project, ctx context.Context, selector string, opts topic.QueryOptions) (topic.QueryResult, error) {
-	ws, err := workingCurrentState(p, ctx)
+func queryTopic(root string, repo *awfgit.Repo, ctx context.Context, selector string, opts topic.QueryOptions) (topic.QueryResult, error) {
+	ws, err := workingCurrentState(root, repo, ctx)
 	if err != nil {
 		return topic.QueryResult{}, err
 	}
@@ -38,7 +39,7 @@ func QueryTopicOperation(p *Project, ctx context.Context, selector string, opts 
 }
 
 // touches-state: rendering/render-engine:source-marker-informational - topic producer supplies reader-facing page pairs and index globs
-func generateTopicDocs(p *Project, ctx context.Context, corpus topic.Corpus) (files []RenderedFile, deps map[string][]string, err error) {
+func generateTopicDocs(p renderInputs, corpus topic.Corpus) (files []RenderedFile, deps map[string][]string, err error) {
 	deps = map[string][]string{}
 	topicTemplate, err := fs.ReadFile(templates.FS, topicTID)
 	if err != nil { // coverage-ignore: the topic template is compile-time embedded
@@ -54,12 +55,10 @@ func generateTopicDocs(p *Project, ctx context.Context, corpus topic.Corpus) (fi
 		if err != nil { // coverage-ignore: the only injected production reader is snapshotTreeReader, whose in-memory enumeration cannot fail
 			return nil, nil, err
 		}
-	} else if workingTree, snapErr := workingTree(p, ctx); snapErr == nil {
-		currentPaths = safelyMatchablePaths(workingTree)
 	} else {
-		// Init and isolated renderer tests can render before a Git repository
-		// exists; use the same canonical filesystem paths in that pre-adoption case.
-		currentPaths, err = filesystemProjectReader{root: p.Root}.Paths("")
+		// Init and ordinary working-tree rendering use canonical filesystem paths;
+		// staged rendering supplies its snapshot reader explicitly above.
+		currentPaths, err = filesystemProjectReader{root: p.root()}.Paths("")
 		if err != nil {
 			return nil, nil, err
 		}
@@ -77,13 +76,13 @@ func generateTopicDocs(p *Project, ctx context.Context, corpus topic.Corpus) (fi
 		if err != nil { // coverage-ignore: ParsePart already validated authoring comments and the typed model is always executable
 			return nil, nil, fmt.Errorf("render topic %s: %w", t.ID.String(), err)
 		}
-		metadataPath, partPath := relSlash(p.Root, t.MetadataPath), relSlash(p.Root, t.PartPath)
+		metadataPath, partPath := relSlash(p.root(), t.MetadataPath), relSlash(p.root(), t.PartPath)
 		marker, templateInputs, err := templateSourceRootMarker(p, topicTID)
 		if err != nil { // coverage-ignore: topicTID is validated embedded authority; helper error paths are covered directly
 			return nil, nil, err
 		}
 		content = injectSourceMarker(injectBanner(marker+content, topicTID), []string{metadataPath, partPath})
-		cfgHash, err := topicHash(p.Root, projectTreeReader(p), model, t.MetadataPath, t.PartPath)
+		cfgHash, err := topicHash(p.root(), projectTreeReader(p), model, t.MetadataPath, t.PartPath)
 		if err != nil { // coverage-ignore: topic loading just read both inputs; failure requires a concurrent filesystem race
 			return nil, nil, err
 		}
@@ -93,7 +92,7 @@ func generateTopicDocs(p *Project, ctx context.Context, corpus topic.Corpus) (fi
 		files = append(files, RenderedFile{Path: path, Content: content, TemplateID: topicTID, TemplateHash: manifest.Hash(topicTemplate), ConfigHash: cfgHash, Policy: declaredPolicy("topics", false), Declarer: "topic:" + t.ID.String(), DeclarerProjection: t.ID.String() + "\x00" + strings.Join(referenceProjection, "\x00"), Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, ConsumedInputs: observed, ObservedTemplateID: topicTID})
 		deps[path] = []string{metadataPath, partPath}
 	}
-	for _, domain := range slices.Sorted(slices.Values(p.Cfg.Domains)) {
+	for _, domain := range slices.Sorted(slices.Values(p.cfg.Domains)) {
 		topics := corpus.ForDomain(domain)
 		if len(topics) == 0 {
 			continue
@@ -115,7 +114,7 @@ func generateTopicDocs(p *Project, ctx context.Context, corpus topic.Corpus) (fi
 		path := base + "/" + domain + "/index.md"
 		observed := []OutputInput{{Path: config.DirName + "/config.yaml", Role: ArtifactConfig}, {Path: "templates/" + topicIndexTID, Role: ArtifactTemplate}}
 		for _, t := range topics {
-			metadataPath, partPath := relSlash(p.Root, t.MetadataPath), relSlash(p.Root, t.PartPath)
+			metadataPath, partPath := relSlash(p.root(), t.MetadataPath), relSlash(p.root(), t.PartPath)
 			deps[path] = append(deps[path], metadataPath, partPath)
 			observed = append(observed, OutputInput{Path: metadataPath, Role: ArtifactTopicMetadata}, OutputInput{Path: partPath, Role: ArtifactClaimPart})
 		}

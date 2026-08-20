@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
 
 // ListDocument renders the fixed catalog and configured domain inventory.
-func ListDocumentOperation(p *Project, kindFilter string) (presentation.Document, error) {
+func listDocument(cfg *config.Config, cat *catalog.Catalog, kindFilter string) (presentation.Document, error) {
 	if kindFilter == "target" {
 		return listTargetDocument()
 	}
@@ -24,14 +26,14 @@ func ListDocumentOperation(p *Project, kindFilter string) (presentation.Document
 		plural, _ := PluralKind(kind)
 		var entries []string
 		if kind == "domain" {
-			entries = slices.Sorted(slices.Values(p.Cfg.Domains))
+			entries = slices.Sorted(slices.Values(cfg.Domains))
 			if len(entries) == 0 {
 				entries = []string{"none"}
 			}
 		} else {
-			entries, _ = CatalogNames(projectCatalog(p), kind)
+			entries, _ = CatalogNames(cat, kind)
 			for i, name := range entries {
-				if sidecar, err := p.Cfg.Sidecar(plural, name); err == nil && (sidecar.Data != nil || sidecar.Sections != nil) {
+				if sidecar, err := cfg.Sidecar(plural, name); err == nil && (sidecar.Data != nil || sidecar.Sections != nil) {
 					entries[i] = name + " (tuned)"
 				}
 			}

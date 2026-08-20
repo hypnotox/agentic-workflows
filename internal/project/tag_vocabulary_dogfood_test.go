@@ -12,7 +12,7 @@ func TestTagVocabularyMatchesPitfallTags(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	corpus, err := loadPitfallCorpus(p)
+	corpus, err := loadPitfallCorpus(renderInputsForTest(p))
 	if err != nil {
 		t.Fatal(err)
 	}

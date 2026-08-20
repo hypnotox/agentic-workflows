@@ -36,14 +36,14 @@ func TestGatedCommandsDisplay(t *testing.T) {
 	}
 
 	p := &Project{Cfg: &config.Config{}}
-	registry, err := placeholderRegistry(p)
+	registry, err := placeholderRegistry(renderInputsForTest(p))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got := registry["gatedCommands"]; got != want {
 		t.Errorf("placeholder gatedCommands = %q, want %q", got, want)
 	}
-	if got := projectData(p, config.Sidecar{}, map[string]bool{})["gatedCommands"]; got != want {
+	if got := projectData(renderInputsForTest(p), config.Sidecar{}, map[string]bool{})["gatedCommands"]; got != want {
 		t.Errorf("agent-guide gatedCommands = %q, want %q", got, want)
 	}
 }

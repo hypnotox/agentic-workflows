@@ -17,7 +17,7 @@ func deadSkillRefs(t *testing.T, files map[string]string) []string {
 		t.Fatal(err)
 	}
 	var details []string
-	for _, d := range checkDeadSkillRefs(p, rendered, mustDeriveSkills(t, p)) {
+	for _, d := range checkDeadSkillRefs(renderInputsForTest(p), rendered, mustDeriveSkills(t, p)) {
 		if d.Kind != "dead-skill-reference" {
 			t.Fatalf("unexpected drift kind %q", d.Kind)
 		}
@@ -85,11 +85,11 @@ func TestEffectiveSkillsMembership(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	eff, err := effectiveSkills(p)
+	eff, err := effectiveSkills(renderInputsForTest(p))
 	if err != nil {
 		t.Fatal(err)
 	}
-	for name := range projectCatalog(p).Skills {
+	for name := range projectCatalog(renderInputsForTest(p)).Skills {
 		if !eff[name] {
 			t.Errorf("catalog skill %q missing from effective set", name)
 		}

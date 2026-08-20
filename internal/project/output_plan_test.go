@@ -39,10 +39,10 @@ func TestLocalDocsOutputPlan(t *testing.T) {
 	if !slices.Equal(paths, []string{"docs/runbooks/a.md", "docs/runbooks/z.md"}) {
 		t.Fatalf("local paths = %v", paths)
 	}
-	if _, ok := layout(p).Docs["runbooks/a"]; ok {
+	if _, ok := layout(renderInputsForTest(p)).Docs["runbooks/a"]; ok {
 		t.Fatal("local document entered catalog layout")
 	}
-	if projectCatalog(p).Docs["runbooks/a"].TID != "" {
+	if projectCatalog(renderInputsForTest(p)).Docs["runbooks/a"].TID != "" {
 		t.Fatal("local document entered catalog")
 	}
 }
@@ -68,11 +68,11 @@ func TestLocalDocDeclarationDeclaresExistingOutputInput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	corpus, _, _, _, err := deriveOperationStateWithPitfalls(p)
+	corpus, _, _, _, err := deriveOperationStateWithPitfalls(renderInputsForTest(p))
 	if err != nil {
 		t.Fatal(err)
 	}
-	declarations, err := BuildOutputDeclarations(p.Cfg, projectCatalog(p), p.Targets, filesystemProjectReader{root: p.Root}, corpus)
+	declarations, err := BuildOutputDeclarations(p.Cfg, projectCatalog(renderInputsForTest(p)), p.Targets, filesystemProjectReader{root: p.Root}, corpus)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +94,7 @@ func TestLocalDocCollisionWithTargetOutputPrecedesRendering(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p.Targets = append(p.Targets, Target{Name: "collision", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "docs/runbooks/x.md", TemplateID: "docs/architecture.md.tmpl", Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}})
+	setTestTargets(p, append(testTargets(p), Target{Name: "collision", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "docs/runbooks/x.md", TemplateID: "docs/architecture.md.tmpl", Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}}))
 	if _, err := p.OutputPlan(testContext(t)); err == nil || !strings.Contains(err.Error(), "collides with managed output") {
 		t.Fatalf("collision error = %v", err)
 	}
@@ -154,7 +154,7 @@ func TestTargetDescriptorValidation(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		p.Targets = []Target{target}
+		setTestTargets(p, []Target{target})
 		if _, err := p.OutputPlan(testContext(t)); err == nil {
 			t.Fatalf("planner accepted invalid target %#v", target)
 		}
@@ -195,7 +195,7 @@ func TestBridgeRenderIdentity(t *testing.T) {
 			Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true,
 		}},
 	}
-	p.Targets = []Target{claudeTarget, custom, piTarget}
+	setTestTargets(p, []Target{claudeTarget, custom, piTarget})
 	plan, err := p.OutputPlan(testContext(t))
 	if err != nil {
 		t.Fatal(err)
@@ -267,7 +267,7 @@ func TestBridgeRenderIdentity(t *testing.T) {
 	}
 
 	custom.BridgeTemplate = "missing/custom-bridge.tmpl"
-	p.Targets = []Target{custom}
+	setTestTargets(p, []Target{custom})
 	if _, err := p.OutputPlan(testContext(t)); err == nil || !strings.Contains(err.Error(), "read template missing/custom-bridge.tmpl") {
 		t.Fatalf("missing custom bridge template error = %v", err)
 	}
@@ -284,7 +284,7 @@ func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *test
 	shared := piTarget
 	shared.Name = "second-pi"
 	shared.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
-	p.Targets = append(p.Targets, shared)
+	setTestTargets(p, append(testTargets(p), shared))
 	op, err := p.OutputPlan(testContext(t))
 	if err != nil {
 		t.Fatal(err)
@@ -301,7 +301,9 @@ func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *test
 			sharedHash = n.file.ConfigHash
 		}
 	}
-	p.Targets[len(p.Targets)-1].Name = "renamed-pi"
+	targets := testTargets(p)
+	targets[len(targets)-1].Name = "renamed-pi"
+	setTestTargets(p, targets)
 	op, err = p.OutputPlan(testContext(t))
 	if err != nil {
 		t.Fatal(err)
@@ -311,7 +313,9 @@ func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *test
 			t.Fatal("declarer descriptor identity did not change drift hash")
 		}
 	}
-	p.Targets[len(p.Targets)-1].Outputs[0].Policy = OutputPolicy{Regenerate: true}
+	targets = testTargets(p)
+	targets[len(targets)-1].Outputs[0].Policy = OutputPolicy{Regenerate: true}
+	setTestTargets(p, targets)
 	if _, err := p.OutputPlan(testContext(t)); err == nil || !strings.Contains(err.Error(), "conflicting output recipes") {
 		t.Fatalf("conflicting shared output error = %v", err)
 	}
@@ -469,7 +473,7 @@ func TestTargetOutputDeclarationsRejectUnreadableTemplate(t *testing.T) {
 	bad.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
 	bad.Outputs[0].TemplateID = "missing/target-output.tmpl"
 	p := &Project{Cfg: &config.Config{Prefix: "example"}, cat: catalog.NewView(catalog.Standard).Catalog(), Targets: []Target{bad}}
-	_, err := targetOutputDeclarations(p, nil)
+	_, err := targetOutputDeclarations(renderInputsForTest(p), nil)
 	t.Logf("target output declaration error = %v", err)
 	if err == nil || !strings.Contains(err.Error(), "read template missing/target-output.tmpl") {
 		t.Fatalf("unreadable target output template error = %v", err)
@@ -481,7 +485,7 @@ func TestTargetOutputDeclarationsRejectUnknownRequiredSkill(t *testing.T) {
 	bad.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
 	bad.Outputs[0].RequiresSkill = "missing"
 	p := &Project{Cfg: &config.Config{Prefix: "example"}, cat: catalog.NewView(catalog.Standard).Catalog(), Targets: []Target{bad}}
-	if _, err := targetOutputDeclarations(p, nil); err == nil || !strings.Contains(err.Error(), "unknown catalog skill") {
+	if _, err := targetOutputDeclarations(renderInputsForTest(p), nil); err == nil || !strings.Contains(err.Error(), "unknown catalog skill") {
 		t.Fatalf("unknown target output requirement error = %v", err)
 	}
 }
@@ -492,8 +496,8 @@ func TestValidateLiveTemplatesRejectsMissingTargetTemplate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p.Targets = append(p.Targets, Target{Outputs: []TargetOutput{{TemplateID: "missing/live-template.tmpl"}}})
-	if err := validateLiveTemplates(p); err == nil || !strings.Contains(err.Error(), "read template missing/live-template.tmpl") {
+	setTestTargets(p, append(testTargets(p), Target{Outputs: []TargetOutput{{TemplateID: "missing/live-template.tmpl"}}}))
+	if err := validateLiveTemplates(renderInputsForTest(p)); err == nil || !strings.Contains(err.Error(), "read template missing/live-template.tmpl") {
 		t.Fatalf("missing live template error = %v", err)
 	}
 }

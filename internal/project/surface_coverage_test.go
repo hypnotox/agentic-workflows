@@ -46,7 +46,7 @@ func TestAdvisoryNotesRejectMalformedRetainedData(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := advisoryNotesWithState(p, pitfall.Corpus{}, nil, &OutputPlan{}); err == nil || !strings.Contains(err.Error(), "must be a list") {
+		if _, err := advisoryNotesWithState(renderInputsForTest(p), pitfall.Corpus{}, nil, &OutputPlan{}); err == nil || !strings.Contains(err.Error(), "must be a list") {
 			t.Fatalf("advisory glossary error = %v", err)
 		}
 	})
@@ -87,11 +87,11 @@ func TestCheckWithStatePropagatesMalformedRetainedData(t *testing.T) {
 			if err := p.Sync(); err != nil {
 				t.Fatal(err)
 			}
-			corpus, pitfalls, topics, effective, err := deriveOperationStateWithPitfalls(p)
+			corpus, pitfalls, topics, effective, err := deriveOperationStateWithPitfalls(renderInputsForTest(p))
 			if err != nil {
 				t.Fatal(err)
 			}
-			op, err := outputPlanWithPitfalls(p, testContext(t), corpus, pitfalls, topics, effective)
+			op, err := outputPlanWithPitfalls(renderInputsForTest(p), testContext(t), corpus, pitfalls, topics, effective)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -102,7 +102,7 @@ func TestCheckWithStatePropagatesMalformedRetainedData(t *testing.T) {
 			if err := os.WriteFile(sidecarPath, []byte(tc.sidecar), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			if _, _, err := checkWithTrackingState(p, testContext(t), corpus, pitfall.Corpus{}, topics, effective, mustParsePlans(t, p), op); err == nil || !strings.Contains(err.Error(), "must be a list") {
+			if _, _, err := checkWithTrackingState(renderInputsForTest(p), p.repo, testContext(t), corpus, pitfall.Corpus{}, topics, effective, mustParsePlans(t, p), op); err == nil || !strings.Contains(err.Error(), "must be a list") {
 				t.Fatalf("check-with-state error = %v", err)
 			}
 		})
@@ -153,8 +153,8 @@ func TestListDocumentRetainedInventory(t *testing.T) {
 }
 
 func TestListDocumentPropagatesInvalidCatalogEntry(t *testing.T) {
-	p := &Project{Cfg: &config.Config{}, cat: catalog.NewView(&catalog.Catalog{Skills: map[string]catalog.SkillSpec{"bad\nentry": {}}}).Catalog()}
-	if _, err := p.ListDocument("skill"); err == nil {
+	cat := catalog.NewView(&catalog.Catalog{Skills: map[string]catalog.SkillSpec{"bad\nentry": {}}}).Catalog()
+	if _, err := listDocument(&config.Config{}, cat, "skill"); err == nil {
 		t.Fatal("invalid catalog entry reached the list presentation")
 	}
 }

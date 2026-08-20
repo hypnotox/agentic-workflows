@@ -207,7 +207,7 @@ func TestNumberPendingADRsLeavesPlansUntouched(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift := checkPlans(reopened, mustDeriveCorpus(t, reopened), mustParsePlans(t, reopened))
+	drift := checkPlans(renderInputsForTest(reopened), mustDeriveCorpus(t, reopened), mustParsePlans(t, reopened))
 	if len(drift) != 0 {
 		t.Errorf("the slug link must still resolve after numbering: %#v", drift)
 	}

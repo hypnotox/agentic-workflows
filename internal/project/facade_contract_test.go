@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strings"
 	"testing"
 
 	"golang.org/x/tools/go/packages"
@@ -249,6 +250,45 @@ func projectFacadeInventory(pkgs []*packages.Package, root string) ([]string, []
 	return methods, consumers
 }
 
+// facadeProductionViolations applies the production detector and the mutation
+// fixtures alike. The compatibility facade may be constructed by Open, but no
+// replacement operation may accept or return Project, revive renderProject, or
+// be exported before Phase 3 gives it an outside-package owner.
+func facadeProductionViolations(pkgs []*packages.Package) []string {
+	var violations []string
+	for _, pkg := range pkgs {
+		if pkg.PkgPath != projectImportPath {
+			continue
+		}
+		for _, file := range pkg.Syntax {
+			for _, declaration := range file.Decls {
+				if generic, ok := declaration.(*ast.GenDecl); ok {
+					for _, spec := range generic.Specs {
+						if typeSpec, ok := spec.(*ast.TypeSpec); ok && typeSpec.Name.Name == "renderProject" {
+							violations = append(violations, "renderProject type")
+						}
+					}
+					continue
+				}
+				fn, ok := declaration.(*ast.FuncDecl)
+				if !ok {
+					continue
+				}
+				if ast.IsExported(fn.Name.Name) && strings.HasSuffix(fn.Name.Name, "Operation") {
+					violations = append(violations, "exported replacement "+fn.Name.Name)
+				}
+				if facadeReceiverName(pkg.TypesInfo, fn.Recv) == "Project" || fn.Name.Name == "Open" {
+					continue
+				}
+				if containsProjectFacadeType(pkg.TypesInfo.Defs[fn.Name].Type(), map[types.Type]bool{}) {
+					violations = append(violations, "broad Project signature "+fn.Name.Name)
+				}
+			}
+		}
+	}
+	return violations
+}
+
 func TestProjectFacadeFrozenAllowlist(t *testing.T) {
 	production, root := loadFacadePackages(t, nil)
 	methods, consumers := projectFacadeInventory(production, root)
@@ -258,11 +298,14 @@ func TestProjectFacadeFrozenAllowlist(t *testing.T) {
 	if !slices.Equal(consumers, allowedProjectFacadeConsumers) {
 		t.Errorf("Project production consumer allowlist changed:\ngot  %#v\nwant %#v", consumers, allowedProjectFacadeConsumers)
 	}
+	if violations := facadeProductionViolations(production); len(violations) != 0 {
+		t.Errorf("facade production violations: %v", violations)
+	}
 
 	methodFixture := filepath.Join(root, filepath.FromSlash("internal/project/facade_method_mutation_fixture.go"))
 	consumerFixture := filepath.Join(root, filepath.FromSlash("cmd/awf/facade_consumer_mutation_fixture.go"))
 	mutated, mutatedRoot := loadFacadePackages(t, map[string][]byte{
-		methodFixture:   []byte("package project\n\nfunc (p *Project) facadeMutation() {}\n"),
+		methodFixture:   []byte("package project\n\ntype renderProject struct{}\nfunc (p *Project) facadeMutation() {}\nfunc broadMutation(p *Project) *Project { return p }\nfunc RenderAllOperation() {}\n"),
 		consumerFixture: []byte("package main\n\nimport (\n\t\"context\"\n\tp \"github.com/hypnotox/agentic-workflows/internal/project\"\n)\n\nfunc facadeMutation(ctx context.Context) { _, _ = p.Open(ctx, \".\") }\n\nfunc facadeIndirectMutation(inputs repoCheckInputs) { _ = inputs.project.Root }\n"),
 	})
 	mutatedMethods, mutatedConsumers := projectFacadeInventory(mutated, mutatedRoot)
@@ -275,6 +318,11 @@ func TestProjectFacadeFrozenAllowlist(t *testing.T) {
 	} {
 		if !slices.Contains(mutatedConsumers, want) {
 			t.Errorf("added Project production consumer %s escaped the facade allowlist detector", want)
+		}
+	}
+	for _, want := range []string{"renderProject type", "broad Project signature broadMutation", "exported replacement RenderAllOperation"} {
+		if !slices.Contains(facadeProductionViolations(mutated), want) {
+			t.Errorf("facade mutation %q escaped production detector", want)
 		}
 	}
 }

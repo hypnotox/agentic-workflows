@@ -29,8 +29,12 @@ func TestConfigReferenceRowsPropagatesInjectedTemplateReadError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p.cat.Skills["missing-template"] = catalog.SkillSpec{}
-	_, err = configReferenceRows(p, nil)
+	selected := p.state.catalog()
+	selected.Skills["missing-template"] = catalog.SkillSpec{}
+	state := *p.state
+	state.selectedCat = catalog.NewView(selected)
+	p.state = &state
+	_, err = configReferenceRows(renderInputsForTest(p), nil)
 	if err == nil || !strings.Contains(err.Error(), "skills/missing-template/SKILL.md.tmpl") {
 		t.Fatalf("config reference template error = %v", err)
 	}
@@ -39,11 +43,11 @@ func TestConfigReferenceRowsPropagatesInjectedTemplateReadError(t *testing.T) {
 // invariant: config/configspec-and-reference:live-state-projection-explicit (TestLiveStateAuthorityRejectsOmissionAndWrongClass)
 func TestTemplateSourceRootCurrentValue(t *testing.T) {
 	p := &Project{Cfg: &config.Config{}}
-	if got := currentValueResolvers(p)["render.templateSourceRoot"](); got != "(none)" {
+	if got := currentValueResolvers(renderInputsForTest(p))["render.templateSourceRoot"](); got != "(none)" {
 		t.Fatalf("absent root = %q", got)
 	}
 	p.Cfg.Render = &config.RenderConfig{TemplateSourceRoot: "templates"}
-	if got := currentValueResolvers(p)["render.templateSourceRoot"](); got != "`templates`" {
+	if got := currentValueResolvers(renderInputsForTest(p))["render.templateSourceRoot"](); got != "`templates`" {
 		t.Fatalf("configured root = %q", got)
 	}
 }
@@ -54,7 +58,7 @@ func TestLiveStateAuthorityRejectsOmissionAndWrongClass(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolvers := currentValueResolvers(p)
+	resolvers := currentValueResolvers(renderInputsForTest(p))
 	if err := validateLiveStateAuthority(configspec.LiveStateClassifications(), resolvers); err != nil {
 		t.Fatal(err)
 	}
@@ -69,17 +73,17 @@ func TestLiveStateAuthorityRejectsOmissionAndWrongClass(t *testing.T) {
 	if err := validateLiveStateAuthority(wrongStatic, resolvers); err == nil || !strings.Contains(err.Error(), "static live-state key") {
 		t.Fatalf("wrong static classification error = %v", err)
 	}
-	omittedResolver := currentValueResolvers(p)
+	omittedResolver := currentValueResolvers(renderInputsForTest(p))
 	delete(omittedResolver, "tags")
 	if err := validateLiveStateAuthority(configspec.LiveStateClassifications(), omittedResolver); err == nil || !strings.Contains(err.Error(), `live-state key "tags" has no resolver`) {
 		t.Fatalf("omitted resolver error = %v", err)
 	}
-	staticResolver := currentValueResolvers(p)
+	staticResolver := currentValueResolvers(renderInputsForTest(p))
 	staticResolver["commitPolicy.allowedIdentities[].name"] = func() string { return "wrong" }
 	if err := validateLiveStateAuthority(configspec.LiveStateClassifications(), staticResolver); err == nil || !strings.Contains(err.Error(), `static live-state key "commitPolicy.allowedIdentities[].name" has a resolver`) {
 		t.Fatalf("structural static resolver error = %v", err)
 	}
-	extra := currentValueResolvers(p)
+	extra := currentValueResolvers(renderInputsForTest(p))
 	extra["not.a.key"] = func() string { return "wrong" }
 	if err := validateLiveStateAuthority(configspec.LiveStateClassifications(), extra); err == nil || !strings.Contains(err.Error(), `live-state resolver "not.a.key" has no classification`) {
 		t.Fatalf("extra resolver error = %v", err)
@@ -239,7 +243,7 @@ func TestConfigReferenceDerivedLiveValues(t *testing.T) {
 
 	t.Run("non-nil empty grandfathered boundary", func(t *testing.T) {
 		p := &Project{Cfg: &config.Config{CommitPolicy: &config.CommitPolicyConfig{}}}
-		if got := currentValueResolvers(p)["commitPolicy.grandfatheredThrough"](); got != "(none)" {
+		if got := currentValueResolvers(renderInputsForTest(p))["commitPolicy.grandfatheredThrough"](); got != "(none)" {
 			t.Errorf("empty grandfatheredThrough current = %q, want (none)", got)
 		}
 	})
@@ -378,7 +382,7 @@ func TestConfigReferenceNoBareVars(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cref, ok, err := generateConfigReference(p, files, mustDeriveSkills(t, p))
+	cref, ok, err := generateConfigReference(renderInputsForTest(p), files, mustDeriveSkills(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}

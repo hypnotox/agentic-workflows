@@ -216,6 +216,26 @@ func cloneTargets(source []Target) []Target {
 	return out
 }
 
+// renderInputs is the small rendering concern boundary. Immutable loaded facts
+// remain in projectState; cfg and read are the selected operation tree. Git is
+// deliberately not a field: repository operations take it explicitly.
+type renderInputs struct {
+	state *projectState
+	cfg   *config.Config
+	read  ProjectTreeReader
+}
+
+func newRenderInputs(state *projectState, cfg *config.Config, read ProjectTreeReader) renderInputs {
+	return renderInputs{state: state, cfg: cfg, read: read}
+}
+
+func (p renderInputs) root() string                      { return p.state.invokingRoot }
+func (p renderInputs) residentRoots() resident.Roots     { return p.state.roots }
+func (p renderInputs) targets() []Target                 { return p.state.resolvedTargets() }
+func (p renderInputs) catalog() *catalog.Catalog         { return p.state.catalog() }
+func (p renderInputs) completeCatalog() *catalog.Catalog { return p.state.completeCatalog() }
+func (p renderInputs) isNested() bool                    { return p.state.nested }
+
 // Project is the bounded compatibility facade for the frozen production
 // callers. Its existing operation methods remain only until Phase 3; state
 // facts live in state, while repository and tree dependencies stay operation
@@ -249,11 +269,11 @@ type Project struct {
 // gitRepo returns the handle this project reads Git through, or the reason it
 // has none. Opening is never retried per operation: the handle is chosen once,
 // at construction, and this is the single place that reports its absence.
-func gitRepo(p *Project) (*awfgit.Repo, error) {
-	if p.repo == nil {
-		return nil, fmt.Errorf("%s: %w", p.Root, awfgit.ErrNotARepository)
+func gitRepo(root string, repo *awfgit.Repo) (*awfgit.Repo, error) {
+	if repo == nil {
+		return nil, fmt.Errorf("%s: %w", root, awfgit.ErrNotARepository)
 	}
-	return p.repo, nil
+	return repo, nil
 }
 
 // Open is the transitional compatibility entry point for callers not yet
@@ -308,15 +328,15 @@ func (l *Loader) Open(ctx context.Context, root string) (*Project, error) {
 		nested:      state.nested,
 		repo:        l.repo,
 	}
-	if err := validateAgainstCatalog(p); err != nil {
+	if err := validateAgainstCatalog(newRenderInputs(p.state, p.Cfg, p.read)); err != nil {
 		return nil, err
 	}
 	return p, nil
 }
 
 // workingTree snapshots the project's working universe through its handle.
-func workingTree(p *Project, ctx context.Context) (*snapshot.Tree, error) {
-	repo, err := gitRepo(p)
+func workingTree(root string, repo *awfgit.Repo, ctx context.Context) (*snapshot.Tree, error) {
+	repo, err := gitRepo(root, repo)
 	if err != nil {
 		return nil, err
 	}
@@ -324,8 +344,8 @@ func workingTree(p *Project, ctx context.Context) (*snapshot.Tree, error) {
 }
 
 // indexTree snapshots the project's staged universe through its handle.
-func indexTree(p *Project, ctx context.Context) (*snapshot.Tree, error) {
-	repo, err := gitRepo(p)
+func indexTree(root string, repo *awfgit.Repo, ctx context.Context) (*snapshot.Tree, error) {
+	repo, err := gitRepo(root, repo)
 	if err != nil {
 		return nil, err
 	}
@@ -335,18 +355,25 @@ func indexTree(p *Project, ctx context.Context) (*snapshot.Tree, error) {
 // stagedProject composes the minimal index-only compatibility facade. It never
 // invokes Loader or reads working-tree configuration; each staged operation
 // supplies the repository selected at its boundary.
-func stagedProject(root string, repo *awfgit.Repo, prefix string) *Project {
+func stagedProject(root string, prefix string) renderInputs {
 	complete := catalog.CompleteView().Catalog()
-	return &Project{Root: root, roots: resident.NewRoots(root, ""), completeCat: complete, cat: complete, nested: prefix != "", repo: repo}
+	state := &projectState{
+		invokingRoot: root,
+		roots:        resident.NewRoots(root, ""),
+		nested:       prefix != "",
+		selectedCat:  catalog.NewProfileView(complete, catalog.ProfileFull),
+		completeCat:  catalog.NewProfileView(complete, catalog.ProfileFull),
+	}
+	return newRenderInputs(state, nil, nil)
 }
 
 // catalog returns this project's one private selected-catalog snapshot.
-func projectCatalog(p *Project) *catalog.Catalog { return p.cat }
+func projectCatalog(p renderInputs) *catalog.Catalog { return p.catalog() }
 
 // completeCatalog returns the private complete-catalog dependency supplied at composition.
-func completeProjectCatalog(p *Project) *catalog.Catalog { return p.completeCat }
+func completeProjectCatalog(p renderInputs) *catalog.Catalog { return p.completeCatalog() }
 
-func fullProfile(p *Project) bool { return p.Cfg == nil || p.Cfg.Profile != catalog.ProfileCore }
+func fullProfile(p renderInputs) bool { return p.cfg == nil || p.cfg.Profile != catalog.ProfileCore }
 
 // Backup records a foreign file preserved before sync overwrote its path.
 type Backup struct {
@@ -377,10 +404,10 @@ type Change struct {
 // files its prune actually removed (both path-sorted; a file whose output is
 // byte-identical, and first-adoption initialization with no prior lock reports
 // no change - a routine re-sync stays silent).
-func SyncReportOperation(p *Project, ctx context.Context) ([]Backup, []Change, []string, error) {
+func syncReportOperation(p renderInputs, ctx context.Context) ([]Backup, []Change, []string, error) {
 	// Refuse an unresolvable hook-command wiring before rendering anything
 	// (ADR-0156 Decision 5); first-adoption InitializeReport stays exempt.
-	if err := validateCommandWiring(p.Cfg); err != nil {
+	if err := validateCommandWiring(p.cfg); err != nil {
 		return nil, nil, nil, err
 	}
 	return syncReport(p, ctx, nil)
@@ -393,7 +420,7 @@ type InitAuthority struct {
 
 // InitializeReport renders a first adoption while sealing its existing ADR
 // identities. It has the same reporting contract as SyncReport.
-func InitializeReportOperation(p *Project, ctx context.Context, seed InitAuthority) ([]Backup, []Change, []string, error) {
+func initializeReport(p renderInputs, ctx context.Context, seed InitAuthority) ([]Backup, []Change, []string, error) {
 	return syncReport(p, ctx, &seed)
 }
 
@@ -421,16 +448,16 @@ func (s syncFilesystems) output(rel string) (syncFilesystem, string) {
 	return s.tracked, rel
 }
 
-func openSyncFilesystems(p *Project) (syncFilesystems, func(), error) {
-	tracked, err := filesystem.Open(p.roots.Tracked)
+func openSyncFilesystems(p renderInputs) (syncFilesystems, func(), error) {
+	tracked, err := filesystem.Open(p.residentRoots().Tracked)
 	if err != nil {
 		return syncFilesystems{}, nil, err
 	}
 	closeAll := func() { _ = tracked.Close() }
-	if p.roots.Resident == p.roots.Tracked {
+	if p.residentRoots().Resident == p.residentRoots().Tracked {
 		return syncFilesystems{tracked: tracked, resident: tracked}, closeAll, nil
 	}
-	residentHandle, err := filesystem.Open(p.roots.Resident)
+	residentHandle, err := filesystem.Open(p.residentRoots().Resident)
 	if err != nil {
 		closeAll()
 		return syncFilesystems{}, nil, err
@@ -441,7 +468,7 @@ func openSyncFilesystems(p *Project) (syncFilesystems, func(), error) {
 	}, nil
 }
 
-func syncReport(p *Project, ctx context.Context, seed *InitAuthority) (backups []Backup, changes []Change, pruned []string, err error) {
+func syncReport(p renderInputs, ctx context.Context, seed *InitAuthority) (backups []Backup, changes []Change, pruned []string, err error) {
 	corpus, pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
 	if err != nil {
 		return nil, nil, nil, err
@@ -454,7 +481,7 @@ func syncReport(p *Project, ctx context.Context, seed *InitAuthority) (backups [
 	return syncReportWithPitfalls(p, ctx, seed, filesystems, corpus, pitfalls, topics, eff)
 }
 
-func syncReportWithPitfalls(p *Project, ctx context.Context, seed *InitAuthority, filesystems syncFilesystems, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (backups []Backup, changes []Change, pruned []string, err error) {
+func syncReportWithPitfalls(p renderInputs, ctx context.Context, seed *InitAuthority, filesystems syncFilesystems, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (backups []Backup, changes []Change, pruned []string, err error) {
 	defer func() {
 		slices.Sort(pruned)
 		slices.SortFunc(changes, func(a, b Change) int { return strings.Compare(a.Path, b.Path) })
@@ -486,7 +513,7 @@ func syncReportWithPitfalls(p *Project, ctx context.Context, seed *InitAuthority
 			return nil, nil, nil, errors.New("pre-tracking authority: ordinary sync requires a permanent lock; use the bridge release to attest")
 		}
 	}
-	preservedResidents, err := resident.InspectRoots(p.roots.Resident)
+	preservedResidents, err := resident.InspectRoots(p.residentRoots().Resident)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -537,7 +564,7 @@ func syncReportWithPitfalls(p *Project, ctx context.Context, seed *InitAuthority
 		}
 		if !prior[f.Path] && infoErr == nil {
 			// touches-state: rendering/sync-and-drift:sync-backs-up-foreign - foreign-file backup on sync; proof in project_test.go
-			bak, err := backupFileConfined(p, outputPath, filesystem)
+			bak, err := backupFileConfined(outputPath, filesystem)
 			if err != nil {
 				return backups, changes, pruned, fmt.Errorf("back up %s: %w", f.Path, err)
 			}
@@ -613,7 +640,7 @@ func syncReportWithPitfalls(p *Project, ctx context.Context, seed *InitAuthority
 				continue
 			}
 			// A non-local entry (corrupted or malicious lock) would delete outside
-			// the root and send the ancestor walk below it, never reaching p.Root.
+			// the root and send the ancestor walk below it, never reaching p.root().
 			if !filepath.IsLocal(filepath.FromSlash(path)) {
 				continue
 			}
@@ -631,7 +658,7 @@ func syncReportWithPitfalls(p *Project, ctx context.Context, seed *InitAuthority
 					if info.Mode()&fs.ModeSymlink != 0 {
 						return backups, changes, pruned, fmt.Errorf("unsafe pruned local document %s", path)
 					}
-					bak, bakErr := backupFileConfined(p, outputPath, filesystem)
+					bak, bakErr := backupFileConfined(outputPath, filesystem)
 					if bakErr != nil {
 						return backups, changes, pruned, fmt.Errorf("back up pruned local document %s: %w", path, bakErr)
 					}
@@ -639,7 +666,7 @@ func syncReportWithPitfalls(p *Project, ctx context.Context, seed *InitAuthority
 				}
 			case coOwnedRunnerTID:
 				if info, existsErr := filesystem.LinkInfo(outputPath); existsErr == nil && info.Mode()&fs.ModeSymlink == 0 {
-					bak, bakErr := backupFileConfined(p, outputPath, filesystem)
+					bak, bakErr := backupFileConfined(outputPath, filesystem)
 					if bakErr != nil {
 						return backups, changes, pruned, fmt.Errorf("back up pruned runner %s: %w", path, bakErr)
 					}
@@ -678,8 +705,8 @@ func syncReportWithPitfalls(p *Project, ctx context.Context, seed *InitAuthority
 // to uninstall without leaking the template identity into resident.
 func IsLocalDocTemplate(templateID string) bool { return templateID == localDocTID }
 
-func lockPath(p *Project) string {
-	return config.LockPath(p.Root)
+func lockPath(root string) string {
+	return config.LockPath(root)
 }
 
 // deriveOperationState derives the values a lifecycle operation needs from
@@ -694,16 +721,16 @@ func lockPath(p *Project) string {
 // Sync miss an ADR written in between, silently blinding the drift oracle
 // rather than merely serving a stale read. A value that cannot outlive the
 // operation cannot go stale, so no caller has to remember to reset it.
-func deriveOperationStateWithPitfalls(p *Project) (adr.Corpus, pitfall.Corpus, topic.Corpus, map[string]bool, error) {
+func deriveOperationStateWithPitfalls(p renderInputs) (adr.Corpus, pitfall.Corpus, topic.Corpus, map[string]bool, error) {
 	corpus := adr.Corpus{}
 	topics := topic.Corpus{}
 	var err error
 	if fullProfile(p) {
-		corpus, err = adr.LoadCorpus(decisionsDir(p))
+		corpus, err = adr.LoadCorpus(decisionsDir(p.root()))
 		if err != nil {
 			return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
 		}
-		topics, err = topic.LoadCorpus(p.Root, p.Cfg, corpus)
+		topics, err = topic.LoadCorpus(p.root(), p.cfg, corpus)
 		if err != nil {
 			return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
 		}
@@ -722,11 +749,11 @@ func deriveOperationStateWithPitfalls(p *Project) (adr.Corpus, pitfall.Corpus, t
 // Audit runs the process-conformance audit (ADR-0017) over the caller-supplied
 // commit range. No config key supplies a base: the range is always explicit
 // (ADR-0127 Decision 3).
-func AuditOperation(p *Project, ctx context.Context, base, head string) ([]audit.Finding, int, error) {
-	s := audit.Resolve(config.AuditScopes(p.Cfg.Audit))
+func auditOperation(p renderInputs, ctx context.Context, base, head string) ([]audit.Finding, int, error) {
+	s := audit.Resolve(config.AuditScopes(p.cfg.Audit))
 	lay := layout(p)
 	generated := map[string]bool{}
-	lock, _, err := manifest.LoadOptional(lockPath(p))
+	lock, _, err := manifest.LoadOptional(lockPath(p.root()))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -735,7 +762,7 @@ func AuditOperation(p *Project, ctx context.Context, base, head string) ([]audit
 			generated[path] = true
 		}
 	}
-	return audit.Run(ctx, p.Root, base, head, audit.Inputs{
+	return audit.Run(ctx, p.root(), base, head, audit.Inputs{
 		Settings:       s,
 		GeneratedPaths: generated,
 		ADRDir:         lay.ADRDir,
@@ -753,8 +780,8 @@ func AuditOperation(p *Project, ctx context.Context, base, head string) ([]audit
 // stays silent (ADR-0202 item 7). A detached HEAD needs no separate test: the
 // seam reports it as an empty branch name, and integrationBranch is validated
 // non-empty, so the comparison cannot match.
-func onIntegrationBranch(p *Project, ctx context.Context) bool {
-	repo, err := gitRepo(p)
+func onIntegrationBranch(root string, cfg *config.Config, repo *awfgit.Repo, ctx context.Context) bool {
+	repo, err := gitRepo(root, repo)
 	if err != nil {
 		return false
 	}
@@ -762,7 +789,7 @@ func onIntegrationBranch(p *Project, ctx context.Context) bool {
 	if err != nil {
 		return false
 	}
-	return branch == p.Cfg.IntegrationBranch
+	return branch == cfg.IntegrationBranch
 }
 
 // NewADR scaffolds a new ADR file under the project's decisions dir from the
@@ -774,15 +801,15 @@ func onIntegrationBranch(p *Project, ctx context.Context) bool {
 // numbers at integration. Mirrors the CheckInvariants/Audit pattern - cmd/awf
 // reaches this only through this exported method, never internal/project.Layout
 // directly.
-func NewADROperation(p *Project, ctx context.Context, title string) (string, error) {
-	if !onIntegrationBranch(p, ctx) {
-		return adr.NewPendingFile(decisionsDir(p), title)
+func newADR(p renderInputs, repo *awfgit.Repo, ctx context.Context, title string) (string, error) {
+	if !onIntegrationBranch(p.root(), p.cfg, repo, ctx) {
+		return adr.NewPendingFile(decisionsDir(p.root()), title)
 	}
-	return adr.NewFile(decisionsDir(p), title)
+	return adr.NewFile(decisionsDir(p.root()), title)
 }
 
 // NewPlan scaffolds a new plan under docsDir/plans from the rendered plans
 // template. Mirrors NewADR minus sequential numbering (ADR-0098).
-func NewPlanOperation(p *Project, title string) (string, error) {
-	return plan.NewFile(filepath.Join(p.Root, config.DocsDir, "plans"), title)
+func newPlan(root, title string) (string, error) {
+	return plan.NewFile(filepath.Join(root, config.DocsDir, "plans"), title)
 }

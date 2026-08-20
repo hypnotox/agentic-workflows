@@ -294,19 +294,19 @@ func TestTargetOutputRenderError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	targets := testTargets(p)
 	var pi *Target
-	for i := range p.Targets {
-		if p.Targets[i].Name == "pi" {
-			pi = &p.Targets[i]
+	for i := range targets {
+		if targets[i].Name == "pi" {
+			pi = &targets[i]
 			break
 		}
 	}
 	if pi == nil || len(pi.Outputs) == 0 {
 		t.Fatal("full built-in targets missing Pi output declarations")
 	}
-	original := pi.Outputs[0].TemplateID
-	defer func() { pi.Outputs[0].TemplateID = original }()
 	pi.Outputs[0].TemplateID = "missing-target-output.tmpl"
+	setTestTargets(p, targets)
 	if _, err := p.RenderAll(); err == nil || !strings.Contains(err.Error(), "missing-target-output") {
 		t.Fatalf("RenderAll error = %v, want missing target-output template", err)
 	}
@@ -680,7 +680,7 @@ func TestTargetDescriptorCustomization(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p.Targets = []Target{custom}
+	setTestTargets(p, []Target{custom})
 	files, err := p.RenderAll()
 	if err != nil {
 		t.Fatal(err)

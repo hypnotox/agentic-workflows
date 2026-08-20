@@ -194,11 +194,11 @@ func (Project) Open() { _ = catalog.CompleteView() }
 func projectCatalogBypasses(filename string, body []byte) ([]string, error) {
 	allowed := map[string]map[string]map[string]bool{
 		"configreference.go": {"PotentialVarConsumers": {"CompleteView": true}},
+		"facade.go":          {"(*Project).renderInputs": {"Standard": true, "NewView": true}},
 		"project.go": {
-			"newLoader":       {"NewView": true},
-			"Open":            {"CompleteView": true},
-			"openRootProject": {"CompleteView": true},
-			"stagedProject":   {"CompleteView": true},
+			"newLoader":     {"NewView": true},
+			"Open":          {"CompleteView": true},
+			"stagedProject": {"CompleteView": true},
 		},
 		"scaffold.go": {
 			"ScaffoldConfig":   {"CompleteView": true},

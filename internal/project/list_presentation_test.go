@@ -10,11 +10,12 @@ import (
 )
 
 func TestListDocumentRendersInventory(t *testing.T) {
-	p := &Project{Cfg: &config.Config{Domains: []string{"tooling"}}, cat: catalog.NewView(catalog.Standard).Catalog()}
+	cfg := &config.Config{Domains: []string{"tooling"}}
+	cat := catalog.NewView(catalog.Standard).Catalog()
 	for _, test := range []struct {
 		kind, entry string
 	}{{"domain", "tooling"}, {"target", "claude"}} {
-		document, err := p.ListDocument(test.kind)
+		document, err := listDocument(cfg, cat, test.kind)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -32,8 +33,7 @@ func TestListPresentationRejectsInvalidEntries(t *testing.T) {
 	if _, err := listCategory("items", []string{"bad\nitem"}); err == nil {
 		t.Fatal("invalid list entry accepted")
 	}
-	p := &Project{Cfg: &config.Config{}, cat: catalog.NewView(catalog.Standard).Catalog()}
-	if _, err := p.ListDocument("bogus"); err == nil {
+	if _, err := listDocument(&config.Config{}, catalog.NewView(catalog.Standard).Catalog(), "bogus"); err == nil {
 		t.Fatal("unknown inventory kind accepted")
 	}
 }

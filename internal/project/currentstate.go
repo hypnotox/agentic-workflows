@@ -96,10 +96,10 @@ type workingState struct {
 }
 
 // workingCurrentState loads the working-tree ADR/topic view and recorded gaps.
-func workingCurrentState(p *Project, ctx context.Context) (workingState, error) {
-	tree, err := workingTree(p, ctx)
+func workingCurrentState(root string, repo *awfgit.Repo, ctx context.Context) (workingState, error) {
+	tree, err := workingTree(root, repo, ctx)
 	if errors.Is(err, awfgit.ErrNotARepository) {
-		tree, err = snapshot.FilesystemTree(ctx, p.Root)
+		tree, err = snapshot.FilesystemTree(ctx, root)
 	}
 	if err != nil {
 		return workingState{}, err
@@ -108,7 +108,7 @@ func workingCurrentState(p *Project, ctx context.Context) (workingState, error) 
 	if err != nil {
 		return workingState{}, err
 	}
-	loaded, cfg, err := loadTreeCurrentState(p.Root, tree, lock)
+	loaded, cfg, err := loadTreeCurrentState(root, tree, lock)
 	if err != nil {
 		return workingState{}, err
 	}
@@ -124,8 +124,8 @@ func workingCurrentState(p *Project, ctx context.Context) (workingState, error) 
 // never mix a working and an index universe. Coverage and fan-out always
 // evaluate, whether or not the project configures a currentState policy
 // (ADR-0192).
-func CheckCurrentStateOperation(p *Project, ctx context.Context) (CurrentStateReport, error) {
-	ws, err := workingCurrentState(p, ctx)
+func checkCurrentState(root string, repo *awfgit.Repo, ctx context.Context) (CurrentStateReport, error) {
+	ws, err := workingCurrentState(root, repo, ctx)
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
@@ -144,8 +144,8 @@ func CheckStagedRoot(ctx context.Context, root string) (CurrentStateReport, erro
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
-	p := stagedProject(root, repo, prefix)
-	return p.CheckStaged(ctx)
+	_ = prefix // nestedness does not alter staged current-state semantics.
+	return (&Project{Root: root, repo: repo}).CheckStaged(ctx)
 }
 
 // CheckStaged loads the HEAD (before) and staged index (after) current-state
@@ -156,8 +156,8 @@ func CheckStagedRoot(ctx context.Context, root string) (CurrentStateReport, erro
 // the after config, policy, and eligible paths all come from the index tree so
 // the staged check reads one universe. Coverage and fan-out always evaluate,
 // whether or not the staged config declares a currentState policy (ADR-0192).
-func CheckStagedOperation(p *Project, ctx context.Context) (CurrentStateReport, error) {
-	afterTree, err := indexTree(p, ctx)
+func checkStaged(root string, repo *awfgit.Repo, ctx context.Context) (CurrentStateReport, error) {
+	afterTree, err := indexTree(root, repo, ctx)
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
@@ -165,18 +165,18 @@ func CheckStagedOperation(p *Project, ctx context.Context) (CurrentStateReport, 
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
-	beforeTree, beforeLock, err := headTreeAndLock(p, ctx)
+	beforeTree, beforeLock, err := headTreeAndLock(repo, ctx)
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
 	if err := validateLockTransition(beforeTree, beforeLock, afterLock); err != nil {
 		return CurrentStateReport{}, err
 	}
-	before, _, err := loadTreeCurrentState(p.Root, beforeTree, beforeLock)
+	before, _, err := loadTreeCurrentState(root, beforeTree, beforeLock)
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
-	after, afterCfg, err := loadTreeCurrentState(p.Root, afterTree, afterLock)
+	after, afterCfg, err := loadTreeCurrentState(root, afterTree, afterLock)
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
@@ -192,7 +192,7 @@ func CheckStagedOperation(p *Project, ctx context.Context) (CurrentStateReport, 
 	// the refusal here would break a staged check that worked before merge
 	// detection existed. Falling back selects the stricter authored-commit
 	// contract, which can refuse a legitimate merge but can never wrongly accept.
-	merging, err := awfgit.MergeInProgress(p.Root)
+	merging, err := awfgit.MergeInProgress(root)
 	if err != nil {
 		merging = false
 	}
@@ -266,7 +266,7 @@ func (r CommitAuthorizationResult) Diagnostic() (presentation.Diagnostic, error)
 
 // CheckCommitAuthorization validates the index, first parent, every incoming
 // MERGE_HEAD parent, and the cleaned final message without mutating any axis.
-func CheckCommitAuthorizationOperation(p *Project, ctx context.Context, msg commitmsg.Message) (CommitAuthorizationResult, error) {
+func checkCommitAuthorization(root string, repo *awfgit.Repo, ctx context.Context, msg commitmsg.Message) (CommitAuthorizationResult, error) {
 	success := CommitAuthorizationResult{Category: "operation", Condition: "stale merge authorization satisfied"}
 	refusal := func(observed, deficiency string) CommitAuthorizationResult {
 		return CommitAuthorizationResult{
@@ -275,7 +275,7 @@ func CheckCommitAuthorizationOperation(p *Project, ctx context.Context, msg comm
 			NextActions: []string{"correct the message trailers", "run git commit to finish the existing merge"},
 		}
 	}
-	heads, err := awfgit.MergeHeads(p.Root)
+	heads, err := awfgit.MergeHeads(root)
 	if err != nil {
 		return CommitAuthorizationResult{}, fmt.Errorf("read merge heads: %w", err)
 	}
@@ -293,28 +293,28 @@ func CheckCommitAuthorizationOperation(p *Project, ctx context.Context, msg comm
 		}
 		return CommitAuthorizationResult{}, parseErr // coverage-ignore: commitmsg exposes only SyntaxError refusals
 	}
-	repo, err := gitRepo(p)
+	repository, err := gitRepo(root, repo)
 	if err != nil {
 		return CommitAuthorizationResult{}, fmt.Errorf("open authorization repository: %w", err)
 	}
-	resultTree, err := snapshot.IndexTree(ctx, repo)
+	resultTree, err := snapshot.IndexTree(ctx, repository)
 	if err != nil {
 		return CommitAuthorizationResult{}, fmt.Errorf("load result index tree: %w", err)
 	}
-	hasHead, err := repo.HeadExists(ctx)
+	hasHead, err := repository.HeadExists(ctx)
 	if err != nil {
 		return CommitAuthorizationResult{}, fmt.Errorf("resolve first-parent HEAD: %w", err)
 	}
 	var firstTree *snapshot.Tree
 	if hasHead {
-		firstTree, err = snapshot.CommitTree(ctx, repo, "HEAD")
+		firstTree, err = snapshot.CommitTree(ctx, repository, "HEAD")
 	} else {
 		firstTree, err = snapshot.NewTree(nil)
 	}
 	if err != nil { // coverage-ignore: NewTree(nil) cannot fail, and HeadExists resolved the same HEAD immediately before CommitTree; only a concurrent repository fault reaches this
 		return CommitAuthorizationResult{}, fmt.Errorf("load first-parent HEAD tree: %w", err)
 	}
-	incomingTrees, err := snapshot.CommitTrees(ctx, repo, heads)
+	incomingTrees, err := snapshot.CommitTrees(ctx, repository, heads)
 	if err != nil {
 		return CommitAuthorizationResult{}, fmt.Errorf("load incoming parent trees %s: %w", strings.Join(heads, ","), err)
 	}
@@ -323,7 +323,7 @@ func CheckCommitAuthorizationOperation(p *Project, ctx context.Context, msg comm
 		if err != nil {
 			return currentstate.Universe{}, fmt.Errorf("load %s lock: %w", label, err)
 		}
-		loaded, _, err := loadTreeCurrentState(p.Root, tree, lock)
+		loaded, _, err := loadTreeCurrentState(root, tree, lock)
 		if err != nil {
 			return currentstate.Universe{}, fmt.Errorf("load %s current state: %w", label, err)
 		}
@@ -388,10 +388,9 @@ func lockFromTree(tree *snapshot.Tree) (*manifest.Lock, error) {
 // headTreeAndLock loads HEAD and its own lock, or an empty tree and nil lock for
 // an unborn or pre-adoption repository. It never consults the working tree or
 // applies index lock authority to committed bytes.
-func headTreeAndLock(p *Project, ctx context.Context) (*snapshot.Tree, *manifest.Lock, error) {
-	repo, err := gitRepo(p)
-	if err != nil { // coverage-ignore: the staged read that precedes this already required the same handle
-		return nil, nil, err
+func headTreeAndLock(repo *awfgit.Repo, ctx context.Context) (*snapshot.Tree, *manifest.Lock, error) {
+	if repo == nil {
+		return nil, nil, awfgit.ErrNotARepository
 	}
 	has, err := repo.HeadExists(ctx)
 	if err != nil { // coverage-ignore: IndexTree already opened the same containing repository in CheckStaged; only a concurrent repository removal can fail here

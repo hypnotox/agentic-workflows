@@ -284,7 +284,7 @@ func TestLiveTemplateIDsResolve(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ids := liveTemplateIDs(p)
+	ids := liveTemplateIDs(renderInputsForTest(p))
 	for _, descriptor := range kindDescriptors {
 		if descriptor.freeformDomain && !ids[descriptor.templateID(catalog.Standard, "")] {
 			t.Errorf("kind-derived domain template %q is not live", descriptor.templateID(catalog.Standard, ""))
@@ -311,7 +311,7 @@ func TestLiveTemplateIDsResolve(t *testing.T) {
 	}
 	originalDomainTID := kindDescriptors[domainIndex].templateID
 	kindDescriptors[domainIndex].templateID = func(*catalog.Catalog, string) string { return "missing/domain.tmpl" }
-	domainIDs := liveTemplateIDs(p)
+	domainIDs := liveTemplateIDs(renderInputsForTest(p))
 	kindDescriptors[domainIndex].templateID = originalDomainTID
 	if !domainIDs["missing/domain.tmpl"] {
 		t.Error("a missing kind-derived domain identity escaped the live population")
@@ -320,10 +320,13 @@ func TestLiveTemplateIDsResolve(t *testing.T) {
 		t.Error("missing kind-derived domain fixture unexpectedly resolves")
 	}
 
-	missing := projectCatalog(p).Docs["architecture"]
+	selected := p.state.catalog()
+	missing := selected.Docs["architecture"]
 	missing.TID = "missing/live-template.tmpl"
-	projectCatalog(p).Docs["missing-live-fixture"] = missing
-	defer delete(projectCatalog(p).Docs, "missing-live-fixture")
+	selected.Docs["missing-live-fixture"] = missing
+	state := *p.state
+	state.selectedCat = catalog.NewView(selected)
+	p.state = &state
 	if _, err := p.OutputPlan(testContext(t)); err == nil || !strings.Contains(err.Error(), "missing/live-template.tmpl") {
 		t.Fatalf("missing live template error = %v", err)
 	}
@@ -338,7 +341,7 @@ func TestLiveTemplateEncodersFollowDeclarations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	encoders := liveTemplateEncoders(p)
+	encoders := liveTemplateEncoders(renderInputsForTest(p))
 	for _, unit := range conditionalUnits() {
 		if encoders[unit.tid] != PlainAgentDialect {
 			t.Errorf("conditional template %q encoder = %q, want plain", unit.tid, encoders[unit.tid])
@@ -350,7 +353,7 @@ func TestLiveTemplateEncodersFollowDeclarations(t *testing.T) {
 			t.Errorf("resident template %q encoder = %q, want plain", tid, encoders[tid])
 		}
 	}
-	for _, entry := range projectCatalog(p).Docs {
+	for _, entry := range projectCatalog(renderInputsForTest(p)).Docs {
 		if encoders[entry.TID] != MarkdownAgentDialect {
 			t.Errorf("catalog doc template %q encoder = %q, want Markdown", entry.TID, encoders[entry.TID])
 		}

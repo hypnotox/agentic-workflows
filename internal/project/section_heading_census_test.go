@@ -24,7 +24,7 @@ func TestLiveMarkdownSectionHeadingCensus(t *testing.T) {
 		t.Fatal(err)
 	}
 	visited, sections := 0, 0
-	for tid, encoder := range liveTemplateEncoders(p) {
+	for tid, encoder := range liveTemplateEncoders(renderInputsForTest(p)) {
 		if encoder != MarkdownAgentDialect {
 			continue
 		}

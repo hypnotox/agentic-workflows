@@ -79,8 +79,8 @@ const duplicateNumbersRecipe = "duplicate ADR numbers with no pending record: if
 // returns the assignments alongside its error rather than an empty report. The
 // mapping is what the integration commit message needs, and the caller cannot
 // reconstruct it once the pending files are gone.
-func NumberPendingADRsOperation(p *Project, ctx context.Context, slugs []string) (NumberingReport, error) {
-	corpus, duplicates, err := numberingCorpus(p)
+func numberPendingADRs(p renderInputs, ctx context.Context, slugs []string) (NumberingReport, error) {
+	corpus, duplicates, err := numberingCorpus(p.root())
 	if err != nil {
 		return NumberingReport{}, err
 	}
@@ -101,16 +101,16 @@ func NumberPendingADRsOperation(p *Project, ctx context.Context, slugs []string)
 		// Highest-plus-one at assignment time: every prior assignment in this
 		// run has already raised the corpus's highest number by exactly one.
 		number := next + i
-		if err := adr.RenumberPending(decisionsDir(p), slug, number); err != nil { // coverage-ignore: every named slug came from the corpus, whose pending records all parsed from a `<slug>.md` file carrying the slug-form heading
+		if err := adr.RenumberPending(decisionsDir(p.root()), slug, number); err != nil { // coverage-ignore: every named slug came from the corpus, whose pending records all parsed from a `<slug>.md` file carrying the slug-form heading
 			return NumberingReport{}, err
 		}
 		renames[slug] = fmt.Sprintf("%04d", number)
 		report.Assignments = append(report.Assignments, NumberAssignment{Slug: slug, Number: renames[slug]})
 	}
-	if err := topic.SubstituteProvenance(p.Root, renames); err != nil { // coverage-ignore: SubstituteProvenance's own error paths are unreachable, so this propagation cannot be driven from here
+	if err := topic.SubstituteProvenance(p.root(), renames); err != nil { // coverage-ignore: SubstituteProvenance's own error paths are unreachable, so this propagation cannot be driven from here
 		return report, err
 	}
-	if _, _, _, err := SyncReportOperation(p, ctx); err != nil {
+	if _, _, _, err := syncReportOperation(p, ctx); err != nil {
 		return report, err
 	}
 	return report, nil
@@ -121,8 +121,8 @@ func NumberPendingADRsOperation(p *Project, ctx context.Context, slugs []string)
 // the input to a refusal the caller needs, not a reason to refuse to look. A
 // duplicate slug is different - it makes the pending set itself ambiguous, so
 // there is nothing coherent to refuse with and the error stands.
-func numberingCorpus(p *Project) (adr.Corpus, *adr.DuplicateIdentityError, error) {
-	corpus, err := adr.LoadCorpus(decisionsDir(p))
+func numberingCorpus(root string) (adr.Corpus, *adr.DuplicateIdentityError, error) {
+	corpus, err := adr.LoadCorpus(decisionsDir(root))
 	if err == nil {
 		return corpus, nil, nil
 	}

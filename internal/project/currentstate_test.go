@@ -2,6 +2,7 @@ package project
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"reflect"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
@@ -39,6 +41,13 @@ func TestCommitAuthorizationResultDiagnostic(t *testing.T) {
 	want := "condition: non-merge\nstate: operation\n\ndiagnostic:\n  changed:\n    index: yes\n    message: no\n    merge state: no\n  steps:\n    step 1: correct the message trailers\n    step 2: run git commit\n"
 	if got.String() != want {
 		t.Fatalf("diagnostic = %q, want %q", got.String(), want)
+	}
+}
+
+func TestHeadTreeAndLockRejectsMissingRepository(t *testing.T) {
+	tree, lock, err := headTreeAndLock(nil, testContext(t))
+	if tree != nil || lock != nil || !errors.Is(err, awfgit.ErrNotARepository) {
+		t.Fatalf("head tree without repository = (%v, %v, %v)", tree, lock, err)
 	}
 }
 

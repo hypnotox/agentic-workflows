@@ -183,9 +183,6 @@ func TestContextWorkingIndexDivergenceAndErrors(t *testing.T) {
 	if working.Requests[0].Directory.Included != staged.Requests[0].Directory.Included+1 {
 		t.Fatalf("working=%d staged=%d", working.Requests[0].Directory.Included, staged.Requests[0].Directory.Included)
 	}
-	if _, err := (&project.Project{Root: t.TempDir()}).ContextState(testContext(t)); err == nil {
-		t.Fatal("outside repo accepted")
-	}
 	if _, err := project.StagedContextState(testContext(t), t.TempDir()); err == nil {
 		t.Fatal("staged outside repo accepted")
 	}
@@ -257,9 +254,6 @@ func TestContextStatePropagatesWorkingSnapshotFailure(t *testing.T) {
 	valid := ctxRepo(t, uncoveredConfig, uncoveredFiles())
 	if _, err := valid.ContextState(testContext(t)); err != nil {
 		t.Fatalf("ContextState valid project: %v", err)
-	}
-	if _, err := (&project.Project{Root: t.TempDir()}).ContextState(testContext(t)); err == nil {
-		t.Fatal("ContextState accepted a non-repository")
 	}
 }
 

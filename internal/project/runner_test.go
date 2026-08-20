@@ -335,7 +335,7 @@ func TestConcurrentRunnerBackupsPublishCompleteRescueCopies(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	filesystems, closeAll, err := openSyncFilesystems(p)
+	filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -347,7 +347,7 @@ func TestConcurrentRunnerBackupsPublishCompleteRescueCopies(t *testing.T) {
 	results := make(chan error, 2)
 	for range 2 {
 		go func() {
-			_, err := backupFileConfined(p, "x", filesystem)
+			_, err := backupFileConfined("x", filesystem)
 			results <- err
 		}()
 	}
@@ -437,15 +437,15 @@ func TestRunnerPartReadError(t *testing.T) {
 	if err := os.MkdirAll(part, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	_, pitfalls, _, eff, err := deriveOperationStateWithPitfalls(p)
+	_, pitfalls, _, eff, err := deriveOperationStateWithPitfalls(renderInputsForTest(p))
 	if err != nil {
 		t.Fatal(err)
 	}
-	declarations, err := targetOutputDeclarations(p, eff)
+	declarations, err := targetOutputDeclarations(renderInputsForTest(p), eff)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := renderAllBase(p, declarations, eff, pitfalls); err == nil {
+	if _, err := renderAllBase(renderInputsForTest(p), declarations, eff, pitfalls); err == nil {
 		t.Fatal("part read error accepted")
 	} else if !strings.Contains(err.Error(), "runner-body") {
 		t.Fatalf("render error = %v, want runner-body read error", err)

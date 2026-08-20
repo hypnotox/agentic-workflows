@@ -70,7 +70,7 @@ func TestProjectRendersStandardAgentMetadataAndBody(t *testing.T) {
 	// structured encoder preserves it as instructions; an implementation that
 	// reparses an intermediate Markdown artifact would substitute this decoy.
 	body := "---\nname: body-decoy\ndescription: body decoy\n---\n\n# independently-rendered-body\n\nReview this body.\n"
-	encoded, err := encodeAgent(p, piTarget, "reviewer", body, map[string]any{"audience": "target"})
+	encoded, err := encodeAgent(renderInputsForTest(p), piTarget, "reviewer", body, map[string]any{"audience": "target"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +109,7 @@ func TestProjectEncodeAgentRejectsUnknownDialect(t *testing.T) {
 	p := &Project{cat: catalog.NewView(&catalog.Catalog{Agents: map[string]catalog.AgentSpec{
 		"reviewer": {Name: "reviewer", Description: "description"},
 	}}).Catalog()}
-	if _, err := encodeAgent(p, Target{AgentDialect: "unknown"}, "reviewer", "# reviewer\n", map[string]any{}); err == nil {
+	if _, err := encodeAgent(renderInputsForTest(p), Target{AgentDialect: "unknown"}, "reviewer", "# reviewer\n", map[string]any{}); err == nil {
 		t.Fatal("encodeAgent accepted an unknown dialect")
 	}
 }
@@ -120,7 +120,7 @@ func TestProjectEncodeMarkdownAgentRejectsInvalidDescriptionTemplate(t *testing.
 	p := &Project{cat: catalog.NewView(&catalog.Catalog{Agents: map[string]catalog.AgentSpec{
 		"reviewer": {Name: "reviewer", Description: "{{"},
 	}}).Catalog()}
-	if _, err := encodeAgent(p, claudeTarget, "reviewer", "# reviewer\n", map[string]any{}); err == nil {
+	if _, err := encodeAgent(renderInputsForTest(p), claudeTarget, "reviewer", "# reviewer\n", map[string]any{}); err == nil {
 		t.Fatal("encodeMarkdownAgent accepted an invalid description template")
 	}
 }

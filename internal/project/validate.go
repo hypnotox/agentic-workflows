@@ -12,7 +12,7 @@ import (
 
 // validateAgainstCatalog checks that every enabled non-local target is in the
 // catalog and that its sidecar's section overrides name declared sections.
-func validateAgainstCatalog(p *Project) error {
+func validateAgainstCatalog(p renderInputs) error {
 	for _, d := range kindDescriptors {
 		if d.poolNames == nil { // domains: freeform, not catalog-validated
 			continue
@@ -26,8 +26,8 @@ func validateAgainstCatalog(p *Project) error {
 	// or sections: silently does nothing - and the domain template's own
 	// .data.domain reference would mask a data: block
 	// from the consumption check.
-	for _, name := range p.Cfg.Domains {
-		sc, err := p.Cfg.Sidecar("domains", name)
+	for _, name := range p.cfg.Domains {
+		sc, err := p.cfg.Sidecar("domains", name)
 		if err != nil {
 			return err
 		}
@@ -36,7 +36,7 @@ func validateAgainstCatalog(p *Project) error {
 		}
 	}
 	// agents-doc section overrides against catalog (always-on singleton).
-	ad, err := p.Cfg.Sidecar("agents-doc", "")
+	ad, err := p.cfg.Sidecar("agents-doc", "")
 	if err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ func validateAgainstCatalog(p *Project) error {
 		return err
 	}
 	for _, sg := range plainSingletons(projectCatalog(p)) {
-		sc, err := p.Cfg.Sidecar(sg.kind, "")
+		sc, err := p.cfg.Sidecar(sg.kind, "")
 		if err != nil {
 			return err
 		}
@@ -68,7 +68,7 @@ func validateAgainstCatalog(p *Project) error {
 	// (ADR-0088): authored data: would be silently overwritten while its key
 	// names look consumed, so it is rejected like the domain paths-only rule.
 	// The Generated entry left plainSingletons, so its sidecar checks live here.
-	cr, err := p.Cfg.Sidecar("config-reference", "")
+	cr, err := p.cfg.Sidecar("config-reference", "")
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func validateAgainstCatalog(p *Project) error {
 	if err := checkSectionsAllowed("config-reference", "", projectCatalog(p).Docs["config-reference"].Sections, cr.Sections); err != nil {
 		return err
 	}
-	for _, local := range p.Cfg.NormalizedLocalDocs() {
+	for _, local := range p.cfg.NormalizedLocalDocs() {
 		output := config.DocsDir + "/" + local.Name + ".md"
 		for name := range projectCatalog(p).Docs {
 			if output == docOutPath(p, name) {
@@ -93,9 +93,9 @@ func validateAgainstCatalog(p *Project) error {
 }
 
 // checkKindAgainstCatalog validates every catalog artifact's shaping sidecar.
-func checkKindAgainstCatalog(p *Project, d kindDescriptor) error {
+func checkKindAgainstCatalog(p renderInputs, d kindDescriptor) error {
 	for _, name := range d.poolNames(projectCatalog(p)) {
-		sc, err := p.Cfg.Sidecar(d.Plural, name)
+		sc, err := p.cfg.Sidecar(d.Plural, name)
 		if err != nil {
 			return err
 		}

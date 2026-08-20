@@ -29,25 +29,25 @@ func TestOutputPolicyRoutesMisleadingPathsEndToEnd(t *testing.T) {
 	frontmatter := RenderedFile{Path: "misleading.ts", Content: "not frontmatter\n", Policy: OutputPolicy{ValidateFrontmatter: true}, Encoder: MarkdownAgentDialect}
 	testsupport.WriteFile(t, filepath.Join(root, frontmatter.Path), frontmatter.Content)
 	lock := &manifest.Lock{Files: map[string]manifest.Entry{"misleading.ts": {OutputHash: manifest.Hash([]byte(frontmatter.Content))}}}
-	if drift := checkLockedFiles(p, lock, map[string]RenderedFile{frontmatter.Path: frontmatter}, nil); len(drift) != 1 || drift[0].Kind != "invalid-frontmatter" {
+	if drift := checkLockedFiles(renderInputsForTest(p).residentRoots(), lock, map[string]RenderedFile{frontmatter.Path: frontmatter}, nil); len(drift) != 1 || drift[0].Kind != "invalid-frontmatter" {
 		t.Fatalf("frontmatter policy drift = %#v", drift)
 	}
 	link := RenderedFile{Path: "misleading.toml", Content: "[missing](no/such/file.md)", Policy: OutputPolicy{ScanReferences: true}}
-	if drift := checkDeadRefs(p, []RenderedFile{link}); len(drift) != 1 || drift[0].Kind != "dead-reference" {
+	if drift := checkDeadRefs(renderInputsForTest(p), []RenderedFile{link}); len(drift) != 1 || drift[0].Kind != "dead-reference" {
 		t.Fatalf("link policy drift = %#v", drift)
 	}
 	skill := RenderedFile{Path: "misleading.ts", Content: "example-tdd", Policy: OutputPolicy{ScanSkillReferences: true}}
-	if drift := checkDeadSkillRefs(p, []RenderedFile{skill}, map[string]bool{}); len(drift) != 1 || drift[0].Kind != "dead-skill-reference" {
+	if drift := checkDeadSkillRefs(renderInputsForTest(p), []RenderedFile{skill}, map[string]bool{}); len(drift) != 1 || drift[0].Kind != "dead-skill-reference" {
 		t.Fatalf("skill-reference policy drift = %#v", drift)
 	}
 
 	// Conversely a Markdown-looking path remains unscanned when its declared
 	// policy says it is plain output.
 	plain := RenderedFile{Path: "misleading.md", Content: "[missing](no/such/file.md) example-tdd"}
-	if drift := checkDeadRefs(p, []RenderedFile{plain}); len(drift) != 0 {
+	if drift := checkDeadRefs(renderInputsForTest(p), []RenderedFile{plain}); len(drift) != 0 {
 		t.Fatalf("unscanned link drift = %#v", drift)
 	}
-	if drift := checkDeadSkillRefs(p, []RenderedFile{plain}, map[string]bool{}); len(drift) != 0 {
+	if drift := checkDeadSkillRefs(renderInputsForTest(p), []RenderedFile{plain}, map[string]bool{}); len(drift) != 0 {
 		t.Fatalf("unscanned skill drift = %#v", drift)
 	}
 
@@ -56,7 +56,7 @@ func TestOutputPolicyRoutesMisleadingPathsEndToEnd(t *testing.T) {
 	testsupport.WriteFile(t, filepath.Join(root, "misleading/SKILL.md"), "old\n")
 	regen := RenderedFile{Path: "misleading/SKILL.md", Content: "new\n", Policy: OutputPolicy{Regenerate: true}}
 	lock = &manifest.Lock{Files: map[string]manifest.Entry{regen.Path: {}}}
-	if drift := checkLockedFiles(p, lock, map[string]RenderedFile{regen.Path: regen}, nil); len(drift) != 1 || drift[0].Kind != "stale" {
+	if drift := checkLockedFiles(renderInputsForTest(p).residentRoots(), lock, map[string]RenderedFile{regen.Path: regen}, nil); len(drift) != 1 || drift[0].Kind != "stale" {
 		t.Fatalf("regeneration policy drift = %#v", drift)
 	}
 }
@@ -130,7 +130,7 @@ func TestCheckLockedFilesClassifiesOrdinaryFreshnessBeforeObservation(t *testing
 				testsupport.WriteFile(t, filepath.Join(root, path), *tt.observed)
 			}
 			lock := &manifest.Lock{Files: map[string]manifest.Entry{path: tt.entry}}
-			got := checkLockedFiles(p, lock, map[string]RenderedFile{path: tt.file}, nil)
+			got := checkLockedFiles(renderInputsForTest(p).residentRoots(), lock, map[string]RenderedFile{path: tt.file}, nil)
 			if !slices.Equal(got, tt.want) {
 				t.Fatalf("drift = %#v, want %#v", got, tt.want)
 			}
