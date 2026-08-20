@@ -4,7 +4,7 @@ slug: pitfalls-as-the-current-tag-vocabulary-carrier
 status: Implementing
 date: 2026-08-20
 ---
-# ADR-pitfalls-as-the-current-tag-vocabulary-carrier: Pitfalls as the Current Tag Vocabulary Carrier
+# ADR-0298: Pitfalls as the Current Tag Vocabulary Carrier
 
 
 ## Context
