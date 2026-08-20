@@ -16,20 +16,23 @@ adapter look like universal workflow authority and leaves the operative contract
 across generic documentation, shared checkpoint partials, and Pi-specific output.
 
 The Pi runtime topic already owns the target's runtime boundaries and its integration with the
-independently installed `pi-tools` handoff implementation. Moving the active handoff claim there
-keeps runtime protocol with its target without introducing another reference surface. Generic
-workflow authority still needs to define mandatory checkpoint persistence, safe resumability,
-repository precedence, single-writer memory, and the choice between continuing locally and using
-a target-native successor. Pi output must retain every executable detail so the ownership move
-does not weaken or silently change session replacement.
+independently installed `pi-tools` handoff implementation. Pi workflows instead owns awf profile
+policy, native-skill selection, and target projections. The handoff claim remained there from an
+earlier grouping even after the implementation and compatibility boundary moved to `pi-tools`.
+Moving that claim to Pi runtime follows the current semantic owner without introducing another
+reference surface. Generic workflow authority still needs to define mandatory checkpoint
+persistence, safe resumability, repository precedence, single-writer memory, reorientation,
+truthful boundary logging, and the choice between continuing locally and using a target-native
+successor. Pi output must retain every executable detail so the ownership move does not weaken or
+silently change session replacement.
 
 The broader classification of daily, advanced-lifecycle, recovery, and configuration material is
 reserved for AF-011. This decision corrects protocol ownership only.
 
 ## Decision
 
-1. `decision: target-owned-pi-session-handoff` Give Pi session-replacement protocol one target-specific canonical owner. Preserve the existing eligibility, evidence, invocation, exact effort kickoff, association and reorientation, boundary logging, cancellation, and failure semantics in Pi-owned guidance rather than teaching them as universal workflow rules.
-2. `decision: capability-neutral-continuity-authority` Keep generic continuity authority capability-neutral. It owns checkpoint persistence, safe resumability, repository and memory authority, retained-context and successor-work judgment, and continuation through a target-native successor, while target output projects the executable protocol for capabilities it actually supplies.
+1. `decision: target-owned-pi-session-handoff` Give Pi's executable session-replacement protocol one target-specific canonical owner. Preserve Pi's transient evidence source, tool invocation, exact effort kickoff, association mechanic, and executable projection of the generic continuation obligations rather than teaching those target mechanics as universal workflow rules.
+2. `decision: capability-neutral-continuity-authority` Keep generic continuity authority capability-neutral. It owns checkpoint persistence, safe resumability and eligibility, repository and memory authority, reorientation, truthful fresh-boundary logging, cancellation and failure disposition, retained-context and successor-work judgment, and continuation through a target-native successor, while target output projects the executable protocol for capabilities it actually supplies.
 
 ## State changes
 
@@ -42,8 +45,9 @@ reserved for AF-011. This decision corrects protocol ownership only.
 ## Consequences
 
 Generic workflow documents and shared checkpoint semantics no longer present Pi-only tool calls,
-transient runtime facts, or replacement bookkeeping as universal obligations. Pi users retain one
-complete, executable protocol in target-owned guidance, and active current-state authority names
+transient runtime facts, or association mechanics as universal obligations. They retain the
+capability-neutral continuation, reorientation, and truthful logging rules. Pi users retain one
+complete, executable projection in target-owned guidance, and active current-state authority names
 that owner directly.
 
 The target projection must stay synchronized with the canonical Pi runtime claim, and tests must
@@ -59,6 +63,7 @@ lands.
 | Alternative | Why not chosen |
 |---|---|
 | Keep the complete protocol in generic workflow authority behind target conditionals | Conditional rendering avoids leakage in some outputs but still assigns target-specific runtime semantics to the generic owner. |
+| Retain Pi workflows as the canonical owner | That topic owns awf profile policy, native skills, and their projections, while Pi runtime already owns the `pi-tools` handoff implementation and compatibility boundary; retaining the historical grouping would preserve the semantic mismatch. |
 | Add a new standalone Pi handoff reference | The existing Pi runtime topic already owns the relevant target boundary, so another reference would duplicate authority and navigation. |
 | Split operative details between Pi workflows and the effort-association skill | Distributed ownership would preserve the ambiguity and make lossless evolution harder to verify. |
 
