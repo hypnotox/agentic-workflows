@@ -233,17 +233,18 @@ For saved output, preserve the command status: `./x gate > /tmp/gate.log 2>&1; g
 <!-- awf:edit local-hooks: from .awf/parts/workflow/local-hooks.md -->
 <!-- awf:template-source templates/docs/workflow.md.tmpl -->
 ## Local git hooks
-This repository wires five rendered payloads through `.githooks/`: pre-commit checks `./x check` and `./x gate`; commit-msg checks the final message; pre-merge-commit checks staged state; reference-transaction and pre-push apply commit policy. `./x render` keeps payloads current.
+This repository tracks five optional client-side preflight stubs under `.githooks/`: pre-commit checks `./x check` and `./x gate`; commit-msg checks the final message; pre-merge-commit checks staged state; reference-transaction and pre-push apply commit policy. `./x render` keeps their payloads current.
 
-The stubs resolve the invoking worktree before delegation. Enable them once per clone with `git config core.hooksPath .githooks`. Preview policy with `./awf check commit-policy <revision-or-range>...`. GitHub branch protection is the final publication boundary.
+The stubs resolve the invoking worktree before delegation. A clone may activate them with `git config core.hooksPath .githooks`. Preview policy with `./awf check commit-policy <revision-or-range>...`. These checks do not gate remote updates.
+
+The active GitHub repository ruleset `main` (ID `18766557`) is the final remote control for publishing `main`: with no bypass actors, it requires signed commits and blocks non-fast-forward updates and deletion. It does not require CI status checks before accepting an update. Reverify the live rule with `gh api repos/hypnotox/agentic-workflows/rulesets/18766557` whenever the remote policy changes.
 
 `awf check staged commit` validates Conventional Commits and stale-format ADR merge trailers. Correct a refusal and run `git commit`; do not repeat the merge or retrofit an ADR.
 
 
 <!-- awf:template-source templates/docs/workflow.md.tmpl#ci -->
-<!-- awf:edit ci: default; create .awf/parts/workflow/ci.md to override -->
+<!-- awf:edit ci: from .awf/parts/workflow/ci.md -->
 <!-- awf:template-source templates/docs/workflow.md.tmpl -->
 ## Continuous integration
-
-Local hooks are per-clone and optional, so CI is the enforcement backstop: run `./x check` and the gate (`./x gate`) on every push. When the pinned bootstrap is enabled, CI obtains the exact awf version this repo was rendered with by capturing the path it prints (`"$(bash .awf/bootstrap.sh)" check`) instead of installing awf separately; the script verifies the download's SHA-256 before caching it.
+Local hooks are optional per-clone preflight. `.github/workflows/ci.yml` runs `./x check`, `./x gate`, and the repository scans on pushes to `main` and on pull requests. Those runs provide post-push detection and a backstop for bypassed hooks; GitHub does not require their statuses before accepting an update to `main`. Inspect the pushed commit's CI result before treating it as verified.
 
