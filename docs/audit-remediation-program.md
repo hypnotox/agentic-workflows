@@ -186,7 +186,7 @@ correction is allowed without unrelated cleanup riding along.
 | ID | Sev | Status | Target outcome | Depends on |
 |---|---|---|---|---|
 | RF-001 | P1 | COMPLETE | Concrete dependency direction and one named semantic owner per extraction | Program A milestone |
-| RF-008A | P1 | READY | Durable private compatibility policy and a real support-floor inventory | Program A milestone |
+| RF-008A | P1 | COMPLETE | Durable private compatibility policy and a real support-floor inventory | Program A milestone |
 | RF-008B | P1 | CONDITIONAL | Obsolete compatibility pruned below the support floor | RF-008A, managed repos upgraded |
 | RF-002 | P1 | READY | Residual project state separated from operations | RF-001 |
 | RF-003 | P1 | BLOCKED | One application owner for output planning and publication coordination | RF-002 |
@@ -778,6 +778,40 @@ abstraction; oracle strength.
 - **Residual debt:** None. Live policy must be reverified when GitHub settings or documented claims
   change.
 - **Unblocked:** No later issue depends directly on RF-013. B-F1 remains open only for RF-008A.
+
+### RF-008A
+
+- **Range:** Prior program state `cbd0a0eb5`; integration range `cbd0a0eb5..bee200450`.
+- **Protected contract:** ADR-0297 adopts the owner-approved R1, S1, and H1 policy with clarifications
+  1B and 2B: managed installations support current plus one previous release and the floor advances
+  only after every managed pin upgrades; live sources support schema 46; read-only audit decoding
+  preserves actual reachable managed `.awf` history from schema 3 through the highest current-binary
+  schema that enters managed history. Unknown future, malformed, and out-of-horizon inputs refuse.
+- **Clean integration:** Eight active claims place installed releases and the removal gate with upgrade
+  runtime, live schema with config, ADR and plan formats with their lifecycle owners, history with
+  audit, and resident formats with effort management. The ADR owns the component inventory. No
+  compatibility machinery, runtime behavior, adopter repository, or migration path changed.
+- **Files changed:** ADR-0297, its implementation plan, eight current-state claims and rendered topic
+  pages, working guidance for unsupported installations, generated index and lock carry the policy.
+- **Verification:** Read-only inventory covered the complete ten-repository adopter corpus: nine
+  managed pins at 0.39.1, agentic-workflows at 0.39.2, every live lock at schema 46, reachable `.awf`
+  history at schemas 3 through 46, all represented ADR and plan formats, active canonical effort
+  residents, and current compatibility inputs. Version-matched checks passed for every adopter.
+  ADR review settled eight findings and two owner clarifications; focused checks, render and drift,
+  repeated gates with 100 percent statement coverage, workflow and local audits, and renewed
+  combined-history assurance passed. ADR-0297 numbering and terminal closure passed their staged
+  checks and gates; the plan assignment advisory remained nonblocking.
+- **Deviations:** Review removed an unapproved future one-direct-migration-path mechanism, separated
+  semantic claim owners, expanded component dispositions, narrowed refusals, and corrected pin
+  evidence. Owner rulings preserved the managed-pin precondition for floor advancement and made the
+  audit upper bound follow actual managed history rather than freezing at schema 46.
+- **Residual debt:** Existing compatibility remains intentionally until its disposition gate is met.
+  Missing lock initialization provenance, inert punctuation exemptions, represented legacy ADR and
+  plan formats, actual historical schemas, and managed worktree or dirty-tree constraints continue
+  to block their associated removals.
+- **Unblocked:** B-F1 is complete. RF-014A is next in B-F2. RF-008B remains `CONDITIONAL` until all
+  managed repositories are upgraded and each removal candidate passes the no-dependency gate;
+  RF-014B remains conditional on applicable compatibility removals.
 
 Close each later issue with the same evidence: identity; baseline and final range; protected contract;
 clean integration; files changed with reason; verification commands and results; material deviations;
