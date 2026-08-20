@@ -4,7 +4,7 @@ slug: strongest-practical-durable-oracle
 status: Implementing
 date: 2026-08-20
 ---
-# ADR-strongest-practical-durable-oracle: Strongest practical durable oracle
+# ADR-0291: Strongest practical durable oracle
 
 
 ## Context
