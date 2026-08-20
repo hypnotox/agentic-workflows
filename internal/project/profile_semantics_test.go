@@ -14,6 +14,7 @@ import (
 
 const governanceFootprintContract = "Core and Full select available governance artifacts. They do not select different standards of correctness, autonomy, maintainability, or review quality. Core includes the operational workflow. Full adds ADR, plan, current-state, context, and audit capabilities."
 
+// invariant: rendering/workflow-skill-templates:closed-workflow-profiles (TestGovernanceFootprintsShareQualityBar)
 func TestGovernanceFootprintsShareQualityBar(t *testing.T) {
 	for _, profile := range []catalog.Profile{catalog.ProfileCore, catalog.ProfileFull} {
 		t.Run(string(profile), func(t *testing.T) {
@@ -62,6 +63,7 @@ func coreOperationalResidual(files []RenderedFile, forbidden []string) []string 
 // for both targets. It deliberately scans operational references instead of
 // ordinary prose such as an adopter discussing its own historical documents.
 // invariant: rendering/catalog-and-targets:profile-dependency-closure (TestCoreRenderedWorkflowExcludesFullAuthority)
+// invariant: rendering/workflow-skill-templates:closed-workflow-profiles (TestCoreRenderedWorkflowExcludesFullAuthority)
 func TestCoreRenderedWorkflowExcludesFullAuthority(t *testing.T) {
 	// These are bound operational spellings, not authority words in ordinary
 	// adopter prose. Each entry names an executable command, artifact identity,
@@ -123,7 +125,7 @@ func TestCoreRenderedWorkflowExcludesFullAuthority(t *testing.T) {
 				}
 			}
 			if len(files) == 0 {
-				t.Fatal("selected profile rendered no artifacts")
+				t.Fatal("selected governance footprint rendered no artifacts")
 			}
 
 			var residual []string
@@ -263,7 +265,7 @@ func TestProfileTransitionPreservesHistoryAndRestoresGovernance(t *testing.T) {
 	}
 
 	// Core must receive no Full-only source. The deleted part is representative
-	// of the profile-owned .awf sources that must not become dormant layers.
+	// of the governance-footprint-owned .awf sources that must not become dormant layers.
 	testsupport.WriteAwfConfig(t, root, coreConfig)
 	if err := os.Remove(filepath.Join(root, ".awf", "parts", "adr-template", "body.md")); err != nil {
 		t.Fatal(err)

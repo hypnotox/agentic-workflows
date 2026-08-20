@@ -14,6 +14,8 @@ query a single version or a range.
 
 ### Features
 
+- Core and Full are documented as governance footprints with one shared correctness, autonomy, maintainability, and review-quality bar. Core includes the operational workflow; Full adds ADR, plan, current-state, context, and audit capabilities. The `profile` config key and existing migration behavior are unchanged.
+
 - Implementation and plan review now admit maintainability findings only when they identify semantic ownership, location, concrete risk, smallest clean remediation, and existing classification. Risk-free aesthetic preferences are rejected without a new severity or disposition; ADR review and severity policy are unchanged.
 
 - Clean integration is operative across design, planning, implementation, and review: one proportional rule requires semantic ownership, bounded enabling refactoring, practical obsolete-path retirement, moving verification surfaces, and explicit residual debt while preserving YAGNI.

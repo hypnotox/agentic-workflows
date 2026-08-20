@@ -23,7 +23,7 @@ func ScaffoldConfig(prefix string, vars map[string]string, scopes []string) ([]b
 	return ScaffoldConfigForProfile(prefix, vars, scopes, catalog.ProfileCore)
 }
 
-// ScaffoldConfigForProfile generates a fresh config for the explicitly selected profile.
+// ScaffoldConfigForProfile generates fresh config for the selected governance footprint.
 func ScaffoldConfigForProfile(prefix string, vars map[string]string, scopes []string, profile catalog.Profile) ([]byte, error) {
 	if _, err := catalog.ParseProfile(string(profile)); err != nil {
 		return nil, err

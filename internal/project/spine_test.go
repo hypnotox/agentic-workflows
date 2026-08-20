@@ -1006,6 +1006,7 @@ func TestProductionCodeOutlineApprovalProjection(t *testing.T) {
 // itself and the two copies cannot drift apart.
 //
 // invariant: rendering/workflow-skill-templates:protected-contract-over-route (TestProtectedContractDoctrineSingleHome)
+// invariant: rendering/workflow-skill-templates:closed-workflow-profiles (TestProtectedContractDoctrineSingleHome)
 func TestProtectedContractDoctrineSingleHome(t *testing.T) {
 	const source = "partials/protected-contract.md"
 	partial, err := fs.ReadFile(templates.FS, source)

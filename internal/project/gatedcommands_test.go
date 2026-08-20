@@ -73,7 +73,7 @@ func TestRequireCapabilityRefusesCoreFullOnlyCommands(t *testing.T) {
 			t.Errorf("%s: error = %v, want CapabilityError", name, err)
 			continue
 		}
-		if refusal.Error() != "awf "+name+" is unavailable for the selected core profile" {
+		if refusal.Error() != "awf "+name+" is unavailable in the selected core governance footprint" {
 			t.Errorf("%s: error = %q", name, refusal)
 		}
 		if _, err := refusal.Diagnostic(); err != nil {

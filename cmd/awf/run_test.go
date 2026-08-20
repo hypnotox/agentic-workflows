@@ -670,7 +670,7 @@ func TestRunRefusesFullOnlyCommandForCoreProfileBeforeStateGuard(t *testing.T) {
 	if code := run([]string{"awf", "audit", "HEAD"}, &stdout, &stderr); code != 1 {
 		t.Fatalf("exit = %d, stderr = %q", code, stderr.String())
 	}
-	if stdout.Len() != 0 || !strings.Contains(stderr.String(), "awf audit is unavailable for the selected core profile") {
+	if stdout.Len() != 0 || !strings.Contains(stderr.String(), "awf audit is unavailable in the selected core governance footprint") {
 		t.Fatalf("stdout=%q stderr=%q", stdout.String(), stderr.String())
 	}
 	for _, configYAML := range []string{
@@ -732,7 +732,7 @@ func TestRunDispatchesEveryFullOnlyCommandFamilyByProfile(t *testing.T) {
 			testsupport.WriteAwfConfig(t, root, "prefix: example\nprofile: core\nintegrationBranch: main\n")
 			testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 			var stdout, stderr bytes.Buffer
-			if code := run(tc.args, &stdout, &stderr); code != 1 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "is unavailable for the selected core profile") {
+			if code := run(tc.args, &stdout, &stderr); code != 1 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "is unavailable in the selected core governance footprint") {
 				t.Fatalf("exit/output did not prove capability refusal: stdout=%q stderr=%q", stdout.String(), stderr.String())
 			}
 		})

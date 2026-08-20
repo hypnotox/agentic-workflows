@@ -29,7 +29,7 @@ type CapabilityError struct {
 }
 
 func (e *CapabilityError) Error() string {
-	return fmt.Sprintf("awf %s is unavailable for the selected %s profile", e.Command, e.Profile)
+	return fmt.Sprintf("awf %s is unavailable in the selected %s governance footprint", e.Command, e.Profile)
 }
 
 func (e *CapabilityError) Diagnostic() (presentation.Diagnostic, error) {
@@ -37,15 +37,15 @@ func (e *CapabilityError) Diagnostic() (presentation.Diagnostic, error) {
 	if err != nil { // coverage-ignore: catalog.Profile is validated before capability dispatch
 		return presentation.Diagnostic{}, err
 	}
-	field, err := presentation.NewField("selected profile", profile)
-	if err != nil { // coverage-ignore: selected profile and the fixed field label are presentation-valid
+	field, err := presentation.NewField("selected governance footprint", profile)
+	if err != nil { // coverage-ignore: the selected governance footprint and fixed field label are presentation-valid
 		return presentation.Diagnostic{}, err
 	}
 	step, err := presentation.Literal("set profile: full in .awf/config.yaml and run awf render")
 	if err != nil { // coverage-ignore: the fixed recovery instruction is a valid literal
 		return presentation.Diagnostic{}, err
 	}
-	return presentation.Diagnostic{Condition: e.Error(), State: "configuration", Changed: []presentation.Field{field}, Cause: "the command requires Full workflow governance", Steps: []presentation.Value{step}}, nil
+	return presentation.Diagnostic{Condition: e.Error(), State: "configuration", Changed: []presentation.Field{field}, Cause: "the command requires the Full governance footprint", Steps: []presentation.Value{step}}, nil
 }
 
 // RequireCapability refuses a declared Full-only command under Core.

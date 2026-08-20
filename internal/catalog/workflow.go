@@ -17,7 +17,7 @@ func ValidateWorkflowProfiles(cat *Catalog) error {
 			return fmt.Errorf("skill %q has unknown workflow kind %q", name, p.Kind)
 		}
 		if p.Purpose == "" || p.Trigger == "" {
-			return fmt.Errorf("skill %q has incomplete workflow profile", name)
+			return fmt.Errorf("skill %q has incomplete workflow metadata", name)
 		}
 		for _, neighbors := range [][]string{p.UsuallyFollows, p.CommonFollowUps} {
 			seen := map[string]bool{}

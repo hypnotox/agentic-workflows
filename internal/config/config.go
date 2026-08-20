@@ -670,7 +670,7 @@ func (c *Config) Validate() error {
 		return err
 	}
 	if c.Profile == catalog.ProfileCore && (len(c.Domains) > 0 || len(c.Tags) > 0 || len(c.ContextIgnore) > 0 || c.CurrentState != nil) {
-		return errors.New("core profile must not retain domains, tags, contextIgnore, or currentState governance sources")
+		return errors.New("the `profile: core` governance footprint must not retain domains, tags, contextIgnore, or currentState governance sources")
 	}
 	for _, d := range c.Domains {
 		if err := ValidateDomainName(d); err != nil {

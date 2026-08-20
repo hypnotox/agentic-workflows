@@ -967,6 +967,7 @@ func TestConcreteMaintainabilityReviewTargetParity(t *testing.T) {
 }
 
 // invariant: rendering/workflow-skill-templates:clean-integration (TestCleanIntegrationTargetParity)
+// invariant: rendering/workflow-skill-templates:closed-workflow-profiles (TestCleanIntegrationTargetParity)
 func TestCleanIntegrationTargetParity(t *testing.T) {
 	for _, profile := range []catalog.Profile{catalog.ProfileCore, catalog.ProfileFull} {
 		t.Run(string(profile), func(t *testing.T) {

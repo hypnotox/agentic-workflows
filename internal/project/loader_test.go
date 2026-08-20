@@ -99,8 +99,8 @@ func TestLoaderOpenValidatesInjectedStandardWorkflowProfiles(t *testing.T) {
 	injectedValue.Skills["tdd"] = broken
 	loader := NewLoaderWithoutRepository(config.Load, &injectedValue, ResolveResidentRoot(func(_ context.Context, root string) string { return root }))
 	_, err := loader.Open(testContext(t), root)
-	if err == nil || !strings.Contains(err.Error(), "incomplete workflow profile") {
-		t.Fatalf("error = %v, want the injected catalog's incomplete workflow profile", err)
+	if err == nil || !strings.Contains(err.Error(), "incomplete workflow metadata") {
+		t.Fatalf("error = %v, want the injected catalog's incomplete workflow metadata", err)
 	}
 }
 
