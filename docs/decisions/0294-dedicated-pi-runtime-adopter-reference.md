@@ -4,7 +4,7 @@ slug: dedicated-pi-runtime-adopter-reference
 status: Implementing
 date: 2026-08-20
 ---
-# ADR-dedicated-pi-runtime-adopter-reference: Dedicated Pi runtime adopter reference
+# ADR-0294: Dedicated Pi runtime adopter reference
 
 ## Context
 

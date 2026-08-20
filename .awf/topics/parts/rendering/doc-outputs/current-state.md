@@ -116,5 +116,5 @@ Backing: test
 ### `invariant: pi-runtime-reference-output`
 
 The standard Pi runtime reference renders as one lock-listed, drift-checked, link-scanned catalog document, and the generated AGENTS.md document map reaches it directly. Its unconditional publication states that it applies only to Pi adopters.
-Origin: ADR-dedicated-pi-runtime-adopter-reference
+Origin: ADR-0294
 Backing: test
