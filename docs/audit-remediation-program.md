@@ -103,7 +103,7 @@ change, not its literal execution choreography.
 | AF-004 | P1 | COMPLETE | Clean integration operative in every implementation and review path | AF-001 |
 | AF-005 | P1 | COMPLETE | Review blocks concrete maintainability risk, not aesthetic preference | AF-003, AF-004 |
 | AF-006 | P1 | READY | Strongest practical durable oracle replaces absolute test-first blocking | AF-001 |
-| AF-007 | P2 | READY | Punctuation restraint replaces the seven-codepoint ban | AF-001 |
+| AF-007 | P2 | COMPLETE | Punctuation restraint replaces the seven-codepoint ban | AF-001 |
 | AF-008 | P2 | READY | Core and Full read as governance footprints, not rigor modes | AF-001 |
 | AF-009 | P2 | BLOCKED | Pi runtime protocol owned by a target-specific reference, not generic workflow docs | AF-001, AF-008 |
 | AF-010 | P2 | BLOCKED | Residual operative prose states rule, flexible detail, stop condition, and evidence | AF-006..AF-009, AF-011, AF-013 |
@@ -429,6 +429,33 @@ abstraction; oracle strength.
 - **Unblocked:** AF-006 remains `READY` and is the next A2 issue. AF-013 still waits on AF-007's owner
   ruling despite its AF-005 dependency now being complete; AF-008 and AF-009 remain `READY`, and later
   issues retain their named blockers.
+
+### AF-007
+
+- **Range:** Prior program state `6922c59c8`; implementation range `6922c59c8..1736c7bed`.
+- **Protected contract:** ADR-0290 replaces the seven-codepoint ban with a language-agnostic
+  tracked-text restraint: every en dash fails, each blank-line-delimited paragraph permits at most
+  two em dashes, and ellipses and curly quotes pass. Guarded path, codepoint, and count exemptions
+  remain available, with retired exemption inputs tolerated for compatibility.
+- **Clean integration:** `internal/prosegate` owns the blocking policy and `internal/audit` reuses its
+  punctuation measure for the existing non-failing advisory. The language-specific emitted-prose
+  prohibition and its claim are retired. Proven compatibility residue remains assigned to RF-014B;
+  any other obsolete Program A machinery remains RF-014A scope.
+- **Files changed:** Prose-gate and audit packages, command wiring, CLI and config descriptions,
+  adopter documentation templates, the agent-guide invariant, current-state claims, ADR history,
+  generated outputs, tests, and the changelog carry and prove the revised policy.
+- **Verification:** Red-first tests covered permitted punctuation, paragraph boundaries, inert
+  compatibility exemptions, and audit measures. ADR review findings and four mechanical
+  implementation-review findings were closed. `go test ./...`, `./awf check staged`, `./x check`,
+  and `./x gate` passed at the issue tip with 100 percent statement coverage. Numbering and terminal
+  transactions also passed the staged check and gate. Local audit reported clean; repository audit
+  reported only its advisory plan-size warning.
+- **Deviations:** Direct execution replaced a plan because grounding and ADR review found one settled,
+  cohesive policy transaction proportionate. The audit retained its existing non-generated Markdown
+  universe while the blocking repository check owns all tracked text. Neither choice changed the
+  approved protected outcome.
+- **Unblocked:** AF-013 now has both dependencies complete and becomes available in A-F3 after that
+  wave's topology prerequisites. Other issues retain their named blockers.
 
 Close each later issue with the same evidence: identity; baseline and final range; protected contract;
 clean integration; files changed with reason; verification commands and results; material deviations;

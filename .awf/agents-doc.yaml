@@ -21,8 +21,8 @@ data:
         - kind: scopes
         - ref: ADR-0134
           text: '**Backed invariants.** Declare and prove current-state invariants; see the current-state contract.'
-        - ref: ADR-0115, ADR-0119
-          text: '**Plain punctuation.** Use ASCII punctuation throughout tracked text; see the prose gate contract.'
+        - ref: ADR-replace-plain-punctuation-ban-with-punctuation-restraint
+          text: '**Punctuation restraint.** Prefer ordinary punctuation; prohibit en dashes and use at most two em dashes per paragraph in tracked text. Ellipses and curly quotes are permitted; see the prose gate contract.'
         - ref: ADR-0158, ADR-0175
           text: '**No memory citation.** Never cite concrete effort memory paths in durable records.'
         - ref: ADR-0012
