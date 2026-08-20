@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-bound-compatibility-support-to-managed-reality: Bound Compatibility Support to Managed Reality](bound-compatibility-support-to-managed-reality.md) (Proposed)
 
 ## History
 
