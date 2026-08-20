@@ -172,10 +172,10 @@ func helpItems(label string, items []HelpItem) (presentation.RecordGroup, error)
 // touches-state: tooling/cli:cli-command-spec-single-source - sole command-table source; proofs in clispec_test.go and readme_test.go
 var Commands = []Command{
 	{
-		Name: "init", Summary: "Scaffold .awf/ and render the selected profile",
+		Name: "init", Summary: "Scaffold .awf/ and render the selected governance footprint",
 		BoolFlags: []string{"--force", "--describe"}, ValueFlags: []string{"--set", "--answers"},
 		Repeatable: []string{"--set"}, MaxPos: 0, Gating: Ungated,
-		Help: Help{Usage: []string{"awf init [flags]"}, Description: "Scaffold a .awf/ config tree and render the selected profile into the project.", Options: []HelpItem{{Name: "--force", Description: "overwrite colliding files, backing each up to <path>.awf-bak"}, {Name: "--describe", Description: "print the fillable value descriptors as JSON and exit"}, {Name: "--set", Description: "k=v      set a value non-interactively (repeatable)"}, {Name: "--answers", Description: "FILE read values from a JSON/YAML answers file: a flat key→value map of descriptor keys (see --describe)"}}},
+		Help: Help{Usage: []string{"awf init [flags]"}, Description: "Scaffold a .awf/ config tree and render the selected governance footprint into the project.", Options: []HelpItem{{Name: "--force", Description: "overwrite colliding files, backing each up to <path>.awf-bak"}, {Name: "--describe", Description: "print the fillable value descriptors as JSON and exit"}, {Name: "--set", Description: "k=v      set a value non-interactively (repeatable)"}, {Name: "--answers", Description: "FILE read values from a JSON/YAML answers file: a flat key→value map of descriptor keys (see --describe)"}}},
 	},
 	{
 		Name: "render", Summary: "Re-render after a template or config change",

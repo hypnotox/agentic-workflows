@@ -13,9 +13,9 @@ These packages load, validate, and describe the .awf config tree and the anchore
 
 ### `rule: config-expresses-repo-facts-only`
 
-Configuration records repository facts, including the selected closed workflow profile. Other awf behavior preferences and transitional adoption differences remain fixed in awf; additive `localDocs` records repository-specific document metadata without selecting standard artifacts.
+Configuration records repository facts, including the selected closed governance footprint under the required `profile` key. Other awf behavior preferences and transitional adoption differences remain fixed in awf; additive `localDocs` records repository-specific document metadata without selecting standard artifacts.
 Origin: ADR-0251
-Revised-by: ADR-0272, ADR-0278
+Revised-by: ADR-0272, ADR-0278, ADR-define-core-and-full-as-governance-footprints
 
 ### `invariant: no-artifact-selection-surface`
 

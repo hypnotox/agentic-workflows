@@ -13,7 +13,7 @@ check` detects drift.
 
 ## Highlights
 
-- Core and Full workflow profiles: Core for operational coding discipline, Full for governed ADR, plan, and current-state authority
+- Core and Full governance footprints with one shared correctness, autonomy, maintainability, and review-quality bar
 - A workflow from clarification through implementation, review, and retrospective
 - ADRs for load-bearing decisions and plans when sequencing or coordination helps
 - Fresh-context agents for exploration, grounding, implementation, and review
@@ -70,8 +70,9 @@ awf list
 ```
 
 `awf init` creates a Core `.awf/` tree and renders the workflow. Use `awf init --profile full`
-for ADR, plan, current-state, context, and workflow-audit governance. Existing repositories
-upgrade explicitly to Full. Commit both the source tree and its rendered outputs. After changing
+to add ADR, plan, current-state, context, and workflow-audit governance. Both footprints use the
+same correctness, autonomy, maintainability, and review-quality bar. Existing repositories upgrade
+explicitly to Full. Commit both the source tree and its rendered outputs. After changing
 `.awf/`, render and check again:
 
 ```sh
@@ -92,9 +93,10 @@ collision. `awf init --force` first saves each replaced file as `<path>.awf-bak`
 └── parts/...                      └── docs/
 ```
 
-Core supplies brainstorming, implementation, testing, review, efforts, and managed worktrees.
-Full adds ADRs for durable decisions, plans for sequenced work, current-state authority, context,
-and workflow audit.
+Core includes the operational workflow: brainstorming, implementation, testing, review, efforts,
+and managed worktrees. Full adds ADRs for durable decisions, plans for sequenced work,
+current-state authority, context, and workflow audit. These governance footprints select artifacts,
+not different standards of rigor or autonomy.
 
 ```mermaid
 flowchart LR
@@ -119,7 +121,7 @@ See [the workflow guide](docs/workflow.md) for the full decision criteria.
 <!-- awf:clispec-commands:start -->
 | Command | Purpose |
 |---|---|
-| `awf init [flags]` | Scaffold .awf/ and render the selected profile |
+| `awf init [flags]` | Scaffold .awf/ and render the selected governance footprint |
 | `awf render` | Re-render after a template or config change |
 | `awf check` | Verify the repository and staged universes |
 | `awf read <subcommand>` | Read an executable projection from a parsed artifact |

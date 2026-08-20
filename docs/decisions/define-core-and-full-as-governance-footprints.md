@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: define-core-and-full-as-governance-footprints
-status: Accepted
+status: Implementing
 date: 2026-08-20
 ---
 # ADR-define-core-and-full-as-governance-footprints: Define Core and Full as governance footprints
@@ -67,3 +67,5 @@ Keeping different names for the adopter-facing governance-footprint concept and 
 - 2026-08-20: Proposed
 - 2026-08-20: Accepted; content-sha256: 7f06c033714f43ec3ab419066eb525a28f6e3d2b94625e506fb32d4419fdeb78
 - 2026-08-20: Amended; content-sha256: 49565dd8eaa24d28c126424aef9eaf4f92b96350351e7d978d839a82f3076f29
+- 2026-08-20: Implementing; content-sha256: 49565dd8eaa24d28c126424aef9eaf4f92b96350351e7d978d839a82f3076f29
+- 2026-08-20: Applied; operations: update `config/configuration:config-expresses-repo-facts-only`, update `rendering/guide-and-doc-templates:guide-entry-point-routing`, update `rendering/guide-and-doc-templates:working-memory-single-home`, update `rendering/guide-and-doc-templates:maintainable-code-design-guide`, update `rendering/workflow-skill-templates:protected-contract-over-route`, update `rendering/workflow-skill-templates:independent-workflow-escalation`, update `rendering/workflow-skill-templates:mandatory-approval-boundaries`, update `rendering/workflow-skill-templates:authority-guided-implementation-autonomy`, update `rendering/workflow-skill-templates:authority-guided-review-remediation`, update `rendering/workflow-skill-templates:unified-effort-workflow-coverage`, update `rendering/workflow-skill-templates:clean-integration`, update `rendering/workflow-skill-templates:concrete-maintainability-review`, update `rendering/workflow-skill-templates:closed-workflow-profiles`, update `rendering/pi-workflows:pi-structured-exploration-contract`, update `rendering/doc-outputs:layout-docs-profile-projection`, update `rendering/sync-and-drift:closed-config-tree`, update `rendering/sync-and-drift:drift-source-set`, update `rendering/sync-and-drift:managed-output-attribution`, update `rendering/sync-and-drift:profile-config-hash`, update `tooling/cli:cli-creation-and-inventory`, update `tooling/cli:check-universe-groups`, update `tooling/cli:upgrade-always-syncs`, update `tooling/init-and-enablement:init-noninteractive-default`, update `tooling/init-and-enablement:init-prompts-enabled-vars`

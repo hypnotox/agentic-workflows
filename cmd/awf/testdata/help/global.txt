@@ -5,7 +5,7 @@ help:
     awf <command> [flags]
   commands:
     commands:
-      init | Scaffold .awf/ and render the selected profile
+      init | Scaffold .awf/ and render the selected governance footprint
       render | Re-render after a template or config change
       check | Verify the repository and staged universes
       read | Read an executable projection from a parsed artifact

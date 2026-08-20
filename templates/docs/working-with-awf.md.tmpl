@@ -15,7 +15,7 @@ awf always renders self-ignoring `.gitignore` files at `.awf/efforts/`, `.awf/wo
 
 - `./awf render`: render the selected operational workflow from `.awf/` and update `.awf/awf.lock`.
 - `./awf check`: report render drift, prose, memory, and ordinary repository checks.
-- `./awf upgrade`: migrate configuration and re-render the selected profile.
+- `./awf upgrade`: migrate configuration and re-render the selected governance footprint.
 - `awf effort`: create, integrate, remove, and finish durable operational work.
 
 Use `.awf/` sources and convention parts to customize the generated workflow; then re-render and commit the resulting managed outputs and lock together. Project documentation, source, tests, and repository history are the authority for Core work. On Pi, Core review uses `subagent_review_code`.
@@ -233,7 +233,7 @@ re-add the key to recover.
 ### Pi workflow subagents
 
 The Pi target requires a compatible Pi 0.84.2 or newer build exposing `ExtensionAPI.queueCommand`
-and renders executable project-extension code that Pi loads only after project trust. It registers exactly six tools in Full and four in Core. Both profiles expose
+and renders executable project-extension code that Pi loads only after project trust. It registers exactly six tools in Full and four in Core. Both governance footprints expose
 `subagent_grounding`, whose required `task` carries the workflow's premise and altitude check;
 `subagent_explore`, which requires `{task, breadth, detail}` with breadth `targeted`, `bounded`, or
 `broad` and independently selected detail `paths`, `summary`, or `analysis`; `subagent_review_code`,

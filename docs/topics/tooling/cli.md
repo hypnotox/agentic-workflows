@@ -13,9 +13,9 @@ The cmd packages and their spec helpers implement the awf command surfaces and t
 
 ### `invariant: cli-creation-and-inventory`
 
-The CLI lists fixed catalog inventory and never selects individual catalog membership. Full creates authored ADRs, plans, topics, and domains; both profiles retain pitfalls and additive local documents, while the selected profile controls rendered membership.
+The CLI lists fixed catalog inventory and never selects individual catalog membership. Full creates authored ADRs, plans, topics, and domains; both governance footprints retain pitfalls and additive local documents, while the selected footprint controls rendered membership.
 Origin: ADR-0254
-Revised-by: ADR-0262, ADR-0272, ADR-0278
+Revised-by: ADR-0262, ADR-0272, ADR-0278, ADR-define-core-and-full-as-governance-footprints
 Backing: test
 
 ### `invariant: pitfall-scaffold`
@@ -92,9 +92,9 @@ Backing: test
 
 ### `invariant: check-universe-groups`
 
-The check command groups repository drift, prose, and memory checks in both profiles; Full additionally aggregates current-state and plan-artifact checks. Staged likewise selects its Full governance checks, and outside Git the bare form reports staged unavailable.
+The check command groups repository drift, prose, and memory checks in both governance footprints; Full additionally aggregates current-state and plan-artifact checks. Staged likewise selects its Full governance checks, and outside Git the bare form reports staged unavailable.
 Origin: ADR-0210
-Revised-by: ADR-0217, ADR-0278
+Revised-by: ADR-0217, ADR-0278, ADR-define-core-and-full-as-governance-footprints
 Backing: test
 
 ### `invariant: plan-read-command`
@@ -150,9 +150,9 @@ Backing: test
 
 ### `invariant: upgrade-always-syncs`
 
-`awf upgrade` runs a full sync on every successful invocation, including zero migrations, re-rendering every managed file in the selected profile.
+`awf upgrade` runs a full sync on every successful invocation, including zero migrations, re-rendering every managed file in the selected governance footprint.
 Origin: ADR-0085
-Revised-by: ADR-0278
+Revised-by: ADR-0278, ADR-define-core-and-full-as-governance-footprints
 Backing: test
 
 ### `invariant: version-compat-gate`

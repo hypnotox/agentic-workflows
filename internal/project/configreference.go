@@ -291,7 +291,7 @@ func (p *Project) configReferenceRows(files []RenderedFile) (ConfigReference, er
 		if !p.fullProfile() {
 			switch e.Path {
 			case "profile":
-				row.Description = "Selects the Core operational workflow."
+				row.Description = "Selects the Core governance footprint, which includes the operational workflow at the shared correctness, autonomy, maintainability, and review-quality bar."
 			case "integrationBranch":
 				row.Description = "The branch effort work integrates into. It must be non-empty and free of whitespace and must not start with `-`; slashes are legal, so `release/1.0` is accepted."
 			case "localDocs":

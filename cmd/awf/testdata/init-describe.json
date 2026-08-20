@@ -3,7 +3,7 @@
     {
       "key": "profile",
       "kind": "enum",
-      "description": "Closed workflow profile: Core operational workflow or Full governance workflow.",
+      "description": "Governance footprint: Core includes the operational workflow; Full adds ADR, plan, current-state, context, and audit capabilities at the same quality bar.",
       "default": "core",
       "options": [
         "core",

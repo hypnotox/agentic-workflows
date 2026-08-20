@@ -7,6 +7,8 @@ You own the project's long-term health, not just the task in front of you: bugs 
 
 <!-- awf:include protected-contract -->
 
+<!-- awf:include governance-footprints -->
+
 <!-- awf:include plan-flexibility -->
 <!-- awf:end -->
 
@@ -58,7 +60,7 @@ review, checkpoint, handoff, helper, or outcome authority.
 
 - Existing efforts resume under their fixed identity only for work inside their outcome; a newly discovered outcome cannot silently reuse, rename, replace, or create beside the active effort.
 
-- Independent fresh-context children may run concurrently where supported, but they are report-only with respect to that shared memory; refinement stays sequential, a lower-cost child model is selected deliberately when supported, and shared-checkout implementation stays alone. awf ships this as one workflow, with no workflow profiles, depth controls, routers, classifiers, or runtime policy knobs.
+- Independent fresh-context children may run concurrently where supported, but they are report-only with respect to that shared memory; refinement stays sequential, a lower-cost child model is selected deliberately when supported, and shared-checkout implementation stays alone. Governance footprints add no depth controls, rigor modes, routers, classifiers, or runtime policy knobs.
 
 {{if .targetSessionHandoff}}On Pi, direct `awf effort` commands create and manage the slugged resident. Native skill discovery loads fixed workflow guidance without lifecycle mutation.{{end}}
 

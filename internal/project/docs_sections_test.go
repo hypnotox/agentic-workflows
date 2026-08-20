@@ -156,10 +156,11 @@ func TestWorkflowDocChainOrder(t *testing.T) {
 	if !strings.Contains(out, "settle ADR review first") || !strings.Contains(out, "every linked Proposed plan") {
 		t.Errorf("workflow guidance must route ADR-first ordinary plan review:\n%s", out)
 	}
-	for _, forbidden := range []string{"workflow profiles", "depth controls", "routers", "classifiers", "runtime policy knobs"} {
-		if !strings.Contains(out, "no "+forbidden) && !strings.Contains(out, "no workflow profiles, depth controls, routers, classifiers, or runtime policy knobs") {
-			t.Errorf("workflow guidance does not forbid %q:\n%s", forbidden, out)
-		}
+	if !strings.Contains(out, "Governance footprints add no depth controls, rigor modes, routers, classifiers, or runtime policy knobs") {
+		t.Errorf("workflow guidance does not reject footprint-driven rigor controls:\n%s", out)
+	}
+	if strings.Contains(out, "workflow profiles") {
+		t.Errorf("workflow guidance retains misleading workflow-profile terminology:\n%s", out)
 	}
 	planSelection := []string{"sequencing, coordination, or resumability materially helps", "records and operationalizes approved choices", "rather than inventing speculative structure, checks, or work"}
 	for _, want := range planSelection {

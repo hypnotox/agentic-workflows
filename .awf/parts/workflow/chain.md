@@ -34,7 +34,7 @@
 
 - The approval boundary precedes ADR and plan authoring, while effort, grounding, ADR, plan, and review triggers remain independent.
 
-- This is one workflow, with no profiles, depth controls, routers, classifiers, or runtime policy knobs.
+- Core and Full are governance footprints of this one workflow, not different standards of correctness, autonomy, maintainability, or review quality; they add no depth controls, rigor modes, routers, classifiers, or runtime policy knobs.
 
 ### Ownership
 

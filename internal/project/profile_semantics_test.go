@@ -12,11 +12,45 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
+const governanceFootprintContract = "Core and Full select available governance artifacts. They do not select different standards of correctness, autonomy, maintainability, or review quality. Core includes the operational workflow. Full adds ADR, plan, current-state, context, and audit capabilities."
+
+func TestGovernanceFootprintsShareQualityBar(t *testing.T) {
+	for _, profile := range []catalog.Profile{catalog.ProfileCore, catalog.ProfileFull} {
+		t.Run(string(profile), func(t *testing.T) {
+			files := explorationRenderedByPath(t, "prefix: example\nprofile: "+string(profile)+"\nintegrationBranch: main\n")
+			for path, wants := range map[string][]string{
+				"docs/workflow.md": {governanceFootprintContract, "required verification strength"},
+				"AGENTS.md":        {"workflow governs a change's protected contract", "clean-integration operative rule"},
+			} {
+				for _, want := range wants {
+					if !strings.Contains(files[path], want) {
+						t.Errorf("%s missing shared governance-footprint contract %q", path, want)
+					}
+				}
+			}
+			for _, target := range []string{"pi", "claude"} {
+				for path, wants := range map[string][]string{
+					"." + target + "/skills/example-executing-direct/SKILL.md": {"Resolve implementation findings autonomously", "current and target owner", "residual debt"},
+					"." + target + "/agents/implementer.md":                    {"current and target owner", "residual debt"},
+					"." + target + "/agents/code-reviewer.md":                  {"concrete maintainability risk", "current and target owner", "residual debt"},
+				} {
+					for _, want := range wants {
+						if !strings.Contains(files[path], want) {
+							t.Errorf("%s missing shared quality doctrine %q", path, want)
+						}
+					}
+				}
+			}
+		})
+	}
+}
+
 func coreOperationalResidual(files []RenderedFile, forbidden []string) []string {
 	var residual []string
 	for _, file := range files {
+		content := strings.ReplaceAll(file.Content, governanceFootprintContract, "")
 		for _, phrase := range forbidden {
-			if strings.Contains(file.Content, phrase) {
+			if strings.Contains(content, phrase) {
 				residual = append(residual, file.Path+": "+phrase)
 			}
 		}

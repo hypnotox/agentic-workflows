@@ -117,6 +117,7 @@ Backing: test
 
 ### `invariant: layout-docs-profile-projection`
 
-Layout and document-map derivation expose only documents emitted by the selected profile.
+Layout and document-map derivation expose only documents emitted by the selected governance footprint.
 Origin: ADR-0278
+Revised-by: ADR-define-core-and-full-as-governance-footprints
 Backing: test

@@ -18,8 +18,9 @@ Backing: test
 
 ### `invariant: protected-contract-over-route`
 
-The protected-contract doctrine has exactly one authored definition, in the shared `protected-contract` partial: the workflow governs a change's protected contract, being the requested outcome, the explicitly settled durable choices, the material scope, the externally observable behaviour, the compatibility and safety constraints, the required verification strength, the prohibited shortcuts, and every constraint an active project rule places on one of these, while everything else about how the change is carried out is a route the implementation owner may choose and revise. Precedence is decided per constraint rather than per rule, so one rule may be protected in its protected clauses and subordinate in its route clauses. Both profiles carry the same definition. The rendered workflow document carries it by rendering that partial; the rendered agent guide carries only its thesis sentence, in a paragraph linking that document, and no other rendered surface carries the thesis or either defining clause.
+The protected-contract doctrine has exactly one authored definition, in the shared `protected-contract` partial: the workflow governs a change's protected contract, being the requested outcome, the explicitly settled durable choices, the material scope, the externally observable behaviour, the compatibility and safety constraints, the required verification strength, the prohibited shortcuts, and every constraint an active project rule places on one of these, while everything else about how the change is carried out is a route the implementation owner may choose and revise. Precedence is decided per constraint rather than per rule, so one rule may be protected in its protected clauses and subordinate in its route clauses. Both governance footprints carry the same definition and quality bar. The rendered workflow document carries it by rendering that partial; the rendered agent guide carries only its thesis sentence, in a paragraph linking that document, and no other rendered surface carries the thesis or either defining clause.
 Origin: ADR-0286
+Revised-by: ADR-define-core-and-full-as-governance-footprints
 Backing: test
 
 ### `invariant: plan-flexibility`
@@ -30,9 +31,9 @@ Backing: test
 
 ### `invariant: independent-workflow-escalation`
 
-Workflow intake independently evaluates brainstorming, continuity, grounding, and implementation review in both profiles; Full additionally evaluates ADR and plan governance. Brainstorming solely owns proportionate outline approval, and its boundary is an unresolved material decision rather than the act of mutating production code, so a routine change whose protected contract is already settled proceeds without an approval stop whatever kind of file it touches.
+Workflow intake independently evaluates brainstorming, continuity, grounding, and implementation review in both governance footprints; Full additionally evaluates ADR and plan governance. Brainstorming solely owns proportionate outline approval, and its boundary is an unresolved material decision rather than the act of mutating production code, so a routine change whose protected contract is already settled proceeds without an approval stop whatever kind of file it touches.
 Origin: ADR-0243
-Revised-by: ADR-0265, ADR-0278, ADR-0286
+Revised-by: ADR-0265, ADR-0278, ADR-0286, ADR-define-core-and-full-as-governance-footprints
 Backing: test
 
 ### `invariant: bounded-exploration-reporting`
@@ -64,23 +65,23 @@ Backing: test
 
 ### `invariant: mandatory-approval-boundaries`
 
-In both profiles, effort-workflow autonomously creates when continuity fires and brainstorming stops for explicit pre-artifact outline approval when an unresolved material decision fires it. Full ADR review continues to linked-plan handling; Core has no ADR or plan workflow.
+In both governance footprints, effort-workflow autonomously creates when continuity fires and brainstorming stops for explicit pre-artifact outline approval when an unresolved material decision fires it. Full ADR review continues to linked-plan handling; Core has no ADR or plan governance artifacts.
 Origin: ADR-0152
-Revised-by: ADR-0160, ADR-0167, ADR-0222, ADR-0226, ADR-0232, ADR-0240, ADR-0243, ADR-0265, ADR-0266, ADR-0278, ADR-0286
+Revised-by: ADR-0160, ADR-0167, ADR-0222, ADR-0226, ADR-0232, ADR-0240, ADR-0243, ADR-0265, ADR-0266, ADR-0278, ADR-0286, ADR-define-core-and-full-as-governance-footprints
 Backing: test
 
 ### `invariant: authority-guided-implementation-autonomy`
 
-The shared implementation-autonomy partial serves selected implementation consumers in both profiles. It requires authority-preserving reasoned correction, diagnosis before escalation, approved-boundary preservation, required verification, and no weakened oracle or unrelated cleanup; Full adds its governance-specific closure.
+The shared implementation-autonomy partial serves selected implementation consumers in both governance footprints. It requires authority-preserving reasoned correction, diagnosis before escalation, approved-boundary preservation, required verification, and no weakened oracle or unrelated cleanup; Full adds its governance-specific closure without changing the autonomy bar.
 Origin: ADR-0240
-Revised-by: ADR-0248, ADR-0249, ADR-0278
+Revised-by: ADR-0248, ADR-0249, ADR-0278, ADR-define-core-and-full-as-governance-footprints
 Backing: test
 
 ### `invariant: authority-guided-review-remediation`
 
-The shared review spine remains the semantic home of finding classification for selected review workflows. The shared concrete-maintainability contract makes implementation and plan dispatchers reject risk-free preferences before classification, choose authority-preserving clean local remedies autonomously, and route a genuinely new material choice or changed approved boundary through brainstorming independently of severity; only a true authority deviation is user-decision. Full adds ADR and plan review governance, while ADR review remains outside the concrete-risk threshold.
+The shared review spine remains the semantic home of finding classification for selected review workflows. The shared concrete-maintainability contract makes implementation and plan dispatchers reject risk-free preferences before classification, choose authority-preserving clean local remedies autonomously, and route a genuinely new material choice or changed approved boundary through brainstorming independently of severity; only a true authority deviation is user-decision. Full adds ADR and plan review governance without changing implementation review quality, while ADR review remains outside the concrete-risk threshold.
 Origin: ADR-0245
-Revised-by: ADR-0255, ADR-0264, ADR-0265, ADR-0278, ADR-0289
+Revised-by: ADR-0255, ADR-0264, ADR-0265, ADR-0278, ADR-0289, ADR-define-core-and-full-as-governance-footprints
 Backing: test
 
 ### `invariant: memory-checkpoint-chain-coverage`
@@ -93,9 +94,9 @@ Backing: test
 
 ### `invariant: unified-effort-workflow-coverage`
 
-Catalog-derived tests render applicable effort workflows for every selected target and prove continuity is independent of brainstorming, artifacts, implementation, and review. `effort-workflow` is the sole lifecycle owner in both profiles; Full adds deferred governance closure.
+Catalog-derived tests render applicable effort workflows for every selected target and prove continuity is independent of brainstorming, artifacts, implementation, and review. `effort-workflow` is the sole lifecycle owner in both governance footprints; Full adds deferred governance closure.
 Origin: ADR-0175
-Revised-by: ADR-0187, ADR-0197, ADR-0218, ADR-0222, ADR-0225, ADR-0226, ADR-0243, ADR-0266, ADR-0278
+Revised-by: ADR-0187, ADR-0197, ADR-0218, ADR-0222, ADR-0225, ADR-0226, ADR-0243, ADR-0266, ADR-0278, ADR-define-core-and-full-as-governance-footprints
 Backing: test
 
 ### `invariant: effort-workflow`
@@ -163,14 +164,16 @@ Backing: test
 
 ### `invariant: clean-integration`
 
-One heading-free shared partial is the sole operative home for proportional clean integration. It points to the maintainable-code-design guide as canonical doctrine and requires applicable design, planning, implementation, and review consumers to determine the current and target owner, narrowest clean integration point, bounded enabling refactor, practical obsolete-path removal or migration, moving verification surfaces, and reasoned residual debt. Necessary bounded enabling work stays inside scope unless it creates a durable choice, increases risk, changes external behavior, or expands the requested outcome. The rule preserves YAGNI, rejects unrelated cleanup, speculative flexibility, and test-shaped production design, and renders coherently through every applicable Core and Full Pi and Claude consumer.
+One heading-free shared partial is the sole operative home for proportional clean integration. It points to the maintainable-code-design guide as canonical doctrine and requires applicable design, planning, implementation, and review consumers to determine the current and target owner, narrowest clean integration point, bounded enabling refactor, practical obsolete-path removal or migration, moving verification surfaces, and reasoned residual debt. Necessary bounded enabling work stays inside scope unless it creates a durable choice, increases risk, changes external behavior, or expands the requested outcome. The rule preserves YAGNI, rejects unrelated cleanup, speculative flexibility, and test-shaped production design, and renders the same doctrine coherently through every applicable Core and Full Pi and Claude consumer.
 Origin: ADR-0288
+Revised-by: ADR-define-core-and-full-as-governance-footprints
 Backing: test
 
 ### `invariant: concrete-maintainability-review`
 
-One heading-free shared partial is the sole operative owner of concrete maintainability-review admissibility and evidence. Code reviewer, plan reviewer, reviewing-impl, and reviewing-plan each include it exactly once; it renders coherently for applicable Core and Full Pi and Claude consumers. It admits only findings with semantic owner, affected location, concrete risk, smallest clean remediation, and existing classification, maps those through the unchanged six-field schema while severity remains informational, rejects risk-free aesthetic preferences as non-admissible, preserves clean local autonomy and one verify pass, and routes a changed approved boundary through brainstorming independently of severity. ADR review and AF-013 severity separation remain outside the contract.
+One heading-free shared partial is the sole operative owner of concrete maintainability-review admissibility and evidence. Code reviewer, plan reviewer, reviewing-impl, and reviewing-plan each include it exactly once; it renders the same implementation review-quality bar coherently for applicable Core and Full Pi and Claude consumers. It admits only findings with semantic owner, affected location, concrete risk, smallest clean remediation, and existing classification, maps those through the unchanged six-field schema while severity remains informational, rejects risk-free aesthetic preferences as non-admissible, preserves clean local autonomy and one verify pass, and routes a changed approved boundary through brainstorming independently of severity. ADR review and AF-013 severity separation remain outside the contract.
 Origin: ADR-0289
+Revised-by: ADR-define-core-and-full-as-governance-footprints
 Backing: test
 
 ### `invariant: maintainable-code-stage-coverage`
@@ -238,6 +241,7 @@ Backing: test
 
 ### `invariant: closed-workflow-profiles`
 
-Core renders a closed brainstorm, implement/test, review, effort workflow without Full governance references; Full retains the complete governance workflow.
+Core and Full are closed governance footprints of one workflow. Core includes the complete operational workflow without Full-only governance references; Full adds ADR, plan, current-state, context, and audit capabilities. Both footprints use the same correctness, autonomy, maintainability, protected-contract, clean-integration, and implementation review-quality bar.
 Origin: ADR-0278
+Revised-by: ADR-define-core-and-full-as-governance-footprints
 Backing: test

@@ -18,6 +18,9 @@ Everything else about how the change is carried out is the route: phase and task
 
 Precedence is decided per constraint, not per rule. A clause that bears only on how a change is carried out is subordinate to the protected contract, so one rule may be protected in its protected clauses and subordinate in its route clauses. A route detail binds only when a settled decision states that it is load-bearing.
 
+<!-- awf:template-source templates/partials/governance-footprints.md -->
+Core and Full select available governance artifacts. They do not select different standards of correctness, autonomy, maintainability, or review quality. Core includes the operational workflow. Full adds ADR, plan, current-state, context, and audit capabilities.
+
 <!-- awf:template-source templates/partials/plan-flexibility.md -->
 **Plan flexibility.**
 
@@ -66,7 +69,7 @@ Reconcile a Proposed plan only when another phase or reviewer could rely on stal
 
 - The approval boundary precedes ADR and plan authoring, while effort, grounding, ADR, plan, and review triggers remain independent.
 
-- This is one workflow, with no profiles, depth controls, routers, classifiers, or runtime policy knobs.
+- Core and Full are governance footprints of this one workflow, not different standards of correctness, autonomy, maintainability, or review quality; they add no depth controls, rigor modes, routers, classifiers, or runtime policy knobs.
 
 ### Ownership
 
