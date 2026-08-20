@@ -167,3 +167,42 @@ func TestLoaderOpenDoesNotMutateStandardCatalog(t *testing.T) {
 		t.Fatal("Loader.Open mutated the injected standard catalog")
 	}
 }
+
+func TestLoaderStateDefensivelyOwnsLoadedFacts(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nprofile: full\nintegrationBranch: main\ndomains: [tooling]\ntags: {tag: meaning}\nvars: {nested: {items: [original]}}\n")
+	p, err := NewLoaderWithoutRepository(config.Load, catalog.Standard, func(_ context.Context, root string) string { return root }).Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.Cfg.Domains[0] = "mutated"
+	p.Cfg.Tags["tag"] = "mutated"
+	p.Cfg.Vars["nested"].(map[string]any)["items"].([]any)[0] = "mutated"
+	p.Targets[0].Capabilities = append(p.Targets[0].Capabilities, CapabilitySubagentTools)
+	p.catalog().Skills["tdd"] = catalog.SkillSpec{Sections: []string{"mutated"}}
+	got := p.state.facts.Config()
+	if got.Domains[0] != "tooling" || got.Tags["tag"] != "meaning" || got.Vars["nested"].(map[string]any)["items"].([]any)[0] != "original" {
+		t.Fatalf("state retained a Loader input alias: %#v", got)
+	}
+	returnedTargets := p.state.resolvedTargets()
+	wantCapabilities := len(returnedTargets[1].Capabilities)
+	returnedTargets[1].Capabilities = append(returnedTargets[1].Capabilities, CapabilitySubagentTools)
+	if len(p.state.resolvedTargets()[1].Capabilities) != wantCapabilities {
+		t.Fatal("resolved target accessor returned an alias")
+	}
+	returnedCatalog := p.state.catalog()
+	first := returnedCatalog.Skills["tdd"]
+	first.Sections[0] = "returned mutation"
+	returnedCatalog.Skills["tdd"] = first
+	if p.state.catalog().Skills["tdd"].Sections[0] == "returned mutation" {
+		t.Fatal("catalog accessor returned an alias")
+	}
+	complete := p.state.completeCatalog()
+	complete.Skills["tdd"] = catalog.SkillSpec{Sections: []string{"complete mutation"}}
+	if p.state.completeCatalog().Skills["tdd"].Sections[0] == "complete mutation" {
+		t.Fatal("complete catalog accessor returned an alias")
+	}
+	if p.state.invokingRoot != root || p.state.roots.Tracked != root || p.state.nested || p.state.facts.Config().Source() != nil {
+		t.Fatal("Loader did not construct the expected fact state")
+	}
+}

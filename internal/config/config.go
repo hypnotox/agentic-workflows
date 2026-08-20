@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"unicode"
@@ -43,6 +44,61 @@ type Sidecar struct {
 	// Paths declares a domain's file territory as anchored path globs
 	// (ADR-0077); read only from domain sidecars, inert on other kinds.
 	Paths []string `yaml:"paths"`
+}
+
+// Facts is the immutable, configuration-owned snapshot consumed outside this
+// package. It deliberately excludes parsing and filesystem state; callers get
+// a fresh deep copy for each observation.
+type Facts struct{ config Config }
+
+// NewFacts copies every reference-shaped configuration value and discards the
+// loading representation. Validation remains the responsibility of Loaders.
+func NewFacts(cfg *Config) Facts {
+	if cfg == nil {
+		return Facts{}
+	}
+	copy := cloneConfig(*cfg)
+	copy.root = ""
+	copy.raw = nil
+	copy.read = nil
+	copy.filesystem = false
+	return Facts{config: copy}
+}
+
+// Config returns a defensive copy of the loaded configuration facts.
+func (f Facts) Config() *Config {
+	copy := cloneConfig(f.config)
+	return &copy
+}
+
+// OperationTree binds one selected config-tree representation for operations
+// that read sidecars and convention parts. It is concrete by design: TreeReader
+// remains the existing parsing contract rather than a new provider seam.
+type OperationTree struct {
+	root       string
+	raw        []byte
+	read       TreeReader
+	filesystem bool
+}
+
+// OperationTree returns the selected tree binding without making it part of
+// Facts. Filesystem loading and snapshot parsing retain their existing policy.
+func (c *Config) OperationTree() OperationTree {
+	if c == nil {
+		return OperationTree{}
+	}
+	return OperationTree{root: c.root, raw: slices.Clone(c.raw), read: c.read, filesystem: c.filesystem}
+}
+
+// Bind combines immutable facts with this operation's selected tree. This is
+// the only translation back to Config for existing tree-reading operations.
+func (t OperationTree) Bind(f Facts) *Config {
+	cfg := f.Config()
+	cfg.root = t.root
+	cfg.raw = slices.Clone(t.raw)
+	cfg.read = t.read
+	cfg.filesystem = t.filesystem
+	return cfg
 }
 
 // Config is the skeleton config.yaml: repository facts and render shaping.
@@ -296,7 +352,71 @@ func (r filesystemTreeReader) Paths(prefix string) []string { return []string{} 
 // Source returns the exact config.yaml bytes Load read. A byte-level editor
 // (SetArrayMember, SetArray, SetMappingScalar) reuses these instead of re-reading
 // the file, which after a successful Load could only fail on a race.
-func (c *Config) Source() []byte { return c.raw }
+func (c *Config) Source() []byte { return slices.Clone(c.raw) }
+
+// cloneConfig copies all maps, slices, pointer blocks, local documents, and
+// arbitrary data values while preserving unexported decoder-presence bits.
+func cloneConfig(source Config) Config {
+	value := cloneConfigValue(reflect.ValueOf(source))
+	return value.Interface().(Config)
+}
+
+func cloneConfigValue(value reflect.Value) reflect.Value {
+	switch value.Kind() {
+	case reflect.Interface:
+		if value.IsNil() {
+			return reflect.Zero(value.Type())
+		}
+		out := reflect.New(value.Type()).Elem()
+		out.Set(cloneConfigValue(value.Elem()))
+		return out
+	case reflect.Pointer:
+		if value.IsNil() {
+			return reflect.Zero(value.Type())
+		}
+		out := reflect.New(value.Type().Elem())
+		out.Elem().Set(cloneConfigValue(value.Elem()))
+		return out
+	case reflect.Map:
+		if value.IsNil() {
+			return reflect.Zero(value.Type())
+		}
+		out := reflect.MakeMapWithSize(value.Type(), value.Len())
+		iter := value.MapRange()
+		for iter.Next() {
+			out.SetMapIndex(cloneConfigValue(iter.Key()), cloneConfigValue(iter.Value()))
+		}
+		return out
+	case reflect.Slice:
+		if value.IsNil() {
+			return reflect.Zero(value.Type())
+		}
+		out := reflect.MakeSlice(value.Type(), value.Len(), value.Len())
+		for i := range value.Len() {
+			out.Index(i).Set(cloneConfigValue(value.Index(i)))
+		}
+		return out
+	case reflect.Array:
+		out := reflect.New(value.Type()).Elem()
+		for i := range value.Len() {
+			out.Index(i).Set(cloneConfigValue(value.Index(i)))
+		}
+		return out
+	case reflect.Struct:
+		// Start with a complete value copy so decoder-presence bits remain intact,
+		// then replace only exported fields with their recursive copies.
+		out := reflect.New(value.Type()).Elem()
+		out.Set(value)
+		for i := range value.NumField() {
+			if value.Type().Field(i).IsExported() {
+				out.Field(i).Set(cloneConfigValue(value.Field(i)))
+			}
+		}
+		return out
+	default:
+		return value
+	}
+}
 
 // CurrentStateConfig configures bridge-preparation validation for canonical
 // current-state topics. It is deliberately separate from the legacy invariant

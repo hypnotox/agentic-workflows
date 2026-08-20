@@ -169,7 +169,55 @@ func newLoader(loadConfigTree LoadConfigTree, standard *catalog.Catalog, resolve
 	return &Loader{loadConfigTree: loadConfigTree, view: catalog.NewView(standard), resolveResidentRoot: resolveResidentRoot, repo: repo}
 }
 
+// projectState is the Loader-owned immutable fact snapshot. It contains no
+// repository handle or tree reader: those are operation dependencies retained
+// by the temporary Project facade until their focused extraction.
+type projectState struct {
+	invokingRoot string
+	roots        resident.Roots
+	nested       bool
+	facts        config.Facts
+	selectedCat  catalog.View
+	completeCat  catalog.View
+	targets      []Target
+}
+
+func newProjectState(root string, roots resident.Roots, nested bool, cfg *config.Config, selected, complete *catalog.Catalog, targets []Target) *projectState {
+	return &projectState{
+		invokingRoot: root,
+		roots:        roots,
+		nested:       nested,
+		facts:        config.NewFacts(cfg),
+		selectedCat:  catalog.NewProfileView(selected, catalog.ProfileFull),
+		completeCat:  catalog.NewProfileView(complete, catalog.ProfileFull),
+		targets:      cloneTargets(targets),
+	}
+}
+
+func (s *projectState) catalog() *catalog.Catalog { return s.selectedCat.Catalog() }
+func (s *projectState) completeCatalog() *catalog.Catalog {
+	return s.completeCat.Catalog()
+}
+func (s *projectState) resolvedTargets() []Target { return cloneTargets(s.targets) }
+
+func cloneTargets(source []Target) []Target {
+	out := slices.Clone(source)
+	for i := range out {
+		out[i].Capabilities = slices.Clone(out[i].Capabilities)
+		out[i].Outputs = slices.Clone(out[i].Outputs)
+		for j := range out[i].Outputs {
+			out[i].Outputs[j].Inputs = slices.Clone(out[i].Outputs[j].Inputs)
+		}
+	}
+	return out
+}
+
+// Project is the bounded compatibility facade for the frozen production
+// callers. Its existing operation methods remain only until Phase 3; state
+// facts live in state, while repository and tree dependencies stay operation
+// scoped during the intervening extraction.
 type Project struct {
+	state *projectState
 	// Root is the invoking checkout and remains the sole tracked-config authority.
 	Root string
 	// roots anchors output resolution: its tracked half mirrors Root, its
@@ -239,14 +287,18 @@ func (l *Loader) Open(ctx context.Context, root string) (*Project, error) {
 	if err != nil { // coverage-ignore: configured-target validation succeeded and KnownTargets is exhaustively backed by built-in descriptor tests
 		return nil, err
 	}
+	roots := resident.NewRoots(root, l.resolveResidentRoot(ctx, root))
+	nested := l.repo != nil && l.repo.IsNested()
+	state := newProjectState(root, roots, nested, cfg, cat, completeCat, targets)
 	p := &Project{
-		Root:        root,
-		roots:       resident.NewRoots(root, l.resolveResidentRoot(ctx, root)),
-		Cfg:         cfg,
-		Targets:     targets,
-		completeCat: completeCat,
-		cat:         cat,
-		nested:      l.repo != nil && l.repo.IsNested(),
+		state:       state,
+		Root:        state.invokingRoot,
+		roots:       state.roots,
+		Cfg:         cfg.OperationTree().Bind(state.facts),
+		Targets:     state.resolvedTargets(),
+		completeCat: state.completeCatalog(),
+		cat:         state.catalog(),
+		nested:      state.nested,
 		repo:        l.repo,
 	}
 	if err := p.validateAgainstCatalog(); err != nil {

@@ -481,3 +481,41 @@ func (q *Query) mutationReplacesStateAfterConstruction(state project.ContextStat
 		t.Error("a direct producer call bypassing deriveOperationState escaped the producer scan")
 	}
 }
+
+// TestProjectStateBoundary pins the Phase 1 loaded-fact boundary: state keeps
+// only private facts and cannot accidentally retain an operation mechanism.
+func TestProjectStateBoundary(t *testing.T) {
+	pkgs := loadProjectPackage(t, nil)
+	var state *types.Named
+	for _, pkg := range pkgs {
+		if pkg.PkgPath != "github.com/hypnotox/agentic-workflows/internal/project" {
+			continue
+		}
+		obj := pkg.Types.Scope().Lookup("projectState")
+		if obj == nil {
+			t.Fatal("projectState is missing")
+		}
+		var ok bool
+		state, ok = obj.Type().(*types.Named)
+		if !ok {
+			t.Fatalf("projectState type = %T", obj.Type())
+		}
+	}
+	if state == nil {
+		t.Fatal("project package was not loaded")
+	}
+	fields, ok := state.Underlying().(*types.Struct)
+	if !ok {
+		t.Fatalf("projectState underlying type = %T", state.Underlying())
+	}
+	for i := range fields.NumFields() {
+		field := fields.Field(i)
+		if field.Exported() {
+			t.Errorf("projectState exports mutable field %s", field.Name())
+		}
+		typeName := types.TypeString(field.Type(), func(*types.Package) string { return "" })
+		if strings.Contains(typeName, "Repo") || strings.Contains(typeName, "ProjectTreeReader") {
+			t.Errorf("projectState retains operation dependency %s %s", field.Name(), typeName)
+		}
+	}
+}

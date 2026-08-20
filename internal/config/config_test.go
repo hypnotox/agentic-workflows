@@ -936,3 +936,71 @@ func TestConfigSerializationFunnelOwnsEncoding(t *testing.T) {
 		t.Errorf("MarshalSkeleton did not render the nested block at the funnel's two-space indent:\n%s", built)
 	}
 }
+
+func TestFactsDeepCopiesConfigurationAndDropsLoadingRepresentation(t *testing.T) {
+	count := 2
+	cfg := &Config{
+		Vars:          map[string]any{"nested": map[string]any{"slice": []any{"value"}}, "array": [1]any{"array value"}},
+		Domains:       []string{"domain"},
+		Tags:          map[string]string{"tag": "meaning"},
+		ContextIgnore: []string{"**/ignored"},
+		CurrentState:  &CurrentStateConfig{Sources: []CurrentStateSource{{Globs: []string{"**/*.go"}}}, TestGlobs: []string{"**/*_test.go"}},
+		Audit:         &AuditConfig{AllowedScopes: []ScopeSpec{{Name: "code"}}},
+		Bootstrap:     &BootstrapConfig{Enabled: true},
+		ProseGate:     &ProseGateConfig{Exemptions: []ProseExemption{{Path: "x", Count: &count}}},
+		MemoryCite:    &MemoryCiteConfig{Exemptions: []MemoryExemption{{Path: "y", Count: &count}}},
+		CommitPolicy:  &CommitPolicyConfig{AllowedIdentities: []CommitPolicyIdentity{{Name: "n", Email: "e"}}, AllowedSigners: []CommitPolicySigner{{Principal: "p", Key: "k"}}},
+		Render:        &RenderConfig{TemplateSourceRoot: "templates"},
+		LocalDocs:     LocalDocs{{Name: "runbook", Title: "Runbook", Description: "desc"}},
+		root:          ".awf",
+		raw:           []byte("raw"),
+		read:          memoryTreeReader{},
+		filesystem:    true,
+	}
+	facts := NewFacts(cfg)
+	cfg.Domains[0] = "changed"
+	cfg.Tags["tag"] = "changed"
+	cfg.ContextIgnore[0] = "changed"
+	cfg.CurrentState.Sources[0].Globs[0] = "changed"
+	cfg.Audit.AllowedScopes[0].Name = "changed"
+	*cfg.ProseGate.Exemptions[0].Count = 3
+	cfg.CommitPolicy.AllowedIdentities[0].Name = "changed"
+	cfg.LocalDocs[0].Name = "changed"
+	cfg.Vars["nested"].(map[string]any)["slice"].([]any)[0] = "changed"
+	array := cfg.Vars["array"].([1]any)
+	array[0] = "changed"
+	cfg.Vars["array"] = array
+	got := facts.Config()
+	if got.Domains[0] != "domain" || got.Tags["tag"] != "meaning" || got.ContextIgnore[0] != "**/ignored" || got.CurrentState.Sources[0].Globs[0] != "**/*.go" || got.Audit.AllowedScopes[0].Name != "code" || *got.ProseGate.Exemptions[0].Count != 2 || got.CommitPolicy.AllowedIdentities[0].Name != "n" || got.LocalDocs[0].Name != "runbook" || got.Vars["nested"].(map[string]any)["slice"].([]any)[0] != "value" || got.Vars["array"].([1]any)[0] != "array value" {
+		t.Fatalf("facts retained a mutable config alias: %#v", got)
+	}
+	got.Domains[0] = "returned mutation"
+	if facts.Config().Domains[0] != "domain" {
+		t.Fatal("Facts.Config returned an alias")
+	}
+	if got.root != "" || got.raw != nil || got.read != nil || got.filesystem {
+		t.Fatal("facts retained loading representation")
+	}
+}
+
+func TestFactsAndOperationTreeZeroValues(t *testing.T) {
+	if NewFacts(nil).Config() == nil {
+		t.Fatal("zero facts must still return a config value")
+	}
+	var cfg *Config
+	if got := cfg.OperationTree(); got.root != "" || got.raw != nil || got.read != nil || got.filesystem {
+		t.Fatalf("nil config operation tree = %#v", got)
+	}
+	loaded, err := Parse(".awf", []byte("prefix: x\nintegrationBranch: main\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tree := loaded.OperationTree()
+	if tree.root != ".awf" || tree.read == nil || !tree.filesystem {
+		t.Fatalf("operation tree = %#v", tree)
+	}
+	bound := tree.Bind(NewFacts(loaded))
+	if bound.root != ".awf" || bound.read == nil || !bound.filesystem {
+		t.Fatalf("bound operation config = %#v", bound)
+	}
+}
