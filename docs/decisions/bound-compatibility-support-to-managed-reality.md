@@ -73,12 +73,13 @@ is already complete.
 
 ## State changes
 
-- add `config/migrations-and-locks:private-compatibility-floor`
-- add `config/migrations-and-locks:managed-compatibility-removal-gate`
+- add `config/migrations-and-locks:live-source-compatibility-floor`
 - add `adr-system/adr-lifecycle:managed-adr-format-support`
 - add `adr-system/plan-artifacts:managed-plan-format-support`
 - add `tooling/audit-and-snapshots:managed-history-decode-horizon`
 - add `tooling/effort-management:managed-effort-format-support`
+- add `tooling/upgrade-runtime:installed-release-compatibility-floor`
+- add `tooling/upgrade-runtime:managed-compatibility-removal-gate`
 - add `tooling/upgrade-runtime:managed-cutover-format-support`
 
 ## Consequences
@@ -107,8 +108,10 @@ unknown future schemas, malformed inputs, and shapes outside the declared horizo
 | Alternative | Why not chosen |
 |---|---|
 | Support only release 0.39.2 | Nine managed adopters still use 0.39.1, and a one-release recovery window is proportionate. |
+| Advance the rolling floor before every managed pin is upgraded | A managed adopter could fall below declared support. |
 | Keep live migrations from every historical schema | Every live managed source is already schema 46, so the old mutation paths protect no current tree. |
 | Limit audit to schema 46 | Eight managed repositories have real pre-46 `.awf` history; discarding that range would break an existing audit capability. |
+| Freeze the audit upper bound permanently at schema 46 | A binary-supported schema that enters reachable managed history should join the horizon without another owner decision. |
 | Retain every existing parser indefinitely | Corpus absence, not hypothetical adoption, is the approved removal boundary. |
 
 ## Status history
