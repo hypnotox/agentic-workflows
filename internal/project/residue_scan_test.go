@@ -24,7 +24,6 @@ var identityExempt = map[string]bool{
 	"bootstrap/awf-bootstrap.sh.tmpl": true,
 	"bootstrap/awf-upgrade.sh.tmpl":   true,
 	"agents-doc/AGENTS.md.tmpl":       true,
-	"docs/working-with-awf.md.tmpl":   true,
 	"pi/awf-subagents/index.ts.tmpl":  true,
 }
 
@@ -53,7 +52,6 @@ func TestLiveTemplateAndCurrentStateRetiredConfigGuidanceAbsent(t *testing.T) {
 	allowProjectLocal := map[string]int{
 		".awf/topics/parts/config/migrations-and-locks/current-state.md": 2, // historical schema-37 migration fact
 		".awf/topics/parts/rendering/pi-workflows/current-state.md":      2, // Pi preference-file locality
-		"templates/docs/working-with-awf.md.tmpl":                        2, // Pi preference-file locality
 		"templates/pi/awf-subagents/index.ts.tmpl":                       1, // Pi preference-file locality
 	}
 	bannedGuidance := []string{
@@ -118,13 +116,12 @@ func TestTemplateSourceResidue(t *testing.T) {
 	// The marker sits on the assertion rather than on the var it guards, so the
 	// proof site contains the check that proves it (ADR-0131 Task 3.3).
 	// invariant: rendering/sync-and-drift:residue-exemptions-pinned-three (TestTemplateSourceResidue)
-	if len(identityExempt) != 5 ||
+	if len(identityExempt) != 4 ||
 		!identityExempt["bootstrap/awf-bootstrap.sh.tmpl"] ||
 		!identityExempt["bootstrap/awf-upgrade.sh.tmpl"] ||
 		!identityExempt["agents-doc/AGENTS.md.tmpl"] ||
-		!identityExempt["docs/working-with-awf.md.tmpl"] ||
 		!identityExempt["pi/awf-subagents/index.ts.tmpl"] {
-		t.Error("identity-exemption list must name exactly the bootstrap, upgrade, agents-doc, and two pi-tools prerequisite templates")
+		t.Error("identity-exemption list must name exactly the bootstrap, upgrade, agents-doc, and the pi-tools prerequisite template")
 	}
 	used := map[string]bool{}
 	err := fs.WalkDir(templates.FS, ".", func(path string, d fs.DirEntry, err error) error {

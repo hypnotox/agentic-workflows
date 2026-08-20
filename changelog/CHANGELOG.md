@@ -14,6 +14,8 @@ query a single version or a range.
 
 ### Features
 
+- The daily-use guide now covers initialization, generated ownership, rendering, checking, and upgrading without rare protocol detail. Workflow, debugging, configuration, and target-specific references retain advanced lifecycle, recovery, override, and runtime facts.
+
 - Pi session-replacement protocol now has one Pi-runtime-owned executable projection, while shared continuity guidance remains capability-neutral and pi-tools remains independently installed.
 
 - Core and Full are documented as governance footprints with one shared correctness, autonomy, maintainability, and review-quality bar. Core includes the operational workflow; Full adds ADR, plan, current-state, context, and audit capabilities. The `profile` config key and existing migration behavior are unchanged.

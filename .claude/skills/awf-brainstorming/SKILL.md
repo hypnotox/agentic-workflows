@@ -26,7 +26,7 @@ Use when a material choice or clarification is unresolved and no explicit approv
 
 1. **Orient in the topic.** Invoke `awf-orienting` when its repository-truth moments apply. Then run `./awf context <relevant paths>`.
 <!-- awf:template-source templates/partials/context-spill.md -->
-On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the working-with-awf doc's Context spill notices contract; treat any other output as the context packet itself.
+On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per `docs/debugging.md#context-spill-recovery`; treat any other output as the context packet itself.
 <!-- awf:template-source templates/skills/brainstorming/SKILL.md.tmpl -->
 2. **Clarify one question at a time.** Narrow the outcome without inventing requirements.
 3. **Present proportionate approaches.** Offer alternatives with trade-offs and a recommendation when a material choice exists; a straightforward choice may need only a concise comparison.

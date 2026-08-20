@@ -13,6 +13,26 @@ For how to apply overrides, see the working-with-awf guide; for ad-hoc queries, 
 sidecars, and effective output state are distinct authority layers. Only this declared intro
 section is convention-part editable; field semantics remain in this generated reference.
 
+## Placeholders in overrides
+
+A convention part may use `{{=awf:KEY}}` to splice an awf-derived value. This is literal
+substitution, not template evaluation. A key must be known and non-empty for this render; an
+unknown, empty, or malformed placeholder is a render error. Escape a literal placeholder in a
+part with a preceding backslash.
+
+| Key | Renders |
+|---|---|
+| `commitScopeList` | Allowed commit-scope names, comma-separated. |
+| `commitScopeTable` | Markdown table of scope names and meanings. |
+| `commitScopeSentence` | One sentence stating the allowed scopes. |
+| `gatedCommands` | Binary-version-gated top-level commands and the exempt group children. |
+| `prefix` | Project artifact prefix. |
+| `gateCmd` | Configured pre-commit gate command. |
+| `checkCmd` | Configured drift-check command. |
+| `sectionDefault` | The overridden section default, for extending rather than replacing it; a stub default cannot be re-injected. |
+
+`\{{=awf:commitScopeTable}}` renders the literal `{{=awf:commitScopeTable}}`.
+
 This checkout currently authors the optional `commitPolicy` block. Its values are
 structurally validated, but configuration alone does not activate or wire runtime
 enforcement.

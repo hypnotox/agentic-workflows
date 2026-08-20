@@ -1,0 +1,1 @@
+For effort lifecycle, model tiers, hook and commit policy, and verification procedure, see [Workflow](workflow.md). Pi runtime and subagent protocol facts remain in [Pi runtime](topics/rendering/pi-runtime.md) and [Pi workflows](topics/rendering/pi-workflows.md).

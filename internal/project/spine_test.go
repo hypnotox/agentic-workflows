@@ -1579,42 +1579,39 @@ func TestManagedContextCallersChooseProjection(t *testing.T) {
 	if !strings.Contains(agentExpanded, spillContract) {
 		t.Errorf("grounding-checker agent body lacks the spill pointer:\n%s", agentExpanded)
 	}
-	// The pointer's destination must exist: the working-with-awf doc template is
-	// the contract's single rendered home, and deleting the subsection would
-	// leave every pointer site dangling with the suite otherwise green.
-	docSource, err := fs.ReadFile(templates.FS, "docs/working-with-awf.md.tmpl")
+	// The pointer's destination must exist: debugging is the contract's single
+	// rendered home, so every context caller has a recovery destination.
+	docSource, err := fs.ReadFile(templates.FS, "docs/debugging.md.tmpl")
 	if err != nil {
-		t.Fatalf("read working-with-awf template: %v", err)
+		t.Fatalf("read debugging template: %v", err)
 	}
 	docExpanded, err := render.ExpandIncludes(string(docSource), templates.FS)
 	if err != nil {
-		t.Fatalf("expand working-with-awf template: %v", err)
+		t.Fatalf("expand debugging template: %v", err)
 	}
 	for _, want := range []string{
-		"### Context spill notices",
+		"### Context spill recovery",
 		"byte length equals",
 		"`bytes=<decimal>` descriptor",
-		"Best-effort delete the named file after packet use",
+		"Best-effort delete that file after use",
 	} {
 		if !strings.Contains(docExpanded, want) {
-			t.Errorf("working-with-awf template lacks the spill contract clause %q", want)
+			t.Errorf("debugging template lacks the spill contract clause %q", want)
 		}
 	}
-	// This repository overrides the doc's commands part, so its own rendered
-	// doc is a second home the template assertion cannot see; an override that
-	// drops the contract would leave every pointer dangling here.
-	repoDoc, err := os.ReadFile(filepath.Clean(filepath.Join("..", "..", "docs", "working-with-awf.md")))
+	// This repository overrides debugging recipes, so inspect its rendered owner too.
+	repoDoc, err := os.ReadFile(filepath.Clean(filepath.Join("..", "..", "docs", "debugging.md")))
 	if err != nil {
 		t.Fatalf("read repository working-with-awf doc: %v", err)
 	}
 	for _, want := range []string{
-		"### Context spill notices",
+		"### Context spill recovery",
 		"byte length equals",
 		"`bytes=<decimal>` descriptor",
-		"Best-effort delete the named file after packet use",
+		"Best-effort delete that file after use",
 	} {
 		if !strings.Contains(string(repoDoc), want) {
-			t.Errorf("repository working-with-awf doc lacks the spill contract clause %q", want)
+			t.Errorf("repository debugging doc lacks the spill contract clause %q", want)
 		}
 	}
 }

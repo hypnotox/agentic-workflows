@@ -46,7 +46,7 @@ This skill may run without an effort. If continuity materially helps, invoke `aw
 <!-- awf:template-source templates/partials/context-orientation.md -->
 Start by querying the explicit paths named above without `--show` or `--full` detail flags, then drill down with `./awf topic` where the work touches a claimed surface.
 <!-- awf:template-source templates/partials/context-spill.md -->
-On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the working-with-awf doc's Context spill notices contract; treat any other output as the context packet itself.
+On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per `docs/debugging.md#context-spill-recovery`; treat any other output as the context packet itself.
 
 <!-- awf:template-source templates/skills/bugfix/SKILL.md.tmpl -->
 2. **Implement the root-cause fix, not the symptom.** Per `docs/maintainable-code-design.md`, assess whether the root cause is an unsuitable model or boundary; include bounded enabling work that prevents a workaround.

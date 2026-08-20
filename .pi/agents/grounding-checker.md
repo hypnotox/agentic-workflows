@@ -41,7 +41,7 @@ Ground guide-first, in order: the agent guide, then the document-map docs releva
 
 For managed context calls, provide one or more explicit paths (or a staged/range file selection) and omit `--show` and `--full` detail flags on the initial query: directories provide tier-0 orientation, while exact, staged, and range-selected files also carry tier-1 direct relationships. Request only the named facets the active lens requires, and never prescribe `--full`.
 <!-- awf:template-source templates/partials/context-spill.md -->
-On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the working-with-awf doc's Context spill notices contract; treat any other output as the context packet itself.
+On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per `docs/debugging.md#context-spill-recovery`; treat any other output as the context packet itself.
 
 <!-- awf:template-source templates/agents/grounding-checker.md.tmpl#return-schema -->
 <!-- awf:edit return-schema: default; create .awf/agents/parts/grounding-checker/return-schema.md to override -->
