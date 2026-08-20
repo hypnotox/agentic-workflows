@@ -23,7 +23,7 @@ runtime protocol.
 
 ## Decision
 
-1. `decision: dedicated-pi-adopter-reference` Ship one standard Pi runtime reference as the single adopter-facing owner for awf's Pi runtime requirements, ownership boundary, model routing and preferences, subagent profiles, effort integration, and session-replacement navigation. Keep daily and generic workflow documents as links rather than parallel protocol homes, and include the reference in the generated document map.
+1. `decision: dedicated-pi-adopter-reference` Ship one standard Pi runtime reference as the single adopter-facing owner for awf's Pi runtime requirements, ownership boundary, model routing and preferences, subagent profiles, effort integration, and session-replacement navigation. Keep daily and generic workflow documents as links rather than parallel protocol homes, and make the reference directly reachable from the generated document map.
 
 ## State changes
 
@@ -32,10 +32,11 @@ runtime protocol.
 ## Consequences
 
 Pi protocol remains complete and reachable after the daily guide is shortened. Runtime-specific
-changes update one adopter reference alongside their implementation authority. The document renders
-for projects that do not currently use Pi because standard document selection has no target-specific
-publication mode; its scope statement makes that applicability explicit. This small irrelevant entry
-is preferable to duplicating protocol in generic documents or adding a new configuration surface.
+changes update one adopter reference alongside their implementation authority. Under the current
+standard-document selection model, the reference also renders for projects that do not use Pi; its
+scope statement makes that applicability explicit. A future selection mechanism may remove that
+irrelevant entry without changing this decision, provided Pi adopters retain the complete mapped
+reference.
 
 The reference is another standard output whose template, generated file, lock membership, drift,
 link checks, and document-map entry must remain covered together.
