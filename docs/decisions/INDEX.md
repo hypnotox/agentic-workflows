@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-move-pi-session-handoff-authority-to-pi-runtime: Move Pi Session Handoff Authority to Pi Runtime](move-pi-session-handoff-authority-to-pi-runtime.md) (Proposed)
 
 ## History
 
