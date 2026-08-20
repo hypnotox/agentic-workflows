@@ -180,7 +180,7 @@ func (p *Project) tagHealthNotes(supplied ...pitfall.Corpus) ([]string, error) {
 	if tagged > 0 {
 		for _, t := range slices.Sorted(maps.Keys(freq)) {
 			if float64(freq[t]) > tagFrequencyThreshold*float64(tagged) {
-				notes = append(notes, fmt.Sprintf("tag %q is on %d/%d tagged artifacts (>%.0f%%): coarsening toward domain scale", t, freq[t], tagged, tagFrequencyThreshold*100))
+				notes = append(notes, fmt.Sprintf("tag %q is on %d/%d tagged pitfalls (>%.0f%%): coarsening toward domain scale", t, freq[t], tagged, tagFrequencyThreshold*100))
 			}
 		}
 	}

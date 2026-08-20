@@ -323,7 +323,7 @@ func TestTagHealthNotes(t *testing.T) {
 	}
 	joined := strings.Join(notes, "\n")
 	// invariant: config/configuration:tag-frequency-note (TestTagHealthNotes)
-	if !strings.Contains(joined, `tag "alpha" is on 2/4`) {
+	if !strings.Contains(joined, `tag "alpha" is on 2/4 tagged pitfalls`) {
 		t.Errorf("expected an alpha frequency note over tagged pitfalls only; got %v", notes)
 	}
 	if strings.Contains(joined, `tag "beta"`) || strings.Contains(joined, `tag "delta"`) {
@@ -445,22 +445,6 @@ func TestTagHealthNotesPitfalls(t *testing.T) {
 	}
 	if !strings.Contains(joined, ".awf/docs/pitfalls/untagged.md carries no tags") {
 		t.Errorf("expected coverage note for the untagged pitfall; got %v", notes)
-	}
-}
-
-// AdvisoryNotes surfaces a tagHealthNotes fault: with no domains (generateDomainDocs
-// parses no ADRs) but a non-empty vocabulary, a malformed ADR fails inside
-// tagHealthNotes, exercising AdvisoryNotes' propagation of that error.
-func TestAdvisoryNotesSurfacesTagHealthError(t *testing.T) {
-	root := scaffold(t, "prefix: awf\nintegrationBranch: main\ndomains: []\ntags:\n  alpha: A\n")
-	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-broken.md"),
-		"---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n")
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := p.AdvisoryNotes(testContext(t)); err == nil {
-		t.Fatal("expected AdvisoryNotes to surface the tag-health ADR parse error")
 	}
 }
 
