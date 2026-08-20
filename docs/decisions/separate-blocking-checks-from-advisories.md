@@ -30,7 +30,7 @@ behavior. Entries classified Information are unranked notes, not a third finding
 | Configuration, lock, sidecar, ADR, plan, topic, pitfall, glossary, and frontmatter parsing | Valid input and authority | Error, nonzero |
 | Generated output membership, missing, unsynced, orphaned, stale, hand-edited, invalid-frontmatter, stale backup, config residue, and staged drift | Reproducibility | Error, nonzero |
 | Broken ADR, plan, pitfall, glossary, Markdown, skill, domain, tag, and current-state references | Correctness and authority | Error, nonzero |
-| Current-state handshake, transition, static coverage, claim provenance, and plan structure | Authority | Error, nonzero |
+| Current-state handshake, transition, static coverage, claim provenance, plan structure, and a pending ADR on the integration branch | Authority and ADR lifecycle consistency | Error, nonzero |
 | Memory citations in durable decisions, plans, and commit messages | Safety and authority lifetime | Error, nonzero |
 | Tracked-file punctuation restraint | Prose style | Warning, zero |
 | Topic fan-out and Proposed-plan assignment or detail prompts | Potential cohesion and plan-detail quality | Warning, zero |
@@ -45,7 +45,7 @@ behavior. Entries classified Information are unranked notes, not a third finding
 | Commit subject shape, type, scope at commit time, and length | Declared commit authority | Error, nonzero |
 | ADR status and index cochange, current-state transition replay, and stale merge authorization | Authority consistency | Error, nonzero |
 | Uncommitted audit state, commit identity or signature policy, and audit infrastructure failure | Reproducible or available verification | Error, nonzero |
-| Dependency change without an ADR, large change without a plan, historical ADR frontmatter, punctuation increase, changelog heuristic, and added coverage-ignore review prompt | Review judgement, stale non-authoritative prose, style, or coverage-change review | Warning, zero |
+| Dependency change without an ADR, large change without a plan, historical ADR frontmatter, non-context historical transition-load failure, punctuation increase, changelog heuristic, and added coverage-ignore review prompt | Review judgement, stale or unavailable non-authoritative history, style, or coverage-change review | Warning, zero |
 | Disabled commit policy, empty audit range, and successful policy or audit notices | Operation state | Information, zero |
 | Mutation report missing, malformed, or timed out | Required verification unavailable | Error, nonzero |
 | Surviving mutants and a successful mutation run | Optional test-strength improvement or operation note | Information, zero |
@@ -59,12 +59,13 @@ behavior. Entries classified Information are unranked notes, not a third finding
 | Context-spill residue and inspection failure | Optional context cleanup | Information, zero |
 | Skipped-suite, successful render, migration, and gate notes | Operation state | Information, zero |
 
-The enabled lint rules are classified at their configured rule boundary. `govet`; Staticcheck `SA*`;
-`errcheck`; `ineffassign`; `nilerr`; `bodyclose`; `errorlint`; `durationcheck`; `asasalint`;
+The enabled lint rules are classified at their configured rule boundary. `govet`; Staticcheck `SA0*`
+through `SA5*` and `SA9*`; `errcheck`; `ineffassign`; `nilerr`; `bodyclose`; `errorlint`;
+`durationcheck`; `asasalint`;
 `nilnesserr`; `gocheckcompilerdirectives`; `makezero`; `exhaustive`; and `wastedassign` are blocking
 because they report a concrete defect, lost result, resource error, impossible value flow, invalid
-directive, incomplete closed case set, or ineffective assignment. Staticcheck `S*`, `ST*`, and
-`QF*`; `nilnil`; `unused`; `unconvert`; `unparam`; `predeclared`; `gocritic`; `dupword`;
+directive, incomplete closed case set, or ineffective assignment. Staticcheck `SA6*`, `S*`, `ST*`,
+and `QF*`; `nilnil`; `unused`; `unconvert`; `unparam`; `predeclared`; `gocritic`; `dupword`;
 `perfsprint`; `intrange`; `usestdlibvars`; `usetesting`; `misspell`; `revive`; `whitespace`;
 `gofmt`; and `goimports` warn because their configured rule sets include preference, style,
 formatting, possible package cohesion, or heuristic maintainability judgements. A linter execution
@@ -95,8 +96,8 @@ protected-property classification before it enters either lane.
    this decision.
 
 5. `decision: aggregate-remains-actionable` Direct and aggregate outputs preserve serious-failure
-   behavior, label each severity class, and retain the source and remediation needed to act. Their
-   exit contract distinguishes error-only, warning-only, information-only, and mixed results.
+   behavior and visibly separate Error, Warning, and unranked Information. They exit nonzero exactly
+   when an Error is present.
 
 ## State changes
 
