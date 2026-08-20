@@ -27,6 +27,13 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
+// CheckAdvisories separates ranked warnings from unranked information without
+// adding another finding rank.
+type CheckAdvisories struct {
+	Warnings    []string
+	Information []string
+}
+
 // AdvisoryNotes returns the compatibility projection of the non-failing notes
 // produced by one operation-scoped plan parse.
 func (p *Project) AdvisoryNotes(ctx context.Context) ([]string, error) {
@@ -45,30 +52,32 @@ func (p *Project) AdvisoryNotes(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return p.advisoryNotesWithState(corpus, pitfalls, plans, op)
+	advisories, err := p.advisoryNotesWithState(corpus, pitfalls, plans, op)
+	if err != nil { // coverage-ignore: operation state and sidecars were already parsed and validated before advisory projection
+		return nil, err
+	}
+	return append(slices.Clone(advisories.Warnings), advisories.Information...), nil
 }
 
-// advisoryNotesWithState returns the non-failing render advisories in print
-// order from operation-owned state, its already parsed plans, and its one
-// prepared output plan.
-func (p *Project) advisoryNotesWithState(corpus adr.Corpus, pitfalls pitfall.Corpus, plans []plan.Plan, op *OutputPlan) ([]string, error) {
+// advisoryNotesWithState classifies the non-failing render advisories from
+// operation-owned state, its already parsed plans, and its one prepared output
+// plan.
+func (p *Project) advisoryNotesWithState(corpus adr.Corpus, pitfalls pitfall.Corpus, plans []plan.Plan, op *OutputPlan) (CheckAdvisories, error) {
 	files := op.writeFiles()
 	all := advisoryCompatibilityFiles(op)
-	notes := append(p.unsetVarNotes(files), stubNotes(all)...)
-	notes = append(notes, markerNotes(all)...)
-	th, err := p.tagHealthNotes(corpus, pitfalls)
+	information := append(p.unsetVarNotes(files), stubNotes(all)...)
+	information = append(information, markerNotes(all)...)
+	warnings, err := p.tagHealthNotes(corpus, pitfalls)
 	if err != nil { // coverage-ignore: advisory read errors are covered by direct helper tests
-		return nil, err
+		return CheckAdvisories{}, err
 	}
-	notes = append(notes, th...)
-	pcs := p.planCommitScopeNotes(plans)
-	notes = append(notes, pcs...)
-	gt, err := p.glossaryTersenessNotes()
+	information = append(information, p.planCommitScopeNotes(plans)...)
+	glossaryWarnings, err := p.glossaryTersenessNotes()
 	if err != nil {
-		return nil, err
+		return CheckAdvisories{}, err
 	}
-	notes = append(notes, gt...)
-	return notes, nil
+	warnings = append(warnings, glossaryWarnings...)
+	return CheckAdvisories{Warnings: warnings, Information: information}, nil
 }
 
 // advisoryCompatibilityFiles preserves the established stub-note multiplicity
@@ -404,13 +413,53 @@ func (p *Project) declaredSections(kind, name string) []string {
 	return nil
 }
 
-// CheckReport is the ordinary check operation's blocking drift and advisory
-// notes, derived from one operation-owned plan parse.
+// CheckReport is the ordinary check operation's drift, ranked warnings, and
+// unranked information, derived from one operation-owned plan parse.
 type CheckReport struct {
-	Drift         []manifest.Drift
+	Drift               []manifest.Drift
+	Warnings            []string
+	Information         []string
+	TrackingInformation []string
+	PlanWarnings        []string
+	// Notes, TrackingNotes, and PlanNotes retain the pre-classification test and
+	// API projection. New operation reports set classified and use the fields above.
 	Notes         []string
 	TrackingNotes []string
 	PlanNotes     []string
+	classified    bool
+}
+
+// OrdinaryWarnings returns ranked non-plan aggregate warning notes.
+func (r CheckReport) OrdinaryWarnings() []string {
+	if !r.classified {
+		return slices.Clone(r.Notes)
+	}
+	return slices.Clone(r.Warnings)
+}
+
+// PlanWarningNotes returns ranked plan warning notes for sink deduplication.
+func (r CheckReport) PlanWarningNotes() []string {
+	if !r.classified {
+		return slices.Clone(r.PlanNotes)
+	}
+	return slices.Clone(r.PlanWarnings)
+}
+
+// AggregateInformation returns unranked aggregate information notes.
+func (r CheckReport) AggregateInformation() []string {
+	if !r.classified {
+		return nil
+	}
+	return slices.Clone(r.Information)
+}
+
+// DirectTrackingInformation returns unranked tracking information shown by
+// both direct drift and aggregate checks.
+func (r CheckReport) DirectTrackingInformation() []string {
+	if !r.classified {
+		return slices.Clone(r.TrackingNotes)
+	}
+	return slices.Clone(r.TrackingInformation)
 }
 
 const agentGuideAdvisoryBytes = 12 * 1024
@@ -463,24 +512,30 @@ func (p *Project) CheckReport(ctx context.Context) (CheckReport, error) {
 	if err != nil {
 		return CheckReport{}, err
 	}
-	contextNotes := []string(nil)
+	planWarnings := []string(nil)
 	if p.fullProfile() {
 		contextDrift, notes := planArtifactReport(plans, corpus)
-		contextNotes = notes
+		planWarnings = notes
 		planDrift = append(planDrift, contextDrift...)
 	}
-	notes, err := p.advisoryNotesWithState(corpus, pitfalls, plans, op)
-	report, err := finishCheckReport(drift, planDrift, contextNotes, notes, op, err)
-	report.TrackingNotes = trackingNotes
+	advisories, err := p.advisoryNotesWithState(corpus, pitfalls, plans, op)
+	report, err := finishCheckReport(drift, planDrift, planWarnings, advisories, op, err)
+	report.TrackingInformation = trackingNotes
+	report.TrackingNotes = slices.Clone(trackingNotes)
 	return report, err
 }
 
-func finishCheckReport(drift, planDrift []manifest.Drift, contextNotes, notes []string, op *OutputPlan, err error) (CheckReport, error) {
+func finishCheckReport(drift, planDrift []manifest.Drift, planWarnings []string, advisories CheckAdvisories, op *OutputPlan, err error) (CheckReport, error) {
 	if err != nil {
 		return CheckReport{}, err
 	}
-	notes = append(notes, agentGuideSizeAdvisory(op)...)
-	return CheckReport{Drift: append(drift, planDrift...), Notes: notes, PlanNotes: contextNotes}, nil
+	advisories.Warnings = append(advisories.Warnings, agentGuideSizeAdvisory(op)...)
+	allNotes := append(slices.Clone(advisories.Information), advisories.Warnings...)
+	return CheckReport{
+		Drift: append(drift, planDrift...), Warnings: advisories.Warnings,
+		Information: advisories.Information, PlanWarnings: planWarnings, Notes: allNotes,
+		PlanNotes: slices.Clone(planWarnings), classified: true,
+	}, nil
 }
 
 func (p *Project) checkWithTrackingState(ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool, plans []plan.Plan, op *OutputPlan) ([]manifest.Drift, []string, error) {

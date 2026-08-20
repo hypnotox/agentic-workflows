@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 
@@ -53,9 +52,6 @@ func proseCheckFindingsWith(cfg *config.Config, tree *snapshot.Tree, dependencie
 	categories, err := prosegate.Categories(findings, skipped)
 	if err != nil { // coverage-ignore: Categories receives only scanner findings and fixed skipped-binary diagnostics
 		return nil, err
-	}
-	if len(findings) > 0 {
-		return categories, producedCheckFailure{errors.New("check repo prose: follow punctuation restraint, or exempt the guarded codepoint in proseGate.exemptions")}
 	}
 	return categories, nil
 }

@@ -76,8 +76,9 @@ Backing: test
 
 ### `invariant: glossary-terseness-advisory`
 
-check reports one non-failing note per glossary term whose meaning exceeds the terseness threshold, naming the sidecar path, the term, and its length. The evaluated set is the merged one, so the shipped standard vocabulary is bound by the threshold alongside the project's authored terms.
+check reports one Warning per glossary term whose meaning exceeds the terseness threshold, naming the sidecar path, the term, and its length, with successful exit. The evaluated set is the merged one, so the shipped standard vocabulary is bound by the threshold alongside the project's authored terms.
 Origin: ADR-0207
+Revised-by: ADR-separate-blocking-checks-from-advisories
 Backing: test
 
 ### `invariant: skill-ref-unknown-ignored`

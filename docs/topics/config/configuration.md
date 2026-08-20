@@ -109,14 +109,16 @@ Backing: test
 
 ### `invariant: tag-coverage-note`
 
-Under a non-empty tag vocabulary, awf check emits a non-failing note for each ADR and each pitfall that carries zero tags and for no tagged artifact, never changing the exit code; an empty or absent vocabulary is inert.
+Under a non-empty tag vocabulary, awf check emits a Warning for each ADR and each pitfall that carries zero tags and for no tagged artifact, never changing the exit code; an empty or absent vocabulary is inert.
 Origin: ADR-0109
+Revised-by: ADR-separate-blocking-checks-from-advisories
 Backing: test
 
 ### `invariant: tag-frequency-note`
 
-Under a non-empty tag vocabulary, awf check emits a non-failing note for each vocabulary tag carried by strictly more than 25 percent of the artifacts that carry at least one vocabulary tag, and for no tag at or below that share, without changing the exit code.
+Under a non-empty tag vocabulary, awf check emits a Warning for each vocabulary tag carried by strictly more than 25 percent of the artifacts that carry at least one vocabulary tag, and for no tag at or below that share, without changing the exit code.
 Origin: ADR-0109
+Revised-by: ADR-separate-blocking-checks-from-advisories
 Backing: test
 
 ### `invariant: tag-vocabulary-governed`

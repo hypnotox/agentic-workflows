@@ -21,7 +21,13 @@ For a nondeterministic race, stress or invariant evidence may be the strongest p
 <!-- awf:edit gate: from .awf/docs/parts/testing/gate.md -->
 <!-- awf:template-source templates/docs/testing.md.tmpl -->
 ## Gate
-`./x gate` must be green before every commit. It independently selects profiled Go tests with coverage and Pi runtime smoke from one NUL-safe, rename-disabled staged-index path snapshot: a nonempty exact documentation-only transaction (`docs/**`, `README.md`, `changelog/CHANGELOG.md`, `.awf/docs/parts/**`, or `templates/docs/**`) skips both; Pi-only paths run Pi only; Go-only paths run Go only; and overlapping or uncertain, empty, unreadable, malformed, or unrecognized snapshots run both (ADR-0276). Each skipped suite prints a notice. Commands still test the working tree. The gate always runs `go vet`, released-platform cross-compilation, `golangci-lint`, whole-program dead-code checking (ADR-0063), and `cmd/pincheck` (ADR-0079). It writes `coverage.out` when it runs profiled Go tests, enforces 100% **statement** coverage outside `// coverage-ignore` blocks (ADR-0012), and its Pi lane runs Pi-extension strict type checks and 100% statement/branch/function/line coverage and descriptor parity.
+`./x gate` must be green before every commit. It independently selects profiled Go tests with coverage and Pi runtime smoke from one NUL-safe, rename-disabled staged-index path snapshot: a nonempty exact documentation-only transaction (`docs/**`, `README.md`, `changelog/CHANGELOG.md`, `.awf/docs/parts/**`, or `templates/docs/**`) skips both; Pi-only paths run Pi only; Go-only paths run Go only; and overlapping or uncertain, empty, unreadable, malformed, or unrecognized snapshots run both (ADR-0276). Each skipped suite prints a notice. Commands still test the working tree. The gate always runs `go vet`, released-platform cross-compilation, blocking defect lint, advisory style and heuristic lint, whole-program dead-code checking (ADR-0063), and `cmd/pincheck` (ADR-0079). Advisory lint findings print an explicit warning and succeed; either linter's execution or configuration failure blocks. The gate writes `coverage.out` when it runs profiled Go tests, enforces 100% **statement** coverage outside `// coverage-ignore` blocks (ADR-0012), and its Pi lane runs Pi-extension strict type checks and 100% statement/branch/function/line coverage and descriptor parity.
+
+| Gate class | Protected property and exit behavior |
+|---|---|
+| Error | Version/schema compatibility, tests, coverage, vet, builds, defect lint, production reachability, and workflow pins protect correctness, safety, authority, or reproducibility and exit nonzero. |
+| Warning | Style, wording, formatting, preferred idiom, speculative performance, possible cohesion, and heuristic maintainability lint remains visible and exits zero. |
+| Information | Skipped-lane and successful operation notes exit zero. |
 
 | Command | Use |
 |---|---|

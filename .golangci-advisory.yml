@@ -1,0 +1,48 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: none
+  enable:
+    # Mixed or heuristic analyzers report review signals, not objective defects.
+    - staticcheck
+    - nilnil
+    - unused
+    - unconvert
+    - unparam
+    - predeclared
+    - gocritic
+    - dupword
+    - perfsprint
+    - intrange
+    - usestdlibvars
+    - usetesting
+    - misspell
+    - revive
+    - whitespace
+  settings:
+    staticcheck:
+      checks:
+        - "SA6*"
+        - "S*"
+        - "ST*"
+        - "QF*"
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+    predeclared:
+      ignore:
+        - min
+        - max
+        - copy
+  exclusions:
+    presets:
+      - std-error-handling
+
+formatters:
+  enable:
+    - gofmt
+    - goimports

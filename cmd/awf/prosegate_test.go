@@ -111,10 +111,10 @@ func TestProseGateFindings(t *testing.T) {
 		map[string]string{"a.md": "three \u2014 em \u2014 dashes \u2014 here\n"})
 	var out strings.Builder
 	err := runProseGate(ctx, root, &out)
-	if err == nil || !strings.Contains(err.Error(), "punctuation restraint") {
-		t.Fatalf("findings: want a non-nil error, got %v", err)
+	if err != nil {
+		t.Fatalf("findings warning failed: %v", err)
 	}
-	if !strings.Contains(out.String(), "a.md") || !strings.Contains(out.String(), "em-dash") {
+	if !strings.Contains(out.String(), "warnings:") || !strings.Contains(out.String(), "a.md") || !strings.Contains(out.String(), "em-dash") {
 		t.Errorf("findings: output %q", out.String())
 	}
 }
@@ -127,8 +127,12 @@ func TestProseGateUsesStagedBytesWhenWorktreeDiffers(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(root, "a.md"), []byte("worktree clean\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		if err := runProseGate(ctx, root, io.Discard); err == nil {
-			t.Fatal("staged banned content must fail even when the worktree copy is clean")
+		var out strings.Builder
+		if err := runProseGate(ctx, root, &out); err != nil {
+			t.Fatalf("staged banned content warning failed: %v", err)
+		}
+		if !strings.Contains(out.String(), "warnings:") || !strings.Contains(out.String(), "a.md") {
+			t.Fatalf("staged banned content warning missing: %q", out.String())
 		}
 	})
 	t.Run("staged file missing from worktree still scans", func(t *testing.T) {

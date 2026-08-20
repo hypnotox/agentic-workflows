@@ -91,8 +91,9 @@ Backing: test
 
 ### `invariant: plan-v2-assignment-advisories`
 
-Proposed plan-v2 records emit sorted non-failing assignment notes from their selected working or staged universe; Applying assignment is scoped independently per plan, so one plan cannot silence another plan's missing-Decision note. Implemented records emit none.
+Proposed plan-v2 records emit sorted Warning findings with successful exit from their selected working or staged universe; Applying assignment is scoped independently per plan, so one plan cannot silence another plan's missing-Decision warning. Implemented records emit none.
 Origin: ADR-0217
+Revised-by: ADR-separate-blocking-checks-from-advisories
 Backing: test
 
 ### `invariant: plan-executable-projection`

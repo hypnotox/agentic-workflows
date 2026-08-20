@@ -60,7 +60,7 @@ func collectCheckStagedSelectionWith(ctx context.Context, root string, planNotes
 	} else {
 		lockV, binV, ok := lockVsBinaryLock(lock)
 		if ok && semver.Compare(binV, lockV) > 0 {
-			collection.notes = append(collection.notes, fmt.Sprintf("awf %s is ahead of this project (rendered by %s); run awf render to re-pin", strings.TrimPrefix(binV, "v"), strings.TrimPrefix(lockV, "v")))
+			collection.information = append(collection.information, fmt.Sprintf("awf %s is ahead of this project (rendered by %s); run awf render to re-pin", strings.TrimPrefix(binV, "v"), strings.TrimPrefix(lockV, "v")))
 		}
 	}
 	if state && lock != nil {
@@ -70,11 +70,12 @@ func collectCheckStagedSelectionWith(ctx context.Context, root string, planNotes
 		} else {
 			ordinary := report
 			ordinary.PlanNotes = nil
-			collection.notes = append(collection.notes, ordinary.Notes()...)
+			collection.warnings = append(collection.warnings, ordinary.Warnings()...)
+			collection.information = append(collection.information, ordinary.Information()...)
 			for _, note := range report.PlanNotes {
 				if _, seen := planNotes[note]; !seen {
 					planNotes[note] = struct{}{}
-					collection.notes = append(collection.notes, note)
+					collection.warnings = append(collection.warnings, note)
 				}
 			}
 			categories, err := dependencies.currentStateCategories(report, true)
@@ -99,7 +100,7 @@ func collectCheckStagedSelectionWith(ctx context.Context, root string, planNotes
 			} else {
 				collection.categories = append(collection.categories, categories...)
 			}
-			if len(findings) > 0 {
+			if hasCheckErrors(categories) {
 				collection.failures = append(collection.failures, errors.New("check staged drift failed"))
 			}
 		}

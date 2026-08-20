@@ -109,7 +109,7 @@ func (r Report) Document() (Document, error) {
 				return Document{}, fmt.Errorf("unknown report category %q", category.Label)
 			}
 			if categoryOrder <= lastCategory {
-				return Document{}, errors.New("report categories must be ordered errors then warnings")
+				return Document{}, errors.New("report categories must be ordered errors then warnings then information")
 			}
 			lastCategory = categoryOrder
 			group, err := NewRecordGroup(category.Label, category.Schema, category.Records...)
@@ -274,6 +274,8 @@ func reportCategoryOrder(label string) (int, bool) {
 		return 0, true
 	case "warnings":
 		return 1, true
+	case "information":
+		return 2, true
 	default:
 		return 0, false
 	}

@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-separate-blocking-checks-from-advisories: Separate blocking checks from advisories](separate-blocking-checks-from-advisories.md) (Accepted)
+- [ADR-separate-blocking-checks-from-advisories: Separate blocking checks from advisories](separate-blocking-checks-from-advisories.md) (Implementing)
 
 ## History
 

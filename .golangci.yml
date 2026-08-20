@@ -19,24 +19,8 @@ linters:
     - nilnesserr
     - gocheckcompilerdirectives
     - makezero
-    - nilnil
     - exhaustive
-    # Code quality
-    - unused
-    - unconvert
-    - unparam
     - wastedassign
-    - predeclared
-    - gocritic
-    - dupword
-    - perfsprint
-    - intrange
-    - usestdlibvars
-    - usetesting
-    - misspell
-    # Style
-    - revive
-    - whitespace
   settings:
     govet:
       enable:
@@ -54,14 +38,13 @@ linters:
         - copy
     staticcheck:
       checks:
-        - "all"
-        - "-ST1000"
-        - "-ST1003"
+        - "SA0*"
+        - "SA1*"
+        - "SA2*"
+        - "SA3*"
+        - "SA4*"
+        - "SA5*"
+        - "SA9*"
   exclusions:
     presets:
       - std-error-handling
-
-formatters:
-  enable:
-    - gofmt
-    - goimports

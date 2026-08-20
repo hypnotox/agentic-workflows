@@ -24,6 +24,20 @@ func TestCurrentStateCategoriesRejectsEmptyFinding(t *testing.T) {
 	}
 }
 
+func TestDriftCategoriesSeparateUnusedVocabularyInformation(t *testing.T) {
+	categories, err := DriftCategories([]manifest.Drift{
+		{Kind: "stale", Path: "generated.md", Detail: "rerender"},
+		{Kind: "unused-var", Path: ".awf/config.yaml", Detail: "delete optional key"},
+		{Kind: "unused-data", Path: ".awf/docs/testing.yaml", Detail: "delete optional data"},
+	}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(categories) != 2 || categories[0].Label != "errors" || categories[1].Label != "information" {
+		t.Fatalf("categories = %#v, want errors then information", categories)
+	}
+}
+
 func TestDriftCategoriesOwnExactCheckVocabularyAndOrder(t *testing.T) {
 	categories, err := DriftCategories([]manifest.Drift{{Kind: "stale", Path: "z", Detail: "later"}, {Kind: "hand-edited", Path: "a", Detail: "first"}}, true)
 	if err != nil {

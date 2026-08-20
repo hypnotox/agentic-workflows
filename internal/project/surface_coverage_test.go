@@ -21,7 +21,7 @@ func TestAdvisoryCompatibilityAndReportErrorPaths(t *testing.T) {
 		t.Fatalf("compatibility files = %#v", got)
 	}
 	failure := errors.New("advisory failure")
-	if _, err := finishCheckReport(nil, nil, nil, nil, &OutputPlan{}, failure); !errors.Is(err, failure) {
+	if _, err := finishCheckReport(nil, nil, nil, CheckAdvisories{}, &OutputPlan{}, failure); !errors.Is(err, failure) {
 		t.Fatalf("finish error = %v", err)
 	}
 }

@@ -42,6 +42,18 @@ run_deadcode_gate() {
   go tool deadcode -json ./... | go run ./cmd/deadcodecheck
 }
 
+run_advisory_lint() {
+  local output
+  if ! output="$(go tool golangci-lint run --config .golangci-advisory.yml --issues-exit-code 0 "$@" 2>&1)"; then
+    printf '%s\n' "$output" >&2
+    return 1
+  fi
+  if [ -n "$output" ]; then
+    echo "warning: advisory lint findings" >&2
+    printf '%s\n' "$output" >&2
+  fi
+}
+
 select_gate_tests() {
   # One rename-disabled, NUL-delimited index diff is the selection snapshot.
   # Any Git or parsing uncertainty deliberately retains every test lane.
@@ -157,11 +169,13 @@ case "$cmd" in
       fi
     done
     run_gate_step lint go tool golangci-lint run
+    run_gate_step advisory-lint run_advisory_lint
     run_gate_step deadcode run_deadcode_gate
     run_gate_step pincheck go run ./cmd/pincheck
     ;;
   lint)
     go tool golangci-lint run "$@"
+    run_advisory_lint "$@"
     ;;
   deadcode)
     # Whole-program dead-code gate (ADR-0063): fails on any production func

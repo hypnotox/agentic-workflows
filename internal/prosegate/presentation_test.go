@@ -23,7 +23,7 @@ func TestCategoriesOwnExactCheckVocabularyAndOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	report := presentation.Report{Status: "failed", Categories: categories}
+	report := presentation.Report{Status: "warnings", Categories: categories}
 	document, err := report.Document()
 	if err != nil {
 		t.Fatal(err)
@@ -32,7 +32,7 @@ func TestCategoriesOwnExactCheckVocabularyAndOrder(t *testing.T) {
 	if err := presentation.Render(&out, document); err != nil {
 		t.Fatal(err)
 	}
-	want := "status: failed\n\nfindings:\n  errors:\n    prose | z.md: em-dash (U+2014) appears 2 time(s); the exemption pins 1\n"
+	want := "status: warnings\n\nfindings:\n  warnings:\n    prose | z.md: em-dash (U+2014) appears 2 time(s); the exemption pins 1\n"
 	if out.String() != want {
 		t.Fatalf("categories = %q, want %q", out.String(), want)
 	}

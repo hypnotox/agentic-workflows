@@ -38,7 +38,7 @@ func runCheckWith(ctx context.Context, root string, stdout io.Writer, dependenci
 	}
 	_, _, gitErr := dependencies.openContaining(root)
 	if errors.Is(gitErr, awfgit.ErrNotARepository) {
-		repo.notes = append(repo.notes, "staged check universe unavailable outside a git repository")
+		repo.information = append(repo.information, "staged check universe unavailable outside a git repository")
 		return renderCheckCollection(stdout, repo)
 	}
 	if gitErr != nil {

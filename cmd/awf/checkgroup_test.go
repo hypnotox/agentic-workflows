@@ -93,8 +93,10 @@ func TestCheckScannersAlwaysRun(t *testing.T) {
 		{[]string{"awf", "check", "repo", "memory"}, []string{memoryPath}},
 	} {
 		var out, errb bytes.Buffer
-		if code := runAt(t, root, tc.args, &out, &errb); code == 0 {
-			t.Fatalf("%v skipped its unconfigured scanner:\n%s", tc.args, out.String())
+		code := runAt(t, root, tc.args, &out, &errb)
+		proseOnly := tc.args[len(tc.args)-1] == "prose"
+		if (proseOnly && code != 0) || (!proseOnly && code == 0) {
+			t.Fatalf("%v exit = %d, want prose-only warning success and memory-bearing failure:\n%s%s", tc.args, code, out.String(), errb.String())
 		}
 		report := out.String() + errb.String()
 		for _, path := range tc.paths {

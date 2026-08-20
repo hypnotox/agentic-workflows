@@ -5,17 +5,17 @@ import "github.com/hypnotox/agentic-workflows/internal/presentation"
 // Categories maps prose findings into their check-report vocabulary. Binary
 // files are skipped by Scan but intentionally have no user-facing diagnostic.
 func Categories(findings []Finding, _ []string) ([]presentation.ReportCategory, error) {
-	errors := make([]presentation.Record, 0, len(findings))
+	warnings := make([]presentation.Record, 0, len(findings))
 	for _, finding := range findings {
 		record, err := record(Format(finding))
 		if err != nil { // coverage-ignore: Format always produces nonempty prose from the fixed diagnostic template
 			return nil, err
 		}
-		errors = append(errors, record)
+		warnings = append(warnings, record)
 	}
 	categories := []presentation.ReportCategory{}
-	if len(errors) > 0 {
-		categories = append(categories, presentation.ReportCategory{Label: "errors", Schema: []string{"check", "detail"}, Records: errors})
+	if len(warnings) > 0 {
+		categories = append(categories, presentation.ReportCategory{Label: "warnings", Schema: []string{"check", "detail"}, Records: warnings})
 	}
 	return categories, nil
 }

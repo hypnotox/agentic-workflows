@@ -14,6 +14,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
+// invariant: tooling/quality-gates:gate-severity-by-protected-property (TestGateRunnerModes)
 func TestGateRunnerModes(t *testing.T) {
 	root, logPath := gateRunnerFixture(t)
 	run := func(extraEnv []string, args ...string) (string, int, []string) {
@@ -70,7 +71,7 @@ func TestGateRunnerModes(t *testing.T) {
 	wantLabels := []string{
 		"versioncheck", "go-test", "covercheck", "pi-runtime-smoke", "vet",
 		"build-linux-arm64", "build-darwin-amd64", "build-darwin-arm64",
-		"build-windows-amd64", "build-windows-arm64", "lint", "deadcode", "pincheck",
+		"build-windows-amd64", "build-windows-arm64", "lint", "advisory-lint", "deadcode", "pincheck",
 	}
 	assertTimingLines(t, timedErr, wantLabels)
 
@@ -363,7 +364,7 @@ func assertGateSelection(t *testing.T, root, logPath string, wantTests, wantNoti
 	if slices.Contains(wantTests, "TestPi(EffortMemoryToolContract|RealRuntimeSmoke)") {
 		wantTimings = append(wantTimings, "pi-runtime-smoke")
 	}
-	wantTimings = append(wantTimings, "vet", "build-linux-arm64", "build-darwin-amd64", "build-darwin-arm64", "build-windows-amd64", "build-windows-arm64", "lint", "deadcode", "pincheck")
+	wantTimings = append(wantTimings, "vet", "build-linux-arm64", "build-darwin-amd64", "build-darwin-arm64", "build-windows-amd64", "build-windows-arm64", "lint", "advisory-lint", "deadcode", "pincheck")
 	assertTimingLines(t, stderr.String(), wantTimings)
 }
 
@@ -398,6 +399,7 @@ func assertGateInvocations(t *testing.T, lines []string) {
 		"goos=windows|goarch=amd64|pi=|build ./...",
 		"goos=windows|goarch=arm64|pi=|build ./...",
 		"goos=|goarch=|pi=|tool golangci-lint run",
+		"goos=|goarch=|pi=|tool golangci-lint run --config .golangci-advisory.yml --issues-exit-code 0",
 		"goos=|goarch=|pi=|tool deadcode -json ./...",
 		"goos=|goarch=|pi=|run ./cmd/deadcodecheck",
 		"goos=|goarch=|pi=|run ./cmd/pincheck",

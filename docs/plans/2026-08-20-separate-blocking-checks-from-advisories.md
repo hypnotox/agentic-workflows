@@ -72,3 +72,6 @@ feat(awf): separate blocking checks from advisories
 ## Notes
 
 Apply the plan-flexibility rule above when recording deviations. Keep all implementation inside AF-013 and leave checker decomposition to RF-004.
+
+- Implementation added `internal/presentation/shapes.go` and its existing report tests because the closed report-category boundary previously rejected `information`; changing only check presentation would have created a parallel invalid shape. It also edited `templates/docs/working-with-awf.md.tmpl` because the local commands part delegates to that source through `sectionDefault`. Both paths are required by existing presentation and generated-source authority and do not change the approved boundary.
+- `CheckReport.Notes`, `TrackingNotes`, and `PlanNotes` remain as compatibility projections for existing internal callers while new operation reports carry Warning and Information separately. RF-004 may remove that residue when it decomposes checker ownership; AF-013 does not expand into that refactor.

@@ -199,8 +199,12 @@ func TestRunCheckRepoScannerErrors(t *testing.T) {
 		root := syncedGitProject(t, checkYAML+"")
 		repo := gitfixture.At(root)
 		gitfixture.Stage(t, repo, map[string]string{"bad.txt": "banned \u2013 punctuation\n"})
-		if err := runCheckRepo(ctx, root, io.Discard); err == nil || !strings.Contains(err.Error(), "punctuation restraint") {
-			t.Fatalf("aggregate did not surface prose failure: %v", err)
+		var out bytes.Buffer
+		if err := runCheckRepo(ctx, root, &out); err != nil {
+			t.Fatalf("aggregate prose warning failed: %v", err)
+		}
+		if !strings.Contains(out.String(), "warnings:") || !strings.Contains(out.String(), "bad.txt") {
+			t.Fatalf("aggregate did not surface prose warning: %q", out.String())
 		}
 	})
 	t.Run("memory", func(t *testing.T) {
@@ -318,8 +322,8 @@ func TestRunCheckAheadNotice(t *testing.T) {
 	if err := runCheck(ctx, root, &out); err != nil {
 		t.Fatalf("expected clean check, got %v", err)
 	}
-	if !strings.Contains(out.String(), "status: warnings") || !strings.Contains(out.String(), "summary:") {
-		t.Errorf("expected both universe clean outputs, got %q", out.String())
+	if !strings.Contains(out.String(), "status: completed") || !strings.Contains(out.String(), "information:") {
+		t.Errorf("expected informational ahead output, got %q", out.String())
 	}
 	if !strings.Contains(out.String(), "is ahead of this project (rendered by 0.3.0)") {
 		t.Errorf("expected ahead notice, got %q", out.String())
@@ -727,8 +731,8 @@ func TestCheckStagedCommandUsesIndexLockForGateAndAheadNote(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(collection.notes) != 1 || !strings.Contains(collection.notes[0], "ahead of this project (rendered by 0.3.0)") {
-			t.Fatalf("older-lock staged notes = %q", collection.notes)
+		if len(collection.information) != 1 || !strings.Contains(collection.information[0], "ahead of this project (rendered by 0.3.0)") {
+			t.Fatalf("older-lock staged information = %q", collection.information)
 		}
 	})
 

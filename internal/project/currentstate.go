@@ -57,11 +57,22 @@ func (r CurrentStateReport) Findings() []string {
 	return out
 }
 
-// Notes returns the non-failing lines: provisional older-format introductions
-// and coverage/fan-out findings at warn. Provisional introductions are not
+// Warnings returns ranked non-failing findings: coverage fan-out and Proposed
+// plan assignment or detail advisories.
+func (r CurrentStateReport) Warnings() []string {
+	var out []string
+	for _, c := range r.Coverage {
+		if c.Severity == severity.Warn {
+			out = append(out, c.Message())
+		}
+	}
+	return append(out, r.PlanNotes...)
+}
+
+// Information returns unranked provisional introductions. They are not
 // findings because the staged boundary lacks definitive merge-parent and
 // message evidence; every independently derivable finding remains blocking.
-func (r CurrentStateReport) Notes() []string {
+func (r CurrentStateReport) Information() []string {
 	out := make([]string, 0, len(r.Provisional))
 	for _, introduction := range r.Provisional {
 		marker := adr.FormatMarker(introduction.Format)
@@ -70,12 +81,6 @@ func (r CurrentStateReport) Notes() []string {
 		}
 		out = append(out, fmt.Sprintf("provisional older-format ADR-%s (%s) requires commit-msg qualification", introduction.Identity, marker))
 	}
-	for _, c := range r.Coverage {
-		if c.Severity == severity.Warn {
-			out = append(out, c.Message())
-		}
-	}
-	out = append(out, r.PlanNotes...)
 	return out
 }
 

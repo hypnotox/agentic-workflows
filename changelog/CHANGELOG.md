@@ -14,6 +14,8 @@ query a single version or a range.
 
 ### Features
 
+- Check output now separates blocking Errors, zero-exit Warnings, and unranked Information by protected property. Prose style and heuristic lint no longer block valid work, while invalid inputs, serious drift, authority violations, unsafe behavior, and unavailable required verification remain blocking.
+
 - Pi session-replacement protocol now has one Pi-runtime-owned executable projection, while shared continuity guidance remains capability-neutral and pi-tools remains independently installed.
 
 - Core and Full are documented as governance footprints with one shared correctness, autonomy, maintainability, and review-quality bar. Core includes the operational workflow; Full adds ADR, plan, current-state, context, and audit capabilities. The `profile` config key and existing migration behavior are unchanged.

@@ -8,20 +8,30 @@ import (
 )
 
 // DriftCategories maps drift findings into their check-report vocabulary.
+// Unused vocabulary is unranked information; every other drift kind protects
+// reproducibility, correctness, or authority and remains an error.
 func DriftCategories(drift []manifest.Drift, staged bool) ([]presentation.ReportCategory, error) {
 	check := "drift"
 	if staged {
 		check = "staged drift"
 	}
-	records := make([]presentation.Record, 0, len(drift))
+	var errors, information []presentation.Record
 	for _, finding := range drift {
 		record, err := checkRecord(check, fmt.Sprintf("%s: %s: %s", finding.Kind, finding.Path, finding.Detail))
 		if err != nil { // coverage-ignore: the fixed separators make the formatted drift detail nonempty
 			return nil, err
 		}
-		records = append(records, record)
+		if finding.Kind == "unused-var" || finding.Kind == "unused-data" {
+			information = append(information, record)
+		} else {
+			errors = append(errors, record)
+		}
 	}
-	return errorCategory(records), nil
+	categories := errorCategory(errors)
+	if len(information) > 0 {
+		categories = append(categories, presentation.ReportCategory{Label: "information", Schema: []string{"check", "detail"}, Records: information})
+	}
+	return categories, nil
 }
 
 // CurrentStateCategories maps current-state findings into their check-report vocabulary.

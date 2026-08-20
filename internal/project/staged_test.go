@@ -242,7 +242,7 @@ func TestCheckStagedMarksOlderIntroductionsProvisionalWithoutSuppressingFindings
 			t.Fatalf("unrelated blocking finding %q was suppressed:\n%s", wantFinding, findings)
 		}
 	}
-	if notes := strings.Join(report.Notes(), "\n"); !strings.Contains(notes, "provisional older-format ADR-0002") {
+	if notes := strings.Join(report.Information(), "\n"); !strings.Contains(notes, "provisional older-format ADR-0002") {
 		t.Fatalf("provisional note missing:\n%s", notes)
 	}
 }

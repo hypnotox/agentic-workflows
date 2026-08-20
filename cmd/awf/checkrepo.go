@@ -39,7 +39,8 @@ type repoCheckInputs struct {
 	currentState project.CurrentStateReport
 	index        *snapshot.Tree
 	categories   []presentation.ReportCategory
-	notes        []string
+	warnings     []string
+	information  []string
 }
 
 type repoCheckDependencies struct {
@@ -151,14 +152,15 @@ func repoCheckSystem(root string, aggregate bool, leadingNotes []string, planNot
 				case repoStepDrift:
 					report := inputs.checkReport
 					actions = append(actions, execution.BoundAction{Step: step, Run: func(context.Context) error {
-						inputs.notes = append(inputs.notes, report.TrackingNotes...)
+						inputs.information = append(inputs.information, report.DirectTrackingInformation()...)
 						if aggregate {
-							inputs.notes = append(inputs.notes, leadingNotes...)
-							inputs.notes = append(inputs.notes, report.Notes...)
-							for _, note := range report.PlanNotes {
+							inputs.information = append(inputs.information, leadingNotes...)
+							inputs.warnings = append(inputs.warnings, report.OrdinaryWarnings()...)
+							inputs.information = append(inputs.information, report.AggregateInformation()...)
+							for _, note := range report.PlanWarningNotes() {
 								if _, seen := planNotes[note]; !seen {
 									planNotes[note] = struct{}{}
-									inputs.notes = append(inputs.notes, note)
+									inputs.warnings = append(inputs.warnings, note)
 								}
 							}
 						}
@@ -167,7 +169,7 @@ func repoCheckSystem(root string, aggregate bool, leadingNotes []string, planNot
 							return err
 						}
 						inputs.categories = append(inputs.categories, categories...)
-						if len(report.Drift) > 0 {
+						if hasCheckErrors(categories) {
 							return producedCheckFailure{errors.New("check repo drift failed")}
 						}
 						return nil
@@ -175,7 +177,8 @@ func repoCheckSystem(root string, aggregate bool, leadingNotes []string, planNot
 				case repoStepState:
 					report := inputs.currentState
 					actions = append(actions, execution.BoundAction{Step: step, Run: func(context.Context) error {
-						inputs.notes = append(inputs.notes, report.Notes()...)
+						inputs.warnings = append(inputs.warnings, report.Warnings()...)
+						inputs.information = append(inputs.information, report.Information()...)
 						categories, err := deps.currentStateCategories(report, false)
 						if err != nil {
 							return err
@@ -233,7 +236,7 @@ func collectRepoCheckSelectionWithPlanNotes(ctx context.Context, root string, se
 	if err != nil {
 		return checkCollection{}, err
 	}
-	collection := checkCollection{notes: inputs.notes, categories: inputs.categories}
+	collection := checkCollection{warnings: inputs.warnings, information: inputs.information, categories: inputs.categories}
 	for _, outcome := range outcomes {
 		if outcome.Err == nil {
 			continue
@@ -254,7 +257,7 @@ func renderCheckCollection(stdout io.Writer, collection checkCollection) error {
 	if len(collection.operational) > 0 {
 		return errors.Join(collection.operational...)
 	}
-	report, err := checkReport(collection.notes, collection.categories)
+	report, err := checkReport(collection.warnings, collection.information, collection.categories)
 	if err != nil {
 		return err
 	}
@@ -269,6 +272,15 @@ func renderCheckCollection(stdout io.Writer, collection checkCollection) error {
 		return &producedReportError{collection.failures[0]}
 	}
 	return nil
+}
+
+func hasCheckErrors(categories []presentation.ReportCategory) bool {
+	for _, category := range categories {
+		if category.Label == "errors" && len(category.Records) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func repoScannerErrorPrefix(selected []execution.StepID) string {

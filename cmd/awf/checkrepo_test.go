@@ -111,7 +111,7 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		if got, want := *counts, (repoCheckCounters{loads: 1, opens: 1, reports: 1, states: 1, indexes: 1}); got != want {
 			t.Fatalf("capability counts = %+v, want %+v", got, want)
 		}
-		want := "status: warnings\n\nsummary:\n  findings: 0 errors, 2 warnings\n\nfindings:\n  warnings:\n    advisory | project-advisory-sentinel\n    advisory | working-plan-note-sentinel\n"
+		want := "status: warnings\n\nsummary:\n  findings: 0 errors, 2 warnings, 0 information\n\nfindings:\n  warnings:\n    advisory | project-advisory-sentinel\n    advisory | working-plan-note-sentinel\n"
 		if got := out.String(); got != want {
 			t.Fatalf("output = %q, want %q", got, want)
 		}
@@ -161,7 +161,7 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		if got, want := *counts, (repoCheckCounters{loads: 1, opens: 1, reports: 1, states: 1, indexes: 1}); got != want {
 			t.Fatalf("capability counts = %+v, want %+v", got, want)
 		}
-		const want = "status: failed\n\nsummary:\n  findings: 4 errors, 1 warnings\n\nfindings:\n  errors:\n    drift | changed: working-drift-sentinel: working bytes\n    current-state | current-state-sentinel\n    prose | prose-index-sentinel.txt: en-dash (U+2013) appears 1 time(s); en dashes are not permitted\n    memory | docs/decisions/memory-index-sentinel.md: 1 effort-owned memory citation(s) on line(s) 1; name the .awf/efforts/ directory, use an angle-bracket slug placeholder, or remove the ephemeral file citation\n  warnings:\n    advisory | working-advisory-sentinel\n"
+		const want = "status: failed\n\nsummary:\n  findings: 3 errors, 2 warnings, 0 information\n\nfindings:\n  errors:\n    drift | changed: working-drift-sentinel: working bytes\n    current-state | current-state-sentinel\n    memory | docs/decisions/memory-index-sentinel.md: 1 effort-owned memory citation(s) on line(s) 1; name the .awf/efforts/ directory, use an angle-bracket slug placeholder, or remove the ephemeral file citation\n  warnings:\n    advisory | working-advisory-sentinel\n    prose | prose-index-sentinel.txt: en-dash (U+2013) appears 1 time(s); en dashes are not permitted\n"
 		if got := out.String(); got != want {
 			t.Fatalf("output = %q, want %q", got, want)
 		}
@@ -240,7 +240,7 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		if err := runRepoCheckSelection(context.Background(), t.TempDir(), &direct, []execution.StepID{repoStepDrift}, execution.StopOnFailure, false, deps); err != nil {
 			t.Fatalf("direct tracking advisory: %v", err)
 		}
-		if got, want := direct.String(), "status: warnings\n\nsummary:\n  findings: 0 errors, 1 warnings\n\nfindings:\n  warnings:\n    advisory | tracking unavailable\n"; got != want {
+		if got, want := direct.String(), "status: completed\n\nsummary:\n  findings: 0 errors, 0 warnings, 1 information\n\nfindings:\n  information:\n    advisory | tracking unavailable\n"; got != want {
 			t.Fatalf("direct tracking advisory = %q, want %q", got, want)
 		}
 
@@ -249,7 +249,7 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		if err := runRepoCheckSelection(context.Background(), t.TempDir(), &aggregate, []execution.StepID{repoStepDrift}, execution.ContinueOnFailure, true, deps); err != nil {
 			t.Fatalf("aggregate tracking advisory: %v", err)
 		}
-		if got, want := aggregate.String(), "status: warnings\n\nsummary:\n  findings: 0 errors, 2 warnings\n\nfindings:\n  warnings:\n    advisory | tracking unavailable\n    advisory | aggregate-only\n"; got != want {
+		if got, want := aggregate.String(), "status: warnings\n\nsummary:\n  findings: 0 errors, 1 warnings, 1 information\n\nfindings:\n  warnings:\n    advisory | aggregate-only\n  information:\n    advisory | tracking unavailable\n"; got != want {
 			t.Fatalf("aggregate tracking advisory = %q, want %q", got, want)
 		}
 	})
@@ -423,14 +423,14 @@ func TestAggregateCheckAgentGuideSizeWarning(t *testing.T) {
 	}
 
 	t.Run("size advisory is the only finding", func(t *testing.T) {
-		want := "status: warnings\n\nsummary:\n  findings: 0 errors, 1 warnings\n\nfindings:\n  warnings:\n    advisory | " + advisory + "\n"
+		want := "status: warnings\n\nsummary:\n  findings: 0 errors, 1 warnings, 0 information\n\nfindings:\n  warnings:\n    advisory | " + advisory + "\n"
 		if got := runAggregate(t, []string{advisory}); got != want {
 			t.Fatalf("aggregate output = %q, want %q", got, want)
 		}
 	})
 
 	t.Run("production note order is preserved", func(t *testing.T) {
-		want := "status: warnings\n\nsummary:\n  findings: 0 errors, 2 warnings\n\nfindings:\n  warnings:\n    advisory | ordinary-advisory\n    advisory | " + advisory + "\n"
+		want := "status: warnings\n\nsummary:\n  findings: 0 errors, 2 warnings, 0 information\n\nfindings:\n  warnings:\n    advisory | ordinary-advisory\n    advisory | " + advisory + "\n"
 		if got := runAggregate(t, []string{"ordinary-advisory", advisory}); got != want {
 			t.Fatalf("aggregate output = %q, want %q", got, want)
 		}

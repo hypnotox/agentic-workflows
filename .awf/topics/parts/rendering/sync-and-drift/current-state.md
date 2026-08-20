@@ -4,9 +4,9 @@ How awf render and awf check detect and report drift: per-file config-hash input
 
 ### `invariant: agent-guide-size-advisory`
 
-Only the deterministic expected bytes of a managed `AGENTS.md` feed aggregate `CheckReport.Notes`: at a fixed 12 KiB threshold, an overage is a warning-only zero-exit advisory. Non-aggregate consumers are excluded.
+Only the deterministic expected bytes of a managed `AGENTS.md` feed aggregate CheckReport warnings: at a fixed 12 KiB threshold, an overage is a Warning with zero exit. Non-aggregate consumers are excluded.
 Origin: ADR-0241
-Revised-by: ADR-0251
+Revised-by: ADR-0251, ADR-separate-blocking-checks-from-advisories
 Backing: test
 
 ### `invariant: awf-bak-flagged`
