@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-0292: Define Core and Full as governance footprints](0292-define-core-and-full-as-governance-footprints.md) (Implementing)
+_No decisions are in flight._
 
 ## History
 
@@ -297,3 +297,4 @@
 - [ADR-0289: Make Review Enforce Concrete Maintainability Risks](0289-make-review-enforce-concrete-maintainability-risks.md) (Implemented)
 - [ADR-0290: Replace plain punctuation ban with punctuation restraint](0290-replace-plain-punctuation-ban-with-punctuation-restraint.md) (Implemented)
 - [ADR-0291: Strongest practical durable oracle](0291-strongest-practical-durable-oracle.md) (Implemented)
+- [ADR-0292: Define Core and Full as governance footprints](0292-define-core-and-full-as-governance-footprints.md) (Implemented)
