@@ -738,25 +738,91 @@ func TestStrongestPracticalDurableOracleContract(t *testing.T) {
 		"agents/plan-reviewer.md.tmpl", "agents/code-reviewer.md.tmpl",
 		"docs/testing.md.tmpl",
 	}
+	expected := make(map[string]bool, len(consumers))
 	for _, consumer := range consumers {
+		expected[consumer] = true
+	}
+	actual := map[string]int{}
+	for _, root := range []string{"skills", "agents", "docs", "partials"} {
+		err := fs.WalkDir(templates.FS, root, func(path string, entry fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if entry.IsDir() {
+				return nil
+			}
+			raw, readErr := fs.ReadFile(templates.FS, path)
+			if readErr != nil {
+				return readErr
+			}
+			rawBody := string(raw)
+			if count := strings.Count(rawBody, "<!-- awf:include durable-oracle -->"); count > 0 {
+				actual[path] = count
+			}
+			if path != partialPath && !expected[path] && durableOracleParallelDoctrine(rawBody) {
+				t.Errorf("%s contains a parallel durable-oracle policy home", path)
+			}
+			if path != partialPath && strings.Contains(rawBody, "Every behaviour-changing fix requires the strongest practical durable oracle") {
+				t.Errorf("%s copies the canonical durable-oracle rule", path)
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, consumer := range consumers {
+		if actual[consumer] != 1 {
+			t.Errorf("%s has %d durable-oracle includes, want 1", consumer, actual[consumer])
+		}
 		raw, err := fs.ReadFile(templates.FS, consumer)
 		if err != nil {
 			t.Fatal(err)
 		}
 		rawBody := string(raw)
-		if got := strings.Count(rawBody, "<!-- awf:include durable-oracle -->"); got != 1 {
-			t.Errorf("%s has %d durable-oracle includes, want 1", consumer, got)
-		}
 		for _, retired := range []string{
 			"fixes ship with a regression test",
 			"Isolate with a failing test, written first",
 			"must fail for the right reason on the unfixed code",
 			"every behaviour-changing change has a regression test",
-			"behaviour-changing tasks have regression tests",
+			"**testing-discipline**: behaviour-changing tasks have regression tests",
 		} {
 			if strings.Contains(rawBody, retired) {
 				t.Errorf("%s retains universal red-first rule %q", consumer, retired)
 			}
+		}
+	}
+	for path, count := range actual {
+		if !expected[path] {
+			t.Errorf("unexpected durable-oracle consumer %s with %d includes", path, count)
+		}
+	}
+	for name, candidate := range map[string]string{
+		"direct-copy": "The strongest practical durable oracle uses red then green as the preferred path; an alternative needs a concrete reason and must preserve verification strength.",
+		"paraphrase":  "Use the most durable evidence: prefer observed red then green, require a concrete reason for any alternative, and keep verification at least as strong.",
+	} {
+		if !durableOracleParallelDoctrine(candidate) {
+			t.Errorf("%s parallel durable-oracle doctrine escaped the single-home detector", name)
+		}
+	}
+	if durableOracleParallelDoctrine("An ordinary fix uses its regression test; record an alternative harness when needed.") {
+		t.Error("legitimate stage-local durable-oracle procedure was misclassified as a parallel policy home")
+	}
+
+	tddSource, err := fs.ReadFile(templates.FS, "skills/tdd/SKILL.md.tmpl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(tddSource), "alternative-oracle path does not widen to features") {
+		t.Error("TDD alternative path is not explicitly confined to fixes")
+	}
+	for _, reviewer := range []string{"agents/code-reviewer.md.tmpl", "agents/plan-reviewer.md.tmpl"} {
+		raw, err := fs.ReadFile(templates.FS, reviewer)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(raw), "non-fix behaviour-changing") {
+			t.Errorf("%s does not preserve regression evidence for non-fix behavior changes", reviewer)
 		}
 	}
 
@@ -774,6 +840,16 @@ func TestStrongestPracticalDurableOracleContract(t *testing.T) {
 			}
 		}
 	}
+}
+
+func durableOracleParallelDoctrine(body string) bool {
+	lower := strings.ToLower(body)
+	strongest := (strings.Contains(lower, "strongest practical") && strings.Contains(lower, "durable oracle")) || strings.Contains(lower, "most durable evidence")
+	preferredRedGreen := strings.Contains(lower, "red") && strings.Contains(lower, "green") && (strings.Contains(lower, "prefer") || strings.Contains(lower, "normal path"))
+	concreteReason := strings.Contains(lower, "concrete reason")
+	strength := strings.Contains(lower, "preserve verification strength") || strings.Contains(lower, "keep verification at least as strong")
+	alternative := strings.Contains(lower, "alternative")
+	return strongest && preferredRedGreen && concreteReason && strength && alternative
 }
 
 // invariant: rendering/workflow-skill-templates:clean-integration (TestCleanIntegrationContract)

@@ -1,6 +1,6 @@
 ---
 name: {{ .prefix }}-tdd
-description: Use to establish the strongest practical durable oracle before a behaviour-changing implementation in {{ .prefix }}, normally with an observed red-then-green automated regression test.
+description: Use to establish the strongest practical durable oracle before a bug fix in {{ .prefix }}, or to write a failing test before feature implementation when the missing behaviour is testable in isolation.
 ---
 
 # {{ .prefix }}-tdd
@@ -22,10 +22,10 @@ The durable verification discipline as a project-owned support skill.
 
 TDD may run without an effort. If continuity materially helps, invoke `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}` before mutation; if an effort already exists, validate its fixed identity and exact `.awf/efforts/<slug>/memory.md`, preserve one writer, and give that context read-only to helpers. Otherwise omit effort and memory fields. {{if eq .profile "core"}}Project documentation, source, tests, and repository history{{else}}Repository and current-state authority{{end}} remain primary, and standalone memory is forbidden.
 
-1. {{if ne .profile "core"}}Run `./awf context <the implementation and verification paths>`, then {{end}}select the strongest practical durable oracle under the rule above. For the normal automated path, write the failing test capturing the wrong (bug) or missing (feature) behaviour. For an alternative, record the concrete reason automated red-first is impractical and prepare the selected reproducible evidence. Ground tests, checks, seams, and harness work only in changed behavior, a demonstrated regression, an existing documented contract, or a clearly applicable project invariant; reject speculative test or policy machinery.
+1. {{if ne .profile "core"}}Run `./awf context <the implementation and verification paths>`, then {{end}}select the strongest practical durable oracle under the rule above for a bug fix. For the normal fix path, write the failing test capturing the wrong behaviour. For a fix-only alternative, record the concrete reason automated red-first is impractical and prepare the selected reproducible evidence. For feature work, write the failing automated test capturing the missing behaviour; the alternative-oracle path does not widen to features. Ground tests, checks, seams, and harness work only in changed behavior, a demonstrated regression, an existing documented contract, or a clearly applicable project invariant; reject speculative test or policy machinery.
 <!-- awf:include context-orientation -->
 <!-- awf:include context-spill -->
-2. Exercise the selected oracle before implementation. For an automated regression test, run it and confirm it fails for the right reason{{ with .vars.testCmd }}: `{{ . }}`{{ end }}. For an alternative, reproduce the unfixed behaviour safely and retain the inputs, expected result, actual evidence, and concrete reason.
+2. Exercise the selected oracle before implementation. For an automated bug regression or feature test, run it and confirm it fails for the right reason{{ with .vars.testCmd }}: `{{ . }}`{{ end }}. For a fix-only alternative, reproduce the unfixed behaviour safely and retain the inputs, expected result, actual evidence, and concrete reason.
 3. Before implementing, per `{{ .layout.maintainableCodeDesign }}`, assess whether a bounded enabling refactor prevents duplication, coupling, representation leakage, or a workaround.
 <!-- awf:include clean-integration -->
 <!-- awf:include implementation-autonomy -->

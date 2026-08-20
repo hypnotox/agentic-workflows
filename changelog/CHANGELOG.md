@@ -14,6 +14,8 @@ query a single version or a range.
 
 ### Features
 
+- Bug fixes now require the strongest practical durable oracle. Automated red-then-green regression evidence remains the default; when it is impractical, a concrete reason and the strongest safely reproducible alternative are accepted without weakening expected behaviour or verification strength.
+
 - Implementation and plan review now admit maintainability findings only when they identify semantic ownership, location, concrete risk, smallest clean remediation, and existing classification. Risk-free aesthetic preferences are rejected without a new severity or disposition; ADR review and severity policy are unchanged.
 
 - Clean integration is operative across design, planning, implementation, and review: one proportional rule requires semantic ownership, bounded enabling refactoring, practical obsolete-path retirement, moving verification surfaces, and explicit residual debt while preserving YAGNI.
