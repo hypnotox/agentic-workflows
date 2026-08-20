@@ -300,7 +300,7 @@ func (p *Project) configReferenceRows(files []RenderedFile) (ConfigReference, er
 				row.Description = "The project's Conventional Commits scope taxonomy: the single home for commit scopes. Absent means accept any scope; entries are enforced by `awf check staged commit` and quoted by rendered guidance."
 				row.Availability = "Read by `awf check staged commit` and every rendered artifact quoting the scope list."
 			case "sidecar.data":
-				row.Availability = "Keys must be referenced by the artifact's template. An unreferenced key is failing drift; rejected on the config-reference sidecar because its tables are generated."
+				row.Availability = "Keys must be referenced by the artifact's template. An unreferenced key is unranked Information and exits zero; rejected on the config-reference sidecar because its tables are generated."
 			case "sidecar.sections":
 				row.Availability = "Section names must be catalog-declared for the artifact; unknown names refuse at open."
 			}

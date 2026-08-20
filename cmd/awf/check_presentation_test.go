@@ -54,58 +54,71 @@ func TestCheckSeverityByProtectedProperty(t *testing.T) {
 	errorCategory := category("errors", "invalid authority")
 	warningCategory := category("warnings", "style heuristic")
 	informationCategory := category("information", "optional cleanup")
+	errorFailure := producedCheckFailure{errors.New("invalid authority")}
 	cases := []struct {
-		name       string
-		collection checkCollection
-		want       string
-		wantError  bool
+		name           string
+		direct         checkCollection
+		aggregateParts []checkCollection
+		want           string
+		wantError      bool
 	}{
 		{
-			name:       "Error-only fails",
-			collection: checkCollection{categories: []presentation.ReportCategory{errorCategory}, failures: []error{producedCheckFailure{errors.New("invalid authority")}}},
-			want:       "status: failed\n\nsummary:\n  findings: 1 errors, 0 warnings, 0 information\n\nfindings:\n  errors:\n    check | invalid authority\n",
-			wantError:  true,
+			name:           "Error-only fails",
+			direct:         checkCollection{categories: []presentation.ReportCategory{errorCategory}, failures: []error{errorFailure}},
+			aggregateParts: []checkCollection{{categories: []presentation.ReportCategory{errorCategory}}, {failures: []error{errorFailure}}},
+			want:           "status: failed\n\nsummary:\n  findings: 1 errors, 0 warnings, 0 information\n\nfindings:\n  errors:\n    check | invalid authority\n",
+			wantError:      true,
 		},
 		{
-			name:       "Warning-only succeeds",
-			collection: checkCollection{categories: []presentation.ReportCategory{warningCategory}},
-			want:       "status: warnings\n\nsummary:\n  findings: 0 errors, 1 warnings, 0 information\n\nfindings:\n  warnings:\n    check | style heuristic\n",
+			name:           "Warning-only succeeds",
+			direct:         checkCollection{categories: []presentation.ReportCategory{warningCategory}},
+			aggregateParts: []checkCollection{{categories: []presentation.ReportCategory{warningCategory}}},
+			want:           "status: warnings\n\nsummary:\n  findings: 0 errors, 1 warnings, 0 information\n\nfindings:\n  warnings:\n    check | style heuristic\n",
 		},
 		{
-			name:       "Information-only succeeds",
-			collection: checkCollection{categories: []presentation.ReportCategory{informationCategory}},
-			want:       "status: completed\n\nsummary:\n  findings: 0 errors, 0 warnings, 1 information\n\nfindings:\n  information:\n    check | optional cleanup\n",
+			name:           "Information-only succeeds",
+			direct:         checkCollection{categories: []presentation.ReportCategory{informationCategory}},
+			aggregateParts: []checkCollection{{categories: []presentation.ReportCategory{informationCategory}}},
+			want:           "status: completed\n\nsummary:\n  findings: 0 errors, 0 warnings, 1 information\n\nfindings:\n  information:\n    check | optional cleanup\n",
 		},
 		{
-			name: "mixed aggregate normalizes category order and fails",
-			collection: checkCollection{categories: []presentation.ReportCategory{
+			name: "mixed normalizes category order and fails",
+			direct: checkCollection{categories: []presentation.ReportCategory{
 				informationCategory, errorCategory, warningCategory,
-			}, failures: []error{producedCheckFailure{errors.New("invalid authority")}}},
+			}, failures: []error{errorFailure}},
+			aggregateParts: []checkCollection{
+				{categories: []presentation.ReportCategory{informationCategory}},
+				{categories: []presentation.ReportCategory{errorCategory}, failures: []error{errorFailure}},
+				{categories: []presentation.ReportCategory{warningCategory}},
+			},
 			want:      "status: failed\n\nsummary:\n  findings: 1 errors, 1 warnings, 1 information\n\nfindings:\n  errors:\n    check | invalid authority\n  warnings:\n    check | style heuristic\n  information:\n    check | optional cleanup\n",
 			wantError: true,
 		},
 	}
 	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			got, err := render(tc.collection)
-			if (err != nil) != tc.wantError {
-				t.Fatalf("render error = %v, wantError %t", err, tc.wantError)
-			}
-			if got != tc.want {
-				t.Fatalf("report = %q, want %q", got, tc.want)
-			}
-		})
-	}
-
-	direct := checkCollection{categories: []presentation.ReportCategory{warningCategory}}
-	aggregate := direct.append(checkCollection{categories: []presentation.ReportCategory{informationCategory}})
-	got, err := render(aggregate)
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := "status: warnings\n\nsummary:\n  findings: 0 errors, 1 warnings, 1 information\n\nfindings:\n  warnings:\n    check | style heuristic\n  information:\n    check | optional cleanup\n"
-	if got != want {
-		t.Fatalf("aggregate report = %q, want %q", got, want)
+		for _, path := range []struct {
+			name       string
+			collection func() checkCollection
+		}{
+			{name: "direct", collection: func() checkCollection { return tc.direct }},
+			{name: "aggregate", collection: func() checkCollection {
+				var aggregate checkCollection
+				for _, part := range tc.aggregateParts {
+					aggregate = aggregate.append(part)
+				}
+				return aggregate
+			}},
+		} {
+			t.Run(tc.name+"/"+path.name, func(t *testing.T) {
+				got, err := render(path.collection())
+				if (err != nil) != tc.wantError {
+					t.Fatalf("render error = %v, wantError %t", err, tc.wantError)
+				}
+				if got != tc.want {
+					t.Fatalf("report = %q, want %q", got, tc.want)
+				}
+			})
+		}
 	}
 }
 

@@ -128,7 +128,7 @@ var keys = []Entry{
 	},
 	{
 		Path: "vars", Type: "key → value map", Default: "seeded with every catalog-referenced var as an empty string at init",
-		Description:  "Freeform values templates interpolate. A key with a value renders it; a present-but-empty key is an open to-do (rendered artifacts referencing it degrade to generic prose and a non-failing note nudges you); a deleted key is the deliberate, git-auditable decline of that var; the generic prose renders silently. A non-empty key no rendered artifact references is failing drift.",
+		Description:  "Freeform values templates interpolate. A key with a value renders it; a present-but-empty key is an open to-do (rendered artifacts referencing it degrade to generic prose and a non-failing note nudges you); a deleted key is the deliberate, git-auditable decline of that var; the generic prose renders silently. A non-empty key no rendered artifact references is unranked Information and exits zero.",
 		Availability: "Each key is consumed only while a rendered artifact's template (or a `gateCmd`/`checkCmd` part placeholder) references it, except that `gateCmd` is also consumed by divergent effort-integration guidance.",
 	},
 	{
@@ -283,7 +283,7 @@ var keys = []Entry{
 	{
 		Path: "sidecar.data", Type: "key → value map", Default: "empty: catalog defaults apply",
 		Description:  "Per-artifact structured render data. A same-key catalog-backed list layers the catalog default followed by project entries; an empty project list keeps the complete default, and null or a non-list value is invalid. Non-list catalog data retains shallow top-level project replacement. Project-only and specialized data retain their owning behavior; see the per-artifact list below.",
-		Availability: "Keys must be referenced by the artifact's template. An unreferenced key is failing drift; rejected entirely on domain sidecars (paths-only) and on the config-reference sidecar (its tables are generated).",
+		Availability: "Keys must be referenced by the artifact's template. An unreferenced key is unranked Information and exits zero; rejected entirely on domain sidecars (paths-only) and on the config-reference sidecar (its tables are generated).",
 	},
 	{
 		Path: "sidecar.dataDefaults", Type: "data-key → bool map", Default: "empty: catalog-backed list defaults remain enabled",
