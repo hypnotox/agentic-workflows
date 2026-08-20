@@ -23,14 +23,29 @@ The selected value is load-bearing throughout configuration, rendering, command 
 
 - update `config/configuration:config-expresses-repo-facts-only`
 - update `rendering/guide-and-doc-templates:guide-entry-point-routing`
+- update `rendering/guide-and-doc-templates:working-memory-single-home`
+- update `rendering/guide-and-doc-templates:maintainable-code-design-guide`
+- update `rendering/workflow-skill-templates:protected-contract-over-route`
+- update `rendering/workflow-skill-templates:independent-workflow-escalation`
+- update `rendering/workflow-skill-templates:mandatory-approval-boundaries`
+- update `rendering/workflow-skill-templates:authority-guided-implementation-autonomy`
+- update `rendering/workflow-skill-templates:authority-guided-review-remediation`
+- update `rendering/workflow-skill-templates:unified-effort-workflow-coverage`
+- update `rendering/workflow-skill-templates:clean-integration`
+- update `rendering/workflow-skill-templates:concrete-maintainability-review`
 - update `rendering/workflow-skill-templates:closed-workflow-profiles`
 - update `rendering/pi-workflows:pi-structured-exploration-contract`
+- update `tooling/cli:check-universe-groups`
+- update `tooling/init-and-enablement:init-noninteractive-default`
+- update `tooling/init-and-enablement:init-prompts-enabled-vars`
 
 ## Consequences
 
 Readers can describe Core and Full by available artifacts without treating Core as a lesser workflow. Adopter prose, generated guidance, configuration descriptions, and command help use footprint terminology while code and literal configuration examples retain the `profile` identifier.
 
 Parity checks must prove that both footprints preserve the common correctness and maintainability doctrine without requiring their generated output to be identical. Full-only governance remains additive, and the existing profile values, selection behavior, migration history, and capability boundaries remain compatible.
+
+Keeping different names for the adopter-facing governance-footprint concept and the `profile` configuration mechanism creates a lasting consistency cost. Documentation, help, and tests must distinguish them deliberately, and readers may still confuse the two.
 
 ## Alternatives Considered
 
