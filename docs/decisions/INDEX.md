@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-define-core-and-full-as-governance-footprints: Define Core and Full as governance footprints](define-core-and-full-as-governance-footprints.md) (Proposed)
+- [ADR-define-core-and-full-as-governance-footprints: Define Core and Full as governance footprints](define-core-and-full-as-governance-footprints.md) (Accepted)
 
 ## History
 

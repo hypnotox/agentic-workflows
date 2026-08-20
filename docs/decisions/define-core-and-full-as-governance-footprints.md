@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: define-core-and-full-as-governance-footprints
-status: Proposed
+status: Accepted
 date: 2026-08-20
 ---
 # ADR-define-core-and-full-as-governance-footprints: Define Core and Full as governance footprints
@@ -58,3 +58,4 @@ Keeping different names for the adopter-facing governance-footprint concept and 
 ## Status history
 
 - 2026-08-20: Proposed
+- 2026-08-20: Accepted; content-sha256: 7f06c033714f43ec3ab419066eb525a28f6e3d2b94625e506fb32d4419fdeb78
