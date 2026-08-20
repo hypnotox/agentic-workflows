@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-20
 adrs: [pitfalls-as-the-current-tag-vocabulary-carrier]
-status: Proposed
+status: Implemented
 ---
 # Plan: RF-012 Tag Vocabulary
 
