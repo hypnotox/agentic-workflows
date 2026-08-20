@@ -301,31 +301,68 @@ func TestGroundingSupportOwnership(t *testing.T) {
 	assertContainsAll(t, "Claude grounding", claudeGrounding, "grounding-checker", "guide-first", "AWF_CONTEXT_SPILL_V1")
 }
 
+type durableDesignFacts struct {
+	viableApproaches             int
+	meaningfullyDifferentDurable bool
+}
+
+type durableDesignTransition struct {
+	intake       string
+	presentation string
+	approval     string
+	authority    string
+}
+
 func TestTwoDurableDesignsRequireApproval(t *testing.T) {
-	governing := []string{
-		"competing durable approaches",
-		"viable approaches carry meaningfully different durable consequences",
-		"Offer alternatives with trade-offs and a recommendation",
-		"The final approved design becomes the implementation boundary",
-		"explicitly request approval, and stop",
+	facts := durableDesignFacts{viableApproaches: 2, meaningfullyDifferentDurable: true}
+	want := durableDesignTransition{
+		intake:       "route-to-brainstorming",
+		presentation: "compare-consequences",
+		approval:     "request-user-decision-and-stop",
+		authority:    "approved-design-becomes-boundary",
 	}
 	for _, profile := range []string{"core", "full"} {
 		t.Run(profile, func(t *testing.T) {
 			root := syncPlanFlexibilityProfile(t, profile)
 			for _, target := range []string{"pi", "claude"} {
 				t.Run(target, func(t *testing.T) {
-					body := strings.Join([]string{
-						read(t, planSkillPath(root, target, "executing-direct")),
-						read(t, planSkillPath(root, target, "brainstorming")),
-					}, "\n")
-					if got := twoDurableDesignsDisposition(body, governing...); got != "request-user-decision-before-authority-change" {
-						t.Fatalf("two durable designs: got %q", got)
+					execution := read(t, planSkillPath(root, target, "executing-direct"))
+					brainstorming := read(t, planSkillPath(root, target, "brainstorming"))
+					if got := twoDurableDesignsTransition(execution, brainstorming, facts); got != want {
+						t.Fatalf("two durable designs: got %#v, want %#v", got, want)
 					}
-					for _, clause := range governing {
-						mutated := strings.ReplaceAll(body, clause, "missing-governing-clause")
-						if got := twoDurableDesignsDisposition(mutated, governing...); got == "request-user-decision-before-authority-change" {
-							t.Errorf("two durable designs still request the complete disposition without %q", clause)
+
+					withoutDifferentConsequences := facts
+					withoutDifferentConsequences.meaningfullyDifferentDurable = false
+					if got := twoDurableDesignsTransition(execution, brainstorming, withoutDifferentConsequences); got.intake != "routine-route-detail" || got.approval != "" {
+						t.Errorf("equivalent implementation routes created a material-decision stop: %#v", got)
+					}
+
+					mutations := map[string][2]string{
+						"intake trigger":     {"viable approaches carry meaningfully different durable consequences", "viable approaches never require a decision"},
+						"alternatives":       {"Offer alternatives with trade-offs and a recommendation", "Choose one approach silently"},
+						"approval stop":      {"explicitly request approval, and stop", "continue without approval"},
+						"approved authority": {"The final approved design becomes the implementation boundary", "The unapproved design becomes the implementation boundary"},
+					}
+					for name, mutation := range mutations {
+						mutatedExecution := strings.ReplaceAll(execution, mutation[0], mutation[1])
+						mutatedBrainstorming := strings.ReplaceAll(brainstorming, mutation[0], mutation[1])
+						if got := twoDurableDesignsTransition(mutatedExecution, mutatedBrainstorming, facts); got == want {
+							t.Errorf("two durable designs accepted contradictory %s guidance %q", name, mutation[1])
 						}
+					}
+
+					reordered := strings.Replace(brainstorming,
+						"Offer alternatives with trade-offs and a recommendation",
+						"swap-alternatives-and-approval", 1)
+					reordered = strings.Replace(reordered,
+						"explicitly request approval, and stop",
+						"Offer alternatives with trade-offs and a recommendation", 1)
+					reordered = strings.Replace(reordered,
+						"swap-alternatives-and-approval",
+						"explicitly request approval, and stop", 1)
+					if got := twoDurableDesignsTransition(execution, reordered, facts); got == want {
+						t.Error("two durable designs accepted approval before alternatives were presented")
 					}
 				})
 			}
@@ -333,13 +370,28 @@ func TestTwoDurableDesignsRequireApproval(t *testing.T) {
 	}
 }
 
-func twoDurableDesignsDisposition(body string, governing ...string) string {
-	for _, clause := range governing {
-		if !strings.Contains(body, clause) {
-			return "missing"
+func twoDurableDesignsTransition(execution, brainstorming string, facts durableDesignFacts) durableDesignTransition {
+	if facts.viableApproaches < 2 || !facts.meaningfullyDifferentDurable {
+		if strings.Contains(execution, "Routine implementation detail creates no approval boundary") {
+			return durableDesignTransition{intake: "routine-route-detail"}
 		}
+		return durableDesignTransition{}
 	}
-	return "request-user-decision-before-authority-change"
+	if !strings.Contains(execution, "viable approaches carry meaningfully different durable consequences") {
+		return durableDesignTransition{}
+	}
+	got := durableDesignTransition{intake: "route-to-brainstorming"}
+	if !hasOrderedPhrases(brainstorming,
+		"Offer alternatives with trade-offs and a recommendation",
+		"explicitly request approval, and stop") {
+		return got
+	}
+	got.presentation = "compare-consequences"
+	got.approval = "request-user-decision-and-stop"
+	if strings.Contains(brainstorming, "The final approved design becomes the implementation boundary") {
+		got.authority = "approved-design-becomes-boundary"
+	}
+	return got
 }
 
 // invariant: rendering/workflow-skill-templates:independent-workflow-escalation (TestProductionCodeOutlineApproval)
