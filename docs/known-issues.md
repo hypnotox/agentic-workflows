@@ -8,11 +8,11 @@
 
 Each issue below is reproducible from repository state and remains open until its completion criteria hold. The criteria state outcomes, not a required implementation mechanism.
 
-## Tag coverage includes ADRs that cannot carry tags
+## The tag-coverage claim includes ADRs that cannot carry tags
 
-**Reproduction.** Configure a non-empty tag vocabulary and run `awf check`. The `config/configuration:tag-coverage-note` claim and implementation consider every ADR even though governed ADRs reject `tags:`, so each governed ADR expands the warning population without being able to satisfy it.
+**Reproduction.** Compare `config/configuration:tag-coverage-note` with `TestTagHealthNotesSkipGovernedADRs`. The claim says `awf check` warns for each untagged ADR, while the implementation correctly excludes governed ADRs because they reject `tags:`.
 
-**Completion criteria.** Tag coverage considers tag-capable legacy ADRs and pitfalls, excludes governed ADRs, preserves the empty-vocabulary behavior, and remains non-failing.
+**Completion criteria.** The claim describes tag-capable legacy ADRs and pitfalls while preserving the implementation's governed-ADR exclusion, empty-vocabulary behavior, and non-failing rank.
 
 ## Implemented plans can bypass freeze discipline
 
@@ -31,12 +31,6 @@ Each issue below is reproducible from repository state and remains open until it
 **Reproduction.** Add a required current-schema config key without an in-code default, then evaluate a transition whose before tree predates the key. `loadTreeCurrentState` validates the ported-forward before-side config against the current schema, so the transition fails until history contains the key; `integrationBranch` required a per-key `ConfigForCurrentSchema` seed in ADR-0202.
 
 **Completion criteria.** Before-side transition loading accepts historically valid config without a new exception per required key, continues to reject malformed input, and keeps transition coverage green across the release that introduces a required key.
-
-## The config-editor claim omits editors used by migrations
-
-**Reproduction.** Compare `config/configuration:config-serialization-owned` with `internal/config/edit.go` and `internal/migrate`: the closed enumeration omits the migration-used `RemoveKey` and `RemoveMappingKey` editors.
-
-**Completion criteria.** The claim accurately covers every supported config serialization editor and has durable evidence that detects a future omission. The choice of evidence is tracked in [research](research/index.md#proving-a-closed-config-editor-enumeration).
 
 ## All-digit ADR slugs are accepted but unreachable
 

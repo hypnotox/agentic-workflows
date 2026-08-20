@@ -32,12 +32,6 @@ These questions are not committed implementation work. Each becomes decision-rea
 
 **Decision trigger.** Decide only when an experiment over current and corrected claims demonstrates useful discrimination and bounds the false-positive cost.
 
-## Proving a closed config-editor enumeration
-
-**Question.** Should `config/configuration:config-serialization-owned` retain a closed editor list backed by source scanning, or state a falsifiable package property that does not enumerate functions? The observable omission is owned by [Known Issues](../known-issues.md#the-config-editor-claim-omits-editors-used-by-migrations).
-
-**Decision trigger.** Decide before the linked issue updates the claim in the next config-editor ADR, using evidence that a future editor addition would exercise the chosen proof.
-
 ## Error-message prefix convention
 
 **Question.** Which error-message prefix convention should apply across `cmd/awf`, `internal/adr`, and changelog tooling?
