@@ -200,7 +200,7 @@ correction is allowed without unrelated cleanup riding along.
 | RF-010 | P2 | BLOCKED | Current code comments explain invariants, not historical plans and tranches | RF-002..RF-007, compatibility lane closed |
 | RF-011 | P2 | COMPLETE | Roadmap, known issues, and research separated by owner | Program A milestone |
 | RF-012 | P2 | READY | Tag vocabulary culled to terms with a real consumer | RF-011 |
-| RF-013 | P2 | READY | Documented remote enforcement matches configured GitHub policy | Program A milestone, live policy verification |
+| RF-013 | P2 | COMPLETE | Documented remote enforcement matches configured GitHub policy | Program A milestone, live policy verification |
 
 ### Pre-approved Program B boundaries
 
@@ -753,6 +753,31 @@ abstraction; oracle strength.
   through RF-006.
 - **Unblocked:** RF-002 is dependency-ready but remains scheduled for B-F3 after the B-F2 cleanup
   boundary. RF-003 through RF-006 retain their named dependencies.
+
+### RF-013
+
+- **Range:** Prior program state `c40f376cf`; integration range `c40f376cf..0cdc3b786`.
+- **Protected contract:** Repository documentation now matches verified GitHub policy. Optional local
+  hooks are preflight; CI provides post-push and pull-request detection rather than a required
+  main-update status; the active no-bypass ruleset's required signatures, non-fast-forward, and
+  deletion protections are the final remote control for publishing `main`. Release artifacts remain
+  gated by the tag-triggered release workflow, without claiming a protected-tag creation rule.
+- **Clean integration:** Existing repository workflow and release convention parts own the corrected
+  claims. Generic adopter templates remain unchanged. No PR-only workflow, remote policy mutation,
+  unrelated CI change, or duplicate enforcement owner was introduced.
+- **Files changed:** Repository workflow and release authored parts, their generated documents,
+  config reference and lock, and a focused remote-policy documentation regression test carry and
+  prove the truthful boundary.
+- **Verification:** Authenticated GitHub REST evidence confirmed active ruleset `18766557`, no bypass
+  actors, required signatures, non-fast-forward and deletion protection, absent required status
+  checks, and no parent ruleset. Focused tests, render and drift checks, staged checks, full gates
+  with 100 percent statement coverage, workflow and local audits, initial mechanical evidence review,
+  and renewed combined-history assurance passed. No credential entered tracked evidence.
+- **Deviations:** None. The approved documentation-narrowing option preserved ADR-0228 rather than
+  introducing a materially different PR-only publication workflow.
+- **Residual debt:** None. Live policy must be reverified when GitHub settings or documented claims
+  change.
+- **Unblocked:** No later issue depends directly on RF-013. B-F1 remains open only for RF-008A.
 
 Close each later issue with the same evidence: identity; baseline and final range; protected contract;
 clean integration; files changed with reason; verification commands and results; material deviations;
