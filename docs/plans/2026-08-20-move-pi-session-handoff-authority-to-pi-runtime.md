@@ -129,3 +129,7 @@ After implementation assurance settles, `awf-effort-workflow` appends only the A
 event, changes this plan to `status: Implemented`, renders the index and lock, and lands that deferred
 lifecycle transaction before returning integration-ready control to the audit orchestrator. It does
 not integrate main or perform AF-011.
+
+- Phase review found that the Pi-runtime proof did not independently enforce all three eligible
+  checkpoint forms or single-projection uniqueness. The settlement adds clause-specific and
+  exact-one assertions without changing protocol semantics.
