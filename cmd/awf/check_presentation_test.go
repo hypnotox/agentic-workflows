@@ -26,23 +26,86 @@ func TestCheckReportRejectsInvalidPresentationValues(t *testing.T) {
 	}
 }
 
-// invariant: tooling/cli:check-severity-by-protected-property (TestCheckReportLabelsUnrankedNotesInformation)
-func TestCheckReportLabelsUnrankedNotesInformation(t *testing.T) {
-	report, err := checkReport(nil, []string{"optional cleanup"}, nil)
+// invariant: tooling/cli:check-severity-by-protected-property (TestCheckSeverityByProtectedProperty)
+func TestCheckSeverityByProtectedProperty(t *testing.T) {
+	category := func(label, detail string) presentation.ReportCategory {
+		t.Helper()
+		check, err := presentation.Prose("check")
+		if err != nil {
+			t.Fatal(err)
+		}
+		value, err := presentation.Prose(detail)
+		if err != nil {
+			t.Fatal(err)
+		}
+		record, err := presentation.NewRecord(check, value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return presentation.ReportCategory{Label: label, Schema: []string{"check", "detail"}, Records: []presentation.Record{record}}
+	}
+	render := func(collection checkCollection) (string, error) {
+		t.Helper()
+		var out strings.Builder
+		err := renderCheckCollection(&out, collection)
+		return out.String(), err
+	}
+
+	errorCategory := category("errors", "invalid authority")
+	warningCategory := category("warnings", "style heuristic")
+	informationCategory := category("information", "optional cleanup")
+	cases := []struct {
+		name       string
+		collection checkCollection
+		want       string
+		wantError  bool
+	}{
+		{
+			name:       "Error-only fails",
+			collection: checkCollection{categories: []presentation.ReportCategory{errorCategory}, failures: []error{producedCheckFailure{errors.New("invalid authority")}}},
+			want:       "status: failed\n\nsummary:\n  findings: 1 errors, 0 warnings, 0 information\n\nfindings:\n  errors:\n    check | invalid authority\n",
+			wantError:  true,
+		},
+		{
+			name:       "Warning-only succeeds",
+			collection: checkCollection{categories: []presentation.ReportCategory{warningCategory}},
+			want:       "status: warnings\n\nsummary:\n  findings: 0 errors, 1 warnings, 0 information\n\nfindings:\n  warnings:\n    check | style heuristic\n",
+		},
+		{
+			name:       "Information-only succeeds",
+			collection: checkCollection{categories: []presentation.ReportCategory{informationCategory}},
+			want:       "status: completed\n\nsummary:\n  findings: 0 errors, 0 warnings, 1 information\n\nfindings:\n  information:\n    check | optional cleanup\n",
+		},
+		{
+			name: "mixed aggregate normalizes category order and fails",
+			collection: checkCollection{categories: []presentation.ReportCategory{
+				informationCategory, errorCategory, warningCategory,
+			}, failures: []error{producedCheckFailure{errors.New("invalid authority")}}},
+			want:      "status: failed\n\nsummary:\n  findings: 1 errors, 1 warnings, 1 information\n\nfindings:\n  errors:\n    check | invalid authority\n  warnings:\n    check | style heuristic\n  information:\n    check | optional cleanup\n",
+			wantError: true,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := render(tc.collection)
+			if (err != nil) != tc.wantError {
+				t.Fatalf("render error = %v, wantError %t", err, tc.wantError)
+			}
+			if got != tc.want {
+				t.Fatalf("report = %q, want %q", got, tc.want)
+			}
+		})
+	}
+
+	direct := checkCollection{categories: []presentation.ReportCategory{warningCategory}}
+	aggregate := direct.append(checkCollection{categories: []presentation.ReportCategory{informationCategory}})
+	got, err := render(aggregate)
 	if err != nil {
 		t.Fatal(err)
 	}
-	document, err := report.Document()
-	if err != nil {
-		t.Fatal(err)
-	}
-	var out strings.Builder
-	if err := presentation.Render(&out, document); err != nil {
-		t.Fatal(err)
-	}
-	want := "status: completed\n\nsummary:\n  findings: 0 errors, 0 warnings, 1 information\n\nfindings:\n  information:\n    advisory | optional cleanup\n"
-	if out.String() != want {
-		t.Fatalf("report = %q, want %q", out.String(), want)
+	want := "status: warnings\n\nsummary:\n  findings: 0 errors, 1 warnings, 1 information\n\nfindings:\n  warnings:\n    check | style heuristic\n  information:\n    check | optional cleanup\n"
+	if got != want {
+		t.Fatalf("aggregate report = %q, want %q", got, want)
 	}
 }
 

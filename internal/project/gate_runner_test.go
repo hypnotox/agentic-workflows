@@ -12,6 +12,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
+	"gopkg.in/yaml.v3"
 )
 
 // invariant: tooling/quality-gates:gate-severity-by-protected-property (TestGateRunnerModes)
@@ -75,6 +76,36 @@ func TestGateRunnerModes(t *testing.T) {
 	}
 	assertTimingLines(t, timedErr, wantLabels)
 
+	t.Run("advisory findings warn and continue", func(t *testing.T) {
+		stderr, status, lines := run([]string{
+			"FAKE_GO_OUTPUT_CONTAINS=.golangci-advisory.yml",
+			"FAKE_GO_OUTPUT=advisory-finding-sentinel",
+		}, "gate")
+		if status != 0 {
+			t.Fatalf("advisory finding status=%d stderr=%q", status, stderr)
+		}
+		if !strings.Contains(stderr, "warning: advisory lint findings\nadvisory-finding-sentinel\n") {
+			t.Errorf("advisory finding was not visibly warned: %q", stderr)
+		}
+		if !strings.Contains(strings.Join(lines, "\n"), "run ./cmd/pincheck") {
+			t.Errorf("later gate stages did not run after advisory finding: %q", lines)
+		}
+	})
+
+	t.Run("advisory execution failure blocks and preserves status", func(t *testing.T) {
+		stderr, status, lines := run([]string{
+			"FAKE_GO_OUTPUT_CONTAINS=.golangci-advisory.yml",
+			"FAKE_GO_OUTPUT=advisory-failure-sentinel",
+			"FAKE_GO_FAIL_CONTAINS=.golangci-advisory.yml",
+		}, "gate")
+		if status != 17 || !strings.Contains(stderr, "advisory-failure-sentinel") {
+			t.Fatalf("advisory failure status=%d stderr=%q", status, stderr)
+		}
+		if strings.Contains(strings.Join(lines, "\n"), "tool deadcode -json ./...") {
+			t.Errorf("deadcode ran after advisory execution failure: %q", lines)
+		}
+	})
+
 	for _, args := range [][]string{{"gate", "full"}, {"gate", "unknown"}, {"gate", "timings", "extra"}} {
 		stderr, status, lines := run(nil, args...)
 		if status != 2 || stderr != "usage: ./x gate [timings]\n" || len(lines) != 0 {
@@ -124,6 +155,61 @@ func TestGateRunnerModes(t *testing.T) {
 	})
 }
 
+// invariant: tooling/quality-gates:gate-severity-by-protected-property (TestGateLintRuleInventory)
+func TestGateLintRuleInventory(t *testing.T) {
+	type lintConfig struct {
+		Linters struct {
+			Enable   []string `yaml:"enable"`
+			Settings struct {
+				Staticcheck struct {
+					Checks []string `yaml:"checks"`
+				} `yaml:"staticcheck"`
+			} `yaml:"settings"`
+		} `yaml:"linters"`
+		Formatters struct {
+			Enable []string `yaml:"enable"`
+		} `yaml:"formatters"`
+	}
+	readConfig := func(path string) lintConfig {
+		t.Helper()
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var config lintConfig
+		if err := yaml.Unmarshal(data, &config); err != nil {
+			t.Fatal(err)
+		}
+		return config
+	}
+
+	blocking := readConfig("../../.golangci.yml")
+	wantBlocking := []string{
+		"govet", "staticcheck", "errcheck", "ineffassign", "nilerr", "bodyclose", "errorlint",
+		"durationcheck", "asasalint", "nilnesserr", "gocheckcompilerdirectives", "makezero",
+		"exhaustive", "wastedassign",
+	}
+	wantBlockingStaticcheck := []string{"SA0*", "SA1*", "SA2*", "SA3*", "SA4*", "SA5*", "SA9*"}
+	if !slices.Equal(blocking.Linters.Enable, wantBlocking) ||
+		!slices.Equal(blocking.Linters.Settings.Staticcheck.Checks, wantBlockingStaticcheck) ||
+		len(blocking.Formatters.Enable) != 0 {
+		t.Fatalf("blocking lint inventory = linters %q, staticcheck %q, formatters %q", blocking.Linters.Enable, blocking.Linters.Settings.Staticcheck.Checks, blocking.Formatters.Enable)
+	}
+
+	advisory := readConfig("../../.golangci-advisory.yml")
+	wantAdvisory := []string{
+		"staticcheck", "nilnil", "unused", "unconvert", "unparam", "predeclared", "gocritic",
+		"dupword", "perfsprint", "intrange", "usestdlibvars", "usetesting", "misspell", "revive", "whitespace",
+	}
+	wantAdvisoryStaticcheck := []string{"SA6*", "S*", "ST*", "QF*"}
+	wantFormatters := []string{"gofmt", "goimports"}
+	if !slices.Equal(advisory.Linters.Enable, wantAdvisory) ||
+		!slices.Equal(advisory.Linters.Settings.Staticcheck.Checks, wantAdvisoryStaticcheck) ||
+		!slices.Equal(advisory.Formatters.Enable, wantFormatters) {
+		t.Fatalf("advisory lint inventory = linters %q, staticcheck %q, formatters %q", advisory.Linters.Enable, advisory.Linters.Settings.Staticcheck.Checks, advisory.Formatters.Enable)
+	}
+}
+
 func gateRunnerFixture(t *testing.T) (string, string) {
 	t.Helper()
 	root := t.TempDir()
@@ -150,6 +236,9 @@ if [ "${1:-}" = env ]; then
   exit 0
 fi
 printf 'goos=%s|goarch=%s|pi=%s|%s\n' "${GOOS:-}" "${GOARCH:-}" "${AWF_PI_RUNTIME_SMOKE:-}" "$*" >>"$INVOCATION_LOG"
+if [ -n "${FAKE_GO_OUTPUT_CONTAINS:-}" ] && [[ "$*" == *"$FAKE_GO_OUTPUT_CONTAINS"* ]]; then
+  printf '%s\n' "${FAKE_GO_OUTPUT:-}"
+fi
 if [ -n "${FAKE_GO_FAIL_CONTAINS:-}" ] && [[ "$*" == *"$FAKE_GO_FAIL_CONTAINS"* ]]; then
   exit 17
 fi

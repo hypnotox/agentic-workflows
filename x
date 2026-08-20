@@ -43,10 +43,13 @@ run_deadcode_gate() {
 }
 
 run_advisory_lint() {
-  local output
-  if ! output="$(go tool golangci-lint run --config .golangci-advisory.yml --issues-exit-code 0 "$@" 2>&1)"; then
+  local output status
+  if output="$(go tool golangci-lint run --config .golangci-advisory.yml --issues-exit-code 0 "$@" 2>&1)"; then
+    status=0
+  else
+    status=$?
     printf '%s\n' "$output" >&2
-    return 1
+    return "$status"
   fi
   if [ -n "$output" ]; then
     echo "warning: advisory lint findings" >&2
