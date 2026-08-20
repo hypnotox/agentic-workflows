@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: strongest-practical-durable-oracle
-status: Proposed
+status: Implementing
 date: 2026-08-20
 ---
 # ADR-strongest-practical-durable-oracle: Strongest practical durable oracle
@@ -82,3 +82,5 @@ arbitrary adopter prose.
 ## Status history
 
 - 2026-08-20: Proposed
+- 2026-08-20: Implementing; content-sha256: a91ff332ddfc332ffba550feeaeada374a0a9294789ae4cbc825d6bd14da5c53
+- 2026-08-20: Applied; operations: add `rendering/workflow-skill-templates:strongest-practical-durable-oracle`

@@ -13,6 +13,8 @@ Writes a plan to `{{ .layout.plansDir }}/YYYY-MM-DD-<topic>.md` per the {{ .pref
 <!-- awf:include outline-approval -->
 <!-- awf:end -->
 
+<!-- awf:include durable-oracle -->
+
 <!-- awf:section when-to-invoke -->
 ## When to invoke
 
@@ -49,7 +51,7 @@ Per `{{ .layout.workflowRef }}`: use a plan when sequencing, coordination, or re
 <!-- awf:end -->
 
 <!-- awf:section conventions-test-first -->
-- **Test-first for bugs:** add a failing test as its own task before the fix task.
+- **Durable oracle for bugs:** plan the strongest practical durable evidence before the fix task. An ordinary deterministic defect gets an automated regression test task that is observed red then green. When that path is impractical, the evidence task records the concrete reason and strongest reproducible alternative without reducing verification strength.
 <!-- awf:end -->
 
 ## Procedure

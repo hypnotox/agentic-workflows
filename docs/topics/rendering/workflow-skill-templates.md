@@ -31,6 +31,12 @@ The protected-contract doctrine has exactly one authored definition, in the shar
 Origin: ADR-0286
 Backing: test
 
+### `invariant: strongest-practical-durable-oracle`
+
+The heading-free `durable-oracle` partial is the single authored home of the strongest-practical durable-oracle rule for every behaviour-changing fix. It makes an automated regression test observed red then green the normal preferred path; permits the strongest safe reproducible alternative only with a concrete reason automated red-first is impractical; orders deterministic reproduction, direct contract or invariant tests, scripted recorded manual verification, and the strongest safely retained evidence as guidance rather than mechanical choreography; preserves or improves verification strength; and forbids weakened expected behaviour, weakened verification, and symptom patches. Bugfix, TDD, debugging, testing documentation, and code review project the rule in both profiles and both supported runtimes; Full additionally projects it to plan writing and plan review. Deterministic contract and scenario tests prove the single home, exact consumer partition, ordinary deterministic, environment-specific, race, destructive-migration, automation-unavailable, and weakened-output dispositions, clause sensitivity, and coherent configured and empty-data rendering.
+Origin: ADR-strongest-practical-durable-oracle
+Backing: test
+
 ### `invariant: plan-flexibility`
 
 The shared `plan-flexibility` partial is the single authored home of plan-specific route authority in Full. It points to the workflow document's protected-contract rule, treats the plan as the best known route at authoring time, permits commit-capable owners to revise recorded route detail while that contract holds, and requires Proposed-plan reconciliation only for material instructions another phase or reviewer can rely on. It preserves helper confinement and sends protected-contract changes through the ordinary material-decision boundary. Full plan documentation, authoring, review, execution, plan-reviewer, implementer, and code-reviewer surfaces project the rule in both runtimes; Core remains plan-free and carries no plan-governance projection. Deterministic scenarios prove permitted route revisions, protected-contract stops, cross-owner reconciliation, optional batch examples, the consumer partition, and coherent empty-data rendering.

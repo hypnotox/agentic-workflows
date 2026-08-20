@@ -9,14 +9,16 @@ description: >
 
 # {{ .prefix }}-debugging
 
-Self-contained systematic debugging for {{ .prefix }}. The discipline below encodes the project-specific surfaces that a generic debugging skill would not. The meta-pattern is fixed: form a falsifiable hypothesis, validate it against the real system, loop until the root cause (not the symptom) is confirmed, then isolate with a failing test before touching any fix.
+Self-contained systematic debugging for {{ .prefix }}. The discipline below encodes the project-specific surfaces that a generic debugging skill would not. The meta-pattern is fixed: form a falsifiable hypothesis, validate it against the real system, loop until the root cause (not the symptom) is confirmed, then establish durable evidence before touching any fix.
+
+<!-- awf:include durable-oracle -->
 
 <!-- awf:section symptom-list -->
 <!-- awf:end -->
 
 ## When to invoke
 
-Any time behaviour is wrong and the cause is not yet known. Skip only for a one-line fix whose failing test already exists and whose cause is obvious {{ if .skills.bugfix }}(invoke `{{ .prefix }}-bugfix` directly in that case){{ else }}(fix it directly with a regression test in that case){{ end }}. If the bug reveals a load-bearing design gap rather than a straightforward defect, escalate to {{ if .skills.brainstorming }}`{{ .prefix }}-brainstorming`{{ else }}a design discussion before changing behaviour{{ end }} after confirming the root cause.
+Any time behaviour is wrong and the cause is not yet known. Skip only for a one-line fix whose cause is obvious and whose strongest practical durable oracle is already established {{ if .skills.bugfix }}(invoke `{{ .prefix }}-bugfix` directly in that case){{ else }}(apply it directly under the durable-oracle rule in that case){{ end }}. If the bug reveals a load-bearing design gap rather than a straightforward defect, escalate to {{ if .skills.brainstorming }}`{{ .prefix }}-brainstorming`{{ else }}a design discussion before changing behaviour{{ end }} after confirming the root cause.
 
 ## Procedure
 
@@ -30,10 +32,10 @@ Any time behaviour is wrong and the cause is not yet known. Skip only for a one-
 <!-- awf:end -->
 
 <!-- awf:section test-isolation -->
-4. **Evaluate continuity when the investigation becomes a change.** Investigation remains effort-free unless durable continuity materially helps. When it does, invoke `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}` before writing a failing test or mutating files. If an effort exists, validate its fixed identity and exact `.awf/efforts/<slug>/memory.md`, preserve one writer, and give exploring children that context read-only; otherwise omit effort and memory fields. {{if eq .profile "core"}}Project documentation, source, tests, and repository history remain authoritative{{else}}Repository sources and current-state documentation remain authoritative{{end}}, and standalone memory is forbidden.
+4. **Evaluate continuity when the investigation becomes a change.** Investigation remains effort-free unless durable continuity materially helps. When it does, invoke `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}` before establishing fix evidence or mutating files. If an effort exists, validate its fixed identity and exact `.awf/efforts/<slug>/memory.md`, preserve one writer, and give exploring children that context read-only; otherwise omit effort and memory fields. {{if eq .profile "core"}}Project documentation, source, tests, and repository history remain authoritative{{else}}Repository sources and current-state documentation remain authoritative{{end}}, and standalone memory is forbidden.
 
 
-5. **Isolate with a failing test, written first.** Once the defective surface is located, write the smallest possible test that reproduces the failure before touching the fix. The test must fail for the right reason on the unfixed code. {{ if .skills.tdd }}Invoke `{{ .prefix }}-tdd` for the project's test-first discipline.{{ else }}Write it test-first.{{ end }} {{if eq .profile "core"}}Before writing the test, inspect the suspect source and test paths.{{else}}Before writing the test, run `./awf context <the suspect paths>`.{{end}}
+5. **Establish the strongest practical durable oracle.** Once the defective surface is located, exercise the selected evidence against the unfixed behaviour before touching the fix. Use the preferred automated red-then-green path for an ordinary deterministic defect; otherwise record the concrete impracticality reason and strongest reproducible alternative. {{ if .skills.tdd }}Invoke `{{ .prefix }}-tdd` for the project's durable verification discipline.{{ else }}Apply the durable-oracle rule above directly.{{ end }} {{if eq .profile "core"}}First inspect the suspect source and verification paths.{{else}}First run `./awf context <the suspect paths>`.{{end}}
 <!-- awf:include context-orientation -->
 <!-- awf:include context-spill -->
 
@@ -41,12 +43,12 @@ Any time behaviour is wrong and the cause is not yet known. Skip only for a one-
 
 6. **Fix the root cause, not the symptom.** Do not stop when the error disappears; confirm the underlying cause is addressed. Then verify with {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }}.{{ if .vars.gateCmdFull }} Run `{{ .vars.gateCmdFull }}` when the regression test lives in a slower surface that the default gate does not exercise.{{ end }}
 
-7. **Hand off.** When the root cause is confirmed and the failing test is in place, {{ if .skills.bugfix }}invoke `{{ .prefix }}-bugfix` for the fix + commit + review discipline{{ else }}apply the fix with its regression test and the project's review discipline{{ end }}. If investigation reveals a design gap rather than a defect, {{ if .skills.brainstorming }}invoke `{{ .prefix }}-brainstorming`{{ else }}start a design discussion before changing behaviour{{ end }} instead.
+7. **Hand off.** When the root cause is confirmed and the durable oracle is established, {{ if .skills.bugfix }}invoke `{{ .prefix }}-bugfix` for the fix + commit + review discipline{{ else }}apply the fix under the durable-oracle rule and the project's review discipline{{ end }}. If investigation reveals a design gap rather than a defect, {{ if .skills.brainstorming }}invoke `{{ .prefix }}-brainstorming`{{ else }}start a design discussion before changing behaviour{{ end }} instead.
 
 <!-- awf:section oracle-invariant -->
 ## Oracle invariant
 
-The oracle defines correctness. A fix that adjusts expected output to match wrong behaviour instead of correcting the root cause is itself a regression. Never modify expected outputs unless the specification has genuinely changed.
+The durable-oracle rule above defines correctness. A fix that adjusts expected output to match wrong behaviour instead of correcting the root cause is itself a regression. Never modify expected outputs unless the specification has genuinely changed.
 
 <!-- awf:end -->
 

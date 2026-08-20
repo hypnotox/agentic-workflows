@@ -1,17 +1,19 @@
 ---
 name: {{ .prefix }}-bugfix
-description: Use when applying a bug fix in {{ .prefix }} with a known root cause. Writes the regression test first, fixes the root cause, verifies via the gate, commits, and evaluates review need. Self-contained.
+description: Use when applying a bug fix in {{ .prefix }} with a known root cause. Establishes the strongest practical durable oracle, fixes the root cause, verifies via the gate, commits, and evaluates review need. Self-contained.
 ---
 
 # {{ .prefix }}-bugfix
 
 The fix-and-verify task skill.{{ if .skills.debugging }} Companion to `{{ .prefix }}-debugging`: where debugging owns systematic investigation (finding the root cause), this skill owns the implementation + review pair that ships the fix.{{ end }}
 
+<!-- awf:include durable-oracle -->
+
 ## When to invoke
 
 When the root cause is known and a fix is ready to land. Two callers in practice:
 
-- **Trivial bugfix that validly skips the chain**: the narrow exception in `{{ .layout.workflowRef }}` ("one-line bugfix with an already-failing test"). This skill is the entire flow.
+- **Trivial bugfix that validly skips the chain**: the narrow exception in `{{ .layout.workflowRef }}` for a locally obvious, directly verified fix. This skill is the entire flow.
 - **Bugfix with upstream design work**: preserve the approved design boundary while implementing and independently evaluate continuity and review need.
 
 {{ if .skills.debugging }}If the root cause is not yet known, invoke `{{ .prefix }}-debugging` first.{{ else }}If the root cause is not yet known, confirm it with a falsifiable check before touching code.{{ end }}
@@ -22,7 +24,7 @@ When the root cause is known and a fix is ready to land. Two callers in practice
 
 This skill may run without an effort. If continuity materially helps, invoke `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}` before mutation; if an effort exists, validate its fixed identity and exact `.awf/efforts/<slug>/memory.md`, preserve one writer, and give children that context read-only. Otherwise omit effort and memory fields. {{if eq .profile "core"}}Project documentation, source, tests, and repository history remain authoritative{{else}}Repository sources and current-state documentation remain authoritative{{end}}, and standalone memory is forbidden.
 
-1. **Ensure a regression test exists that fails for the right reason.** {{ if .skills.tdd }}Invoke `{{ .prefix }}-tdd` for the project's test-first discipline: it picks the right surface, writes the failing test, and verifies it fails for the right reason before the fix.{{ else }}Write the failing test first and confirm it fails for the right reason before the fix.{{ end }} {{if eq .profile "core"}}Before writing the test, inspect the implementation and test paths.{{else}}Before writing the test, run `./awf context <the implementation and test paths>`.{{end}}
+1. **Establish the oracle before the fix.** Select evidence under the durable-oracle rule above and record any concrete reason the preferred automated red-then-green path is impractical. {{ if .skills.tdd }}Invoke `{{ .prefix }}-tdd` to establish and exercise that evidence before implementation.{{ else }}Exercise the selected evidence against the unfixed behaviour before implementation.{{ end }} {{if eq .profile "core"}}First inspect the implementation and verification paths.{{else}}First run `./awf context <the implementation and verification paths>`.{{end}}
 <!-- awf:include context-orientation -->
 <!-- awf:include context-spill -->
 
@@ -39,7 +41,7 @@ No safety bypasses. No incidental refactors riding along; one concern per commit
 
 3. **Verify via the gates.** {{ with .vars.gateCmd }}`{{ . }}`{{ else }}The project's gate{{ end }} is the default.{{ if .vars.gateCmdFull }} Run `{{ .vars.gateCmdFull }}` when regression-test placement warrants the full tier.{{ end }}
 
-4. **Commit** with Conventional Commits, typically `fix(<scope>): ...`; the body explains the *why*. Per `{{ .layout.workflowRef }}`, fixes ship with a regression test.
+4. **Commit** with Conventional Commits, typically `fix(<scope>): ...`; the body explains the *why*. Retain the selected durable evidence and, when it is not the preferred automated path, its concrete reason.
 
 5. **Evaluate implementation review independently.** Invoke {{ if index .skills "reviewing-impl" }}`{{ .prefix }}-reviewing-impl`{{ else }}the project's review step{{ end }} for meaningful breadth, non-obvious logic, contract or compatibility effects, migration or high-consequence risk, substantive verification judgment, or uncertainty. Skip only locally obvious, low-risk, directly verified work. Effort-backed work returns to `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}` after review settles or is explicitly skipped.
 
@@ -53,7 +55,7 @@ The specific test tiers (unit, integration, e2e, etc.) and their locations are p
 <!-- awf:section oracle-note -->
 ## Oracle invariant
 
-The oracle is non-negotiable. A fix that adjusts expected output instead of the root cause is itself a regression.
+The durable-oracle rule above is non-negotiable. A fix that adjusts expected output instead of the root cause is itself a regression.
 
 <!-- awf:end -->
 

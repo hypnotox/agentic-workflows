@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-strongest-practical-durable-oracle: Strongest practical durable oracle](strongest-practical-durable-oracle.md) (Proposed)
+- [ADR-strongest-practical-durable-oracle: Strongest practical durable oracle](strongest-practical-durable-oracle.md) (Implementing)
 
 ## History
 
