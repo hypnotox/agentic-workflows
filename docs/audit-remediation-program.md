@@ -102,7 +102,7 @@ change, not its literal execution choreography.
 | AF-003 | P1 | COMPLETE | Plans bind outcome, durable decisions, scope, safety, and verification; route is mutable | AF-001 |
 | AF-004 | P1 | COMPLETE | Clean integration operative in every implementation and review path | AF-001 |
 | AF-005 | P1 | COMPLETE | Review blocks concrete maintainability risk, not aesthetic preference | AF-003, AF-004 |
-| AF-006 | P1 | READY | Strongest practical durable oracle replaces absolute test-first blocking | AF-001 |
+| AF-006 | P1 | COMPLETE | Strongest practical durable oracle replaces absolute test-first blocking | AF-001 |
 | AF-007 | P2 | COMPLETE | Punctuation restraint replaces the seven-codepoint ban | AF-001 |
 | AF-008 | P2 | READY | Core and Full read as governance footprints, not rigor modes | AF-001 |
 | AF-009 | P2 | BLOCKED | Pi runtime protocol owned by a target-specific reference, not generic workflow docs | AF-001, AF-008 |
@@ -429,6 +429,35 @@ abstraction; oracle strength.
 - **Unblocked:** AF-006 remains `READY` and is the next A2 issue. AF-013 still waits on AF-007's owner
   ruling despite its AF-005 dependency now being complete; AF-008 and AF-009 remain `READY`, and later
   issues retain their named blockers.
+
+### AF-006
+
+- **Range:** Prior program state `b00b7cc39`; integration range `b00b7cc39..1fca7998a`.
+- **Protected contract:** ADR-0291 requires the strongest practical durable oracle for every
+  behaviour-changing fix. Observed red then green remains mandatory for ordinary deterministic
+  defects; an impractical automated reproduction needs a concrete reason and the strongest safe,
+  reproducible alternative without weakening expected behaviour or verification strength.
+- **Clean integration:** `templates/partials/durable-oracle.md` is the canonical rule. Bugfix, TDD,
+  debugging, planning, review, and testing surfaces project it while preserving their stage-specific
+  procedure. Test-framework, coverage, gate, and package refactors remain excluded, and no
+  issue-local residual debt remains.
+- **Files changed:** The shared partial and its authored skill, reviewer, catalog, and testing-doc
+  consumers carry the rule; generated Pi and Claude outputs project it; current-state claims, ADR
+  history, rendered indices, lock, and changelog record authority and adopter behaviour;
+  `internal/project` and `internal/evals` prove single-home and behavioural semantics.
+- **Verification:** Focused red then green preceded implementation. Full Go tests, render and drift
+  checks, staged checks, and repeated gates passed with 100 percent statement coverage. After AF-007
+  integrated, current `main` was merged, generated outputs were rerendered, the full gate passed,
+  and renewed independent review found one mechanical relational-proof gap that was closed with
+  clause-sensitive scenarios. Local audit reported clean; repository audit reported only its
+  advisory plan-size warning. Numbering and terminal transactions passed their staged checks and
+  gates.
+- **Deviations:** Review corrected an initial accidental widening of alternative evidence to feature
+  work, restoring fix-only alternatives and non-fix red-first obligations. A plan was omitted because
+  one settled cohesive policy transaction did not warrant one. Neither route adjustment changed the
+  approved outcome.
+- **Unblocked:** AF-006 now satisfies its dependency contribution to AF-010. AF-010 retains its other
+  blockers; no issue becomes independently ready from AF-006 alone.
 
 ### AF-007
 
