@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-define-repository-dependency-and-ownership-target: Define Repository Dependency and Ownership Target](define-repository-dependency-and-ownership-target.md) (Implementing)
+- [ADR-0296: Define Repository Dependency and Ownership Target](0296-define-repository-dependency-and-ownership-target.md) (Implementing)
 
 ## History
 

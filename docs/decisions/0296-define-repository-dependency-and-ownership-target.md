@@ -4,7 +4,7 @@ slug: define-repository-dependency-and-ownership-target
 status: Implementing
 date: 2026-08-20
 ---
-# ADR-define-repository-dependency-and-ownership-target: Define Repository Dependency and Ownership Target
+# ADR-0296: Define Repository Dependency and Ownership Target
 
 
 ## Context
