@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-define-repository-dependency-and-ownership-target: Define Repository Dependency and Ownership Target](define-repository-dependency-and-ownership-target.md) (Proposed)
 
 ## History
 
