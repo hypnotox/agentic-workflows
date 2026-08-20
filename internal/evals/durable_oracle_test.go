@@ -7,12 +7,15 @@ import (
 )
 
 type durableOracleFacts struct {
-	deterministicBug      bool
-	environmentSpecific   bool
-	nondeterministicRace  bool
-	destructiveMigration  bool
-	automationUnavailable bool
-	weakenExpectedOutput  bool
+	deterministicBug        bool
+	environmentSpecific     bool
+	nondeterministicRace    bool
+	destructiveMigration    bool
+	automationUnavailable   bool
+	merelyInconvenient      bool
+	mechanicalEvidenceOrder bool
+	weakenExpectedOutput    bool
+	reduceVerification      bool
 }
 
 type durableOracleScenario struct {
@@ -35,11 +38,30 @@ func TestStrongestPracticalDurableOracleScenarios(t *testing.T) {
 			},
 		},
 		{
+			name:  "inconvenience-does-not-justify-alternative",
+			facts: durableOracleFacts{merelyInconvenient: true},
+			want:  "red-then-green-regression",
+			governing: []string{
+				"normal and preferred path", "automated regression test observed red then green",
+				"preferred path is impractical, not merely inconvenient",
+			},
+		},
+		{
+			name:  "evidence-order-is-guidance",
+			facts: durableOracleFacts{mechanicalEvidenceOrder: true},
+			want:  "select-strongest-applicable-evidence",
+			governing: []string{
+				"evidence order as guidance", "not a requirement to mechanically attempt every earlier option",
+				"strongest practical durable oracle",
+			},
+		},
+		{
 			name:  "environment-specific-integration",
 			facts: durableOracleFacts{environmentSpecific: true},
 			want:  "durable-reproduction",
 			governing: []string{
-				"concrete reason", "deterministic integration or reproduction harness",
+				"concrete reason", "preferred path is impractical, not merely inconvenient",
+				"preserve or improve verification strength", "deterministic integration or reproduction harness",
 				"scripted, reproducible manual verification", "recorded inputs and expected result",
 			},
 		},
@@ -47,19 +69,25 @@ func TestStrongestPracticalDurableOracleScenarios(t *testing.T) {
 			name:      "nondeterministic-race",
 			facts:     durableOracleFacts{nondeterministicRace: true},
 			want:      "stress-or-invariant-evidence",
-			governing: []string{"concrete reason", "stress or invariant evidence", "preserve or improve verification strength"},
+			governing: []string{"concrete reason", "preferred path is impractical, not merely inconvenient", "stress or invariant evidence", "preserve or improve verification strength"},
 		},
 		{
 			name:      "destructive-migration",
 			facts:     durableOracleFacts{destructiveMigration: true},
 			want:      "safe-fixture-or-dry-run",
-			governing: []string{"concrete reason", "safe fixture or dry-run evidence", "preserve or improve verification strength"},
+			governing: []string{"concrete reason", "preferred path is impractical, not merely inconvenient", "safe fixture or dry-run evidence", "preserve or improve verification strength"},
 		},
 		{
 			name:      "durable-automation-unavailable",
 			facts:     durableOracleFacts{automationUnavailable: true},
 			want:      "strongest-retained-safe-evidence",
-			governing: []string{"durable automation is unavailable", "strongest safe evidence that can be retained", "concrete reason"},
+			governing: []string{"durable automation is unavailable", "strongest safe evidence that can be retained", "concrete reason", "preserve or improve verification strength"},
+		},
+		{
+			name:      "reduce-verification-strength",
+			facts:     durableOracleFacts{reduceVerification: true},
+			want:      "refuse-weakened-oracle",
+			governing: []string{"preserve or improve verification strength", "Never weaken verification strength", "strongest safe, reproducible alternative"},
 		},
 		{
 			name:      "weaken-expected-output",
@@ -100,10 +128,12 @@ func durableOracleDisposition(body string, facts durableOracleFacts, clauses ...
 		}
 	}
 	switch {
-	case facts.weakenExpectedOutput:
+	case facts.weakenExpectedOutput || facts.reduceVerification:
 		return "refuse-weakened-oracle"
-	case facts.deterministicBug:
+	case facts.deterministicBug || facts.merelyInconvenient:
 		return "red-then-green-regression"
+	case facts.mechanicalEvidenceOrder:
+		return "select-strongest-applicable-evidence"
 	case facts.environmentSpecific:
 		return "durable-reproduction"
 	case facts.nondeterministicRace:
