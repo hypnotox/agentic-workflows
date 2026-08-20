@@ -301,6 +301,47 @@ func TestGroundingSupportOwnership(t *testing.T) {
 	assertContainsAll(t, "Claude grounding", claudeGrounding, "grounding-checker", "guide-first", "AWF_CONTEXT_SPILL_V1")
 }
 
+func TestTwoDurableDesignsRequireApproval(t *testing.T) {
+	governing := []string{
+		"competing durable approaches",
+		"viable approaches carry meaningfully different durable consequences",
+		"Offer alternatives with trade-offs and a recommendation",
+		"The final approved design becomes the implementation boundary",
+		"explicitly request approval, and stop",
+	}
+	for _, profile := range []string{"core", "full"} {
+		t.Run(profile, func(t *testing.T) {
+			root := syncPlanFlexibilityProfile(t, profile)
+			for _, target := range []string{"pi", "claude"} {
+				t.Run(target, func(t *testing.T) {
+					body := strings.Join([]string{
+						read(t, planSkillPath(root, target, "executing-direct")),
+						read(t, planSkillPath(root, target, "brainstorming")),
+					}, "\n")
+					if got := twoDurableDesignsDisposition(body, governing...); got != "request-user-decision-before-authority-change" {
+						t.Fatalf("two durable designs: got %q", got)
+					}
+					for _, clause := range governing {
+						mutated := strings.ReplaceAll(body, clause, "missing-governing-clause")
+						if got := twoDurableDesignsDisposition(mutated, governing...); got == "request-user-decision-before-authority-change" {
+							t.Errorf("two durable designs still request the complete disposition without %q", clause)
+						}
+					}
+				})
+			}
+		})
+	}
+}
+
+func twoDurableDesignsDisposition(body string, governing ...string) string {
+	for _, clause := range governing {
+		if !strings.Contains(body, clause) {
+			return "missing"
+		}
+	}
+	return "request-user-decision-before-authority-change"
+}
+
 // invariant: rendering/workflow-skill-templates:independent-workflow-escalation (TestProductionCodeOutlineApproval)
 func TestProductionCodeOutlineApproval(t *testing.T) {
 	cat := loadCatalog(t)
