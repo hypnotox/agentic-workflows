@@ -44,7 +44,8 @@ Backing: test
 
 Repository coordination follows one direction: `cmd/awf` composes and invokes focused application operations; application operations consume immutable project state, domain services, and only the semantic mechanisms they need; domain and state owners consume lower semantic Git, snapshot, filesystem, atomic-publication, and rendering mechanisms. `Loader` constructs `ProjectState`; application operations may invoke `Publisher`, `RepositoryChecker`, and `CurrentStateCoordinator`; `RepositoryChecker` consumes individual checker results without owning their policy. No internal package imports `cmd/awf`; project state, domain, checker, and mechanism owners never import application coordination; `ProjectState` never imports `Loader`; individual check owners never import `RepositoryChecker`; and `internal/project` never imports `internal/contextq` while the existing reverse edge remains. Foundational mechanism chains from snapshot to Git and from filesystem to atomic file publication remain legal.
 Origin: ADR-define-repository-dependency-and-ownership-target
-Backing: test
+Backing: unbacked
+Verify: Inspect changed owner imports against the complete direction above; run `TestRepositoryLayerDirection` for the cheap foundational-mechanism reversals and `internal/project` to `internal/contextq` cycle that have focused mechanical protection.
 
 ### `rule: repository-extraction-owners`
 

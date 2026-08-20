@@ -223,7 +223,7 @@ func TestProductionNeverImportsTestSupport(t *testing.T) {
 	})
 }
 
-// invariant: code-design/dependency-composition:repository-layer-direction (TestRepositoryLayerDirection)
+// TestRepositoryLayerDirection protects the cheap import edges named by the broader direction invariant.
 func TestRepositoryLayerDirection(t *testing.T) {
 	tests := []struct {
 		name       string
