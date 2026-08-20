@@ -50,7 +50,7 @@ Backing: test
 
 The Pi target alone derives the target-owned `using-effort` skill and `awf-effort` extension from the catalog `effort-workflow` entry; neither artifact is independently selectable, and no non-Pi target renders or refers to either one. It projects the Pi-runtime-owned session-replacement protocol without becoming a second protocol authority. The skill documents exactly direct `{effort:"<canonical-slug>"}` attachment and `{detach:true}` detachment from the repository root, use of the supplied fixed relative memory and optional managed-worktree paths, explicit-only association, restart-detached state, and the display-only suffix that is never routing input; activity is neither authority nor a lock. While associated it directs agents to prefer pathless memory reads, separate exact body edits from `phase` or `next` metadata updates, and rely on automatic timestamps, without forbidding generic file tools or direct commands.
 Origin: ADR-0218
-Revised-by: ADR-0225, ADR-0231, ADR-0239, ADR-0251, ADR-move-pi-session-handoff-authority-to-pi-runtime
+Revised-by: ADR-0225, ADR-0231, ADR-0239, ADR-0251, ADR-0293
 Backing: test
 
 ### `invariant: pi-effort-memory-tools`

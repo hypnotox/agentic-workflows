@@ -95,7 +95,7 @@ Backing: test
 Checkpoint guidance never creates an effort and remains capability-neutral: it owns persistence, eligibility, reorientation, truthful fresh-boundary logging, cancellation and failure disposition, retained-context judgment, and target-native continuation, not a target tool or session evidence source. Effort-backed checkpoints validate one immutable slug and primary-root-relative `.awf/efforts/<slug>/memory.md`, accept canonical YAML or deprecated legacy identity, continue in the managed worktree when present, and run exactly one structured memory update as the sole writer while separately appending decisions and observations. Effort-free work omits persistence. Fresh-boundary logging follows only an actual fresh-session boundary; task headings and projections never create checkpoint authority. Every checkpoint points to the workflow document for repository precedence, the one-writer contract, and the full protocol.
 This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0160, ADR-0164, ADR-0166, ADR-0167, ADR-0175, ADR-0186, ADR-0189, ADR-0197, ADR-0209, ADR-0213, ADR-0218, ADR-0219, ADR-0222, ADR-0243, ADR-move-pi-session-handoff-authority-to-pi-runtime
+Revised-by: ADR-0149, ADR-0152, ADR-0160, ADR-0164, ADR-0166, ADR-0167, ADR-0175, ADR-0186, ADR-0189, ADR-0197, ADR-0209, ADR-0213, ADR-0218, ADR-0219, ADR-0222, ADR-0243, ADR-0293
 Backing: test
 
 ### `invariant: unified-effort-workflow-coverage`

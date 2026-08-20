@@ -28,7 +28,7 @@ Backing: test
 ### `invariant: pi-session-handoff-workflow`
 
 Pi runtime owns the single executable session-replacement protocol, projected only by the Pi `using-effort` skill. After a persisted formal phase or approval checkpoint, or another safe resumable effort point, it judges retained-context relevance and successor work using current `[session context]` model-window and active-branch-compaction evidence with no fixed threshold. It either continues autonomously or invokes `handoff_session` alone with exactly `Continue with effort <slug>.`; the kickoff identifies only the effort and carries no phase or task limit, association mechanic, resume procedure, or handoff-log instruction. The associated effort is reoriented from repository authority and owned memory before substantive work. Managed-worktree use is pre-integration only; integration, deferred lifecycle closure, worktree removal, and retrospective use the governed primary checkout. Handoff validates only dual-format effort identity; it does not validate mutable metadata, parse state or activity, select an effort, or mutate memory. A replacement session logs its actual boundary before substantive work; continuation, cancellation, or failure that leaves the old session active logs none. Awf does not own the independently installed pi-tools handoff implementation.
-Origin: ADR-move-pi-session-handoff-authority-to-pi-runtime
+Origin: ADR-0293
 Backing: test
 
 ### `invariant: pi-minimum-runtime`

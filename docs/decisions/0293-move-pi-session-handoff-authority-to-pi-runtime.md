@@ -4,7 +4,7 @@ slug: move-pi-session-handoff-authority-to-pi-runtime
 status: Implemented
 date: 2026-08-20
 ---
-# ADR-move-pi-session-handoff-authority-to-pi-runtime: Move Pi Session Handoff Authority to Pi Runtime
+# ADR-0293: Move Pi Session Handoff Authority to Pi Runtime
 
 ## Context
 

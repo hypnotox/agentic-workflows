@@ -298,4 +298,4 @@ _No decisions are in flight._
 - [ADR-0290: Replace plain punctuation ban with punctuation restraint](0290-replace-plain-punctuation-ban-with-punctuation-restraint.md) (Implemented)
 - [ADR-0291: Strongest practical durable oracle](0291-strongest-practical-durable-oracle.md) (Implemented)
 - [ADR-0292: Define Core and Full as governance footprints](0292-define-core-and-full-as-governance-footprints.md) (Implemented)
-- [ADR-move-pi-session-handoff-authority-to-pi-runtime: Move Pi Session Handoff Authority to Pi Runtime](move-pi-session-handoff-authority-to-pi-runtime.md) (Implemented)
+- [ADR-0293: Move Pi Session Handoff Authority to Pi Runtime](0293-move-pi-session-handoff-authority-to-pi-runtime.md) (Implemented)
