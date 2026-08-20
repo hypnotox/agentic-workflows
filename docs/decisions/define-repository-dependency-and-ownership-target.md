@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: define-repository-dependency-and-ownership-target
-status: Proposed
+status: Implementing
 date: 2026-08-20
 ---
 # ADR-define-repository-dependency-and-ownership-target: Define Repository Dependency and Ownership Target
@@ -74,3 +74,5 @@ bounded and must not preserve old and new coordinators as competing permanent pa
 ## Status history
 
 - 2026-08-20: Proposed
+- 2026-08-20: Implementing; content-sha256: b3bd0e92327fce217a122de1b9f1de37ce5261916af95283c5330985cc64a4ba
+- 2026-08-20: Applied; operations: add `code-design/dependency-composition:repository-layer-direction`, add `code-design/dependency-composition:repository-extraction-owners`, add `code-design/dependency-composition:repository-boundary-values`

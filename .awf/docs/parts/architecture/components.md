@@ -1,4 +1,4 @@
-- `internal/project`: configuration, rendering, output planning, and repository checks.
+- `internal/project`: the current configuration, rendering, output-planning, and repository-check coordinator; its broad receiver surface is transitional toward the target direction below.
 - `internal/adr`, `internal/currentstate`, and `internal/plan`: decision, active-authority, and plan models.
 - `internal/effort` and `internal/worktree`: local residents and Git-backed topology.
 - `internal/git`: the sole semantic Git seam.

@@ -443,8 +443,8 @@
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
       "templateHash": "sha256:4e74a0e1d0196719f520b48fb0431b3d07ca705b52db6c3a8d08b4dd0faa8665",
-      "configHash": "sha256:575af00e4638f7b4f841325d64e2b51c7307933c2a3bb5ca058ed06efd2b4e0e",
-      "outputHash": "sha256:bc98c864446d68b100903e9c7cd763313a0dc00320ccabfc0eb7e625634992a0"
+      "configHash": "sha256:50afb1546cfd9337f174c41830a49f95ad0b0b61d80b9569ac5e728a1a0d4dfa",
+      "outputHash": "sha256:fccba7881e964b8d7961105ddb78a0882b95ec248484b9323f0df8817d5ef211"
     },
     "docs/audit-remediation-program.md": {
       "templateId": "docs/local.md.tmpl",
@@ -470,7 +470,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:bc89ce4c90db384870990fbaf9d79d4c23521217d906c9a6d89ab94b234504f6",
+      "outputHash": "sha256:ed5796a0f173089f713c7677b0b06f8b2b7b973a68f9dfb20f18cd9d12fb8f67",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -854,8 +854,8 @@
     "docs/topics/code-design/dependency-composition.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:a2fd4e340ded8ff21431a5b89c0e6fa375fb3594b4fabe63b6c48bfe329477a8",
-      "outputHash": "sha256:bd7f3dc3bd36ca13d16235f7ef514f59462100af9f1554a0664a65115f02afe7"
+      "configHash": "sha256:3991ce4d8f23a977c0ba7ac9656bca0ad6eab92e72a7ab35b367ec0bf39a668f",
+      "outputHash": "sha256:794d80c1e0afe5603df230b3b9a82a7e892739a7d721adcd7b894688e6d615a8"
     },
     "docs/topics/code-design/execution-planning.md": {
       "templateId": "topics/topic.md.tmpl",
