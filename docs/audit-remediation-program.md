@@ -110,7 +110,7 @@ change, not its literal execution choreography.
 | AF-011 | P2 | COMPLETE | Daily-use documentation separated from rare recovery and migration protocol | AF-009 |
 | AF-012 | P2 | COMPLETE | Demonstrably redundant workflow concepts and vocabulary consolidated | AF-010, AF-011 |
 | AF-013 | P1 | COMPLETE | Blocking checks separated from warnings and unranked notes by protected property | AF-005, AF-007 |
-| AF-014B | P1 | READY | Outcome-oriented behaviour scenarios cover the changed contract | AF-002..AF-013 |
+| AF-014B | P1 | COMPLETE | Outcome-oriented behaviour scenarios cover the changed contract | AF-002..AF-013 |
 
 ### Protected contract
 
@@ -159,6 +159,11 @@ allocation, execution mode, command sequence, commit decomposition, non-load-bea
 
 ### Program A milestone
 
+**Status: COMPLETE.** The issue completion reports and AF-014B deterministic scenario map prove the
+adopter-facing contract below. Compatibility support policy is explicitly deferred to RF-008A's
+inventory and owner ruling; broad file-moving refactors remain blocked until RF-001 establishes the
+dependency map.
+
 Program A completes, and Program B may begin, only when all hold: a routine fully specified
 production change proceeds without a ceremonial stop; a material unresolved decision still stops;
 plans bind outcomes rather than choreography; an owner may merge, split, reorder, add, or remove
@@ -180,8 +185,8 @@ correction is allowed without unrelated cleanup riding along.
 
 | ID | Sev | Status | Target outcome | Depends on |
 |---|---|---|---|---|
-| RF-001 | P1 | BLOCKED | Concrete dependency direction and one named semantic owner per extraction | Program A milestone |
-| RF-008A | P1 | BLOCKED | Durable private compatibility policy and a real support-floor inventory | Program A milestone |
+| RF-001 | P1 | READY | Concrete dependency direction and one named semantic owner per extraction | Program A milestone |
+| RF-008A | P1 | READY | Durable private compatibility policy and a real support-floor inventory | Program A milestone |
 | RF-008B | P1 | CONDITIONAL | Obsolete compatibility pruned below the support floor | RF-008A, managed repos upgraded |
 | RF-002 | P1 | BLOCKED | Residual project state separated from operations | RF-001 |
 | RF-003 | P1 | BLOCKED | One application owner for output planning and publication coordination | RF-002 |
@@ -190,12 +195,12 @@ correction is allowed without unrelated cleanup riding along.
 | RF-006 | P1 | BLOCKED | `cmd/awf` reduced to parse, compose, invoke, render, exit | RF-002..RF-005 |
 | RF-007 | P2 | BLOCKED | Residual giant tests split by observable behaviour and semantic owner | RF-002..RF-006 |
 | RF-009 | P1 | DECISION | Post-refactor critical-path coverage policy and regression control | RF-007, owner ruling |
-| RF-014A | P2 | BLOCKED | Obsolete Program A machinery deleted | Program A milestone |
+| RF-014A | P2 | READY | Obsolete Program A machinery deleted | Program A milestone |
 | RF-014B | P2 | CONDITIONAL | Obsolete compatibility residue deleted | RF-008B, compatibility removals applicable |
 | RF-010 | P2 | BLOCKED | Current code comments explain invariants, not historical plans and tranches | RF-002..RF-007, compatibility lane closed |
-| RF-011 | P2 | BLOCKED | Roadmap, known issues, and research separated by owner | Program A milestone |
+| RF-011 | P2 | READY | Roadmap, known issues, and research separated by owner | Program A milestone |
 | RF-012 | P2 | BLOCKED | Tag vocabulary culled to terms with a real consumer | RF-011 |
-| RF-013 | P2 | BLOCKED | Documented remote enforcement matches configured GitHub policy | Program A milestone, live policy verification |
+| RF-013 | P2 | READY | Documented remote enforcement matches configured GitHub policy | Program A milestone, live policy verification |
 
 ### Pre-approved Program B boundaries
 
@@ -250,6 +255,11 @@ correction is allowed without unrelated cleanup riding along.
   threshold, package set, or ratchet percentage is pre-approved.
 
 ### Program B start gate
+
+**Status: OPEN FOR B-F1.** Program A is complete; generated artifacts are stable under the new
+doctrine; changed behaviour has deterministic regression coverage; no known adopter-facing
+contradiction remains; compatibility policy is explicitly deferred to RF-008A's evidence-backed owner
+ruling. RF-001 must establish the target dependency map before any architecture issue moves files.
 
 Program A milestone complete; generated artifacts stable under the new doctrine; new behaviour has
 regression tests; no known adopter-facing contradiction remains; compatibility support policy decided
@@ -660,6 +670,33 @@ abstraction; oracle strength.
   or accepted compatibility role.
 - **Unblocked:** AF-014B now has every dependency complete and is `READY` for the final Program A
   implementation issue.
+
+### AF-014B
+
+- **Range:** Prior program state `c4b4af4a1`; implementation range `c4b4af4a1..6de161dd9`.
+- **Protected contract:** All 12 owner-required scenarios have deterministic generated-surface
+  coverage: routine specified change, flexible plan phasing, bounded enabling refactor, competing
+  durable designs, unlisted and unnecessary paths, impractical automated regression, over-detailed
+  ADRs, speculative refactors, dual ownership, Core and Full parity, and runtime separation. No live
+  paid-model gate or new evaluation framework is required.
+- **Clean integration:** Existing evaluations from AF-002 through AF-013 retain ownership of 10
+  scenarios. `internal/evals/independent_workflow_escalation_test.go` adds the competing-durable-design
+  scenario and `internal/evals/adr_scope_test.go` adds the over-detailed-ADR scenario. Both initialize
+  adopter projects and inspect rendered Pi and Claude artifacts rather than template fragments.
+- **Files changed:** Only the two focused deterministic evaluation files changed. No template,
+  production, workflow, framework, concept, profile, router, plan format, lifecycle, or Program B
+  surface was added.
+- **Verification:** The complete scenario map, focused new tests, full evaluation suite, render and
+  drift checks, staged checks, repeated full gates with 100 percent statement coverage, workflow
+  audit, local audit, and independent review passed. Review replaced literal echo-style assertions
+  with derived, placement-sensitive, input-sensitive, contradiction-checked scenarios; the required
+  verify pass returned clean.
+- **Deviations:** None. The two-design trigger and approval resolution remain in their distinct
+  generated consumers rather than being concatenated for test convenience.
+- **Residual debt:** None known. Every required scenario maps to a deterministic oracle and all
+  Program A milestone conditions are satisfied.
+- **Unblocked:** Program A is complete. The Program B start gate is open for B-F1; RF-001, RF-008A,
+  RF-011, and RF-013 are ready, while RF-014A is dependency-ready but scheduled in B-F2 after B-F1.
 
 Close each later issue with the same evidence: identity; baseline and final range; protected contract;
 clean integration; files changed with reason; verification commands and results; material deviations;

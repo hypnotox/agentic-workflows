@@ -450,7 +450,7 @@
       "templateId": "docs/local.md.tmpl",
       "templateHash": "sha256:f09ab3b6e84fa2d6a10c6f2ac2a6e1552ad8cada8855c9e378f432a96b7c733d",
       "configHash": "sha256:0ade5e5cb0c190ba3e6cb15343e33f72f1317352e11e4eb547474ed9adbb0006",
-      "outputHash": "sha256:03ffb9d85172234830851d9c05af92590f12be50d5470775c6fc1b322dd095f9",
+      "outputHash": "sha256:5c05c3b86154376badbdda2768ff77ccabc96dae749d8f6935229d1d514edf59",
       "regenChecked": true
     },
     "docs/config-reference.md": {
