@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: bound-compatibility-support-to-managed-reality
-status: Proposed
+status: Accepted
 date: 2026-08-20
 ---
 # ADR-bound-compatibility-support-to-managed-reality: Bound Compatibility Support to Managed Reality
@@ -117,3 +117,4 @@ unknown future schemas, malformed inputs, and shapes outside the declared horizo
 ## Status history
 
 - 2026-08-20: Proposed
+- 2026-08-20: Accepted; content-sha256: a160f70549e92d51922e18bae0e584a8b0f3c0da006e2ebbc28dc39f0b0dc603
