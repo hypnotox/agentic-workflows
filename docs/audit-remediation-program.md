@@ -104,8 +104,8 @@ change, not its literal execution choreography.
 | AF-005 | P1 | COMPLETE | Review blocks concrete maintainability risk, not aesthetic preference | AF-003, AF-004 |
 | AF-006 | P1 | COMPLETE | Strongest practical durable oracle replaces absolute test-first blocking | AF-001 |
 | AF-007 | P2 | COMPLETE | Punctuation restraint replaces the seven-codepoint ban | AF-001 |
-| AF-008 | P2 | READY | Core and Full read as governance footprints, not rigor modes | AF-001 |
-| AF-009 | P2 | BLOCKED | Pi runtime protocol owned by a target-specific reference, not generic workflow docs | AF-001, AF-008 |
+| AF-008 | P2 | COMPLETE | Core and Full read as governance footprints, not rigor modes | AF-001 |
+| AF-009 | P2 | READY | Pi runtime protocol owned by a target-specific reference, not generic workflow docs | AF-001, AF-008 |
 | AF-010 | P2 | BLOCKED | Residual operative prose states rule, flexible detail, stop condition, and evidence | AF-006..AF-009, AF-011, AF-013 |
 | AF-011 | P2 | BLOCKED | Daily-use documentation separated from rare recovery and migration protocol | AF-009 |
 | AF-012 | P2 | BLOCKED | Demonstrably redundant workflow concepts and vocabulary consolidated | AF-010, AF-011 |
@@ -485,6 +485,34 @@ abstraction; oracle strength.
   approved protected outcome.
 - **Unblocked:** AF-013 now has both dependencies complete and becomes available in A-F3 after that
   wave's topology prerequisites. Other issues retain their named blockers.
+
+### AF-008
+
+- **Range:** Prior program state `62deb14d7`; integration range `62deb14d7..59775bddc`.
+- **Protected contract:** ADR-0292 defines Core and Full as governance footprints of one workflow.
+  Both preserve the same correctness, autonomy, maintainability, review, protected-contract, and
+  clean-integration bar. Core includes the complete operational workflow; Full adds governance
+  artifacts and capabilities. The `profile` config key and compatibility behaviour remain unchanged.
+- **Clean integration:** `templates/partials/governance-footprints.md` is the canonical adopter-facing
+  distinction. Documentation, configuration descriptions, init and CLI help, runtime refusals, and
+  current-state claims consume that terminology while code and literal configuration examples retain
+  the stable `profile` identifier. No migration or issue-local residual debt remains.
+- **Files changed:** The shared partial, workflow and architecture templates, README, config and
+  command specifications, initialization and project rendering code, help goldens, current-state
+  claims, ADR history, generated docs, lock, and changelog carry the distinction. Project tests prove
+  Core and Full doctrine parity and exact refusal terminology.
+- **Verification:** Red then green proved shared quality doctrine across both footprints. Focused Go
+  tests, staged checks, repeated full gates, drift checks, workflow audits, and independent review
+  passed. Review findings strengthened terminology coverage and exact oracle proof. After AF-007,
+  AF-006, and its retrospective integrated, current `main` was incorporated, generated outputs were
+  rerendered, ADR-0292 was assigned without collision, and renewed assurance returned clean at the
+  final combined tip. Local audit retained only the known advisory for wording that touched an
+  existing unreachable diagnostic branch. Terminal closure passed its staged check and gate.
+- **Deviations:** The claim-operation inventory expanded after review found additional terminology
+  owners; the amendable ADR was updated and independently re-reviewed. No config rename, migration,
+  compatibility change, or quality-bar change occurred.
+- **Unblocked:** AF-009 now has both dependencies complete and is `READY`. Other issues retain their
+  named blockers.
 
 Close each later issue with the same evidence: identity; baseline and final range; protected contract;
 clean integration; files changed with reason; verification commands and results; material deviations;
