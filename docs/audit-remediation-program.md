@@ -108,9 +108,9 @@ change, not its literal execution choreography.
 | AF-009 | P2 | COMPLETE | Pi runtime protocol owned by a target-specific reference, not generic workflow docs | AF-001, AF-008 |
 | AF-010 | P2 | COMPLETE | Residual operative prose states rule, flexible detail, stop condition, and evidence | AF-006..AF-009, AF-011, AF-013 |
 | AF-011 | P2 | COMPLETE | Daily-use documentation separated from rare recovery and migration protocol | AF-009 |
-| AF-012 | P2 | READY | Demonstrably redundant workflow concepts and vocabulary consolidated | AF-010, AF-011 |
+| AF-012 | P2 | COMPLETE | Demonstrably redundant workflow concepts and vocabulary consolidated | AF-010, AF-011 |
 | AF-013 | P1 | COMPLETE | Blocking checks separated from warnings and unranked notes by protected property | AF-005, AF-007 |
-| AF-014B | P1 | BLOCKED | Outcome-oriented behaviour scenarios cover the changed contract | AF-002..AF-013 |
+| AF-014B | P1 | READY | Outcome-oriented behaviour scenarios cover the changed contract | AF-002..AF-013 |
 
 ### Protected contract
 
@@ -632,6 +632,34 @@ abstraction; oracle strength.
   neither entered this issue.
 - **Unblocked:** AF-012 now has both dependencies complete and is `READY`. AF-014B still waits on
   AF-012.
+
+### AF-012
+
+- **Range:** Prior program state `09b63a237`; implementation range `09b63a237..94e351201`.
+- **Protected contract:** Maintainable-code-design authority now requires a proposed workflow concept,
+  artifact field, lifecycle state, hard check, or glossary term to remove or subsume existing meaning
+  unless a demonstrated correctness or safety invariant cannot fit the existing model. The posture is
+  a proportional design and review judgment, not a count or automated concept-budget check.
+- **Clean integration:** The existing maintainable-code-design guide owns semantic consolidation.
+  Glossary, exposed-skill, and plan-field inventories removed only an actively redundant term and
+  retained every item with distinct routing, lifecycle, ownership, parser, compatibility, or agent
+  value. No new doctrine owner, skill, field, lifecycle state, profile, router, format, layer, count,
+  or checker was introduced.
+- **Files changed:** The canonical design template and rendered guide state the bias; glossary source
+  and output remove `memory-backed effort`; the changelog records adopter impact; and the existing
+  documentation regression test pins the full consolidation boundary.
+- **Verification:** Inventory searches proved the removed term had no production, parser, skill,
+  plan-schema, current-state, or active-document consumer. Focused project tests, render and drift
+  checks, staged checks, repeated full gates with 100 percent statement coverage, workflow audit,
+  local audit, and corrected independent review passed. A temporary weakening produced the expected
+  red regression before restoration.
+- **Deviations:** None. Frozen ADR, implemented-plan, and historical changelog references remain
+  append-only history rather than active vocabulary. No ADR or plan was added because the issue
+  directly projected existing simplicity authority and the approved boundary.
+- **Residual debt:** None. Retained skills and plan fields each have a demonstrated distinct consumer
+  or accepted compatibility role.
+- **Unblocked:** AF-014B now has every dependency complete and is `READY` for the final Program A
+  implementation issue.
 
 Close each later issue with the same evidence: identity; baseline and final range; protected contract;
 clean integration; files changed with reason; verification commands and results; material deviations;
