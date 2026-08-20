@@ -45,7 +45,6 @@
 | git seam | The `internal/git` package is the single home of Git access, exposing one semantic entrypoint per capability independent of its backend. |
 | global test seam | A package-level variable reassigned by tests. New seams of this form are banned; existing ones are conversion candidates. |
 | grab-bag home | A production package or file named for a topical pile, such as util, common, helpers, or misc; new production code and deliberate conversions may not create one. |
-| handoff kickoff | The bounded `{kickoff}` prose passed unchanged to Pi session replacement; workflow guidance supplies checkpoint reorientation. |
 | integration branch | The configured branch for finished-work integration, where ADR authoring allocates numbers; elsewhere authoring produces pending records numbered during integration. |
 | invariant backing | The ledger-not-proof model: `Backing: test` requires a text-matched proof marker but does not prove the test asserts the claim; `Backing: unbacked` forbids a marker and requires `Verify:`. |
 | linked-plan review freshness | The rule that ordinary full plan review verifies every parsed plan-level `adrs:` link, and substantive ADR corrections settle through ADR review before linked Proposed plans and landed-phase assurance renew. |
@@ -70,7 +69,6 @@
 | safe resumable point | A durable checkpoint whose immediate successor can start independently. |
 | seam entrypoint | One exported git-seam operation: a repository-handle method or a free function before or without an opened repository. |
 | seed-on-introduction | The convention that a release adding a catalog var descriptor ships a one-time migration seed, keeping later absence a reliable deletion signal. |
-| session context facts | The transient model-facing line reporting active-model token use and active-branch compaction count. |
 | sidecar-derived doc | The computed-document model where a render transform derives content from an artifact's sidecar before rendering and config hashing. Unlike regeneration, it does not derive from repository state outside the sidecar. |
 | single home | A policy or mechanism consumed by multiple packages has exactly one implementation in its owning package. |
 | source marker | An informational `awf:source` comment on generated documentation that points to reader-facing authorities without defining an edit boundary or dependency list. |

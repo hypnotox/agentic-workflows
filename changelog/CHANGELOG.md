@@ -14,6 +14,8 @@ query a single version or a range.
 
 ### Features
 
+- Pi session-replacement protocol now has one Pi-runtime-owned executable projection, while shared continuity guidance remains capability-neutral and pi-tools remains independently installed.
+
 - Core and Full are documented as governance footprints with one shared correctness, autonomy, maintainability, and review-quality bar. Core includes the operational workflow; Full adds ADR, plan, current-state, context, and audit capabilities. The `profile` config key and existing migration behavior are unchanged.
 
 - Bug fixes now require the strongest practical durable oracle. Automated red-then-green regression evidence remains the default; when it is impractical, a concrete reason and the strongest safely reproducible alternative are accepted without weakening expected behaviour or verification strength.

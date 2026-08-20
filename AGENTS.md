@@ -102,4 +102,3 @@ Use `./awf read plan <plan> <P[.T]>` for executable plan scope. For command flag
 - **Testing:** [docs/testing.md](docs/testing.md), gate tiers, test layout, what each tier covers
 
 - **Audit Remediation Program:** [docs/audit-remediation-program.md](docs/audit-remediation-program.md), External audit remediation backlog and wave sequencing, transient until every issue is closed
-Pi provides transient `[session context]` facts before each model call; a discretionary eligible session-replacement choice informs continuation judgment only.

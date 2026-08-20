@@ -97,9 +97,9 @@ Backing: test
 
 ### `invariant: working-memory-single-home`
 
-Working-memory protocol has one canonical workflow-document home in both governance footprints. The root guide carries only slim native-skill routing, while `effort-workflow` alone owns creation through finish and preserves the one-user-managed-writer boundary.
+Working-memory protocol has one canonical capability-neutral workflow-document home in both governance footprints. The root guide carries only slim native-skill routing, while `effort-workflow` alone owns creation through finish and preserves the one-user-managed-writer boundary.
 Origin: ADR-0157
-Revised-by: ADR-0160, ADR-0161, ADR-0164, ADR-0167, ADR-0175, ADR-0187, ADR-0189, ADR-0222, ADR-0226, ADR-0241, ADR-0243, ADR-0278, ADR-0292
+Revised-by: ADR-0160, ADR-0161, ADR-0164, ADR-0167, ADR-0175, ADR-0187, ADR-0189, ADR-0222, ADR-0226, ADR-0241, ADR-0243, ADR-0278, ADR-0292, ADR-move-pi-session-handoff-authority-to-pi-runtime
 Backing: test
 
 ### `invariant: agent-guide-size-budgets`

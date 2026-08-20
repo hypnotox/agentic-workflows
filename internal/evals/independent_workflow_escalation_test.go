@@ -13,7 +13,7 @@ import (
 // invariant: rendering/workflow-skill-templates:effort-workflow (TestIndependentWorkflowEscalation)
 // invariant: rendering/workflow-skill-templates:workflow-transitions-advisory (TestIndependentWorkflowEscalation)
 // invariant: rendering/workflow-skill-templates:phase-transaction-ownership (TestIndependentWorkflowEscalation)
-// invariant: rendering/pi-workflows:pi-session-handoff-workflow (TestIndependentWorkflowEscalation)
+// invariant: rendering/pi-runtime:pi-session-handoff-workflow (TestIndependentWorkflowEscalation)
 func TestIndependentWorkflowEscalation(t *testing.T) {
 	cat := loadCatalog(t)
 	allNames := make([]string, 0, len(cat.Skills))
@@ -150,14 +150,12 @@ func TestIndependentWorkflowEscalation(t *testing.T) {
 				"evaluate brainstorming, continuity/effort, grounding, ADR, plan, and implementation-review need independently", "load-bearing", "sequencing, coordination, or resumability", "Each written artifact gets a fresh-context review", "line count", "artifact type")
 			assertContainsAll(t, target+" workflow ownership", workflow,
 				"No line count, artifact type, or another mechanism firing selects a trigger", "parent owns inline integration", "one independently green coherent implementation transaction", "A checkpoint never creates an effort", "routine implementation checkpoint occurs only after a phase's closing commit has received report-only review")
-			if target == "pi" {
-				for _, name := range []string{
-					"bugfix", "debugging", "effort-workflow", "executing-direct", "executing-plans",
-					"proposing-adr", "reviewing-plan", "subagent-driven-development", "writing-plans",
-				} {
-					assertEffortOnlyPiHandoff(t, name, bodies[name])
+			for name, body := range bodies {
+				for _, piOnly := range []string{"handoff_session", "[session context]", "Continue with effort <slug>."} {
+					if strings.Contains(body, piOnly) {
+						t.Errorf("%s %s leaks Pi-only session protocol %q", target, name, piOnly)
+					}
 				}
-				assertEffortOnlyPiHandoff(t, "brainstorming approval", bodies["brainstorming"])
 			}
 			// docs/workflow.md is a shared fixed-docs artifact, not a target output.
 			// Target-specific workflow assertions above inspect only the requested
@@ -349,29 +347,6 @@ func TestProductionCodeOutlineApproval(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func assertEffortOnlyPiHandoff(t *testing.T, label, body string) {
-	t.Helper()
-	assertContainsAll(t, "Pi effort-only handoff "+label, body,
-		"invoke `handoff_session` alone with kickoff exactly `Continue with effort <slug>.`",
-		"The kickoff identifies only the effort: it carries no phase or task limit, association mechanic, resume procedure, or handoff-log instruction.",
-		"Skill and effort authority own attachment, reorientation, boundary logging, and autonomous continuation.")
-	if got := strings.Count(body, "`Continue with effort <slug>.`"); got != 1 {
-		t.Errorf("Pi effort-only handoff %s has %d kickoff values, want exactly one", label, got)
-	}
-	for _, forbidden := range []string{
-		"directing the replacement to read the effort checkpoint",
-		"append the actual boundary to `## Handoff log`",
-		"attach to it",
-		"read its memory",
-		"continue with phase",
-		"do not start",
-	} {
-		if strings.Contains(strings.ToLower(body), strings.ToLower(forbidden)) {
-			t.Errorf("Pi effort-only handoff %s carries procedure or scope %q", label, forbidden)
-		}
 	}
 }
 

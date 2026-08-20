@@ -32,13 +32,6 @@ Origin: ADR-0148
 Revised-by: ADR-0279
 Backing: test
 
-### `invariant: pi-session-handoff-workflow`
-
-Pi workflow guidance keeps checkpoint persistence mandatory and permits session replacement only after a completed formal phase checkpoint, after explicit approval and its next action are persisted, or after an additional safe resumable checkpoint. At each eligible point the agent chooses continuation or handoff from currently available context and compaction evidence, retained-context relevance, and upcoming work, with no fixed threshold; declining handoff is autonomous continuation, not a check-in. An effort-backed kickoff is exactly `Continue with effort <slug>.`: it identifies only the effort and carries no phase or task limit, association mechanic, resume procedure, or handoff-log instruction. Skill and effort authority own attachment, reorientation, boundary logging, and autonomous continuation; a replacement session appends the actual handoff boundary before substantive work, while cancellation or failure that leaves the old session active appends none. A fresh phase or task owner may consume `awf read plan`'s executable closure, but projection never creates a handoff boundary. Pi never creates standalone memory, requires selection or telemetry lifecycle state, adopts a checkpoint, or treats heading-identified tasks and helper returns as routine handoff boundaries; repository authority remains primary and report-only children do not edit memory.
-Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0164, ADR-0166, ADR-0167, ADR-0175, ADR-0209, ADR-0213, ADR-0273
-Backing: test
-
 ### `invariant: pi-native-workflow-skills`
 
 Pi renders every catalog skill at `.pi/skills/<prefix>-<name>/SKILL.md`; no router or hidden workflow-body output remains. The catalog `effort-workflow` entry additionally derives the Pi-target-owned `using-effort` skill at the same native skill path without making it a second catalog entry.
@@ -55,9 +48,9 @@ Backing: test
 
 ### `invariant: using-effort-skill`
 
-The Pi target alone derives the target-owned `using-effort` skill and `awf-effort` extension from the catalog `effort-workflow` entry; neither artifact is independently selectable, and no non-Pi target renders or refers to either one. The skill documents exactly direct `{effort:"<canonical-slug>"}` attachment and `{detach:true}` detachment from the repository root, use of the supplied fixed relative memory and optional managed-worktree paths, explicit-only association, restart-detached state, and the display-only suffix that is never routing input; activity is neither authority nor a lock. While associated it directs agents to prefer pathless memory reads, separate exact body edits from `phase` or `next` metadata updates, and rely on automatic timestamps, without forbidding generic file tools or direct commands.
+The Pi target alone derives the target-owned `using-effort` skill and `awf-effort` extension from the catalog `effort-workflow` entry; neither artifact is independently selectable, and no non-Pi target renders or refers to either one. It projects the Pi-runtime-owned session-replacement protocol without becoming a second protocol authority. The skill documents exactly direct `{effort:"<canonical-slug>"}` attachment and `{detach:true}` detachment from the repository root, use of the supplied fixed relative memory and optional managed-worktree paths, explicit-only association, restart-detached state, and the display-only suffix that is never routing input; activity is neither authority nor a lock. While associated it directs agents to prefer pathless memory reads, separate exact body edits from `phase` or `next` metadata updates, and rely on automatic timestamps, without forbidding generic file tools or direct commands.
 Origin: ADR-0218
-Revised-by: ADR-0225, ADR-0231, ADR-0239, ADR-0251
+Revised-by: ADR-0225, ADR-0231, ADR-0239, ADR-0251, ADR-move-pi-session-handoff-authority-to-pi-runtime
 Backing: test
 
 ### `invariant: pi-effort-memory-tools`

@@ -16,6 +16,12 @@ Origin: ADR-0148
 Revised-by: ADR-0260, ADR-0279
 Backing: test
 
+### `invariant: pi-session-handoff-workflow`
+
+Pi runtime owns the single executable session-replacement protocol, projected only by the Pi `using-effort` skill. After a persisted formal phase or approval checkpoint, or another safe resumable effort point, it judges retained-context relevance and successor work using current `[session context]` model-window and active-branch-compaction evidence with no fixed threshold. It either continues autonomously or invokes `handoff_session` alone with exactly `Continue with effort <slug>.`; the kickoff identifies only the effort and carries no phase or task limit, association mechanic, resume procedure, or handoff-log instruction. The associated effort is reoriented from repository authority and owned memory before substantive work. Managed-worktree use is pre-integration only; integration, deferred lifecycle closure, worktree removal, and retrospective use the governed primary checkout. A replacement session logs its actual boundary before substantive work; continuation, cancellation, or failure that leaves the old session active logs none. Awf does not own the independently installed pi-tools handoff implementation.
+Origin: ADR-move-pi-session-handoff-authority-to-pi-runtime
+Backing: test
+
 ### `invariant: pi-minimum-runtime`
 
 The retained awf effort entrypoint requires the adopter-supplied compatible Pi runtime APIs it directly uses, including active-tool access and the package-exported real-path file-mutation queue; its actionable incompatibility guard and numeric 0.84.2 floor remain scoped to that output, with pi-ai and pi-tui 0.84.2 and the checksummed fork-v0.84.2.2 artifact as its proof graph. The direct `using_effort` companion needs no `changeCwd` capability and optional Remote Pi events remain advisory. The profile adapter has no package-version read or Pi minimum-runtime guard; it instead requires independently installed pi-tools protocol v2, treats final profile registration as compatibility, and reports one actionable no-fallback failure when capability is missing, incompatible, late, or rejected.

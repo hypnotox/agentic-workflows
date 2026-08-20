@@ -24,14 +24,8 @@ data:
     - term: trigger table
       meaning: "The catalog-derived guide row for each skill, pairing its prefixed name with its one-line trigger."
       domains: [rendering]
-    - term: handoff kickoff
-      meaning: "The bounded `{kickoff}` prose passed unchanged to Pi session replacement; workflow guidance supplies checkpoint reorientation."
-      domains: [rendering]
     - term: safe resumable point
       meaning: "A durable checkpoint whose immediate successor can start independently."
-      domains: [rendering]
-    - term: session context facts
-      meaning: "The transient model-facing line reporting active-model token use and active-branch compaction count."
       domains: [rendering]
     - term: mandatory approval check-in
       meaning: "The pre-artifact stop for explicit brainstorming outline approval. Effort creation is not an approval boundary."

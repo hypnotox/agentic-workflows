@@ -1661,6 +1661,7 @@ func TestConditionalVerifyPass(t *testing.T) {
 // still green.
 // invariant: rendering/workflow-skill-templates:memory-checkpoint-chain-coverage (TestCheckpointDigestShape)
 // invariant: rendering/workflow-skill-templates:authority-guided-implementation-autonomy (TestCheckpointDigestShape)
+// invariant: rendering/pi-runtime:pi-session-handoff-workflow (TestCheckpointDigestShape)
 func TestCheckpointDigestShape(t *testing.T) {
 	for _, partial := range []string{"partials/checkpoint-routine.md", "partials/checkpoint-approval.md"} {
 		raw, err := fs.ReadFile(templates.FS, partial)
@@ -1690,17 +1691,19 @@ func TestCheckpointDigestShape(t *testing.T) {
 			"legacy form is deprecated",
 			"until active efforts finish",
 			"sole writer of phase, next action, and time",
-			"executable `./awf read plan` projection never creates a checkpoint or handoff boundary",
-			"invoke `handoff_session` alone with kickoff exactly `Continue with effort <slug>.`",
-			"The kickoff identifies only the effort: it carries no phase or task limit, association mechanic, resume procedure, or handoff-log instruction.",
-			"Skill and effort authority own attachment, reorientation, boundary logging, and autonomous continuation.",
+			"executable `./awf read plan` projection never creates a checkpoint or fresh-boundary log",
+			"judge retained-context relevance and successor work",
+			"Continue autonomously or through a target-native successor",
+			"Append a log only for an actual fresh boundary",
 		} {
 			if !strings.Contains(body, phrase) {
 				t.Errorf("%s missing checkpoint contract %q", partial, phrase)
 			}
 		}
-		if got := strings.Count(body, "`Continue with effort <slug>.`"); got != 1 {
-			t.Errorf("%s has %d effort kickoff values, want exactly one", partial, got)
+		for _, piOnly := range []string{"handoff_session", "[session context]", "Continue with effort <slug>."} {
+			if strings.Contains(body, piOnly) {
+				t.Errorf("%s leaks Pi-only protocol %q", partial, piOnly)
+			}
 		}
 		for _, direct := range []string{
 			"set `Phase:`",
@@ -3070,7 +3073,7 @@ var unsetFallbackCases = []fallbackCase{
 	},
 	{
 		tmpl: "skills/effort-workflow/SKILL.md.tmpl",
-		want: []string{"sole owner of the effort lifecycle", "Continue through the target-native successor"},
+		want: []string{"sole owner of the effort lifecycle", "Continue autonomously or through a target-native successor"},
 	},
 	{
 		tmpl: "skills/executing-plans/SKILL.md.tmpl",

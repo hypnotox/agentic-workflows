@@ -127,7 +127,7 @@ Reconcile a Proposed plan only when another phase or reviewer could rely on stal
 
 - Standalone memory is forbidden.
 
-### Checkpoints and handoff
+### Checkpoints and continuation
 
 
 - Checkpoints are durable; check-ins are deliberate.
@@ -144,13 +144,11 @@ Reconcile a Proposed plan only when another phase or reviewer could rely on stal
 
 - Settled ADR review continues autonomously to linked-plan handling or the independently selected implementation path.
 
-- After a persisted formal phase or approval checkpoint, or another safe resumable point whose immediate successor can start independently, Pi judges retained-context relevance and successor work from currently available context and compaction evidence.
+- At a persisted formal phase or approval checkpoint, or another safe resumable point whose immediate successor can start independently, judge retained-context relevance and successor work. Continue autonomously or through a target-native successor when one is available.
 
-- No fixed threshold controls the choice: it either continues autonomously in-session or requests replacement.
+- Reorient from repository authority before substantive successor work. Append a log only for an actual fresh boundary; continuation, cancellation, or failure that leaves the current session active appends none. Target-specific skill guidance owns any executable replacement protocol.
 
-- For effort-backed work the bounded kickoff is exactly `Continue with effort <slug>.`; it identifies only the effort and leaves association, reorientation, boundary logging, and autonomous continuation to skill and effort authority.
-
-- The replacement session appends the actual boundary to `## Handoff log` before substantive work; continuation, cancellation, or failure that leaves the old session active appends none. A routine implementation checkpoint occurs only after a phase's closing commit has received report-only review and all findings are settled; heading-identified tasks, executable projections, and helper returns are not checkpoint boundaries.
+A routine implementation checkpoint occurs only after a phase's closing commit has received report-only review and all findings are settled; heading-identified tasks, executable projections, and helper returns are not checkpoint boundaries.
 
 ### Memory format and logs
 

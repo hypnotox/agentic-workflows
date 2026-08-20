@@ -35,6 +35,7 @@ func TestClaudeTargetPaths(t *testing.T) {
 // invariant: rendering/pi-workflows:pi-native-workflow-skills (TestPiRuntimeTargetRender)
 // invariant: rendering/pi-runtime:pi-extension-target-render (TestPiRuntimeTargetRender)
 // invariant: rendering/pi-workflows:using-effort-skill (TestPiRuntimeTargetRender)
+// invariant: rendering/pi-runtime:pi-session-handoff-workflow (TestPiRuntimeTargetRender)
 func TestPiRuntimeTargetRender(t *testing.T) {
 	if _, independentlySelectable := catalog.Standard.Skills["using-effort"]; independentlySelectable {
 		t.Fatal("using-effort companion became independently selectable")
@@ -133,7 +134,7 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 			usingEffort = file.Content
 		}
 	}
-	for _, want := range []string{"Use `using_effort` explicitly", "{ effort: \"<canonical-slug>\" }", "{ detach: true }", "Pi remains at repository root", "use the supplied relative memory path `.awf/efforts/<slug>/memory.md`", "when present, managed-worktree path `.awf/worktrees/<slug>`", "Restart begins detached", "display-only suffix", "suffix is never routing input", "Activity is neither authority nor a lock", "When attached, prefer `effort_memory_read` for pathless reads", "`effort_memory_edit` only for Markdown body changes", "`effort_memory_update` for `phase` or `next`", "timestamps are automatic", "Generic file tools and direct awf commands remain available"} {
+	for _, want := range []string{"Use `using_effort` explicitly", "{ effort: \"<canonical-slug>\" }", "{ detach: true }", "Pi remains at repository root", "use the supplied relative memory path `.awf/efforts/<slug>/memory.md`", "when present, managed-worktree path `.awf/worktrees/<slug>`", "Restart begins detached", "display-only suffix", "suffix is never routing input", "Activity is neither authority nor a lock", "When attached, prefer `effort_memory_read` for pathless reads", "`effort_memory_edit` only for Markdown body changes", "`effort_memory_update` for `phase` or `next`", "timestamps are automatic", "Generic file tools and direct awf commands remain available", "current `[session context]` model-window and active-branch-compaction evidence", "No fixed threshold controls this choice", "invoke `handoff_session` alone with kickoff exactly `Continue with effort <slug>.`", "The kickoff identifies only the effort: it carries no phase or task limit, association mechanic, resume procedure, or handoff-log instruction.", "reorient from repository authority and the owned memory", "governed primary checkout for integration, deferred lifecycle closure, worktree removal, and retrospective", "actual boundary to `## Handoff log` before substantive work", "Continuation, cancellation, or failure that leaves the old session active appends none"} {
 		if !strings.Contains(usingEffort, want) {
 			t.Errorf("using-effort companion missing %q:\n%s", want, usingEffort)
 		}

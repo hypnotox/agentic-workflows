@@ -62,12 +62,11 @@ review, checkpoint, handoff, helper, or outcome authority.
 
 - Independent fresh-context children may run concurrently where supported, but they are report-only with respect to that shared memory; refinement stays sequential, a lower-cost child model is selected deliberately when supported, and shared-checkout implementation stays alone. Governance footprints add no depth controls, rigor modes, routers, classifiers, or runtime policy knobs.
 
-{{if .targetSessionHandoff}}On Pi, direct `awf effort` commands create and manage the slugged resident. Native skill discovery loads fixed workflow guidance without lifecycle mutation.{{end}}
 
 For the detailed criteria of when a decision is load-bearing enough to warrant an ADR (and the ADR format itself), see [`{{ .layout.adrReadme }}`](decisions/README.md).
 {{else}}Core uses independent judgment-based triggers for brainstorming, continuity, grounding, and implementation review. Brainstorming presents a proportionate outline and obtains explicit approval when a material decision is unresolved, not because a change touches production code. After approval, implement directly or through a scoped delegate, test the result, and request independent implementation review whenever assurance has value. Re-evaluate affected triggers when material facts change; route a changed boundary back through brainstorming and diagnose blockers before reporting them.
 
-`effort-workflow` owns continuity from creation through integration, cleanup, retrospective, and finish. Repository authority comes from the agent guide, project documentation, source, tests, and history. Conventional Commits, documentation currency, verification, and one coherent commit apply to every change.{{if .targetSessionHandoff}} On Pi, direct `awf effort` commands manage the slugged resident and native skill discovery loads fixed workflow guidance.{{end}}
+`effort-workflow` owns continuity from creation through integration, cleanup, retrospective, and finish. Repository authority comes from the agent guide, project documentation, source, tests, and history. Conventional Commits, documentation currency, verification, and one coherent commit apply to every change.
 {{end}}<!-- awf:end -->
 
 <!-- awf:section working-memory -->
@@ -106,7 +105,7 @@ For the detailed criteria of when a decision is load-bearing enough to warrant a
 
 - Standalone memory is forbidden.
 
-### Checkpoints and handoff
+### Checkpoints and continuation
 
 
 - Checkpoints are durable; check-ins are deliberate.
@@ -123,13 +122,11 @@ For the detailed criteria of when a decision is load-bearing enough to warrant a
 
 {{if ne .profile "core"}}- Settled ADR review continues autonomously to linked-plan handling or the independently selected implementation path.
 
-{{end}}{{if .targetSessionHandoff}}- After a persisted formal phase or approval checkpoint, or another safe resumable point whose immediate successor can start independently, Pi judges retained-context relevance and successor work from currently available context and compaction evidence.
+{{end}}- At a persisted formal phase or approval checkpoint, or another safe resumable point whose immediate successor can start independently, judge retained-context relevance and successor work. Continue autonomously or through a target-native successor when one is available.
 
-- No fixed threshold controls the choice: it either continues autonomously in-session or requests replacement.
+- Reorient from repository authority before substantive successor work. Append a log only for an actual fresh boundary; continuation, cancellation, or failure that leaves the current session active appends none. Target-specific skill guidance owns any executable replacement protocol.
 
-- For effort-backed work the bounded kickoff is exactly `Continue with effort <slug>.`; it identifies only the effort and leaves association, reorientation, boundary logging, and autonomous continuation to skill and effort authority.
-
-- The replacement session appends the actual boundary to `## Handoff log` before substantive work; continuation, cancellation, or failure that leaves the old session active appends none.{{else}} Target-native continuation follows without an unsupported session-replacement claim.{{end}} A routine implementation checkpoint occurs only after a phase's closing commit has received report-only review and all findings are settled; heading-identified tasks, executable projections, and helper returns are not checkpoint boundaries.
+A routine implementation checkpoint occurs only after a phase's closing commit has received report-only review and all findings are settled; heading-identified tasks, executable projections, and helper returns are not checkpoint boundaries.
 
 ### Memory format and logs
 

@@ -5,7 +5,7 @@
 
 The Pi runtime floor and its boundaries.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/pitfall/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `.pi/extensions/**`, `internal/catalog/**`. Both domain and topic selectors must match. Run `awf topic rendering/pi-runtime --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/pitfall/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `.pi/extensions/**`, `internal/catalog/**`, `templates/skills/using-effort/SKILL.md.tmpl`. Both domain and topic selectors must match. Run `awf topic rendering/pi-runtime --coverage` for current applicable and owned paths and marker sites.
 
 The Pi runtime floor and the awf/pi-tools ownership boundary.
 
@@ -23,6 +23,12 @@ Backing: test
 The implementation profile serializes against itself and enforces caller-selected commit permission against an optional invocation-owned verification checkout, defaulting to the project root. An explicit identity resolves relative to the project root after one leading `@` is removed, canonicalizes filesystem aliases, and must be an exact live checkout root whose Git common directory matches the project root. For a linked checkout, the absolute Git directory's `gitdir` backlink must canonically identify the selected checkout's non-symlink regular `.git` file; copied pointers, selected-entry symlinks, and other invalid identities refuse before dispatch without worktree enumeration or `git worktree list` parsing. `beforeRun` and `afterRun` snapshot the resolved checkout and expose both snapshots in structured profile data while parent and child CWD and rendered role loading remain rooted. A changed selected HEAD under no-commit permission and an unchanged selected HEAD under commit permission are terminal policy failures with accurate checkout repair; unverifiable snapshots report commit verification unavailable.
 Origin: ADR-0148
 Revised-by: ADR-0260, ADR-0279
+Backing: test
+
+### `invariant: pi-session-handoff-workflow`
+
+Pi runtime owns the single executable session-replacement protocol, projected only by the Pi `using-effort` skill. After a persisted formal phase or approval checkpoint, or another safe resumable effort point, it judges retained-context relevance and successor work using current `[session context]` model-window and active-branch-compaction evidence with no fixed threshold. It either continues autonomously or invokes `handoff_session` alone with exactly `Continue with effort <slug>.`; the kickoff identifies only the effort and carries no phase or task limit, association mechanic, resume procedure, or handoff-log instruction. The associated effort is reoriented from repository authority and owned memory before substantive work. Managed-worktree use is pre-integration only; integration, deferred lifecycle closure, worktree removal, and retrospective use the governed primary checkout. A replacement session logs its actual boundary before substantive work; continuation, cancellation, or failure that leaves the old session active logs none. Awf does not own the independently installed pi-tools handoff implementation.
+Origin: ADR-move-pi-session-handoff-authority-to-pi-runtime
 Backing: test
 
 ### `invariant: pi-minimum-runtime`
