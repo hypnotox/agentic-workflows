@@ -198,8 +198,8 @@ correction is allowed without unrelated cleanup riding along.
 | RF-014A | P2 | READY | Obsolete Program A machinery deleted | Program A milestone |
 | RF-014B | P2 | CONDITIONAL | Obsolete compatibility residue deleted | RF-008B, compatibility removals applicable |
 | RF-010 | P2 | BLOCKED | Current code comments explain invariants, not historical plans and tranches | RF-002..RF-007, compatibility lane closed |
-| RF-011 | P2 | READY | Roadmap, known issues, and research separated by owner | Program A milestone |
-| RF-012 | P2 | BLOCKED | Tag vocabulary culled to terms with a real consumer | RF-011 |
+| RF-011 | P2 | COMPLETE | Roadmap, known issues, and research separated by owner | Program A milestone |
+| RF-012 | P2 | READY | Tag vocabulary culled to terms with a real consumer | RF-011 |
 | RF-013 | P2 | READY | Documented remote enforcement matches configured GitHub policy | Program A milestone, live policy verification |
 
 ### Pre-approved Program B boundaries
@@ -697,6 +697,33 @@ abstraction; oracle strength.
   Program A milestone conditions are satisfied.
 - **Unblocked:** Program A is complete. The Program B start gate is open for B-F1; RF-001, RF-008A,
   RF-011, and RF-013 are ready, while RF-014A is dependency-ready but scheduled in B-F2 after B-F1.
+
+### RF-011
+
+- **Range:** Prior program state `4c75c46c2`; implementation range `4c75c46c2..4d89a8790`.
+- **Protected contract:** The roadmap owns ordered strategy, known issues own reproducible failures
+  with solution-neutral completion criteria, research owns unresolved choices with decision triggers,
+  and deferred entries remain explicitly postponed. Every original roadmap fact has one owner and
+  all active owners are one hop from the document map.
+- **Clean integration:** Managed local documents `known-issues` and `research/index` own the two new
+  portable surfaces. Roadmap convention parts retain strategy and deferred material. Mixed
+  defect/remedy entries split observable failure from unresolved choice and link without restating.
+  No incident was converted automatically into a checker or committed remedy.
+- **Files changed:** Local-document configuration, roadmap authored parts, generated roadmap, known
+  issues and research documents, agent-guide navigation, config reference, and lock carry the
+  classification and generated ownership.
+- **Verification:** The exhaustive 36-fact map accounts for five strategic outcomes, eight known
+  issues, six research questions, sixteen deferred items, and one already-resolved historical
+  residue. Render and drift checks, staged checks, repeated gates with 100 percent statement
+  coverage, workflow audit, local audit, independent review, and the single verify pass passed.
+- **Deviations:** Repository authority proved the config-editor enumeration residue was already
+  resolved by commit `046f89751`, ADR-0251, and current-state authority, so it has no new live or
+  deferred duplicate. Tag coverage is recorded as stale claim prose because implementation already
+  excludes governed ADRs. Both corrections were owner-approved within RF-011.
+- **Residual debt:** None. The primary-checkout scaffold near-miss was fully restored before
+  authoring; no primary residue or production behavior change remains.
+- **Unblocked:** RF-012 is `READY` after RF-011 integration. Other B-F1 issues retain their current
+  ownership and integration blockers.
 
 Close each later issue with the same evidence: identity; baseline and final range; protected contract;
 clean integration; files changed with reason; verification commands and results; material deviations;
