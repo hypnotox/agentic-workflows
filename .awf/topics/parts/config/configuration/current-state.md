@@ -100,20 +100,21 @@ Backing: test
 
 ### `invariant: tag-coverage-note`
 
-Under a non-empty tag vocabulary, awf check emits a Warning for each ADR and each pitfall that carries zero tags and for no tagged artifact, never changing the exit code; an empty or absent vocabulary is inert.
+Under a non-empty tag vocabulary, awf check emits a Warning for each authored pitfall that carries zero tags and for no tagged pitfall, never changing the exit code; legacy ADR tags are excluded, and an empty or absent vocabulary is inert.
 Origin: ADR-0109
-Revised-by: ADR-0295
+Revised-by: ADR-0295, ADR-0298
 Backing: test
 
 ### `invariant: tag-frequency-note`
 
-Under a non-empty tag vocabulary, awf check emits a Warning for each vocabulary tag carried by strictly more than 25 percent of the artifacts that carry at least one vocabulary tag, and for no tag at or below that share, without changing the exit code.
+Under a non-empty tag vocabulary, awf check emits a Warning for each vocabulary tag carried by strictly more than 25 percent of the pitfalls that carry at least one vocabulary tag, and for no tag at or below that share, without changing the exit code; legacy ADR tags are excluded.
 Origin: ADR-0109
-Revised-by: ADR-0295
+Revised-by: ADR-0295, ADR-0298
 Backing: test
 
 ### `invariant: tag-vocabulary-governed`
 
-With a non-empty tag vocabulary, awf check fails on any tag used by an ADR or a pitfall that is not a declared vocabulary member and on any vocabulary entry whose meaning is empty; with an empty or absent vocabulary the membership rule is inert.
+With a non-empty tag vocabulary, awf check fails on any tag used by an authored pitfall that is not a declared vocabulary member and on any vocabulary entry whose meaning is empty; parsed legacy ADR tags are historical metadata outside current membership validation, and with an empty or absent vocabulary the rule is inert.
 Origin: ADR-0103
+Revised-by: ADR-0298
 Backing: test

@@ -40,6 +40,8 @@ query a single version or a range.
 
 ### Bug fixes
 
+- Current tag vocabulary validation and health advisories now evaluate authored pitfalls only, while parsed legacy ADR tags remain accepted append-only history.
+
 - Shipped glossary fallback now reflects that effort finish archives the complete resident and that brainstorming outline approval occurs only when a material decision is unresolved.
 
 ## [0.39.2] - 2026-08-18

@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
@@ -47,11 +46,7 @@ func TestAdvisoryNotesRejectMalformedRetainedData(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		corpus, err := adr.NewCorpus(nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := advisoryNotesWithState(p, corpus, pitfall.Corpus{}, nil, &OutputPlan{}); err == nil || !strings.Contains(err.Error(), "must be a list") {
+		if _, err := advisoryNotesWithState(p, pitfall.Corpus{}, nil, &OutputPlan{}); err == nil || !strings.Contains(err.Error(), "must be a list") {
 			t.Fatalf("advisory glossary error = %v", err)
 		}
 	})

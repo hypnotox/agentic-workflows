@@ -303,3 +303,4 @@ _No decisions are in flight._
 - [ADR-0295: Separate blocking checks from advisories](0295-separate-blocking-checks-from-advisories.md) (Implemented)
 - [ADR-0296: Define Repository Dependency and Ownership Target](0296-define-repository-dependency-and-ownership-target.md) (Implemented)
 - [ADR-0297: Bound Compatibility Support to Managed Reality](0297-bound-compatibility-support-to-managed-reality.md) (Implemented)
+- [ADR-0298: Pitfalls as the Current Tag Vocabulary Carrier](0298-pitfalls-as-the-current-tag-vocabulary-carrier.md) (Implemented)

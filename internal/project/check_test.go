@@ -203,8 +203,9 @@ func TestDeriveOperationStateSurfacesMalformedADR(t *testing.T) {
 	}
 }
 
-// A non-member tag on an ADR or a pitfall yields tag drift; an empty-meaning
-// member yields tag-vocabulary drift; a fully-conforming corpus yields none.
+// A non-member tag on a pitfall yields tag drift and an empty-meaning member
+// yields tag-vocabulary drift. Legacy ADR tags remain parsed history and do not
+// participate in current vocabulary membership.
 // invariant: config/configuration:tag-vocabulary-governed (TestCheckTagVocabulary)
 func TestCheckTagVocabulary(t *testing.T) {
 	cfg := "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\ndomains: [rendering]\n" +
@@ -214,13 +215,13 @@ func TestCheckTagVocabulary(t *testing.T) {
 	})
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
 		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
-			testsupport.WithTags("render-engine", "bogus"), testsupport.WithTitle("0001: A"),
+			testsupport.WithTags("render-engine", "legacy-only"), testsupport.WithTitle("0001: A"),
 			testsupport.WithBody("## Context\nx\n")))
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := checkTagVocabulary(p, mustDeriveCorpus(t, p))
+	drift, err := checkTagVocabulary(p)
 	if err != nil {
 		t.Fatalf("checkTagVocabulary: %v", err)
 	}
@@ -228,9 +229,12 @@ func TestCheckTagVocabulary(t *testing.T) {
 	for _, d := range drift {
 		got[d.Kind] = d.Detail
 	}
-	if len(drift) != 3 || !strings.Contains(got["adr-tag"], "bogus") ||
-		!strings.Contains(got["pitfall-tag"], "ghost") || !strings.Contains(got["tag-vocabulary"], "empty") {
-		t.Fatalf("want adr-tag(bogus)+pitfall-tag(ghost)+tag-vocabulary(empty), got %#v", drift)
+	if len(drift) != 2 || !strings.Contains(got["pitfall-tag"], "ghost") ||
+		!strings.Contains(got["tag-vocabulary"], "empty") {
+		t.Fatalf("want pitfall-tag(ghost)+tag-vocabulary(empty) and no legacy ADR drift, got %#v", drift)
+	}
+	if _, ok := got["adr-tag"]; ok {
+		t.Fatalf("legacy ADR tags must not produce current vocabulary drift: %#v", drift)
 	}
 }
 
@@ -245,15 +249,14 @@ func TestCheckTagVocabularyInert(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := checkTagVocabulary(p, mustDeriveCorpus(t, p))
+	drift, err := checkTagVocabulary(p)
 	if err != nil || drift != nil {
 		t.Fatalf("empty vocabulary must be inert, got %#v / %v", drift, err)
 	}
 }
 
 // With a non-empty vocabulary but the pitfalls doc disabled, checkTagVocabulary
-// proceeds past the ADR loop and pitfallTagEntries short-circuits to no entries;
-// a conforming ADR yields no drift.
+// has no current carriers to validate; legacy ADR tags remain historical.
 func TestCheckTagVocabularyPitfallsDisabled(t *testing.T) {
 	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\ndomains: []\ntags:\n  rendering: the render engine\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
@@ -264,9 +267,9 @@ func TestCheckTagVocabularyPitfallsDisabled(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := checkTagVocabulary(p, mustDeriveCorpus(t, p))
+	drift, err := checkTagVocabulary(p)
 	if err != nil || drift != nil {
-		t.Fatalf("conforming ADR with pitfalls disabled must yield no drift, got %#v / %v", drift, err)
+		t.Fatalf("legacy ADR with pitfalls disabled must yield no drift, got %#v / %v", drift, err)
 	}
 }
 
@@ -372,11 +375,7 @@ func TestCheckTagVocabularyPitfallStructuralError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	corpus, err := adr.NewCorpus(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := checkTagVocabulary(p, corpus); err == nil || !strings.Contains(err.Error(), "unknown") {
+	if _, err := checkTagVocabulary(p); err == nil || !strings.Contains(err.Error(), "unknown") {
 		t.Fatalf("expected pitfalls structural error, got %v", err)
 	}
 }
@@ -1214,7 +1213,7 @@ func TestCheckTagVocabularyDomainCollision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := checkTagVocabulary(p, mustDeriveCorpus(t, p))
+	drift, err := checkTagVocabulary(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1234,7 +1233,7 @@ func TestCheckTagVocabularyDomainCollision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift2, err := checkTagVocabulary(p2, mustDeriveCorpus(t, p2))
+	drift2, err := checkTagVocabulary(p2)
 	if err != nil {
 		t.Fatal(err)
 	}

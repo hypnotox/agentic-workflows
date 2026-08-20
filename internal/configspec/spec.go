@@ -152,7 +152,7 @@ var keys = []Entry{
 	},
 	{
 		Path: "tags", Type: "key → value map", Default: "none",
-		Description:  "A governed vocabulary of cross-cutting keyword tags, each mapping a tag name to a one-line meaning. ADR `tags:` and pitfall `tags:` are validated against it: with a non-empty vocabulary, a used tag that is not a declared member is failing drift, as is a member with an empty meaning. An empty or absent vocabulary disables the check (tags are then free-form). Declaring a member no artifact uses is allowed.",
+		Description:  "A governed vocabulary of cross-cutting keyword tags, each mapping a tag name to a one-line meaning. Authored pitfall `tags:` are validated against it: with a non-empty vocabulary, a used tag that is not a declared member is failing drift, as is a member with an empty meaning. Parsed legacy ADR tags remain historical metadata outside current membership validation. An empty or absent vocabulary disables the check (pitfall tags are then free-form). Declaring a member no pitfall uses is allowed.",
 		Availability: "Always; the membership check is inert until the vocabulary is non-empty.",
 	},
 	{
