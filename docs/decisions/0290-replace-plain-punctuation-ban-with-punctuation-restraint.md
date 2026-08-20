@@ -4,7 +4,7 @@ slug: replace-plain-punctuation-ban-with-punctuation-restraint
 status: Implementing
 date: 2026-08-20
 ---
-# ADR-replace-plain-punctuation-ban-with-punctuation-restraint: Replace plain punctuation ban with punctuation restraint
+# ADR-0290: Replace plain punctuation ban with punctuation restraint
 
 ## Context
 

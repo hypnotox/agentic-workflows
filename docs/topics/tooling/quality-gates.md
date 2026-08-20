@@ -81,7 +81,7 @@ Backing: test
 
 The prose scanner examines every tracked text file without language-specific comment detection, rejects every en dash, and rejects each blank-line-delimited paragraph containing three or more em dashes. It permits ellipses and curly quotes, silently skips files that are not valid UTF-8, and orders findings by path, codepoint, and paragraph. A configured path-and-codepoint exemption, with an optional exact whole-file count, suppresses its guarded character before paragraph evaluation; exemptions for formerly guarded ellipses and curly quotes remain accepted as inert compatibility input.
 Origin: ADR-0119
-Revised-by: ADR-0285, ADR-replace-plain-punctuation-ban-with-punctuation-restraint
+Revised-by: ADR-0285, ADR-0290
 Backing: test
 
 ### `invariant: testsupport-zero-internal-deps`

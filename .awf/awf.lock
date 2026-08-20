@@ -470,7 +470,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:b26743c5146be8cde9ae99f289959af644778654e5065ac7bb73930730d42ae2",
+      "outputHash": "sha256:e358a38a652818fb7e8595b9f555fb6c9a00c3c7682d6a6702607e183f37b7b1",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -1040,8 +1040,8 @@
     "docs/topics/tooling/audit-and-snapshots.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:f7edec035b2d229dd4804cdcf3955a53a9a49824286f33adf879e0602411db16",
-      "outputHash": "sha256:807cf72d0f24572b34f231fa7d376b49454a44c0aeac014eeb35cecc868ff70d"
+      "configHash": "sha256:11b57b29a431ad7ac002b8def8b601b91c48157ea384942511762c84db7f739c",
+      "outputHash": "sha256:95e1bceed8bdc7ff9a0671a99a4ae603b2e4489412d311af8c8d26a77e9c1bf8"
     },
     "docs/topics/tooling/audit-commands.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -1124,8 +1124,8 @@
     "docs/topics/tooling/quality-gates.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:79386c703b75e65f05e5b06c3dbf30224cc27e1d03ca46aad79c9eb2880489c3",
-      "outputHash": "sha256:871c78aff2c2de96101501563d4b1b15181ab536769271708f85e60f3aef839f"
+      "configHash": "sha256:39625009b82e86365b75813cef1354a144344d3bc470e55f1d27ba112ff1c8b7",
+      "outputHash": "sha256:9f03a6dd8cdc14953c0a009d3a542ceb1ce7eaf23c96ba22ac010dafd90d2c11"
     },
     "docs/topics/tooling/test-infrastructure.md": {
       "templateId": "topics/topic.md.tmpl",

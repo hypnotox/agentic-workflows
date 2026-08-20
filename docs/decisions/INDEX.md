@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-replace-plain-punctuation-ban-with-punctuation-restraint: Replace plain punctuation ban with punctuation restraint](replace-plain-punctuation-ban-with-punctuation-restraint.md) (Implementing)
+- [ADR-0290: Replace plain punctuation ban with punctuation restraint](0290-replace-plain-punctuation-ban-with-punctuation-restraint.md) (Implementing)
 
 ## History
 

@@ -15,7 +15,7 @@ These packages read git history, build immutable tree snapshots, and audit workf
 
 The plain-punctuation and uncommitted-changes rules always evaluate; plain-punctuation emits Warning findings only for rising punctuation-restraint violations, and uncommitted-changes emits an Error.
 Origin: ADR-0253
-Revised-by: ADR-0256, ADR-replace-plain-punctuation-ban-with-punctuation-restraint
+Revised-by: ADR-0256, ADR-0290
 Backing: test
 
 ### `invariant: audit-thresholds-fixed`
@@ -79,7 +79,7 @@ Backing: test
 
 awf audit compares old and new text for each non-generated Markdown file under the documentation root and emits a Warning when the en-dash count or total em-dash excess rises. Total em-dash excess sums each blank-line-delimited paragraph's count beyond two. The finding names the file and risen measures in sorted order; permitted ellipses, curly quotes, and restrained em dashes are silent, as are unchanged or falling measures, generated paths, and paths outside the documentation root.
 Origin: ADR-0117
-Revised-by: ADR-0253, ADR-replace-plain-punctuation-ban-with-punctuation-restraint
+Revised-by: ADR-0253, ADR-0290
 Backing: test
 
 ### `invariant: audit-plan-threshold-warn`
