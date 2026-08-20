@@ -199,7 +199,7 @@ correction is allowed without unrelated cleanup riding along.
 | RF-014B | P2 | CONDITIONAL | Obsolete compatibility residue deleted | RF-008B, compatibility removals applicable |
 | RF-010 | P2 | BLOCKED | Current code comments explain invariants, not historical plans and tranches | RF-002..RF-007, compatibility lane closed |
 | RF-011 | P2 | COMPLETE | Roadmap, known issues, and research separated by owner | Program A milestone |
-| RF-012 | P2 | READY | Tag vocabulary culled to terms with a real consumer | RF-011 |
+| RF-012 | P2 | COMPLETE | Tag vocabulary culled to terms with a real consumer | RF-011 |
 | RF-013 | P2 | COMPLETE | Documented remote enforcement matches configured GitHub policy | Program A milestone, live policy verification |
 
 ### Pre-approved Program B boundaries
@@ -841,6 +841,36 @@ abstraction; oracle strength.
 - **Unblocked:** RF-002 and RF-012 are ready for B-F3. RF-008B remains `CONDITIONAL` until every
   managed repository upgrades and each removal candidate passes its no-dependency gate; RF-014B
   remains conditional on applicable RF-008B removals.
+
+### RF-012
+
+- **Range:** Prior program state `941d2c160`; implementation and lifecycle range
+  `941d2c160..eec8af1ef`.
+- **Protected contract:** ADR-0298 makes authored pitfalls the current tag carrier while preserving
+  append-only legacy ADR tag bytes, parsing, `related:` behavior, empty-vocabulary behavior,
+  advisory rank and threshold, and all unrelated validation. The self-hosted vocabulary retains only
+  members with current pitfall validation and display consumers, with no target count.
+- **Clean integration:** Existing project checks continue to own membership and health policy. The
+  current-state claims and config reference now describe pitfalls only; a bidirectional dogfood
+  oracle keeps configured members equal to current pitfall metadata. Sixty ADR-only members and the
+  unused `topic-navigation` member leave live configuration without rewriting history.
+- **Files changed:** Tag configuration, check and advisory implementation and tests, one focused
+  vocabulary census test, configspec prose, current-state authority, known-issue inventory,
+  generated reference and index, ADR-0298, its plan, lock, and changelog implement and document the
+  narrowed carrier boundary.
+- **Verification:** Red then green tests proved legacy ADR exclusion and the repository vocabulary
+  census. Focused and full Go tests, render and drift checks, staged checks, repeated gates with 100
+  percent statement coverage, workflow and local audits, phase reviews, and terminal assurance
+  passed. The final gate retained one tag-frequency Warning and three pre-existing advisory `Uid`
+  staticcheck findings.
+- **Deviations:** Grounding exposed that ADR-0103's legacy-ADR governance made historical tags a
+  circular consumer. The owner-approved successor ADR preserves frozen bytes and parser compatibility
+  while narrowing live governance, rather than performing the insufficient one-member direct cull.
+- **Residual debt:** Frozen legacy ADR occurrences and their parser remain intentionally preserved;
+  parser removal, if ever proven safe, stays behind RF-008B and RF-014B. No RF-012 issue-local debt
+  remains.
+- **Unblocked:** RF-012's B-F3 contribution is complete. RF-002 remains active; RF-003 through RF-006
+  retain their named RF-002 dependencies, and RF-008B and RF-014B remain conditional.
 
 Close each later issue with the same evidence: identity; baseline and final range; protected contract;
 clean integration; files changed with reason; verification commands and results; material deviations;
