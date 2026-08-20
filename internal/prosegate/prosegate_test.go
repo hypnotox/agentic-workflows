@@ -19,18 +19,15 @@ func TestParseCodepoint(t *testing.T) {
 	}
 }
 
-// invariant: tooling/quality-gates:prose-gate-tracked-file-scan (TestScanReportsBannedRunesOutsideExemptions)
-func TestScanReportsBannedRunesOutsideExemptions(t *testing.T) {
-	// two.md carries two distinct runes, so the sort comparator exercises both
-	// its path branch (across files) and its rune tie-break (within one file).
+// invariant: tooling/quality-gates:prose-gate-tracked-file-scan (TestScanReportsPunctuationRestraintViolations)
+func TestScanReportsPunctuationRestraintViolations(t *testing.T) {
 	files := []File{
-		{Path: "clean.md", Bytes: []byte("plain ascii, nothing banned\n")},
-		{Path: "one.md", Bytes: []byte("a \u2014 b\n")},
-		{Path: "two.md", Bytes: []byte("a \u2014 b \u2026 c\n")},
-		{Path: "bin.dat", Bytes: []byte("\xff\xfe not utf8 \u2014\n")},
-		{Path: "exempt.md", Bytes: []byte("\u201c depicted \u201c\n")},
+		{Path: "allowed.md", Bytes: []byte("\u201cquoted\u201d \u2026 ... a \u2014 b \u2014 c\n")},
+		{Path: "both.md", Bytes: []byte("a \u2013 b \u2014 c \u2014 d \u2014 e\n\nnext \u2014 paragraph \u2014 stays restrained\n")},
+		{Path: "aaa.md", Bytes: []byte("a \u2013 b\n")},
+		{Path: "bin.dat", Bytes: []byte("\xff\xfe not utf8 \u2013\n")},
 	}
-	got, skipped, err := Scan(files, []Exemption{{Path: "exempt.md", Codepoint: '\u201c', Count: ptr(2)}})
+	got, skipped, err := Scan(files, nil)
 	if err != nil {
 		t.Fatalf("scan: %v", err)
 	}
@@ -38,9 +35,9 @@ func TestScanReportsBannedRunesOutsideExemptions(t *testing.T) {
 		t.Errorf("skipped binary paths: got %v, want %v", skipped, want)
 	}
 	want := []Finding{
-		{Path: "one.md", Rune: '\u2014', Count: 1},
-		{Path: "two.md", Rune: '\u2014', Count: 1},
-		{Path: "two.md", Rune: '\u2026', Count: 1},
+		{Path: "aaa.md", Rune: '\u2013', Count: 1},
+		{Path: "both.md", Rune: '\u2013', Count: 1},
+		{Path: "both.md", Rune: '\u2014', Count: 3},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("got %d findings, want %d: %+v", len(got), len(want), got)
@@ -52,17 +49,31 @@ func TestScanReportsBannedRunesOutsideExemptions(t *testing.T) {
 	}
 }
 
+func TestScanSeparatesBlankLineDelimitedParagraphs(t *testing.T) {
+	text := "\nfirst \u2014 has \u2014 two\n \t \nsecond \u2014 has \u2014 three \u2014\r\n\r\nthird \u2014 also \u2014 has \u2014 three\n"
+	got, _, err := Scan([]File{{Path: "paragraphs.md", Bytes: []byte(text)}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].Count != 3 || got[1].Count != 3 {
+		t.Fatalf("want one finding for each dense paragraph, got %+v", got)
+	}
+	if first, second := Format(got[0]), Format(got[1]); !strings.Contains(first, "paragraph 2") || !strings.Contains(second, "paragraph 3") {
+		t.Fatalf("findings must identify their text blocks, got %q and %q", first, second)
+	}
+}
+
 func TestScanExemptionModes(t *testing.T) {
-	files := []File{{Path: "f.md", Bytes: []byte("a \u2014 b \u2014 c\n")}}
+	files := []File{{Path: "f.md", Bytes: []byte("a \u2014 b \u2014 c \u2014 d\n")}}
 	if got, _, _ := Scan(files, []Exemption{{Path: "f.md", Codepoint: '\u2014'}}); len(got) != 0 {
 		t.Errorf("nil-count exemption: want 0 findings, got %+v", got)
 	}
-	if got, _, _ := Scan(files, []Exemption{{Path: "f.md", Codepoint: '\u2014', Count: ptr(2)}}); len(got) != 0 {
+	if got, _, _ := Scan(files, []Exemption{{Path: "f.md", Codepoint: '\u2014', Count: ptr(3)}}); len(got) != 0 {
 		t.Errorf("matching pin: want 0 findings, got %+v", got)
 	}
-	got, _, _ := Scan(files, []Exemption{{Path: "f.md", Codepoint: '\u2014', Count: ptr(1)}})
-	if len(got) != 1 || got[0].Pinned == nil || *got[0].Pinned != 1 || got[0].Count != 2 {
-		t.Fatalf("mismatched pin: want one finding pinned 1 count 2, got %+v", got)
+	got, _, _ := Scan(files, []Exemption{{Path: "f.md", Codepoint: '\u2014', Count: ptr(2)}})
+	if len(got) != 1 || got[0].Pinned == nil || *got[0].Pinned != 2 || got[0].Count != 3 {
+		t.Fatalf("mismatched pin: want one finding pinned 2 count 3, got %+v", got)
 	}
 	zero, _, _ := Scan(files, []Exemption{{Path: "f.md", Codepoint: '\u2014', Count: ptr(0)}})
 	if len(zero) != 1 || zero[0].Pinned == nil || *zero[0].Pinned != 0 {
@@ -70,6 +81,14 @@ func TestScanExemptionModes(t *testing.T) {
 	}
 	if msg := Format(zero[0]); !strings.Contains(msg, "pins 0") {
 		t.Errorf("zero pin message: %q", msg)
+	}
+
+	legacy, _, err := Scan(
+		[]File{{Path: "legacy.md", Bytes: []byte("\u201chello\u201d \u2026\n")}},
+		[]Exemption{{Path: "legacy.md", Codepoint: '\u201c', Count: ptr(99)}},
+	)
+	if err != nil || len(legacy) != 0 {
+		t.Fatalf("retired-codepoint exemptions must remain accepted and inert, got %+v, %v", legacy, err)
 	}
 
 	for _, tc := range []struct {
@@ -93,8 +112,8 @@ func TestScanExemptionModes(t *testing.T) {
 }
 
 func TestFormat(t *testing.T) {
-	plain := Format(Finding{Path: "a.md", Rune: '\u2014', Count: 3})
-	if !strings.Contains(plain, "a.md") || !strings.Contains(plain, "em-dash (U+2014)") || !strings.Contains(plain, "3") {
+	plain := Format(Finding{Path: "a.md", Rune: '\u2013', Count: 1})
+	if !strings.Contains(plain, "a.md") || !strings.Contains(plain, "en-dash (U+2013)") || !strings.Contains(plain, "1") {
 		t.Errorf("plain: %q", plain)
 	}
 	pinned := Format(Finding{Path: "b.md", Rune: '\u201c', Count: 2, Pinned: ptr(1)})

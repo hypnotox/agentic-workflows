@@ -55,7 +55,7 @@ func proseCheckFindingsWith(cfg *config.Config, tree *snapshot.Tree, dependencie
 		return nil, err
 	}
 	if len(findings) > 0 {
-		return categories, producedCheckFailure{errors.New("check repo prose: use plain punctuation, or exempt the path in proseGate.exemptions")}
+		return categories, producedCheckFailure{errors.New("check repo prose: follow punctuation restraint, or exempt the guarded codepoint in proseGate.exemptions")}
 	}
 	return categories, nil
 }

@@ -198,8 +198,8 @@ func TestRunCheckRepoScannerErrors(t *testing.T) {
 	t.Run("prose", func(t *testing.T) {
 		root := syncedGitProject(t, checkYAML+"")
 		repo := gitfixture.At(root)
-		gitfixture.Stage(t, repo, map[string]string{"bad.txt": "banned \u2014 punctuation\n"})
-		if err := runCheckRepo(ctx, root, io.Discard); err == nil || !strings.Contains(err.Error(), "plain punctuation") {
+		gitfixture.Stage(t, repo, map[string]string{"bad.txt": "banned \u2013 punctuation\n"})
+		if err := runCheckRepo(ctx, root, io.Discard); err == nil || !strings.Contains(err.Error(), "punctuation restraint") {
 			t.Fatalf("aggregate did not surface prose failure: %v", err)
 		}
 	})

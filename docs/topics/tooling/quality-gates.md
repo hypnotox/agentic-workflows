@@ -43,12 +43,6 @@ The gate runs deadcode without the -test flag over ./... and fails on any report
 Origin: ADR-0063
 Backing: test
 
-### `invariant: emitted-prose-no-typographic-substitutes`
-
-No file in the embedded templates FS, no file in the embedded changelog FS, and no string literal in a non-test Go file under internal/ or cmd/ contains any of the seven banned typographic codepoints (U+2014, U+2013, U+2026, U+2018, U+2019, U+201C, U+201D); each scanned surface carries a seen-count guard so a mis-anchored walk fails rather than passing vacuously.
-Origin: ADR-0115
-Backing: test
-
 ### `invariant: memory-citation-gate`
 
 The check repo memory command reports every concrete `.awf/efforts/<slug>/memory.md` reference in scannable staged decision and plan text and exits non-zero on any finding outside memoryCite.exemptions; check staged commit applies the same slash-or-backslash detector to the git-cleaned message body without exemptions. Prose, links, code spans, and normalized relative spellings are detected without reading resident files, while the bare `.awf/efforts/` directory and an angle-bracket slug placeholder pass.
@@ -85,9 +79,9 @@ Backing: test
 
 ### `invariant: prose-gate-tracked-file-scan`
 
-The prose scanner reports each banned typographic codepoint found in a text file with the file path and occurrence count, ordered by path and then by codepoint. Files that are not valid UTF-8 are silently skipped, and a finding matching a configured path, codepoint, and optional count exemption is suppressed.
+The prose scanner examines every tracked text file without language-specific comment detection, rejects every en dash, and rejects each blank-line-delimited paragraph containing three or more em dashes. It permits ellipses and curly quotes, silently skips files that are not valid UTF-8, and orders findings by path, codepoint, and paragraph. A configured path-and-codepoint exemption, with an optional exact whole-file count, suppresses its guarded character before paragraph evaluation; exemptions for formerly guarded ellipses and curly quotes remain accepted as inert compatibility input.
 Origin: ADR-0119
-Revised-by: ADR-0285
+Revised-by: ADR-0285, ADR-replace-plain-punctuation-ban-with-punctuation-restraint
 Backing: test
 
 ### `invariant: testsupport-zero-internal-deps`

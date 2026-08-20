@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: replace-plain-punctuation-ban-with-punctuation-restraint
-status: Accepted
+status: Implementing
 date: 2026-08-20
 ---
 # ADR-replace-plain-punctuation-ban-with-punctuation-restraint: Replace plain punctuation ban with punctuation restraint
@@ -87,3 +87,5 @@ documentation universe; it does not replace the repository check or widen histor
 
 - 2026-08-20: Proposed
 - 2026-08-20: Accepted; content-sha256: 29644868fab3ddb7b01dfd997cab6f1494dafd1ead3c8c7ac198c152d083ab7d
+- 2026-08-20: Implementing; content-sha256: 29644868fab3ddb7b01dfd997cab6f1494dafd1ead3c8c7ac198c152d083ab7d
+- 2026-08-20: Applied; operations: remove `tooling/quality-gates:emitted-prose-no-typographic-substitutes`, update `tooling/quality-gates:prose-gate-tracked-file-scan`, update `tooling/audit-and-snapshots:audit-advisories-always-run`, update `tooling/audit-and-snapshots:audit-plain-punctuation`

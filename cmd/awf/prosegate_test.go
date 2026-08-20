@@ -93,8 +93,8 @@ func TestProseGateValidExemptionPermits(t *testing.T) {
 	// A file whose only banned rune is exempted scans clean, exercising the
 	// exemption-parse-and-append path.
 	root := proseGateRepo(t,
-		"proseGate:\n  exemptions:\n    - path: depict.md\n      codepoint: U+2014\n",
-		map[string]string{"depict.md": "the em dash \u2014 is written about here\n"})
+		"proseGate:\n  exemptions:\n    - path: depict.md\n      codepoint: U+2013\n",
+		map[string]string{"depict.md": "the en dash \u2013 is written about here\n"})
 	var out strings.Builder
 	if err := runProseGate(ctx, root, &out); err != nil {
 		t.Fatalf("valid exemption: want nil, got %v", err)
@@ -108,10 +108,10 @@ func TestProseGateFindings(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	root := proseGateRepo(t, "",
-		map[string]string{"a.md": "an em dash \u2014 here\n"})
+		map[string]string{"a.md": "three \u2014 em \u2014 dashes \u2014 here\n"})
 	var out strings.Builder
 	err := runProseGate(ctx, root, &out)
-	if err == nil || !strings.Contains(err.Error(), "plain punctuation") {
+	if err == nil || !strings.Contains(err.Error(), "punctuation restraint") {
 		t.Fatalf("findings: want a non-nil error, got %v", err)
 	}
 	if !strings.Contains(out.String(), "a.md") || !strings.Contains(out.String(), "em-dash") {
@@ -123,7 +123,7 @@ func TestProseGateUsesStagedBytesWhenWorktreeDiffers(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	t.Run("banned content cleaned without restaging remains a finding", func(t *testing.T) {
-		root := proseGateRepo(t, "", map[string]string{"a.md": "staged \u2014\n"})
+		root := proseGateRepo(t, "", map[string]string{"a.md": "staged \u2013\n"})
 		if err := os.WriteFile(filepath.Join(root, "a.md"), []byte("worktree clean\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -144,8 +144,8 @@ func TestProseGateUsesStagedBytesWhenWorktreeDiffers(t *testing.T) {
 
 func TestProseGateUsesWorkingConfigExemption(t *testing.T) {
 	ctx := testContext(t)
-	root := proseGateRepo(t, "", map[string]string{"depict.md": "staged \u2014\n"})
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nproseGate:\n  exemptions:\n    - path: depict.md\n      codepoint: U+2014\n")
+	root := proseGateRepo(t, "", map[string]string{"depict.md": "staged \u2013\n"})
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nproseGate:\n  exemptions:\n    - path: depict.md\n      codepoint: U+2013\n")
 	if err := runProseGate(ctx, root, io.Discard); err != nil {
 		t.Fatalf("working-config exemption must control the staged corpus: %v", err)
 	}
