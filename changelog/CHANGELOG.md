@@ -14,6 +14,8 @@ query a single version or a range.
 
 ### Features
 
+- Prose checks now enforce punctuation restraint instead of a seven-codepoint ban: every en dash and any paragraph with more than two em dashes fails, while ellipses, curly quotes, and restrained em-dash use are permitted. Existing exemptions for formerly guarded ellipses and curly quotes remain accepted as inert compatibility input.
+
 - Implementation and plan review now admit maintainability findings only when they identify semantic ownership, location, concrete risk, smallest clean remediation, and existing classification. Risk-free aesthetic preferences are rejected without a new severity or disposition; ADR review and severity policy are unchanged.
 
 - Clean integration is operative across design, planning, implementation, and review: one proportional rule requires semantic ownership, bounded enabling refactoring, practical obsolete-path retirement, moving verification surfaces, and explicit residual debt while preserving YAGNI.

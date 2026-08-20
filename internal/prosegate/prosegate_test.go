@@ -9,8 +9,18 @@ import (
 func ptr(n int) *int { return &n }
 
 func TestParseCodepoint(t *testing.T) {
-	if r, err := ParseCodepoint("U+2014"); err != nil || r != '\u2014' {
-		t.Fatalf("U+2014: got %q, %v", r, err)
+	for codepoint, want := range map[string]rune{
+		"U+2013": '\u2013',
+		"U+2014": '\u2014',
+		"U+2018": '\u2018',
+		"U+2019": '\u2019',
+		"U+201C": '\u201c',
+		"U+201D": '\u201d',
+		"U+2026": '\u2026',
+	} {
+		if got, err := ParseCodepoint(codepoint); err != nil || got != want {
+			t.Errorf("%s: got %q, %v; want %q", codepoint, got, err, want)
+		}
 	}
 	for _, s := range []string{"2014", "U+zzzz", "U+0041"} {
 		if _, err := ParseCodepoint(s); err == nil {
@@ -49,6 +59,7 @@ func TestScanReportsPunctuationRestraintViolations(t *testing.T) {
 	}
 }
 
+// invariant: tooling/quality-gates:prose-gate-tracked-file-scan (TestScanSeparatesBlankLineDelimitedParagraphs)
 func TestScanSeparatesBlankLineDelimitedParagraphs(t *testing.T) {
 	text := "\nfirst \u2014 has \u2014 two\n \t \nsecond \u2014 has \u2014 three \u2014\r\n\r\nthird \u2014 also \u2014 has \u2014 three\n"
 	got, _, err := Scan([]File{{Path: "paragraphs.md", Bytes: []byte(text)}}, nil)
@@ -63,6 +74,7 @@ func TestScanSeparatesBlankLineDelimitedParagraphs(t *testing.T) {
 	}
 }
 
+// invariant: tooling/quality-gates:prose-gate-tracked-file-scan (TestScanExemptionModes)
 func TestScanExemptionModes(t *testing.T) {
 	files := []File{{Path: "f.md", Bytes: []byte("a \u2014 b \u2014 c \u2014 d\n")}}
 	if got, _, _ := Scan(files, []Exemption{{Path: "f.md", Codepoint: '\u2014'}}); len(got) != 0 {

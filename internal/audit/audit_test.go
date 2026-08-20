@@ -382,6 +382,13 @@ func TestRulePlainPunctuation(t *testing.T) {
 	if f := rulePlainPunctuation(change("docs/plans/p.md", "plain", "a"+dash+"b\n\nc"+dash+"d\n\ne"+dash+"f"), in); len(f) != 0 {
 		t.Errorf("paragraph-local restraint should be silent, got %v", f)
 	}
+	// Excess is summed across paragraphs: one paragraph contributes one and a
+	// second contributes two, rather than the later paragraph replacing the first.
+	summed := "a" + dash + "b" + dash + "c" + dash + "d\n\n" +
+		"e" + dash + "f" + dash + "g" + dash + "h" + dash + "i"
+	if f := rulePlainPunctuation(change("docs/summed.md", "plain", summed), in); len(f) != 1 || !strings.Contains(f[0].Detail, "em-dash excess (0 to 3)") {
+		t.Errorf("multiple violating paragraphs must contribute summed excess, got %v", f)
+	}
 	// Unchanged or falling violation measures are silent.
 	if f := rulePlainPunctuation(change("docs/plans/p.md", "a"+dash+"b"+dash+"c"+dash+"d", "w"+dash+"x"+dash+"y"+dash+"z"), in); len(f) != 0 {
 		t.Errorf("unchanged excess should be silent, got %v", f)
