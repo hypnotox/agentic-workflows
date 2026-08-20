@@ -14,7 +14,7 @@ How to cut a release of the `awf` binary. [ADR-0030](decisions/0030-prebuilt-bin
    ./awf audit <previous-tag>..HEAD
    ```
 
-   The audit is advisory but must be clean. The required range starts at the previous tag and includes the commits being shipped, including stale-ADR authorization replay for schema-31-and-later merges. Commit and push gates keep `main` verified; the tag workflow verifies the release again.
+   The audit is advisory but must be clean. The required range starts at the previous tag and includes the commits being shipped, including stale-ADR authorization replay for schema-31-and-later merges. Local hooks are optional preflight. Before tagging, require the pushed `main` commit's CI run to succeed; the tag workflow verifies the release again.
 
 2. Set `internal/project/VERSION` to the target `MAJOR.MINOR.PATCH` with its standing newline. Promote `changelog/CHANGELOG.md`'s entries: rename `## [Unreleased]` to `## [0.2.0] - YYYY-MM-DD`, then add a new empty `## [Unreleased]` above it. Entries are grouped by adopter-facing effect: Breaking changes, Features, Bug fixes, or Others.
 
@@ -28,17 +28,18 @@ How to cut a release of the `awf` binary. [ADR-0030](decisions/0030-prebuilt-bin
 
    A schema-coupled bump often already changed the version mid-cycle. It changes the version file and lock, not the changelog. During development the gate requires descending changelog entries with the newest at or below `project.Version`; releasecheck requires an exact newest-version match and an empty `[Unreleased]`. The canonical three-file release-prep transaction skips Go and Pi test suites locally while versioncheck and every static gate still run. The clean tag checkout later fails safe to both suites and reruns the complete gate before publication.
 
-3. Push `main`, then tag and push the matching version:
+3. Push `main` and wait for that commit's `CI` workflow run to succeed. Then tag and push the matching version:
 
    ```
    git push origin main
+   # Wait for the pushed commit's CI run to succeed.
    git tag v0.2.0
    git push origin v0.2.0
    ```
 
 4. Watch the `Release` workflow. On success, Releases contains six archives, `checksums.txt`, and curated changelog notes.
 
-The tag triggers `.github/workflows/release.yml`. It verifies the canonical AGPL-3.0-only license artifacts, tag ancestry on `main`, `project.Version`, the changelog, `./x gate && ./x check`, then extracts notes with `awf changelog --version` and runs GoReleaser. GoReleaser builds linux/darwin/windows archives for amd64/arm64, bundles `LICENSE` and `README.md`, writes `checksums.txt`, and uses those notes through `--release-notes`. It refuses a dirty checkout, including untracked files; workflow artifacts therefore belong under `$RUNNER_TEMP` or a deliberately ignored path. Release notes use `"$RUNNER_TEMP/release-notes.md"`. Commit-derived GoReleaser notes are disabled (ADR-0096).
+No verified protected-tag ruleset gates tag creation. After GitHub accepts the pushed tag, `.github/workflows/release.yml` is the final artifact-publication gate. It verifies the canonical AGPL-3.0-only license artifacts, tag ancestry on `main`, `project.Version`, the changelog, and `./x gate && ./x check` before extracting notes with `awf changelog --version` and running GoReleaser. GoReleaser builds linux/darwin/windows archives for amd64/arm64, bundles `LICENSE` and `README.md`, writes `checksums.txt`, and uses those notes through `--release-notes`. It refuses a dirty checkout, including untracked files; workflow artifacts therefore belong under `$RUNNER_TEMP` or a deliberately ignored path. Release notes use `"$RUNNER_TEMP/release-notes.md"`. Commit-derived GoReleaser notes are disabled (ADR-0096).
 
 ## Versioning
 

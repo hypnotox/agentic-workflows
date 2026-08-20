@@ -54,6 +54,70 @@ func productionTestsupportImportViolations(path string, source any) ([]string, e
 	return violations, nil
 }
 
+const repositoryModule = "github.com/hypnotox/agentic-workflows"
+
+var foundationalMechanismRoots = []string{
+	"internal/filepublication",
+	"internal/filesystem",
+	"internal/git",
+	"internal/render",
+	"internal/snapshot",
+}
+
+var higherLayerImports = []string{
+	repositoryModule + "/internal/adr",
+	repositoryModule + "/internal/currentstate",
+	repositoryModule + "/internal/plan",
+	repositoryModule + "/internal/project",
+	repositoryModule + "/internal/topic",
+}
+
+func importsPackage(path, target string) bool {
+	return path == target || strings.HasPrefix(path, target+"/")
+}
+
+func repositoryLayerImportViolations(path string, source any) ([]string, error) {
+	slashPath := strings.TrimPrefix(filepath.ToSlash(filepath.Clean(path)), "./")
+	dir := filepath.ToSlash(filepath.Dir(slashPath))
+	mechanism := false
+	for _, root := range foundationalMechanismRoots {
+		if dir == root || strings.HasPrefix(dir, root+"/") {
+			mechanism = true
+			break
+		}
+	}
+	project := dir == "internal/project" || strings.HasPrefix(dir, "internal/project/")
+	if !mechanism && !project {
+		return nil, nil
+	}
+
+	fset := token.NewFileSet()
+	astFile, err := parser.ParseFile(fset, path, source, parser.ImportsOnly)
+	if err != nil {
+		return nil, fmt.Errorf("parse %s: %w", path, err)
+	}
+	violations := []string{}
+	for _, imp := range astFile.Imports {
+		importPath, err := strconv.Unquote(imp.Path.Value)
+		if err != nil {
+			return nil, fmt.Errorf("%s: unquote import %s: %w", path, imp.Path.Value, err)
+		}
+		if project && importsPackage(importPath, repositoryModule+"/internal/contextq") {
+			violations = append(violations, fmt.Sprintf("%s reverses the existing contextq-to-project dependency with import %q", slashPath, importPath))
+		}
+		if !mechanism {
+			continue
+		}
+		for _, forbidden := range higherLayerImports {
+			if importsPackage(importPath, forbidden) {
+				violations = append(violations, fmt.Sprintf("%s imports higher-layer package %q", slashPath, importPath))
+				break
+			}
+		}
+	}
+	return violations, nil
+}
+
 func dependencyViolations(path string, source any) ([]string, error) {
 	fset := token.NewFileSet()
 	astFile, err := parser.ParseFile(fset, path, source, parser.ImportsOnly)
@@ -150,6 +214,48 @@ func TestProductionNeverImportsTestSupport(t *testing.T) {
 	root := testsupport.RepoRoot(t)
 	testsupport.WalkRepoSources(t, root, func(path string, source []byte) {
 		violations, err := productionTestsupportImportViolations(path, source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, violation := range violations {
+			t.Error(violation)
+		}
+	})
+}
+
+// TestRepositoryLayerDirection protects the cheap import edges named by the broader direction invariant.
+func TestRepositoryLayerDirection(t *testing.T) {
+	tests := []struct {
+		name       string
+		path       string
+		source     string
+		violations int
+		wantErr    bool
+	}{
+		{name: "mechanism to project", path: "internal/render/render.go", source: "package render\nimport \"github.com/hypnotox/agentic-workflows/internal/project\"", violations: 1},
+		{name: "mechanism to domain", path: "internal/filepublication/publication.go", source: "package filepublication\nimport \"github.com/hypnotox/agentic-workflows/internal/adr\"", violations: 1},
+		{name: "snapshot to git", path: "internal/snapshot/tree.go", source: "package snapshot\nimport \"github.com/hypnotox/agentic-workflows/internal/git\""},
+		{name: "filesystem to publication", path: "internal/filesystem/handle.go", source: "package filesystem\nimport \"github.com/hypnotox/agentic-workflows/internal/filepublication\""},
+		{name: "project to context query", path: "internal/project/project.go", source: "package project\nimport \"github.com/hypnotox/agentic-workflows/internal/contextq\"", violations: 1},
+		{name: "unrelated context query consumer", path: "internal/tool/tool.go", source: "package tool\nimport \"github.com/hypnotox/agentic-workflows/internal/contextq\""},
+		{name: "malformed protected source", path: "internal/git/repo.go", source: "not go", wantErr: true},
+		{name: "malformed unrelated source", path: "internal/tool/tool.go", source: "not go"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := repositoryLayerImportViolations(tt.path, tt.source)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if len(got) != tt.violations {
+				t.Fatalf("violations = %v, want %d", got, tt.violations)
+			}
+		})
+	}
+
+	root := testsupport.RepoRoot(t)
+	testsupport.WalkRepoSources(t, root, func(path string, source []byte) {
+		violations, err := repositoryLayerImportViolations(path, source)
 		if err != nil {
 			t.Fatal(err)
 		}

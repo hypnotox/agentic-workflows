@@ -13,7 +13,7 @@ awf renders workflow guidance from committed `.awf/` configuration. The CLI owns
 <!-- awf:edit components: from .awf/docs/parts/architecture/components.md -->
 <!-- awf:template-source templates/docs/architecture.md.tmpl -->
 ## Components
-- `internal/project`: configuration, rendering, output planning, and repository checks.
+- `internal/project`: the current configuration, rendering, output-planning, and repository-check coordinator; its broad receiver surface is transitional toward the target direction below.
 - `internal/adr`, `internal/currentstate`, and `internal/plan`: decision, active-authority, and plan models.
 - `internal/effort` and `internal/worktree`: local residents and Git-backed topology.
 - `internal/git`: the sole semantic Git seam.
@@ -28,6 +28,8 @@ awf renders workflow guidance from committed `.awf/` configuration. The CLI owns
 <!-- awf:template-source templates/docs/architecture.md.tmpl -->
 ## Data flow
 Commands load `.awf/`, validate configuration, derive an output plan, and render or check managed files. `.awf/awf.lock` records each render transaction. Working and staged checks load separate authority snapshots; audit reads selected history through `internal/git`. Effort residents remain local and unmanaged by rendering.
+
+The target dependency direction is `cmd/awf` to focused application operations, then to immutable project state and domain services, then to semantic Git, snapshot, filesystem, publication, and rendering mechanisms. Command code parses, composes, invokes, renders owner-produced results, selects streams, and maps exits. State, domain, and mechanism owners do not depend back on application or command coordination. The [dependency-composition topic](topics/code-design/dependency-composition.md) owns the detailed extraction owners, forbidden reverse edges, and boundary values.
 
 
 <!-- awf:template-source templates/docs/architecture.md.tmpl#dependencies -->

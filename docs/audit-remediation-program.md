@@ -185,10 +185,10 @@ correction is allowed without unrelated cleanup riding along.
 
 | ID | Sev | Status | Target outcome | Depends on |
 |---|---|---|---|---|
-| RF-001 | P1 | READY | Concrete dependency direction and one named semantic owner per extraction | Program A milestone |
+| RF-001 | P1 | COMPLETE | Concrete dependency direction and one named semantic owner per extraction | Program A milestone |
 | RF-008A | P1 | READY | Durable private compatibility policy and a real support-floor inventory | Program A milestone |
 | RF-008B | P1 | CONDITIONAL | Obsolete compatibility pruned below the support floor | RF-008A, managed repos upgraded |
-| RF-002 | P1 | BLOCKED | Residual project state separated from operations | RF-001 |
+| RF-002 | P1 | READY | Residual project state separated from operations | RF-001 |
 | RF-003 | P1 | BLOCKED | One application owner for output planning and publication coordination | RF-002 |
 | RF-004 | P1 | BLOCKED | Check aggregation separated from check policy; severity in the result model | AF-013, RF-002 |
 | RF-005 | P1 | BLOCKED | Current-state coordination extracted from project orchestration | RF-002 |
@@ -200,7 +200,7 @@ correction is allowed without unrelated cleanup riding along.
 | RF-010 | P2 | BLOCKED | Current code comments explain invariants, not historical plans and tranches | RF-002..RF-007, compatibility lane closed |
 | RF-011 | P2 | COMPLETE | Roadmap, known issues, and research separated by owner | Program A milestone |
 | RF-012 | P2 | READY | Tag vocabulary culled to terms with a real consumer | RF-011 |
-| RF-013 | P2 | READY | Documented remote enforcement matches configured GitHub policy | Program A milestone, live policy verification |
+| RF-013 | P2 | COMPLETE | Documented remote enforcement matches configured GitHub policy | Program A milestone, live policy verification |
 
 ### Pre-approved Program B boundaries
 
@@ -724,6 +724,60 @@ abstraction; oracle strength.
   authoring; no primary residue or production behavior change remains.
 - **Unblocked:** RF-012 is `READY` after RF-011 integration. Other B-F1 issues retain their current
   ownership and integration blockers.
+
+### RF-001
+
+- **Range:** Prior program state `52d583ec1`; integration range `52d583ec1..11eb456de`.
+- **Protected contract:** ADR-0296 establishes the allowed command-to-application-to-state/domain-to-
+  mechanism direction, forbids reverse application and mechanism dependencies, names one owner per
+  RF-002 through RF-006 extraction, and confines volatile representations behind their mechanism
+  boundaries. Exact file movement and local operation shape remain changeable.
+- **Clean integration:** Existing architecture documentation remains the high-altitude owner and
+  links to detailed dependency-composition claims. ProjectState, Loader, Publisher,
+  RepositoryChecker, CurrentStateCoordinator, focused operations, command presentation, and
+  individual checks each have one semantic owner. No implementation files, plugin framework,
+  universal interface, service locator, or speculative abstraction was introduced.
+- **Files changed:** Architecture convention parts and rendered architecture, dependency-composition
+  current-state claims, ADR history, focused import guard, generated topic/index/lock, and changelog
+  define and prove the target.
+- **Verification:** The import-only AST guard covers real forbidden foundational reverse edges and
+  the project-to-contextq cycle risk with positive and negative fixtures. Focused tests, render and
+  drift checks, staged checks, repeated full gates with 100 percent statement coverage, workflow and
+  local audits, ADR review, implementation review, and renewed combined-history assurance passed.
+  ADR-0296 numbering and terminal closure also passed their staged checks and gates.
+- **Deviations:** A durable ADR replaced direct documentation because the map governs several future
+  cross-component extractions. Review narrowed the broad direction claim to inspection-backed
+  authority with an explicitly scoped mechanical guard. No plan was needed for the bounded
+  documentation, claim, and guard transaction.
+- **Residual debt:** Exact extractions and operation shapes remain intentionally assigned to RF-002
+  through RF-006.
+- **Unblocked:** RF-002 is dependency-ready but remains scheduled for B-F3 after the B-F2 cleanup
+  boundary. RF-003 through RF-006 retain their named dependencies.
+
+### RF-013
+
+- **Range:** Prior program state `c40f376cf`; integration range `c40f376cf..0cdc3b786`.
+- **Protected contract:** Repository documentation now matches verified GitHub policy. Optional local
+  hooks are preflight; CI provides post-push and pull-request detection rather than a required
+  main-update status; the active no-bypass ruleset's required signatures, non-fast-forward, and
+  deletion protections are the final remote control for publishing `main`. Release artifacts remain
+  gated by the tag-triggered release workflow, without claiming a protected-tag creation rule.
+- **Clean integration:** Existing repository workflow and release convention parts own the corrected
+  claims. Generic adopter templates remain unchanged. No PR-only workflow, remote policy mutation,
+  unrelated CI change, or duplicate enforcement owner was introduced.
+- **Files changed:** Repository workflow and release authored parts, their generated documents,
+  config reference and lock, and a focused remote-policy documentation regression test carry and
+  prove the truthful boundary.
+- **Verification:** Authenticated GitHub REST evidence confirmed active ruleset `18766557`, no bypass
+  actors, required signatures, non-fast-forward and deletion protection, absent required status
+  checks, and no parent ruleset. Focused tests, render and drift checks, staged checks, full gates
+  with 100 percent statement coverage, workflow and local audits, initial mechanical evidence review,
+  and renewed combined-history assurance passed. No credential entered tracked evidence.
+- **Deviations:** None. The approved documentation-narrowing option preserved ADR-0228 rather than
+  introducing a materially different PR-only publication workflow.
+- **Residual debt:** None. Live policy must be reverified when GitHub settings or documented claims
+  change.
+- **Unblocked:** No later issue depends directly on RF-013. B-F1 remains open only for RF-008A.
 
 Close each later issue with the same evidence: identity; baseline and final range; protected contract;
 clean integration; files changed with reason; verification commands and results; material deviations;
