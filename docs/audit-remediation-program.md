@@ -106,9 +106,9 @@ change, not its literal execution choreography.
 | AF-007 | P2 | COMPLETE | Punctuation restraint replaces the seven-codepoint ban | AF-001 |
 | AF-008 | P2 | COMPLETE | Core and Full read as governance footprints, not rigor modes | AF-001 |
 | AF-009 | P2 | COMPLETE | Pi runtime protocol owned by a target-specific reference, not generic workflow docs | AF-001, AF-008 |
-| AF-010 | P2 | READY | Residual operative prose states rule, flexible detail, stop condition, and evidence | AF-006..AF-009, AF-011, AF-013 |
+| AF-010 | P2 | COMPLETE | Residual operative prose states rule, flexible detail, stop condition, and evidence | AF-006..AF-009, AF-011, AF-013 |
 | AF-011 | P2 | COMPLETE | Daily-use documentation separated from rare recovery and migration protocol | AF-009 |
-| AF-012 | P2 | BLOCKED | Demonstrably redundant workflow concepts and vocabulary consolidated | AF-010, AF-011 |
+| AF-012 | P2 | READY | Demonstrably redundant workflow concepts and vocabulary consolidated | AF-010, AF-011 |
 | AF-013 | P1 | COMPLETE | Blocking checks separated from warnings and unranked notes by protected property | AF-005, AF-007 |
 | AF-014B | P1 | BLOCKED | Outcome-oriented behaviour scenarios cover the changed contract | AF-002..AF-013 |
 
@@ -604,6 +604,34 @@ abstraction; oracle strength.
   to evaluate during checker decomposition. No other issue-local debt is known.
 - **Unblocked:** AF-010 now has every dependency complete and is `READY`. AF-012 still waits on
   AF-010; AF-014B waits on AF-010 through AF-013.
+
+### AF-010
+
+- **Range:** Prior program state `a7c2a994b`; integration range `a7c2a994b..f48eb1556`.
+- **Protected contract:** Grounded residual operative prose separates the rule, flexible
+  implementation detail, bounded stop condition, and required evidence wherever those semantics
+  exist. Settled authority, approval, safety, compatibility, lifecycle, ownership, review,
+  confinement, and verification meaning remains unchanged across Pi, Claude, Core, and Full.
+- **Clean integration:** Existing canonical owners remain in place: the shared review-remediation
+  partial, workflow template, and plan-writing, plan-execution, and implementation-review skill
+  templates. Already-clear implementation-autonomy and agent-standard surfaces remain unchanged.
+  No new workflow layer, profile, router, lifecycle, plan format, concept consolidation, or scenario
+  framework was introduced.
+- **Files changed:** The five grounded authored owners, focused clause and composition tests,
+  generated Pi and Claude consumers, lock, changelog, and the implementation plan restructure and
+  prove only the identified residue.
+- **Verification:** Explicit Core and Full configured and empty-data variants, focused project and
+  evaluation tests, temporary clause falsifications, render and drift checks, staged checks, the full
+  gate with 100 percent statement coverage, workflow audit, local audit, and independent terminal
+  review passed. Phase review found five settled clauses omitted during restructuring; each was
+  mechanically restored, test-pinned, and mutation-checked before assurance returned clean. Plan
+  terminal closure passed its staged check and gate.
+- **Deviations:** The changelog joined the route as the documentation-currency owner. No protected
+  boundary, semantic, safety, compatibility, ownership, or verification deviation occurred.
+- **Residual debt:** AF-012 retains concept consolidation and AF-014B retains final scenario coverage;
+  neither entered this issue.
+- **Unblocked:** AF-012 now has both dependencies complete and is `READY`. AF-014B still waits on
+  AF-012.
 
 Close each later issue with the same evidence: identity; baseline and final range; protected contract;
 clean integration; files changed with reason; verification commands and results; material deviations;
