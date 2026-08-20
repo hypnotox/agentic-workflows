@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: separate-blocking-checks-from-advisories
-status: Proposed
+status: Accepted
 date: 2026-08-20
 ---
 # ADR-separate-blocking-checks-from-advisories: Separate blocking checks from advisories
@@ -143,3 +143,4 @@ decomposition.
 ## Status history
 
 - 2026-08-20: Proposed
+- 2026-08-20: Accepted; content-sha256: 1908a27d2ea0e97c534adbd67a376b8be22a43d1e4c2ea50da9d7979aedbc721
