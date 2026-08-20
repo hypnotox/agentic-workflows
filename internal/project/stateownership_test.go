@@ -488,6 +488,7 @@ func (q *Query) mutationReplacesStateAfterConstruction(state project.ContextStat
 }
 
 func retainsOperationDependency(typ types.Type, seen map[types.Type]bool) bool {
+	typ = types.Unalias(typ)
 	if seen[typ] {
 		return false
 	}
@@ -512,6 +513,36 @@ func retainsOperationDependency(typ types.Type, seen map[types.Type]bool) bool {
 		return retainsOperationDependency(value.Elem(), seen)
 	case *types.Map:
 		return retainsOperationDependency(value.Key(), seen) || retainsOperationDependency(value.Elem(), seen)
+	case *types.Chan:
+		return retainsOperationDependency(value.Elem(), seen)
+	case *types.Signature:
+		return retainsOperationDependency(value.Params(), seen) || retainsOperationDependency(value.Results(), seen)
+	case *types.Tuple:
+		for i := range value.Len() {
+			if retainsOperationDependency(value.At(i).Type(), seen) {
+				return true
+			}
+		}
+	case *types.Interface:
+		value.Complete()
+		for i := range value.NumMethods() {
+			if retainsOperationDependency(value.Method(i).Type(), seen) {
+				return true
+			}
+		}
+		for i := range value.NumEmbeddeds() {
+			if retainsOperationDependency(value.EmbeddedType(i), seen) {
+				return true
+			}
+		}
+	case *types.TypeParam:
+		return retainsOperationDependency(value.Constraint(), seen)
+	case *types.Union:
+		for i := range value.Len() {
+			if retainsOperationDependency(value.Term(i).Type(), seen) {
+				return true
+			}
+		}
 	case *types.Struct:
 		for i := range value.NumFields() {
 			if retainsOperationDependency(value.Field(i).Type(), seen) {
@@ -577,6 +608,40 @@ func TestProjectStateBoundary(t *testing.T) {
 			obj := imported.Scope().Lookup(name)
 			if obj == nil || !retainsOperationDependency(obj.Type(), map[types.Type]bool{}) {
 				t.Errorf("boundary detector did not reject %s.%s", imported.Path(), name)
+			}
+		}
+	}
+
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixture := filepath.Join(root, filepath.FromSlash("internal/project/state_boundary_mutation_fixture.go"))
+	mutated := loadProjectPackage(t, map[string][]byte{fixture: []byte(`package project
+
+import "github.com/hypnotox/agentic-workflows/internal/config"
+
+type hiddenTreeAlias = config.TreeReader
+type hiddenTreeInterface interface { Read() config.TreeReader }
+type hiddenTreeChannel chan config.TreeReader
+type boundaryMutation struct {
+	Alias hiddenTreeAlias
+	Interface hiddenTreeInterface
+	Channel hiddenTreeChannel
+}
+`)})
+	for _, pkg := range mutated {
+		if pkg.PkgPath != projectImportPath {
+			continue
+		}
+		probe := pkg.Types.Scope().Lookup("boundaryMutation")
+		if probe == nil {
+			t.Fatal("boundary mutation fixture was not loaded")
+		}
+		fields := types.Unalias(probe.Type()).Underlying().(*types.Struct)
+		for i := range fields.NumFields() {
+			if !retainsOperationDependency(fields.Field(i).Type(), map[types.Type]bool{}) {
+				t.Errorf("boundary detector missed wrapped dependency field %s", fields.Field(i).Name())
 			}
 		}
 	}

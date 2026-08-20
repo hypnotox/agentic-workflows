@@ -15,6 +15,7 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -71,18 +72,59 @@ type factsData struct {
 
 // NewFacts copies every reference-shaped configuration value and discards the
 // loading representation. Validation remains the responsibility of Loaders.
-func NewFacts(cfg *Config) Facts {
+func NewFacts(cfg *Config) (Facts, error) {
 	if cfg == nil {
-		return Facts{}
+		return Facts{}, nil
 	}
 	copy := cloneConfig(*cfg)
+	vars, err := cloneDataMap(cfg.Vars)
+	if err != nil {
+		return Facts{}, fmt.Errorf("snapshot config facts: vars: %w", err)
+	}
+	copy.Vars = vars
 	return Facts{data: factsData{
 		Prefix: copy.Prefix, Profile: copy.Profile, IntegrationBranch: copy.IntegrationBranch,
 		Vars: copy.Vars, Domains: copy.Domains, Tags: copy.Tags, ContextIgnore: copy.ContextIgnore,
 		CurrentState: copy.CurrentState, Audit: copy.Audit, Bootstrap: copy.Bootstrap,
 		ProseGate: copy.ProseGate, MemoryCite: copy.MemoryCite, CommitPolicy: copy.CommitPolicy,
 		Render: copy.Render, LocalDocs: copy.LocalDocs,
-	}}
+	}}, nil
+}
+
+func cloneDataMap(source map[string]any) (map[string]any, error) {
+	if source == nil {
+		return nil, nil //nolint:nilnil // nil preserves an absent Vars map; it is a valid immutable fact.
+	}
+	out := make(map[string]any, len(source))
+	for key, value := range source {
+		cloned, err := cloneDataValue(value)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", key, err)
+		}
+		out[key] = cloned
+	}
+	return out, nil
+}
+
+func cloneDataValue(value any) (any, error) {
+	switch value := value.(type) {
+	case nil, bool, string, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, time.Time:
+		return value, nil
+	case []any:
+		out := make([]any, len(value))
+		for i, item := range value {
+			cloned, err := cloneDataValue(item)
+			if err != nil {
+				return nil, fmt.Errorf("[%d]: %w", i, err)
+			}
+			out[i] = cloned
+		}
+		return out, nil
+	case map[string]any:
+		return cloneDataMap(value)
+	default:
+		return nil, fmt.Errorf("unsupported semantic data type %T", value)
+	}
 }
 
 // Config returns a defensive copy of the loaded configuration facts.
@@ -418,12 +460,6 @@ func cloneConfigValue(value reflect.Value) reflect.Value {
 			return reflect.Zero(value.Type())
 		}
 		out := reflect.MakeSlice(value.Type(), value.Len(), value.Len())
-		for i := range value.Len() {
-			out.Index(i).Set(cloneConfigValue(value.Index(i)))
-		}
-		return out
-	case reflect.Array:
-		out := reflect.New(value.Type()).Elem()
 		for i := range value.Len() {
 			out.Index(i).Set(cloneConfigValue(value.Index(i)))
 		}

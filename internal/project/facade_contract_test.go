@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
-	"strconv"
 	"testing"
 
 	"golang.org/x/tools/go/packages"
@@ -136,11 +135,20 @@ var allowedProjectFacadeMethods = []string{
 var allowedProjectFacadeConsumers = []string{
 	"cmd/awf/adr.go:func runADR",
 	"cmd/awf/audit.go:func runAudit",
+	"cmd/awf/checkrepo.go:func collectCheckRepoWithPlanNotes",
+	"cmd/awf/checkrepo.go:func collectRepoCheckSelectionWithPlanNotes",
 	"cmd/awf/checkrepo.go:func productionRepoCheckDependencies",
+	"cmd/awf/checkrepo.go:func repoCheckSystem",
+	"cmd/awf/checkrepo.go:func runCheckDrift",
+	"cmd/awf/checkrepo.go:func runCheckState",
+	"cmd/awf/checkrepo.go:func runRepoCheckSelection",
+	"cmd/awf/checkrepo.go:func runRepoCheckSelectionWithPlanNotes",
 	"cmd/awf/checkrepo.go:type repoCheckDependencies",
 	"cmd/awf/checkrepo.go:type repoCheckInputs",
 	"cmd/awf/commitgate.go:func defaultCommitGateDependencies",
 	"cmd/awf/commitgate.go:func openCommitGateProjectFromDisk",
+	"cmd/awf/commitgate.go:func runCommitGate",
+	"cmd/awf/commitgate.go:func runCommitGateWithDependencies",
 	"cmd/awf/commitgate.go:type commitGateDependencies",
 	"cmd/awf/config.go:func runConfig",
 	"cmd/awf/context.go:func runContext",
@@ -150,19 +158,31 @@ var allowedProjectFacadeConsumers = []string{
 	"cmd/awf/init.go:func renderInitOutcome",
 	"cmd/awf/init.go:func runInitWithProjectLoader",
 	"cmd/awf/list_add.go:func openDomainProject",
+	"cmd/awf/list_add.go:func productionDomainDependencies",
 	"cmd/awf/list_add.go:func runList",
+	"cmd/awf/list_add.go:func runNewDomain",
+	"cmd/awf/list_add.go:func runNewDomainWith",
+	"cmd/awf/list_add.go:func runRemoveDomain",
+	"cmd/awf/list_add.go:func runRemoveDomainWith",
 	"cmd/awf/list_add.go:func scaffoldDomainCurrentState",
 	"cmd/awf/list_add.go:type domainDependencies",
+	"cmd/awf/memorygate.go:func runMemoryGate",
 	"cmd/awf/new.go:func newADR",
+	"cmd/awf/new.go:func newDoc",
+	"cmd/awf/new.go:func newDocWith",
 	"cmd/awf/new.go:func newPitfall",
 	"cmd/awf/new.go:func newPlan",
 	"cmd/awf/new.go:func newTopic",
 	"cmd/awf/new.go:func productionLocalDocDependencies",
 	"cmd/awf/new.go:type localDocDependencies",
+	"cmd/awf/prosegate.go:func runProseGate",
 	"cmd/awf/read.go:func runReadPlan",
+	"cmd/awf/sync.go:func runSyncPrinting",
 	"cmd/awf/sync.go:func syncMutation",
 	"cmd/awf/topic.go:func runTopic",
 	"cmd/awf/upgrade_presentation.go:func productionUpgradeSyncDependencies",
+	"cmd/awf/upgrade_presentation.go:func upgradeSyncMutation",
+	"cmd/awf/upgrade_presentation.go:func upgradeSyncMutationWith",
 	"cmd/awf/upgrade_presentation.go:type upgradeSyncDependencies",
 }
 
@@ -199,32 +219,77 @@ func facadeReceiverName(info *types.Info, recv *ast.FieldList) string {
 	return named.Obj().Name()
 }
 
-func facadeImportNames(file *ast.File) map[string]bool {
-	names := map[string]bool{}
-	for _, spec := range file.Imports {
-		path, err := strconv.Unquote(spec.Path.Value)
-		if err != nil || path != projectImportPath {
-			continue
-		}
-		name := "project"
-		if spec.Name != nil {
-			name = spec.Name.Name
-		}
-		names[name] = true
+func containsProjectFacadeType(typ types.Type, seen map[types.Type]bool) bool {
+	if typ == nil {
+		return false
 	}
-	return names
-}
-
-func usesProjectFacade(node ast.Node, importNames map[string]bool) bool {
-	used := false
-	ast.Inspect(node, func(node ast.Node) bool {
-		selector, ok := node.(*ast.SelectorExpr)
-		if !ok || (selector.Sel.Name != "Open" && selector.Sel.Name != "Project") {
+	typ = types.Unalias(typ)
+	if seen[typ] {
+		return false
+	}
+	seen[typ] = true
+	switch value := typ.(type) {
+	case *types.Named:
+		if obj := value.Obj(); obj.Pkg() != nil && obj.Pkg().Path() == projectImportPath && obj.Name() == "Project" {
 			return true
 		}
-		ident, ok := selector.X.(*ast.Ident)
-		if ok && importNames[ident.Name] {
-			used = true
+		return containsProjectFacadeType(value.Underlying(), seen)
+	case *types.Pointer:
+		return containsProjectFacadeType(value.Elem(), seen)
+	case *types.Array:
+		return containsProjectFacadeType(value.Elem(), seen)
+	case *types.Slice:
+		return containsProjectFacadeType(value.Elem(), seen)
+	case *types.Map:
+		return containsProjectFacadeType(value.Key(), seen) || containsProjectFacadeType(value.Elem(), seen)
+	case *types.Chan:
+		return containsProjectFacadeType(value.Elem(), seen)
+	case *types.Signature:
+		return containsProjectFacadeType(value.Params(), seen) || containsProjectFacadeType(value.Results(), seen)
+	case *types.Tuple:
+		for i := range value.Len() {
+			if containsProjectFacadeType(value.At(i).Type(), seen) {
+				return true
+			}
+		}
+	case *types.Struct:
+		for i := range value.NumFields() {
+			if containsProjectFacadeType(value.Field(i).Type(), seen) {
+				return true
+			}
+		}
+	case *types.Interface:
+		value.Complete()
+		for i := range value.NumMethods() {
+			if containsProjectFacadeType(value.Method(i).Type(), seen) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func usesProjectFacade(node ast.Node, info *types.Info) bool {
+	used := false
+	ast.Inspect(node, func(node ast.Node) bool {
+		switch value := node.(type) {
+		case *ast.Ident:
+			obj := info.Uses[value]
+			if obj == nil {
+				obj = info.Defs[value]
+			}
+			if obj != nil {
+				if obj.Pkg() != nil && obj.Pkg().Path() == projectImportPath && (obj.Name() == "Open" || obj.Name() == "Project") {
+					used = true
+				}
+				if containsProjectFacadeType(obj.Type(), map[types.Type]bool{}) {
+					used = true
+				}
+			}
+		case ast.Expr:
+			if containsProjectFacadeType(info.TypeOf(value), map[types.Type]bool{}) {
+				used = true
+			}
 		}
 		return true
 	})
@@ -241,14 +306,13 @@ func projectFacadeInventory(pkgs []*packages.Package, root string) ([]string, []
 				continue
 			}
 			filename = filepath.ToSlash(filename)
-			imports := facadeImportNames(file)
 			for _, declaration := range file.Decls {
 				switch decl := declaration.(type) {
 				case *ast.FuncDecl:
 					if pkg.PkgPath == projectImportPath && facadeReceiverName(pkg.TypesInfo, decl.Recv) == "Project" {
 						methods = append(methods, decl.Name.Name)
 					}
-					if pkg.PkgPath != projectImportPath && usesProjectFacade(decl, imports) {
+					if pkg.PkgPath != projectImportPath && usesProjectFacade(decl, pkg.TypesInfo) {
 						consumers = append(consumers, filename+":func "+decl.Name.Name)
 					}
 				case *ast.GenDecl:
@@ -256,7 +320,7 @@ func projectFacadeInventory(pkgs []*packages.Package, root string) ([]string, []
 						continue
 					}
 					for _, spec := range decl.Specs {
-						if !usesProjectFacade(spec, imports) {
+						if !usesProjectFacade(spec, pkg.TypesInfo) {
 							continue
 						}
 						switch value := spec.(type) {
@@ -291,13 +355,18 @@ func TestProjectFacadeFrozenAllowlist(t *testing.T) {
 	consumerFixture := filepath.Join(root, filepath.FromSlash("cmd/awf/facade_consumer_mutation_fixture.go"))
 	mutated, mutatedRoot := loadFacadePackages(t, map[string][]byte{
 		methodFixture:   []byte("package project\n\nfunc (p *Project) facadeMutation() {}\n"),
-		consumerFixture: []byte("package main\n\nimport (\n\t\"context\"\n\t\"github.com/hypnotox/agentic-workflows/internal/project\"\n)\n\nfunc facadeMutation(ctx context.Context) { _, _ = project.Open(ctx, \".\") }\n"),
+		consumerFixture: []byte("package main\n\nimport (\n\t\"context\"\n\tp \"github.com/hypnotox/agentic-workflows/internal/project\"\n)\n\nfunc facadeMutation(ctx context.Context) { _, _ = p.Open(ctx, \".\") }\n\nfunc facadeIndirectMutation(inputs repoCheckInputs) { _ = inputs.project.Root }\n"),
 	})
 	mutatedMethods, mutatedConsumers := projectFacadeInventory(mutated, mutatedRoot)
 	if !slices.Contains(mutatedMethods, "facadeMutation") {
 		t.Error("an added Project receiver method escaped the facade allowlist detector")
 	}
-	if !slices.Contains(mutatedConsumers, "cmd/awf/facade_consumer_mutation_fixture.go:func facadeMutation") {
-		t.Error("an added Project production consumer escaped the facade allowlist detector")
+	for _, want := range []string{
+		"cmd/awf/facade_consumer_mutation_fixture.go:func facadeMutation",
+		"cmd/awf/facade_consumer_mutation_fixture.go:func facadeIndirectMutation",
+	} {
+		if !slices.Contains(mutatedConsumers, want) {
+			t.Errorf("added Project production consumer %s escaped the facade allowlist detector", want)
+		}
 	}
 }

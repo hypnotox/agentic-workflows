@@ -151,7 +151,10 @@ func TestProjectStateDefensivelyOwnsTargetSnapshots(t *testing.T) {
 		Name: "target", Capabilities: []Capability{CapabilitySubagentTools},
 		Outputs: []TargetOutput{{Path: "output", Inputs: []TargetOutputInput{{Path: "input", Role: ArtifactTemplate}}}},
 	}}
-	state := newProjectState("root", resident.NewRoots("root", "resident"), false, &config.Config{}, catalog.Standard, catalog.Standard, source)
+	state, err := newProjectState("root", resident.NewRoots("root", "resident"), false, &config.Config{}, catalog.Standard, catalog.Standard, source)
+	if err != nil {
+		t.Fatal(err)
+	}
 	source[0].Capabilities[0] = CapabilitySessionHandoff
 	source[0].Outputs[0].Path = "mutated"
 	source[0].Outputs[0].Inputs[0].Path = "mutated"
@@ -188,6 +191,17 @@ func TestLoaderOpenDoesNotMutateStandardCatalog(t *testing.T) {
 	}
 	if !reflect.DeepEqual(injected, snapshot) {
 		t.Fatal("Loader.Open mutated the injected standard catalog")
+	}
+}
+
+func TestLoaderRejectsUnsupportedConfigFactData(t *testing.T) {
+	type unsupported struct{ values []string }
+	loader := NewLoaderWithoutRepository(func(string) (*config.Config, error) {
+		return &config.Config{Prefix: "example", Profile: catalog.ProfileFull, IntegrationBranch: "main", Vars: map[string]any{"bad": unsupported{values: []string{"mutable"}}}}, nil
+	}, catalog.Standard, func(_ context.Context, root string) string { return root })
+	_, err := loader.Open(testContext(t), t.TempDir())
+	if err == nil || !strings.Contains(err.Error(), "unsupported semantic data type") {
+		t.Fatalf("Loader.Open error = %v", err)
 	}
 }
 

@@ -182,16 +182,20 @@ type projectState struct {
 	targets      []Target
 }
 
-func newProjectState(root string, roots resident.Roots, nested bool, cfg *config.Config, selected, complete *catalog.Catalog, targets []Target) *projectState {
+func newProjectState(root string, roots resident.Roots, nested bool, cfg *config.Config, selected, complete *catalog.Catalog, targets []Target) (*projectState, error) {
+	facts, err := config.NewFacts(cfg)
+	if err != nil {
+		return nil, err
+	}
 	return &projectState{
 		invokingRoot: root,
 		roots:        roots,
 		nested:       nested,
-		facts:        config.NewFacts(cfg),
+		facts:        facts,
 		selectedCat:  catalog.NewProfileView(selected, catalog.ProfileFull),
 		completeCat:  catalog.NewProfileView(complete, catalog.ProfileFull),
 		targets:      cloneTargets(targets),
-	}
+	}, nil
 }
 
 func (s *projectState) catalog() *catalog.Catalog { return s.selectedCat.Catalog() }
@@ -289,7 +293,10 @@ func (l *Loader) Open(ctx context.Context, root string) (*Project, error) {
 	}
 	roots := resident.NewRoots(root, l.resolveResidentRoot(ctx, root))
 	nested := l.repo != nil && l.repo.IsNested()
-	state := newProjectState(root, roots, nested, cfg, cat, completeCat, targets)
+	state, err := newProjectState(root, roots, nested, cfg, cat, completeCat, targets)
+	if err != nil {
+		return nil, err
+	}
 	p := &Project{
 		state:       state,
 		Root:        state.invokingRoot,

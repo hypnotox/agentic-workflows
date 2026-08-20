@@ -940,7 +940,7 @@ func TestConfigSerializationFunnelOwnsEncoding(t *testing.T) {
 func TestFactsDeepCopiesConfigurationAndDropsLoadingRepresentation(t *testing.T) {
 	count := 2
 	cfg := &Config{
-		Vars:          map[string]any{"nested": map[string]any{"slice": []any{"value"}}, "array": [1]any{"array value"}},
+		Vars:          map[string]any{"nested": map[string]any{"slice": []any{"value"}}},
 		Domains:       []string{"domain"},
 		Tags:          map[string]string{"tag": "meaning"},
 		ContextIgnore: []string{"**/ignored"},
@@ -957,7 +957,10 @@ func TestFactsDeepCopiesConfigurationAndDropsLoadingRepresentation(t *testing.T)
 		read:          memoryTreeReader{},
 		filesystem:    true,
 	}
-	facts := NewFacts(cfg)
+	facts, err := NewFacts(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
 	cfg.Domains[0] = "changed"
 	cfg.Tags["tag"] = "changed"
 	cfg.ContextIgnore[0] = "changed"
@@ -973,11 +976,8 @@ func TestFactsDeepCopiesConfigurationAndDropsLoadingRepresentation(t *testing.T)
 	cfg.Render.TemplateSourceRoot = "changed"
 	cfg.LocalDocs[0].Name = "changed"
 	cfg.Vars["nested"].(map[string]any)["slice"].([]any)[0] = "changed"
-	array := cfg.Vars["array"].([1]any)
-	array[0] = "changed"
-	cfg.Vars["array"] = array
 	got := facts.Config()
-	if got.Domains[0] != "domain" || got.Tags["tag"] != "meaning" || got.ContextIgnore[0] != "**/ignored" || got.CurrentState.Sources[0].Globs[0] != "**/*.go" || got.CurrentState.TestGlobs[0] != "**/*_test.go" || got.Audit.AllowedScopes[0].Name != "code" || !got.Bootstrap.Enabled || *got.ProseGate.Exemptions[0].Count != 2 || got.MemoryCite.Exemptions[0].Path != "y" || *got.MemoryCite.Exemptions[0].Count != 2 || got.CommitPolicy.AllowedIdentities[0].Name != "n" || got.CommitPolicy.AllowedSigners[0].Principal != "p" || got.Render.TemplateSourceRoot != "templates" || got.LocalDocs[0].Name != "runbook" || got.Vars["nested"].(map[string]any)["slice"].([]any)[0] != "value" || got.Vars["array"].([1]any)[0] != "array value" {
+	if got.Domains[0] != "domain" || got.Tags["tag"] != "meaning" || got.ContextIgnore[0] != "**/ignored" || got.CurrentState.Sources[0].Globs[0] != "**/*.go" || got.CurrentState.TestGlobs[0] != "**/*_test.go" || got.Audit.AllowedScopes[0].Name != "code" || !got.Bootstrap.Enabled || *got.ProseGate.Exemptions[0].Count != 2 || got.MemoryCite.Exemptions[0].Path != "y" || *got.MemoryCite.Exemptions[0].Count != 2 || got.CommitPolicy.AllowedIdentities[0].Name != "n" || got.CommitPolicy.AllowedSigners[0].Principal != "p" || got.Render.TemplateSourceRoot != "templates" || got.LocalDocs[0].Name != "runbook" || got.Vars["nested"].(map[string]any)["slice"].([]any)[0] != "value" {
 		t.Fatalf("facts retained a mutable config alias: %#v", got)
 	}
 	got.Domains[0] = "returned mutation"
@@ -1001,12 +1001,34 @@ func TestFactsDeepCopiesConfigurationAndDropsLoadingRepresentation(t *testing.T)
 	}
 }
 
+func TestFactsRejectUnsupportedOrMechanismData(t *testing.T) {
+	type privateReference struct{ values []string }
+	for _, tc := range []struct {
+		name  string
+		value any
+	}{
+		{name: "private reference", value: privateReference{values: []string{"mutable"}}},
+		{name: "operation tree", value: OperationTree{read: memoryTreeReader{}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := NewFacts(&Config{Vars: map[string]any{"nested": []any{tc.value}}})
+			if err == nil || !strings.Contains(err.Error(), "unsupported semantic data type") {
+				t.Fatalf("NewFacts error = %v", err)
+			}
+		})
+	}
+}
+
 func TestFactsPreserveCommitPolicyListPresence(t *testing.T) {
 	present, err := Parse(".awf", []byte("prefix: x\nintegrationBranch: main\ncommitPolicy:\n  allowedIdentities: []\n  allowedSigners: []\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	presentFacts := NewFacts(present).Config()
+	presentSnapshot, err := NewFacts(present)
+	if err != nil {
+		t.Fatal(err)
+	}
+	presentFacts := presentSnapshot.Config()
 	if !presentFacts.CommitPolicy.allowedIdentitiesSet || !presentFacts.CommitPolicy.allowedSignersSet {
 		t.Fatal("Facts lost present optional-list markers")
 	}
@@ -1014,19 +1036,51 @@ func TestFactsPreserveCommitPolicyListPresence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	absentFacts := NewFacts(absent).Config()
+	absentSnapshot, err := NewFacts(absent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	absentFacts := absentSnapshot.Config()
 	if absentFacts.CommitPolicy.allowedIdentitiesSet || absentFacts.CommitPolicy.allowedSignersSet {
 		t.Fatal("Facts invented absent optional-list markers")
 	}
-	bound := present.OperationTree().Bind(NewFacts(present))
+	bound := present.OperationTree().Bind(presentSnapshot)
 	if !bound.CommitPolicy.allowedIdentitiesSet || !bound.CommitPolicy.allowedSignersSet {
 		t.Fatal("OperationTree.Bind lost optional-list markers")
+	}
+
+	for _, tc := range []struct {
+		name  string
+		close string
+		set   bool
+	}{
+		{name: "omitted", set: false},
+		{name: "empty", close: "      close: \"\"\n", set: true},
+		{name: "nonempty", close: "      close: end\n", set: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg, err := Parse(".awf", []byte("prefix: x\nintegrationBranch: main\ncurrentState:\n  sources:\n    - globs: [\"**/*.go\"]\n      marker: start\n"+tc.close))
+			if err != nil {
+				t.Fatal(err)
+			}
+			facts, err := NewFacts(cfg)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := facts.Config().CurrentState.Sources[0].closeSet; got != tc.set {
+				t.Fatalf("Facts closeSet = %v, want %v", got, tc.set)
+			}
+			if got := cfg.OperationTree().Bind(facts).CurrentState.Sources[0].closeSet; got != tc.set {
+				t.Fatalf("Bind closeSet = %v, want %v", got, tc.set)
+			}
+		})
 	}
 }
 
 func TestFactsAndOperationTreeZeroValues(t *testing.T) {
-	if NewFacts(nil).Config() == nil {
-		t.Fatal("zero facts must still return a config value")
+	empty, err := NewFacts(nil)
+	if err != nil || empty.Config() == nil {
+		t.Fatalf("zero facts must still return a config value: %v", err)
 	}
 	var cfg *Config
 	if got := cfg.OperationTree(); got.root != "" || got.raw != nil || got.read != nil || got.filesystem {
@@ -1040,7 +1094,11 @@ func TestFactsAndOperationTreeZeroValues(t *testing.T) {
 	if tree.root != ".awf" || tree.read == nil || !tree.filesystem {
 		t.Fatalf("operation tree = %#v", tree)
 	}
-	bound := tree.Bind(NewFacts(loaded))
+	facts, err := NewFacts(loaded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bound := tree.Bind(facts)
 	if bound.root != ".awf" || bound.read == nil || !bound.filesystem {
 		t.Fatalf("bound operation config = %#v", bound)
 	}

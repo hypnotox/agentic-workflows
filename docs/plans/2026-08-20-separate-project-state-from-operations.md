@@ -181,3 +181,7 @@ functions private until their first outside-package production consumers, and de
 Phase 3. The review requests to restate the workflow-owned phase gate and terminally freeze the plan
 inside implementation were not applied: phase execution already mandates the full gate, and the
 plan remains Proposed until the deferred post-assurance integration transaction.
+
+Phase 1 review closed config facts to YAML-decoded semantic data shapes. `NewFacts` rejects an
+injected non-semantic value instead of retaining an arbitrary Go reference or operation mechanism;
+ordinary parsed configuration and its grammar are unchanged.
