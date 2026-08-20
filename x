@@ -186,7 +186,7 @@ case "$cmd" in
     go tool deadcode -json ./... | go run ./cmd/deadcodecheck
     ;;
   fmt)
-    go tool golangci-lint fmt "$@"
+    go tool golangci-lint fmt --config .golangci-advisory.yml "$@"
     ;;
   test)
     echo "test: Pi host lane skipped; run './x pi-test run' alone or './x gate' to include it" >&2

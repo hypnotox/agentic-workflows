@@ -151,6 +151,7 @@ contextIgnore:
   - codecov.yml
   - .gitignore
   - .golangci.yml
+  - .golangci-advisory.yml
   - .goreleaser.yaml
   - .gremlins.yaml
 vars:

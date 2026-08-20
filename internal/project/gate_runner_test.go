@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -207,6 +208,66 @@ func TestGateLintRuleInventory(t *testing.T) {
 		!slices.Equal(advisory.Linters.Settings.Staticcheck.Checks, wantAdvisoryStaticcheck) ||
 		!slices.Equal(advisory.Formatters.Enable, wantFormatters) {
 		t.Fatalf("advisory lint inventory = linters %q, staticcheck %q, formatters %q", advisory.Linters.Enable, advisory.Linters.Settings.Staticcheck.Checks, advisory.Formatters.Enable)
+	}
+}
+
+func TestRunnerFmtRestoresMissingImport(t *testing.T) {
+	root := t.TempDir()
+	runner, err := os.ReadFile("../../x")
+	if err != nil {
+		t.Fatal(err)
+	}
+	testsupport.WriteFile(t, filepath.Join(root, "x"), string(runner))
+	if err := os.Chmod(filepath.Join(root, "x"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	config, err := os.ReadFile("../../.golangci-advisory.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	testsupport.WriteFile(t, filepath.Join(root, ".golangci-advisory.yml"), string(config))
+	testsupport.WriteFile(t, filepath.Join(root, "go.mod"), "module example.com/formatter\n\ngo 1.25.0\n")
+	goFile := filepath.Join(root, "value.go")
+	testsupport.WriteFile(t, goFile, "package formatter\n\nfunc Value() string {\n\treturn strings.TrimSpace(\" value \")\n}\n")
+
+	realGo, err := exec.LookPath("go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	toolPath, err := exec.Command(realGo, "tool", "-n", "golangci-lint").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fakeBin := filepath.Join(root, "fake-bin")
+	if err := os.Mkdir(fakeBin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	fakeGo := "#!/usr/bin/env bash\nset -euo pipefail\nif [ \"${1:-}\" = tool ] && [ \"${2:-}\" = golangci-lint ]; then\n  shift 2\n  exec " + strconv.Quote(strings.TrimSpace(string(toolPath))) + " \"$@\"\nfi\nexec " + strconv.Quote(realGo) + " \"$@\"\n"
+	testsupport.WriteFile(t, filepath.Join(fakeBin, "go"), fakeGo)
+	if err := os.Chmod(filepath.Join(fakeBin, "go"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	repo := gitfixture.InitRepoAt(t, root)
+	gitfixture.AddAll(t, repo)
+	gitfixture.Commit(t, repo, "fixture", nil)
+
+	cmd := exec.Command("bash", "./x", "fmt")
+	cmd.Dir = root
+	cmd.Env = append(os.Environ(), "PATH="+fakeBin+":"+os.Getenv("PATH"))
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("x fmt: %v: %s", err, output)
+	}
+	formatted, err := os.ReadFile(goFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(formatted), "\"strings\"") {
+		t.Fatalf("x fmt did not restore the missing import:\n%s", formatted)
+	}
+	compile := exec.Command("go", "test", "./...")
+	compile.Dir = root
+	if output, err := compile.CombinedOutput(); err != nil {
+		t.Fatalf("formatted fixture does not compile: %v: %s", err, output)
 	}
 }
 
