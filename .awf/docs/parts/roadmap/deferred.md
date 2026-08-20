@@ -1,3 +1,23 @@
+## Concurrent same-checkout batch helpers
+
+Design same-checkout helpers only after scope enforcement, incidental-write and failure attribution, and deterministic integration are specified. Worktree-isolated and patch-producing workers remain outside the current workflow contract.
+
+## Structured context results
+
+Revisit a structured context result only when a demonstrated consumer can define its contract. ADR-0165 removed speculative JSON rather than retain a hidden path census.
+
+## Verify-line tightenings
+
+The `code-design/outcome-modeling:actionable-outcome-protocol` and `code-design/package-composition:package-owns-one-sentence` Verify lines still need the tightenings raised during ADR-0199 and ADR-0200 review. Apply them with the next ADR that updates those claims because an applied claim requires an update operation and one ADR cannot add and update the same claim.
+
+## Plan-reviewer changelog advice
+
+Add a plan-reviewer documentation-currency item for a missing adopter-facing changelog task only after a second occurrence. The repository-local audit already catches the first occurrence later in the workflow.
+
+## Init collision over-refusal
+
+The init collision probe conservatively refuses artifacts that a `--set` trim would deselect. Revisit this accepted behavior only after an adopter reports it as a problem.
+
 ## Mechanically detecting a nominal invariant proof
 
 `invariant-proof-exercises-its-claim` failed to prevent three sessions of partial proof markers; the last shipped roughly nine and hid a real defect behind a green gate. `internal/migrate/dropworkflowtelemetry_test.go` marks `workflow-telemetry-config-migration` but only pins current schema generation, not generation 21 removing two resident roots. The reviewer item was strengthened but remains rung 3 and probabilistic. Consider mutation testing through existing `cmd/mutants` and the deterministic gremlins recipe: mutating a claimed clause leaves a nominal marker green. Decide whether a scoped, gate-wired subset can be fast and deterministic enough; full runs are slow and advisory. Needs an ADR if blocking.
