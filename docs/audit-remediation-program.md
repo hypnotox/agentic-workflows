@@ -195,7 +195,7 @@ correction is allowed without unrelated cleanup riding along.
 | RF-006 | P1 | BLOCKED | `cmd/awf` reduced to parse, compose, invoke, render, exit | RF-002..RF-005 |
 | RF-007 | P2 | BLOCKED | Residual giant tests split by observable behaviour and semantic owner | RF-002..RF-006 |
 | RF-009 | P1 | DECISION | Post-refactor critical-path coverage policy and regression control | RF-007, owner ruling |
-| RF-014A | P2 | READY | Obsolete Program A machinery deleted | Program A milestone |
+| RF-014A | P2 | COMPLETE | Obsolete Program A machinery deleted | Program A milestone |
 | RF-014B | P2 | CONDITIONAL | Obsolete compatibility residue deleted | RF-008B, compatibility removals applicable |
 | RF-010 | P2 | BLOCKED | Current code comments explain invariants, not historical plans and tranches | RF-002..RF-007, compatibility lane closed |
 | RF-011 | P2 | COMPLETE | Roadmap, known issues, and research separated by owner | Program A milestone |
@@ -256,10 +256,10 @@ correction is allowed without unrelated cleanup riding along.
 
 ### Program B start gate
 
-**Status: OPEN FOR B-F1.** Program A is complete; generated artifacts are stable under the new
-doctrine; changed behaviour has deterministic regression coverage; no known adopter-facing
-contradiction remains; compatibility policy is explicitly deferred to RF-008A's evidence-backed owner
-ruling. RF-001 must establish the target dependency map before any architecture issue moves files.
+**Status: OPEN; B-F1 AND RF-014A COMPLETE.** Program A is complete; generated artifacts are stable
+under the new doctrine; changed behaviour has deterministic regression coverage; no known
+adopter-facing contradiction remains; RF-001 establishes the target dependency map. RF-008B and
+RF-014B remain conditional because nine managed repositories have not upgraded from 0.39.1.
 
 Program A milestone complete; generated artifacts stable under the new doctrine; new behaviour has
 regression tests; no known adopter-facing contradiction remains; compatibility support policy decided
@@ -812,6 +812,35 @@ abstraction; oracle strength.
 - **Unblocked:** B-F1 is complete. RF-014A is next in B-F2. RF-008B remains `CONDITIONAL` until all
   managed repositories are upgraded and each removal candidate passes the no-dependency gate;
   RF-014B remains conditional on applicable compatibility removals.
+
+### RF-014A
+
+- **Range:** Prior program state `3fa7d5612`; implementation range `3fa7d5612..0283d1c08`.
+- **Protected contract:** The exhaustive candidate census removes only consumer-free Program A
+  terminology residue. Current punctuation enforcement, approval concepts, governance footprints,
+  Pi-runtime authority and projection, commands, config, migrations, represented formats, missing
+  initialization support, effort compatibility, and historical evidence remain intact.
+- **Clean integration:** Current glossary and archive authority replace two masked shipped fallback
+  falsehoods; explanatory rune-counting comments no longer cite AF-007's retired seven-codepoint
+  policy. Accurate Pi-workflows navigation remains unchanged. No architecture or compatibility lane
+  work entered the issue.
+- **Files changed:** Catalog vocabulary, authored and rendered glossary data, focused glossary tests,
+  two explanatory comments, the generated lock, and changelog correct and prove the remaining
+  adopter-facing residue.
+- **Verification:** Focused catalog and project tests observed the fallback regression red then green.
+  Render and drift checks, staged checks, repeated full gates with 100 percent statement coverage,
+  dead-code and pin checks, workflow and local audits, and renewed final-tip review passed. The gate
+  retained only three pre-existing advisory `Uid` staticcheck findings.
+- **Deviations:** Independent census expanded the initial comment-only cleanup to two shipped glossary
+  fallbacks whose local overrides had masked false adopter defaults. Grounding retained `session
+  handoff` as truthful navigation to a live projection. Both dispositions preserved the approved
+  proven-dead boundary.
+- **Residual debt:** Compatibility candidates remain intentionally assigned to RF-008B and RF-014B.
+  Nine managed repositories remain pinned to 0.39.1; four retain inert punctuation exemptions, three
+  omit `initializedWithVersion`, and dirty or active worktree topology constrains later upgrades.
+- **Unblocked:** RF-002 and RF-012 are ready for B-F3. RF-008B remains `CONDITIONAL` until every
+  managed repository upgrades and each removal candidate passes its no-dependency gate; RF-014B
+  remains conditional on applicable RF-008B removals.
 
 Close each later issue with the same evidence: identity; baseline and final range; protected contract;
 clean integration; files changed with reason; verification commands and results; material deviations;
