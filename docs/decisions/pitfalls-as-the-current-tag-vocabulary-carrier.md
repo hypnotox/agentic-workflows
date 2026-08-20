@@ -25,9 +25,10 @@ display and validation consumer. The sixty ADR-only members have no current retr
 ownership consumer; validating their historical occurrence against the same vocabulary is circular
 and makes settled history dictate current vocabulary growth.
 
-ADR-0103 item 4 deliberately validated tags on both ADRs and pitfalls, and the current
-`tag-vocabulary-governed`, `tag-coverage-note`, and `tag-frequency-note` claims preserve that model.
-Changing those contracts is therefore a durable policy decision. It must not erase append-only ADR
+ADR-0103 item 4 deliberately validated tags on both ADRs and pitfalls. ADR-0109 item 4 later made
+both artifact kinds the population for coverage and frequency advisories. The current
+`tag-vocabulary-governed`, `tag-coverage-note`, and `tag-frequency-note` claims preserve those
+contracts, so narrowing them is a durable policy decision. It must not erase append-only ADR
 frontmatter, remove the legacy parser, disturb `related:` behavior, or become compatibility cleanup
 reserved for RF-008B and RF-014B.
 
@@ -40,10 +41,14 @@ Owner disposition: choose B. The approved RF-012 boundary already requires remov
 ## Decision
 
 1. `decision: pitfalls-are-current-tag-carriers` Govern the configured tag vocabulary against
-   authored pitfall metadata only. A non-empty vocabulary validates pitfall membership and meanings,
-   and its coverage and frequency advisories evaluate pitfalls only. Legacy ADR tags remain accepted
-   and parsed historical metadata but neither require current vocabulary membership nor contribute
-   to current tag-health advisories. ADR `related:` parsing and validation remain unchanged.
+   authored pitfall metadata only. This replaces only ADR-0103 item 4's legacy-ADR membership arm
+   and refines ADR-0109 item 4's coverage and frequency populations from legacy ADRs plus pitfalls
+   to pitfalls alone. A non-empty vocabulary validates pitfall membership and meanings, and its
+   coverage and frequency advisories evaluate pitfalls only. Legacy ADR tags remain accepted and
+   parsed historical metadata but neither require current vocabulary membership nor contribute to
+   current tag-health advisories. Preserve ADR-0109's frequency threshold, advisory rank, empty-
+   vocabulary behavior, and all unrelated decisions. ADR `related:` parsing and validation remain
+   unchanged.
 2. `decision: vocabulary-requires-current-consumer` Retain a self-hosted vocabulary member only when
    a current pitfall carrier demonstrates a retrieval, validation, display, or ownership use for an
    accurate current concern. Remove members supported only by historical ADR classification, retired
