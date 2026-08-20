@@ -40,6 +40,23 @@ Public upgrade attestation `Verify` opens and closes the production root-confine
 Origin: ADR-0216
 Backing: test
 
+### `invariant: repository-layer-direction`
+
+Repository coordination follows one direction: `cmd/awf` composes and invokes focused application operations; application operations consume immutable project state, domain services, and only the semantic mechanisms they need; domain and state owners consume lower semantic Git, snapshot, filesystem, atomic-publication, and rendering mechanisms. `Loader` constructs `ProjectState`; application operations may invoke `Publisher`, `RepositoryChecker`, and `CurrentStateCoordinator`; `RepositoryChecker` consumes individual checker results without owning their policy. No internal package imports `cmd/awf`; project state, domain, checker, and mechanism owners never import application coordination; `ProjectState` never imports `Loader`; individual check owners never import `RepositoryChecker`; and `internal/project` never imports `internal/contextq` while the existing reverse edge remains. Foundational mechanism chains from snapshot to Git and from filesystem to atomic file publication remain legal.
+Origin: ADR-0296
+Backing: unbacked
+Verify: Inspect changed owner imports against the complete direction above; run `TestRepositoryLayerDirection` for the cheap foundational-mechanism reversals and `internal/project` to `internal/contextq` cycle that have focused mechanical protection.
+
+### `rule: repository-extraction-owners`
+
+The repository extraction target has one semantic owner per concern. `ProjectState` owns immutable loaded facts; `Loader` owns opening and validation; `Publisher` owns output planning, rendering coordination, backup decisions, and publishing; `RepositoryChecker` owns policy-free ordered aggregation; `CurrentStateCoordinator` owns ADR and topic transition coordination; focused application operations own command-level use cases; and `cmd/awf` owns parse, compose, invoke, result rendering, stream choice, and exit mapping. Individual check policy stays with its concern owner: `GeneratedOutputChecker` for generated-output conformance, `ReferenceChecker` for managed references, `PlanChecker` for plans, `PitfallChecker` for pitfalls, `VocabularyChecker` for glossary and tag vocabulary, `ConfigurationChecker` for configuration and command-spec consistency, `CurrentStateCoordinator` for current-state validity, `internal/prosegate` for punctuation, `internal/memorycite` for memory citations, `internal/commitpolicy` for commit authorization, and `internal/audit` for advisory repository analysis. These are semantic owners, not a prescribed file inventory or extraction order.
+Origin: ADR-0296
+
+### `rule: repository-boundary-values`
+
+Boundaries carry immutable loaded facts; semantic ADR, topic, plan, output-declaration, policy, finding, and operation-result values; owner-produced presentation documents; and immutable semantic snapshots such as `snapshot.Tree`. Git-native objects, mutable repository or index state, filesystem handles and metadata, temporary publication paths, template parse state, and other mechanism representations remain inside their mechanism boundary. `ProjectState` exposes no mutable configuration, catalog, map, or slice aliases as public state.
+Origin: ADR-0296
+
 ### `invariant: dependency-composition-commit-classification`
 
 Code-design authority and cross-package code-structure work uses the `code-design` scope, and a structural change uses the existing `refactor` type rather than a `refactor` scope.
