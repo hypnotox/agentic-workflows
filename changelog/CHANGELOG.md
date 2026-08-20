@@ -14,6 +14,8 @@ query a single version or a range.
 
 ### Features
 
+- Maintainable-design guidance now requires new workflow concepts, artifact fields, lifecycle states, hard checks, and glossary terms to consolidate existing semantics unless a demonstrated correctness or safety invariant cannot fit the existing model. This remains a judgment rather than a target count or checker, and the glossary no longer preserves the retired split-effort term.
+
 - Operative workflow guidance now separates rules, flexible implementation details, bounded stop conditions, and required evidence across planning, execution, and review without changing their authority or verification boundaries.
 
 - Check output now separates blocking Errors, zero-exit Warnings, and unranked Information by protected property. Prose style and heuristic lint no longer block valid work, while invalid inputs, serious drift, authority violations, unsafe behavior, and unavailable required verification remain blocking.

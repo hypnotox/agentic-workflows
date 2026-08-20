@@ -182,9 +182,6 @@ data:
     - term: continuity notice
       meaning: "A routine checkpoint's informational one-line summary of the completed phase and immediate next action; it does not stop autonomous continuation."
       domains: [rendering]
-    - term: memory-backed effort
-      meaning: "Retired term for split effort ownership. Every current effort owns its memory file; work without a continuity trigger has no effort."
-      domains: [tooling]
     - term: pending ADR
       meaning: "A reviewable and implementable decision record identified by a retained slug before integration assigns its number."
       domains: [adr-system]

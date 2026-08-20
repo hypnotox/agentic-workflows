@@ -50,7 +50,6 @@
 | linked-plan review freshness | The rule that ordinary full plan review verifies every parsed plan-level `adrs:` link, and substantive ADR corrections settle through ADR review before linked Proposed plans and landed-phase assurance renew. |
 | managed effort worktree | The checkout an effort creates alongside itself, on its own branch, as the default place its work executes. Integrated and removed explicitly when the effort finishes. |
 | mandatory approval check-in | The pre-artifact stop for explicit brainstorming outline approval. Effort creation is not an approval boundary. |
-| memory-backed effort | Retired term for split effort ownership. Every current effort owns its memory file; work without a continuity trigger has no effort. |
 | operation-owned derivation | A value derived during and threaded through one operation rather than cached on a longer-lived value. |
 | pending ADR | A reviewable and implementable decision record identified by a retained slug before integration assigns its number. |
 | pitfall entry | One path-derived authored Markdown source under `.awf/docs/pitfalls/`, created with `awf new pitfall <title>`; deleting it retires the entry through render pruning. |

@@ -542,14 +542,14 @@
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",
       "templateHash": "sha256:dc751686b557a6bde2147cb6be97788269a3c375bfa64f3eebf5c0e08dc0bb45",
-      "configHash": "sha256:d085739880072a63f2c9383e07549c0b1eb12d7b52df0ace901a9e0783b68cd2",
-      "outputHash": "sha256:70b2bbe875297dfcb9241385aa981ac0be781ac772af0fee507ce4b90077749d"
+      "configHash": "sha256:6f665ce28b1870c41b1c8bf01dfbd4e6eff02d7ff2f866e0249cf5e569db629b",
+      "outputHash": "sha256:df5fe94cd4bd70a0c79eb85a1415538dd219eee7c12cbaa069e46e458262a993"
     },
     "docs/maintainable-code-design.md": {
       "templateId": "docs/maintainable-code-design.md.tmpl",
-      "templateHash": "sha256:9193c7e56510763c5c64aba1450fb508d4976c4cae5b4227027c33173712d058",
+      "templateHash": "sha256:aa19b34e3e74449bfa7af2ad5f2b74ab99420da32b47850a84a3f46a478a80d2",
       "configHash": "sha256:4b5fd0025d8d6139b7c93a73367eacb230ce31b33ad8a2721cafae3caecba51b",
-      "outputHash": "sha256:44ea8bf7aa92f86ce376ff3cb62666ef21ecf22f6dda2433de8c4e1e5a67a9f1"
+      "outputHash": "sha256:12cd46af668f37a37e4fc67451757991019137e03dc53c3b38f042af6b48628d"
     },
     "docs/pi-runtime-reference.md": {
       "templateId": "docs/pi-runtime-reference.md.tmpl",
