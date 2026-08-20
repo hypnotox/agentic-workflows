@@ -45,7 +45,9 @@ settles the outcome and excludes test-framework, coverage-policy, gate, and pack
 
 4. `decision: oracle-rule-single-home` The complete rule has one authored home. Applicable testing,
    implementation, planning, and review guidance projects that rule rather than maintaining
-   independently changeable variants.
+   independently changeable variants. The invariant uses `Backing: test` with a matching proof
+   annotation under `internal/`; every affected template renders coherently with empty variables and
+   emits no `<no value>` token.
 
 ## State changes
 
