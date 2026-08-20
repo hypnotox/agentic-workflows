@@ -554,8 +554,8 @@
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
       "templateHash": "sha256:d6475aaeadbbed6f56bfc85c4716b8636fea0d5922661201890334a6429b4f85",
-      "configHash": "sha256:57d94881b224a9b4d3dc27a9558c7b62ca7b692168b1ab53e82ea1422e86529c",
-      "outputHash": "sha256:af5c0ab7a897c754c4aa79ec8135c587f5b0f1eb8f95bdfe7fe74b524dcd3a0c"
+      "configHash": "sha256:68773c045547eddb37148db54f90cf51cb64bc26e35f539601e44c8d11f7bb4d",
+      "outputHash": "sha256:0b11b65b739954dc0ab036b93c19f1158a3a678d9017f28e4c9067a11d516ef1"
     },
     "docs/pitfalls/a-census-number-is-only-as-good-as-its-stated-query.md": {
       "templateId": "pitfalls/entry.md.tmpl",
@@ -748,6 +748,12 @@
       "templateHash": "sha256:23ea7baa4f2cd0e3a7319448093f2612ca5a7beab8cb0bfc631015eef99be786",
       "configHash": "sha256:87b9ac1dc7e241387edc333e3b312183ba7ff964b1aefe12935bea295e0fd29c",
       "outputHash": "sha256:1b961029b295361f3563bcbe57a7bd62c5b9ada50fdbefe20a0cee005690f6f7"
+    },
+    "docs/pitfalls/resolve-review-ranges-from-git-rather-than-transcribing-shas.md": {
+      "templateId": "pitfalls/entry.md.tmpl",
+      "templateHash": "sha256:23ea7baa4f2cd0e3a7319448093f2612ca5a7beab8cb0bfc631015eef99be786",
+      "configHash": "sha256:908029bb97464c7e476318acfbc4c4bb6741395ab91cac81fc45cf567ae5bd6a",
+      "outputHash": "sha256:011a7fe8bba8329bfd606247b35888d989a87bbb74f097fd58b29aecd52f6ed9"
     },
     "docs/pitfalls/retiring-a-concept-needs-paraphrase-sweeps-not-just-identifier-greps.md": {
       "templateId": "pitfalls/entry.md.tmpl",

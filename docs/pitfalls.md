@@ -46,6 +46,7 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 | [Raw\-byte offsets go stale the moment an earlier pass edits the file](pitfalls/raw-byte-offsets-go-stale-the-moment-an-earlier-pass-edits-the-file.md) | config | schema\-migration\, adr\-parsing | ADR-0128 |
 | [Recheck closure assertions after changing catalog edges](pitfalls/recheck-closure-assertions-after-changing-catalog-edges.md) | rendering | kind\-descriptor\, catalog\-derived\-tests\, verification\-discipline |  |
 | [Reconcile the exact mutable artifact\, not a similarly named predecessor](pitfalls/reconcile-the-exact-mutable-artifact-not-a-similarly-named-predecessor.md) | rendering\, tooling | plan\-artifact\, verification\-discipline |  |
+| [Resolve review ranges from Git rather than transcribing SHAs](pitfalls/resolve-review-ranges-from-git-rather-than-transcribing-shas.md) | Unassigned | verification\-discipline |  |
 | [Retiring a concept needs paraphrase sweeps\, not just identifier greps](pitfalls/retiring-a-concept-needs-paraphrase-sweeps-not-just-identifier-greps.md) | rendering\, adr\-system | render\-completeness\, template\-residue | ADR-0191 |
 | [Reuse the repository boundary for new filesystem walks](pitfalls/reuse-the-repository-boundary-for-new-filesystem-walks.md) | tooling | repo\-open |  |
 | [Scope a claim to the command\'s actual input](pitfalls/scope-a-claim-to-the-command-s-actual-input.md) | invariants | invariant\-backing\, verification\-discipline |  |
@@ -120,6 +121,7 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 
 - [Ad hoc compound mutations still need target read\-back](pitfalls/ad-hoc-compound-mutations-still-need-target-read-back.md)
 - [An ad hoc empty scan still needs proof that the probe ran](pitfalls/an-ad-hoc-empty-scan-still-needs-proof-that-the-probe-ran.md)
+- [Resolve review ranges from Git rather than transcribing SHAs](pitfalls/resolve-review-ranges-from-git-rather-than-transcribing-shas.md)
 
 
 <!-- awf:template-source templates/docs/pitfalls.md.tmpl#append -->
