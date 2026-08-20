@@ -106,10 +106,10 @@ change, not its literal execution choreography.
 | AF-007 | P2 | COMPLETE | Punctuation restraint replaces the seven-codepoint ban | AF-001 |
 | AF-008 | P2 | COMPLETE | Core and Full read as governance footprints, not rigor modes | AF-001 |
 | AF-009 | P2 | COMPLETE | Pi runtime protocol owned by a target-specific reference, not generic workflow docs | AF-001, AF-008 |
-| AF-010 | P2 | BLOCKED | Residual operative prose states rule, flexible detail, stop condition, and evidence | AF-006..AF-009, AF-011, AF-013 |
+| AF-010 | P2 | READY | Residual operative prose states rule, flexible detail, stop condition, and evidence | AF-006..AF-009, AF-011, AF-013 |
 | AF-011 | P2 | COMPLETE | Daily-use documentation separated from rare recovery and migration protocol | AF-009 |
 | AF-012 | P2 | BLOCKED | Demonstrably redundant workflow concepts and vocabulary consolidated | AF-010, AF-011 |
-| AF-013 | P1 | BLOCKED | Blocking checks separated from warnings and unranked notes by protected property | AF-005, AF-007 |
+| AF-013 | P1 | COMPLETE | Blocking checks separated from warnings and unranked notes by protected property | AF-005, AF-007 |
 | AF-014B | P1 | BLOCKED | Outcome-oriented behaviour scenarios cover the changed contract | AF-002..AF-013 |
 
 ### Protected contract
@@ -569,6 +569,41 @@ abstraction; oracle strength.
   changeable consequence of current standard-document selection, not a durable commitment.
 - **Unblocked:** AF-011 now satisfies its dependency contribution to AF-010 and AF-012. AF-010 still
   waits on AF-013; AF-012 still waits on AF-010.
+
+### AF-013
+
+- **Range:** Prior program state `e2b3a056d`; integration range `e2b3a056d..ac56350ea`.
+- **Protected contract:** ADR-0295 classifies every blocking Error by a named correctness, safety,
+  authority, or reproducibility property; style and heuristic judgments use the existing Warning
+  rank; optional improvements and operation notices remain unranked Information. Exit is nonzero
+  exactly when an Error exists. Serious failures remain blocking, the shared rank model remains
+  Error and Warn only, and severity is not configurable.
+- **Clean integration:** Existing check producers and aggregation remain in place. Direct and
+  aggregate presentation visibly separate errors, warnings, and information. The gate runs a
+  blocking defect lint lane and a visible zero-exit advisory lane while treating either lane's
+  execution failure as blocking. RF-004 retains checker decomposition and compatibility cleanup.
+- **Files changed:** Check and prose-gate result flow, CLI presentation and exit mapping, lint
+  configurations and gate runner, severity inventory in the testing guide, config-reference
+  descriptions, current-state claims, ADR and plan history, changelog, generated outputs, and focused
+  presentation, exit, lint-lane, and authority tests implement and prove the classification.
+- **Verification:** Focused red then green covered Error-only, Warning-only, Information-only, mixed,
+  prose, unused vocabulary, serious failures, and lint-lane behavior. ADR, plan, phase, terminal, and
+  combined-history reviews settled their findings. Staged checks, full gates with 100 percent
+  statement coverage, drift checks, and workflow audits passed. After AF-011 integrated, its daily
+  guide simplification was preserved, authoritative sources were rerendered, and renewed assurance
+  over the combined tip returned clean. The final local audit reported only three nonblocking
+  coverage-ignore review prompts.
+- **Deviations:** The existing closed report-category boundary required an Information presentation
+  shape; config and reference owners were corrected where they still called unused vocabulary
+  failing drift. Integration placed the exhaustive severity inventory in the testing guide rather
+  than restoring rare protocol to the daily guide. These were bounded owner corrections, not policy
+  expansion. The issue owner integrated and finalized after combined assurance instead of returning
+  the final tip to the serialized queue; repository verification found no semantic loss, but future
+  issue owners remain required to stop at integration-ready.
+- **Residual debt:** Existing internal Notes projections remain as compatibility surfaces for RF-004
+  to evaluate during checker decomposition. No other issue-local debt is known.
+- **Unblocked:** AF-010 now has every dependency complete and is `READY`. AF-012 still waits on
+  AF-010; AF-014B waits on AF-010 through AF-013.
 
 Close each later issue with the same evidence: identity; baseline and final range; protected contract;
 clean integration; files changed with reason; verification commands and results; material deviations;
