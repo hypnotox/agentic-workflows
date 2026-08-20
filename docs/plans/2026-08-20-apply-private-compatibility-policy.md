@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-20
 adrs: [bound-compatibility-support-to-managed-reality]
-status: Proposed
+status: Implemented
 ---
 # Plan: Apply Private Compatibility Policy
 
