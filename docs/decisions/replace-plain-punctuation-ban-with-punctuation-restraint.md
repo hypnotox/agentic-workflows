@@ -42,9 +42,11 @@ compatibility machinery for RF-014A and RF-014B rather than mixing that cleanup 
    Do not require new exemptions for those permitted characters. Removal of proven obsolete policy
    or compatibility machinery remains owned by RF-014A or RF-014B.
 4. `decision: align-advisory-punctuation-audit` Keep the existing non-failing documentation audit
-   advisory aligned with punctuation restraint. It may warn about newly introduced violations of the
-   guarded en-dash or per-paragraph em-dash policy, but must not discourage permitted ellipses, curly
-   quotes, or compliant em-dash use.
+   advisory aligned with punctuation restraint. For each non-generated Markdown file under the
+   documentation root, compare old and new text and warn when either the en-dash occurrence count or
+   the total em-dash excess rises. Em-dash excess is the sum, across blank-line-delimited paragraphs,
+   of each paragraph's em-dash count beyond two. Do not warn about permitted ellipses, curly quotes,
+   or compliant em-dash use.
 
 ## State changes
 
@@ -61,10 +63,10 @@ and dense em-dash prose becomes a finding at the paragraph boundary rather than 
 The scan continues to cover non-prose tracked text without needing language-aware exclusions, so
 formatter-produced doc comments are judged by the same policy as every other text block.
 
-Diagnostics and exemptions become slightly more contextual because an em-dash finding must identify
-its violating paragraph count. Path-and-codepoint exemptions still provide a narrow escape hatch for
-frozen or self-describing text. Former exemptions remain parseable but inert until the compatibility
-support floor permits their removal.
+Diagnostics and exemptions become slightly more contextual because em-dash findings arise from a
+paragraph threshold. Path-and-codepoint exemptions still provide a narrow escape hatch for frozen or
+self-describing text. Former exemptions remain parseable but inert until the compatibility support
+floor permits their removal.
 
 The specialized seven-codepoint emitted-prose invariant is retired because it would contradict the
 new policy and depends on language-specific Go literal detection. The ordinary tracked-text scan
