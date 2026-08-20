@@ -9,6 +9,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 )
@@ -16,17 +17,18 @@ import (
 // CheckStagedDriftRoot compares rendered output entirely within the staged
 // universe without loading working-tree project configuration.
 func CheckStagedDriftRoot(ctx context.Context, root string) ([]manifest.Drift, error) {
-	p, err := openRootProject(root)
+	repo, prefix, err := awfgit.OpenContaining(root)
 	if err != nil {
 		return nil, err
 	}
+	p := stagedProject(root, repo, prefix)
 	return p.CheckStagedDrift(ctx)
 }
 
 // CheckStagedDrift renders from the index configuration and compares generated
 // output membership plus stale and hand-edited properties against that same index.
-func (p *Project) CheckStagedDrift(ctx context.Context) ([]manifest.Drift, error) {
-	tree, err := p.indexTree(ctx)
+func CheckStagedDriftOperation(p *Project, ctx context.Context) ([]manifest.Drift, error) {
+	tree, err := indexTree(p, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -49,26 +51,26 @@ func (p *Project) CheckStagedDrift(ctx context.Context) ([]manifest.Drift, error
 	read := snapshotTreeReader{tree: state.Tree}
 	// The staged universe always selects from the complete immutable catalog
 	// injected into p. It may describe a differently profiled working tree, so
-	// reusing p.catalog() would make Core -> Full staged validation lose the Full
+	// reusing projectCatalog(p) would make Core -> Full staged validation lose the Full
 	// layer, while consulting the global catalog would discard injected entries.
-	completeCat := p.completeCatalog()
+	completeCat := completeProjectCatalog(p)
 	selected := catalog.NewProfileView(completeCat, state.Cfg.Profile).Catalog()
 	universe := &Project{
 		Root: p.Root, roots: p.roots, Cfg: state.Cfg, Targets: targets,
 		completeCat: completeCat, cat: selected, read: read, nested: p.nested, repo: p.repo,
 	}
-	if err := universe.validateAgainstCatalog(); err != nil {
+	if err := validateAgainstCatalog(universe); err != nil {
 		return nil, err
 	}
 	effective := map[string]bool{}
-	for name := range universe.catalog().Skills {
+	for name := range projectCatalog(universe).Skills {
 		effective[name] = true
 	}
-	pitfalls, err := universe.loadPitfallCorpus()
+	pitfalls, err := loadPitfallCorpus(universe)
 	if err != nil {
 		return nil, err
 	}
-	op, err := universe.outputPlanWithPitfalls(ctx, state.Loaded.Corpus, pitfalls, state.Loaded.Topics, effective)
+	op, err := outputPlanWithPitfalls(universe, ctx, state.Loaded.Corpus, pitfalls, state.Loaded.Topics, effective)
 	if err != nil {
 		return nil, err
 	}

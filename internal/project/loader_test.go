@@ -131,17 +131,17 @@ func TestLoaderOpenOwnsInjectedCompleteView(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.catalog() == &injected || !reflect.DeepEqual(p.catalog(), &injected) {
+	if p.state.catalog() == &injected || !reflect.DeepEqual(p.state.catalog(), &injected) {
 		t.Fatal("Project did not own one equivalent injected catalog snapshot")
 	}
 	second, err := loader.Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	firstSkill := p.catalog().Skills["tdd"]
+	firstSkill := p.state.catalog().Skills["tdd"]
 	firstSkill.Sections[0] = "changed first project"
-	p.catalog().Skills["tdd"] = firstSkill
-	if second.catalog().Skills["tdd"].Sections[0] == "changed first project" {
+	p.state.catalog().Skills["tdd"] = firstSkill
+	if projectCatalog(second).Skills["tdd"].Sections[0] == "changed first project" {
 		t.Fatal("Loader-opened projects share a mutable catalog snapshot")
 	}
 }
@@ -216,7 +216,7 @@ func TestLoaderStateDefensivelyOwnsLoadedFacts(t *testing.T) {
 	p.Cfg.Tags["tag"] = "mutated"
 	p.Cfg.Vars["nested"].(map[string]any)["items"].([]any)[0] = "mutated"
 	p.Targets[0].Capabilities = append(p.Targets[0].Capabilities, CapabilitySubagentTools)
-	p.catalog().Skills["tdd"] = catalog.SkillSpec{Sections: []string{"mutated"}}
+	p.state.catalog().Skills["tdd"] = catalog.SkillSpec{Sections: []string{"mutated"}}
 	got := p.state.facts.Config()
 	if got.Domains[0] != "tooling" || got.Tags["tag"] != "meaning" || got.Vars["nested"].(map[string]any)["items"].([]any)[0] != "original" {
 		t.Fatalf("state retained a Loader input alias: %#v", got)

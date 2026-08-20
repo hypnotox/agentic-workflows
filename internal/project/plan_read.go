@@ -9,7 +9,7 @@ import (
 
 // ReadPlan resolves an exact plan filename or stem beneath the configured plans
 // directory and returns internal/plan's executable projection unchanged.
-func (p *Project) ReadPlan(name, selector string) ([]byte, error) {
+func ReadPlanOperation(p *Project, name, selector string) ([]byte, error) {
 	plansDir := filepath.Join(p.Root, config.DocsDir, "plans")
 	selected, err := plan.Resolve(plansDir, name)
 	if err != nil {
@@ -22,7 +22,7 @@ func (p *Project) ReadPlan(name, selector string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	corpus, _, _, _, err := p.deriveOperationStateWithPitfalls()
+	corpus, _, _, _, err := deriveOperationStateWithPitfalls(p)
 	if err != nil {
 		return nil, err
 	}

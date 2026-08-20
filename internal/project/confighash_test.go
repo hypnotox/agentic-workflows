@@ -17,15 +17,15 @@ func TestDataDefaultsConfigurationChangesConfigHash(t *testing.T) {
 		t.Fatal(err)
 	}
 	eff := mustDeriveSkills(t, p)
-	without, err := p.artifactConfigHash("plain", config.Sidecar{}, nil, eff)
+	without, err := artifactConfigHash(p, "plain", config.Sidecar{}, nil, eff)
 	if err != nil {
 		t.Fatal(err)
 	}
-	withTrue, err := p.artifactConfigHash("plain", config.Sidecar{DataDefaults: map[string]bool{"items": true}}, nil, eff)
+	withTrue, err := artifactConfigHash(p, "plain", config.Sidecar{DataDefaults: map[string]bool{"items": true}}, nil, eff)
 	if err != nil {
 		t.Fatal(err)
 	}
-	withFalse, err := p.artifactConfigHash("plain", config.Sidecar{DataDefaults: map[string]bool{"items": false}}, nil, eff)
+	withFalse, err := artifactConfigHash(p, "plain", config.Sidecar{DataDefaults: map[string]bool{"items": false}}, nil, eff)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,15 +41,15 @@ func TestCommitPolicyConsumerConfigHash(t *testing.T) {
 		t.Fatal(err)
 	}
 	eff := mustDeriveSkills(t, p)
-	consumerBefore, err := p.artifactConfigHash("{{ with .commitPolicy }}{{ .GrandfatheredThrough }}{{ end }}", config.Sidecar{}, nil, eff)
+	consumerBefore, err := artifactConfigHash(p, "{{ with .commitPolicy }}{{ .GrandfatheredThrough }}{{ end }}", config.Sidecar{}, nil, eff)
 	if err != nil {
 		t.Fatal(err)
 	}
-	unrelatedBefore, err := p.artifactConfigHash("plain prose mentioning .commitPolicy", config.Sidecar{}, nil, eff)
+	unrelatedBefore, err := artifactConfigHash(p, "plain prose mentioning .commitPolicy", config.Sidecar{}, nil, eff)
 	if err != nil {
 		t.Fatal(err)
 	}
-	commentBefore, err := p.artifactConfigHash("{{/* .commitPolicy */}}", config.Sidecar{}, nil, eff)
+	commentBefore, err := artifactConfigHash(p, "{{/* .commitPolicy */}}", config.Sidecar{}, nil, eff)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestCommitPolicyConsumerConfigHash(t *testing.T) {
 	previous := consumerBefore
 	for i, policy := range policies {
 		p.Cfg.CommitPolicy = policy
-		got, err := p.artifactConfigHash("{{ with .commitPolicy }}{{ .GrandfatheredThrough }}{{ end }}", config.Sidecar{}, nil, eff)
+		got, err := artifactConfigHash(p, "{{ with .commitPolicy }}{{ .GrandfatheredThrough }}{{ end }}", config.Sidecar{}, nil, eff)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -70,11 +70,11 @@ func TestCommitPolicyConsumerConfigHash(t *testing.T) {
 		}
 		previous = got
 	}
-	unrelatedAfter, err := p.artifactConfigHash("plain prose mentioning .commitPolicy", config.Sidecar{}, nil, eff)
+	unrelatedAfter, err := artifactConfigHash(p, "plain prose mentioning .commitPolicy", config.Sidecar{}, nil, eff)
 	if err != nil {
 		t.Fatal(err)
 	}
-	commentAfter, err := p.artifactConfigHash("{{/* .commitPolicy */}}", config.Sidecar{}, nil, eff)
+	commentAfter, err := artifactConfigHash(p, "{{/* .commitPolicy */}}", config.Sidecar{}, nil, eff)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,13 +88,13 @@ func TestCommitPolicyConsumerConfigHash(t *testing.T) {
 	if err := os.WriteFile(part, []byte("{{=awf:commitScopes}}"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.artifactConfigHash("plain", config.Sidecar{}, []string{part}, eff); err != nil {
+	if _, err := artifactConfigHash(p, "plain", config.Sidecar{}, []string{part}, eff); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(part, []byte("<!-- awf:comment no close\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.artifactConfigHash("plain", config.Sidecar{}, []string{part}, eff); err == nil {
+	if _, err := artifactConfigHash(p, "plain", config.Sidecar{}, []string{part}, eff); err == nil {
 		t.Fatal("malformed authoring comment did not fail config hashing")
 	}
 }
@@ -128,24 +128,24 @@ func TestTemplateSourceRootChangesOnlyActivatedMarkdownConfigHash(t *testing.T) 
 		}
 	}
 	sc := config.Sidecar{}
-	plain, err := p.renderTarget("adr-readme", "", tid, p.catalog().Docs["adr-readme"].Sections, sc, p.data(sc, map[string]bool{}), "out.md", map[string]bool{})
+	plain, err := renderTarget(p, "adr-readme", "", tid, projectCatalog(p).Docs["adr-readme"].Sections, sc, projectData(p, sc, map[string]bool{}), "out.md", map[string]bool{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	p.Cfg.Render = &config.RenderConfig{TemplateSourceRoot: "templates"}
-	active, err := p.renderTarget("adr-readme", "", tid, p.catalog().Docs["adr-readme"].Sections, sc, p.data(sc, map[string]bool{}), "out.md", map[string]bool{})
+	active, err := renderTarget(p, "adr-readme", "", tid, projectCatalog(p).Docs["adr-readme"].Sections, sc, projectData(p, sc, map[string]bool{}), "out.md", map[string]bool{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if plain.ConfigHash == active.ConfigHash || plain.TemplateHash != active.TemplateHash {
 		t.Fatalf("root projection hashes plain=%#v active=%#v", plain, active)
 	}
-	nativeBefore, err := p.renderTarget("hooks", "", "hooks/pre-commit.sh.tmpl", nil, sc, p.data(sc, map[string]bool{}), "hook", map[string]bool{}, &renderOutputOptions{encoder: PlainAgentDialect})
+	nativeBefore, err := renderTarget(p, "hooks", "", "hooks/pre-commit.sh.tmpl", nil, sc, projectData(p, sc, map[string]bool{}), "hook", map[string]bool{}, &renderOutputOptions{encoder: PlainAgentDialect})
 	if err != nil {
 		t.Fatal(err)
 	}
 	p.Cfg.Render = nil
-	nativeAbsent, err := p.renderTarget("hooks", "", "hooks/pre-commit.sh.tmpl", nil, sc, p.data(sc, map[string]bool{}), "hook", map[string]bool{}, &renderOutputOptions{encoder: PlainAgentDialect})
+	nativeAbsent, err := renderTarget(p, "hooks", "", "hooks/pre-commit.sh.tmpl", nil, sc, projectData(p, sc, map[string]bool{}), "hook", map[string]bool{}, &renderOutputOptions{encoder: PlainAgentDialect})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,11 +160,11 @@ func TestRetiredTelemetryTemplateValuesDoNotAffectConfigHash(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	before, err := p.artifactConfigHash("{{ .telemetryWidgetEnabled }} {{ .telemetryWidgetShowCost }}", config.Sidecar{}, nil, mustDeriveSkills(t, p))
+	before, err := artifactConfigHash(p, "{{ .telemetryWidgetEnabled }} {{ .telemetryWidgetShowCost }}", config.Sidecar{}, nil, mustDeriveSkills(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
-	after, err := p.artifactConfigHash("{{ .telemetryWidgetEnabled }} {{ .telemetryWidgetShowCost }}", config.Sidecar{}, nil, mustDeriveSkills(t, p))
+	after, err := artifactConfigHash(p, "{{ .telemetryWidgetEnabled }} {{ .telemetryWidgetShowCost }}", config.Sidecar{}, nil, mustDeriveSkills(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -180,12 +180,12 @@ func TestProfileChangesConfigHash(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	core, err := p.artifactConfigHash("plain", config.Sidecar{}, nil, nil)
+	core, err := artifactConfigHash(p, "plain", config.Sidecar{}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	p.Cfg.Profile = "full"
-	full, err := p.artifactConfigHash("plain", config.Sidecar{}, nil, nil)
+	full, err := artifactConfigHash(p, "plain", config.Sidecar{}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

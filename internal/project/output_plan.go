@@ -86,7 +86,7 @@ func (r snapshotTreeReader) Paths(prefix string) ([]string, error) {
 	return out, nil // an in-memory tree has no read to fault
 }
 
-func (p *Project) projectTreeReader() ProjectTreeReader {
+func projectTreeReader(p *Project) ProjectTreeReader {
 	if p.read != nil {
 		return p.read
 	}
@@ -590,16 +590,16 @@ func resolvedTargetOutputs(t Target, prefix string, selected []string) []TargetO
 
 // targetOutputDeclarations reads recipe inputs but never executes a template.
 // Thus a collision is reported before any producer renders its output.
-func (p *Project) targetOutputDeclarations(eff map[string]bool) (map[string]targetOutputDeclaration, error) {
+func targetOutputDeclarations(p *Project, eff map[string]bool) (map[string]targetOutputDeclaration, error) {
 	out := map[string]targetOutputDeclaration{}
 	for _, t := range p.Targets {
 		if err := t.validate(); err != nil {
 			return nil, err
 		}
-		if err := validateTargetOutputRequirements(t, p.catalog()); err != nil {
+		if err := validateTargetOutputRequirements(t, projectCatalog(p)); err != nil {
 			return nil, err
 		}
-		for _, o := range resolvedTargetOutputs(t, p.Cfg.Prefix, slices.Sorted(maps.Keys(p.catalog().Skills))) {
+		for _, o := range resolvedTargetOutputs(t, p.Cfg.Prefix, slices.Sorted(maps.Keys(projectCatalog(p).Skills))) {
 			src, err := fs.ReadFile(templates.FS, o.TemplateID)
 			if err != nil { // coverage-ignore: TestTargetOutputDeclarationsRejectUnreadableTemplate proves this error; Go's embedded-filesystem profile does not attribute its return block.
 				return nil, fmt.Errorf("read template %s: %w", o.TemplateID, err)
@@ -612,7 +612,7 @@ func (p *Project) targetOutputDeclarations(eff map[string]bool) (map[string]targ
 			if err != nil { // coverage-ignore: embedded target-output templates have well-formed authoring comments; render package tests malformed input
 				return nil, fmt.Errorf("render %s: %w", o.TemplateID, err)
 			}
-			configHash, err := p.artifactConfigHash(stripped, config.Sidecar{}, nil, eff, t)
+			configHash, err := artifactConfigHash(p, stripped, config.Sidecar{}, nil, eff, t)
 			if err != nil { // coverage-ignore: no target output has parts and its descriptor projection is marshalable
 				return nil, err
 			}
@@ -645,27 +645,27 @@ func (p *Project) targetOutputDeclarations(eff map[string]bool) (map[string]targ
 // set at its own entry and threads them to every producer that needs one. An
 // operation that already derived them enters through outputPlan instead, so one
 // lifecycle call performs each derivation exactly once.
-func (p *Project) OutputPlan(ctx context.Context) (*OutputPlan, error) {
-	corpus, pitfalls, topics, eff, err := p.deriveOperationStateWithPitfalls()
+func OutputPlanOperation(p *Project, ctx context.Context) (*OutputPlan, error) {
+	corpus, pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
 	if err != nil { // coverage-ignore: direct compatibility entry; lifecycle entries derive this corpus before calling the threaded planner
 		return nil, err
 	}
-	return p.outputPlanWithPitfalls(ctx, corpus, pitfalls, topics, eff)
+	return outputPlanWithPitfalls(p, ctx, corpus, pitfalls, topics, eff)
 }
 
-func (p *Project) outputPlanWithPitfalls(ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error) {
-	if err := p.validateLocalDocOutputCollisions(corpus); err != nil {
+func outputPlanWithPitfalls(p *Project, ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error) {
+	if err := validateLocalDocOutputCollisions(p, corpus); err != nil {
 		return nil, err
 	}
-	declarations, err := p.targetOutputDeclarations(eff)
+	declarations, err := targetOutputDeclarations(p, eff)
 	if err != nil {
 		return nil, err
 	}
-	base, err := p.renderAllBase(declarations, eff, pitfalls)
+	base, err := renderAllBase(p, declarations, eff, pitfalls)
 	if err != nil {
 		return nil, err
 	}
-	if err := p.validateLiveTemplates(); err != nil { // coverage-ignore: renderAllBase already resolved every live identity; TestValidateLiveTemplatesRejectsMissingTargetTemplate proves the defensive check
+	if err := validateLiveTemplates(p); err != nil { // coverage-ignore: renderAllBase already resolved every live identity; TestValidateLiveTemplatesRejectsMissingTargetTemplate proves the defensive check
 		return nil, err
 	}
 	plan := &OutputPlan{}
@@ -707,7 +707,7 @@ func (p *Project) outputPlanWithPitfalls(ctx context.Context, corpus adr.Corpus,
 			return nil, err
 		}
 	}
-	localDocs, err := p.generateLocalDocs(eff)
+	localDocs, err := generateLocalDocs(p, eff)
 	if err != nil {
 		return nil, err
 	}
@@ -716,7 +716,7 @@ func (p *Project) outputPlanWithPitfalls(ctx context.Context, corpus adr.Corpus,
 			return nil, err
 		}
 	}
-	pitfallLeaves, err := p.generatePitfallLeaves(pitfalls, eff)
+	pitfallLeaves, err := generatePitfallLeaves(p, pitfalls, eff)
 	if err != nil { // coverage-ignore: the same embedded leaf template and validated corpus are closed inputs here
 		return nil, err
 	}
@@ -728,9 +728,9 @@ func (p *Project) outputPlanWithPitfalls(ctx context.Context, corpus adr.Corpus,
 	}
 	topicFiles := []RenderedFile{}
 	domains := []RenderedFile{}
-	if p.fullProfile() {
+	if fullProfile(p) {
 		var topicDeps map[string][]string
-		topicFiles, topicDeps, err = p.generateTopicDocs(ctx, topics)
+		topicFiles, topicDeps, err = generateTopicDocs(p, ctx, topics)
 		if err != nil {
 			return nil, err
 		}
@@ -739,11 +739,11 @@ func (p *Project) outputPlanWithPitfalls(ctx context.Context, corpus adr.Corpus,
 				return nil, err
 			}
 		}
-		index := p.generateIndexMD(corpus)
+		index := generateIndexMD(p, corpus)
 		if err := add(index, "generated-index"); err != nil { // coverage-ignore: generated INDEX.md has a reserved unique path.
 			return nil, err
 		}
-		domains, err = p.generateDomainDocs(topics, eff)
+		domains, err = generateDomainDocs(p, topics, eff)
 		if err != nil { // coverage-ignore: renderTarget cannot fail here: .data.domain/.data.topics are always set and the domain template is compile-time embedded
 			return nil, err
 		}
@@ -754,7 +754,7 @@ func (p *Project) outputPlanWithPitfalls(ctx context.Context, corpus adr.Corpus,
 		}
 	}
 	inputs := slices.Concat(base, localDocs, pitfallLeaves, domains, topicFiles)
-	if cref, ok, err := p.generateConfigReference(inputs, eff); err != nil {
+	if cref, ok, err := generateConfigReference(p, inputs, eff); err != nil {
 		return nil, err
 	} else if ok {
 		deps := make([]string, 0, len(inputs))
@@ -782,7 +782,7 @@ func (p *Project) outputPlanWithPitfalls(ctx context.Context, corpus adr.Corpus,
 
 // PreflightLocalDoc validates one candidate declaration against the complete
 // project output plan without mutating the opened project's configuration.
-func (p *Project) PreflightLocalDoc(ctx context.Context, doc config.LocalDoc) error {
+func PreflightLocalDocOperation(p *Project, ctx context.Context, doc config.LocalDoc) error {
 	candidateConfig := *p.Cfg
 	candidateConfig.LocalDocs = append(slices.Clone(p.Cfg.LocalDocs), doc)
 	_, err := projectWithConfig(p, &candidateConfig).OutputPlan(ctx)
@@ -806,8 +806,8 @@ func projectWithConfig(p *Project, cfg *config.Config) *Project {
 // complete declaration inventory before any producer renders. Intrinsic name
 // grammar remains config-owned; project owns collisions with every output
 // family, including generated and target-owned outputs.
-func (p *Project) validateLocalDocOutputCollisions(corpus adr.Corpus) error {
-	declarations, err := BuildOutputDeclarations(p.Cfg, p.catalog(), p.Targets, p.projectTreeReader(), corpus)
+func validateLocalDocOutputCollisions(p *Project, corpus adr.Corpus) error {
+	declarations, err := BuildOutputDeclarations(p.Cfg, projectCatalog(p), p.Targets, projectTreeReader(p), corpus)
 	if err != nil {
 		return err
 	}
@@ -837,8 +837,8 @@ func normalizeOutputInputs(inputs []OutputInput) []OutputInput {
 }
 
 // PlannedOutputs returns plan write paths.
-func (p *Project) PlannedOutputs(ctx context.Context) ([]string, error) {
-	op, err := p.OutputPlan(ctx)
+func PlannedOutputsOperation(p *Project, ctx context.Context) ([]string, error) {
+	op, err := OutputPlanOperation(p, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -851,8 +851,8 @@ func (p *Project) PlannedOutputs(ctx context.Context) ([]string, error) {
 
 // validateLiveTemplates verifies that every identity derived from the live
 // declaration owners resolves in the shipped embedded filesystem.
-func (p *Project) validateLiveTemplates() error {
-	for tid := range p.liveTemplateIDs() {
+func validateLiveTemplates(p *Project) error {
+	for tid := range liveTemplateIDs(p) {
 		if _, err := fs.Stat(templates.FS, tid); err != nil {
 			return fmt.Errorf("read template %s: %w", tid, err)
 		}

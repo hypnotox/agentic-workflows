@@ -320,7 +320,7 @@ func TestTagHealthNotes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.tagHealthNotes(mustDeriveCorpus(t, p))
+	notes, err := tagHealthNotes(p, mustDeriveCorpus(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -356,7 +356,7 @@ func TestTagHealthNotesSkipGovernedADRs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.tagHealthNotes(mustDeriveCorpus(t, p))
+	notes, err := tagHealthNotes(p, mustDeriveCorpus(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -374,7 +374,7 @@ func TestTagHealthNotesEmptyVocabInert(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.tagHealthNotes(mustDeriveCorpus(t, p))
+	notes, err := tagHealthNotes(p, mustDeriveCorpus(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -393,7 +393,7 @@ func TestTagHealthNotesEmptyDenominator(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.tagHealthNotes(mustDeriveCorpus(t, p))
+	notes, err := tagHealthNotes(p, mustDeriveCorpus(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -421,7 +421,7 @@ func TestTagHealthNotesPitfallError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.tagHealthNotes(corpus); err == nil {
+	if _, err := tagHealthNotes(p, corpus); err == nil {
 		t.Fatal("expected pitfall corpus structural error, got nil")
 	}
 }
@@ -439,7 +439,7 @@ func TestTagHealthNotesPitfalls(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.tagHealthNotes(mustDeriveCorpus(t, p))
+	notes, err := tagHealthNotes(p, mustDeriveCorpus(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -486,7 +486,7 @@ func TestGlossaryTersenessNotes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.glossaryTersenessNotes()
+	notes, err := glossaryTersenessNotes(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -515,7 +515,7 @@ func TestGlossaryTersenessNotesCountsRunesNotBytes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.glossaryTersenessNotes()
+	notes, err := glossaryTersenessNotes(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -531,7 +531,7 @@ func TestGlossaryTersenessNotesDisabled(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.glossaryTersenessNotes()
+	notes, err := glossaryTersenessNotes(p)
 	if err != nil || notes != nil {
 		t.Errorf("disabled glossary must yield no notes, got %v / %v", notes, err)
 	}
@@ -550,7 +550,7 @@ func TestGlossaryTersenessNotesCoversShippedLayer(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		notes, err := p.glossaryTersenessNotes()
+		notes, err := glossaryTersenessNotes(p)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -564,18 +564,18 @@ func TestGlossaryTersenessNotesCoversShippedLayer(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		// p.catalog()'s Docs map is this project's own clone, but the rest of this
+		// projectCatalog(p)'s Docs map is this project's own clone, but the rest of this
 		// Project reads it, so swap in a local copy rather than mutating the
 		// project's catalog mid-test.
-		e := p.catalog().Docs["glossary"]
+		e := projectCatalog(p).Docs["glossary"]
 		e.Data = map[string]any{"standardTerms": []any{
 			map[string]any{"term": "shipped-bloat", "meaning": strings.Repeat("x", glossaryMeaningMax+1)},
 		}}
-		cp := *p.catalog()
-		cp.Docs = maps.Clone(p.catalog().Docs)
+		cp := *projectCatalog(p)
+		cp.Docs = maps.Clone(projectCatalog(p).Docs)
 		cp.Docs["glossary"] = e
 		p.cat = catalog.NewView(&cp).Catalog()
-		notes, err := p.glossaryTersenessNotes()
+		notes, err := glossaryTersenessNotes(p)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -514,11 +514,11 @@ func TestCheckCommitAuthorizationPropagatesEvidenceErrors(t *testing.T) {
 	msg := commitmsg.Message{}
 	openRoot := func(t *testing.T, root string) *Project {
 		t.Helper()
-		p, err := openRootProject(root)
+		repo, prefix, err := awfgit.OpenContaining(root)
 		if err != nil {
 			t.Fatal(err)
 		}
-		return p
+		return stagedProject(root, repo, prefix)
 	}
 	t.Run("no checkout", func(t *testing.T) {
 		if _, err := (&Project{Root: t.TempDir()}).CheckCommitAuthorization(testContext(t), msg); err == nil {

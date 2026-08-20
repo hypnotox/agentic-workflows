@@ -14,7 +14,7 @@ import (
 
 // consumedParts returns the absolute paths of the convention parts an artifact
 // consumed; editing any reflags the artifact's drift.
-func (p *Project) consumedParts(kind, artifact string, plan map[string]render.SectionPlan) []string {
+func consumedParts(p *Project, kind, artifact string, plan map[string]render.SectionPlan) []string {
 	var paths []string
 	for sec, sp := range plan {
 		if sp.HasPart {
@@ -27,12 +27,12 @@ func (p *Project) consumedParts(kind, artifact string, plan map[string]render.Se
 // artifactConfigHash projects the drift signal onto one rendered file: the prefix, the
 // subset of vars the assembled template references, the artifact's sidecar (marshalled),
 // and the bytes of every convention part it consumed - in deterministic order.
-func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPaths []string, _ map[string]bool, targets ...Target) (string, error) {
+func artifactConfigHash(p *Project, assembled string, sc config.Sidecar, partPaths []string, _ map[string]bool, targets ...Target) (string, error) {
 	refs := render.ReferencedVars(assembled)
 	proj := map[string]any{
 		"prefix":  p.Cfg.Prefix,
 		"profile": p.Cfg.Profile,
-		"layout":  p.layout().templateMap(),
+		"layout":  layout(p).templateMap(),
 	}
 	if len(targets) != 0 {
 		// Identity is a declarer property of an output-plan node, not part of

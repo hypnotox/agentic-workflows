@@ -30,7 +30,7 @@ func TestConfigReferenceRowsPropagatesInjectedTemplateReadError(t *testing.T) {
 		t.Fatal(err)
 	}
 	p.cat.Skills["missing-template"] = catalog.SkillSpec{}
-	_, err = p.configReferenceRows(nil)
+	_, err = configReferenceRows(p, nil)
 	if err == nil || !strings.Contains(err.Error(), "skills/missing-template/SKILL.md.tmpl") {
 		t.Fatalf("config reference template error = %v", err)
 	}
@@ -39,11 +39,11 @@ func TestConfigReferenceRowsPropagatesInjectedTemplateReadError(t *testing.T) {
 // invariant: config/configspec-and-reference:live-state-projection-explicit (TestLiveStateAuthorityRejectsOmissionAndWrongClass)
 func TestTemplateSourceRootCurrentValue(t *testing.T) {
 	p := &Project{Cfg: &config.Config{}}
-	if got := p.currentValueResolvers()["render.templateSourceRoot"](); got != "(none)" {
+	if got := currentValueResolvers(p)["render.templateSourceRoot"](); got != "(none)" {
 		t.Fatalf("absent root = %q", got)
 	}
 	p.Cfg.Render = &config.RenderConfig{TemplateSourceRoot: "templates"}
-	if got := p.currentValueResolvers()["render.templateSourceRoot"](); got != "`templates`" {
+	if got := currentValueResolvers(p)["render.templateSourceRoot"](); got != "`templates`" {
 		t.Fatalf("configured root = %q", got)
 	}
 }
@@ -54,7 +54,7 @@ func TestLiveStateAuthorityRejectsOmissionAndWrongClass(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolvers := p.currentValueResolvers()
+	resolvers := currentValueResolvers(p)
 	if err := validateLiveStateAuthority(configspec.LiveStateClassifications(), resolvers); err != nil {
 		t.Fatal(err)
 	}
@@ -69,17 +69,17 @@ func TestLiveStateAuthorityRejectsOmissionAndWrongClass(t *testing.T) {
 	if err := validateLiveStateAuthority(wrongStatic, resolvers); err == nil || !strings.Contains(err.Error(), "static live-state key") {
 		t.Fatalf("wrong static classification error = %v", err)
 	}
-	omittedResolver := p.currentValueResolvers()
+	omittedResolver := currentValueResolvers(p)
 	delete(omittedResolver, "tags")
 	if err := validateLiveStateAuthority(configspec.LiveStateClassifications(), omittedResolver); err == nil || !strings.Contains(err.Error(), `live-state key "tags" has no resolver`) {
 		t.Fatalf("omitted resolver error = %v", err)
 	}
-	staticResolver := p.currentValueResolvers()
+	staticResolver := currentValueResolvers(p)
 	staticResolver["commitPolicy.allowedIdentities[].name"] = func() string { return "wrong" }
 	if err := validateLiveStateAuthority(configspec.LiveStateClassifications(), staticResolver); err == nil || !strings.Contains(err.Error(), `static live-state key "commitPolicy.allowedIdentities[].name" has a resolver`) {
 		t.Fatalf("structural static resolver error = %v", err)
 	}
-	extra := p.currentValueResolvers()
+	extra := currentValueResolvers(p)
 	extra["not.a.key"] = func() string { return "wrong" }
 	if err := validateLiveStateAuthority(configspec.LiveStateClassifications(), extra); err == nil || !strings.Contains(err.Error(), `live-state resolver "not.a.key" has no classification`) {
 		t.Fatalf("extra resolver error = %v", err)
@@ -239,7 +239,7 @@ func TestConfigReferenceDerivedLiveValues(t *testing.T) {
 
 	t.Run("non-nil empty grandfathered boundary", func(t *testing.T) {
 		p := &Project{Cfg: &config.Config{CommitPolicy: &config.CommitPolicyConfig{}}}
-		if got := p.currentValueResolvers()["commitPolicy.grandfatheredThrough"](); got != "(none)" {
+		if got := currentValueResolvers(p)["commitPolicy.grandfatheredThrough"](); got != "(none)" {
 			t.Errorf("empty grandfatheredThrough current = %q, want (none)", got)
 		}
 	})
@@ -378,7 +378,7 @@ func TestConfigReferenceNoBareVars(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cref, ok, err := p.generateConfigReference(files, mustDeriveSkills(t, p))
+	cref, ok, err := generateConfigReference(p, files, mustDeriveSkills(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}

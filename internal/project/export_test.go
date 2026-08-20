@@ -14,7 +14,7 @@ import (
 func (p *Project) Sync() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	_, found, err := manifest.LoadOptional(p.lockPath())
+	_, found, err := manifest.LoadOptional(lockPath(p))
 	if err != nil {
 		return err
 	}

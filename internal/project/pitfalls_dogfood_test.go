@@ -24,7 +24,7 @@ func TestPitfallDogfoodSourceOutputParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	corpus, err := p.loadPitfallCorpus()
+	corpus, err := loadPitfallCorpus(p)
 	if err != nil {
 		t.Fatal(err)
 	}

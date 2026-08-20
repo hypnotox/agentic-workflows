@@ -33,7 +33,7 @@ func TestSweepClaimsOnlyUpgradeJournalAfterCutover(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.sweepConfigTree(files, mustDeriveTopics(t, p))
+	drift, err := sweepConfigTree(p, files, mustDeriveTopics(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}

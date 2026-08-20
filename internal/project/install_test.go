@@ -177,18 +177,18 @@ func TestBackupFileConfinedReturnsSourceInspectionError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	filesystems, closeAll, err := p.openSyncFilesystems()
+	filesystems, closeAll, err := openSyncFilesystems(p)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer closeAll()
-	if _, err := p.backupFileConfined("missing", filesystems.tracked); !errors.Is(err, os.ErrNotExist) {
+	if _, err := backupFileConfined(p, "missing", filesystems.tracked); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("backup missing source error = %v, want not exist", err)
 	}
 	if err := os.Mkdir(filepath.Join(root, "directory"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.backupFileConfined("directory", filesystems.tracked); err == nil {
+	if _, err := backupFileConfined(p, "directory", filesystems.tracked); err == nil {
 		t.Fatal("backup accepted directory source")
 	}
 }
@@ -262,12 +262,12 @@ func TestBackupFileRetriesOnlyPublicationCollision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	filesystems, closeAll, err := p.openSyncFilesystems()
+	filesystems, closeAll, err := openSyncFilesystems(p)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer closeAll()
-	if _, err := p.backupFileConfined("artifact", &collisionFilesystem{syncFilesystem: filesystems.tracked, root: root}); err != nil {
+	if _, err := backupFileConfined(p, "artifact", &collisionFilesystem{syncFilesystem: filesystems.tracked, root: root}); err != nil {
 		t.Fatalf("backup collision retry: %v", err)
 	}
 	winner, err := os.ReadFile(filepath.Join(root, "artifact.awf-bak"))

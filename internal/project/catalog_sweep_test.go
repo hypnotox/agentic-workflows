@@ -191,26 +191,26 @@ func cloneRenderData(in map[string]any) map[string]any {
 func singletonTemplateContexts(t *testing.T, p *Project, eff map[string]bool) []singletonTemplateContext {
 	t.Helper()
 	var contexts []singletonTemplateContext
-	for _, kind := range catalog.SingletonKindsFor(p.catalog()) {
-		entry := p.catalog().Docs[kind]
+	for _, kind := range catalog.SingletonKindsFor(projectCatalog(p)) {
+		entry := projectCatalog(p).Docs[kind]
 		sc, err := p.Cfg.Sidecar(kind, "")
 		if err != nil {
 			t.Fatalf("read %s sidecar: %v", kind, err)
 		}
 		sc = withDefaultData(sc, entry.Data)
-		data := p.data(sc, eff)
+		data := projectData(p, sc, eff)
 		switch {
 		case entry.AgentsDoc:
-			data["docs"] = p.resolvedDocs()
-			data["mandatoryDocs"] = p.documentMapDocs()
-			data["localDocs"] = p.localDocumentMapDocs()
+			data["docs"] = resolvedDocs(p)
+			data["mandatoryDocs"] = documentMapDocs(p)
+			data["localDocs"] = localDocumentMapDocs(p)
 			data["documentMapFallbackHeading"] = len(p.Cfg.LocalDocs) != 0 && sc.Sections["document-map"].Drop
 		case entry.Generated:
 			files, err := p.RenderAll()
 			if err != nil {
 				t.Fatal(err)
 			}
-			collections, err := p.configReferenceData(files)
+			collections, err := configReferenceData(p, files)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -219,7 +219,7 @@ func singletonTemplateContexts(t *testing.T, p *Project, eff map[string]bool) []
 		contexts = append(contexts, singletonTemplateContext{tid: entry.TID, data: data, dataArtifact: kind})
 	}
 	for _, unit := range conditionalUnits() {
-		contexts = append(contexts, singletonTemplateContext{tid: unit.tid, data: p.data(config.Sidecar{}, eff)})
+		contexts = append(contexts, singletonTemplateContext{tid: unit.tid, data: projectData(p, config.Sidecar{}, eff)})
 	}
 	return contexts
 }
@@ -608,7 +608,7 @@ func TestSingletonConditionalKeysUseLiveRenderContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, _, eff, err := p.deriveOperationStateWithPitfalls()
+	_, _, _, eff, err := deriveOperationStateWithPitfalls(p)
 	if err != nil {
 		t.Fatal(err)
 	}

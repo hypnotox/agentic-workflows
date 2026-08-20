@@ -64,11 +64,11 @@ func TestLocalDocRendersAndPreservesBody(t *testing.T) {
 	if err != nil || !strings.Contains(string(second), "operator-owned body\n\nwith spacing") {
 		t.Fatalf("preserved local body = %q, %v", second, err)
 	}
-	corpus, err := adr.LoadCorpus(p.decisionsDir())
+	corpus, err := adr.LoadCorpus(decisionsDir(p))
 	if err != nil {
 		t.Fatal(err)
 	}
-	declarations, err := BuildOutputDeclarations(p.Cfg, p.catalog(), p.Targets, filesystemProjectReader{root: root}, corpus)
+	declarations, err := BuildOutputDeclarations(p.Cfg, projectCatalog(p), p.Targets, filesystemProjectReader{root: root}, corpus)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -184,7 +184,7 @@ func TestCommitPolicyRenderDataProjection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, ok := p.data(config.Sidecar{}, map[string]bool{})["commitPolicy"].(*config.CommitPolicyConfig); !ok || got != nil {
+	if got, ok := projectData(p, config.Sidecar{}, map[string]bool{})["commitPolicy"].(*config.CommitPolicyConfig); !ok || got != nil {
 		t.Fatalf("absent commitPolicy projection = %#v, want typed nil", got)
 	}
 	policy := &config.CommitPolicyConfig{
@@ -192,7 +192,7 @@ func TestCommitPolicyRenderDataProjection(t *testing.T) {
 		AllowedIdentities:    []config.CommitPolicyIdentity{{Name: "Ada", Email: "ada@example.test"}},
 	}
 	p.Cfg.CommitPolicy = policy
-	if got := p.data(config.Sidecar{}, map[string]bool{})["commitPolicy"]; got != policy {
+	if got := projectData(p, config.Sidecar{}, map[string]bool{})["commitPolicy"]; got != policy {
 		t.Fatalf("commitPolicy projection = %#v, want typed policy %#v", got, policy)
 	}
 }
@@ -339,7 +339,7 @@ func TestRenderTargetTemplateSourceActivation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.renderTarget("adr-readme", "", tid, p.catalog().Docs["adr-readme"].Sections, config.Sidecar{}, p.data(config.Sidecar{}, map[string]bool{}), "docs/decisions/README.md", map[string]bool{}); err == nil || !strings.Contains(err.Error(), "templates/"+commentOnlySource) {
+	if _, err := renderTarget(p, "adr-readme", "", tid, projectCatalog(p).Docs["adr-readme"].Sections, config.Sidecar{}, projectData(p, config.Sidecar{}, map[string]bool{}), "docs/decisions/README.md", map[string]bool{}); err == nil || !strings.Contains(err.Error(), "templates/"+commentOnlySource) {
 		t.Fatalf("missing comment-only include mapping error = %v", err)
 	}
 	commentOnlyPath := filepath.Join(root, "templates", filepath.FromSlash(commentOnlySource))
@@ -349,7 +349,7 @@ func TestRenderTargetTemplateSourceActivation(t *testing.T) {
 	if err := os.WriteFile(commentOnlyPath, []byte(commentOnlyText.String()), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	rf, err := p.renderTarget("adr-readme", "", tid, p.catalog().Docs["adr-readme"].Sections, config.Sidecar{}, p.data(config.Sidecar{}, map[string]bool{}), "docs/decisions/README.md", map[string]bool{})
+	rf, err := renderTarget(p, "adr-readme", "", tid, projectCatalog(p).Docs["adr-readme"].Sections, config.Sidecar{}, projectData(p, config.Sidecar{}, map[string]bool{}), "docs/decisions/README.md", map[string]bool{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -357,7 +357,7 @@ func TestRenderTargetTemplateSourceActivation(t *testing.T) {
 		t.Fatalf("provenance render did not validate then strip the comment-only include: %s", rf.Content)
 	}
 	p.Cfg.Render.TemplateSourceRoot = "missing"
-	if _, err := p.renderTarget("adr-readme", "", tid, p.catalog().Docs["adr-readme"].Sections, config.Sidecar{}, p.data(config.Sidecar{}, map[string]bool{}), "docs/decisions/README.md", map[string]bool{}); err == nil {
+	if _, err := renderTarget(p, "adr-readme", "", tid, projectCatalog(p).Docs["adr-readme"].Sections, config.Sidecar{}, projectData(p, config.Sidecar{}, map[string]bool{}), "docs/decisions/README.md", map[string]bool{}); err == nil {
 		t.Fatal("unresolved configured source root accepted")
 	}
 }
@@ -372,20 +372,20 @@ func TestValidateTemplateSourcesUsesSelectedTree(t *testing.T) {
 	}
 	p := &Project{read: snapshotTreeReader{tree: tree}}
 	src := render.SourceText{Root: "doc.md", Spans: []render.SourceSpan{{Source: "doc.md", Text: "x"}}}
-	if err := p.validateTemplateSources(src, "templates"); err != nil {
+	if err := validateTemplateSources(p, src, "templates"); err != nil {
 		t.Fatal(err)
 	}
-	if err := p.validateTemplateSources(render.SourceText{Spans: []render.SourceSpan{{Source: "missing.md", Text: "x"}}}, "templates"); err == nil {
+	if err := validateTemplateSources(p, render.SourceText{Spans: []render.SourceSpan{{Source: "missing.md", Text: "x"}}}, "templates"); err == nil {
 		t.Fatal("missing source accepted")
 	}
-	if err := p.validateTemplateSources(render.SourceText{Spans: []render.SourceSpan{{Source: "linked.md", Text: "x"}}}, "templates"); err == nil {
+	if err := validateTemplateSources(p, render.SourceText{Spans: []render.SourceSpan{{Source: "linked.md", Text: "x"}}}, "templates"); err == nil {
 		t.Fatal("staged symlink source accepted")
 	}
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "templates", "directory.md"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := (&Project{Root: root}).validateTemplateSources(render.SourceText{Spans: []render.SourceSpan{{Source: "directory.md", Text: "x"}}}, "templates"); err == nil {
+	if err := validateTemplateSources(&Project{Root: root}, render.SourceText{Spans: []render.SourceSpan{{Source: "directory.md", Text: "x"}}}, "templates"); err == nil {
 		t.Fatal("directory source accepted")
 	}
 	if err := os.WriteFile(filepath.Join(root, "outside.md"), []byte("x"), 0o644); err != nil {
@@ -394,7 +394,7 @@ func TestValidateTemplateSourcesUsesSelectedTree(t *testing.T) {
 	if err := os.Symlink(filepath.Join(root, "outside.md"), filepath.Join(root, "templates", "linked.md")); err != nil {
 		t.Fatal(err)
 	}
-	if err := (&Project{Root: root}).validateTemplateSources(render.SourceText{Spans: []render.SourceSpan{{Source: "linked.md", Text: "x"}}}, "templates"); err == nil {
+	if err := validateTemplateSources(&Project{Root: root}, render.SourceText{Spans: []render.SourceSpan{{Source: "linked.md", Text: "x"}}}, "templates"); err == nil {
 		t.Fatal("symlink source accepted")
 	}
 	outside := t.TempDir()
@@ -405,7 +405,7 @@ func TestValidateTemplateSourcesUsesSelectedTree(t *testing.T) {
 	if err := os.Symlink(outside, filepath.Join(symlinkRoot, "templates")); err != nil {
 		t.Fatal(err)
 	}
-	if err := (&Project{Root: symlinkRoot}).validateTemplateSources(render.SourceText{Spans: []render.SourceSpan{{Source: "doc.md", Text: "x"}}}, "templates"); err == nil {
+	if err := validateTemplateSources(&Project{Root: symlinkRoot}, render.SourceText{Spans: []render.SourceSpan{{Source: "doc.md", Text: "x"}}}, "templates"); err == nil {
 		t.Fatal("symlinked configured source root accepted")
 	}
 	intermediateRoot := t.TempDir()
@@ -415,7 +415,7 @@ func TestValidateTemplateSourcesUsesSelectedTree(t *testing.T) {
 	if err := os.Symlink(outside, filepath.Join(intermediateRoot, "templates", "nested")); err != nil {
 		t.Fatal(err)
 	}
-	if err := (&Project{Root: intermediateRoot}).validateTemplateSources(render.SourceText{Spans: []render.SourceSpan{{Source: "nested/doc.md", Text: "x"}}}, "templates"); err == nil {
+	if err := validateTemplateSources(&Project{Root: intermediateRoot}, render.SourceText{Spans: []render.SourceSpan{{Source: "nested/doc.md", Text: "x"}}}, "templates"); err == nil {
 		t.Fatal("symlinked source path ancestor accepted")
 	}
 	// An included partial that strips to empty still has an authored identity
@@ -423,7 +423,7 @@ func TestValidateTemplateSourcesUsesSelectedTree(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "templates", "comment-only.md"), []byte("<!-- awf:comment note -->\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := (&Project{Root: root}).validateTemplateSources(render.SourceText{Spans: []render.SourceSpan{{Source: "comment-only.md", Text: "<!-- awf:comment note -->\n"}}}, "templates"); err != nil {
+	if err := validateTemplateSources(&Project{Root: root}, render.SourceText{Spans: []render.SourceSpan{{Source: "comment-only.md", Text: "<!-- awf:comment note -->\n"}}}, "templates"); err != nil {
 		t.Fatalf("comment-only included source was not observed: %v", err)
 	}
 }
@@ -445,7 +445,7 @@ func TestRenderTargetStructuralHeadingFollowsOutputEncoder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	entry := p.catalog().Docs["architecture"]
+	entry := projectCatalog(p).Docs["architecture"]
 	cases := []struct {
 		name        string
 		options     *renderOutputOptions
@@ -464,8 +464,8 @@ func TestRenderTargetStructuralHeadingFollowsOutputEncoder(t *testing.T) {
 			if tc.options != nil {
 				args = append(args, tc.options)
 			}
-			file, err := p.renderTarget("docs", "architecture", entry.TID, entry.Sections, sc,
-				p.data(sc, map[string]bool{}), "out.md", map[string]bool{}, args...)
+			file, err := renderTarget(p, "docs", "architecture", entry.TID, entry.Sections, sc,
+				projectData(p, sc, map[string]bool{}), "out.md", map[string]bool{}, args...)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -508,10 +508,10 @@ func TestCaptureStructuralHeadingsReportsDefaultExpressionOmittedByOverride(t *t
 	if sidecarErr != nil {
 		t.Fatal(sidecarErr)
 	}
-	data := p.data(sc, map[string]bool{})
+	data := projectData(p, sc, map[string]bool{})
 	data["layout"] = nil
-	entry := p.catalog().Docs["workflow"]
-	if _, targetErr := p.renderTarget("docs", "workflow", entry.TID, entry.Sections, sc, data, "out.md", map[string]bool{}); targetErr == nil || !strings.Contains(targetErr.Error(), "render "+entry.TID+" headings: execute template") {
+	entry := projectCatalog(p).Docs["workflow"]
+	if _, targetErr := renderTarget(p, "docs", "workflow", entry.TID, entry.Sections, sc, data, "out.md", map[string]bool{}); targetErr == nil || !strings.Contains(targetErr.Error(), "render "+entry.TID+" headings: execute template") {
 		t.Fatalf("renderTarget capture error = %v", targetErr)
 	}
 

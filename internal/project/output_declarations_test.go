@@ -175,11 +175,11 @@ func TestOutputDeclarationsMatchThePlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	corpus, _, _, _, err := p.deriveOperationStateWithPitfalls()
+	corpus, _, _, _, err := deriveOperationStateWithPitfalls(p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	declarations, err := BuildOutputDeclarations(p.Cfg, p.catalog(), p.Targets, filesystemProjectReader{root: p.Root}, corpus)
+	declarations, err := BuildOutputDeclarations(p.Cfg, projectCatalog(p), p.Targets, filesystemProjectReader{root: p.Root}, corpus)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,11 +226,11 @@ func TestEnabledMarkdownDeclarationsMatchObservedTemplateSources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	corpus, _, _, _, err := p.deriveOperationStateWithPitfalls()
+	corpus, _, _, _, err := deriveOperationStateWithPitfalls(p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	declarations, err := BuildOutputDeclarations(p.Cfg, p.catalog(), p.Targets, filesystemProjectReader{root: p.Root}, corpus)
+	declarations, err := BuildOutputDeclarations(p.Cfg, projectCatalog(p), p.Targets, filesystemProjectReader{root: p.Root}, corpus)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -261,11 +261,11 @@ func TestPitfallDeclarationPlanDependencyParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	corpus, _, _, _, err := p.deriveOperationStateWithPitfalls()
+	corpus, _, _, _, err := deriveOperationStateWithPitfalls(p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	declarations, err := BuildOutputDeclarations(p.Cfg, p.catalog(), p.Targets, filesystemProjectReader{root: root}, corpus)
+	declarations, err := BuildOutputDeclarations(p.Cfg, projectCatalog(p), p.Targets, filesystemProjectReader{root: root}, corpus)
 	if err != nil {
 		t.Fatal(err)
 	}

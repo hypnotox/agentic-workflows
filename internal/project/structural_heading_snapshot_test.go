@@ -89,20 +89,20 @@ func structuralHeadingCutoverPopulation(t *testing.T, p *Project) map[string]str
 			if !segment.IsSection || segment.Heading == "" {
 				continue
 			}
-			path := strings.TrimPrefix(p.partRel(kind, artifact, segment.Name), ".awf/")
+			path := strings.TrimPrefix(partRel(p, kind, artifact, segment.Name), ".awf/")
 			if prior, exists := entries[path]; exists && prior != segment.Heading {
 				t.Fatalf("cutover path %q has conflicting headings %q and %q", path, prior, segment.Heading)
 			}
 			entries[path] = segment.Heading
 		}
 	}
-	for name := range p.catalog().Skills {
-		add("skills", name, p.skillTID(name))
+	for name := range projectCatalog(p).Skills {
+		add("skills", name, skillTID(p, name))
 	}
-	for name := range p.catalog().Agents {
-		add("agents", name, p.agentTID(name))
+	for name := range projectCatalog(p).Agents {
+		add("agents", name, agentTID(p, name))
 	}
-	for name, entry := range p.catalog().Docs {
+	for name, entry := range projectCatalog(p).Docs {
 		kind, artifact := "docs", name
 		if entry.Mandatory {
 			kind, artifact = name, ""

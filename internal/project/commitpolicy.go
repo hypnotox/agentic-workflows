@@ -16,11 +16,11 @@ type commitPolicyRepository interface {
 }
 
 // VerifyCommitPolicy evaluates explicit revisions through this invoking project's configured policy.
-func (p *Project) VerifyCommitPolicy(ctx context.Context, targets []string) commitpolicy.Outcome {
+func VerifyCommitPolicyOperation(p *Project, ctx context.Context, targets []string) commitpolicy.Outcome {
 	if p.Cfg.CommitPolicy == nil {
 		return commitpolicy.Outcome{Disabled: true}
 	}
-	repo, err := p.gitRepo()
+	repo, err := gitRepo(p)
 	if err != nil {
 		return refused(commitpolicy.LinkedWorktreeFailure, "open invoking worktree", err)
 	}
@@ -99,7 +99,7 @@ func policyFromConfig(cfg *config.CommitPolicyConfig) commitpolicy.Policy {
 }
 
 // CommitPolicyPresentation maps one verifier outcome using the project configuration.
-func (p *Project) CommitPolicyPresentation(outcome commitpolicy.Outcome) (presentation.Document, error) {
+func CommitPolicyPresentationOperation(p *Project, outcome commitpolicy.Outcome) (presentation.Document, error) {
 	if p.Cfg.CommitPolicy == nil {
 		return commitpolicy.Presentation(commitpolicy.Policy{}, outcome)
 	}

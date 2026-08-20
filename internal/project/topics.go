@@ -21,8 +21,8 @@ import (
 // QueryTopic assembles one read-only topic or claim projection from one
 // intrinsically routed working snapshot. Active state and operation history therefore
 // cannot come from different worktree universes.
-func (p *Project) QueryTopic(ctx context.Context, selector string, opts topic.QueryOptions) (topic.QueryResult, error) {
-	ws, err := p.workingCurrentState(ctx)
+func QueryTopicOperation(p *Project, ctx context.Context, selector string, opts topic.QueryOptions) (topic.QueryResult, error) {
+	ws, err := workingCurrentState(p, ctx)
 	if err != nil {
 		return topic.QueryResult{}, err
 	}
@@ -38,7 +38,7 @@ func (p *Project) QueryTopic(ctx context.Context, selector string, opts topic.Qu
 }
 
 // touches-state: rendering/render-engine:source-marker-informational - topic producer supplies reader-facing page pairs and index globs
-func (p *Project) generateTopicDocs(ctx context.Context, corpus topic.Corpus) (files []RenderedFile, deps map[string][]string, err error) {
+func generateTopicDocs(p *Project, ctx context.Context, corpus topic.Corpus) (files []RenderedFile, deps map[string][]string, err error) {
 	deps = map[string][]string{}
 	topicTemplate, err := fs.ReadFile(templates.FS, topicTID)
 	if err != nil { // coverage-ignore: the topic template is compile-time embedded
@@ -54,7 +54,7 @@ func (p *Project) generateTopicDocs(ctx context.Context, corpus topic.Corpus) (f
 		if err != nil { // coverage-ignore: the only injected production reader is snapshotTreeReader, whose in-memory enumeration cannot fail
 			return nil, nil, err
 		}
-	} else if workingTree, snapErr := p.workingTree(ctx); snapErr == nil {
+	} else if workingTree, snapErr := workingTree(p, ctx); snapErr == nil {
 		currentPaths = safelyMatchablePaths(workingTree)
 	} else {
 		// Init and isolated renderer tests can render before a Git repository
@@ -78,17 +78,17 @@ func (p *Project) generateTopicDocs(ctx context.Context, corpus topic.Corpus) (f
 			return nil, nil, fmt.Errorf("render topic %s: %w", t.ID.String(), err)
 		}
 		metadataPath, partPath := relSlash(p.Root, t.MetadataPath), relSlash(p.Root, t.PartPath)
-		marker, templateInputs, err := p.templateSourceRootMarker(topicTID)
+		marker, templateInputs, err := templateSourceRootMarker(p, topicTID)
 		if err != nil { // coverage-ignore: topicTID is validated embedded authority; helper error paths are covered directly
 			return nil, nil, err
 		}
 		content = injectSourceMarker(injectBanner(marker+content, topicTID), []string{metadataPath, partPath})
-		cfgHash, err := topicHash(p.Root, p.projectTreeReader(), model, t.MetadataPath, t.PartPath)
+		cfgHash, err := topicHash(p.Root, projectTreeReader(p), model, t.MetadataPath, t.PartPath)
 		if err != nil { // coverage-ignore: topic loading just read both inputs; failure requires a concurrent filesystem race
 			return nil, nil, err
 		}
 		path := base + "/" + t.ID.Domain + "/" + t.ID.Slug + ".md"
-		cfgHash = templateSourceConfigHash(cfgHash, p.templateSourceRoot())
+		cfgHash = templateSourceConfigHash(cfgHash, templateSourceRoot(p))
 		observed := normalizeOutputInputs(append([]OutputInput{{Path: config.DirName + "/config.yaml", Role: ArtifactConfig}, {Path: "templates/" + topicTID, Role: ArtifactTemplate}, {Path: metadataPath, Role: ArtifactTopicMetadata}, {Path: partPath, Role: ArtifactClaimPart}}, templateInputs...))
 		files = append(files, RenderedFile{Path: path, Content: content, TemplateID: topicTID, TemplateHash: manifest.Hash(topicTemplate), ConfigHash: cfgHash, Policy: declaredPolicy("topics", false), Declarer: "topic:" + t.ID.String(), DeclarerProjection: t.ID.String() + "\x00" + strings.Join(referenceProjection, "\x00"), Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, ConsumedInputs: observed, ObservedTemplateID: topicTID})
 		deps[path] = []string{metadataPath, partPath}
@@ -103,7 +103,7 @@ func (p *Project) generateTopicDocs(ctx context.Context, corpus topic.Corpus) (f
 		if err != nil { // coverage-ignore: the embedded index template and typed model are always executable
 			return nil, nil, fmt.Errorf("render topic index %s: %w", domain, err)
 		}
-		marker, templateInputs, err := p.templateSourceRootMarker(topicIndexTID)
+		marker, templateInputs, err := templateSourceRootMarker(p, topicIndexTID)
 		if err != nil { // coverage-ignore: topicIndexTID is validated embedded authority; helper error paths are covered directly
 			return nil, nil, err
 		}
@@ -119,7 +119,7 @@ func (p *Project) generateTopicDocs(ctx context.Context, corpus topic.Corpus) (f
 			deps[path] = append(deps[path], metadataPath, partPath)
 			observed = append(observed, OutputInput{Path: metadataPath, Role: ArtifactTopicMetadata}, OutputInput{Path: partPath, Role: ArtifactClaimPart})
 		}
-		files = append(files, RenderedFile{Path: path, Content: content, TemplateID: topicIndexTID, TemplateHash: manifest.Hash(indexTemplate), ConfigHash: templateSourceConfigHash(manifest.Hash(enc), p.templateSourceRoot()), Policy: declaredPolicy("topics", false), Declarer: "topic-index:" + domain, DeclarerProjection: domain, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, ConsumedInputs: normalizeOutputInputs(append(observed, templateInputs...)), ObservedTemplateID: topicIndexTID})
+		files = append(files, RenderedFile{Path: path, Content: content, TemplateID: topicIndexTID, TemplateHash: manifest.Hash(indexTemplate), ConfigHash: templateSourceConfigHash(manifest.Hash(enc), templateSourceRoot(p)), Policy: declaredPolicy("topics", false), Declarer: "topic-index:" + domain, DeclarerProjection: domain, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, ConsumedInputs: normalizeOutputInputs(append(observed, templateInputs...)), ObservedTemplateID: topicIndexTID})
 	}
 	return files, deps, nil
 }

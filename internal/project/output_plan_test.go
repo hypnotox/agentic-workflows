@@ -39,10 +39,10 @@ func TestLocalDocsOutputPlan(t *testing.T) {
 	if !slices.Equal(paths, []string{"docs/runbooks/a.md", "docs/runbooks/z.md"}) {
 		t.Fatalf("local paths = %v", paths)
 	}
-	if _, ok := p.layout().Docs["runbooks/a"]; ok {
+	if _, ok := layout(p).Docs["runbooks/a"]; ok {
 		t.Fatal("local document entered catalog layout")
 	}
-	if p.catalog().Docs["runbooks/a"].TID != "" {
+	if projectCatalog(p).Docs["runbooks/a"].TID != "" {
 		t.Fatal("local document entered catalog")
 	}
 }
@@ -68,11 +68,11 @@ func TestLocalDocDeclarationDeclaresExistingOutputInput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	corpus, _, _, _, err := p.deriveOperationStateWithPitfalls()
+	corpus, _, _, _, err := deriveOperationStateWithPitfalls(p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	declarations, err := BuildOutputDeclarations(p.Cfg, p.catalog(), p.Targets, filesystemProjectReader{root: p.Root}, corpus)
+	declarations, err := BuildOutputDeclarations(p.Cfg, projectCatalog(p), p.Targets, filesystemProjectReader{root: p.Root}, corpus)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -469,7 +469,7 @@ func TestTargetOutputDeclarationsRejectUnreadableTemplate(t *testing.T) {
 	bad.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
 	bad.Outputs[0].TemplateID = "missing/target-output.tmpl"
 	p := &Project{Cfg: &config.Config{Prefix: "example"}, cat: catalog.NewView(catalog.Standard).Catalog(), Targets: []Target{bad}}
-	_, err := p.targetOutputDeclarations(nil)
+	_, err := targetOutputDeclarations(p, nil)
 	t.Logf("target output declaration error = %v", err)
 	if err == nil || !strings.Contains(err.Error(), "read template missing/target-output.tmpl") {
 		t.Fatalf("unreadable target output template error = %v", err)
@@ -481,7 +481,7 @@ func TestTargetOutputDeclarationsRejectUnknownRequiredSkill(t *testing.T) {
 	bad.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
 	bad.Outputs[0].RequiresSkill = "missing"
 	p := &Project{Cfg: &config.Config{Prefix: "example"}, cat: catalog.NewView(catalog.Standard).Catalog(), Targets: []Target{bad}}
-	if _, err := p.targetOutputDeclarations(nil); err == nil || !strings.Contains(err.Error(), "unknown catalog skill") {
+	if _, err := targetOutputDeclarations(p, nil); err == nil || !strings.Contains(err.Error(), "unknown catalog skill") {
 		t.Fatalf("unknown target output requirement error = %v", err)
 	}
 }
@@ -493,7 +493,7 @@ func TestValidateLiveTemplatesRejectsMissingTargetTemplate(t *testing.T) {
 		t.Fatal(err)
 	}
 	p.Targets = append(p.Targets, Target{Outputs: []TargetOutput{{TemplateID: "missing/live-template.tmpl"}}})
-	if err := p.validateLiveTemplates(); err == nil || !strings.Contains(err.Error(), "read template missing/live-template.tmpl") {
+	if err := validateLiveTemplates(p); err == nil || !strings.Contains(err.Error(), "read template missing/live-template.tmpl") {
 		t.Fatalf("missing live template error = %v", err)
 	}
 }

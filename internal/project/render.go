@@ -80,18 +80,18 @@ type RenderedFile struct {
 
 // data assembles the template data namespace for a target: the prefix, the
 // project vars, the sidecar's structured data, and the awf-given docs layout.
-func (p *Project) data(sc config.Sidecar, eff map[string]bool) map[string]any {
+func projectData(p *Project, sc config.Sidecar, eff map[string]bool) map[string]any {
 	return map[string]any{
 		"prefix":       p.Cfg.Prefix,
 		"profile":      string(p.Cfg.Profile),
-		"fullProfile":  p.fullProfile(),
+		"fullProfile":  fullProfile(p),
 		"vars":         nonNil(p.Cfg.Vars),
 		"data":         nonNil(sc.Data),
-		"layout":       p.layout().templateMap(),
+		"layout":       layout(p).templateMap(),
 		"version":      Version,
 		"adrFormat":    adr.CurrentFormatMarker(),
 		"skills":       eff,
-		"commitScopes": p.commitScopesDisplay(),
+		"commitScopes": commitScopesDisplay(p),
 		// commitPolicy is a typed projection, not reparsed YAML. A nil value is
 		// safe for publication templates: `with` and `if` treat it as absent.
 		"commitPolicy":  p.Cfg.CommitPolicy,
@@ -107,7 +107,7 @@ func (p *Project) data(sc config.Sidecar, eff map[string]bool) map[string]any {
 // (e.g. "`adr`, `awf`, `plans`") resolved from audit.allowedScopes - the same
 // audit.Resolve path awf check staged commit reads, so prose and gate agree by
 // construction - or "" when scopes are accept-any (ADR-0051).
-func (p *Project) commitScopesDisplay() string {
+func commitScopesDisplay(p *Project) string {
 	scopes := audit.Resolve(config.AuditScopes(p.Cfg.Audit)).AllowedScopes
 	if len(scopes) == 0 {
 		return ""
@@ -120,9 +120,9 @@ func (p *Project) commitScopesDisplay() string {
 }
 
 // effectiveSkills returns the unconditional full catalog skill set.
-func (p *Project) effectiveSkills() (map[string]bool, error) {
+func effectiveSkills(p *Project) (map[string]bool, error) {
 	eff := map[string]bool{}
-	for name := range p.catalog().Skills {
+	for name := range projectCatalog(p).Skills {
 		if _, err := p.Cfg.Sidecar("skills", name); err != nil { // coverage-ignore: declaration-first planning just parsed this catalog skill sidecar
 			return nil, err
 		}
@@ -133,7 +133,7 @@ func (p *Project) effectiveSkills() (map[string]bool, error) {
 
 // partRel is the project-relative convention part path the awf:edit pointer names,
 // derived from the absolute PartPath so the parts-path structure has one source.
-func (p *Project) partRel(kind, artifact, section string) string {
+func partRel(p *Project, kind, artifact, section string) string {
 	rel, err := filepath.Rel(p.Root, p.Cfg.PartPath(kind, artifact, section))
 	if err != nil { // coverage-ignore: PartPath is always rooted under p.Root, so Rel cannot fail
 		return ""
@@ -148,13 +148,13 @@ func (p *Project) partRel(kind, artifact, section string) string {
 // template default renders. Precedence: drop > in-place read-back > convention
 // part > default. In-place and part sourcing are mutually exclusive per section
 // (ADR-0100 section-source-exclusive).
-func (p *Project) planSections(kind, artifact string, declared []string, sec map[string]config.SectionOverride, segs []render.Segment, outPath string, style render.CommentStyle, expectedHeadings ...map[string]string) (map[string]render.SectionPlan, error) {
+func planSections(p *Project, kind, artifact string, declared []string, sec map[string]config.SectionOverride, segs []render.Segment, outPath string, style render.CommentStyle, expectedHeadings ...map[string]string) (map[string]render.SectionPlan, error) {
 	headings := map[string]string{}
 	if len(expectedHeadings) > 0 && expectedHeadings[0] != nil {
 		headings = expectedHeadings[0]
 	}
 	plan := map[string]render.SectionPlan{}
-	reg, err := p.placeholderRegistry()
+	reg, err := placeholderRegistry(p)
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +170,7 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 	outputRead := false
 	readOutput := func() (string, error) {
 		if !outputRead {
-			b, ok, err := p.projectTreeReader().ReadFile(outPath)
+			b, ok, err := projectTreeReader(p).ReadFile(outPath)
 			if err != nil {
 				return "", err
 			}
@@ -182,7 +182,7 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 		return output, nil
 	}
 	for _, s := range declared {
-		sp := render.SectionPlan{EditPath: p.partRel(kind, artifact, s)}
+		sp := render.SectionPlan{EditPath: partRel(p, kind, artifact, s)}
 		if ov, ok := sec[s]; ok && ov.Drop {
 			sp.Drop = true
 			plan[s] = sp
@@ -194,7 +194,7 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 			if _, exists, partErr := p.Cfg.ReadPart(kind, artifact, s); partErr != nil {
 				return nil, partErr
 			} else if exists {
-				return nil, fmt.Errorf("section %q is in-place-editable and must not also have a convention part at %s (ADR-0100)", s, p.partRel(kind, artifact, s))
+				return nil, fmt.Errorf("section %q is in-place-editable and must not also have a convention part at %s (ADR-0100)", s, partRel(p, kind, artifact, s))
 			}
 			out, readErr := readOutput()
 			if readErr != nil {
@@ -204,7 +204,7 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 			// A located region (its pointer present) is used verbatim even when
 			// empty; only an unlocated region falls back to the template default
 			// in Assemble (ADR-0100 in-place-readback).
-			sp.InPlaceBody, sp.InPlaceFound = readBackInPlaceBodyWithExpectations(out, s, declared, style, headings[s], templateSourceSectionMarkers(segs, p.templateSourceRoot()))
+			sp.InPlaceBody, sp.InPlaceFound = readBackInPlaceBodyWithExpectations(out, s, declared, style, headings[s], templateSourceSectionMarkers(segs, templateSourceRoot(p)))
 			plan[s] = sp
 			continue
 		}
@@ -218,9 +218,9 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 			// unknown placeholder demonstrated inside a comment must not error.
 			raw, serr := render.StripAuthoringComments(string(b))
 			if serr != nil {
-				return nil, fmt.Errorf("part %s: %w", p.partRel(kind, artifact, s), serr)
+				return nil, fmt.Errorf("part %s: %w", partRel(p, kind, artifact, s), serr)
 			}
-			body, serr := p.substitutePlaceholders(p.partRel(kind, artifact, s), raw, reg)
+			body, serr := substitutePlaceholders(p, partRel(p, kind, artifact, s), raw, reg)
 			if serr != nil {
 				return nil, serr
 			}
@@ -311,7 +311,7 @@ func templateSourceSectionMarkers(segs []render.Segment, root string) map[string
 	return markers
 }
 
-func (p *Project) templateSourceRoot() string {
+func templateSourceRoot(p *Project) string {
 	if p.Cfg.Render == nil {
 		return ""
 	}
@@ -322,8 +322,8 @@ func (p *Project) templateSourceRoot() string {
 // templateSourceRootMarker is the project-owned bridge for Markdown producers
 // that execute their template outside renderTarget. It keeps their configured
 // source mapping, validation, and observed inputs identical to ordinary renders.
-func (p *Project) templateSourceRootMarker(tid string) (string, []OutputInput, error) {
-	root := p.templateSourceRoot()
+func templateSourceRootMarker(p *Project, tid string) (string, []OutputInput, error) {
+	root := templateSourceRoot(p)
 	if root == "" || tid == "" {
 		return "", nil, nil
 	}
@@ -335,7 +335,7 @@ func (p *Project) templateSourceRootMarker(tid string) (string, []OutputInput, e
 	if err != nil { // coverage-ignore: live embedded templates are include-validated; render package tests own malformed expansion
 		return "", nil, fmt.Errorf("render %s: %w", tid, err)
 	}
-	if err := p.validateTemplateSources(expanded, root); err != nil {
+	if err := validateTemplateSources(p, expanded, root); err != nil {
 		return "", nil, fmt.Errorf("render %s: %w", tid, err)
 	}
 	inputs := []OutputInput{}
@@ -442,19 +442,19 @@ type renderKindSpec struct {
 }
 
 // skillTID resolves a catalog skill's name-derived template id.
-func (p *Project) skillTID(n string) string {
-	return mustDescriptor("skills").templateID(p.catalog(), n)
+func skillTID(p *Project, n string) string {
+	return mustDescriptor("skills").templateID(projectCatalog(p), n)
 }
 
 // agentTID resolves a catalog agent's name-derived template id.
-func (p *Project) agentTID(n string) string {
-	return mustDescriptor("agents").templateID(p.catalog(), n)
+func agentTID(p *Project, n string) string {
+	return mustDescriptor("agents").templateID(projectCatalog(p), n)
 }
 
 // docTID resolves a catalog document's declared template id.
-func (p *Project) docTID(n string) string { return p.catalog().Docs[n].TID }
+func docTID(p *Project, n string) string { return projectCatalog(p).Docs[n].TID }
 
-func (p *Project) renderKind(spec renderKindSpec, eff map[string]bool) ([]RenderedFile, error) {
+func renderKind(p *Project, spec renderKindSpec, eff map[string]bool) ([]RenderedFile, error) {
 	var out []RenderedFile
 	for _, name := range slices.Sorted(slices.Values(spec.names)) {
 		sc, err := p.Cfg.Sidecar(spec.kind, name)
@@ -469,7 +469,7 @@ func (p *Project) renderKind(spec renderKindSpec, eff map[string]bool) ([]Render
 				return nil, err
 			}
 		}
-		data := p.data(sc, eff)
+		data := projectData(p, sc, eff)
 		var options *renderOutputOptions
 		if spec.target.Name != "" || spec.sources != nil {
 			options = &renderOutputOptions{}
@@ -491,7 +491,7 @@ func (p *Project) renderKind(spec renderKindSpec, eff map[string]bool) ([]Render
 			options.encoder = spec.target.AgentDialect
 			options.encode = func(body string) (string, error) { return spec.encode(name, body, data) }
 		}
-		rf, err := p.renderTarget(spec.kind, name, spec.tid(name), spec.sections(name), sc, data, spec.outPath(spec.target, name), eff, options)
+		rf, err := renderTarget(p, spec.kind, name, spec.tid(name), spec.sections(name), sc, data, spec.outPath(spec.target, name), eff, options)
 		if err != nil {
 			return nil, err
 		}
@@ -514,15 +514,15 @@ func (p *Project) renderKind(spec renderKindSpec, eff map[string]bool) ([]Render
 
 // renderAllBase renders declarative catalog and singleton producers. OutputPlan
 // owns the public render/sync/check lifecycle and adds generated producers.
-func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration, eff map[string]bool, pitfalls pitfall.Corpus) ([]RenderedFile, error) {
+func renderAllBase(p *Project, targetOutputs map[string]targetOutputDeclaration, eff map[string]bool, pitfalls pitfall.Corpus) ([]RenderedFile, error) {
 	var out []RenderedFile
 	// Neutral: docs render once - the output path is docsDir-relative, not adapter-placed.
-	docsRfs, err := p.renderKind(renderKindSpec{
-		kind: "docs", names: catalog.NameDerivedDocNames(p.catalog()),
-		tid:      p.docTID,
-		sections: func(n string) []string { return p.catalog().Docs[n].Sections },
-		outPath:  func(_ Target, n string) string { return p.docOutPath(n) },
-		defaults: func(n string) map[string]any { return p.catalog().Docs[n].Data },
+	docsRfs, err := renderKind(p, renderKindSpec{
+		kind: "docs", names: catalog.NameDerivedDocNames(projectCatalog(p)),
+		tid:      func(n string) string { return docTID(p, n) },
+		sections: func(n string) []string { return projectCatalog(p).Docs[n].Sections },
+		outPath:  func(_ Target, n string) string { return docOutPath(p, n) },
+		defaults: func(n string) map[string]any { return projectCatalog(p).Docs[n].Data },
 		transform: func(n string, sc config.Sidecar) (config.Sidecar, error) {
 			if n == "pitfalls" {
 				return pitfallIndexSidecar(sc, pitfalls), nil
@@ -543,7 +543,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 		return nil, err
 	}
 	for i := range docsRfs {
-		if docsRfs[i].TemplateID == p.docTID("pitfalls") {
+		if docsRfs[i].TemplateID == docTID(p, "pitfalls") {
 			for _, source := range pitfallSourcePaths(pitfalls) {
 				docsRfs[i].ConsumedInputs = append(docsRfs[i].ConsumedInputs, OutputInput{Path: source, Role: ArtifactAuthoredData})
 			}
@@ -554,28 +554,28 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	// Adapter: skills + agents render once per fixed target (inv: multi-target-render).
 	// touches-state: rendering/project-output-plan:multi-target-render - skills/agents render once per fixed target; proof in target_test.go
 	for _, t := range p.Targets {
-		skillNames := slices.Sorted(maps.Keys(p.catalog().Skills))
+		skillNames := slices.Sorted(maps.Keys(projectCatalog(p).Skills))
 		skillPath := func(t Target, n string) string { return t.SkillPath(p.Cfg.Prefix, n) }
 		for _, spec := range []renderKindSpec{
 			{
 				kind: "skills", names: skillNames, target: t,
-				tid:      p.skillTID,
-				sections: func(n string) []string { return p.catalog().Skills[n].Sections },
+				tid:      func(n string) string { return skillTID(p, n) },
+				sections: func(n string) []string { return projectCatalog(p).Skills[n].Sections },
 				outPath:  skillPath,
-				defaults: func(n string) map[string]any { return p.catalog().Skills[n].Data },
+				defaults: func(n string) map[string]any { return projectCatalog(p).Skills[n].Data },
 			},
 			{
-				kind: "agents", names: slices.Sorted(maps.Keys(p.catalog().Agents)), target: t,
-				tid:      p.agentTID,
-				sections: func(n string) []string { return p.catalog().Agents[n].Sections },
+				kind: "agents", names: slices.Sorted(maps.Keys(projectCatalog(p).Agents)), target: t,
+				tid:      func(n string) string { return agentTID(p, n) },
+				sections: func(n string) []string { return projectCatalog(p).Agents[n].Sections },
 				outPath:  func(t Target, n string) string { return t.AgentPath(n) },
-				defaults: func(n string) map[string]any { return p.catalog().Agents[n].Data },
+				defaults: func(n string) map[string]any { return projectCatalog(p).Agents[n].Data },
 				encode: func(n, body string, data map[string]any) (string, error) {
-					return p.encodeAgent(t, n, body, data)
+					return encodeAgent(p, t, n, body, data)
 				},
 			},
 		} {
-			rfs, err := p.renderKind(spec, eff)
+			rfs, err := renderKind(p, spec, eff)
 			if err != nil {
 				return nil, err
 			}
@@ -586,12 +586,12 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 				continue
 			}
 			target := t
-			data := p.data(config.Sidecar{}, eff)
+			data := projectData(p, config.Sidecar{}, eff)
 
 			for key, value := range t.targetTemplateData() {
 				data[key] = value
 			}
-			rf, err := p.renderTarget("target-output", "", targetOutput.TemplateID, nil,
+			rf, err := renderTarget(p, "target-output", "", targetOutput.TemplateID, nil,
 				config.Sidecar{}, data, targetOutput.Path, eff, &renderOutputOptions{
 					bannerStyle: targetOutput.Provenance,
 					target:      &target,
@@ -617,18 +617,18 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	if err != nil { // coverage-ignore: declaration-first planning just parsed the agents-doc sidecar
 		return nil, err
 	}
-	ad = withDefaultData(ad, p.catalog().Docs["agents-doc"].Data)
-	data := p.data(ad, eff)
-	data["docs"] = p.resolvedDocs()
-	data["mandatoryDocs"] = p.documentMapDocs()
-	data["localDocs"] = p.localDocumentMapDocs()
+	ad = withDefaultData(ad, projectCatalog(p).Docs["agents-doc"].Data)
+	data := projectData(p, ad, eff)
+	data["docs"] = resolvedDocs(p)
+	data["mandatoryDocs"] = documentMapDocs(p)
+	data["localDocs"] = localDocumentMapDocs(p)
 	data["documentMapFallbackHeading"] = len(p.Cfg.LocalDocs) != 0 && ad.Sections["document-map"].Drop
-	rf, err := p.renderTarget("agents-doc", "", p.catalog().Docs["agents-doc"].TID,
-		p.catalog().Docs["agents-doc"].Sections, ad, data, "AGENTS.md", eff)
+	rf, err := renderTarget(p, "agents-doc", "", projectCatalog(p).Docs["agents-doc"].TID,
+		projectCatalog(p).Docs["agents-doc"].Sections, ad, data, "AGENTS.md", eff)
 	if err != nil {
 		return nil, err
 	}
-	for _, name := range slices.Sorted(maps.Keys(p.catalog().Docs)) {
+	for _, name := range slices.Sorted(maps.Keys(projectCatalog(p).Docs)) {
 		if ok, sidecarErr := p.Cfg.HasSidecar("docs", name); sidecarErr != nil { // coverage-ignore: declaration-first planning already read every catalog doc sidecar from the same filesystem invocation
 			return nil, sidecarErr
 		} else if ok {
@@ -647,8 +647,8 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 		if t.BridgeFile == "" {
 			continue
 		}
-		brf, err := p.renderTarget(targetBridgeKind, "", t.BridgeTemplate,
-			nil, config.Sidecar{}, p.data(config.Sidecar{}, eff), t.BridgeFile, eff,
+		brf, err := renderTarget(p, targetBridgeKind, "", t.BridgeTemplate,
+			nil, config.Sidecar{}, projectData(p, config.Sidecar{}, eff), t.BridgeFile, eff,
 			&renderOutputOptions{sources: []string{"AGENTS.md"}})
 		if err != nil {
 			return nil, err
@@ -658,14 +658,14 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	// Plain singletons: every Mandatory non-agents-doc entry in the catalog doc
 	// collection, derived into plainSingletons (ADR-0021, ADR-0043, ADR-0059,
 	// ADR-0061).
-	lay := p.layout()
-	for _, sg := range plainSingletons(p.catalog()) {
-		rfs, err := p.renderKind(renderKindSpec{
+	lay := layout(p)
+	for _, sg := range plainSingletons(projectCatalog(p)) {
+		rfs, err := renderKind(p, renderKindSpec{
 			kind: sg.kind, names: []string{""},
 			tid:      func(string) string { return sg.tid },
-			sections: func(string) []string { return sg.sections(p.catalog()) },
+			sections: func(string) []string { return sg.sections(projectCatalog(p)) },
 			outPath:  func(Target, string) string { return sg.outPath(lay) },
-			defaults: func(string) map[string]any { return p.catalog().Docs[sg.kind].Data },
+			defaults: func(string) map[string]any { return projectCatalog(p).Docs[sg.kind].Data },
 		}, eff)
 		if err != nil {
 			return nil, err
@@ -678,8 +678,8 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 		if !unit.enabled(p.Cfg) {
 			continue
 		}
-		rf, err := p.renderTarget(unit.kind, "", unit.tid, unit.sections,
-			config.Sidecar{}, p.data(config.Sidecar{}, eff), unit.path, eff,
+		rf, err := renderTarget(p, unit.kind, "", unit.tid, unit.sections,
+			config.Sidecar{}, projectData(p, config.Sidecar{}, eff), unit.path, eff,
 			&renderOutputOptions{encoder: PlainAgentDialect})
 		if err != nil {
 			return nil, err
@@ -689,7 +689,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	// Every resident root has exactly one tracked self-ignoring node. Dynamic
 	// descendants are local authority and never enter the manifest.
 	for _, name := range resident.RootNames() {
-		rf, err := p.renderResidentMarker(name, eff)
+		rf, err := renderResidentMarker(p, name, eff)
 		if err != nil { // coverage-ignore: resident templates are embedded and registered at startup
 			return nil, err
 		}
@@ -702,8 +702,8 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 
 // RenderResidentMarker returns the exact resident marker from the ordinary
 // output plan, including template execution and provenance banner injection.
-func (p *Project) RenderResidentMarker(ctx context.Context, name string) (RenderedFile, error) {
-	plan, err := p.OutputPlan(ctx)
+func RenderResidentMarkerOperation(p *Project, ctx context.Context, name string) (RenderedFile, error) {
+	plan, err := OutputPlanOperation(p, ctx)
 	if err != nil {
 		return RenderedFile{}, err
 	}
@@ -719,14 +719,14 @@ func (p *Project) RenderResidentMarker(ctx context.Context, name string) (Render
 // renderResidentMarker is the single resident-marker renderer. It owns template
 // execution and provenance-banner injection, so every caller sees the exact bytes
 // ordinary rendering plans and publishes.
-func (p *Project) renderResidentMarker(name string, eff map[string]bool) (RenderedFile, error) {
-	return p.renderTarget(name, "", residentGitignoreTID(name), nil, config.Sidecar{}, p.data(config.Sidecar{}, eff), config.DirName+"/"+name+"/.gitignore", eff, &renderOutputOptions{encoder: PlainAgentDialect})
+func renderResidentMarker(p *Project, name string, eff map[string]bool) (RenderedFile, error) {
+	return renderTarget(p, name, "", residentGitignoreTID(name), nil, config.Sidecar{}, projectData(p, config.Sidecar{}, eff), config.DirName+"/"+name+"/.gitignore", eff, &renderOutputOptions{encoder: PlainAgentDialect})
 }
 
 // renderTarget assembles an artifact (sidecar sections + convention parts), executes
 // the template, rejects publication-unsafe <no value> output, and projects the
 // per-artifact ConfigHash over the artifact's effective inputs.
-func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc config.Sidecar, data map[string]any, outPath string, eff map[string]bool, outputOptions ...*renderOutputOptions) (RenderedFile, error) {
+func renderTarget(p *Project, kind, artifact, tid string, declared []string, sc config.Sidecar, data map[string]any, outPath string, eff map[string]bool, outputOptions ...*renderOutputOptions) (RenderedFile, error) {
 	var options *renderOutputOptions
 	if len(outputOptions) != 0 {
 		options = outputOptions[0]
@@ -756,7 +756,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	if encoder == MarkdownAgentDialect && p.Cfg.Render != nil {
 		provenance.Root = p.Cfg.Render.TemplateSourceRoot
 		if provenance.Root != "" {
-			if err := p.validateTemplateSources(expandedSource, provenance.Root); err != nil {
+			if err := validateTemplateSources(p, expandedSource, provenance.Root); err != nil {
 				return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 			}
 		}
@@ -766,11 +766,11 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	if err != nil {
 		return RenderedFile{}, err
 	}
-	plan, err := p.planSections(kind, artifact, declared, sc.Sections, segs, outPath, style, headings)
+	plan, err := planSections(p, kind, artifact, declared, sc.Sections, segs, outPath, style, headings)
 	if err != nil {
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
-	consumedInputs, err := p.observeRenderInputs(kind, artifact, tid, outPath, plan)
+	consumedInputs, err := observeRenderInputs(p, kind, artifact, tid, outPath, plan)
 	if provenance.Root != "" {
 		for _, span := range expandedSource.Spans {
 			if span.Source != "" {
@@ -826,7 +826,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	if options != nil && options.target != nil {
 		targetInput = []Target{*options.target}
 	}
-	cfgHash, err := p.artifactConfigHash(assembled, sc, p.consumedParts(kind, artifact, plan), eff, targetInput...)
+	cfgHash, err := artifactConfigHash(p, assembled, sc, consumedParts(p, kind, artifact, plan), eff, targetInput...)
 	if provenance.Root != "" {
 		cfgHash = manifest.Hash([]byte(cfgHash + "\x00templateSourceRoot=" + provenance.Root))
 	}
@@ -858,7 +858,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 // validateTemplateSources requires every provenance identity used by an
 // instrumented output to exist in the operation's selected repository universe.
 // The selected ProjectTreeReader keeps staged drift from consulting worktree files.
-func (p *Project) validateTemplateSources(source render.SourceText, root string) error {
+func validateTemplateSources(p *Project, source render.SourceText, root string) error {
 	seen := map[string]bool{}
 	for _, span := range source.Spans {
 		if span.Source == "" || seen[span.Source] {
@@ -866,7 +866,7 @@ func (p *Project) validateTemplateSources(source render.SourceText, root string)
 		}
 		seen[span.Source] = true
 		candidate := path.Join(root, span.Source)
-		if reader, working := p.projectTreeReader().(filesystemProjectReader); working {
+		if reader, working := projectTreeReader(p).(filesystemProjectReader); working {
 			components := strings.Split(candidate, "/")
 			current := reader.root
 			for i, component := range components {
@@ -884,7 +884,7 @@ func (p *Project) validateTemplateSources(source render.SourceText, root string)
 				}
 			}
 		}
-		_, ok, err := p.projectTreeReader().ReadFile(candidate)
+		_, ok, err := projectTreeReader(p).ReadFile(candidate)
 		if err != nil { // coverage-ignore: composed working and immutable snapshot readers return absence separately; their I/O failures are tested at reader ownership
 			return fmt.Errorf("read configured template source %s for %s: %w", candidate, span.Source, err)
 		}
@@ -908,7 +908,7 @@ func captureStructuralHeadings(segs []render.Segment, data map[string]any, tid s
 	return headings, nil
 }
 
-func (p *Project) observeRenderInputs(kind, artifact, tid, outPath string, plan map[string]render.SectionPlan) ([]OutputInput, error) {
+func observeRenderInputs(p *Project, kind, artifact, tid, outPath string, plan map[string]render.SectionPlan) ([]OutputInput, error) {
 	inputs := []OutputInput{{Path: config.DirName + "/config.yaml", Role: ArtifactConfig}}
 	if tid != "" {
 		inputs = append(inputs, OutputInput{Path: "templates/" + tid, Role: ArtifactTemplate})
@@ -930,12 +930,12 @@ func (p *Project) observeRenderInputs(kind, artifact, tid, outPath string, plan 
 	for _, section := range slices.Sorted(maps.Keys(plan)) {
 		sp := plan[section]
 		if sp.HasPart {
-			inputs = append(inputs, OutputInput{Path: p.partRel(kind, artifact, section), Role: ArtifactConventionPart})
+			inputs = append(inputs, OutputInput{Path: partRel(p, kind, artifact, section), Role: ArtifactConventionPart})
 		}
 		inPlaceRead = inPlaceRead || sp.InPlace
 	}
 	if inPlaceRead {
-		if _, ok, err := p.projectTreeReader().ReadFile(outPath); err != nil {
+		if _, ok, err := projectTreeReader(p).ReadFile(outPath); err != nil {
 			return nil, err
 		} else if ok {
 			inputs = append(inputs, OutputInput{Path: outPath, Role: ArtifactManagedOutput})
@@ -946,12 +946,12 @@ func (p *Project) observeRenderInputs(kind, artifact, tid, outPath string, plan 
 
 // encodeAgent renders catalog metadata with normal template data and combines it
 // with the independently section-rendered instruction body in the target dialect.
-func (p *Project) encodeAgent(t Target, name, body string, data map[string]any) (string, error) {
-	description, err := render.Execute(p.catalog().Agents[name].Description, data, nil, "agent description")
+func encodeAgent(p *Project, t Target, name, body string, data map[string]any) (string, error) {
+	description, err := render.Execute(projectCatalog(p).Agents[name].Description, data, nil, "agent description")
 	if err != nil {
 		return "", err
 	}
-	a := agent{Name: p.catalog().Agents[name].Name, Description: description, Body: body}
+	a := agent{Name: projectCatalog(p).Agents[name].Name, Description: description, Body: body}
 	if t.AgentDialect != MarkdownAgentDialect {
 		return "", fmt.Errorf("unknown agent dialect %q", t.AgentDialect)
 	}
@@ -960,12 +960,12 @@ func (p *Project) encodeAgent(t Target, name, body string, data map[string]any) 
 
 // generateLocalDocs owns the separate configured document family. It uses the
 // ordinary in-place renderer but has no catalog entry, sidecar, or layout slot.
-func (p *Project) generateLocalDocs(eff map[string]bool) ([]RenderedFile, error) {
+func generateLocalDocs(p *Project, eff map[string]bool) ([]RenderedFile, error) {
 	out := make([]RenderedFile, 0, len(p.Cfg.LocalDocs))
 	for _, local := range p.Cfg.NormalizedLocalDocs() {
 		sc := config.Sidecar{Data: map[string]any{"title": local.Title}}
-		rf, err := p.renderTarget("local-doc", local.Name, localDocTID, []string{"body"}, sc,
-			p.data(sc, eff), config.DocsDir+"/"+local.Name+".md", eff)
+		rf, err := renderTarget(p, "local-doc", local.Name, localDocTID, []string{"body"}, sc,
+			projectData(p, sc, eff), config.DocsDir+"/"+local.Name+".md", eff)
 		if err != nil {
 			return nil, err
 		}
@@ -977,12 +977,12 @@ func (p *Project) generateLocalDocs(eff map[string]bool) ([]RenderedFile, error)
 	return out, nil
 }
 
-func (p *Project) generatePitfallLeaves(corpus pitfall.Corpus, eff map[string]bool) ([]RenderedFile, error) {
+func generatePitfallLeaves(p *Project, corpus pitfall.Corpus, eff map[string]bool) ([]RenderedFile, error) {
 	out := make([]RenderedFile, 0, corpus.Len())
 	for _, entry := range corpus.All() {
 		sc := config.Sidecar{Data: pitfallLeafData(entry)}
-		rf, err := p.renderTarget("pitfall-entry", entry.Slug, pitfallEntryTID, nil, sc,
-			p.data(sc, eff), config.DocsDir+"/pitfalls/"+entry.Slug+".md", eff,
+		rf, err := renderTarget(p, "pitfall-entry", entry.Slug, pitfallEntryTID, nil, sc,
+			projectData(p, sc, eff), config.DocsDir+"/pitfalls/"+entry.Slug+".md", eff,
 			&renderOutputOptions{sources: []string{entry.SourcePath}})
 		if err != nil { // coverage-ignore: embedded leaf template and validated typed data cannot fail at this point
 			return nil, err
@@ -999,14 +999,14 @@ func (p *Project) generatePitfallLeaves(corpus pitfall.Corpus, eff map[string]bo
 // (ADR-0135 item 8). It always produces a file: In flight and History sections,
 // each with a placeholder line when empty, so the document-map link always
 // resolves (ADR-0020 Decision 6 - partial-item supersedence of ADR-0005/ADR-0006).
-func (p *Project) generateIndexMD(corpus adr.Corpus) RenderedFile {
+func generateIndexMD(p *Project, corpus adr.Corpus) RenderedFile {
 	content := adr.RenderIndexMD(corpus)
 	content = injectSourceMarker(injectBanner(content, ""), []string{"derived:authored-adr-corpus"})
 	inputs := []OutputInput{{Path: config.DirName + "/config.yaml", Role: ArtifactConfig}}
 	for _, record := range corpus.All() {
-		inputs = append(inputs, OutputInput{Path: p.layout().ADRDir + "/" + record.Filename, Role: ArtifactDecisionRecord})
+		inputs = append(inputs, OutputInput{Path: layout(p).ADRDir + "/" + record.Filename, Role: ArtifactDecisionRecord})
 	}
-	return RenderedFile{Path: p.layout().IndexMd, Content: content, RegenChecked: true, Policy: OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}, ConsumedInputs: normalizeOutputInputs(inputs)}
+	return RenderedFile{Path: layout(p).IndexMd, Content: content, RegenChecked: true, Policy: OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}, ConsumedInputs: normalizeOutputInputs(inputs)}
 }
 
 // generateDomainDocs renders one content-only doc per declared domain
@@ -1015,14 +1015,14 @@ func (p *Project) generateIndexMD(corpus adr.Corpus) RenderedFile {
 // per-domain ADR index is gone (ADR-0135 item 8): a domain doc points at topics,
 // not decisions. Like INDEX.md the result carries no TemplateID/Hash - drift is
 // checked by regeneration, since the topic navigation depends on external state.
-func (p *Project) generateDomainDocs(topics topic.Corpus, eff map[string]bool) ([]RenderedFile, error) {
-	lay := p.layout()
+func generateDomainDocs(p *Project, topics topic.Corpus, eff map[string]bool) ([]RenderedFile, error) {
+	lay := layout(p)
 	var out []RenderedFile
 	for _, name := range slices.Sorted(slices.Values(p.Cfg.Domains)) {
-		data := p.data(config.Sidecar{}, eff)
+		data := projectData(p, config.Sidecar{}, eff)
 		data["data"] = map[string]any{"domain": name, "topics": topic.BuildNavigationModel(name, topics.ForDomain(name))}
-		rf, err := p.renderTarget("domains", name, mustDescriptor("domains").templateID(p.catalog(), name),
-			p.catalog().DomainDoc.Sections, config.Sidecar{}, data,
+		rf, err := renderTarget(p, "domains", name, mustDescriptor("domains").templateID(projectCatalog(p), name),
+			projectCatalog(p).DomainDoc.Sections, config.Sidecar{}, data,
 			lay.DomainsDir+"/"+name+".md", eff, &renderOutputOptions{sources: []string{
 				".awf/topics/metadata/" + name + "/*.yaml",
 				".awf/topics/parts/" + name + "/*/current-state.md",
@@ -1042,7 +1042,7 @@ func (p *Project) generateDomainDocs(topics topic.Corpus, eff map[string]bool) (
 			partVarRefs: rf.partVarRefs, kind: rf.kind, artifact: rf.artifact,
 			RegenChecked: true, Policy: OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}, Encoder: rf.Encoder,
 			ConsumedInputs: rf.ConsumedInputs, ObservedTemplateID: rf.ObservedTemplateID}
-		if p.templateSourceRoot() != "" {
+		if templateSourceRoot(p) != "" {
 			wrapped.TemplateID, wrapped.TemplateHash, wrapped.ConfigHash = rf.TemplateID, rf.TemplateHash, rf.ConfigHash
 		}
 		out = append(out, wrapped)

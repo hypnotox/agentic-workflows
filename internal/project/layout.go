@@ -24,17 +24,17 @@ type Layout struct {
 	DomainsDir string
 }
 
-func (p *Project) layout() Layout {
+func layout(p *Project) Layout {
 	d := config.DocsDir
 	dec := d + "/decisions"
 	// Docs maps every catalog document to its unconditional rendered output path.
 	docs := map[string]string{}
 	singletons := map[string]string{}
-	if p.catalog() != nil {
-		for name, entry := range p.catalog().Docs {
-			docs[name] = p.docOutPath(name)
+	if projectCatalog(p) != nil {
+		for name, entry := range projectCatalog(p).Docs {
+			docs[name] = docOutPath(p, name)
 			if !entry.AgentsDoc && entry.TemplateKey != "" {
-				singletons[entry.TemplateKey] = p.docOutPath(name)
+				singletons[entry.TemplateKey] = docOutPath(p, name)
 			}
 		}
 	}
@@ -75,8 +75,8 @@ func (l Layout) templateMap() map[string]any {
 }
 
 // docOutPath is the catalog-declared output path for a managed doc.
-func (p *Project) docOutPath(name string) string {
-	e := p.catalog().Docs[name]
+func docOutPath(p *Project, name string) string {
+	e := projectCatalog(p).Docs[name]
 	if e.AgentsDoc {
 		return "AGENTS.md"
 	}
@@ -88,28 +88,28 @@ func (p *Project) docOutPath(name string) string {
 }
 
 // decisionsDir is the absolute ADR decisions directory.
-func (p *Project) decisionsDir() string {
+func decisionsDir(p *Project) string {
 	return filepath.Join(p.Root, config.DocsDir, "decisions")
 }
 
 // resolvedDocs builds the non-singleton Document-map entries for the agents-doc
 // template from the full catalog, annotated with title and description.
-func (p *Project) resolvedDocs() []map[string]any {
+func resolvedDocs(p *Project) []map[string]any {
 	out := []map[string]any{}
 	var names []string
-	for name, e := range p.catalog().Docs {
+	for name, e := range projectCatalog(p).Docs {
 		if !e.AgentsDoc && e.Path == "" {
 			names = append(names, name)
 		}
 	}
 	sort.Strings(names)
 	for _, name := range names {
-		spec := p.catalog().Docs[name]
+		spec := projectCatalog(p).Docs[name]
 		out = append(out, map[string]any{
 			"name":  name,
 			"title": spec.Title,
 			"desc":  spec.Desc,
-			"path":  p.docOutPath(name),
+			"path":  docOutPath(p, name),
 		})
 	}
 	return out
@@ -125,10 +125,10 @@ func localDocsProjection(docs []config.LocalDoc) string {
 	return strings.Join(projection, "\x00")
 }
 
-func (p *Project) documentMapDocs() []map[string]any {
+func documentMapDocs(p *Project) []map[string]any {
 	d := config.DocsDir
 	var names []string
-	for name, e := range p.catalog().Docs {
+	for name, e := range projectCatalog(p).Docs {
 		if e.DocumentMap {
 			names = append(names, name)
 		}
@@ -136,7 +136,7 @@ func (p *Project) documentMapDocs() []map[string]any {
 	sort.Strings(names)
 	out := make([]map[string]any, 0, len(names))
 	for _, name := range names {
-		e := p.catalog().Docs[name]
+		e := projectCatalog(p).Docs[name]
 		out = append(out, map[string]any{
 			"name": name, "title": e.Title, "desc": e.Desc, "path": d + "/" + e.Path,
 		})
@@ -146,7 +146,7 @@ func (p *Project) documentMapDocs() []map[string]any {
 
 // localDocumentMapDocs projects configured local documents in normalized name
 // order for the explicit agent-guide document-map union.
-func (p *Project) localDocumentMapDocs() []map[string]any {
+func localDocumentMapDocs(p *Project) []map[string]any {
 	locals := p.Cfg.NormalizedLocalDocs()
 	out := make([]map[string]any, 0, len(locals))
 	for _, local := range locals {

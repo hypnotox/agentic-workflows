@@ -110,23 +110,23 @@ type conditionalUnit struct {
 // render authority together with its declared representation. Recognition-only
 // identities are intentionally absent. This keeps structural parsing and the
 // exhaustive census on the same declaration owners as output planning.
-func (p *Project) liveTemplateEncoders() map[string]AgentDialect {
+func liveTemplateEncoders(p *Project) map[string]AgentDialect {
 	encoders := map[string]AgentDialect{topicTID: MarkdownAgentDialect, topicIndexTID: MarkdownAgentDialect, pitfallEntryTID: MarkdownAgentDialect}
 	if len(p.Cfg.LocalDocs) != 0 {
 		encoders[localDocTID] = MarkdownAgentDialect
 	}
 	for _, descriptor := range kindDescriptors {
 		if descriptor.freeformDomain {
-			encoders[descriptor.templateID(p.catalog(), "")] = MarkdownAgentDialect
+			encoders[descriptor.templateID(projectCatalog(p), "")] = MarkdownAgentDialect
 		}
 	}
-	for name := range p.catalog().Skills {
-		encoders[p.skillTID(name)] = MarkdownAgentDialect
+	for name := range projectCatalog(p).Skills {
+		encoders[skillTID(p, name)] = MarkdownAgentDialect
 	}
-	for name := range p.catalog().Agents {
-		encoders[p.agentTID(name)] = MarkdownAgentDialect
+	for name := range projectCatalog(p).Agents {
+		encoders[agentTID(p, name)] = MarkdownAgentDialect
 	}
-	for _, entry := range p.catalog().Docs {
+	for _, entry := range projectCatalog(p).Docs {
 		encoders[entry.TID] = MarkdownAgentDialect
 	}
 	for _, target := range p.Targets {
@@ -147,9 +147,9 @@ func (p *Project) liveTemplateEncoders() map[string]AgentDialect {
 }
 
 // liveTemplateIDs is the identity-only projection used by completeness checks.
-func (p *Project) liveTemplateIDs() map[string]bool {
+func liveTemplateIDs(p *Project) map[string]bool {
 	ids := map[string]bool{}
-	for tid := range p.liveTemplateEncoders() {
+	for tid := range liveTemplateEncoders(p) {
 		ids[tid] = true
 	}
 	return ids

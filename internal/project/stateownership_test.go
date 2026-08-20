@@ -268,6 +268,8 @@ func derivingEntries(pkgs []*packages.Package) map[string]int {
 					}
 					if sel, ok := call.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "deriveOperationStateWithPitfalls" {
 						callers[funcDecl.Name.Name]++
+					} else if ident, ok := call.Fun.(*ast.Ident); ok && ident.Name == "deriveOperationStateWithPitfalls" {
+						callers[funcDecl.Name.Name]++
 					}
 					return true
 				})
@@ -361,8 +363,8 @@ func TestProjectDerivedStateOwnership(t *testing.T) {
 	// Exactly the deriving entries call deriveOperationStateWithPitfalls, each once, so a
 	// nested re-derivation is a failure rather than an invisible regression.
 	wantEntries := map[string]bool{
-		"CheckReport": true, "syncReport": true, "AdvisoryNotes": true,
-		"ConfigReferenceModel": true, "OutputPlan": true, "ReadPlan": true,
+		"CheckReportOperation": true, "syncReport": true, "AdvisoryNotesOperation": true,
+		"ConfigReferenceModelOperation": true, "OutputPlanOperation": true, "ReadPlanOperation": true,
 	}
 	entries := derivingEntries(production)
 	for name, count := range entries {
@@ -431,11 +433,11 @@ func (p *Project) mutationWritesViaPointer() {
 }
 
 func (p *Project) mutationRederivesNested() {
-	_, _, _, _, _ = p.deriveOperationStateWithPitfalls()
+	_, _, _, _, _ = deriveOperationStateWithPitfalls(p)
 }
 
 func (p *Project) mutationRederivesCorpusDirectly() (adr.Corpus, error) {
-	return adr.LoadCorpus(p.decisionsDir())
+	return adr.LoadCorpus(decisionsDir(p))
 }
 
 func (p *Project) mutationOverwritesWholeValue() {

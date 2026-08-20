@@ -45,7 +45,7 @@ func (m *claimedModel) claimedDir(dir string) bool {
 // and the plan write files (whose .awf/-prefixed paths are exactly the
 // enabled config-tree render units - the model derives from the same code
 // path that writes them, per the ADR's dual-bookkeeping consequence).
-func (p *Project) buildClaimedModel(files []RenderedFile, topics topic.Corpus) *claimedModel {
+func buildClaimedModel(p *Project, files []RenderedFile, topics topic.Corpus) *claimedModel {
 	m := &claimedModel{
 		files: map[string]bool{
 			config.DirName + "/config.yaml":                   true,
@@ -77,29 +77,29 @@ func (p *Project) buildClaimedModel(files []RenderedFile, topics topic.Corpus) *
 		m.artifacts[kind] = map[string]bool{}
 		names := p.Cfg.Domains
 		if d.poolNames != nil {
-			names = d.poolNames(p.catalog())
+			names = d.poolNames(projectCatalog(p))
 		}
 		for _, name := range names {
 			m.artifacts[kind][name] = true
 			m.files[config.DirName+"/"+kind+"/"+name+".yaml"] = true
 			m.dirs[config.DirName+"/"+kind+"/parts/"+name] = true
-			for _, sec := range p.declaredSections(kind, name) {
+			for _, sec := range declaredSections(p, kind, name) {
 				m.files[config.DirName+"/"+kind+"/parts/"+name+"/"+sec+".md"] = true
 			}
 		}
 	}
-	for _, kind := range catalog.SingletonKindsFor(p.catalog()) {
+	for _, kind := range catalog.SingletonKindsFor(projectCatalog(p)) {
 		m.files[config.DirName+"/"+kind+".yaml"] = true
 		m.singletons[kind] = true
 		m.dirs[config.DirName+"/parts/"+kind] = true
-		for _, sec := range p.catalog().Docs[kind].Sections {
+		for _, sec := range projectCatalog(p).Docs[kind].Sections {
 			m.files[config.DirName+"/parts/"+kind+"/"+sec+".md"] = true
 		}
 	}
 	// Pitfall sources are a discovered direct-leaf family. Corpus loading has
 	// already rejected every invalid path or mode before this model is built.
 	m.dirs[pitfallsSourceDir] = true
-	if paths, err := p.projectTreeReader().Paths(pitfallsSourceDir + "/"); err == nil { // coverage-ignore: operation corpus loading already completed the same enumeration successfully
+	if paths, err := projectTreeReader(p).Paths(pitfallsSourceDir + "/"); err == nil { // coverage-ignore: operation corpus loading already completed the same enumeration successfully
 		for _, source := range paths { // coverage-ignore: dogfood and lifecycle tests cover nonempty source membership through the output family
 			m.files[source] = true
 		}
@@ -168,8 +168,8 @@ func (m *claimedModel) classify(rel string, isDir bool) manifest.Drift {
 // are wholly exempt. It subsumes the pre-ADR-0086 orphan sweep: wrong-name
 // sidecars/parts and undeclared sections keep their detail strings
 // (inv: drift-source-set; ADR-0011 section-orphan-flagged).
-func (p *Project) sweepConfigTree(files []RenderedFile, topics topic.Corpus) ([]manifest.Drift, error) {
-	m := p.buildClaimedModel(files, topics)
+func sweepConfigTree(p *Project, files []RenderedFile, topics topic.Corpus) ([]manifest.Drift, error) {
+	m := buildClaimedModel(p, files, topics)
 	var drift []manifest.Drift
 	walkErr := filepath.WalkDir(filepath.Join(p.Root, config.DirName), func(path string, de fs.DirEntry, err error) error {
 		if err != nil { // coverage-ignore: Check requires the lock inside .awf, so the tree exists; a mid-walk error is a permission fault a test cannot trigger

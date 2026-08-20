@@ -27,7 +27,7 @@ import (
 // passes it (ADR-0180).
 func mustDeriveCorpus(t *testing.T, p *Project) adr.Corpus {
 	t.Helper()
-	corpus, _, _, _, err := p.deriveOperationStateWithPitfalls()
+	corpus, _, _, _, err := deriveOperationStateWithPitfalls(p)
 	if err != nil {
 		t.Fatalf("derive operation state: %v", err)
 	}
@@ -37,7 +37,7 @@ func mustDeriveCorpus(t *testing.T, p *Project) adr.Corpus {
 // mustDeriveTopics derives the operation-owned topic corpus the same way.
 func mustDeriveTopics(t *testing.T, p *Project) topic.Corpus {
 	t.Helper()
-	_, _, topics, _, err := p.deriveOperationStateWithPitfalls()
+	_, _, topics, _, err := deriveOperationStateWithPitfalls(p)
 	if err != nil {
 		t.Fatalf("derive operation state: %v", err)
 	}
@@ -47,7 +47,7 @@ func mustDeriveTopics(t *testing.T, p *Project) topic.Corpus {
 // mustDeriveSkills derives the operation-owned effective skill set the same way.
 func mustDeriveSkills(t *testing.T, p *Project) map[string]bool {
 	t.Helper()
-	_, _, _, eff, err := p.deriveOperationStateWithPitfalls()
+	_, _, _, eff, err := deriveOperationStateWithPitfalls(p)
 	if err != nil {
 		t.Fatalf("derive operation state: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestCheckPitfallsEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.checkPitfalls(mustDeriveCorpus(t, p))
+	drift, err := checkPitfalls(p, mustDeriveCorpus(t, p))
 	if err != nil || drift != nil {
 		t.Errorf("empty pitfalls must yield no drift, got %v / %v", drift, err)
 	}
@@ -96,7 +96,7 @@ func TestCheckPitfallsValidatesDomainsAndLinks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.checkPitfalls(mustDeriveCorpus(t, p))
+	drift, err := checkPitfalls(p, mustDeriveCorpus(t, p))
 	if err != nil {
 		t.Fatalf("checkPitfalls: %v", err)
 	}
@@ -117,7 +117,7 @@ func TestCheckPitfallsStructuralError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.loadPitfallCorpus(); err == nil || !strings.Contains(err.Error(), "unknown") {
+	if _, err := loadPitfallCorpus(p); err == nil || !strings.Contains(err.Error(), "unknown") {
 		t.Fatalf("expected structural error, got %v", err)
 	}
 }
@@ -130,7 +130,7 @@ func TestCheckGlossaryDisabled(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.checkGlossary()
+	drift, err := checkGlossary(p)
 	if err != nil || drift != nil {
 		t.Errorf("disabled glossary must yield no drift, got %v / %v", drift, err)
 	}
@@ -149,7 +149,7 @@ func TestCheckGlossaryValidatesDomains(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.checkGlossary()
+	drift, err := checkGlossary(p)
 	if err != nil {
 		t.Fatalf("checkGlossary: %v", err)
 	}
@@ -182,7 +182,7 @@ func TestCheckGlossaryStructuralError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.checkGlossary(); err == nil || !strings.Contains(err.Error(), "must be a list") {
+	if _, err := checkGlossary(p); err == nil || !strings.Contains(err.Error(), "must be a list") {
 		t.Fatalf("expected structural error, got %v", err)
 	}
 }
@@ -198,7 +198,7 @@ func TestDeriveOperationStateSurfacesMalformedADR(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, _, err := p.deriveOperationStateWithPitfalls(); err == nil {
+	if _, _, _, _, err := deriveOperationStateWithPitfalls(p); err == nil {
 		t.Fatal("expected adr.ParseDir error for malformed frontmatter, got nil")
 	}
 }
@@ -220,7 +220,7 @@ func TestCheckTagVocabulary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.checkTagVocabulary(mustDeriveCorpus(t, p))
+	drift, err := checkTagVocabulary(p, mustDeriveCorpus(t, p))
 	if err != nil {
 		t.Fatalf("checkTagVocabulary: %v", err)
 	}
@@ -245,7 +245,7 @@ func TestCheckTagVocabularyInert(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.checkTagVocabulary(mustDeriveCorpus(t, p))
+	drift, err := checkTagVocabulary(p, mustDeriveCorpus(t, p))
 	if err != nil || drift != nil {
 		t.Fatalf("empty vocabulary must be inert, got %#v / %v", drift, err)
 	}
@@ -264,7 +264,7 @@ func TestCheckTagVocabularyPitfallsDisabled(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.checkTagVocabulary(mustDeriveCorpus(t, p))
+	drift, err := checkTagVocabulary(p, mustDeriveCorpus(t, p))
 	if err != nil || drift != nil {
 		t.Fatalf("conforming ADR with pitfalls disabled must yield no drift, got %#v / %v", drift, err)
 	}
@@ -283,7 +283,7 @@ func TestCheckADRRelatedLinks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift := p.checkADRRelatedLinks(mustDeriveCorpus(t, p))
+	drift := checkADRRelatedLinks(p, mustDeriveCorpus(t, p))
 	if len(drift) != 1 || drift[0].Kind != "adr-related-link" || !strings.Contains(drift[0].Detail, "0042") {
 		t.Fatalf("want one adr-related-link(0042) drift, got %#v", drift)
 	}
@@ -318,7 +318,7 @@ func TestCheckADRRelatedAscending(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift := p.checkADRRelatedLinks(mustDeriveCorpus(t, p))
+	drift := checkADRRelatedLinks(p, mustDeriveCorpus(t, p))
 	kinds := map[string][]string{}
 	for _, d := range drift {
 		kinds[d.Kind] = append(kinds[d.Kind], d.Detail)
@@ -376,7 +376,7 @@ func TestCheckTagVocabularyPitfallStructuralError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.checkTagVocabulary(corpus); err == nil || !strings.Contains(err.Error(), "unknown") {
+	if _, err := checkTagVocabulary(p, corpus); err == nil || !strings.Contains(err.Error(), "unknown") {
 		t.Fatalf("expected pitfalls structural error, got %v", err)
 	}
 }
@@ -416,7 +416,7 @@ func TestCheckPlansValidatesFrontmatterAndLinks(t *testing.T) {
 	write("2026-07-12-bad-slug-link.md", "---\ndate: 2026-07-12\nadrs: [never-authored]\nstatus: Proposed\n---\n# Plan: Bad Slug Link\n")
 	write("2026-06-24-legacy.md", "# Plan: Legacy\n\nNo frontmatter, grandfathered.\n")
 
-	drift := p.checkPlans(mustDeriveCorpus(t, p), mustParsePlans(t, p))
+	drift := checkPlans(p, mustDeriveCorpus(t, p), mustParsePlans(t, p))
 
 	got := map[string]string{}
 	for _, d := range drift {
@@ -556,7 +556,7 @@ func TestCheckPendingADRsFiresOnlyOnPositiveIdentification(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			drift := p.checkPendingADRs(testContext(t), mustDeriveCorpus(t, p))
+			drift := checkPendingADRs(p, testContext(t), mustDeriveCorpus(t, p))
 			if !tc.wantDrift {
 				if len(drift) != 0 {
 					t.Fatalf("expected no drift, got %#v", drift)
@@ -623,13 +623,13 @@ func TestCheckPendingADRsSilentOnProbeFailure(t *testing.T) {
 	corpus := mustDeriveCorpus(t, p)
 	// Sanity: with the repository intact this same corpus is blocked, so a
 	// silent result below is the probe failure and not an empty corpus.
-	if drift := p.checkPendingADRs(testContext(t), corpus); len(drift) != 1 {
+	if drift := checkPendingADRs(p, testContext(t), corpus); len(drift) != 1 {
 		t.Fatalf("fixture does not block before the probe breaks: %#v", drift)
 	}
 	if err := os.RemoveAll(filepath.Join(root, ".git")); err != nil {
 		t.Fatal(err)
 	}
-	if drift := p.checkPendingADRs(testContext(t), corpus); len(drift) != 0 {
+	if drift := checkPendingADRs(p, testContext(t), corpus); len(drift) != 0 {
 		t.Fatalf("a failed branch probe must emit nothing, got %#v", drift)
 	}
 }
@@ -645,7 +645,7 @@ func TestCheckPendingADRsIgnoresNumberedRecords(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if drift := p.checkPendingADRs(testContext(t), mustDeriveCorpus(t, p)); len(drift) != 0 {
+	if drift := checkPendingADRs(p, testContext(t), mustDeriveCorpus(t, p)); len(drift) != 0 {
 		t.Fatalf("a numbered corpus must not be blocked, got %#v", drift)
 	}
 }
@@ -678,8 +678,9 @@ func calledMethodCount(fn *ast.FuncDecl, name string) int {
 		if !ok {
 			return true
 		}
-		sel, ok := call.Fun.(*ast.SelectorExpr)
-		if ok && sel.Sel.Name == name {
+		if sel, ok := call.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == name {
+			count++
+		} else if ident, ok := call.Fun.(*ast.Ident); ok && ident.Name == name {
 			count++
 		}
 		return true
@@ -694,8 +695,9 @@ func calledMethodPosition(fn *ast.FuncDecl, name string) token.Pos {
 		if !ok {
 			return true
 		}
-		sel, ok := call.Fun.(*ast.SelectorExpr)
-		if ok && sel.Sel.Name == name && position == token.NoPos {
+		if sel, ok := call.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == name && position == token.NoPos {
+			position = call.Pos()
+		} else if ident, ok := call.Fun.(*ast.Ident); ok && ident.Name == name && position == token.NoPos {
 			position = call.Pos()
 		}
 		return true
@@ -729,8 +731,14 @@ func callsMethodWithIdent(fn *ast.FuncDecl, method, argument string) bool {
 		if !ok {
 			return true
 		}
-		sel, ok := call.Fun.(*ast.SelectorExpr)
-		if !ok || sel.Sel.Name != method {
+		matches := false
+		if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
+			matches = sel.Sel.Name == method
+		}
+		if ident, ok := call.Fun.(*ast.Ident); ok {
+			matches = ident.Name == method
+		}
+		if !matches {
 			return true
 		}
 		for _, arg := range call.Args {
@@ -753,8 +761,8 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 			t.Fatal("retired Project.Check compatibility projection is present")
 		}
 	}
-	report := checkFunc(t, file, "CheckReport")
-	directAdvisory := checkFunc(t, file, "AdvisoryNotes")
+	report := checkFunc(t, file, "CheckReportOperation")
+	directAdvisory := checkFunc(t, file, "AdvisoryNotesOperation")
 	check := checkFunc(t, file, "checkWithTrackingState")
 	advisory := checkFunc(t, file, "advisoryNotesWithState")
 
@@ -767,11 +775,11 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 	for _, producer := range []string{"deriveOperationStateWithPitfalls", "ParseDir"} {
 		producerPosition := calledMethodPosition(report, producer)
 		if producerPosition == token.NoPos || outputPlanPosition == token.NoPos || outputPlanPosition <= producerPosition {
-			t.Errorf("CheckReport outputPlan position %d must follow %s position %d", outputPlanPosition, producer, producerPosition)
+			t.Errorf("CheckReportOperation outputPlan position %d must follow %s position %d", outputPlanPosition, producer, producerPosition)
 		}
 	}
 	if !callsMethodWithIdent(directAdvisory, "advisoryNotesWithState", "op") {
-		t.Error("AdvisoryNotes does not pass op to advisoryNotesWithState")
+		t.Error("AdvisoryNotesOperation does not pass op to advisoryNotesWithState")
 	}
 	for _, fn := range []*ast.FuncDecl{check, advisory} {
 		if !hasOutputPlanParameter(fn) {
@@ -781,7 +789,7 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 			t.Errorf("%s reconstructs %d output plans", fn.Name.Name, got)
 		}
 		if !callsMethodWithIdent(report, fn.Name.Name, "op") {
-			t.Errorf("CheckReport does not pass op to %s", fn.Name.Name)
+			t.Errorf("CheckReportOperation does not pass op to %s", fn.Name.Name)
 		}
 	}
 	for _, fn := range []*ast.FuncDecl{check, advisory} {
@@ -809,11 +817,11 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 	}
 	expectedTrackingPaths := func(p *Project) []string {
 		t.Helper()
-		corpus, pitfalls, topics, effective, err := p.deriveOperationStateWithPitfalls()
+		corpus, pitfalls, topics, effective, err := deriveOperationStateWithPitfalls(p)
 		if err != nil {
 			t.Fatal(err)
 		}
-		op, err := p.outputPlanWithPitfalls(testContext(t), corpus, pitfalls, topics, effective)
+		op, err := outputPlanWithPitfalls(p, testContext(t), corpus, pitfalls, topics, effective)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -895,7 +903,7 @@ func TestCheckReportRequiresGeneratedArtifactsInIndex(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := p.syncReport(testContext(t), &InitAuthority{InitializedWithVersion: Version}); err != nil {
+	if _, _, _, err := syncReport(p, testContext(t), &InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatal(err)
 	}
 	home := t.TempDir()
@@ -972,7 +980,7 @@ func TestCheckLockedFilesSuppressesMissingForUntrackedOutputs(t *testing.T) {
 		"normal.md": {OutputHash: manifest.Hash([]byte("normal"))},
 	}}
 	tracking := []manifest.Drift{{Path: "regen.md", Kind: "untracked"}, {Path: "normal.md", Kind: "untracked"}}
-	if got := p.checkLockedFiles(lock, rendered, tracking); len(got) != 0 {
+	if got := checkLockedFiles(p, lock, rendered, tracking); len(got) != 0 {
 		t.Fatalf("untracked missing files = %#v", got)
 	}
 	for path := range rendered {
@@ -980,7 +988,7 @@ func TestCheckLockedFilesSuppressesMissingForUntrackedOutputs(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	got := p.checkLockedFiles(lock, rendered, tracking)
+	got := checkLockedFiles(p, lock, rendered, tracking)
 	if len(got) != 2 || !slices.ContainsFunc(got, func(finding manifest.Drift) bool {
 		return finding.Path == "regen.md" && finding.Kind == "missing"
 	}) || !slices.ContainsFunc(got, func(finding manifest.Drift) bool {
@@ -994,7 +1002,7 @@ func TestCheckLockedFilesSuppressesMissingForUntrackedOutputs(t *testing.T) {
 func TestCheckGeneratedTrackingNoGitAndNestedResidentExclusion(t *testing.T) {
 	t.Run("no Git", func(t *testing.T) {
 		p := &Project{Root: t.TempDir()}
-		_, notes, err := p.checkGeneratedTracking(testContext(t), &OutputPlan{})
+		_, notes, err := checkGeneratedTracking(p, testContext(t), &OutputPlan{})
 		if err != nil || len(notes) != 1 || !strings.Contains(notes[0], "unavailable outside a Git repository") {
 			t.Fatalf("no-Git tracking = notes %q, err %v", notes, err)
 		}
@@ -1010,7 +1018,7 @@ func TestCheckGeneratedTrackingNoGitAndNestedResidentExclusion(t *testing.T) {
 		if !p.nested {
 			t.Fatal("Loader.Open did not preserve the containing-repository prefix")
 		}
-		if _, _, _, err := p.syncReport(testContext(t), &InitAuthority{InitializedWithVersion: Version}); err != nil {
+		if _, _, _, err := syncReport(p, testContext(t), &InitAuthority{InitializedWithVersion: Version}); err != nil {
 			t.Fatal(err)
 		}
 		gitfixture.AddAll(t, fixture)
@@ -1032,9 +1040,9 @@ func TestCheckReportParsesPlansOnce(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := string(source)
-	checkStart := strings.Index(text, "func (p *Project) CheckReport")
+	checkStart := strings.Index(text, "func CheckReportOperation")
 	checkEnd := strings.Index(text, "\nfunc finishCheckReport")
-	privateStart := strings.Index(text, "func (p *Project) checkWithTrackingState")
+	privateStart := strings.Index(text, "func checkWithTrackingState")
 	if checkStart < 0 || checkEnd <= checkStart || privateStart < 0 {
 		t.Fatal("check.go source boundaries changed")
 	}
@@ -1112,7 +1120,7 @@ func TestCheckPlansCommitSubjectDrift(t *testing.T) {
 	write("2026-07-14-scope.md", fm+"```commit\nfeat(nope): unknown scope\n```\n")
 	write("2026-07-14-ok.md", fm+"```commit\nfeat(awf): fine\n```\n")
 
-	drift := p.checkPlans(mustDeriveCorpus(t, p), mustParsePlans(t, p))
+	drift := checkPlans(p, mustDeriveCorpus(t, p), mustParsePlans(t, p))
 	got := map[string]bool{}
 	for _, d := range drift {
 		if d.Kind == "plan-commit-subject" {
@@ -1152,7 +1160,7 @@ func TestPlanCommitScopeNotes(t *testing.T) {
 	// note count stays 1.
 	write("2026-06-24-legacy.md", "# Plan: Legacy\n\nNo frontmatter, grandfathered.\n")
 
-	notes := p.planCommitScopeNotes(mustParsePlans(t, p))
+	notes := planCommitScopeNotes(p, mustParsePlans(t, p))
 	if len(notes) != 1 || !strings.Contains(notes[0], "2026-07-14-scope.md") || !strings.Contains(notes[0], "disallowed scope") {
 		t.Fatalf("want one scope note, got %#v", notes)
 	}
@@ -1206,7 +1214,7 @@ func TestCheckTagVocabularyDomainCollision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.checkTagVocabulary(mustDeriveCorpus(t, p))
+	drift, err := checkTagVocabulary(p, mustDeriveCorpus(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1226,7 +1234,7 @@ func TestCheckTagVocabularyDomainCollision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift2, err := p2.checkTagVocabulary(mustDeriveCorpus(t, p2))
+	drift2, err := checkTagVocabulary(p2, mustDeriveCorpus(t, p2))
 	if err != nil {
 		t.Fatal(err)
 	}

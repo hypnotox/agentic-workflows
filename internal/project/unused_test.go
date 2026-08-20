@@ -85,11 +85,11 @@ func TestBareReferenceEscapes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if hits := p.unusedVarDrift([]RenderedFile{{assembled: "{{ range .vars }}{{ . }}{{ end }}"}}); len(hits) != 0 {
+	if hits := unusedVarDrift(p, []RenderedFile{{assembled: "{{ range .vars }}{{ . }}{{ end }}"}}); len(hits) != 0 {
 		t.Fatalf("a bare .vars reference must consume every var, got %#v", hits)
 	}
 	bare := []RenderedFile{{kind: "skills", artifact: "tdd", assembled: "{{ range .data }}{{ . }}{{ end }}"}}
-	hits, err := p.unusedDataDrift(bare)
+	hits, err := unusedDataDrift(p, bare)
 	if err != nil {
 		t.Fatal(err)
 	}

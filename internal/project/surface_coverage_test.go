@@ -51,7 +51,7 @@ func TestAdvisoryNotesRejectMalformedRetainedData(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := p.advisoryNotesWithState(corpus, pitfall.Corpus{}, nil, &OutputPlan{}); err == nil || !strings.Contains(err.Error(), "must be a list") {
+		if _, err := advisoryNotesWithState(p, corpus, pitfall.Corpus{}, nil, &OutputPlan{}); err == nil || !strings.Contains(err.Error(), "must be a list") {
 			t.Fatalf("advisory glossary error = %v", err)
 		}
 	})
@@ -92,11 +92,11 @@ func TestCheckWithStatePropagatesMalformedRetainedData(t *testing.T) {
 			if err := p.Sync(); err != nil {
 				t.Fatal(err)
 			}
-			corpus, pitfalls, topics, effective, err := p.deriveOperationStateWithPitfalls()
+			corpus, pitfalls, topics, effective, err := deriveOperationStateWithPitfalls(p)
 			if err != nil {
 				t.Fatal(err)
 			}
-			op, err := p.outputPlanWithPitfalls(testContext(t), corpus, pitfalls, topics, effective)
+			op, err := outputPlanWithPitfalls(p, testContext(t), corpus, pitfalls, topics, effective)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -107,7 +107,7 @@ func TestCheckWithStatePropagatesMalformedRetainedData(t *testing.T) {
 			if err := os.WriteFile(sidecarPath, []byte(tc.sidecar), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			if _, _, err := p.checkWithTrackingState(testContext(t), corpus, pitfall.Corpus{}, topics, effective, mustParsePlans(t, p), op); err == nil || !strings.Contains(err.Error(), "must be a list") {
+			if _, _, err := checkWithTrackingState(p, testContext(t), corpus, pitfall.Corpus{}, topics, effective, mustParsePlans(t, p), op); err == nil || !strings.Contains(err.Error(), "must be a list") {
 				t.Fatalf("check-with-state error = %v", err)
 			}
 		})

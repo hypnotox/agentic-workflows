@@ -13,8 +13,8 @@ import (
 
 const pitfallsSourceDir = config.DirName + "/docs/pitfalls"
 
-func (p *Project) loadPitfallCorpus() (pitfall.Corpus, error) {
-	return loadPitfallCorpusFrom(p.projectTreeReader())
+func loadPitfallCorpus(p *Project) (pitfall.Corpus, error) {
+	return loadPitfallCorpusFrom(projectTreeReader(p))
 }
 
 func loadPitfallCorpusFrom(reader ProjectTreeReader) (pitfall.Corpus, error) {

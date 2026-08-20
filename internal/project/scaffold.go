@@ -89,13 +89,13 @@ func ScaffoldConfigForProfile(prefix string, vars map[string]string, scopes []st
 
 // NewPitfall loads the current corpus, creates one canonical source exclusively,
 // and returns project-owned presentation for its repository-relative path.
-func (p *Project) NewPitfall(title string) (document presentation.Document, returnErr error) {
+func NewPitfallOperation(p *Project, title string) (document presentation.Document, returnErr error) {
 	tree, err := filesystem.Open(p.Root)
 	if err != nil {
 		return presentation.Document{}, err
 	}
 	defer func() { returnErr = errors.Join(returnErr, tree.Close()) }()
-	return p.newPitfallWith(title, tree)
+	return newPitfallWith(p, title, tree)
 }
 
 type pitfallScaffoldFilesystem interface {
@@ -106,7 +106,7 @@ type pitfallScaffoldFilesystem interface {
 	Publish(string, []byte, fs.FileMode) error
 }
 
-func (p *Project) newPitfallWith(title string, tree pitfallScaffoldFilesystem) (presentation.Document, error) {
+func newPitfallWith(p *Project, title string, tree pitfallScaffoldFilesystem) (presentation.Document, error) {
 	corpus, err := loadPitfallScaffoldCorpus(tree)
 	if err != nil {
 		return presentation.Document{}, err

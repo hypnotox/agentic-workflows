@@ -821,7 +821,7 @@ func TestOpenSyncFilesystemsComposesDistinctRootsBeforeMutation(t *testing.T) {
 		t.Fatal(err)
 	}
 	p.roots.Resident = t.TempDir()
-	filesystems, closeAll, err := p.openSyncFilesystems()
+	filesystems, closeAll, err := openSyncFilesystems(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -830,11 +830,11 @@ func TestOpenSyncFilesystemsComposesDistinctRootsBeforeMutation(t *testing.T) {
 		t.Fatal("distinct roots reused one handle")
 	}
 	p.roots.Resident = filepath.Join(root, "missing")
-	if _, _, err := p.openSyncFilesystems(); err == nil {
+	if _, _, err := openSyncFilesystems(p); err == nil {
 		t.Fatal("missing resident root opened")
 	}
 	p.roots.Tracked = filepath.Join(root, "missing-tracked")
-	if _, _, err := p.openSyncFilesystems(); err == nil {
+	if _, _, err := openSyncFilesystems(p); err == nil {
 		t.Fatal("missing tracked root opened")
 	}
 }
@@ -907,17 +907,17 @@ func TestSyncFilesystemFailuresPreserveErrorIdentity(t *testing.T) {
 			if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
 				t.Fatal(err)
 			}
-			filesystems, closeAll, err := p.openSyncFilesystems()
+			filesystems, closeAll, err := openSyncFilesystems(p)
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer closeAll()
 			failure := errors.New(tc.name)
-			corpus, pitfalls, topics, eff, err := p.deriveOperationStateWithPitfalls()
+			corpus, pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, _, _, err = p.syncReportWithPitfalls(testContext(t), nil, tc.wrap(filesystems, failure), corpus, pitfalls, topics, eff)
+			_, _, _, err = syncReportWithPitfalls(p, testContext(t), nil, tc.wrap(filesystems, failure), corpus, pitfalls, topics, eff)
 			if !errors.Is(err, failure) {
 				t.Fatalf("error = %v, want %v", err, failure)
 			}
@@ -942,18 +942,18 @@ func TestLocalDocPruneUnreadableSourcePreservesRecoveryAndLock(t *testing.T) {
 		t.Fatal(err)
 	}
 	p.Cfg.LocalDocs = nil
-	filesystems, closeAll, err := p.openSyncFilesystems()
+	filesystems, closeAll, err := openSyncFilesystems(p)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer closeAll()
 	failure := errors.New("unreadable local prune source")
 	filesystems.tracked = pathReadWithModeFailureFilesystem{syncFilesystem: filesystems.tracked, path: local, err: failure}
-	corpus, pitfalls, topics, eff, err := p.deriveOperationStateWithPitfalls()
+	corpus, pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	backups, _, pruned, err := p.syncReportWithPitfalls(testContext(t), nil, filesystems, corpus, pitfalls, topics, eff)
+	backups, _, pruned, err := syncReportWithPitfalls(p, testContext(t), nil, filesystems, corpus, pitfalls, topics, eff)
 	if !errors.Is(err, failure) {
 		t.Fatalf("sync error = %v, want %v", err, failure)
 	}
@@ -1002,18 +1002,18 @@ func TestLocalDocPruneFaultsKeepRecoveryAndLock(t *testing.T) {
 				t.Fatal(err)
 			}
 			p.Cfg.LocalDocs = nil
-			filesystems, closeAll, err := p.openSyncFilesystems()
+			filesystems, closeAll, err := openSyncFilesystems(p)
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer closeAll()
 			failure := errors.New(tc.name)
 			filesystems.tracked = tc.wrap(filesystems.tracked, failure)
-			corpus, pitfalls, topics, eff, err := p.deriveOperationStateWithPitfalls()
+			corpus, pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, _, _, err = p.syncReportWithPitfalls(testContext(t), nil, filesystems, corpus, pitfalls, topics, eff)
+			_, _, _, err = syncReportWithPitfalls(p, testContext(t), nil, filesystems, corpus, pitfalls, topics, eff)
 			if !errors.Is(err, failure) {
 				t.Fatalf("sync error = %v, want %v", err, failure)
 			}
@@ -1039,14 +1039,14 @@ func TestBackupFileConfinedPropagatesPublicationFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	filesystems, closeAll, err := p.openSyncFilesystems()
+	filesystems, closeAll, err := openSyncFilesystems(p)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer closeAll()
 	failure := errors.New("publication failed")
 	calls := 0
-	_, err = p.backupFileConfined(".awf/config.yaml", publicationFailureFilesystem{syncFilesystem: filesystems.tracked, err: failure, calls: &calls})
+	_, err = backupFileConfined(p, ".awf/config.yaml", publicationFailureFilesystem{syncFilesystem: filesystems.tracked, err: failure, calls: &calls})
 	if !errors.Is(err, failure) || calls != 1 {
 		t.Fatalf("backup error = %v, publication calls = %d", err, calls)
 	}
@@ -1058,32 +1058,32 @@ func TestSyncReportDoesNotReportOutputWhenReplacementFails(t *testing.T) {
 	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatal(err)
 	}
-	lock, err := manifest.Load(p.lockPath())
+	lock, err := manifest.Load(lockPath(p))
 	if err != nil {
 		t.Fatal(err)
 	}
 	e := lock.Files["AGENTS.md"]
 	e.OutputHash = "different"
 	lock.Files["AGENTS.md"] = e
-	if err := lock.Save(p.lockPath()); err != nil {
+	if err := lock.Save(lockPath(p)); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte("hand edit\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	p, _ = Open(testContext(t), root)
-	filesystems, closeAll, openErr := p.openSyncFilesystems()
+	filesystems, closeAll, openErr := openSyncFilesystems(p)
 	if openErr != nil {
 		t.Fatal(openErr)
 	}
 	defer closeAll()
 	failure := errors.New("replacement failed")
 	filesystems.tracked = replacementFailureFilesystem{syncFilesystem: filesystems.tracked, path: "AGENTS.md", err: failure}
-	corpus, pitfalls, topics, eff, deriveErr := p.deriveOperationStateWithPitfalls()
+	corpus, pitfalls, topics, eff, deriveErr := deriveOperationStateWithPitfalls(p)
 	if deriveErr != nil {
 		t.Fatal(deriveErr)
 	}
-	_, changes, _, err := p.syncReportWithPitfalls(testContext(t), nil, filesystems, corpus, pitfalls, topics, eff)
+	_, changes, _, err := syncReportWithPitfalls(p, testContext(t), nil, filesystems, corpus, pitfalls, topics, eff)
 	if !errors.Is(err, failure) || len(changes) != 0 {
 		t.Fatalf("changes = %v, err = %v", changes, err)
 	}
@@ -1103,18 +1103,18 @@ func TestSyncReportRetainsModeCorrectionWhenLaterWriteFails(t *testing.T) {
 		t.Fatal(err)
 	}
 	p, _ = Open(testContext(t), root)
-	filesystems, closeAll, openErr := p.openSyncFilesystems()
+	filesystems, closeAll, openErr := openSyncFilesystems(p)
 	if openErr != nil {
 		t.Fatal(openErr)
 	}
 	defer closeAll()
 	failure := errors.New("later replacement failed")
 	filesystems.tracked = replacementFailureFilesystem{syncFilesystem: filesystems.tracked, path: "CLAUDE.md", err: failure}
-	corpus, pitfalls, topics, eff, err := p.deriveOperationStateWithPitfalls()
+	corpus, pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, changes, _, err := p.syncReportWithPitfalls(testContext(t), nil, filesystems, corpus, pitfalls, topics, eff)
+	_, changes, _, err := syncReportWithPitfalls(p, testContext(t), nil, filesystems, corpus, pitfalls, topics, eff)
 	if !errors.Is(err, failure) {
 		t.Fatalf("error = %v, want %v", err, failure)
 	}
@@ -1180,12 +1180,12 @@ func TestSyncReportForeignFinalSymlinkPolicy(t *testing.T) {
 			if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
 				t.Fatal(err)
 			}
-			lock, err := manifest.Load(p.lockPath())
+			lock, err := manifest.Load(lockPath(p))
 			if err != nil {
 				t.Fatal(err)
 			}
 			delete(lock.Files, "AGENTS.md")
-			if err := lock.Save(p.lockPath()); err != nil {
+			if err := lock.Save(lockPath(p)); err != nil {
 				t.Fatal(err)
 			}
 			agents := filepath.Join(root, "AGENTS.md")
@@ -1261,18 +1261,18 @@ func TestSyncReportDoesNotReportOutputWhenWriteFails(t *testing.T) {
 		t.Fatal(err)
 	}
 	p, _ = Open(testContext(t), root)
-	filesystems, closeAll, openErr := p.openSyncFilesystems()
+	filesystems, closeAll, openErr := openSyncFilesystems(p)
 	if openErr != nil {
 		t.Fatal(openErr)
 	}
 	defer closeAll()
 	failure := errors.New("replacement failed")
 	filesystems.tracked = replacementFailureFilesystem{syncFilesystem: filesystems.tracked, path: "AGENTS.md", err: failure}
-	corpus, pitfalls, topics, eff, err := p.deriveOperationStateWithPitfalls()
+	corpus, pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, changes, _, err := p.syncReportWithPitfalls(testContext(t), nil, filesystems, corpus, pitfalls, topics, eff)
+	_, changes, _, err := syncReportWithPitfalls(p, testContext(t), nil, filesystems, corpus, pitfalls, topics, eff)
 	if !errors.Is(err, failure) {
 		t.Fatalf("error = %v, want %v", err, failure)
 	}
@@ -1300,7 +1300,7 @@ func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 	if len(changes) != 0 {
 		t.Errorf("first sync has no baseline and must report no changes, got %v", changes)
 	}
-	lock, err := manifest.Load(p.lockPath())
+	lock, err := manifest.Load(lockPath(p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1325,7 +1325,7 @@ func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 	mutate("docs/decisions/INDEX.md", func(e *manifest.Entry) { e.OutputHash = "x" })
 	// No prior entry → added.
 	delete(lock.Files, "docs/workflow.md")
-	if err := lock.Save(p.lockPath()); err != nil {
+	if err := lock.Save(lockPath(p)); err != nil {
 		t.Fatal(err)
 	}
 	for _, path := range []string{"AGENTS.md", ".claude/skills/example-tdd/SKILL.md", "CLAUDE.md", ".awf/efforts/.gitignore", "docs/decisions/INDEX.md", "docs/workflow.md"} {
@@ -1468,7 +1468,7 @@ func TestSyncRendersAgentsDoc(t *testing.T) {
 // invariant: rendering/doc-outputs:docs-root-fixed (TestLayoutUsesFixedDocsRootAndFullCatalog)
 func TestLayoutUsesFixedDocsRootAndFullCatalog(t *testing.T) {
 	p := &Project{Cfg: &config.Config{}, cat: catalog.NewView(catalog.Standard).Catalog()}
-	l := p.layout()
+	l := layout(p)
 	if l.DocsDir != config.DocsDir || l.ADRDir != "docs/decisions" ||
 		l.IndexMd != "docs/decisions/INDEX.md" || l.PlansDir != "docs/plans" {
 		t.Errorf("layout = %+v", l)
@@ -1528,7 +1528,7 @@ func TestLayoutUsesFixedDocsRootAndFullCatalog(t *testing.T) {
 	if len(tm) != 17 {
 		t.Errorf("templateMap has %d keys, want 17", len(tm))
 	}
-	if got := p.docOutPath("architecture"); got != "docs/architecture.md" {
+	if got := docOutPath(p, "architecture"); got != "docs/architecture.md" {
 		t.Errorf("docOutPath = %q", got)
 	}
 }
@@ -1686,7 +1686,7 @@ func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
 	lock := &manifest.Lock{Files: map[string]manifest.Entry{
 		skillPath: {OutputHash: manifest.Hash([]byte(broken))},
 	}}
-	drift := p.checkLockedFiles(lock, map[string]RenderedFile{skillPath: file}, nil)
+	drift := checkLockedFiles(p, lock, map[string]RenderedFile{skillPath: file}, nil)
 	want := []manifest.Drift{{Path: skillPath, Kind: "invalid-frontmatter", Detail: "frontmatter name is empty"}}
 	if !slices.Equal(drift, want) {
 		t.Errorf("invalid-frontmatter drift = %#v, want %#v", drift, want)
@@ -1702,7 +1702,7 @@ func TestSyncReportBacksUpForeignIndexNotManaged(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lay := p.layout()
+	lay := layout(p)
 	// Plant a foreign ADR index with hand content before the first sync (no lock yet),
 	// so its path is absent from the prior lock and therefore foreign.
 	foreign := filepath.Join(root, lay.IndexMd)
@@ -1756,11 +1756,11 @@ func TestRegenCheckedAttribute(t *testing.T) {
 		t.Fatal(err)
 	}
 	// invariant: rendering/sync-and-drift:regeneration-checked-attribute (TestRegenCheckedAttribute)
-	amd := p.generateIndexMD(mustDeriveCorpus(t, p))
+	amd := generateIndexMD(p, mustDeriveCorpus(t, p))
 	if !amd.RegenChecked {
 		t.Errorf("INDEX.md must be regeneration-checked")
 	}
-	dds, err := p.generateDomainDocs(mustDeriveTopics(t, p), mustDeriveSkills(t, p))
+	dds, err := generateDomainDocs(p, mustDeriveTopics(t, p), mustDeriveSkills(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1776,7 +1776,7 @@ func TestRegenCheckedAttribute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cref, ok, err := p.generateConfigReference(slices.Concat(files, dds), mustDeriveSkills(t, p))
+	cref, ok, err := generateConfigReference(p, slices.Concat(files, dds), mustDeriveSkills(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2064,13 +2064,13 @@ func TestSyncBackupPublicationRefusesParentSwap(t *testing.T) {
 	if err := os.WriteFile(sentinel, []byte("outside\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	filesystems, closeAll, err := p.openSyncFilesystems()
+	filesystems, closeAll, err := openSyncFilesystems(p)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer closeAll()
 	filesystem := &swapBeforePublishFilesystem{syncFilesystem: filesystems.tracked, root: root, outside: outside}
-	if _, err := p.backupFileConfined("collision/source", filesystem); err == nil {
+	if _, err := backupFileConfined(p, "collision/source", filesystem); err == nil {
 		t.Fatal("backup publication accepted swapped escaping parent")
 	}
 	if got, err := os.ReadFile(filepath.Join(root, "collision-saved", "source")); err != nil || string(got) != "source bytes\n" {
@@ -2116,18 +2116,18 @@ func TestSyncAncestorCleanupRefusesParentSwap(t *testing.T) {
 		t.Fatal(err)
 	}
 	p, _ = Open(testContext(t), root)
-	filesystems, closeAll, err := p.openSyncFilesystems()
+	filesystems, closeAll, err := openSyncFilesystems(p)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer closeAll()
 	swapping := &swapAfterPruneFilesystem{syncFilesystem: filesystems.tracked, root: root, outside: outside}
 	filesystems.tracked = swapping
-	corpus, pitfalls, topics, eff, err := p.deriveOperationStateWithPitfalls()
+	corpus, pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, pruned, err := p.syncReportWithPitfalls(testContext(t), nil, filesystems, corpus, pitfalls, topics, eff)
+	_, _, pruned, err := syncReportWithPitfalls(p, testContext(t), nil, filesystems, corpus, pitfalls, topics, eff)
 	if err != nil || !slices.Contains(pruned, retired) {
 		t.Fatalf("cleanup sync = pruned %v, error %v", pruned, err)
 	}
@@ -2164,17 +2164,17 @@ func TestSyncLockSaveRefusesParentSwap(t *testing.T) {
 		t.Fatal(err)
 	}
 	outside := t.TempDir()
-	filesystems, closeAll, err := p.openSyncFilesystems()
+	filesystems, closeAll, err := openSyncFilesystems(p)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer closeAll()
 	filesystems.tracked = &swapBeforeLockReplaceFilesystem{syncFilesystem: filesystems.tracked, root: root, outside: outside}
-	corpus, pitfalls, topics, eff, err := p.deriveOperationStateWithPitfalls()
+	corpus, pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := p.syncReportWithPitfalls(testContext(t), nil, filesystems, corpus, pitfalls, topics, eff); err == nil {
+	if _, _, _, err := syncReportWithPitfalls(p, testContext(t), nil, filesystems, corpus, pitfalls, topics, eff); err == nil {
 		t.Fatal("sync accepted swapped lock parent during final save")
 	}
 	if _, err := os.Stat(filepath.Join(outside, "awf.lock")); !errors.Is(err, os.ErrNotExist) {

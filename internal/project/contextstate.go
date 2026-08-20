@@ -6,6 +6,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
@@ -46,8 +47,8 @@ type ContextState struct {
 // derives the catalog, targets, and layout from is built from the snapshot's
 // own configuration rather than the caller's, so the query answers about the
 // tree it was given.
-func (p *Project) ContextState(ctx context.Context) (ContextState, error) {
-	ws, err := p.workingCurrentState(ctx)
+func ContextStateOperation(p *Project, ctx context.Context) (ContextState, error) {
+	ws, err := workingCurrentState(p, ctx)
 	if err != nil {
 		return ContextState{}, err
 	}
@@ -56,7 +57,7 @@ func (p *Project) ContextState(ctx context.Context) (ContextState, error) {
 	if err != nil { // coverage-ignore: configured-target validation succeeded and KnownTargets is exhaustively backed by built-in descriptor tests
 		return ContextState{}, err
 	}
-	declarations, err := BuildOutputDeclarations(ws.Cfg, universe.catalog(), universe.Targets, snapshotTreeReader{tree: ws.Tree}, ws.Loaded.Corpus)
+	declarations, err := BuildOutputDeclarations(ws.Cfg, projectCatalog(universe), universe.Targets, snapshotTreeReader{tree: ws.Tree}, ws.Loaded.Corpus)
 	if err != nil { // coverage-ignore: the snapshot-local catalog and every declaration input were already parsed from this immutable tree
 		return ContextState{}, err
 	}
@@ -64,18 +65,19 @@ func (p *Project) ContextState(ctx context.Context) (ContextState, error) {
 	if err != nil { // coverage-ignore: planContextFromTree converts plan parse failures into drift before context construction
 		return ContextState{}, err
 	}
-	return ContextState{Layout: universe.layout(), Cfg: ws.Cfg, Loaded: ws.Loaded, PlanState: plans, Tree: ws.Tree, Lock: ws.Lock, Declarations: declarations, Eligible: eligiblePaths(ws.Tree, ws.Lock, ws.Cfg.ContextIgnore)}, nil
+	return ContextState{Layout: layout(universe), Cfg: ws.Cfg, Loaded: ws.Loaded, PlanState: plans, Tree: ws.Tree, Lock: ws.Lock, Declarations: declarations, Eligible: eligiblePaths(ws.Tree, ws.Lock, ws.Cfg.ContextIgnore)}, nil
 }
 
 // StagedContextState assembles the index universe at root. It deliberately
 // never loads working-tree configuration: the staged answer is computed
 // entirely from what is staged.
 func StagedContextState(ctx context.Context, root string) (ContextState, error) {
-	p, err := openRootProject(root)
+	repo, prefix, err := awfgit.OpenContaining(root)
 	if err != nil {
 		return ContextState{}, err
 	}
-	state, err := p.indexCurrentState(ctx)
+	p := stagedProject(root, repo, prefix)
+	state, err := indexCurrentState(p, ctx)
 	if err != nil {
 		return ContextState{}, err
 	}
@@ -84,7 +86,7 @@ func StagedContextState(ctx context.Context, root string) (ContextState, error) 
 		return ContextState{}, err
 	}
 	universe := &Project{Root: root, Cfg: state.Cfg, Targets: targets, cat: p.cat, repo: p.repo}
-	declarations, err := BuildOutputDeclarations(state.Cfg, universe.catalog(), universe.Targets, snapshotTreeReader{tree: state.Tree}, state.Loaded.Corpus)
+	declarations, err := BuildOutputDeclarations(state.Cfg, projectCatalog(universe), universe.Targets, snapshotTreeReader{tree: state.Tree}, state.Loaded.Corpus)
 	if err != nil { // coverage-ignore: the staged snapshot-local catalog and every declaration input were already parsed from this immutable tree
 		return ContextState{}, err
 	}
@@ -92,7 +94,7 @@ func StagedContextState(ctx context.Context, root string) (ContextState, error) 
 	if err != nil { // coverage-ignore: planContextFromTree converts plan parse failures into drift before context construction
 		return ContextState{}, err
 	}
-	return ContextState{Layout: universe.layout(), Cfg: state.Cfg, Loaded: state.Loaded, PlanState: plans, Tree: state.Tree, Lock: state.Lock, Declarations: declarations, Eligible: eligiblePaths(state.Tree, state.Lock, state.Cfg.ContextIgnore)}, nil
+	return ContextState{Layout: layout(universe), Cfg: state.Cfg, Loaded: state.Loaded, PlanState: plans, Tree: state.Tree, Lock: state.Lock, Declarations: declarations, Eligible: eligiblePaths(state.Tree, state.Lock, state.Cfg.ContextIgnore)}, nil
 }
 
 // indexState is one loaded index universe: the parsed ADR/topic view, the Tree
@@ -105,8 +107,8 @@ type indexState struct {
 }
 
 // indexCurrentState loads the staged ADR/topic view from the index tree.
-func (p *Project) indexCurrentState(ctx context.Context) (indexState, error) {
-	tree, err := p.indexTree(ctx)
+func indexCurrentState(p *Project, ctx context.Context) (indexState, error) {
+	tree, err := indexTree(p, ctx)
 	if err != nil {
 		return indexState{}, err
 	}

@@ -8,7 +8,7 @@ import (
 )
 
 // ListDocument renders the fixed catalog and configured domain inventory.
-func (p *Project) ListDocument(kindFilter string) (presentation.Document, error) {
+func ListDocumentOperation(p *Project, kindFilter string) (presentation.Document, error) {
 	if kindFilter == "target" {
 		return listTargetDocument()
 	}
@@ -29,7 +29,7 @@ func (p *Project) ListDocument(kindFilter string) (presentation.Document, error)
 				entries = []string{"none"}
 			}
 		} else {
-			entries, _ = CatalogNames(p.catalog(), kind)
+			entries, _ = CatalogNames(projectCatalog(p), kind)
 			for i, name := range entries {
 				if sidecar, err := p.Cfg.Sidecar(plural, name); err == nil && (sidecar.Data != nil || sidecar.Sections != nil) {
 					entries[i] = name + " (tuned)"

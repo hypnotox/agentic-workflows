@@ -13,7 +13,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/commitmsg"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
-	"github.com/hypnotox/agentic-workflows/internal/git"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
@@ -96,9 +96,9 @@ type workingState struct {
 }
 
 // workingCurrentState loads the working-tree ADR/topic view and recorded gaps.
-func (p *Project) workingCurrentState(ctx context.Context) (workingState, error) {
-	tree, err := p.workingTree(ctx)
-	if errors.Is(err, git.ErrNotARepository) {
+func workingCurrentState(p *Project, ctx context.Context) (workingState, error) {
+	tree, err := workingTree(p, ctx)
+	if errors.Is(err, awfgit.ErrNotARepository) {
 		tree, err = snapshot.FilesystemTree(ctx, p.Root)
 	}
 	if err != nil {
@@ -124,8 +124,8 @@ func (p *Project) workingCurrentState(ctx context.Context) (workingState, error)
 // never mix a working and an index universe. Coverage and fan-out always
 // evaluate, whether or not the project configures a currentState policy
 // (ADR-0192).
-func (p *Project) CheckCurrentState(ctx context.Context) (CurrentStateReport, error) {
-	ws, err := p.workingCurrentState(ctx)
+func CheckCurrentStateOperation(p *Project, ctx context.Context) (CurrentStateReport, error) {
+	ws, err := workingCurrentState(p, ctx)
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
@@ -140,10 +140,11 @@ func (p *Project) CheckCurrentState(ctx context.Context) (CurrentStateReport, er
 // working-tree project configuration. The staged command must remain operable
 // when a valid adopted index deliberately deletes or lacks the working config.
 func CheckStagedRoot(ctx context.Context, root string) (CurrentStateReport, error) {
-	p, err := openRootProject(root)
+	repo, prefix, err := awfgit.OpenContaining(root)
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
+	p := stagedProject(root, repo, prefix)
 	return p.CheckStaged(ctx)
 }
 
@@ -155,8 +156,8 @@ func CheckStagedRoot(ctx context.Context, root string) (CurrentStateReport, erro
 // the after config, policy, and eligible paths all come from the index tree so
 // the staged check reads one universe. Coverage and fan-out always evaluate,
 // whether or not the staged config declares a currentState policy (ADR-0192).
-func (p *Project) CheckStaged(ctx context.Context) (CurrentStateReport, error) {
-	afterTree, err := p.indexTree(ctx)
+func CheckStagedOperation(p *Project, ctx context.Context) (CurrentStateReport, error) {
+	afterTree, err := indexTree(p, ctx)
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
@@ -164,7 +165,7 @@ func (p *Project) CheckStaged(ctx context.Context) (CurrentStateReport, error) {
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
-	beforeTree, beforeLock, err := p.headTreeAndLock(ctx)
+	beforeTree, beforeLock, err := headTreeAndLock(p, ctx)
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
@@ -191,7 +192,7 @@ func (p *Project) CheckStaged(ctx context.Context) (CurrentStateReport, error) {
 	// the refusal here would break a staged check that worked before merge
 	// detection existed. Falling back selects the stricter authored-commit
 	// contract, which can refuse a legitimate merge but can never wrongly accept.
-	merging, err := git.MergeInProgress(p.Root)
+	merging, err := awfgit.MergeInProgress(p.Root)
 	if err != nil {
 		merging = false
 	}
@@ -265,7 +266,7 @@ func (r CommitAuthorizationResult) Diagnostic() (presentation.Diagnostic, error)
 
 // CheckCommitAuthorization validates the index, first parent, every incoming
 // MERGE_HEAD parent, and the cleaned final message without mutating any axis.
-func (p *Project) CheckCommitAuthorization(ctx context.Context, msg commitmsg.Message) (CommitAuthorizationResult, error) {
+func CheckCommitAuthorizationOperation(p *Project, ctx context.Context, msg commitmsg.Message) (CommitAuthorizationResult, error) {
 	success := CommitAuthorizationResult{Category: "operation", Condition: "stale merge authorization satisfied"}
 	refusal := func(observed, deficiency string) CommitAuthorizationResult {
 		return CommitAuthorizationResult{
@@ -274,7 +275,7 @@ func (p *Project) CheckCommitAuthorization(ctx context.Context, msg commitmsg.Me
 			NextActions: []string{"correct the message trailers", "run git commit to finish the existing merge"},
 		}
 	}
-	heads, err := git.MergeHeads(p.Root)
+	heads, err := awfgit.MergeHeads(p.Root)
 	if err != nil {
 		return CommitAuthorizationResult{}, fmt.Errorf("read merge heads: %w", err)
 	}
@@ -292,7 +293,7 @@ func (p *Project) CheckCommitAuthorization(ctx context.Context, msg commitmsg.Me
 		}
 		return CommitAuthorizationResult{}, parseErr // coverage-ignore: commitmsg exposes only SyntaxError refusals
 	}
-	repo, err := p.gitRepo()
+	repo, err := gitRepo(p)
 	if err != nil {
 		return CommitAuthorizationResult{}, fmt.Errorf("open authorization repository: %w", err)
 	}
@@ -387,8 +388,8 @@ func lockFromTree(tree *snapshot.Tree) (*manifest.Lock, error) {
 // headTreeAndLock loads HEAD and its own lock, or an empty tree and nil lock for
 // an unborn or pre-adoption repository. It never consults the working tree or
 // applies index lock authority to committed bytes.
-func (p *Project) headTreeAndLock(ctx context.Context) (*snapshot.Tree, *manifest.Lock, error) {
-	repo, err := p.gitRepo()
+func headTreeAndLock(p *Project, ctx context.Context) (*snapshot.Tree, *manifest.Lock, error) {
+	repo, err := gitRepo(p)
 	if err != nil { // coverage-ignore: the staged read that precedes this already required the same handle
 		return nil, nil, err
 	}

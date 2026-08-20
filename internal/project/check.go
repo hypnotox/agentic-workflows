@@ -36,23 +36,23 @@ type CheckAdvisories struct {
 
 // AdvisoryNotes returns the compatibility projection of the non-failing notes
 // produced by one operation-scoped plan parse.
-func (p *Project) AdvisoryNotes(ctx context.Context) ([]string, error) {
-	corpus, pitfalls, topics, eff, err := p.deriveOperationStateWithPitfalls()
+func AdvisoryNotesOperation(p *Project, ctx context.Context) ([]string, error) {
+	corpus, pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
 	if err != nil {
 		return nil, err
 	}
 	plans := []plan.Plan{}
-	if p.fullProfile() {
+	if fullProfile(p) {
 		plans, err = plan.ParseDir(filepath.Join(p.Root, config.DocsDir, "plans"))
 		if err != nil {
 			return nil, err
 		}
 	}
-	op, err := p.outputPlanWithPitfalls(ctx, corpus, pitfalls, topics, eff)
+	op, err := outputPlanWithPitfalls(p, ctx, corpus, pitfalls, topics, eff)
 	if err != nil {
 		return nil, err
 	}
-	advisories, err := p.advisoryNotesWithState(corpus, pitfalls, plans, op)
+	advisories, err := advisoryNotesWithState(p, corpus, pitfalls, plans, op)
 	if err != nil { // coverage-ignore: operation state and sidecars were already parsed and validated before advisory projection
 		return nil, err
 	}
@@ -62,17 +62,17 @@ func (p *Project) AdvisoryNotes(ctx context.Context) ([]string, error) {
 // advisoryNotesWithState classifies the non-failing render advisories from
 // operation-owned state, its already parsed plans, and its one prepared output
 // plan.
-func (p *Project) advisoryNotesWithState(corpus adr.Corpus, pitfalls pitfall.Corpus, plans []plan.Plan, op *OutputPlan) (CheckAdvisories, error) {
+func advisoryNotesWithState(p *Project, corpus adr.Corpus, pitfalls pitfall.Corpus, plans []plan.Plan, op *OutputPlan) (CheckAdvisories, error) {
 	files := op.writeFiles()
 	all := advisoryCompatibilityFiles(op)
-	information := append(p.unsetVarNotes(files), stubNotes(all)...)
+	information := append(unsetVarNotes(p, files), stubNotes(all)...)
 	information = append(information, markerNotes(all)...)
-	warnings, err := p.tagHealthNotes(corpus, pitfalls)
+	warnings, err := tagHealthNotes(p, corpus, pitfalls)
 	if err != nil { // coverage-ignore: advisory read errors are covered by direct helper tests
 		return CheckAdvisories{}, err
 	}
-	information = append(information, p.planCommitScopeNotes(plans)...)
-	glossaryWarnings, err := p.glossaryTersenessNotes()
+	information = append(information, planCommitScopeNotes(p, plans)...)
+	glossaryWarnings, err := glossaryTersenessNotes(p)
 	if err != nil {
 		return CheckAdvisories{}, err
 	}
@@ -104,7 +104,7 @@ func advisoryCompatibilityFiles(op *OutputPlan) []RenderedFile {
 // term whose meaning exceeds glossaryMeaningMax. It evaluates the MERGED set,
 // so the threshold bounds the vocabulary awf ships as well as the project's own
 // terms (ADR-0207 decision 10). Inert when the glossary doc is disabled.
-func (p *Project) glossaryTersenessNotes() ([]string, error) {
+func glossaryTersenessNotes(p *Project) ([]string, error) {
 	sc, err := p.Cfg.Sidecar("docs", "glossary")
 	if err != nil { // coverage-ignore: the glossary sidecar's YAML was already parsed and validated at Open, so this re-read cannot fail
 		return nil, err
@@ -112,7 +112,7 @@ func (p *Project) glossaryTersenessNotes() ([]string, error) {
 	// The on-disk sidecar never carries standardTerms, so overlay the catalog
 	// default exactly as render.go does upstream of the transform; without this
 	// the shipped layer would escape the threshold entirely.
-	records, err := mergedGlossaryRecords(withDefaultData(sc, p.catalog().Docs["glossary"].Data, specializedListDataKeys("docs", "glossary")...))
+	records, err := mergedGlossaryRecords(withDefaultData(sc, projectCatalog(p).Docs["glossary"].Data, specializedListDataKeys("docs", "glossary")...))
 	if err != nil {
 		return nil, err
 	}
@@ -141,11 +141,11 @@ const tagFrequencyThreshold = 0.25
 // express), and a coverage note for any ADR or pitfall carrying zero tags (the
 // under-tagging backstop). Inert under an empty/absent vocabulary, so an
 // un-curated adopter - and the example - stays note-free.
-func (p *Project) tagHealthNotes(corpus adr.Corpus, supplied ...pitfall.Corpus) ([]string, error) {
+func tagHealthNotes(p *Project, corpus adr.Corpus, supplied ...pitfall.Corpus) ([]string, error) {
 	if len(p.Cfg.Tags) == 0 {
 		return nil, nil
 	}
-	pitfalls, err := p.compatPitfallCorpus(supplied)
+	pitfalls, err := compatPitfallCorpus(p, supplied)
 	if err != nil { // coverage-ignore: aggregate operations always supply the validated corpus; direct malformed-load propagation is covered separately
 		return nil, err
 	}
@@ -210,7 +210,7 @@ func (p *Project) tagHealthNotes(corpus adr.Corpus, supplied ...pitfall.Corpus) 
 // ADR-0087: an absent key is the deliberate, git-auditable decline and produces
 // no note; deleting the key is the acknowledgement). One line per artifact with
 // at least one hit, sorted. Adapter duplicates collapse by the note itself.
-func (p *Project) unsetVarNotes(files []RenderedFile) []string {
+func unsetVarNotes(p *Project, files []RenderedFile) []string {
 	seen := map[string]bool{}
 	var notes []string
 	for _, f := range files {
@@ -291,7 +291,7 @@ func markerNotes(files []RenderedFile) []string {
 // note owns nudging (ADR-0087 - presence, not emptiness, is that note's
 // trigger; this exemption keeps the seed-all-vars scaffold legal). A bare
 // .vars reference conservatively consumes every key.
-func (p *Project) unusedVarDrift(files []RenderedFile) []manifest.Drift {
+func unusedVarDrift(p *Project, files []RenderedFile) []manifest.Drift {
 	used := map[string]bool{}
 	for _, f := range files {
 		if render.ReferencesBareVars(f.assembled) {
@@ -322,7 +322,7 @@ func (p *Project) unusedVarDrift(files []RenderedFile) []manifest.Drift {
 // (ADR-0086 Decision 4). Domains are excluded - their sidecars are rejected
 // as paths-only at open. A key referenced only inside a dropped section counts as
 // unused: the drop makes it configuration that does nothing.
-func (p *Project) unusedDataDrift(files []RenderedFile) ([]manifest.Drift, error) {
+func unusedDataDrift(p *Project, files []RenderedFile) ([]manifest.Drift, error) {
 	type refset struct {
 		keys map[string]bool
 		bare bool
@@ -370,13 +370,13 @@ func (p *Project) unusedDataDrift(files []RenderedFile) ([]manifest.Drift, error
 		if d.Plural == "domains" {
 			continue
 		}
-		for _, name := range d.poolNames(p.catalog()) {
+		for _, name := range d.poolNames(projectCatalog(p)) {
 			if err := check(d.Plural, name, config.DirName+"/"+d.Plural+"/"+name+".yaml"); err != nil { // coverage-ignore: see check's coverage-ignore
 				return nil, err
 			}
 		}
 	}
-	for _, kind := range catalog.SingletonKindsFor(p.catalog()) {
+	for _, kind := range catalog.SingletonKindsFor(projectCatalog(p)) {
 		if err := check(kind, "", config.DirName+"/"+kind+".yaml"); err != nil { // coverage-ignore: see check's coverage-ignore
 			return nil, err
 		}
@@ -405,9 +405,9 @@ func artifactLabel(tid string) string {
 }
 
 // declaredSections returns the catalog-declared section names for a target.
-func (p *Project) declaredSections(kind, name string) []string {
+func declaredSections(p *Project, kind, name string) []string {
 	if d, ok := descriptorByPlural(kind); ok && d.sections != nil {
-		s, _ := d.sections(p.catalog(), name)
+		s, _ := d.sections(projectCatalog(p), name)
 		return s
 	}
 	return nil
@@ -478,17 +478,17 @@ func agentGuideSizeAdvisory(op *OutputPlan) []string {
 
 // CheckReport performs one ordinary project check. Plans are parsed once and
 // the typed set is threaded to both blocking and advisory consumers.
-func (p *Project) CheckReport(ctx context.Context) (CheckReport, error) {
+func CheckReportOperation(p *Project, ctx context.Context) (CheckReport, error) {
 	if err := validateCommandWiring(p.Cfg); err != nil {
 		return CheckReport{}, err
 	}
-	corpus, pitfalls, topics, eff, err := p.deriveOperationStateWithPitfalls()
+	corpus, pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
 	if err != nil {
 		return CheckReport{}, err
 	}
 	plans := []plan.Plan{}
 	var parseErr error
-	if p.fullProfile() {
+	if fullProfile(p) {
 		plans, parseErr = plan.ParseDir(filepath.Join(p.Root, config.DocsDir, "plans"))
 	}
 	var planDrift []manifest.Drift
@@ -504,21 +504,21 @@ func (p *Project) CheckReport(ctx context.Context) (CheckReport, error) {
 			})
 		}
 	}
-	op, err := p.outputPlanWithPitfalls(ctx, corpus, pitfalls, topics, eff)
+	op, err := outputPlanWithPitfalls(p, ctx, corpus, pitfalls, topics, eff)
 	if err != nil {
 		return CheckReport{}, err
 	}
-	drift, trackingNotes, err := p.checkWithTrackingState(ctx, corpus, pitfalls, topics, eff, plans, op)
+	drift, trackingNotes, err := checkWithTrackingState(p, ctx, corpus, pitfalls, topics, eff, plans, op)
 	if err != nil {
 		return CheckReport{}, err
 	}
 	planWarnings := []string(nil)
-	if p.fullProfile() {
+	if fullProfile(p) {
 		contextDrift, notes := planArtifactReport(plans, corpus)
 		planWarnings = notes
 		planDrift = append(planDrift, contextDrift...)
 	}
-	advisories, err := p.advisoryNotesWithState(corpus, pitfalls, plans, op)
+	advisories, err := advisoryNotesWithState(p, corpus, pitfalls, plans, op)
 	report, err := finishCheckReport(drift, planDrift, planWarnings, advisories, op, err)
 	report.TrackingInformation = trackingNotes
 	report.TrackingNotes = slices.Clone(trackingNotes)
@@ -538,12 +538,12 @@ func finishCheckReport(drift, planDrift []manifest.Drift, planWarnings []string,
 	}, nil
 }
 
-func (p *Project) checkWithTrackingState(ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool, plans []plan.Plan, op *OutputPlan) ([]manifest.Drift, []string, error) {
-	trackingDrift, trackingNotes, err := p.checkGeneratedTracking(ctx, op)
+func checkWithTrackingState(p *Project, ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool, plans []plan.Plan, op *OutputPlan) ([]manifest.Drift, []string, error) {
+	trackingDrift, trackingNotes, err := checkGeneratedTracking(p, ctx, op)
 	if err != nil {
 		return nil, nil, err
 	}
-	lock, found, err := manifest.LoadOptional(p.lockPath())
+	lock, found, err := manifest.LoadOptional(lockPath(p))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -560,9 +560,9 @@ func (p *Project) checkWithTrackingState(ctx context.Context, corpus adr.Corpus,
 	}
 	var drift []manifest.Drift
 	drift = append(drift, trackingDrift...)
-	drift = append(drift, p.checkLockedFiles(lock, rendered, trackingDrift)...)
+	drift = append(drift, checkLockedFiles(p, lock, rendered, trackingDrift)...)
 	// Closed-tree sweep: orphans, strays, backups (ADR-0086 Decision 1).
-	od, err := p.sweepConfigTree(files, topics)
+	od, err := sweepConfigTree(p, files, topics)
 	if err != nil { // coverage-ignore: the sweep errors only on faults the outputPlan render above would have surfaced first (see its coverage-ignores)
 		return nil, nil, err
 	}
@@ -570,37 +570,37 @@ func (p *Project) checkWithTrackingState(ctx context.Context, corpus adr.Corpus,
 
 	// Generated and ordinary outputs are already exactly the plan write nodes;
 	// do not regenerate a second, duplicate node set in Check.
-	drift = append(drift, p.unusedVarDrift(files)...)
-	ud, err := p.unusedDataDrift(files)
+	drift = append(drift, unusedVarDrift(p, files)...)
+	ud, err := unusedDataDrift(p, files)
 	if err != nil { // coverage-ignore: unusedDataDrift re-reads sidecars the render pass in outputPlan already read
 		return nil, nil, err
 	}
 	drift = append(drift, ud...)
 
-	drift = append(drift, p.checkDeadRefs(files)...)
-	drift = append(drift, p.checkDeadSkillRefs(files, eff)...)
+	drift = append(drift, checkDeadRefs(p, files)...)
+	drift = append(drift, checkDeadSkillRefs(p, files, eff)...)
 
-	if p.fullProfile() {
-		drift = append(drift, p.checkPlans(corpus, plans)...)
+	if fullProfile(p) {
+		drift = append(drift, checkPlans(p, corpus, plans)...)
 	}
-	pitfallDrift, err := p.checkPitfalls(corpus, pitfalls)
+	pitfallDrift, err := checkPitfalls(p, corpus, pitfalls)
 	if err != nil { // coverage-ignore: the operation supplied its already validated pitfall corpus
 		return nil, nil, err
 	}
 	drift = append(drift, pitfallDrift...)
-	glossaryDrift, err := p.checkGlossary()
+	glossaryDrift, err := checkGlossary(p)
 	if err != nil {
 		return nil, nil, err
 	}
 	drift = append(drift, glossaryDrift...)
-	tagDrift, err := p.checkTagVocabulary(corpus, pitfalls)
+	tagDrift, err := checkTagVocabulary(p, corpus, pitfalls)
 	if err != nil { // coverage-ignore: checkTagVocabulary now fails only through pitfallTagEntries, which reads the same data.pitfalls that checkPitfalls above already read and failed on
 		return nil, nil, err
 	}
 	drift = append(drift, tagDrift...)
-	if p.fullProfile() {
-		drift = append(drift, p.checkADRRelatedLinks(corpus)...)
-		drift = append(drift, p.checkPendingADRs(ctx, corpus)...)
+	if fullProfile(p) {
+		drift = append(drift, checkADRRelatedLinks(p, corpus)...)
+		drift = append(drift, checkPendingADRs(p, ctx, corpus)...)
 	}
 	return drift, trackingNotes, nil
 }
@@ -608,7 +608,7 @@ func (p *Project) checkWithTrackingState(ctx context.Context, corpus adr.Corpus,
 // checkGeneratedTracking compares the operation-owned render writes plus the
 // separately written lock against metadata-only index membership. Resident
 // outputs are outside a nested adopter's index authority and remain excluded.
-func (p *Project) checkGeneratedTracking(ctx context.Context, op *OutputPlan) ([]manifest.Drift, []string, error) {
+func checkGeneratedTracking(p *Project, ctx context.Context, op *OutputPlan) ([]manifest.Drift, []string, error) {
 	repo := p.repo
 	if repo == nil {
 		return nil, []string{"generated-artifact tracking is unavailable outside a Git repository"}, nil
@@ -659,8 +659,8 @@ func untrackedPaths(drift []manifest.Drift) map[string]bool {
 // branch-independent duplicate-identity check, which is the real corruption
 // backstop; this check exists to make the missing numbering step visible where
 // it is actually owed.
-func (p *Project) checkPendingADRs(ctx context.Context, corpus adr.Corpus) []manifest.Drift {
-	if !p.onIntegrationBranch(ctx) {
+func checkPendingADRs(p *Project, ctx context.Context, corpus adr.Corpus) []manifest.Drift {
+	if !onIntegrationBranch(p, ctx) {
 		return nil
 	}
 	rel := filepath.ToSlash(filepath.Join(config.DocsDir, "decisions"))
@@ -680,7 +680,7 @@ func (p *Project) checkPendingADRs(ctx context.Context, corpus adr.Corpus) []man
 // stale, missing, hand-edited, or invalid-frontmatter. The reverse direction is
 // checked too: a rendered path with no lock entry - an artifact enabled since the
 // last sync - is flagged unsynced rather than silently skipped.
-func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]RenderedFile, trackingDrift []manifest.Drift) []manifest.Drift {
+func checkLockedFiles(p *Project, lock *manifest.Lock, rendered map[string]RenderedFile, trackingDrift []manifest.Drift) []manifest.Drift {
 	untracked := untrackedPaths(trackingDrift)
 	var drift []manifest.Drift
 	for _, path := range slices.Sorted(maps.Keys(rendered)) {
@@ -760,7 +760,7 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 // dead-link scan. Matching is whole-token (ADR-0046 item 3): the token must not
 // start mid-word (no word-ish rune before the prefix) and the regex captures
 // the maximal word run after it.
-func (p *Project) checkDeadSkillRefs(files []RenderedFile, effective map[string]bool) []manifest.Drift {
+func checkDeadSkillRefs(p *Project, files []RenderedFile, effective map[string]bool) []manifest.Drift {
 	scan := make([]RenderedFile, 0, len(files))
 	for _, f := range files {
 		if f.Policy.ScanSkillReferences {
@@ -773,7 +773,7 @@ func (p *Project) checkDeadSkillRefs(files []RenderedFile, effective map[string]
 		seen := map[string]bool{}
 		for _, m := range re.FindAllStringSubmatch(refs.WithoutFences(f.Content), -1) {
 			name := m[1]
-			if _, known := p.catalog().Skills[name]; !known || effective[name] || seen[name] {
+			if _, known := projectCatalog(p).Skills[name]; !known || effective[name] || seen[name] {
 				continue
 			}
 			seen[name] = true
@@ -787,7 +787,7 @@ func (p *Project) checkDeadSkillRefs(files []RenderedFile, effective map[string]
 // awf-managed rendered markdown file's inline links must resolve file-relative on
 // disk. Generated nodes use the same declared policy; bridges remain out of
 // scope through theirs.
-func (p *Project) checkDeadRefs(files []RenderedFile) []manifest.Drift {
+func checkDeadRefs(p *Project, files []RenderedFile) []manifest.Drift {
 	scan := make([]RenderedFile, 0, len(files))
 	for _, f := range files {
 		if f.Policy.ScanReferences {
@@ -824,7 +824,7 @@ func (p *Project) checkDeadRefs(files []RenderedFile) []manifest.Drift {
 // drift; an unknown scope is advisory (planCommitScopeNotes), not drift (ADR-0111).
 // An adrs: entry resolves by identity, so a number and a pending record's slug
 // resolve through one lookup and a link survives numbering (ADR-0202 item 14).
-func (p *Project) checkPlans(corpus adr.Corpus, plans []plan.Plan) []manifest.Drift {
+func checkPlans(p *Project, corpus adr.Corpus, plans []plan.Plan) []manifest.Drift {
 	aset := audit.Resolve(config.AuditScopes(p.Cfg.Audit))
 	rel := filepath.ToSlash(filepath.Join(config.DocsDir, "plans"))
 	var drift []manifest.Drift
@@ -858,7 +858,7 @@ func (p *Project) checkPlans(corpus adr.Corpus, plans []plan.Plan) []manifest.Dr
 // mistyped subject (hard drift in checkPlans), an unknown scope is advisory: a plan
 // may be the change that adds the scope (ADR-0111). Mirrors checkPlans' scan; a
 // frontmatter-less plan is skipped.
-func (p *Project) planCommitScopeNotes(plans []plan.Plan) []string {
+func planCommitScopeNotes(p *Project, plans []plan.Plan) []string {
 	aset := audit.Resolve(config.AuditScopes(p.Cfg.Audit))
 	rel := filepath.ToSlash(filepath.Join(config.DocsDir, "plans"))
 	var notes []string
@@ -878,8 +878,8 @@ func (p *Project) planCommitScopeNotes(plans []plan.Plan) []string {
 }
 
 // checkPitfalls resolves corpus metadata against project-owned domains and ADRs.
-func (p *Project) checkPitfalls(corpus adr.Corpus, supplied ...pitfall.Corpus) ([]manifest.Drift, error) {
-	pitfalls, err := p.compatPitfallCorpus(supplied)
+func checkPitfalls(p *Project, corpus adr.Corpus, supplied ...pitfall.Corpus) ([]manifest.Drift, error) {
+	pitfalls, err := compatPitfallCorpus(p, supplied)
 	if err != nil { // coverage-ignore: aggregate operations always supply their validated operation-owned corpus
 		return nil, err
 	}
@@ -908,7 +908,7 @@ func (p *Project) checkPitfalls(corpus adr.Corpus, supplied ...pitfall.Corpus) (
 // Structural validation (term/meaning) is the transform's job; this resolves the
 // domains the transform cannot see. A disabled glossary doc, or a sidecar with no
 // data.terms, yields no drift.
-func (p *Project) checkGlossary() ([]manifest.Drift, error) {
+func checkGlossary(p *Project) ([]manifest.Drift, error) {
 	sc, err := p.Cfg.Sidecar("docs", "glossary")
 	if err != nil { // coverage-ignore: the glossary sidecar's YAML was already parsed and validated at Open, so this re-read cannot fail
 		return nil, err
@@ -938,11 +938,11 @@ func (p *Project) checkGlossary() ([]manifest.Drift, error) {
 // non-empty meaning. An empty or absent vocabulary is inert (tags are then
 // free-form). A declared member no artifact uses is intentionally permitted,
 // mirroring an unused configured domain under pitfall-domains-resolved.
-func (p *Project) checkTagVocabulary(corpus adr.Corpus, supplied ...pitfall.Corpus) ([]manifest.Drift, error) {
+func checkTagVocabulary(p *Project, corpus adr.Corpus, supplied ...pitfall.Corpus) ([]manifest.Drift, error) {
 	if len(p.Cfg.Tags) == 0 {
 		return nil, nil
 	}
-	pitfalls, err := p.compatPitfallCorpus(supplied)
+	pitfalls, err := compatPitfallCorpus(p, supplied)
 	if err != nil {
 		return nil, err
 	}
@@ -981,17 +981,17 @@ func (p *Project) checkTagVocabulary(corpus adr.Corpus, supplied ...pitfall.Corp
 	return drift, nil
 }
 
-func (p *Project) compatPitfallCorpus(supplied []pitfall.Corpus) (pitfall.Corpus, error) {
+func compatPitfallCorpus(p *Project, supplied []pitfall.Corpus) (pitfall.Corpus, error) {
 	if len(supplied) > 0 {
 		return supplied[0], nil
 	}
-	return p.loadPitfallCorpus()
+	return loadPitfallCorpus(p)
 }
 
 // checkADRRelatedLinks fails an ADR whose related: names an ADR number with no
 // matching file under the decisions dir - structurally identical to the
 // pitfall/plan link checks. Unconditional (independent of the tag vocabulary).
-func (p *Project) checkADRRelatedLinks(corpus adr.Corpus) []manifest.Drift {
+func checkADRRelatedLinks(p *Project, corpus adr.Corpus) []manifest.Drift {
 	adrs := corpus.All()
 	rel := filepath.ToSlash(filepath.Join(config.DocsDir, "decisions"))
 	var drift []manifest.Drift

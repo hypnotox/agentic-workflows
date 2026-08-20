@@ -12,12 +12,12 @@ import (
 
 // validateAgainstCatalog checks that every enabled non-local target is in the
 // catalog and that its sidecar's section overrides name declared sections.
-func (p *Project) validateAgainstCatalog() error {
+func validateAgainstCatalog(p *Project) error {
 	for _, d := range kindDescriptors {
 		if d.poolNames == nil { // domains: freeform, not catalog-validated
 			continue
 		}
-		if err := p.checkKindAgainstCatalog(d); err != nil {
+		if err := checkKindAgainstCatalog(p, d); err != nil {
 			return err
 		}
 	}
@@ -43,13 +43,13 @@ func (p *Project) validateAgainstCatalog() error {
 	if len(ad.Paths) > 0 {
 		return errors.New("agents-doc: paths: is read only from domain sidecars; remove it from .awf/agents-doc.yaml")
 	}
-	if err := validateCatalogListData("agents-doc.yaml", ad, p.catalog().Docs["agents-doc"].Data); err != nil {
+	if err := validateCatalogListData("agents-doc.yaml", ad, projectCatalog(p).Docs["agents-doc"].Data); err != nil {
 		return err
 	}
-	if err := checkSectionsAllowed("agents-doc", "", p.catalog().Docs["agents-doc"].Sections, ad.Sections); err != nil {
+	if err := checkSectionsAllowed("agents-doc", "", projectCatalog(p).Docs["agents-doc"].Sections, ad.Sections); err != nil {
 		return err
 	}
-	for _, sg := range plainSingletons(p.catalog()) {
+	for _, sg := range plainSingletons(projectCatalog(p)) {
 		sc, err := p.Cfg.Sidecar(sg.kind, "")
 		if err != nil {
 			return err
@@ -57,10 +57,10 @@ func (p *Project) validateAgainstCatalog() error {
 		if len(sc.Paths) > 0 {
 			return fmt.Errorf("%s: paths: is read only from domain sidecars; remove it from .awf/%s.yaml", sg.kind, sg.kind)
 		}
-		if err := validateCatalogListData(sg.kind+".yaml", sc, p.catalog().Docs[sg.kind].Data); err != nil {
+		if err := validateCatalogListData(sg.kind+".yaml", sc, projectCatalog(p).Docs[sg.kind].Data); err != nil {
 			return err
 		}
-		if err := checkSectionsAllowed(sg.kind, "", sg.sections(p.catalog()), sc.Sections); err != nil {
+		if err := checkSectionsAllowed(sg.kind, "", sg.sections(projectCatalog(p)), sc.Sections); err != nil {
 			return err
 		}
 	}
@@ -78,13 +78,13 @@ func (p *Project) validateAgainstCatalog() error {
 	if len(cr.Paths) > 0 {
 		return errors.New("config-reference: paths: is read only from domain sidecars; remove it from .awf/config-reference.yaml")
 	}
-	if err := checkSectionsAllowed("config-reference", "", p.catalog().Docs["config-reference"].Sections, cr.Sections); err != nil {
+	if err := checkSectionsAllowed("config-reference", "", projectCatalog(p).Docs["config-reference"].Sections, cr.Sections); err != nil {
 		return err
 	}
 	for _, local := range p.Cfg.NormalizedLocalDocs() {
 		output := config.DocsDir + "/" + local.Name + ".md"
-		for name := range p.catalog().Docs {
-			if output == p.docOutPath(name) {
+		for name := range projectCatalog(p).Docs {
+			if output == docOutPath(p, name) {
 				return fmt.Errorf("local document %q collides with standard output %q", local.Name, output)
 			}
 		}
@@ -93,8 +93,8 @@ func (p *Project) validateAgainstCatalog() error {
 }
 
 // checkKindAgainstCatalog validates every catalog artifact's shaping sidecar.
-func (p *Project) checkKindAgainstCatalog(d kindDescriptor) error {
-	for _, name := range d.poolNames(p.catalog()) {
+func checkKindAgainstCatalog(p *Project, d kindDescriptor) error {
+	for _, name := range d.poolNames(projectCatalog(p)) {
 		sc, err := p.Cfg.Sidecar(d.Plural, name)
 		if err != nil {
 			return err
@@ -102,10 +102,10 @@ func (p *Project) checkKindAgainstCatalog(d kindDescriptor) error {
 		if len(sc.Paths) > 0 {
 			return fmt.Errorf("%s %q: paths: is read only from domain sidecars; remove it from .awf/%s/%s.yaml", d.Singular, name, d.Plural, name)
 		}
-		if err := validateCatalogListData(d.Plural+"/"+name+".yaml", sc, catalogData(p.catalog(), d.Plural, name), specializedListDataKeys(d.Plural, name)...); err != nil {
+		if err := validateCatalogListData(d.Plural+"/"+name+".yaml", sc, catalogData(projectCatalog(p), d.Plural, name), specializedListDataKeys(d.Plural, name)...); err != nil {
 			return err
 		}
-		if declared, ok := d.sections(p.catalog(), name); ok {
+		if declared, ok := d.sections(projectCatalog(p), name); ok {
 			if err := checkSectionsAllowed(d.Plural, name, declared, sc.Sections); err != nil {
 				return err
 			}

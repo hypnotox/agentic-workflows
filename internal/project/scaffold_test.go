@@ -82,7 +82,7 @@ func TestPitfallScaffoldCLIContract(t *testing.T) {
 				t.Fatal(err)
 			}
 			tree := openPitfallScaffoldTree(t, root)
-			if _, err := p.newPitfallWith("New", tree); err == nil || !strings.Contains(err.Error(), "direct child") {
+			if _, err := newPitfallWith(p, "New", tree); err == nil || !strings.Contains(err.Error(), "direct child") {
 				t.Fatalf("nested source error = %v", err)
 			}
 			if err := os.RemoveAll(filepath.Join(root, ".awf/docs/pitfalls")); err != nil {
@@ -95,11 +95,11 @@ func TestPitfallScaffoldCLIContract(t *testing.T) {
 				t.Fatal(err)
 			}
 			readErr := errors.New("read failed")
-			if _, err := p.newPitfallWith("New", &faultPitfallFilesystem{pitfallScaffoldFilesystem: tree, readErr: readErr}); !errors.Is(err, readErr) {
+			if _, err := newPitfallWith(p, "New", &faultPitfallFilesystem{pitfallScaffoldFilesystem: tree, readErr: readErr}); !errors.Is(err, readErr) {
 				t.Fatalf("read error = %v", err)
 			}
 			walkErr := errors.New("walk failed")
-			if _, err := p.newPitfallWith("New", &faultPitfallFilesystem{pitfallScaffoldFilesystem: tree, walkErr: walkErr}); !errors.Is(err, walkErr) {
+			if _, err := newPitfallWith(p, "New", &faultPitfallFilesystem{pitfallScaffoldFilesystem: tree, walkErr: walkErr}); !errors.Is(err, walkErr) {
 				t.Fatalf("walk error = %v", err)
 			}
 		})
@@ -112,7 +112,7 @@ func TestPitfallScaffoldCLIContract(t *testing.T) {
 			tree := openPitfallScaffoldTree(t, root)
 			mkdirErr := errors.New("mkdir failed")
 			faults := &faultPitfallFilesystem{pitfallScaffoldFilesystem: tree, mkdirErr: mkdirErr}
-			if _, err := p.newPitfallWith("New", faults); !errors.Is(err, mkdirErr) {
+			if _, err := newPitfallWith(p, "New", faults); !errors.Is(err, mkdirErr) {
 				t.Fatalf("mkdir error = %v", err)
 			}
 		})
@@ -163,7 +163,7 @@ func TestNewPitfallPublicationFailureLeavesDestinationAbsent(t *testing.T) {
 		pitfallScaffoldFilesystem: tree,
 		publish:                   func(string, []byte, os.FileMode) error { return publishErr },
 	}
-	if _, err := p.newPitfallWith("Unpublished", faults); !errors.Is(err, publishErr) {
+	if _, err := newPitfallWith(p, "Unpublished", faults); !errors.Is(err, publishErr) {
 		t.Fatalf("publication error = %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".awf/docs/pitfalls/unpublished.md")); !errors.Is(err, os.ErrNotExist) {
@@ -191,7 +191,7 @@ func TestNewPitfallCommittedCleanupOutcomeIsActionableAndDoesNotAdvance(t *testi
 		}
 		return &filepublication.CommittedCleanupError{DestinationPath: path, ResiduePath: residuePath, Cause: cleanupErr}
 	}
-	_, err = p.newPitfallWith("Committed", faults)
+	_, err = newPitfallWith(p, "Committed", faults)
 	var outcome *PitfallScaffoldCleanupError
 	var committed *filepublication.CommittedCleanupError
 	if !errors.As(err, &outcome) || !errors.As(err, &committed) || !errors.Is(err, cleanupErr) {
@@ -227,13 +227,13 @@ func TestNewPitfallCommittedCleanupOutcomeIsActionableAndDoesNotAdvance(t *testi
 	if _, err := invalidOutcome.Diagnostic(); err == nil {
 		t.Fatal("line-breaking cleanup action accepted")
 	}
-	if _, retryErr := p.newPitfallWith("Committed", tree); retryErr == nil || !strings.Contains(retryErr.Error(), residuePath) {
+	if _, retryErr := newPitfallWith(p, "Committed", tree); retryErr == nil || !strings.Contains(retryErr.Error(), residuePath) {
 		t.Fatalf("ordinary retry did not report cleanup residue: %v", retryErr)
 	}
 	if err := tree.Remove(residuePath); err != nil {
 		t.Fatal(err)
 	}
-	if _, retryErr := p.newPitfallWith("Committed", tree); retryErr == nil || !strings.Contains(retryErr.Error(), "duplicates") {
+	if _, retryErr := newPitfallWith(p, "Committed", tree); retryErr == nil || !strings.Contains(retryErr.Error(), "duplicates") {
 		t.Fatalf("post-cleanup retry did not recognize committed authored identity: %v", retryErr)
 	}
 	if _, statErr := os.Stat(filepath.Join(root, ".awf/docs/pitfalls/committed-2.md")); !errors.Is(statErr, fs.ErrNotExist) {
@@ -364,7 +364,7 @@ func TestNewPitfallExclusiveRaceRefusesThenRetryReallocates(t *testing.T) {
 		}
 		return tree.Publish(path, source, mode)
 	}
-	if _, err := p.newPitfallWith("Race", faults); !errors.Is(err, os.ErrExist) {
+	if _, err := newPitfallWith(p, "Race", faults); !errors.Is(err, os.ErrExist) {
 		t.Fatalf("race error = %v", err)
 	}
 	winner := filepath.Join(root, ".awf/docs/pitfalls/race.md")
@@ -374,7 +374,7 @@ func TestNewPitfallExclusiveRaceRefusesThenRetryReallocates(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, ".awf/docs/pitfalls/race-2.md")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("race silently advanced suffix: %v", err)
 	}
-	if _, err := p.newPitfallWith("Race", faults); err != nil {
+	if _, err := newPitfallWith(p, "Race", faults); err != nil {
 		t.Fatalf("ordinary retry: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".awf/docs/pitfalls/race-2.md")); err != nil {

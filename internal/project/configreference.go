@@ -18,8 +18,8 @@ import (
 
 // crefRel is the generated config reference's project-relative output path,
 // derived from its catalog entry like every doc path.
-func (p *Project) crefRel() string {
-	return config.DocsDir + "/" + p.catalog().Docs["config-reference"].Path
+func crefRel(p *Project) string {
+	return config.DocsDir + "/" + projectCatalog(p).Docs["config-reference"].Path
 }
 
 // PotentialVarConsumers inverts the complete catalog's raw template sources
@@ -99,7 +99,7 @@ func renderedVarConsumers(files []RenderedFile) map[string][]string {
 
 // currentValueResolvers couples each live classification to the function that
 // computes its project value. Static keys have no resolver.
-func (p *Project) currentValueResolvers() map[string]func() string {
+func currentValueResolvers(p *Project) map[string]func() string {
 	var scopes []config.ScopeSpec
 	if p.Cfg.Audit != nil {
 		scopes = p.Cfg.Audit.AllowedScopes
@@ -224,7 +224,7 @@ func validateLiveStateAuthority(classes map[string]configspec.LiveStateClass, re
 
 // varState renders the three-way var state: set, present-but-empty (an open
 // to-do), or absent (the deliberate decline).
-func (p *Project) varState(key string) string {
+func varState(p *Project, key string) string {
 	v, ok := p.Cfg.Vars[key]
 	switch {
 	case !ok:
@@ -273,22 +273,22 @@ type ConfigReference struct {
 // configReferenceRows builds the four reference collections as struct rows -
 // the single implementation behind both the `awf config` live model and, via
 // configReferenceData's map adaptation, the doc generator's template input.
-func (p *Project) configReferenceRows(files []RenderedFile) (ConfigReference, error) {
+func configReferenceRows(p *Project, files []RenderedFile) (ConfigReference, error) {
 	var ref ConfigReference
 	classes := configspec.LiveStateClassifications()
-	resolvers := p.currentValueResolvers()
+	resolvers := currentValueResolvers(p)
 	if err := validateLiveStateAuthority(classes, resolvers); err != nil { // coverage-ignore: production constructs both fixed authorities together; mutation tests exercise every mismatch in validateLiveStateAuthority directly
 		return ConfigReference{}, err
 	}
 	for _, e := range configspec.Keys() {
-		if !p.fullProfile() && fullOnlyConfigKey(e.Path) {
+		if !fullProfile(p) && fullOnlyConfigKey(e.Path) {
 			continue
 		}
 		row := ConfigKeyRow{
 			Path: e.Path, Type: e.Type, Default: e.Default,
 			Description: e.Description, Availability: e.Availability,
 		}
-		if !p.fullProfile() {
+		if !fullProfile(p) {
 			switch e.Path {
 			case "profile":
 				row.Description = "Selects the Core governance footprint, which includes the operational workflow at the shared correctness, autonomy, maintainability, and review-quality bar."
@@ -318,12 +318,12 @@ func (p *Project) configReferenceRows(files []RenderedFile) (ConfigReference, er
 	}
 
 	rendered := renderedVarConsumers(files)
-	potential, err := potentialVarConsumers(p.catalog())
+	potential, err := potentialVarConsumers(projectCatalog(p))
 	if err != nil {
 		return ConfigReference{}, err
 	}
 	for _, v := range configspec.VarEntries() {
-		if !p.fullProfile() && (v.Key == "activeMdRegenCmd" || v.Key == "invariantTestPath") {
+		if !fullProfile(p) && (v.Key == "activeMdRegenCmd" || v.Key == "invariantTestPath") {
 			continue
 		}
 		consumers := "No catalog artifact references it."
@@ -334,11 +334,11 @@ func (p *Project) configReferenceRows(files []RenderedFile) (ConfigReference, er
 		}
 		ref.VarEntries = append(ref.VarEntries, VarRow{
 			Key: v.Key, Description: v.Description, Availability: v.Availability,
-			State: p.varState(v.Key), Consumers: consumers,
+			State: varState(p, v.Key), Consumers: consumers,
 		})
 	}
 
-	dataKeys, err := p.dataKeyRowsTyped()
+	dataKeys, err := dataKeyRowsTyped(p)
 	if err != nil { // coverage-ignore: dataKeyRowsTyped re-reads sidecars the render pass in outputPlan already read
 		return ConfigReference{}, err
 	}
@@ -352,8 +352,8 @@ func (p *Project) configReferenceRows(files []RenderedFile) (ConfigReference, er
 // docs/config-reference.md cannot silently diverge; the render drift oracle
 // pins the adaptation. files is the consumption input: the output plan's
 // write files plus the generated domain docs.
-func (p *Project) configReferenceData(files []RenderedFile) (map[string]any, error) {
-	ref, err := p.configReferenceRows(files)
+func configReferenceData(p *Project, files []RenderedFile) (map[string]any, error) {
+	ref, err := configReferenceRows(p, files)
 	if err != nil { // coverage-ignore: configReferenceRows fails only on the embedded-template and sidecar re-reads its own body already coverage-ignores
 		return nil, err
 	}
@@ -400,13 +400,13 @@ func fullOnlyConfigKey(path string) bool {
 		strings.HasPrefix(path, "currentState.") || strings.HasPrefix(path, "memoryCite.")
 }
 
-func (p *Project) dataKeyRowsTyped() ([]DataKeyRow, error) {
+func dataKeyRowsTyped(p *Project) ([]DataKeyRow, error) {
 	var rows []DataKeyRow
 	for _, d := range configspec.DataKeys() {
 		if d.Artifact != "agents-doc" {
-			_, skill := p.catalog().Skills[d.Artifact]
-			_, agent := p.catalog().Agents[d.Artifact]
-			_, doc := p.catalog().Docs[d.Artifact]
+			_, skill := projectCatalog(p).Skills[d.Artifact]
+			_, agent := projectCatalog(p).Agents[d.Artifact]
+			_, doc := projectCatalog(p).Docs[d.Artifact]
 			if !skill && !agent && !doc {
 				continue
 			}
@@ -419,11 +419,11 @@ func (p *Project) dataKeyRowsTyped() ([]DataKeyRow, error) {
 		var declared map[string]any
 		switch d.Kind {
 		case "skills":
-			declared = p.catalog().Skills[d.Artifact].Data
+			declared = projectCatalog(p).Skills[d.Artifact].Data
 		case "agents":
-			declared = p.catalog().Agents[d.Artifact].Data
+			declared = projectCatalog(p).Agents[d.Artifact].Data
 		case "docs":
-			declared = p.catalog().Docs[d.Artifact].Data
+			declared = projectCatalog(p).Docs[d.Artifact].Data
 		}
 		sidecarKind, sidecarName := d.Kind, d.Artifact
 		if d.Artifact == "agents-doc" {
@@ -456,7 +456,7 @@ func (p *Project) dataKeyRowsTyped() ([]DataKeyRow, error) {
 			state = " (catalog default)"
 		}
 		description := d.Description
-		if !p.fullProfile() && d.Kind == "docs" && d.Artifact == "glossary" && d.Key == "terms" {
+		if !fullProfile(p) && d.Kind == "docs" && d.Artifact == "glossary" && d.Key == "terms" {
 			description = "The glossary's terms as an ordered list of `{term, meaning}` records; the table renders always sorted (case-insensitive, pipes escaped), and an empty term or meaning, an interior newline, an unknown record key, or a case-insensitive duplicate term fails the render naming the offending term. A term here overrides the standard vocabulary awf ships of the same case-insensitive name. Unset, the doc renders the standard vocabulary alone."
 		}
 		if d.Kind == "agents" && d.Key == "focusItems" {
@@ -483,19 +483,19 @@ func (p *Project) dataKeyRowsTyped() ([]DataKeyRow, error) {
 // (ADR-class: generated index, no template/config hashes - drift is checked
 // by regeneration). files is the consumption input (the plan write files plus
 // generated domain docs).
-func (p *Project) generateConfigReference(files []RenderedFile, eff map[string]bool) (*RenderedFile, bool, error) {
+func generateConfigReference(p *Project, files []RenderedFile, eff map[string]bool) (*RenderedFile, bool, error) {
 	sc, err := p.Cfg.Sidecar("config-reference", "")
 	if err != nil { // coverage-ignore: validation already read this sidecar at open
 		return nil, false, err
 	}
-	data := p.data(sc, eff)
-	collections, err := p.configReferenceData(files)
+	data := projectData(p, sc, eff)
+	collections, err := configReferenceData(p, files)
 	if err != nil { // coverage-ignore: configReferenceData errors only on faults earlier passes already surfaced
 		return nil, false, err
 	}
 	data["data"] = collections
-	rf, err := p.renderTarget("config-reference", "", p.catalog().Docs["config-reference"].TID,
-		p.catalog().Docs["config-reference"].Sections, sc, data, p.crefRel(), eff,
+	rf, err := renderTarget(p, "config-reference", "", projectCatalog(p).Docs["config-reference"].TID,
+		projectCatalog(p).Docs["config-reference"].Sections, sc, data, crefRel(p), eff,
 		&renderOutputOptions{sources: []string{"derived:configspec", "derived:project-configuration"}})
 	if err != nil {
 		return nil, false, err
@@ -506,7 +506,7 @@ func (p *Project) generateConfigReference(files []RenderedFile, eff map[string]b
 		partVarRefs: rf.partVarRefs, kind: rf.kind, artifact: rf.artifact,
 		RegenChecked: true, ConsumedInputs: rf.ConsumedInputs, ObservedTemplateID: rf.ObservedTemplateID, Encoder: rf.Encoder,
 		Policy: OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}}
-	if p.templateSourceRoot() != "" {
+	if templateSourceRoot(p) != "" {
 		wrapped.TemplateID, wrapped.TemplateHash, wrapped.ConfigHash = rf.TemplateID, rf.TemplateHash, rf.ConfigHash
 	}
 	return &wrapped, true, nil
@@ -515,18 +515,18 @@ func (p *Project) generateConfigReference(files []RenderedFile, eff map[string]b
 // ConfigReferenceModel computes the reference's four typed collections
 // (ConfigKeys, VarEntries, SidecarFields, DataKeys) with live project state -
 // the `awf config` command's data source.
-func (p *Project) ConfigReferenceModel(ctx context.Context) (ConfigReference, error) {
-	corpus, pitfalls, topics, eff, err := p.deriveOperationStateWithPitfalls()
+func ConfigReferenceModelOperation(p *Project, ctx context.Context) (ConfigReference, error) {
+	corpus, pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
 	if err != nil {
 		return ConfigReference{}, err
 	}
-	op, err := p.outputPlanWithPitfalls(ctx, corpus, pitfalls, topics, eff)
+	op, err := outputPlanWithPitfalls(p, ctx, corpus, pitfalls, topics, eff)
 	if err != nil {
 		return ConfigReference{}, err
 	}
-	dds, err := p.generateDomainDocs(topics, eff)
+	dds, err := generateDomainDocs(p, topics, eff)
 	if err != nil { // coverage-ignore: the same producer ran inside outputPlan above over these identical inputs, so a second call cannot newly fail
 		return ConfigReference{}, err
 	}
-	return p.configReferenceRows(slices.Concat(op.writeFiles(), dds))
+	return configReferenceRows(p, slices.Concat(op.writeFiles(), dds))
 }
