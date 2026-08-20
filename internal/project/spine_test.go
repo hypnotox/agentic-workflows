@@ -2831,10 +2831,18 @@ func TestActiveEffortCreationSignaturesStaySynchronized(t *testing.T) {
 // detailed protocol home while guides and skills carry executable routing.
 // invariant: rendering/guide-and-doc-templates:working-memory-single-home (TestWorkingMemorySingleHomeSurfaces)
 func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
-	data := map[string]any{"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}, "skills": map[string]bool{"effort-workflow": true}}
+	data := map[string]any{"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}, "skills": map[string]bool{"effort-workflow": true}, "targetSessionHandoff": true}
 	workflow := renderGolden(t, "docs/workflow.md.tmpl", data)
 	assertOrderedPhrases(t, workflow,
 		"## Working memory", "Session context is volatile", "`effort-workflow` alone chooses", "awf effort new --slug <slug>", "reports the allocated immutable identity", "rendered orienting skill's resume-revalidation section is the procedural home", "One effort has one user-managed writer")
+	guide := renderGolden(t, "agents-doc/AGENTS.md.tmpl", data)
+	for surface, body := range map[string]string{"workflow": workflow, "agent guide": guide} {
+		for _, forbidden := range []string{"`handoff_session`", "`Continue with effort <slug>.`", "`[session context]`", "session-context facts", "active-branch compaction", "Handoff validates only dual-format"} {
+			if strings.Contains(body, forbidden) {
+				t.Errorf("generic %s retains Pi-only protocol %q", surface, forbidden)
+			}
+		}
+	}
 	effort := renderSkillGolden(t, "effort-workflow", data)
 	assertContainsAll := func(body string, wants ...string) {
 		for _, want := range wants {

@@ -400,9 +400,9 @@
     },
     ".pi/skills/awf-using-effort/SKILL.md": {
       "templateId": "skills/using-effort/SKILL.md.tmpl",
-      "templateHash": "sha256:1dbf6373f0a8a29671e38963371bdd6cda2b03708ff1d9d82c2986db20965477",
+      "templateHash": "sha256:502385e3e2c4165b90467e7da152b50b928ff7edce7b88a50e03b0ba01cde4de",
       "configHash": "sha256:7e73f65609cca139eedef98ded54f07ad8cdf4dc6f7bc08a09efe4109bf241bb",
-      "outputHash": "sha256:af3b4bc0b1bdf99b5d821758b0eb9d059de23be3c72601fc450703dddd2d642f"
+      "outputHash": "sha256:9af2d5613e5818eb7a6406c4f7d3e6c727418edfbf80886ddd69ce83bbbc89f7"
     },
     ".pi/skills/awf-writing-docs/SKILL.md": {
       "templateId": "skills/writing-docs/SKILL.md.tmpl",
@@ -998,8 +998,8 @@
     "docs/topics/rendering/pi-runtime.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:722282a7e29a45ae02942afb496e1e86e4ea491971cc17a98c31b13b21eeb3dd",
-      "outputHash": "sha256:330a73e808e9298926cd120aa65add646ed566c096feccbd77da0c70933de4f7"
+      "configHash": "sha256:7a5273533671d7de1482a3e263529cd43262c8ba0908d70872af11506c3ada58",
+      "outputHash": "sha256:1f42464a6b39673167346ef65b32564aa4916ed4d8d0314f92f038743c16e579"
     },
     "docs/topics/rendering/pi-workflows.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -1147,9 +1147,9 @@
     },
     "docs/workflow.md": {
       "templateId": "docs/workflow.md.tmpl",
-      "templateHash": "sha256:f26b1b53b442051b45242467ebf56f417376284271af64b8921f5103a9b97a47",
+      "templateHash": "sha256:814b9750d8537eff3dd10b2b64d32a1c3aaa31f24609ce86012dbc98932425b8",
       "configHash": "sha256:6ca1ca04faa5d5a3c808d2b32863fa9ce713621c6f4d54dca85a34750293f217",
-      "outputHash": "sha256:f3dd676968d18b04a5b37d3425a8e8ef88116900ce1c8a7cbc06099e6a7ac010"
+      "outputHash": "sha256:65748c9e84f8c759f5ee315747e4d098d492ee0c2ba8f5f60d34e3f28b4fe45e"
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",

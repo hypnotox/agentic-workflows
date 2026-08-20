@@ -134,14 +134,22 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 			usingEffort = file.Content
 		}
 	}
-	for _, want := range []string{"Use `using_effort` explicitly", "{ effort: \"<canonical-slug>\" }", "{ detach: true }", "Pi remains at repository root", "use the supplied relative memory path `.awf/efforts/<slug>/memory.md`", "when present, managed-worktree path `.awf/worktrees/<slug>`", "Restart begins detached", "display-only suffix", "suffix is never routing input", "Activity is neither authority nor a lock", "When attached, prefer `effort_memory_read` for pathless reads", "`effort_memory_edit` only for Markdown body changes", "`effort_memory_update` for `phase` or `next`", "timestamps are automatic", "Generic file tools and direct awf commands remain available", "After a persisted formal phase checkpoint", "a persisted approval checkpoint", "another safe resumable effort point", "current `[session context]` model-window and active-branch-compaction evidence", "No fixed threshold controls this choice", "invoke `handoff_session` alone with kickoff exactly `Continue with effort <slug>.`", "The kickoff identifies only the effort: it carries no phase or task limit, association mechanic, resume procedure, or handoff-log instruction.", "reorient from repository authority and the owned memory", "governed primary checkout for integration, deferred lifecycle closure, worktree removal, and retrospective", "actual boundary to `## Handoff log` before substantive work", "Continuation, cancellation, or failure that leaves the old session active appends none"} {
+	for _, want := range []string{"Use `using_effort` explicitly", "{ effort: \"<canonical-slug>\" }", "{ detach: true }", "Pi remains at repository root", "use the supplied relative memory path `.awf/efforts/<slug>/memory.md`", "when present, managed-worktree path `.awf/worktrees/<slug>`", "Restart begins detached", "display-only suffix", "suffix is never routing input", "Activity is neither authority nor a lock", "When attached, prefer `effort_memory_read` for pathless reads", "`effort_memory_edit` only for Markdown body changes", "`effort_memory_update` for `phase` or `next`", "timestamps are automatic", "Generic file tools and direct awf commands remain available", "After a persisted formal phase checkpoint", "a persisted approval checkpoint", "another safe resumable effort point", "current `[session context]` model-window and active-branch-compaction evidence", "No fixed threshold controls this choice", "invoke `handoff_session` alone with kickoff exactly `Continue with effort <slug>.`", "The kickoff identifies only the effort: it carries no phase or task limit, association mechanic, resume procedure, or handoff-log instruction.", "reorient from repository authority and the owned memory", "governed primary checkout for integration, deferred lifecycle closure, worktree removal, and retrospective", "Handoff validates only dual-format effort identity", "it does not validate mutable metadata, parse state or activity, select an effort, or mutate memory", "actual boundary to `## Handoff log` before substantive work", "Continuation, cancellation, or failure that leaves the old session active appends none"} {
 		if !strings.Contains(usingEffort, want) {
 			t.Errorf("using-effort companion missing %q:\n%s", want, usingEffort)
 		}
 	}
 	for _, unique := range []string{"## Pi session replacement", "invoke `handoff_session` alone", "`Continue with effort <slug>.`"} {
-		if got := strings.Count(usingEffort, unique); got != 1 {
-			t.Errorf("using-effort companion has %d copies of %q, want exactly one:\n%s", got, unique, usingEffort)
+		count := 0
+		for _, file := range files {
+			occurrences := strings.Count(file.Content, unique)
+			count += occurrences
+			if file.Path != ".pi/skills/example-using-effort/SKILL.md" && occurrences != 0 {
+				t.Errorf("rendered output %s duplicates Pi handoff signature %q", file.Path, unique)
+			}
+		}
+		if count != 1 {
+			t.Errorf("rendered output set has %d copies of %q, want exactly one", count, unique)
 		}
 	}
 }

@@ -158,7 +158,7 @@ A routine implementation checkpoint occurs only after a phase's closing commit h
 
 - Optional `activity.json` is advisory and may make older binaries unable to read the effort, but never gates unrelated show, list, or finish commands.
 
-- After implementation assurance settles or is explicitly skipped, `effort-workflow` integrates a managed-worktree effort, activates review after any divergent merge, {{if ne .profile "core"}}completes deferred artifact transitions, {{end}}removes path, registration, and branch, invokes retrospective, and runs `./awf effort finish <slug>` last.{{if .targetSessionHandoff}} Handoff validates only dual-format identity; it does not validate mutable metadata, parse state or activity, select an effort, or mutate memory.{{end}}
+- After implementation assurance settles or is explicitly skipped, `effort-workflow` integrates a managed-worktree effort, activates review after any divergent merge, {{if ne .profile "core"}}completes deferred artifact transitions, {{end}}removes path, registration, and branch, invokes retrospective, and runs `./awf effort finish <slug>` last.
 
 <!-- awf:end -->
 
@@ -214,4 +214,3 @@ A tracked stub should locate the invoking worktree, not assume the primary check
 Local hooks are per-clone and optional, so CI is the enforcement backstop: run `{{ with .vars.checkCmd }}{{ . }}{{ else }}./awf check{{ end }}` and the gate{{ with .vars.gateCmd }} (`{{ . }}`){{ end }} on every push{{ with .vars.gateCmdFull }}, and the fuller tier (`{{ . }}`) before merging{{ end }}. When the pinned bootstrap is enabled, CI obtains the exact awf version this repo was rendered with by capturing the path it prints (`"$(bash .awf/bootstrap.sh)" check`) instead of installing awf separately; the script verifies the download's SHA-256 before caching it.
 <!-- awf:end -->
 
-{{if .targetSessionHandoff}}Pi session-context facts are a transient model-facing observation of the active model window and active-branch compactions. Use them with retained-context relevance and upcoming work at eligible boundaries; no threshold, warning, or automatic action follows.{{end}}

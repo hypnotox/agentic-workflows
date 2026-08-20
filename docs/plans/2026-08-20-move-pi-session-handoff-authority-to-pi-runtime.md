@@ -133,3 +133,8 @@ not integrate main or perform AF-011.
 - Phase review found that the Pi-runtime proof did not independently enforce all three eligible
   checkpoint forms or single-projection uniqueness. The settlement adds clause-specific and
   exact-one assertions without changing protocol semantics.
+- Terminal assurance found two residual Pi-only fragments in the generic workflow template and
+  oracles that checked uniqueness only inside the Pi skill and did not enforce the generic
+  single-home boundary. The settlement moves the unique identity-validation detail into Pi-owned
+  guidance, removes the duplicate session-context fragment, and strengthens whole-output and
+  generic-surface rejection without changing the approved protocol.

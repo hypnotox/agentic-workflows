@@ -180,7 +180,7 @@ A routine implementation checkpoint occurs only after a phase's closing commit h
 
 - Optional `activity.json` is advisory and may make older binaries unable to read the effort, but never gates unrelated show, list, or finish commands.
 
-- After implementation assurance settles or is explicitly skipped, `effort-workflow` integrates a managed-worktree effort, activates review after any divergent merge, completes deferred artifact transitions, removes path, registration, and branch, invokes retrospective, and runs `./awf effort finish <slug>` last. Handoff validates only dual-format identity; it does not validate mutable metadata, parse state or activity, select an effort, or mutate memory.
+- After implementation assurance settles or is explicitly skipped, `effort-workflow` integrates a managed-worktree effort, activates review after any divergent merge, completes deferred artifact transitions, removes path, registration, and branch, invokes retrospective, and runs `./awf effort finish <slug>` last.
 
 
 <!-- awf:template-source templates/docs/workflow.md.tmpl#commit-discipline -->
@@ -241,4 +241,3 @@ The stubs resolve the invoking worktree before delegation. Enable them once per 
 
 Local hooks are per-clone and optional, so CI is the enforcement backstop: run `./x check` and the gate (`./x gate`) on every push. When the pinned bootstrap is enabled, CI obtains the exact awf version this repo was rendered with by capturing the path it prints (`"$(bash .awf/bootstrap.sh)" check`) instead of installing awf separately; the script verifies the download's SHA-256 before caching it.
 
-Pi session-context facts are a transient model-facing observation of the active model window and active-branch compactions. Use them with retained-context relevance and upcoming work at eligible boundaries; no threshold, warning, or automatic action follows.
