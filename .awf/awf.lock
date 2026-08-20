@@ -457,7 +457,7 @@
       "templateId": "docs/config-reference.md.tmpl",
       "templateHash": "sha256:05aeaef660be3c972872c80a377e1d50cc7da2711d35d7162dfaa281e46f186c",
       "configHash": "sha256:3661e518870161b5b42e657a0d9f9b1854bd63521a5e22ebbe6b113ed2fc8761",
-      "outputHash": "sha256:ccf42ca11d34bf5a88965d7d7a627af5b366bcea6bf710f0952bc17fc557bf3d",
+      "outputHash": "sha256:be04d6339f2186d57a8d8c18d2d046fea329f7ed153732f6f605d6a94692bead",
       "regenChecked": true
     },
     "docs/debugging.md": {

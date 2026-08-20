@@ -40,103 +40,42 @@ currentState:
 prefix: awf
 profile: full
 tags:
-  active-md: Generated INDEX.md decision status index
-  adopter-reference: The adopter-facing config reference authority
-  adr-lifecycle: ADR state transitions and amendment scope
   adr-parsing: ADR frontmatter and section parsing
-  adr-scaffolding: The awf new adr scaffolding command
-  agents-guide: The AGENTS.md agent guide artifact
-  anchored-globs: The anchored doublestar path-glob dialect
-  atomic-writes: Temp-file-plus-rename trust-bearing writes
-  authoring-comments: The whole-line awf:comment authoring-comment directive
-  audit-rules: The awf audit conformance rules
-  binary-distribution: Prebuilt binary distribution
-  bootstrap-porcelain: The bootstrap and upgrade installer porcelain
-  brownfield-adoption: Safe adoption into existing repositories
   catalog-derived-tests: Guards derived from the compile-time catalog
-  catalog-vars: Catalog var descriptors and seeding
-  chain-handoffs: The workflow-chain forward-handoff convention
   changelog: The changelog and release-notes pipeline
-  checksum-verify: Download checksum verification
   cli-dispatch: CLI command dispatch and kind routing
   closed-config-tree: The closed-config-tree drift model
   command-runner: The ./x project runner and the rendered ./awf wrapper
-  commit-conformance: Commit-range workflow conformance
   commit-gate: The deterministic commit-message gate
-  commit-scopes: The configured commit-scope vocabulary
-  compile-time-catalog: The compile-time Go catalog value
-  config-reference: The generated config-reference doc
-  config-serialization: config.yaml serialization ownership
-  config-tree: The .awf config-tree layout
   context-query: The awf context read-only query command
-  context-tiering: awf context relevance tiering
   convention-parts: Convention-part section overrides
-  corrupt-lock: Corrupt-lock refusal handling
   coverage-gate: The 100% coverage gate and coverage-ignore convention
   cross-references: Inter-doc and ADR link references
-  dead-code-gate: The dead-code gate
-  doc-model: The unified compile-time doc model
-  doc-singletons: Always-on singleton docs
-  doc-standard: The documentation authoring standard
-  domain-index: Retired per-domain ADR index history
-  topic-navigation: Generated topic and domain navigation
-  domain-staleness: Domain code and doc staleness detection
   editable-sections: The awf:edit editable-section markers
-  enable-closure: The enable/disable requirement closure
-  eval-suite: The golden-task eval suite
-  example-adopter: Historical tag for the former committed example adopter
-  foreign-file-backup: Backup of pre-existing foreign files
-  frontmatter-validation: Frontmatter field validation
   git-hooks: The git-hook payloads and their wiring
-  glossary: The glossary doc
   gofmt-doccomment: gofmt doc-comment formatting quirks
-  include-directive: The template include directive
-  init-scaffolding: The awf init scaffolding
   invariant-backing: Invariant declaration and proof-marker backing
-  invariant-retirement: Invariant retirement via successor ADR
   kind-descriptor: The unified per-kind descriptor
-  layout-namespace: The awf-given .layout render namespace
   link-resolution: Dead-link and reference resolution checks
-  local-artifacts: Project-local skills, agents, and docs
-  lock-manifest: The awf.lock manifest and its atomicity
-  marker-scoping: Invariant proof and touches marker scoping
   multi-target: Multi-target adapter rendering
-  mutation-testing: Mutation-testing triage
   pinned-set-tests: Exact pinned-set test brittleness
-  pitfalls-surface: The pitfalls knowledge surface
   placeholder-degradation: Publication-safe placeholder degradation
-  placeholder-registry: Placeholder escaping and value-token guards
   plan-artifact: The plan artifact structure and linking
   plan-taxonomy: Plan section and granularity conventions
   provenance-markers: In-file provenance markers on rendered output
-  publication-safety: Publication-safe unset-value degradation
   release-pipeline: The release and GoReleaser pipeline
   render-completeness: Render fan-out completeness guards
   repo-open: Tolerant git repository opening
-  retrospective: The retrospective finding-promotion loop
-  review-agents: The independent review agents
   schema-migration: Config schema-generation migrations
-  section-assembly: Template section assembly
-  sha-pinning: SHA-pinned workflow references
-  sidecar-derived-doc: Docs computed from sidecar data via a transform
   sidecar-fields: Sidecar data and section fields
-  skill-agent-pairing: Reviewing-skill and agent pairing
-  skill-ref-integrity: The skill-reference integrity check
   static-linting: golangci-lint static linting
-  subagent-dispatch: The subagent dispatch seam
-  tag-vocabulary: The governed tag vocabulary
   target-seam: The tool-agnostic target seam
   template-embed: go:embed template-embedding quirks
   template-overlay: The template overlay render engine
   template-residue: Template-source residue bans
   test-support: The shared test-support package
-  uncovered-coverage: The awf context --uncovered coverage report
-  unset-var-advisory: The unset-var advisory note
-  upgrade-flow: The awf upgrade migration flow
   verification-discipline: Verify-by-reading-back test discipline
   version-authority: The single binary-version authority
-  workflow-chain: The brainstorm-to-review workflow chain
-  working-memory: Ephemeral working-memory session state
   worktree-isolation: Git worktree and index isolation
 contextIgnore:
   - .awf/**

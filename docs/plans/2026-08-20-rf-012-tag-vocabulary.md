@@ -145,6 +145,20 @@ fix(config): cull historical-only tag vocabulary
 
 ## Notes
 
+Implementation evidence:
+
+- The repository census test failed before the config cull with 61 configured members lacking a
+  pitfall consumer and no pitfall tag missing from config, then passed after the cull.
+- The final parsed census reports 37 configured members equal to the 37-tag current pitfall union,
+  sixty removed members with byte-preserved legacy ADR frontmatter carriers, and the separately
+  unused `topic-navigation` member. Removed live config references, removed current pitfall-metadata
+  references, and changed frozen carriers are all empty sets.
+- Render inspection confirms that the generated config reference derives the 37-member live summary,
+  the current-state topic excludes legacy ADRs, and the pitfall index and representative leaves
+  continue to display retained tags without frozen-history claims.
+- The adopter-facing changelog entry landed early in the Phase 1 mechanical settlement because that
+  review required release-note currency. Phase 2 reuses that exact entry rather than duplicating it.
+
 Apply the plan-flexibility rule above when recording deviations. Delegated owners report material
 cross-owner revisions rather than editing the plan; the parent supplies the report to phase review
 and reconciles required plan changes with findings in one focused post-review settlement commit
