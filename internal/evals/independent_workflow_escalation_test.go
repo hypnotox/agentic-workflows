@@ -147,7 +147,7 @@ func TestIndependentWorkflowEscalation(t *testing.T) {
 
 			workflow := read(t, filepath.Join(root, "docs", "workflow.md"))
 			assertContainsAll(t, target+" workflow", workflow,
-				"evaluate brainstorming, continuity/effort, grounding, ADR, plan, and implementation-review need independently", "load-bearing", "sequencing, coordination, or resumability", "Each written artifact gets a fresh-context review", "line count", "artifact type")
+				"Evaluate brainstorming, continuity/effort, grounding, ADR, plan, and implementation-review triggers independently at intake", "load-bearing", "sequencing, coordination, or resumability", "Each written artifact gets a fresh-context review", "line count", "artifact type")
 			assertContainsAll(t, target+" workflow ownership", workflow,
 				"No line count, artifact type, or another mechanism firing selects a trigger", "parent owns inline integration", "one independently green coherent implementation transaction", "A checkpoint never creates an effort", "routine implementation checkpoint occurs only after a phase's closing commit has received report-only review")
 			for name, body := range bodies {

@@ -36,8 +36,13 @@ func TestPlanTaskDetailModesStayAligned(t *testing.T) {
 		"layout": testLayout(),
 	})
 
+	for _, marker := range []string{"**Phase rule:**", "**Task rule:**", "**Flexible task details:**", "**Stop conditions:**", "**Required scope evidence:**"} {
+		if !strings.Contains(defaultWriter, marker) {
+			t.Errorf("default writing skill missing execution-clarity marker %q", marker)
+		}
+	}
 	for _, surface := range []planPolicySurface{
-		{"default writing skill", defaultWriter, "- **Phases and tasks:**", "- **Self-contained"},
+		{"default writing skill", defaultWriter, "- **Phase rule:**", "- **Self-contained"},
 		{"default plan reviewer", defaultReviewer, "1. **executability**", "1. **doc-currency"},
 		{"default plans README", defaultReadme, "- Each phase independently declares", "A plan stays"},
 	} {
@@ -49,8 +54,8 @@ func TestPlanTaskDetailModesStayAligned(t *testing.T) {
 
 	root := testsupport.RepoRoot(t)
 	for _, surface := range []planPolicySurface{
-		{name: ".claude/skills/awf-writing-plans/SKILL.md", start: "- **Phases and tasks:**", end: "- **Self-contained"},
-		{name: ".pi/skills/awf-writing-plans/SKILL.md", start: "- **Phases and tasks:**", end: "- **Self-contained"},
+		{name: ".claude/skills/awf-writing-plans/SKILL.md", start: "- **Phase rule:**", end: "- **Self-contained"},
+		{name: ".pi/skills/awf-writing-plans/SKILL.md", start: "- **Phase rule:**", end: "- **Self-contained"},
 		{name: ".pi/agents/plan-reviewer.md", start: "1. **executability**", end: "1. **doc-currency"},
 		{name: "docs/plans/README.md", start: "- Each phase independently declares", end: "A plan stays"},
 	} {
@@ -231,9 +236,9 @@ func TestPlanningVerificationGuidanceStayAligned(t *testing.T) {
 	})
 	root := testsupport.RepoRoot(t)
 	surfaces := []planPolicySurface{
-		{name: "default writing skill", output: defaultWriter, start: "- **Phases and tasks:**", end: "- **Self-contained"},
-		{name: ".claude/skills/awf-writing-plans/SKILL.md", output: readPlanPolicyFile(t, root, ".claude/skills/awf-writing-plans/SKILL.md"), start: "- **Phases and tasks:**", end: "- **Self-contained"},
-		{name: ".pi/skills/awf-writing-plans/SKILL.md", output: readPlanPolicyFile(t, root, ".pi/skills/awf-writing-plans/SKILL.md"), start: "- **Phases and tasks:**", end: "- **Self-contained"},
+		{name: "default writing skill", output: defaultWriter, start: "- **Phase rule:**", end: "- **Self-contained"},
+		{name: ".claude/skills/awf-writing-plans/SKILL.md", output: readPlanPolicyFile(t, root, ".claude/skills/awf-writing-plans/SKILL.md"), start: "- **Phase rule:**", end: "- **Self-contained"},
+		{name: ".pi/skills/awf-writing-plans/SKILL.md", output: readPlanPolicyFile(t, root, ".pi/skills/awf-writing-plans/SKILL.md"), start: "- **Phase rule:**", end: "- **Self-contained"},
 	}
 	clauses := []string{
 		"each material `post-check:` names its input population, exclusions, lifecycle snapshot, and expected terminal set or lifecycle-authorized residual findings",

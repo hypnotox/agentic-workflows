@@ -76,6 +76,7 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 			"incomplete/overlapping partitions", "helper-owned shared files", "unconfined commands",
 			"clean green baseline", "one coherent green transaction", "shared files parent-owned")
 		assertAll("inline",
+			"**Rule.**", "**Flexible helper detail.**", "**Runtime detail.**", "**Required helper evidence.**", "**Required phase evidence.**", "**Freshness stop.**",
 			"mixed plan can hand subagent-driven phases", "Iterate phases, not tasks",
 			"continue the plan loop without returning control to the user", "select the next unfinished phase", "A phase-complete report is not a plan-complete stopping point",
 			"awf read plan <plan> <P[.T]>", "generated task scope notice", "phase-owner context only", "Advances and Completes outcomes",
@@ -266,6 +267,11 @@ func TestFreshPhaseAssuranceReuseContract(t *testing.T) {
 				if !strings.Contains(strings.ToLower(body), strings.ToLower(want)) {
 					t.Errorf("%s/%s missing structured phase evidence %q", variant, name, want)
 				}
+			}
+		}
+		for _, want := range []string{"**Build one self-contained evidence brief.**", "**Required evidence.**", "**Flexible reuse.**", "**Freshness stop.**", "**Effort evidence.**", "**Authority context.**", "**Run at most one verify pass.**", "**Stop when:**"} {
+			if !strings.Contains(surfaces["terminal assurance"], want) {
+				t.Errorf("%s/terminal assurance missing execution-clarity marker %q", variant, want)
 			}
 		}
 		for _, name := range []string{"inline executor", "delegated executor", "terminal assurance"} {

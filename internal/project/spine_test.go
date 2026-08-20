@@ -3328,9 +3328,9 @@ func TestGlossaryTemplate(t *testing.T) {
 // contradictions back through ADR review, and removes automatic residual escalation.
 func TestAuthorityGuidedReviewRemediation(t *testing.T) {
 	const (
-		stopCriterion   = "every viable correct remediation would contradict or change a settled user-approved design or decision, or would require an unauthorized change to an active current-state claim"
-		nonTriggers     = "competing clean options, severity, structural character, and the fact that a finding survived a prior correction"
-		residualOpening = "Diagnose every residual finding under the authority-guided remediation boundary above"
+		stopCriterion   = "every viable correct remediation would contradict or change a settled user-approved design or durable decision, or would require an unauthorized change to an active project rule"
+		nonTriggers     = "Ambiguity, competing clean options, severity, structural character, or survival after an earlier correction"
+		residualOpening = "Diagnose every residual finding under the same boundary"
 	)
 
 	partial, err := fs.ReadFile(templates.FS, "partials/review-remediation-autonomy.md")
@@ -3388,27 +3388,33 @@ func TestAuthorityGuidedReviewRemediation(t *testing.T) {
 	}
 
 	dispatcherWants := []string{
-		"Apply mechanical corrections directly and reasoned corrections with a concise rationale, autonomously",
+		"**Rule.** Apply mechanical corrections directly.",
+		"Apply reasoned corrections autonomously with a concise rationale.",
 		"single semantic home",
-		"routes it rather than redefining it",
-		"route a new material decision or changed approved boundary through brainstorming before ADR mutation",
-		"pauses at brainstorming's pre-artifact outline approval boundary",
-		"Exactly one fresh verify-pass dispatch is retained",
-		"without dispatching another same-artifact review loop",
-		"A consensus deviation remains a user decision.",
-		"A review finding stops the workflow only when",
-		// The reconciling clause that keeps this partial from reading as a
-		// rival to an implementation stop list. Pinned with its full referent:
-		// a positional "adjacent list" wording dangles in the six skill
-		// outputs that never render implementation-autonomy beside it.
-		"is not the unresolved design fork that an implementation stop list names",
-		stopCriterion,
+		"routes that classification without redefining it",
+		"**Flexible details.**",
 		nonTriggers,
-		"A plan finding whose correction would contradict linked ADR authority returns to ADR amendment and independent review",
-		// The stop criterion literal ends before the citation directive, so
-		// pin the directive with enough of its left context to bind it to the
-		// stop sentence rather than to any other authority mention.
-		"active current-state claim; cite the affected authority",
+		"None transfers the choice to the user.",
+		"**Stop when.**",
+		"**Required evidence.**",
+		"retain exactly one fresh verify-pass dispatch",
+		"Do not dispatch another same-artifact review loop.",
+		"A consensus deviation remains a user decision.",
+	}
+	fullDispatcherWants := []string{
+		stopCriterion,
+		"active project rule; cite the affected authority",
+		"A new material decision or changed approved boundary follows the brainstorming route before ADR mutation",
+		"pauses at brainstorming's pre-artifact outline approval boundary",
+		"remain implementation detail for this workflow to resolve",
+		"not the unresolved design fork named by an implementation stop condition",
+		"A plan correction that would contradict linked ADR authority returns to ADR amendment and independent review",
+	}
+	coreDispatcherWants := []string{
+		"every viable correct remediation would contradict or change the approved boundary",
+		"Route a new material decision or changed boundary through brainstorming",
+		"wait at its outline approval boundary",
+		"Resolve competing clean options inside the approved boundary as implementation detail",
 	}
 
 	// The pinned non-trigger enumeration deliberately starts at "competing
@@ -3428,18 +3434,26 @@ func TestAuthorityGuidedReviewRemediation(t *testing.T) {
 	routingWants := map[string]string{
 		"reviewing-plan": "route the finding through `example-brainstorming` with the cited affected authority and wait at its pre-artifact approval boundary",
 		"reviewing-adr":  "route the finding through `example-brainstorming` with the cited affected authority and wait at its pre-artifact approval boundary",
-		"reviewing-impl": "route a `user-decision` finding or consensus deviation through `example-brainstorming` with the cited affected authority, and wait at its pre-artifact approval boundary",
+		"reviewing-impl": "a `user-decision` finding or consensus deviation remains. Route it through `example-brainstorming` with the cited affected authority",
 	}
 
 	skillVariants := map[string]map[string]any{
-		"configured": {
-			"prefix": "example", "vars": map[string]any{"gateCmd": "./x gate"}, "layout": testLayout(),
+		"full-configured": {
+			"prefix": "example", "profile": "full", "vars": map[string]any{"gateCmd": "./x gate"}, "layout": testLayout(),
 			"commitScopes":        "`docs(plans)`",
 			"skills":              map[string]bool{"effort-workflow": true, "adr-lifecycle": true, "reviewing-impl": true},
 			"targetSubagentTools": true,
 		},
-		"empty": {
-			"prefix": "example", "vars": map[string]any{}, "layout": testLayout(),
+		"full-empty": {
+			"prefix": "example", "profile": "full", "vars": map[string]any{}, "layout": testLayout(),
+			"data": map[string]any{}, "skills": map[string]bool{},
+		},
+		"core-configured": {
+			"prefix": "example", "profile": "core", "vars": map[string]any{"gateCmd": "./x gate"}, "layout": testLayout(),
+			"skills": map[string]bool{}, "targetSubagentTools": true,
+		},
+		"core-empty": {
+			"prefix": "example", "profile": "core", "vars": map[string]any{}, "layout": testLayout(),
 			"data": map[string]any{}, "skills": map[string]bool{},
 		},
 	}
@@ -3467,15 +3481,27 @@ func TestAuthorityGuidedReviewRemediation(t *testing.T) {
 					t.Errorf("%s/%s missing dispatcher clause %q", variant, skill, want)
 				}
 			}
+			profileWants := fullDispatcherWants
+			if strings.HasPrefix(variant, "core-") {
+				profileWants = coreDispatcherWants
+			}
+			for _, want := range profileWants {
+				if !strings.Contains(out, want) {
+					t.Errorf("%s/%s missing profile dispatcher clause %q", variant, skill, want)
+				}
+			}
 			for _, reject := range retired {
 				if strings.Contains(out, reject) {
 					t.Errorf("%s/%s retains retired escalation phrase %q", variant, skill, reject)
 				}
 			}
 			assertNamesAmbiguity(t, variant+"/"+skill, out)
-			// Every review skill carries the same residual-finding opening.
-			if !strings.Contains(out, residualOpening) {
-				t.Errorf("%s/%s missing residual re-review replacement %q", variant, skill, residualOpening)
+			residualWant := residualOpening
+			if strings.HasPrefix(variant, "core-") {
+				residualWant = "Diagnose residual findings under the same boundary"
+			}
+			if !strings.Contains(out, residualWant) {
+				t.Errorf("%s/%s missing residual re-review replacement %q", variant, skill, residualWant)
 			}
 			if want := routingWants[skill]; !strings.Contains(out, want) {
 				t.Errorf("%s/%s missing routing replacement %q", variant, skill, want)
@@ -3548,8 +3574,8 @@ func TestAuthorityGuidedReviewRemediation(t *testing.T) {
 		},
 	}
 	reviewerWants := []string{
-		stopCriterion,
-		nonTriggers,
+		"every viable correct remediation would contradict or change a settled user-approved design or decision, or would require an unauthorized change to an active current-state claim",
+		"competing clean options, severity, structural character, and the fact that a finding survived a prior correction",
 		"cite the affected authority and name the deviation it would require",
 		"is not an unauthorized deviation merely because its proposed future state differs from current state",
 		"would make a new load-bearing choice material outside approved durable boundaries",

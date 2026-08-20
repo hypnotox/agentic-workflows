@@ -14,6 +14,8 @@ query a single version or a range.
 
 ### Features
 
+- Operative workflow guidance now separates rules, flexible implementation details, bounded stop conditions, and required evidence across planning, execution, and review without changing their authority or verification boundaries.
+
 - Check output now separates blocking Errors, zero-exit Warnings, and unranked Information by protected property. Prose style and heuristic lint no longer block valid work, while invalid inputs, serious drift, authority violations, unsafe behavior, and unavailable required verification remain blocking.
 
 - The daily-use guide now covers initialization, generated ownership, rendering, checking, and upgrading without rare protocol detail. Workflow, debugging, and configuration retain advanced lifecycle, recovery, and override facts; the new Pi Runtime Reference retains portable Pi runtime and subagent protocol.

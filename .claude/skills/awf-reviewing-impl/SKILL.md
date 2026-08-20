@@ -21,11 +21,17 @@ Stop and report through the active workflow only when authorities conflict or mu
 <!-- awf:template-source templates/partials/review-remediation-autonomy.md -->
 **Authority-guided review remediation.**
 
-Apply mechanical corrections directly and reasoned corrections with a concise rationale, autonomously. The review spine is the single semantic home of that classification; this workflow routes it rather than redefining it. This workflow treats ambiguity, competing clean options, severity, structural character, and the fact that a finding survived a prior correction as descriptions of a finding; none of them ever transfers the choice to the user.
+**Rule.** Apply mechanical corrections directly. Apply reasoned corrections autonomously with a concise rationale. The review spine is the single semantic home of finding classification; this workflow routes that classification without redefining it.
 
-A review finding stops the workflow only when every viable correct remediation would contradict or change a settled user-approved design or decision, or would require an unauthorized change to an active current-state claim; cite the affected authority. A finding that would make a new material decision or changed approved boundary necessary is not that stop: route a new material decision or changed approved boundary through brainstorming before ADR mutation, which pauses at brainstorming's pre-artifact outline approval boundary before the new authority is adopted. A review finding offering competing clean options inside approved durable boundaries is not the unresolved design fork that an implementation stop list names: it is delegated detail this workflow resolves, while a genuinely load-bearing choice takes the brainstorming route above, which supplies the pause.
+**Flexible details.** Ambiguity, competing clean options, severity, structural character, or survival after an earlier correction describes a finding. None transfers the choice to the user.
 
-Exactly one fresh verify-pass dispatch is retained after reasoned fixes or a user-approved ruling. Diagnose every residual finding under the same boundary, apply the authority-preserving mechanical and reasoned residual corrections, run the applicable verification, and report its disposition without dispatching another same-artifact review loop. A plan finding whose correction would contradict linked ADR authority returns to ADR amendment and independent review before ordinary plan review starts afresh. A consensus deviation remains a user decision.
+**Stop when.** A finding is a user decision only when every viable correct remediation would contradict or change a settled user-approved design or durable decision, or would require an unauthorized change to an active project rule; cite the affected authority.
+
+A new material decision or changed approved boundary follows the brainstorming route before ADR mutation and pauses at brainstorming's pre-artifact outline approval boundary. Competing clean options inside approved durable boundaries remain implementation detail for this workflow to resolve; they are not the unresolved design fork named by an implementation stop condition.
+
+**Required evidence.** After a reasoned fix or user-approved ruling, retain exactly one fresh verify-pass dispatch. Diagnose every residual finding under the same boundary, apply authority-preserving mechanical and reasoned corrections, run applicable verification, and report each disposition. Do not dispatch another same-artifact review loop.
+
+A plan correction that would contradict linked ADR authority returns to ADR amendment and independent review before ordinary plan review starts again. A consensus deviation remains a user decision.
 
 <!-- awf:template-source templates/partials/review-maintainability-risk.md -->
 An implementation- or plan-review maintainability concern enters the actionable findings digest only when it names the implicated semantic owner, affected location, concrete maintainability risk, smallest clean remediation, and existing `mechanical`, `reasoned`, or `user-decision` classification. The semantic owner owns the implicated behavior, policy, state, representation, dependency, or test seam, not the reviewer or finding author. Use the existing six-field schema: `location` records the affected location, `issue` names the semantic owner and concrete risk, `suggested_fix` names the smallest clean remediation, and `classification` records remediation ownership; severity remains informational.
@@ -54,7 +60,17 @@ Skip review only for a locally obvious, low-risk, directly verified change where
 <!-- awf:template-source templates/skills/reviewing-impl/SKILL.md.tmpl#dispatch-subagent -->
 <!-- awf:edit dispatch-subagent: default; create .awf/skills/parts/reviewing-impl/dispatch-subagent.md to override -->
 <!-- awf:template-source templates/skills/reviewing-impl/SKILL.md.tmpl -->
-2. Build one self-contained evidence brief with the requested outcome, user constraints, implementation summary, exact `baseSha..headSha`, verification results, and any fresh phase coverage summary: exact phase-closing commit, reviewed scope/range, verification, verbatim deviation report, and unreviewed settlement. Reuse only coverage whose exact commit and range revalidate against the current branch tip. Evidence loss after context loss, session replacement, or effort-free continuation, or any unverifiable freshness, falls back to ordinary terminal review. Divergence, changed authority, reasoned post-review fixes, or any material mutation invalidates affected coverage and requires renewed review. The reviewer avoids rereading already-covered phase correctness and reviews only unreviewed settlement/integration for a single phase, or cross-phase, settlement, and integration effects for multiple phases. When an effort exists, additionally provide its fixed slug and owned memory path read-only and paste every user-provenance decision-log entry pasted verbatim, including whatever `Record:` blocks exist; absence of an effort omits those fields. Effort-free review creates no effort, memory, checkpoint, retrospective, or topology work. Include the plan or requirements and direct the reviewer to run `./awf context --show invariants --show all-rules --show evidence --show pending $(git diff --name-only ${baseSha}..${headSha})` with concrete SHAs.
+2. **Build one self-contained evidence brief.**
+
+   **Required evidence.** Include the requested outcome, user constraints, implementation summary, exact `baseSha..headSha`, and verification results. For fresh phase coverage, include the exact phase-closing commit, reviewed scope and range, verification, verbatim deviation report, and unreviewed settlement.
+
+   **Flexible reuse.** Reuse only coverage whose exact commit and range revalidate against the current branch tip. The reviewer avoids rereading covered phase correctness. For a single phase, review only unreviewed settlement and integration; for multiple phases, review cross-phase, settlement, and integration effects.
+
+   **Freshness stop.** Evidence loss after context loss, session replacement, or effort-free continuation, and any unverifiable freshness, falls back to ordinary terminal review. Divergence, changed authority, reasoned post-review fixes, or any material mutation invalidates affected coverage and requires renewed review.
+
+   **Effort evidence.** When an effort exists, provide its fixed slug and owned memory path read-only. Paste every user-provenance decision-log entry verbatim, including whatever `Record:` blocks exist. The absence of an effort omits those fields. Effort-free review creates no effort, memory, checkpoint, retrospective, or topology work.
+
+   **Authority context.** Include the plan or requirements. With concrete SHAs, direct the reviewer to run `./awf context --show invariants --show all-rules --show evidence --show pending $(git diff --name-only ${baseSha}..${headSha})`.
 <!-- awf:template-source templates/partials/context-spill.md -->
 On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per `docs/debugging.md#context-spill-recovery`; treat any other output as the context packet itself.
 <!-- awf:template-source templates/skills/reviewing-impl/SKILL.md.tmpl -->
@@ -63,7 +79,11 @@ Dispatch the `code-reviewer` once as an independent target-native fresh-context 
 <!-- awf:template-source templates/skills/reviewing-impl/SKILL.md.tmpl#classify-route-findings -->
 <!-- awf:edit classify-route-findings: default; create .awf/skills/parts/reviewing-impl/classify-route-findings.md to override -->
 <!-- awf:template-source templates/skills/reviewing-impl/SKILL.md.tmpl -->
-3. Surface the digest. Validate each maintainability finding against the concrete-risk evidence above; reject a risk-free preference as non-admissible before classification routing. Diagnose each admissible finding against repository and current-state authority, then route by classification rather than severity: apply `mechanical` corrections directly; apply `reasoned` corrections with a one-line rationale; route a `user-decision` finding or consensus deviation through `awf-brainstorming` with the cited affected authority, and wait at its pre-artifact approval boundary.
+3. **Route the findings by classification, not severity.** Surface the digest. Validate every maintainability finding against the concrete-risk evidence above, and reject a risk-free preference as non-admissible. Diagnose each admissible finding against repository and current-state authority.
+
+   - Apply `mechanical` corrections directly.
+   - Apply `reasoned` corrections with a one-line rationale.
+   - **Stop when:** a `user-decision` finding or consensus deviation remains. Route it through `awf-brainstorming` with the cited affected authority and wait at its pre-artifact approval boundary.
 
 <!-- awf:template-source templates/skills/reviewing-impl/SKILL.md.tmpl#apply-fixes-commit -->
 <!-- awf:edit apply-fixes-commit: default; create .awf/skills/parts/reviewing-impl/apply-fixes-commit.md to override -->
@@ -87,7 +107,13 @@ Dispatch the `code-reviewer` once as an independent target-native fresh-context 
 <!-- awf:template-source templates/skills/reviewing-impl/SKILL.md.tmpl#re-review-loop -->
 <!-- awf:edit re-review-loop: default; create .awf/skills/parts/reviewing-impl/re-review-loop.md to override -->
 <!-- awf:template-source templates/skills/reviewing-impl/SKILL.md.tmpl -->
-6. A round with no fixes, or only mechanical fixes, receives no verify pass; record why it was skipped. When at least one reasoned fix or user-approved ruling was applied, run the gate and then dispatch exactly one fresh `code-reviewer` verify pass. Choose the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; select the smallest reliable target-native model explicitly, or use the harness default and note in the dispatch brief that explicit selection is unavailable. Full tier definitions: docs/workflow.md. Diagnose every residual finding under the authority-guided remediation boundary above, apply the authority-preserving residual fixes, rerun the gate and audit, and stop only for a residual finding that remains a true user decision. Do not add another review loop.
+6. **Run at most one verify pass.** A round with no fixes, or only mechanical fixes, receives no verify pass; record why it was skipped.
+
+   After a reasoned fix or user-approved ruling, run the gate and then dispatch exactly one fresh `code-reviewer` verify pass. Choose the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; select the smallest reliable target-native model explicitly, or use the harness default and note in the dispatch brief that explicit selection is unavailable. Full tier definitions: docs/workflow.md.
+
+   **Required evidence.** Diagnose every residual finding under the authority-guided remediation boundary, apply authority-preserving residual fixes, and rerun the gate and audit. Do not add another review loop.
+
+   **Stop when:** a residual finding remains a true user decision.
 
 <!-- awf:template-source templates/skills/reviewing-impl/SKILL.md.tmpl#hand-off -->
 <!-- awf:edit hand-off: default; create .awf/skills/parts/reviewing-impl/hand-off.md to override -->
