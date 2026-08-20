@@ -199,4 +199,4 @@ Backing: test
 ### `rule: managed-adr-format-support`
 
 Retain markerless and current-state V1, V2, V3, and V4 ADR parsing and intrinsic routing because every format remains in the current managed corpus; V4 remains the current authoring format. An ADR format absent from current managed inputs and outside the managed historical-audit horizon is removable only after the managed compatibility removal gate proves no dependency remains. Hypothetical external adoption is not retention evidence.
-Origin: ADR-bound-compatibility-support-to-managed-reality
+Origin: ADR-0297

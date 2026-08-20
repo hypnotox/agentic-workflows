@@ -4,7 +4,7 @@ slug: bound-compatibility-support-to-managed-reality
 status: Implementing
 date: 2026-08-20
 ---
-# ADR-bound-compatibility-support-to-managed-reality: Bound Compatibility Support to Managed Reality
+# ADR-0297: Bound Compatibility Support to Managed Reality
 
 
 ## Context

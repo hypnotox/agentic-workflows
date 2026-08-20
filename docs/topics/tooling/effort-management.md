@@ -42,4 +42,4 @@ Backing: test
 ### `rule: managed-effort-format-support`
 
 Retain effort resident schema 2, canonical YAML memory, activity protocol 2, managed worktree topology, and byte-preserving archive moves as current lifecycle formats. The legacy four-line memory reader and schema-1 effort, worktree, standalone-memory, and partial-evidence retirement paths are removable only after the managed compatibility removal gate rechecks every active managed resident and cutover residue. Hypothetical external adoption is not retention evidence.
-Origin: ADR-bound-compatibility-support-to-managed-reality
+Origin: ADR-0297

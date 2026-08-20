@@ -109,4 +109,4 @@ Backing: test
 ### `rule: managed-history-decode-horizon`
 
 Historical audit preserves read-only decoding for actual reachable managed `.awf` history. The lower bound is schema 3; the upper bound is the highest schema supported by the current binary that has entered reachable managed history, presently schema 46. Pre-`.awf` history remains an empty audit universe. Audit clearly refuses schemas below 3, unknown future schemas, malformed inputs, and shapes outside this horizon with the supported horizon and recovery direction.
-Origin: ADR-bound-compatibility-support-to-managed-reality
+Origin: ADR-0297
