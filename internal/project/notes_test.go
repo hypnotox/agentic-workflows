@@ -501,9 +501,8 @@ func TestGlossaryTersenessNotes(t *testing.T) {
 }
 
 // The threshold counts runes, not bytes, so a meaning of accented letters that
-// reads short is not reported merely for encoding wider. Accented letters stay
-// legal under the plain-punctuation rule, which bans only seven punctuation
-// codepoints, so an adopter can genuinely hit this.
+// reads short is not reported merely for encoding wider. Accented letters are
+// ordinary text, so an adopter can genuinely hit this.
 func TestGlossaryTersenessNotesCountsRunesNotBytes(t *testing.T) {
 	// 200 runes, 400 bytes: under the threshold read, over it counted as bytes.
 	wide := strings.Repeat("é", 200)

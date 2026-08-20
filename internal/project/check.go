@@ -122,7 +122,7 @@ func (p *Project) glossaryTersenessNotes() ([]string, error) {
 	var notes []string
 	for _, r := range records {
 		// Runes, not bytes: the guideline is a reading-length notion, and accented
-		// letters stay legal under the plain-punctuation rule.
+		// letters are ordinary text.
 		if n := utf8.RuneCountInString(r.Meaning); n > glossaryMeaningMax {
 			notes = append(notes, fmt.Sprintf("%s: term %q meaning is %d characters, over the %d-character guideline; tighten it", glossarySidecarPath, r.Term, n, glossaryMeaningMax))
 		}

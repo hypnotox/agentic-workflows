@@ -177,7 +177,7 @@ data:
       meaning: "The autonomous boundary that validates effort ownership, updates memory, and classifies whether user attention is required."
       domains: [rendering]
     - term: check-in
-      meaning: "A deliberate stop naming the issue, options, recommendation, and blocked next action for the user. It differs from a continuity notice and mandatory design approval."
+      meaning: "A deliberate stop naming the issue, options, recommendation, and blocked next action for the user. It differs from a continuity notice and mandatory approval check-in."
       domains: [rendering]
     - term: continuity notice
       meaning: "A routine checkpoint's informational one-line summary of the completed phase and immediate next action; it does not stop autonomous continuation."
