@@ -105,9 +105,9 @@ change, not its literal execution choreography.
 | AF-006 | P1 | COMPLETE | Strongest practical durable oracle replaces absolute test-first blocking | AF-001 |
 | AF-007 | P2 | COMPLETE | Punctuation restraint replaces the seven-codepoint ban | AF-001 |
 | AF-008 | P2 | COMPLETE | Core and Full read as governance footprints, not rigor modes | AF-001 |
-| AF-009 | P2 | READY | Pi runtime protocol owned by a target-specific reference, not generic workflow docs | AF-001, AF-008 |
+| AF-009 | P2 | COMPLETE | Pi runtime protocol owned by a target-specific reference, not generic workflow docs | AF-001, AF-008 |
 | AF-010 | P2 | BLOCKED | Residual operative prose states rule, flexible detail, stop condition, and evidence | AF-006..AF-009, AF-011, AF-013 |
-| AF-011 | P2 | BLOCKED | Daily-use documentation separated from rare recovery and migration protocol | AF-009 |
+| AF-011 | P2 | READY | Daily-use documentation separated from rare recovery and migration protocol | AF-009 |
 | AF-012 | P2 | BLOCKED | Demonstrably redundant workflow concepts and vocabulary consolidated | AF-010, AF-011 |
 | AF-013 | P1 | BLOCKED | Blocking checks separated from warnings and unranked notes by protected property | AF-005, AF-007 |
 | AF-014B | P1 | BLOCKED | Outcome-oriented behaviour scenarios cover the changed contract | AF-002..AF-013 |
@@ -513,6 +513,34 @@ abstraction; oracle strength.
   compatibility change, or quality-bar change occurred.
 - **Unblocked:** AF-009 now has both dependencies complete and is `READY`. Other issues retain their
   named blockers.
+
+### AF-009
+
+- **Range:** Prior program state `6b26eadb5`; integration range `6b26eadb5..f631708cc`.
+- **Protected contract:** ADR-0293 assigns Pi's executable session-replacement protocol to
+  `rendering/pi-runtime` while generic workflow authority retains capability-neutral continuity,
+  checkpoint persistence, safe resumability, reorientation, repository precedence, single-writer
+  memory, truthful boundary logging, and target-native continuation. No runtime detail is lost and
+  AF-011's broader information architecture remains untouched.
+- **Clean integration:** The Pi-only using-effort skill is the executable projection of the target
+  protocol. Generic workflow and checkpoint sources contain no Pi evidence source, tool call, exact
+  kickoff, or association mechanic. Existing Pi runtime and Pi workflow topics own canonical
+  protocol and skill projection respectively, so no new reference surface or duplicate generic
+  contract was introduced.
+- **Files changed:** Checkpoint and workflow templates, the Pi using-effort skill, Pi-runtime topic
+  selectors and claims, affected generic claims, glossary sources, generated Pi and Claude skills,
+  workflow documentation, ADR and plan history, lock, changelog, and project/evaluation tests move
+  and prove the ownership boundary.
+- **Verification:** Focused red then green established generic-token exclusion, lossless Pi protocol,
+  exact-one projection, eligibility, failure, and target-absence proofs. Phase and terminal review
+  findings strengthened clause-specific eligibility and whole-output single-home enforcement.
+  Focused Go tests, staged checks, full gates with 100 percent statement coverage, drift checks,
+  workflow audit, and local audit passed. Current `main` was already the branch ancestor, renewed
+  assurance covered the final issue tip, and ADR-0293 numbering passed the staged check and gate.
+- **Deviations:** None. The approved plan executed within its protected boundary and deliberately
+  left daily, recovery, migration, and configuration classification to AF-011.
+- **Unblocked:** AF-011 is `READY`. Together with already-ready AF-013, it forms parallel wave A-F3.
+  Other issues retain their named blockers.
 
 Close each later issue with the same evidence: identity; baseline and final range; protected contract;
 clean integration; files changed with reason; verification commands and results; material deviations;
