@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-0291: Strongest practical durable oracle](0291-strongest-practical-durable-oracle.md) (Implementing)
+_No decisions are in flight._
 
 ## History
 
@@ -296,3 +296,4 @@
 - [ADR-0288: Make Clean Integration Operative](0288-make-clean-integration-operative.md) (Implemented)
 - [ADR-0289: Make Review Enforce Concrete Maintainability Risks](0289-make-review-enforce-concrete-maintainability-risks.md) (Implemented)
 - [ADR-0290: Replace plain punctuation ban with punctuation restraint](0290-replace-plain-punctuation-ban-with-punctuation-restraint.md) (Implemented)
+- [ADR-0291: Strongest practical durable oracle](0291-strongest-practical-durable-oracle.md) (Implemented)
