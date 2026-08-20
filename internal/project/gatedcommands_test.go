@@ -8,6 +8,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/clispec"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
 
 // gatedCommandsDisplay is the backticked, comma-joined clispec gated set - the
@@ -76,8 +77,24 @@ func TestRequireCapabilityRefusesCoreFullOnlyCommands(t *testing.T) {
 		if refusal.Error() != "awf "+name+" is unavailable in the selected core governance footprint" {
 			t.Errorf("%s: error = %q", name, refusal)
 		}
-		if _, err := refusal.Diagnostic(); err != nil {
+		diagnostic, err := refusal.Diagnostic()
+		if err != nil {
 			t.Errorf("%s: diagnostic = %v", name, err)
+		} else {
+			if diagnostic.Cause != "the command requires the Full governance footprint" {
+				t.Errorf("%s: diagnostic cause = %q", name, diagnostic.Cause)
+			}
+			document, err := diagnostic.Document()
+			if err != nil {
+				t.Errorf("%s: diagnostic document = %v", name, err)
+			} else {
+				var rendered strings.Builder
+				if err := presentation.Render(&rendered, document); err != nil {
+					t.Errorf("%s: render diagnostic = %v", name, err)
+				} else if !strings.Contains(rendered.String(), "selected governance footprint: core") {
+					t.Errorf("%s: diagnostic omitted exact footprint field:\n%s", name, rendered.String())
+				}
+			}
 		}
 		if err := RequireCapability(catalog.ProfileFull, name, true); err != nil {
 			t.Errorf("%s: Full refusal = %v", name, err)

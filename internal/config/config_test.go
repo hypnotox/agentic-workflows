@@ -127,8 +127,9 @@ func TestCoreProfileRejectsFullGovernanceSources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := cfg.Validate(); err == nil {
-		t.Fatal("core accepted domains")
+	const want = "the `profile: core` governance footprint must not retain domains, tags, contextIgnore, or currentState governance sources"
+	if err := cfg.Validate(); err == nil || err.Error() != want {
+		t.Fatalf("core governance-source validation = %v, want %q", err, want)
 	}
 }
 
