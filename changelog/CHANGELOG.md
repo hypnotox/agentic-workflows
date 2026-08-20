@@ -14,7 +14,7 @@ query a single version or a range.
 
 ### Features
 
-- The daily-use guide now covers initialization, generated ownership, rendering, checking, and upgrading without rare protocol detail. Workflow, debugging, configuration, and target-specific references retain advanced lifecycle, recovery, override, and runtime facts.
+- The daily-use guide now covers initialization, generated ownership, rendering, checking, and upgrading without rare protocol detail. Workflow, debugging, and configuration retain advanced lifecycle, recovery, and override facts; the new Pi Runtime Reference retains portable Pi runtime and subagent protocol.
 
 - Pi session-replacement protocol now has one Pi-runtime-owned executable projection, while shared continuity guidance remains capability-neutral and pi-tools remains independently installed.
 

@@ -21,7 +21,88 @@ awf-managed docs orient and link; they do not restate. Each fact lives in the si
 - **Reference catalog docs directly.** {{if eq .profile "core"}}Every selected catalog document renders, so authored prose may link an emitted catalog doc{{else}}Every catalog document renders unconditionally, so authored prose may link any catalog doc{{end}}; the dead-reference gate still rejects an unknown target.
 - **Local-doc boundary.** When a repository-specific fact has no standard document owner, declare a `localDocs` item and author only its rendered `awf:edit-in-place` body. awf owns the shell and heading.
 - **Adjust `.layout.*` values for link relativity.** `.layout.*` paths are root-relative; a markdown link target resolves file-relative to the citing doc's own directory. Citing a sibling under the documentation root needs only its bare filename (e.g. `doc-standard.md`), not the full `.layout.*` value; using the full value from a file already under the documentation root doubles the path.
-{{if ne .profile "core"}}- **One subject per topic.** A current-state topic collects the claims a reader looks up together because they govern one mechanism. Judge a candidate claim by whether it answers the same question the topic's existing claims answer, not by how many claims the topic already holds; splitting one broad claim into two precise ones is hygiene, not growth. Split a topic when it has acquired a second subject, and name the new topic for that subject.{{end}}<!-- awf:end -->
+{{if ne .profile "core"}}- **One subject per topic.** A current-state topic collects the claims a reader looks up together because they govern one mechanism. Judge a candidate claim by whether it answers the same question the topic's existing claims answer, not by how many claims the topic already holds; splitting one broad claim into two precise ones is hygiene, not growth. Split a topic when it has acquired a second subject, and name the new topic for that subject.{{end}}
+
+{{if ne .profile "core"}}## Generated-source and convention-part ownership
+
+The generated-by banner says that awf owns the
+rendered file; it is not an editing instruction. An `awf:edit` pointer identifies the
+convention part that owns one rendered section. An informational `awf:source` comment,
+when present immediately after the banner, identifies the compact reader-facing authority
+for an otherwise opaque generated document. It is neither an `awf:edit` pointer nor a
+read-back boundary, and it is not an exhaustive dependency list. When this repository declares
+`render.templateSourceRoot`, maintainer-facing `awf:template-source` comments follow the banner
+and any `awf:source` marker to identify the checked-in Markdown root template, includes, and
+structural sections. They do not replace reader guidance or edit ownership; frontmatter,
+native-format outputs, template-less producers, and in-place editable bodies are not annotated. For a topic page, edit
+both `.awf/topics/metadata/<domain>/<topic>.yaml` and
+`.awf/topics/parts/<domain>/<topic>/current-state.md`; a topic index instead names the
+family globs `.awf/topics/metadata/<domain>/*.yaml` and
+`.awf/topics/parts/<domain>/*/current-state.md`. The output plan remains the authority
+for machine render dependencies; `.awf/awf.lock` remains the drift authority.
+
+Declare repository-specific documentation that no standard document owns in
+`localDocs` in `.awf/config.yaml`, or scaffold one with `./awf new doc <name> <description> [--title <title>]`.
+The command creates and reports `docs/<name>.md`; without `--title`, it derives the title from the final
+kebab-case name segment (`api-v2` becomes `Api V2`). Each item has only a lowercase kebab-case path below `docs`, a
+title, and a one-line description; `decisions`, `plans`, `domains`, `topics`, and `pitfalls` are
+reserved. Render creates `docs/<name>.md`. Edit only its body between `awf:edit-in-place` and
+`awf:end`; awf owns the heading and shell. Run `./awf render` and `./awf check` after changing a
+declaration or body. Removing a declaration, or running `./awf uninstall`, saves a present local
+document beside itself as `.awf-bak` (with a numbered suffix if needed) before removal.
+
+Section-overridable catalog docs and `AGENTS.md` use their `awf:edit` pointers.
+Topic pages name their metadata-and-claim-part pair, while indexes and domain navigation name those
+family globs. Glossary names its sidecar and `derived:awf-standard-vocabulary`; the pitfall index
+names `.awf/docs/pitfalls/*.md`, while each pitfall leaf names its exact authored source. The ADR
+index names `derived:authored-adr-corpus`; the config reference names `derived:configspec` and
+`derived:project-configuration`; target bridges name `AGENTS.md`. Authored ADRs and plans are
+banner-free. For any source change, edit the authority, run `./awf render`, run `./awf check`, and
+commit the regenerated outputs and lock together.
+
+To change one section, drop a **convention part** at `.awf/<kind>/parts/<target>/<section>.md` (for a
+doc, `.awf/docs/parts/<name>/<section>.md`; for an always-on singleton,
+`.awf/parts/<kind>/<section>.md`). A part **replaces that section's body** and inherits the rest of
+the template default. A declared Markdown structural heading is awf-owned: a part cannot replace it,
+in-place read-back excludes it, and it disappears only when the complete section drops. To *extend* a
+default instead of discarding it, re-inject it inside your part
+with the {{ "{{=awf:sectionDefault}}" }} placeholder: text before the token becomes a
+preamble, text after it an appendix. Convention parts are raw input: their content renders verbatim and is never
+run through the template engine.
+
+Some section defaults are must-replace authoring prompts rather than shippable prose. Those are
+declared with a `stub` attribute on their `awf:section` marker; the rendered pointer flags
+the section as a stub to replace by creating the named part path, and `awf check` prints a
+non-failing note per artifact until the part exists. A convention part can itself carry a whole-line `<!-- awf:stub -->`
+marker to declare unauthored starter content. Convention parts shape catalog artifacts
+that way; delete the marker line once the part is real.
+
+**Authoring comments.** A whole line that is exactly an `awf:comment` HTML comment is
+stripped at render and never reaches output - from template defaults and convention parts
+alike - so parts can carry internal notes and `touches-state: <domain>/<topic>:<slug>` tags that must
+not ship:
+
+```
+<!-- awf:comment an internal note that never renders -->
+```
+
+A tag rides the same form: the comment text `touches-state: <domain>/<topic>:<slug> - <note>` makes
+the line a scannable relevance tag (kept out of the fenced example above deliberately -
+a fenced demo carrying real tag grammar would be recorded by the fence-unaware scanner).
+The rule is whole-line and exact-literal: the line must open with `<!-- awf:comment` and
+end with `-->`. A mid-line occurrence and a whitespace variant render verbatim; a
+whole-line opener that does not end with `-->` is a hard render error naming the part or
+template. Fenced code blocks are preserved, so examples like the one above are safe. A
+part whose only content is authoring comments strips to an empty body and renders its
+section empty (the pointer stays) rather than falling back to the default. To scan such
+tags, point a `currentState.sources` entry at your parts with
+`marker: '<!-- awf:comment'` and `close: '-->'`; in a fenced demo, break the tag token so
+the fence-unaware scanner does not record it. Inside an include partial, comment text must
+avoid the `awf:include`/`awf:section`/`awf:end` substrings, and comment text is ordinary
+prose to every other check that reads the source (a punctuation gate included, where one
+is on).
+{{end}}
+<!-- awf:end -->
 
 <!-- awf:section structure -->
 ## Structure

@@ -112,3 +112,9 @@ Layout and document-map derivation expose only documents emitted by the selected
 Origin: ADR-0278
 Revised-by: ADR-0292
 Backing: test
+
+### `invariant: pi-runtime-reference-output`
+
+The standard Pi runtime reference renders as one lock-listed, drift-checked, link-scanned catalog document, and the generated AGENTS.md document map reaches it directly. Its unconditional publication states that it applies only to Pi adopters.
+Origin: ADR-dedicated-pi-runtime-adopter-reference
+Backing: test

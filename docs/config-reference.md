@@ -15,23 +15,34 @@ section is convention-part editable; field semantics remain in this generated re
 
 ## Placeholders in overrides
 
-A convention part may use `{{=awf:KEY}}` to splice an awf-derived value. This is literal
-substitution, not template evaluation. A key must be known and non-empty for this render; an
-unknown, empty, or malformed placeholder is a render error. Escape a literal placeholder in a
-part with a preceding backslash.
+A convention part may splice in awf-derived values through the `awf:`-namespaced placeholder
+{{=awf:KEY}}. It is a literal substitution (not the template engine), so a stray `{{` in
+prose stays inert. A key is available only when its value is **non-empty** this render; an unknown
+or empty key, or a malformed near-miss, is a hard error that names the available keys. The keys:
 
-| Key | Renders |
+| key | renders |
 |---|---|
-| `commitScopeList` | Allowed commit-scope names, comma-separated. |
-| `commitScopeTable` | Markdown table of scope names and meanings. |
-| `commitScopeSentence` | One sentence stating the allowed scopes. |
-| `gatedCommands` | Binary-version-gated top-level commands and the exempt group children. |
-| `prefix` | Project artifact prefix. |
-| `gateCmd` | Configured pre-commit gate command. |
-| `checkCmd` | Configured drift-check command. |
-| `sectionDefault` | The overridden section default, for extending rather than replacing it; a stub default cannot be re-injected. |
+| `commitScopeList` | the allowed commit-scope names, comma-separated |
+| `commitScopeTable` | a markdown table of scope names and meanings |
+| `commitScopeSentence` | a one-sentence statement of the allowed scopes |
+| `gatedCommands` | the backticked, comma-separated list of binary-version-gated top-level commands, followed by an `except` clause naming the group children that stay ungated |
+| `prefix` | the project's artifact prefix |
+| `gateCmd` | the configured pre-commit gate command |
+| `checkCmd` | the configured drift-check command |
+| `sectionDefault` | the overridden section's own rendered default; re-inject it to *extend* rather than replace (re-injecting a `stub` default is a hard render error, not a silent skip) |
 
-`\{{=awf:commitScopeTable}}` renders the literal `{{=awf:commitScopeTable}}`.
+To write the placeholder syntax literally in a part (for documentation), put a backslash before it:
+\{{=awf:commitScopeTable}} renders as the literal {{=awf:commitScopeTable}}.
+
+
+### Path globs and domain territories
+
+Every configurable or built-in glob uses one anchored dialect against a slash-separated repository-relative path. `*.ts` matches only top-level files; use `**/*.ts` at any depth. `src/**` covers a subtree and `src/api/*.ts` scopes one directory. Domain `paths` declare the territory of current-state topic ownership; context and coverage use the same selectors. Working-tree and staged loading reject empty, duplicate, or malformed selectors, while historical audit projection omits domain sidecars.
+
+### Unset-var notes and recovery
+
+`awf check` and `awf init` note an empty or null referenced `vars:` key as an open to-do. Set it, or delete it to deliberately decline it and render generic fallback prose; deletion changes the consuming hash until the next render. A deleted key used by an `awf:` placeholder is instead a hard render error: restore the key to recover.
+
 
 This checkout currently authors the optional `commitPolicy` block. Its values are
 structurally validated, but configuration alone does not activate or wire runtime

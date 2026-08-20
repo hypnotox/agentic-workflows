@@ -39,7 +39,7 @@ Declared local documents appear in the rendered `AGENTS.md` document map. Ordina
 <!-- awf:edit model-selection: from .awf/parts/working-with-awf/model-selection.md -->
 <!-- awf:template-source templates/docs/working-with-awf.md.tmpl -->
 ## Advanced workflow
-For effort lifecycle, model tiers, hook and commit policy, and verification procedure, see [Workflow](workflow.md). Pi runtime and subagent protocol facts remain in [Pi runtime](topics/rendering/pi-runtime.md) and [Pi workflows](topics/rendering/pi-workflows.md).
+For effort lifecycle, model tiers, hook and commit policy, and verification procedure, see [Workflow](workflow.md). Pi runtime and subagent protocol is in the [Pi runtime reference](pi-runtime-reference.md); target current-state topics remain implementation authority rather than adopter how-to.
 
 
 <!-- awf:template-source templates/docs/working-with-awf.md.tmpl#placeholders -->
@@ -74,5 +74,4 @@ bash .awf/upgrade.sh
 ```
 
 Then inspect the changed generated outputs, run `./awf check`, and commit the source, output, and
-lock updates together. For exact-version trials, migration journals, bridge attestations, or
-provenance triage, see [Debugging](debugging.md).
+lock updates together. For advanced upgrade recovery and triage, see [Debugging](debugging.md).
