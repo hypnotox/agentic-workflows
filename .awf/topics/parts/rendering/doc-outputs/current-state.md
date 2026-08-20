@@ -69,7 +69,7 @@ Backing: test
 
 check reports one Warning per glossary term whose meaning exceeds the terseness threshold, naming the sidecar path, the term, and its length, with successful exit. The evaluated set is the merged one, so the shipped standard vocabulary is bound by the threshold alongside the project's authored terms.
 Origin: ADR-0207
-Revised-by: ADR-separate-blocking-checks-from-advisories
+Revised-by: ADR-0295
 Backing: test
 
 ### `invariant: skill-ref-unknown-ignored`
@@ -112,4 +112,10 @@ Backing: test
 Layout and document-map derivation expose only documents emitted by the selected governance footprint.
 Origin: ADR-0278
 Revised-by: ADR-0292
+Backing: test
+
+### `invariant: pi-runtime-reference-output`
+
+The standard Pi runtime reference renders as one lock-listed, drift-checked, link-scanned catalog document, and the generated AGENTS.md document map reaches it directly. Its unconditional publication states that it applies only to Pi adopters.
+Origin: ADR-0294
 Backing: test

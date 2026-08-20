@@ -6,6 +6,18 @@
 | Warning | Style, wording, formatting, preferred idiom, speculative performance, possible cohesion, and heuristic maintainability lint remains visible and exits zero. |
 | Information | Skipped-lane and successful operation notes exit zero. |
 
+### Check severity
+
+`awf check` uses the same three visible categories. Error and Warning are the two fixed finding ranks; Information is an unranked note. A complete report exits nonzero exactly when it contains an Error.
+
+| Category | Current checks and protected property |
+|---|---|
+| Error | Invalid config, locks, sidecars, ADRs, plans, topics, frontmatter, and declared references protect correctness and authority. Generated and staged drift, tracking membership, residue, binary/schema compatibility, current-state transitions, memory citations, commit policy, and unavailable required verification protect reproducibility, safety, or authority. |
+| Warning | Prose punctuation, glossary length, tag health, plan assignment/detail, current-state fan-out, and guide size are style, readability, cohesion, or review heuristics. They remain visible and exit zero. |
+| Information | Unused or unset render vocabulary, stub content, marker suggestions, tracking or staged-universe availability, non-blocking compatibility, context suggestions, and successful operation notes are optional guidance and exit zero. |
+
+Direct checks retain the same classification as their aggregate. Operational inability to load or scan a declared universe remains an Error even when that universe's produced findings are Warning or Information.
+
 | Command | Use |
 |---|---|
 | `./x gate` | Complete deterministic transaction. |

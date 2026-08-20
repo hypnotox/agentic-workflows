@@ -91,12 +91,12 @@ Backing: test
 
 A sidecar data key with no matching .data reference in its artifact's assembled sources, unioned across all enabled targets, is reported by awf check as unranked Information keyed to the sidecar file and does not change exit status.
 Origin: ADR-0148
-Revised-by: ADR-separate-blocking-checks-from-advisories
+Revised-by: ADR-0295
 Backing: test
 
 ### `invariant: unused-var-drift`
 
 A non-empty vars key referenced by no assembled template source and by no gate- or check-command placeholder in any consumed convention part is reported by awf check as unranked Information with successful exit; empty-valued vars keys never are.
 Origin: ADR-0148
-Revised-by: ADR-separate-blocking-checks-from-advisories
+Revised-by: ADR-0295
 Backing: test

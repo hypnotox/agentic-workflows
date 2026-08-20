@@ -122,7 +122,7 @@ The plan must be self-contained: every step executable by an agent with no prior
 <!-- awf:template-source templates/partials/context-orientation.md -->
 Start by querying the explicit paths named above without `--show` or `--full` detail flags, then drill down with `./awf topic` where the work touches a claimed surface.
 <!-- awf:template-source templates/partials/context-spill.md -->
-On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the working-with-awf doc's Context spill notices contract; treat any other output as the context packet itself.
+On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per `docs/debugging.md#context-spill-recovery`; treat any other output as the context packet itself.
 
 <!-- awf:template-source templates/skills/writing-plans/SKILL.md.tmpl#doc-currency-check -->
 <!-- awf:edit doc-currency-check: default; create .awf/skills/parts/writing-plans/doc-currency-check.md to override -->

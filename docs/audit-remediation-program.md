@@ -107,7 +107,7 @@ change, not its literal execution choreography.
 | AF-008 | P2 | COMPLETE | Core and Full read as governance footprints, not rigor modes | AF-001 |
 | AF-009 | P2 | COMPLETE | Pi runtime protocol owned by a target-specific reference, not generic workflow docs | AF-001, AF-008 |
 | AF-010 | P2 | BLOCKED | Residual operative prose states rule, flexible detail, stop condition, and evidence | AF-006..AF-009, AF-011, AF-013 |
-| AF-011 | P2 | READY | Daily-use documentation separated from rare recovery and migration protocol | AF-009 |
+| AF-011 | P2 | COMPLETE | Daily-use documentation separated from rare recovery and migration protocol | AF-009 |
 | AF-012 | P2 | BLOCKED | Demonstrably redundant workflow concepts and vocabulary consolidated | AF-010, AF-011 |
 | AF-013 | P1 | BLOCKED | Blocking checks separated from warnings and unranked notes by protected property | AF-005, AF-007 |
 | AF-014B | P1 | BLOCKED | Outcome-oriented behaviour scenarios cover the changed contract | AF-002..AF-013 |
@@ -541,6 +541,34 @@ abstraction; oracle strength.
   left daily, recovery, migration, and configuration classification to AF-011.
 - **Unblocked:** AF-011 is `READY`. Together with already-ready AF-013, it forms parallel wave A-F3.
   Other issues retain their named blockers.
+
+### AF-011
+
+- **Range:** Prior program state `61906d1dc`; integration range `61906d1dc..9d23f9ddc`.
+- **Protected contract:** Routine adopter guidance owns initialization, generated ownership, render,
+  check, upgrade, and navigation without requiring recovery or advanced protocol. Generic workflow,
+  debugging, config reference, documentation standard, decision lifecycle, and the target-specific Pi
+  reference each own their most specific advanced facts with one-hop navigation and no duplicate.
+- **Clean integration:** `working-with-awf.md` is the daily-use owner. Existing workflow, debugging,
+  config-reference, doc-standard, and decision-reference documents absorb their matching advanced
+  subjects. ADR-0294 adds a portable Pi runtime adopter reference only because no existing standard
+  document cleanly owned the complete target protocol; it links to AF-009's executable projection
+  rather than duplicating the exact handoff invocation.
+- **Files changed:** Documentation templates and convention parts, standard-document catalog and
+  rendering wiring, generated daily and advanced references, agent-guide document map, ADR and
+  current-state authority, lock, changelog, and project ownership tests move and prove each fact's
+  single home.
+- **Verification:** Ownership, spill, model, navigation, and single-home tests passed alongside the
+  full project suite. Repeated staged checks, renders, drift checks, and gates passed with 100 percent
+  statement coverage. ADR and implementation reviews settled after narrowing the portable Pi owner
+  and strengthening review findings; workflow and local audits were clean apart from the advisory
+  no-plan size warning. ADR-0294 numbering and terminal closure passed their staged checks and gates.
+- **Deviations:** Review proved self-hosted Pi topics were not portable adopter documentation, firing
+  the pre-approved condition to add one focused Pi runtime reference. No AF-010 prose sweep or
+  AF-012 consolidation occurred. Publishing the scoped reference to non-Pi projects remains a
+  changeable consequence of current standard-document selection, not a durable commitment.
+- **Unblocked:** AF-011 now satisfies its dependency contribution to AF-010 and AF-012. AF-010 still
+  waits on AF-013; AF-012 still waits on AF-010.
 
 Close each later issue with the same evidence: identity; baseline and final range; protected contract;
 clean integration; files changed with reason; verification commands and results; material deviations;

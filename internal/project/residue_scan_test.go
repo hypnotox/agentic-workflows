@@ -21,11 +21,11 @@ var residueADRRe = regexp.MustCompile(`ADR-[0-9]{4}`)
 // required reference to awf or to the pi-tools prerequisite, not residue.
 // Entries fail when stale.
 var identityExempt = map[string]bool{
-	"bootstrap/awf-bootstrap.sh.tmpl": true,
-	"bootstrap/awf-upgrade.sh.tmpl":   true,
-	"agents-doc/AGENTS.md.tmpl":       true,
-	"docs/working-with-awf.md.tmpl":   true,
-	"pi/awf-subagents/index.ts.tmpl":  true,
+	"bootstrap/awf-bootstrap.sh.tmpl":   true,
+	"bootstrap/awf-upgrade.sh.tmpl":     true,
+	"agents-doc/AGENTS.md.tmpl":         true,
+	"docs/pi-runtime-reference.md.tmpl": true,
+	"pi/awf-subagents/index.ts.tmpl":    true,
 }
 
 // identityLiterals are the banned repo-identity tokens.
@@ -53,7 +53,6 @@ func TestLiveTemplateAndCurrentStateRetiredConfigGuidanceAbsent(t *testing.T) {
 	allowProjectLocal := map[string]int{
 		".awf/topics/parts/config/migrations-and-locks/current-state.md": 2, // historical schema-37 migration fact
 		".awf/topics/parts/rendering/pi-workflows/current-state.md":      2, // Pi preference-file locality
-		"templates/docs/working-with-awf.md.tmpl":                        2, // Pi preference-file locality
 		"templates/pi/awf-subagents/index.ts.tmpl":                       1, // Pi preference-file locality
 	}
 	bannedGuidance := []string{
@@ -122,9 +121,9 @@ func TestTemplateSourceResidue(t *testing.T) {
 		!identityExempt["bootstrap/awf-bootstrap.sh.tmpl"] ||
 		!identityExempt["bootstrap/awf-upgrade.sh.tmpl"] ||
 		!identityExempt["agents-doc/AGENTS.md.tmpl"] ||
-		!identityExempt["docs/working-with-awf.md.tmpl"] ||
+		!identityExempt["docs/pi-runtime-reference.md.tmpl"] ||
 		!identityExempt["pi/awf-subagents/index.ts.tmpl"] {
-		t.Error("identity-exemption list must name exactly the bootstrap, upgrade, agents-doc, and two pi-tools prerequisite templates")
+		t.Error("identity-exemption list must name exactly the bootstrap, upgrade, agents-doc, Pi reference, and pi-tools prerequisite templates")
 	}
 	used := map[string]bool{}
 	err := fs.WalkDir(templates.FS, ".", func(path string, d fs.DirEntry, err error) error {

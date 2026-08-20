@@ -19,10 +19,10 @@ Use this support skill when correctness depends on broad or uncertain repository
 
 1. Ground guide-first: read the agent guide and applicable current-state authority, then run `./awf context <relevant paths>` before dispatch.
 <!-- awf:template-source templates/partials/context-spill.md -->
-On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the working-with-awf doc's Context spill notices contract; treat any other output as the context packet itself.
+On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per `docs/debugging.md#context-spill-recovery`; treat any other output as the context packet itself.
 <!-- awf:template-source templates/skills/grounding/SKILL.md.tmpl -->
 2. Build one self-contained, read-only brief containing the proposed design or assumption, factual premises, relevant repository paths and current-state authority, user constraints, and any effort slug and owned memory path as read-only context. Do not create an effort or a separate brief file.
-3. Call `subagent_grounding` exactly once with the brief in `task`. Choose the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; omit the `model` field to use configured role routing, overriding deliberately with the tier's exact `provider/model-id`. Never pass `default`, `auto`, or `inherit parent` as a model value. Full tier definitions: docs/working-with-awf.md.
+3. Call `subagent_grounding` exactly once with the brief in `task`. Choose the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; omit the `model` field to use configured role routing, overriding deliberately with the tier's exact `provider/model-id`. Never pass `default`, `auto`, or `inherit parent` as a model value. Full tier definitions: docs/workflow.md.
 
 <!-- awf:template-source templates/skills/grounding/SKILL.md.tmpl#finding-classification -->
 <!-- awf:edit finding-classification: default; create .awf/skills/parts/grounding/finding-classification.md to override -->

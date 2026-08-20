@@ -260,7 +260,8 @@ var Standard = &Catalog{
 		"working-with-awf": {Mandatory: true, DocumentMap: true, Title: "Working with awf", Desc: "day-to-day usage: commands, overrides, placeholders, and the sync/check loop", Path: "working-with-awf.md", TemplateKey: "workingWithAwf", TID: "docs/working-with-awf.md.tmpl", Sections: []string{
 			"overview", "commands", "config-and-overrides", "model-selection", "placeholders", "sync-and-drift", "upgrading",
 		}},
-		"config-reference": {Mandatory: true, Generated: true, DocumentMap: true, Title: "Configuration Reference", Desc: "every .awf config key, var, sidecar field, and data key: descriptions, defaults, availability, and this project's live state", Path: "config-reference.md", TemplateKey: "configReference", TID: "docs/config-reference.md.tmpl", Sections: []string{"intro"}},
+		"pi-runtime-reference": {Mandatory: true, DocumentMap: true, Title: "Pi Runtime Reference", Desc: "Pi-only runtime, subagent, model-routing, and handoff protocol", Path: "pi-runtime-reference.md", TemplateKey: "piRuntimeReference", TID: "docs/pi-runtime-reference.md.tmpl"},
+		"config-reference":     {Mandatory: true, Generated: true, DocumentMap: true, Title: "Configuration Reference", Desc: "every .awf config key, var, sidecar field, and data key: descriptions, defaults, availability, and this project's live state", Path: "config-reference.md", TemplateKey: "configReference", TID: "docs/config-reference.md.tmpl", Sections: []string{"intro"}},
 	},
 	Vars: []VarDescriptor{
 		{Key: "gateCmd", Kind: "string", Description: "Command that runs the full pre-commit gate (tests, lint, coverage).", Default: "", Options: []string{"make gate", "go test ./..."}},

@@ -4,7 +4,7 @@ slug: separate-blocking-checks-from-advisories
 status: Implementing
 date: 2026-08-20
 ---
-# ADR-separate-blocking-checks-from-advisories: Separate blocking checks from advisories
+# ADR-0295: Separate blocking checks from advisories
 
 
 ## Context

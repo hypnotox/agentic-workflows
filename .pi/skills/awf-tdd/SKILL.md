@@ -45,7 +45,7 @@ TDD may run without an effort. If continuity materially helps, invoke `awf-effor
 <!-- awf:template-source templates/partials/context-orientation.md -->
 Start by querying the explicit paths named above without `--show` or `--full` detail flags, then drill down with `./awf topic` where the work touches a claimed surface.
 <!-- awf:template-source templates/partials/context-spill.md -->
-On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the working-with-awf doc's Context spill notices contract; treat any other output as the context packet itself.
+On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per `docs/debugging.md#context-spill-recovery`; treat any other output as the context packet itself.
 <!-- awf:template-source templates/skills/tdd/SKILL.md.tmpl -->
 2. Exercise the selected oracle before implementation. For an automated bug regression or feature test, run it and confirm it fails for the right reason: `go test ./...`. For a fix-only alternative, reproduce the unfixed behaviour safely and retain the inputs, expected result, actual evidence, and concrete reason.
 3. Before implementing, per `docs/maintainable-code-design.md`, assess whether a bounded enabling refactor prevents duplication, coupling, representation leakage, or a workaround.

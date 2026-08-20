@@ -28,13 +28,13 @@ var deliberateSelectionCommon = []string{
 	"standard` (substantive but bounded)",
 	"large` (broad, intricate, cross-cutting, or high-consequence)",
 	"escalating after uncertainty, failed reasoning, or widened scope",
-	"Full tier definitions: docs/working-with-awf.md.",
+	"Full tier definitions: docs/workflow.md.",
 }
 
 const (
 	deliberateSelectionPiRule    = "omit the `model` field to use configured role routing, overriding deliberately with the tier's exact `provider/model-id`. Never pass `default`, `auto`, or `inherit parent` as a model value."
 	deliberateSelectionNonPiRule = "select the smallest reliable target-native model explicitly, or use the harness default and note in the dispatch brief that explicit selection is unavailable."
-	// The full tier definitions render once in working-with-awf, sourced from
+	// The full tier definitions render once in workflow, sourced from
 	// the shared model-selection partial.
 	deliberateSelectionGuideDefinitions = "Every governed subagent dispatch chooses the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. A runtime with model selection chooses explicitly; an unsupported runtime uses its harness default and notes that explicit selection is unavailable."
 )
@@ -119,25 +119,25 @@ func TestDeliberateSubagentModelSelectionAcrossGovernedDispatches(t *testing.T) 
 			if strings.Contains(agents, deliberateSelectionGuideDefinitions) || strings.Contains(agents, "smallest model expected to complete reliably") {
 				t.Errorf("%s AGENTS.md must not duplicate full tier definitions", target)
 			}
-			doc := files["docs/working-with-awf.md"]
+			doc := files["docs/workflow.md"]
 			if doc == "" {
-				t.Fatal("missing docs/working-with-awf.md")
+				t.Fatal("missing docs/workflow.md")
 			}
 			if !strings.Contains(doc, deliberateSelectionGuideDefinitions) {
-				t.Errorf("%s working-with-awf missing the full tier definitions", target)
+				t.Errorf("%s workflow missing the full tier definitions", target)
 			}
 			if strings.Count(doc, "smallest model expected to complete reliably") != 1 {
-				t.Errorf("%s working-with-awf must carry the full definitional form exactly once", target)
+				t.Errorf("%s workflow must carry the full definitional form exactly once", target)
 			}
 		})
 	}
 
-	selfHosted, err := os.ReadFile(filepath.Join(repoRootDir(t), "docs/working-with-awf.md"))
+	selfHosted, err := os.ReadFile(filepath.Join(repoRootDir(t), "docs/workflow.md"))
 	if err != nil {
 		t.Fatalf("read self-hosted working-with-awf: %v", err)
 	}
 	if !strings.Contains(string(selfHosted), deliberateSelectionGuideDefinitions) || strings.Count(string(selfHosted), "smallest model expected to complete reliably") != 1 {
-		t.Error("self-hosted working-with-awf must carry the full tier definitions exactly once")
+		t.Error("self-hosted workflow must carry the full tier definitions exactly once")
 	}
 
 	empty := map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "skills": map[string]bool{}, "layout": testLayout()}

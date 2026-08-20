@@ -1522,11 +1522,11 @@ func TestLayoutUsesFixedDocsRootAndFullCatalog(t *testing.T) {
 	if got, ok := tm["docs"].(map[string]any); !ok || got["architecture"] != "docs/architecture.md" || got["debugging"] != "docs/debugging.md" {
 		t.Errorf("templateMap[docs] = %v", tm["docs"])
 	}
-	// 5 fixed dir keys + docs + 10 mandatory-singleton keys = 16 (agents-doc has
+	// 5 fixed dir keys + docs + 11 mandatory-singleton keys = 17 (agents-doc has
 	// no TemplateKey and is excluded; the generated config reference is
 	// layout-exposed like its hash-checked siblings).
-	if len(tm) != 16 {
-		t.Errorf("templateMap has %d keys, want 16", len(tm))
+	if len(tm) != 17 {
+		t.Errorf("templateMap has %d keys, want 17", len(tm))
 	}
 	if got := p.docOutPath("architecture"); got != "docs/architecture.md" {
 		t.Errorf("docOutPath = %q", got)
@@ -1825,8 +1825,8 @@ func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.
 			t.Errorf("Document map should unconditionally cite %q (%s; %s", line, name, got)
 		}
 	}
-	if mapped != 6 {
-		t.Errorf("expected 6 DocumentMap entries, iterated %d", mapped)
+	if mapped != 7 {
+		t.Errorf("expected 7 DocumentMap entries, iterated %d", mapped)
 	}
 }
 

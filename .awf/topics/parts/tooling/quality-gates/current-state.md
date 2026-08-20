@@ -72,13 +72,13 @@ Backing: test
 
 The prose scanner examines every tracked text file without language-specific comment detection, reports a Warning for every en dash and each blank-line-delimited paragraph containing three or more em dashes, and exits zero for findings. It permits ellipses and curly quotes, silently skips files that are not valid UTF-8, and orders findings by path, codepoint, and paragraph. A configured path-and-codepoint exemption, with an optional exact whole-file count, suppresses its guarded character before paragraph evaluation; exemptions for formerly guarded ellipses and curly quotes remain accepted as inert compatibility input. Inability to read or scan the declared corpus remains an Error with nonzero exit because verification is unavailable.
 Origin: ADR-0119
-Revised-by: ADR-0285, ADR-0290, ADR-separate-blocking-checks-from-advisories
+Revised-by: ADR-0285, ADR-0290, ADR-0295
 Backing: test
 
 ### `invariant: gate-severity-by-protected-property`
 
 The repository gate exits nonzero for version or schema incompatibility, required test or coverage loss, vet or build failure, concrete defect lint, unreachable production code, workflow pin failure, and any checker execution or configuration failure because they protect correctness, safety, authority, or reproducibility. Its separate advisory lint lane reports style, wording, formatting, preferred idiom, speculative performance, possible cohesion, and heuristic maintainability findings as visible Warning output with successful exit. Every enabled lint rule belongs to exactly one classified lane before it runs.
-Origin: ADR-separate-blocking-checks-from-advisories
+Origin: ADR-0295
 Backing: test
 
 ### `invariant: testsupport-zero-internal-deps`

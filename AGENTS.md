@@ -75,7 +75,7 @@ go test ./...: run the test suite
 ./awf new pitfall "<Title>": scaffold one authored pitfall source without rendering
 ```
 
-Use `./awf read plan <plan> <P[.T]>` for executable plan scope. For command flags, context spills, effort lifecycle, and ADR lifecycle, see [docs/working-with-awf.md](docs/working-with-awf.md) and the selected native skill.
+Use `./awf read plan <plan> <P[.T]>` for executable plan scope. For command flags and daily use, see [docs/working-with-awf.md](docs/working-with-awf.md). For context-spill recovery, see [docs/debugging.md](docs/debugging.md); selected native skills own effort and ADR lifecycle procedure.
 
 
 <!-- awf:template-source templates/agents-doc/AGENTS.md.tmpl#document-map -->
@@ -90,6 +90,7 @@ Use `./awf read plan <plan> <P[.T]>` for executable plan scope. For command flag
 - **Configuration Reference:** [docs/config-reference.md](docs/config-reference.md), every .awf config key, var, sidecar field, and data key: descriptions, defaults, availability, and this project's live state
 - **Documentation Standard:** [docs/doc-standard.md](docs/doc-standard.md), how-to-write rules for all awf-managed prose
 - **Maintainable Code Design:** [docs/maintainable-code-design.md](docs/maintainable-code-design.md), decision framework for cohesive models, explicit boundaries, dependencies, refactoring, and testable design
+- **Pi Runtime Reference:** [docs/pi-runtime-reference.md](docs/pi-runtime-reference.md), Pi-only runtime, subagent, model-routing, and handoff protocol
 - **Workflow:** [docs/workflow.md](docs/workflow.md), principles, the brainstorm/ADR/plan chain, commit discipline
 - **Working with awf:** [docs/working-with-awf.md](docs/working-with-awf.md), day-to-day usage: commands, overrides, placeholders, and the sync/check loop
 - **Architecture:** [docs/architecture.md](docs/architecture.md), system shape, packages, key components, dependencies

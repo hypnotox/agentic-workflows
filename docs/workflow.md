@@ -21,6 +21,12 @@ Precedence is decided per constraint, not per rule. A clause that bears only on 
 <!-- awf:template-source templates/partials/governance-footprints.md -->
 Core and Full select available governance artifacts. They do not select different standards of correctness, autonomy, maintainability, or review quality. Core includes the operational workflow. Full adds ADR, plan, current-state, context, and audit capabilities.
 
+<!-- awf:template-source templates/docs/workflow.md.tmpl -->
+### Model selection
+
+<!-- awf:template-source templates/partials/model-selection.md -->
+Every governed subagent dispatch chooses the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. A runtime with model selection chooses explicitly; an unsupported runtime uses its harness default and notes that explicit selection is unavailable.
+
 <!-- awf:template-source templates/partials/plan-flexibility.md -->
 **Plan flexibility.**
 

@@ -9,138 +9,55 @@ Generated files are owned by awf. Edit `.awf/`, then render and check. See [work
 <!-- awf:template-source templates/docs/working-with-awf.md.tmpl#commands -->
 <!-- awf:edit commands: from .awf/parts/working-with-awf/commands.md -->
 <!-- awf:template-source templates/docs/working-with-awf.md.tmpl -->
-## Commands
+## Daily commands
 
-### Render and catalog
+- `awf init`: scaffold `.awf/` and render the selected governance footprint into the current project.
+- `./awf render`: re-render managed artifacts from `.awf/` and update `.awf/awf.lock`.
+- `./awf check`: confirm the rendered tree and repository checks are clean.
+- `./awf upgrade`: apply pending configuration migrations and re-render after upgrading awf.
+- `./awf config [<key-or-var>]`: inspect effective configuration.
 
-- `./awf render`: re-render every artifact from `.awf/` and update `.awf/awf.lock`.
-- `awf check`: fail if any rendered file has drifted from the config (also gates the schema version).
-- `awf new domain <name>`: create a configured domain and scaffold its current-state convention part.
-- `awf remove domain <name>`: remove a configured domain, prune rendered output, and report authored residue as orphaned.
-- `awf list`: show the fixed catalog and configured domain inventory.
-- `awf upgrade`: migrate the config tree after upgrading the awf binary. When the lock carries a bridge attestation, plain upgrade instead performs the final current-state cutover, verifying the sealed HEAD and tree digest, journaling the migration approval-file deletion and permanent lock, and discarding the attestation's historical routing payload.
-- `awf upgrade --recover`: replay the current-state upgrade journal's recovery table (roll an interrupted cutover back or clean up a committed one). The only mode a present journal permits.
-- `awf audit <base>|<a>..<b>`: report Conventional-Commits / workflow-conformance findings over an explicit commit range (advisory), including each parent-to-commit claim-transition check. The range is required and has no default, so an audit never reports over commits nobody named.
-
-### Efforts
-
-Workflow judgment precedes this command: discovery creates no effort, and `effort-workflow` creates only when durable continuity materially helps by selecting a faithful outcome, title, and canonical short slug. Existing efforts resume only for work inside their outcome; a new outcome cannot silently reuse or replace an active effort. The CLI does not verify workflow judgment.
-- `awf effort new --slug <slug> <outcome-title> [--no-worktree] [--base <ref>]`: require a caller-supplied canonical 1-through-32-byte new slug, publish unchanged schema-2 state with owned `.awf/efforts/<slug>/memory.md`, and create the managed `.awf/worktrees/<slug>/` checkout on `awf/<slug>` by default, reporting the path to continue in; flags are interspersed around the single independent title positional, existing residents through 63 bytes remain usable, `--no-worktree` keeps the invoking checkout, and `integrate`, `worktree remove`, and final `finish` stay separate operations. An effort may contain an optional owned real `scratch/` directory whose descendants remain opaque and unmanaged. Finish preserves the complete resident at `.awf/effort-archive/<uuid>-<slug>`, releases the slug, and reports partial recovery actions; no command inventories, restores, prunes, analyzes, or retains archives.
-### Verification
-
-- `awf check`: run both verification universes; outside Git, run the repo universe and report the staged universe unavailable.
-- `awf check repo`: run the repository-property aggregate. Its `drift` and `state` children inspect the working tree, while `prose` and `memory` scan the tracked index corpus.
-- `awf check repo drift`: report stale or hand-edited rendered output, including the config-tree hygiene sweep.
-- `awf check repo state`: report current-state authority findings over the working tree.
-- `awf check repo prose`: always scan tracked text files, silently skip binaries, and report Warnings for every en dash and paragraphs containing more than two em dashes; findings exit zero, ellipses and curly quotes are permitted, and `proseGate.exemptions` records accepted path-and-codepoint exceptions for guarded characters.
-- `awf check repo memory`: always scan staged decisions and plans for a concrete `.awf/efforts/<slug>/memory.md` citation and exit non-zero on any finding; the bare directory and angle-bracket slug placeholders remain legal, and `memoryCite.exemptions` records accepted path exceptions.
-- `awf check commit-policy <revision-or-range>...`: preview exact author, committer, and optional SSH-signature provenance for explicit targets after the configured baseline. An absent policy prints one disabled note and succeeds; correct actionable refusals or violations and rerun before policy activation. This command does not install hooks or change repository state.
-- `awf check staged`: run the HEAD-to-index current-state transition and rendered-output drift checks.
-- `awf check staged state`: report current-state authority findings over the HEAD-to-index transition.
-- `awf check staged drift`: render from the staged config and report untracked, stale, or hand-edited staged rendered output; other repository drift kinds are out of scope.
-- `awf check staged commit [FILE]`: directly validate Conventional Commits and definitively authorize any exact incoming-parent older-format ADR using the cleaned final merge-message trailers; it is not part of the staged aggregate and is used by a commit-msg hook.
-
-#### Check severity and exit status
-
-`awf check` output uses three visible categories. Error and Warning are the two fixed finding ranks; Information is an unranked note. A complete report exits nonzero exactly when it contains an Error.
-
-| Category | Current checks and protected property |
-|---|---|
-| Error | Invalid config, locks, sidecars, ADRs, plans, topics, frontmatter, and declared references protect correctness and authority. Generated and staged drift, tracking membership, residue, binary/schema compatibility, current-state transitions, memory citations, commit policy, and unavailable required verification protect reproducibility, safety, or authority. |
-| Warning | Prose punctuation, glossary length, tag health, plan assignment/detail, current-state fan-out, and guide size are style, readability, cohesion, or review heuristics. They remain visible and exit zero. |
-| Information | Unused or unset render vocabulary, stub content, marker suggestions, tracking or staged-universe availability, non-blocking compatibility, context suggestions, and successful operation notes are optional guidance and exit zero. |
-
-Direct checks retain the same classification as their aggregate. Operational inability to load or scan a declared universe remains an Error even when that universe's produced findings are Warning or Information.
-
-### Other lifecycle commands
-
-- `awf changelog`: query the changelog by version or range.
-- `awf uninstall`: remove the generated footprint (lock-tracked files and the lock); the authored `.awf/` config stays in place while optional effort and worktree residents remain local.
-- `awf version`: print the binary's version.
-
-The always-rendered `./awf` wrapper forwards every CLI verb verbatim: its standard body resolves the bootstrap-pinned binary first and PATH `awf` second, then execs it with all arguments, so there is no rendered verb list to fall behind the CLI. A repository with local execution semantics overrides the `runner-body` convention part. A project may keep a separate command runner for project-specific verbs outside awf's render set.
-
-### Context spill notices
-
-When `awf context` output would exceed 8,192 bytes, the report securely spills outside the
-repository and the command returns exactly a two-line `AWF_CONTEXT_SPILL_V1` notice. On that
-exact notice, read the file named on its second line and verify that its byte length equals
-the `bytes=<decimal>` descriptor before treating its contents as the context packet.
-Best-effort delete the named file after packet use, whether packet use succeeds or fails.
-Treat any other output as the context packet itself; do not interpret a near-match as a
-spill notice. This subsection is the contract's single rendered home; skills and agent
-bodies point here.
-
+Use the repository `./awf` wrapper for local commands. For workflow and effort commands, see
+[Workflow](workflow.md); for a command refusal, recovery, or upgrade residue, see
+[Debugging](debugging.md).
 
 
 <!-- awf:template-source templates/docs/working-with-awf.md.tmpl#config-and-overrides -->
 <!-- awf:edit config-and-overrides: from .awf/parts/working-with-awf/config-and-overrides.md -->
 <!-- awf:template-source templates/docs/working-with-awf.md.tmpl -->
 ## Config and overrides
-Configuration keys are documented in the [configuration reference](config-reference.md); authorship rules live in the [documentation standard](doc-standard.md). A convention part replaces its section body. `awf:edit` names its source; the `sectionDefault` placeholder retains the default when extending it.
+Configuration keys and placeholder semantics are in the [configuration reference](config-reference.md). A convention part replaces its section body; `awf:edit` names its source and `sectionDefault` extends a default.
 
-awf renders self-ignoring roots for efforts, worktrees, and archives. Their descendants are local, unmanaged state; rendering and uninstall preserve them.
+Local documents are declared in `localDocs` or with `./awf new doc <name> <description> [--title <title>]`. It creates `docs/<name>.md` (`api-v2` becomes `Api V2` without `--title`). Edit only its body between `awf:edit-in-place` and `awf:end`; render and check after editing. Removal or uninstall preserves a present body as `.awf-bak`.
 
-Efforts need durable continuity. One fixed slug owns its memory and optional opaque `scratch/`; Git owns worktree topology. Finish moves the resident to the local archive, which awf never inventories, restores, prunes, analyzes, or retains.
+For generated guidance, `awf:edit` names the owning convention part and `awf:source` names reader authority. Use `./awf new pitfall "<Title>"` for an authored pitfall source, then render; never edit its generated index or leaf.
 
-Declare a local document only when no standard document owns its fact. Declare it in `localDocs` or run `./awf new doc <name> <description> [--title <title>]`; it creates `docs/<name>.md`, and `api-v2` becomes `Api V2` without `--title`. Edit only its body between `awf:edit-in-place` and `awf:end`; awf owns the heading and shell. Render and check after edits; removal or uninstall preserves a present body as a sibling `.awf-bak`. For generated guidance, `awf:edit` names the owning convention part and `awf:source` names reader authority. `render.templateSourceRoot` is maintainer configuration and ordinary adopters omit it.
-
-Use `./awf new pitfall "<Title>"` to create an authored pitfall source. Render after editing it; never edit its generated index or leaf.
-
-Domain `paths` use anchored repository-relative globs. Topic metadata declares scoped `paths`, `applies: global`, or both.
+Declared local documents appear in the rendered `AGENTS.md` document map. Ordinary `awf check` validates Markdown links and skill references in their preserved inline bodies; it does not make them catalog documents or widen staged drift.
 
 
 <!-- awf:template-source templates/docs/working-with-awf.md.tmpl#model-selection -->
-<!-- awf:edit model-selection: default; create .awf/parts/working-with-awf/model-selection.md to override -->
+<!-- awf:edit model-selection: from .awf/parts/working-with-awf/model-selection.md -->
 <!-- awf:template-source templates/docs/working-with-awf.md.tmpl -->
-## Model selection
+## Advanced workflow
+For effort lifecycle, model tiers, hook and commit policy, and verification procedure, see [Workflow](workflow.md). Pi runtime and subagent protocol is in the [Pi runtime reference](pi-runtime-reference.md); target current-state topics remain implementation authority rather than adopter how-to.
 
-<!-- awf:template-source templates/partials/model-selection.md -->
-Every governed subagent dispatch chooses the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. A runtime with model selection chooses explicitly; an unsupported runtime uses its harness default and notes that explicit selection is unavailable.
 
 <!-- awf:template-source templates/docs/working-with-awf.md.tmpl#placeholders -->
 <!-- awf:edit placeholders: default; create .awf/parts/working-with-awf/placeholders.md to override -->
 <!-- awf:template-source templates/docs/working-with-awf.md.tmpl -->
-## Placeholders in overrides
+## Advanced configuration
 
-A convention part may splice in awf-derived values through the `awf:`-namespaced placeholder
-{{=awf:KEY}}. It is a literal substitution (not the template engine), so a stray `{{` in
-prose stays inert. A key is available only when its value is **non-empty** this render; an unknown
-or empty key, or a malformed near-miss, is a hard error that names the available keys. The keys:
-
-| key | renders |
-|---|---|
-| `commitScopeList` | the allowed commit-scope names, comma-separated |
-| `commitScopeTable` | a markdown table of scope names and meanings |
-| `commitScopeSentence` | a one-sentence statement of the allowed scopes |
-| `gatedCommands` | the backticked, comma-separated list of binary-version-gated top-level commands, followed by an `except` clause naming the group children that stay ungated |
-| `prefix` | the project's artifact prefix |
-| `gateCmd` | the configured pre-commit gate command |
-| `checkCmd` | the configured drift-check command |
-| `sectionDefault` | the overridden section's own rendered default; re-inject it to *extend* rather than replace (re-injecting a `stub` default is a hard render error, not a silent skip) |
-
-To write the placeholder syntax literally in a part (for documentation), put a backslash before it:
-\{{=awf:commitScopeTable}} renders as the literal {{=awf:commitScopeTable}}.
+See [Placeholders in overrides](config-reference.md#placeholders-in-overrides) for the literal
+placeholder syntax, available keys, and escaping.
 
 <!-- awf:template-source templates/docs/working-with-awf.md.tmpl#sync-and-drift -->
 <!-- awf:edit sync-and-drift: from .awf/parts/working-with-awf/sync-and-drift.md -->
 <!-- awf:template-source templates/docs/working-with-awf.md.tmpl -->
 ## Keeping in sync
 
-After any edit to `.awf/`, run `./awf render` to re-render, then `./awf check` to confirm no drift, and
-commit the rendered files alongside the config change. Always stage `.awf/awf.lock` with every regenerated output: its atomic manifest is part of one render transaction, not material to slice across independent commits. `awf check` compares each rendered file's
-template and config against `.awf/awf.lock`; a mismatch is `stale` drift. Wire `awf check` and your
-gate into CI so drift and rule violations block a merge.
-
-`awf check` also enforces config-tree hygiene: every entry under `.awf/` must be claimed
-(a rendered artifact's sidecar or declared-section parts, a rendered unit, or the skeleton),
-and anything else is failing drift with a repair hint, including sync-written `*.awf-bak`
-collision backups (review and delete them)
-(the resident roots are exempt local state). Configuration must be consumed, too: a non-empty
-`vars:` key or a sidecar `data:` key that no rendered artifact references is flagged, so a
-typo'd override can no longer degrade silently. A `paths:` key outside a domain sidecar, or
-`data:`/`sections:` on a domain sidecar, refuses at project open with the fix
-named.
+After editing `.awf/`, run `./awf render` and then `./awf check`. Commit regenerated outputs and
+`.awf/awf.lock` with their sources. If check reports drift, change the owning source and render;
+do not repair a generated output by hand.
 
 `awf check` also verifies that generated artifacts are indexed. Git ignore rules do not satisfy this requirement: if a global ignore hides a generated file, add it explicitly with `git add -f <path>`.
 
@@ -150,38 +67,11 @@ named.
 <!-- awf:template-source templates/docs/working-with-awf.md.tmpl -->
 ## Upgrading awf
 
-With the bootstrap singleton enabled, upgrading is one command from the project root:
+From the project root, use the rendered upgrade script when bootstrap is enabled:
 
 ```sh
-bash .awf/upgrade.sh          # upgrade to the newest release
-bash .awf/upgrade.sh 1.2.3    # upgrade to an exact version
+bash .awf/upgrade.sh
 ```
 
-The script resolves the target version, fetches and checksum-verifies the binary through
-`.awf/bootstrap.sh`, and hands off to `awf upgrade`, which applies any pending config migrations,
-re-renders every managed file, and re-pins the bootstrap to the new version. The bootstrap also
-honors a pre-set `AWF_VERSION` environment value on its own: `AWF_VERSION=1.2.3 bash
-.awf/bootstrap.sh` fetches that release instead of the pin, which is useful for trialing a version
-before committing to it.
-
-Declared local documents appear in the rendered `AGENTS.md` document map with their title, path,
-and description. Ordinary working-tree `awf check` validates Markdown links and skill references in
-their preserved inline bodies; it does not make them catalog documents or widen staged drift.
-
-The sync prints one provenance line per file whose rendered content actually changed, so a large
-upgrade diff comes with its own triage: `changed <path> (template)` is upstream template churn,
-already pinned by the standard's own per-artifact golden tests, safe to skim; `(config)` means
-your own vars, sidecars, or parts caused it, so review these closely; `(template+config)` is both;
-`(internal)` and `(regenerated)` mark files driven by non-hashed inputs (the pinned binary
-version; the generated decision indexes); `added <path>` is a newly shipped file worth a look. A
-byte-identical re-render prints nothing, and a first sync into a fresh project reports no lines.
-
-After the automated pass, sweep for residue the renderer cannot know about: project-owned call
-sites referencing renamed or relocated rendered files, stale version prose in your convention
-parts, and newly rendered surfaces worth wiring up (fresh hook payloads, for example). `awf
-changelog --since <previous version>` lists every adopter-facing change in between. Then run the
-drift check and commit the config and rendered files together.
-
-Pi renders its profile adapter and model-routing module, plus conditional effort integration. Install `hypnotox/pi-tools` independently for context usage, handoff, execution, scheduling, and presentation; successful protocol-v2 capability and final profile registration are the compatibility check, with actionable no-fallback failure.
-
-The conditional awf effort extension requires the retained compatible Pi runtime APIs, including dynamic active tools and the shared file-mutation queue; the profile adapter instead depends only on successful pi-tools protocol-v2 negotiation.
+Then inspect the changed generated outputs, run `./awf check`, and commit the source, output, and
+lock updates together. For advanced upgrade recovery and triage, see [Debugging](debugging.md).

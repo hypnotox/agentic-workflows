@@ -1579,42 +1579,39 @@ func TestManagedContextCallersChooseProjection(t *testing.T) {
 	if !strings.Contains(agentExpanded, spillContract) {
 		t.Errorf("grounding-checker agent body lacks the spill pointer:\n%s", agentExpanded)
 	}
-	// The pointer's destination must exist: the working-with-awf doc template is
-	// the contract's single rendered home, and deleting the subsection would
-	// leave every pointer site dangling with the suite otherwise green.
-	docSource, err := fs.ReadFile(templates.FS, "docs/working-with-awf.md.tmpl")
+	// The pointer's destination must exist: debugging is the contract's single
+	// rendered home, so every context caller has a recovery destination.
+	docSource, err := fs.ReadFile(templates.FS, "docs/debugging.md.tmpl")
 	if err != nil {
-		t.Fatalf("read working-with-awf template: %v", err)
+		t.Fatalf("read debugging template: %v", err)
 	}
 	docExpanded, err := render.ExpandIncludes(string(docSource), templates.FS)
 	if err != nil {
-		t.Fatalf("expand working-with-awf template: %v", err)
+		t.Fatalf("expand debugging template: %v", err)
 	}
 	for _, want := range []string{
-		"### Context spill notices",
+		"### Context spill recovery",
 		"byte length equals",
 		"`bytes=<decimal>` descriptor",
-		"Best-effort delete the named file after packet use",
+		"Best-effort delete that file after use",
 	} {
 		if !strings.Contains(docExpanded, want) {
-			t.Errorf("working-with-awf template lacks the spill contract clause %q", want)
+			t.Errorf("debugging template lacks the spill contract clause %q", want)
 		}
 	}
-	// This repository overrides the doc's commands part, so its own rendered
-	// doc is a second home the template assertion cannot see; an override that
-	// drops the contract would leave every pointer dangling here.
-	repoDoc, err := os.ReadFile(filepath.Clean(filepath.Join("..", "..", "docs", "working-with-awf.md")))
+	// This repository overrides debugging recipes, so inspect its rendered owner too.
+	repoDoc, err := os.ReadFile(filepath.Clean(filepath.Join("..", "..", "docs", "debugging.md")))
 	if err != nil {
 		t.Fatalf("read repository working-with-awf doc: %v", err)
 	}
 	for _, want := range []string{
-		"### Context spill notices",
+		"### Context spill recovery",
 		"byte length equals",
 		"`bytes=<decimal>` descriptor",
-		"Best-effort delete the named file after packet use",
+		"Best-effort delete that file after use",
 	} {
 		if !strings.Contains(string(repoDoc), want) {
-			t.Errorf("repository working-with-awf doc lacks the spill contract clause %q", want)
+			t.Errorf("repository debugging doc lacks the spill contract clause %q", want)
 		}
 	}
 }
@@ -3594,5 +3591,112 @@ func TestAuthorityGuidedReviewRemediation(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+// invariant: rendering/doc-outputs:pi-runtime-reference-output (TestDailyAdvancedDocumentationOwnership)
+func TestDailyAdvancedDocumentationOwnership(t *testing.T) {
+	for _, profile := range []string{"core", "full"} {
+		t.Run(profile, func(t *testing.T) {
+			root := scaffold(t, "prefix: example\nprofile: "+profile+"\nintegrationBranch: main\n")
+			p, err := Open(testContext(t), root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := p.Sync(); err != nil {
+				t.Fatal(err)
+			}
+			for _, path := range []string{"docs/working-with-awf.md", "docs/pi-runtime-reference.md", "AGENTS.md"} {
+				if _, err := os.Stat(filepath.Join(root, path)); err != nil {
+					t.Fatalf("%s missing: %v", path, err)
+				}
+			}
+			daily, err := os.ReadFile(filepath.Join(root, "docs/working-with-awf.md"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, want := range []string{"awf init", "./awf render", "./awf check", "./awf upgrade", "generated"} {
+				if !strings.Contains(string(daily), want) {
+					t.Errorf("daily guide missing %q", want)
+				}
+			}
+			for _, absent := range []string{"AWF_CONTEXT_SPILL_V1", "bridge attestation", "bytes=<decimal>", "ExtensionAPI.queueCommand"} {
+				if strings.Contains(string(daily), absent) {
+					t.Errorf("daily guide duplicates advanced detail %q", absent)
+				}
+			}
+			piPath := filepath.Join(root, "docs/pi-runtime-reference.md")
+			pi, err := os.ReadFile(piPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, want := range []string{"applies only to adopters using the Pi target", "active-tool and real-path file-mutation queue APIs", "verificationCheckout", "awf-subagents.local.json", "handoff_session"} {
+				if !strings.Contains(string(pi), want) {
+					t.Errorf("Pi reference missing protocol sentinel %q", want)
+				}
+			}
+			config, err := os.ReadFile(filepath.Join(root, "docs/config-reference.md"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			debugging, err := os.ReadFile(filepath.Join(root, "docs/debugging.md"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, want := range []string{"stray `{{` in", "available keys"} {
+				if !strings.Contains(string(config), want) {
+					t.Errorf("config reference missing placeholder sentinel %q", want)
+				}
+			}
+			if profile == "full" {
+				for _, want := range []string{"anchored dialect", "Unset-var notes and recovery"} {
+					if !strings.Contains(string(config), want) {
+						t.Errorf("config reference missing advanced sentinel %q", want)
+					}
+				}
+			}
+			for _, want := range []string{"exceeds 8,192 bytes", "near-match"} {
+				if !strings.Contains(string(debugging), want) {
+					t.Errorf("debugging missing recovery sentinel %q", want)
+				}
+			}
+			if profile == "full" {
+				for _, want := range []string{"bridge attestation", "awf changelog --since"} {
+					if !strings.Contains(string(debugging), want) {
+						t.Errorf("debugging missing advanced upgrade sentinel %q", want)
+					}
+				}
+			}
+			agents, err := os.ReadFile(filepath.Join(root, "AGENTS.md"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(string(agents), "docs/pi-runtime-reference.md") {
+				t.Error("AGENTS map does not reach Pi reference")
+			}
+			lock, err := os.ReadFile(filepath.Join(root, ".awf/awf.lock"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(string(lock), `"docs/pi-runtime-reference.md"`) {
+				t.Error("lock does not own Pi reference")
+			}
+			policy := declaredPolicy("pi-runtime-reference", true)
+			if !policy.ScanReferences || !policy.ScanSkillReferences {
+				t.Errorf("Pi reference policy does not scan links and skill references: %#v", policy)
+			}
+			testsupport.WriteFile(t, piPath, strings.Replace(string(pi), "working-with-awf.md", "missing-daily-guide.md", 1))
+			drift, err := checkProject(p, testContext(t))
+			if err != nil {
+				t.Fatal(err)
+			}
+			handEdited := false
+			for _, d := range drift {
+				handEdited = handEdited || d.Path == "docs/pi-runtime-reference.md" && d.Kind == "hand-edited"
+			}
+			if !handEdited {
+				t.Errorf("Pi reference lacks drift coverage: %#v", drift)
+			}
+		})
 	}
 }

@@ -6,7 +6,7 @@ How awf render and awf check detect and report drift: per-file config-hash input
 
 Only the deterministic expected bytes of a managed `AGENTS.md` feed aggregate CheckReport warnings: at a fixed 12 KiB threshold, an overage is a Warning with zero exit. Non-aggregate consumers are excluded.
 Origin: ADR-0241
-Revised-by: ADR-0251, ADR-separate-blocking-checks-from-advisories
+Revised-by: ADR-0251, ADR-0295
 Backing: test
 
 ### `invariant: awf-bak-flagged`

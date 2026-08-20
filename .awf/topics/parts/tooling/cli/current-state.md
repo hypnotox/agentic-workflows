@@ -105,13 +105,13 @@ Backing: test
 
 The direct drift, state, prose, and memory repository checks and their aggregate select from one closed capability plan. One operation loads working config once, conditionally opens one Project from that prepared config, derives one complete CheckReport and one working CurrentStateReport when selected, and captures one shared stage-0 index whenever either always-on scanner is selected; scanner-only selections acquire no unrelated capability. Repository drift presents its dedicated non-failing generated-artifact tracking-unavailable information both directly and in the aggregate, while aggregate-only render advisories remain absent from direct drift. The aggregate preserves source order within each severity, executes selected steps in capability-plan order, and presents deterministic `errors`, `warnings`, then `information` categories. It continues after action errors and returns the first, while any preparation failure executes no step; the three working, current-state, and index universes never substitute for one another.
 Origin: ADR-0223
-Revised-by: ADR-0234, ADR-0253, ADR-0277, ADR-separate-blocking-checks-from-advisories
+Revised-by: ADR-0234, ADR-0253, ADR-0277, ADR-0295
 Backing: test
 
 ### `invariant: check-severity-by-protected-property`
 
 Every `awf check` Error protects correctness, safety, authority, or reproducibility and makes the command exit nonzero. Style, readability, plan-detail, fan-out, and other heuristic findings use the fixed Warning rank and exit zero. Optional improvements, unused vocabulary, context suggestions, non-blocking compatibility notices, and successful operation notes remain unranked Information and exit zero. Direct and aggregate readable output visibly separates `errors`, `warnings`, and `information`; information is not a third finding rank.
-Origin: ADR-separate-blocking-checks-from-advisories
+Origin: ADR-0295
 Backing: test
 
 ### `invariant: single-os-exit`
@@ -137,7 +137,7 @@ Backing: test
 
 The glossary terseness findings that `awf check` prints for over-long term meanings use the Warning rank and never change the command's exit code.
 Origin: ADR-0207
-Revised-by: ADR-separate-blocking-checks-from-advisories
+Revised-by: ADR-0295
 Backing: test
 
 ### `invariant: typed-command-output-boundary`
