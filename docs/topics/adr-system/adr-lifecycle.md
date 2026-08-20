@@ -195,3 +195,8 @@ Backing: test
 Staged transition validation resolves a governed record's pairing key once per transition, in three steps: its retained slug, then its canonical content digest, then its assigned number. Every check that pairs the two universes consumes that one resolution. The digest step considers only a record carrying no slug, forms a pair only on a digest carried by exactly one such record on each side, and re-keys only where the two ends hold different numbers, so a record whose number does not move keeps pairing on that number and an ambiguous digest forms no pair at all. The digest is computed over the five canonical sections rather than read from a stamped history event, which leaves it fixed across exactly the rewrite a rename performs; it is a transition pairing key and never a corpus identity key. Such a pair admits the number, filename, and heading change and nothing else: its status and Status history must be byte-identical, no application batch may be appended or dropped, and its old number substitutes into `Origin:` and `Revised-by:` under the same rules a numbering substitution takes.
 Origin: ADR-0204
 Backing: test
+
+### `rule: managed-adr-format-support`
+
+Retain markerless and current-state V1, V2, V3, and V4 ADR parsing and intrinsic routing because every format remains in the current managed corpus; V4 remains the current authoring format. An ADR format absent from current managed inputs and outside the managed historical-audit horizon is removable only after the managed compatibility removal gate proves no dependency remains. Hypothetical external adoption is not retention evidence.
+Origin: ADR-bound-compatibility-support-to-managed-reality

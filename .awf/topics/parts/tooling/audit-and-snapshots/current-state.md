@@ -105,3 +105,8 @@ Backing: test
 For a merge whose result tree is at or after the intrinsic-format schema generation, `awf audit` derives the merge-time current authoring format from the shared activation registry and replays the shared cleaned-message parser and incoming-parent qualification against the result, first parent, and every incoming parent. It reports an Error for malformed reserved trailers or an older-format import lacking its complete authorization pair, while pre-epoch merges, historical non-merges, valid or redundant pairs, and true fast-forwards produce no stale-merge authorization finding.
 Origin: ADR-0206
 Backing: test
+
+### `rule: managed-history-decode-horizon`
+
+Historical audit preserves read-only decoding for actual reachable managed `.awf` history. The lower bound is schema 3; the upper bound is the highest schema supported by the current binary that has entered reachable managed history, presently schema 46. Pre-`.awf` history remains an empty audit universe. Audit clearly refuses schemas below 3, unknown future schemas, malformed inputs, and shapes outside this horizon with the supported horizon and recovery direction.
+Origin: ADR-bound-compatibility-support-to-managed-reality

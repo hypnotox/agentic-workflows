@@ -208,3 +208,8 @@ Backing: test
 Existing repositories missing the required profile field migrate byte-preservingly and idempotently to profile: full before strict parsing and synchronization.
 Origin: ADR-0278
 Backing: test
+
+### `rule: live-source-compatibility-floor`
+
+Owner-managed live source trees are supported from schema generation 46. After the managed compatibility removal gate is satisfied, a live source below 46 is unsupported and refuses clearly with the supported floor and recovery direction rather than using retained historical migrations. Read-only historical-audit decoding never authorizes live migration.
+Origin: ADR-bound-compatibility-support-to-managed-reality

@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-bound-compatibility-support-to-managed-reality: Bound Compatibility Support to Managed Reality](bound-compatibility-support-to-managed-reality.md) (Accepted)
+- [ADR-bound-compatibility-support-to-managed-reality: Bound Compatibility Support to Managed Reality](bound-compatibility-support-to-managed-reality.md) (Implementing)
 
 ## History
 

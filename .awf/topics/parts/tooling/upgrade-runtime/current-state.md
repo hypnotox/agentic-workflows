@@ -69,3 +69,18 @@ After the new lock lands, normal context and invariant reporting cannot consume 
 Origin: ADR-0136
 Backing: unbacked
 Verify: A migrated fixture retaining contradictory legacy metadata affects output and enforcement only through its topic claims.
+
+### `rule: installed-release-compatibility-floor`
+
+Owner-managed installations support the current awf release and one previous release; at adoption current is 0.39.2 and the floor is 0.39.1. Older installed releases are unsupported. The rolling floor does not advance until every managed adopter pin is upgraded to remain at or above it.
+Origin: ADR-bound-compatibility-support-to-managed-reality
+
+### `rule: managed-compatibility-removal-gate`
+
+Compatibility removal remains blocked while any managed adopter pin or live source is below its applicable floor, or while any current managed input, active resident, cutover state, or reachable managed history inside the audit horizon requires the candidate component. Advancing a floor does not itself authorize deletion.
+Origin: ADR-bound-compatibility-support-to-managed-reality
+
+### `rule: managed-cutover-format-support`
+
+Retain the journaled upgrade commit point, rollback, and recovery as current mutation safety. Bridge attestation v1 and legacy current-state adjudication, approval, and marker-cleanup inputs are removable only after the managed compatibility removal gate rechecks that no managed tree retains bridge or cutover state. Hypothetical external adoption is not retention evidence.
+Origin: ADR-bound-compatibility-support-to-managed-reality

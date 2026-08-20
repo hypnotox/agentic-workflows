@@ -102,3 +102,8 @@ internal/plan owns exact filename-or-stem resolution, canonical positive `P` and
 Origin: ADR-0213
 Revised-by: ADR-0217
 Backing: test
+
+### `rule: managed-plan-format-support`
+
+Retain markerless, plan-v1, and plan-v2 parsing plus numeric and retained-slug ADR links because current managed plans use them; plan-v2 remains the current authoring format. The frozen pre-V4 ordinal Decision selector is removable only after the managed compatibility removal gate rechecks that no managed plan-v2 reference uses it. Hypothetical external adoption is not retention evidence.
+Origin: ADR-bound-compatibility-support-to-managed-reality

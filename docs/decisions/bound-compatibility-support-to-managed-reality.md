@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: bound-compatibility-support-to-managed-reality
-status: Accepted
+status: Implementing
 date: 2026-08-20
 ---
 # ADR-bound-compatibility-support-to-managed-reality: Bound Compatibility Support to Managed Reality
@@ -118,3 +118,5 @@ unknown future schemas, malformed inputs, and shapes outside the declared horizo
 
 - 2026-08-20: Proposed
 - 2026-08-20: Accepted; content-sha256: a160f70549e92d51922e18bae0e584a8b0f3c0da006e2ebbc28dc39f0b0dc603
+- 2026-08-20: Implementing; content-sha256: a160f70549e92d51922e18bae0e584a8b0f3c0da006e2ebbc28dc39f0b0dc603
+- 2026-08-20: Applied; operations: add `config/migrations-and-locks:live-source-compatibility-floor`, add `adr-system/adr-lifecycle:managed-adr-format-support`, add `adr-system/plan-artifacts:managed-plan-format-support`, add `tooling/audit-and-snapshots:managed-history-decode-horizon`, add `tooling/effort-management:managed-effort-format-support`, add `tooling/upgrade-runtime:installed-release-compatibility-floor`, add `tooling/upgrade-runtime:managed-compatibility-removal-gate`, add `tooling/upgrade-runtime:managed-cutover-format-support`
