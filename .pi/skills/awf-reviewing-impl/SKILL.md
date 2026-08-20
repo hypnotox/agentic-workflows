@@ -25,7 +25,7 @@ Stop and report through the active workflow only when authorities conflict or mu
 
 **Flexible details.** Ambiguity, competing clean options, severity, structural character, or survival after an earlier correction describes a finding. None transfers the choice to the user.
 
-**Stop when.** A finding is a user decision only when every viable correct remediation would contradict or change a settled user-approved design or durable decision, or would require an unauthorized change to an active project rule; cite the affected authority.
+**Stop when.** A finding is a user decision only when every viable correct remediation would contradict or change a settled user-approved design or decision, or would require an unauthorized change to an active current-state claim; cite the affected authority.
 
 A new material decision or changed approved boundary follows the brainstorming route before ADR mutation and pauses at brainstorming's pre-artifact outline approval boundary. Competing clean options inside approved durable boundaries remain implementation detail for this workflow to resolve; they are not the unresolved design fork named by an implementation stop condition.
 

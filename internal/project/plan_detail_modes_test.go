@@ -36,7 +36,7 @@ func TestPlanTaskDetailModesStayAligned(t *testing.T) {
 		"layout": testLayout(),
 	})
 
-	for _, marker := range []string{"**Phase rule:**", "**Task rule:**", "**Flexible task details:**", "**Stop conditions:**", "**Required scope evidence:**"} {
+	for _, marker := range []string{"**Phase rule:**", "**Task rule:**", "**Flexible task details:**", "**Stop conditions:**", "**Required scope evidence:**", "a whole new file is one task"} {
 		if !strings.Contains(defaultWriter, marker) {
 			t.Errorf("default writing skill missing execution-clarity marker %q", marker)
 		}

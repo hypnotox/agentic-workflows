@@ -1852,6 +1852,9 @@ func TestStagedAuthorityWorkflowTemplates(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			out := renderSkillGolden(t, name, configured)
 			assertOrderedPhrases(t, out, "the complete transaction", "`./awf check staged`", "`./x gate`", "wired pre-commit hook enforces both", "only in a clone without wired hooks")
+			if name == "executing-plans" && !strings.Contains(out, "when in doubt, run both manually") {
+				t.Errorf("executing-plans lost uncertain-hook verification fallback")
+			}
 		})
 	}
 
@@ -1863,6 +1866,9 @@ func TestStagedAuthorityWorkflowTemplates(t *testing.T) {
 		t.Run(name+"-fallback", func(t *testing.T) {
 			out := renderSkillGolden(t, name, fallback)
 			assertOrderedPhrases(t, out, "the complete transaction", "`./awf check staged`", "the project's gate", "wired pre-commit hook enforces both", "only in a clone without wired hooks")
+			if name == "executing-plans" && !strings.Contains(out, "when in doubt, run both manually") {
+				t.Errorf("executing-plans lost uncertain-hook verification fallback")
+			}
 		})
 	}
 	fallbackAgents := renderGolden(t, "agents-doc/AGENTS.md.tmpl", fallback)
@@ -3328,7 +3334,7 @@ func TestGlossaryTemplate(t *testing.T) {
 // contradictions back through ADR review, and removes automatic residual escalation.
 func TestAuthorityGuidedReviewRemediation(t *testing.T) {
 	const (
-		stopCriterion   = "every viable correct remediation would contradict or change a settled user-approved design or durable decision, or would require an unauthorized change to an active project rule"
+		stopCriterion   = "every viable correct remediation would contradict or change a settled user-approved design or decision, or would require an unauthorized change to an active current-state claim"
 		nonTriggers     = "Ambiguity, competing clean options, severity, structural character, or survival after an earlier correction"
 		residualOpening = "Diagnose every residual finding under the same boundary"
 	)
@@ -3403,7 +3409,7 @@ func TestAuthorityGuidedReviewRemediation(t *testing.T) {
 	}
 	fullDispatcherWants := []string{
 		stopCriterion,
-		"active project rule; cite the affected authority",
+		"active current-state claim; cite the affected authority",
 		"A new material decision or changed approved boundary follows the brainstorming route before ADR mutation",
 		"pauses at brainstorming's pre-artifact outline approval boundary",
 		"remain implementation detail for this workflow to resolve",

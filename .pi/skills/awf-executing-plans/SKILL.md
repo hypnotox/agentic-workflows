@@ -72,7 +72,7 @@ On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per `docs
 
 **Required helper evidence.** You inventory each return, reject out-of-subset writes, retain shared-file ownership, run the deterministic post-check, and never delegate the phase commit.
 
-**Required phase evidence.** For generated-prose changes, perform the focused meaning review at the produced-output boundaries and retain the inspected boundaries and result as completion evidence. Stage the complete transaction. The phase-closing commit requires `./awf check staged` and `./x gate` to pass. A wired pre-commit hook enforces both at commit time; a manual run first is needed only in a clone without wired hooks, checkable with `git config core.hooksPath`.
+**Required phase evidence.** For generated-prose changes, perform the focused meaning review at the produced-output boundaries and retain the inspected boundaries and result as completion evidence. Stage the complete transaction. The phase-closing commit requires `./awf check staged` and `./x gate` to pass. A wired pre-commit hook enforces both at commit time; a manual run first is needed only in a clone without wired hooks, checkable with `git config core.hooksPath`; when in doubt, run both manually.
 
 Before review, build the phase-review brief from the exact phase-closing commit and range, complete phase scope, verification results, the verbatim deviation report built from the parent's inventory, and any unreviewed settlement. Then dispatch report-only phase review through correctness, plan/authority, documentation, and maintainability lenses. Its structured coverage summary returns those inputs, the reviewed range, and freshness against the current branch tip.
 

@@ -19,11 +19,11 @@ You own the project's long-term health, not just the task in front of you: bugs 
 <!-- awf:section chain -->
 ## The chain
 
-{{if ne .profile "core"}}**Rule.** Evaluate brainstorming, continuity/effort, grounding, ADR, plan, and implementation-review triggers independently at intake. Re-evaluate only affected triggers when material facts change; prior valid work remains valid. No line count, artifact type, or another mechanism firing selects a trigger.
+{{if ne .profile "core"}}**Rule.** Evaluate brainstorming, continuity/effort, grounding, ADR, plan, and implementation-review triggers independently at intake. Re-evaluate only affected triggers when material facts change and activate newly warranted support before further mutation; prior valid work remains valid. No line count, artifact type, or another mechanism firing selects a trigger.
 
 **Required evidence.** Repository authority, documentation currency, verification, and commit obligations apply to every change regardless of which triggers fire.
 
-**Approval rule.** Brainstorming stops only for an unresolved material decision, not for the act of mutating production code. It presents the proportionate outline and obtains explicit approval. Retained conversation, user-provenance effort Decision-log evidence, or an explicit request to execute a named plan whose Architecture summary supplies the outline may establish the approved boundary. A delegated owner consumes that boundary without another approval interaction.
+**Approval rule.** Brainstorming stops only for an unresolved material decision, not for the act of mutating production code. It presents the proportionate outline and obtains explicit approval. Retained conversation, user-provenance effort Decision-log evidence, or an explicit request to execute a named plan whose Architecture summary supplies the outline each establish the approved boundary. A delegated owner consumes that boundary without another approval interaction.
 
 **Flexible details.** A routine change proceeds autonomously while its protected contract holds, whatever kind of file it touches. The approval boundary precedes ADR and plan authoring; later artifact and implementation work continues inside it. Effort, grounding, ADR, plan, and review triggers remain independent.
 
