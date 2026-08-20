@@ -189,12 +189,20 @@ func (Project) Open() { _ = catalog.CompleteView() }
 	if err != nil || len(got) != 1 || got[0] != "project.go:(Project).Open:CompleteView" {
 		t.Errorf("method-identity bypass probe = %v, %v", got, err)
 	}
+	staleFacadeSource := `package project
+import "github.com/hypnotox/agentic-workflows/internal/catalog"
+type Project struct{}
+func (*Project) renderInputs() { _ = catalog.NewView(nil) }
+`
+	got, err = projectCatalogBypasses("facade.go", []byte(staleFacadeSource))
+	if err != nil || len(got) != 1 || got[0] != "facade.go:(*Project).renderInputs:NewView" {
+		t.Errorf("stale facade bypass probe = %v, %v", got, err)
+	}
 }
 
 func projectCatalogBypasses(filename string, body []byte) ([]string, error) {
 	allowed := map[string]map[string]map[string]bool{
 		"configreference.go": {"PotentialVarConsumers": {"CompleteView": true}},
-		"facade.go":          {"(*Project).renderInputs": {"Standard": true, "NewView": true}},
 		"project.go": {
 			"newLoader":     {"NewView": true},
 			"Open":          {"CompleteView": true},

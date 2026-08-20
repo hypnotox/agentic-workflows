@@ -20,8 +20,6 @@ var allowedProjectFacadeMethods = []string{
 	"CheckCommitAuthorization",
 	"CheckCurrentState",
 	"CheckReport",
-	"CheckStaged",
-	"CheckStagedDrift",
 	"CommitPolicyPresentation",
 	"ConfigReferenceModel",
 	"ContextState",

@@ -42,6 +42,14 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 	return op.writeFiles(), nil
 }
 
+func (p *Project) CheckStaged(ctx context.Context) (CurrentStateReport, error) {
+	return checkStaged(p.Root, p.repo, ctx)
+}
+
+func (p *Project) CheckStagedDrift(ctx context.Context) ([]manifest.Drift, error) {
+	return checkStagedDrift(newRenderInputs(p.state, p.Cfg, p.read), p.repo, ctx)
+}
+
 func testTargets(p *Project) []Target {
 	return p.state.resolvedTargets()
 }

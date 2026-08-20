@@ -749,11 +749,10 @@ func deriveOperationStateWithPitfalls(p renderInputs) (adr.Corpus, pitfall.Corpu
 // Audit runs the process-conformance audit (ADR-0017) over the caller-supplied
 // commit range. No config key supplies a base: the range is always explicit
 // (ADR-0127 Decision 3).
-func auditOperation(p renderInputs, ctx context.Context, base, head string) ([]audit.Finding, int, error) {
-	s := audit.Resolve(config.AuditScopes(p.cfg.Audit))
-	lay := layout(p)
+func auditOperation(root string, cfg *config.Config, ctx context.Context, base, head string) ([]audit.Finding, int, error) {
+	s := audit.Resolve(config.AuditScopes(cfg.Audit))
 	generated := map[string]bool{}
-	lock, _, err := manifest.LoadOptional(lockPath(p.root()))
+	lock, _, err := manifest.LoadOptional(lockPath(root))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -762,13 +761,15 @@ func auditOperation(p renderInputs, ctx context.Context, base, head string) ([]a
 			generated[path] = true
 		}
 	}
-	return audit.Run(ctx, p.root(), base, head, audit.Inputs{
+	docsDir := config.DocsDir
+	adrDir := docsDir + "/decisions"
+	return audit.Run(ctx, root, base, head, audit.Inputs{
 		Settings:       s,
 		GeneratedPaths: generated,
-		ADRDir:         lay.ADRDir,
-		DocsDir:        lay.DocsDir,
-		IndexMd:        lay.IndexMd,
-		PlansDir:       lay.PlansDir,
+		ADRDir:         adrDir,
+		DocsDir:        docsDir,
+		IndexMd:        adrDir + "/INDEX.md",
+		PlansDir:       docsDir + "/plans",
 	})
 }
 
@@ -801,11 +802,11 @@ func onIntegrationBranch(root string, cfg *config.Config, repo *awfgit.Repo, ctx
 // numbers at integration. Mirrors the CheckInvariants/Audit pattern - cmd/awf
 // reaches this only through this exported method, never internal/project.Layout
 // directly.
-func newADR(p renderInputs, repo *awfgit.Repo, ctx context.Context, title string) (string, error) {
-	if !onIntegrationBranch(p.root(), p.cfg, repo, ctx) {
-		return adr.NewPendingFile(decisionsDir(p.root()), title)
+func newADR(root string, cfg *config.Config, repo *awfgit.Repo, ctx context.Context, title string) (string, error) {
+	if !onIntegrationBranch(root, cfg, repo, ctx) {
+		return adr.NewPendingFile(decisionsDir(root), title)
 	}
-	return adr.NewFile(decisionsDir(p.root()), title)
+	return adr.NewFile(decisionsDir(root), title)
 }
 
 // NewPlan scaffolds a new plan under docsDir/plans from the rendered plans

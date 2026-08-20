@@ -7,7 +7,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/commitmsg"
 	"github.com/hypnotox/agentic-workflows/internal/commitpolicy"
 	"github.com/hypnotox/agentic-workflows/internal/config"
-	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
@@ -37,9 +36,6 @@ func (p *Project) ContextState(ctx context.Context) (ContextState, error) {
 }
 func (p *Project) CheckCurrentState(ctx context.Context) (CurrentStateReport, error) {
 	return checkCurrentState(p.Root, p.repo, ctx)
-}
-func (p *Project) CheckStaged(ctx context.Context) (CurrentStateReport, error) {
-	return checkStaged(p.Root, p.repo, ctx)
 }
 func (p *Project) CheckCommitAuthorization(ctx context.Context, msg commitmsg.Message) (CommitAuthorizationResult, error) {
 	return checkCommitAuthorization(p.Root, p.repo, ctx, msg)
@@ -73,10 +69,10 @@ func (p *Project) InitializeReport(ctx context.Context, seed InitAuthority) ([]B
 	return initializeReport(newRenderInputs(p.state, p.Cfg, p.read), ctx, seed)
 }
 func (p *Project) Audit(ctx context.Context, base, head string) ([]audit.Finding, int, error) {
-	return auditOperation(newRenderInputs(p.state, p.Cfg, p.read), ctx, base, head)
+	return auditOperation(p.Root, p.Cfg, ctx, base, head)
 }
 func (p *Project) NewADR(ctx context.Context, title string) (string, error) {
-	return newADR(newRenderInputs(p.state, p.Cfg, p.read), p.repo, ctx, title)
+	return newADR(p.Root, p.Cfg, p.repo, ctx, title)
 }
 func (p *Project) NewPlan(title string) (string, error) {
 	return newPlan(p.Root, title)
@@ -86,9 +82,6 @@ func (p *Project) RenderResidentMarker(ctx context.Context, name string) (Render
 }
 func (p *Project) NewPitfall(title string) (presentation.Document, error) {
 	return newPitfall(p.Root, title)
-}
-func (p *Project) CheckStagedDrift(ctx context.Context) ([]manifest.Drift, error) {
-	return checkStagedDrift(newRenderInputs(p.state, p.Cfg, p.read), p.repo, ctx)
 }
 func (p *Project) QueryTopic(ctx context.Context, selector string, opts topic.QueryOptions) (topic.QueryResult, error) {
 	return queryTopic(p.Root, p.repo, ctx, selector, opts)

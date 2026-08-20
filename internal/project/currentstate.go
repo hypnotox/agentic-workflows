@@ -145,7 +145,7 @@ func CheckStagedRoot(ctx context.Context, root string) (CurrentStateReport, erro
 		return CurrentStateReport{}, err
 	}
 	_ = prefix // nestedness does not alter staged current-state semantics.
-	return (&Project{Root: root, repo: repo}).CheckStaged(ctx)
+	return checkStaged(root, repo, ctx)
 }
 
 // CheckStaged loads the HEAD (before) and staged index (after) current-state

@@ -22,7 +22,7 @@ func CheckStagedDriftRoot(ctx context.Context, root string) ([]manifest.Drift, e
 		return nil, err
 	}
 	p := stagedProject(root, prefix)
-	return (&Project{state: p.state, Cfg: p.cfg, read: p.read, repo: repo}).CheckStagedDrift(ctx)
+	return checkStagedDrift(p, repo, ctx)
 }
 
 // CheckStagedDrift renders from the index configuration and compares generated
