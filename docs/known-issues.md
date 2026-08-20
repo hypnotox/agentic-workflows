@@ -8,12 +8,6 @@
 
 Each issue below is reproducible from repository state and remains open until its completion criteria hold. The criteria state outcomes, not a required implementation mechanism.
 
-## The tag-coverage claim includes ADRs that cannot carry tags
-
-**Reproduction.** Compare `config/configuration:tag-coverage-note` with `TestTagHealthNotesSkipGovernedADRs`. The claim says `awf check` warns for each untagged ADR, while the implementation correctly excludes governed ADRs because they reject `tags:`.
-
-**Completion criteria.** The claim describes tag-capable legacy ADRs and pitfalls while preserving the implementation's governed-ADR exclusion, empty-vocabulary behavior, and non-failing rank.
-
 ## Implemented plans can bypass freeze discipline
 
 **Reproduction.** Stage a body edit to a plan that is already `Implemented` and run `awf check staged`; the plan's terminal status alone does not cause a refusal. Before the flip, incomplete touched-path and deviation inventories can likewise pass when their prose markers are present.

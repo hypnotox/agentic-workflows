@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-pitfalls-as-the-current-tag-vocabulary-carrier: Pitfalls as the Current Tag Vocabulary Carrier](pitfalls-as-the-current-tag-vocabulary-carrier.md) (Proposed)
+- [ADR-pitfalls-as-the-current-tag-vocabulary-carrier: Pitfalls as the Current Tag Vocabulary Carrier](pitfalls-as-the-current-tag-vocabulary-carrier.md) (Implementing)
 
 ## History
 

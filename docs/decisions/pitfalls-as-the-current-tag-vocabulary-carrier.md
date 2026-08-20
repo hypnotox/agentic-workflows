@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: pitfalls-as-the-current-tag-vocabulary-carrier
-status: Proposed
+status: Implementing
 date: 2026-08-20
 ---
 # ADR-pitfalls-as-the-current-tag-vocabulary-carrier: Pitfalls as the Current Tag Vocabulary Carrier
@@ -92,3 +92,6 @@ parser compatibility, `related:` behavior, architecture boundary, or adopter rep
 ## Status history
 
 - 2026-08-20: Proposed
+- 2026-08-20: Accepted; content-sha256: 998599ee522c66318072600530f1ba8137942b3d30019302634c1b7aa65f7f6c
+- 2026-08-20: Implementing; content-sha256: 998599ee522c66318072600530f1ba8137942b3d30019302634c1b7aa65f7f6c
+- 2026-08-20: Applied; operations: update `config/configuration:tag-vocabulary-governed`, update `config/configuration:tag-coverage-note`, update `config/configuration:tag-frequency-note`

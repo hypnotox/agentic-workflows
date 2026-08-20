@@ -52,7 +52,7 @@ func (p *Project) AdvisoryNotes(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	advisories, err := p.advisoryNotesWithState(corpus, pitfalls, plans, op)
+	advisories, err := p.advisoryNotesWithState(pitfalls, plans, op)
 	if err != nil { // coverage-ignore: operation state and sidecars were already parsed and validated before advisory projection
 		return nil, err
 	}
@@ -62,12 +62,12 @@ func (p *Project) AdvisoryNotes(ctx context.Context) ([]string, error) {
 // advisoryNotesWithState classifies the non-failing render advisories from
 // operation-owned state, its already parsed plans, and its one prepared output
 // plan.
-func (p *Project) advisoryNotesWithState(corpus adr.Corpus, pitfalls pitfall.Corpus, plans []plan.Plan, op *OutputPlan) (CheckAdvisories, error) {
+func (p *Project) advisoryNotesWithState(pitfalls pitfall.Corpus, plans []plan.Plan, op *OutputPlan) (CheckAdvisories, error) {
 	files := op.writeFiles()
 	all := advisoryCompatibilityFiles(op)
 	information := append(p.unsetVarNotes(files), stubNotes(all)...)
 	information = append(information, markerNotes(all)...)
-	warnings, err := p.tagHealthNotes(corpus, pitfalls)
+	warnings, err := p.tagHealthNotes(pitfalls)
 	if err != nil { // coverage-ignore: advisory read errors are covered by direct helper tests
 		return CheckAdvisories{}, err
 	}
@@ -135,13 +135,13 @@ func (p *Project) glossaryTersenessNotes() ([]string, error) {
 // a documented constant, deliberately not a config key in this slice.
 const tagFrequencyThreshold = 0.25
 
-// tagHealthNotes returns advisory (non-failing) notes about the tag vocabulary's
-// health: a frequency note for any tag carried by more than tagFrequencyThreshold
-// of the tag-bearing artifacts (the coarsening the exact tag≠domain gate cannot
-// express), and a coverage note for any ADR or pitfall carrying zero tags (the
-// under-tagging backstop). Inert under an empty/absent vocabulary, so an
-// un-curated adopter - and the example - stays note-free.
-func (p *Project) tagHealthNotes(corpus adr.Corpus, supplied ...pitfall.Corpus) ([]string, error) {
+// tagHealthNotes returns advisory (non-failing) notes about the current pitfall
+// tag vocabulary: a frequency note for any tag carried by more than
+// tagFrequencyThreshold of the tag-bearing pitfalls, and a coverage note for
+// any pitfall carrying zero tags. Legacy ADR tags remain parsed history but do
+// not participate in current vocabulary health. Inert under an empty/absent
+// vocabulary, so an un-curated adopter - and the example - stays note-free.
+func (p *Project) tagHealthNotes(supplied ...pitfall.Corpus) ([]string, error) {
 	if len(p.Cfg.Tags) == 0 {
 		return nil, nil
 	}
@@ -149,48 +149,31 @@ func (p *Project) tagHealthNotes(corpus adr.Corpus, supplied ...pitfall.Corpus) 
 	if err != nil { // coverage-ignore: aggregate operations always supply the validated corpus; direct malformed-load propagation is covered separately
 		return nil, err
 	}
-	adrs := corpus.All()
-	pf := pitfalls.All()
-	type artifact struct {
-		label string
-		tags  []string
-	}
-	var arts []artifact
-	rel := filepath.ToSlash(filepath.Join(config.DocsDir, "decisions"))
-	for _, a := range adrs {
-		if a.IsGoverned() {
-			continue // governed current-state frontmatter deliberately has no tags
-		}
-		arts = append(arts, artifact{label: rel + "/" + a.Filename, tags: a.Tags})
-	}
-	for _, e := range pf {
-		arts = append(arts, artifact{label: e.SourcePath, tags: e.Tags})
-	}
 
 	var notes []string
 	tagged := 0
 	freq := map[string]int{}
-	for _, art := range arts {
-		if len(art.tags) == 0 {
-			notes = append(notes, art.label+" carries no tags: add a narrow topic tag")
+	for _, entry := range pitfalls.All() {
+		if len(entry.Tags) == 0 {
+			notes = append(notes, entry.SourcePath+" carries no tags: add a narrow topic tag")
 			continue
 		}
 		// Count only vocabulary members - both the numerator and the denominator.
-		// The invariant speaks of "vocabulary tags" and "artifacts carrying at
+		// The invariant speaks of "vocabulary tags" and "pitfalls carrying at
 		// least one vocabulary tag", and a non-member tag is already a hard
 		// checkTagVocabulary failure, so it must not skew the coarsening signal.
 		var vocab []string
-		for _, t := range art.tags {
-			if _, ok := p.Cfg.Tags[t]; ok {
-				vocab = append(vocab, t)
+		for _, tag := range entry.Tags {
+			if _, ok := p.Cfg.Tags[tag]; ok {
+				vocab = append(vocab, tag)
 			}
 		}
 		if len(vocab) == 0 {
 			continue
 		}
 		tagged++
-		for _, t := range vocab {
-			freq[t]++
+		for _, tag := range vocab {
+			freq[tag]++
 		}
 	}
 	// Empty-denominator guard: no tag-bearing artifacts, no frequency to compute.
@@ -518,7 +501,7 @@ func (p *Project) CheckReport(ctx context.Context) (CheckReport, error) {
 		planWarnings = notes
 		planDrift = append(planDrift, contextDrift...)
 	}
-	advisories, err := p.advisoryNotesWithState(corpus, pitfalls, plans, op)
+	advisories, err := p.advisoryNotesWithState(pitfalls, plans, op)
 	report, err := finishCheckReport(drift, planDrift, planWarnings, advisories, op, err)
 	report.TrackingInformation = trackingNotes
 	report.TrackingNotes = slices.Clone(trackingNotes)
@@ -593,7 +576,7 @@ func (p *Project) checkWithTrackingState(ctx context.Context, corpus adr.Corpus,
 		return nil, nil, err
 	}
 	drift = append(drift, glossaryDrift...)
-	tagDrift, err := p.checkTagVocabulary(corpus, pitfalls)
+	tagDrift, err := p.checkTagVocabulary(pitfalls)
 	if err != nil { // coverage-ignore: checkTagVocabulary now fails only through pitfallTagEntries, which reads the same data.pitfalls that checkPitfalls above already read and failed on
 		return nil, nil, err
 	}
@@ -932,13 +915,14 @@ func (p *Project) checkGlossary() ([]manifest.Drift, error) {
 	return drift, nil
 }
 
-// checkTagVocabulary validates tag governance when the config tags: vocabulary
-// is non-empty: every tag used by an ADR (frontmatter tags:) or a pitfall
-// (tags:) must be a declared vocabulary member, and every member must declare a
-// non-empty meaning. An empty or absent vocabulary is inert (tags are then
-// free-form). A declared member no artifact uses is intentionally permitted,
-// mirroring an unused configured domain under pitfall-domains-resolved.
-func (p *Project) checkTagVocabulary(corpus adr.Corpus, supplied ...pitfall.Corpus) ([]manifest.Drift, error) {
+// checkTagVocabulary validates current tag governance when the config tags:
+// vocabulary is non-empty: every tag used by a pitfall must be a declared
+// vocabulary member, and every member must declare a non-empty meaning. Legacy
+// ADR tags remain parsed history and do not require current membership. An empty
+// or absent vocabulary is inert (tags are then free-form). A declared member no
+// pitfall uses is intentionally permitted for generic adopters, mirroring an
+// unused configured domain under pitfall-domains-resolved.
+func (p *Project) checkTagVocabulary(supplied ...pitfall.Corpus) ([]manifest.Drift, error) {
 	if len(p.Cfg.Tags) == 0 {
 		return nil, nil
 	}
@@ -960,15 +944,6 @@ func (p *Project) checkTagVocabulary(corpus adr.Corpus, supplied ...pitfall.Corp
 		// names a configured domain is the coarse-tag regression, gated exactly.
 		if domainName[tag] {
 			drift = append(drift, manifest.Drift{Path: cfgPath, Kind: "tag-domain-collision", Detail: fmt.Sprintf("tag %q equals a configured domain name: tags must be finer than domains", tag)})
-		}
-	}
-	adrs := corpus.All()
-	rel := filepath.ToSlash(filepath.Join(config.DocsDir, "decisions"))
-	for _, a := range adrs {
-		for _, tag := range a.Tags {
-			if _, ok := p.Cfg.Tags[tag]; !ok {
-				drift = append(drift, manifest.Drift{Path: rel + "/" + a.Filename, Kind: "adr-tag", Detail: fmt.Sprintf("ADR-%s: unknown tag %q", a.Number, tag)})
-			}
 		}
 	}
 	for _, e := range pitfalls.All() {

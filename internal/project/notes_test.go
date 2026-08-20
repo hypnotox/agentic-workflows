@@ -8,7 +8,6 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
@@ -298,70 +297,69 @@ func TestUnsetVarNotesFullySetIsSilent(t *testing.T) {
 	}
 }
 
-// tagHealthNotes emits a frequency note for a tag over the 25% share of
-// tag-bearing artifacts and a coverage note for a zero-tag artifact; a 25%-share
-// tag (not strictly over) stays quiet.
+// tagHealthNotes evaluates current pitfalls only. It emits a frequency note for
+// a tag over the 25% share of tag-bearing pitfalls and a coverage note for an
+// untagged pitfall; a 25%-share tag stays quiet and legacy ADRs do not affect
+// either population.
 func TestTagHealthNotes(t *testing.T) {
-	root := scaffold(t, "prefix: awf\nintegrationBranch: main\ndomains: []\n"+
-		"tags:\n  alpha: A\n  beta: B\n  gamma: C\n  delta: D\n  epsilon: E\n")
-	// 0001/0002 also carry `bogus`, a non-vocabulary tag: it is excluded from the
-	// frequency accounting (only vocabulary members count) so it never surfaces a
-	// coarsening note, even though it would exceed 25% if counted.
-	writeADR(t, root, "0001-a.md", testsupport.ADR("Implemented", testsupport.WithTitle("0001: A"), testsupport.WithTags("alpha", "beta", "bogus")))
-	writeADR(t, root, "0002-b.md", testsupport.ADR("Implemented", testsupport.WithTitle("0002: B"), testsupport.WithTags("alpha", "gamma", "bogus")))
-	writeADR(t, root, "0003-c.md", testsupport.ADR("Implemented", testsupport.WithTitle("0003: C"), testsupport.WithTags("delta")))
-	writeADR(t, root, "0004-d.md", testsupport.ADR("Implemented", testsupport.WithTitle("0004: D"), testsupport.WithTags("epsilon")))
-	writeADR(t, root, "0005-e.md", testsupport.ADR("Implemented", testsupport.WithTitle("0005: E")))
-	// 0006 carries only `bogus` (non-vocabulary): it has tags (no coverage note),
-	// but contributes to neither the numerator nor the denominator - proving the
-	// denominator counts only vocabulary-tag-bearing artifacts (alpha stays 2/4).
-	writeADR(t, root, "0006-f.md", testsupport.ADR("Implemented", testsupport.WithTitle("0006: F"), testsupport.WithTags("bogus")))
+	root := scaffoldFiles(t, "prefix: awf\nintegrationBranch: main\ndomains: []\n"+
+		"tags:\n  alpha: A\n  beta: B\n  gamma: C\n  delta: D\n  epsilon: E\n", map[string]string{
+		"docs/pitfalls/a.md": pitfallSource("A", "tags: [alpha, beta, bogus]\n", "ok\n"),
+		"docs/pitfalls/b.md": pitfallSource("B", "tags: [alpha, gamma, bogus]\n", "ok\n"),
+		"docs/pitfalls/c.md": pitfallSource("C", "tags: [delta]\n", "ok\n"),
+		"docs/pitfalls/d.md": pitfallSource("D", "tags: [epsilon]\n", "ok\n"),
+		"docs/pitfalls/e.md": pitfallSource("E", "", "ok\n"),
+		"docs/pitfalls/f.md": pitfallSource("F", "tags: [bogus]\n", "ok\n"),
+	})
+	writeADR(t, root, "0001-a.md", testsupport.ADR("Implemented", testsupport.WithTitle("0001: A"), testsupport.WithTags("alpha")))
+	writeADR(t, root, "0002-b.md", testsupport.ADR("Implemented", testsupport.WithTitle("0002: B")))
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.tagHealthNotes(mustDeriveCorpus(t, p))
+	notes, err := p.tagHealthNotes()
 	if err != nil {
 		t.Fatal(err)
 	}
 	joined := strings.Join(notes, "\n")
 	// invariant: config/configuration:tag-frequency-note (TestTagHealthNotes)
 	if !strings.Contains(joined, `tag "alpha" is on 2/4`) {
-		t.Errorf("expected an alpha frequency note; got %v", notes)
+		t.Errorf("expected an alpha frequency note over tagged pitfalls only; got %v", notes)
 	}
-	// beta/delta each 1/4 (25%, not strictly over) - no note.
 	if strings.Contains(joined, `tag "beta"`) || strings.Contains(joined, `tag "delta"`) {
-		t.Errorf("did not expect a note for a 25%%-share tag; got %v", notes)
+		t.Errorf("did not expect a note for a 25%%-share pitfall tag; got %v", notes)
 	}
-	// `bogus` (non-vocabulary) is not counted → no coarsening note, and 0006
-	// (bogus-only) is neither a coverage note nor part of the denominator.
 	if strings.Contains(joined, `tag "bogus"`) {
-		t.Errorf("a non-vocabulary tag must not surface a frequency note; got %v", notes)
+		t.Errorf("a non-vocabulary pitfall tag must not surface a frequency note; got %v", notes)
 	}
-	if strings.Contains(joined, "0006-f.md carries no tags") {
-		t.Errorf("a bogus-only artifact has tags - no coverage note expected; got %v", notes)
+	if strings.Contains(joined, "docs/pitfalls/f.md carries no tags") {
+		t.Errorf("a bogus-only pitfall has tags, so no coverage note is expected; got %v", notes)
 	}
 	// invariant: config/configuration:tag-coverage-note (TestTagHealthNotes)
-	if !strings.Contains(joined, "0005-e.md carries no tags") {
-		t.Errorf("expected a coverage note for the untagged ADR; got %v", notes)
+	if !strings.Contains(joined, ".awf/docs/pitfalls/e.md carries no tags") {
+		t.Errorf("expected a coverage note for the untagged pitfall; got %v", notes)
+	}
+	if strings.Contains(joined, "docs/decisions/") {
+		t.Errorf("legacy ADRs must not enter current tag-health notes; got %v", notes)
 	}
 }
 
-func TestTagHealthNotesSkipGovernedADRs(t *testing.T) {
+func TestTagHealthNotesIgnoresAllADRs(t *testing.T) {
 	root := scaffold(t, "prefix: awf\nintegrationBranch: main\ndomains: []\ntags:\n  tooling: Tooling\n")
+	writeADR(t, root, "0001-legacy.md", testsupport.ADR("Implemented", testsupport.WithTitle("0001: Legacy")))
 	governedBody := "status: Proposed\ndate: 2026-07-20\n---\n# ADR-%s: A\n\n## Context\n\nC.\n\n## Decision\n\n1. D.\n\n## State changes\n\nNone.\n\n## Consequences\n\nC.\n\n## Alternatives Considered\n\nNone.\n\n## Status history\n\n- 2026-07-20: Proposed\n"
-	writeADR(t, root, "0001-a.md", "---\nformat: current-state-v1\n"+fmt.Sprintf(governedBody, "0001"))
-	writeADR(t, root, "0002-b.md", "---\nformat: current-state-v2\n"+fmt.Sprintf(governedBody, "0002"))
+	writeADR(t, root, "0002-a.md", "---\nformat: current-state-v1\n"+fmt.Sprintf(governedBody, "0002"))
+	writeADR(t, root, "0003-b.md", "---\nformat: current-state-v2\n"+fmt.Sprintf(governedBody, "0003"))
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.tagHealthNotes(mustDeriveCorpus(t, p))
+	notes, err := p.tagHealthNotes()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(notes) != 0 {
-		t.Fatalf("governed current-state ADRs produced legacy tag-health notes: %v", notes)
+		t.Fatalf("legacy and governed ADRs produced current tag-health notes: %v", notes)
 	}
 }
 
@@ -374,7 +372,7 @@ func TestTagHealthNotesEmptyVocabInert(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.tagHealthNotes(mustDeriveCorpus(t, p))
+	notes, err := p.tagHealthNotes()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -383,27 +381,28 @@ func TestTagHealthNotesEmptyVocabInert(t *testing.T) {
 	}
 }
 
-// With a non-empty vocabulary but every artifact untagged, coverage notes fire and
+// With a non-empty vocabulary but every pitfall untagged, coverage notes fire and
 // the frequency computation is skipped (empty-denominator guard, no divide-by-zero).
 func TestTagHealthNotesEmptyDenominator(t *testing.T) {
-	root := scaffold(t, "prefix: awf\nintegrationBranch: main\ndomains: []\ntags:\n  alpha: A\n")
-	writeADR(t, root, "0001-a.md", testsupport.ADR("Implemented", testsupport.WithTitle("0001: A")))
-	writeADR(t, root, "0002-b.md", testsupport.ADR("Implemented", testsupport.WithTitle("0002: B")))
+	root := scaffoldFiles(t, "prefix: awf\nintegrationBranch: main\ndomains: []\ntags:\n  alpha: A\n", map[string]string{
+		"docs/pitfalls/a.md": pitfallSource("A", "", "ok\n"),
+		"docs/pitfalls/b.md": pitfallSource("B", "", "ok\n"),
+	})
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.tagHealthNotes(mustDeriveCorpus(t, p))
+	notes, err := p.tagHealthNotes()
 	if err != nil {
 		t.Fatal(err)
 	}
 	joined := strings.Join(notes, "\n")
-	if !strings.Contains(joined, "0001-a.md carries no tags") || !strings.Contains(joined, "0002-b.md carries no tags") {
-		t.Errorf("expected coverage notes for both untagged ADRs; got %v", notes)
+	if !strings.Contains(joined, "pitfalls/a.md carries no tags") || !strings.Contains(joined, "pitfalls/b.md carries no tags") {
+		t.Errorf("expected coverage notes for both untagged pitfalls; got %v", notes)
 	}
 	for _, n := range notes {
 		if strings.Contains(n, "coarsening") {
-			t.Errorf("no frequency note expected with zero tagged artifacts; got %v", notes)
+			t.Errorf("no frequency note expected with zero tagged pitfalls; got %v", notes)
 		}
 	}
 }
@@ -417,17 +416,13 @@ func TestTagHealthNotesPitfallError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	corpus, err := adr.NewCorpus(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := p.tagHealthNotes(corpus); err == nil {
+	if _, err := p.tagHealthNotes(); err == nil {
 		t.Fatal("expected pitfall corpus structural error, got nil")
 	}
 }
 
-// tagHealthNotes counts pitfall tags alongside ADR tags and flags an untagged
-// pitfall - exercising the pitfall arm of the artifact scan.
+// tagHealthNotes counts pitfall tags without legacy ADR participation and flags
+// an untagged pitfall.
 func TestTagHealthNotesPitfalls(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: awf\nintegrationBranch: main\ndomains: []\ntags:\n  alpha: A\n",
 		map[string]string{
@@ -439,14 +434,14 @@ func TestTagHealthNotesPitfalls(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.tagHealthNotes(mustDeriveCorpus(t, p))
+	notes, err := p.tagHealthNotes()
 	if err != nil {
 		t.Fatal(err)
 	}
 	joined := strings.Join(notes, "\n")
-	// alpha on the tagged pitfall + the ADR = 2/2 tagged artifacts (>25%).
-	if !strings.Contains(joined, `tag "alpha" is on 2/2`) {
-		t.Errorf("expected alpha frequency note counting the pitfall; got %v", notes)
+	// The legacy ADR is excluded, so alpha is on the one tagged pitfall only.
+	if !strings.Contains(joined, `tag "alpha" is on 1/1`) {
+		t.Errorf("expected alpha frequency note counting pitfalls only; got %v", notes)
 	}
 	if !strings.Contains(joined, ".awf/docs/pitfalls/untagged.md carries no tags") {
 		t.Errorf("expected coverage note for the untagged pitfall; got %v", notes)
