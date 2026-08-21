@@ -174,13 +174,28 @@ func newLoader(loadConfigTree LoadConfigTree, standard *catalog.Catalog, resolve
 type ProjectState struct{ state *projectstate.ProjectState }
 
 // Root returns the invoking checkout root.
-func (s *ProjectState) Root() string { return s.state.Root() }
+func (s *ProjectState) Root() string {
+	if s == nil || s.state == nil {
+		return ""
+	}
+	return s.state.Root()
+}
 
 // Config returns a defensive copy of the immutable loaded configuration facts.
-func (s *ProjectState) Config() *config.Config { return s.state.Config() }
+func (s *ProjectState) Config() *config.Config {
+	if s == nil || s.state == nil {
+		return config.Facts{}.Config()
+	}
+	return s.state.Config()
+}
 
 // Targets returns a defensive copy of the resolved targets.
-func (s *ProjectState) Targets() []Target { return s.state.Targets() }
+func (s *ProjectState) Targets() []Target {
+	if s == nil || s.state == nil {
+		return nil
+	}
+	return s.state.Targets()
+}
 
 func (s *ProjectState) roots() resident.Roots             { return s.state.Roots() }
 func (s *ProjectState) nested() bool                      { return s.state.Nested() }

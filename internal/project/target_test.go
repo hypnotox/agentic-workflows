@@ -673,7 +673,7 @@ func TestTargetDescriptorCustomization(t *testing.T) {
 		custom.AgentPath("code-reviewer") != ".custom/reviewers/code-reviewer.agent.md" {
 		t.Fatal("custom descriptor paths were not preserved")
 	}
-	if projectstate.TargetTemplateData(custom)["targetSubagentTools"] != true || projectstate.TargetTemplateData(custom)["targetSessionHandoff"] != true {
+	if targetTemplateData(custom)["targetSubagentTools"] != true || targetTemplateData(custom)["targetSessionHandoff"] != true {
 		t.Fatal("custom descriptor capabilities were not projected")
 	}
 	root := scaffold(t, sampleYAML)

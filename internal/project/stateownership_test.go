@@ -5,6 +5,7 @@ import (
 	"go/token"
 	"go/types"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -403,7 +404,99 @@ func TestProjectDerivedStateOwnership(t *testing.T) {
 		}
 	}
 
-	// Lower-state field mutation is asserted by TestProjectStateBoundary.
+	// One combined overlay proves every detector branch without paying for a
+	// separate packages.Load per mutation shape. Lower-state mutations live in
+	// their declaring package, while project and contextq fixtures retain the
+	// derivation and independent long-lived-state cases.
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	projectStateFixture := filepath.Join(root, filepath.FromSlash("internal/projectstate/state_ownership_mutation_fixture.go"))
+	projectFixture := filepath.Join(root, filepath.FromSlash("internal/project/state_ownership_mutation_fixture.go"))
+	contextqFixture := filepath.Join(root, filepath.FromSlash("internal/contextq/state_ownership_mutation_fixture.go"))
+	mutation := loadProjectPackage(t, map[string][]byte{
+		projectStateFixture: []byte(`package projectstate
+
+func writeThrough(target *string, value string) { *target = value }
+
+func (p *ProjectState) mutationWritesAfterConstruction() {
+	p.invokingRoot = "mutated"
+}
+
+func (s *ProjectState) mutationWritesStateAfterConstruction() {
+	s.nested = true
+}
+
+func mutationConstructsLocally(rootDir string) *ProjectState {
+	built := &ProjectState{invokingRoot: rootDir}
+	built.nested = true
+	return built
+}
+
+func (p *ProjectState) mutationWritesViaPointer() {
+	writeThrough(&p.invokingRoot, "mutated")
+}
+
+func (p *ProjectState) mutationOverwritesWholeValue() {
+	*p = ProjectState{invokingRoot: "mutated"}
+}
+`),
+		projectFixture: []byte(`package project
+
+import "github.com/hypnotox/agentic-workflows/internal/adr"
+
+func (p *ProjectState) mutationRederivesNested() {
+	_, _, _, _, _ = deriveOperationStateWithPitfalls(newRenderInputs(&ProjectState{}, p.Config(), nil))
+}
+
+func (p *ProjectState) mutationRederivesCorpusDirectly() (adr.Corpus, error) {
+	return adr.LoadCorpus(decisionsDir("fixture-root"))
+}
+`),
+		contextqFixture: []byte(`package contextq
+
+import "github.com/hypnotox/agentic-workflows/internal/project"
+
+func (q *Query) mutationReplacesStateAfterConstruction(state project.ContextState) {
+	q.state = state
+}
+`),
+	})
+	findings := projectFieldWriteFindings(mutation)
+	hasPrefix := func(prefix string) bool {
+		return slices.ContainsFunc(findings, func(finding string) bool {
+			return strings.HasPrefix(finding, prefix)
+		})
+	}
+	for _, want := range []string{
+		"mutationWritesAfterConstruction writes p.invokingRoot",
+		"mutationWritesStateAfterConstruction writes s.nested",
+		"mutationWritesViaPointer takes the address of p.invokingRoot",
+		"mutationOverwritesWholeValue replaces the whole value p",
+		"mutationReplacesStateAfterConstruction writes q.state",
+	} {
+		if !hasPrefix(want) {
+			t.Errorf("mutation %q escaped the field-write detector: %#v", want, findings)
+		}
+	}
+	for _, finding := range findings {
+		if strings.HasPrefix(finding, "mutationConstructsLocally") {
+			t.Errorf("a write to a locally constructed value was flagged: %q", finding)
+		}
+	}
+	if derivingEntries(mutation)["mutationRederivesNested"] != 1 {
+		t.Error("a nested deriveOperationState call escaped the deriving-entry scan")
+	}
+	var directFlagged bool
+	for _, owners := range producerCallSites(mutation) {
+		if slices.Contains(owners, "mutationRederivesCorpusDirectly") {
+			directFlagged = true
+		}
+	}
+	if !directFlagged {
+		t.Error("a direct producer call bypassing deriveOperationState escaped the producer scan")
+	}
 }
 
 func retainsOperationDependency(typ types.Type, seen map[types.Type]bool) bool {

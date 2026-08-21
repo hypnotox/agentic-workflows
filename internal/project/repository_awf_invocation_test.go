@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
-	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -38,7 +37,7 @@ func withInvocationData(data map[string]any, value map[string]any) map[string]an
 
 func withInvocationTarget(data map[string]any, target Target) map[string]any {
 	copy := withInvocationData(data, data["data"].(map[string]any))
-	for key, value := range projectstate.TargetTemplateData(target) {
+	for key, value := range targetTemplateData(target) {
 		copy[key] = value
 	}
 	return copy

@@ -36,26 +36,41 @@ type ProjectTreeReader interface {
 	Paths(prefix string) ([]string, error)
 }
 
+// ArtifactRole preserves the project package's declaration-role compatibility name.
 type ArtifactRole = projectstate.ArtifactRole
 
 const (
-	ArtifactConfig             = projectstate.ArtifactConfig
-	ArtifactLock               = projectstate.ArtifactLock
-	ArtifactManifest           = projectstate.ArtifactManifest
-	ArtifactTemplate           = projectstate.ArtifactTemplate
-	ArtifactConventionPart     = projectstate.ArtifactConventionPart
-	ArtifactAuthoredData       = projectstate.ArtifactAuthoredData
-	ArtifactTopicMetadata      = projectstate.ArtifactTopicMetadata
-	ArtifactClaimPart          = projectstate.ArtifactClaimPart
-	ArtifactDecisionRecord     = projectstate.ArtifactDecisionRecord
-	ArtifactManagedOutput      = projectstate.ArtifactManagedOutput
+	// ArtifactConfig identifies an authored configuration input.
+	ArtifactConfig = projectstate.ArtifactConfig
+	// ArtifactLock identifies the managed project lock.
+	ArtifactLock = projectstate.ArtifactLock
+	// ArtifactManifest identifies manifest authority.
+	ArtifactManifest = projectstate.ArtifactManifest
+	// ArtifactTemplate identifies an embedded template input.
+	ArtifactTemplate = projectstate.ArtifactTemplate
+	// ArtifactConventionPart identifies an authored convention part.
+	ArtifactConventionPart = projectstate.ArtifactConventionPart
+	// ArtifactAuthoredData identifies authored sidecar data.
+	ArtifactAuthoredData = projectstate.ArtifactAuthoredData
+	// ArtifactTopicMetadata identifies authored topic metadata.
+	ArtifactTopicMetadata = projectstate.ArtifactTopicMetadata
+	// ArtifactClaimPart identifies an authored current-state claim part.
+	ArtifactClaimPart = projectstate.ArtifactClaimPart
+	// ArtifactDecisionRecord identifies an architecture decision record.
+	ArtifactDecisionRecord = projectstate.ArtifactDecisionRecord
+	// ArtifactManagedOutput identifies an existing managed output input.
+	ArtifactManagedOutput = projectstate.ArtifactManagedOutput
+	// ArtifactProtocolDescriptor identifies a runtime protocol descriptor.
 	ArtifactProtocolDescriptor = projectstate.ArtifactProtocolDescriptor
 )
 
+// OutputInput records one semantic input consumed by a declared output.
 type OutputInput struct {
 	Path string
 	Role ArtifactRole
 }
+
+// OutputDeclaration records one deterministic declared output and its inputs.
 type OutputDeclaration struct {
 	Path         string
 	TemplateID   string
@@ -468,6 +483,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 	return decls, nil
 }
 
+// OutputPolicy preserves the project package's output-policy compatibility name.
 type OutputPolicy = projectstate.OutputPolicy
 
 // OutputRecipe is the normalized, output-affecting declaration used for
@@ -614,7 +630,7 @@ func targetOutputDeclarations(p renderInputs, eff map[string]bool) (map[string]t
 				decl.recipe, decl.canonical = recipe, t.Name
 			}
 			decl.declarers = append(decl.declarers, t.Name)
-			decl.projections = append(decl.projections, projectstate.TargetDescriptorProjection(t))
+			decl.projections = append(decl.projections, targetDescriptorProjection(t))
 			out[o.Path] = decl
 		}
 	}

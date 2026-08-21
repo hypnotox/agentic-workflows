@@ -5,15 +5,30 @@ import (
 	"go/token"
 	"go/types"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"sort"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"golang.org/x/tools/go/packages"
 )
 
 const projectImportPath = "github.com/hypnotox/agentic-workflows/internal/project"
 const projectStateImportPath = "github.com/hypnotox/agentic-workflows/internal/projectstate"
+
+func TestProjectStateZeroValueCompatibility(t *testing.T) {
+	var state ProjectState
+	if state.Root() != "" {
+		t.Fatalf("zero ProjectState root = %q", state.Root())
+	}
+	if loaded := state.Config(); loaded == nil || !reflect.DeepEqual(loaded, &config.Config{}) {
+		t.Fatalf("zero ProjectState config = %#v", loaded)
+	}
+	if state.Targets() != nil {
+		t.Fatalf("zero ProjectState targets = %#v", state.Targets())
+	}
+}
 
 func TestProjectStateProductionBoundary(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))

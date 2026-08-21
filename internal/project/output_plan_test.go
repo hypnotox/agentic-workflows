@@ -159,10 +159,10 @@ func TestTargetDescriptorValidation(t *testing.T) {
 			t.Fatalf("planner accepted invalid target %#v", target)
 		}
 	}
-	if got := projectstate.TargetTemplateData(piTarget)["targetSubagentTools"]; got != true {
+	if got := targetTemplateData(piTarget)["targetSubagentTools"]; got != true {
 		t.Fatalf("Pi subagent capability projection = %#v", got)
 	}
-	if got := projectstate.TargetTemplateData(piTarget)["targetSessionHandoff"]; got != true {
+	if got := targetTemplateData(piTarget)["targetSessionHandoff"]; got != true {
 		t.Fatalf("Pi handoff capability projection = %#v", got)
 	}
 	if _, err := resolveTargets([]string{"nope"}); err == nil {
@@ -250,7 +250,7 @@ func TestBridgeRenderIdentity(t *testing.T) {
 			t.Errorf("custom descriptor output %s is absent", path)
 		}
 	}
-	if !projectstate.TargetTemplateData(custom)["targetSubagentTools"].(bool) || !projectstate.TargetTemplateData(custom)["targetSessionHandoff"].(bool) {
+	if !targetTemplateData(custom)["targetSubagentTools"].(bool) || !targetTemplateData(custom)["targetSessionHandoff"].(bool) {
 		t.Error("custom descriptor capabilities were not projected")
 	}
 	for _, output := range piTarget.Outputs {

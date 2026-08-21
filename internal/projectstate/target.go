@@ -17,8 +17,10 @@ import (
 type AgentDialect string
 
 const (
+	// MarkdownAgentDialect selects Markdown agent encoding.
 	MarkdownAgentDialect AgentDialect = "markdown"
-	PlainAgentDialect    AgentDialect = "plain"
+	// PlainAgentDialect selects plain-text agent encoding.
+	PlainAgentDialect AgentDialect = "plain"
 )
 
 // Capability is an awf-owned template capability. It is deliberately closed:
@@ -26,17 +28,23 @@ const (
 type Capability string
 
 const (
-	CapabilitySubagentTools  Capability = "subagent-tools"
+	// CapabilitySubagentTools enables target-native subagent tools.
+	CapabilitySubagentTools Capability = "subagent-tools"
+	// CapabilitySessionHandoff enables target-native session handoff.
 	CapabilitySessionHandoff Capability = "session-handoff"
+	// CapabilityEffortSessions enables target-native effort sessions.
 	CapabilityEffortSessions Capability = "effort-sessions"
 )
 
+// TargetOutputProducer identifies how a target-owned output is produced.
 type TargetOutputProducer string
 
 const (
+	// TargetOutputTemplate declares a template-produced target output.
 	TargetOutputTemplate TargetOutputProducer = "template"
 )
 
+// TargetOutputInput declares one semantic input to a target-owned output.
 type TargetOutputInput struct {
 	Path string
 	Role ArtifactRole
@@ -55,46 +63,6 @@ type TargetOutput struct {
 	Provenance     render.CommentStyle
 	Policy         OutputPolicy
 	PolicyDeclared bool
-}
-
-// targetTemplateData is the complete target projection exposed to templates.
-func (t Target) targetTemplateData() map[string]any {
-	return map[string]any{
-		"targetSubagentTools":  t.hasCapability(CapabilitySubagentTools),
-		"targetSessionHandoff": t.hasCapability(CapabilitySessionHandoff),
-		"targetEffortSessions": t.hasCapability(CapabilityEffortSessions),
-	}
-}
-
-func (t Target) hasCapability(c Capability) bool {
-	return slices.Contains(t.Capabilities, c)
-}
-
-// anyTargetHasCapability reports whether any target in the set declares the
-// capability. The neutral singleton render (the guide and the singleton docs)
-// reads it to set a project-level targetSessionHandoff signal, so
-// target-conditional prose in singleton templates renders iff some enabled
-// target supports it (ADR-0157 Decision 6); per-target renders still override
-// the key with their own targetTemplateData projection.
-func anyTargetHasCapability(targets []Target, c Capability) bool {
-	return slices.ContainsFunc(targets, func(t Target) bool { return HasCapability(t, c) })
-}
-
-// targetDescriptorProjection is stable across declaration ordering and includes
-// identity plus every descriptor field. It is hash input for a coalesced node.
-func targetDescriptorProjection(t Target) string {
-	caps := slices.Clone(t.Capabilities)
-	slices.Sort(caps)
-	outputs := slices.Clone(t.Outputs)
-	slices.SortFunc(outputs, func(a, b TargetOutput) int {
-		return strings.Compare(fmt.Sprintf("%#v", a), fmt.Sprintf("%#v", b))
-	})
-	return fmt.Sprintf("%#v", struct {
-		Name, SkillDir, AgentDir, AgentSuffix, BridgeFile, BridgeTemplate string
-		AgentDialect                                                      AgentDialect
-		Capabilities                                                      []Capability
-		Outputs                                                           []TargetOutput
-	}{t.Name, t.SkillDir, t.AgentDir, t.AgentSuffix, t.BridgeFile, t.BridgeTemplate, t.AgentDialect, caps, outputs})
 }
 
 func (t Target) validate() error {
@@ -183,10 +151,6 @@ func (t Target) AgentPath(name string) string {
 	return fmt.Sprintf("%s/%s%s", t.AgentDir, name, suffix)
 }
 
-func (t Target) agentCommentStyle() render.CommentStyle {
-	return render.HTMLComment
-}
-
 // The built-in adapters are declared below and wired into targetRegistry. Adding
 // a runtime is a new Target value plus a registry entry, not a render-loop change
 // (ADR-0037, ADR-0122).
@@ -241,20 +205,18 @@ func resolveTargets(names []string) ([]Target, error) {
 		if err := t.validate(); err != nil { // coverage-ignore: built-in registry descriptors are validated by descriptor tests
 			return nil, err
 		}
-		out = append(out, t)
+		out = append(out, cloneTargets([]Target{t})[0])
 	}
 	return out, nil
 }
 
-// ResolveTargets resolves the closed built-in target declarations.
+// ResolveTargets resolves defensive copies of the closed built-in target declarations.
 func ResolveTargets(names []string) ([]Target, error) { return resolveTargets(names) }
 
-func TargetTemplateData(t Target) map[string]any { return t.targetTemplateData() }
-func HasCapability(t Target, c Capability) bool  { return t.hasCapability(c) }
-func AnyTargetHasCapability(targets []Target, c Capability) bool {
-	return anyTargetHasCapability(targets, c)
+// ValidateTarget validates one resolved target declaration.
+func ValidateTarget(target Target) error { return target.validate() }
+
+// BuiltinTarget returns a defensive copy of one named built-in target.
+func BuiltinTarget(name string) Target {
+	return cloneTargets([]Target{targetRegistry[name]})[0]
 }
-func TargetDescriptorProjection(t Target) string     { return targetDescriptorProjection(t) }
-func AgentCommentStyle(t Target) render.CommentStyle { return t.agentCommentStyle() }
-func ValidateTarget(t Target) error                  { return t.validate() }
-func BuiltinTarget(name string) Target               { return targetRegistry[name] }

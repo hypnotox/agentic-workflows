@@ -17,7 +17,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
-	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/refs"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
@@ -99,7 +98,7 @@ func projectData(p renderInputs, sc config.Sidecar, eff map[string]bool) map[str
 		// Project-level session-handoff signal for the neutral (guide/singleton
 		// doc) render; per-target renders overwrite it from targetTemplateData
 		// (ADR-0157 Decision 6).
-		"targetSessionHandoff": projectstate.AnyTargetHasCapability(p.targets(), CapabilitySessionHandoff),
+		"targetSessionHandoff": anyTargetHasCapability(p.targets(), CapabilitySessionHandoff),
 	}
 }
 
@@ -478,7 +477,7 @@ func renderKind(p renderInputs, spec renderKindSpec, eff map[string]bool) ([]Ren
 			options.sources = spec.sources(name)
 		}
 		if spec.target.Name != "" {
-			for key, value := range projectstate.TargetTemplateData(spec.target) {
+			for key, value := range targetTemplateData(spec.target) {
 				data[key] = value
 			}
 			target := spec.target
@@ -487,7 +486,7 @@ func renderKind(p renderInputs, spec renderKindSpec, eff map[string]bool) ([]Ren
 			options.sources = sources
 		}
 		if spec.encode != nil {
-			options.bannerStyle = projectstate.AgentCommentStyle(spec.target)
+			options.bannerStyle = agentCommentStyle(spec.target)
 			options.encoder = spec.target.AgentDialect
 			options.encode = func(body string) (string, error) { return spec.encode(name, body, data) }
 		}
@@ -497,7 +496,7 @@ func renderKind(p renderInputs, spec renderKindSpec, eff map[string]bool) ([]Ren
 		}
 		if spec.target.Name != "" {
 			rf.Declarer = spec.target.Name
-			rf.DeclarerProjection = projectstate.TargetDescriptorProjection(spec.target)
+			rf.DeclarerProjection = targetDescriptorProjection(spec.target)
 			rf.Provenance = options.bannerStyle
 			if spec.encode != nil {
 				rf.Encoder = spec.target.AgentDialect
@@ -588,7 +587,7 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclarat
 			target := t
 			data := projectData(p, config.Sidecar{}, eff)
 
-			for key, value := range projectstate.TargetTemplateData(t) {
+			for key, value := range targetTemplateData(t) {
 				data[key] = value
 			}
 			rf, err := renderTarget(p, "target-output", "", targetOutput.TemplateID, nil,
@@ -602,7 +601,7 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclarat
 			}
 			rf.Policy = targetOutput.Policy
 			rf.Declarer = t.Name
-			rf.DeclarerProjection = projectstate.TargetDescriptorProjection(t)
+			rf.DeclarerProjection = targetDescriptorProjection(t)
 			rf.Encoder = targetOutput.Encoder
 			rf.Provenance = targetOutput.Provenance
 			for _, input := range targetOutput.Inputs { // coverage-ignore: validated target outputs cannot carry producer inputs

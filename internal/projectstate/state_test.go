@@ -1,6 +1,7 @@
 package projectstate
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
@@ -39,10 +40,31 @@ func TestProjectStateDefensivelyOwnsLoadedFacts(t *testing.T) {
 	}
 }
 
-func TestTargetAccessorsExposeDeclaredFacts(t *testing.T) {
+func TestTargetAccessorsExposeDefensiveDeclaredFacts(t *testing.T) {
 	target := BuiltinTarget("pi")
-	if target.Name != "pi" || !HasCapability(target, CapabilitySubagentTools) {
+	if target.Name != "pi" || !slices.Contains(target.Capabilities, CapabilitySubagentTools) {
 		t.Fatalf("built-in target = %#v", target)
+	}
+	target.Capabilities[0] = CapabilitySessionHandoff
+	target.Outputs[0].Path = "changed"
+	target.Outputs[0].Inputs = append(target.Outputs[0].Inputs, TargetOutputInput{Path: "changed"})
+	again := BuiltinTarget("pi")
+	if again.Capabilities[0] != CapabilitySubagentTools || again.Outputs[0].Path == "changed" || len(again.Outputs[0].Inputs) != 0 {
+		t.Fatalf("built-in target aliases registry = %#v", again)
+	}
+	resolved, err := ResolveTargets([]string{"pi"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolved[0].Capabilities[0] = CapabilitySessionHandoff
+	resolved[0].Outputs[0].Path = "resolved-change"
+	resolved[0].Outputs[0].Inputs = append(resolved[0].Outputs[0].Inputs, TargetOutputInput{Path: "resolved-change"})
+	repeated, err := ResolveTargets([]string{"pi"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if repeated[0].Capabilities[0] != CapabilitySubagentTools || repeated[0].Outputs[0].Path == "resolved-change" || len(repeated[0].Outputs[0].Inputs) != 0 {
+		t.Fatalf("resolved target aliases registry = %#v", repeated)
 	}
 }
 
