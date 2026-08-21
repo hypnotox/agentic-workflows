@@ -2,6 +2,7 @@ package project
 
 import (
 	"go/ast"
+	"go/token"
 	"go/types"
 	"path/filepath"
 	"slices"
@@ -59,6 +60,10 @@ import "context"
 func mutationAddsCompatibilityCaller(ctx context.Context, root string) (*ProjectState, error) {
 	return Open(ctx, root)
 }
+
+var mutationAddsPackageCompatibilityCaller = func(ctx context.Context, root string) (*ProjectState, error) {
+	return Open(ctx, root)
+}
 `),
 	}}, "./internal/project")
 	if err != nil {
@@ -70,8 +75,12 @@ func mutationAddsCompatibilityCaller(ctx context.Context, root string) (*Project
 		}
 		t.Fatalf("loaded mutation packages = %d, want 1", len(mutation))
 	}
-	if projectOpenCallers(mutation)[projectOpenCaller{pkg: projectImportPath, owner: "mutationAddsCompatibilityCaller"}] != 1 {
+	mutationCallers := projectOpenCallers(mutation)
+	if mutationCallers[projectOpenCaller{pkg: projectImportPath, owner: "mutationAddsCompatibilityCaller"}] != 1 {
 		t.Fatal("compatibility-opener census did not detect an added internal caller")
+	}
+	if mutationCallers[projectOpenCaller{pkg: projectImportPath, owner: "<package>"}] != 1 {
+		t.Fatal("compatibility-opener census did not detect a package-level caller")
 	}
 }
 
@@ -84,12 +93,31 @@ func projectOpenCallers(pkgs []*packages.Package) map[projectOpenCaller]int {
 	callers := map[projectOpenCaller]int{}
 	for _, pkg := range pkgs {
 		for _, file := range pkg.Syntax {
+			owners := map[token.Pos]string{}
 			for _, declaration := range file.Decls {
 				fn, ok := declaration.(*ast.FuncDecl)
-				if ok && callsProjectOpen(pkg.TypesInfo, fn) {
-					callers[projectOpenCaller{pkg: pkg.PkgPath, owner: fn.Name.Name}]++
+				if !ok || fn.Body == nil {
+					continue
 				}
+				ast.Inspect(fn.Body, func(node ast.Node) bool {
+					if node != nil {
+						owners[node.Pos()] = fn.Name.Name
+					}
+					return true
+				})
 			}
+			ast.Inspect(file, func(node ast.Node) bool {
+				call, ok := node.(*ast.CallExpr)
+				if !ok || !isProjectOpenCall(pkg.TypesInfo, call) {
+					return true
+				}
+				owner := owners[call.Pos()]
+				if owner == "" {
+					owner = "<package>"
+				}
+				callers[projectOpenCaller{pkg: pkg.PkgPath, owner: owner}]++
+				return true
+			})
 		}
 	}
 	return callers
@@ -120,24 +148,13 @@ func projectStateReceiver(info *types.Info, recv *ast.FieldList) bool {
 	return ok && named.Obj().Pkg() != nil && named.Obj().Pkg().Path() == projectImportPath && named.Obj().Name() == "ProjectState"
 }
 
-func callsProjectOpen(info *types.Info, node ast.Node) bool {
-	found := false
-	ast.Inspect(node, func(node ast.Node) bool {
-		call, ok := node.(*ast.CallExpr)
-		if !ok {
-			return true
-		}
-		var object types.Object
-		switch function := call.Fun.(type) {
-		case *ast.Ident:
-			object = info.Uses[function]
-		case *ast.SelectorExpr:
-			object = info.Uses[function.Sel]
-		}
-		if object != nil && object.Name() == "Open" && object.Pkg() != nil && object.Pkg().Path() == projectImportPath && object.Parent() == object.Pkg().Scope() {
-			found = true
-		}
-		return true
-	})
-	return found
+func isProjectOpenCall(info *types.Info, call *ast.CallExpr) bool {
+	var object types.Object
+	switch function := call.Fun.(type) {
+	case *ast.Ident:
+		object = info.Uses[function]
+	case *ast.SelectorExpr:
+		object = info.Uses[function.Sel]
+	}
+	return object != nil && object.Name() == "Open" && object.Pkg() != nil && object.Pkg().Path() == projectImportPath && object.Parent() == object.Pkg().Scope()
 }

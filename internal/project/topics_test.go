@@ -17,6 +17,16 @@ import (
 
 const topicProjectConfig = "prefix: example\nprofile: full\nintegrationBranch: main\nvars:\n  gateCmd: ./x gate\ndomains: [rendering]\n"
 
+func TestGenerateTopicDocsPropagatesProjectTreeEnumerationFailure(t *testing.T) {
+	calls := 0
+	reader := failingPathsReader{memoryProjectReader: memoryProjectReader{}, failAt: 1, calls: &calls}
+	state := &ProjectState{invokingRoot: t.TempDir()}
+	_, _, err := generateTopicDocs(newRenderInputs(state, nil, reader), topic.Corpus{})
+	if err == nil || !strings.Contains(err.Error(), "enumeration fault") {
+		t.Fatalf("generate topic docs error = %v, want enumeration fault", err)
+	}
+}
+
 func writeProjectTopic(t *testing.T, root, slug, title, applies string) {
 	t.Helper()
 	writeProjectTopicDomain(t, root, "rendering", slug, title, applies)

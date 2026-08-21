@@ -240,11 +240,18 @@ import (
 func mutationAddsPostRender(state *project.ProjectState, cfg *config.Config, ctx context.Context) {
 	_, _, _, _ = project.SyncReport(state, cfg, ctx)
 }
+
+var mutationAddsPackagePostRender = func(state *project.ProjectState, cfg *config.Config, ctx context.Context) {
+	_, _, _, _ = project.SyncReport(state, cfg, ctx)
+}
 `),
 	})
 	got := syncCompositionCalls(mutation)
 	if got[syncCompositionCall{file: "sync_wiring_mutation_fixture.go", owner: "mutationAddsPostRender", name: "SyncReport"}] != 1 {
 		t.Fatal("typed caller census did not detect an added post-mutation render")
+	}
+	if got[syncCompositionCall{file: "sync_wiring_mutation_fixture.go", owner: "<package>", name: "SyncReport"}] != 1 {
+		t.Fatal("typed caller census did not detect a package-level post-mutation render")
 	}
 }
 
@@ -272,32 +279,43 @@ func loadSyncCompositionPackage(t *testing.T, overlay map[string][]byte) *packag
 func syncCompositionCalls(pkg *packages.Package) map[syncCompositionCall]int {
 	got := map[syncCompositionCall]int{}
 	for _, file := range pkg.Syntax {
+		owners := map[token.Pos]string{}
 		for _, declaration := range file.Decls {
 			fn, ok := declaration.(*ast.FuncDecl)
 			if !ok || fn.Body == nil {
 				continue
 			}
 			ast.Inspect(fn.Body, func(node ast.Node) bool {
-				call, ok := node.(*ast.CallExpr)
-				if !ok {
-					return true
-				}
-				selector, ok := call.Fun.(*ast.SelectorExpr)
-				if !ok {
-					return true
-				}
-				object, ok := pkg.TypesInfo.Uses[selector.Sel].(*types.Func)
-				if !ok || object.Pkg() == nil || object.Pkg().Path() != "github.com/hypnotox/agentic-workflows/internal/project" {
-					return true
-				}
-				switch object.Name() {
-				case "NewLoader", "NewLoaderWithoutRepository", "Open", "OpenForOperation", "SyncReport":
-					position := pkg.Fset.Position(call.Pos())
-					got[syncCompositionCall{file: filepath.Base(position.Filename), owner: fn.Name.Name, name: object.Name()}]++
+				if node != nil {
+					owners[node.Pos()] = fn.Name.Name
 				}
 				return true
 			})
 		}
+		ast.Inspect(file, func(node ast.Node) bool {
+			call, ok := node.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			selector, ok := call.Fun.(*ast.SelectorExpr)
+			if !ok {
+				return true
+			}
+			object, ok := pkg.TypesInfo.Uses[selector.Sel].(*types.Func)
+			if !ok || object.Pkg() == nil || object.Pkg().Path() != "github.com/hypnotox/agentic-workflows/internal/project" {
+				return true
+			}
+			switch object.Name() {
+			case "NewLoader", "NewLoaderWithoutRepository", "Open", "OpenForOperation", "SyncReport":
+				owner := owners[call.Pos()]
+				if owner == "" {
+					owner = "<package>"
+				}
+				position := pkg.Fset.Position(call.Pos())
+				got[syncCompositionCall{file: filepath.Base(position.Filename), owner: owner, name: object.Name()}]++
+			}
+			return true
+		})
 	}
 	return got
 }

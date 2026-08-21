@@ -50,7 +50,7 @@ func generateTopicDocs(p renderInputs, corpus topic.Corpus) (files []RenderedFil
 		return nil, nil, err
 	}
 	currentPaths, err := p.read.Paths("")
-	if err != nil { // coverage-ignore: the selected production readers either enumerate an in-memory snapshot or propagate filesystem faults already covered at their boundary
+	if err != nil {
 		return nil, nil, err
 	}
 	base := config.DocsDir + "/topics"
