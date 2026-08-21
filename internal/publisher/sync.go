@@ -165,7 +165,7 @@ func (s syncFilesystems) output(rel string) (syncFilesystem, string) {
 
 func openSyncFilesystems(p renderInputs) (syncFilesystems, func(), error) {
 	tracked, err := filesystem.Open(p.state.Roots().Tracked)
-	if err != nil { // coverage-ignore: filesystem.Open failure propagation is retained by the confined filesystem seam; command composition covers the concrete handle
+	if err != nil {
 		return syncFilesystems{}, nil, err
 	}
 	closeAll := func() { _ = tracked.Close() }
@@ -209,7 +209,7 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("unreadable .awf/awf.lock (%w): restore it from version control, or delete it deliberately to re-adopt", err)
 		}
-	} else if !errors.Is(lockErr, fs.ErrNotExist) { // coverage-ignore: concrete confined lock-read faults are covered by filesystem; publication tests cover corrupt locks
+	} else if !errors.Is(lockErr, fs.ErrNotExist) {
 		return nil, nil, nil, fmt.Errorf("unreadable .awf/awf.lock (%w): restore it from version control, or delete it deliberately to re-adopt", lockErr)
 	}
 	if seed != nil {
@@ -262,12 +262,12 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 			}
 		}
 		if strings.HasPrefix(f.Path(), config.DirName+"/") && strings.HasSuffix(f.Path(), "/.gitignore") && resident.IsResidentPath(strings.TrimSuffix(f.Path(), "/.gitignore")) {
-			if err := filesystem.Chmod(dir, 0o700); err != nil { // coverage-ignore: concrete chmod failure requires a platform-specific denied resident root
+			if err := filesystem.Chmod(dir, 0o700); err != nil {
 				return backups, changes, pruned, err
 			}
 		}
 		info, infoErr := filesystem.LinkInfo(outputPath)
-		if infoErr != nil && !errors.Is(infoErr, fs.ErrNotExist) { // coverage-ignore: concrete LinkInfo fault propagation is exercised by the confined filesystem owner
+		if infoErr != nil && !errors.Is(infoErr, fs.ErrNotExist) {
 			return backups, changes, pruned, infoErr
 		}
 		if !prior[f.Path()] && infoErr == nil {
@@ -318,7 +318,7 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 			}
 			changes = append(changes, Change{Path: f.Path(), Cause: cause})
 		}
-		if err := filesystem.Replace(outputPath, []byte(f.Content()), perm); err != nil { // coverage-ignore: atomic replace failure identity is covered by filesystem; successful writes exercise this coordinator path
+		if err := filesystem.Replace(outputPath, []byte(f.Content()), perm); err != nil {
 			return backups, changes, pruned, err
 		}
 		// Replacement commits bytes and final mode together, so a change becomes
@@ -360,14 +360,14 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 			// prune - never a silent fall-through to deletion.
 			switch entry.TemplateID {
 			case localDocTID:
-				if info, existsErr := filesystem.LinkInfo(outputPath); existsErr != nil && !errors.Is(existsErr, fs.ErrNotExist) { // coverage-ignore: confined LinkInfo fault propagation is covered by filesystem
+				if info, existsErr := filesystem.LinkInfo(outputPath); existsErr != nil && !errors.Is(existsErr, fs.ErrNotExist) {
 					return backups, changes, pruned, fmt.Errorf("inspect pruned local document %s: %w", path, existsErr)
 				} else if existsErr == nil {
 					if info.Mode()&fs.ModeSymlink != 0 {
 						return backups, changes, pruned, fmt.Errorf("unsafe pruned local document %s", path)
 					}
 					bak, bakErr := backupFileConfined(outputPath, filesystem)
-					if bakErr != nil { // coverage-ignore: backup collision and failure propagation are covered by filesystem/filepublication
+					if bakErr != nil {
 						return backups, changes, pruned, fmt.Errorf("back up pruned local document %s: %w", path, bakErr)
 					}
 					backups = append(backups, Backup{Path: path, Bak: bak})
