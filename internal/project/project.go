@@ -256,11 +256,21 @@ func gitRepo(root string, repo *awfgit.Repo) (*awfgit.Repo, error) {
 }
 
 // Open is the transitional compatibility entry point for callers not yet
-// migrated to outer composition. New code composes a Loader explicitly.
-func Open(ctx context.Context, root string) (*ProjectState, error) {
-	repo, _, err := awfgit.OpenContaining(root)
-	if err != nil && !errors.Is(err, awfgit.ErrNotARepository) {
-		return nil, err
+// migrated to outer composition. A supplied repository preserves one composed
+// handle for an existing compatibility caller; new code composes a Loader.
+func Open(ctx context.Context, root string, selected ...*awfgit.Repo) (*ProjectState, error) {
+	if len(selected) > 1 {
+		return nil, errors.New("project Open: multiple repository dependencies")
+	}
+	var repo *awfgit.Repo
+	if len(selected) == 1 {
+		repo = selected[0]
+	} else {
+		var err error
+		repo, _, err = awfgit.OpenContaining(root)
+		if err != nil && !errors.Is(err, awfgit.ErrNotARepository) {
+			return nil, err
+		}
 	}
 	if repo == nil {
 		return NewLoaderWithoutRepository(config.Load, catalog.CompleteView().Catalog(), awfgit.ProjectResidentRoot).Open(ctx, root)

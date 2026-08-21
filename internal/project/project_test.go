@@ -540,6 +540,12 @@ func TestSyncRendersDeclaredDoc(t *testing.T) {
 // template golden cannot: RenderAll injects resolvedDocs() into the agents-doc
 // data map so the Document map auto-links every declared (non-local) doc with
 // its catalog title/desc. A local doc must not appear.
+func TestOpenRejectsMultipleRepositoryDependencies(t *testing.T) {
+	if _, err := Open(testContext(t), t.TempDir(), nil, nil); err == nil {
+		t.Fatal("multiple repository dependencies accepted")
+	}
+}
+
 func TestOpenRejectsMalformedRepository(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	if err := os.WriteFile(filepath.Join(root, ".git"), []byte("not a gitdir pointer"), 0o600); err != nil {

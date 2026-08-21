@@ -189,3 +189,5 @@ ordinary parsed configuration and its grammar are unchanged.
 Phase 3 review restored `awf new doc` project-open failure precedence by preparing a narrow
 preflight closure before later file operations. It also removed operation exports without an
 outside-package production consumer and documented every retained exported operation boundary.
+Renewed review then kept commit-policy composition on its focused existing entry point while
+selecting one repository handle for both Loader construction and verification.

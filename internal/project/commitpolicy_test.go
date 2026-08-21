@@ -287,6 +287,25 @@ func TestExactCommitEnforcement(t *testing.T) {
 	}
 }
 
+func TestVerifyCommitPolicyAtComposesOneRepositoryHandle(t *testing.T) {
+	source, err := os.ReadFile(filepath.Join(testsupport.RepoRoot(t), "internal/project/commitpolicy.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(source)
+	start := strings.Index(body, "func VerifyCommitPolicyAt")
+	if start < 0 {
+		t.Fatal("VerifyCommitPolicyAt is missing")
+	}
+	body = body[start:]
+	if got := strings.Count(body, "awfgit.OpenContaining("); got != 1 {
+		t.Fatalf("VerifyCommitPolicyAt repository opens = %d, want one", got)
+	}
+	if got := strings.Count(body, "Open(ctx, roots.InvokingRoot, repo)"); got != 1 {
+		t.Fatalf("VerifyCommitPolicyAt composed-handle opens = %d, want one", got)
+	}
+}
+
 func TestVerifyCommitPolicyAtReturnsTypedRootAndConfigRefusals(t *testing.T) {
 	document, out, err := VerifyCommitPolicyAt(testContext(t), t.TempDir(), []string{"HEAD"})
 	if err != nil {
@@ -306,5 +325,14 @@ func TestVerifyCommitPolicyAtReturnsTypedRootAndConfigRefusals(t *testing.T) {
 	text = documentText(t, document)
 	if out.Refusal == nil || out.Refusal.Category != commitpolicy.ConfigFailure || !strings.Contains(text, "load commitPolicy") {
 		t.Fatalf("config refusal = %#v, %q", out, text)
+	}
+	testsupport.WriteAwfConfig(t, fixture.Root(), "prefix: x\nprofile: unknown\nintegrationBranch: master\n")
+	document, out, err = VerifyCommitPolicyAt(testContext(t), fixture.Root(), []string{"HEAD"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	text = documentText(t, document)
+	if out.Refusal == nil || out.Refusal.Category != commitpolicy.ConfigFailure || !strings.Contains(text, "load commitPolicy") {
+		t.Fatalf("validation refusal = %#v, %q", out, text)
 	}
 }
