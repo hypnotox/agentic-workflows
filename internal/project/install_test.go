@@ -40,7 +40,7 @@ func TestSyncPrunesResidentLockEntryFromResidentRoot(t *testing.T) {
 	if err := lock.Save(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := syncReportProject(p, testContext(t)); err != nil {
+	if _, _, _, err := syncReportProject(p); err != nil {
 		t.Fatalf("resident-root prune path failed: %v", err)
 	}
 	lock, err = manifest.Load(lockFile(root))
@@ -199,7 +199,7 @@ func TestSyncReportPropagatesForeignBackupFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := initializeReportProject(p, testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
+	if _, _, _, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatal(err)
 	}
 	lock, err := manifest.Load(lockFile(root))
@@ -217,7 +217,7 @@ func TestSyncReportPropagatesForeignBackupFailure(t *testing.T) {
 	if err := os.Mkdir(foreign, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	_, _, _, err = syncReportProject(p, testContext(t))
+	_, _, _, err = syncReportProject(p)
 	if err == nil || !strings.Contains(err.Error(), "back up AGENTS.md") || !strings.Contains(err.Error(), "read backup source") {
 		t.Fatalf("SyncReport foreign backup error = %v", err)
 	}
@@ -310,7 +310,7 @@ func TestInitCollisionsSurfacesPlannedOutputsError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := initCollisionsProject(p, testContext(t)); err == nil {
+	if _, err := initCollisionsProject(p); err == nil {
 		t.Fatal("expected InitCollisions to surface the PlannedOutputs error")
 	}
 }

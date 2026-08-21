@@ -33,7 +33,7 @@ bootstrap:
 	if err != nil {
 		t.Fatalf("open fixture: %v", err)
 	}
-	if _, _, _, err := initializeReportProject(p, testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
+	if _, _, _, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatalf("initialize fixture: %v", err)
 	}
 	return root
@@ -58,7 +58,7 @@ func TestTemporaryAdopterRenderDriftLifecycle(t *testing.T) {
 	if !hasFixtureDrift(drift, "AGENTS.md", "hand-edited") {
 		t.Fatalf("drift=%v, want AGENTS.md hand-edited", drift)
 	}
-	if _, _, _, err := syncReportProject(p, testContext(t)); err != nil {
+	if _, _, _, err := syncReportProject(p); err != nil {
 		t.Fatalf("repair fixture: %v", err)
 	}
 	if drift, err := checkProject(p, testContext(t)); err != nil || len(drift) != 0 {

@@ -138,7 +138,7 @@ func TestNumberingReportPresentationValidatesAssignments(t *testing.T) {
 func TestNumberPendingADRsAssignsAndSubstitutes(t *testing.T) {
 	p, root := numberingProject(t, numberingFixture(t))
 
-	report, err := numberPendingADRsProject(p, testContext(t), []string{"early", "late"})
+	report, err := numberPendingADRsProject(p, []string{"early", "late"})
 	if err != nil {
 		t.Fatalf("NumberPendingADRs: %v", err)
 	}
@@ -191,7 +191,7 @@ func TestNumberPendingADRsLeavesPlansUntouched(t *testing.T) {
 	p, root := numberingProject(t, files)
 	before := snapshotDir(t, filepath.Join(root, "docs/plans"))
 
-	if _, err := numberPendingADRsProject(p, testContext(t), []string{"early", "late"}); err != nil {
+	if _, err := numberPendingADRsProject(p, []string{"early", "late"}); err != nil {
 		t.Fatalf("NumberPendingADRs: %v", err)
 	}
 	after := snapshotDir(t, filepath.Join(root, "docs/plans"))
@@ -222,7 +222,7 @@ func TestNumberPendingADRsBareInvocationNumbersTheOnlyRecord(t *testing.T) {
 			"### `rule: seed`\nSeed.\nOrigin: ADR-0001\n\n" +
 			"### `rule: seed-two`\nSecond.\nOrigin: ADR-only\n",
 	})
-	report, err := numberPendingADRsProject(p, testContext(t), nil)
+	report, err := numberPendingADRsProject(p, nil)
 	if err != nil {
 		t.Fatalf("NumberPendingADRs: %v", err)
 	}
@@ -248,7 +248,7 @@ func TestNumberPendingADRsReportsTheMappingWhenTheRerenderFails(t *testing.T) {
 			"### `rule: seed`\nSeed.\nOrigin: ADR-0001\n\n" +
 			"### `rule: dangling`\nDangling.\nOrigin: ADR-nowhere\n",
 	})
-	report, err := numberPendingADRsProject(p, testContext(t), nil)
+	report, err := numberPendingADRsProject(p, nil)
 	if err == nil || !strings.Contains(err.Error(), "cites missing ADR-nowhere") {
 		t.Fatalf("re-render failure = %v", err)
 	}
@@ -357,7 +357,7 @@ func TestNumberPendingADRsRefusals(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			p, root := numberingProject(t, tc.files)
 			before := snapshotDir(t, filepath.Join(root, "docs/decisions"))
-			_, err := numberPendingADRsProject(p, testContext(t), tc.args)
+			_, err := numberPendingADRsProject(p, tc.args)
 			if err == nil || err.Error() != tc.want {
 				t.Fatalf("error = %v, want %q", err, tc.want)
 			}
@@ -434,7 +434,7 @@ func TestNumberPendingADRsIgnoresUnrelatedDrift(t *testing.T) {
 		t.Fatal("the fixture must be drifted for this test to mean anything")
 	}
 
-	report, err := numberPendingADRsProject(p, testContext(t), nil)
+	report, err := numberPendingADRsProject(p, nil)
 	if err != nil {
 		t.Fatalf("numbering must not require a green check: %v", err)
 	}

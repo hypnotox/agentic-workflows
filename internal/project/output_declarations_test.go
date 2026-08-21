@@ -171,7 +171,7 @@ func TestOutputDeclarationsMatchThePlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := outputPlanProject(p, testContext(t))
+	plan, err := outputPlanProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,7 +222,7 @@ func TestEnabledMarkdownDeclarationsMatchObservedTemplateSources(t *testing.T) {
 		t.Fatal(err)
 	}
 	testConfig(p).Render = &config.RenderConfig{TemplateSourceRoot: "templates"}
-	plan, err := outputPlanProject(p, testContext(t))
+	plan, err := outputPlanProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -257,7 +257,7 @@ func TestPitfallDeclarationPlanDependencyParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := outputPlanProject(p, testContext(t))
+	plan, err := outputPlanProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -311,7 +311,7 @@ func TestOutputPlanObservesConsumedInputsIndependently(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := outputPlanProject(p, testContext(t))
+	plan, err := outputPlanProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}

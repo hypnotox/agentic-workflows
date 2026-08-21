@@ -32,7 +32,7 @@ func TestUnsetVarNotesPresentKeySemantics(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			notes, err := advisoryNotesProject(p, testContext(t))
+			notes, err := advisoryNotesProject(p)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -57,7 +57,7 @@ func TestUnsetVarNotesCollapsesAdapterDuplicates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := advisoryNotesProject(p, testContext(t))
+	notes, err := advisoryNotesProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestUnsetVarNotesSurfacesRenderError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := advisoryNotesProject(p, testContext(t)); err == nil {
+	if _, err := advisoryNotesProject(p); err == nil {
 		t.Fatal("expected AdvisoryNotes to surface the render error")
 	}
 }
@@ -97,7 +97,7 @@ func TestAdvisoryNotesSurfacesDomainDocError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := advisoryNotesProject(p, testContext(t)); err == nil {
+	if _, err := advisoryNotesProject(p); err == nil {
 		t.Fatal("expected AdvisoryNotes to surface the domain-doc generation error")
 	}
 }
@@ -114,7 +114,7 @@ func TestStubNotesPathKeyedAcrossTargets(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := advisoryNotesProject(p, testContext(t))
+	notes, err := advisoryNotesProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,7 +166,7 @@ func TestStubNotesReportsDefaultsAndParts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := advisoryNotesProject(p, testContext(t))
+	notes, err := advisoryNotesProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -180,7 +180,7 @@ func TestStubNotesReportsDefaultsAndParts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err = advisoryNotesProject(p2, testContext(t))
+	notes, err = advisoryNotesProject(p2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +197,7 @@ func TestStubNotesDomainDocs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := advisoryNotesProject(p, testContext(t))
+	notes, err := advisoryNotesProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,7 +220,7 @@ func TestMarkerNotesPartKeyedAndDeduplicated(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := advisoryNotesProject(p, testContext(t))
+	notes, err := advisoryNotesProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -249,7 +249,7 @@ func TestMarkerNotesInlineAndFencedSilent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := advisoryNotesProject(p, testContext(t))
+	notes, err := advisoryNotesProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -271,7 +271,7 @@ func TestMarkerNotesDomainDocParts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := advisoryNotesProject(p, testContext(t))
+	notes, err := advisoryNotesProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -286,7 +286,7 @@ func TestUnsetVarNotesFullySetIsSilent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := advisoryNotesProject(p, testContext(t))
+	notes, err := advisoryNotesProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}

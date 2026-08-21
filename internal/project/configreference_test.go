@@ -164,7 +164,7 @@ func TestConfigReferenceDerivedLiveValues(t *testing.T) {
 	assertValues := func(t *testing.T, configYAML string, want map[string]string) {
 		t.Helper()
 		root, p := syncedProject(t, configYAML, nil)
-		model, err := configReferenceProject(p, testContext(t))
+		model, err := configReferenceProject(p)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -289,7 +289,7 @@ func TestConfigReferenceListLayerStates(t *testing.T) {
 				files = map[string]string{"skills/tdd.yaml": tc.sidecar}
 			}
 			_, p := syncedProject(t, base, files)
-			model, err := configReferenceProject(p, testContext(t))
+			model, err := configReferenceProject(p)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -311,7 +311,7 @@ func TestConfigReferenceListLayerStates(t *testing.T) {
 	_, glossaryProject := syncedProject(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", map[string]string{
 		"docs/glossary.yaml": "data:\n  terms:\n    - {term: Local, meaning: ProjectState-specific term.}\n",
 	})
-	glossaryModel, err := configReferenceProject(glossaryProject, testContext(t))
+	glossaryModel, err := configReferenceProject(glossaryProject)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -463,10 +463,10 @@ func TestConfigReferencePartReadFault(t *testing.T) {
 	if err := syncProject(p); err == nil {
 		t.Error("Sync should surface the part-read fault")
 	}
-	if _, err := advisoryNotesProject(p, testContext(t)); err == nil {
+	if _, err := advisoryNotesProject(p); err == nil {
 		t.Error("AdvisoryNotes should surface the part-read fault")
 	}
-	if _, err := plannedOutputsProject(p, testContext(t)); err == nil {
+	if _, err := plannedOutputsProject(p); err == nil {
 		t.Error("PlannedOutputs should surface the part-read fault")
 	}
 }

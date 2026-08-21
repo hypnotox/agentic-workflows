@@ -582,7 +582,7 @@ func TestCheckReportsPendingADROnIntegrationBranch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := initializeReportProject(p, testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
+	if _, _, _, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatal(err)
 	}
 	// Two records, because the claim quantifies over EVERY pending record: a
@@ -851,7 +851,7 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 	if got, want := reportTrackingPaths(reportValue), expectedTrackingPaths(p); !slices.Equal(got, want) {
 		t.Errorf("top-level CheckReport tracking paths differ from every OutputPlan write plus lock:\n got %q\nwant %q", got, want)
 	}
-	directNotes, err := advisoryNotesProject(p, testContext(t))
+	directNotes, err := advisoryNotesProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1176,7 +1176,7 @@ func TestAdvisoryNotesSurfacesPlanCommitError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := advisoryNotesProject(p, testContext(t)); err == nil {
+	if _, err := advisoryNotesProject(p); err == nil {
 		t.Fatal("expected AdvisoryNotes to surface the plan-commit ParseDir error")
 	}
 }
@@ -1254,10 +1254,10 @@ func TestAdvisoryNotesAndConfigReferenceSurfaceMalformedADR(t *testing.T) {
 	}
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-broken.md"),
 		"---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n")
-	if _, err := advisoryNotesProject(p, testContext(t)); err == nil {
+	if _, err := advisoryNotesProject(p); err == nil {
 		t.Fatal("expected AdvisoryNotes to surface the malformed ADR, got nil")
 	}
-	if _, err := configReferenceProject(p, testContext(t)); err == nil {
+	if _, err := configReferenceProject(p); err == nil {
 		t.Fatal("expected ConfigReferenceModel to surface the malformed ADR, got nil")
 	}
 }
@@ -1276,7 +1276,7 @@ func TestInitializeReportSurfacesDuplicateADRIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := initializeReportProject(p, testContext(t), InitAuthority{InitializedWithVersion: Version}); err == nil ||
+	if _, _, _, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version}); err == nil ||
 		!strings.Contains(err.Error(), "ADR number 0001 is declared by more than one file") {
 		t.Fatalf("expected duplicate ADR identity to fail the corpus load, got %v", err)
 	}
@@ -1546,7 +1546,7 @@ func TestInitializeReportAcceptsBrownfieldGovernedRecord(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := initializeReportProject(p, testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
+	if _, _, _, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatalf("initialize governed brownfield: %v", err)
 	}
 	after, err := os.ReadFile(filepath.Join(root, "docs/decisions", "0001-governed.md"))
@@ -1575,7 +1575,7 @@ func TestAgentGuideSizeAdvisoryBoundary(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			op, err := outputPlanProject(p, testContext(t))
+			op, err := outputPlanProject(p)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1590,7 +1590,7 @@ func TestAgentGuideSizeAdvisoryBoundary(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			op, err = outputPlanProject(p, testContext(t))
+			op, err = outputPlanProject(p)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1625,7 +1625,7 @@ func TestAgentGuideSizeAdvisoryBoundary(t *testing.T) {
 				if ordinaryIndex < 0 || sizeIndex < 0 || ordinaryIndex >= sizeIndex {
 					t.Fatalf("CheckReport notes do not place ordinary advisory before size advisory: %#v", report.Notes)
 				}
-				direct, err := advisoryNotesProject(p, testContext(t))
+				direct, err := advisoryNotesProject(p)
 				if err != nil {
 					t.Fatal(err)
 				}

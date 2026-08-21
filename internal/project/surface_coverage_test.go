@@ -34,7 +34,7 @@ func TestAdvisoryNotesRejectMalformedRetainedData(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := advisoryNotesProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "unknown") {
+		if _, err := advisoryNotesProject(p); err == nil || !strings.Contains(err.Error(), "unknown") {
 			t.Fatalf("advisory pitfall error = %v", err)
 		}
 	})
@@ -65,7 +65,7 @@ func TestOutputPlanRejectsMalformedRetainedData(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := outputPlanProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), tc.want) {
+			if _, err := outputPlanProject(p); err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("output-plan error = %v", err)
 			}
 		})

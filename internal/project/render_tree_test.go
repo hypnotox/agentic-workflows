@@ -60,7 +60,7 @@ func TestCheckReportAgentGuideSizeAdvisoryManagedOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	op, err := outputPlanProject(p, testContext(t))
+	op, err := outputPlanProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}

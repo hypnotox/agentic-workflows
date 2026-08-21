@@ -173,7 +173,7 @@ func TestPruneBacksUpCoOwnedRunner(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			backups, _, pruned, err := syncReportProject(p2, testContext(t))
+			backups, _, pruned, err := syncReportProject(p2)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -233,7 +233,7 @@ func TestPruneRemovesManagedRunnerSymlinkWithoutTargetAccess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	backups, _, pruned, err := syncReportProject(p, testContext(t))
+	backups, _, pruned, err := syncReportProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -279,7 +279,7 @@ func TestRunnerPrunePropagatesBackupFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, _, err = syncReportProject(p, testContext(t))
+	_, _, _, err = syncReportProject(p)
 	if err == nil || !strings.Contains(err.Error(), "back up pruned runner x") || !strings.Contains(err.Error(), "read backup source") {
 		t.Fatalf("runner prune backup error = %v", err)
 	}

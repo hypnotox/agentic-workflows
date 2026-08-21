@@ -78,7 +78,7 @@ func TestLocalDocRendersAndPreservesBody(t *testing.T) {
 		t.Fatalf("local document declaration missing: %#v", declarations)
 	}
 	testConfig(p).LocalDocs = nil
-	backups, _, pruned, err := syncReportProject(p, testContext(t))
+	backups, _, pruned, err := syncReportProject(p)
 	if err != nil || !slices.Contains(backups, Backup{Path: "docs/runbooks/incident-response.md", Bak: "docs/runbooks/incident-response.md.awf-bak"}) || !slices.Contains(pruned, "docs/runbooks/incident-response.md") {
 		t.Fatalf("local document prune = backups %#v, pruned %#v, error %v", backups, pruned, err)
 	}
@@ -110,7 +110,7 @@ func TestLocalDocPruneUsesFirstFreeBackupSuffix(t *testing.T) {
 		t.Fatal(err)
 	}
 	testConfig(p).LocalDocs = nil
-	backups, _, pruned, err := syncReportProject(p, testContext(t))
+	backups, _, pruned, err := syncReportProject(p)
 	want := Backup{Path: "docs/runbooks/incident.md", Bak: "docs/runbooks/incident.md.awf-bak.1"}
 	if err != nil || !slices.Contains(backups, want) || !slices.Contains(pruned, want.Path) {
 		t.Fatalf("numbered prune = backups %#v, pruned %#v, error %v", backups, pruned, err)
@@ -138,7 +138,7 @@ func TestLocalDocPruneRejectsSymlinkAndKeepsLock(t *testing.T) {
 		t.Skipf("symlink unavailable: %v", err)
 	}
 	testConfig(p).LocalDocs = nil
-	if _, _, _, err := syncReportProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "unsafe pruned local document") {
+	if _, _, _, err := syncReportProject(p); err == nil || !strings.Contains(err.Error(), "unsafe pruned local document") {
 		t.Fatalf("symlink local document error = %v", err)
 	}
 	lock, err := os.ReadFile(lockFile(root))
@@ -162,7 +162,7 @@ func TestLocalDocPruneAbsentSourceNeedsNoBackup(t *testing.T) {
 		t.Fatal(err)
 	}
 	testConfig(p).LocalDocs = nil
-	backups, _, pruned, err := syncReportProject(p, testContext(t))
+	backups, _, pruned, err := syncReportProject(p)
 	if err != nil || len(backups) != 0 || len(pruned) != 0 {
 		t.Fatalf("absent local prune = backups %#v, pruned %#v, error %v", backups, pruned, err)
 	}

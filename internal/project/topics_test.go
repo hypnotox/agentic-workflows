@@ -154,7 +154,7 @@ func TestScaffoldedZeroClaimTopicPipeline(t *testing.T) {
 	if !ok || len(shell.Claims) != 0 {
 		t.Fatalf("scaffold shell = %#v, found %v", shell, ok)
 	}
-	op, err := outputPlanProject(p, testContext(t))
+	op, err := outputPlanProject(p)
 	if err != nil {
 		t.Fatalf("output plan: %v", err)
 	}
@@ -249,7 +249,7 @@ func TestTopicRenderLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	op, err := outputPlanProject(p, testContext(t))
+	op, err := outputPlanProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -349,7 +349,7 @@ func TestTopicBrownfieldCollisionUsesSharedBackup(t *testing.T) {
 	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs/topics/rendering/contracts.md"), "foreign\n")
 	p, _ := Open(testContext(t), root)
-	backups, _, _, err := initializeReportProject(p, testContext(t), InitAuthority{InitializedWithVersion: Version})
+	backups, _, _, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -376,7 +376,7 @@ func TestTopicPruneRemoveAndRename(t *testing.T) {
 	}
 	writeProjectTopic(t, root, "new", "New", "paths: [\"internal/**\"]\n")
 	p2, _ := Open(testContext(t), root)
-	_, _, pruned, err := syncReportProject(p2, testContext(t))
+	_, _, pruned, err := syncReportProject(p2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -392,7 +392,7 @@ func TestTopicOutputCollisions(t *testing.T) {
 		root := topicProject(t)
 		writeProjectTopic(t, root, "index", "Index", "paths: [\"internal/**\"]\n")
 		p, _ := Open(testContext(t), root)
-		if _, err := outputPlanProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "same output path") {
+		if _, err := outputPlanProject(p); err == nil || !strings.Contains(err.Error(), "same output path") {
 			t.Fatalf("collision %v", err)
 		}
 	})
@@ -402,7 +402,7 @@ func TestTopicRenderRejectsMalformedAuthoringComment(t *testing.T) {
 	writeProjectTopic(t, root, "x", "X", "paths: [\"internal/**\"]\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/parts/rendering/x/current-state.md"), "<!-- awf:comment no close\n\n## Claims\n")
 	p, _ := Open(testContext(t), root)
-	if _, err := outputPlanProject(p, testContext(t)); err == nil {
+	if _, err := outputPlanProject(p); err == nil {
 		t.Fatal("malformed authoring comment accepted")
 	}
 }
@@ -411,7 +411,7 @@ func TestTopicCorpusRefusalAndSweep(t *testing.T) {
 	root := topicProject(t)
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/metadata/rendering/orphan.yaml"), "title: X\nsummary: X.\npaths: [x]\n")
 	p, _ := Open(testContext(t), root)
-	if _, err := outputPlanProject(p, testContext(t)); err == nil {
+	if _, err := outputPlanProject(p); err == nil {
 		t.Fatal("orphan corpus accepted")
 	}
 	if err := os.Remove(filepath.Join(root, ".awf/topics/metadata/rendering/orphan.yaml")); err != nil {
@@ -657,7 +657,7 @@ Backing: test
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, pruned, err := syncReportProject(p, testContext(t))
+	_, _, pruned, err := syncReportProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}

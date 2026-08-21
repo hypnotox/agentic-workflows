@@ -18,7 +18,7 @@ func TestLegacyActiveMDIndexNotPlanned(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	planned, err := plannedOutputsProject(p, testContext(t))
+	planned, err := plannedOutputsProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -97,7 +97,7 @@ func testPitfallHashAndOutputLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	before, err := outputPlanProject(p, testContext(t))
+	before, err := outputPlanProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +109,7 @@ func testPitfallHashAndOutputLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	afterBody, err := outputPlanProject(p, testContext(t))
+	afterBody, err := outputPlanProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +126,7 @@ func testPitfallHashAndOutputLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	afterMetadata, err := outputPlanProject(p, testContext(t))
+	afterMetadata, err := outputPlanProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +178,7 @@ func testPitfallHashAndOutputLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, pruned, err := syncReportProject(p, testContext(t))
+	_, _, pruned, err := syncReportProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}

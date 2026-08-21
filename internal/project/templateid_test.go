@@ -327,7 +327,7 @@ func TestLiveTemplateIDsResolve(t *testing.T) {
 	state := *p
 	state.selectedCat = catalog.NewView(selected)
 	p = &state
-	if _, err := outputPlanProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "missing/live-template.tmpl") {
+	if _, err := outputPlanProject(p); err == nil || !strings.Contains(err.Error(), "missing/live-template.tmpl") {
 		t.Fatalf("missing live template error = %v", err)
 	}
 }

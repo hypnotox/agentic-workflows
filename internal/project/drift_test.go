@@ -402,7 +402,7 @@ func TestSyncReportRefusesCorruptLockBeforeWriting(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := syncReportProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
+	if _, _, _, err := syncReportProject(p); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
 		t.Fatalf("want refusal with hint, got %v", err)
 	}
 	after, err := os.ReadFile(agents)

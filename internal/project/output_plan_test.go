@@ -22,7 +22,7 @@ func TestLocalDocsOutputPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := outputPlanProject(p, testContext(t))
+	plan, err := outputPlanProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +63,7 @@ func TestLocalDocDeclarationDeclaresExistingOutputInput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := outputPlanProject(p, testContext(t))
+	plan, err := outputPlanProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +94,7 @@ func TestLocalDocCollisionWithTargetOutputPrecedesRendering(t *testing.T) {
 		t.Fatal(err)
 	}
 	setTestTargets(p, append(testTargets(p), Target{Name: "collision", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "docs/runbooks/x.md", TemplateID: "docs/architecture.md.tmpl", Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}}))
-	if _, err := outputPlanProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "collides with managed output") {
+	if _, err := outputPlanProject(p); err == nil || !strings.Contains(err.Error(), "collides with managed output") {
 		t.Fatalf("collision error = %v", err)
 	}
 }
@@ -118,7 +118,7 @@ func TestOutputPlanPropagatesPreAdoptionEnumerationFault(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chmod(denied, 0o755) })
-	if _, err := outputPlanProject(p, testContext(t)); err == nil {
+	if _, err := outputPlanProject(p); err == nil {
 		t.Fatal("output plan built from a truncated enumeration")
 	}
 }
@@ -154,7 +154,7 @@ func TestTargetDescriptorValidation(t *testing.T) {
 			t.Fatal(err)
 		}
 		setTestTargets(p, []Target{target})
-		if _, err := outputPlanProject(p, testContext(t)); err == nil {
+		if _, err := outputPlanProject(p); err == nil {
 			t.Fatalf("planner accepted invalid target %#v", target)
 		}
 	}
@@ -195,7 +195,7 @@ func TestBridgeRenderIdentity(t *testing.T) {
 		}},
 	}
 	setTestTargets(p, []Target{claudeTarget, custom, piTarget})
-	plan, err := outputPlanProject(p, testContext(t))
+	plan, err := outputPlanProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -267,7 +267,7 @@ func TestBridgeRenderIdentity(t *testing.T) {
 
 	custom.BridgeTemplate = "missing/custom-bridge.tmpl"
 	setTestTargets(p, []Target{custom})
-	if _, err := outputPlanProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "read template missing/custom-bridge.tmpl") {
+	if _, err := outputPlanProject(p); err == nil || !strings.Contains(err.Error(), "read template missing/custom-bridge.tmpl") {
 		t.Fatalf("missing custom bridge template error = %v", err)
 	}
 }
@@ -284,7 +284,7 @@ func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *test
 	shared.Name = "second-pi"
 	shared.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
 	setTestTargets(p, append(testTargets(p), shared))
-	op, err := outputPlanProject(p, testContext(t))
+	op, err := outputPlanProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -303,7 +303,7 @@ func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *test
 	targets := testTargets(p)
 	targets[len(targets)-1].Name = "renamed-pi"
 	setTestTargets(p, targets)
-	op, err = outputPlanProject(p, testContext(t))
+	op, err = outputPlanProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -315,7 +315,7 @@ func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *test
 	targets = testTargets(p)
 	targets[len(targets)-1].Outputs[0].Policy = OutputPolicy{Regenerate: true}
 	setTestTargets(p, targets)
-	if _, err := outputPlanProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "conflicting output recipes") {
+	if _, err := outputPlanProject(p); err == nil || !strings.Contains(err.Error(), "conflicting output recipes") {
 		t.Fatalf("conflicting shared output error = %v", err)
 	}
 }
@@ -350,7 +350,7 @@ func TestCurrentStateOutputPlanMatchesTree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	op, err := outputPlanProject(p, testContext(t))
+	op, err := outputPlanProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -410,7 +410,7 @@ func TestOutputPlanTopicNodesHaveLiteralPathsAndInputs(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
 	p, _ := Open(testContext(t), root)
-	op, err := outputPlanProject(p, testContext(t))
+	op, err := outputPlanProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -466,7 +466,7 @@ func TestOutputPlanPropagatesConfigReferenceRenderFault(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := outputPlanProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "malformed awf:comment") {
+	if _, err := outputPlanProject(p); err == nil || !strings.Contains(err.Error(), "malformed awf:comment") {
 		t.Fatalf("output plan error = %v", err)
 	}
 }

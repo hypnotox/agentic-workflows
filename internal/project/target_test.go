@@ -1033,7 +1033,7 @@ func TestPlannedOutputsIncludesGeneratedDocs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	planned, err := plannedOutputsProject(p, testContext(t))
+	planned, err := plannedOutputsProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1056,7 +1056,7 @@ func TestPlannedOutputsSurfacesRenderError(t *testing.T) {
 	}
 	// Corrupt a sidecar so the RenderAll inside PlannedOutputs fails.
 	corruptSidecar(t, root, "skills/tdd.yaml")
-	if _, err := plannedOutputsProject(p, testContext(t)); err == nil {
+	if _, err := plannedOutputsProject(p); err == nil {
 		t.Fatal("expected PlannedOutputs to surface the RenderAll error")
 	}
 }

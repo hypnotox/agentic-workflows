@@ -22,12 +22,12 @@ func TestTemplateSourceMarkerProducerMatrix(t *testing.T) {
 		t.Fatal(err)
 	}
 	testConfig(p).Render = nil
-	plain, err := outputPlanProject(p, testContext(t))
+	plain, err := outputPlanProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
 	testConfig(p).Render = &config.RenderConfig{TemplateSourceRoot: "templates"}
-	active, err := outputPlanProject(p, testContext(t))
+	active, err := outputPlanProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -150,11 +150,11 @@ func TestResidentMarkerCompositionMatchesPlannedOutput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	composed, err := renderResidentMarkerProject(p, testContext(t), "effort-archive")
+	composed, err := renderResidentMarkerProject(p, "effort-archive")
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := outputPlanProject(p, testContext(t))
+	plan, err := outputPlanProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +178,7 @@ func TestRenderResidentMarkerPropagatesOutputPlanFailure(t *testing.T) {
 	state := *p
 	state.targets = append(state.resolvedTargets(), Target{Outputs: []TargetOutput{{TemplateID: "missing/live-template.tmpl"}}})
 	p = &state
-	if _, err := renderResidentMarkerProject(p, testContext(t), "effort-archive"); err == nil {
+	if _, err := renderResidentMarkerProject(p, "effort-archive"); err == nil {
 		t.Fatal("resident marker renderer hid output-plan failure")
 	}
 }
