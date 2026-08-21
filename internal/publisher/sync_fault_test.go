@@ -6,7 +6,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"reflect"
 	"slices"
 	"sync"
 	"testing"
@@ -469,9 +468,18 @@ func syncFailedOutput(t *testing.T, corruptHash bool) {
 		t.Fatalf("output=%q %v", got, e)
 	}
 }
-func TestSyncRetainsCommittedPartialAccountingOnLaterFailure(t *testing.T) {
+
+// TestPublisherSyncRetainsCommittedPartialResultOnLaterFilesystemFailure uses
+// only the public Publisher.Sync boundary. It makes the first planned output
+// need a mode correction, then turns the later bridge output into a directory
+// that cannot be atomically replaced. Returning Result{} from Publisher.sync
+// when its terminal error is non-nil would lose the asserted committed change.
+func TestPublisherSyncRetainsCommittedPartialResultOnLaterFilesystemFailure(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	state, _ := Open(testContext(t), root)
+	state, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := syncProject(state); err != nil {
 		t.Fatal(err)
 	}
@@ -479,19 +487,20 @@ func TestSyncRetainsCommittedPartialAccountingOnLaterFailure(t *testing.T) {
 	if err := os.Chmod(agents, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
-	if err != nil {
+	bridge := filepath.Join(root, "CLAUDE.md")
+	if err := os.Remove(bridge); err != nil {
 		t.Fatal(err)
 	}
-	defer closeAll()
-	failure := errors.New("later replacement failed")
-	filesystems.tracked = replacementFaultFilesystem{filesystems.tracked, "CLAUDE.md", failure}
-	_, changes, _, err := syncWithFilesystems(t, state, filesystems)
-	if !errors.Is(err, failure) {
+	if err := os.Mkdir(bridge, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if want := []Change{{"AGENTS.md", "internal"}}; !reflect.DeepEqual(changes, want) {
-		t.Fatalf("changes=%v want=%v", changes, want)
+
+	result, err := testPublisher(renderInputsForTest(state)).Sync()
+	if err == nil {
+		t.Fatal("Sync accepted an unreplaceable later output")
+	}
+	if got := result.Changes(); len(got) != 1 || got[0] != (Change{Path: "AGENTS.md", Cause: "internal"}) {
+		t.Fatalf("changes=%v, want committed AGENTS.md mode correction", got)
 	}
 	assertPerm(t, agents, 0o644)
 }

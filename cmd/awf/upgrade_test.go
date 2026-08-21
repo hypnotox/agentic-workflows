@@ -431,6 +431,90 @@ func TestRunUpgradeCompletionMigrationFailureRetainsCreatedLockAxis(t *testing.T
 	}
 }
 
+// preparePublicSyncLaterFailure makes public Publisher.Sync commit the earlier
+// AGENTS.md mode correction before the later bridge path cannot be replaced.
+func preparePublicSyncLaterFailure(t *testing.T, root string) {
+	t.Helper()
+	if err := os.Chmod(filepath.Join(root, "AGENTS.md"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	bridge := filepath.Join(root, "CLAUDE.md")
+	if err := os.Remove(bridge); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(bridge, 0o755); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestPublicSyncPartialResultHasDivergentUpgradeAndSyncPresentation proves the
+// two callers intentionally consume the same real partial Publisher.Result
+// differently. The upgrade mapping retains the committed output fact in its
+// failure diagnostic; ordinary sync returns neither a mutation nor output.
+func TestPublicSyncPartialResultHasDivergentUpgradeAndSyncPresentation(t *testing.T) {
+	t.Run("upgrade retains the real partial result", func(t *testing.T) {
+		root := scaffoldProject(t)
+		preparePublicSyncLaterFailure(t, root)
+		syncDependencies := productionUpgradeSyncDependencies()
+		syncDependencies.publisherSync = func(_ context.Context, state *project.ProjectState, cfg *config.Config) (publisher.Result, error) {
+			return composePublisher(state, cfg).Sync()
+		}
+		dependencies := productionUpgradeDependencies()
+		dependencies.sync = func(ctx context.Context, gotRoot string) (upgradeSyncOutcome, error) {
+			return upgradeSyncMutationWith(ctx, gotRoot, syncDependencies)
+		}
+		err := runUpgradeWith(testContext(t), root, io.Discard, dependencies)
+		if err == nil {
+			t.Fatal("upgrade sync accepted an unreplaceable later output")
+		}
+		var upgradeErr upgradeFailure
+		if !errors.As(err, &upgradeErr) {
+			t.Fatalf("upgrade error = %T, want upgradeFailure", err)
+		}
+		if len(upgradeErr.sync.Changes) != 1 || upgradeErr.sync.Changes[0].Label != "outputs" || len(upgradeErr.sync.Changes[0].Values) != 1 {
+			t.Fatalf("upgrade failure mutation = %#v, want the one committed output", upgradeErr.sync)
+		}
+		diagnostic, diagnosticErr := upgradeErr.Diagnostic()
+		if diagnosticErr != nil {
+			t.Fatal(diagnosticErr)
+		}
+		document, documentErr := diagnostic.Document()
+		if documentErr != nil {
+			t.Fatal(documentErr)
+		}
+		var rendered bytes.Buffer
+		if renderErr := presentation.Render(&rendered, document); renderErr != nil {
+			t.Fatal(renderErr)
+		}
+		if got := rendered.String(); !strings.Contains(got, "outputs: changed AGENTS.md (internal)") || !strings.Contains(got, err.Error()) {
+			t.Fatalf("upgrade failure diagnostic = %q, want committed output and sync error", got)
+		}
+	})
+
+	t.Run("ordinary sync discards the real partial result", func(t *testing.T) {
+		root := scaffoldProject(t)
+		preparePublicSyncLaterFailure(t, root)
+		loader, err := newProjectLoader(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		mutation, _, _, syncErr := syncMutation(testContext(t), loader, root, nil)
+		if syncErr == nil {
+			t.Fatal("ordinary sync accepted an unreplaceable later output")
+		}
+		if mutation.Status != "" || len(mutation.Changes) != 0 || len(mutation.Notes) != 0 || len(mutation.NextActions) != 0 {
+			t.Fatalf("ordinary sync mutation = %#v, want empty mutation on error", mutation)
+		}
+		var stdout bytes.Buffer
+		if err := runSync(testContext(t), root, &stdout); err == nil {
+			t.Fatal("ordinary sync command accepted an unreplaceable later output")
+		}
+		if stdout.Len() != 0 {
+			t.Fatalf("ordinary sync stdout = %q, want no partial output", stdout.String())
+		}
+	})
+}
+
 func TestUpgradePresentationPropagatesOperationalFailures(t *testing.T) {
 	t.Run("loader construction", func(t *testing.T) {
 		root := t.TempDir()
