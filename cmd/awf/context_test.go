@@ -13,6 +13,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/clispec"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -355,6 +356,23 @@ func TestRunContextSelectionAndProjectErrors(t *testing.T) {
 	static := t.TempDir()
 	if err := runContext(ctx, static, []string{"x"}, false, "", false, false, nil, &failOutput{}); err == nil {
 		t.Fatal("stdout failure accepted")
+	}
+}
+
+func TestRunContextPropagatesMalformedRepository(t *testing.T) {
+	root := ctxCmdFixture(t)
+	if err := os.RemoveAll(filepath.Join(root, ".git")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".git"), []byte("not a gitdir pointer"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ctx := testContext(t)
+	for _, uncovered := range []bool{false, true} {
+		err := runContext(ctx, root, []string{"internal/foo/x.go"}, false, "", uncovered, false, nil, io.Discard)
+		if err == nil || errors.Is(err, awfgit.ErrNotARepository) {
+			t.Fatalf("uncovered=%v malformed repository error = %v", uncovered, err)
+		}
 	}
 }
 

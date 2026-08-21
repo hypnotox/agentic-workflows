@@ -70,7 +70,7 @@ func runContext(ctx context.Context, cwd string, paths []string, staged bool, rn
 			return err
 		}
 		projectState, _, repo, e := openProjectOperation(ctx, cwd)
-		if e != nil { // coverage-ignore: gate just loaded the same config and project presence; failure requires a concurrent filesystem race
+		if e != nil {
 			return e
 		}
 		state, err = project.BuildContextState(projectState, repo, ctx)
@@ -104,7 +104,7 @@ func runUncovered(ctx context.Context, cwd string, roots []string, staged bool, 
 			var projectState *project.ProjectState
 			var repo *awfgit.Repo
 			projectState, _, repo, err = openProjectOperation(ctx, cwd)
-			if err == nil { // coverage-ignore: gate just loaded the same project; an open failure requires a concurrent filesystem race
+			if err == nil {
 				state, err = project.BuildContextState(projectState, repo, ctx)
 			}
 		}
