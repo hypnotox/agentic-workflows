@@ -188,10 +188,10 @@ correction is allowed without unrelated cleanup riding along.
 | RF-001 | P1 | COMPLETE | Concrete dependency direction and one named semantic owner per extraction | Program A milestone |
 | RF-008A | P1 | COMPLETE | Durable private compatibility policy and a real support-floor inventory | Program A milestone |
 | RF-008B | P1 | CONDITIONAL | Obsolete compatibility pruned below the support floor | RF-008A, managed repos upgraded |
-| RF-002 | P1 | READY | Residual project state separated from operations | RF-001 |
-| RF-003 | P1 | BLOCKED | One application owner for output planning and publication coordination | RF-002 |
-| RF-004 | P1 | BLOCKED | Check aggregation separated from check policy; severity in the result model | AF-013, RF-002 |
-| RF-005 | P1 | BLOCKED | Current-state coordination extracted from project orchestration | RF-002 |
+| RF-002 | P1 | COMPLETE | Residual project state separated from operations | RF-001 |
+| RF-003 | P1 | READY | One application owner for output planning and publication coordination | RF-002 |
+| RF-004 | P1 | READY | Check aggregation separated from check policy; severity in the result model | AF-013, RF-002 |
+| RF-005 | P1 | READY | Current-state coordination extracted from project orchestration | RF-002 |
 | RF-006 | P1 | BLOCKED | `cmd/awf` reduced to parse, compose, invoke, render, exit | RF-002..RF-005 |
 | RF-007 | P2 | BLOCKED | Residual giant tests split by observable behaviour and semantic owner | RF-002..RF-006 |
 | RF-009 | P1 | DECISION | Post-refactor critical-path coverage policy and regression control | RF-007, owner ruling |
@@ -256,10 +256,12 @@ correction is allowed without unrelated cleanup riding along.
 
 ### Program B start gate
 
-**Status: OPEN; B-F1 AND RF-014A COMPLETE.** Program A is complete; generated artifacts are stable
+**Status: OPEN; B-F1 THROUGH B-F3 COMPLETE.** Program A is complete; generated artifacts are stable
 under the new doctrine; changed behaviour has deterministic regression coverage; no known
-adopter-facing contradiction remains; RF-001 establishes the target dependency map. RF-008B and
-RF-014B remain conditional because nine managed repositories have not upgraded from 0.39.1.
+adopter-facing contradiction remains; RF-001 establishes the target dependency map and RF-002
+establishes immutable project state. RF-003 through RF-005 are dependency-ready but execute
+sequentially. RF-008B and RF-014B remain conditional because nine managed repositories have not
+upgraded from 0.39.1.
 
 Program A milestone complete; generated artifacts stable under the new doctrine; new behaviour has
 regression tests; no known adopter-facing contradiction remains; compatibility support policy decided
@@ -871,6 +873,39 @@ abstraction; oracle strength.
   remains.
 - **Unblocked:** RF-012's B-F3 contribution is complete. RF-002 remains active; RF-003 through RF-006
   retain their named RF-002 dependencies, and RF-008B and RF-014B remain conditional.
+
+### RF-002
+
+- **Range:** Original issue base `941d2c160`; current-main integration and terminal range
+  `11680ebb3..0cfdce475`.
+- **Protected contract:** Loader constructs immutable `ProjectState` facts while repository,
+  project-tree, snapshot, filesystem, and other volatile mechanisms are selected at composition and
+  passed only to operations that use them. CLI results, streams, errors, exits, ordering, generated
+  bytes, working and staged isolation, and ADR-0297 compatibility remain unchanged.
+- **Clean integration:** The broad `Project` state-and-operation receiver is gone. Focused functions
+  remain temporarily in `internal/project` under RF-003 through RF-006's named future owners;
+  `project.Open` remains only as the no-new-caller compatibility opener. No universal dependency bag,
+  speculative interface, service locator, or later issue implementation was introduced.
+- **Files changed:** Immutable config facts, Loader and project state, explicit operation inputs,
+  command composition, context and evaluation fixtures, the migrated project test corpus, focused
+  facade and caller-census oracles, authored and rendered architecture and glossary documentation,
+  the generated lock, and the implementation plan establish and prove the boundary.
+- **Verification:** Focused config, project, command, context, and evaluation tests passed. Repeated
+  full gates covered 20,703 statements at 100 percent; render, drift, staged, dead-code, pin, workflow,
+  and local audits passed. Phase and terminal reviews settled immutable-alias, operation-input,
+  repository-composition, caller-census, obsolete-context, and deterministic error-propagation
+  findings. Final assurance covered the combined RF-012 history and exact issue tip.
+- **Deviations:** A bounded exported facade kept the tree green until first command consumers existed,
+  then was deleted. RF-012 integrated during Phase 2 and its pitfall-only tag semantics were preserved.
+  Review replaced an initial receiver-renaming pass with explicit operation values and removed stale
+  context parameters. Local audit retained one reasoned no-changelog advisory because no adopter
+  behavior changed, plus eleven reviewed defensive coverage exclusions.
+- **Residual debt:** Publisher, RepositoryChecker, CurrentStateCoordinator, focused command use cases,
+  residual test ownership, and historical-comment cleanup remain assigned to RF-003 through RF-007
+  and RF-010. Compatibility deletion remains gated under RF-008B and RF-014B.
+- **Unblocked:** RF-003, RF-004, and RF-005 are dependency-ready. B-F4 remains sequential; RF-003 is
+  selected next by listed order. RF-006 still waits on all three, and later issues retain their named
+  dependencies and compatibility conditions.
 
 Close each later issue with the same evidence: identity; baseline and final range; protected contract;
 clean integration; files changed with reason; verification commands and results; material deviations;
