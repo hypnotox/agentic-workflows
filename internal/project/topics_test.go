@@ -20,7 +20,7 @@ const topicProjectConfig = "prefix: example\nprofile: full\nintegrationBranch: m
 func TestGenerateTopicDocsPropagatesProjectTreeEnumerationFailure(t *testing.T) {
 	calls := 0
 	reader := failingPathsReader{memoryProjectReader: memoryProjectReader{}, failAt: 1, calls: &calls}
-	state := &ProjectState{invokingRoot: t.TempDir()}
+	state := testStateAt(t.TempDir())
 	_, _, err := generateTopicDocs(newRenderInputs(state, nil, reader), topic.Corpus{})
 	if err == nil || !strings.Contains(err.Error(), "enumeration fault") {
 		t.Fatalf("generate topic docs error = %v, want enumeration fault", err)

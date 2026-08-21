@@ -175,9 +175,7 @@ func TestRenderResidentMarkerPropagatesOutputPlanFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	state := *p
-	state.targets = append(state.resolvedTargets(), Target{Outputs: []TargetOutput{{TemplateID: "missing/live-template.tmpl"}}})
-	p = &state
+	p = setTestTargets(p, append(p.Targets(), Target{Outputs: []TargetOutput{{TemplateID: "missing/live-template.tmpl"}}}))
 	if _, err := renderResidentMarkerProject(p, "effort-archive"); err == nil {
 		t.Fatal("resident marker renderer hid output-plan failure")
 	}

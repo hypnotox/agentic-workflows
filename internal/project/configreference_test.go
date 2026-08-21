@@ -31,9 +31,7 @@ func TestConfigReferenceRowsPropagatesInjectedTemplateReadError(t *testing.T) {
 	}
 	selected := p.catalog()
 	selected.Skills["missing-template"] = catalog.SkillSpec{}
-	state := *p
-	state.selectedCat = catalog.NewView(selected)
-	p = &state
+	p = testStateWith(p, p.Root(), p.roots(), p.nested(), selected, p.completeCatalog(), p.Targets())
 	_, err = configReferenceRows(renderInputsForTest(p), nil)
 	if err == nil || !strings.Contains(err.Error(), "skills/missing-template/SKILL.md.tmpl") {
 		t.Fatalf("config reference template error = %v", err)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
@@ -48,7 +49,7 @@ func TestUnifiedDocModelProjections(t *testing.T) {
 
 	// (c) every structural non-root entry's TemplateKey/Path lands in templateMap
 	// at the derived docsDir path.
-	state := &ProjectState{selectedCat: catalog.NewView(cat), completeCat: catalog.NewView(cat)}
+	state := testStateWith(testState(&config.Config{}), "", resident.NewRoots("", ""), false, cat, cat, nil)
 	tm := layout(newRenderInputs(state, &config.Config{}, nil)).templateMap()
 	for _, e := range cat.Docs {
 		if e.Path == "" || e.AgentsDoc {
@@ -66,7 +67,7 @@ func TestProjectSingletonConsumersUseInjectedView(t *testing.T) {
 	delete(custom.Docs, "workflow")
 	custom.Docs["custom-singleton"] = catalog.DocEntry{Path: "custom.md", Sections: []string{"body"}}
 	cfg := &config.Config{}
-	p := &ProjectState{invokingRoot: t.TempDir(), selectedCat: catalog.NewView(&custom), completeCat: catalog.NewView(&custom)}
+	p := testStateWith(testState(&config.Config{}), t.TempDir(), resident.NewRoots(t.TempDir(), t.TempDir()), false, &custom, &custom, nil)
 	model := buildClaimedModel(newRenderInputs(p, cfg, filesystemProjectReader{root: p.Root()}), nil, topic.Corpus{})
 	if model.singletons["workflow"] || !model.singletons["custom-singleton"] {
 		t.Fatalf("project singleton membership = %#v", model.singletons)

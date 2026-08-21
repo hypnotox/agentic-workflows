@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
@@ -826,7 +827,7 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 		}
 		required := map[string]bool{config.DirName + "/awf.lock": true}
 		for _, output := range op.writeFiles() {
-			if p.nested && resident.IsResidentPath(output.Path) {
+			if p.nested() && resident.IsResidentPath(output.Path) {
 				continue
 			}
 			required[output.Path] = true
@@ -878,7 +879,7 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !nestedProject.nested {
+	if !nestedProject.nested() {
 		t.Fatal("nested project did not preserve its containing-repository prefix")
 	}
 	if err := syncProject(nestedProject); err != nil {
@@ -969,7 +970,7 @@ func TestCheckReportRequiresGeneratedArtifactsInIndex(t *testing.T) {
 
 func TestCheckLockedFilesSuppressesMissingForUntrackedOutputs(t *testing.T) {
 	root := t.TempDir()
-	p := &ProjectState{roots: resident.NewRoots(root, root)}
+	p := testStateWith(testState(&config.Config{}), root, resident.NewRoots(root, root), false, catalog.Standard, catalog.Standard, nil)
 	rendered := map[string]RenderedFile{
 		"regen.md":  {Path: "regen.md", Content: "regen", Policy: OutputPolicy{Regenerate: true}},
 		"normal.md": {Path: "normal.md", Content: "normal"},
@@ -1000,8 +1001,8 @@ func TestCheckLockedFilesSuppressesMissingForUntrackedOutputs(t *testing.T) {
 // invariant: rendering/sync-and-drift:generated-artifacts-tracked (TestCheckGeneratedTrackingNoGitAndNestedResidentExclusion)
 func TestCheckGeneratedTrackingNoGitAndNestedResidentExclusion(t *testing.T) {
 	t.Run("no Git", func(t *testing.T) {
-		p := &ProjectState{invokingRoot: t.TempDir()}
-		_, notes, err := checkGeneratedTracking(p.nested, testRepo(p), testContext(t), &OutputPlan{})
+		p := testStateAt(t.TempDir())
+		_, notes, err := checkGeneratedTracking(p.nested(), testRepo(p), testContext(t), &OutputPlan{})
 		if err != nil || len(notes) != 1 || !strings.Contains(notes[0], "unavailable outside a Git repository") {
 			t.Fatalf("no-Git tracking = notes %q, err %v", notes, err)
 		}
@@ -1014,7 +1015,7 @@ func TestCheckGeneratedTrackingNoGitAndNestedResidentExclusion(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !p.nested {
+		if !p.nested() {
 			t.Fatal("Loader.Open did not preserve the containing-repository prefix")
 		}
 		if _, _, _, err := syncReport(renderInputsForTest(p), &InitAuthority{InitializedWithVersion: Version}); err != nil {

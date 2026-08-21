@@ -151,7 +151,7 @@ func TestPitfallScaffoldCLIContract(t *testing.T) {
 
 // invariant: tooling/cli:pitfall-scaffold (TestNewPitfallPublicationFailureLeavesDestinationAbsent)
 func TestNewPitfallPublicationFailureLeavesDestinationAbsent(t *testing.T) {
-	if _, err := newPitfallProject(&ProjectState{invokingRoot: filepath.Join(t.TempDir(), "missing")}, "Unopened"); err == nil {
+	if _, err := newPitfallProject(testStateAt(filepath.Join(t.TempDir(), "missing")), "Unopened"); err == nil {
 		t.Fatal("missing project root opened for pitfall scaffold")
 	}
 	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n")

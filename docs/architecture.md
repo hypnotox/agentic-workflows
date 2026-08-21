@@ -13,7 +13,8 @@ awf renders workflow guidance from committed `.awf/` configuration. The CLI owns
 <!-- awf:edit components: from .awf/docs/parts/architecture/components.md -->
 <!-- awf:template-source templates/docs/architecture.md.tmpl -->
 ## Components
-- `internal/project`: `Loader` constructs immutable `ProjectState` facts; focused functions own configuration, rendering, output-planning, and repository-check operations with explicit tree and Git inputs. Publisher, RepositoryChecker, CurrentStateCoordinator, and command-use-case extraction remain future boundaries.
+- `internal/projectstate`: owns immutable loaded project facts and resolved target declarations below application coordination.
+- `internal/project`: `Loader` constructs the lower `ProjectState` facts while preserving its compatibility surface; focused functions own configuration, rendering, output-planning, and repository-check operations with explicit tree and Git inputs. Publisher, RepositoryChecker, CurrentStateCoordinator, and command-use-case extraction remain future boundaries.
 - `internal/adr`, `internal/currentstate`, and `internal/plan`: decision, active-authority, and plan models.
 - `internal/effort` and `internal/worktree`: local residents and Git-backed topology.
 - `internal/git`: the sole semantic Git seam.

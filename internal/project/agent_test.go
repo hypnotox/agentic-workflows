@@ -6,7 +6,9 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 )
 
 func TestEncodeMarkdownAgent(t *testing.T) {
@@ -63,9 +65,9 @@ func TestEncodeAgentRejectsInvalidMetadata(t *testing.T) {
 
 // invariant: rendering/catalog-and-targets:structured-agent-encoding (TestProjectRendersStandardAgentMetadataAndBody)
 func TestProjectRendersStandardAgentMetadataAndBody(t *testing.T) {
-	p := &ProjectState{selectedCat: catalog.NewView(&catalog.Catalog{Agents: map[string]catalog.AgentSpec{
+	p := testStateWith(testState(&config.Config{}), "", resident.NewRoots("", ""), false, &catalog.Catalog{Agents: map[string]catalog.AgentSpec{
 		"reviewer": {Name: "literal-reviewer", Description: "Rendered {{ .audience }} description."},
-	}})}
+	}}, catalog.Standard, nil)
 	// The body deliberately begins with valid but conflicting frontmatter. A
 	// structured encoder preserves it as instructions; an implementation that
 	// reparses an intermediate Markdown artifact would substitute this decoy.
@@ -106,9 +108,9 @@ func TestProjectRendersStandardAgentMetadataAndBody(t *testing.T) {
 func TestProjectEncodeAgentRejectsUnknownDialect(t *testing.T) {
 	t.Parallel()
 
-	p := &ProjectState{selectedCat: catalog.NewView(&catalog.Catalog{Agents: map[string]catalog.AgentSpec{
+	p := testStateWith(testState(&config.Config{}), "", resident.NewRoots("", ""), false, &catalog.Catalog{Agents: map[string]catalog.AgentSpec{
 		"reviewer": {Name: "reviewer", Description: "description"},
-	}})}
+	}}, catalog.Standard, nil)
 	if _, err := encodeAgent(renderInputsForTest(p), Target{AgentDialect: "unknown"}, "reviewer", "# reviewer\n", map[string]any{}); err == nil {
 		t.Fatal("encodeAgent accepted an unknown dialect")
 	}
@@ -117,9 +119,9 @@ func TestProjectEncodeAgentRejectsUnknownDialect(t *testing.T) {
 func TestProjectEncodeMarkdownAgentRejectsInvalidDescriptionTemplate(t *testing.T) {
 	t.Parallel()
 
-	p := &ProjectState{selectedCat: catalog.NewView(&catalog.Catalog{Agents: map[string]catalog.AgentSpec{
+	p := testStateWith(testState(&config.Config{}), "", resident.NewRoots("", ""), false, &catalog.Catalog{Agents: map[string]catalog.AgentSpec{
 		"reviewer": {Name: "reviewer", Description: "{{"},
-	}})}
+	}}, catalog.Standard, nil)
 	if _, err := encodeAgent(renderInputsForTest(p), claudeTarget, "reviewer", "# reviewer\n", map[string]any{}); err == nil {
 		t.Fatal("encodeMarkdownAgent accepted an invalid description template")
 	}

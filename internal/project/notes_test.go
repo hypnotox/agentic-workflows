@@ -8,7 +8,6 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -553,9 +552,7 @@ func TestGlossaryTersenessNotesCoversShippedLayer(t *testing.T) {
 		cp := *projectCatalog(renderInputsForTest(p))
 		cp.Docs = maps.Clone(projectCatalog(renderInputsForTest(p)).Docs)
 		cp.Docs["glossary"] = e
-		state := *p
-		state.selectedCat = catalog.NewView(&cp)
-		p = &state
+		p = testStateWith(p, p.Root(), p.roots(), p.nested(), &cp, p.completeCatalog(), p.Targets())
 		notes, err := glossaryTersenessNotes(renderInputsForTest(p))
 		if err != nil {
 			t.Fatal(err)

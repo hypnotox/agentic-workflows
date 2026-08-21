@@ -5,7 +5,7 @@
 
 The compile-time catalog and the tool-agnostic target seam.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/pitfall/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/catalog/**`, `internal/project/target.go`, `internal/project/target_test.go`. Both domain and topic selectors must match. Run `awf topic rendering/catalog-and-targets --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/pitfall/**`, `internal/project/**`, `internal/projectstate/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/catalog/**`, `internal/project/target.go`, `internal/project/target_test.go`, `internal/projectstate/**`. Both domain and topic selectors must match. Run `awf topic rendering/catalog-and-targets --coverage` for current applicable and owned paths and marker sites.
 
 The catalog package holds the compile-time descriptor set for every artifact kind and target adapter. The claims below capture the current catalog and target contracts.
 

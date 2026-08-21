@@ -48,7 +48,7 @@ type ContextState struct {
 // own configuration rather than the caller's, so the query answers about the
 // tree it was given.
 func contextState(state *ProjectState, repo *awfgit.Repo, ctx context.Context) (ContextState, error) {
-	ws, err := workingCurrentState(state.invokingRoot, repo, ctx)
+	ws, err := workingCurrentState(state.Root(), repo, ctx)
 	if err != nil {
 		return ContextState{}, err
 	}

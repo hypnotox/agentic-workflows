@@ -10,6 +10,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
@@ -93,7 +94,7 @@ func TestLocalDocCollisionWithTargetOutputPrecedesRendering(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	setTestTargets(p, append(testTargets(p), Target{Name: "collision", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "docs/runbooks/x.md", TemplateID: "docs/architecture.md.tmpl", Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}}))
+	p = setTestTargets(p, append(testTargets(p), Target{Name: "collision", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "docs/runbooks/x.md", TemplateID: "docs/architecture.md.tmpl", Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}}))
 	if _, err := outputPlanProject(p); err == nil || !strings.Contains(err.Error(), "collides with managed output") {
 		t.Fatalf("collision error = %v", err)
 	}
@@ -145,7 +146,7 @@ func TestTargetDescriptorValidation(t *testing.T) {
 		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}},
 		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{ScanReferences: true}, PolicyDeclared: true}}},
 	} {
-		if err := target.validate(); err == nil {
+		if err := projectstate.ValidateTarget(target); err == nil {
 			t.Fatalf("invalid target %#v was accepted", target)
 		}
 		root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
@@ -153,15 +154,15 @@ func TestTargetDescriptorValidation(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		setTestTargets(p, []Target{target})
+		p = setTestTargets(p, []Target{target})
 		if _, err := outputPlanProject(p); err == nil {
 			t.Fatalf("planner accepted invalid target %#v", target)
 		}
 	}
-	if got := piTarget.targetTemplateData()["targetSubagentTools"]; got != true {
+	if got := projectstate.TargetTemplateData(piTarget)["targetSubagentTools"]; got != true {
 		t.Fatalf("Pi subagent capability projection = %#v", got)
 	}
-	if got := piTarget.targetTemplateData()["targetSessionHandoff"]; got != true {
+	if got := projectstate.TargetTemplateData(piTarget)["targetSessionHandoff"]; got != true {
 		t.Fatalf("Pi handoff capability projection = %#v", got)
 	}
 	if _, err := resolveTargets([]string{"nope"}); err == nil {
@@ -194,7 +195,7 @@ func TestBridgeRenderIdentity(t *testing.T) {
 			Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true,
 		}},
 	}
-	setTestTargets(p, []Target{claudeTarget, custom, piTarget})
+	p = setTestTargets(p, []Target{claudeTarget, custom, piTarget})
 	plan, err := outputPlanProject(p)
 	if err != nil {
 		t.Fatal(err)
@@ -249,7 +250,7 @@ func TestBridgeRenderIdentity(t *testing.T) {
 			t.Errorf("custom descriptor output %s is absent", path)
 		}
 	}
-	if !custom.targetTemplateData()["targetSubagentTools"].(bool) || !custom.targetTemplateData()["targetSessionHandoff"].(bool) {
+	if !projectstate.TargetTemplateData(custom)["targetSubagentTools"].(bool) || !projectstate.TargetTemplateData(custom)["targetSessionHandoff"].(bool) {
 		t.Error("custom descriptor capabilities were not projected")
 	}
 	for _, output := range piTarget.Outputs {
@@ -266,7 +267,7 @@ func TestBridgeRenderIdentity(t *testing.T) {
 	}
 
 	custom.BridgeTemplate = "missing/custom-bridge.tmpl"
-	setTestTargets(p, []Target{custom})
+	p = setTestTargets(p, []Target{custom})
 	if _, err := outputPlanProject(p); err == nil || !strings.Contains(err.Error(), "read template missing/custom-bridge.tmpl") {
 		t.Fatalf("missing custom bridge template error = %v", err)
 	}
@@ -283,7 +284,7 @@ func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *test
 	shared := piTarget
 	shared.Name = "second-pi"
 	shared.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
-	setTestTargets(p, append(testTargets(p), shared))
+	p = setTestTargets(p, append(testTargets(p), shared))
 	op, err := outputPlanProject(p)
 	if err != nil {
 		t.Fatal(err)
@@ -302,7 +303,7 @@ func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *test
 	}
 	targets := testTargets(p)
 	targets[len(targets)-1].Name = "renamed-pi"
-	setTestTargets(p, targets)
+	p = setTestTargets(p, targets)
 	op, err = outputPlanProject(p)
 	if err != nil {
 		t.Fatal(err)
@@ -314,7 +315,7 @@ func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *test
 	}
 	targets = testTargets(p)
 	targets[len(targets)-1].Outputs[0].Policy = OutputPolicy{Regenerate: true}
-	setTestTargets(p, targets)
+	p = setTestTargets(p, targets)
 	if _, err := outputPlanProject(p); err == nil || !strings.Contains(err.Error(), "conflicting output recipes") {
 		t.Fatalf("conflicting shared output error = %v", err)
 	}
@@ -477,7 +478,7 @@ func TestTargetOutputDeclarationsRejectUnreadableTemplate(t *testing.T) {
 	bad.Outputs[0].TemplateID = "missing/target-output.tmpl"
 	cfg := &config.Config{Prefix: "example"}
 	p := testState(cfg)
-	p.targets = []Target{bad}
+	p = setTestTargets(p, []Target{bad})
 	_, err := targetOutputDeclarations(newRenderInputs(p, cfg, nil), nil)
 	t.Logf("target output declaration error = %v", err)
 	if err == nil || !strings.Contains(err.Error(), "read template missing/target-output.tmpl") {
@@ -491,7 +492,7 @@ func TestTargetOutputDeclarationsRejectUnknownRequiredSkill(t *testing.T) {
 	bad.Outputs[0].RequiresSkill = "missing"
 	cfg := &config.Config{Prefix: "example"}
 	p := testState(cfg)
-	p.targets = []Target{bad}
+	p = setTestTargets(p, []Target{bad})
 	if _, err := targetOutputDeclarations(newRenderInputs(p, cfg, nil), nil); err == nil || !strings.Contains(err.Error(), "unknown catalog skill") {
 		t.Fatalf("unknown target output requirement error = %v", err)
 	}
@@ -503,7 +504,7 @@ func TestValidateLiveTemplatesRejectsMissingTargetTemplate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	setTestTargets(p, append(testTargets(p), Target{Outputs: []TargetOutput{{TemplateID: "missing/live-template.tmpl"}}}))
+	p = setTestTargets(p, append(testTargets(p), Target{Outputs: []TargetOutput{{TemplateID: "missing/live-template.tmpl"}}}))
 	if err := validateLiveTemplates(renderInputsForTest(p)); err == nil || !strings.Contains(err.Error(), "read template missing/live-template.tmpl") {
 		t.Fatalf("missing live template error = %v", err)
 	}

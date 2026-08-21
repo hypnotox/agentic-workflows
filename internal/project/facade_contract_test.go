@@ -13,6 +13,7 @@ import (
 )
 
 const projectImportPath = "github.com/hypnotox/agentic-workflows/internal/project"
+const projectStateImportPath = "github.com/hypnotox/agentic-workflows/internal/projectstate"
 
 func TestProjectStateProductionBoundary(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
@@ -23,8 +24,9 @@ func TestProjectStateProductionBoundary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	allowedMethods := []string{"Config", "Root", "Targets", "catalog", "completeCatalog", "resolvedTargets"}
-	var methods []string
+	allowedMethods := []string{"Catalog", "CompleteCatalog", "Config", "Facts", "Nested", "Root", "Roots", "Targets"}
+	compatibilityMethods := []string{"Config", "Root", "Targets"}
+	var methods, compatibility []string
 	for _, pkg := range pkgs {
 		if len(pkg.Errors) != 0 {
 			t.Fatal(pkg.Errors[0])
@@ -38,15 +40,22 @@ func TestProjectStateProductionBoundary(t *testing.T) {
 				if !ok {
 					continue
 				}
-				if pkg.PkgPath == projectImportPath && projectStateReceiver(pkg.TypesInfo, fn.Recv) {
+				if pkg.PkgPath == projectStateImportPath && projectStateReceiver(pkg.TypesInfo, fn.Recv, projectStateImportPath) {
 					methods = append(methods, fn.Name.Name)
+				}
+				if pkg.PkgPath == projectImportPath && fn.Name.IsExported() && projectStateReceiver(pkg.TypesInfo, fn.Recv, projectImportPath) {
+					compatibility = append(compatibility, fn.Name.Name)
 				}
 			}
 		}
 	}
 	sort.Strings(methods)
 	if !slices.Equal(methods, allowedMethods) {
-		t.Fatalf("ProjectState methods = %v, want fact accessors only %v", methods, allowedMethods)
+		t.Fatalf("projectstate.ProjectState methods = %v, want fact accessors only %v", methods, allowedMethods)
+	}
+	sort.Strings(compatibility)
+	if !slices.Equal(compatibility, compatibilityMethods) {
+		t.Fatalf("project.ProjectState compatibility methods = %v, want RF-002 surface %v", compatibility, compatibilityMethods)
 	}
 	wantCallers := map[projectOpenCaller]int{{pkg: projectImportPath, owner: "VerifyCommitPolicyAt"}: 1}
 	assertProjectOpenCallers(t, projectOpenCallers(pkgs), wantCallers)
@@ -136,7 +145,7 @@ func assertProjectOpenCallers(t *testing.T, got, want map[projectOpenCaller]int)
 	}
 }
 
-func projectStateReceiver(info *types.Info, recv *ast.FieldList) bool {
+func projectStateReceiver(info *types.Info, recv *ast.FieldList, packagePath string) bool {
 	if recv == nil || len(recv.List) != 1 {
 		return false
 	}
@@ -145,7 +154,7 @@ func projectStateReceiver(info *types.Info, recv *ast.FieldList) bool {
 		typ = pointer.Elem()
 	}
 	named, ok := typ.(*types.Named)
-	return ok && named.Obj().Pkg() != nil && named.Obj().Pkg().Path() == projectImportPath && named.Obj().Name() == "ProjectState"
+	return ok && named.Obj().Pkg() != nil && named.Obj().Pkg().Path() == packagePath && named.Obj().Name() == "ProjectState"
 }
 
 func isProjectOpenCall(info *types.Info, call *ast.CallExpr) bool {

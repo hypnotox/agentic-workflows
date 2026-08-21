@@ -2,5 +2,6 @@ title: Catalog and targets
 summary: The compile-time catalog and the tool-agnostic target seam.
 paths:
   - internal/catalog/**
+  - internal/projectstate/**
   - internal/project/target.go
   - internal/project/target_test.go

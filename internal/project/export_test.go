@@ -34,14 +34,30 @@ func testConfig(state *ProjectState) *config.Config {
 }
 
 func testState(cfg *config.Config) *ProjectState {
-	facts, err := config.NewFacts(cfg)
+	state, err := newProjectState("", resident.NewRoots("", ""), false, cfg, catalog.Standard, catalog.Standard, nil)
 	if err != nil {
 		panic(err)
 	}
-	standard := catalog.NewView(catalog.Standard)
-	state := &ProjectState{facts: facts, selectedCat: standard, completeCat: standard}
 	testConfigs.Store(state, cfg)
 	return state
+}
+
+func testStateAt(root string) *ProjectState {
+	state := testState(&config.Config{})
+	out, err := newProjectState(root, resident.NewRoots(root, root), false, testConfig(state), catalog.Standard, catalog.Standard, state.Targets())
+	if err != nil {
+		panic(err)
+	}
+	testConfigs.Store(out, testConfig(state))
+	return out
+}
+func testStateWith(state *ProjectState, root string, roots resident.Roots, nested bool, selected, complete *catalog.Catalog, targets []Target) *ProjectState {
+	out, err := newProjectState(root, roots, nested, testConfig(state), selected, complete, targets)
+	if err != nil {
+		panic(err)
+	}
+	testConfigs.Store(out, testConfig(state))
+	return out
 }
 
 func testRepo(state *ProjectState) *awfgit.Repo {
@@ -135,9 +151,13 @@ func queryTopicProject(state *ProjectState, ctx context.Context, selector string
 	return QueryTopic(state.Root(), testRepo(state), ctx, selector, opts)
 }
 
-func testTargets(state *ProjectState) []Target               { return state.resolvedTargets() }
-func setTestTargets(state *ProjectState, targets []Target)   { state.targets = cloneTargets(targets) }
-func setTestRoots(state *ProjectState, roots resident.Roots) { state.roots = roots }
+func testTargets(state *ProjectState) []Target { return state.Targets() }
+func setTestTargets(state *ProjectState, targets []Target) *ProjectState {
+	return testStateWith(state, state.Root(), state.roots(), state.nested(), state.catalog(), state.completeCatalog(), targets)
+}
+func setTestRoots(state *ProjectState, roots resident.Roots) *ProjectState {
+	return testStateWith(state, state.Root(), roots, state.nested(), state.catalog(), state.completeCatalog(), state.Targets())
+}
 func renderInputsForTest(state *ProjectState) renderInputs {
 	return newRenderInputs(state, testConfig(state), filesystemProjectReader{root: state.Root()})
 }

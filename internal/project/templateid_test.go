@@ -31,10 +31,10 @@ var templateIDScanPatterns = []string{"./internal/...", "./cmd/..."}
 // at its historical duplication site must fail this scan, and the per-file
 // vacuity check below hard-fails any entry that stops contributing.
 var sanctionedTemplateIDFiles = map[string]bool{
-	"internal/catalog/standard.go":  true,
-	"internal/project/kind.go":      true,
-	"internal/project/singleton.go": true,
-	"internal/project/target.go":    true,
+	"internal/catalog/standard.go":    true,
+	"internal/project/kind.go":        true,
+	"internal/project/singleton.go":   true,
+	"internal/projectstate/target.go": true,
 }
 
 // isTemplateIDLiteral reports whether a string literal spells a full template-ID
@@ -324,9 +324,7 @@ func TestLiveTemplateIDsResolve(t *testing.T) {
 	missing := selected.Docs["architecture"]
 	missing.TID = "missing/live-template.tmpl"
 	selected.Docs["missing-live-fixture"] = missing
-	state := *p
-	state.selectedCat = catalog.NewView(selected)
-	p = &state
+	p = testStateWith(p, p.Root(), p.roots(), p.nested(), selected, p.completeCatalog(), p.Targets())
 	if _, err := outputPlanProject(p); err == nil || !strings.Contains(err.Error(), "missing/live-template.tmpl") {
 		t.Fatalf("missing live template error = %v", err)
 	}

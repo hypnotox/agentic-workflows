@@ -2179,7 +2179,7 @@ func TestOrientingSkillContract(t *testing.T) {
 	for _, target := range KnownTargets() {
 		t.Run(target, func(t *testing.T) {
 			files := explorationRenderedByPath(t, config(target))
-			adapter := targetRegistry[target]
+			adapter := map[string]Target{"claude": claudeTarget, "pi": piTarget}[target]
 			body := files[adapter.SkillPath("example", "orienting")]
 			if body == "" {
 				t.Fatalf("missing rendered orienting skill for %s", target)

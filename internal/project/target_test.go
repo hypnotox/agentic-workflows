@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/templates"
@@ -306,7 +307,7 @@ func TestTargetOutputRenderError(t *testing.T) {
 		t.Fatal("full built-in targets missing Pi output declarations")
 	}
 	pi.Outputs[0].TemplateID = "missing-target-output.tmpl"
-	setTestTargets(p, targets)
+	p = setTestTargets(p, targets)
 	if _, err := renderAll(p); err == nil || !strings.Contains(err.Error(), "missing-target-output") {
 		t.Fatalf("RenderAll error = %v, want missing target-output template", err)
 	}
@@ -665,14 +666,14 @@ func TestTargetDescriptorCustomization(t *testing.T) {
 			Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true,
 		}},
 	}
-	if err := custom.validate(); err != nil {
+	if err := projectstate.ValidateTarget(custom); err != nil {
 		t.Fatal(err)
 	}
 	if custom.SkillPath("example", "tdd") != ".custom/workflows/example-tdd/SKILL.md" ||
 		custom.AgentPath("code-reviewer") != ".custom/reviewers/code-reviewer.agent.md" {
 		t.Fatal("custom descriptor paths were not preserved")
 	}
-	if custom.targetTemplateData()["targetSubagentTools"] != true || custom.targetTemplateData()["targetSessionHandoff"] != true {
+	if projectstate.TargetTemplateData(custom)["targetSubagentTools"] != true || projectstate.TargetTemplateData(custom)["targetSessionHandoff"] != true {
 		t.Fatal("custom descriptor capabilities were not projected")
 	}
 	root := scaffold(t, sampleYAML)
@@ -680,7 +681,7 @@ func TestTargetDescriptorCustomization(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	setTestTargets(p, []Target{custom})
+	p = setTestTargets(p, []Target{custom})
 	files, err := renderAll(p)
 	if err != nil {
 		t.Fatal(err)

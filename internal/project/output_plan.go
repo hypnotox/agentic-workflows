@@ -16,6 +16,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
+	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
@@ -35,22 +36,20 @@ type ProjectTreeReader interface {
 	Paths(prefix string) ([]string, error)
 }
 
-// ArtifactRole classifies a path in the output plan and the context artifact
-// report by its function in the render pipeline.
-type ArtifactRole string
+type ArtifactRole = projectstate.ArtifactRole
 
 const (
-	ArtifactConfig             ArtifactRole = "config"
-	ArtifactLock               ArtifactRole = "lock"
-	ArtifactManifest           ArtifactRole = "manifest"
-	ArtifactTemplate           ArtifactRole = "template"
-	ArtifactConventionPart     ArtifactRole = "convention-part"
-	ArtifactAuthoredData       ArtifactRole = "authored-data"
-	ArtifactTopicMetadata      ArtifactRole = "topic-metadata"
-	ArtifactClaimPart          ArtifactRole = "claim-part"
-	ArtifactDecisionRecord     ArtifactRole = "decision-record"
-	ArtifactManagedOutput      ArtifactRole = "managed-output"
-	ArtifactProtocolDescriptor ArtifactRole = "protocol-descriptor"
+	ArtifactConfig             = projectstate.ArtifactConfig
+	ArtifactLock               = projectstate.ArtifactLock
+	ArtifactManifest           = projectstate.ArtifactManifest
+	ArtifactTemplate           = projectstate.ArtifactTemplate
+	ArtifactConventionPart     = projectstate.ArtifactConventionPart
+	ArtifactAuthoredData       = projectstate.ArtifactAuthoredData
+	ArtifactTopicMetadata      = projectstate.ArtifactTopicMetadata
+	ArtifactClaimPart          = projectstate.ArtifactClaimPart
+	ArtifactDecisionRecord     = projectstate.ArtifactDecisionRecord
+	ArtifactManagedOutput      = projectstate.ArtifactManagedOutput
+	ArtifactProtocolDescriptor = projectstate.ArtifactProtocolDescriptor
 )
 
 type OutputInput struct {
@@ -469,14 +468,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 	return decls, nil
 }
 
-// OutputPolicy declares lifecycle behavior for a planned path. It is data on the
-// node, not an inference made by sync or check from a template name or suffix.
-type OutputPolicy struct {
-	ValidateFrontmatter bool
-	ScanReferences      bool
-	ScanSkillReferences bool
-	Regenerate          bool
-}
+type OutputPolicy = projectstate.OutputPolicy
 
 // OutputRecipe is the normalized, output-affecting declaration used for
 // collision diagnostics and configuration hashes. Target identity is kept on
@@ -589,7 +581,7 @@ func resolvedTargetOutputs(t Target, prefix string, selected []string) []TargetO
 func targetOutputDeclarations(p renderInputs, eff map[string]bool) (map[string]targetOutputDeclaration, error) {
 	out := map[string]targetOutputDeclaration{}
 	for _, t := range p.targets() {
-		if err := t.validate(); err != nil {
+		if err := projectstate.ValidateTarget(t); err != nil {
 			return nil, err
 		}
 		if err := validateTargetOutputRequirements(t, projectCatalog(p)); err != nil {
@@ -622,7 +614,7 @@ func targetOutputDeclarations(p renderInputs, eff map[string]bool) (map[string]t
 				decl.recipe, decl.canonical = recipe, t.Name
 			}
 			decl.declarers = append(decl.declarers, t.Name)
-			decl.projections = append(decl.projections, targetDescriptorProjection(t))
+			decl.projections = append(decl.projections, projectstate.TargetDescriptorProjection(t))
 			out[o.Path] = decl
 		}
 	}

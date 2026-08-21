@@ -376,9 +376,7 @@ func TestSyncPrunesRemovedTargetTree(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".claude", "unrelated.txt"), []byte("keep\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	state := *p
-	state.targets = nil
-	p = &state
+	p = setTestTargets(p, nil)
 	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}

@@ -5,7 +5,7 @@
 
 In-place sections, authoring comments, part placeholders, and var and data hygiene.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/pitfall/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/project/**`. Both domain and topic selectors must match. Run `awf topic rendering/inplace-and-placeholders --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/pitfall/**`, `internal/project/**`, `internal/projectstate/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/project/**`. Both domain and topic selectors must match. Run `awf topic rendering/inplace-and-placeholders --coverage` for current applicable and owned paths and marker sites.
 
 In-place editable sections and their readback, authoring-comment stripping, convention-part placeholders, and var and data hygiene findings.
 

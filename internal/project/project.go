@@ -23,6 +23,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
+	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
@@ -169,51 +170,30 @@ func newLoader(loadConfigTree LoadConfigTree, standard *catalog.Catalog, resolve
 	return &Loader{loadConfigTree: loadConfigTree, view: catalog.NewView(standard), resolveResidentRoot: resolveResidentRoot, repo: repo}
 }
 
-// ProjectState is the Loader-owned immutable fact snapshot. It contains no
-// repository handle or tree reader; operations receive those dependencies
-// directly at their call boundaries.
-type ProjectState struct {
-	invokingRoot string
-	roots        resident.Roots
-	nested       bool
-	facts        config.Facts
-	selectedCat  catalog.View
-	completeCat  catalog.View
-	targets      []Target
-}
+// ProjectState preserves the RF-002 compatibility name for the lower immutable state owner.
+type ProjectState struct{ state *projectstate.ProjectState }
+
+// Root returns the invoking checkout root.
+func (s *ProjectState) Root() string { return s.state.Root() }
+
+// Config returns a defensive copy of the immutable loaded configuration facts.
+func (s *ProjectState) Config() *config.Config { return s.state.Config() }
+
+// Targets returns a defensive copy of the resolved targets.
+func (s *ProjectState) Targets() []Target { return s.state.Targets() }
+
+func (s *ProjectState) roots() resident.Roots             { return s.state.Roots() }
+func (s *ProjectState) nested() bool                      { return s.state.Nested() }
+func (s *ProjectState) facts() config.Facts               { return s.state.Facts() }
+func (s *ProjectState) catalog() *catalog.Catalog         { return s.state.Catalog() }
+func (s *ProjectState) completeCatalog() *catalog.Catalog { return s.state.CompleteCatalog() }
 
 func newProjectState(root string, roots resident.Roots, nested bool, cfg *config.Config, selected, complete *catalog.Catalog, targets []Target) (*ProjectState, error) {
-	facts, err := config.NewFacts(cfg)
+	state, err := projectstate.New(root, roots, nested, cfg, selected, complete, targets)
 	if err != nil {
 		return nil, err
 	}
-	return &ProjectState{
-		invokingRoot: root,
-		roots:        roots,
-		nested:       nested,
-		facts:        facts,
-		selectedCat:  catalog.NewProfileView(selected, catalog.ProfileFull),
-		completeCat:  catalog.NewProfileView(complete, catalog.ProfileFull),
-		targets:      cloneTargets(targets),
-	}, nil
-}
-
-func (s *ProjectState) catalog() *catalog.Catalog { return s.selectedCat.Catalog() }
-func (s *ProjectState) completeCatalog() *catalog.Catalog {
-	return s.completeCat.Catalog()
-}
-func (s *ProjectState) resolvedTargets() []Target { return cloneTargets(s.targets) }
-
-func cloneTargets(source []Target) []Target {
-	out := slices.Clone(source)
-	for i := range out {
-		out[i].Capabilities = slices.Clone(out[i].Capabilities)
-		out[i].Outputs = slices.Clone(out[i].Outputs)
-		for j := range out[i].Outputs {
-			out[i].Outputs[j].Inputs = slices.Clone(out[i].Outputs[j].Inputs)
-		}
-	}
-	return out
+	return &ProjectState{state: state}, nil
 }
 
 // renderInputs is the small rendering concern boundary. Immutable loaded facts
@@ -229,21 +209,12 @@ func newRenderInputs(state *ProjectState, cfg *config.Config, read ProjectTreeRe
 	return renderInputs{state: state, cfg: cfg, read: read}
 }
 
-func (p renderInputs) root() string                      { return p.state.invokingRoot }
-func (p renderInputs) residentRoots() resident.Roots     { return p.state.roots }
+func (p renderInputs) root() string                      { return p.state.Root() }
+func (p renderInputs) residentRoots() resident.Roots     { return p.state.roots() }
 func (p renderInputs) targets() []Target                 { return p.state.Targets() }
 func (p renderInputs) catalog() *catalog.Catalog         { return p.state.catalog() }
 func (p renderInputs) completeCatalog() *catalog.Catalog { return p.state.completeCatalog() }
-func (p renderInputs) isNested() bool                    { return p.state.nested }
-
-// Root returns the invoking checkout root.
-func (s *ProjectState) Root() string { return s.invokingRoot }
-
-// Config returns a defensive copy of the immutable loaded configuration facts.
-func (s *ProjectState) Config() *config.Config { return s.facts.Config() }
-
-// Targets returns a defensive copy of the resolved targets.
-func (s *ProjectState) Targets() []Target { return s.resolvedTargets() }
+func (p renderInputs) isNested() bool                    { return p.state.nested() }
 
 // gitRepo returns the handle this project reads Git through, or the reason it
 // has none. Opening is never retried per operation: the handle is chosen once,
@@ -314,7 +285,7 @@ func (l *Loader) OpenForOperation(ctx context.Context, root string) (*ProjectSta
 	if err != nil {
 		return nil, nil, err
 	}
-	cfg = cfg.OperationTree().Bind(state.facts)
+	cfg = cfg.OperationTree().Bind(state.facts())
 	if err := validateAgainstCatalog(newRenderInputs(state, cfg, nil)); err != nil {
 		return nil, nil, err
 	}
@@ -344,13 +315,7 @@ func indexTree(root string, repo *awfgit.Repo, ctx context.Context) (*snapshot.T
 // supplies the repository selected at its boundary.
 func stagedProject(root string, prefix string) renderInputs {
 	complete := catalog.CompleteView().Catalog()
-	state := &ProjectState{
-		invokingRoot: root,
-		roots:        resident.NewRoots(root, ""),
-		nested:       prefix != "",
-		selectedCat:  catalog.NewProfileView(complete, catalog.ProfileFull),
-		completeCat:  catalog.NewProfileView(complete, catalog.ProfileFull),
-	}
+	state := &ProjectState{state: projectstate.NewDerived(root, resident.NewRoots(root, ""), prefix != "", complete, complete, nil)}
 	return newRenderInputs(state, nil, nil)
 }
 

@@ -55,18 +55,9 @@ func checkStagedDrift(p renderInputs, repo *awfgit.Repo, ctx context.Context) ([
 	// layer, while consulting the global catalog would discard injected entries.
 	completeCat := completeProjectCatalog(p)
 	selected := catalog.NewProfileView(completeCat, state.Cfg.Profile).Catalog()
-	facts, err := config.NewFacts(state.Cfg)
+	universeState, err := newProjectState(p.root(), p.residentRoots(), p.isNested(), state.Cfg, selected, completeCat, targets)
 	if err != nil { // coverage-ignore: loadTreeCurrentState already parsed semantic config data
 		return nil, err
-	}
-	universeState := &ProjectState{
-		invokingRoot: p.root(),
-		roots:        p.residentRoots(),
-		nested:       p.isNested(),
-		facts:        facts,
-		selectedCat:  catalog.NewProfileView(selected, catalog.ProfileFull),
-		completeCat:  catalog.NewProfileView(completeCat, catalog.ProfileFull),
-		targets:      cloneTargets(targets),
 	}
 	universe := newRenderInputs(universeState, state.Cfg, read)
 	if err := validateAgainstCatalog(universe); err != nil {

@@ -116,8 +116,8 @@ func TestOpenFallsBackOnUnsafeResidentRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.roots.Resident != root {
-		t.Fatalf("resident root = %q, want invoking root", p.roots.Resident)
+	if p.roots().Resident != root {
+		t.Fatalf("resident root = %q, want invoking root", p.roots().Resident)
 	}
 }
 
@@ -158,14 +158,14 @@ func TestProjectStateDefensivelyOwnsTargetSnapshots(t *testing.T) {
 	source[0].Capabilities[0] = CapabilitySessionHandoff
 	source[0].Outputs[0].Path = "mutated"
 	source[0].Outputs[0].Inputs[0].Path = "mutated"
-	first := state.resolvedTargets()
+	first := state.Targets()
 	if first[0].Capabilities[0] != CapabilitySubagentTools || first[0].Outputs[0].Path != "output" || first[0].Outputs[0].Inputs[0].Path != "input" {
 		t.Fatalf("project state retained a target construction alias: %#v", first)
 	}
 	first[0].Capabilities[0] = CapabilityEffortSessions
 	first[0].Outputs[0].Path = "returned mutation"
 	first[0].Outputs[0].Inputs[0].Path = "returned mutation"
-	second := state.resolvedTargets()
+	second := state.Targets()
 	if second[0].Capabilities[0] != CapabilitySubagentTools || second[0].Outputs[0].Path != "output" || second[0].Outputs[0].Inputs[0].Path != "input" {
 		t.Fatalf("resolvedTargets returned a nested alias: %#v", second)
 	}
@@ -217,14 +217,14 @@ func TestLoaderStateDefensivelyOwnsLoadedFacts(t *testing.T) {
 	p.Config().Vars["nested"].(map[string]any)["items"].([]any)[0] = "mutated"
 	p.Targets()[0].Capabilities = append(p.Targets()[0].Capabilities, CapabilitySubagentTools)
 	p.catalog().Skills["tdd"] = catalog.SkillSpec{Sections: []string{"mutated"}}
-	got := p.facts.Config()
+	got := p.Config()
 	if got.Domains[0] != "tooling" || got.Tags["tag"] != "meaning" || got.Vars["nested"].(map[string]any)["items"].([]any)[0] != "original" {
 		t.Fatalf("state retained a Loader input alias: %#v", got)
 	}
-	returnedTargets := p.resolvedTargets()
+	returnedTargets := p.Targets()
 	wantCapabilities := len(returnedTargets[1].Capabilities)
 	returnedTargets[1].Capabilities = append(returnedTargets[1].Capabilities, CapabilitySubagentTools)
-	if len(p.resolvedTargets()[1].Capabilities) != wantCapabilities {
+	if len(p.Targets()[1].Capabilities) != wantCapabilities {
 		t.Fatal("resolved target accessor returned an alias")
 	}
 	returnedCatalog := p.catalog()
@@ -239,7 +239,7 @@ func TestLoaderStateDefensivelyOwnsLoadedFacts(t *testing.T) {
 	if p.completeCatalog().Skills["tdd"].Sections[0] == "complete mutation" {
 		t.Fatal("complete catalog accessor returned an alias")
 	}
-	if p.invokingRoot != root || p.roots.Tracked != root || p.nested || p.facts.Config().Source() != nil {
+	if p.Root() != root || p.roots().Tracked != root || p.nested() || p.Config().Source() != nil {
 		t.Fatal("Loader did not construct the expected fact state")
 	}
 }

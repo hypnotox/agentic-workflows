@@ -62,6 +62,7 @@ var foundationalMechanismRoots = []string{
 	"internal/git",
 	"internal/render",
 	"internal/snapshot",
+	"internal/projectstate",
 }
 
 var higherLayerImports = []string{
@@ -69,6 +70,7 @@ var higherLayerImports = []string{
 	repositoryModule + "/internal/currentstate",
 	repositoryModule + "/internal/plan",
 	repositoryModule + "/internal/project",
+	repositoryModule + "/internal/publisher",
 	repositoryModule + "/internal/topic",
 }
 
@@ -237,6 +239,8 @@ func TestRepositoryLayerDirection(t *testing.T) {
 		{name: "snapshot to git", path: "internal/snapshot/tree.go", source: "package snapshot\nimport \"github.com/hypnotox/agentic-workflows/internal/git\""},
 		{name: "filesystem to publication", path: "internal/filesystem/handle.go", source: "package filesystem\nimport \"github.com/hypnotox/agentic-workflows/internal/filepublication\""},
 		{name: "project to context query", path: "internal/project/project.go", source: "package project\nimport \"github.com/hypnotox/agentic-workflows/internal/contextq\"", violations: 1},
+		{name: "lower state to project", path: "internal/projectstate/state.go", source: "package projectstate\nimport \"github.com/hypnotox/agentic-workflows/internal/project\"", violations: 1},
+		{name: "lower state to publisher", path: "internal/projectstate/state.go", source: "package projectstate\nimport \"github.com/hypnotox/agentic-workflows/internal/publisher\"", violations: 1},
 		{name: "unrelated context query consumer", path: "internal/tool/tool.go", source: "package tool\nimport \"github.com/hypnotox/agentic-workflows/internal/contextq\""},
 		{name: "malformed protected source", path: "internal/git/repo.go", source: "not go", wantErr: true},
 		{name: "malformed unrelated source", path: "internal/tool/tool.go", source: "not go"},

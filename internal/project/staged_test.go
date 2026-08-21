@@ -488,7 +488,7 @@ func TestCheckStagedRefusesHistoricalMalformedOrDuplicateConfigAndCurrentInvalid
 				".awf/config.yaml": tc.stagedConfig,
 				".awf/awf.lock":    tc.stagedLock,
 			})
-			p := &ProjectState{invokingRoot: dir}
+			p := testStateAt(dir)
 			if _, err := checkStagedProject(p, testContext(t)); err == nil {
 				t.Fatal("CheckStaged accepted invalid config")
 			}
@@ -521,10 +521,10 @@ func TestCheckCommitAuthorizationPropagatesEvidenceErrors(t *testing.T) {
 			t.Fatal(err)
 		}
 		_ = prefix
-		return &ProjectState{invokingRoot: root}
+		return testStateAt(root)
 	}
 	t.Run("no checkout", func(t *testing.T) {
-		if _, err := checkCommitAuthorizationProject(&ProjectState{invokingRoot: t.TempDir()}, testContext(t), msg); err == nil {
+		if _, err := checkCommitAuthorizationProject(testStateAt(t.TempDir()), testContext(t), msg); err == nil {
 			t.Fatal("missing checkout succeeded")
 		}
 	})
@@ -538,7 +538,7 @@ func TestCheckCommitAuthorizationPropagatesEvidenceErrors(t *testing.T) {
 	t.Run("malformed repository", func(t *testing.T) {
 		root := t.TempDir()
 		testsupport.WriteFile(t, filepath.Join(root, ".git", "HEAD"), "broken\n")
-		if _, err := checkCommitAuthorizationProject(&ProjectState{invokingRoot: root}, testContext(t), msg); err == nil {
+		if _, err := checkCommitAuthorizationProject(testStateAt(root), testContext(t), msg); err == nil {
 			t.Fatal("malformed repository succeeded")
 		}
 	})

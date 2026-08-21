@@ -4,7 +4,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
@@ -152,9 +151,7 @@ func TestCatalogDataChangesConfigHash(t *testing.T) {
 		map[string]any{"name": "Changed", "kind": "unit", "location": "here"},
 	}}
 	selected.Skills["tdd"] = spec
-	state := *p
-	state.selectedCat = catalog.NewView(selected)
-	p = &state
+	p = testStateWith(p, p.Root(), p.roots(), p.nested(), selected, p.completeCatalog(), p.Targets())
 	after := hashOf()
 	if before == after {
 		t.Fatalf("ConfigHash unchanged after catalog default-data change: %s", before)

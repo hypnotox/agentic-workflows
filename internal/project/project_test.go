@@ -842,8 +842,8 @@ func TestOpenSyncFilesystemsComposesDistinctRootsBeforeMutation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	roots := p.roots
-	setTestRoots(p, resident.NewRoots(roots.Tracked, t.TempDir()))
+	roots := p.roots()
+	p = setTestRoots(p, resident.NewRoots(roots.Tracked, t.TempDir()))
 	filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(p))
 	if err != nil {
 		t.Fatal(err)
@@ -852,13 +852,13 @@ func TestOpenSyncFilesystemsComposesDistinctRootsBeforeMutation(t *testing.T) {
 	if filesystems.tracked == filesystems.resident {
 		t.Fatal("distinct roots reused one handle")
 	}
-	roots = p.roots
-	setTestRoots(p, resident.NewRoots(roots.Tracked, filepath.Join(root, "missing")))
+	roots = p.roots()
+	p = setTestRoots(p, resident.NewRoots(roots.Tracked, filepath.Join(root, "missing")))
 	if _, _, err := openSyncFilesystems(renderInputsForTest(p)); err == nil {
 		t.Fatal("missing resident root opened")
 	}
-	roots = p.roots
-	setTestRoots(p, resident.NewRoots(filepath.Join(root, "missing-tracked"), roots.Resident))
+	roots = p.roots()
+	p = setTestRoots(p, resident.NewRoots(filepath.Join(root, "missing-tracked"), roots.Resident))
 	if _, _, err := openSyncFilesystems(renderInputsForTest(p)); err == nil {
 		t.Fatal("missing tracked root opened")
 	}
@@ -892,8 +892,8 @@ func TestSyncReportOpensDistinctResidentRootBeforeTrackedMutation(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	roots := p.roots
-	setTestRoots(p, resident.NewRoots(roots.Tracked, missingResident))
+	roots := p.roots()
+	p = setTestRoots(p, resident.NewRoots(roots.Tracked, missingResident))
 	if _, _, _, err := syncReportProject(p); err == nil {
 		t.Fatal("sync accepted missing distinct resident root")
 	}
@@ -1888,8 +1888,8 @@ func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	roots := p.roots
-	setTestRoots(p, resident.NewRoots(roots.Tracked, residentRoot))
+	roots := p.roots()
+	p = setTestRoots(p, resident.NewRoots(roots.Tracked, residentRoot))
 	if _, _, _, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatal(err)
 	}
@@ -1919,7 +1919,9 @@ func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 		t.Fatal(err)
 	}
 	p, _ = Open(testContext(t), root)
-	p.roots.Resident = residentRoot
+	roots = p.roots()
+	roots.Resident = residentRoot
+	p = setTestRoots(p, roots)
 	backups, _, _, err := syncReportProject(p)
 	if err != nil || !slices.Contains(backups, Backup{Path: "AGENTS.md", Bak: "AGENTS.md.awf-bak"}) {
 		t.Fatalf("foreign backup = %v, error = %v", backups, err)
@@ -1949,8 +1951,8 @@ func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 		t.Fatal(err)
 	}
 	p, _ = Open(testContext(t), root)
-	roots = p.roots
-	setTestRoots(p, resident.NewRoots(roots.Tracked, residentRoot))
+	roots = p.roots()
+	p = setTestRoots(p, resident.NewRoots(roots.Tracked, residentRoot))
 	backups, _, _, err = syncReportProject(p)
 	wantResidentBackup := Backup{Path: residentOutput, Bak: residentOutput + ".awf-bak"}
 	if err != nil || !slices.Contains(backups, wantResidentBackup) {
@@ -1986,7 +1988,9 @@ func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 		t.Skipf("symlink unavailable: %v", err)
 	}
 	p, _ = Open(testContext(t), root)
-	p.roots.Resident = residentRoot
+	roots = p.roots()
+	roots.Resident = residentRoot
+	p = setTestRoots(p, roots)
 	_, _, pruned, err := syncReportProject(p)
 	if err != nil || !slices.Contains(pruned, retired) {
 		t.Fatalf("managed symlink prune = %v, %v", pruned, err)
@@ -2019,7 +2023,9 @@ func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 		t.Skipf("symlink unavailable: %v", err)
 	}
 	p, _ = Open(testContext(t), root)
-	p.roots.Resident = residentRoot
+	roots = p.roots()
+	roots.Resident = residentRoot
+	p = setTestRoots(p, roots)
 	if _, _, _, err := syncReportProject(p); err == nil {
 		t.Fatal("sync accepted escaping prune parent")
 	}
@@ -2060,7 +2066,9 @@ func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 		t.Skipf("symlink unavailable: %v", err)
 	}
 	p, _ = Open(testContext(t), root)
-	p.roots.Resident = residentRoot
+	roots = p.roots()
+	roots.Resident = residentRoot
+	p = setTestRoots(p, roots)
 	if _, _, _, err := syncReportProject(p); err == nil {
 		t.Fatal("sync accepted escaping output parent")
 	}
