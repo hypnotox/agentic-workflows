@@ -29,6 +29,17 @@ type MarkerSite struct {
 }
 type MarkerIndex struct{ sites map[string][]MarkerSite }
 
+func (m MarkerIndex) clone() MarkerIndex {
+	if m.sites == nil {
+		return MarkerIndex{}
+	}
+	out := MarkerIndex{sites: make(map[string][]MarkerSite, len(m.sites))}
+	for claim, sites := range m.sites {
+		out.sites[claim] = slices.Clone(sites)
+	}
+	return out
+}
+
 func (m MarkerIndex) ForClaim(id string) []MarkerSite { return slices.Clone(m.sites[id]) }
 func (m MarkerIndex) All() []MarkerSite {
 	var out []MarkerSite

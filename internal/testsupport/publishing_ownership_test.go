@@ -6,6 +6,7 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -20,6 +21,120 @@ func readProduction(t *testing.T, root, rel string) string {
 		t.Fatal(err)
 	}
 	return string(data)
+}
+
+// invariant: rendering/project-output-plan:check-report-single-plan (TestPublishingConsumerPlanIdentity)
+func TestPublishingConsumerPlanIdentity(t *testing.T) {
+	root := testsupport.RepoRoot(t)
+	files, err := filepath.Glob(filepath.Join(root, "cmd", "awf", "*.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	type calls struct {
+		preparePublisher, operationPreparation, operationPlan int
+		plan, residentMarker                                  int
+	}
+	byFunction := map[string]calls{}
+	publisherPrepareSites, publisherPlanSites := 0, 0
+	for _, path := range files {
+		if strings.HasSuffix(path, "_test.go") {
+			continue
+		}
+		file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, declaration := range file.Decls {
+			fn, ok := declaration.(*ast.FuncDecl)
+			if !ok || fn.Body == nil {
+				continue
+			}
+			got := calls{}
+			ast.Inspect(fn.Body, func(node ast.Node) bool {
+				call, ok := node.(*ast.CallExpr)
+				if !ok {
+					return true
+				}
+				switch target := call.Fun.(type) {
+				case *ast.Ident:
+					switch target.Name {
+					case "preparePublisher":
+						got.preparePublisher++
+					case "operationPreparation":
+						got.operationPreparation++
+					case "operationPlan":
+						got.operationPlan++
+					}
+				case *ast.SelectorExpr:
+					receiver, receiverIsIdent := target.X.(*ast.Ident)
+					switch target.Sel.Name {
+					case "Prepare":
+						if receiverIsIdent && receiver.Name == "execution" {
+							return true
+						}
+						publisherPrepareSites++
+						if fn.Name.Name != "preparePublisher" || !receiverIsIdent || receiver.Name != "composed" {
+							t.Errorf("unexpected Publisher preparation site %s in %s", target.Sel.Name, fn.Name.Name)
+						}
+					case "Plan":
+						if receiverIsIdent && receiver.Name == "prepared" {
+							got.plan++
+							break
+						}
+						composed, ok := target.X.(*ast.CallExpr)
+						constructor, constructorOK := composed.Fun.(*ast.Ident)
+						if !ok || !constructorOK || constructor.Name != "composePublisher" || fn.Name.Name != "operationPlan" {
+							t.Errorf("%s calls Publisher Plan outside the single plan-only seam", fn.Name.Name)
+							break
+						}
+						publisherPlanSites++
+					case "ResidentMarker":
+						got.residentMarker++
+						if !receiverIsIdent || receiver.Name != "prepared" {
+							t.Errorf("%s selects a resident marker from another identity", fn.Name.Name)
+						}
+					}
+				}
+				return true
+			})
+			if got != (calls{}) {
+				byFunction[fn.Name.Name] = got
+			}
+		}
+	}
+	if publisherPrepareSites != 1 || publisherPlanSites != 1 {
+		t.Errorf("Publisher construction sites = %d Prepare and %d Plan, want one semantic and one plan-only outer seam", publisherPrepareSites, publisherPlanSites)
+	}
+	expected := map[string]calls{
+		"preparePublisher":                  {},
+		"operationPreparation":              {preparePublisher: 1},
+		"workingContextState":               {preparePublisher: 1, plan: 1},
+		"stagedDrift":                       {preparePublisher: 1, plan: 1},
+		"stagedContextState":                {preparePublisher: 1, plan: 1},
+		"productionRepoCheckDependencies":   {operationPreparation: 1, plan: 1},
+		"runInitWithProjectLoader":          {operationPreparation: 1, operationPlan: 1, plan: 1},
+		"probeCollisions":                   {operationPlan: 2},
+		"syncMutation":                      {operationPlan: 1},
+		"productionUpgradeSyncDependencies": {operationPlan: 1},
+		"openEffortComposition":             {operationPreparation: 1, residentMarker: 1},
+		"runADR":                            {operationPlan: 1},
+	}
+	// preparePublisher's one direct .Prepare call is separately counted above;
+	// its zero helper-call record is not retained in byFunction.
+	delete(expected, "preparePublisher")
+	if !reflect.DeepEqual(byFunction, expected) {
+		t.Errorf("publishing consumer call graph changed:\n got %#v\nwant %#v", byFunction, expected)
+	}
+
+	// The check and advisory consumers must hand both projections the same local
+	// preparation variable. The exact AST argument census makes replacing either
+	// use with another preparation (or adding a second call) fail this proof.
+	for _, rel := range []string{"cmd/awf/checkrepo.go", "cmd/awf/init.go"} {
+		source := readProduction(t, root, rel)
+		if strings.Count(source, "prepared.Plan(), projectSemantics(prepared)") != 1 {
+			t.Errorf("%s does not reuse one preparation for plan and semantics", rel)
+		}
+	}
 }
 
 func TestPublishingPlanningOwnership(t *testing.T) {

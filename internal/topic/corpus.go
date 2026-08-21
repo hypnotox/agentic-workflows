@@ -177,26 +177,78 @@ func collectFiles(root string, fn func(string) error) error {
 	})
 }
 
-func (c Corpus) All() []Topic { return slices.Clone(c.all) }
+// Clone returns a fully independent semantic corpus projection.
+func (c Corpus) Clone() Corpus {
+	out := Corpus{
+		all:         make([]Topic, len(c.all)),
+		byTopic:     make(map[string]*Topic, len(c.byTopic)),
+		byClaim:     make(map[string]*Claim, len(c.byClaim)),
+		incoming:    cloneStringSlices(c.incoming),
+		outgoing:    cloneStringSlices(c.outgoing),
+		DomainPaths: cloneStringSlices(c.DomainPaths),
+		Markers:     c.Markers.clone(),
+	}
+	for i, value := range c.all {
+		out.all[i] = cloneTopic(value)
+		t := &out.all[i]
+		out.byTopic[t.ID.String()] = t
+		for j := range t.Claims {
+			out.byClaim[t.Claims[j].ID] = &t.Claims[j]
+		}
+	}
+	return out
+}
+
+func cloneStringSlices(values map[string][]string) map[string][]string {
+	if values == nil {
+		return nil
+	}
+	out := make(map[string][]string, len(values))
+	for key, value := range values {
+		out[key] = slices.Clone(value)
+	}
+	return out
+}
+
+func cloneTopic(value Topic) Topic {
+	value.Metadata.Paths = slices.Clone(value.Metadata.Paths)
+	value.Claims = slices.Clone(value.Claims)
+	for i := range value.Claims {
+		value.Claims[i].RevisedBy = slices.Clone(value.Claims[i].RevisedBy)
+		value.Claims[i].References = slices.Clone(value.Claims[i].References)
+	}
+	return value
+}
+
+func (c Corpus) All() []Topic {
+	out := make([]Topic, len(c.all))
+	for i, value := range c.all {
+		out[i] = cloneTopic(value)
+	}
+	return out
+}
 func (c Corpus) ByTopicID(id string) (Topic, bool) {
 	t, ok := c.byTopic[id]
 	if !ok {
 		return Topic{}, false
 	}
-	return *t, true
+	return cloneTopic(*t), true
 }
 func (c Corpus) ByClaimID(id string) (Claim, bool) {
 	cl, ok := c.byClaim[id]
 	if !ok {
 		return Claim{}, false
 	}
-	return *cl, true
+	value := *cl
+	value.RevisedBy = slices.Clone(value.RevisedBy)
+	value.References = slices.Clone(value.References)
+	return value, true
 }
 func (c Corpus) ForDomain(domain string) []Topic {
 	var out []Topic
 	for _, t := range c.all {
 		if t.ID.Domain == domain {
-			out = append(out, t)
+			out = append(out, cloneTopic(t))
 		}
 	}
 	return out

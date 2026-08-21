@@ -751,7 +751,8 @@ func callsMethodWithIdent(fn *ast.FuncDecl, method, argument string) bool {
 	return found
 }
 
-// invariant: rendering/project-output-plan:check-report-single-plan (TestCheckReportBuildsOneOutputPlan)
+// The construction-identity claim is backed by TestPublishingConsumerPlanIdentity;
+// this behavior fixture separately pins the complete generated tracking set.
 // invariant: rendering/sync-and-drift:generated-artifacts-tracked (TestCheckReportBuildsOneOutputPlan)
 func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 	fixture := gitfixture.InitRepo(t)

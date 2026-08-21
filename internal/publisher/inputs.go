@@ -122,7 +122,7 @@ func (p *Publisher) Prepare() (Preparation, error) {
 	if err != nil {
 		return Preparation{}, err
 	}
-	return Preparation{plan: freezePlan(built), adrs: adrs, pitfalls: pitfalls, topics: topics, skills: maps.Clone(skills), plans: slices.Clone(plans), plansError: plansErr}, nil
+	return Preparation{plan: freezePlan(built), adrs: adrs, pitfalls: pitfalls, topics: topics, skills: maps.Clone(skills), plans: clonePlans(plans), plansError: plansErr}, nil
 }
 
 // Plan derives exactly one immutable plan for this operation.
@@ -134,20 +134,20 @@ func (p *Publisher) Plan() (outputplan.Plan, error) {
 // Plan returns the one immutable plan constructed for this operation.
 func (p Preparation) Plan() outputplan.Plan { return p.plan }
 
-// ADRs returns the ADR corpus derived from the selected operation tree.
-func (p Preparation) ADRs() adr.Corpus { return p.adrs }
+// ADRs returns a defensive ADR corpus derived from the selected operation tree.
+func (p Preparation) ADRs() adr.Corpus { return p.adrs.Clone() }
 
-// Pitfalls returns the pitfall corpus derived from the selected operation tree.
-func (p Preparation) Pitfalls() pitfall.Corpus { return p.pitfalls }
+// Pitfalls returns a defensive pitfall corpus derived from the selected operation tree.
+func (p Preparation) Pitfalls() pitfall.Corpus { return clonePitfallCorpus(p.pitfalls) }
 
-// Topics returns the topic corpus derived from the selected operation tree.
-func (p Preparation) Topics() topic.Corpus { return p.topics }
+// Topics returns a defensive topic corpus derived from the selected operation tree.
+func (p Preparation) Topics() topic.Corpus { return p.topics.Clone() }
 
 // EffectiveSkills returns a defensive projection of the operation's effective skills.
 func (p Preparation) EffectiveSkills() map[string]bool { return maps.Clone(p.skills) }
 
 // Plans returns a defensive projection of the operation's parsed plans.
-func (p Preparation) Plans() []plan.Plan { return slices.Clone(p.plans) }
+func (p Preparation) Plans() []plan.Plan { return clonePlans(p.plans) }
 
 // PlansError returns diagnostics or another error from parsing the selected plans.
 func (p Preparation) PlansError() error { return p.plansError }
@@ -161,6 +161,41 @@ func (p Preparation) ResidentMarker(name string) (outputplan.Output, error) {
 		}
 	}
 	return outputplan.Output{}, fmt.Errorf("resident marker %q is not planned", name)
+}
+
+func clonePitfallCorpus(corpus pitfall.Corpus) pitfall.Corpus {
+	entries := corpus.All()
+	for i := range entries {
+		entries[i].Domains = slices.Clone(entries[i].Domains)
+		entries[i].Tags = slices.Clone(entries[i].Tags)
+		entries[i].Related = slices.Clone(entries[i].Related)
+		entries[i].Source = slices.Clone(entries[i].Source)
+	}
+	return pitfall.New(entries)
+}
+
+func clonePlans(plans []plan.Plan) []plan.Plan {
+	out := slices.Clone(plans)
+	for i := range out {
+		out[i].ADRs = slices.Clone(out[i].ADRs)
+		out[i].Source = slices.Clone(out[i].Source)
+		out[i].Phases = slices.Clone(out[i].Phases)
+		for phaseIndex := range out[i].Phases {
+			phase := &out[i].Phases[phaseIndex]
+			phase.Tasks = slices.Clone(phase.Tasks)
+			phase.Advances = slices.Clone(phase.Advances)
+			phase.Completes = slices.Clone(phase.Completes)
+			for taskIndex := range phase.Tasks {
+				fields := &phase.Tasks[taskIndex].Fields
+				fields.Paths = slices.Clone(fields.Paths)
+				fields.Applying = slices.Clone(fields.Applying)
+				fields.Context = slices.Clone(fields.Context)
+			}
+		}
+		out[i].DoD = slices.Clone(out[i].DoD)
+		out[i].CommitSubjects = slices.Clone(out[i].CommitSubjects)
+	}
+	return out
 }
 
 func freezeInputs(inputs []OutputInput) []outputplan.Input {

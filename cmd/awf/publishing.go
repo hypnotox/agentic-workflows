@@ -15,13 +15,16 @@ func composePublisher(state *project.ProjectState, cfg *config.Config) *publishe
 	return publisher.New(state.OutputState(), cfg, publisher.NewFilesystemReader(state.Root()), project.Version)
 }
 
+func preparePublisher(composed *publisher.Publisher) (publisher.Preparation, error) {
+	return composed.Prepare()
+}
+
 func operationPreparation(state *project.ProjectState, cfg *config.Config) (publisher.Preparation, error) {
-	return composePublisher(state, cfg).Prepare()
+	return preparePublisher(composePublisher(state, cfg))
 }
 
 func operationPlan(state *project.ProjectState, cfg *config.Config) (outputplan.Plan, error) {
-	prepared, err := operationPreparation(state, cfg)
-	return prepared.Plan(), err
+	return composePublisher(state, cfg).Plan()
 }
 
 func projectSemantics(prepared publisher.Preparation) project.OperationSemantics {
@@ -40,11 +43,11 @@ func workingContextState(ctx context.Context, state *project.ProjectState, repo 
 	if err != nil {
 		return project.ContextState{}, err
 	}
-	plan, err := preparedPublisher(prep).Plan()
+	prepared, err := preparePublisher(preparedPublisher(prep))
 	if err != nil { // coverage-ignore: preparation already validated this immutable tree; Publisher error propagation is covered at its planning boundary
 		return project.ContextState{}, err
 	}
-	return project.CompleteContextState(prep, plan), nil
+	return project.CompleteContextState(prep, prepared.Plan()), nil
 }
 
 func stagedDrift(ctx context.Context, root string) ([]manifest.Drift, error) {
@@ -52,11 +55,11 @@ func stagedDrift(ctx context.Context, root string) ([]manifest.Drift, error) {
 	if err != nil {
 		return nil, err
 	}
-	plan, err := preparedPublisher(prep).Plan()
+	prepared, err := preparePublisher(preparedPublisher(prep))
 	if err != nil { // coverage-ignore: staged preparation already validated this immutable index tree; Publisher error propagation is covered at its planning boundary
 		return nil, err
 	}
-	return project.CheckStagedDrift(prep, plan)
+	return project.CheckStagedDrift(prep, prepared.Plan())
 }
 
 func stagedContextState(ctx context.Context, root string) (project.ContextState, error) {
@@ -64,9 +67,9 @@ func stagedContextState(ctx context.Context, root string) (project.ContextState,
 	if err != nil {
 		return project.ContextState{}, err
 	}
-	plan, err := preparedPublisher(prep).Plan()
+	prepared, err := preparePublisher(preparedPublisher(prep))
 	if err != nil { // coverage-ignore: staged preparation already validated this immutable index tree; Publisher error propagation is covered at its planning boundary
 		return project.ContextState{}, err
 	}
-	return project.CompleteStagedContextState(prep, plan), nil
+	return project.CompleteStagedContextState(prep, prepared.Plan()), nil
 }

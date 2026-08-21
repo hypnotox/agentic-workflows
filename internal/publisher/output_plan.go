@@ -106,13 +106,32 @@ func (r filesystemProjectReader) Paths(prefix string) ([]string, error) {
 			}
 			return err
 		}
-		if !d.IsDir() {
-			rel, e := filepath.Rel(r.root, p)
-			if e != nil { // coverage-ignore: p is always rooted at r.root, so Rel cannot fail
-				return e
+		if d.IsDir() {
+			if p == r.root {
+				return nil
 			}
-			out = append(out, filepath.ToSlash(rel))
+			if d.Name() == ".git" {
+				return fs.SkipDir
+			}
+			// The operation tree is rooted at the invoking project, not at every
+			// repository or adopted project nested below it. Detect boundaries
+			// before entering a directory so neither its .git marker nor an .awf
+			// config (which sort before ordinary children) can leak partial state.
+			if filesystemProjectBoundary(p) {
+				return fs.SkipDir
+			}
+			return nil
 		}
+		rel, e := filepath.Rel(r.root, p)
+		if e != nil { // coverage-ignore: p is always rooted at r.root, so Rel cannot fail
+			return e
+		}
+		// A root gitfile identifies the invoking linked checkout and is metadata,
+		// not a reason to prune the invoking project itself.
+		if filepath.Clean(p) == filepath.Join(r.root, ".git") {
+			return nil
+		}
+		out = append(out, filepath.ToSlash(rel))
 		return nil
 	})
 	if err != nil {
@@ -126,6 +145,19 @@ func (r filesystemProjectReader) Paths(prefix string) ([]string, error) {
 	}
 	slices.Sort(out)
 	return out, nil
+}
+
+func filesystemProjectBoundary(dir string) bool {
+	for _, marker := range []string{filepath.Join(dir, ".git"), filepath.Join(dir, config.DirName, "config.yaml")} {
+		if _, err := os.Lstat(marker); err == nil {
+			return true
+		} else if !errors.Is(err, fs.ErrNotExist) {
+			// WalkDir will surface an unreadable boundary candidate when it reaches
+			// that entry; do not turn a metadata fault into silent pruning here.
+			return false
+		}
+	}
+	return false
 }
 
 // buildOutputDeclarations enumerates deterministic producer declarations without

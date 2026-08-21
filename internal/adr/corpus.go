@@ -2,6 +2,7 @@ package adr
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"slices"
 	"sort"
@@ -122,6 +123,28 @@ func LoadCorpus(dir string) (Corpus, error) {
 		adrs[i] = parsed
 	}
 	return NewCorpus(adrs)
+}
+
+// Clone returns a fully independent corpus projection, including every nested
+// mutable field retained by parsed records.
+func (c Corpus) Clone() Corpus {
+	records := make([]ADR, len(c.all))
+	for i, record := range c.all {
+		record.Domains = slices.Clone(record.Domains)
+		record.Tags = slices.Clone(record.Tags)
+		record.Related = slices.Clone(record.Related)
+		record.Sections = maps.Clone(record.Sections)
+		record.decisions = slices.Clone(record.decisions)
+		record.decisionBySlug = maps.Clone(record.decisionBySlug)
+		record.Operations = slices.Clone(record.Operations)
+		record.History = slices.Clone(record.History)
+		for historyIndex := range record.History {
+			record.History[historyIndex].Operations = slices.Clone(record.History[historyIndex].Operations)
+		}
+		records[i] = record
+	}
+	cloned, _ := NewCorpus(records)
+	return cloned
 }
 
 // All returns every parsed ADR in directory order.
