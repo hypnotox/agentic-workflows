@@ -754,52 +754,6 @@ func callsMethodWithIdent(fn *ast.FuncDecl, method, argument string) bool {
 // invariant: rendering/project-output-plan:check-report-single-plan (TestCheckReportBuildsOneOutputPlan)
 // invariant: rendering/sync-and-drift:generated-artifacts-tracked (TestCheckReportBuildsOneOutputPlan)
 func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
-	file := parseCheckSource(t)
-	for _, declaration := range file.Decls {
-		function, ok := declaration.(*ast.FuncDecl)
-		if ok && function.Recv != nil && function.Name.Name == "Check" {
-			t.Fatal("retired ProjectState.Check compatibility projection is present")
-		}
-	}
-	report := checkFunc(t, file, "checkReport")
-	directAdvisory := checkFunc(t, file, "advisoryNotes")
-	check := checkFunc(t, file, "checkWithTrackingState")
-	advisory := checkFunc(t, file, "advisoryNotesWithState")
-
-	for _, fn := range []*ast.FuncDecl{report, directAdvisory} {
-		if got := calledMethodCount(fn, "outputPlanWithPitfalls"); got != 1 {
-			t.Errorf("%s constructs %d output plans, want exactly one", fn.Name.Name, got)
-		}
-	}
-	outputPlanPosition := calledMethodPosition(report, "outputPlanWithPitfalls")
-	for _, producer := range []string{"deriveOperationStateWithPitfalls", "ParseDir"} {
-		producerPosition := calledMethodPosition(report, producer)
-		if producerPosition == token.NoPos || outputPlanPosition == token.NoPos || outputPlanPosition <= producerPosition {
-			t.Errorf("checkReport outputPlan position %d must follow %s position %d", outputPlanPosition, producer, producerPosition)
-		}
-	}
-	if !callsMethodWithIdent(directAdvisory, "advisoryNotesWithState", "op") {
-		t.Error("advisoryNotes does not pass op to advisoryNotesWithState")
-	}
-	for _, fn := range []*ast.FuncDecl{check, advisory} {
-		if !hasOutputPlanParameter(fn) {
-			t.Errorf("%s does not receive op *OutputPlan", fn.Name.Name)
-		}
-		if got := calledMethodCount(fn, "outputPlanWithPitfalls"); got != 0 {
-			t.Errorf("%s reconstructs %d output plans", fn.Name.Name, got)
-		}
-		if !callsMethodWithIdent(report, fn.Name.Name, "op") {
-			t.Errorf("checkReport does not pass op to %s", fn.Name.Name)
-		}
-	}
-	for _, fn := range []*ast.FuncDecl{check, advisory} {
-		for _, producer := range []string{"generateDomainDocs", "generateConfigReference"} {
-			if got := calledMethodCount(fn, producer); got != 0 {
-				t.Errorf("%s calls %s %d times, want plan write nodes", fn.Name.Name, producer, got)
-			}
-		}
-	}
-
 	fixture := gitfixture.InitRepo(t)
 	root := fixture.Root()
 	testsupport.WriteAwfConfig(t, root, withTestGateCmd("prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\ndomains: [config]\n"))
@@ -826,7 +780,7 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 			t.Fatal(err)
 		}
 		required := map[string]bool{config.DirName + "/awf.lock": true}
-		for _, output := range op.writeFiles() {
+		for _, output := range planWriteFiles(op) {
 			if p.nested() && resident.IsResidentPath(output.Path) {
 				continue
 			}
@@ -903,7 +857,11 @@ func TestCheckReportRequiresGeneratedArtifactsInIndex(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := syncReport(renderInputsForTest(p), &InitAuthority{InitializedWithVersion: Version}); err != nil {
+	plan, err := testPlan(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := syncReport(renderInputsForTest(p), &InitAuthority{InitializedWithVersion: Version}, &plan); err != nil {
 		t.Fatal(err)
 	}
 	home := t.TempDir()
@@ -1018,7 +976,11 @@ func TestCheckGeneratedTrackingNoGitAndNestedResidentExclusion(t *testing.T) {
 		if !p.nested() {
 			t.Fatal("Loader.Open did not preserve the containing-repository prefix")
 		}
-		if _, _, _, err := syncReport(renderInputsForTest(p), &InitAuthority{InitializedWithVersion: Version}); err != nil {
+		plan, err := testPlan(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, _, _, err := syncReport(renderInputsForTest(p), &InitAuthority{InitializedWithVersion: Version}, &plan); err != nil {
 			t.Fatal(err)
 		}
 		gitfixture.AddAll(t, fixture)
@@ -1581,7 +1543,7 @@ func TestAgentGuideSizeAdvisoryBoundary(t *testing.T) {
 				t.Fatal(err)
 			}
 			var actual int
-			for _, file := range op.writeFiles() {
+			for _, file := range planWriteFiles(op) {
 				if file.Path == "AGENTS.md" {
 					actual = len(file.Content)
 				}
@@ -1595,7 +1557,7 @@ func TestAgentGuideSizeAdvisoryBoundary(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			for _, file := range op.writeFiles() {
+			for _, file := range planWriteFiles(op) {
 				if file.Path == "AGENTS.md" && len(file.Content) != tc.bytes {
 					t.Fatalf("expected guide bytes = %d, want %d", len(file.Content), tc.bytes)
 				}

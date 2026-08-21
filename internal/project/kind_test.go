@@ -13,6 +13,7 @@ import (
 	"golang.org/x/tools/go/packages"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
 // invariant: rendering/project-output-plan:kind-dispatch-single-table (TestKindDescriptorsCoverAllKinds)
@@ -184,6 +185,21 @@ func fixtureKindSwitch(kind string) int {
 	}
 	if !caseFlagged {
 		t.Errorf("a switch case on a kind literal escaped the detector: %#v", findings)
+	}
+}
+
+func TestResidualKindDescriptorProjectsDocTemplateAndUnknownSections(t *testing.T) {
+	descriptor, ok := descriptorByPlural("docs")
+	if !ok || descriptor.templateID(catalog.Standard, "architecture") != catalog.Standard.Docs["architecture"].TID {
+		t.Fatalf("docs descriptor = %#v, %t", descriptor, ok)
+	}
+	domain, ok := descriptorByPlural("domains")
+	if !ok || domain.templateID(catalog.Standard, "example") != "domains/domain.md.tmpl" {
+		t.Fatalf("domain descriptor = %#v, %t", domain, ok)
+	}
+	state := testState(&config.Config{})
+	if sections := declaredSections(renderInputsForTest(state), "unknown", "artifact"); sections != nil {
+		t.Fatalf("unknown sections = %v", sections)
 	}
 }
 

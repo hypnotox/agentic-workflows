@@ -260,7 +260,7 @@ func TestCheckStagedDriftTracksWholeOutputPlan(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []string{config.DirName + "/awf.lock"}
-	for _, output := range op.writeFiles() {
+	for _, output := range planWriteFiles(op) {
 		want = append(want, output.Path)
 	}
 	slices.Sort(want)

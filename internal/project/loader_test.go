@@ -12,6 +12,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
@@ -149,7 +150,7 @@ func TestLoaderOpenOwnsInjectedCompleteView(t *testing.T) {
 func TestProjectStateDefensivelyOwnsTargetSnapshots(t *testing.T) {
 	source := []Target{{
 		Name: "target", Capabilities: []Capability{CapabilitySubagentTools},
-		Outputs: []TargetOutput{{Path: "output", Inputs: []TargetOutputInput{{Path: "input", Role: ArtifactTemplate}}}},
+		Outputs: []TargetOutput{{Path: "output", Inputs: []TargetOutputInput{{Path: "input", Role: outputplan.ArtifactTemplate}}}},
 	}}
 	state, err := newProjectState("root", resident.NewRoots("root", "resident"), false, &config.Config{}, catalog.Standard, catalog.Standard, source)
 	if err != nil {

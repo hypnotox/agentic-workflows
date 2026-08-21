@@ -6,37 +6,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 )
 
-// ArtifactRole classifies a loaded target declaration input.
-type ArtifactRole string
-
-const (
-	// ArtifactConfig identifies an authored configuration input.
-	ArtifactConfig ArtifactRole = "config"
-	// ArtifactLock identifies the managed project lock.
-	ArtifactLock ArtifactRole = "lock"
-	// ArtifactManifest identifies manifest authority.
-	ArtifactManifest ArtifactRole = "manifest"
-	// ArtifactTemplate identifies an embedded template input.
-	ArtifactTemplate ArtifactRole = "template"
-	// ArtifactConventionPart identifies an authored convention part.
-	ArtifactConventionPart ArtifactRole = "convention-part"
-	// ArtifactAuthoredData identifies authored sidecar data.
-	ArtifactAuthoredData ArtifactRole = "authored-data"
-	// ArtifactTopicMetadata identifies authored topic metadata.
-	ArtifactTopicMetadata ArtifactRole = "topic-metadata"
-	// ArtifactClaimPart identifies an authored current-state claim part.
-	ArtifactClaimPart ArtifactRole = "claim-part"
-	// ArtifactDecisionRecord identifies an architecture decision record.
-	ArtifactDecisionRecord ArtifactRole = "decision-record"
-	// ArtifactManagedOutput identifies an existing managed output input.
-	ArtifactManagedOutput ArtifactRole = "managed-output"
-	// ArtifactProtocolDescriptor identifies a runtime protocol descriptor.
-	ArtifactProtocolDescriptor ArtifactRole = "protocol-descriptor"
-)
-
-// OutputPolicy is the resolved declaration data attached to an output.
-type OutputPolicy struct{ ValidateFrontmatter, ScanReferences, ScanSkillReferences, Regenerate bool }
-
 // ProjectState is the immutable loaded project fact snapshot.
 type ProjectState struct {
 	invokingRoot string

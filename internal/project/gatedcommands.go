@@ -2,25 +2,10 @@ package project
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
-	"github.com/hypnotox/agentic-workflows/internal/clispec"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
-
-// gatedCommandsDisplay renders the gated-command list from the command spec.
-func gatedCommandsDisplay() string {
-	return strings.Join(backtick(clispec.GatedCommandNames()), ", ")
-}
-
-func backtick(names []string) []string {
-	out := make([]string, len(names))
-	for i, name := range names {
-		out[i] = "`" + name + "`"
-	}
-	return out
-}
 
 // CapabilityError is a stable refusal produced before a Full-only handler runs.
 type CapabilityError struct {

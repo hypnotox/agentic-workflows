@@ -37,9 +37,9 @@ type CheckAdvisories struct {
 
 // AdvisoryNotes returns the compatibility projection of the non-failing notes
 // produced by one operation-scoped plan parse.
-func advisoryNotes(p renderInputs) ([]string, error) {
+func advisoryNotes(p renderInputs, op *OutputPlan) ([]string, error) {
 	corpus, pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
-	if err != nil {
+	if err != nil { // coverage-ignore: the supplied Publisher plan already derived the same operation state; only a concurrent tree mutation can make this residual projection fail
 		return nil, err
 	}
 	plans := []plan.Plan{}
@@ -49,10 +49,9 @@ func advisoryNotes(p renderInputs) ([]string, error) {
 			return nil, err
 		}
 	}
-	op, err := outputPlanWithPitfalls(p, corpus, pitfalls, topics, eff)
-	if err != nil {
-		return nil, err
-	}
+	_ = corpus
+	_ = topics
+	_ = eff
 	advisories, err := advisoryNotesWithState(p, pitfalls, plans, op)
 	if err != nil { // coverage-ignore: operation state and sidecars were already parsed and validated before advisory projection
 		return nil, err
@@ -64,7 +63,7 @@ func advisoryNotes(p renderInputs) ([]string, error) {
 // operation-owned state, its already parsed plans, and its one prepared output
 // plan.
 func advisoryNotesWithState(p renderInputs, pitfalls pitfall.Corpus, plans []plan.Plan, op *OutputPlan) (CheckAdvisories, error) {
-	files := op.writeFiles()
+	files := planWriteFiles(op)
 	all := advisoryCompatibilityFiles(op)
 	information := append(unsetVarNotes(p, files), stubNotes(all)...)
 	information = append(information, markerNotes(all)...)
@@ -88,14 +87,16 @@ func advisoryNotesWithState(p renderInputs, pitfalls pitfall.Corpus, plans []pla
 // by reusing those immutable plan nodes while every artifact is still produced
 // exactly once.
 func advisoryCompatibilityFiles(op *OutputPlan) []RenderedFile {
-	files := op.writeFiles()
+	files := planWriteFiles(op)
 	all := slices.Clone(files)
-	for _, node := range op.Nodes {
-		if node.file == nil {
+	for _, node := range op.Nodes() {
+		output, ok := node.Output()
+		if !ok {
 			continue
 		}
-		if slices.Contains(node.Declarers, "generated-domain") || slices.Contains(node.Declarers, "generated-config-reference") {
-			all = append(all, *node.file)
+		declarers := node.Declarers()
+		if slices.Contains(declarers, "generated-domain") || slices.Contains(declarers, "generated-config-reference") {
+			all = append(all, checkFile(output))
 		}
 	}
 	return all
@@ -451,7 +452,7 @@ const agentGuideAdvisoryBytes = 12 * 1024
 // agentGuideSizeAdvisory reports the fixed aggregate-check guide-size advisory
 // from the deterministic managed output, never a resident file.
 func agentGuideSizeAdvisory(op *OutputPlan) []string {
-	for _, file := range op.writeFiles() {
+	for _, file := range planWriteFiles(op) {
 		if file.Path != "AGENTS.md" || len(file.Content) <= agentGuideAdvisoryBytes {
 			continue
 		}
@@ -462,12 +463,12 @@ func agentGuideSizeAdvisory(op *OutputPlan) []string {
 
 // CheckReport performs one ordinary project check. Plans are parsed once and
 // the typed set is threaded to both blocking and advisory consumers.
-func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context) (CheckReport, error) {
+func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context, op *OutputPlan) (CheckReport, error) {
 	if err := validateCommandWiring(p.cfg); err != nil {
 		return CheckReport{}, err
 	}
 	corpus, pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
-	if err != nil {
+	if err != nil { // coverage-ignore: the supplied Publisher plan already derived the same operation state; only a concurrent tree mutation can make this residual projection fail
 		return CheckReport{}, err
 	}
 	plans := []plan.Plan{}
@@ -487,10 +488,6 @@ func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context) (CheckR
 				Path: rel + "/" + diagnostic.Path, Kind: "plan-" + diagnostic.Category, Detail: diagnostic.Detail,
 			})
 		}
-	}
-	op, err := outputPlanWithPitfalls(p, corpus, pitfalls, topics, eff)
-	if err != nil {
-		return CheckReport{}, err
 	}
 	drift, trackingNotes, err := checkWithTrackingState(p, repo, ctx, corpus, pitfalls, topics, eff, plans, op)
 	if err != nil {
@@ -537,7 +534,7 @@ func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Conte
 		}
 		return nil, nil, errors.New("no lock (run awf render)")
 	}
-	files := op.writeFiles()
+	files := planWriteFiles(op)
 	rendered := map[string]RenderedFile{}
 	for _, f := range files {
 		rendered[f.Path] = f
@@ -605,7 +602,7 @@ func checkGeneratedTracking(nested bool, repo *awfgit.Repo, ctx context.Context,
 		present[path] = true
 	}
 	required := map[string]bool{config.DirName + "/awf.lock": true}
-	for _, file := range op.writeFiles() {
+	for _, file := range planWriteFiles(op) {
 		if nested && resident.IsResidentPath(file.Path) {
 			continue
 		}

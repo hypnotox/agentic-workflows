@@ -11,7 +11,9 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -20,12 +22,31 @@ import (
 // are unprefixed at ".claude/agents/<name>.md".
 const evalPrefix = "example"
 
+func evalPlan(p *project.ProjectState, cfg *config.Config) (outputplan.Plan, error) {
+	return publisher.New(p.OutputState(), cfg, publisher.NewFilesystemReader(p.Root()), project.Version).Plan()
+}
+
+func syncEvalProject(t *testing.T, p *project.ProjectState) error {
+	t.Helper()
+	cfg := mustEvalConfig(t, p)
+	plan, err := evalPlan(p, cfg)
+	if err != nil {
+		return err
+	}
+	_, _, _, err = project.SyncReport(p, cfg, plan)
+	return err
+}
+
 func checkProject(p *project.ProjectState, ctx context.Context) ([]manifest.Drift, error) {
 	cfg, err := config.Load(config.RootDir(p.Root()))
 	if err != nil {
 		return nil, err
 	}
-	report, err := project.BuildCheckReport(p, cfg, nil, ctx)
+	plan, err := evalPlan(p, cfg)
+	if err != nil {
+		return nil, err
+	}
+	report, err := project.BuildCheckReport(p, cfg, nil, ctx, plan)
 	return report.Drift, err
 }
 
@@ -104,7 +125,11 @@ func syncFullCatalogForTarget(t *testing.T, cat *catalog.Catalog, target string)
 	if err != nil {
 		t.Fatalf("load config: %v", err)
 	}
-	if _, _, _, err := project.InitializeReport(p, cfg, project.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
+	plan, err := evalPlan(p, cfg)
+	if err != nil {
+		t.Fatalf("plan: %v", err)
+	}
+	if _, _, _, err := project.InitializeReport(p, cfg, project.InitAuthority{InitializedWithVersion: project.Version}, plan); err != nil {
 		t.Fatalf("initialize: %v", err)
 	}
 	return root
@@ -174,7 +199,7 @@ func TestFullCatalogCoverage(t *testing.T) {
 			if !hasDrift(drift, missing, "missing") {
 				t.Errorf("missing output drift = %v, want %q missing", drift, missing)
 			}
-			if _, _, _, err := project.SyncReport(p, mustEvalConfig(t, p)); err != nil {
+			if err := syncEvalProject(t, p); err != nil {
 				t.Fatalf("repair missing output: %v", err)
 			}
 			if drift, err := checkProject(p, testsupport.Context(t)); err != nil || len(drift) != 0 {
@@ -191,7 +216,7 @@ func TestFullCatalogCoverage(t *testing.T) {
 			if !hasDrift(drift, "AGENTS.md", "hand-edited") {
 				t.Errorf("edited output drift = %v, want AGENTS.md hand-edited", drift)
 			}
-			if _, _, _, err := project.SyncReport(p, mustEvalConfig(t, p)); err != nil {
+			if err := syncEvalProject(t, p); err != nil {
 				t.Fatalf("repair stale output: %v", err)
 			}
 			if drift, err := checkProject(p, testsupport.Context(t)); err != nil || len(drift) != 0 {

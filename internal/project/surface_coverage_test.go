@@ -10,13 +10,17 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
 func TestAdvisoryCompatibilityAndReportErrorPaths(t *testing.T) {
-	if got := advisoryCompatibilityFiles(&OutputPlan{Nodes: []OutputNode{{Path: "declaration-only"}}}); len(got) != 0 {
+	if got := advisoryCompatibilityFiles(func() *OutputPlan {
+		plan := outputplan.New([]outputplan.Node{outputplan.NewNode(outputplan.NodeSpec{Path: "declaration-only"})}, nil)
+		return &plan
+	}()); len(got) != 0 {
 		t.Fatalf("compatibility files = %#v", got)
 	}
 	failure := errors.New("advisory failure")
@@ -118,12 +122,16 @@ func TestCheckReportPropagatesAdvisorySidecarError(t *testing.T) {
 	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
-	reader := &flippingGlossaryReader{validReads: 5}
+	reader := &flippingGlossaryReader{validReads: 2}
 	cfg, err := config.ParseTree(".awf", []byte("prefix: example\nprofile: full\nintegrationBranch: main\nvars:\n  gateCmd: make gate\n"), reader)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := BuildCheckReport(p, cfg, testRepo(p), testContext(t)); err == nil || !strings.Contains(err.Error(), "must be a list") {
+	plan, planErr := testPlan(p)
+	if planErr != nil {
+		t.Fatal(planErr)
+	}
+	if _, err := BuildCheckReport(p, cfg, testRepo(p), testContext(t), plan); err == nil || !strings.Contains(err.Error(), "must be a list") {
 		t.Fatalf("CheckReport advisory error = %v after %d glossary reads", err, reader.reads)
 	}
 }
@@ -159,55 +167,6 @@ func TestListDocumentPropagatesInvalidCatalogEntry(t *testing.T) {
 	cat := catalog.NewView(&catalog.Catalog{Skills: map[string]catalog.SkillSpec{"bad\nentry": {}}}).Catalog()
 	if _, err := listDocument(&config.Config{}, cat, "skill"); err == nil {
 		t.Fatal("invalid catalog entry reached the list presentation")
-	}
-}
-
-func TestBuildOutputDeclarationsCoversTargetAndMetadataEdges(t *testing.T) {
-	cfg, err := config.ParseTree(".awf", []byte("prefix: example\ndomains: [d]\n"), configReaderAdapter{memoryProjectReader{}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	targets := []Target{{Name: "one", Outputs: []TargetOutput{{Path: "shared", TemplateID: "template", Inputs: []TargetOutputInput{{Path: "same", Role: ArtifactConfig}, {Path: "same", Role: ArtifactTemplate}}}}}, {Name: "two", Outputs: []TargetOutput{{Path: "shared", TemplateID: "template"}}}}
-	read := memoryProjectReader{".awf/topics/metadata/note.txt": []byte("ignored")}
-	decls, err := BuildOutputDeclarations(cfg, &catalog.Catalog{Skills: map[string]catalog.SkillSpec{}, Agents: map[string]catalog.AgentSpec{}, Docs: map[string]catalog.DocEntry{}}, targets, read, mustCorpus())
-	if err != nil {
-		t.Fatal(err)
-	}
-	shared := -1
-	for i, decl := range decls {
-		if decl.Path == "shared" {
-			shared = i
-			break
-		}
-	}
-	if shared < 0 || len(decls[shared].Declarers) != 2 || len(decls[shared].Inputs) != 4 {
-		t.Fatalf("target declarations = %#v", decls)
-	}
-
-	unknown := []Target{{Name: "bad", Outputs: []TargetOutput{{Path: "missing", RequiresSkill: "absent"}}}}
-	if _, err := BuildOutputDeclarations(cfg, &catalog.Catalog{Skills: map[string]catalog.SkillSpec{}, Agents: map[string]catalog.AgentSpec{}, Docs: map[string]catalog.DocEntry{}}, unknown, read, mustCorpus()); err == nil || !strings.Contains(err.Error(), "unknown catalog skill") {
-		t.Fatalf("unknown target requirement error = %v", err)
-	}
-
-	badSidecar := memoryProjectReader{".awf/domains/d.yaml": []byte("data: [\n")}
-	cfg, err = config.ParseTree(".awf", []byte("prefix: example\ndomains: [d]\n"), configReaderAdapter{badSidecar})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := BuildOutputDeclarations(cfg, &catalog.Catalog{Skills: map[string]catalog.SkillSpec{}, Agents: map[string]catalog.AgentSpec{}, Docs: map[string]catalog.DocEntry{}}, nil, badSidecar, mustCorpus()); err == nil || !strings.Contains(err.Error(), "domains/d.yaml") {
-		t.Fatalf("domain sidecar error = %v", err)
-	}
-}
-
-func TestBuildOutputDeclarationsPropagatesCatalogSidecarReadFault(t *testing.T) {
-	read := failingReadReader{memoryProjectReader: memoryProjectReader{}}
-	cfg, err := config.ParseTree(".awf", []byte("prefix: example\n"), configReaderAdapter(read))
-	if err != nil {
-		t.Fatal(err)
-	}
-	cat := &catalog.Catalog{Skills: map[string]catalog.SkillSpec{"tdd": {}}, Agents: map[string]catalog.AgentSpec{}, Docs: map[string]catalog.DocEntry{}}
-	if _, err := BuildOutputDeclarations(cfg, cat, []Target{{Name: "test"}}, read, mustCorpus()); err == nil || !strings.Contains(err.Error(), "read fault") {
-		t.Fatalf("declaration read error = %v", err)
 	}
 }
 

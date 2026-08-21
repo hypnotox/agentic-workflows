@@ -5,9 +5,9 @@
 
 How a project assembles its render set, output plan, drift check, and prune behaviour.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/pitfall/**`, `internal/project/**`, `internal/projectstate/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/project/**`, `internal/resident/**`. Both domain and topic selectors must match. Run `awf topic rendering/project-output-plan --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/project/**`, `internal/projectstate/**`, `internal/publisher/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/outputplan/**`, `internal/project/**`, `internal/publisher/**`, `internal/resident/**`. Both domain and topic selectors must match. Run `awf topic rendering/project-output-plan --coverage` for current applicable and owned paths and marker sites.
 
-The project package assembles the full render set, computes the output plan and config hash, checks drift, and prunes stale outputs. The claims below capture the current output-plan and render-orchestration contracts.
+Publisher assembles the full render set and constructs one immutable operation-scoped output plan. Neutral declarations and plan values live in `internal/outputplan`; project checks consume that produced plan for drift, tracking, advisory, staged, and context projections without importing application coordination. The project package retains residual check policy and sync-time publication behavior until its later extraction phase.
 
 The Pi target descriptor is the sole declaration of the five Pi TypeScript outputs: context usage, handoff, and subagent index, model-routing, and runner; non-Pi target sets render and prune none of them.
 
@@ -49,9 +49,9 @@ Backing: test
 
 ### `invariant: check-report-single-plan`
 
-Project.CheckReport constructs one operation-owned OutputPlan after deriving its current state and parsed plans, threads that same plan to drift, tracking, and advisory projections, and never regenerates domain documents or the config reference inside either projection. Tracking derives every output-plan write plus the separately written `.awf/awf.lock`, compares them with the Git seam's ignore-independent index metadata, and excludes resident-root outputs only for a nested adopter. AdvisoryNotes, OutputPlan, and other direct project operations continue to derive their own operation-scoped inputs without a persistent cache; the redundant drift-only Check projection is retired so every repository-check consumer retains tracking advisories.
+Publisher constructs one immutable output plan after deriving the operation's ADR, pitfall, topic, and effective-skill state. Outer command composition passes that same neutral `internal/outputplan` value to output, drift, tracking, advisory, staged, initialization-planning, resident-marker, and context consumers; project checks and current-state projections never import Publisher or reconstruct planning policy. Tracking derives every planned write plus the separately written `.awf/awf.lock`, compares them with the Git seam's ignore-independent index metadata, and excludes resident-root outputs only for a nested adopter. Each direct operation constructs its own plan without a persistent cache, while every participating consumer within that operation reuses the produced value.
 Origin: ADR-0223
-Revised-by: ADR-0277
+Revised-by: ADR-0277, ADR-make-publisher-the-output-plan-construction-owner
 Backing: test
 
 ### `invariant: output-policy-explicit`

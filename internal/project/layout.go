@@ -2,8 +2,6 @@ package project
 
 import (
 	"path/filepath"
-	"sort"
-	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 )
@@ -49,31 +47,6 @@ func layout(p renderInputs) Layout {
 	}
 }
 
-// templateMap projects the layout into the map the .layout template namespace and
-// the per-file ConfigHash consume. The fixed directory/generated keys are set
-// here; the mandatory-singleton keys (adrReadme, adrTemplate, plansReadme,
-// workflowRef, docStandard, agentsMdStandard, workingWithAwf) derive from the
-// catalog doc collection - each entry's TemplateKey at docsDir/Path - so the map
-// reproduces the historical key set and values byte-for-byte (ADR-0061).
-func (l Layout) templateMap() map[string]any {
-	docs := map[string]any{}
-	for k, v := range l.Docs {
-		docs[k] = v
-	}
-	m := map[string]any{
-		"docsDir":    l.DocsDir,
-		"adrDir":     l.ADRDir,
-		"indexMd":    l.IndexMd,
-		"plansDir":   l.PlansDir,
-		"docs":       docs,
-		"domainsDir": l.DomainsDir,
-	}
-	for key, output := range l.Singletons {
-		m[key] = output
-	}
-	return m
-}
-
 // docOutPath is the catalog-declared output path for a managed doc.
 func docOutPath(p renderInputs, name string) string {
 	e := projectCatalog(p).Docs[name]
@@ -90,70 +63,4 @@ func docOutPath(p renderInputs, name string) string {
 // decisionsDir is the absolute ADR decisions directory.
 func decisionsDir(root string) string {
 	return filepath.Join(root, config.DocsDir, "decisions")
-}
-
-// resolvedDocs builds the non-singleton Document-map entries for the agents-doc
-// template from the full catalog, annotated with title and description.
-func resolvedDocs(p renderInputs) []map[string]any {
-	out := []map[string]any{}
-	var names []string
-	for name, e := range projectCatalog(p).Docs {
-		if !e.AgentsDoc && e.Path == "" {
-			names = append(names, name)
-		}
-	}
-	sort.Strings(names)
-	for _, name := range names {
-		spec := projectCatalog(p).Docs[name]
-		out = append(out, map[string]any{
-			"name":  name,
-			"title": spec.Title,
-			"desc":  spec.Desc,
-			"path":  docOutPath(p, name),
-		})
-	}
-	return out
-}
-
-// documentMapDocs builds the catalog portion of the AGENTS.md map. Layout.Docs
-// remains catalog-only; local documents are a separate output family.
-func localDocsProjection(docs []config.LocalDoc) string {
-	projection := make([]string, 0, len(docs)*3)
-	for _, doc := range docs {
-		projection = append(projection, doc.Name, doc.Title, doc.Description)
-	}
-	return strings.Join(projection, "\x00")
-}
-
-func documentMapDocs(p renderInputs) []map[string]any {
-	d := config.DocsDir
-	var names []string
-	for name, e := range projectCatalog(p).Docs {
-		if e.DocumentMap {
-			names = append(names, name)
-		}
-	}
-	sort.Strings(names)
-	out := make([]map[string]any, 0, len(names))
-	for _, name := range names {
-		e := projectCatalog(p).Docs[name]
-		out = append(out, map[string]any{
-			"name": name, "title": e.Title, "desc": e.Desc, "path": d + "/" + e.Path,
-		})
-	}
-	return out
-}
-
-// localDocumentMapDocs projects configured local documents in normalized name
-// order for the explicit agent-guide document-map union.
-func localDocumentMapDocs(p renderInputs) []map[string]any {
-	locals := p.cfg.NormalizedLocalDocs()
-	out := make([]map[string]any, 0, len(locals))
-	for _, local := range locals {
-		out = append(out, map[string]any{
-			"name": local.Name, "title": local.Title, "desc": local.Description,
-			"path": config.DocsDir + "/" + local.Name + ".md",
-		})
-	}
-	return out
 }

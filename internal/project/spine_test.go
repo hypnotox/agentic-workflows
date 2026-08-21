@@ -3713,7 +3713,16 @@ func TestDailyAdvancedDocumentationOwnership(t *testing.T) {
 			if !strings.Contains(string(lock), `"docs/pi-runtime-reference.md"`) {
 				t.Error("lock does not own Pi reference")
 			}
-			policy := declaredPolicy("pi-runtime-reference", true)
+			plan, err := testPlan(p)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var policy OutputPolicy
+			for _, node := range plan.Nodes() {
+				if output, ok := node.Output(); ok && node.Path() == "docs/pi-runtime-reference.md" {
+					policy = output.Policy()
+				}
+			}
 			if !policy.ScanReferences || !policy.ScanSkillReferences {
 				t.Errorf("Pi reference policy does not scan links and skill references: %#v", policy)
 			}

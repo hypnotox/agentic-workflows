@@ -9,7 +9,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
-	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/publisher"
 )
 
 // runConfig prints the configuration reference: full or single-entry, with
@@ -25,7 +25,7 @@ func runConfig(ctx context.Context, cwd, key string, stdout io.Writer) error {
 		if !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
-		document, presentationErr := project.ConfigReferencePresentation(key, nil, "config reference static (not inside an awf project)")
+		document, presentationErr := publisher.ConfigReferencePresentation(key, nil, "config reference static (not inside an awf project)")
 		if presentationErr != nil {
 			return presentationErr
 		}
@@ -38,11 +38,11 @@ func runConfig(ctx context.Context, cwd, key string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	model, err := project.BuildConfigReference(state, cfg)
+	model, err := composePublisher(state, cfg).BuildConfigReference()
 	if err != nil {
 		return err
 	}
-	document, presentationErr := project.ConfigReferencePresentation(key, &model, "config reference live")
+	document, presentationErr := publisher.ConfigReferencePresentation(key, &model, "config reference live")
 	if presentationErr != nil {
 		return presentationErr
 	}

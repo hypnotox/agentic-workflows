@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: make-publisher-the-output-plan-construction-owner
-status: Proposed
+status: Implementing
 date: 2026-08-21
 ---
 # ADR-make-publisher-the-output-plan-construction-owner: Make Publisher the Output Plan Construction Owner
@@ -54,3 +54,5 @@ may not rebuild it or introduce a compatibility planner.
 ## Status history
 
 - 2026-08-21: Proposed
+- 2026-08-21: Implementing; content-sha256: 5087f4d9abff126b57f87d68ab25503b1de541b70f30390171d7c2d06dba6d4f
+- 2026-08-21: Applied; operations: update `rendering/project-output-plan:check-report-single-plan`

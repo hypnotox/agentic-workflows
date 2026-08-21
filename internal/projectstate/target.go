@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 )
 
@@ -47,7 +48,7 @@ const (
 // TargetOutputInput declares one semantic input to a target-owned output.
 type TargetOutputInput struct {
 	Path string
-	Role ArtifactRole
+	Role outputplan.ArtifactRole
 }
 
 // TargetOutput declares a target-owned non-catalog output such as a project extension.
@@ -61,7 +62,7 @@ type TargetOutput struct {
 	Inputs         []TargetOutputInput
 	Encoder        AgentDialect
 	Provenance     render.CommentStyle
-	Policy         OutputPolicy
+	Policy         outputplan.Policy
 	PolicyDeclared bool
 }
 
@@ -172,11 +173,11 @@ var piTarget = Target{
 	AgentDialect: MarkdownAgentDialect,
 	Capabilities: []Capability{CapabilitySubagentTools, CapabilitySessionHandoff, CapabilityEffortSessions},
 	Outputs: []TargetOutput{
-		{Path: ".pi/extensions/awf-subagents/index.ts", TemplateID: "pi/awf-subagents/index.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
-		{Path: ".pi/extensions/awf-subagents/model-routing.ts", TemplateID: "pi/awf-subagents/model-routing.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
-		{Path: ".pi/extensions/awf-effort/index.ts", RequiresSkill: "effort-workflow", TemplateID: "pi/awf-effort/index.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
-		{Path: ".pi/extensions/awf-effort/client.ts", RequiresSkill: "effort-workflow", TemplateID: "pi/awf-effort/client.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
-		{SkillName: "using-effort", RequiresSkill: "effort-workflow", TemplateID: "skills/using-effort/SKILL.md.tmpl", Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, Policy: OutputPolicy{ValidateFrontmatter: true, ScanReferences: true, ScanSkillReferences: true}, PolicyDeclared: true},
+		{Path: ".pi/extensions/awf-subagents/index.ts", TemplateID: "pi/awf-subagents/index.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: outputplan.Policy{}, PolicyDeclared: true},
+		{Path: ".pi/extensions/awf-subagents/model-routing.ts", TemplateID: "pi/awf-subagents/model-routing.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: outputplan.Policy{}, PolicyDeclared: true},
+		{Path: ".pi/extensions/awf-effort/index.ts", RequiresSkill: "effort-workflow", TemplateID: "pi/awf-effort/index.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: outputplan.Policy{}, PolicyDeclared: true},
+		{Path: ".pi/extensions/awf-effort/client.ts", RequiresSkill: "effort-workflow", TemplateID: "pi/awf-effort/client.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: outputplan.Policy{}, PolicyDeclared: true},
+		{SkillName: "using-effort", RequiresSkill: "effort-workflow", TemplateID: "skills/using-effort/SKILL.md.tmpl", Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, Policy: outputplan.Policy{ValidateFrontmatter: true, ScanReferences: true, ScanSkillReferences: true}, PolicyDeclared: true},
 	},
 }
 

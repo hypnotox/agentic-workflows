@@ -124,6 +124,16 @@ func TestWithDefaultData(t *testing.T) {
 // A change to an artifact's catalog default data must change its lock
 // configHash, so awf check flags the artifact stale (ADR-0045).
 // invariant: rendering/sync-and-drift:catalog-data-in-confighash (TestCatalogDataChangesConfigHash)
+func TestCloneDataClonesGenericYAMLMaps(t *testing.T) {
+	nested := []any{"value"}
+	source := map[any]any{"key": nested}
+	cloned := cloneData(source).(map[any]any)
+	cloned["key"].([]any)[0] = "changed"
+	if nested[0] != "value" {
+		t.Fatal("cloneData aliased a map[any]any nested value")
+	}
+}
+
 func TestCatalogDataChangesConfigHash(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(testContext(t), root)

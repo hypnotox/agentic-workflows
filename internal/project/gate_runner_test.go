@@ -303,7 +303,7 @@ fi
 if [ -n "${FAKE_GO_FAIL_CONTAINS:-}" ] && [[ "$*" == *"$FAKE_GO_FAIL_CONTAINS"* ]]; then
   exit 17
 fi
-if [[ "$*" == "test -json ./internal/project -run ^TestPi(EffortMemoryToolContract|RealRuntimeSmoke)$ -count=1" ]]; then
+if [[ "$*" == "test -json ./internal/publisher -run ^TestPi(EffortMemoryToolContract|RealRuntimeSmoke)$ -count=1" ]]; then
   printf '{"Time":"2026-08-02T00:00:00Z","Action":"%s","Package":"example/project","Test":"TestPiEffortMemoryToolContract","Elapsed":0}\n' "${FAKE_PI_RESULT:-pass}"
   printf '{"Time":"2026-08-02T00:00:00Z","Action":"%s","Package":"example/project","Test":"TestPiRealRuntimeSmoke","Elapsed":0}\n' "${FAKE_PI_RESULT:-pass}"
 fi
@@ -541,7 +541,7 @@ func assertGateInvocations(t *testing.T, lines []string) {
 		"goos=|goarch=|pi=|run ./cmd/versioncheck",
 		"goos=|goarch=|pi=|test ./... -coverpkg=./... -coverprofile=coverage.out",
 		"goos=|goarch=|pi=|run ./cmd/covercheck coverage.out",
-		"goos=|goarch=|pi=1|test -json ./internal/project -run ^TestPi(EffortMemoryToolContract|RealRuntimeSmoke)$ -count=1",
+		"goos=|goarch=|pi=1|test -json ./internal/publisher -run ^TestPi(EffortMemoryToolContract|RealRuntimeSmoke)$ -count=1",
 		"goos=|goarch=|pi=|vet ./...",
 		"goos=linux|goarch=arm64|pi=|build ./...",
 		"goos=darwin|goarch=amd64|pi=|build ./...",

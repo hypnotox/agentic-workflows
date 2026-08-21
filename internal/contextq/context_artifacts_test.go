@@ -7,6 +7,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
@@ -17,13 +18,13 @@ func testArtifactAuthorities(docsDir string, corpus adr.Corpus) artifactAuthorit
 
 // invariant: rendering/sync-and-drift:managed-output-attribution (TestArtifactRecordsFollowDeclarations)
 func TestArtifactRecordsFollowDeclarations(t *testing.T) {
-	decls := []project.OutputDeclaration{{Path: "docs/out.md", TemplateID: "docs/out.md.tmpl", Declarers: []string{"out"}, Inputs: []project.OutputInput{{Path: ".awf/docs/parts/out/content.md", Role: project.ArtifactConventionPart}}}}
+	decls := []outputplan.Declaration{outputplan.NewDeclaration("docs/out.md", "docs/out.md.tmpl", []string{"out"}, []outputplan.Input{outputplan.NewInput(".awf/docs/parts/out/content.md", outputplan.ArtifactConventionPart)}, nil)}
 	generated := artifactRecords("docs/out.md", decls, testArtifactAuthorities("docs", mustCorpus(nil)))
-	if len(generated) != 1 || generated[0].Role != project.ArtifactManagedOutput || len(generated[0].Sources) != 1 {
+	if len(generated) != 1 || generated[0].Role != outputplan.ArtifactManagedOutput || len(generated[0].Sources) != 1 {
 		t.Fatalf("generated=%#v", generated)
 	}
 	source := artifactRecords(".awf/docs/parts/out/content.md", decls, testArtifactAuthorities("docs", mustCorpus(nil)))
-	if len(source) != 1 || source[0].Role != project.ArtifactConventionPart || len(source[0].Outputs) != 1 || source[0].Outputs[0].Path != "docs/out.md" {
+	if len(source) != 1 || source[0].Role != outputplan.ArtifactConventionPart || len(source[0].Outputs) != 1 || source[0].Outputs[0].Path != "docs/out.md" {
 		t.Fatalf("source=%#v", source)
 	}
 	unmanaged := artifactRecords("docs/lookalike.md", decls, testArtifactAuthorities("docs", mustCorpus(nil)))
@@ -47,40 +48,40 @@ func TestArtifactNavigationCoversClosedRolesOrderingAndLookalikes(t *testing.T) 
 		{Number: "0007", Filename: "0007-real.md"},
 		{Slug: "a-pending-record", Filename: "a-pending-record.md", Format: adr.CurrentStateV3},
 	})
-	decls := []project.OutputDeclaration{
-		{Path: "documentation/config-reference.md", TemplateID: "docs/config-reference.md.tmpl", Declarers: []string{"config-reference"}},
-		{Path: "documentation/domains/d.md", TemplateID: "domains/domain.md.tmpl", Declarers: []string{"generated-domain"}},
-		{Path: "documentation/topics/d/t.md", TemplateID: "topics/topic.md.tmpl", Declarers: []string{"topic:d/t"}},
-		{Path: "documentation/decisions/INDEX.md", Declarers: []string{"generated-index"}},
-		{Path: "generated.md", TemplateID: "docs/out.tmpl", Declarers: []string{"owner"}, Inputs: []project.OutputInput{
-			{Path: ".awf/config.yaml", Role: project.ArtifactConfig},
-			{Path: "templates/docs/out.tmpl", Role: project.ArtifactTemplate},
-			{Path: ".awf/docs/parts/out/content.md", Role: project.ArtifactConventionPart},
-			{Path: ".awf/docs/out.yaml", Role: project.ArtifactAuthoredData},
-			{Path: ".awf/topics/metadata/d/t.yaml", Role: project.ArtifactTopicMetadata},
-			{Path: ".awf/topics/parts/d/t/current-state.md", Role: project.ArtifactClaimPart},
-			{Path: "documentation/decisions/0007-real.md", Role: project.ArtifactDecisionRecord},
-		}},
-		{Path: "second.md", TemplateID: "docs/second.tmpl", Declarers: []string{"second"}, Inputs: []project.OutputInput{{Path: "templates/docs/out.tmpl", Role: project.ArtifactTemplate}}},
+	decls := []outputplan.Declaration{
+		outputplan.NewDeclaration("documentation/config-reference.md", "docs/config-reference.md.tmpl", []string{"config-reference"}, nil, nil),
+		outputplan.NewDeclaration("documentation/domains/d.md", "domains/domain.md.tmpl", []string{"generated-domain"}, nil, nil),
+		outputplan.NewDeclaration("documentation/topics/d/t.md", "topics/topic.md.tmpl", []string{"topic:d/t"}, nil, nil),
+		outputplan.NewDeclaration("documentation/decisions/INDEX.md", "", []string{"generated-index"}, nil, nil),
+		outputplan.NewDeclaration("generated.md", "docs/out.tmpl", []string{"owner"}, []outputplan.Input{
+			outputplan.NewInput(".awf/config.yaml", outputplan.ArtifactConfig),
+			outputplan.NewInput("templates/docs/out.tmpl", outputplan.ArtifactTemplate),
+			outputplan.NewInput(".awf/docs/parts/out/content.md", outputplan.ArtifactConventionPart),
+			outputplan.NewInput(".awf/docs/out.yaml", outputplan.ArtifactAuthoredData),
+			outputplan.NewInput(".awf/topics/metadata/d/t.yaml", outputplan.ArtifactTopicMetadata),
+			outputplan.NewInput(".awf/topics/parts/d/t/current-state.md", outputplan.ArtifactClaimPart),
+			outputplan.NewInput("documentation/decisions/0007-real.md", outputplan.ArtifactDecisionRecord),
+		}, nil),
+		outputplan.NewDeclaration("second.md", "docs/second.tmpl", []string{"second"}, []outputplan.Input{outputplan.NewInput("templates/docs/out.tmpl", outputplan.ArtifactTemplate)}, nil),
 	}
 	authorities := testArtifactAuthorities("documentation", parsed)
 	cases := []struct {
 		path       string
-		role       project.ArtifactRole
+		role       outputplan.ArtifactRole
 		identity   string
 		navigation []artifactLink
 	}{
-		{".awf/config.yaml", project.ArtifactConfig, "project-config", []artifactLink{{Path: "documentation/config-reference.md", Label: "configuration reference"}}},
-		{".awf/awf.lock", project.ArtifactLock, "project-lock", []artifactLink{{Path: ".awf/config.yaml", Label: "project config"}, {Path: "documentation/config-reference.md", Label: "configuration reference"}}},
-		{".awf/awf.lock", project.ArtifactManifest, "output-manifest", []artifactLink{{Path: "documentation/config-reference.md", Label: "configuration reference"}}},
-		{"templates/docs/out.tmpl", project.ArtifactTemplate, "docs/out.tmpl", []artifactLink{{Path: "generated.md", Label: "managed output"}, {Path: "second.md", Label: "managed output"}}},
-		{".awf/docs/parts/out/content.md", project.ArtifactConventionPart, ".awf/docs/parts/out/content.md", []artifactLink{{Path: "generated.md", Label: "managed output"}}},
-		{".awf/docs/out.yaml", project.ArtifactAuthoredData, ".awf/docs/out.yaml", []artifactLink{{Path: "generated.md", Label: "managed output"}}},
-		{".awf/topics/metadata/d/t.yaml", project.ArtifactTopicMetadata, "d/t", []artifactLink{{Path: "documentation/domains/d.md", Label: "domain document"}, {Path: "documentation/topics/d/t.md", Label: "topic document"}}},
-		{".awf/topics/parts/d/t/current-state.md", project.ArtifactClaimPart, "d/t", []artifactLink{{Path: "documentation/domains/d.md", Label: "domain document"}, {Path: "documentation/topics/d/t.md", Label: "topic document"}}},
-		{"documentation/decisions/0007-real.md", project.ArtifactDecisionRecord, "0007", []artifactLink{{Path: "documentation/decisions/INDEX.md", Label: "decision index"}}},
-		{"documentation/decisions/a-pending-record.md", project.ArtifactDecisionRecord, "a-pending-record", []artifactLink{{Path: "documentation/decisions/INDEX.md", Label: "decision index"}}},
-		{"generated.md", project.ArtifactManagedOutput, "docs/out.tmpl", []artifactLink{{Path: ".awf/config.yaml", Label: "project config"}, {Path: ".awf/docs/out.yaml", Label: "authored data"}, {Path: ".awf/docs/parts/out/content.md", Label: "convention part"}, {Path: ".awf/topics/metadata/d/t.yaml", Label: "topic metadata"}, {Path: ".awf/topics/parts/d/t/current-state.md", Label: "claim part"}, {Path: "documentation/decisions/0007-real.md", Label: "decision record"}}},
+		{".awf/config.yaml", outputplan.ArtifactConfig, "project-config", []artifactLink{{Path: "documentation/config-reference.md", Label: "configuration reference"}}},
+		{".awf/awf.lock", outputplan.ArtifactLock, "project-lock", []artifactLink{{Path: ".awf/config.yaml", Label: "project config"}, {Path: "documentation/config-reference.md", Label: "configuration reference"}}},
+		{".awf/awf.lock", outputplan.ArtifactManifest, "output-manifest", []artifactLink{{Path: "documentation/config-reference.md", Label: "configuration reference"}}},
+		{"templates/docs/out.tmpl", outputplan.ArtifactTemplate, "docs/out.tmpl", []artifactLink{{Path: "generated.md", Label: "managed output"}, {Path: "second.md", Label: "managed output"}}},
+		{".awf/docs/parts/out/content.md", outputplan.ArtifactConventionPart, ".awf/docs/parts/out/content.md", []artifactLink{{Path: "generated.md", Label: "managed output"}}},
+		{".awf/docs/out.yaml", outputplan.ArtifactAuthoredData, ".awf/docs/out.yaml", []artifactLink{{Path: "generated.md", Label: "managed output"}}},
+		{".awf/topics/metadata/d/t.yaml", outputplan.ArtifactTopicMetadata, "d/t", []artifactLink{{Path: "documentation/domains/d.md", Label: "domain document"}, {Path: "documentation/topics/d/t.md", Label: "topic document"}}},
+		{".awf/topics/parts/d/t/current-state.md", outputplan.ArtifactClaimPart, "d/t", []artifactLink{{Path: "documentation/domains/d.md", Label: "domain document"}, {Path: "documentation/topics/d/t.md", Label: "topic document"}}},
+		{"documentation/decisions/0007-real.md", outputplan.ArtifactDecisionRecord, "0007", []artifactLink{{Path: "documentation/decisions/INDEX.md", Label: "decision index"}}},
+		{"documentation/decisions/a-pending-record.md", outputplan.ArtifactDecisionRecord, "a-pending-record", []artifactLink{{Path: "documentation/decisions/INDEX.md", Label: "decision index"}}},
+		{"generated.md", outputplan.ArtifactManagedOutput, "docs/out.tmpl", []artifactLink{{Path: ".awf/config.yaml", Label: "project config"}, {Path: ".awf/docs/out.yaml", Label: "authored data"}, {Path: ".awf/docs/parts/out/content.md", Label: "convention part"}, {Path: ".awf/topics/metadata/d/t.yaml", Label: "topic metadata"}, {Path: ".awf/topics/parts/d/t/current-state.md", Label: "claim part"}, {Path: "documentation/decisions/0007-real.md", Label: "decision record"}}},
 	}
 	for _, tc := range cases {
 		records := artifactRecords(tc.path, decls, authorities)
@@ -97,7 +98,7 @@ func TestArtifactNavigationCoversClosedRolesOrderingAndLookalikes(t *testing.T) 
 		}
 	}
 	lockRoles := artifactRecords(".awf/awf.lock", decls, authorities)
-	if got := []project.ArtifactRole{lockRoles[0].Role, lockRoles[1].Role}; !reflect.DeepEqual(got, []project.ArtifactRole{project.ArtifactLock, project.ArtifactManifest}) {
+	if got := []outputplan.ArtifactRole{lockRoles[0].Role, lockRoles[1].Role}; !reflect.DeepEqual(got, []outputplan.ArtifactRole{outputplan.ArtifactLock, outputplan.ArtifactManifest}) {
 		t.Fatalf("lock role ordering = %v", got)
 	}
 	managed := artifactRecords("generated.md", decls, authorities)[0]
@@ -108,9 +109,9 @@ func TestArtifactNavigationCoversClosedRolesOrderingAndLookalikes(t *testing.T) 
 	if !reflect.DeepEqual(template.Outputs, []artifactLink{{Path: "generated.md", Label: "managed output"}, {Path: "second.md", Label: "managed output"}}) {
 		t.Fatalf("template outputs = %#v", template.Outputs)
 	}
-	inPlaceDecl := []project.OutputDeclaration{{Path: "awf", TemplateID: "runner/awf.tmpl", Declarers: []string{"runner"}, Inputs: []project.OutputInput{{Path: "awf", Role: project.ArtifactManagedOutput}}}}
+	inPlaceDecl := []outputplan.Declaration{outputplan.NewDeclaration("awf", "runner/awf.tmpl", []string{"runner"}, []outputplan.Input{outputplan.NewInput("awf", outputplan.ArtifactManagedOutput)}, nil)}
 	inPlace := artifactRecords("awf", inPlaceDecl, authorities)
-	if len(inPlace) != 1 || inPlace[0].Role != project.ArtifactManagedOutput || !reflect.DeepEqual(inPlace[0].Sources, []artifactLink{{Path: "awf", Label: "in-place managed output"}}) || !reflect.DeepEqual(inPlace[0].Outputs, []artifactLink{{Path: "awf", Label: "managed output"}}) || inPlace[0].Navigation == nil {
+	if len(inPlace) != 1 || inPlace[0].Role != outputplan.ArtifactManagedOutput || !reflect.DeepEqual(inPlace[0].Sources, []artifactLink{{Path: "awf", Label: "in-place managed output"}}) || !reflect.DeepEqual(inPlace[0].Outputs, []artifactLink{{Path: "awf", Label: "managed output"}}) || inPlace[0].Navigation == nil {
 		t.Fatalf("in-place source/output multiplicity = %#v", inPlace)
 	}
 	generatedIndex := artifactRecords("documentation/decisions/INDEX.md", decls, authorities)
@@ -121,14 +122,14 @@ func TestArtifactNavigationCoversClosedRolesOrderingAndLookalikes(t *testing.T) 
 	if withoutReference[0].Navigation == nil || len(withoutReference[0].Navigation) != 0 {
 		t.Fatalf("undeclared config-reference navigation = %#v", withoutReference)
 	}
-	duplicateRoles := artifactRecords("duplicate.md", []project.OutputDeclaration{{Path: "duplicate.md", TemplateID: "z"}, {Path: "duplicate.md", TemplateID: "a"}}, authorities)
+	duplicateRoles := artifactRecords("duplicate.md", []outputplan.Declaration{outputplan.NewDeclaration("duplicate.md", "z", nil, nil, nil), outputplan.NewDeclaration("duplicate.md", "a", nil, nil, nil)}, authorities)
 	if len(duplicateRoles) != 2 || duplicateRoles[0].Identity != "a" || duplicateRoles[1].Identity != "z" {
 		t.Fatalf("same-role identity ordering = %#v", duplicateRoles)
 	}
-	if got := artifactSourceLabel(project.ArtifactProtocolDescriptor); got != "protocol descriptor" {
+	if got := artifactSourceLabel(outputplan.ArtifactProtocolDescriptor); got != "protocol descriptor" {
 		t.Fatalf("protocol source label = %q", got)
 	}
-	if got := artifactSourceLabel(project.ArtifactRole("future")); got != "future" {
+	if got := artifactSourceLabel(outputplan.ArtifactRole("future")); got != "future" {
 		t.Fatalf("unknown source label = %q", got)
 	}
 	if got := mergeArtifactLinks([]artifactLink{{Path: "same", Label: "z"}}, []artifactLink{{Path: "same", Label: "a"}}); !reflect.DeepEqual(got, []artifactLink{{Path: "same", Label: "a"}, {Path: "same", Label: "z"}}) {

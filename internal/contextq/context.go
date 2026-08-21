@@ -51,7 +51,7 @@ func (q *Query) ContextForOptions(queries []string, options ContextOptions) Cont
 	}
 	outputs := map[string]bool{}
 	for _, d := range state.Declarations {
-		outputs[d.Path] = true
+		outputs[d.Path()] = true
 	}
 	nested := []string{}
 	for _, f := range state.Tree.List() {

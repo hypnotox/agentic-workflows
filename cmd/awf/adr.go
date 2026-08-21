@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
@@ -27,7 +28,7 @@ func runADR(c *cmdCtx) error {
 	// no assignments, so nothing is printed for them; past the first rename the
 	// renames are on disk, and the operator needs the mapping for the
 	// integration commit message whatever failed afterwards.
-	report, numberErr := project.NumberPendingADRs(state, cfg, c.inv.positionals)
+	report, numberErr := project.NumberPendingADRs(state, cfg, c.inv.positionals, func() (outputplan.Plan, error) { return operationPlan(state, cfg) })
 	if len(report.Assignments) == 0 {
 		return numberErr
 	}

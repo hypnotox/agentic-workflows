@@ -437,15 +437,7 @@ func TestRunnerPartReadError(t *testing.T) {
 	if err := os.MkdirAll(part, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	_, pitfalls, _, eff, err := deriveOperationStateWithPitfalls(renderInputsForTest(p))
-	if err != nil {
-		t.Fatal(err)
-	}
-	declarations, err := targetOutputDeclarations(renderInputsForTest(p), eff)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := renderAllBase(renderInputsForTest(p), declarations, eff, pitfalls); err == nil {
+	if _, err := testPlan(p); err == nil {
 		t.Fatal("part read error accepted")
 	} else if !strings.Contains(err.Error(), "runner-body") {
 		t.Fatalf("render error = %v, want runner-body read error", err)

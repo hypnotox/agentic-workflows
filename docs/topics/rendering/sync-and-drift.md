@@ -5,7 +5,7 @@
 
 How sync and check detect and report: drift hash inputs, attribution, backups, residue, pruning, cleanup, and current-state coverage and fan-out evaluation.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/pitfall/**`, `internal/project/**`, `internal/projectstate/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/project/**`, `internal/resident/**`. Both domain and topic selectors must match. Run `awf topic rendering/sync-and-drift --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/project/**`, `internal/projectstate/**`, `internal/publisher/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/outputplan/**`, `internal/project/**`, `internal/publisher/**`, `internal/resident/**`. Both domain and topic selectors must match. Run `awf topic rendering/sync-and-drift --coverage` for current applicable and owned paths and marker sites.
 
 How awf render and awf check detect and report drift: per-file config-hash inputs, managed-output attribution and provenance, foreign-file backups, residue scanning, ancestor pruning, and uninstall cleanup.
 

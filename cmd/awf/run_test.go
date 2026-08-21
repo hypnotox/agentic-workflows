@@ -235,16 +235,17 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 )
 
 func mutationAddsPostRender(state *project.ProjectState, cfg *config.Config, ctx context.Context) {
 	_ = ctx
-	_, _, _, _ = project.SyncReport(state, cfg)
+	_, _, _, _ = project.SyncReport(state, cfg, outputplan.Plan{})
 }
 
 var mutationAddsPackagePostRender = func(state *project.ProjectState, cfg *config.Config, ctx context.Context) {
 	_ = ctx
-	_, _, _, _ = project.SyncReport(state, cfg)
+	_, _, _, _ = project.SyncReport(state, cfg, outputplan.Plan{})
 }
 `),
 	})

@@ -78,7 +78,7 @@ const duplicateNumbersRecipe = "duplicate ADR numbers with no pending record: if
 // returns the assignments alongside its error rather than an empty report. The
 // mapping is what the integration commit message needs, and the caller cannot
 // reconstruct it once the pending files are gone.
-func numberPendingADRs(p renderInputs, slugs []string) (NumberingReport, error) {
+func numberPendingADRs(p renderInputs, slugs []string, preparePlan func() (*OutputPlan, error)) (NumberingReport, error) {
 	corpus, duplicates, err := numberingCorpus(p.root())
 	if err != nil {
 		return NumberingReport{}, err
@@ -109,7 +109,11 @@ func numberPendingADRs(p renderInputs, slugs []string) (NumberingReport, error) 
 	if err := topic.SubstituteProvenance(p.root(), renames); err != nil { // coverage-ignore: SubstituteProvenance's own error paths are unreachable, so this propagation cannot be driven from here
 		return report, err
 	}
-	if _, _, _, err := syncReportOperation(p); err != nil {
+	op, err := preparePlan()
+	if err != nil {
+		return report, err
+	}
+	if _, _, _, err := syncReportOperation(p, op); err != nil {
 		return report, err
 	}
 	return report, nil

@@ -4,101 +4,104 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
+	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
 
-// ContextState is the loaded universe the context query reads and the single
-// seam between the sync core and internal/contextq (ADR-0195 item 2). The core
-// keeps the loading machinery - working and staged current-state loads, lock
-// reads, declaration building, and eligible-path selection - and hands the
-// result over whole; the query package derives everything else from these
-// fields and reaches no further into the core.
-//
-// Every field is a construction input written by one of the two constructors
-// below and never afterwards, so a ContextState value is immutable in practice
-// and safe to share (code-design/state-ownership).
+// ContextState is the immutable loaded universe consumed by contextq.
 type ContextState struct {
-	// Layout is the docs layout derived from the snapshot's own config.
-	Layout Layout
-	// Cfg is the configuration parsed from the snapshot, not from disk: the
-	// query classifies the universe it was handed.
-	Cfg *config.Config
-	// Loaded is the parsed ADR and topic view of that same snapshot.
-	Loaded currentstate.Loaded
-	// PlanState is the parsed plan view and resolved reverse ADR links from that snapshot.
-	PlanState PlanContext
-	// Tree is the snapshot the universe was loaded from.
-	Tree *snapshot.Tree
-	// Lock is the parsed output manifest, nil when the tree carries none.
-	Lock *manifest.Lock
-	// Declarations is the output plan the artifact projection attributes paths to.
-	Declarations []OutputDeclaration
-	// Eligible is the coverage universe: every scannable snapshot file that is
-	// not a generated output (a lock entry), not matched by a contextIgnore
-	// glob, not under a resident root, and not inside a nested adopter tree.
-	Eligible []string
+	Layout       Layout
+	Cfg          *config.Config
+	Loaded       currentstate.Loaded
+	PlanState    PlanContext
+	Tree         *snapshot.Tree
+	Lock         *manifest.Lock
+	Declarations []outputplan.Declaration
+	Eligible     []string
 }
 
-// ContextState assembles the working-tree universe. The universe project it
-// derives the catalog, targets, and layout from is built from the snapshot's
-// own configuration rather than the caller's, so the query answers about the
-// tree it was given.
-func contextState(state *ProjectState, repo *awfgit.Repo, ctx context.Context) (ContextState, error) {
+// ContextPreparation holds one snapshot universe while outer composition asks
+// Publisher to construct its plan from the same tree.
+type ContextPreparation struct {
+	State    *projectstate.ProjectState
+	Config   *config.Config
+	Reader   outputplan.TreeReader
+	layout   Layout
+	loaded   currentstate.Loaded
+	tree     *snapshot.Tree
+	lock     *manifest.Lock
+	plans    PlanContext
+	eligible []string
+}
+
+func completeContext(prep *ContextPreparation, plan outputplan.Plan) ContextState {
+	return ContextState{Layout: prep.layout, Cfg: prep.Config, Loaded: prep.loaded, PlanState: prep.plans, Tree: prep.tree, Lock: prep.lock, Declarations: plan.Declarations(), Eligible: prep.eligible}
+}
+
+// PrepareContextState loads one working snapshot for Publisher and contextq.
+func PrepareContextState(state *ProjectState, repo *awfgit.Repo, ctx context.Context) (*ContextPreparation, error) {
 	ws, err := workingCurrentState(state.Root(), repo, ctx)
 	if err != nil {
-		return ContextState{}, err
+		return nil, err
 	}
 	universe := newRenderInputs(state, ws.Cfg, snapshotTreeReader{tree: ws.Tree})
-	targets, err := resolveTargets(KnownTargets())
-	if err != nil { // coverage-ignore: configured-target validation succeeded and KnownTargets is exhaustively backed by built-in descriptor tests
-		return ContextState{}, err
-	}
-	declarations, err := BuildOutputDeclarations(ws.Cfg, projectCatalog(universe), targets, snapshotTreeReader{tree: ws.Tree}, ws.Loaded.Corpus)
-	if err != nil { // coverage-ignore: the snapshot-local catalog and every declaration input were already parsed from this immutable tree
-		return ContextState{}, err
-	}
 	plans, err := planContextFromTree(ws.Tree, config.DocsDir, ws.Loaded.Corpus)
-	if err != nil { // coverage-ignore: planContextFromTree converts plan parse failures into drift before context construction
-		return ContextState{}, err
+	if err != nil { // coverage-ignore: workingCurrentState already parsed this immutable tree and converts parser failures into loaded diagnostics
+		return nil, err
 	}
-	return ContextState{Layout: layout(universe), Cfg: ws.Cfg, Loaded: ws.Loaded, PlanState: plans, Tree: ws.Tree, Lock: ws.Lock, Declarations: declarations, Eligible: eligiblePaths(ws.Tree, ws.Lock, ws.Cfg.ContextIgnore)}, nil
+	return &ContextPreparation{State: state.state, Config: ws.Cfg, Reader: snapshotTreeReader{tree: ws.Tree}, layout: layout(universe), loaded: ws.Loaded, tree: ws.Tree, lock: ws.Lock, plans: plans, eligible: eligiblePaths(ws.Tree, ws.Lock, ws.Cfg.ContextIgnore)}, nil
 }
 
-// StagedContextState assembles the index universe at root. It deliberately
-// never loads working-tree configuration: the staged answer is computed
-// entirely from what is staged.
-func StagedContextState(ctx context.Context, root string) (ContextState, error) {
+// CompleteContextState threads the Publisher-produced plan into the prepared universe.
+func CompleteContextState(prep *ContextPreparation, plan outputplan.Plan) ContextState {
+	return completeContext(prep, plan)
+}
+
+// PrepareStagedContextState loads one index-only snapshot for Publisher.
+func PrepareStagedContextState(ctx context.Context, root string) (*ContextPreparation, error) {
 	repo, prefix, err := awfgit.OpenContaining(root)
 	if err != nil {
-		return ContextState{}, err
+		return nil, err
 	}
 	p := stagedProject(root, prefix)
 	state, err := indexCurrentState(p.root(), repo, ctx)
 	if err != nil {
-		return ContextState{}, err
+		return nil, err
 	}
 	targets, err := resolveTargets(KnownTargets())
-	if err != nil { // coverage-ignore: configured-target validation succeeded and KnownTargets is exhaustively backed by built-in descriptor tests
-		return ContextState{}, err
+	if err != nil { // coverage-ignore: KnownTargets is the same closed built-in registry ResolveTargets projects
+		return nil, err
 	}
-	universe := newRenderInputs(p.state, state.Cfg, snapshotTreeReader{tree: state.Tree})
-	declarations, err := BuildOutputDeclarations(state.Cfg, projectCatalog(universe), targets, snapshotTreeReader{tree: state.Tree}, state.Loaded.Corpus)
-	if err != nil { // coverage-ignore: the staged snapshot-local catalog and every declaration input were already parsed from this immutable tree
-		return ContextState{}, err
-	}
+	complete := completeProjectCatalog(p)
+	selected := catalogForProfile(complete, state.Cfg)
+	lower := projectstate.NewDerived(p.root(), p.residentRoots(), p.isNested(), selected, complete, targets)
+	universeState := &ProjectState{state: lower}
+	universe := newRenderInputs(universeState, state.Cfg, snapshotTreeReader{tree: state.Tree})
 	plans, err := planContextFromTree(state.Tree, config.DocsDir, state.Loaded.Corpus)
-	if err != nil { // coverage-ignore: planContextFromTree converts plan parse failures into drift before context construction
-		return ContextState{}, err
+	if err != nil { // coverage-ignore: indexCurrentState already parsed this immutable tree and converts parser failures into loaded diagnostics
+		return nil, err
 	}
-	return ContextState{Layout: layout(universe), Cfg: state.Cfg, Loaded: state.Loaded, PlanState: plans, Tree: state.Tree, Lock: state.Lock, Declarations: declarations, Eligible: eligiblePaths(state.Tree, state.Lock, state.Cfg.ContextIgnore)}, nil
+	return &ContextPreparation{State: lower, Config: state.Cfg, Reader: snapshotTreeReader{tree: state.Tree}, layout: layout(universe), loaded: state.Loaded, tree: state.Tree, lock: state.Lock, plans: plans, eligible: eligiblePaths(state.Tree, state.Lock, state.Cfg.ContextIgnore)}, nil
 }
 
-// indexState is one loaded index universe: the parsed ADR/topic view, the Tree
-// it came from, the lock, and the staged configuration.
+func catalogForProfile(complete *catalog.Catalog, cfg *config.Config) *catalog.Catalog {
+	return catalog.NewProfileView(complete, cfg.Profile).Catalog()
+}
+
+// CompleteStagedContextState threads the staged Publisher plan into contextq.
+func CompleteStagedContextState(prep *ContextPreparation, plan outputplan.Plan) ContextState {
+	return completeContext(prep, plan)
+}
+
+// StagedContextState is intentionally retired: outer composition must build a Publisher plan.
+
+// indexState is one loaded index universe.
 type indexState struct {
 	Loaded currentstate.Loaded
 	Tree   *snapshot.Tree
@@ -106,15 +109,17 @@ type indexState struct {
 	Cfg    *config.Config
 }
 
-// indexCurrentState loads the staged ADR/topic view from the index tree.
 func indexCurrentState(root string, repo *awfgit.Repo, ctx context.Context) (indexState, error) {
 	tree, err := indexTree(root, repo, ctx)
 	if err != nil {
 		return indexState{}, err
 	}
-	lock, err := lockFromTree(tree)
-	if err != nil {
-		return indexState{}, err
+	var lock *manifest.Lock
+	if _, found := tree.Lookup(config.DirName + "/awf.lock"); found {
+		lock, err = lockFromTree(tree)
+		if err != nil {
+			return indexState{}, err
+		}
 	}
 	loaded, cfg, err := loadTreeCurrentState(root, tree, lock)
 	if err != nil {
@@ -123,5 +128,5 @@ func indexCurrentState(root string, repo *awfgit.Repo, ctx context.Context) (ind
 	if cfg == nil {
 		return indexState{}, fmt.Errorf("no staged %s/config.yaml", config.DirName)
 	}
-	return indexState{Loaded: loaded, Tree: tree, Lock: lock, Cfg: cfg}, nil
+	return indexState{loaded, tree, lock, cfg}, nil
 }

@@ -12,19 +12,6 @@ import (
 // glossarySidecarPath names the authoring surface in every glossary content error.
 const glossarySidecarPath = config.DirName + "/docs/glossary.yaml"
 
-// docDataTransform is the docs renderKindSpec transform (ADR-0089): the seam
-// where a doc's sidecar data is computed into rendered content upstream of both
-// renderTarget and artifactConfigHash, so a change to the computation itself
-// reflags the doc exactly like a config edit (the ADR-0045 both-consumers
-// pattern). The glossary doc computes today; the pitfall family is assembled
-// from its operation-owned corpus by the output planner.
-func docDataTransform(name string, sc config.Sidecar) (config.Sidecar, error) {
-	if name == "glossary" {
-		return glossaryTransform(sc)
-	}
-	return sc, nil
-}
-
 // glossaryRecord is one authored term: the term itself, its meaning, and the
 // optional owning domains. Domains resolve against the project's configured
 // domains in checkGlossary, which this render-time path cannot see.
@@ -46,29 +33,6 @@ var glossaryRecordKeys = map[string]bool{"term": true, "meaning": true, "domains
 // well as authored terms (decision 10); the portability test is the additional
 // guard that awf never ships an over-length term in the first place.
 const glossaryMeaningMax = 280
-
-// glossaryTransform replaces data.terms with the finished, always-sorted
-// markdown table rows for the merged two-layer set (ADR-0089, ADR-0207). It
-// returns untouched only when neither layer is present at all; a null or empty
-// layer yields "", so the template's else branch renders the coherent
-// placeholder. standardTerms is consumed here and deleted, so the template sees
-// exactly one key. Content violations are hard errors naming the offending term.
-func glossaryTransform(sc config.Sidecar) (config.Sidecar, error) {
-	_, hasAuthored := sc.Data["terms"]
-	_, hasStandard := sc.Data["standardTerms"]
-	if !hasAuthored && !hasStandard {
-		return sc, nil
-	}
-	records, err := mergedGlossaryRecords(sc)
-	if err != nil {
-		return sc, err
-	}
-	out := sc
-	out.Data = maps.Clone(sc.Data)
-	out.Data["terms"] = glossaryRows(records)
-	delete(out.Data, "standardTerms")
-	return out, nil
-}
 
 // mergedGlossaryRecords is the single home of the two-layer merge: the standard
 // vocabulary awf ships, overlaid by the project's authored terms. An authored
@@ -240,30 +204,6 @@ func glossaryDomains(term string, m map[string]any) ([]string, error) {
 		out = append(out, strings.TrimSpace(s))
 	}
 	return out, nil
-}
-
-// glossaryRows renders the sorted table rows. Ordering is case-insensitive by
-// term; ties are impossible because case-insensitive duplicates are rejected
-// upstream, so equal record sets always render byte-identically regardless of
-// the authored order. The caller's slice is never reordered.
-func glossaryRows(records []glossaryRecord) string {
-	if len(records) == 0 {
-		return ""
-	}
-	sorted := slices.Clone(records)
-	slices.SortFunc(sorted, func(a, b glossaryRecord) int {
-		return strings.Compare(strings.ToLower(a.Term), strings.ToLower(b.Term))
-	})
-	var b strings.Builder
-	for _, r := range sorted {
-		fmt.Fprintf(&b, "| %s | %s |\n", escapePipes(r.Term), escapePipes(r.Meaning))
-	}
-	return b.String()
-}
-
-// escapePipes keeps a term or meaning inside one GFM table cell.
-func escapePipes(s string) string {
-	return strings.ReplaceAll(s, "|", `\|`)
 }
 
 // glossaryErr prefixes every content violation with the authoring surface.

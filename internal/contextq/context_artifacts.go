@@ -6,6 +6,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
@@ -17,7 +18,7 @@ type artifactSnapshot struct {
 	InManifest, Drifted bool
 }
 type artifactRecord struct {
-	Role                         project.ArtifactRole
+	Role                         outputplan.ArtifactRole
 	Identity                     string
 	Sources, Outputs, Navigation []artifactLink
 	Snapshot                     *artifactSnapshot
@@ -28,9 +29,9 @@ type artifactAuthorities struct {
 	ADRs   adr.Corpus
 }
 
-func artifactRecords(path string, declarations []project.OutputDeclaration, authorities artifactAuthorities) []artifactRecord {
+func artifactRecords(path string, declarations []outputplan.Declaration, authorities artifactAuthorities) []artifactRecord {
 	records := []artifactRecord{}
-	add := func(role project.ArtifactRole, identity string, sources, outputs []artifactLink) {
+	add := func(role outputplan.ArtifactRole, identity string, sources, outputs []artifactLink) {
 		for i := range records {
 			if records[i].Role == role && records[i].Identity == identity {
 				records[i].Sources = mergeArtifactLinks(records[i].Sources, sources)
@@ -43,7 +44,7 @@ func artifactRecords(path string, declarations []project.OutputDeclaration, auth
 	configReference := authorities.Layout.DocsDir + "/config-reference.md"
 	linkIfDeclared := func(path, label string) []artifactLink {
 		for _, declaration := range declarations {
-			if declaration.Path == path {
+			if declaration.Path() == path {
 				return []artifactLink{{Path: path, Label: label}}
 			}
 		}
@@ -51,63 +52,63 @@ func artifactRecords(path string, declarations []project.OutputDeclaration, auth
 	}
 	switch {
 	case path == ".awf/config.yaml":
-		add(project.ArtifactConfig, "project-config", nil, declarationOutputs(path, declarations))
+		add(outputplan.ArtifactConfig, "project-config", nil, declarationOutputs(path, declarations))
 	case path == ".awf/awf.lock":
-		add(project.ArtifactLock, "project-lock", nil, nil)
-		add(project.ArtifactManifest, "output-manifest", nil, nil)
+		add(outputplan.ArtifactLock, "project-lock", nil, nil)
+		add(outputplan.ArtifactManifest, "output-manifest", nil, nil)
 	case strings.HasPrefix(path, ".awf/topics/metadata/") && strings.HasSuffix(path, ".yaml"):
-		add(project.ArtifactTopicMetadata, strings.TrimSuffix(strings.TrimPrefix(path, ".awf/topics/metadata/"), ".yaml"), nil, declarationOutputs(path, declarations))
+		add(outputplan.ArtifactTopicMetadata, strings.TrimSuffix(strings.TrimPrefix(path, ".awf/topics/metadata/"), ".yaml"), nil, declarationOutputs(path, declarations))
 	case strings.HasPrefix(path, ".awf/topics/parts/") && strings.HasSuffix(path, "/current-state.md"):
-		add(project.ArtifactClaimPart, strings.TrimSuffix(strings.TrimPrefix(path, ".awf/topics/parts/"), "/current-state.md"), nil, declarationOutputs(path, declarations))
+		add(outputplan.ArtifactClaimPart, strings.TrimSuffix(strings.TrimPrefix(path, ".awf/topics/parts/"), "/current-state.md"), nil, declarationOutputs(path, declarations))
 	case strings.HasPrefix(path, strings.TrimRight(authorities.Layout.ADRDir, "/")+"/"):
 		base := strings.TrimPrefix(path, strings.TrimRight(authorities.Layout.ADRDir, "/")+"/")
 		if record, ok := authorities.ADRs.ByIdentity(adr.FileIdentity(base)); ok && record.Filename == base {
-			add(project.ArtifactDecisionRecord, record.Identity(), nil, declarationOutputs(path, declarations))
+			add(outputplan.ArtifactDecisionRecord, record.Identity(), nil, declarationOutputs(path, declarations))
 		}
 	}
 	for _, d := range declarations {
-		if d.Path == path {
-			sources := make([]artifactLink, 0, len(d.Inputs))
+		if d.Path() == path {
+			sources := make([]artifactLink, 0, len(d.Inputs()))
 			outputs := []artifactLink{}
-			for _, in := range d.Inputs {
-				sources = append(sources, artifactLink{Path: in.Path, Label: artifactSourceLabel(in.Role)})
-				if in.Path == path && in.Role == project.ArtifactManagedOutput {
-					outputs = append(outputs, artifactLink{Path: d.Path, Label: "managed output"})
+			for _, in := range d.Inputs() {
+				sources = append(sources, artifactLink{Path: in.Path(), Label: artifactSourceLabel(in.Role())})
+				if in.Path() == path && in.Role() == outputplan.ArtifactManagedOutput {
+					outputs = append(outputs, artifactLink{Path: d.Path(), Label: "managed output"})
 				}
 			}
-			identity := d.TemplateID
+			identity := d.TemplateID()
 			if identity == "" {
-				identity = strings.Join(d.Declarers, ",")
+				identity = strings.Join(d.Declarers(), ",")
 			}
-			add(project.ArtifactManagedOutput, identity, sources, outputs)
+			add(outputplan.ArtifactManagedOutput, identity, sources, outputs)
 		}
-		for _, in := range d.Inputs {
-			if in.Path == path && !canonicalArtifactInputRole(in.Role) && in.Role != project.ArtifactManagedOutput {
+		for _, in := range d.Inputs() {
+			if in.Path() == path && !canonicalArtifactInputRole(in.Role()) && in.Role() != outputplan.ArtifactManagedOutput {
 				identity := path
-				if in.Role == project.ArtifactTemplate {
+				if in.Role() == outputplan.ArtifactTemplate {
 					identity = strings.TrimPrefix(path, "templates/")
 				}
-				add(in.Role, identity, nil, []artifactLink{{Path: d.Path, Label: "managed output"}})
+				add(in.Role(), identity, nil, []artifactLink{{Path: d.Path(), Label: "managed output"}})
 			}
 		}
 	}
 	for i := range records {
 		switch records[i].Role {
-		case project.ArtifactConfig:
+		case outputplan.ArtifactConfig:
 			records[i].Navigation = linkIfDeclared(configReference, "configuration reference")
-		case project.ArtifactLock:
+		case outputplan.ArtifactLock:
 			records[i].Navigation = append([]artifactLink{{Path: ".awf/config.yaml", Label: "project config"}}, linkIfDeclared(configReference, "configuration reference")...)
-		case project.ArtifactManifest:
+		case outputplan.ArtifactManifest:
 			records[i].Navigation = linkIfDeclared(configReference, "configuration reference")
-		case project.ArtifactTemplate, project.ArtifactConventionPart, project.ArtifactAuthoredData, project.ArtifactProtocolDescriptor:
+		case outputplan.ArtifactTemplate, outputplan.ArtifactConventionPart, outputplan.ArtifactAuthoredData, outputplan.ArtifactProtocolDescriptor:
 			records[i].Navigation = cloneArtifactLinks(records[i].Outputs)
-		case project.ArtifactTopicMetadata, project.ArtifactClaimPart:
+		case outputplan.ArtifactTopicMetadata, outputplan.ArtifactClaimPart:
 			id := records[i].Identity
 			domain := strings.SplitN(id, "/", 2)[0]
 			records[i].Navigation = append(linkIfDeclared(authorities.Layout.DocsDir+"/topics/"+id+".md", "topic document"), linkIfDeclared(authorities.Layout.DomainsDir+"/"+domain+".md", "domain document")...)
-		case project.ArtifactDecisionRecord:
+		case outputplan.ArtifactDecisionRecord:
 			records[i].Navigation = linkIfDeclared(authorities.Layout.IndexMd, "decision index")
-		case project.ArtifactManagedOutput:
+		case outputplan.ArtifactManagedOutput:
 			for _, source := range records[i].Sources {
 				if source.Path != path && source.Label != "render template" {
 					records[i].Navigation = append(records[i].Navigation, source)
@@ -118,7 +119,7 @@ func artifactRecords(path string, declarations []project.OutputDeclaration, auth
 		records[i].Outputs = mergeArtifactLinks(nil, records[i].Outputs)
 		records[i].Navigation = mergeArtifactLinks(nil, records[i].Navigation)
 	}
-	roleOrder := map[project.ArtifactRole]int{project.ArtifactConfig: 0, project.ArtifactLock: 1, project.ArtifactManifest: 2, project.ArtifactTemplate: 3, project.ArtifactProtocolDescriptor: 4, project.ArtifactConventionPart: 5, project.ArtifactAuthoredData: 6, project.ArtifactTopicMetadata: 7, project.ArtifactClaimPart: 8, project.ArtifactDecisionRecord: 9, project.ArtifactManagedOutput: 10}
+	roleOrder := map[outputplan.ArtifactRole]int{outputplan.ArtifactConfig: 0, outputplan.ArtifactLock: 1, outputplan.ArtifactManifest: 2, outputplan.ArtifactTemplate: 3, outputplan.ArtifactProtocolDescriptor: 4, outputplan.ArtifactConventionPart: 5, outputplan.ArtifactAuthoredData: 6, outputplan.ArtifactTopicMetadata: 7, outputplan.ArtifactClaimPart: 8, outputplan.ArtifactDecisionRecord: 9, outputplan.ArtifactManagedOutput: 10}
 	slices.SortFunc(records, func(a, b artifactRecord) int {
 		if a.Role != b.Role {
 			return roleOrder[a.Role] - roleOrder[b.Role]
@@ -128,41 +129,41 @@ func artifactRecords(path string, declarations []project.OutputDeclaration, auth
 	return records
 }
 
-func artifactSourceLabel(role project.ArtifactRole) string {
+func artifactSourceLabel(role outputplan.ArtifactRole) string {
 	switch role {
-	case project.ArtifactConfig:
+	case outputplan.ArtifactConfig:
 		return "project config"
-	case project.ArtifactTemplate:
+	case outputplan.ArtifactTemplate:
 		return "render template"
-	case project.ArtifactProtocolDescriptor:
+	case outputplan.ArtifactProtocolDescriptor:
 		return "protocol descriptor"
-	case project.ArtifactConventionPart:
+	case outputplan.ArtifactConventionPart:
 		return "convention part"
-	case project.ArtifactAuthoredData:
+	case outputplan.ArtifactAuthoredData:
 		return "authored data"
-	case project.ArtifactTopicMetadata:
+	case outputplan.ArtifactTopicMetadata:
 		return "topic metadata"
-	case project.ArtifactClaimPart:
+	case outputplan.ArtifactClaimPart:
 		return "claim part"
-	case project.ArtifactDecisionRecord:
+	case outputplan.ArtifactDecisionRecord:
 		return "decision record"
-	case project.ArtifactManagedOutput:
+	case outputplan.ArtifactManagedOutput:
 		return "in-place managed output"
 	default:
 		return string(role)
 	}
 }
 
-func canonicalArtifactInputRole(role project.ArtifactRole) bool {
-	return role == project.ArtifactConfig || role == project.ArtifactTopicMetadata || role == project.ArtifactClaimPart || role == project.ArtifactDecisionRecord
+func canonicalArtifactInputRole(role outputplan.ArtifactRole) bool {
+	return role == outputplan.ArtifactConfig || role == outputplan.ArtifactTopicMetadata || role == outputplan.ArtifactClaimPart || role == outputplan.ArtifactDecisionRecord
 }
 
-func declarationOutputs(path string, declarations []project.OutputDeclaration) []artifactLink {
+func declarationOutputs(path string, declarations []outputplan.Declaration) []artifactLink {
 	out := []artifactLink{}
 	for _, d := range declarations {
-		for _, in := range d.Inputs {
-			if in.Path == path {
-				out = append(out, artifactLink{Path: d.Path, Label: "managed output"})
+		for _, in := range d.Inputs() {
+			if in.Path() == path {
+				out = append(out, artifactLink{Path: d.Path(), Label: "managed output"})
 			}
 		}
 	}
@@ -170,7 +171,7 @@ func declarationOutputs(path string, declarations []project.OutputDeclaration) [
 }
 func applyArtifactSnapshots(records []artifactRecord, path string, tree *snapshot.Tree, lock *manifest.Lock) {
 	for i := range records {
-		if records[i].Role != project.ArtifactManagedOutput {
+		if records[i].Role != outputplan.ArtifactManagedOutput {
 			continue
 		}
 		entry, inManifest := manifest.Entry{}, false

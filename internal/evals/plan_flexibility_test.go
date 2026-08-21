@@ -50,7 +50,11 @@ func syncPlanFlexibilityProfile(t *testing.T, profile string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := project.InitializeReport(p, cfg, project.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
+	plan, err := evalPlan(p, cfg)
+	if err != nil {
+		t.Fatalf("plan %s profile: %v", profile, err)
+	}
+	if _, _, _, err := project.InitializeReport(p, cfg, project.InitAuthority{InitializedWithVersion: project.Version}, plan); err != nil {
 		t.Fatalf("initialize %s profile: %v", profile, err)
 	}
 	return root

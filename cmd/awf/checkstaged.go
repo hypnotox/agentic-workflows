@@ -22,7 +22,7 @@ type checkStagedDependencies struct {
 
 func productionCheckStagedDependencies() checkStagedDependencies {
 	return checkStagedDependencies{
-		stateRoot: project.CheckStagedRoot, driftRoot: project.CheckStagedDriftRoot,
+		stateRoot: project.CheckStagedRoot, driftRoot: stagedDrift,
 		currentStateCategories: project.CurrentStateCategories, driftCategories: project.DriftCategories,
 	}
 }

@@ -58,7 +58,7 @@ func runContext(ctx context.Context, cwd string, paths []string, staged bool, rn
 		if err := gateStaged(ctx, cwd); err != nil {
 			return err
 		}
-		state, err = project.StagedContextState(ctx, cwd)
+		state, err = stagedContextState(ctx, cwd)
 		header = "staged state for this project"
 	} else if _, statErr := os.Stat(config.ConfigPath(cwd)); statErr != nil {
 		if !errors.Is(statErr, fs.ErrNotExist) {
@@ -73,7 +73,7 @@ func runContext(ctx context.Context, cwd string, paths []string, staged bool, rn
 		if e != nil {
 			return e
 		}
-		state, err = project.BuildContextState(projectState, repo, ctx)
+		state, err = workingContextState(ctx, projectState, repo)
 	}
 	if err != nil {
 		return err
@@ -90,7 +90,7 @@ func runUncovered(ctx context.Context, cwd string, roots []string, staged bool, 
 	var err error
 	if staged {
 		if err = gateStaged(ctx, cwd); err == nil {
-			state, err = project.StagedContextState(ctx, cwd)
+			state, err = stagedContextState(ctx, cwd)
 		}
 		header = "staged coverage gaps for this project"
 	} else if _, statErr := os.Stat(config.ConfigPath(cwd)); statErr != nil {
@@ -105,7 +105,7 @@ func runUncovered(ctx context.Context, cwd string, roots []string, staged bool, 
 			var repo *awfgit.Repo
 			projectState, _, repo, err = openProjectOperation(ctx, cwd)
 			if err == nil {
-				state, err = project.BuildContextState(projectState, repo, ctx)
+				state, err = workingContextState(ctx, projectState, repo)
 			}
 		}
 	}

@@ -1,4 +1,6 @@
 paths:
+  - internal/outputplan/**
+  - internal/publisher/**
   - .pi/extensions/**
   - internal/render/**
   - internal/catalog/**

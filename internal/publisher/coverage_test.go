@@ -1,0 +1,569 @@
+package publisher
+
+import (
+	"errors"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"testing/fstest"
+
+	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/resident"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+)
+
+// corruptSidecar overwrites a sidecar (relative to .awf) with YAML that
+// the strict decoder rejects (unknown field), so a fresh Sidecar read fails.
+func corruptSidecar(t *testing.T, root, rel string) {
+	t.Helper()
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", rel), "bogusUnknownField: true\n")
+}
+
+// --- Open error paths ---
+
+func TestOpenMissingConfigFails(t *testing.T) {
+	// A bare temp dir with no .awf/config.yaml: config.Load fails.
+	_, err := Open(testContext(t), t.TempDir())
+	if err == nil {
+		t.Fatal("expected Open to fail with no config.yaml")
+	}
+}
+
+func TestOpenRejectsEmptyPrefix(t *testing.T) {
+	root := scaffold(t, "prefix: \"\"\n")
+	_, err := Open(testContext(t), root)
+	if err == nil {
+		t.Fatal("expected Open to fail validation on empty prefix")
+	}
+	if !strings.Contains(err.Error(), "prefix") {
+		t.Errorf("error should mention prefix, got: %v", err)
+	}
+}
+
+func TestOpenRejectsMalformedSkillSidecar(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", map[string]string{
+		"skills/tdd.yaml": "bogusUnknownField: true\n",
+	})
+	_, err := Open(testContext(t), root)
+	if err == nil {
+		t.Fatal("expected Open to fail on a malformed skill sidecar")
+	}
+}
+
+func TestOpenRejectsMalformedAgentsDocSidecar(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", map[string]string{
+		"agents-doc.yaml": "bogusUnknownField: true\n",
+	})
+	_, err := Open(testContext(t), root)
+	if err == nil {
+		t.Fatal("expected Open to fail on a malformed agents-doc sidecar")
+	}
+}
+
+func TestOpenRejectsUnknownAgentsDocSection(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", map[string]string{
+		"agents-doc.yaml": "sections:\n  not-a-real-section:\n    drop: true\n",
+	})
+	_, err := Open(testContext(t), root)
+	if err == nil {
+		t.Fatal("expected Open to reject an undeclared agents-doc section")
+	}
+	if !strings.Contains(err.Error(), "not-a-real-section") {
+		t.Errorf("error should mention the offending section, got: %v", err)
+	}
+}
+
+func TestOpenRejectsMalformedAdrReadmeSidecar(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", map[string]string{
+		"adr-readme.yaml": "bogusUnknownField: true\n",
+	})
+	if _, err := Open(testContext(t), root); err == nil {
+		t.Fatal("expected Open to fail on a malformed adr-readme sidecar")
+	}
+}
+
+func TestOpenRejectsUnknownAdrReadmeSection(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", map[string]string{
+		"adr-readme.yaml": "sections:\n  not-a-real-section:\n    drop: true\n",
+	})
+	_, err := Open(testContext(t), root)
+	if err == nil {
+		t.Fatal("expected Open to reject an undeclared adr-readme section")
+	}
+	if !strings.Contains(err.Error(), "not-a-real-section") {
+		t.Errorf("error should mention the offending section, got: %v", err)
+	}
+}
+
+// --- validateFrontmatter direct cases ---
+
+func TestValidateFrontmatter(t *testing.T) {
+	cases := []struct {
+		name    string
+		content string
+		wantErr string
+	}{
+		{"malformed yaml", "---\nname: [unterminated\n---\nbody\n", ""},
+		{"missing frontmatter", "no frontmatter at all\n", "missing frontmatter"},
+		{"empty name", "---\nname: \"\"\ndescription: d\n---\n", "name is empty"},
+		{"empty description", "---\nname: n\ndescription: \"\"\n---\n", "description is empty"},
+		{"valid", "---\nname: n\ndescription: d\n---\nbody\n", "ok"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateFrontmatter([]byte(tc.content))
+			if tc.wantErr == "ok" {
+				if err != nil {
+					t.Fatalf("expected nil error, got %v", err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatalf("expected an error for %q", tc.name)
+			}
+			if tc.wantErr != "" && !strings.Contains(err.Error(), tc.wantErr) {
+				t.Errorf("error %q should contain %q", err, tc.wantErr)
+			}
+		})
+	}
+}
+
+// --- declaredSections direct cases ---
+
+func TestDeclaredSections(t *testing.T) {
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := declaredSections(renderInputsForTest(p), "skills", "tdd"); len(got) == 0 {
+		t.Error("expected tdd to declare sections")
+	}
+	if got := declaredSections(renderInputsForTest(p), "agents", "code-reviewer"); len(got) == 0 {
+		t.Error("expected code-reviewer to declare sections")
+	}
+	if got := declaredSections(renderInputsForTest(p), "docs", "architecture"); len(got) == 0 {
+		t.Error("expected architecture to declare sections")
+	}
+	if got := declaredSections(renderInputsForTest(p), "bogus-kind", "x"); got != nil {
+		t.Errorf("unknown kind should yield nil, got %v", got)
+	}
+}
+
+// --- RenderAll malformed-sidecar error branches ---
+
+func TestRenderAllSurfacesMalformedSidecars(t *testing.T) {
+	cases := []struct {
+		name       string
+		cfg        string
+		corruptRel string
+	}{
+		{"skills", "prefix: example\nprofile: full\nintegrationBranch: main\n", "skills/tdd.yaml"},
+		{"agents", "prefix: example\nprofile: full\nintegrationBranch: main\n", "agents/code-reviewer.yaml"},
+		{"docs", "prefix: example\nprofile: full\nintegrationBranch: main\n", "docs/architecture.yaml"},
+		{"agents-doc", "prefix: example\nprofile: full\nintegrationBranch: main\n", "agents-doc.yaml"},
+		{"adr-readme", "prefix: example\nprofile: full\nintegrationBranch: main\n", "adr-readme.yaml"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := scaffold(t, tc.cfg)
+			p, err := Open(testContext(t), root)
+			if err != nil {
+				t.Fatalf("Open: %v", err)
+			}
+			// Corrupt the sidecar after a clean open so RenderAll re-reads it.
+			corruptSidecar(t, root, tc.corruptRel)
+			if _, err := renderAll(p); err == nil {
+				t.Fatalf("expected RenderAll to surface the malformed %s sidecar", tc.name)
+			}
+		})
+	}
+}
+
+// --- RenderAll/renderTarget: render-time failures via missing/broken parts ---
+
+// A convention part path that is a directory makes os.ReadFile fail with a
+// non-ErrNotExist error, exercising planSections' read-error arm. The arm is
+// target-agnostic, so one case covers it for all kinds.
+func TestRenderAllAssembleErrorOnUnreadablePart(t *testing.T) {
+	// Each kind's RenderAll loop has its own error-propagation arm; cover agent,
+	// doc, and the agents-doc singleton.
+	cases := []struct {
+		name, cfg, partDir string
+	}{
+		{"agent", "prefix: example\nprofile: full\nintegrationBranch: main\n", ".awf/agents/parts/code-reviewer/doc-currency.md"},
+		{"doc", "prefix: example\nprofile: full\nintegrationBranch: main\n", ".awf/docs/parts/architecture/overview.md"},
+		{"agents-doc", "prefix: example\nprofile: full\nintegrationBranch: main\n", ".awf/parts/agents-doc/identity.md"},
+		{"adr-readme", "prefix: example\nprofile: full\nintegrationBranch: main\n", ".awf/parts/adr-readme/intro.md"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := scaffold(t, tc.cfg)
+			if err := os.MkdirAll(filepath.Join(root, tc.partDir), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			p, err := Open(testContext(t), root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := renderAll(p); err == nil {
+				t.Fatalf("expected RenderAll to fail reading an unreadable %s convention part", tc.name)
+			}
+		})
+	}
+}
+
+// Note: a convention part containing template-shaped text no longer makes
+// RenderAll fail - parts are raw input (ADR-0034), rendered verbatim. The
+// render.Execute error branches are unit-tested directly in internal/render.
+
+// --- renderTarget: template-read error (direct) ---
+
+func TestRenderTargetEncoderError(t *testing.T) {
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sc := config.Sidecar{}
+	if _, err := renderTarget(renderInputsForTest(p), resident.RootNames()[0], "", residentGitignoreTID(resident.RootNames()[0]), nil, sc, projectData(renderInputsForTest(p), sc, mustDeriveSkills(t, p)), ".awf/efforts/.gitignore", mustDeriveSkills(t, p), &renderOutputOptions{encode: func(string) (string, error) {
+		return "", errors.New("encode failure")
+	}}); err == nil {
+		t.Fatal("expected renderTarget to return the encoder error")
+	}
+}
+
+func TestRenderTargetMissingTemplate(t *testing.T) {
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sc := config.Sidecar{}
+	if _, err := renderTarget(renderInputsForTest(p), "skills", "ghost", "skills/ghost/SKILL.md.tmpl", nil, sc, projectData(renderInputsForTest(p), sc, mustDeriveSkills(t, p)), ".claude/skills/example-ghost/SKILL.md", mustDeriveSkills(t, p)); err == nil {
+		t.Fatal("expected renderTarget to fail reading a nonexistent template")
+	}
+}
+
+// --- artifactConfigHash: unreadable part (direct) ---
+
+func TestArtifactConfigHashUnreadablePart(t *testing.T) {
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := artifactConfigHash(renderInputsForTest(p), "body", config.Sidecar{}, []string{filepath.Join(root, "does", "not", "exist.md")}, mustDeriveSkills(t, p)); err == nil {
+		t.Fatal("expected artifactConfigHash to fail reading a missing part file")
+	}
+}
+
+// --- resolvedDocs: malformed docs sidecar (direct) ---
+
+func TestSyncFailsOnMalformedADR(t *testing.T) {
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-bad.md"),
+		"---\nstatus: [unterminated\n---\n# ADR-0001: Bad\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := syncProject(p); err == nil {
+		t.Fatal("expected Sync to fail generating the ADR index from a malformed ADR")
+	}
+}
+
+// --- Sync: MkdirAll and WriteFile IO errors via path squatting ---
+
+func TestSyncMkdirAllErrorWhenParentIsFile(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	// A regular file squatting on .claude/skills makes MkdirAll of the skill's
+	// output directory fail for every user (incl. root).
+	testsupport.WriteFile(t, filepath.Join(root, ".claude", "skills"), "i am a file, not a dir\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := syncProject(p); err == nil {
+		t.Fatal("expected Sync to fail when the output parent path is a file")
+	}
+}
+
+func TestSyncWriteFileErrorWhenOutputIsDir(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	// A directory squatting on the SKILL.md output path makes WriteFile fail.
+	if err := os.MkdirAll(filepath.Join(root, ".claude", "skills", "example-tdd", "SKILL.md"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := syncProject(p); err == nil {
+		t.Fatal("expected Sync to fail when the output path is a directory")
+	}
+}
+
+// --- Check error branches ---
+
+func TestCheckFailsWithoutLock(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := checkProject(p, testContext(t)); err == nil {
+		t.Fatal("expected Check to fail when no lock exists")
+	}
+}
+
+func TestCheckSurfacesRenderError(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := syncProject(p); err != nil {
+		t.Fatal(err)
+	}
+	// Corrupt a sidecar so the post-lock RenderAll inside Check fails.
+	corruptSidecar(t, root, "skills/tdd.yaml")
+	if _, err := checkProject(p, testContext(t)); err == nil {
+		t.Fatal("expected Check to surface the RenderAll error")
+	}
+}
+
+func TestCheckFlagsFileWhereKindDirBelongs(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := syncProject(p); err != nil {
+		t.Fatal(err)
+	}
+	// A regular file where the .awf/domains sidecar dir would be. The old orphan
+	// scan surfaced this as a ReadDir error; the closed-tree sweep (ADR-0086)
+	// reports it as unclaimed drift instead - the file is simply not claimable.
+	if err := os.WriteFile(filepath.Join(root, ".awf", "domains"), []byte("not a dir\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	drift, err := checkProject(p, testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range drift {
+		if d.Path == ".awf/domains" && d.Kind == "orphaned" {
+			return
+		}
+	}
+	t.Fatalf("expected unclaimed drift for the .awf/domains file, got %#v", drift)
+}
+
+// invariant: rendering/sync-and-drift:target-prune-ancestors (TestSyncPrunesRemovedTargetTree)
+func TestSyncPrunesRemovedTargetTree(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := syncProject(p); err != nil {
+		t.Fatal(err)
+	}
+	// Remove a real rendered target surface from the next output plan. Selection
+	// edits no longer remove catalog paths in Phase 2, so they cannot prove prune.
+	if err := os.WriteFile(filepath.Join(root, ".claude", "unrelated.txt"), []byte("keep\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p = setTestTargets(p, nil)
+	if err := syncProject(p); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{
+		filepath.Join(root, ".claude", "skills", "example-tdd", "SKILL.md"),
+		filepath.Join(root, ".claude", "skills"),
+		filepath.Join(root, ".claude", "agents"),
+	} {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Errorf("removed target path %s remains: %v", path, err)
+		}
+	}
+	if got, err := os.ReadFile(filepath.Join(root, ".claude", "unrelated.txt")); err != nil || string(got) != "keep\n" {
+		t.Errorf("unrelated target ancestor content = %q, %v; want preserved", got, err)
+	}
+}
+
+func TestCheckReportsMissingRenderedFile(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := syncProject(p); err != nil {
+		t.Fatal(err)
+	}
+	// Delete an in-sync rendered file so Check's on-disk read reports it missing.
+	if err := os.Remove(filepath.Join(root, ".claude", "skills", "example-tdd", "SKILL.md")); err != nil {
+		t.Fatal(err)
+	}
+	drift, err := checkProject(p, testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, d := range drift {
+		if d.Path == ".claude/skills/example-tdd/SKILL.md" && d.Kind == "missing" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected missing drift for the deleted file, got %#v", drift)
+	}
+}
+
+func TestCheckFailsOnMalformedADRIndex(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := syncProject(p); err != nil {
+		t.Fatal(err)
+	}
+	// Introduce a malformed ADR; Check regenerates the index and fails.
+	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-bad.md"),
+		"---\nstatus: [unterminated\n---\n# ADR-0001: Bad\n")
+	if _, err := checkProject(p, testContext(t)); err == nil {
+		t.Fatal("expected Check to fail regenerating the index from a malformed ADR")
+	}
+}
+
+func TestCheckReportsMissingActiveMD(t *testing.T) {
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	adrBody := testsupport.ADR("Accepted", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
+		testsupport.WithTitle("0001: First"), testsupport.WithBody("## Context\nx\n"))
+	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-first.md"), adrBody)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := syncProject(p); err != nil {
+		t.Fatal(err)
+	}
+	// Delete the generated INDEX.md: Check reports it missing.
+	if err := os.Remove(filepath.Join(root, "docs", "decisions", "INDEX.md")); err != nil {
+		t.Fatal(err)
+	}
+	drift, err := checkProject(p, testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, d := range drift {
+		if strings.HasSuffix(d.Path, "decisions/INDEX.md") && d.Kind == "missing" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected missing drift for INDEX.md, got %#v", drift)
+	}
+}
+
+// --- scaffold: collectVars read error (direct) ---
+
+func TestCollectVarsReadError(t *testing.T) {
+	if err := collectVars(fstest.MapFS{}, "missing.tmpl", map[string]bool{}); err == nil {
+		t.Fatal("expected collectVars to fail reading a nonexistent template")
+	}
+}
+
+// invariant: rendering/render-engine:dead-reference-gated (TestCheckDetectsDeadReference)
+func TestCheckDetectsDeadReference(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", map[string]string{
+		"parts/agents-doc/identity.md": "See [missing](no/such/file.md).\n",
+	})
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := syncProject(p); err != nil {
+		t.Fatal(err)
+	}
+	drift, err := checkProject(p, testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, d := range drift {
+		if d.Kind == "dead-reference" && d.Detail == "no/such/file.md" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected dead-reference drift, got %#v", drift)
+	}
+}
+
+// A leading-/ target is repo-root-relative (not joined under the linking
+// file's directory), and a target escaping the repo root is dead by
+// definition - never validated against host paths outside the repo.
+func TestCheckDeadRefsAbsoluteAndEscapingTargets(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", map[string]string{
+		// agents-doc renders at the repo root; workflow doc at docs/workflow.md.
+		// /docs/workflow.md from inside docs/ must resolve to the repo root copy,
+		// not docs/docs/workflow.md.
+		"parts/doc-standard/principles.md": "See [w](/docs/workflow.md) and [out](../../outside.md).\n",
+	})
+	testsupport.WriteFile(t, filepath.Join(root, "..", "outside.md"), "outside\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := syncProject(p); err != nil {
+		t.Fatal(err)
+	}
+	drift, err := checkProject(p, testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dead := map[string]bool{}
+	for _, d := range drift {
+		if d.Kind == "dead-reference" {
+			dead[d.Detail] = true
+		}
+	}
+	if dead["/docs/workflow.md"] {
+		t.Errorf("root-relative target to an existing file flagged dead: %#v", drift)
+	}
+	if !dead["../../outside.md"] {
+		t.Errorf("root-escaping target not flagged dead (stat'd outside the repo): %#v", drift)
+	}
+}
+
+// --- NewADR ---
+
+func TestProjectNewADR(t *testing.T) {
+	root := gitScaffold(t, defaultFixtureBranch)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// docs/decisions/template.md is a rendered singleton (ADR-0021) - it only
+	// exists on disk after a sync, unlike CheckInvariants/Audit above which read
+	// hand-written fixture ADRs directly.
+	if err := syncProject(p); err != nil {
+		t.Fatal(err)
+	}
+	path, err := newADRProject(p, testContext(t), "My Plan Title")
+	if err != nil {
+		t.Fatalf("NewADR: %v", err)
+	}
+	want := filepath.Join(root, "docs", "decisions", "0001-my-plan-title.md")
+	if path != want {
+		t.Errorf("NewADR path = %q, want %q", path, want)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Errorf("created file not found: %v", err)
+	}
+}

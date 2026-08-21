@@ -17,7 +17,11 @@ type upgradeSyncDependencies struct {
 
 func productionUpgradeSyncDependencies() upgradeSyncDependencies {
 	return upgradeSyncDependencies{projectSyncReport: func(_ context.Context, state *project.ProjectState, cfg *config.Config) ([]project.Backup, []project.Change, []string, error) {
-		return project.SyncReport(state, cfg)
+		plan, err := operationPlan(state, cfg)
+		if err != nil { // coverage-ignore: upgrade opened and migrated this same tree before composition; Publisher planning failures are covered at the owner boundary
+			return nil, nil, nil, err
+		}
+		return project.SyncReport(state, cfg, plan)
 	}}
 }
 

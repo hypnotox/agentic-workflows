@@ -6,12 +6,13 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 )
 
 func TestProjectStateDefensivelyOwnsLoadedFacts(t *testing.T) {
 	cfg := &config.Config{Vars: map[string]any{"key": "original"}}
-	targets := []Target{{Capabilities: []Capability{CapabilitySubagentTools}, Outputs: []TargetOutput{{Inputs: []TargetOutputInput{{Path: "input", Role: ArtifactTemplate}}}}}}
+	targets := []Target{{Capabilities: []Capability{CapabilitySubagentTools}, Outputs: []TargetOutput{{Inputs: []TargetOutputInput{{Path: "input", Role: outputplan.ArtifactTemplate}}}}}}
 	state, err := New("root", resident.NewRoots("root", "resident"), true, cfg, catalog.Standard, catalog.Standard, targets)
 	if err != nil {
 		t.Fatal(err)

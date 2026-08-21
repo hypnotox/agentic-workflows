@@ -56,13 +56,17 @@ func syncMutation(ctx context.Context, loader *project.Loader, root string, seed
 	if err != nil {
 		return presentation.Mutation{}, nil, nil, err
 	}
+	plan, err := operationPlan(state, cfg)
+	if err != nil { // coverage-ignore: OpenForOperation validated the same immutable tree; Publisher planning failures are covered at the owner boundary
+		return presentation.Mutation{}, nil, nil, err
+	}
 	var backups []project.Backup
 	var changes []project.Change
 	var pruned []string
 	if seed == nil {
-		backups, changes, pruned, err = project.SyncReport(state, cfg)
+		backups, changes, pruned, err = project.SyncReport(state, cfg, plan)
 	} else {
-		backups, changes, pruned, err = project.InitializeReport(state, cfg, *seed)
+		backups, changes, pruned, err = project.InitializeReport(state, cfg, *seed, plan)
 	}
 	if err != nil {
 		return presentation.Mutation{}, nil, nil, err

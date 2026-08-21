@@ -96,7 +96,7 @@ select_gate_tests() {
 
 run_pi_runtime_smoke() {
   local output status
-  if output="$(env AWF_PI_RUNTIME_SMOKE=1 go test -json ./internal/project -run '^TestPi(EffortMemoryToolContract|RealRuntimeSmoke)$' -count=1)"; then
+  if output="$(env AWF_PI_RUNTIME_SMOKE=1 go test -json ./internal/publisher -run '^TestPi(EffortMemoryToolContract|RealRuntimeSmoke)$' -count=1)"; then
     status=0
   else
     status=$?

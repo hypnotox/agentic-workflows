@@ -197,6 +197,16 @@ func (s *ProjectState) Targets() []Target {
 	return s.state.Targets()
 }
 
+// OutputState returns the immutable loaded facts consumed by Publisher. The
+// lower value is projected defensively at this package boundary so Publisher
+// cannot retain the compatibility facade's target slice.
+func (s *ProjectState) OutputState() *projectstate.ProjectState {
+	if s == nil || s.state == nil {
+		return nil
+	}
+	return projectstate.NewDerived(s.Root(), s.roots(), s.nested(), s.catalog(), s.completeCatalog(), s.Targets())
+}
+
 func (s *ProjectState) roots() resident.Roots             { return s.state.Roots() }
 func (s *ProjectState) nested() bool                      { return s.state.Nested() }
 func (s *ProjectState) facts() config.Facts               { return s.state.Facts() }
@@ -226,7 +236,6 @@ func newRenderInputs(state *ProjectState, cfg *config.Config, read ProjectTreeRe
 
 func (p renderInputs) root() string                      { return p.state.Root() }
 func (p renderInputs) residentRoots() resident.Roots     { return p.state.roots() }
-func (p renderInputs) targets() []Target                 { return p.state.Targets() }
 func (p renderInputs) catalog() *catalog.Catalog         { return p.state.catalog() }
 func (p renderInputs) completeCatalog() *catalog.Catalog { return p.state.completeCatalog() }
 func (p renderInputs) isNested() bool                    { return p.state.nested() }
@@ -371,13 +380,13 @@ type Change struct {
 // files its prune actually removed (both path-sorted; a file whose output is
 // byte-identical, and first-adoption initialization with no prior lock reports
 // no change - a routine re-sync stays silent).
-func syncReportOperation(p renderInputs) ([]Backup, []Change, []string, error) {
+func syncReportOperation(p renderInputs, op *OutputPlan) ([]Backup, []Change, []string, error) {
 	// Refuse an unresolvable hook-command wiring before rendering anything
 	// (ADR-0156 Decision 5); first-adoption InitializeReport stays exempt.
 	if err := validateCommandWiring(p.cfg); err != nil {
 		return nil, nil, nil, err
 	}
-	return syncReport(p, nil)
+	return syncReport(p, nil, op)
 }
 
 // InitAuthority is the explicit provenance supplied only by first adoption.
@@ -387,8 +396,8 @@ type InitAuthority struct {
 
 // InitializeReport renders a first adoption while sealing its existing ADR
 // identities. It has the same reporting contract as SyncReport.
-func initializeReport(p renderInputs, seed InitAuthority) ([]Backup, []Change, []string, error) {
-	return syncReport(p, &seed)
+func initializeReport(p renderInputs, seed InitAuthority, op *OutputPlan) ([]Backup, []Change, []string, error) {
+	return syncReport(p, &seed, op)
 }
 
 // syncFilesystem is sync's cohesive, root-confined filesystem dependency.
@@ -435,20 +444,16 @@ func openSyncFilesystems(p renderInputs) (syncFilesystems, func(), error) {
 	}, nil
 }
 
-func syncReport(p renderInputs, seed *InitAuthority) (backups []Backup, changes []Change, pruned []string, err error) {
-	corpus, pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
-	if err != nil {
-		return nil, nil, nil, err
-	}
+func syncReport(p renderInputs, seed *InitAuthority, op *OutputPlan) (backups []Backup, changes []Change, pruned []string, err error) {
 	filesystems, closeAll, err := openSyncFilesystems(p)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	defer closeAll()
-	return syncReportWithPitfalls(p, seed, filesystems, corpus, pitfalls, topics, eff)
+	return syncReportWithPlan(p, seed, filesystems, op)
 }
 
-func syncReportWithPitfalls(p renderInputs, seed *InitAuthority, filesystems syncFilesystems, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (backups []Backup, changes []Change, pruned []string, err error) {
+func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFilesystems, op *OutputPlan) (backups []Backup, changes []Change, pruned []string, err error) {
 	defer func() {
 		slices.Sort(pruned)
 		slices.SortFunc(changes, func(a, b Change) int { return strings.Compare(a.Path, b.Path) })
@@ -484,11 +489,7 @@ func syncReportWithPitfalls(p renderInputs, seed *InitAuthority, filesystems syn
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	op, err := outputPlanWithPitfalls(p, corpus, pitfalls, topics, eff)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	files := op.writeFiles()
+	files := planWriteFiles(op)
 	for _, f := range files {
 		if f.Policy.ValidateFrontmatter {
 			if err := validateArtifact([]byte(f.Content), f.Encoder); err != nil { // coverage-ignore: rendered catalog skill/agent syntax is template-fixed and cannot be invalid at sync time
@@ -694,20 +695,20 @@ func deriveOperationStateWithPitfalls(p renderInputs) (adr.Corpus, pitfall.Corpu
 	var err error
 	if fullProfile(p) {
 		corpus, err = adr.LoadCorpus(decisionsDir(p.root()))
-		if err != nil {
+		if err != nil { // coverage-ignore: Publisher already loaded this same corpus to construct the supplied plan; only a concurrent tree mutation can fail here
 			return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
 		}
 		topics, err = topic.LoadCorpus(p.root(), p.cfg, corpus)
-		if err != nil {
+		if err != nil { // coverage-ignore: Publisher already loaded these topics from the same operation tree; only a concurrent tree mutation can fail here
 			return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
 		}
 	}
 	pitfalls, err := loadPitfallCorpus(p)
-	if err != nil {
+	if err != nil { // coverage-ignore: Publisher already loaded pitfalls from this same operation tree; only a concurrent tree mutation can fail here
 		return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
 	}
 	eff, err := effectiveSkills(p)
-	if err != nil {
+	if err != nil { // coverage-ignore: Publisher already resolved these validated skill sidecars for the supplied plan; only a concurrent tree mutation can fail here
 		return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
 	}
 	return corpus, pitfalls, topics, eff, nil
@@ -780,4 +781,15 @@ func newADR(root string, cfg *config.Config, repo *awfgit.Repo, ctx context.Cont
 // template. Mirrors NewADR minus sequential numbering (ADR-0098).
 func newPlan(root, title string) (string, error) {
 	return plan.NewFile(filepath.Join(root, config.DocsDir, "plans"), title)
+}
+
+func effectiveSkills(p renderInputs) (map[string]bool, error) {
+	out := map[string]bool{}
+	for name := range projectCatalog(p).Skills {
+		if _, err := p.cfg.Sidecar("skills", name); err != nil { // coverage-ignore: the loaded config and Publisher plan already validated each selected skill sidecar
+			return nil, err
+		}
+		out[name] = true
+	}
+	return out, nil
 }

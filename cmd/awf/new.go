@@ -98,8 +98,9 @@ func productionLocalDocDependencies() localDocDependencies {
 			if err != nil {
 				return nil, err
 			}
+			planner := composePublisher(state, cfg)
 			return func(_ context.Context, doc config.LocalDoc) error {
-				return project.PreflightLocalDoc(state, cfg, doc)
+				return planner.PreflightLocalDoc(doc)
 			}, nil
 		},
 		read:        os.ReadFile,

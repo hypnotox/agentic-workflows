@@ -1,13 +1,6 @@
 package project
 
-import (
-	"fmt"
-	"slices"
-	"strings"
-
-	"github.com/hypnotox/agentic-workflows/internal/projectstate"
-	"github.com/hypnotox/agentic-workflows/internal/render"
-)
+import "github.com/hypnotox/agentic-workflows/internal/projectstate"
 
 // AgentDialect preserves the project package's target-dialect compatibility name.
 type AgentDialect = projectstate.AgentDialect
@@ -53,38 +46,3 @@ func resolveTargets(names []string) ([]Target, error) { return projectstate.Reso
 
 var claudeTarget = projectstate.BuiltinTarget("claude")
 var piTarget = projectstate.BuiltinTarget("pi")
-
-func targetTemplateData(t Target) map[string]any {
-	return map[string]any{
-		"targetSubagentTools":  hasCapability(t, CapabilitySubagentTools),
-		"targetSessionHandoff": hasCapability(t, CapabilitySessionHandoff),
-		"targetEffortSessions": hasCapability(t, CapabilityEffortSessions),
-	}
-}
-
-func hasCapability(t Target, capability Capability) bool {
-	return slices.Contains(t.Capabilities, capability)
-}
-
-func anyTargetHasCapability(targets []Target, capability Capability) bool {
-	return slices.ContainsFunc(targets, func(target Target) bool {
-		return hasCapability(target, capability)
-	})
-}
-
-func targetDescriptorProjection(target Target) string {
-	capabilities := slices.Clone(target.Capabilities)
-	slices.Sort(capabilities)
-	outputs := slices.Clone(target.Outputs)
-	slices.SortFunc(outputs, func(left, right TargetOutput) int {
-		return strings.Compare(fmt.Sprintf("%#v", left), fmt.Sprintf("%#v", right))
-	})
-	return fmt.Sprintf("%#v", struct {
-		Name, SkillDir, AgentDir, AgentSuffix, BridgeFile, BridgeTemplate string
-		AgentDialect                                                      AgentDialect
-		Capabilities                                                      []Capability
-		Outputs                                                           []TargetOutput
-	}{target.Name, target.SkillDir, target.AgentDir, target.AgentSuffix, target.BridgeFile, target.BridgeTemplate, target.AgentDialect, capabilities, outputs})
-}
-
-func agentCommentStyle(Target) render.CommentStyle { return render.HTMLComment }

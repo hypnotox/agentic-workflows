@@ -5,7 +5,7 @@
 
 Generated executable adapter-runtime outputs and their ownership boundary.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/pitfall/**`, `internal/project/**`, `internal/projectstate/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `.pi/extensions/**`. Both domain and topic selectors must match. Run `awf topic rendering/adapter-outputs --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/project/**`, `internal/projectstate/**`, `internal/publisher/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `.pi/extensions/**`. Both domain and topic selectors must match. Run `awf topic rendering/adapter-outputs --coverage` for current applicable and owned paths and marker sites.
 
 This topic records the current ownership contract for generated executable adapter-runtime outputs.
 

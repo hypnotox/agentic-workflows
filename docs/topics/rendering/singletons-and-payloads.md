@@ -5,7 +5,7 @@
 
 Singleton outputs and script payloads: bootstrap, hooks, memory gitignore, file modes.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/pitfall/**`, `internal/project/**`, `internal/projectstate/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/project/**`. Both domain and topic selectors must match. Run `awf topic rendering/singletons-and-payloads --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/project/**`, `internal/projectstate/**`, `internal/publisher/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/outputplan/**`, `internal/project/**`, `internal/publisher/**`. Both domain and topic selectors must match. Run `awf topic rendering/singletons-and-payloads --coverage` for current applicable and owned paths and marker sites.
 
 Always-on and toggleable singleton outputs: ADR-system files, bootstrap and hook payloads, resident-root gitignores, and executable-mode rules. The commit-msg payload remains a thin delegate to the profile-selected commit-message gate: Core checks shared commit rules, while Full also enforces stale-ADR merge authorization. Pre-merge-commit remains a thin staged check because Git has not exposed the final message and parents at that earlier hook.
 

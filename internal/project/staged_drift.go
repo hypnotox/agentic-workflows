@@ -1,95 +1,30 @@
 package project
 
 import (
-	"context"
-	"fmt"
 	"maps"
 	"slices"
 	"strings"
 
-	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
-	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 )
 
-// CheckStagedDriftRoot compares rendered output entirely within the staged
-// universe without loading working-tree project configuration.
-func CheckStagedDriftRoot(ctx context.Context, root string) ([]manifest.Drift, error) {
-	repo, prefix, err := awfgit.OpenContaining(root)
-	if err != nil {
-		return nil, err
-	}
-	p := stagedProject(root, prefix)
-	return checkStagedDrift(p, repo, ctx)
-}
-
-// CheckStagedDrift renders from the index configuration and compares generated
-// output membership plus stale and hand-edited properties against that same index.
-func checkStagedDrift(p renderInputs, repo *awfgit.Repo, ctx context.Context) ([]manifest.Drift, error) {
-	tree, err := indexTree(p.root(), repo, ctx)
-	if err != nil {
-		return nil, err
-	}
-	lock, _, err := optionalLockFromTree(tree)
-	if err != nil {
-		return nil, err
-	}
-	loaded, cfg, err := loadTreeCurrentState(p.root(), tree, lock)
-	if err != nil {
-		return nil, err
-	}
-	if cfg == nil {
-		return nil, fmt.Errorf("no staged %s/config.yaml", config.DirName)
-	}
-	state := indexState{Loaded: loaded, Tree: tree, Lock: lock, Cfg: cfg}
-	targets, err := resolveTargets(KnownTargets())
-	if err != nil { // coverage-ignore: KnownTargets is the closed built-in descriptor set and its resolution is exhaustively validated by target tests
-		return nil, err
-	}
-	read := snapshotTreeReader{tree: state.Tree}
-	// The staged universe always selects from the complete immutable catalog
-	// injected into p. It may describe a differently profiled working tree, so
-	// reusing projectCatalog(p) would make Core -> Full staged validation lose the Full
-	// layer, while consulting the global catalog would discard injected entries.
-	completeCat := completeProjectCatalog(p)
-	selected := catalog.NewProfileView(completeCat, state.Cfg.Profile).Catalog()
-	universeState, err := newProjectState(p.root(), p.residentRoots(), p.isNested(), state.Cfg, selected, completeCat, targets)
-	if err != nil { // coverage-ignore: loadTreeCurrentState already parsed semantic config data
-		return nil, err
-	}
-	universe := newRenderInputs(universeState, state.Cfg, read)
-	if err := validateAgainstCatalog(universe); err != nil {
-		return nil, err
-	}
-	effective := map[string]bool{}
-	for name := range projectCatalog(universe).Skills {
-		effective[name] = true
-	}
-	pitfalls, err := loadPitfallCorpus(universe)
-	if err != nil {
-		return nil, err
-	}
-	op, err := outputPlanWithPitfalls(universe, state.Loaded.Corpus, pitfalls, state.Loaded.Topics, effective)
-	if err != nil {
-		return nil, err
-	}
+// CheckStagedDrift compares one Publisher plan entirely within its prepared index universe.
+func CheckStagedDrift(prep *ContextPreparation, plan outputplan.Plan) ([]manifest.Drift, error) {
 	rendered := map[string]RenderedFile{}
-	for _, file := range op.writeFiles() {
+	for _, output := range plan.Outputs() {
+		file := checkFile(output)
 		rendered[file.Path] = file
 	}
 	indexed := map[string]bool{}
-	for _, file := range state.Tree.List() {
+	for _, file := range prep.tree.List() {
 		indexed[file.Path] = true
 	}
-	return checkStagedRenderedFiles(state.Lock, rendered, read, indexed, !p.isNested())
+	return checkStagedRenderedFiles(prep.lock, rendered, prep.Reader, indexed, !prep.State.Nested())
 }
 
-// checkStagedRenderedFiles intentionally has no structural drift branches.
-// Missing, orphaned, unsynced, invalid-frontmatter, and other repo-only kinds
-// are outside the staged rendered-output comparison. Membership is the one
-// exception: every planned write and the separately written lock must be indexed.
 func checkStagedRenderedFiles(lock *manifest.Lock, rendered map[string]RenderedFile, read ProjectTreeReader, indexed map[string]bool, includeResident bool) ([]manifest.Drift, error) {
 	required := map[string]bool{config.DirName + "/awf.lock": true}
 	for _, file := range rendered {
@@ -120,13 +55,7 @@ func checkStagedRenderedFiles(lock *manifest.Lock, rendered map[string]RenderedF
 	}
 	for _, path := range slices.Sorted(maps.Keys(lock.Files)) {
 		file, produced := rendered[path]
-		if !produced {
-			continue
-		}
-		if !includeResident && resident.IsResidentPath(path) {
-			continue
-		}
-		if !indexed[path] {
+		if !produced || (!includeResident && resident.IsResidentPath(path)) || !indexed[path] {
 			continue
 		}
 		entry := lock.Files[path]

@@ -119,13 +119,17 @@ func runInitWithProjectLoader(ctx context.Context, root string, force, describe 
 	if err != nil {
 		return err
 	}
-	collisions, err := project.InitCollisions(state, cfg)
+	plan, err := operationPlan(state, cfg)
 	if err != nil {
+		return err
+	}
+	collisions, err := project.InitCollisions(state, cfg, plan)
+	if err != nil { // coverage-ignore: the freshly opened state and Publisher plan already establish every collision input; only a concurrent tree fault can fail this projection
 		if scaffolded { // coverage-ignore: after first-adoption and scaffold validation, this cleanup requires a concurrent tree mutation to make InitCollisions fail
 			_ = os.Remove(cfgPath)
 			_ = os.Remove(filepath.Dir(cfgPath))
 		}
-		return err
+		return err // coverage-ignore: propagation for the concurrent-fault-only InitCollisions branch above
 	}
 	if len(collisions) > 0 && !force { // coverage-ignore: the non-force probe now plans the same full catalog; force makes this condition false
 		if scaffolded { // coverage-ignore: the enclosing post-scaffold collision path is unreachable after the identical full-catalog probe
@@ -159,7 +163,13 @@ func runInitWithProjectLoader(ctx context.Context, root string, force, describe 
 	}
 	// Post-init orientation: the same advisory notes awf check prints
 	// (ADR-0045, ADR-0070), then a fixed next-steps block.
-	return renderInitOutcome(syncedProject, syncedConfig, initspec.Outcome{ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers, Sync: syncResult, NextActions: initNextActions}, stdout, project.AdvisoryNotes)
+	return renderInitOutcome(syncedProject, syncedConfig, initspec.Outcome{ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers, Sync: syncResult, NextActions: initNextActions}, stdout, func(state *project.ProjectState, cfg *config.Config) ([]string, error) {
+		plan, err := operationPlan(state, cfg)
+		if err != nil { // coverage-ignore: sync just planned and published this unchanged tree; Publisher planning failures are covered at the owner boundary
+			return nil, err
+		}
+		return project.AdvisoryNotes(state, cfg, plan)
+	})
 }
 
 func initProjectLoader(root string, load func(string) (*project.Loader, error)) (*project.Loader, error) {
@@ -204,7 +214,11 @@ func probeCollisions(ctx context.Context, root string) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		return project.InitCollisions(state, cfg)
+		plan, err := operationPlan(state, cfg)
+		if err != nil { // coverage-ignore: openProjectOperation validated this same tree; Publisher planning failures are covered at the owner boundary
+			return nil, err
+		}
+		return project.InitCollisions(state, cfg, plan)
 	}
 	tmp, err := os.MkdirTemp("", "awf-init-probe-*")
 	if err != nil { // coverage-ignore: MkdirTemp fails only on an unwritable TMPDIR, which a test cannot trigger portably
@@ -226,7 +240,8 @@ func probeCollisions(ctx context.Context, root string) ([]string, error) {
 	if err != nil { // coverage-ignore: a freshly-scaffolded default config always opens
 		return nil, err
 	}
-	planned, err := project.PlannedOutputs(state, cfg)
+	plan, err := operationPlan(state, cfg)
+	planned := plan.Paths()
 	if err != nil { // coverage-ignore: rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail
 		return nil, err
 	}

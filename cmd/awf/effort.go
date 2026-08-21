@@ -18,7 +18,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/effort"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
-	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/worktree"
 )
 
@@ -62,11 +61,11 @@ func openEffortComposition(ctx context.Context, root string) (effortComposition,
 		if err != nil { // coverage-ignore: the gated command already loaded this same project; failure requires a concurrent config-tree race
 			return nil, err
 		}
-		rendered, err := project.RenderResidentMarker(projectState, cfg, string(awfgit.ResidentEffortArchive))
+		rendered, err := composePublisher(projectState, cfg).RenderResidentMarker(string(awfgit.ResidentEffortArchive))
 		if err != nil { // coverage-ignore: the gate already built the same closed output plan; failure requires a concurrent config-tree race
 			return nil, err
 		}
-		return []byte(rendered.Content), nil
+		return []byte(rendered.Content()), nil
 	}
 	service, err := effort.Open(roots, effort.Dependencies{
 		Clock:                 time.Now,

@@ -28,6 +28,9 @@ func TestProjectStateZeroValueCompatibility(t *testing.T) {
 	if state.Targets() != nil {
 		t.Fatalf("zero ProjectState targets = %#v", state.Targets())
 	}
+	if state.OutputState() != nil {
+		t.Fatalf("zero ProjectState output state = %#v", state.OutputState())
+	}
 }
 
 func TestProjectStateProductionBoundary(t *testing.T) {
@@ -40,7 +43,7 @@ func TestProjectStateProductionBoundary(t *testing.T) {
 		t.Fatal(err)
 	}
 	allowedMethods := []string{"Catalog", "CompleteCatalog", "Config", "Facts", "Nested", "Root", "Roots", "Targets"}
-	compatibilityMethods := []string{"Config", "Root", "Targets"}
+	compatibilityMethods := []string{"Config", "OutputState", "Root", "Targets"}
 	var methods, compatibility []string
 	for _, pkg := range pkgs {
 		if len(pkg.Errors) != 0 {

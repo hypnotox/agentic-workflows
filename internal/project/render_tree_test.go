@@ -65,7 +65,7 @@ func TestCheckReportAgentGuideSizeAdvisoryManagedOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	found := false
-	for _, file := range op.writeFiles() {
+	for _, file := range planWriteFiles(op) {
 		found = found || file.Path == "AGENTS.md"
 	}
 	if !found {

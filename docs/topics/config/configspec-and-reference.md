@@ -5,7 +5,7 @@
 
 The config-spec model and the generated configuration reference.
 
-**Applicability:** Owning domain selectors: `internal/config/**`, `internal/configspec/**`, `internal/manifest/**`, `internal/migrate/**`, `internal/pathglob/**`, `internal/project/render.go`, `internal/project/staged_drift_test.go`. Topic selectors: `internal/config/**`, `internal/configspec/**`, `internal/pathglob/**`. Both domain and topic selectors must match. Run `awf topic config/configspec-and-reference --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `internal/config/**`, `internal/configspec/**`, `internal/manifest/**`, `internal/migrate/**`, `internal/pathglob/**`, `internal/project/render.go`, `internal/project/staged_drift_test.go`, `internal/publisher/**`. Topic selectors: `internal/config/**`, `internal/configspec/**`, `internal/pathglob/**`. Both domain and topic selectors must match. Run `awf topic config/configspec-and-reference --coverage` for current applicable and owned paths and marker sites.
 
 The config-spec model and the generated configuration reference document.
 

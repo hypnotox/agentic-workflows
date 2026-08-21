@@ -12,6 +12,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
@@ -75,7 +76,27 @@ func workingContextState(p *project.ProjectState) (project.ContextState, error) 
 	if err != nil {
 		return project.ContextState{}, err
 	}
-	return project.BuildContextState(p, repo, context.Background())
+	prep, err := project.PrepareContextState(p, repo, context.Background())
+	if err != nil {
+		return project.ContextState{}, err
+	}
+	plan, err := publisher.New(prep.State, prep.Config, prep.Reader, project.Version).Plan()
+	if err != nil {
+		return project.ContextState{}, err
+	}
+	return project.CompleteContextState(prep, plan), nil
+}
+
+func stagedContextState(ctx context.Context, root string) (project.ContextState, error) {
+	prep, err := project.PrepareStagedContextState(ctx, root)
+	if err != nil {
+		return project.ContextState{}, err
+	}
+	plan, err := publisher.New(prep.State, prep.Config, prep.Reader, project.Version).Plan()
+	if err != nil {
+		return project.ContextState{}, err
+	}
+	return project.CompleteStagedContextState(prep, plan), nil
 }
 
 // queryFor assembles the working context state and binds a query to it.
@@ -91,7 +112,7 @@ func queryFor(t *testing.T, p *project.ProjectState) *Query {
 // stagedQueryFor assembles the index context state at root and binds a query.
 func stagedQueryFor(t *testing.T, root string) *Query {
 	t.Helper()
-	state, err := project.StagedContextState(testContext(t), root)
+	state, err := stagedContextState(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +213,7 @@ func TestContextWorkingIndexDivergenceAndErrors(t *testing.T) {
 	if working.Requests[0].Directory.Included != staged.Requests[0].Directory.Included+1 {
 		t.Fatalf("working=%d staged=%d", working.Requests[0].Directory.Included, staged.Requests[0].Directory.Included)
 	}
-	if _, err := project.StagedContextState(testContext(t), t.TempDir()); err == nil {
+	if _, err := stagedContextState(testContext(t), t.TempDir()); err == nil {
 		t.Fatal("staged outside repo accepted")
 	}
 }
@@ -208,7 +229,7 @@ func TestStagedContextInputErrors(t *testing.T) {
 		t.Fatal(err)
 	}
 	gitfixture.AddAll(t, gitfixture.At(root))
-	if _, err := project.StagedContextState(testContext(t), root); err == nil || !strings.Contains(err.Error(), "no staged") {
+	if _, err := stagedContextState(testContext(t), root); err == nil || !strings.Contains(err.Error(), "no staged") {
 		t.Fatalf("missing config err=%v", err)
 	}
 	for _, tc := range []struct {
@@ -228,7 +249,7 @@ func TestStagedContextInputErrors(t *testing.T) {
 				t.Fatal(err)
 			}
 			gitfixture.AddAll(t, gitfixture.At(p.Root()))
-			if _, err := project.StagedContextState(testContext(t), p.Root()); err == nil {
+			if _, err := stagedContextState(testContext(t), p.Root()); err == nil {
 				t.Fatal("invalid staged state accepted")
 			}
 		})
@@ -236,7 +257,7 @@ func TestStagedContextInputErrors(t *testing.T) {
 	p := ctxRepo(t, ctxConfig, ctxFiles())
 	testsupport.WriteFile(t, lockFile(p.Root()), "bad")
 	gitfixture.AddAll(t, gitfixture.At(p.Root()))
-	if _, err := project.StagedContextState(testContext(t), p.Root()); err == nil {
+	if _, err := stagedContextState(testContext(t), p.Root()); err == nil {
 		t.Fatal("corrupt staged lock accepted")
 	}
 }
@@ -251,7 +272,7 @@ func TestStagedContextStatePropagatesInvalidStagedLock(t *testing.T) {
 		".awf/config.yaml": "prefix: example\nintegrationBranch: main\n",
 		".awf/awf.lock":    "{",
 	})
-	if _, err := project.StagedContextState(testContext(t), root); err == nil || !strings.Contains(err.Error(), "parse staged lock") {
+	if _, err := stagedContextState(testContext(t), root); err == nil || !strings.Contains(err.Error(), "parse staged lock") {
 		t.Fatalf("staged context state error = %v", err)
 	}
 }
