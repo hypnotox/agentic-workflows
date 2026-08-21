@@ -135,22 +135,36 @@ func TestRunNewDocRefusesBeforeMutation(t *testing.T) {
 	}
 }
 
-func TestProductionLocalDocPreflightPropagatesOpenFailure(t *testing.T) {
+func TestProductionLocalDocPreparationPropagatesOpenFailure(t *testing.T) {
 	dependencies := productionLocalDocDependencies()
-	if err := dependencies.preflight(testContext(t), t.TempDir(), config.LocalDoc{Name: "runbooks/api"}); err == nil {
+	if _, err := dependencies.prepare(testContext(t), t.TempDir()); err == nil {
 		t.Fatal("missing project config accepted")
+	}
+}
+
+func TestNewDocPreservesProjectOpenFailurePrecedence(t *testing.T) {
+	root := scaffoldProject(t)
+	openFailure := errors.New("open failure")
+	laterFailure := errors.New("later failure")
+	dependencies := productionLocalDocDependencies()
+	dependencies.prepare = func(context.Context, string) (localDocPreflight, error) { return nil, openFailure }
+	dependencies.read = func(string) ([]byte, error) { return nil, laterFailure }
+	if err := newDocWith(testContext(t), root, []string{"runbooks/api", "Description"}, nil, io.Discard, dependencies); !errors.Is(err, openFailure) {
+		t.Fatalf("error = %v, want project-open failure", err)
 	}
 }
 
 func TestNewDocDependencyFailures(t *testing.T) {
 	failure := errors.New("injected failure")
-	for _, step := range []string{"read", "append", "inspect", "preflight", "write", "synchronize"} {
+	for _, step := range []string{"prepare", "read", "append", "inspect", "preflight", "write", "synchronize"} {
 		t.Run(step, func(t *testing.T) {
 			root := scaffoldProject(t)
 			beforeConfig := mustReadCLIFile(t, config.ConfigPath(root))
 			beforeLock := mustReadCLIFile(t, config.LockPath(root))
 			dependencies := productionLocalDocDependencies()
 			switch step {
+			case "prepare":
+				dependencies.prepare = func(context.Context, string) (localDocPreflight, error) { return nil, failure }
 			case "read":
 				dependencies.read = func(string) ([]byte, error) { return nil, failure }
 			case "append":
@@ -158,7 +172,9 @@ func TestNewDocDependencyFailures(t *testing.T) {
 			case "inspect":
 				dependencies.inspect = func(string) (os.FileInfo, error) { return nil, failure }
 			case "preflight":
-				dependencies.preflight = func(context.Context, string, config.LocalDoc) error { return failure }
+				dependencies.prepare = func(context.Context, string) (localDocPreflight, error) {
+					return func(context.Context, config.LocalDoc) error { return failure }, nil
+				}
 			case "write":
 				dependencies.write = func(string, []byte, os.FileMode) error { return failure }
 			case "synchronize":

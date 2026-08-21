@@ -80,27 +80,31 @@ func newPlan(ctx context.Context, root string, titleWords []string, stdout io.Wr
 	return writeStatus(stdout, "created: "+path)
 }
 
+type localDocPreflight func(context.Context, config.LocalDoc) error
+
 type localDocDependencies struct {
+	prepare     func(context.Context, string) (localDocPreflight, error)
 	read        func(string) ([]byte, error)
 	append      func([]byte, config.LocalDoc) ([]byte, error)
 	inspect     func(string) (os.FileInfo, error)
-	preflight   func(context.Context, string, config.LocalDoc) error
 	write       func(string, []byte, os.FileMode) error
 	synchronize func(context.Context, string, io.Writer) error
 }
 
 func productionLocalDocDependencies() localDocDependencies {
 	return localDocDependencies{
-		read:    os.ReadFile,
-		append:  config.AppendLocalDoc,
-		inspect: os.Lstat,
-		preflight: func(ctx context.Context, root string, doc config.LocalDoc) error {
+		prepare: func(ctx context.Context, root string) (localDocPreflight, error) {
 			state, cfg, _, err := openProjectOperation(ctx, root)
 			if err != nil {
-				return err
+				return nil, err
 			}
-			return project.PreflightLocalDoc(state, cfg, ctx, doc)
+			return func(ctx context.Context, doc config.LocalDoc) error {
+				return project.PreflightLocalDoc(state, cfg, ctx, doc)
+			}, nil
 		},
+		read:        os.ReadFile,
+		append:      config.AppendLocalDoc,
+		inspect:     os.Lstat,
 		write:       os.WriteFile,
 		synchronize: runSync,
 	}
@@ -122,6 +126,10 @@ func newDocWith(ctx context.Context, root string, args []string, title *string, 
 		resolvedTitle = *title
 	}
 	doc := config.LocalDoc{Name: args[0], Title: resolvedTitle, Description: args[1]}
+	preflight, err := dependencies.prepare(ctx, root)
+	if err != nil {
+		return err
+	}
 	source, err := dependencies.read(config.ConfigPath(root))
 	if err != nil {
 		return err
@@ -137,7 +145,7 @@ func newDocWith(ctx context.Context, root string, args []string, title *string, 
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("inspect local document destination: %w", err)
 	}
-	if err := dependencies.preflight(ctx, root, doc); err != nil {
+	if err := preflight(ctx, doc); err != nil {
 		return err
 	}
 	if err := dependencies.write(config.ConfigPath(root), updated, 0o644); err != nil {

@@ -128,7 +128,7 @@ func VerifyCommitPolicyAt(ctx context.Context, root string, targets []string) (p
 		return document, outcome, presentationErr
 	}
 	cfg := state.Config()
-	outcome := VerifyCommitPolicy(cfg, roots.InvokingRoot, repo, ctx, targets)
-	document, presentationErr := BuildCommitPolicyPresentation(cfg, outcome)
+	outcome := verifyCommitPolicyOperation(cfg, roots.InvokingRoot, repo, ctx, targets)
+	document, presentationErr := commitPolicyPresentation(cfg, outcome)
 	return document, outcome, presentationErr
 }

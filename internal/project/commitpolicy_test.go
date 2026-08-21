@@ -29,7 +29,7 @@ func documentText(t *testing.T, document presentation.Document) string {
 
 func commitPolicyPresentationText(t *testing.T, cfg *config.Config, outcome commitpolicy.Outcome) string {
 	t.Helper()
-	document, err := BuildCommitPolicyPresentation(cfg, outcome)
+	document, err := commitPolicyPresentation(cfg, outcome)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +70,7 @@ func TestVerifyCommitPolicyDisabledAndConfigured(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out := VerifyCommitPolicy(cfg, state.Root(), gitRepo, ctx, []string{"HEAD", "HEAD"})
+	out := verifyCommitPolicyOperation(cfg, state.Root(), gitRepo, ctx, []string{"HEAD", "HEAD"})
 	if !out.OK() || out.Disabled {
 		t.Fatalf("configured outcome = %#v", out)
 	}
@@ -78,25 +78,25 @@ func TestVerifyCommitPolicyDisabledAndConfigured(t *testing.T) {
 		t.Fatal(commitPolicyPresentationText(t, cfg, out))
 	}
 	cfg.CommitPolicy = nil
-	out = VerifyCommitPolicy(cfg, state.Root(), gitRepo, ctx, []string{head})
+	out = verifyCommitPolicyOperation(cfg, state.Root(), gitRepo, ctx, []string{head})
 	if !out.Disabled || !strings.Contains(commitPolicyPresentationText(t, cfg, out), "disabled") {
 		t.Fatalf("disabled outcome = %#v", out)
 	}
 	cfg.CommitPolicy = &config.CommitPolicyConfig{GrandfatheredThrough: base, AllowedIdentities: []config.CommitPolicyIdentity{{Name: "T", Email: "t@example.com"}}}
-	out = VerifyCommitPolicy(cfg, state.Root(), gitRepo, ctx, []string{"missing"})
+	out = verifyCommitPolicyOperation(cfg, state.Root(), gitRepo, ctx, []string{"missing"})
 	if out.Refusal == nil || out.Refusal.Category != commitpolicy.RevisionFailure {
 		t.Fatalf("revision refusal = %#v", out)
 	}
 	cfg.CommitPolicy.RequireSignedCommits = true
 	cfg.CommitPolicy.AllowedSigners = []config.CommitPolicySigner{{Principal: "t@example.com", Key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA=="}}
-	out = VerifyCommitPolicy(cfg, state.Root(), gitRepo, ctx, []string{head})
+	out = verifyCommitPolicyOperation(cfg, state.Root(), gitRepo, ctx, []string{head})
 	if len(out.Violations) != 1 || out.Violations[0].Field != commitpolicy.SignatureField {
 		t.Fatalf("signature outcome = %#v", out)
 	}
 	if !strings.Contains(commitPolicyPresentationText(t, cfg, out), "signature") {
 		t.Fatal(commitPolicyPresentationText(t, cfg, out))
 	}
-	out = VerifyCommitPolicy(cfg, state.Root(), nil, ctx, []string{head})
+	out = verifyCommitPolicyOperation(cfg, state.Root(), nil, ctx, []string{head})
 	if out.Refusal == nil || out.Refusal.Category != commitpolicy.LinkedWorktreeFailure {
 		t.Fatalf("missing repo = %#v", out)
 	}

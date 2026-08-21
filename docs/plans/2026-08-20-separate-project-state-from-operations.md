@@ -185,3 +185,7 @@ plan remains Proposed until the deferred post-assurance integration transaction.
 Phase 1 review closed config facts to YAML-decoded semantic data shapes. `NewFacts` rejects an
 injected non-semantic value instead of retaining an arbitrary Go reference or operation mechanism;
 ordinary parsed configuration and its grammar are unchanged.
+
+Phase 3 review restored `awf new doc` project-open failure precedence by preparing a narrow
+preflight closure before later file operations. It also removed operation exports without an
+outside-package production consumer and documented every retained exported operation boundary.

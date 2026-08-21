@@ -72,7 +72,7 @@ func syncProject(state *ProjectState) error {
 func renderAll(state *ProjectState) ([]RenderedFile, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	op, err := BuildOutputPlan(state, testConfig(state), ctx)
+	op, err := outputPlan(operationInputs(state, testConfig(state)), ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func checkStagedDriftProject(state *ProjectState, ctx context.Context) ([]manife
 	return checkStagedDrift(newRenderInputs(state, testConfig(state), nil), testRepo(state), ctx)
 }
 func outputPlanProject(state *ProjectState, ctx context.Context) (*OutputPlan, error) {
-	return BuildOutputPlan(state, testConfig(state), ctx)
+	return outputPlan(operationInputs(state, testConfig(state)), ctx)
 }
 func syncReportProject(state *ProjectState, ctx context.Context) ([]Backup, []Change, []string, error) {
 	return SyncReport(state, testConfig(state), ctx)
