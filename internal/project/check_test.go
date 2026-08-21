@@ -820,7 +820,7 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		op, err := outputPlanWithPitfalls(renderInputsForTest(p), testContext(t), corpus, pitfalls, topics, effective)
+		op, err := outputPlanWithPitfalls(renderInputsForTest(p), corpus, pitfalls, topics, effective)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -902,7 +902,7 @@ func TestCheckReportRequiresGeneratedArtifactsInIndex(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := syncReport(renderInputsForTest(p), testContext(t), &InitAuthority{InitializedWithVersion: Version}); err != nil {
+	if _, _, _, err := syncReport(renderInputsForTest(p), &InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatal(err)
 	}
 	home := t.TempDir()
@@ -1017,7 +1017,7 @@ func TestCheckGeneratedTrackingNoGitAndNestedResidentExclusion(t *testing.T) {
 		if !p.nested {
 			t.Fatal("Loader.Open did not preserve the containing-repository prefix")
 		}
-		if _, _, _, err := syncReport(renderInputsForTest(p), testContext(t), &InitAuthority{InitializedWithVersion: Version}); err != nil {
+		if _, _, _, err := syncReport(renderInputsForTest(p), &InitAuthority{InitializedWithVersion: Version}); err != nil {
 			t.Fatal(err)
 		}
 		gitfixture.AddAll(t, fixture)

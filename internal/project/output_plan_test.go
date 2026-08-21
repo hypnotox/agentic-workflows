@@ -451,7 +451,7 @@ func TestOutputPlanPropagatesLocalRenderReadFault(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := outputPlan(newRenderInputs(p, cfg, read), testContext(t)); !errors.Is(err, failure) {
+			if _, err := outputPlan(newRenderInputs(p, cfg, read)); !errors.Is(err, failure) {
 				t.Fatalf("output plan error = %v, want %v", err, failure)
 			}
 		})

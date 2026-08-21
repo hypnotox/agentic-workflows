@@ -1,7 +1,6 @@
 package project
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -702,8 +701,8 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclarat
 
 // RenderResidentMarker returns the exact resident marker from the ordinary
 // output plan, including template execution and provenance banner injection.
-func renderResidentMarkerOperation(p renderInputs, ctx context.Context, name string) (RenderedFile, error) {
-	plan, err := outputPlan(p, ctx)
+func renderResidentMarkerOperation(p renderInputs, name string) (RenderedFile, error) {
+	plan, err := outputPlan(p)
 	if err != nil {
 		return RenderedFile{}, err
 	}

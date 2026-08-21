@@ -27,7 +27,7 @@ func runADR(c *cmdCtx) error {
 	// no assignments, so nothing is printed for them; past the first rename the
 	// renames are on disk, and the operator needs the mapping for the
 	// integration commit message whatever failed afterwards.
-	report, numberErr := project.NumberPendingADRs(state, cfg, c.ctx, c.inv.positionals)
+	report, numberErr := project.NumberPendingADRs(state, cfg, c.inv.positionals)
 	if len(report.Assignments) == 0 {
 		return numberErr
 	}

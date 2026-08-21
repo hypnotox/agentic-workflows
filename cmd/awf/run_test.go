@@ -238,11 +238,13 @@ import (
 )
 
 func mutationAddsPostRender(state *project.ProjectState, cfg *config.Config, ctx context.Context) {
-	_, _, _, _ = project.SyncReport(state, cfg, ctx)
+	_ = ctx
+	_, _, _, _ = project.SyncReport(state, cfg)
 }
 
 var mutationAddsPackagePostRender = func(state *project.ProjectState, cfg *config.Config, ctx context.Context) {
-	_, _, _, _ = project.SyncReport(state, cfg, ctx)
+	_ = ctx
+	_, _, _, _ = project.SyncReport(state, cfg)
 }
 `),
 	})

@@ -37,7 +37,7 @@ type CheckAdvisories struct {
 
 // AdvisoryNotes returns the compatibility projection of the non-failing notes
 // produced by one operation-scoped plan parse.
-func advisoryNotes(p renderInputs, ctx context.Context) ([]string, error) {
+func advisoryNotes(p renderInputs) ([]string, error) {
 	corpus, pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
 	if err != nil {
 		return nil, err
@@ -49,7 +49,7 @@ func advisoryNotes(p renderInputs, ctx context.Context) ([]string, error) {
 			return nil, err
 		}
 	}
-	op, err := outputPlanWithPitfalls(p, ctx, corpus, pitfalls, topics, eff)
+	op, err := outputPlanWithPitfalls(p, corpus, pitfalls, topics, eff)
 	if err != nil {
 		return nil, err
 	}
@@ -488,7 +488,7 @@ func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context) (CheckR
 			})
 		}
 	}
-	op, err := outputPlanWithPitfalls(p, ctx, corpus, pitfalls, topics, eff)
+	op, err := outputPlanWithPitfalls(p, corpus, pitfalls, topics, eff)
 	if err != nil {
 		return CheckReport{}, err
 	}

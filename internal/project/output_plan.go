@@ -1,7 +1,6 @@
 package project
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -642,15 +641,15 @@ func targetOutputDeclarations(p renderInputs, eff map[string]bool) (map[string]t
 // set at its own entry and threads them to every producer that needs one. An
 // operation that already derived them enters through outputPlan instead, so one
 // lifecycle call performs each derivation exactly once.
-func outputPlan(p renderInputs, ctx context.Context) (*OutputPlan, error) {
+func outputPlan(p renderInputs) (*OutputPlan, error) {
 	corpus, pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
 	if err != nil { // coverage-ignore: direct compatibility entry; lifecycle entries derive this corpus before calling the threaded planner
 		return nil, err
 	}
-	return outputPlanWithPitfalls(p, ctx, corpus, pitfalls, topics, eff)
+	return outputPlanWithPitfalls(p, corpus, pitfalls, topics, eff)
 }
 
-func outputPlanWithPitfalls(p renderInputs, ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error) {
+func outputPlanWithPitfalls(p renderInputs, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error) {
 	if err := validateLocalDocOutputCollisions(p, corpus); err != nil {
 		return nil, err
 	}
@@ -779,12 +778,12 @@ func outputPlanWithPitfalls(p renderInputs, ctx context.Context, corpus adr.Corp
 
 // PreflightLocalDoc validates one candidate declaration against the complete
 // project output plan without mutating the opened project's configuration.
-func preflightLocalDoc(p renderInputs, ctx context.Context, doc config.LocalDoc) error {
+func preflightLocalDoc(p renderInputs, doc config.LocalDoc) error {
 	candidateConfig := *p.cfg
 	candidateConfig.LocalDocs = append(slices.Clone(p.cfg.LocalDocs), doc)
 	candidate := p
 	candidate.cfg = &candidateConfig
-	_, err := outputPlan(candidate, ctx)
+	_, err := outputPlan(candidate)
 	return err
 }
 
@@ -823,8 +822,8 @@ func normalizeOutputInputs(inputs []OutputInput) []OutputInput {
 }
 
 // PlannedOutputs returns plan write paths.
-func plannedOutputs(p renderInputs, ctx context.Context) ([]string, error) {
-	op, err := outputPlan(p, ctx)
+func plannedOutputs(p renderInputs) ([]string, error) {
+	op, err := outputPlan(p)
 	if err != nil {
 		return nil, err
 	}

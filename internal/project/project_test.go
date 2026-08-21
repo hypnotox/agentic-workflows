@@ -943,7 +943,7 @@ func TestSyncFilesystemFailuresPreserveErrorIdentity(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, _, _, err = syncReportWithPitfalls(renderInputsForTest(p), testContext(t), nil, tc.wrap(filesystems, failure), corpus, pitfalls, topics, eff)
+			_, _, _, err = syncReportWithPitfalls(renderInputsForTest(p), nil, tc.wrap(filesystems, failure), corpus, pitfalls, topics, eff)
 			if !errors.Is(err, failure) {
 				t.Fatalf("error = %v, want %v", err, failure)
 			}
@@ -979,7 +979,7 @@ func TestLocalDocPruneUnreadableSourcePreservesRecoveryAndLock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	backups, _, pruned, err := syncReportWithPitfalls(renderInputsForTest(p), testContext(t), nil, filesystems, corpus, pitfalls, topics, eff)
+	backups, _, pruned, err := syncReportWithPitfalls(renderInputsForTest(p), nil, filesystems, corpus, pitfalls, topics, eff)
 	if !errors.Is(err, failure) {
 		t.Fatalf("sync error = %v, want %v", err, failure)
 	}
@@ -1039,7 +1039,7 @@ func TestLocalDocPruneFaultsKeepRecoveryAndLock(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, _, _, err = syncReportWithPitfalls(renderInputsForTest(p), testContext(t), nil, filesystems, corpus, pitfalls, topics, eff)
+			_, _, _, err = syncReportWithPitfalls(renderInputsForTest(p), nil, filesystems, corpus, pitfalls, topics, eff)
 			if !errors.Is(err, failure) {
 				t.Fatalf("sync error = %v, want %v", err, failure)
 			}
@@ -1109,7 +1109,7 @@ func TestSyncReportDoesNotReportOutputWhenReplacementFails(t *testing.T) {
 	if deriveErr != nil {
 		t.Fatal(deriveErr)
 	}
-	_, changes, _, err := syncReportWithPitfalls(renderInputsForTest(p), testContext(t), nil, filesystems, corpus, pitfalls, topics, eff)
+	_, changes, _, err := syncReportWithPitfalls(renderInputsForTest(p), nil, filesystems, corpus, pitfalls, topics, eff)
 	if !errors.Is(err, failure) || len(changes) != 0 {
 		t.Fatalf("changes = %v, err = %v", changes, err)
 	}
@@ -1140,7 +1140,7 @@ func TestSyncReportRetainsModeCorrectionWhenLaterWriteFails(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, changes, _, err := syncReportWithPitfalls(renderInputsForTest(p), testContext(t), nil, filesystems, corpus, pitfalls, topics, eff)
+	_, changes, _, err := syncReportWithPitfalls(renderInputsForTest(p), nil, filesystems, corpus, pitfalls, topics, eff)
 	if !errors.Is(err, failure) {
 		t.Fatalf("error = %v, want %v", err, failure)
 	}
@@ -1298,7 +1298,7 @@ func TestSyncReportDoesNotReportOutputWhenWriteFails(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, changes, _, err := syncReportWithPitfalls(renderInputsForTest(p), testContext(t), nil, filesystems, corpus, pitfalls, topics, eff)
+	_, changes, _, err := syncReportWithPitfalls(renderInputsForTest(p), nil, filesystems, corpus, pitfalls, topics, eff)
 	if !errors.Is(err, failure) {
 		t.Fatalf("error = %v, want %v", err, failure)
 	}
@@ -2156,7 +2156,7 @@ func TestSyncAncestorCleanupRefusesParentSwap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, pruned, err := syncReportWithPitfalls(renderInputsForTest(p), testContext(t), nil, filesystems, corpus, pitfalls, topics, eff)
+	_, _, pruned, err := syncReportWithPitfalls(renderInputsForTest(p), nil, filesystems, corpus, pitfalls, topics, eff)
 	if err != nil || !slices.Contains(pruned, retired) {
 		t.Fatalf("cleanup sync = pruned %v, error %v", pruned, err)
 	}
@@ -2203,7 +2203,7 @@ func TestSyncLockSaveRefusesParentSwap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := syncReportWithPitfalls(renderInputsForTest(p), testContext(t), nil, filesystems, corpus, pitfalls, topics, eff); err == nil {
+	if _, _, _, err := syncReportWithPitfalls(renderInputsForTest(p), nil, filesystems, corpus, pitfalls, topics, eff); err == nil {
 		t.Fatal("sync accepted swapped lock parent during final save")
 	}
 	if _, err := os.Stat(filepath.Join(outside, "awf.lock")); !errors.Is(err, os.ErrNotExist) {

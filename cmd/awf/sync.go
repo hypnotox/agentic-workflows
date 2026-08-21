@@ -60,9 +60,9 @@ func syncMutation(ctx context.Context, loader *project.Loader, root string, seed
 	var changes []project.Change
 	var pruned []string
 	if seed == nil {
-		backups, changes, pruned, err = project.SyncReport(state, cfg, ctx)
+		backups, changes, pruned, err = project.SyncReport(state, cfg)
 	} else {
-		backups, changes, pruned, err = project.InitializeReport(state, cfg, ctx, *seed)
+		backups, changes, pruned, err = project.InitializeReport(state, cfg, *seed)
 	}
 	if err != nil {
 		return presentation.Mutation{}, nil, nil, err

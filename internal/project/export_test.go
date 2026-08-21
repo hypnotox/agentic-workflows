@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"sync"
-	"time"
 
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
@@ -54,25 +53,21 @@ func testRepo(state *ProjectState) *awfgit.Repo {
 }
 
 func syncProject(state *ProjectState) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
 	cfg := testConfig(state)
 	_, found, err := manifest.LoadOptional(lockPath(state.Root()))
 	if err != nil {
 		return err
 	}
 	if !found {
-		_, _, _, err = InitializeReport(state, cfg, ctx, InitAuthority{InitializedWithVersion: Version})
+		_, _, _, err = InitializeReport(state, cfg, InitAuthority{InitializedWithVersion: Version})
 		return err
 	}
-	_, _, _, err = SyncReport(state, cfg, ctx)
+	_, _, _, err = SyncReport(state, cfg)
 	return err
 }
 
 func renderAll(state *ProjectState) ([]RenderedFile, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
-	op, err := outputPlan(operationInputs(state, testConfig(state)), ctx)
+	op, err := outputPlan(operationInputs(state, testConfig(state)))
 	if err != nil {
 		return nil, err
 	}
@@ -85,29 +80,29 @@ func checkStagedProject(state *ProjectState, ctx context.Context) (CurrentStateR
 func checkStagedDriftProject(state *ProjectState, ctx context.Context) ([]manifest.Drift, error) {
 	return checkStagedDrift(newRenderInputs(state, testConfig(state), nil), testRepo(state), ctx)
 }
-func outputPlanProject(state *ProjectState, ctx context.Context) (*OutputPlan, error) {
-	return outputPlan(operationInputs(state, testConfig(state)), ctx)
+func outputPlanProject(state *ProjectState, _ context.Context) (*OutputPlan, error) {
+	return outputPlan(operationInputs(state, testConfig(state)))
 }
-func syncReportProject(state *ProjectState, ctx context.Context) ([]Backup, []Change, []string, error) {
-	return SyncReport(state, testConfig(state), ctx)
+func syncReportProject(state *ProjectState, _ context.Context) ([]Backup, []Change, []string, error) {
+	return SyncReport(state, testConfig(state))
 }
-func initializeReportProject(state *ProjectState, ctx context.Context, seed InitAuthority) ([]Backup, []Change, []string, error) {
-	return InitializeReport(state, testConfig(state), ctx, seed)
+func initializeReportProject(state *ProjectState, _ context.Context, seed InitAuthority) ([]Backup, []Change, []string, error) {
+	return InitializeReport(state, testConfig(state), seed)
 }
 func checkReportProject(state *ProjectState, ctx context.Context) (CheckReport, error) {
 	return BuildCheckReport(state, testConfig(state), testRepo(state), ctx)
 }
-func configReferenceProject(state *ProjectState, ctx context.Context) (ConfigReference, error) {
-	return BuildConfigReference(state, testConfig(state), ctx)
+func configReferenceProject(state *ProjectState, _ context.Context) (ConfigReference, error) {
+	return BuildConfigReference(state, testConfig(state))
 }
-func initCollisionsProject(state *ProjectState, ctx context.Context) ([]string, error) {
-	return InitCollisions(state, testConfig(state), ctx)
+func initCollisionsProject(state *ProjectState, _ context.Context) ([]string, error) {
+	return InitCollisions(state, testConfig(state))
 }
-func plannedOutputsProject(state *ProjectState, ctx context.Context) ([]string, error) {
-	return PlannedOutputs(state, testConfig(state), ctx)
+func plannedOutputsProject(state *ProjectState, _ context.Context) ([]string, error) {
+	return PlannedOutputs(state, testConfig(state))
 }
-func advisoryNotesProject(state *ProjectState, ctx context.Context) ([]string, error) {
-	return AdvisoryNotes(state, testConfig(state), ctx)
+func advisoryNotesProject(state *ProjectState, _ context.Context) ([]string, error) {
+	return AdvisoryNotes(state, testConfig(state))
 }
 func contextStateProject(state *ProjectState, ctx context.Context) (ContextState, error) {
 	return BuildContextState(state, testRepo(state), ctx)
@@ -115,11 +110,11 @@ func contextStateProject(state *ProjectState, ctx context.Context) (ContextState
 func checkCurrentStateProject(state *ProjectState, ctx context.Context) (CurrentStateReport, error) {
 	return CheckCurrentState(state.Root(), testRepo(state), ctx)
 }
-func numberPendingADRsProject(state *ProjectState, ctx context.Context, slugs []string) (NumberingReport, error) {
-	return NumberPendingADRs(state, testConfig(state), ctx, slugs)
+func numberPendingADRsProject(state *ProjectState, _ context.Context, slugs []string) (NumberingReport, error) {
+	return NumberPendingADRs(state, testConfig(state), slugs)
 }
-func renderResidentMarkerProject(state *ProjectState, ctx context.Context, name string) (RenderedFile, error) {
-	return RenderResidentMarker(state, testConfig(state), ctx, name)
+func renderResidentMarkerProject(state *ProjectState, _ context.Context, name string) (RenderedFile, error) {
+	return RenderResidentMarker(state, testConfig(state), name)
 }
 func newADRProject(state *ProjectState, ctx context.Context, title string) (string, error) {
 	return NewADR(state.Root(), testConfig(state), testRepo(state), ctx, title)

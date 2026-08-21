@@ -391,13 +391,13 @@ type Change struct {
 // files its prune actually removed (both path-sorted; a file whose output is
 // byte-identical, and first-adoption initialization with no prior lock reports
 // no change - a routine re-sync stays silent).
-func syncReportOperation(p renderInputs, ctx context.Context) ([]Backup, []Change, []string, error) {
+func syncReportOperation(p renderInputs) ([]Backup, []Change, []string, error) {
 	// Refuse an unresolvable hook-command wiring before rendering anything
 	// (ADR-0156 Decision 5); first-adoption InitializeReport stays exempt.
 	if err := validateCommandWiring(p.cfg); err != nil {
 		return nil, nil, nil, err
 	}
-	return syncReport(p, ctx, nil)
+	return syncReport(p, nil)
 }
 
 // InitAuthority is the explicit provenance supplied only by first adoption.
@@ -407,8 +407,8 @@ type InitAuthority struct {
 
 // InitializeReport renders a first adoption while sealing its existing ADR
 // identities. It has the same reporting contract as SyncReport.
-func initializeReport(p renderInputs, ctx context.Context, seed InitAuthority) ([]Backup, []Change, []string, error) {
-	return syncReport(p, ctx, &seed)
+func initializeReport(p renderInputs, seed InitAuthority) ([]Backup, []Change, []string, error) {
+	return syncReport(p, &seed)
 }
 
 // syncFilesystem is sync's cohesive, root-confined filesystem dependency.
@@ -455,7 +455,7 @@ func openSyncFilesystems(p renderInputs) (syncFilesystems, func(), error) {
 	}, nil
 }
 
-func syncReport(p renderInputs, ctx context.Context, seed *InitAuthority) (backups []Backup, changes []Change, pruned []string, err error) {
+func syncReport(p renderInputs, seed *InitAuthority) (backups []Backup, changes []Change, pruned []string, err error) {
 	corpus, pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
 	if err != nil {
 		return nil, nil, nil, err
@@ -465,10 +465,10 @@ func syncReport(p renderInputs, ctx context.Context, seed *InitAuthority) (backu
 		return nil, nil, nil, err
 	}
 	defer closeAll()
-	return syncReportWithPitfalls(p, ctx, seed, filesystems, corpus, pitfalls, topics, eff)
+	return syncReportWithPitfalls(p, seed, filesystems, corpus, pitfalls, topics, eff)
 }
 
-func syncReportWithPitfalls(p renderInputs, ctx context.Context, seed *InitAuthority, filesystems syncFilesystems, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (backups []Backup, changes []Change, pruned []string, err error) {
+func syncReportWithPitfalls(p renderInputs, seed *InitAuthority, filesystems syncFilesystems, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (backups []Backup, changes []Change, pruned []string, err error) {
 	defer func() {
 		slices.Sort(pruned)
 		slices.SortFunc(changes, func(a, b Change) int { return strings.Compare(a.Path, b.Path) })
@@ -504,7 +504,7 @@ func syncReportWithPitfalls(p renderInputs, ctx context.Context, seed *InitAutho
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	op, err := outputPlanWithPitfalls(p, ctx, corpus, pitfalls, topics, eff)
+	op, err := outputPlanWithPitfalls(p, corpus, pitfalls, topics, eff)
 	if err != nil {
 		return nil, nil, nil, err
 	}

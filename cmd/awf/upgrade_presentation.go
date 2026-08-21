@@ -16,8 +16,8 @@ type upgradeSyncDependencies struct {
 }
 
 func productionUpgradeSyncDependencies() upgradeSyncDependencies {
-	return upgradeSyncDependencies{projectSyncReport: func(ctx context.Context, state *project.ProjectState, cfg *config.Config) ([]project.Backup, []project.Change, []string, error) {
-		return project.SyncReport(state, cfg, ctx)
+	return upgradeSyncDependencies{projectSyncReport: func(_ context.Context, state *project.ProjectState, cfg *config.Config) ([]project.Backup, []project.Change, []string, error) {
+		return project.SyncReport(state, cfg)
 	}}
 }
 

@@ -62,7 +62,7 @@ func openEffortComposition(ctx context.Context, root string) (effortComposition,
 		if err != nil { // coverage-ignore: the gated command already loaded this same project; failure requires a concurrent config-tree race
 			return nil, err
 		}
-		rendered, err := project.RenderResidentMarker(projectState, cfg, ctx, string(awfgit.ResidentEffortArchive))
+		rendered, err := project.RenderResidentMarker(projectState, cfg, string(awfgit.ResidentEffortArchive))
 		if err != nil { // coverage-ignore: the gate already built the same closed output plan; failure requires a concurrent config-tree race
 			return nil, err
 		}

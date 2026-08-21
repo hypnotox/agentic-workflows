@@ -104,7 +104,7 @@ func syncFullCatalogForTarget(t *testing.T, cat *catalog.Catalog, target string)
 	if err != nil {
 		t.Fatalf("load config: %v", err)
 	}
-	if _, _, _, err := project.InitializeReport(p, cfg, testsupport.Context(t), project.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
+	if _, _, _, err := project.InitializeReport(p, cfg, project.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
 		t.Fatalf("initialize: %v", err)
 	}
 	return root
@@ -174,7 +174,7 @@ func TestFullCatalogCoverage(t *testing.T) {
 			if !hasDrift(drift, missing, "missing") {
 				t.Errorf("missing output drift = %v, want %q missing", drift, missing)
 			}
-			if _, _, _, err := project.SyncReport(p, mustEvalConfig(t, p), testsupport.Context(t)); err != nil {
+			if _, _, _, err := project.SyncReport(p, mustEvalConfig(t, p)); err != nil {
 				t.Fatalf("repair missing output: %v", err)
 			}
 			if drift, err := checkProject(p, testsupport.Context(t)); err != nil || len(drift) != 0 {
@@ -191,7 +191,7 @@ func TestFullCatalogCoverage(t *testing.T) {
 			if !hasDrift(drift, "AGENTS.md", "hand-edited") {
 				t.Errorf("edited output drift = %v, want AGENTS.md hand-edited", drift)
 			}
-			if _, _, _, err := project.SyncReport(p, mustEvalConfig(t, p), testsupport.Context(t)); err != nil {
+			if _, _, _, err := project.SyncReport(p, mustEvalConfig(t, p)); err != nil {
 				t.Fatalf("repair stale output: %v", err)
 			}
 			if drift, err := checkProject(p, testsupport.Context(t)); err != nil || len(drift) != 0 {

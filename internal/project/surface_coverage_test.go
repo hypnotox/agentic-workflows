@@ -91,7 +91,7 @@ func TestCheckWithStatePropagatesMalformedRetainedData(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			op, err := outputPlanWithPitfalls(renderInputsForTest(p), testContext(t), corpus, pitfalls, topics, effective)
+			op, err := outputPlanWithPitfalls(renderInputsForTest(p), corpus, pitfalls, topics, effective)
 			if err != nil {
 				t.Fatal(err)
 			}

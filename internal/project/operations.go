@@ -16,13 +16,13 @@ func operationInputs(state *ProjectState, cfg *config.Config) renderInputs {
 }
 
 // NumberPendingADRs assigns numbers using the selected project tree.
-func NumberPendingADRs(state *ProjectState, cfg *config.Config, ctx context.Context, slugs []string) (NumberingReport, error) {
-	return numberPendingADRs(operationInputs(state, cfg), ctx, slugs)
+func NumberPendingADRs(state *ProjectState, cfg *config.Config, slugs []string) (NumberingReport, error) {
+	return numberPendingADRs(operationInputs(state, cfg), slugs)
 }
 
 // AdvisoryNotes reports non-blocking project checks from the selected tree.
-func AdvisoryNotes(state *ProjectState, cfg *config.Config, ctx context.Context) ([]string, error) {
-	return advisoryNotes(operationInputs(state, cfg), ctx)
+func AdvisoryNotes(state *ProjectState, cfg *config.Config) ([]string, error) {
+	return advisoryNotes(operationInputs(state, cfg))
 }
 
 // BuildCheckReport checks the selected project tree and its repository state.
@@ -31,8 +31,8 @@ func BuildCheckReport(state *ProjectState, cfg *config.Config, repo *awfgit.Repo
 }
 
 // BuildConfigReference derives the live configuration reference model.
-func BuildConfigReference(state *ProjectState, cfg *config.Config, ctx context.Context) (ConfigReference, error) {
-	return configReferenceModel(operationInputs(state, cfg), ctx)
+func BuildConfigReference(state *ProjectState, cfg *config.Config) (ConfigReference, error) {
+	return configReferenceModel(operationInputs(state, cfg))
 }
 
 // BuildContextState assembles context-query state from immutable facts and Git.
@@ -51,8 +51,8 @@ func CheckCommitAuthorization(root string, repo *awfgit.Repo, ctx context.Contex
 }
 
 // InitCollisions reports outputs that would collide during initialization.
-func InitCollisions(state *ProjectState, cfg *config.Config, ctx context.Context) ([]string, error) {
-	return initCollisions(operationInputs(state, cfg), ctx)
+func InitCollisions(state *ProjectState, cfg *config.Config) ([]string, error) {
+	return initCollisions(operationInputs(state, cfg))
 }
 
 // BuildListDocument renders the requested project inventory.
@@ -61,13 +61,13 @@ func BuildListDocument(state *ProjectState, cfg *config.Config, kindFilter strin
 }
 
 // PreflightLocalDoc validates one local-document declaration against the output plan.
-func PreflightLocalDoc(state *ProjectState, cfg *config.Config, ctx context.Context, doc config.LocalDoc) error {
-	return preflightLocalDoc(operationInputs(state, cfg), ctx, doc)
+func PreflightLocalDoc(state *ProjectState, cfg *config.Config, doc config.LocalDoc) error {
+	return preflightLocalDoc(operationInputs(state, cfg), doc)
 }
 
 // PlannedOutputs returns the selected operation tree's declared output paths.
-func PlannedOutputs(state *ProjectState, cfg *config.Config, ctx context.Context) ([]string, error) {
-	op, err := outputPlan(operationInputs(state, cfg), ctx)
+func PlannedOutputs(state *ProjectState, cfg *config.Config) ([]string, error) {
+	op, err := outputPlan(operationInputs(state, cfg))
 	if err != nil {
 		return nil, err
 	}
@@ -78,13 +78,13 @@ func PlannedOutputs(state *ProjectState, cfg *config.Config, ctx context.Context
 func ReadPlan(root, name, selector string) ([]byte, error) { return readPlan(root, name, selector) }
 
 // SyncReport publishes the selected project tree and reports its mutations.
-func SyncReport(state *ProjectState, cfg *config.Config, ctx context.Context) ([]Backup, []Change, []string, error) {
-	return syncReportOperation(operationInputs(state, cfg), ctx)
+func SyncReport(state *ProjectState, cfg *config.Config) ([]Backup, []Change, []string, error) {
+	return syncReportOperation(operationInputs(state, cfg))
 }
 
 // InitializeReport publishes an initial project tree under explicit authority.
-func InitializeReport(state *ProjectState, cfg *config.Config, ctx context.Context, seed InitAuthority) ([]Backup, []Change, []string, error) {
-	return initializeReport(operationInputs(state, cfg), ctx, seed)
+func InitializeReport(state *ProjectState, cfg *config.Config, seed InitAuthority) ([]Backup, []Change, []string, error) {
+	return initializeReport(operationInputs(state, cfg), seed)
 }
 
 // Audit evaluates the selected repository history against project configuration.
@@ -101,8 +101,8 @@ func NewADR(root string, cfg *config.Config, repo *awfgit.Repo, ctx context.Cont
 func NewPlan(root, title string) (string, error) { return newPlan(root, title) }
 
 // RenderResidentMarker renders one resident marker from the selected project tree.
-func RenderResidentMarker(state *ProjectState, cfg *config.Config, ctx context.Context, name string) (RenderedFile, error) {
-	return renderResidentMarkerOperation(operationInputs(state, cfg), ctx, name)
+func RenderResidentMarker(state *ProjectState, cfg *config.Config, name string) (RenderedFile, error) {
+	return renderResidentMarkerOperation(operationInputs(state, cfg), name)
 }
 
 // NewPitfall scaffolds one authored pitfall beneath root.

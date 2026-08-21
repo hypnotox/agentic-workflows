@@ -80,7 +80,7 @@ func checkStagedDrift(p renderInputs, repo *awfgit.Repo, ctx context.Context) ([
 	if err != nil {
 		return nil, err
 	}
-	op, err := outputPlanWithPitfalls(universe, ctx, state.Loaded.Corpus, pitfalls, state.Loaded.Topics, effective)
+	op, err := outputPlanWithPitfalls(universe, state.Loaded.Corpus, pitfalls, state.Loaded.Topics, effective)
 	if err != nil {
 		return nil, err
 	}

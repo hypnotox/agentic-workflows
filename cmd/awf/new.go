@@ -98,8 +98,8 @@ func productionLocalDocDependencies() localDocDependencies {
 			if err != nil {
 				return nil, err
 			}
-			return func(ctx context.Context, doc config.LocalDoc) error {
-				return project.PreflightLocalDoc(state, cfg, ctx, doc)
+			return func(_ context.Context, doc config.LocalDoc) error {
+				return project.PreflightLocalDoc(state, cfg, doc)
 			}, nil
 		},
 		read:        os.ReadFile,

@@ -1,7 +1,6 @@
 package project
 
 import (
-	"context"
 	"fmt"
 	"os"
 
@@ -12,8 +11,8 @@ import (
 // InitCollisions returns planned output paths that already exist on disk and are
 // not recorded in the prior lock (i.e. not awf-managed). An awf-managed path that
 // already exists is not a collision - re-init is idempotent.
-func initCollisions(p renderInputs, ctx context.Context) ([]string, error) {
-	planned, err := plannedOutputs(p, ctx)
+func initCollisions(p renderInputs) ([]string, error) {
+	planned, err := plannedOutputs(p)
 	if err != nil {
 		return nil, err
 	}

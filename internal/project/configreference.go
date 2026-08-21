@@ -1,7 +1,6 @@
 package project
 
 import (
-	"context"
 	"fmt"
 	"maps"
 	"slices"
@@ -515,12 +514,12 @@ func generateConfigReference(p renderInputs, files []RenderedFile, eff map[strin
 // ConfigReferenceModel computes the reference's four typed collections
 // (ConfigKeys, VarEntries, SidecarFields, DataKeys) with live project state -
 // the `awf config` command's data source.
-func configReferenceModel(p renderInputs, ctx context.Context) (ConfigReference, error) {
+func configReferenceModel(p renderInputs) (ConfigReference, error) {
 	corpus, pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
 	if err != nil {
 		return ConfigReference{}, err
 	}
-	op, err := outputPlanWithPitfalls(p, ctx, corpus, pitfalls, topics, eff)
+	op, err := outputPlanWithPitfalls(p, corpus, pitfalls, topics, eff)
 	if err != nil {
 		return ConfigReference{}, err
 	}

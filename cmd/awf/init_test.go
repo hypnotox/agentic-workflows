@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"io"
 	"os"
@@ -307,16 +306,16 @@ func TestInitProjectLoaderPropagatesFailure(t *testing.T) {
 
 func TestRenderInitOutcomePropagatesFailures(t *testing.T) {
 	want := errors.New("advisory failed")
-	if err := renderInitOutcome(testContext(t), nil, nil, initspec.Outcome{ConfigPath: "config"}, io.Discard, func(*project.ProjectState, *config.Config, context.Context) ([]string, error) {
+	if err := renderInitOutcome(nil, nil, initspec.Outcome{ConfigPath: "config"}, io.Discard, func(*project.ProjectState, *config.Config) ([]string, error) {
 		return nil, want
 	}); !errors.Is(err, want) {
 		t.Fatalf("advisory error = %v, want %v", err, want)
 	}
-	advisories := func(*project.ProjectState, *config.Config, context.Context) ([]string, error) { return nil, nil }
-	if err := renderInitOutcome(testContext(t), nil, nil, initspec.Outcome{ConfigPath: "bad\npath"}, io.Discard, advisories); err == nil {
+	advisories := func(*project.ProjectState, *config.Config) ([]string, error) { return nil, nil }
+	if err := renderInitOutcome(nil, nil, initspec.Outcome{ConfigPath: "bad\npath"}, io.Discard, advisories); err == nil {
 		t.Fatal("invalid outcome accepted")
 	}
-	if err := renderInitOutcome(testContext(t), nil, nil, initspec.Outcome{ConfigPath: "config"}, errorWriter{}, advisories); err == nil || !strings.Contains(err.Error(), "write failed") {
+	if err := renderInitOutcome(nil, nil, initspec.Outcome{ConfigPath: "config"}, errorWriter{}, advisories); err == nil || !strings.Contains(err.Error(), "write failed") {
 		t.Fatalf("writer error = %v", err)
 	}
 }

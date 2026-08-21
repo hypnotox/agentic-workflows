@@ -119,7 +119,7 @@ func runInitWithProjectLoader(ctx context.Context, root string, force, describe 
 	if err != nil {
 		return err
 	}
-	collisions, err := project.InitCollisions(state, cfg, ctx)
+	collisions, err := project.InitCollisions(state, cfg)
 	if err != nil {
 		if scaffolded { // coverage-ignore: after first-adoption and scaffold validation, this cleanup requires a concurrent tree mutation to make InitCollisions fail
 			_ = os.Remove(cfgPath)
@@ -159,7 +159,7 @@ func runInitWithProjectLoader(ctx context.Context, root string, force, describe 
 	}
 	// Post-init orientation: the same advisory notes awf check prints
 	// (ADR-0045, ADR-0070), then a fixed next-steps block.
-	return renderInitOutcome(ctx, syncedProject, syncedConfig, initspec.Outcome{ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers, Sync: syncResult, NextActions: initNextActions}, stdout, project.AdvisoryNotes)
+	return renderInitOutcome(syncedProject, syncedConfig, initspec.Outcome{ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers, Sync: syncResult, NextActions: initNextActions}, stdout, project.AdvisoryNotes)
 }
 
 func initProjectLoader(root string, load func(string) (*project.Loader, error)) (*project.Loader, error) {
@@ -174,8 +174,8 @@ func finishInitSyncFailure(cfgPath string, scaffolded bool, syncErr error) error
 	return syncErr
 }
 
-func renderInitOutcome(ctx context.Context, state *project.ProjectState, cfg *config.Config, outcome initspec.Outcome, stdout io.Writer, advisoryNotes func(*project.ProjectState, *config.Config, context.Context) ([]string, error)) error {
-	notes, err := advisoryNotes(state, cfg, ctx)
+func renderInitOutcome(state *project.ProjectState, cfg *config.Config, outcome initspec.Outcome, stdout io.Writer, advisoryNotes func(*project.ProjectState, *config.Config) ([]string, error)) error {
+	notes, err := advisoryNotes(state, cfg)
 	if err != nil {
 		return err
 	}
@@ -204,7 +204,7 @@ func probeCollisions(ctx context.Context, root string) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		return project.InitCollisions(state, cfg, ctx)
+		return project.InitCollisions(state, cfg)
 	}
 	tmp, err := os.MkdirTemp("", "awf-init-probe-*")
 	if err != nil { // coverage-ignore: MkdirTemp fails only on an unwritable TMPDIR, which a test cannot trigger portably
@@ -226,7 +226,7 @@ func probeCollisions(ctx context.Context, root string) ([]string, error) {
 	if err != nil { // coverage-ignore: a freshly-scaffolded default config always opens
 		return nil, err
 	}
-	planned, err := project.PlannedOutputs(state, cfg, ctx)
+	planned, err := project.PlannedOutputs(state, cfg)
 	if err != nil { // coverage-ignore: rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail
 		return nil, err
 	}

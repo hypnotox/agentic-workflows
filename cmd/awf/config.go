@@ -38,7 +38,7 @@ func runConfig(ctx context.Context, cwd, key string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	model, err := project.BuildConfigReference(state, cfg, ctx)
+	model, err := project.BuildConfigReference(state, cfg)
 	if err != nil {
 		return err
 	}
