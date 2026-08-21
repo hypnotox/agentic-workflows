@@ -14,7 +14,7 @@ func checkDrift(t *testing.T, root string) []manifest.Drift {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	drift, err := checkProject(p, testContext(t))

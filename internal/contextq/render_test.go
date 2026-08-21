@@ -41,7 +41,7 @@ func acceptedV1(t *testing.T, num, title, date, stateChanges string) string {
 // global core topic, the scoped topic alpha/one (a rule plus test-backed and
 // unbacked invariants), an Accepted v1 ADR with a pending add on alpha/one, and
 // a state marker under internal/foo/x.go.
-func renderFixture(t *testing.T) *project.Project {
+func renderFixture(t *testing.T) *project.ProjectState {
 	t.Helper()
 	repo := gitfixture.InitRepo(t)
 	root := repo.Root()

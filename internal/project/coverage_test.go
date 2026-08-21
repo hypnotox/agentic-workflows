@@ -174,7 +174,7 @@ func TestRenderAllSurfacesMalformedSidecars(t *testing.T) {
 			}
 			// Corrupt the sidecar after a clean open so RenderAll re-reads it.
 			corruptSidecar(t, root, tc.corruptRel)
-			if _, err := p.RenderAll(); err == nil {
+			if _, err := renderAll(p); err == nil {
 				t.Fatalf("expected RenderAll to surface the malformed %s sidecar", tc.name)
 			}
 		})
@@ -207,7 +207,7 @@ func TestRenderAllAssembleErrorOnUnreadablePart(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := p.RenderAll(); err == nil {
+			if _, err := renderAll(p); err == nil {
 				t.Fatalf("expected RenderAll to fail reading an unreadable %s convention part", tc.name)
 			}
 		})
@@ -269,7 +269,7 @@ func TestSyncFailsOnMalformedADR(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err == nil {
+	if err := syncProject(p); err == nil {
 		t.Fatal("expected Sync to fail generating the ADR index from a malformed ADR")
 	}
 }
@@ -285,7 +285,7 @@ func TestSyncMkdirAllErrorWhenParentIsFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err == nil {
+	if err := syncProject(p); err == nil {
 		t.Fatal("expected Sync to fail when the output parent path is a file")
 	}
 }
@@ -300,7 +300,7 @@ func TestSyncWriteFileErrorWhenOutputIsDir(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err == nil {
+	if err := syncProject(p); err == nil {
 		t.Fatal("expected Sync to fail when the output path is a directory")
 	}
 }
@@ -324,7 +324,7 @@ func TestCheckSurfacesRenderError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	// Corrupt a sidecar so the post-lock RenderAll inside Check fails.
@@ -340,7 +340,7 @@ func TestCheckFlagsFileWhereKindDirBelongs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	// A regular file where the .awf/domains sidecar dir would be. The old orphan
@@ -368,7 +368,7 @@ func TestSyncPrunesRemovedTargetTree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	// Remove a real rendered target surface from the next output plan. Selection
@@ -376,10 +376,10 @@ func TestSyncPrunesRemovedTargetTree(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".claude", "unrelated.txt"), []byte("keep\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	state := *p.state
+	state := *p
 	state.targets = nil
-	p.state = &state
-	if err := p.Sync(); err != nil {
+	p = &state
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	for _, path := range []string{
@@ -402,7 +402,7 @@ func TestCheckReportsMissingRenderedFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	// Delete an in-sync rendered file so Check's on-disk read reports it missing.
@@ -430,7 +430,7 @@ func TestCheckFailsOnMalformedADRIndex(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	// Introduce a malformed ADR; Check regenerates the index and fails.
@@ -450,7 +450,7 @@ func TestCheckReportsMissingActiveMD(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	// Delete the generated INDEX.md: Check reports it missing.
@@ -489,7 +489,7 @@ func TestCheckDetectsDeadReference(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	drift, err := checkProject(p, testContext(t))
@@ -522,7 +522,7 @@ func TestCheckDeadRefsAbsoluteAndEscapingTargets(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	drift, err := checkProject(p, testContext(t))
@@ -554,10 +554,10 @@ func TestProjectNewADR(t *testing.T) {
 	// docs/decisions/template.md is a rendered singleton (ADR-0021) - it only
 	// exists on disk after a sync, unlike CheckInvariants/Audit above which read
 	// hand-written fixture ADRs directly.
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
-	path, err := p.NewADR(testContext(t), "My Plan Title")
+	path, err := newADRProject(p, testContext(t), "My Plan Title")
 	if err != nil {
 		t.Fatalf("NewADR: %v", err)
 	}

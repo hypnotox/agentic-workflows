@@ -171,7 +171,7 @@ func TestOutputDeclarationsMatchThePlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := p.OutputPlan(testContext(t))
+	plan, err := outputPlanProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -179,7 +179,7 @@ func TestOutputDeclarationsMatchThePlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	declarations, err := BuildOutputDeclarations(p.Cfg, projectCatalog(renderInputsForTest(p)), p.Targets, filesystemProjectReader{root: p.Root}, corpus)
+	declarations, err := BuildOutputDeclarations(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: p.Root()}, corpus)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,8 +221,8 @@ func TestEnabledMarkdownDeclarationsMatchObservedTemplateSources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p.Cfg.Render = &config.RenderConfig{TemplateSourceRoot: "templates"}
-	plan, err := p.OutputPlan(testContext(t))
+	testConfig(p).Render = &config.RenderConfig{TemplateSourceRoot: "templates"}
+	plan, err := outputPlanProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -230,7 +230,7 @@ func TestEnabledMarkdownDeclarationsMatchObservedTemplateSources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	declarations, err := BuildOutputDeclarations(p.Cfg, projectCatalog(renderInputsForTest(p)), p.Targets, filesystemProjectReader{root: p.Root}, corpus)
+	declarations, err := BuildOutputDeclarations(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: p.Root()}, corpus)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -257,7 +257,7 @@ func TestPitfallDeclarationPlanDependencyParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := p.OutputPlan(testContext(t))
+	plan, err := outputPlanProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -265,7 +265,7 @@ func TestPitfallDeclarationPlanDependencyParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	declarations, err := BuildOutputDeclarations(p.Cfg, projectCatalog(renderInputsForTest(p)), p.Targets, filesystemProjectReader{root: root}, corpus)
+	declarations, err := BuildOutputDeclarations(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: root}, corpus)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -311,11 +311,11 @@ func TestOutputPlanObservesConsumedInputsIndependently(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := p.OutputPlan(testContext(t))
+	plan, err := outputPlanProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
-	path := p.Targets[0].SkillPath(p.Cfg.Prefix, "debugging")
+	path := p.Targets()[0].SkillPath(testConfig(p).Prefix, "debugging")
 	idx := slices.IndexFunc(plan.Nodes, func(node OutputNode) bool { return node.Path == path })
 	if idx < 0 {
 		t.Fatalf("missing node %s", path)

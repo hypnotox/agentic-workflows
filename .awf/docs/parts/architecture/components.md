@@ -1,4 +1,4 @@
-- `internal/project`: the current configuration, rendering, output-planning, and repository-check coordinator; its broad receiver surface is transitional toward the target direction below.
+- `internal/project`: `Loader` constructs immutable `ProjectState` facts; focused functions own configuration, rendering, output-planning, and repository-check operations with explicit tree and Git inputs. Publisher, RepositoryChecker, CurrentStateCoordinator, and command-use-case extraction remain future boundaries.
 - `internal/adr`, `internal/currentstate`, and `internal/plan`: decision, active-authority, and plan models.
 - `internal/effort` and `internal/worktree`: local residents and Git-backed topology.
 - `internal/git`: the sole semantic Git seam.

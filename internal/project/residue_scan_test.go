@@ -58,7 +58,7 @@ func TestLiveTemplateAndCurrentStateRetiredConfigGuidanceAbsent(t *testing.T) {
 	bannedGuidance := []string{
 		"local: true",
 		"generated local docs",
-		"Project-local skills, agents, and docs",
+		"ProjectState-local skills, agents, and docs",
 		"configured local skill",
 	}
 	inspected := 0

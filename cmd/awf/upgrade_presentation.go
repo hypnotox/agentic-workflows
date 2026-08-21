@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
@@ -11,12 +12,12 @@ import (
 )
 
 type upgradeSyncDependencies struct {
-	projectSyncReport func(context.Context, *project.Project) ([]project.Backup, []project.Change, []string, error)
+	projectSyncReport func(context.Context, *project.ProjectState, *config.Config) ([]project.Backup, []project.Change, []string, error)
 }
 
 func productionUpgradeSyncDependencies() upgradeSyncDependencies {
-	return upgradeSyncDependencies{projectSyncReport: func(ctx context.Context, p *project.Project) ([]project.Backup, []project.Change, []string, error) {
-		return p.SyncReport(ctx)
+	return upgradeSyncDependencies{projectSyncReport: func(ctx context.Context, state *project.ProjectState, cfg *config.Config) ([]project.Backup, []project.Change, []string, error) {
+		return project.SyncReport(state, cfg, ctx)
 	}}
 }
 
@@ -37,11 +38,11 @@ func upgradeSyncMutationWith(ctx context.Context, root string, dependencies upgr
 	if err != nil {
 		return upgradeSyncOutcome{}, err
 	}
-	p, err := loader.Open(ctx, root)
+	state, cfg, err := loader.OpenForOperation(ctx, root)
 	if err != nil {
 		return upgradeSyncOutcome{}, err
 	}
-	backups, changes, pruned, syncErr := dependencies.projectSyncReport(ctx, p)
+	backups, changes, pruned, syncErr := dependencies.projectSyncReport(ctx, state, cfg)
 	mutation, mutationErr := project.SyncMutation(backups, changes, pruned)
 	if mutationErr != nil {
 		return upgradeSyncOutcome{}, mutationErr

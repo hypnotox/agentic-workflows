@@ -35,15 +35,17 @@ func TestGatedCommandsDisplay(t *testing.T) {
 		t.Errorf("gatedCommandsDisplay() = %q, want %q", got, want)
 	}
 
-	p := &Project{Cfg: &config.Config{}}
-	registry, err := placeholderRegistry(renderInputsForTest(p))
+	cfg := &config.Config{}
+	p := testState(cfg)
+	inputs := newRenderInputs(p, cfg, nil)
+	registry, err := placeholderRegistry(inputs)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got := registry["gatedCommands"]; got != want {
 		t.Errorf("placeholder gatedCommands = %q, want %q", got, want)
 	}
-	if got := projectData(renderInputsForTest(p), config.Sidecar{}, map[string]bool{})["gatedCommands"]; got != want {
+	if got := projectData(inputs, config.Sidecar{}, map[string]bool{})["gatedCommands"]; got != want {
 		t.Errorf("agent-guide gatedCommands = %q, want %q", got, want)
 	}
 }

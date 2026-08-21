@@ -49,7 +49,7 @@ func TestEndToEndGolden(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 
@@ -298,7 +298,7 @@ func TestTemplateHashCoversExpandedSource(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	files, err := p.RenderAll()
+	files, err := renderAll(p)
 	if err != nil {
 		t.Fatal(err)
 	}

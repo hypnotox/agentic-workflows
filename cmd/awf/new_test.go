@@ -15,7 +15,6 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
-	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -136,17 +135,22 @@ func TestRunNewDocRefusesBeforeMutation(t *testing.T) {
 	}
 }
 
+func TestProductionLocalDocPreflightPropagatesOpenFailure(t *testing.T) {
+	dependencies := productionLocalDocDependencies()
+	if err := dependencies.preflight(testContext(t), t.TempDir(), config.LocalDoc{Name: "runbooks/api"}); err == nil {
+		t.Fatal("missing project config accepted")
+	}
+}
+
 func TestNewDocDependencyFailures(t *testing.T) {
 	failure := errors.New("injected failure")
-	for _, step := range []string{"open", "read", "append", "inspect", "preflight", "write", "synchronize"} {
+	for _, step := range []string{"read", "append", "inspect", "preflight", "write", "synchronize"} {
 		t.Run(step, func(t *testing.T) {
 			root := scaffoldProject(t)
 			beforeConfig := mustReadCLIFile(t, config.ConfigPath(root))
 			beforeLock := mustReadCLIFile(t, config.LockPath(root))
 			dependencies := productionLocalDocDependencies()
 			switch step {
-			case "open":
-				dependencies.open = func(context.Context, string) (*project.Project, error) { return nil, failure }
 			case "read":
 				dependencies.read = func(string) ([]byte, error) { return nil, failure }
 			case "append":
@@ -154,7 +158,7 @@ func TestNewDocDependencyFailures(t *testing.T) {
 			case "inspect":
 				dependencies.inspect = func(string) (os.FileInfo, error) { return nil, failure }
 			case "preflight":
-				dependencies.preflight = func(context.Context, *project.Project, config.LocalDoc) error { return failure }
+				dependencies.preflight = func(context.Context, string, config.LocalDoc) error { return failure }
 			case "write":
 				dependencies.write = func(string, []byte, os.FileMode) error { return failure }
 			case "synchronize":

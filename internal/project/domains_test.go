@@ -45,7 +45,7 @@ func TestDomainDocRendersNarrativeWithoutADRIndex(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
 	out := readDomainDoc(t, root, "rendering")
@@ -70,7 +70,7 @@ func TestDomainDocStaleOnTopicAdd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
 	if drift, _ := checkProject(p, testContext(t)); len(drift) != 0 {
@@ -92,7 +92,7 @@ func TestDomainDocMissingWhenDeleted(t *testing.T) {
 	root := scaffoldFiles(t, domainCfg, nil)
 	writeADR(t, root, "0001-engine.md", testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Engine")))
 	p, _ := Open(testContext(t), root)
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
 	if err := os.Remove(filepath.Join(root, "docs", "domains", "rendering.md")); err != nil {
@@ -108,7 +108,7 @@ func TestDomainDocOrphanedWhenDomainRemoved(t *testing.T) {
 	root := scaffoldFiles(t, domainCfg, nil)
 	writeADR(t, root, "0001-engine.md", testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Engine")))
 	p, _ := Open(testContext(t), root)
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
 	// Drop the domain from config; the lock still carries the rendered doc.
@@ -153,7 +153,7 @@ func TestDomainPartOrphan(t *testing.T) {
 		"domains/parts/other/current-state.md": "stray\n",
 	})
 	p, _ := Open(testContext(t), root)
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
 	drift, err := checkProject(p, testContext(t))
@@ -196,7 +196,7 @@ func TestDomainDocRendersTopicNavigation(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
 	p, _ := Open(testContext(t), root)
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	out := readDomainDoc(t, root, "rendering")

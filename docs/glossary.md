@@ -55,8 +55,9 @@
 | pitfall entry | One path-derived authored Markdown source under `.awf/docs/pitfalls/`, created with `awf new pitfall <title>`; deleting it retires the entry through render pruning. |
 | pitfall publications | The compact generated `docs/pitfalls.md` metadata index and same-slug generated leaves, derived from authored pitfall sources. |
 | presentation ownership | The package owning a result model also owns its human rendering; a command binary owns argument parsing, renderer selection, and exit mapping. |
-| project Loader | The project-opening policy object that loads the config tree and derives one Project from the catalog and resident-root resolution. `project.Open` is transitional compatibility, not the composed path. |
+| project Loader | The project-opening policy object that validates one config tree and constructs immutable `ProjectState` facts from it, the catalog, and resident-root resolution. `project.Open` is compatibility, not the composed operation path. |
 | project search universe | Tracked and non-ignored untracked files under the repository root, excluding ignored files, `.git`, nested repositories, and external dependencies unless scoped. |
+| project state | The Loader-constructed immutable project facts consumed by focused operations. Git handles and config-tree readers remain explicit operation inputs. |
 | promotion ladder | The retrospective rule that promotes a recurring codifiable observation to the strongest supportable form: invariant, gate or lint rule, review focus, or pitfall. |
 | prose knob | A prohibited catalog var descriptor that only tunes rendered prose; prose customization uses convention parts. Functional values drive commands, enforced identifiers, or executed paths. |
 | regeneration-derived document | A managed document recomputed from repository or catalog state rather than only its template and sidecar. |

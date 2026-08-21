@@ -34,7 +34,7 @@ func syncClean(t *testing.T, root string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 }

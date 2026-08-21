@@ -20,7 +20,7 @@ func TestLocalDocAgentGuideProjection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	guide, err := os.ReadFile(filepath.Join(root, "AGENTS.md"))
@@ -76,7 +76,7 @@ func TestLocalDocAgentGuideProjection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	afterLock, err := manifest.Load(lockFile(root))
@@ -133,7 +133,7 @@ func TestLocalDocReferenceChecksBody(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(root, "docs/runbooks/checks.md")
@@ -145,7 +145,7 @@ func TestLocalDocReferenceChecksBody(t *testing.T) {
 	if err := os.WriteFile(path, b, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	report, err := p.CheckReport(testContext(t))
+	report, err := checkReportProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}

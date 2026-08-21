@@ -51,11 +51,11 @@ func newADR(ctx context.Context, root string, titleWords []string, stdout io.Wri
 	if err := gate(ctx, root); err != nil {
 		return err
 	}
-	p, err := project.Open(ctx, root)
+	state, cfg, repo, err := openProjectOperation(ctx, root)
 	if err != nil {
 		return err
 	}
-	path, err := p.NewADR(ctx, strings.Join(titleWords, " "))
+	path, err := project.NewADR(state.Root(), cfg, repo, ctx, strings.Join(titleWords, " "))
 	if err != nil {
 		return err
 	}
@@ -69,11 +69,11 @@ func newPlan(ctx context.Context, root string, titleWords []string, stdout io.Wr
 	if err := gate(ctx, root); err != nil {
 		return err
 	}
-	p, err := project.Open(ctx, root)
+	state, _, _, err := openProjectOperation(ctx, root)
 	if err != nil {
 		return err
 	}
-	path, err := p.NewPlan(strings.Join(titleWords, " "))
+	path, err := project.NewPlan(state.Root(), strings.Join(titleWords, " "))
 	if err != nil {
 		return err
 	}
@@ -81,23 +81,25 @@ func newPlan(ctx context.Context, root string, titleWords []string, stdout io.Wr
 }
 
 type localDocDependencies struct {
-	open        func(context.Context, string) (*project.Project, error)
 	read        func(string) ([]byte, error)
 	append      func([]byte, config.LocalDoc) ([]byte, error)
 	inspect     func(string) (os.FileInfo, error)
-	preflight   func(context.Context, *project.Project, config.LocalDoc) error
+	preflight   func(context.Context, string, config.LocalDoc) error
 	write       func(string, []byte, os.FileMode) error
 	synchronize func(context.Context, string, io.Writer) error
 }
 
 func productionLocalDocDependencies() localDocDependencies {
 	return localDocDependencies{
-		open:    project.Open,
 		read:    os.ReadFile,
 		append:  config.AppendLocalDoc,
 		inspect: os.Lstat,
-		preflight: func(ctx context.Context, p *project.Project, doc config.LocalDoc) error {
-			return p.PreflightLocalDoc(ctx, doc)
+		preflight: func(ctx context.Context, root string, doc config.LocalDoc) error {
+			state, cfg, _, err := openProjectOperation(ctx, root)
+			if err != nil {
+				return err
+			}
+			return project.PreflightLocalDoc(state, cfg, ctx, doc)
 		},
 		write:       os.WriteFile,
 		synchronize: runSync,
@@ -120,10 +122,6 @@ func newDocWith(ctx context.Context, root string, args []string, title *string, 
 		resolvedTitle = *title
 	}
 	doc := config.LocalDoc{Name: args[0], Title: resolvedTitle, Description: args[1]}
-	p, err := dependencies.open(ctx, root)
-	if err != nil {
-		return err
-	}
 	source, err := dependencies.read(config.ConfigPath(root))
 	if err != nil {
 		return err
@@ -139,7 +137,7 @@ func newDocWith(ctx context.Context, root string, args []string, title *string, 
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("inspect local document destination: %w", err)
 	}
-	if err := dependencies.preflight(ctx, p, doc); err != nil {
+	if err := dependencies.preflight(ctx, root, doc); err != nil {
 		return err
 	}
 	if err := dependencies.write(config.ConfigPath(root), updated, 0o644); err != nil {
@@ -169,11 +167,11 @@ func newPitfall(ctx context.Context, root string, args []string, stdout io.Write
 	if err := gate(ctx, root); err != nil {
 		return err
 	}
-	p, err := project.Open(ctx, root)
+	state, _, _, err := openProjectOperation(ctx, root)
 	if err != nil {
 		return err
 	}
-	document, err := p.NewPitfall(args[0])
+	document, err := project.NewPitfall(state.Root(), args[0])
 	if err != nil {
 		return err
 	}
@@ -187,11 +185,11 @@ func newTopic(ctx context.Context, root string, args []string, stdout io.Writer)
 	if err := gate(ctx, root); err != nil {
 		return err
 	}
-	p, err := project.Open(ctx, root)
+	_, cfg, _, err := openProjectOperation(ctx, root)
 	if err != nil {
 		return err
 	}
-	files, err := topic.ScaffoldFiles(root, p.Cfg, args[0], strings.Join(args[1:], " "))
+	files, err := topic.ScaffoldFiles(root, cfg, args[0], strings.Join(args[1:], " "))
 	if err != nil {
 		return err
 	}

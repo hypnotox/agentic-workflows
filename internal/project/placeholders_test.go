@@ -11,7 +11,7 @@ import (
 
 // projectWithScopes opens a scaffolded project with two meaning-bearing scopes
 // and both gate-command vars set (every registry key populated).
-func projectWithScopes(t *testing.T) *Project {
+func projectWithScopes(t *testing.T) *ProjectState {
 	t.Helper()
 	root := scaffold(t, "prefix: awftest\nintegrationBranch: main\n"+
 		"vars:\n  gateCmd: ./x gate\n  checkCmd: ./x check\n"+
@@ -28,7 +28,7 @@ func projectWithScopes(t *testing.T) *Project {
 
 // projectAcceptAny opens a scaffolded project with no audit config (accept-any
 // scopes) and no gate vars - the scope keys and gate keys are all absent.
-func projectAcceptAny(t *testing.T) *Project {
+func projectAcceptAny(t *testing.T) *ProjectState {
 	t.Helper()
 	p, err := Open(testContext(t), scaffold(t, "prefix: bare\nintegrationBranch: main\nvars: {}\n"))
 	if err != nil {
@@ -179,7 +179,7 @@ func TestPlaceholderValueTokenFree(t *testing.T) {
 		t.Errorf("placeholderRegistry err = %v, want naming commitScopeTable", err)
 	}
 	// Sync surfaces the same error through planSections (covers its error branch).
-	if err := p.Sync(); err == nil || !strings.Contains(err.Error(), "commitScopeTable") {
+	if err := syncProject(p); err == nil || !strings.Contains(err.Error(), "commitScopeTable") {
 		t.Errorf("Sync err = %v, want naming commitScopeTable", err)
 	}
 }
@@ -198,7 +198,7 @@ func TestPlaceholderSubstitutionInSync(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatalf("sync: %v", err)
 	}
 	b, err := os.ReadFile(filepath.Join(good, "docs", "workflow.md"))
@@ -216,7 +216,7 @@ func TestPlaceholderSubstitutionInSync(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := bp.Sync(); err == nil {
+	if err := syncProject(bp); err == nil {
 		t.Error("sync with unknown placeholder: want error, got nil")
 	}
 }

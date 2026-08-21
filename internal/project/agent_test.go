@@ -63,9 +63,9 @@ func TestEncodeAgentRejectsInvalidMetadata(t *testing.T) {
 
 // invariant: rendering/catalog-and-targets:structured-agent-encoding (TestProjectRendersStandardAgentMetadataAndBody)
 func TestProjectRendersStandardAgentMetadataAndBody(t *testing.T) {
-	p := &Project{cat: catalog.NewView(&catalog.Catalog{Agents: map[string]catalog.AgentSpec{
+	p := &ProjectState{selectedCat: catalog.NewView(&catalog.Catalog{Agents: map[string]catalog.AgentSpec{
 		"reviewer": {Name: "literal-reviewer", Description: "Rendered {{ .audience }} description."},
-	}}).Catalog()}
+	}})}
 	// The body deliberately begins with valid but conflicting frontmatter. A
 	// structured encoder preserves it as instructions; an implementation that
 	// reparses an intermediate Markdown artifact would substitute this decoy.
@@ -88,7 +88,7 @@ func TestProjectRendersStandardAgentMetadataAndBody(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	files, err := project.RenderAll()
+	files, err := renderAll(project)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,9 +106,9 @@ func TestProjectRendersStandardAgentMetadataAndBody(t *testing.T) {
 func TestProjectEncodeAgentRejectsUnknownDialect(t *testing.T) {
 	t.Parallel()
 
-	p := &Project{cat: catalog.NewView(&catalog.Catalog{Agents: map[string]catalog.AgentSpec{
+	p := &ProjectState{selectedCat: catalog.NewView(&catalog.Catalog{Agents: map[string]catalog.AgentSpec{
 		"reviewer": {Name: "reviewer", Description: "description"},
-	}}).Catalog()}
+	}})}
 	if _, err := encodeAgent(renderInputsForTest(p), Target{AgentDialect: "unknown"}, "reviewer", "# reviewer\n", map[string]any{}); err == nil {
 		t.Fatal("encodeAgent accepted an unknown dialect")
 	}
@@ -117,9 +117,9 @@ func TestProjectEncodeAgentRejectsUnknownDialect(t *testing.T) {
 func TestProjectEncodeMarkdownAgentRejectsInvalidDescriptionTemplate(t *testing.T) {
 	t.Parallel()
 
-	p := &Project{cat: catalog.NewView(&catalog.Catalog{Agents: map[string]catalog.AgentSpec{
+	p := &ProjectState{selectedCat: catalog.NewView(&catalog.Catalog{Agents: map[string]catalog.AgentSpec{
 		"reviewer": {Name: "reviewer", Description: "{{"},
-	}}).Catalog()}
+	}})}
 	if _, err := encodeAgent(renderInputsForTest(p), claudeTarget, "reviewer", "# reviewer\n", map[string]any{}); err == nil {
 		t.Fatal("encodeMarkdownAgent accepted an invalid description template")
 	}

@@ -95,7 +95,7 @@ func TestSectionOrphanDetection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	drift, err := checkProject(p, testContext(t))
@@ -260,7 +260,7 @@ func TestMaintainableCodeDesignGuide(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(root, "docs/maintainable-code-design.md")); err != nil {

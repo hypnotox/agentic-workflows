@@ -202,7 +202,7 @@ const csRuleTopic = "Intro.\n\n## Claims\n\n### `rule: r`\nRule prose.\nOrigin: 
 // given working files (untracked but nonignored, so the working Tree includes
 // them). It writes an Implemented ADR-0001 the topic can cite unless the caller
 // supplies its own decisions file.
-func csRepo(t *testing.T, cfg string, files map[string]string) *Project {
+func csRepo(t *testing.T, cfg string, files map[string]string) *ProjectState {
 	t.Helper()
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
@@ -248,9 +248,9 @@ func TestCheckCurrentState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	testsupport.WriteFile(t, lockFile(p.Root), string(b))
+	testsupport.WriteFile(t, lockFile(p.Root()), string(b))
 
-	report, err := p.CheckCurrentState(testContext(t))
+	report, err := checkCurrentStateProject(p, testContext(t))
 	if err != nil {
 		t.Fatalf("CheckCurrentState: %v", err)
 	}
@@ -302,7 +302,7 @@ func TestCheckCurrentStateNoPolicy(t *testing.T) {
 		files[".awf/topics/parts/alpha/"+name+"/current-state.md"] = part
 	}
 	p := csRepo(t, cfg, files)
-	report, err := p.CheckCurrentState(testContext(t))
+	report, err := checkCurrentStateProject(p, testContext(t))
 	if err != nil {
 		t.Fatalf("CheckCurrentState: %v", err)
 	}
@@ -332,14 +332,14 @@ func TestCheckCurrentStateOutsideRepo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.CheckCurrentState(testContext(t)); err != nil {
+	if _, err := checkCurrentStateProject(p, testContext(t)); err != nil {
 		t.Fatalf("filesystem current-state fallback: %v", err)
 	}
 }
 
 func TestCheckCurrentStateNoInvariantClaims(t *testing.T) {
 	p := csRepo(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", map[string]string{})
-	report, err := p.CheckCurrentState(testContext(t))
+	report, err := checkCurrentStateProject(p, testContext(t))
 	if err != nil {
 		t.Fatalf("current-state check with no invariant claims: %v", err)
 	}
@@ -352,8 +352,8 @@ func TestCheckCurrentStateNoInvariantClaims(t *testing.T) {
 // awf.lock is not gated before this project method.
 func TestCheckCurrentStateCorruptLock(t *testing.T) {
 	p := csRepo(t, csYAML, map[string]string{".awf/domains/alpha.yaml": "paths:\n  - internal/**\n"})
-	testsupport.WriteFile(t, lockFile(p.Root), "{not json")
-	if _, err := p.CheckCurrentState(testContext(t)); err == nil {
+	testsupport.WriteFile(t, lockFile(p.Root()), "{not json")
+	if _, err := checkCurrentStateProject(p, testContext(t)); err == nil {
 		t.Fatal("expected a lock parse error")
 	}
 }
@@ -365,7 +365,7 @@ func TestCheckCurrentStateLoadError(t *testing.T) {
 		".awf/domains/alpha.yaml":      "paths:\n  - internal/**\n",
 		"docs/decisions/0001-first.md": "---\nstatus: [unterminated\n---\n# X\n",
 	})
-	if _, err := p.CheckCurrentState(testContext(t)); err == nil {
+	if _, err := checkCurrentStateProject(p, testContext(t)); err == nil {
 		t.Fatal("expected a corpus load error from the malformed ADR")
 	}
 }

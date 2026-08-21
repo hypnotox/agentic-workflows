@@ -443,8 +443,8 @@
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
       "templateHash": "sha256:4e74a0e1d0196719f520b48fb0431b3d07ca705b52db6c3a8d08b4dd0faa8665",
-      "configHash": "sha256:50afb1546cfd9337f174c41830a49f95ad0b0b61d80b9569ac5e728a1a0d4dfa",
-      "outputHash": "sha256:fccba7881e964b8d7961105ddb78a0882b95ec248484b9323f0df8817d5ef211"
+      "configHash": "sha256:aa6663064da44630e32f3a12d070b2215f76de9c272f88324cf725164b94520d",
+      "outputHash": "sha256:06565a4831efbb3c28251d8364821579fe4c4f932d4d3e8b7e9b431e00ebda8c"
     },
     "docs/audit-remediation-program.md": {
       "templateId": "docs/local.md.tmpl",
@@ -542,8 +542,8 @@
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",
       "templateHash": "sha256:dc751686b557a6bde2147cb6be97788269a3c375bfa64f3eebf5c0e08dc0bb45",
-      "configHash": "sha256:66670a30c8161b8ef18273770c295f7e3f82638bf5ed5de1f626434d9cba18fe",
-      "outputHash": "sha256:3bbe582f9bcdef611d50cc3e4d67e63a8807d7c2da1d3b34219f455de474bfa0"
+      "configHash": "sha256:a968cff082f7566461a58b5b400a3e4470f001636eaa3f644d16522604e749f2",
+      "outputHash": "sha256:bb2bb11627bc7e308a7560f2886839a6a8d20c7abf9d005be970034b6f23e9b9"
     },
     "docs/known-issues.md": {
       "templateId": "docs/local.md.tmpl",

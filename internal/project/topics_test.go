@@ -125,7 +125,7 @@ func TestScaffoldedZeroClaimTopicPipeline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	files, err := topic.ScaffoldFiles(root, p.Cfg, "rendering", "Prepared Shell")
+	files, err := topic.ScaffoldFiles(root, testConfig(p), "rendering", "Prepared Shell")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,7 @@ func TestScaffoldedZeroClaimTopicPipeline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	corpus, err := topic.LoadCorpus(root, p.Cfg, adrs)
+	corpus, err := topic.LoadCorpus(root, testConfig(p), adrs)
 	if err != nil {
 		t.Fatalf("load scaffold corpus: %v", err)
 	}
@@ -144,7 +144,7 @@ func TestScaffoldedZeroClaimTopicPipeline(t *testing.T) {
 	if !ok || len(shell.Claims) != 0 {
 		t.Fatalf("scaffold shell = %#v, found %v", shell, ok)
 	}
-	op, err := p.OutputPlan(testContext(t))
+	op, err := outputPlanProject(p, testContext(t))
 	if err != nil {
 		t.Fatalf("output plan: %v", err)
 	}
@@ -157,7 +157,7 @@ func TestScaffoldedZeroClaimTopicPipeline(t *testing.T) {
 	if !found {
 		t.Fatal("scaffolded topic missing from output plan")
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatalf("render scaffold: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(root, "docs/topics/rendering/prepared-shell.md")); err != nil {
@@ -239,7 +239,7 @@ func TestTopicRenderLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	op, err := p.OutputPlan(testContext(t))
+	op, err := outputPlanProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -263,7 +263,7 @@ func TestTopicRenderLifecycle(t *testing.T) {
 			t.Errorf("missing %s", path)
 		}
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	index := string(mustRead(t, filepath.Join(root, "docs/topics/rendering/index.md")))
@@ -322,7 +322,7 @@ func TestTopicRenderLifecycle(t *testing.T) {
 	if !hasDrift(drift, "docs/topics/rendering/zeta.md", "stale") {
 		t.Fatalf("metadata drift: %#v", drift)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/parts/rendering/zeta/current-state.md"), "Changed.\n\n## Claims\n")
@@ -339,7 +339,7 @@ func TestTopicBrownfieldCollisionUsesSharedBackup(t *testing.T) {
 	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs/topics/rendering/contracts.md"), "foreign\n")
 	p, _ := Open(testContext(t), root)
-	backups, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version})
+	backups, _, _, err := initializeReportProject(p, testContext(t), InitAuthority{InitializedWithVersion: Version})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -355,7 +355,7 @@ func TestTopicPruneRemoveAndRename(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "old", "Old", "paths: [\"internal/**\"]\n")
 	p, _ := Open(testContext(t), root)
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Remove(filepath.Join(root, ".awf/topics/metadata/rendering/old.yaml")); err != nil {
@@ -366,7 +366,7 @@ func TestTopicPruneRemoveAndRename(t *testing.T) {
 	}
 	writeProjectTopic(t, root, "new", "New", "paths: [\"internal/**\"]\n")
 	p2, _ := Open(testContext(t), root)
-	_, _, pruned, err := p2.SyncReport(testContext(t))
+	_, _, pruned, err := syncReportProject(p2, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -382,7 +382,7 @@ func TestTopicOutputCollisions(t *testing.T) {
 		root := topicProject(t)
 		writeProjectTopic(t, root, "index", "Index", "paths: [\"internal/**\"]\n")
 		p, _ := Open(testContext(t), root)
-		if _, err := p.OutputPlan(testContext(t)); err == nil || !strings.Contains(err.Error(), "same output path") {
+		if _, err := outputPlanProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "same output path") {
 			t.Fatalf("collision %v", err)
 		}
 	})
@@ -392,7 +392,7 @@ func TestTopicRenderRejectsMalformedAuthoringComment(t *testing.T) {
 	writeProjectTopic(t, root, "x", "X", "paths: [\"internal/**\"]\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/parts/rendering/x/current-state.md"), "<!-- awf:comment no close\n\n## Claims\n")
 	p, _ := Open(testContext(t), root)
-	if _, err := p.OutputPlan(testContext(t)); err == nil {
+	if _, err := outputPlanProject(p, testContext(t)); err == nil {
 		t.Fatal("malformed authoring comment accepted")
 	}
 }
@@ -401,7 +401,7 @@ func TestTopicCorpusRefusalAndSweep(t *testing.T) {
 	root := topicProject(t)
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/metadata/rendering/orphan.yaml"), "title: X\nsummary: X.\npaths: [x]\n")
 	p, _ := Open(testContext(t), root)
-	if _, err := p.OutputPlan(testContext(t)); err == nil {
+	if _, err := outputPlanProject(p, testContext(t)); err == nil {
 		t.Fatal("orphan corpus accepted")
 	}
 	if err := os.Remove(filepath.Join(root, ".awf/topics/metadata/rendering/orphan.yaml")); err != nil {
@@ -410,7 +410,7 @@ func TestTopicCorpusRefusalAndSweep(t *testing.T) {
 	writeProjectTopic(t, root, "x", "X", "paths: [\"internal/**\"]\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/parts/rendering/x/extra.md"), "stray\n")
 	p, _ = Open(testContext(t), root)
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	drift, err := checkProject(p, testContext(t))
@@ -447,14 +447,14 @@ func TestQueryTopicHistoricalOnlyUsesCutoffAwareWorkingSnapshot(t *testing.T) {
 		"docs/decisions/0002-remove.md":                          queryV1ADR(t, "0002", "Remove legacy claim", "- remove `"+claimID+"`"),
 	})
 	lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: 14, Files: map[string]manifest.Entry{}}
-	if err := lock.Save(lockFile(p.Root)); err != nil {
+	if err := lock.Save(lockFile(p.Root())); err != nil {
 		t.Fatal(err)
 	}
 
-	if _, err := p.QueryTopic(testContext(t), claimID, topic.QueryOptions{}); err == nil || !strings.Contains(err.Error(), "not found") {
+	if _, err := queryTopicProject(p, testContext(t), claimID, topic.QueryOptions{}); err == nil || !strings.Contains(err.Error(), "not found") {
 		t.Fatalf("default removed-claim query = %v", err)
 	}
-	got, err := p.QueryTopic(testContext(t), claimID, topic.QueryOptions{History: true, References: true, Coverage: true})
+	got, err := queryTopicProject(p, testContext(t), claimID, topic.QueryOptions{History: true, References: true, Coverage: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -499,10 +499,10 @@ func TestQueryTopicRejectsInvalidHistoricalInterpretation(t *testing.T) {
 			}
 			p := csRepo(t, topicProjectConfig, files)
 			lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: 14, Files: map[string]manifest.Entry{}}
-			if err := lock.Save(lockFile(p.Root)); err != nil {
+			if err := lock.Save(lockFile(p.Root())); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := p.QueryTopic(testContext(t), claimID, topic.QueryOptions{History: true}); err == nil || !strings.Contains(err.Error(), tc.want) {
+			if _, err := queryTopicProject(p, testContext(t), claimID, topic.QueryOptions{History: true}); err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("QueryTopic error = %v; want %q", err, tc.want)
 			}
 		})
@@ -516,7 +516,7 @@ func TestQueryTopicLoadErrors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.QueryTopic(testContext(t), "schedule/contracts", topic.QueryOptions{}); err == nil {
+	if _, err := queryTopicProject(p, testContext(t), "schedule/contracts", topic.QueryOptions{}); err == nil {
 		t.Fatal("QueryTopic accepted malformed ADR corpus")
 	}
 
@@ -527,7 +527,7 @@ func TestQueryTopicLoadErrors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.QueryTopic(testContext(t), "schedule/contracts", topic.QueryOptions{}); err == nil {
+	if _, err := queryTopicProject(p, testContext(t), "schedule/contracts", topic.QueryOptions{}); err == nil {
 		t.Fatal("QueryTopic accepted malformed topic corpus")
 	}
 }
@@ -549,7 +549,7 @@ currentState:
 	if err != nil {
 		t.Fatal(err)
 	}
-	scaffold, err := topic.ScaffoldFiles(root, p.Cfg, "schedule", "Contracts")
+	scaffold, err := topic.ScaffoldFiles(root, testConfig(p), "schedule", "Contracts")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -587,7 +587,7 @@ Backing: test
 	if !ok || len(completed.Claims) != 2 {
 		t.Fatalf("completed topic = %#v, found %v", completed, ok)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	for _, path := range []string{"docs/topics/schedule/contracts.md", "docs/topics/schedule/index.md"} {
@@ -647,7 +647,7 @@ Backing: test
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, pruned, err := p.SyncReport(testContext(t))
+	_, _, pruned, err := syncReportProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}

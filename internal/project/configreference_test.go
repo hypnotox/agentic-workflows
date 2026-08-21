@@ -29,11 +29,11 @@ func TestConfigReferenceRowsPropagatesInjectedTemplateReadError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selected := p.state.catalog()
+	selected := p.catalog()
 	selected.Skills["missing-template"] = catalog.SkillSpec{}
-	state := *p.state
+	state := *p
 	state.selectedCat = catalog.NewView(selected)
-	p.state = &state
+	p = &state
 	_, err = configReferenceRows(renderInputsForTest(p), nil)
 	if err == nil || !strings.Contains(err.Error(), "skills/missing-template/SKILL.md.tmpl") {
 		t.Fatalf("config reference template error = %v", err)
@@ -42,12 +42,13 @@ func TestConfigReferenceRowsPropagatesInjectedTemplateReadError(t *testing.T) {
 
 // invariant: config/configspec-and-reference:live-state-projection-explicit (TestLiveStateAuthorityRejectsOmissionAndWrongClass)
 func TestTemplateSourceRootCurrentValue(t *testing.T) {
-	p := &Project{Cfg: &config.Config{}}
-	if got := currentValueResolvers(renderInputsForTest(p))["render.templateSourceRoot"](); got != "(none)" {
+	cfg := &config.Config{}
+	p := testState(cfg)
+	if got := currentValueResolvers(newRenderInputs(p, cfg, nil))["render.templateSourceRoot"](); got != "(none)" {
 		t.Fatalf("absent root = %q", got)
 	}
-	p.Cfg.Render = &config.RenderConfig{TemplateSourceRoot: "templates"}
-	if got := currentValueResolvers(renderInputsForTest(p))["render.templateSourceRoot"](); got != "`templates`" {
+	cfg.Render = &config.RenderConfig{TemplateSourceRoot: "templates"}
+	if got := currentValueResolvers(newRenderInputs(p, cfg, nil))["render.templateSourceRoot"](); got != "`templates`" {
 		t.Fatalf("configured root = %q", got)
 	}
 }
@@ -95,14 +96,14 @@ func TestLiveStateAuthorityRejectsOmissionAndWrongClass(t *testing.T) {
 	}
 }
 
-func syncedProject(t *testing.T, configYAML string, files map[string]string) (string, *Project) {
+func syncedProject(t *testing.T, configYAML string, files map[string]string) (string, *ProjectState) {
 	t.Helper()
 	root := scaffoldFiles(t, configYAML, files)
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	return root, p
@@ -163,7 +164,7 @@ func TestConfigReferenceDerivedLiveValues(t *testing.T) {
 	assertValues := func(t *testing.T, configYAML string, want map[string]string) {
 		t.Helper()
 		root, p := syncedProject(t, configYAML, nil)
-		model, err := p.ConfigReferenceModel(testContext(t))
+		model, err := configReferenceProject(p, testContext(t))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -242,8 +243,9 @@ func TestConfigReferenceDerivedLiveValues(t *testing.T) {
 	})
 
 	t.Run("non-nil empty grandfathered boundary", func(t *testing.T) {
-		p := &Project{Cfg: &config.Config{CommitPolicy: &config.CommitPolicyConfig{}}}
-		if got := currentValueResolvers(renderInputsForTest(p))["commitPolicy.grandfatheredThrough"](); got != "(none)" {
+		cfg := &config.Config{CommitPolicy: &config.CommitPolicyConfig{}}
+		p := testState(cfg)
+		if got := currentValueResolvers(newRenderInputs(p, cfg, nil))["commitPolicy.grandfatheredThrough"](); got != "(none)" {
 			t.Errorf("empty grandfatheredThrough current = %q, want (none)", got)
 		}
 	})
@@ -287,7 +289,7 @@ func TestConfigReferenceListLayerStates(t *testing.T) {
 				files = map[string]string{"skills/tdd.yaml": tc.sidecar}
 			}
 			_, p := syncedProject(t, base, files)
-			model, err := p.ConfigReferenceModel(testContext(t))
+			model, err := configReferenceProject(p, testContext(t))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -307,9 +309,9 @@ func TestConfigReferenceListLayerStates(t *testing.T) {
 	}
 
 	_, glossaryProject := syncedProject(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", map[string]string{
-		"docs/glossary.yaml": "data:\n  terms:\n    - {term: Local, meaning: Project-specific term.}\n",
+		"docs/glossary.yaml": "data:\n  terms:\n    - {term: Local, meaning: ProjectState-specific term.}\n",
 	})
-	glossaryModel, err := glossaryProject.ConfigReferenceModel(testContext(t))
+	glossaryModel, err := configReferenceProject(glossaryProject, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -378,7 +380,7 @@ func TestConfigReferenceRegenDrift(t *testing.T) {
 // invariant: config/configspec-and-reference:config-reference-no-bare-vars (TestConfigReferenceNoBareVars)
 func TestConfigReferenceNoBareVars(t *testing.T) {
 	_, p := syncedProject(t, crefYAML, nil)
-	files, err := p.RenderAll()
+	files, err := renderAll(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -458,13 +460,13 @@ func TestConfigReferencePartReadFault(t *testing.T) {
 	if _, err := checkProject(p, testContext(t)); err == nil {
 		t.Error("Check should surface the part-read fault")
 	}
-	if err := p.Sync(); err == nil {
+	if err := syncProject(p); err == nil {
 		t.Error("Sync should surface the part-read fault")
 	}
-	if _, err := p.AdvisoryNotes(testContext(t)); err == nil {
+	if _, err := advisoryNotesProject(p, testContext(t)); err == nil {
 		t.Error("AdvisoryNotes should surface the part-read fault")
 	}
-	if _, err := p.PlannedOutputs(testContext(t)); err == nil {
+	if _, err := plannedOutputsProject(p, testContext(t)); err == nil {
 		t.Error("PlannedOutputs should surface the part-read fault")
 	}
 }

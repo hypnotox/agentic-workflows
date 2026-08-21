@@ -28,11 +28,11 @@ func runTopic(ctx context.Context, cwd, selector string, history, references, co
 	if err := gate(ctx, cwd); err != nil {
 		return err
 	}
-	p, err := project.Open(ctx, cwd)
+	state, _, repo, err := openProjectOperation(ctx, cwd)
 	if err != nil {
 		return err
 	}
-	result, err := p.QueryTopic(ctx, selector, topic.QueryOptions{History: history, References: references, Coverage: coverage})
+	result, err := project.QueryTopic(state.Root(), repo, ctx, selector, topic.QueryOptions{History: history, References: references, Coverage: coverage})
 	if err != nil {
 		return err
 	}

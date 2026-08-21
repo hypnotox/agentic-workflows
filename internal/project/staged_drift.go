@@ -59,7 +59,7 @@ func checkStagedDrift(p renderInputs, repo *awfgit.Repo, ctx context.Context) ([
 	if err != nil { // coverage-ignore: loadTreeCurrentState already parsed semantic config data
 		return nil, err
 	}
-	universeState := &projectState{
+	universeState := &ProjectState{
 		invokingRoot: p.root(),
 		roots:        p.residentRoots(),
 		nested:       p.isNested(),

@@ -21,13 +21,13 @@ func TestTemplateSourceMarkerProducerMatrix(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p.Cfg.Render = nil
-	plain, err := p.OutputPlan(testContext(t))
+	testConfig(p).Render = nil
+	plain, err := outputPlanProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
-	p.Cfg.Render = &config.RenderConfig{TemplateSourceRoot: "templates"}
-	active, err := p.OutputPlan(testContext(t))
+	testConfig(p).Render = &config.RenderConfig{TemplateSourceRoot: "templates"}
+	active, err := outputPlanProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,7 +35,7 @@ func TestTemplateSourceMarkerProducerMatrix(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	declarations, err := BuildOutputDeclarations(p.Cfg, projectCatalog(renderInputsForTest(p)), p.Targets, filesystemProjectReader{root: p.Root}, corpus)
+	declarations, err := BuildOutputDeclarations(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: p.Root()}, corpus)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -191,11 +191,11 @@ func TestTemplateSourceRootMarkerErrors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p.Cfg.Render = &config.RenderConfig{TemplateSourceRoot: "templates"}
+	testConfig(p).Render = &config.RenderConfig{TemplateSourceRoot: "templates"}
 	if _, _, err := templateSourceRootMarker(renderInputsForTest(p), "missing/template.md.tmpl"); err == nil || !strings.Contains(err.Error(), "read template") {
 		t.Fatalf("missing manual-producer template error = %v", err)
 	}
-	p.Cfg.Render.TemplateSourceRoot = "missing"
+	testConfig(p).Render.TemplateSourceRoot = "missing"
 	if _, _, err := templateSourceRootMarker(renderInputsForTest(p), "topics/topic.md.tmpl"); err == nil || !strings.Contains(err.Error(), "cannot resolve template source") {
 		t.Fatalf("missing manual-producer source mapping error = %v", err)
 	}

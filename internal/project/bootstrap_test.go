@@ -20,7 +20,7 @@ func bootstrapFile(t *testing.T, configYAML string) *RenderedFile {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := p.RenderAll()
+	out, err := renderAll(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -236,7 +236,7 @@ func upgradeFile(t *testing.T, configYAML string) *RenderedFile {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := p.RenderAll()
+	out, err := renderAll(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -255,7 +255,7 @@ func TestBootstrapSingletonRendersBothScripts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := p.RenderAll()
+	out, err := renderAll(p)
 	if err != nil {
 		t.Fatal(err)
 	}

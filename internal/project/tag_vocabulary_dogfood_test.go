@@ -23,7 +23,7 @@ func TestTagVocabularyMatchesPitfallTags(t *testing.T) {
 			pitfallTagSet[tag] = true
 		}
 	}
-	configured := slices.Sorted(maps.Keys(p.Cfg.Tags))
+	configured := slices.Sorted(maps.Keys(testConfig(p).Tags))
 	pitfallTags := slices.Sorted(maps.Keys(pitfallTagSet))
 	if surplus, missing := difference(configured, pitfallTags), difference(pitfallTags, configured); len(surplus) != 0 || len(missing) != 0 {
 		t.Fatalf("tag vocabulary does not match current pitfall tags\nconfigured without pitfall consumers=%v\npitfall tags missing from config=%v", surplus, missing)

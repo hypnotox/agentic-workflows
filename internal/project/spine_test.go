@@ -1210,7 +1210,7 @@ func TestProtectedContractDoctrineSingleHome(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			files, err := p.RenderAll()
+			files, err := renderAll(p)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -3276,7 +3276,7 @@ func TestGuideOmitsLocalAndStandardSkillMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	body, err := os.ReadFile(filepath.Join(root, "AGENTS.md"))
@@ -3635,7 +3635,7 @@ func TestDailyAdvancedDocumentationOwnership(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := p.Sync(); err != nil {
+			if err := syncProject(p); err != nil {
 				t.Fatal(err)
 			}
 			for _, path := range []string{"docs/working-with-awf.md", "docs/pi-runtime-reference.md", "AGENTS.md"} {

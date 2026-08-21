@@ -22,7 +22,7 @@ func runnerFile(t *testing.T) *RenderedFile {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := p.RenderAll()
+	out, err := renderAll(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +135,7 @@ func TestPruneBacksUpCoOwnedRunner(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := p.Sync(); err != nil {
+			if err := syncProject(p); err != nil {
 				t.Fatal(err)
 			}
 			// Rewrite the lock so the rendered wrapper entry presents as the
@@ -173,7 +173,7 @@ func TestPruneBacksUpCoOwnedRunner(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			backups, _, pruned, err := p2.SyncReport(testContext(t))
+			backups, _, pruned, err := syncReportProject(p2, testContext(t))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -209,7 +209,7 @@ func TestPruneRemovesManagedRunnerSymlinkWithoutTargetAccess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	lock, err := manifest.Load(lockFile(root))
@@ -233,7 +233,7 @@ func TestPruneRemovesManagedRunnerSymlinkWithoutTargetAccess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	backups, _, pruned, err := p.SyncReport(testContext(t))
+	backups, _, pruned, err := syncReportProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -255,7 +255,7 @@ func TestRunnerPrunePropagatesBackupFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	lock, err := manifest.Load(lockFile(root))
@@ -279,7 +279,7 @@ func TestRunnerPrunePropagatesBackupFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, _, err = p.SyncReport(testContext(t))
+	_, _, _, err = syncReportProject(p, testContext(t))
 	if err == nil || !strings.Contains(err.Error(), "back up pruned runner x") || !strings.Contains(err.Error(), "read backup source") {
 		t.Fatalf("runner prune backup error = %v", err)
 	}
@@ -394,7 +394,7 @@ func TestRunnerPartOverrideClaimed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	part := filepath.Join(root, ".awf/runner/parts/runner-body.md")
@@ -404,7 +404,7 @@ func TestRunnerPartOverrideClaimed(t *testing.T) {
 	if err := os.WriteFile(part, []byte("exec custom-awf \"$@\"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	wrapper, err := os.ReadFile(filepath.Join(root, "awf"))

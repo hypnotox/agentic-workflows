@@ -45,7 +45,7 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	files, err := p.RenderAll()
+	files, err := renderAll(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -307,7 +307,7 @@ func TestTargetOutputRenderError(t *testing.T) {
 	}
 	pi.Outputs[0].TemplateID = "missing-target-output.tmpl"
 	setTestTargets(p, targets)
-	if _, err := p.RenderAll(); err == nil || !strings.Contains(err.Error(), "missing-target-output") {
+	if _, err := renderAll(p); err == nil || !strings.Contains(err.Error(), "missing-target-output") {
 		t.Fatalf("RenderAll error = %v, want missing target-output template", err)
 	}
 }
@@ -482,7 +482,7 @@ func explorationRenderedByPath(t *testing.T, config string) map[string]string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	files, err := p.RenderAll()
+	files, err := renderAll(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -633,7 +633,7 @@ func renderPiExtensionFileForProfile(t *testing.T, name string, profile catalog.
 	if err != nil {
 		t.Fatal(err)
 	}
-	files, err := p.RenderAll()
+	files, err := renderAll(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -681,7 +681,7 @@ func TestTargetDescriptorCustomization(t *testing.T) {
 		t.Fatal(err)
 	}
 	setTestTargets(p, []Target{custom})
-	files, err := p.RenderAll()
+	files, err := renderAll(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -713,7 +713,7 @@ func TestAllTargetPathsAndBridges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	files, err := p.RenderAll()
+	files, err := renderAll(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -736,7 +736,7 @@ func TestClaudeMdBridgeRendered(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	files, err := p.RenderAll()
+	files, err := renderAll(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -766,12 +766,12 @@ func TestMultiTargetRender(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	files, err := p.RenderAll()
+	files, err := renderAll(p)
 	if err != nil {
 		t.Fatal(err)
 	}
 	seenTargets := map[string]bool{}
-	for _, target := range p.Targets {
+	for _, target := range p.Targets() {
 		seenTargets[target.Name] = true
 	}
 	if !slices.Equal(slices.Sorted(maps.Keys(seenTargets)), []string{"claude", "pi"}) {
@@ -791,7 +791,7 @@ func TestMultiTargetRender(t *testing.T) {
 		}
 	}
 	// invariant: rendering/project-output-plan:multi-target-render (TestMultiTargetRender)
-	for _, target := range p.Targets {
+	for _, target := range p.Targets() {
 		for name := range catalog.Standard.Skills {
 			path := target.SkillPath("example", name)
 			content := byPath[path]
@@ -829,7 +829,7 @@ func TestMaintainableCodeMultiTargetParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	files, err := p.RenderAll()
+	files, err := renderAll(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -901,7 +901,7 @@ func TestSemanticRenderingReviewMultiTargetAuthority(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	files, err := p.RenderAll()
+	files, err := renderAll(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1033,7 +1033,7 @@ func TestPlannedOutputsIncludesGeneratedDocs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	planned, err := p.PlannedOutputs(testContext(t))
+	planned, err := plannedOutputsProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1056,7 +1056,7 @@ func TestPlannedOutputsSurfacesRenderError(t *testing.T) {
 	}
 	// Corrupt a sidecar so the RenderAll inside PlannedOutputs fails.
 	corruptSidecar(t, root, "skills/tdd.yaml")
-	if _, err := p.PlannedOutputs(testContext(t)); err == nil {
+	if _, err := plannedOutputsProject(p, testContext(t)); err == nil {
 		t.Fatal("expected PlannedOutputs to surface the RenderAll error")
 	}
 }

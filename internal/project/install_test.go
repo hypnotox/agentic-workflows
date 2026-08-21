@@ -19,7 +19,7 @@ func TestSyncPrunesResidentLockEntryFromResidentRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	lock, err := manifest.Load(lockFile(root))
@@ -40,7 +40,7 @@ func TestSyncPrunesResidentLockEntryFromResidentRoot(t *testing.T) {
 	if err := lock.Save(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := p.SyncReport(testContext(t)); err != nil {
+	if _, _, _, err := syncReportProject(p, testContext(t)); err != nil {
 		t.Fatalf("resident-root prune path failed: %v", err)
 	}
 	lock, err = manifest.Load(lockFile(root))
@@ -63,7 +63,7 @@ func TestUninstallPreservesResidentState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	dynamic := map[string]string{
@@ -114,7 +114,7 @@ func TestUninstallRemovesEmptyResidentRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	report, err := resident.Uninstall(testContext(t), root, nil)
@@ -137,7 +137,7 @@ func TestUninstallRejectsUnsafeResidentRoot(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := p.Sync(); err != nil {
+			if err := syncProject(p); err != nil {
 				t.Fatal(err)
 			}
 			efforts := filepath.Join(root, ".awf", "efforts")
@@ -199,7 +199,7 @@ func TestSyncReportPropagatesForeignBackupFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
+	if _, _, _, err := initializeReportProject(p, testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatal(err)
 	}
 	lock, err := manifest.Load(lockFile(root))
@@ -217,7 +217,7 @@ func TestSyncReportPropagatesForeignBackupFailure(t *testing.T) {
 	if err := os.Mkdir(foreign, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	_, _, _, err = p.SyncReport(testContext(t))
+	_, _, _, err = syncReportProject(p, testContext(t))
 	if err == nil || !strings.Contains(err.Error(), "back up AGENTS.md") || !strings.Contains(err.Error(), "read backup source") {
 		t.Fatalf("SyncReport foreign backup error = %v", err)
 	}
@@ -310,7 +310,7 @@ func TestInitCollisionsSurfacesPlannedOutputsError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.InitCollisions(testContext(t)); err == nil {
+	if _, err := initCollisionsProject(p, testContext(t)); err == nil {
 		t.Fatal("expected InitCollisions to surface the PlannedOutputs error")
 	}
 }

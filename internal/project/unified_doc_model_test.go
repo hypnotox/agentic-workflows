@@ -48,7 +48,8 @@ func TestUnifiedDocModelProjections(t *testing.T) {
 
 	// (c) every structural non-root entry's TemplateKey/Path lands in templateMap
 	// at the derived docsDir path.
-	tm := layout(renderInputsForTest(&Project{cat: catalog.NewView(cat).Catalog()})).templateMap()
+	state := &ProjectState{selectedCat: catalog.NewView(cat), completeCat: catalog.NewView(cat)}
+	tm := layout(newRenderInputs(state, &config.Config{}, nil)).templateMap()
 	for _, e := range cat.Docs {
 		if e.Path == "" || e.AgentsDoc {
 			continue
@@ -64,8 +65,9 @@ func TestProjectSingletonConsumersUseInjectedView(t *testing.T) {
 	custom.Docs = maps.Clone(custom.Docs)
 	delete(custom.Docs, "workflow")
 	custom.Docs["custom-singleton"] = catalog.DocEntry{Path: "custom.md", Sections: []string{"body"}}
-	p := &Project{Root: t.TempDir(), Cfg: &config.Config{}, cat: catalog.NewView(&custom).Catalog()}
-	model := buildClaimedModel(renderInputsForTest(p), nil, topic.Corpus{})
+	cfg := &config.Config{}
+	p := &ProjectState{invokingRoot: t.TempDir(), selectedCat: catalog.NewView(&custom), completeCat: catalog.NewView(&custom)}
+	model := buildClaimedModel(newRenderInputs(p, cfg, nil), nil, topic.Corpus{})
 	if model.singletons["workflow"] || !model.singletons["custom-singleton"] {
 		t.Fatalf("project singleton membership = %#v", model.singletons)
 	}

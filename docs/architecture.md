@@ -13,7 +13,7 @@ awf renders workflow guidance from committed `.awf/` configuration. The CLI owns
 <!-- awf:edit components: from .awf/docs/parts/architecture/components.md -->
 <!-- awf:template-source templates/docs/architecture.md.tmpl -->
 ## Components
-- `internal/project`: the current configuration, rendering, output-planning, and repository-check coordinator; its broad receiver surface is transitional toward the target direction below.
+- `internal/project`: `Loader` constructs immutable `ProjectState` facts; focused functions own configuration, rendering, output-planning, and repository-check operations with explicit tree and Git inputs. Publisher, RepositoryChecker, CurrentStateCoordinator, and command-use-case extraction remain future boundaries.
 - `internal/adr`, `internal/currentstate`, and `internal/plan`: decision, active-authority, and plan models.
 - `internal/effort` and `internal/worktree`: local residents and Git-backed topology.
 - `internal/git`: the sole semantic Git seam.
@@ -27,9 +27,9 @@ awf renders workflow guidance from committed `.awf/` configuration. The CLI owns
 <!-- awf:edit data-flow: from .awf/docs/parts/architecture/data-flow.md -->
 <!-- awf:template-source templates/docs/architecture.md.tmpl -->
 ## Data flow
-Commands load `.awf/`, validate configuration, derive an output plan, and render or check managed files. `.awf/awf.lock` records each render transaction. Working and staged checks load separate authority snapshots; audit reads selected history through `internal/git`. Effort residents remain local and unmanaged by rendering.
+Commands load `.awf/` once, compose immutable `ProjectState` with the concrete config tree and Git handle required by one focused operation, then render its result or map its error. `.awf/awf.lock` records each render transaction. Working and staged checks load separate authority snapshots; audit reads selected history through `internal/git`. Effort residents remain local and unmanaged by rendering.
 
-The target dependency direction is `cmd/awf` to focused application operations, then to immutable project state and domain services, then to semantic Git, snapshot, filesystem, publication, and rendering mechanisms. Command code parses, composes, invokes, renders owner-produced results, selects streams, and maps exits. State, domain, and mechanism owners do not depend back on application or command coordination. The [dependency-composition topic](topics/code-design/dependency-composition.md) owns the detailed extraction owners, forbidden reverse edges, and boundary values.
+The dependency direction is `cmd/awf` to focused application operations, then to immutable project state and domain services, then to semantic Git, snapshot, filesystem, publication, and rendering mechanisms. Command code parses, composes, invokes, renders owner-produced results, selects streams, and maps exits. State, domain, and mechanism owners do not depend back on application or command coordination. The [dependency-composition topic](topics/code-design/dependency-composition.md) owns the detailed extraction owners, forbidden reverse edges, boundary values, and remaining coordinator extractions.
 
 
 <!-- awf:template-source templates/docs/architecture.md.tmpl#dependencies -->

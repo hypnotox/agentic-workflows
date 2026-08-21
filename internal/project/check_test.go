@@ -25,7 +25,7 @@ import (
 // mustDeriveCorpus derives the operation-owned ADR corpus the way a lifecycle
 // entry does, so a helper test exercises the same threaded value production
 // passes it (ADR-0180).
-func mustDeriveCorpus(t *testing.T, p *Project) adr.Corpus {
+func mustDeriveCorpus(t *testing.T, p *ProjectState) adr.Corpus {
 	t.Helper()
 	corpus, _, _, _, err := deriveOperationStateWithPitfalls(renderInputsForTest(p))
 	if err != nil {
@@ -35,7 +35,7 @@ func mustDeriveCorpus(t *testing.T, p *Project) adr.Corpus {
 }
 
 // mustDeriveTopics derives the operation-owned topic corpus the same way.
-func mustDeriveTopics(t *testing.T, p *Project) topic.Corpus {
+func mustDeriveTopics(t *testing.T, p *ProjectState) topic.Corpus {
 	t.Helper()
 	_, _, topics, _, err := deriveOperationStateWithPitfalls(renderInputsForTest(p))
 	if err != nil {
@@ -45,7 +45,7 @@ func mustDeriveTopics(t *testing.T, p *Project) topic.Corpus {
 }
 
 // mustDeriveSkills derives the operation-owned effective skill set the same way.
-func mustDeriveSkills(t *testing.T, p *Project) map[string]bool {
+func mustDeriveSkills(t *testing.T, p *ProjectState) map[string]bool {
 	t.Helper()
 	_, _, _, eff, err := deriveOperationStateWithPitfalls(renderInputsForTest(p))
 	if err != nil {
@@ -54,9 +54,9 @@ func mustDeriveSkills(t *testing.T, p *Project) map[string]bool {
 	return eff
 }
 
-func mustParsePlans(t *testing.T, p *Project) []plan.Plan {
+func mustParsePlans(t *testing.T, p *ProjectState) []plan.Plan {
 	t.Helper()
-	plans, err := plan.ParseDir(filepath.Join(p.Root, config.DocsDir, "plans"))
+	plans, err := plan.ParseDir(filepath.Join(p.Root(), config.DocsDir, "plans"))
 	if err != nil {
 		t.Fatalf("parse plans: %v", err)
 	}
@@ -160,7 +160,7 @@ func TestCheckGlossaryValidatesDomains(t *testing.T) {
 	}
 	// Drive the public surface too: the helper finding it is worth nothing if
 	// Check drops the slice on the floor. Check reads the lock, so sync first.
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	full, err := checkProject(p, testContext(t))
@@ -555,7 +555,7 @@ func TestCheckPendingADRsFiresOnlyOnPositiveIdentification(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			drift := checkPendingADRs(renderInputsForTest(p), p.repo, testContext(t), mustDeriveCorpus(t, p))
+			drift := checkPendingADRs(renderInputsForTest(p), testRepo(p), testContext(t), mustDeriveCorpus(t, p))
 			if !tc.wantDrift {
 				if len(drift) != 0 {
 					t.Fatalf("expected no drift, got %#v", drift)
@@ -582,7 +582,7 @@ func TestCheckReportsPendingADROnIntegrationBranch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
+	if _, _, _, err := initializeReportProject(p, testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatal(err)
 	}
 	// Two records, because the claim quantifies over EVERY pending record: a
@@ -622,13 +622,13 @@ func TestCheckPendingADRsSilentOnProbeFailure(t *testing.T) {
 	corpus := mustDeriveCorpus(t, p)
 	// Sanity: with the repository intact this same corpus is blocked, so a
 	// silent result below is the probe failure and not an empty corpus.
-	if drift := checkPendingADRs(renderInputsForTest(p), p.repo, testContext(t), corpus); len(drift) != 1 {
+	if drift := checkPendingADRs(renderInputsForTest(p), testRepo(p), testContext(t), corpus); len(drift) != 1 {
 		t.Fatalf("fixture does not block before the probe breaks: %#v", drift)
 	}
 	if err := os.RemoveAll(filepath.Join(root, ".git")); err != nil {
 		t.Fatal(err)
 	}
-	if drift := checkPendingADRs(renderInputsForTest(p), p.repo, testContext(t), corpus); len(drift) != 0 {
+	if drift := checkPendingADRs(renderInputsForTest(p), testRepo(p), testContext(t), corpus); len(drift) != 0 {
 		t.Fatalf("a failed branch probe must emit nothing, got %#v", drift)
 	}
 }
@@ -644,7 +644,7 @@ func TestCheckPendingADRsIgnoresNumberedRecords(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if drift := checkPendingADRs(renderInputsForTest(p), p.repo, testContext(t), mustDeriveCorpus(t, p)); len(drift) != 0 {
+	if drift := checkPendingADRs(renderInputsForTest(p), testRepo(p), testContext(t), mustDeriveCorpus(t, p)); len(drift) != 0 {
 		t.Fatalf("a numbered corpus must not be blocked, got %#v", drift)
 	}
 }
@@ -757,7 +757,7 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 	for _, declaration := range file.Decls {
 		function, ok := declaration.(*ast.FuncDecl)
 		if ok && function.Recv != nil && function.Name.Name == "Check" {
-			t.Fatal("retired Project.Check compatibility projection is present")
+			t.Fatal("retired ProjectState.Check compatibility projection is present")
 		}
 	}
 	report := checkFunc(t, file, "checkReport")
@@ -807,14 +807,14 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
-	reportValue, err := p.CheckReport(testContext(t))
+	reportValue, err := checkReportProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
-	expectedTrackingPaths := func(p *Project) []string {
+	expectedTrackingPaths := func(p *ProjectState) []string {
 		t.Helper()
 		corpus, pitfalls, topics, effective, err := deriveOperationStateWithPitfalls(renderInputsForTest(p))
 		if err != nil {
@@ -851,7 +851,7 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 	if got, want := reportTrackingPaths(reportValue), expectedTrackingPaths(p); !slices.Equal(got, want) {
 		t.Errorf("top-level CheckReport tracking paths differ from every OutputPlan write plus lock:\n got %q\nwant %q", got, want)
 	}
-	directNotes, err := p.AdvisoryNotes(testContext(t))
+	directNotes, err := advisoryNotesProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -881,10 +881,10 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 	if !nestedProject.nested {
 		t.Fatal("nested project did not preserve its containing-repository prefix")
 	}
-	if err := nestedProject.Sync(); err != nil {
+	if err := syncProject(nestedProject); err != nil {
 		t.Fatal(err)
 	}
-	nestedReport, err := nestedProject.CheckReport(testContext(t))
+	nestedReport, err := checkReportProject(nestedProject, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -914,14 +914,14 @@ func TestCheckReportRequiresGeneratedArtifactsInIndex(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(home, ".gitconfig"), []byte("[core]\n\texcludesfile = "+excludes+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	working, err := p.repo.WorkingPaths(testContext(t))
+	working, err := testRepo(p).WorkingPaths(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if slices.Contains(working, "AGENTS.md") {
 		t.Fatalf("global ignore did not hide untracked generated output: %v", working)
 	}
-	report, err := p.CheckReport(testContext(t))
+	report, err := checkReportProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -932,7 +932,7 @@ func TestCheckReportRequiresGeneratedArtifactsInIndex(t *testing.T) {
 	}
 
 	gitfixture.AddAll(t, repo)
-	report, err = p.CheckReport(testContext(t))
+	report, err = checkReportProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -943,7 +943,7 @@ func TestCheckReportRequiresGeneratedArtifactsInIndex(t *testing.T) {
 	}
 	gitfixture.StageRemoval(t, repo, "AGENTS.md", ".awf/awf.lock")
 
-	report, err = p.CheckReport(testContext(t))
+	report, err = checkReportProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -962,14 +962,14 @@ func TestCheckReportRequiresGeneratedArtifactsInIndex(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".git", "index"), []byte("garbage"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.CheckReport(testContext(t)); err == nil {
+	if _, err := checkReportProject(p, testContext(t)); err == nil {
 		t.Fatal("corrupt tracking index accepted")
 	}
 }
 
 func TestCheckLockedFilesSuppressesMissingForUntrackedOutputs(t *testing.T) {
 	root := t.TempDir()
-	p := &Project{roots: resident.NewRoots(root, root)}
+	p := &ProjectState{roots: resident.NewRoots(root, root)}
 	rendered := map[string]RenderedFile{
 		"regen.md":  {Path: "regen.md", Content: "regen", Policy: OutputPolicy{Regenerate: true}},
 		"normal.md": {Path: "normal.md", Content: "normal"},
@@ -1000,8 +1000,8 @@ func TestCheckLockedFilesSuppressesMissingForUntrackedOutputs(t *testing.T) {
 // invariant: rendering/sync-and-drift:generated-artifacts-tracked (TestCheckGeneratedTrackingNoGitAndNestedResidentExclusion)
 func TestCheckGeneratedTrackingNoGitAndNestedResidentExclusion(t *testing.T) {
 	t.Run("no Git", func(t *testing.T) {
-		p := &Project{Root: t.TempDir()}
-		_, notes, err := checkGeneratedTracking(p.nested, p.repo, testContext(t), &OutputPlan{})
+		p := &ProjectState{invokingRoot: t.TempDir()}
+		_, notes, err := checkGeneratedTracking(p.nested, testRepo(p), testContext(t), &OutputPlan{})
 		if err != nil || len(notes) != 1 || !strings.Contains(notes[0], "unavailable outside a Git repository") {
 			t.Fatalf("no-Git tracking = notes %q, err %v", notes, err)
 		}
@@ -1021,7 +1021,7 @@ func TestCheckGeneratedTrackingNoGitAndNestedResidentExclusion(t *testing.T) {
 			t.Fatal(err)
 		}
 		gitfixture.AddAll(t, fixture)
-		report, err := p.CheckReport(testContext(t))
+		report, err := checkReportProject(p, testContext(t))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1064,12 +1064,12 @@ func TestCheckReportMapsPlanDiagnostics(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	testsupport.WriteFile(t, filepath.Join(root, "docs/plans/2026-07-12-broken.md"),
 		"---\nstatus: [unterminated\n---\n# Plan: Broken\n")
-	report, err := p.CheckReport(testContext(t))
+	report, err := checkReportProject(p, testContext(t))
 	if err != nil {
 		t.Fatalf("CheckReport: %v", err)
 	}
@@ -1086,14 +1086,14 @@ func TestCheckReportPropagatesPlanDirectoryReadError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	bad := filepath.Join(root, "docs/plans/2026-07-12-directory.md")
 	if err := os.Mkdir(bad, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.CheckReport(testContext(t)); err == nil || !strings.Contains(err.Error(), "read 2026-07-12-directory.md") {
+	if _, err := checkReportProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "read 2026-07-12-directory.md") {
 		t.Fatalf("CheckReport error = %v, want plan read failure", err)
 	}
 }
@@ -1176,7 +1176,7 @@ func TestAdvisoryNotesSurfacesPlanCommitError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.AdvisoryNotes(testContext(t)); err == nil {
+	if _, err := advisoryNotesProject(p, testContext(t)); err == nil {
 		t.Fatal("expected AdvisoryNotes to surface the plan-commit ParseDir error")
 	}
 }
@@ -1189,7 +1189,7 @@ func TestCheckProjectsPlanDiagnostics(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	testsupport.WriteFile(t, filepath.Join(root, "docs/plans/2026-07-12-broken.md"),
@@ -1254,10 +1254,10 @@ func TestAdvisoryNotesAndConfigReferenceSurfaceMalformedADR(t *testing.T) {
 	}
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-broken.md"),
 		"---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n")
-	if _, err := p.AdvisoryNotes(testContext(t)); err == nil {
+	if _, err := advisoryNotesProject(p, testContext(t)); err == nil {
 		t.Fatal("expected AdvisoryNotes to surface the malformed ADR, got nil")
 	}
-	if _, err := p.ConfigReferenceModel(testContext(t)); err == nil {
+	if _, err := configReferenceProject(p, testContext(t)); err == nil {
 		t.Fatal("expected ConfigReferenceModel to surface the malformed ADR, got nil")
 	}
 }
@@ -1276,7 +1276,7 @@ func TestInitializeReportSurfacesDuplicateADRIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err == nil ||
+	if _, _, _, err := initializeReportProject(p, testContext(t), InitAuthority{InitializedWithVersion: Version}); err == nil ||
 		!strings.Contains(err.Error(), "ADR number 0001 is declared by more than one file") {
 		t.Fatalf("expected duplicate ADR identity to fail the corpus load, got %v", err)
 	}
@@ -1546,7 +1546,7 @@ func TestInitializeReportAcceptsBrownfieldGovernedRecord(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
+	if _, _, _, err := initializeReportProject(p, testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatalf("initialize governed brownfield: %v", err)
 	}
 	after, err := os.ReadFile(filepath.Join(root, "docs/decisions", "0001-governed.md"))
@@ -1575,7 +1575,7 @@ func TestAgentGuideSizeAdvisoryBoundary(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			op, err := p.OutputPlan(testContext(t))
+			op, err := outputPlanProject(p, testContext(t))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1590,7 +1590,7 @@ func TestAgentGuideSizeAdvisoryBoundary(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			op, err = p.OutputPlan(testContext(t))
+			op, err = outputPlanProject(p, testContext(t))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1599,14 +1599,14 @@ func TestAgentGuideSizeAdvisoryBoundary(t *testing.T) {
 					t.Fatalf("expected guide bytes = %d, want %d", len(file.Content), tc.bytes)
 				}
 			}
-			if err := p.Sync(); err != nil {
+			if err := syncProject(p); err != nil {
 				t.Fatal(err)
 			}
 			if tc.want {
 				testsupport.WriteFile(t, filepath.Join(root, "docs/plans/2026-07-14-scope.md"),
 					"---\ndate: 2026-07-14\nadrs: []\nstatus: Proposed\n---\n# Plan: Scope\n\n```commit\nfeat(nope): unknown scope\n```\n")
 			}
-			report, err := p.CheckReport(testContext(t))
+			report, err := checkReportProject(p, testContext(t))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1625,7 +1625,7 @@ func TestAgentGuideSizeAdvisoryBoundary(t *testing.T) {
 				if ordinaryIndex < 0 || sizeIndex < 0 || ordinaryIndex >= sizeIndex {
 					t.Fatalf("CheckReport notes do not place ordinary advisory before size advisory: %#v", report.Notes)
 				}
-				direct, err := p.AdvisoryNotes(testContext(t))
+				direct, err := advisoryNotesProject(p, testContext(t))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -1640,7 +1640,7 @@ func TestAgentGuideSizeAdvisoryBoundary(t *testing.T) {
 					} else {
 						testsupport.WriteFile(t, filepath.Join(root, "AGENTS.md"), "stale")
 					}
-					residentReport, err := p.CheckReport(testContext(t))
+					residentReport, err := checkReportProject(p, testContext(t))
 					if err != nil {
 						t.Fatal(err)
 					}

@@ -47,7 +47,7 @@ None.
 
 - 2026-07-27: Proposed
 `
-	state, err := ctxRepo(t, ctxConfig, files).ContextState(testContext(t))
+	state, err := workingContextState(ctxRepo(t, ctxConfig, files))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,10 +170,10 @@ func TestContextADRLinkedPlansUseResolvedSnapshotReferences(t *testing.T) {
 	files["docs/plans/2026-08-02-z.md"] = linkedPlanFixture("[7, still-pending]", "Proposed")
 	p := ctxRepo(t, ctxConfig, files)
 	lock := &manifest.Lock{AWFVersion: "0.0.0", SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
-	if err := lock.Save(lockFile(p.Root)); err != nil {
+	if err := lock.Save(lockFile(p.Root())); err != nil {
 		t.Fatal(err)
 	}
-	gitfixture.AddAll(t, gitfixture.At(p.Root))
+	gitfixture.AddAll(t, gitfixture.At(p.Root()))
 
 	wantNumbered := []string{"docs/plans/2026-08-01-a.md", "docs/plans/2026-08-02-z.md"}
 	working := queryFor(t, p).ContextForOptions([]string{"docs/decisions/0007-numbered.md", "docs/decisions/still-pending.md", "internal/foo/x.go"}, ContextOptions{Selection: SelectionExplicit, Facets: []ContextFacet{FacetReferences}})
@@ -196,9 +196,9 @@ func TestContextADRLinkedPlansUseResolvedSnapshotReferences(t *testing.T) {
 
 	// The working tree drops the pending link while the index keeps the staged
 	// parsed-plan association, proving both constructors use their own snapshot.
-	testsupport.WriteFile(t, filepath.Join(p.Root, "docs/plans/2026-08-02-z.md"), linkedPlanFixture("[7]", "Proposed"))
+	testsupport.WriteFile(t, filepath.Join(p.Root(), "docs/plans/2026-08-02-z.md"), linkedPlanFixture("[7]", "Proposed"))
 	working = queryFor(t, p).ContextForOptions([]string{"docs/decisions/still-pending.md"}, ContextOptions{Selection: SelectionExplicit, Facets: []ContextFacet{FacetReferences}})
-	staged := stagedQueryFor(t, p.Root).ContextForOptions([]string{"docs/decisions/still-pending.md"}, ContextOptions{Selection: SelectionExplicit, Facets: []ContextFacet{FacetReferences}})
+	staged := stagedQueryFor(t, p.Root()).ContextForOptions([]string{"docs/decisions/still-pending.md"}, ContextOptions{Selection: SelectionExplicit, Facets: []ContextFacet{FacetReferences}})
 	if got := working.Requests[0].Exact.Context.ADR.LinkedPlans; len(got) != 0 {
 		t.Fatalf("working linked plans = %#v, want none", got)
 	}

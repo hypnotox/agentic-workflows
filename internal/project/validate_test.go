@@ -18,10 +18,10 @@ func commandWiringErrs(t *testing.T, configYAML string) (syncErr, checkErr error
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
+	if _, _, _, err := initializeReportProject(p, testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatalf("init must stay exempt from command-wiring validation, got: %v", err)
 	}
-	_, _, _, syncErr = p.SyncReport(testContext(t))
+	_, _, _, syncErr = syncReportProject(p, testContext(t))
 	_, checkErr = checkProject(p, testContext(t))
 	return syncErr, checkErr
 }

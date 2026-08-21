@@ -18,7 +18,7 @@ date: 2026-08-02
 adrs: []
 status: Proposed
 ---
-# Plan: Project seam
+# Plan: ProjectState seam
 
 ## Goal
 
@@ -55,7 +55,7 @@ func TestProjectReadPlanUsesFixedDocsDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := p.ReadPlan("2026-08-02-project-seam", "1.1")
+	got, err := readPlanProject(p, "2026-08-02-project-seam", "1.1")
 	if err != nil {
 		t.Fatalf("ReadPlan: %v", err)
 	}
@@ -74,7 +74,7 @@ func TestProjectReadPlanV2ComposesTaskScope(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := p.ReadPlan("2026-08-02-project-v2", "1.1")
+	got, err := readPlanProject(p, "2026-08-02-project-v2", "1.1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestProjectReadPlanV2PhaseUnionsTaskContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := p.ReadPlan("2026-08-02-project-v2-phase", "1")
+	got, err := readPlanProject(p, "2026-08-02-project-v2-phase", "1")
 	if err != nil || !bytes.Contains(got, []byte("### Task 1.1")) {
 		t.Fatalf("phase projection = %s, %v", got, err)
 	}
@@ -112,7 +112,7 @@ func TestProjectReadPlanV2RejectsUnresolvedDecisionReferences(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err = p.ReadPlan("2026-08-02-unresolved", "1.1"); err == nil || !strings.Contains(err.Error(), "ADR not found") {
+			if _, err = readPlanProject(p, "2026-08-02-unresolved", "1.1"); err == nil || !strings.Contains(err.Error(), "ADR not found") {
 				t.Fatalf("ReadPlan error = %v", err)
 			}
 		})
@@ -129,7 +129,7 @@ func TestProjectReadPlanV2RejectsMissingSelector(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.ReadPlan("2026-08-02-selector", "9"); err == nil || !strings.Contains(err.Error(), "selector") {
+	if _, err := readPlanProject(p, "2026-08-02-selector", "9"); err == nil || !strings.Contains(err.Error(), "selector") {
 		t.Fatalf("missing v2 selector error = %v", err)
 	}
 }
@@ -146,7 +146,7 @@ func TestProjectReadPlanV2SelectorErrorsPrecedeMalformedCorpus(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, selector := range []string{"01", "9"} {
-		_, err := p.ReadPlan("2026-08-02-selector-precedence", selector)
+		_, err := readPlanProject(p, "2026-08-02-selector-precedence", selector)
 		if selector == "01" {
 			var invalid *plan.InvalidSelectorError
 			if !errors.As(err, &invalid) || invalid.Value != selector || !reflect.DeepEqual(invalid.Available, []string{"1", "1.1"}) {
@@ -172,7 +172,7 @@ func TestProjectReadPlanV2SurfacesCorpusFailureBeforeProjection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.ReadPlan("2026-08-02-broken-corpus", "1.1"); err == nil {
+	if _, err := readPlanProject(p, "2026-08-02-broken-corpus", "1.1"); err == nil {
 		t.Fatal("ReadPlan accepted malformed ADR corpus")
 	}
 }
@@ -184,12 +184,12 @@ func TestProjectReadPlanPreservesTypedErrors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = p.ReadPlan("missing", "1")
+	_, err = readPlanProject(p, "missing", "1")
 	var notFound *plan.NotFoundError
 	if !errors.As(err, &notFound) || notFound.Kind != "name" {
 		t.Fatalf("name error = %#v", err)
 	}
-	_, err = p.ReadPlan("2026-08-02-project-seam", "01")
+	_, err = readPlanProject(p, "2026-08-02-project-seam", "01")
 	var invalid *plan.InvalidSelectorError
 	if !errors.As(err, &invalid) {
 		t.Fatalf("selector error = %#v", err)

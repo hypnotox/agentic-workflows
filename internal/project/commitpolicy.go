@@ -16,7 +16,7 @@ type commitPolicyRepository interface {
 }
 
 // VerifyCommitPolicy evaluates explicit revisions through this invoking project's configured policy.
-func verifyCommitPolicyFacade(cfg *config.Config, root string, repository *awfgit.Repo, ctx context.Context, targets []string) commitpolicy.Outcome {
+func verifyCommitPolicyOperation(cfg *config.Config, root string, repository *awfgit.Repo, ctx context.Context, targets []string) commitpolicy.Outcome {
 	if cfg.CommitPolicy == nil {
 		return commitpolicy.Outcome{Disabled: true}
 	}
@@ -115,13 +115,20 @@ func VerifyCommitPolicyAt(ctx context.Context, root string, targets []string) (p
 		document, presentationErr := commitpolicy.Presentation(commitpolicy.Policy{}, outcome)
 		return document, outcome, presentationErr
 	}
-	p, err := Open(ctx, roots.InvokingRoot)
+	state, err := Open(ctx, roots.InvokingRoot)
 	if err != nil {
 		outcome := refused(commitpolicy.ConfigFailure, "load commitPolicy from "+roots.InvokingRoot, err)
 		document, presentationErr := commitpolicy.Presentation(commitpolicy.Policy{}, outcome)
 		return document, outcome, presentationErr
 	}
-	outcome := p.VerifyCommitPolicy(ctx, targets)
-	document, presentationErr := p.CommitPolicyPresentation(outcome)
+	repo, _, err := awfgit.OpenContaining(roots.InvokingRoot)
+	if err != nil { // coverage-ignore: Open opened this same invoking worktree immediately above; failure requires a concurrent repository-identity race
+		outcome := refused(commitpolicy.LinkedWorktreeFailure, "open invoking worktree", err)
+		document, presentationErr := commitpolicy.Presentation(commitpolicy.Policy{}, outcome)
+		return document, outcome, presentationErr
+	}
+	cfg := state.Config()
+	outcome := VerifyCommitPolicy(cfg, roots.InvokingRoot, repo, ctx, targets)
+	document, presentationErr := BuildCommitPolicyPresentation(cfg, outcome)
 	return document, outcome, presentationErr
 }

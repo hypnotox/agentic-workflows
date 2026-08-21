@@ -144,7 +144,7 @@ func configHashOf(t *testing.T, root, rel string) string {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	files, err := p.RenderAll()
+	files, err := renderAll(p)
 	if err != nil {
 		t.Fatalf("RenderAll: %v", err)
 	}
@@ -205,7 +205,7 @@ func TestSyncPruneSkipsEscapingLockPaths(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	lock, err := manifest.Load(lockFile(root))
@@ -220,7 +220,7 @@ func TestSyncPruneSkipsEscapingLockPaths(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p2.Sync(); err != nil {
+	if err := syncProject(p2); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(victim); err != nil {
@@ -243,7 +243,7 @@ func TestCheckFlagsOrphanedSingletonParts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	drift, err := checkProject(p, testContext(t))
@@ -278,7 +278,7 @@ func TestSyncStampsSchemaVersion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	lock, err := manifest.Load(lockFile(root))
@@ -307,7 +307,7 @@ func TestScopesEditReflagsReferencingArtifacts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	// The guide template is the remaining .commitScopes consumer (ADR-0197
@@ -356,7 +356,7 @@ func TestScopesEditReflagsPlaceholderPart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	testsupport.WriteAwfConfig(t, root, cfg("ADR markdown documents")) // scope edit, part untouched
@@ -402,7 +402,7 @@ func TestSyncReportRefusesCorruptLockBeforeWriting(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := p.SyncReport(testContext(t)); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
+	if _, _, _, err := syncReportProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
 		t.Fatalf("want refusal with hint, got %v", err)
 	}
 	after, err := os.ReadFile(agents)
@@ -456,7 +456,7 @@ func TestAuditAndCollisionsRefuseCorruptLock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := p.Audit(testContext(t), "HEAD", "HEAD"); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
+	if _, _, err := auditProject(p, testContext(t), "HEAD", "HEAD"); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
 		t.Fatalf("Audit: %v", err)
 	}
 	if _, err := resident.CollisionsAt(root, []string{"AGENTS.md"}); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
@@ -481,7 +481,7 @@ func TestCommentWrappedScopePlaceholderDoesNotFold(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	testsupport.WriteAwfConfig(t, root, cfg("ADR markdown documents")) // scope edit, part untouched
@@ -504,7 +504,7 @@ func TestTopicMetadataAndPartBothDriveDrift(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
 	p, _ := Open(testContext(t), root)
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/metadata/rendering/contracts.yaml"), "title: Changed\nsummary: Current Contracts contracts.\npaths: [\"internal/**\"]\n")

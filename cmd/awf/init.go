@@ -115,11 +115,11 @@ func runInitWithProjectLoader(ctx context.Context, root string, force, describe 
 		}
 		scaffolded = true
 	}
-	p, err := project.Open(ctx, root)
+	state, cfg, _, err := openProjectOperation(ctx, root)
 	if err != nil {
 		return err
 	}
-	collisions, err := p.InitCollisions(ctx)
+	collisions, err := project.InitCollisions(state, cfg, ctx)
 	if err != nil {
 		if scaffolded { // coverage-ignore: after first-adoption and scaffold validation, this cleanup requires a concurrent tree mutation to make InitCollisions fail
 			_ = os.Remove(cfgPath)
@@ -153,15 +153,13 @@ func runInitWithProjectLoader(ctx context.Context, root string, force, describe 
 	if !configExists && !lockExists {
 		seed = &project.InitAuthority{InitializedWithVersion: project.Version}
 	}
-	syncResult, syncedProject, syncErr := syncMutation(ctx, loader, root, seed)
+	syncResult, syncedProject, syncedConfig, syncErr := syncMutation(ctx, loader, root, seed)
 	if syncErr != nil {
 		return finishInitSyncFailure(cfgPath, scaffolded, syncErr)
 	}
 	// Post-init orientation: the same advisory notes awf check prints
 	// (ADR-0045, ADR-0070), then a fixed next-steps block.
-	return renderInitOutcome(ctx, syncedProject, initspec.Outcome{ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers, Sync: syncResult, NextActions: initNextActions}, stdout, func(ctx context.Context, p *project.Project) ([]string, error) {
-		return p.AdvisoryNotes(ctx)
-	})
+	return renderInitOutcome(ctx, syncedProject, syncedConfig, initspec.Outcome{ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers, Sync: syncResult, NextActions: initNextActions}, stdout, project.AdvisoryNotes)
 }
 
 func initProjectLoader(root string, load func(string) (*project.Loader, error)) (*project.Loader, error) {
@@ -176,8 +174,8 @@ func finishInitSyncFailure(cfgPath string, scaffolded bool, syncErr error) error
 	return syncErr
 }
 
-func renderInitOutcome(ctx context.Context, p *project.Project, outcome initspec.Outcome, stdout io.Writer, advisoryNotes func(context.Context, *project.Project) ([]string, error)) error {
-	notes, err := advisoryNotes(ctx, p)
+func renderInitOutcome(ctx context.Context, state *project.ProjectState, cfg *config.Config, outcome initspec.Outcome, stdout io.Writer, advisoryNotes func(*project.ProjectState, *config.Config, context.Context) ([]string, error)) error {
+	notes, err := advisoryNotes(state, cfg, ctx)
 	if err != nil {
 		return err
 	}
@@ -202,11 +200,11 @@ func collisionRefusal(collisions []string) error {
 // project's outputs, and tests the project-relative paths against root.
 func probeCollisions(ctx context.Context, root string) ([]string, error) {
 	if _, err := os.Stat(config.ConfigPath(root)); err == nil {
-		p, err := project.Open(ctx, root)
+		state, cfg, _, err := openProjectOperation(ctx, root)
 		if err != nil {
 			return nil, err
 		}
-		return p.InitCollisions(ctx)
+		return project.InitCollisions(state, cfg, ctx)
 	}
 	tmp, err := os.MkdirTemp("", "awf-init-probe-*")
 	if err != nil { // coverage-ignore: MkdirTemp fails only on an unwritable TMPDIR, which a test cannot trigger portably
@@ -224,11 +222,11 @@ func probeCollisions(ctx context.Context, root string) ([]string, error) {
 	if err := os.WriteFile(cfgPath, scaffold, 0o644); err != nil { // coverage-ignore: post-MkdirAll write into a fresh temp dir cannot fail in practice
 		return nil, err
 	}
-	tp, err := project.Open(ctx, tmp)
+	state, cfg, _, err := openProjectOperation(ctx, tmp)
 	if err != nil { // coverage-ignore: a freshly-scaffolded default config always opens
 		return nil, err
 	}
-	planned, err := tp.PlannedOutputs(ctx)
+	planned, err := project.PlannedOutputs(state, cfg, ctx)
 	if err != nil { // coverage-ignore: rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail
 		return nil, err
 	}

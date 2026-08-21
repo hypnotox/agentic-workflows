@@ -13,6 +13,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/commitmsg"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -81,11 +82,11 @@ func TestIsExemptSubject(t *testing.T) {
 
 func TestRunCommitGateCoreSkipsFullAuthorization(t *testing.T) {
 	dependencies := defaultCommitGateDependencies()
-	dependencies.openProject = func(context.Context, string) (*project.Project, error) {
-		return &project.Project{Cfg: &config.Config{Profile: catalog.ProfileCore}}, nil
+	dependencies.openProject = func(context.Context, string) (*config.Config, *awfgit.Repo, error) {
+		return &config.Config{Profile: catalog.ProfileCore}, nil, nil
 	}
 	called := false
-	dependencies.authorize = func(context.Context, *project.Project, commitmsg.Message) (project.CommitAuthorizationResult, error) {
+	dependencies.authorize = func(context.Context, string, *awfgit.Repo, commitmsg.Message) (project.CommitAuthorizationResult, error) {
 		called = true
 		return project.CommitAuthorizationResult{}, errors.New("Full authorization reached")
 	}
@@ -532,7 +533,7 @@ func TestRunCommitGateMechanismFailuresPreserveIdentity(t *testing.T) {
 	}
 	authorizationResult := func() commitGateDependencies {
 		dependencies := defaultCommitGateDependencies()
-		dependencies.authorize = func(context.Context, *project.Project, commitmsg.Message) (project.CommitAuthorizationResult, error) {
+		dependencies.authorize = func(context.Context, string, *awfgit.Repo, commitmsg.Message) (project.CommitAuthorizationResult, error) {
 			return project.CommitAuthorizationResult{Category: "operation", Condition: "refused"}, nil
 		}
 		return dependencies
@@ -549,12 +550,12 @@ func TestRunCommitGateMechanismFailuresPreserveIdentity(t *testing.T) {
 	})
 	t.Run("config loading", func(t *testing.T) {
 		dependencies := defaultCommitGateDependencies()
-		dependencies.openProject = func(context.Context, string) (*project.Project, error) { return nil, failure }
+		dependencies.openProject = func(context.Context, string) (*config.Config, *awfgit.Repo, error) { return nil, nil, failure }
 		assertFailure(t, dependencies, message(), nil)
 	})
 	t.Run("policy and staged transition loading", func(t *testing.T) {
 		dependencies := defaultCommitGateDependencies()
-		dependencies.authorize = func(context.Context, *project.Project, commitmsg.Message) (project.CommitAuthorizationResult, error) {
+		dependencies.authorize = func(context.Context, string, *awfgit.Repo, commitmsg.Message) (project.CommitAuthorizationResult, error) {
 			return project.CommitAuthorizationResult{}, failure
 		}
 		assertFailure(t, dependencies, message(), nil)

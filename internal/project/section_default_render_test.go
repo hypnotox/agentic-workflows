@@ -20,7 +20,7 @@ func TestSectionDefaultPartRendersEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	files, err := p.RenderAll()
+	files, err := renderAll(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +50,7 @@ func TestSectionDefaultStubPartFailsRender(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.RenderAll(); err == nil || !strings.Contains(err.Error(), "re-injects a stub default") {
+	if _, err := renderAll(p); err == nil || !strings.Contains(err.Error(), "re-injects a stub default") {
 		t.Fatalf("expected the stub re-injection hard error, got: %v", err)
 	}
 }

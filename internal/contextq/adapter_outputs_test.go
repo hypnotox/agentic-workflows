@@ -5,6 +5,7 @@ import (
 	"slices"
 	"testing"
 
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
@@ -20,7 +21,11 @@ func TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	state, err := p.ContextState(testContext(t))
+	repo, _, err := awfgit.OpenContaining(p.Root())
+	if err != nil {
+		t.Fatal(err)
+	}
+	state, err := project.BuildContextState(p, repo, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -19,9 +20,22 @@ import (
 // are unprefixed at ".claude/agents/<name>.md".
 const evalPrefix = "example"
 
-func checkProject(p *project.Project, ctx context.Context) ([]manifest.Drift, error) {
-	report, err := p.CheckReport(ctx)
+func checkProject(p *project.ProjectState, ctx context.Context) ([]manifest.Drift, error) {
+	cfg, err := config.Load(config.RootDir(p.Root()))
+	if err != nil {
+		return nil, err
+	}
+	report, err := project.BuildCheckReport(p, cfg, nil, ctx)
 	return report.Drift, err
+}
+
+func mustEvalConfig(t *testing.T, state *project.ProjectState) *config.Config {
+	t.Helper()
+	cfg, err := config.Load(config.RootDir(state.Root()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return cfg
 }
 
 // loadCatalog loads the embedded catalog or fails the test.
@@ -86,7 +100,11 @@ func syncFullCatalogForTarget(t *testing.T, cat *catalog.Catalog, target string)
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
-	if _, _, _, err := p.InitializeReport(testsupport.Context(t), project.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
+	cfg, err := config.Load(config.RootDir(root))
+	if err != nil {
+		t.Fatalf("load config: %v", err)
+	}
+	if _, _, _, err := project.InitializeReport(p, cfg, testsupport.Context(t), project.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
 		t.Fatalf("initialize: %v", err)
 	}
 	return root
@@ -117,10 +135,10 @@ func TestFullCatalogCoverage(t *testing.T) {
 			if err != nil {
 				t.Fatalf("open initialized project: %v", err)
 			}
-			if len(p.Targets) != 2 {
-				t.Fatalf("targets = %d, want both built-in targets", len(p.Targets))
+			if len(p.Targets()) != 2 {
+				t.Fatalf("targets = %d, want both built-in targets", len(p.Targets()))
 			}
-			for _, target := range p.Targets {
+			for _, target := range p.Targets() {
 				for _, s := range sortedKeys(cat.Skills) {
 					path := filepath.Join(root, filepath.FromSlash(target.SkillPath(evalPrefix, s)))
 					if _, err := os.Stat(path); err != nil {
@@ -134,7 +152,7 @@ func TestFullCatalogCoverage(t *testing.T) {
 					}
 				}
 			}
-			target := targetNamed(t, p.Targets, targetName)
+			target := targetNamed(t, p.Targets(), targetName)
 			for name, entry := range cat.Docs {
 				path := catalogDocPath(root, name, entry)
 				if _, err := os.Stat(path); err != nil {
@@ -156,7 +174,7 @@ func TestFullCatalogCoverage(t *testing.T) {
 			if !hasDrift(drift, missing, "missing") {
 				t.Errorf("missing output drift = %v, want %q missing", drift, missing)
 			}
-			if _, _, _, err := p.SyncReport(testsupport.Context(t)); err != nil {
+			if _, _, _, err := project.SyncReport(p, mustEvalConfig(t, p), testsupport.Context(t)); err != nil {
 				t.Fatalf("repair missing output: %v", err)
 			}
 			if drift, err := checkProject(p, testsupport.Context(t)); err != nil || len(drift) != 0 {
@@ -173,7 +191,7 @@ func TestFullCatalogCoverage(t *testing.T) {
 			if !hasDrift(drift, "AGENTS.md", "hand-edited") {
 				t.Errorf("edited output drift = %v, want AGENTS.md hand-edited", drift)
 			}
-			if _, _, _, err := p.SyncReport(testsupport.Context(t)); err != nil {
+			if _, _, _, err := project.SyncReport(p, mustEvalConfig(t, p), testsupport.Context(t)); err != nil {
 				t.Fatalf("repair stale output: %v", err)
 			}
 			if drift, err := checkProject(p, testsupport.Context(t)); err != nil || len(drift) != 0 {

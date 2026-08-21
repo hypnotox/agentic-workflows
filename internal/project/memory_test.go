@@ -19,7 +19,7 @@ func TestResidentGitignoresAlwaysOn(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := p.RenderAll()
+	out, err := renderAll(p)
 	if err != nil {
 		t.Fatal(err)
 	}

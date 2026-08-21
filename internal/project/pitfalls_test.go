@@ -20,7 +20,7 @@ func renderPitfallFiles(t *testing.T, root string) map[string]string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	files, err := p.RenderAll()
+	files, err := renderAll(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +146,7 @@ func TestPitfallCorpusMalformedSourceFailsRender(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.RenderAll(); err == nil || !strings.Contains(err.Error(), ".awf/docs/pitfalls/bad.md") || !strings.Contains(err.Error(), "unknown") {
+	if _, err := renderAll(p); err == nil || !strings.Contains(err.Error(), ".awf/docs/pitfalls/bad.md") || !strings.Contains(err.Error(), "unknown") {
 		t.Fatalf("malformed source error = %v", err)
 	}
 }

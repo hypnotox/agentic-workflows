@@ -188,12 +188,12 @@ func cloneRenderData(in map[string]any) map[string]any {
 	return cloneTemplateValue(in).(map[string]any)
 }
 
-func singletonTemplateContexts(t *testing.T, p *Project, eff map[string]bool) []singletonTemplateContext {
+func singletonTemplateContexts(t *testing.T, p *ProjectState, eff map[string]bool) []singletonTemplateContext {
 	t.Helper()
 	var contexts []singletonTemplateContext
 	for _, kind := range catalog.SingletonKindsFor(projectCatalog(renderInputsForTest(p))) {
 		entry := projectCatalog(renderInputsForTest(p)).Docs[kind]
-		sc, err := p.Cfg.Sidecar(kind, "")
+		sc, err := testConfig(p).Sidecar(kind, "")
 		if err != nil {
 			t.Fatalf("read %s sidecar: %v", kind, err)
 		}
@@ -204,9 +204,9 @@ func singletonTemplateContexts(t *testing.T, p *Project, eff map[string]bool) []
 			data["docs"] = resolvedDocs(renderInputsForTest(p))
 			data["mandatoryDocs"] = documentMapDocs(renderInputsForTest(p))
 			data["localDocs"] = localDocumentMapDocs(renderInputsForTest(p))
-			data["documentMapFallbackHeading"] = len(p.Cfg.LocalDocs) != 0 && sc.Sections["document-map"].Drop
+			data["documentMapFallbackHeading"] = len(testConfig(p).LocalDocs) != 0 && sc.Sections["document-map"].Drop
 		case entry.Generated:
-			files, err := p.RenderAll()
+			files, err := renderAll(p)
 			if err != nil {
 				t.Fatal(err)
 			}

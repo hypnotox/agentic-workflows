@@ -19,7 +19,7 @@ func hookFiles(t *testing.T, configYAML string) map[string]RenderedFile {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := p.RenderAll()
+	out, err := renderAll(p)
 	if err != nil {
 		t.Fatal(err)
 	}

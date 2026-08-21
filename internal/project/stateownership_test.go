@@ -29,7 +29,7 @@ var stateOwnershipPatterns = []string{"./internal/project", "./internal/contextq
 // forbids. The conforming constructions are Loader.Open, the two ContextState
 // constructors, contextq.New, and resident.NewRoots.
 var watchedLongLivedTypes = map[string]map[string]bool{
-	"github.com/hypnotox/agentic-workflows/internal/project":  {"Project": true, "projectState": true, "ContextState": true},
+	"github.com/hypnotox/agentic-workflows/internal/project":  {"ProjectState": true, "ContextState": true},
 	"github.com/hypnotox/agentic-workflows/internal/contextq": {"Query": true},
 	"github.com/hypnotox/agentic-workflows/internal/resident": {"Roots": true},
 }
@@ -110,7 +110,7 @@ func isProjectLiteral(expr ast.Expr) bool {
 	return false
 }
 
-// constructedInFunc collects the objects a function assigns from a Project
+// constructedInFunc collects the objects a function assigns from a ProjectState
 // composite literal. Those are the values that function constructs, so its
 // later writes to their fields are part of one construction rather than a
 // mutation of a value that outlived an operation.
@@ -166,14 +166,14 @@ func selectorRoot(expr ast.Expr) *ast.Ident {
 	}
 }
 
-// projectFieldWriteFindings reports every assignment to a *Project field whose
+// projectFieldWriteFindings reports every assignment to a *ProjectState field whose
 // root identifier the enclosing function did not itself construct from a
 // composite literal. That is exactly the shape ADR-0180 removes: a function
-// writing a field of a Project value that outlives its call.
+// writing a field of a ProjectState value that outlives its call.
 //
 // The rule admits the three stepwise constructions ADR-0180 item 10 names as
 // conforming (Loader.Open plus, since ADR-0195 carved the context query out,
-// the two ContextState constructors Project.ContextState and
+// the two ContextState constructors ProjectState.ContextState and
 // StagedContextState), each of which writes fields of a value whose literal
 // appears in the same function, and rejects a method mutating its receiver.
 func projectFieldWriteFindings(pkgs []*packages.Package) []string {
@@ -213,7 +213,7 @@ func projectFieldWriteFindings(pkgs []*packages.Package) []string {
 								// index is unwrapped by selectorRoot.
 								report(target, "writes")
 							case *ast.StarExpr:
-								// *x = Project{...} replaces every field at once.
+								// *x = ProjectState{...} replaces every field at once.
 								if isProjectValue(pkg.TypesInfo, target.X) {
 									if root := selectorRoot(target.X); root != nil {
 										if obj := pkg.TypesInfo.ObjectOf(root); obj == nil || !built[obj] {
@@ -332,11 +332,11 @@ func producerCallSites(pkgs []*packages.Package) map[string][]string {
 
 // TestProjectDerivedStateOwnership proves that no production function in
 // internal/project, internal/contextq, or internal/resident writes a field of
-// that package's constructed long-lived values (Project, ContextState, Query,
+// that package's constructed long-lived values (ProjectState, ContextState, Query,
 // Roots) outside the function that constructs the value: the derived state is
 // threaded to its consumers, and Roots is fixed at construction. The
 // conforming constructions are Loader.Open, the two ContextState constructors
-// (Project.ContextState and StagedContextState), contextq.New, and
+// (ProjectState.ContextState and StagedContextState), contextq.New, and
 // resident.NewRoots. The beginInvocation-absence assertion below is retained
 // hardening beyond the current claim body, which no longer names it.
 //
@@ -347,7 +347,7 @@ func producerCallSites(pkgs []*packages.Package) map[string][]string {
 func TestProjectDerivedStateOwnership(t *testing.T) {
 	production := loadProjectPackage(t, nil)
 	if findings := projectFieldWriteFindings(production); len(findings) != 0 {
-		t.Errorf("*Project fields are written outside the function that constructs the value:\n\t%s",
+		t.Errorf("*ProjectState fields are written outside the function that constructs the value:\n\t%s",
 			strings.Join(findings, "\n\t"))
 	}
 
@@ -418,34 +418,34 @@ import "github.com/hypnotox/agentic-workflows/internal/adr"
 
 func writeThrough(target *string, value string) { *target = value }
 
-func (p *Project) mutationWritesAfterConstruction() {
-	p.Root = "mutated"
+func (p *ProjectState) mutationWritesAfterConstruction() {
+	p.invokingRoot = "mutated"
 }
 
-func (s *projectState) mutationWritesStateAfterConstruction() {
+func (s *ProjectState) mutationWritesStateAfterConstruction() {
 	s.nested = true
 }
 
-func mutationConstructsLocally(rootDir string) *Project {
-	built := &Project{Root: rootDir}
-	built.Cfg = nil
+func mutationConstructsLocally(rootDir string) *ProjectState {
+	built := &ProjectState{invokingRoot: rootDir}
+	built.nested = true
 	return built
 }
 
-func (p *Project) mutationWritesViaPointer() {
-	writeThrough(&p.Root, "mutated")
+func (p *ProjectState) mutationWritesViaPointer() {
+	writeThrough(&p.invokingRoot, "mutated")
 }
 
-func (p *Project) mutationRederivesNested() {
-	_, _, _, _, _ = deriveOperationStateWithPitfalls(newRenderInputs(&projectState{}, p.Cfg, p.read))
+func (p *ProjectState) mutationRederivesNested() {
+	_, _, _, _, _ = deriveOperationStateWithPitfalls(newRenderInputs(&ProjectState{}, p.Config(), nil))
 }
 
-func (p *Project) mutationRederivesCorpusDirectly() (adr.Corpus, error) {
+func (p *ProjectState) mutationRederivesCorpusDirectly() (adr.Corpus, error) {
 	return adr.LoadCorpus(decisionsDir("fixture-root"))
 }
 
-func (p *Project) mutationOverwritesWholeValue() {
-	*p = Project{Root: "mutated"}
+func (p *ProjectState) mutationOverwritesWholeValue() {
+	*p = ProjectState{invokingRoot: "mutated"}
 }
 `),
 		contextqFixture: []byte(`package contextq
@@ -464,9 +464,9 @@ func (q *Query) mutationReplacesStateAfterConstruction(state project.ContextStat
 		})
 	}
 	for _, want := range []string{
-		"mutationWritesAfterConstruction writes p.Root",
+		"mutationWritesAfterConstruction writes p.invokingRoot",
 		"mutationWritesStateAfterConstruction writes s.nested",
-		"mutationWritesViaPointer takes the address of p.Root",
+		"mutationWritesViaPointer takes the address of p.invokingRoot",
 		"mutationOverwritesWholeValue replaces the whole value p",
 		"mutationReplacesStateAfterConstruction writes q.state",
 	} {
@@ -568,14 +568,14 @@ func TestProjectStateBoundary(t *testing.T) {
 		if pkg.PkgPath != "github.com/hypnotox/agentic-workflows/internal/project" {
 			continue
 		}
-		obj := pkg.Types.Scope().Lookup("projectState")
+		obj := pkg.Types.Scope().Lookup("ProjectState")
 		if obj == nil {
-			t.Fatal("projectState is missing")
+			t.Fatal("ProjectState is missing")
 		}
 		var ok bool
 		state, ok = obj.Type().(*types.Named)
 		if !ok {
-			t.Fatalf("projectState type = %T", obj.Type())
+			t.Fatalf("ProjectState type = %T", obj.Type())
 		}
 	}
 	if state == nil {
@@ -583,16 +583,16 @@ func TestProjectStateBoundary(t *testing.T) {
 	}
 	fields, ok := state.Underlying().(*types.Struct)
 	if !ok {
-		t.Fatalf("projectState underlying type = %T", state.Underlying())
+		t.Fatalf("ProjectState underlying type = %T", state.Underlying())
 	}
 	for i := range fields.NumFields() {
 		field := fields.Field(i)
 		if field.Exported() {
-			t.Errorf("projectState exports mutable field %s", field.Name())
+			t.Errorf("ProjectState exports mutable field %s", field.Name())
 		}
 		typeName := types.TypeString(field.Type(), func(pkg *types.Package) string { return pkg.Path() })
 		if retainsOperationDependency(field.Type(), map[types.Type]bool{}) {
-			t.Errorf("projectState retains operation dependency %s %s", field.Name(), typeName)
+			t.Errorf("ProjectState retains operation dependency %s %s", field.Name(), typeName)
 		}
 	}
 

@@ -120,7 +120,7 @@ func TestArchiveRootUpgradeBoundary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	planned, err := p.RenderAll()
+	planned, err := renderAll(p)
 	if err != nil {
 		t.Fatal(err)
 	}

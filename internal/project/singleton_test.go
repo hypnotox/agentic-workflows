@@ -18,7 +18,7 @@ func agentsDocContent(t *testing.T, configYAML string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	files, err := p.RenderAll()
+	files, err := renderAll(p)
 	if err != nil {
 		t.Fatal(err)
 	}

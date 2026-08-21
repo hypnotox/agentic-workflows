@@ -97,7 +97,7 @@ func testPitfallHashAndOutputLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	before, err := p.OutputPlan(testContext(t))
+	before, err := outputPlanProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +109,7 @@ func testPitfallHashAndOutputLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	afterBody, err := p.OutputPlan(testContext(t))
+	afterBody, err := outputPlanProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +126,7 @@ func testPitfallHashAndOutputLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	afterMetadata, err := p.OutputPlan(testContext(t))
+	afterMetadata, err := outputPlanProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,7 @@ func testPitfallHashAndOutputLifecycle(t *testing.T) {
 
 	foreign := filepath.Join(root, "docs/pitfalls/alpha.md")
 	testsupport.WriteFile(t, foreign, "foreign output\n")
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	backup, err := os.ReadFile(foreign + ".awf-bak")
@@ -161,14 +161,14 @@ func testPitfallHashAndOutputLifecycle(t *testing.T) {
 	}
 	assertPitfallDrift(t, p, "docs/pitfalls/alpha.md", "missing")
 	assertPitfallDrift(t, p, "docs/pitfalls.md", "missing")
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	testsupport.WriteFile(t, foreign, "hand edit\n")
 	testsupport.WriteFile(t, indexPath, "hand-edited index\n")
 	assertPitfallDrift(t, p, "docs/pitfalls/alpha.md", "hand-edited")
 	assertPitfallDrift(t, p, "docs/pitfalls.md", "hand-edited")
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Remove(filepath.Join(root, ".awf/docs/pitfalls/alpha.md")); err != nil {
@@ -178,7 +178,7 @@ func testPitfallHashAndOutputLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, pruned, err := p.SyncReport(testContext(t))
+	_, _, pruned, err := syncReportProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,7 +207,7 @@ func testPitfallStagedDeclarationParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	lockBytes, err := os.ReadFile(filepath.Join(root, ".awf/awf.lock"))
@@ -215,7 +215,7 @@ func testPitfallStagedDeclarationParity(t *testing.T) {
 		t.Fatal(err)
 	}
 	gitfixture.Stage(t, repo, map[string]string{".awf/awf.lock": string(lockBytes)})
-	working, err := p.ContextState(testContext(t))
+	working, err := contextStateProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -248,7 +248,7 @@ func outputNodeAt(t *testing.T, plan *OutputPlan, path string) OutputNode {
 	return plan.Nodes[idx]
 }
 
-func assertPitfallDrift(t *testing.T, p *Project, path, kind string) {
+func assertPitfallDrift(t *testing.T, p *ProjectState, path, kind string) {
 	t.Helper()
 	drift, err := checkProject(p, testContext(t))
 	if err != nil {

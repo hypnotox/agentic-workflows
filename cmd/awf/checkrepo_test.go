@@ -16,6 +16,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	"github.com/hypnotox/agentic-workflows/internal/execution"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
@@ -27,32 +28,32 @@ type repoCheckCounters struct {
 	loads, opens, reports, states, indexes int
 }
 
-func repoCheckTestDependencies(t *testing.T, cfg *config.Config, p *project.Project, check project.CheckReport, state project.CurrentStateReport, tree *snapshot.Tree, counts *repoCheckCounters) repoCheckDependencies {
+func repoCheckTestDependencies(t *testing.T, cfg *config.Config, p *project.ProjectState, check project.CheckReport, state project.CurrentStateReport, tree *snapshot.Tree, counts *repoCheckCounters) repoCheckDependencies {
 	t.Helper()
 	return repoCheckDependencies{
 		loadConfig: func(string) (*config.Config, error) {
 			counts.loads++
 			return cfg, nil
 		},
-		openProject: func(_ context.Context, _ string, got *config.Config) (*project.Project, error) {
+		openProject: func(_ context.Context, _ string, got *config.Config) (*project.ProjectState, *awfgit.Repo, error) {
 			counts.opens++
 			if got != cfg {
 				t.Fatalf("openProject config = %p, want prepared config %p", got, cfg)
 			}
-			return p, nil
+			return p, nil, nil
 		},
-		checkReport: func(_ context.Context, got *project.Project) (project.CheckReport, error) {
+		checkReport: func(_ context.Context, got *project.ProjectState, gotConfig *config.Config, _ *awfgit.Repo) (project.CheckReport, error) {
 			counts.reports++
+			if gotConfig != cfg {
+				t.Fatalf("checkReport config = %p, want %p", gotConfig, cfg)
+			}
 			if got != p {
 				t.Fatalf("checkReport project = %p, want prepared project %p", got, p)
 			}
 			return check, nil
 		},
-		currentState: func(_ context.Context, got *project.Project) (project.CurrentStateReport, error) {
+		currentState: func(_ context.Context, _ string, _ *awfgit.Repo) (project.CurrentStateReport, error) {
 			counts.states++
-			if got != p {
-				t.Fatalf("currentState project = %p, want prepared project %p", got, p)
-			}
 			return state, nil
 		},
 		driftCategories:        project.DriftCategories,
@@ -66,7 +67,7 @@ func repoCheckTestDependencies(t *testing.T, cfg *config.Config, p *project.Proj
 
 func TestRepoCheckCategoryFailuresPropagate(t *testing.T) {
 	cfg := &config.Config{}
-	p := &project.Project{Root: "working-project-sentinel", Cfg: cfg}
+	p := &project.ProjectState{}
 	for _, tc := range []struct {
 		name string
 		step execution.StepID
@@ -96,7 +97,7 @@ func TestRepoCheckCategoryFailuresPropagate(t *testing.T) {
 func TestRepoCheckCapabilityPlan(t *testing.T) {
 	t.Run("aggregate prepares each capability once and preserves successful output order", func(t *testing.T) {
 		cfg := &config.Config{ProseGate: &config.ProseGateConfig{}, MemoryCite: &config.MemoryCiteConfig{}}
-		p := &project.Project{Root: "working-project-sentinel", Cfg: cfg}
+		p := &project.ProjectState{}
 		tree, err := snapshot.NewTree(nil)
 		if err != nil {
 			t.Fatal(err)
@@ -119,7 +120,7 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 
 	t.Run("aggregate keeps universes distinct and continues after action errors", func(t *testing.T) {
 		cfg := &config.Config{ProseGate: &config.ProseGateConfig{}, MemoryCite: &config.MemoryCiteConfig{}}
-		p := &project.Project{Root: "working-project-sentinel", Cfg: cfg}
+		p := &project.ProjectState{}
 		tree, err := snapshot.NewTree([]snapshot.File{
 			{Path: "prose-index-sentinel.txt", Bytes: []byte("bad \u2013")},
 			{Path: "docs/decisions/memory-index-sentinel.md", Bytes: []byte(".awf/efforts/example/memory.md")},
@@ -169,7 +170,7 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 
 	t.Run("later preparation failure emits no action or advisory output", func(t *testing.T) {
 		cfg := &config.Config{ProseGate: &config.ProseGateConfig{}}
-		p := &project.Project{Root: "working-project-sentinel", Cfg: cfg}
+		p := &project.ProjectState{}
 		tree, err := snapshot.NewTree(nil)
 		if err != nil {
 			t.Fatal(err)
@@ -177,7 +178,7 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		counts := &repoCheckCounters{}
 		deps := repoCheckTestDependencies(t, cfg, p, project.CheckReport{Notes: []string{"must-not-print"}}, project.CurrentStateReport{}, tree, counts)
 		failure := errors.New("current-state preparation failed")
-		deps.currentState = func(context.Context, *project.Project) (project.CurrentStateReport, error) {
+		deps.currentState = func(context.Context, string, *awfgit.Repo) (project.CurrentStateReport, error) {
 			counts.states++
 			return project.CurrentStateReport{}, failure
 		}
@@ -209,7 +210,7 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		}
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
-				p := &project.Project{Root: "working-project-sentinel", Cfg: tc.cfg}
+				p := &project.ProjectState{}
 				tree, err := snapshot.NewTree(nil)
 				if err != nil {
 					t.Fatal(err)
@@ -232,7 +233,7 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 
 	t.Run("tracking notes appear directly and compose with aggregate advisories", func(t *testing.T) {
 		cfg := &config.Config{}
-		p := &project.Project{Root: "tracking-note-project", Cfg: cfg}
+		p := &project.ProjectState{}
 		report := project.CheckReport{Notes: []string{"aggregate-only"}, TrackingNotes: []string{"tracking unavailable"}}
 
 		deps := repoCheckTestDependencies(t, cfg, p, report, project.CurrentStateReport{}, nil, &repoCheckCounters{})
@@ -282,7 +283,7 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 
 	t.Run("disabled aggregate scanners prepare no index", func(t *testing.T) {
 		cfg := &config.Config{}
-		p := &project.Project{Root: "working-project-sentinel", Cfg: cfg}
+		p := &project.ProjectState{}
 		tree, err := snapshot.NewTree(nil)
 		if err != nil {
 			t.Fatal(err)
@@ -315,7 +316,7 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		}
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
-				p := &project.Project{Root: "working-project-sentinel", Cfg: tc.cfg}
+				p := &project.ProjectState{}
 				tree, err := snapshot.NewTree(nil)
 				if err != nil {
 					t.Fatal(err)
@@ -336,7 +337,7 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 
 	t.Run("execution cancellation remains separate from outcomes", func(t *testing.T) {
 		cfg := &config.Config{}
-		p := &project.Project{Root: "working-project-sentinel", Cfg: cfg}
+		p := &project.ProjectState{}
 		tree, err := snapshot.NewTree(nil)
 		if err != nil {
 			t.Fatal(err)
@@ -344,7 +345,7 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		counts := &repoCheckCounters{}
 		deps := repoCheckTestDependencies(t, cfg, p, project.CheckReport{}, project.CurrentStateReport{}, tree, counts)
 		ctx, cancel := context.WithCancel(context.Background())
-		deps.checkReport = func(context.Context, *project.Project) (project.CheckReport, error) {
+		deps.checkReport = func(context.Context, *project.ProjectState, *config.Config, *awfgit.Repo) (project.CheckReport, error) {
 			cancel()
 			return project.CheckReport{}, nil
 		}
@@ -364,7 +365,7 @@ func assertRepoCheckProductionWiring(t *testing.T) {
 		function string
 		contains []string
 	}{
-		{"checkrepo.go", "productionRepoCheckDependencies", []string{"project.NewLoader(", "project.NewLoaderWithoutRepository(", "p.CheckReport("}},
+		{"checkrepo.go", "productionRepoCheckDependencies", []string{"project.NewLoader(", "project.NewLoaderWithoutRepository(", "project.BuildCheckReport("}},
 		{"checkrepo.go", "runCheckRepo", []string{"runCheckRepoWithPlanNotes", "planNoteSink{}"}},
 		{"checkrepo.go", "runCheckRepoWithPlanNotes", []string{"collectCheckRepoWithPlanNotes", "renderCheckCollection"}},
 		{"checkrepo.go", "collectCheckRepoWithPlanNotes", []string{"repoStepDrift", "repoStepState", "repoStepProse", "repoStepMemory", "execution.ContinueOnFailure", "true", "productionRepoCheckDependencies()"}},
@@ -409,7 +410,7 @@ func assertRepoCheckProductionWiring(t *testing.T) {
 // invariant: rendering/sync-and-drift:agent-guide-size-advisory (TestAggregateCheckAgentGuideSizeWarning)
 func TestAggregateCheckAgentGuideSizeWarning(t *testing.T) {
 	cfg := &config.Config{}
-	p := &project.Project{Root: "oversized-guide-project", Cfg: cfg}
+	p := &project.ProjectState{}
 	advisory := "AGENTS.md is 12289 bytes, allowed 12288 bytes; see docs/agents-md-standard.md"
 	runAggregate := func(t *testing.T, notes []string) string {
 		t.Helper()

@@ -34,7 +34,8 @@ const (
 
 type repoCheckInputs struct {
 	config       *config.Config
-	project      *project.Project
+	projectState *project.ProjectState
+	repo         *awfgit.Repo
 	checkReport  project.CheckReport
 	currentState project.CurrentStateReport
 	index        *snapshot.Tree
@@ -45,9 +46,9 @@ type repoCheckInputs struct {
 
 type repoCheckDependencies struct {
 	loadConfig             func(string) (*config.Config, error)
-	openProject            func(context.Context, string, *config.Config) (*project.Project, error)
-	checkReport            func(context.Context, *project.Project) (project.CheckReport, error)
-	currentState           func(context.Context, *project.Project) (project.CurrentStateReport, error)
+	openProject            func(context.Context, string, *config.Config) (*project.ProjectState, *awfgit.Repo, error)
+	checkReport            func(context.Context, *project.ProjectState, *config.Config, *awfgit.Repo) (project.CheckReport, error)
+	currentState           func(context.Context, string, *awfgit.Repo) (project.CurrentStateReport, error)
 	indexTree              func(context.Context, string) (*snapshot.Tree, error)
 	driftCategories        func([]manifest.Drift, bool) ([]presentation.ReportCategory, error)
 	currentStateCategories func(project.CurrentStateReport, bool) ([]presentation.ReportCategory, error)
@@ -61,31 +62,33 @@ func (e *repoIndexPreparationError) Unwrap() error { return e.err }
 func productionRepoCheckDependencies() repoCheckDependencies {
 	return repoCheckDependencies{
 		loadConfig: config.Load,
-		openProject: func(ctx context.Context, root string, cfg *config.Config) (*project.Project, error) {
+		openProject: func(ctx context.Context, root string, cfg *config.Config) (*project.ProjectState, *awfgit.Repo, error) {
 			repo, _, err := awfgit.OpenContaining(root)
 			if err != nil {
 				if !errors.Is(err, awfgit.ErrNotARepository) {
-					return nil, err
+					return nil, nil, err
 				}
-				return project.NewLoaderWithoutRepository(func(dir string) (*config.Config, error) {
+				state, _, openErr := project.NewLoaderWithoutRepository(func(dir string) (*config.Config, error) {
 					if dir != config.RootDir(root) { // coverage-ignore: Loader.Open requests exactly the selected root's config directory
 						return nil, fmt.Errorf("unexpected config root %q", dir)
 					}
 					return cfg, nil
-				}, catalog.Standard, awfgit.ProjectResidentRoot).Open(ctx, root)
+				}, catalog.Standard, awfgit.ProjectResidentRoot).OpenForOperation(ctx, root)
+				return state, nil, openErr
 			}
-			return project.NewLoader(func(dir string) (*config.Config, error) {
+			state, _, openErr := project.NewLoader(func(dir string) (*config.Config, error) {
 				if dir != config.RootDir(root) { // coverage-ignore: Loader.Open requests exactly the selected root's config directory
 					return nil, fmt.Errorf("unexpected config root %q", dir)
 				}
 				return cfg, nil
-			}, catalog.Standard, awfgit.ProjectResidentRoot, repo).Open(ctx, root)
+			}, catalog.Standard, awfgit.ProjectResidentRoot, repo).OpenForOperation(ctx, root)
+			return state, repo, openErr
 		},
-		checkReport: func(ctx context.Context, p *project.Project) (project.CheckReport, error) {
-			return p.CheckReport(ctx)
+		checkReport: func(ctx context.Context, state *project.ProjectState, cfg *config.Config, repo *awfgit.Repo) (project.CheckReport, error) {
+			return project.BuildCheckReport(state, cfg, repo, ctx)
 		},
-		currentState: func(ctx context.Context, p *project.Project) (project.CurrentStateReport, error) {
-			return p.CheckCurrentState(ctx)
+		currentState: func(ctx context.Context, root string, repo *awfgit.Repo) (project.CurrentStateReport, error) {
+			return project.CheckCurrentState(root, repo, ctx)
 		},
 		driftCategories:        project.DriftCategories,
 		currentStateCategories: project.CurrentStateCategories,
@@ -110,17 +113,18 @@ func repoCheckSystem(root string, aggregate bool, leadingNotes []string, planNot
 				return err
 			}},
 			{ID: repoRequirementProject, Dependencies: []execution.RequirementID{repoRequirementConfig}, Prepare: func(ctx context.Context) error {
-				p, err := deps.openProject(ctx, root, inputs.config)
-				inputs.project = p
+				state, repo, err := deps.openProject(ctx, root, inputs.config)
+				inputs.projectState = state
+				inputs.repo = repo
 				return err
 			}},
 			{ID: repoRequirementCheckReport, Dependencies: []execution.RequirementID{repoRequirementProject}, Prepare: func(ctx context.Context) error {
-				r, err := deps.checkReport(ctx, inputs.project)
+				r, err := deps.checkReport(ctx, inputs.projectState, inputs.config, inputs.repo)
 				inputs.checkReport = r
 				return err
 			}},
 			{ID: repoRequirementCurrentState, Dependencies: []execution.RequirementID{repoRequirementProject}, Prepare: func(ctx context.Context) error {
-				r, err := deps.currentState(ctx, inputs.project)
+				r, err := deps.currentState(ctx, root, inputs.repo)
 				inputs.currentState = r
 				return err
 			}},

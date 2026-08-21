@@ -60,7 +60,7 @@ func TestCommitPolicyConsumerConfigHash(t *testing.T) {
 	}
 	previous := consumerBefore
 	for i, policy := range policies {
-		p.Cfg.CommitPolicy = policy
+		testConfig(p).CommitPolicy = policy
 		got, err := artifactConfigHash(renderInputsForTest(p), "{{ with .commitPolicy }}{{ .GrandfatheredThrough }}{{ end }}", config.Sidecar{}, nil, eff)
 		if err != nil {
 			t.Fatal(err)
@@ -132,7 +132,7 @@ func TestTemplateSourceRootChangesOnlyActivatedMarkdownConfigHash(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	p.Cfg.Render = &config.RenderConfig{TemplateSourceRoot: "templates"}
+	testConfig(p).Render = &config.RenderConfig{TemplateSourceRoot: "templates"}
 	active, err := renderTarget(renderInputsForTest(p), "adr-readme", "", tid, projectCatalog(renderInputsForTest(p)).Docs["adr-readme"].Sections, sc, projectData(renderInputsForTest(p), sc, map[string]bool{}), "out.md", map[string]bool{})
 	if err != nil {
 		t.Fatal(err)
@@ -144,7 +144,7 @@ func TestTemplateSourceRootChangesOnlyActivatedMarkdownConfigHash(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	p.Cfg.Render = nil
+	testConfig(p).Render = nil
 	nativeAbsent, err := renderTarget(renderInputsForTest(p), "hooks", "", "hooks/pre-commit.sh.tmpl", nil, sc, projectData(renderInputsForTest(p), sc, map[string]bool{}), "hook", map[string]bool{}, &renderOutputOptions{encoder: PlainAgentDialect})
 	if err != nil {
 		t.Fatal(err)
@@ -184,7 +184,7 @@ func TestProfileChangesConfigHash(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p.Cfg.Profile = "full"
+	testConfig(p).Profile = "full"
 	full, err := artifactConfigHash(renderInputsForTest(p), "plain", config.Sidecar{}, nil, nil)
 	if err != nil {
 		t.Fatal(err)

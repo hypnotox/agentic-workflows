@@ -12,7 +12,7 @@ func deadSkillRefs(t *testing.T, files map[string]string) []string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rendered, err := p.RenderAll()
+	rendered, err := renderAll(p)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -133,7 +133,7 @@ func TestCatalogDataChangesConfigHash(t *testing.T) {
 	}
 	hashOf := func() string {
 		t.Helper()
-		files, err := p.RenderAll()
+		files, err := renderAll(p)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -146,15 +146,15 @@ func TestCatalogDataChangesConfigHash(t *testing.T) {
 		return ""
 	}
 	before := hashOf()
-	selected := p.state.catalog()
+	selected := p.catalog()
 	spec := selected.Skills["tdd"]
 	spec.Data = map[string]any{"testSurfaces": []any{
 		map[string]any{"name": "Changed", "kind": "unit", "location": "here"},
 	}}
 	selected.Skills["tdd"] = spec
-	state := *p.state
+	state := *p
 	state.selectedCat = catalog.NewView(selected)
-	p.state = &state
+	p = &state
 	after := hashOf()
 	if before == after {
 		t.Fatalf("ConfigHash unchanged after catalog default-data change: %s", before)

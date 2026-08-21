@@ -19,7 +19,7 @@ func renderGlossary(t *testing.T, root string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	files, err := p.RenderAll()
+	files, err := renderAll(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,7 +176,7 @@ func TestGlossaryContentViolations(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := p.RenderAll(); err == nil || !strings.Contains(err.Error(), tc.wantErr) || !strings.Contains(err.Error(), glossarySidecarPath) {
+			if _, err := renderAll(p); err == nil || !strings.Contains(err.Error(), tc.wantErr) || !strings.Contains(err.Error(), glossarySidecarPath) {
 				t.Errorf("want render error containing %q and %q, got: %v", tc.wantErr, glossarySidecarPath, err)
 			}
 		})

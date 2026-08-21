@@ -169,10 +169,10 @@ func newLoader(loadConfigTree LoadConfigTree, standard *catalog.Catalog, resolve
 	return &Loader{loadConfigTree: loadConfigTree, view: catalog.NewView(standard), resolveResidentRoot: resolveResidentRoot, repo: repo}
 }
 
-// projectState is the Loader-owned immutable fact snapshot. It contains no
-// repository handle or tree reader: those are operation dependencies retained
-// by the temporary Project facade until their focused extraction.
-type projectState struct {
+// ProjectState is the Loader-owned immutable fact snapshot. It contains no
+// repository handle or tree reader; operations receive those dependencies
+// directly at their call boundaries.
+type ProjectState struct {
 	invokingRoot string
 	roots        resident.Roots
 	nested       bool
@@ -182,12 +182,12 @@ type projectState struct {
 	targets      []Target
 }
 
-func newProjectState(root string, roots resident.Roots, nested bool, cfg *config.Config, selected, complete *catalog.Catalog, targets []Target) (*projectState, error) {
+func newProjectState(root string, roots resident.Roots, nested bool, cfg *config.Config, selected, complete *catalog.Catalog, targets []Target) (*ProjectState, error) {
 	facts, err := config.NewFacts(cfg)
 	if err != nil {
 		return nil, err
 	}
-	return &projectState{
+	return &ProjectState{
 		invokingRoot: root,
 		roots:        roots,
 		nested:       nested,
@@ -198,11 +198,11 @@ func newProjectState(root string, roots resident.Roots, nested bool, cfg *config
 	}, nil
 }
 
-func (s *projectState) catalog() *catalog.Catalog { return s.selectedCat.Catalog() }
-func (s *projectState) completeCatalog() *catalog.Catalog {
+func (s *ProjectState) catalog() *catalog.Catalog { return s.selectedCat.Catalog() }
+func (s *ProjectState) completeCatalog() *catalog.Catalog {
 	return s.completeCat.Catalog()
 }
-func (s *projectState) resolvedTargets() []Target { return cloneTargets(s.targets) }
+func (s *ProjectState) resolvedTargets() []Target { return cloneTargets(s.targets) }
 
 func cloneTargets(source []Target) []Target {
 	out := slices.Clone(source)
@@ -217,54 +217,33 @@ func cloneTargets(source []Target) []Target {
 }
 
 // renderInputs is the small rendering concern boundary. Immutable loaded facts
-// remain in projectState; cfg and read are the selected operation tree. Git is
+// remain in ProjectState; cfg and read are the selected operation tree. Git is
 // deliberately not a field: repository operations take it explicitly.
 type renderInputs struct {
-	state *projectState
+	state *ProjectState
 	cfg   *config.Config
 	read  ProjectTreeReader
 }
 
-func newRenderInputs(state *projectState, cfg *config.Config, read ProjectTreeReader) renderInputs {
+func newRenderInputs(state *ProjectState, cfg *config.Config, read ProjectTreeReader) renderInputs {
 	return renderInputs{state: state, cfg: cfg, read: read}
 }
 
 func (p renderInputs) root() string                      { return p.state.invokingRoot }
 func (p renderInputs) residentRoots() resident.Roots     { return p.state.roots }
-func (p renderInputs) targets() []Target                 { return p.state.resolvedTargets() }
+func (p renderInputs) targets() []Target                 { return p.state.Targets() }
 func (p renderInputs) catalog() *catalog.Catalog         { return p.state.catalog() }
 func (p renderInputs) completeCatalog() *catalog.Catalog { return p.state.completeCatalog() }
 func (p renderInputs) isNested() bool                    { return p.state.nested }
 
-// Project is the bounded compatibility facade for the frozen production
-// callers. Its existing operation methods remain only until Phase 3; state
-// facts live in state, while repository and tree dependencies stay operation
-// scoped during the intervening extraction.
-type Project struct {
-	state *projectState
-	// Root is the invoking checkout and remains the sole tracked-config authority.
-	Root string
-	// roots anchors output resolution: its tracked half mirrors Root, its
-	// resident half is the primary checkout selected by Git's common control
-	// root. Non-Git fixture projects retain Root so ordinary config-only tests
-	// remain useful. Constructed once, where the project is.
-	roots   resident.Roots
-	Cfg     *config.Config
-	Targets []Target
-	// completeCat retains the Loader-injected complete catalog so alternate
-	// repository universes can select another profile without consulting globals.
-	completeCat *catalog.Catalog
-	cat         *catalog.Catalog
-	// read selects an immutable project-tree universe for render inputs. A nil
-	// reader means ordinary filesystem rendering.
-	read ProjectTreeReader
-	// nested records that Root is an adopted subtree of the containing Git
-	// repository, whose resident outputs live outside the subtree index.
-	nested bool
-	// repo is the Git handle selected at the composition root and written once
-	// here, nil when the project tree carries no repository.
-	repo *awfgit.Repo
-}
+// Root returns the invoking checkout root.
+func (s *ProjectState) Root() string { return s.invokingRoot }
+
+// Config returns a defensive copy of the immutable loaded configuration facts.
+func (s *ProjectState) Config() *config.Config { return s.facts.Config() }
+
+// Targets returns a defensive copy of the resolved targets.
+func (s *ProjectState) Targets() []Target { return s.resolvedTargets() }
 
 // gitRepo returns the handle this project reads Git through, or the reason it
 // has none. Opening is never retried per operation: the handle is chosen once,
@@ -278,7 +257,7 @@ func gitRepo(root string, repo *awfgit.Repo) (*awfgit.Repo, error) {
 
 // Open is the transitional compatibility entry point for callers not yet
 // migrated to outer composition. New code composes a Loader explicitly.
-func Open(ctx context.Context, root string) (*Project, error) {
+func Open(ctx context.Context, root string) (*ProjectState, error) {
 	repo, _, err := awfgit.OpenContaining(root)
 	if err != nil && !errors.Is(err, awfgit.ErrNotARepository) {
 		return nil, err
@@ -289,49 +268,47 @@ func Open(ctx context.Context, root string) (*Project, error) {
 	return NewLoader(config.Load, catalog.CompleteView().Catalog(), awfgit.ProjectResidentRoot, repo).Open(ctx, root)
 }
 
-// Open loads, validates, and derives one project with the Loader's dependencies.
-func (l *Loader) Open(ctx context.Context, root string) (*Project, error) {
+// Open loads, validates, and derives one project's immutable facts.
+func (l *Loader) Open(ctx context.Context, root string) (*ProjectState, error) {
+	state, _, err := l.OpenForOperation(ctx, root)
+	return state, err
+}
+
+// OpenForOperation returns immutable state together with the one concrete
+// configuration tree selected during loading. Commands pass that tree only to
+// operations that read sidecars, parts, or source bytes.
+func (l *Loader) OpenForOperation(ctx context.Context, root string) (*ProjectState, *config.Config, error) {
 	cfg, err := l.loadConfigTree(config.RootDir(root))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if cfg == nil {
-		return nil, errors.New("project Loader: load config tree returned nil config")
+		return nil, nil, errors.New("project Loader: load config tree returned nil config")
 	}
 	if err := cfg.Validate(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	completeCat := l.view.Catalog()
 	selected := catalog.NewProfileView(completeCat, cfg.Profile)
 	cat := selected.Catalog()
 	if err := catalog.ValidateWorkflowProfiles(cat); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	targets, err := resolveTargets(KnownTargets())
 	if err != nil { // coverage-ignore: configured-target validation succeeded and KnownTargets is exhaustively backed by built-in descriptor tests
-		return nil, err
+		return nil, nil, err
 	}
 	roots := resident.NewRoots(root, l.resolveResidentRoot(ctx, root))
 	nested := l.repo != nil && l.repo.IsNested()
 	state, err := newProjectState(root, roots, nested, cfg, cat, completeCat, targets)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	p := &Project{
-		state:       state,
-		Root:        state.invokingRoot,
-		roots:       state.roots,
-		Cfg:         cfg.OperationTree().Bind(state.facts),
-		Targets:     state.resolvedTargets(),
-		completeCat: state.completeCatalog(),
-		cat:         state.catalog(),
-		nested:      state.nested,
-		repo:        l.repo,
+	cfg = cfg.OperationTree().Bind(state.facts)
+	if err := validateAgainstCatalog(newRenderInputs(state, cfg, nil)); err != nil {
+		return nil, nil, err
 	}
-	if err := validateAgainstCatalog(newRenderInputs(p.state, p.Cfg, p.read)); err != nil {
-		return nil, err
-	}
-	return p, nil
+	return state, cfg, nil
 }
 
 // workingTree snapshots the project's working universe through its handle.
@@ -352,12 +329,12 @@ func indexTree(root string, repo *awfgit.Repo, ctx context.Context) (*snapshot.T
 	return snapshot.IndexTree(ctx, repo)
 }
 
-// stagedProject composes the minimal index-only compatibility facade. It never
+// stagedProject composes the minimal index-only rendering inputs. It never
 // invokes Loader or reads working-tree configuration; each staged operation
 // supplies the repository selected at its boundary.
 func stagedProject(root string, prefix string) renderInputs {
 	complete := catalog.CompleteView().Catalog()
-	state := &projectState{
+	state := &ProjectState{
 		invokingRoot: root,
 		roots:        resident.NewRoots(root, ""),
 		nested:       prefix != "",

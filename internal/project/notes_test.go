@@ -32,7 +32,7 @@ func TestUnsetVarNotesPresentKeySemantics(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			notes, err := p.AdvisoryNotes(testContext(t))
+			notes, err := advisoryNotesProject(p, testContext(t))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -57,7 +57,7 @@ func TestUnsetVarNotesCollapsesAdapterDuplicates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.AdvisoryNotes(testContext(t))
+	notes, err := advisoryNotesProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestUnsetVarNotesSurfacesRenderError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.AdvisoryNotes(testContext(t)); err == nil {
+	if _, err := advisoryNotesProject(p, testContext(t)); err == nil {
 		t.Fatal("expected AdvisoryNotes to surface the render error")
 	}
 }
@@ -97,7 +97,7 @@ func TestAdvisoryNotesSurfacesDomainDocError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.AdvisoryNotes(testContext(t)); err == nil {
+	if _, err := advisoryNotesProject(p, testContext(t)); err == nil {
 		t.Fatal("expected AdvisoryNotes to surface the domain-doc generation error")
 	}
 }
@@ -114,7 +114,7 @@ func TestStubNotesPathKeyedAcrossTargets(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.AdvisoryNotes(testContext(t))
+	notes, err := advisoryNotesProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,7 +166,7 @@ func TestStubNotesReportsDefaultsAndParts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.AdvisoryNotes(testContext(t))
+	notes, err := advisoryNotesProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -180,7 +180,7 @@ func TestStubNotesReportsDefaultsAndParts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err = p2.AdvisoryNotes(testContext(t))
+	notes, err = advisoryNotesProject(p2, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +197,7 @@ func TestStubNotesDomainDocs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.AdvisoryNotes(testContext(t))
+	notes, err := advisoryNotesProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,7 +220,7 @@ func TestMarkerNotesPartKeyedAndDeduplicated(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.AdvisoryNotes(testContext(t))
+	notes, err := advisoryNotesProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -249,7 +249,7 @@ func TestMarkerNotesInlineAndFencedSilent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.AdvisoryNotes(testContext(t))
+	notes, err := advisoryNotesProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -271,7 +271,7 @@ func TestMarkerNotesDomainDocParts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.AdvisoryNotes(testContext(t))
+	notes, err := advisoryNotesProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -286,7 +286,7 @@ func TestUnsetVarNotesFullySetIsSilent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.AdvisoryNotes(testContext(t))
+	notes, err := advisoryNotesProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -544,7 +544,7 @@ func TestGlossaryTersenessNotesCoversShippedLayer(t *testing.T) {
 			t.Fatal(err)
 		}
 		// projectCatalog(renderInputsForTest(p))'s Docs map is this project's own clone, but the rest of this
-		// Project reads it, so swap in a local copy rather than mutating the
+		// ProjectState reads it, so swap in a local copy rather than mutating the
 		// project's catalog mid-test.
 		e := projectCatalog(renderInputsForTest(p)).Docs["glossary"]
 		e.Data = map[string]any{"standardTerms": []any{
@@ -553,9 +553,9 @@ func TestGlossaryTersenessNotesCoversShippedLayer(t *testing.T) {
 		cp := *projectCatalog(renderInputsForTest(p))
 		cp.Docs = maps.Clone(projectCatalog(renderInputsForTest(p)).Docs)
 		cp.Docs["glossary"] = e
-		state := *p.state
+		state := *p
 		state.selectedCat = catalog.NewView(&cp)
-		p.state = &state
+		p = &state
 		notes, err := glossaryTersenessNotes(renderInputsForTest(p))
 		if err != nil {
 			t.Fatal(err)

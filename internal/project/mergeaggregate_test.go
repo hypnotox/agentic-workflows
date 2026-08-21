@@ -37,7 +37,7 @@ func TestCheckStagedMergeUsesTheAggregateContract(t *testing.T) {
 	})
 
 	p := openStaged(t, dir)
-	authored, err := p.CheckStaged(testContext(t))
+	authored, err := checkStagedProject(p, testContext(t))
 	if err != nil {
 		t.Fatalf("CheckStaged: %v", err)
 	}
@@ -49,7 +49,7 @@ func TestCheckStagedMergeUsesTheAggregateContract(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, ".git", "MERGE_HEAD"), []byte("deadbeef\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	merged, err := p.CheckStaged(testContext(t))
+	merged, err := checkStagedProject(p, testContext(t))
 	if err != nil {
 		t.Fatalf("CheckStaged during a merge: %v", err)
 	}
@@ -90,7 +90,7 @@ func TestAuditTransitionsMergeUsesTheAggregateContract(t *testing.T) {
 	merge := gitfixture.Merge(t, repo, "merge", b0, f1)
 
 	p := openStaged(t, dir)
-	findings, _, err := p.Audit(testContext(t), b0, merge)
+	findings, _, err := auditProject(p, testContext(t), b0, merge)
 	if err != nil {
 		t.Fatalf("Audit: %v", err)
 	}
@@ -114,7 +114,7 @@ func TestCheckStagedToleratesUnresolvableControlRoot(t *testing.T) {
 	gitfixture.Stage(t, repo, stagedHeadFiles())
 	gitfixture.Commit(t, repo, "head", nil)
 	p := openStaged(t, dir)
-	if _, err := p.CheckStaged(testContext(t)); err != nil {
+	if _, err := checkStagedProject(p, testContext(t)); err != nil {
 		t.Fatalf("baseline CheckStaged: %v", err)
 	}
 
@@ -127,7 +127,7 @@ func TestCheckStagedToleratesUnresolvableControlRoot(t *testing.T) {
 	if err := os.Symlink(gitdir, filepath.Join(dir, ".git")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.CheckStaged(testContext(t)); err != nil {
+	if _, err := checkStagedProject(p, testContext(t)); err != nil {
 		t.Fatalf("a symlinked control root must not fail the staged check: %v", err)
 	}
 }

@@ -11,11 +11,11 @@ func runReadPlan(ctx context.Context, root string, args []string, stdout io.Writ
 	if len(args) != 2 {
 		return &usageErr{"usage: awf read plan <plan> <P[.T]>"}
 	}
-	p, err := project.Open(ctx, root)
+	state, _, _, err := openProjectOperation(ctx, root)
 	if err != nil {
 		return err
 	}
-	projection, err := p.ReadPlan(args[0], args[1])
+	projection, err := project.ReadPlan(state.Root(), args[0], args[1])
 	if err != nil {
 		return err
 	}

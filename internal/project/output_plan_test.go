@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/render"
@@ -23,7 +22,7 @@ func TestLocalDocsOutputPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := p.OutputPlan(testContext(t))
+	plan, err := outputPlanProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +63,7 @@ func TestLocalDocDeclarationDeclaresExistingOutputInput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := p.OutputPlan(testContext(t))
+	plan, err := outputPlanProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +71,7 @@ func TestLocalDocDeclarationDeclaresExistingOutputInput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	declarations, err := BuildOutputDeclarations(p.Cfg, projectCatalog(renderInputsForTest(p)), p.Targets, filesystemProjectReader{root: p.Root}, corpus)
+	declarations, err := BuildOutputDeclarations(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: p.Root()}, corpus)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +94,7 @@ func TestLocalDocCollisionWithTargetOutputPrecedesRendering(t *testing.T) {
 		t.Fatal(err)
 	}
 	setTestTargets(p, append(testTargets(p), Target{Name: "collision", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "docs/runbooks/x.md", TemplateID: "docs/architecture.md.tmpl", Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}}))
-	if _, err := p.OutputPlan(testContext(t)); err == nil || !strings.Contains(err.Error(), "collides with managed output") {
+	if _, err := outputPlanProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "collides with managed output") {
 		t.Fatalf("collision error = %v", err)
 	}
 }
@@ -119,7 +118,7 @@ func TestOutputPlanPropagatesPreAdoptionEnumerationFault(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chmod(denied, 0o755) })
-	if _, err := p.OutputPlan(testContext(t)); err == nil {
+	if _, err := outputPlanProject(p, testContext(t)); err == nil {
 		t.Fatal("output plan built from a truncated enumeration")
 	}
 }
@@ -155,7 +154,7 @@ func TestTargetDescriptorValidation(t *testing.T) {
 			t.Fatal(err)
 		}
 		setTestTargets(p, []Target{target})
-		if _, err := p.OutputPlan(testContext(t)); err == nil {
+		if _, err := outputPlanProject(p, testContext(t)); err == nil {
 			t.Fatalf("planner accepted invalid target %#v", target)
 		}
 	}
@@ -196,7 +195,7 @@ func TestBridgeRenderIdentity(t *testing.T) {
 		}},
 	}
 	setTestTargets(p, []Target{claudeTarget, custom, piTarget})
-	plan, err := p.OutputPlan(testContext(t))
+	plan, err := outputPlanProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -268,7 +267,7 @@ func TestBridgeRenderIdentity(t *testing.T) {
 
 	custom.BridgeTemplate = "missing/custom-bridge.tmpl"
 	setTestTargets(p, []Target{custom})
-	if _, err := p.OutputPlan(testContext(t)); err == nil || !strings.Contains(err.Error(), "read template missing/custom-bridge.tmpl") {
+	if _, err := outputPlanProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "read template missing/custom-bridge.tmpl") {
 		t.Fatalf("missing custom bridge template error = %v", err)
 	}
 }
@@ -285,7 +284,7 @@ func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *test
 	shared.Name = "second-pi"
 	shared.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
 	setTestTargets(p, append(testTargets(p), shared))
-	op, err := p.OutputPlan(testContext(t))
+	op, err := outputPlanProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -304,7 +303,7 @@ func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *test
 	targets := testTargets(p)
 	targets[len(targets)-1].Name = "renamed-pi"
 	setTestTargets(p, targets)
-	op, err = p.OutputPlan(testContext(t))
+	op, err = outputPlanProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -316,7 +315,7 @@ func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *test
 	targets = testTargets(p)
 	targets[len(targets)-1].Outputs[0].Policy = OutputPolicy{Regenerate: true}
 	setTestTargets(p, targets)
-	if _, err := p.OutputPlan(testContext(t)); err == nil || !strings.Contains(err.Error(), "conflicting output recipes") {
+	if _, err := outputPlanProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "conflicting output recipes") {
 		t.Fatalf("conflicting shared output error = %v", err)
 	}
 }
@@ -351,7 +350,7 @@ func TestCurrentStateOutputPlanMatchesTree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	op, err := p.OutputPlan(testContext(t))
+	op, err := outputPlanProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -384,8 +383,8 @@ func TestCurrentStateOutputPlanMatchesTree(t *testing.T) {
 			t.Errorf("planned current-state output %s does not match the tree", n.Path)
 		}
 	}
-	if seenTopics == 0 || seenDomains != len(p.Cfg.Domains) {
-		t.Fatalf("current-state output coverage: topics=%d domains=%d want-domains=%d", seenTopics, seenDomains, len(p.Cfg.Domains))
+	if seenTopics == 0 || seenDomains != len(testConfig(p).Domains) {
+		t.Fatalf("current-state output coverage: topics=%d domains=%d want-domains=%d", seenTopics, seenDomains, len(testConfig(p).Domains))
 	}
 	testsupport.WalkRepoFiles(t, root, func(rel string) bool {
 		return filepath.Ext(rel) == ".md" &&
@@ -411,7 +410,7 @@ func TestOutputPlanTopicNodesHaveLiteralPathsAndInputs(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
 	p, _ := Open(testContext(t), root)
-	op, err := p.OutputPlan(testContext(t))
+	op, err := outputPlanProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -446,9 +445,13 @@ func TestOutputPlanPropagatesLocalRenderReadFault(t *testing.T) {
 			}
 			failure := errors.New("local output read failed")
 			calls := 0
-			p.read = faultingProjectReader{ProjectTreeReader: filesystemProjectReader{root: root},
+			read := faultingProjectReader{ProjectTreeReader: filesystemProjectReader{root: root},
 				path: "docs/runbooks/incident.md", err: failure, failAfter: tc.failAfter, calls: &calls}
-			if _, err := p.OutputPlan(testContext(t)); !errors.Is(err, failure) {
+			cfg, err := config.Load(config.RootDir(root))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := outputPlan(newRenderInputs(p, cfg, read), testContext(t)); !errors.Is(err, failure) {
 				t.Fatalf("output plan error = %v, want %v", err, failure)
 			}
 		})
@@ -463,7 +466,7 @@ func TestOutputPlanPropagatesConfigReferenceRenderFault(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.OutputPlan(testContext(t)); err == nil || !strings.Contains(err.Error(), "malformed awf:comment") {
+	if _, err := outputPlanProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "malformed awf:comment") {
 		t.Fatalf("output plan error = %v", err)
 	}
 }
@@ -472,8 +475,10 @@ func TestTargetOutputDeclarationsRejectUnreadableTemplate(t *testing.T) {
 	bad := piTarget
 	bad.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
 	bad.Outputs[0].TemplateID = "missing/target-output.tmpl"
-	p := &Project{Cfg: &config.Config{Prefix: "example"}, cat: catalog.NewView(catalog.Standard).Catalog(), Targets: []Target{bad}}
-	_, err := targetOutputDeclarations(renderInputsForTest(p), nil)
+	cfg := &config.Config{Prefix: "example"}
+	p := testState(cfg)
+	p.targets = []Target{bad}
+	_, err := targetOutputDeclarations(newRenderInputs(p, cfg, nil), nil)
 	t.Logf("target output declaration error = %v", err)
 	if err == nil || !strings.Contains(err.Error(), "read template missing/target-output.tmpl") {
 		t.Fatalf("unreadable target output template error = %v", err)
@@ -484,8 +489,10 @@ func TestTargetOutputDeclarationsRejectUnknownRequiredSkill(t *testing.T) {
 	bad := piTarget
 	bad.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
 	bad.Outputs[0].RequiresSkill = "missing"
-	p := &Project{Cfg: &config.Config{Prefix: "example"}, cat: catalog.NewView(catalog.Standard).Catalog(), Targets: []Target{bad}}
-	if _, err := targetOutputDeclarations(renderInputsForTest(p), nil); err == nil || !strings.Contains(err.Error(), "unknown catalog skill") {
+	cfg := &config.Config{Prefix: "example"}
+	p := testState(cfg)
+	p.targets = []Target{bad}
+	if _, err := targetOutputDeclarations(newRenderInputs(p, cfg, nil), nil); err == nil || !strings.Contains(err.Error(), "unknown catalog skill") {
 		t.Fatalf("unknown target output requirement error = %v", err)
 	}
 }

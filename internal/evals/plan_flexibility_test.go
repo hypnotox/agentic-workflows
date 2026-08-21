@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
@@ -45,7 +46,11 @@ func syncPlanFlexibilityProfile(t *testing.T, profile string) string {
 	if err != nil {
 		t.Fatalf("open %s profile: %v", profile, err)
 	}
-	if _, _, _, err := p.InitializeReport(testsupport.Context(t), project.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
+	cfg, err := config.Load(config.RootDir(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := project.InitializeReport(p, cfg, testsupport.Context(t), project.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
 		t.Fatalf("initialize %s profile: %v", profile, err)
 	}
 	return root

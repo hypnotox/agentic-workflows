@@ -15,8 +15,8 @@ import (
 
 const domainCurrentStateStub = "Describe where the %q domain stands today: its current shape, load-bearing constraints, and what a newcomer must know before changing it. Refresh by hand when the position materially shifts. Follow `docs/doc-standard.md` for tone: terse, present tense, reference other docs rather than restate them.\n"
 
-func scaffoldDomainCurrentState(p *project.Project, name string) error {
-	path := p.Cfg.PartPath("domains", name, "current-state")
+func scaffoldDomainCurrentState(cfg *config.Config, name string) error {
+	path := cfg.PartPath("domains", name, "current-state")
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
@@ -29,16 +29,17 @@ func scaffoldDomainCurrentState(p *project.Project, name string) error {
 }
 
 type domainDependencies struct {
-	open        func(context.Context, string) (*project.Project, error)
+	open        func(context.Context, string) (*config.Config, error)
 	edit        func([]byte, string, string, bool) ([]byte, error)
 	write       func(string, []byte, os.FileMode) error
-	scaffold    func(*project.Project, string) error
+	scaffold    func(*config.Config, string) error
 	synchronize func(context.Context, string, io.Writer) error
 	authored    func(string, string) (bool, error)
 }
 
-func openDomainProject(ctx context.Context, root string) (*project.Project, error) {
-	return project.Open(ctx, root)
+func openDomainProject(ctx context.Context, root string) (*config.Config, error) {
+	_, cfg, _, err := openProjectOperation(ctx, root)
+	return cfg, err
 }
 
 func syncDomainProject(ctx context.Context, root string, stdout io.Writer) error {
@@ -67,23 +68,23 @@ func runNewDomainWith(ctx context.Context, root, name string, stdout io.Writer, 
 	if err := gate(ctx, root); err != nil {
 		return err
 	}
-	p, err := dependencies.open(ctx, root)
+	cfg, err := dependencies.open(ctx, root)
 	if err != nil {
 		return err
 	}
-	for _, domain := range p.Cfg.Domains {
+	for _, domain := range cfg.Domains {
 		if domain == name {
 			return fmt.Errorf("domain %q already exists", name)
 		}
 	}
-	updated, err := dependencies.edit(p.Cfg.Source(), "domains", name, true)
+	updated, err := dependencies.edit(cfg.Source(), "domains", name, true)
 	if err != nil {
 		return err
 	}
 	if err := dependencies.write(config.ConfigPath(root), updated, 0o644); err != nil {
 		return err
 	}
-	if err := dependencies.scaffold(p, name); err != nil {
+	if err := dependencies.scaffold(cfg, name); err != nil {
 		return err
 	}
 	return dependencies.synchronize(ctx, root, stdout)
@@ -100,18 +101,18 @@ func runRemoveDomainWith(ctx context.Context, root, name string, stdout io.Write
 	if err := gate(ctx, root); err != nil {
 		return err
 	}
-	p, err := dependencies.open(ctx, root)
+	cfg, err := dependencies.open(ctx, root)
 	if err != nil {
 		return err
 	}
 	found := false
-	for _, domain := range p.Cfg.Domains {
+	for _, domain := range cfg.Domains {
 		found = found || domain == name
 	}
 	if !found {
 		return fmt.Errorf("domain %q is not configured", name)
 	}
-	updated, err := dependencies.edit(p.Cfg.Source(), "domains", name, false)
+	updated, err := dependencies.edit(cfg.Source(), "domains", name, false)
 	if err != nil {
 		return err
 	}
@@ -144,11 +145,11 @@ func hasDomainSidecarOrParts(root, name string) (bool, error) {
 }
 
 func runList(ctx context.Context, root, kindFilter string, stdout io.Writer) error {
-	p, err := project.Open(ctx, root)
+	state, cfg, _, err := openProjectOperation(ctx, root)
 	if err != nil {
 		return err
 	}
-	document, err := p.ListDocument(kindFilter)
+	document, err := project.BuildListDocument(state, cfg, kindFilter)
 	if err != nil {
 		return err
 	}

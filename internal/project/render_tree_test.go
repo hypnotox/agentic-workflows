@@ -25,7 +25,7 @@ func syncAndReadDebugging(t *testing.T, root string) string {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
 	rel := ".claude/skills/example-debugging/SKILL.md"
@@ -43,7 +43,7 @@ func syncAndReadAgents(t *testing.T, root string) string {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
 	b, err := os.ReadFile(filepath.Join(root, "AGENTS.md"))
@@ -60,7 +60,7 @@ func TestCheckReportAgentGuideSizeAdvisoryManagedOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	op, err := p.OutputPlan(testContext(t))
+	op, err := outputPlanProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,10 +71,10 @@ func TestCheckReportAgentGuideSizeAdvisoryManagedOnly(t *testing.T) {
 	if !found {
 		t.Fatal("agents guide is absent from the output plan")
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
-	report, err := p.CheckReport(testContext(t))
+	report, err := checkReportProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,7 +170,7 @@ func TestLocalDocGuideSize(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	// Reopening makes the second sync read the in-place local outputs back.
@@ -178,10 +178,10 @@ func TestLocalDocGuideSize(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
-	report, err := p.CheckReport(testContext(t))
+	report, err := checkReportProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -229,7 +229,7 @@ func TestMaintainableCodeDesignPartOverride(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
 	out, err := os.ReadFile(filepath.Join(root, "docs/maintainable-code-design.md"))
@@ -294,7 +294,7 @@ func TestTopicPartUsesRawPublicationSafeAssembly(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
 	p, _ := Open(testContext(t), root)
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	out, err := os.ReadFile(filepath.Join(root, "docs/topics/rendering/contracts.md"))

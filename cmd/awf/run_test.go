@@ -202,111 +202,32 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	type call struct{ file, owner, name string }
-	var calls []call
-	fset := token.NewFileSet()
 	for _, path := range paths {
 		if strings.HasSuffix(path, "_test.go") {
 			continue
 		}
-		src, err := parser.ParseFile(fset, path, nil, 0)
+		raw, err := os.ReadFile(path)
 		if err != nil {
-			t.Fatalf("parse %s: %v", path, err)
+			t.Fatal(err)
 		}
-		owners := map[token.Pos]string{}
-		for _, decl := range src.Decls {
-			fn, ok := decl.(*ast.FuncDecl)
-			if !ok || fn.Body == nil {
-				continue
-			}
-			ast.Inspect(fn.Body, func(n ast.Node) bool {
-				if n != nil {
-					owners[n.Pos()] = fn.Name.Name
-				}
-				return true
-			})
+		if strings.Contains(string(raw), "project.Open(") {
+			t.Errorf("%s retains compatibility project.Open composition", path)
 		}
-		ast.Inspect(src, func(n ast.Node) bool {
-			ce, ok := n.(*ast.CallExpr)
-			if !ok {
-				return true
-			}
-			name := ""
-			switch fun := ce.Fun.(type) {
-			case *ast.Ident:
-				if fun.Name == "runSync" || fun.Name == "runSyncPrinting" || fun.Name == "syncMutation" || fun.Name == "newProjectLoader" || fun.Name == "initProjectLoader" {
-					name = fun.Name
-				}
-			case *ast.SelectorExpr:
-				recv, ok := fun.X.(*ast.Ident)
-				if ok && recv.Name == "project" && (fun.Sel.Name == "NewLoader" || fun.Sel.Name == "NewLoaderWithoutRepository" || fun.Sel.Name == "Open" || fun.Sel.Name == "VerifyCommitPolicyAt") {
-					name = "project." + fun.Sel.Name
-				} else if ok && recv.Name == "loader" && fun.Sel.Name == "Open" {
-					name = "loader.Open"
-				} else if call, ok := fun.X.(*ast.CallExpr); ok && fun.Sel.Name == "Open" {
-					if constructor, ok := call.Fun.(*ast.SelectorExpr); ok {
-						constructorRecv, recvOK := constructor.X.(*ast.Ident)
-						if recvOK && constructorRecv.Name == "project" && (constructor.Sel.Name == "NewLoader" || constructor.Sel.Name == "NewLoaderWithoutRepository") {
-							name = "project." + constructor.Sel.Name + ".Open"
-						}
-					}
-				}
-			}
-			if name != "" {
-				calls = append(calls, call{file: path, owner: owners[ce.Pos()], name: name})
-			}
-			return true
-		})
 	}
-
-	want := map[call]int{
-		{file: "sync.go", owner: "runSync", name: "newProjectLoader"}:                                                     1,
-		{file: "sync.go", owner: "runSync", name: "runSyncPrinting"}:                                                      1,
-		{file: "sync.go", owner: "runSyncPrinting", name: "syncMutation"}:                                                 1,
-		{file: "sync.go", owner: "syncMutation", name: "loader.Open"}:                                                     1,
-		{file: "sync.go", owner: "newProjectLoader", name: "project.NewLoader"}:                                           1,
-		{file: "sync.go", owner: "newProjectLoader", name: "project.NewLoaderWithoutRepository"}:                          1,
-		{file: "dispatch.go", owner: "", name: "runSync"}:                                                                 1,
-		{file: "effort.go", owner: "openEffortComposition", name: "project.Open"}:                                         1,
-		{file: "init.go", owner: "runInitWithProjectLoader", name: "initProjectLoader"}:                                   1,
-		{file: "init.go", owner: "runInitWithProjectLoader", name: "syncMutation"}:                                        1,
-		{file: "upgrade_presentation.go", owner: "upgradeSyncMutationWith", name: "newProjectLoader"}:                     1,
-		{file: "upgrade_presentation.go", owner: "upgradeSyncMutationWith", name: "loader.Open"}:                          1,
-		{file: "adr.go", owner: "runADR", name: "project.Open"}:                                                           1,
-		{file: "audit.go", owner: "runAudit", name: "project.Open"}:                                                       1,
-		{file: "checkrepo.go", owner: "productionRepoCheckDependencies", name: "project.NewLoader"}:                       1,
-		{file: "checkrepo.go", owner: "productionRepoCheckDependencies", name: "project.NewLoader.Open"}:                  1,
-		{file: "checkrepo.go", owner: "productionRepoCheckDependencies", name: "project.NewLoaderWithoutRepository"}:      1,
-		{file: "checkrepo.go", owner: "productionRepoCheckDependencies", name: "project.NewLoaderWithoutRepository.Open"}: 1,
-		{file: "commitgate.go", owner: "openCommitGateProjectFromDisk", name: "project.Open"}:                             1,
-		{file: "commitpolicy.go", owner: "runCommitPolicy", name: "project.VerifyCommitPolicyAt"}:                         1,
-		{file: "config.go", owner: "runConfig", name: "project.Open"}:                                                     1,
-		{file: "context.go", owner: "runContext", name: "project.Open"}:                                                   1,
-		{file: "context.go", owner: "runUncovered", name: "project.Open"}:                                                 1,
-		{file: "init.go", owner: "probeCollisions", name: "project.Open"}:                                                 2,
-		{file: "init.go", owner: "runInitWithProjectLoader", name: "project.Open"}:                                        1,
-		{file: "list_add.go", owner: "runList", name: "project.Open"}:                                                     1,
-		{file: "list_add.go", owner: "openDomainProject", name: "project.Open"}:                                           1,
-		{file: "list_add.go", owner: "syncDomainProject", name: "runSync"}:                                                1,
-		{file: "new.go", owner: "newADR", name: "project.Open"}:                                                           1,
-		{file: "new.go", owner: "newPlan", name: "project.Open"}:                                                          1,
-		{file: "new.go", owner: "newPitfall", name: "project.Open"}:                                                       1,
-		{file: "new.go", owner: "newTopic", name: "project.Open"}:                                                         1,
-		{file: "read.go", owner: "runReadPlan", name: "project.Open"}:                                                     1,
-		{file: "topic.go", owner: "runTopic", name: "project.Open"}:                                                       1,
-	}
-	got := map[call]int{}
-	for _, site := range calls {
-		got[site]++
-	}
-	for site, count := range want {
-		if got[site] != count {
-			t.Errorf("call %s:%s %s count = %d, want %d", site.file, site.owner, site.name, got[site], count)
+	for file, fragments := range map[string][]string{
+		"projectstate.go": {"project.NewLoader(", "project.NewLoaderWithoutRepository(", ".OpenForOperation(ctx, root)"},
+		"sync.go":         {"newProjectLoader(root)", "loader.OpenForOperation(ctx, root)", "project.SyncReport(state, cfg, ctx)"},
+		"checkrepo.go":    {"project.BuildCheckReport(state, cfg, repo, ctx)", "project.CheckCurrentState(root, repo, ctx)"},
+	} {
+		raw, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
 		}
-		delete(got, site)
-	}
-	for site, count := range got {
-		t.Errorf("unexpected call %s:%s %s count %d", site.file, site.owner, site.name, count)
+		for _, fragment := range fragments {
+			if !strings.Contains(string(raw), fragment) {
+				t.Errorf("%s missing explicit composition %q", file, fragment)
+			}
+		}
 	}
 }
 

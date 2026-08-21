@@ -200,7 +200,7 @@ func TestContextFacetProjectionAndClosestCategory(t *testing.T) {
 	files["internal/foo/c_test.go"] = "package foo\n// invariant: alpha/one:tested (TestTested)\nfunc TestTested() {}\n"
 	files[".awf/topics/parts/alpha/one/current-state.md"] = "Intro.\n\n## Claims\n\n### `rule: order`\nOrder prose.\nSummary: Order summary.\nOrigin: ADR-0001\nReferences: core/g:everywhere\n\n### `invariant: tested`\nTests protect output.\nOrigin: ADR-0001\nBacking: test\n\n### `invariant: stable`\nOutput is stable.\nOrigin: ADR-0001\nBacking: unbacked\nVerify: by hand.\n"
 	p := ctxRepo(t, ctxConfig, files)
-	state, err := p.ContextState(testContext(t))
+	state, err := workingContextState(p)
 	if err != nil {
 		t.Fatal(err)
 	}

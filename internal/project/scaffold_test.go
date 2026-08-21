@@ -47,7 +47,7 @@ func TestPitfallScaffoldCLIContract(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := p.NewPitfall("New"); err == nil || !strings.Contains(err.Error(), "missing frontmatter") {
+			if _, err := newPitfallProject(p, "New"); err == nil || !strings.Contains(err.Error(), "missing frontmatter") {
 				t.Fatalf("load error = %v", err)
 			}
 		})
@@ -64,7 +64,7 @@ func TestPitfallScaffoldCLIContract(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := p.NewPitfall("New"); err == nil {
+			if _, err := newPitfallProject(p, "New"); err == nil {
 				t.Fatal("non-directory source root accepted")
 			}
 		})
@@ -136,11 +136,11 @@ func TestPitfallScaffoldCLIContract(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, title := range []string{"", "index", "日本語"} {
-			if _, err := p.NewPitfall(title); err == nil {
+			if _, err := newPitfallProject(p, title); err == nil {
 				t.Fatalf("title %q accepted", title)
 			}
 		}
-		if _, err := p.NewPitfall("Hazard"); err != nil {
+		if _, err := newPitfallProject(p, "Hazard"); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := os.Stat(filepath.Join(dir, "hazard-3.md")); err != nil {
@@ -151,7 +151,7 @@ func TestPitfallScaffoldCLIContract(t *testing.T) {
 
 // invariant: tooling/cli:pitfall-scaffold (TestNewPitfallPublicationFailureLeavesDestinationAbsent)
 func TestNewPitfallPublicationFailureLeavesDestinationAbsent(t *testing.T) {
-	if _, err := (&Project{Root: filepath.Join(t.TempDir(), "missing")}).NewPitfall("Unopened"); err == nil {
+	if _, err := newPitfallProject(&ProjectState{invokingRoot: filepath.Join(t.TempDir(), "missing")}, "Unopened"); err == nil {
 		t.Fatal("missing project root opened for pitfall scaffold")
 	}
 	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n")
@@ -293,7 +293,7 @@ func TestNewPitfallRootConfinement(t *testing.T) {
 			}
 			outside := t.TempDir()
 			tc.arrange(t, root, outside)
-			if _, err := p.NewPitfall("Escaping"); err == nil {
+			if _, err := newPitfallProject(p, "Escaping"); err == nil {
 				t.Fatal("unsafe source root accepted")
 			}
 			entries, err := os.ReadDir(outside)
@@ -318,7 +318,7 @@ func TestNewPitfallScaffoldContract(t *testing.T) {
 	if _, err := os.Stat(generated); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("unexpected generated fixture: %v", err)
 	}
-	document, err := p.NewPitfall("Unicode + punctuation: 日本語")
+	document, err := newPitfallProject(p, "Unicode + punctuation: 日本語")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -343,7 +343,7 @@ func TestNewPitfallScaffoldContract(t *testing.T) {
 	if _, err := os.Stat(generated); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("NewPitfall rendered generated output: %v", err)
 	}
-	if _, err := p.NewPitfall(" unicode\t+ PUNCTUATION: 日本語 "); err == nil || !strings.Contains(err.Error(), "duplicates") {
+	if _, err := newPitfallProject(p, " unicode\t+ PUNCTUATION: 日本語 "); err == nil || !strings.Contains(err.Error(), "duplicates") {
 		t.Fatalf("duplicate error = %v", err)
 	}
 }
@@ -525,7 +525,7 @@ func TestInitProducesCleanSyncableProject(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	if drift, err := checkProject(p, testContext(t)); err != nil || len(drift) != 0 {

@@ -47,7 +47,7 @@ type ContextState struct {
 // derives the catalog, targets, and layout from is built from the snapshot's
 // own configuration rather than the caller's, so the query answers about the
 // tree it was given.
-func contextState(state *projectState, repo *awfgit.Repo, ctx context.Context) (ContextState, error) {
+func contextState(state *ProjectState, repo *awfgit.Repo, ctx context.Context) (ContextState, error) {
 	ws, err := workingCurrentState(state.invokingRoot, repo, ctx)
 	if err != nil {
 		return ContextState{}, err

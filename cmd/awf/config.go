@@ -34,11 +34,11 @@ func runConfig(ctx context.Context, cwd, key string, stdout io.Writer) error {
 	if err := gate(ctx, cwd); err != nil {
 		return err
 	}
-	p, err := project.Open(ctx, cwd)
+	state, cfg, _, err := openProjectOperation(ctx, cwd)
 	if err != nil {
 		return err
 	}
-	model, err := p.ConfigReferenceModel(ctx)
+	model, err := project.BuildConfigReference(state, cfg, ctx)
 	if err != nil {
 		return err
 	}

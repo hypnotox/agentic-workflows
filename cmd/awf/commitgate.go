@@ -21,8 +21,8 @@ import (
 type commitGateDependencies struct {
 	readFile           func(string) ([]byte, error)
 	readStdin          func(io.Reader) ([]byte, error)
-	openProject        func(context.Context, string) (*project.Project, error)
-	authorize          func(context.Context, *project.Project, commitmsg.Message) (project.CommitAuthorizationResult, error)
+	openProject        func(context.Context, string) (*config.Config, *git.Repo, error)
+	authorize          func(context.Context, string, *git.Repo, commitmsg.Message) (project.CommitAuthorizationResult, error)
 	diagnostic         func(project.CommitAuthorizationResult) (presentation.Diagnostic, error)
 	diagnosticDocument func(presentation.Diagnostic) (presentation.Document, error)
 	render             func(io.Writer, presentation.Document) error
@@ -33,8 +33,8 @@ func defaultCommitGateDependencies() commitGateDependencies {
 		readFile:    os.ReadFile,
 		readStdin:   io.ReadAll,
 		openProject: openCommitGateProjectFromDisk,
-		authorize: func(ctx context.Context, p *project.Project, msg commitmsg.Message) (project.CommitAuthorizationResult, error) {
-			return p.CheckCommitAuthorization(ctx, msg)
+		authorize: func(ctx context.Context, root string, repo *git.Repo, msg commitmsg.Message) (project.CommitAuthorizationResult, error) {
+			return project.CheckCommitAuthorization(root, repo, ctx, msg)
 		},
 		diagnostic: func(result project.CommitAuthorizationResult) (presentation.Diagnostic, error) {
 			return result.Diagnostic()
@@ -46,8 +46,9 @@ func defaultCommitGateDependencies() commitGateDependencies {
 	}
 }
 
-func openCommitGateProjectFromDisk(ctx context.Context, root string) (*project.Project, error) {
-	return project.Open(ctx, root)
+func openCommitGateProjectFromDisk(ctx context.Context, root string) (*config.Config, *git.Repo, error) {
+	_, cfg, repo, err := openProjectOperation(ctx, root)
+	return cfg, repo, err
 }
 
 // runCommitGate validates one commit message and returns an error (mapped to a
@@ -77,7 +78,7 @@ func runCommitGateWithDependencies(ctx context.Context, root, msgPath string, st
 		return fmt.Errorf("check staged commit: read message: %w", err)
 	}
 	msg := commitmsg.Clean(raw)
-	p, err := dependencies.openProject(ctx, root)
+	cfg, repo, err := dependencies.openProject(ctx, root)
 	if err != nil {
 		return fmt.Errorf("check staged commit: %w", err)
 	}
@@ -100,7 +101,7 @@ func runCommitGateWithDependencies(ctx context.Context, root, msgPath string, st
 		// Commits rule - never block what git produced or will rewrite.
 		if !isExemptSubject(msg.Subject) {
 			findings := audit.CheckConventionalCommit(
-				git.Commit{Subject: msg.Subject}, audit.Resolve(config.AuditScopes(p.Cfg.Audit)))
+				git.Commit{Subject: msg.Subject}, audit.Resolve(config.AuditScopes(cfg.Audit)))
 			if len(findings) > 0 {
 				document, documentErr := audit.ConventionalCommitDocument(findings)
 				if documentErr != nil { // coverage-ignore: CheckConventionalCommit produces fixed single-line detail and the owner mapping uses fixed grammar
@@ -113,10 +114,10 @@ func runCommitGateWithDependencies(ctx context.Context, root, msgPath string, st
 			}
 		}
 	}
-	if p.Cfg.Profile == catalog.ProfileCore {
+	if cfg.Profile == catalog.ProfileCore {
 		return nil
 	}
-	result, authErr := dependencies.authorize(ctx, p, msg)
+	result, authErr := dependencies.authorize(ctx, root, repo, msg)
 	if result.Category != "" {
 		diagnostic, diagnosticErr := dependencies.diagnostic(result)
 		if diagnosticErr != nil {

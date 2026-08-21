@@ -137,7 +137,7 @@ func TestCheckStagedDriftUsesIndexedTemplateSourceMappings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	gitfixture.AddAll(t, repo)
@@ -167,7 +167,7 @@ func TestCheckStagedDriftLocalDocsUsesIndexUniverse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	gitfixture.AddAll(t, repo)
@@ -248,7 +248,7 @@ func TestCheckStagedDriftTracksWholeOutputPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	corpus, pitfalls, topics, effective, err := deriveOperationStateWithPitfalls(renderInputsForTest(p))
@@ -389,7 +389,7 @@ func TestStagedDriftRenderedOutputInvariant(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	gitfixture.AddAll(t, repo)
@@ -435,7 +435,7 @@ func TestStagedDriftRenderedOutputInvariant(t *testing.T) {
 
 // TestCheckStagedDriftProjectsFullFromAWorkingCoreTree proves the index
 // universe is selected from the immutable complete catalog, not the Core
-// working Project that opened the check.
+// working ProjectState that opened the check.
 // invariant: rendering/project-output-plan:profile-projected-render (TestCheckStagedDriftProjectsFullFromAWorkingCoreTree)
 func TestCheckStagedDriftPreservesInjectedCompleteCatalog(t *testing.T) {
 	root := scaffold(t, "prefix: example\nprofile: core\nintegrationBranch: main\n")
@@ -454,14 +454,14 @@ func TestCheckStagedDriftPreservesInjectedCompleteCatalog(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".pi", "skills", "example-tdd", "SKILL.md")); !os.IsNotExist(err) {
 		t.Fatalf("injected Core catalog unexpectedly rendered tdd: %v", err)
 	}
 	gitfixture.AddAll(t, repo)
-	drift, err := p.CheckStagedDrift(testContext(t))
+	drift, err := checkStagedDriftProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -477,7 +477,7 @@ func TestCheckStagedDriftProjectsFullFromAWorkingCoreTree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := core.Sync(); err != nil {
+	if err := syncProject(core); err != nil {
 		t.Fatal(err)
 	}
 	gitfixture.AddAll(t, repo)
@@ -488,7 +488,7 @@ func TestCheckStagedDriftProjectsFullFromAWorkingCoreTree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := full.Sync(); err != nil {
+	if err := syncProject(full); err != nil {
 		t.Fatal(err)
 	}
 	gitfixture.AddAll(t, repo)

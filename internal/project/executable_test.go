@@ -16,7 +16,7 @@ func TestShebangRenderedExecutable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	shebang := filepath.Join(root, ".awf/hooks/pre-commit.sh") // "#!/usr/bin/env bash..."
@@ -29,7 +29,7 @@ func TestShebangRenderedExecutable(t *testing.T) {
 	if err := os.Chmod(shebang, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	assertPerm(t, shebang, 0o755)

@@ -251,7 +251,7 @@ func TestJournalFailureUsesTerminalChangedAxes(t *testing.T) {
 
 func TestUpgradeSyncMutationRejectsInvalidCollectedChange(t *testing.T) {
 	dependencies := productionUpgradeSyncDependencies()
-	dependencies.projectSyncReport = func(context.Context, *project.Project) ([]project.Backup, []project.Change, []string, error) {
+	dependencies.projectSyncReport = func(context.Context, *project.ProjectState, *config.Config) ([]project.Backup, []project.Change, []string, error) {
 		return []project.Backup{{Path: "\n", Bak: "backup"}}, nil, nil, nil
 	}
 	if _, err := upgradeSyncMutationWith(testContext(t), scaffoldProject(t), dependencies); err == nil {
@@ -459,7 +459,7 @@ func TestUpgradePresentationPropagatesOperationalFailures(t *testing.T) {
 	t.Run("project sync", func(t *testing.T) {
 		failure := errors.New("sync failed")
 		dependencies := productionUpgradeSyncDependencies()
-		dependencies.projectSyncReport = func(context.Context, *project.Project) ([]project.Backup, []project.Change, []string, error) {
+		dependencies.projectSyncReport = func(context.Context, *project.ProjectState, *config.Config) ([]project.Backup, []project.Change, []string, error) {
 			return nil, nil, nil, failure
 		}
 		if _, err := upgradeSyncMutationWith(testContext(t), scaffoldProject(t), dependencies); !errors.Is(err, failure) {

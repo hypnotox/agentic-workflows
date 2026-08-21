@@ -69,11 +69,11 @@ func runContext(ctx context.Context, cwd string, paths []string, staged bool, rn
 		if err := gate(ctx, cwd); err != nil {
 			return err
 		}
-		p, e := project.Open(ctx, cwd)
+		projectState, _, repo, e := openProjectOperation(ctx, cwd)
 		if e != nil { // coverage-ignore: gate just loaded the same config and project presence; failure requires a concurrent filesystem race
 			return e
 		}
-		state, err = p.ContextState(ctx)
+		state, err = project.BuildContextState(projectState, repo, ctx)
 	}
 	if err != nil {
 		return err
@@ -101,10 +101,11 @@ func runUncovered(ctx context.Context, cwd string, roots []string, staged bool, 
 		return deliverContext([]byte(contextq.RenderUncoveredText(static, "static: not inside an awf project; live coverage appears inside one")), cwd, stdout)
 	} else {
 		if err = gate(ctx, cwd); err == nil {
-			var p *project.Project
-			p, err = project.Open(ctx, cwd)
-			if err == nil { // coverage-ignore: gate just loaded the same project; an Open failure requires a concurrent filesystem race
-				state, err = p.ContextState(ctx)
+			var projectState *project.ProjectState
+			var repo *awfgit.Repo
+			projectState, _, repo, err = openProjectOperation(ctx, cwd)
+			if err == nil { // coverage-ignore: gate just loaded the same project; an open failure requires a concurrent filesystem race
+				state, err = project.BuildContextState(projectState, repo, ctx)
 			}
 		}
 	}

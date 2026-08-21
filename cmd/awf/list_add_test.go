@@ -12,15 +12,14 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
-	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 func TestDomainCurrentStateFilesystemFailures(t *testing.T) {
-	open := func(t *testing.T) (*project.Project, string) {
+	open := func(t *testing.T) (*config.Config, string) {
 		t.Helper()
 		root := scaffoldProject(t)
-		p, err := project.Open(testContext(t), root)
+		_, p, _, err := openProjectOperation(testContext(t), root)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -81,13 +80,13 @@ func TestDomainLifecyclePropagatesDependencies(t *testing.T) {
 		mutate func(*domainDependencies)
 	}{
 		{"open", func(d *domainDependencies) {
-			d.open = func(context.Context, string) (*project.Project, error) { return nil, failure }
+			d.open = func(context.Context, string) (*config.Config, error) { return nil, failure }
 		}},
 		{"edit", func(d *domainDependencies) {
 			d.edit = func([]byte, string, string, bool) ([]byte, error) { return nil, failure }
 		}},
 		{"write", func(d *domainDependencies) { d.write = func(string, []byte, os.FileMode) error { return failure } }},
-		{"scaffold", func(d *domainDependencies) { d.scaffold = func(*project.Project, string) error { return failure } }},
+		{"scaffold", func(d *domainDependencies) { d.scaffold = func(*config.Config, string) error { return failure } }},
 		{"sync", func(d *domainDependencies) {
 			d.synchronize = func(context.Context, string, io.Writer) error { return failure }
 		}},

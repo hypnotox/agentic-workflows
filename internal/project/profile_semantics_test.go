@@ -104,7 +104,7 @@ func TestCoreRenderedWorkflowExcludesFullAuthority(t *testing.T) {
 			}
 			var files []RenderedFile
 			if tc.profile == catalog.ProfileCore {
-				if err := p.Sync(); err != nil {
+				if err := syncProject(p); err != nil {
 					t.Fatal(err)
 				}
 				lock, err := manifest.Load(lockFile(root))
@@ -119,7 +119,7 @@ func TestCoreRenderedWorkflowExcludesFullAuthority(t *testing.T) {
 					files = append(files, RenderedFile{Path: path, Content: string(body)})
 				}
 			} else {
-				files, err = p.RenderAll()
+				files, err = renderAll(p)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -158,7 +158,7 @@ func TestCoreOperationalReferenceScannerRejectsEveryArtifactClass(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	lock, err := manifest.Load(lockFile(root))
@@ -210,7 +210,7 @@ func TestProfileTransitionPreservesHistoryAndRestoresGovernance(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := cleanCore.Sync(); err != nil {
+	if err := syncProject(cleanCore); err != nil {
 		t.Fatal(err)
 	}
 	cleanCoreLock, err := manifest.Load(lockFile(cleanCoreRoot))
@@ -238,7 +238,7 @@ func TestProfileTransitionPreservesHistoryAndRestoresGovernance(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := full.Sync(); err != nil {
+	if err := syncProject(full); err != nil {
 		t.Fatal(err)
 	}
 	fullLock, err := manifest.Load(lockFile(root))
@@ -274,7 +274,7 @@ func TestProfileTransitionPreservesHistoryAndRestoresGovernance(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := core.Sync(); err != nil {
+	if err := syncProject(core); err != nil {
 		t.Fatal(err)
 	}
 	coreLock, err := manifest.Load(lockFile(root))
@@ -317,7 +317,7 @@ func TestProfileTransitionPreservesHistoryAndRestoresGovernance(t *testing.T) {
 			t.Fatalf("Core transition retained empty Full-only ancestor %s: %v", dir, err)
 		}
 	}
-	if _, err := core.CheckReport(testContext(t)); err != nil {
+	if _, err := checkReportProject(core, testContext(t)); err != nil {
 		t.Fatalf("Core consulted malformed retained history: %v", err)
 	}
 
@@ -326,7 +326,7 @@ func TestProfileTransitionPreservesHistoryAndRestoresGovernance(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := full.Sync(); err == nil {
+	if err := syncProject(full); err == nil {
 		t.Fatal("Full accepted malformed retained history")
 	}
 	for path := range historical {
@@ -334,7 +334,7 @@ func TestProfileTransitionPreservesHistoryAndRestoresGovernance(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := full.Sync(); err != nil {
+	if err := syncProject(full); err != nil {
 		t.Fatalf("Full did not restore governance after history correction: %v", err)
 	}
 	restoredLock, err := manifest.Load(lockFile(root))

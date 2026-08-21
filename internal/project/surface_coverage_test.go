@@ -34,7 +34,7 @@ func TestAdvisoryNotesRejectMalformedRetainedData(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := p.AdvisoryNotes(testContext(t)); err == nil || !strings.Contains(err.Error(), "unknown") {
+		if _, err := advisoryNotesProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "unknown") {
 			t.Fatalf("advisory pitfall error = %v", err)
 		}
 	})
@@ -65,7 +65,7 @@ func TestOutputPlanRejectsMalformedRetainedData(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := p.OutputPlan(testContext(t)); err == nil || !strings.Contains(err.Error(), tc.want) {
+			if _, err := outputPlanProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("output-plan error = %v", err)
 			}
 		})
@@ -84,7 +84,7 @@ func TestCheckWithStatePropagatesMalformedRetainedData(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := p.Sync(); err != nil {
+			if err := syncProject(p); err != nil {
 				t.Fatal(err)
 			}
 			corpus, pitfalls, topics, effective, err := deriveOperationStateWithPitfalls(renderInputsForTest(p))
@@ -102,7 +102,7 @@ func TestCheckWithStatePropagatesMalformedRetainedData(t *testing.T) {
 			if err := os.WriteFile(sidecarPath, []byte(tc.sidecar), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			if _, _, err := checkWithTrackingState(renderInputsForTest(p), p.repo, testContext(t), corpus, pitfall.Corpus{}, topics, effective, mustParsePlans(t, p), op); err == nil || !strings.Contains(err.Error(), "must be a list") {
+			if _, _, err := checkWithTrackingState(renderInputsForTest(p), testRepo(p), testContext(t), corpus, pitfall.Corpus{}, topics, effective, mustParsePlans(t, p), op); err == nil || !strings.Contains(err.Error(), "must be a list") {
 				t.Fatalf("check-with-state error = %v", err)
 			}
 		})
@@ -115,7 +115,7 @@ func TestCheckReportPropagatesAdvisorySidecarError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
 	reader := &flippingGlossaryReader{validReads: 5}
@@ -123,8 +123,7 @@ func TestCheckReportPropagatesAdvisorySidecarError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p.Cfg = cfg
-	if _, err := p.CheckReport(testContext(t)); err == nil || !strings.Contains(err.Error(), "must be a list") {
+	if _, err := BuildCheckReport(p, cfg, testRepo(p), testContext(t)); err == nil || !strings.Contains(err.Error(), "must be a list") {
 		t.Fatalf("CheckReport advisory error = %v after %d glossary reads", err, reader.reads)
 	}
 }
@@ -137,8 +136,12 @@ func TestListDocumentRetainedInventory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	cfg, err := config.Load(config.RootDir(root))
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, kind := range []string{"", "skill", "target"} {
-		doc, err := p.ListDocument(kind)
+		doc, err := BuildListDocument(p, cfg, kind)
 		if err != nil {
 			t.Fatalf("ListDocument(%q): %v", kind, err)
 		}
@@ -224,7 +227,7 @@ func TestCheckStagedDriftRejectsInvalidStagedSidecars(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := p.Sync(); err != nil {
+			if err := syncProject(p); err != nil {
 				t.Fatal(err)
 			}
 			gitfixture.AddAll(t, repo)

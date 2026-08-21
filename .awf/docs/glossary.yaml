@@ -7,7 +7,10 @@ data:
       meaning: "A value derived during and threaded through one operation rather than cached on a longer-lived value."
       domains: [code-design]
     - term: project Loader
-      meaning: "The project-opening policy object that loads the config tree and derives one Project from the catalog and resident-root resolution. `project.Open` is transitional compatibility, not the composed path."
+      meaning: "The project-opening policy object that validates one config tree and constructs immutable `ProjectState` facts from it, the catalog, and resident-root resolution. `project.Open` is compatibility, not the composed operation path."
+      domains: [code-design]
+    - term: project state
+      meaning: "The Loader-constructed immutable project facts consumed by focused operations. Git handles and config-tree readers remain explicit operation inputs."
       domains: [code-design]
     - term: presentation ownership
       meaning: "The package owning a result model also owns its human rendering; a command binary owns argument parsing, renderer selection, and exit mapping."

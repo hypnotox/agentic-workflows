@@ -156,7 +156,7 @@ func TestPlanSectionsInPlacePartExclusive(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Author a convention part for a section the template declares in-place.
-	part := p.Cfg.PartPath("skills", "foo", "s")
+	part := testConfig(p).PartPath("skills", "foo", "s")
 	if err := os.MkdirAll(filepath.Dir(part), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -179,7 +179,7 @@ func TestPlanSectionsInPlacePartReadError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	part := p.Cfg.PartPath("skills", "foo", "s")
+	part := testConfig(p).PartPath("skills", "foo", "s")
 	if err := os.MkdirAll(part, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -512,12 +512,13 @@ func TestTemplateSourceSectionMarkerProjection(t *testing.T) {
 		t.Fatalf("section markers = %#v, want two=%q", got, want)
 	}
 
-	p := &Project{Cfg: &config.Config{}}
-	if root := templateSourceRoot(renderInputsForTest(p)); root != "" {
+	cfg := &config.Config{}
+	p := testState(cfg)
+	if root := templateSourceRoot(newRenderInputs(p, cfg, nil)); root != "" {
 		t.Fatalf("absent render root = %q", root)
 	}
-	p.Cfg.Render = &config.RenderConfig{TemplateSourceRoot: "templates"}
-	if root := templateSourceRoot(renderInputsForTest(p)); root != "templates" {
+	cfg.Render = &config.RenderConfig{TemplateSourceRoot: "templates"}
+	if root := templateSourceRoot(newRenderInputs(p, cfg, nil)); root != "templates" {
 		t.Fatalf("configured render root = %q", root)
 	}
 }

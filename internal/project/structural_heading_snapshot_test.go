@@ -68,7 +68,7 @@ func TestStructuralHeadingCutoverSnapshotParity(t *testing.T) {
 	}
 }
 
-func structuralHeadingCutoverPopulation(t *testing.T, p *Project) map[string]string {
+func structuralHeadingCutoverPopulation(t *testing.T, p *ProjectState) map[string]string {
 	t.Helper()
 	entries := map[string]string{}
 	add := func(kind, artifact, tid string) {

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/project"
@@ -46,7 +47,7 @@ func ctxFiles() map[string]string {
 // them). It writes an Implemented ADR-0001 the topic can cite unless the caller
 // supplies its own decisions file. This package keeps its own fixture builder
 // because the core's equivalent is private to internal/project.
-func ctxRepo(t *testing.T, cfg string, files map[string]string) *project.Project {
+func ctxRepo(t *testing.T, cfg string, files map[string]string) *project.ProjectState {
 	t.Helper()
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
@@ -69,10 +70,18 @@ func ctxRepo(t *testing.T, cfg string, files map[string]string) *project.Project
 	return p
 }
 
+func workingContextState(p *project.ProjectState) (project.ContextState, error) {
+	repo, _, err := awfgit.OpenContaining(p.Root())
+	if err != nil {
+		return project.ContextState{}, err
+	}
+	return project.BuildContextState(p, repo, context.Background())
+}
+
 // queryFor assembles the working context state and binds a query to it.
-func queryFor(t *testing.T, p *project.Project) *Query {
+func queryFor(t *testing.T, p *project.ProjectState) *Query {
 	t.Helper()
-	state, err := p.ContextState(testContext(t))
+	state, err := workingContextState(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +106,7 @@ func lockFile(root string) string { return filepath.Join(root, ".awf", "awf.lock
 func TestContextRequestUniverse(t *testing.T) {
 	t.Parallel()
 	p := ctxRepo(t, ctxConfig, ctxFiles())
-	before := snapshotTreeForContext(t, p.Root)
+	before := snapshotTreeForContext(t, p.Root())
 	res := queryFor(t, p).ContextForOptions([]string{"internal/foo", "internal/foo/x.go", "internal/foo/x.go"}, ContextOptions{Selection: SelectionExplicit})
 	if len(res.Requests) != 3 || res.Requests[0].Directory == nil || res.Requests[0].Directory.Included != 3 || res.Requests[1].Argument != "internal/foo"+"/x.go" {
 		t.Fatalf("requests=%#v", res.Requests)
@@ -146,7 +155,7 @@ func TestContextRequestUniverse(t *testing.T) {
 	if len(glob.Requests) != 1 || len(glob.Requests[0].Exact.Context.Warnings) != 1 {
 		t.Fatalf("glob=%#v", glob)
 	}
-	if after := snapshotTreeForContext(t, p.Root); before != after {
+	if after := snapshotTreeForContext(t, p.Root()); before != after {
 		t.Fatal("context changed repository")
 	}
 }
@@ -171,13 +180,13 @@ func TestContextWorkingIndexDivergenceAndErrors(t *testing.T) {
 	t.Parallel()
 	p := ctxRepo(t, ctxConfig, ctxFiles())
 	lock := &manifest.Lock{AWFVersion: "0.0.0", SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
-	if err := lock.Save(lockFile(p.Root)); err != nil {
+	if err := lock.Save(lockFile(p.Root())); err != nil {
 		t.Fatal(err)
 	}
-	gitfixture.AddAll(t, gitfixture.At(p.Root))
-	testsupport.WriteFile(t, filepath.Join(p.Root, "internal/foo/new.go"), "package foo\n")
+	gitfixture.AddAll(t, gitfixture.At(p.Root()))
+	testsupport.WriteFile(t, filepath.Join(p.Root(), "internal/foo/new.go"), "package foo\n")
 	working := queryFor(t, p).ContextForOptions([]string{"internal/foo"}, ContextOptions{Selection: SelectionExplicit})
-	stagedQuery := stagedQueryFor(t, p.Root)
+	stagedQuery := stagedQueryFor(t, p.Root())
 	staged := stagedQuery.ContextForOptions([]string{"internal/foo"}, ContextOptions{Selection: SelectionStaged})
 	stagedQuery.Uncovered(nil)
 	if working.Requests[0].Directory.Included != staged.Requests[0].Directory.Included+1 {
@@ -208,26 +217,26 @@ func TestStagedContextInputErrors(t *testing.T) {
 	}{{"unknown-config-key", ctxConfig + "unknown: true\n", nil}, {"bad-sidecar", ctxConfig, map[string]string{".awf/skills/tdd.yaml": "data: [bad"}}, {"bad-topic", ctxConfig, map[string]string{".awf/topics/parts/alpha/one/current-state.md": "broken"}}} {
 		t.Run(tc.name, func(t *testing.T) {
 			p := ctxRepo(t, ctxConfig, ctxFiles())
-			if err := os.WriteFile(filepath.Join(p.Root, ".awf", "config.yaml"), []byte(tc.cfg), 0o644); err != nil {
+			if err := os.WriteFile(filepath.Join(p.Root(), ".awf", "config.yaml"), []byte(tc.cfg), 0o644); err != nil {
 				t.Fatal(err)
 			}
 			for rel, body := range tc.extra {
-				testsupport.WriteFile(t, filepath.Join(p.Root, filepath.FromSlash(rel)), body)
+				testsupport.WriteFile(t, filepath.Join(p.Root(), filepath.FromSlash(rel)), body)
 			}
 			lock := &manifest.Lock{AWFVersion: "0", SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
-			if err := lock.Save(lockFile(p.Root)); err != nil {
+			if err := lock.Save(lockFile(p.Root())); err != nil {
 				t.Fatal(err)
 			}
-			gitfixture.AddAll(t, gitfixture.At(p.Root))
-			if _, err := project.StagedContextState(testContext(t), p.Root); err == nil {
+			gitfixture.AddAll(t, gitfixture.At(p.Root()))
+			if _, err := project.StagedContextState(testContext(t), p.Root()); err == nil {
 				t.Fatal("invalid staged state accepted")
 			}
 		})
 	}
 	p := ctxRepo(t, ctxConfig, ctxFiles())
-	testsupport.WriteFile(t, lockFile(p.Root), "bad")
-	gitfixture.AddAll(t, gitfixture.At(p.Root))
-	if _, err := project.StagedContextState(testContext(t), p.Root); err == nil {
+	testsupport.WriteFile(t, lockFile(p.Root()), "bad")
+	gitfixture.AddAll(t, gitfixture.At(p.Root()))
+	if _, err := project.StagedContextState(testContext(t), p.Root()); err == nil {
 		t.Fatal("corrupt staged lock accepted")
 	}
 }
@@ -252,7 +261,7 @@ func TestStagedContextStatePropagatesInvalidStagedLock(t *testing.T) {
 func TestContextStatePropagatesWorkingSnapshotFailure(t *testing.T) {
 	t.Parallel()
 	valid := ctxRepo(t, uncoveredConfig, uncoveredFiles())
-	if _, err := valid.ContextState(testContext(t)); err != nil {
+	if _, err := workingContextState(valid); err != nil {
 		t.Fatalf("ContextState valid project: %v", err)
 	}
 }
@@ -260,15 +269,15 @@ func TestContextStatePropagatesWorkingSnapshotFailure(t *testing.T) {
 func TestContextUniverseSetupErrors(t *testing.T) {
 	t.Parallel()
 	bad := ctxRepo(t, ctxConfig, ctxFiles())
-	testsupport.WriteFile(t, filepath.Join(bad.Root, ".awf", "skills", "tdd.yaml"), "data: [bad")
-	if _, err := bad.ContextState(testContext(t)); err == nil {
+	testsupport.WriteFile(t, filepath.Join(bad.Root(), ".awf", "skills", "tdd.yaml"), "data: [bad")
+	if _, err := workingContextState(bad); err == nil {
 		t.Fatal("malformed sidecar accepted")
 	}
 	p := ctxRepo(t, ctxConfig, ctxFiles())
-	if err := os.WriteFile(filepath.Join(p.Root, ".awf/config.yaml"), []byte(ctxConfig+"unknown: true\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(p.Root(), ".awf/config.yaml"), []byte(ctxConfig+"unknown: true\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.ContextState(testContext(t)); err == nil {
+	if _, err := workingContextState(p); err == nil {
 		t.Fatal("unknown config key accepted")
 	}
 }
@@ -341,7 +350,7 @@ func TestUncovered(t *testing.T) {
 	files["gen/skipped.md"] = "ignored\n"
 	p := ctxRepo(t, cfg, files)
 	lock := &manifest.Lock{AWFVersion: "0.19.0", SchemaVersion: 14, Files: map[string]manifest.Entry{"gen/output.md": {}}}
-	if err := lock.Save(lockFile(p.Root)); err != nil {
+	if err := lock.Save(lockFile(p.Root())); err != nil {
 		t.Fatal(err)
 	}
 	res := queryFor(t, p).Uncovered(nil)

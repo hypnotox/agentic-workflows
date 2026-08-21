@@ -150,11 +150,11 @@ func TestResidentMarkerCompositionMatchesPlannedOutput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	composed, err := p.RenderResidentMarker(testContext(t), "effort-archive")
+	composed, err := renderResidentMarkerProject(p, testContext(t), "effort-archive")
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := p.OutputPlan(testContext(t))
+	plan, err := outputPlanProject(p, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,10 +175,10 @@ func TestRenderResidentMarkerPropagatesOutputPlanFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	state := *p.state
+	state := *p
 	state.targets = append(state.resolvedTargets(), Target{Outputs: []TargetOutput{{TemplateID: "missing/live-template.tmpl"}}})
-	p.state = &state
-	if _, err := p.RenderResidentMarker(testContext(t), "effort-archive"); err == nil {
+	p = &state
+	if _, err := renderResidentMarkerProject(p, testContext(t), "effort-archive"); err == nil {
 		t.Fatal("resident marker renderer hid output-plan failure")
 	}
 }
@@ -212,7 +212,7 @@ func TestIndexMdCarriesCanonicalBanner(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	if err := p.Sync(); err != nil {
+	if err := syncProject(p); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
 	got, err := os.ReadFile(filepath.Join(root, "docs", "decisions", "INDEX.md"))
