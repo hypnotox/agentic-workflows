@@ -83,11 +83,11 @@ type Change struct {
 // byte-identical, and first-adoption initialization with no prior lock reports
 // no change - a routine re-sync stays silent).
 func (p *Publisher) Sync() (Result, error) {
-	if err := validateCommandWiring(p.inputs.cfg); err != nil {
-		return Result{}, err
-	}
 	plan, err := p.Plan()
 	if err != nil {
+		return Result{}, err
+	}
+	if err := validateCommandWiring(p.inputs.cfg); err != nil {
 		return Result{}, err
 	}
 	return p.sync(nil, &plan)

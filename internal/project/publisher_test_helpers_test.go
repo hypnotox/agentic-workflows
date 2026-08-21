@@ -12,6 +12,10 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
+type Backup = publisher.Backup
+type Change = publisher.Change
+type InitAuthority = publisher.InitAuthority
+
 func testPublisher(p renderInputs) *publisher.Publisher {
 	facts, err := config.NewFacts(p.cfg)
 	if err != nil {
@@ -31,13 +35,6 @@ func deriveOperationStateWithPitfalls(p renderInputs) (adr.Corpus, pitfall.Corpu
 }
 func outputPlanWithPitfalls(p renderInputs, _ adr.Corpus, _ pitfall.Corpus, _ topic.Corpus, _ map[string]bool) (*OutputPlan, error) {
 	return outputPlan(p)
-}
-func syncReportWithPitfalls(p renderInputs, seed *InitAuthority, filesystems syncFilesystems, _ adr.Corpus, _ pitfall.Corpus, _ topic.Corpus, _ map[string]bool) ([]Backup, []Change, []string, error) {
-	plan, err := outputPlan(p)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	return syncReportWithPlan(p, seed, filesystems, plan)
 }
 func generateIndexMD(p renderInputs, _ adr.Corpus) RenderedFile {
 	plan, err := outputPlan(p)

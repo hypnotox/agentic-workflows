@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
@@ -296,82 +295,6 @@ func TestRunnerPrunePropagatesBackupFailure(t *testing.T) {
 	}
 	if _, ok := preserved.Files["x"]; !ok {
 		t.Fatal("runner lock entry was removed after backup refusal")
-	}
-}
-
-type blockingPublishFilesystem struct {
-	syncFilesystem
-	ready   chan<- struct{}
-	release <-chan struct{}
-	calls   int
-	mu      sync.Mutex
-}
-
-func (f *blockingPublishFilesystem) Publish(path string, contents []byte, mode os.FileMode) error {
-	f.mu.Lock()
-	f.calls++
-	call := f.calls
-	f.mu.Unlock()
-	if call <= 2 {
-		f.ready <- struct{}{}
-		<-f.release
-	}
-	return f.syncFilesystem.Publish(path, contents, mode)
-}
-
-// invariant: rendering/companion-scripts:runner-prune-backup (TestConcurrentRunnerBackupsPublishCompleteRescueCopies)
-func TestConcurrentRunnerBackupsPublishCompleteRescueCopies(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	const source = "complete runner rescue\n"
-	sourcePath := filepath.Join(root, "x")
-	if err := os.WriteFile(sourcePath, []byte(source), 0o640); err != nil {
-		t.Fatal(err)
-	}
-	sourceInfo, err := os.Stat(sourcePath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(p))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer closeAll()
-	ready := make(chan struct{}, 2)
-	release := make(chan struct{})
-	filesystem := &blockingPublishFilesystem{syncFilesystem: filesystems.tracked, ready: ready, release: release}
-
-	results := make(chan error, 2)
-	for range 2 {
-		go func() {
-			_, err := backupFileConfined("x", filesystem)
-			results <- err
-		}()
-	}
-	<-ready
-	<-ready
-	close(release)
-	for range 2 {
-		if err := <-results; err != nil {
-			t.Fatalf("BackupFile: %v", err)
-		}
-	}
-	for _, name := range []string{"x.awf-bak", "x.awf-bak.1"} {
-		path := filepath.Join(root, name)
-		contents, err := os.ReadFile(path)
-		if err != nil || string(contents) != source {
-			t.Fatalf("backup %s = %q, error = %v", name, contents, err)
-		}
-		info, err := os.Stat(path)
-		if err != nil {
-			t.Fatalf("stat backup %s: %v", name, err)
-		}
-		if info.Mode().Perm() != sourceInfo.Mode().Perm() {
-			t.Fatalf("backup %s mode = %v, want source mode %v", name, info.Mode().Perm(), sourceInfo.Mode().Perm())
-		}
 	}
 }
 

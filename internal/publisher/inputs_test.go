@@ -13,6 +13,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
@@ -113,6 +114,25 @@ func TestPublisherResidentMarkerPreparationPropagatesPlanningFailure(t *testing.
 	publisher := New(lower, cfg, NewFilesystemReader(state.Root()), project.Version)
 	if _, err := publisher.Prepare(); err == nil {
 		t.Fatal("resident-marker preparation hid planning failure")
+	}
+}
+
+func TestSyncPlanningFailurePrecedesInvalidCommandWiring(t *testing.T) {
+	state := csRepo(t, sampleYAML, map[string]string{})
+	cfg := testConfig(state)
+	delete(cfg.Vars, "gateCmd")
+	base := state.OutputState()
+	selected := base.Catalog()
+	missing := selected.Docs["architecture"]
+	missing.TID = "missing/live-template.tmpl"
+	selected.Docs["missing-live-fixture"] = missing
+	lower := projectstate.NewDerivedWithFacts(base.Root(), base.Roots(), base.Nested(), base.Facts(), selected, base.CompleteCatalog(), base.Targets())
+	_, err := New(lower, cfg, NewFilesystemReader(state.Root()), project.Version).Sync()
+	if err == nil || !strings.Contains(err.Error(), "missing/live-template.tmpl") {
+		t.Fatalf("Sync error = %v, want planning error", err)
+	}
+	if strings.Contains(err.Error(), "vars.gateCmd") {
+		t.Fatalf("Sync error = %v, command-wiring error won over planning", err)
 	}
 }
 

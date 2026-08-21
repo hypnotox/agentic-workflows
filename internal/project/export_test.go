@@ -222,21 +222,13 @@ func outputPlanProject(state *ProjectState) (*OutputPlan, error) {
 	return outputPlan(operationInputs(state, testConfig(state)))
 }
 func projectResult(result publisher.Result, err error) ([]Backup, []Change, []string, error) {
-	backups := make([]Backup, len(result.Backups()))
-	for i, backup := range result.Backups() {
-		backups[i] = Backup{Path: backup.Path, Bak: backup.Bak, Index: backup.Index}
-	}
-	changes := make([]Change, len(result.Changes()))
-	for i, change := range result.Changes() {
-		changes[i] = Change{Path: change.Path, Cause: change.Cause}
-	}
-	return backups, changes, result.Pruned(), err
+	return result.Backups(), result.Changes(), result.Pruned(), err
 }
 func syncReportProject(state *ProjectState) ([]Backup, []Change, []string, error) {
 	return projectResult(publisher.New(state.OutputState(), testConfig(state), publisher.NewFilesystemReader(state.Root()), Version).Sync())
 }
 func initializeReportProject(state *ProjectState, seed InitAuthority) ([]Backup, []Change, []string, error) {
-	return projectResult(publisher.New(state.OutputState(), testConfig(state), publisher.NewFilesystemReader(state.Root()), Version).Initialize(publisher.InitAuthority{InitializedWithVersion: seed.InitializedWithVersion}))
+	return projectResult(publisher.New(state.OutputState(), testConfig(state), publisher.NewFilesystemReader(state.Root()), Version).Initialize(seed))
 }
 func checkReportProject(state *ProjectState, ctx context.Context) (CheckReport, error) {
 	prepared, err := testPublisher(operationInputs(state, testConfig(state))).Prepare()

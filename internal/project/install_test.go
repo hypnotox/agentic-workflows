@@ -171,28 +171,6 @@ func TestUninstallRejectsUnsafeResidentRoot(t *testing.T) {
 	}
 }
 
-func TestBackupFileConfinedReturnsSourceInspectionError(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(p))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer closeAll()
-	if _, err := backupFileConfined("missing", filesystems.tracked); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("backup missing source error = %v, want not exist", err)
-	}
-	if err := os.Mkdir(filepath.Join(root, "directory"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := backupFileConfined("directory", filesystems.tracked); err == nil {
-		t.Fatal("backup accepted directory source")
-	}
-}
-
 func TestSyncReportPropagatesForeignBackupFailure(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(testContext(t), root)
@@ -227,64 +205,6 @@ func TestSyncReportPropagatesForeignBackupFailure(t *testing.T) {
 	}
 	if info, statErr := os.Stat(foreign); statErr != nil || !info.IsDir() {
 		t.Fatalf("foreign source changed after backup refusal: info=%v error=%v", info, statErr)
-	}
-}
-
-type collisionFilesystem struct {
-	syncFilesystem
-	root     string
-	competed bool
-}
-
-func (f *collisionFilesystem) Publish(path string, contents []byte, mode os.FileMode) error {
-	if !f.competed {
-		f.competed = true
-		if err := os.WriteFile(filepath.Join(f.root, path), []byte("concurrent winner"), 0o600); err != nil {
-			return err
-		}
-	}
-	return f.syncFilesystem.Publish(path, contents, mode)
-}
-
-// invariant: rendering/sync-and-drift:sync-backs-up-foreign (TestBackupFileRetriesOnlyPublicationCollision)
-func TestBackupFileRetriesOnlyPublicationCollision(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	const source = "rescue source"
-	sourcePath := filepath.Join(root, "artifact")
-	if err := os.WriteFile(sourcePath, []byte(source), 0o640); err != nil {
-		t.Fatal(err)
-	}
-	sourceInfo, err := os.Stat(sourcePath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(p))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer closeAll()
-	if _, err := backupFileConfined("artifact", &collisionFilesystem{syncFilesystem: filesystems.tracked, root: root}); err != nil {
-		t.Fatalf("backup collision retry: %v", err)
-	}
-	winner, err := os.ReadFile(filepath.Join(root, "artifact.awf-bak"))
-	if err != nil || string(winner) != "concurrent winner" {
-		t.Fatalf("winner backup = %q, error = %v", winner, err)
-	}
-	retriedPath := filepath.Join(root, "artifact.awf-bak.1")
-	backup, err := os.ReadFile(retriedPath)
-	if err != nil || string(backup) != source {
-		t.Fatalf("retried backup = %q, error = %v", backup, err)
-	}
-	backupInfo, err := os.Stat(retriedPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if backupInfo.Mode().Perm() != sourceInfo.Mode().Perm() {
-		t.Fatalf("retried backup mode = %v, want source mode %v", backupInfo.Mode().Perm(), sourceInfo.Mode().Perm())
 	}
 }
 

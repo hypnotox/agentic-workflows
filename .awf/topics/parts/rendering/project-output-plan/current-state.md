@@ -1,4 +1,4 @@
-Publisher assembles the full render set and constructs one immutable operation-scoped output plan. Neutral declarations and plan values live in `internal/outputplan`; project checks consume that produced plan for drift, tracking, advisory, staged, and context projections without importing application coordination. The project package retains residual check policy and sync-time publication behavior until its later extraction phase.
+Publisher assembles the full render set, constructs one immutable operation-scoped output plan, and owns sync-time publication. Neutral declarations and plan values live in `internal/outputplan`; project retains residual check and current-state policy, consuming that produced plan for drift, tracking, advisory, staged, and context projections without importing application coordination.
 
 The Pi target descriptor is the sole declaration of the five Pi TypeScript outputs: context usage, handoff, and subagent index, model-routing, and runner; non-Pi target sets render and prune none of them.
 
