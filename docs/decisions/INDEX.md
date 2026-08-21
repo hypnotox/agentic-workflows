@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-make-publisher-the-output-plan-construction-owner: Make Publisher the Output Plan Construction Owner](make-publisher-the-output-plan-construction-owner.md) (Proposed)
 
 ## History
 
