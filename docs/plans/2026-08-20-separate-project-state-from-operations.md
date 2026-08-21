@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-20
 adrs: [0296]
-status: Proposed
+status: Implemented
 ---
 # Plan: Separate Project State from Operations
 
