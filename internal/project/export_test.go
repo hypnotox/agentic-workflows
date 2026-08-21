@@ -144,5 +144,5 @@ func testTargets(state *ProjectState) []Target               { return state.reso
 func setTestTargets(state *ProjectState, targets []Target)   { state.targets = cloneTargets(targets) }
 func setTestRoots(state *ProjectState, roots resident.Roots) { state.roots = roots }
 func renderInputsForTest(state *ProjectState) renderInputs {
-	return newRenderInputs(state, testConfig(state), nil)
+	return newRenderInputs(state, testConfig(state), filesystemProjectReader{root: state.Root()})
 }

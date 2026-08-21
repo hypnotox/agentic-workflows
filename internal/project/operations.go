@@ -12,7 +12,7 @@ import (
 )
 
 func operationInputs(state *ProjectState, cfg *config.Config) renderInputs {
-	return newRenderInputs(state, cfg, nil)
+	return newRenderInputs(state, cfg, filesystemProjectReader{root: state.Root()})
 }
 
 // NumberPendingADRs assigns numbers using the selected project tree.

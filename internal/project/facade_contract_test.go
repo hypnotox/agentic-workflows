@@ -40,15 +40,71 @@ func TestProjectStateProductionBoundary(t *testing.T) {
 				if pkg.PkgPath == projectImportPath && projectStateReceiver(pkg.TypesInfo, fn.Recv) {
 					methods = append(methods, fn.Name.Name)
 				}
-				if pkg.PkgPath != projectImportPath && callsProjectOpen(pkg.TypesInfo, fn) {
-					t.Errorf("production caller %s.%s still invokes project.Open", pkg.PkgPath, fn.Name.Name)
-				}
 			}
 		}
 	}
 	sort.Strings(methods)
 	if !slices.Equal(methods, allowedMethods) {
 		t.Fatalf("ProjectState methods = %v, want fact accessors only %v", methods, allowedMethods)
+	}
+	wantCallers := map[projectOpenCaller]int{{pkg: projectImportPath, owner: "VerifyCommitPolicyAt"}: 1}
+	assertProjectOpenCallers(t, projectOpenCallers(pkgs), wantCallers)
+
+	fixture := filepath.Join(root, filepath.FromSlash("internal/project/compatibility_opener_mutation_fixture.go"))
+	mutation, err := packages.Load(&packages.Config{Dir: root, Mode: projectPackageMode, Overlay: map[string][]byte{
+		fixture: []byte(`package project
+
+import "context"
+
+func mutationAddsCompatibilityCaller(ctx context.Context, root string) (*ProjectState, error) {
+	return Open(ctx, root)
+}
+`),
+	}}, "./internal/project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(mutation) != 1 || len(mutation[0].Errors) != 0 {
+		if len(mutation) == 1 && len(mutation[0].Errors) != 0 {
+			t.Fatal(mutation[0].Errors[0])
+		}
+		t.Fatalf("loaded mutation packages = %d, want 1", len(mutation))
+	}
+	if projectOpenCallers(mutation)[projectOpenCaller{pkg: projectImportPath, owner: "mutationAddsCompatibilityCaller"}] != 1 {
+		t.Fatal("compatibility-opener census did not detect an added internal caller")
+	}
+}
+
+type projectOpenCaller struct {
+	pkg   string
+	owner string
+}
+
+func projectOpenCallers(pkgs []*packages.Package) map[projectOpenCaller]int {
+	callers := map[projectOpenCaller]int{}
+	for _, pkg := range pkgs {
+		for _, file := range pkg.Syntax {
+			for _, declaration := range file.Decls {
+				fn, ok := declaration.(*ast.FuncDecl)
+				if ok && callsProjectOpen(pkg.TypesInfo, fn) {
+					callers[projectOpenCaller{pkg: pkg.PkgPath, owner: fn.Name.Name}]++
+				}
+			}
+		}
+	}
+	return callers
+}
+
+func assertProjectOpenCallers(t *testing.T, got, want map[projectOpenCaller]int) {
+	t.Helper()
+	for caller, count := range want {
+		if got[caller] != count {
+			t.Errorf("project.Open caller %s.%s count = %d, want %d", caller.pkg, caller.owner, got[caller], count)
+		}
+		delete(got, caller)
+	}
+	for caller, count := range got {
+		t.Errorf("unexpected project.Open caller %s.%s count %d", caller.pkg, caller.owner, count)
 	}
 }
 
@@ -67,12 +123,18 @@ func projectStateReceiver(info *types.Info, recv *ast.FieldList) bool {
 func callsProjectOpen(info *types.Info, node ast.Node) bool {
 	found := false
 	ast.Inspect(node, func(node ast.Node) bool {
-		selector, ok := node.(*ast.SelectorExpr)
-		if !ok || selector.Sel.Name != "Open" {
+		call, ok := node.(*ast.CallExpr)
+		if !ok {
 			return true
 		}
-		object := info.Uses[selector.Sel]
-		if object != nil && object.Pkg() != nil && object.Pkg().Path() == projectImportPath {
+		var object types.Object
+		switch function := call.Fun.(type) {
+		case *ast.Ident:
+			object = info.Uses[function]
+		case *ast.SelectorExpr:
+			object = info.Uses[function.Sel]
+		}
+		if object != nil && object.Name() == "Open" && object.Pkg() != nil && object.Pkg().Path() == projectImportPath && object.Parent() == object.Pkg().Scope() {
 			found = true
 		}
 		return true

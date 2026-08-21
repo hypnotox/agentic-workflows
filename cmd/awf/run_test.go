@@ -8,6 +8,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"go/types"
 	"io"
 	"os"
 	"path/filepath"
@@ -26,6 +27,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
+	"golang.org/x/tools/go/packages"
 )
 
 // minimalYAML is a valid tree-config for a scaffolded fixture project.
@@ -196,38 +198,120 @@ func TestRunSyncPrintingUsesInjectedLoader(t *testing.T) {
 	}
 }
 
+type syncCompositionCall struct {
+	file  string
+	owner string
+	name  string
+}
+
 // invariant: code-design/dependency-composition:sync-project-loader-wiring (TestSyncCompositionAndCallers)
 func TestSyncCompositionAndCallers(t *testing.T) {
-	paths, err := filepath.Glob("*.go")
+	want := map[syncCompositionCall]int{
+		{file: "checkrepo.go", owner: "productionRepoCheckDependencies", name: "NewLoader"}:                  1,
+		{file: "checkrepo.go", owner: "productionRepoCheckDependencies", name: "NewLoaderWithoutRepository"}: 1,
+		{file: "checkrepo.go", owner: "productionRepoCheckDependencies", name: "OpenForOperation"}:           2,
+		{file: "projectstate.go", owner: "openProjectOperation", name: "NewLoader"}:                          1,
+		{file: "projectstate.go", owner: "openProjectOperation", name: "NewLoaderWithoutRepository"}:         1,
+		{file: "projectstate.go", owner: "openProjectOperation", name: "OpenForOperation"}:                   2,
+		{file: "sync.go", owner: "newProjectLoader", name: "NewLoader"}:                                      1,
+		{file: "sync.go", owner: "newProjectLoader", name: "NewLoaderWithoutRepository"}:                     1,
+		{file: "sync.go", owner: "syncMutation", name: "OpenForOperation"}:                                   1,
+		{file: "sync.go", owner: "syncMutation", name: "SyncReport"}:                                         1,
+		{file: "upgrade_presentation.go", owner: "productionUpgradeSyncDependencies", name: "SyncReport"}:    1,
+		{file: "upgrade_presentation.go", owner: "upgradeSyncMutationWith", name: "OpenForOperation"}:        1,
+	}
+	assertSyncCompositionCalls(t, syncCompositionCalls(loadSyncCompositionPackage(t, nil)), want)
+
+	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range paths {
-		if strings.HasSuffix(path, "_test.go") {
-			continue
-		}
-		raw, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if strings.Contains(string(raw), "project.Open(") {
-			t.Errorf("%s retains compatibility project.Open composition", path)
+	fixture := filepath.Join(root, "cmd", "awf", "sync_wiring_mutation_fixture.go")
+	mutation := loadSyncCompositionPackage(t, map[string][]byte{
+		fixture: []byte(`package main
+
+import (
+	"context"
+
+	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/project"
+)
+
+func mutationAddsPostRender(state *project.ProjectState, cfg *config.Config, ctx context.Context) {
+	_, _, _, _ = project.SyncReport(state, cfg, ctx)
+}
+`),
+	})
+	got := syncCompositionCalls(mutation)
+	if got[syncCompositionCall{file: "sync_wiring_mutation_fixture.go", owner: "mutationAddsPostRender", name: "SyncReport"}] != 1 {
+		t.Fatal("typed caller census did not detect an added post-mutation render")
+	}
+}
+
+func loadSyncCompositionPackage(t *testing.T, overlay map[string][]byte) *packages.Package {
+	t.Helper()
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	mode := packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles |
+		packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo
+	pkgs, err := packages.Load(&packages.Config{Dir: root, Mode: mode, Overlay: overlay}, "./cmd/awf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pkgs) != 1 {
+		t.Fatalf("loaded command packages = %d, want 1", len(pkgs))
+	}
+	if len(pkgs[0].Errors) != 0 {
+		t.Fatal(pkgs[0].Errors[0])
+	}
+	return pkgs[0]
+}
+
+func syncCompositionCalls(pkg *packages.Package) map[syncCompositionCall]int {
+	got := map[syncCompositionCall]int{}
+	for _, file := range pkg.Syntax {
+		for _, declaration := range file.Decls {
+			fn, ok := declaration.(*ast.FuncDecl)
+			if !ok || fn.Body == nil {
+				continue
+			}
+			ast.Inspect(fn.Body, func(node ast.Node) bool {
+				call, ok := node.(*ast.CallExpr)
+				if !ok {
+					return true
+				}
+				selector, ok := call.Fun.(*ast.SelectorExpr)
+				if !ok {
+					return true
+				}
+				object, ok := pkg.TypesInfo.Uses[selector.Sel].(*types.Func)
+				if !ok || object.Pkg() == nil || object.Pkg().Path() != "github.com/hypnotox/agentic-workflows/internal/project" {
+					return true
+				}
+				switch object.Name() {
+				case "NewLoader", "NewLoaderWithoutRepository", "Open", "OpenForOperation", "SyncReport":
+					position := pkg.Fset.Position(call.Pos())
+					got[syncCompositionCall{file: filepath.Base(position.Filename), owner: fn.Name.Name, name: object.Name()}]++
+				}
+				return true
+			})
 		}
 	}
-	for file, fragments := range map[string][]string{
-		"projectstate.go": {"project.NewLoader(", "project.NewLoaderWithoutRepository(", ".OpenForOperation(ctx, root)"},
-		"sync.go":         {"newProjectLoader(root)", "loader.OpenForOperation(ctx, root)", "project.SyncReport(state, cfg, ctx)"},
-		"checkrepo.go":    {"project.BuildCheckReport(state, cfg, repo, ctx)", "project.CheckCurrentState(root, repo, ctx)"},
-	} {
-		raw, err := os.ReadFile(file)
-		if err != nil {
-			t.Fatal(err)
+	return got
+}
+
+func assertSyncCompositionCalls(t *testing.T, got, want map[syncCompositionCall]int) {
+	t.Helper()
+	for site, count := range want {
+		if got[site] != count {
+			t.Errorf("call %s:%s %s count = %d, want %d", site.file, site.owner, site.name, got[site], count)
 		}
-		for _, fragment := range fragments {
-			if !strings.Contains(string(raw), fragment) {
-				t.Errorf("%s missing explicit composition %q", file, fragment)
-			}
-		}
+		delete(got, site)
+	}
+	for site, count := range got {
+		t.Errorf("unexpected call %s:%s %s count %d", site.file, site.owner, site.name, count)
 	}
 }
 

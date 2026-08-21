@@ -87,10 +87,7 @@ func (r snapshotTreeReader) Paths(prefix string) ([]string, error) {
 }
 
 func projectTreeReader(p renderInputs) ProjectTreeReader {
-	if p.read != nil {
-		return p.read
-	}
-	return filesystemProjectReader{root: p.root()}
+	return p.read
 }
 
 type filesystemProjectReader struct{ root string }

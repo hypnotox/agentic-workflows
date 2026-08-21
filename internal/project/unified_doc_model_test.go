@@ -67,7 +67,7 @@ func TestProjectSingletonConsumersUseInjectedView(t *testing.T) {
 	custom.Docs["custom-singleton"] = catalog.DocEntry{Path: "custom.md", Sections: []string{"body"}}
 	cfg := &config.Config{}
 	p := &ProjectState{invokingRoot: t.TempDir(), selectedCat: catalog.NewView(&custom), completeCat: catalog.NewView(&custom)}
-	model := buildClaimedModel(newRenderInputs(p, cfg, nil), nil, topic.Corpus{})
+	model := buildClaimedModel(newRenderInputs(p, cfg, filesystemProjectReader{root: p.Root()}), nil, topic.Corpus{})
 	if model.singletons["workflow"] || !model.singletons["custom-singleton"] {
 		t.Fatalf("project singleton membership = %#v", model.singletons)
 	}

@@ -49,19 +49,9 @@ func generateTopicDocs(p renderInputs, corpus topic.Corpus) (files []RenderedFil
 	if err != nil { // coverage-ignore: the topic index template is compile-time embedded
 		return nil, nil, err
 	}
-	var currentPaths []string
-	if p.read != nil {
-		currentPaths, err = p.read.Paths("")
-		if err != nil { // coverage-ignore: the only injected production reader is snapshotTreeReader, whose in-memory enumeration cannot fail
-			return nil, nil, err
-		}
-	} else {
-		// Init and ordinary working-tree rendering use canonical filesystem paths;
-		// staged rendering supplies its snapshot reader explicitly above.
-		currentPaths, err = filesystemProjectReader{root: p.root()}.Paths("")
-		if err != nil {
-			return nil, nil, err
-		}
+	currentPaths, err := p.read.Paths("")
+	if err != nil { // coverage-ignore: the selected production readers either enumerate an in-memory snapshot or propagate filesystem faults already covered at their boundary
+		return nil, nil, err
 	}
 	base := config.DocsDir + "/topics"
 	for _, discovered := range corpus.All() {
