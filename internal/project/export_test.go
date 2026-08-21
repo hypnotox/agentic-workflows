@@ -180,21 +180,18 @@ func testRepo(state *ProjectState) *awfgit.Repo {
 func testPlan(state *ProjectState) (outputplan.Plan, error) {
 	return testPublisher(operationInputs(state, testConfig(state))).Plan()
 }
+
 func syncProject(state *ProjectState) error {
-	cfg := testConfig(state)
-	plan, err := testPlan(state)
-	if err != nil {
-		return err
-	}
+	pub := publisher.New(state.OutputState(), testConfig(state), publisher.NewFilesystemReader(state.Root()), Version)
 	_, found, err := manifest.LoadOptional(lockPath(state.Root()))
 	if err != nil {
 		return err
 	}
 	if !found {
-		_, _, _, err = InitializeReport(state, cfg, InitAuthority{InitializedWithVersion: Version}, plan)
-		return err
+		_, err = pub.Initialize(publisher.InitAuthority{InitializedWithVersion: Version})
+	} else {
+		_, err = pub.Sync()
 	}
-	_, _, _, err = SyncReport(state, cfg, plan)
 	return err
 }
 func renderAll(state *ProjectState) ([]RenderedFile, error) {
@@ -224,19 +221,22 @@ func checkStagedDriftProject(state *ProjectState, ctx context.Context) ([]manife
 func outputPlanProject(state *ProjectState) (*OutputPlan, error) {
 	return outputPlan(operationInputs(state, testConfig(state)))
 }
-func syncReportProject(state *ProjectState) ([]Backup, []Change, []string, error) {
-	plan, err := testPlan(state)
-	if err != nil {
-		return nil, nil, nil, err
+func projectResult(result publisher.Result, err error) ([]Backup, []Change, []string, error) {
+	backups := make([]Backup, len(result.Backups()))
+	for i, backup := range result.Backups() {
+		backups[i] = Backup{Path: backup.Path, Bak: backup.Bak, Index: backup.Index}
 	}
-	return SyncReport(state, testConfig(state), plan)
+	changes := make([]Change, len(result.Changes()))
+	for i, change := range result.Changes() {
+		changes[i] = Change{Path: change.Path, Cause: change.Cause}
+	}
+	return backups, changes, result.Pruned(), err
+}
+func syncReportProject(state *ProjectState) ([]Backup, []Change, []string, error) {
+	return projectResult(publisher.New(state.OutputState(), testConfig(state), publisher.NewFilesystemReader(state.Root()), Version).Sync())
 }
 func initializeReportProject(state *ProjectState, seed InitAuthority) ([]Backup, []Change, []string, error) {
-	plan, err := testPlan(state)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	return InitializeReport(state, testConfig(state), seed, plan)
+	return projectResult(publisher.New(state.OutputState(), testConfig(state), publisher.NewFilesystemReader(state.Root()), Version).Initialize(publisher.InitAuthority{InitializedWithVersion: seed.InitializedWithVersion}))
 }
 func checkReportProject(state *ProjectState, ctx context.Context) (CheckReport, error) {
 	prepared, err := testPublisher(operationInputs(state, testConfig(state))).Prepare()
@@ -250,11 +250,7 @@ func configReferenceProject(state *ProjectState) (publisher.ConfigReference, err
 	return testPublisher(operationInputs(state, testConfig(state))).BuildConfigReference()
 }
 func initCollisionsProject(state *ProjectState) ([]string, error) {
-	plan, err := testPlan(state)
-	if err != nil {
-		return nil, err
-	}
-	return InitCollisions(state, testConfig(state), plan)
+	return publisher.New(state.OutputState(), testConfig(state), publisher.NewFilesystemReader(state.Root()), Version).InitCollisions()
 }
 func plannedOutputsProject(state *ProjectState) ([]string, error) {
 	plan, err := testPlan(state)
@@ -286,7 +282,10 @@ func checkCurrentStateProject(state *ProjectState, ctx context.Context) (Current
 	return CheckCurrentState(state.Root(), testRepo(state), ctx)
 }
 func numberPendingADRsProject(state *ProjectState, slugs []string) (NumberingReport, error) {
-	return NumberPendingADRs(state, testConfig(state), slugs, func() (outputplan.Plan, error) { return testPlan(state) })
+	return NumberPendingADRs(state, testConfig(state), slugs, func() error {
+		_, err := publisher.New(state.OutputState(), testConfig(state), publisher.NewFilesystemReader(state.Root()), Version).Sync()
+		return err
+	})
 }
 func renderResidentMarkerProject(state *ProjectState, name string) (RenderedFile, error) {
 	prepared, err := testPublisher(operationInputs(state, testConfig(state))).Prepare()

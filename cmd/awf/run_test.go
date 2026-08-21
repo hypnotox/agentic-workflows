@@ -25,6 +25,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"golang.org/x/tools/go/packages"
@@ -45,7 +46,7 @@ func initializeProject(ctx context.Context, root string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	seed := &project.InitAuthority{InitializedWithVersion: project.Version}
+	seed := &publisher.InitAuthority{InitializedWithVersion: project.Version}
 	return runSyncPrinting(ctx, loader, root, seed, out)
 }
 
@@ -189,7 +190,7 @@ func TestRunSyncPrintingUsesInjectedLoader(t *testing.T) {
 		loadPaths = append(loadPaths, path)
 		return config.Load(path)
 	}, catalog.Standard, func(_ context.Context, got string) string { return got }, mustOpenGit(t, root))
-	if err := runSyncPrinting(ctx, loader, root, &project.InitAuthority{InitializedWithVersion: project.Version}, io.Discard); err != nil {
+	if err := runSyncPrinting(ctx, loader, root, &publisher.InitAuthority{InitializedWithVersion: project.Version}, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	want := config.RootDir(root)
@@ -216,9 +217,10 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 		{file: "sync.go", owner: "newProjectLoader", name: "NewLoader"}:                                      1,
 		{file: "sync.go", owner: "newProjectLoader", name: "NewLoaderWithoutRepository"}:                     1,
 		{file: "sync.go", owner: "syncMutation", name: "OpenForOperation"}:                                   1,
-		{file: "sync.go", owner: "syncMutation", name: "SyncReport"}:                                         1,
-		{file: "upgrade_presentation.go", owner: "productionUpgradeSyncDependencies", name: "SyncReport"}:    1,
+		{file: "sync.go", owner: "syncMutation", name: "Sync"}:                                               1,
+		{file: "upgrade_presentation.go", owner: "productionUpgradeSyncDependencies", name: "Sync"}:          1,
 		{file: "upgrade_presentation.go", owner: "upgradeSyncMutationWith", name: "OpenForOperation"}:        1,
+		{file: "adr.go", owner: "runADR", name: "Sync"}:                                                      1,
 	}
 	assertSyncCompositionCalls(t, syncCompositionCalls(loadSyncCompositionPackage(t, nil)), want)
 
@@ -235,25 +237,25 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/project"
-	"github.com/hypnotox/agentic-workflows/internal/outputplan"
+	"github.com/hypnotox/agentic-workflows/internal/publisher"
 )
 
 func mutationAddsPostRender(state *project.ProjectState, cfg *config.Config, ctx context.Context) {
 	_ = ctx
-	_, _, _, _ = project.SyncReport(state, cfg, outputplan.Plan{})
+	_, _ = publisher.New(state.OutputState(), cfg, publisher.NewFilesystemReader(state.Root()), project.Version).Sync()
 }
 
 var mutationAddsPackagePostRender = func(state *project.ProjectState, cfg *config.Config, ctx context.Context) {
 	_ = ctx
-	_, _, _, _ = project.SyncReport(state, cfg, outputplan.Plan{})
+	_, _ = publisher.New(state.OutputState(), cfg, publisher.NewFilesystemReader(state.Root()), project.Version).Sync()
 }
 `),
 	})
 	got := syncCompositionCalls(mutation)
-	if got[syncCompositionCall{file: "sync_wiring_mutation_fixture.go", owner: "mutationAddsPostRender", name: "SyncReport"}] != 1 {
+	if got[syncCompositionCall{file: "sync_wiring_mutation_fixture.go", owner: "mutationAddsPostRender", name: "Sync"}] != 1 {
 		t.Fatal("typed caller census did not detect an added post-mutation render")
 	}
-	if got[syncCompositionCall{file: "sync_wiring_mutation_fixture.go", owner: "<package>", name: "SyncReport"}] != 1 {
+	if got[syncCompositionCall{file: "sync_wiring_mutation_fixture.go", owner: "<package>", name: "Sync"}] != 1 {
 		t.Fatal("typed caller census did not detect a package-level post-mutation render")
 	}
 }
@@ -305,11 +307,15 @@ func syncCompositionCalls(pkg *packages.Package) map[syncCompositionCall]int {
 				return true
 			}
 			object, ok := pkg.TypesInfo.Uses[selector.Sel].(*types.Func)
-			if !ok || object.Pkg() == nil || object.Pkg().Path() != "github.com/hypnotox/agentic-workflows/internal/project" {
+			if !ok || object.Pkg() == nil {
+				return true
+			}
+			packagePath := object.Pkg().Path()
+			if packagePath != "github.com/hypnotox/agentic-workflows/internal/project" && packagePath != "github.com/hypnotox/agentic-workflows/internal/publisher" {
 				return true
 			}
 			switch object.Name() {
-			case "NewLoader", "NewLoaderWithoutRepository", "Open", "OpenForOperation", "SyncReport":
+			case "NewLoader", "NewLoaderWithoutRepository", "Open", "OpenForOperation", "Sync":
 				owner := owners[call.Pos()]
 				if owner == "" {
 					owner = "<package>"

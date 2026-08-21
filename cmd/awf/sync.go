@@ -10,6 +10,7 @@ import (
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/publisher"
 )
 
 // newProjectLoader composes the project-opening policy for one invocation: the
@@ -35,7 +36,7 @@ func runSync(ctx context.Context, root string, stdout io.Writer) error {
 	return runSyncPrinting(ctx, loader, root, nil, stdout)
 }
 
-func runSyncPrinting(ctx context.Context, loader *project.Loader, root string, seed *project.InitAuthority, stdout io.Writer) error {
+func runSyncPrinting(ctx context.Context, loader *project.Loader, root string, seed *publisher.InitAuthority, stdout io.Writer) error {
 	mutation, _, _, err := syncMutation(ctx, loader, root, seed)
 	if err != nil {
 		return err
@@ -51,27 +52,22 @@ func renderSyncMutation(stdout io.Writer, mutation presentation.Mutation) error 
 	return presentation.Render(stdout, document)
 }
 
-func syncMutation(ctx context.Context, loader *project.Loader, root string, seed *project.InitAuthority) (presentation.Mutation, *project.ProjectState, *config.Config, error) {
+func syncMutation(ctx context.Context, loader *project.Loader, root string, seed *publisher.InitAuthority) (presentation.Mutation, *project.ProjectState, *config.Config, error) {
 	state, cfg, err := loader.OpenForOperation(ctx, root)
 	if err != nil {
 		return presentation.Mutation{}, nil, nil, err
 	}
-	plan, err := operationPlan(state, cfg)
-	if err != nil { // coverage-ignore: OpenForOperation validated the same immutable tree; Publisher planning failures are covered at the owner boundary
-		return presentation.Mutation{}, nil, nil, err
-	}
-	var backups []project.Backup
-	var changes []project.Change
-	var pruned []string
+	pub := composePublisher(state, cfg)
+	var result publisher.Result
 	if seed == nil {
-		backups, changes, pruned, err = project.SyncReport(state, cfg, plan)
+		result, err = pub.Sync()
 	} else {
-		backups, changes, pruned, err = project.InitializeReport(state, cfg, *seed, plan)
+		result, err = pub.Initialize(*seed)
 	}
 	if err != nil {
 		return presentation.Mutation{}, nil, nil, err
 	}
-	mutation, err := project.SyncMutation(backups, changes, pruned)
+	mutation, err := result.Mutation()
 	if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
 		return presentation.Mutation{}, nil, nil, err
 	}

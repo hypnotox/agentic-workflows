@@ -20,11 +20,8 @@ func operationInputs(state *ProjectState, cfg *config.Config) renderInputs {
 }
 
 // NumberPendingADRs assigns numbers using the selected project tree.
-func NumberPendingADRs(state *ProjectState, cfg *config.Config, slugs []string, preparePlan func() (outputplan.Plan, error)) (NumberingReport, error) {
-	return numberPendingADRs(operationInputs(state, cfg), slugs, func() (*OutputPlan, error) {
-		plan, err := preparePlan()
-		return &plan, err
-	})
+func NumberPendingADRs(state *ProjectState, cfg *config.Config, slugs []string, publish func() error) (NumberingReport, error) {
+	return numberPendingADRs(operationInputs(state, cfg), slugs, publish)
 }
 
 // OperationSemantics carries Publisher's direct semantic derivation to residual
@@ -58,11 +55,6 @@ func CheckCommitAuthorization(root string, repo *awfgit.Repo, ctx context.Contex
 	return checkCommitAuthorization(root, repo, ctx, msg)
 }
 
-// InitCollisions reports outputs that would collide during initialization.
-func InitCollisions(state *ProjectState, cfg *config.Config, plan outputplan.Plan) ([]string, error) {
-	return initCollisions(operationInputs(state, cfg), &plan)
-}
-
 // BuildListDocument renders the requested project inventory.
 func BuildListDocument(state *ProjectState, cfg *config.Config, kindFilter string) (presentation.Document, error) {
 	return listDocument(cfg, state.catalog(), kindFilter)
@@ -70,16 +62,6 @@ func BuildListDocument(state *ProjectState, cfg *config.Config, kindFilter strin
 
 // ReadPlan returns one executable plan projection from root.
 func ReadPlan(root, name, selector string) ([]byte, error) { return readPlan(root, name, selector) }
-
-// SyncReport publishes the selected project tree and reports its mutations.
-func SyncReport(state *ProjectState, cfg *config.Config, plan outputplan.Plan) ([]Backup, []Change, []string, error) {
-	return syncReportOperation(operationInputs(state, cfg), &plan)
-}
-
-// InitializeReport publishes an initial project tree under explicit authority.
-func InitializeReport(state *ProjectState, cfg *config.Config, seed InitAuthority, plan outputplan.Plan) ([]Backup, []Change, []string, error) {
-	return initializeReport(operationInputs(state, cfg), seed, &plan)
-}
 
 // Audit evaluates the selected repository history against project configuration.
 func Audit(root string, cfg *config.Config, ctx context.Context, base, head string) ([]audit.Finding, int, error) {

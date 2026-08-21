@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
-	"github.com/hypnotox/agentic-workflows/internal/outputplan"
+	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -140,7 +140,7 @@ func TestNumberingReportPresentationValidatesAssignments(t *testing.T) {
 func TestNumberPendingADRsPropagatesPublisherPlanFailure(t *testing.T) {
 	state, _ := numberingProject(t, numberingFixture(t))
 	boom := errors.New("plan failure")
-	_, err := NumberPendingADRs(state, testConfig(state), []string{"early", "late"}, func() (outputplan.Plan, error) { return outputplan.Plan{}, boom })
+	_, err := NumberPendingADRs(state, testConfig(state), []string{"early", "late"}, func() error { return boom })
 	if !errors.Is(err, boom) {
 		t.Fatalf("plan error = %v", err)
 	}
@@ -148,19 +148,16 @@ func TestNumberPendingADRsPropagatesPublisherPlanFailure(t *testing.T) {
 
 func TestNumberPendingADRsPropagatesPublicationFailure(t *testing.T) {
 	state, _ := numberingProject(t, numberingFixture(t))
-	report, err := NumberPendingADRs(state, testConfig(state), []string{"early", "late"}, func() (outputplan.Plan, error) {
-		plan, err := testPlan(state)
-		if err != nil {
-			return outputplan.Plan{}, err
-		}
+	report, err := NumberPendingADRs(state, testConfig(state), []string{"early", "late"}, func() error {
 		agentsPath := filepath.Join(state.Root(), "AGENTS.md")
 		if err := os.Remove(agentsPath); err != nil {
-			return outputplan.Plan{}, err
+			return err
 		}
 		if err := os.Mkdir(agentsPath, 0o755); err != nil {
-			return outputplan.Plan{}, err
+			return err
 		}
-		return plan, nil
+		_, err := publisher.New(state.OutputState(), testConfig(state), publisher.NewFilesystemReader(state.Root()), Version).Sync()
+		return err
 	})
 	if err == nil || len(report.Assignments) != 2 {
 		t.Fatalf("publication result = %#v, %v", report, err)

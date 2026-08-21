@@ -18,6 +18,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/upgrade"
 )
@@ -249,16 +250,6 @@ func TestJournalFailureUsesTerminalChangedAxes(t *testing.T) {
 	}
 }
 
-func TestUpgradeSyncMutationRejectsInvalidCollectedChange(t *testing.T) {
-	dependencies := productionUpgradeSyncDependencies()
-	dependencies.projectSyncReport = func(context.Context, *project.ProjectState, *config.Config) ([]project.Backup, []project.Change, []string, error) {
-		return []project.Backup{{Path: "\n", Bak: "backup"}}, nil, nil, nil
-	}
-	if _, err := upgradeSyncMutationWith(testContext(t), scaffoldProject(t), dependencies); err == nil {
-		t.Fatal("invalid collected sync change accepted")
-	}
-}
-
 func TestRunUpgradeFailureRetainsChangesBeforeMigrationFailure(t *testing.T) {
 	root := scaffoldProject(t)
 	failure := errors.New("migration failed")
@@ -459,8 +450,8 @@ func TestUpgradePresentationPropagatesOperationalFailures(t *testing.T) {
 	t.Run("project sync", func(t *testing.T) {
 		failure := errors.New("sync failed")
 		dependencies := productionUpgradeSyncDependencies()
-		dependencies.projectSyncReport = func(context.Context, *project.ProjectState, *config.Config) ([]project.Backup, []project.Change, []string, error) {
-			return nil, nil, nil, failure
+		dependencies.publisherSync = func(context.Context, *project.ProjectState, *config.Config) (publisher.Result, error) {
+			return publisher.Result{}, failure
 		}
 		if _, err := upgradeSyncMutationWith(testContext(t), scaffoldProject(t), dependencies); !errors.Is(err, failure) {
 			t.Fatalf("sync failure = %v, want %v", err, failure)

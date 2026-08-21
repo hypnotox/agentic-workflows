@@ -17,6 +17,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 )
 
@@ -119,11 +120,7 @@ func runInitWithProjectLoader(ctx context.Context, root string, force, describe 
 	if err != nil {
 		return err
 	}
-	plan, err := operationPlan(state, cfg)
-	if err != nil {
-		return err
-	}
-	collisions, err := project.InitCollisions(state, cfg, plan)
+	collisions, err := composePublisher(state, cfg).InitCollisions()
 	if err != nil { // coverage-ignore: the freshly opened state and Publisher plan already establish every collision input; only a concurrent tree fault can fail this projection
 		if scaffolded { // coverage-ignore: after first-adoption and scaffold validation, this cleanup requires a concurrent tree mutation to make InitCollisions fail
 			_ = os.Remove(cfgPath)
@@ -153,9 +150,9 @@ func runInitWithProjectLoader(ctx context.Context, root string, force, describe 
 	}
 	// Under --force, the selected sync path backs up every foreign file through
 	// the same confined backup policy used by ordinary sync (ADR-0035).
-	var seed *project.InitAuthority
+	var seed *publisher.InitAuthority
 	if !configExists && !lockExists {
-		seed = &project.InitAuthority{InitializedWithVersion: project.Version}
+		seed = &publisher.InitAuthority{InitializedWithVersion: project.Version}
 	}
 	syncResult, syncedProject, syncedConfig, syncErr := syncMutation(ctx, loader, root, seed)
 	if syncErr != nil {
@@ -214,11 +211,7 @@ func probeCollisions(ctx context.Context, root string) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		plan, err := operationPlan(state, cfg)
-		if err != nil { // coverage-ignore: openProjectOperation validated this same tree; Publisher planning failures are covered at the owner boundary
-			return nil, err
-		}
-		return project.InitCollisions(state, cfg, plan)
+		return composePublisher(state, cfg).InitCollisions()
 	}
 	tmp, err := os.MkdirTemp("", "awf-init-probe-*")
 	if err != nil { // coverage-ignore: MkdirTemp fails only on an unwritable TMPDIR, which a test cannot trigger portably

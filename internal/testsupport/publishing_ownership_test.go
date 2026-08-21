@@ -106,18 +106,15 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 		t.Errorf("Publisher construction sites = %d Prepare and %d Plan, want one semantic and one plan-only outer seam", publisherPrepareSites, publisherPlanSites)
 	}
 	expected := map[string]calls{
-		"preparePublisher":                  {},
-		"operationPreparation":              {preparePublisher: 1},
-		"workingContextState":               {preparePublisher: 1, plan: 1},
-		"stagedDrift":                       {preparePublisher: 1, plan: 1},
-		"stagedContextState":                {preparePublisher: 1, plan: 1},
-		"productionRepoCheckDependencies":   {operationPreparation: 1, plan: 1},
-		"runInitWithProjectLoader":          {operationPreparation: 1, operationPlan: 1, plan: 1},
-		"probeCollisions":                   {operationPlan: 2},
-		"syncMutation":                      {operationPlan: 1},
-		"productionUpgradeSyncDependencies": {operationPlan: 1},
-		"openEffortComposition":             {operationPreparation: 1, residentMarker: 1},
-		"runADR":                            {operationPlan: 1},
+		"preparePublisher":                {},
+		"operationPreparation":            {preparePublisher: 1},
+		"workingContextState":             {preparePublisher: 1, plan: 1},
+		"stagedDrift":                     {preparePublisher: 1, plan: 1},
+		"stagedContextState":              {preparePublisher: 1, plan: 1},
+		"productionRepoCheckDependencies": {operationPreparation: 1, plan: 1},
+		"runInitWithProjectLoader":        {operationPreparation: 1, plan: 1},
+		"probeCollisions":                 {operationPlan: 1},
+		"openEffortComposition":           {operationPreparation: 1, residentMarker: 1},
 	}
 	// preparePublisher's one direct .Prepare call is separately counted above;
 	// its zero helper-call record is not retained in byFunction.

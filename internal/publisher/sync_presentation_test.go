@@ -1,4 +1,4 @@
-package project
+package publisher
 
 import (
 	"bytes"
@@ -15,35 +15,35 @@ func TestSyncMutationRejectsLineBreaksInLiteralPaths(t *testing.T) {
 		{
 			name: "backup path",
 			run: func(invalid string) error {
-				_, err := SyncMutation([]Backup{{Path: "old" + invalid + "path", Bak: "old.awf-bak"}}, nil, nil)
+				_, err := syncMutation([]Backup{{Path: "old" + invalid + "path", Bak: "old.awf-bak"}}, nil, nil)
 				return err
 			},
 		},
 		{
 			name: "backup destination",
 			run: func(invalid string) error {
-				_, err := SyncMutation([]Backup{{Path: "old-path", Bak: "old" + invalid + ".awf-bak"}}, nil, nil)
+				_, err := syncMutation([]Backup{{Path: "old-path", Bak: "old" + invalid + ".awf-bak"}}, nil, nil)
 				return err
 			},
 		},
 		{
 			name: "change path",
 			run: func(invalid string) error {
-				_, err := SyncMutation(nil, []Change{{Path: "output" + invalid + ".md", Cause: "added"}}, nil)
+				_, err := syncMutation(nil, []Change{{Path: "output" + invalid + ".md", Cause: "added"}}, nil)
 				return err
 			},
 		},
 		{
 			name: "pruned path",
 			run: func(invalid string) error {
-				_, err := SyncMutation(nil, nil, []string{"old" + invalid + ".md"})
+				_, err := syncMutation(nil, nil, []string{"old" + invalid + ".md"})
 				return err
 			},
 		},
 		{
 			name: "indexed ownership note",
 			run: func(invalid string) error {
-				_, err := SyncMutation([]Backup{{Path: "INDEX" + invalid + ".md", Bak: "INDEX.awf-bak", Index: true}}, nil, nil)
+				_, err := syncMutation([]Backup{{Path: "INDEX" + invalid + ".md", Bak: "INDEX.awf-bak", Index: true}}, nil, nil)
 				return err
 			},
 		},
@@ -51,7 +51,7 @@ func TestSyncMutationRejectsLineBreaksInLiteralPaths(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			for _, invalid := range []string{"\n", "\r"} {
 				if err := test.run(invalid); err == nil || err.Error() != "presentation value contains a line break" {
-					t.Fatalf("SyncMutation(%q) error = %v", invalid, err)
+					t.Fatalf("syncMutation(%q) error = %v", invalid, err)
 				}
 			}
 		})
@@ -59,7 +59,7 @@ func TestSyncMutationRejectsLineBreaksInLiteralPaths(t *testing.T) {
 }
 
 func TestSyncMutationPreservesRepeatedSpacesInPaths(t *testing.T) {
-	mutation, err := SyncMutation(
+	mutation, err := syncMutation(
 		[]Backup{{Path: "old  path", Bak: "old  path.awf-bak", Index: true}},
 		[]Change{{Path: "existing  output", Cause: "config"}, {Path: "new  output", Cause: "added"}},
 		[]string{"obsolete  output"},

@@ -8,6 +8,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -50,11 +51,7 @@ func syncPlanFlexibilityProfile(t *testing.T, profile string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := evalPlan(p, cfg)
-	if err != nil {
-		t.Fatalf("plan %s profile: %v", profile, err)
-	}
-	if _, _, _, err := project.InitializeReport(p, cfg, project.InitAuthority{InitializedWithVersion: project.Version}, plan); err != nil {
+	if _, err := publisher.New(p.OutputState(), cfg, publisher.NewFilesystemReader(p.Root()), project.Version).Initialize(publisher.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
 		t.Fatalf("initialize %s profile: %v", profile, err)
 	}
 	return root

@@ -5,7 +5,7 @@ import (
 	"io"
 
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
-	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 )
 
@@ -14,7 +14,7 @@ import (
 // lock). It deliberately leaves the authored .awf/ config (config.yaml,
 // sidecars, convention parts) in place.
 func runUninstall(ctx context.Context, root string, stdout io.Writer) error {
-	report, err := resident.Uninstall(ctx, root, project.IsLocalDocTemplate)
+	report, err := resident.Uninstall(ctx, root, publisher.IsLocalDocTemplate)
 	if err != nil {
 		return err
 	}

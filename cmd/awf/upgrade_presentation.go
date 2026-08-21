@@ -8,20 +8,17 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/upgrade"
 )
 
 type upgradeSyncDependencies struct {
-	projectSyncReport func(context.Context, *project.ProjectState, *config.Config) ([]project.Backup, []project.Change, []string, error)
+	publisherSync func(context.Context, *project.ProjectState, *config.Config) (publisher.Result, error)
 }
 
 func productionUpgradeSyncDependencies() upgradeSyncDependencies {
-	return upgradeSyncDependencies{projectSyncReport: func(_ context.Context, state *project.ProjectState, cfg *config.Config) ([]project.Backup, []project.Change, []string, error) {
-		plan, err := operationPlan(state, cfg)
-		if err != nil { // coverage-ignore: upgrade opened and migrated this same tree before composition; Publisher planning failures are covered at the owner boundary
-			return nil, nil, nil, err
-		}
-		return project.SyncReport(state, cfg, plan)
+	return upgradeSyncDependencies{publisherSync: func(_ context.Context, state *project.ProjectState, cfg *config.Config) (publisher.Result, error) {
+		return composePublisher(state, cfg).Sync()
 	}}
 }
 
@@ -46,9 +43,9 @@ func upgradeSyncMutationWith(ctx context.Context, root string, dependencies upgr
 	if err != nil {
 		return upgradeSyncOutcome{}, err
 	}
-	backups, changes, pruned, syncErr := dependencies.projectSyncReport(ctx, state, cfg)
-	mutation, mutationErr := project.SyncMutation(backups, changes, pruned)
-	if mutationErr != nil {
+	result, syncErr := dependencies.publisherSync(ctx, state, cfg)
+	mutation, mutationErr := result.Mutation()
+	if mutationErr != nil { // coverage-ignore: Publisher Result admits only its owner-produced semantic facts
 		return upgradeSyncOutcome{}, mutationErr
 	}
 	return upgradeSyncOutcome{mutation: mutation}, syncErr

@@ -25,8 +25,6 @@ import (
 )
 
 type ProjectState = project.ProjectState
-type Backup = project.Backup
-type InitAuthority = project.InitAuthority
 
 var Version = project.Version
 
@@ -285,6 +283,10 @@ func setTestTargets(state *ProjectState, targets []Target) *ProjectState {
 	targetOverrides.Store(state, targets)
 	return state
 }
+func testPublisher(inputs renderInputs) *Publisher {
+	return New(lowerForConfig(inputs.state, inputs.cfg), inputs.cfg, inputs.read, inputs.version)
+}
+
 func renderInputsForTest(state *ProjectState) renderInputs {
 	lower := state.OutputState()
 	if value, ok := targetOverrides.Load(state); ok {
@@ -342,21 +344,15 @@ func advisoryNotesProject(state *ProjectState) ([]string, error) {
 	}
 	return project.AdvisoryNotes(state, cfg, prepared.Plan(), projectOperationSemantics(prepared))
 }
-func initializeReportProject(state *ProjectState, seed InitAuthority) ([]project.Backup, []project.Change, []string, error) {
+func initializeReportProject(state *ProjectState, seed InitAuthority) ([]Backup, []Change, []string, error) {
 	cfg := testConfig(state)
-	plan, err := New(lowerForConfig(state.OutputState(), cfg), cfg, NewFilesystemReader(state.Root()), project.Version).Plan()
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	return project.InitializeReport(state, cfg, seed, plan)
+	result, err := New(lowerForConfig(state.OutputState(), cfg), cfg, NewFilesystemReader(state.Root()), project.Version).Initialize(seed)
+	return result.Backups(), result.Changes(), result.Pruned(), err
 }
-func syncReportProject(state *ProjectState) ([]project.Backup, []project.Change, []string, error) {
+func syncReportProject(state *ProjectState) ([]Backup, []Change, []string, error) {
 	cfg := testConfig(state)
-	plan, err := New(lowerForConfig(state.OutputState(), cfg), cfg, NewFilesystemReader(state.Root()), project.Version).Plan()
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	return project.SyncReport(state, cfg, plan)
+	result, err := New(lowerForConfig(state.OutputState(), cfg), cfg, NewFilesystemReader(state.Root()), project.Version).Sync()
+	return result.Backups(), result.Changes(), result.Pruned(), err
 }
 func contextStateProject(state *ProjectState, ctx context.Context) (project.ContextState, error) {
 	prep, err := project.PrepareContextState(state, nil, ctx)
@@ -414,20 +410,15 @@ func renderAll(state *ProjectState) ([]RenderedFile, error) {
 	return plan.writeFiles(), nil
 }
 func syncProject(state *ProjectState) error {
-	cfg := testConfig(state)
-	mutable, err := outputPlan(renderInputsForTest(state))
-	if err != nil {
-		return err
-	}
-	plan := freezePlan(mutable)
+	pub := testPublisher(renderInputsForTest(state))
 	_, found, err := manifest.LoadOptional(config.LockPath(state.Root()))
 	if err != nil {
 		return err
 	}
 	if found {
-		_, _, _, err = project.SyncReport(state, cfg, plan)
+		_, err = pub.Sync()
 	} else {
-		_, _, _, err = project.InitializeReport(state, cfg, project.InitAuthority{InitializedWithVersion: project.Version}, plan)
+		_, err = pub.Initialize(InitAuthority{InitializedWithVersion: project.Version})
 	}
 	return err
 }

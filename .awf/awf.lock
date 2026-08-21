@@ -443,8 +443,8 @@
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
       "templateHash": "sha256:4e74a0e1d0196719f520b48fb0431b3d07ca705b52db6c3a8d08b4dd0faa8665",
-      "configHash": "sha256:f1ccc909fae74d258af3aaea786010dbd53de2c42a771ea2511daa8f8bc7210a",
-      "outputHash": "sha256:2f49d4655e81cc793ca443bdcb95e363d3ebac91bf48056e282e842704fbeab6"
+      "configHash": "sha256:17b231b2b8c22d3b1477af75e7738cff405d842f5aefefa4bfe3ffde8b293bb0",
+      "outputHash": "sha256:724bcbd389cef860eb079611ccfbda12806a75e64b311c79f6693e8cf5d44cd3"
     },
     "docs/audit-remediation-program.md": {
       "templateId": "docs/local.md.tmpl",
