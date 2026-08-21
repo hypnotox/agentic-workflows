@@ -22,8 +22,13 @@ import (
 // are unprefixed at ".claude/agents/<name>.md".
 const evalPrefix = "example"
 
+func evalPreparation(p *project.ProjectState, cfg *config.Config) (publisher.Preparation, error) {
+	return publisher.New(p.OutputState(), cfg, publisher.NewFilesystemReader(p.Root()), project.Version).Prepare()
+}
+
 func evalPlan(p *project.ProjectState, cfg *config.Config) (outputplan.Plan, error) {
-	return publisher.New(p.OutputState(), cfg, publisher.NewFilesystemReader(p.Root()), project.Version).Plan()
+	prepared, err := evalPreparation(p, cfg)
+	return prepared.Plan(), err
 }
 
 func syncEvalProject(t *testing.T, p *project.ProjectState) error {
@@ -42,11 +47,15 @@ func checkProject(p *project.ProjectState, ctx context.Context) ([]manifest.Drif
 	if err != nil {
 		return nil, err
 	}
-	plan, err := evalPlan(p, cfg)
+	prepared, err := evalPreparation(p, cfg)
 	if err != nil {
 		return nil, err
 	}
-	report, err := project.BuildCheckReport(p, cfg, nil, ctx, plan)
+	semantics := project.OperationSemantics{
+		ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(),
+		EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: prepared.PlansError(),
+	}
+	report, err := project.BuildCheckReport(p, cfg, nil, ctx, prepared.Plan(), semantics)
 	return report.Drift, err
 }
 

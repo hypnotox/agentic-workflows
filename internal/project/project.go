@@ -21,12 +21,10 @@ import (
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
-	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
-	"github.com/hypnotox/agentic-workflows/internal/topic"
 	"golang.org/x/mod/semver"
 )
 
@@ -204,7 +202,7 @@ func (s *ProjectState) OutputState() *projectstate.ProjectState {
 	if s == nil || s.state == nil {
 		return nil
 	}
-	return projectstate.NewDerived(s.Root(), s.roots(), s.nested(), s.catalog(), s.completeCatalog(), s.Targets())
+	return projectstate.NewDerivedWithFacts(s.Root(), s.roots(), s.nested(), s.facts(), s.catalog(), s.completeCatalog(), s.Targets())
 }
 
 func (s *ProjectState) roots() resident.Roots             { return s.state.Roots() }
@@ -677,43 +675,6 @@ func lockPath(root string) string {
 	return config.LockPath(root)
 }
 
-// deriveOperationState derives the values a lifecycle operation needs from
-// disk: the parsed ADR and pitfall corpora, current-state topics, and effective
-// rendered skill set. The operation that calls this owns
-// the result and threads it to its consumers, so nothing derived here outlives
-// the call and no consumer re-derives it (ADR-0180).
-//
-// Deriving per operation is what keeps Check's contract honest. Check compares
-// rendered output against the decisions directory as it is on disk right now,
-// so a corpus held on the Project across calls would make a Check following a
-// Sync miss an ADR written in between, silently blinding the drift oracle
-// rather than merely serving a stale read. A value that cannot outlive the
-// operation cannot go stale, so no caller has to remember to reset it.
-func deriveOperationStateWithPitfalls(p renderInputs) (adr.Corpus, pitfall.Corpus, topic.Corpus, map[string]bool, error) {
-	corpus := adr.Corpus{}
-	topics := topic.Corpus{}
-	var err error
-	if fullProfile(p) {
-		corpus, err = adr.LoadCorpus(decisionsDir(p.root()))
-		if err != nil { // coverage-ignore: Publisher already loaded this same corpus to construct the supplied plan; only a concurrent tree mutation can fail here
-			return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
-		}
-		topics, err = topic.LoadCorpus(p.root(), p.cfg, corpus)
-		if err != nil { // coverage-ignore: Publisher already loaded these topics from the same operation tree; only a concurrent tree mutation can fail here
-			return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
-		}
-	}
-	pitfalls, err := loadPitfallCorpus(p)
-	if err != nil { // coverage-ignore: Publisher already loaded pitfalls from this same operation tree; only a concurrent tree mutation can fail here
-		return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
-	}
-	eff, err := effectiveSkills(p)
-	if err != nil { // coverage-ignore: Publisher already resolved these validated skill sidecars for the supplied plan; only a concurrent tree mutation can fail here
-		return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
-	}
-	return corpus, pitfalls, topics, eff, nil
-}
-
 // Audit runs the process-conformance audit (ADR-0017) over the caller-supplied
 // commit range. No config key supplies a base: the range is always explicit
 // (ADR-0127 Decision 3).
@@ -781,15 +742,4 @@ func newADR(root string, cfg *config.Config, repo *awfgit.Repo, ctx context.Cont
 // template. Mirrors NewADR minus sequential numbering (ADR-0098).
 func newPlan(root, title string) (string, error) {
 	return plan.NewFile(filepath.Join(root, config.DocsDir, "plans"), title)
-}
-
-func effectiveSkills(p renderInputs) (map[string]bool, error) {
-	out := map[string]bool{}
-	for name := range projectCatalog(p).Skills {
-		if _, err := p.cfg.Sidecar("skills", name); err != nil { // coverage-ignore: the loaded config and Publisher plan already validated each selected skill sidecar
-			return nil, err
-		}
-		out[name] = true
-	}
-	return out, nil
 }

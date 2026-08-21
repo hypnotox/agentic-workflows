@@ -70,7 +70,7 @@ type RenderedFile struct {
 	kind, artifact string
 	partVarRefs    []string
 	// ConsumedInputs is observed at the render seam, independently of
-	// BuildOutputDeclarations: the context artifact report reads the observed
+	// buildOutputDeclarations: the context artifact report reads the observed
 	// set, so a declaration omission or role mistake shows there rather than
 	// being papered over by the declaration it was derived from.
 	ConsumedInputs     []OutputInput
@@ -693,22 +693,6 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclarat
 	// Duplicate declarations are deliberately retained for OutputPlan to
 	// coalesce or reject from normalized recipes.
 	return out, nil
-}
-
-// RenderResidentMarker returns the exact resident marker from the ordinary
-// output plan, including template execution and provenance banner injection.
-func renderResidentMarkerOperation(p renderInputs, name string) (RenderedFile, error) {
-	plan, err := outputPlan(p)
-	if err != nil {
-		return RenderedFile{}, err
-	}
-	want := config.DirName + "/" + name + "/.gitignore"
-	for _, node := range plan.Nodes {
-		if node.Path == want && node.file != nil {
-			return *node.file, nil
-		}
-	}
-	return RenderedFile{}, fmt.Errorf("resident marker %s is absent from the output plan", want) // coverage-ignore: the closed resident registry and output planner always declare every registered marker
 }
 
 // renderResidentMarker is the single resident-marker renderer. It owns template

@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
-	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
 type Corpus struct {
@@ -46,69 +45,6 @@ func recordMeta(metadata map[string]metaEntry, id TopicID, entry metaEntry) erro
 	}
 	metadata[key] = entry
 	return nil
-}
-
-// LoadCorpus parses the on-disk .awf/topics tree into a Corpus, reading domain
-// ownership from cfg and scanning marker sources under root. It reads every
-// input into memory and delegates the identity, provenance, reference, and
-// marker assembly to assembleCorpus, the byte-fed core the snapshot loader
-// shares.
-func LoadCorpus(root string, cfg *config.Config, adrs adr.Corpus) (Corpus, error) {
-	base := filepath.Join(root, config.DirName, "topics")
-	metadataRoot, partsRoot := filepath.Join(base, "metadata"), filepath.Join(base, "parts")
-	metadata := map[string]metaEntry{}
-	if err := collectFiles(metadataRoot, func(path string) error {
-		if filepath.Ext(path) != ".yaml" {
-			return nil
-		}
-		id, m, err := readMetadata(metadataRoot, path)
-		if err != nil {
-			return err
-		}
-		return recordMeta(metadata, id, metaEntry{meta: m, path: path})
-	}); err != nil {
-		return Corpus{}, err
-	}
-	parts := map[string]partEntry{}
-	if err := collectFiles(partsRoot, func(path string) error {
-		if filepath.Base(path) != "current-state.md" {
-			return nil
-		}
-		rel, err := filepath.Rel(partsRoot, path)
-		if err != nil { // coverage-ignore: WalkDir yields a path beneath partsRoot, so Rel cannot fail
-			return err
-		}
-		seg := strings.Split(filepath.ToSlash(rel), "/")
-		if len(seg) != 3 || !kebabRE.MatchString(seg[0]) || !kebabRE.MatchString(seg[1]) {
-			return fmt.Errorf("invalid topic part path %q", filepath.ToSlash(path))
-		}
-		b, err := os.ReadFile(path)
-		if err != nil { // coverage-ignore: discovery just walked this file; failure requires a concurrent filesystem race
-			return err
-		}
-		parts[(TopicID{seg[0], seg[1]}).String()] = partEntry{data: b, path: path}
-		return nil
-	}); err != nil {
-		return Corpus{}, err
-	}
-	domainPaths := map[string][]string{}
-	for _, d := range cfg.Domains {
-		sc, err := cfg.Sidecar("domains", d)
-		if err != nil { // coverage-ignore: Project.Open already read and validated every configured domain sidecar
-			return Corpus{}, err
-		}
-		domainPaths[d] = slices.Clone(sc.Paths)
-	}
-	c, err := assembleCorpus(metadata, parts, cfg.Domains, domainPaths, adrs)
-	if err != nil {
-		return Corpus{}, err
-	}
-	markers, err := BuildMarkerIndex(root, c, cfg.CurrentState)
-	if err != nil {
-		return Corpus{}, err
-	}
-	c.Markers = markers
-	return c, nil
 }
 
 // assembleCorpus builds a Corpus without its marker index from already-read

@@ -169,15 +169,15 @@ func TestResidentMarkerCompositionMatchesPlannedOutput(t *testing.T) {
 	t.Fatal("planned effort archive marker is absent")
 }
 
-func TestRenderResidentMarkerPropagatesOutputPlanFailure(t *testing.T) {
+func TestResidentMarkerPlanPropagatesOutputPlanFailure(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
 	inputs := renderInputsWithTargets(p, append(p.Targets(), Target{Outputs: []TargetOutput{{TemplateID: "missing/live-template.tmpl"}}}))
-	if _, err := renderResidentMarkerOperation(inputs, "effort-archive"); err == nil {
-		t.Fatal("resident marker renderer hid output-plan failure")
+	if _, err := outputPlan(inputs); err == nil {
+		t.Fatal("resident marker plan hid output-plan failure")
 	}
 }
 

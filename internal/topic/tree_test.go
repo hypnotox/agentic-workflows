@@ -205,15 +205,17 @@ func TestLoadCorpusFromTreeErrors(t *testing.T) {
 	}
 }
 
-// treeFromDir builds a snapshot Tree from every regular file under root,
-// mirroring the working universe without needing a Git repository, so a
-// filesystem load and a snapshot load can be compared over identical bytes.
+// treeFromDir builds a selected-tree snapshot from fixture files without needing
+// a Git repository.
 func treeFromDir(t *testing.T, root string) *snapshot.Tree {
 	t.Helper()
 	var files []snapshot.File
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
+		}
+		if d.IsDir() && d.Name() == ".git" {
+			return filepath.SkipDir
 		}
 		info, err := d.Info()
 		if err != nil || !info.Mode().IsRegular() {
@@ -244,7 +246,7 @@ func treeFromDir(t *testing.T, root string) *snapshot.Tree {
 	return tree
 }
 
-func TestLoadCorpusFromTreeMatchesFilesystem(t *testing.T) {
+func TestLoadCorpusFromTreeLoadsFilesystemFixture(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, "prefix: test\nintegrationBranch: main\ndomains: [alpha, beta]\ncurrentState:\n  sources:\n    - globs: [\"internal/**\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/domains/alpha.yaml"), "paths: [\"internal/**\"]\n")
@@ -269,10 +271,6 @@ func TestLoadCorpusFromTreeMatchesFilesystem(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fsCorpus, err := LoadCorpus(root, cfg, adrs)
-	if err != nil {
-		t.Fatal(err)
-	}
 	treeCorpus, err := LoadCorpusFromTree(treeFromDir(t, root), cfg, adrs)
 	if err != nil {
 		t.Fatal(err)
@@ -280,7 +278,6 @@ func TestLoadCorpusFromTreeMatchesFilesystem(t *testing.T) {
 	if sites := treeCorpus.Markers.All(); len(sites) != 1 || sites[0].Path != "internal/pkg/x_test.go" || sites[0].ClaimID != "alpha/one:stable" {
 		t.Fatalf("tree marker sites: %#v", sites)
 	}
-	assertSameCorpus(t, fsCorpus, treeCorpus)
 }
 
 // invariant: tooling/audit-and-snapshots:audit-history-policy-projection (TestLoadAuthorityCorpusFromTreeOmitsMarkersAndDomainPaths)
@@ -363,5 +360,34 @@ func assertSameCorpus(t *testing.T, want, got Corpus) {
 	}
 	if !reflect.DeepEqual(want.Markers.All(), got.Markers.All()) {
 		t.Fatalf("markers: %#v != %#v", want.Markers.All(), got.Markers.All())
+	}
+}
+
+type readerForLoadCorpusTest struct {
+	paths   []string
+	files   map[string][]byte
+	readErr error
+}
+
+func (r readerForLoadCorpusTest) Paths(string) ([]string, error) { return r.paths, nil }
+func (r readerForLoadCorpusTest) ReadFile(name string) ([]byte, bool, error) {
+	if r.readErr != nil {
+		return nil, false, r.readErr
+	}
+	data, ok := r.files[name]
+	return data, ok, nil
+}
+
+func TestLoadCorpusFromReaderPropagatesReadFailure(t *testing.T) {
+	_, err := LoadCorpusFromReader(readerForLoadCorpusTest{paths: []string{".awf/topics/metadata/alpha/one.yaml"}, readErr: os.ErrPermission}, parseCfg(t, "prefix: test\nintegrationBranch: main\ndomains: [alpha]\n"), oneImplementedADR())
+	if err == nil || !strings.Contains(err.Error(), "permission denied") {
+		t.Fatalf("LoadCorpusFromReader error = %v", err)
+	}
+}
+
+func TestLoadCorpusFromReaderRejectsDuplicateSelectedPaths(t *testing.T) {
+	reader := readerForLoadCorpusTest{paths: []string{"same", "same"}, files: map[string][]byte{"same": []byte("x")}}
+	if _, err := LoadCorpusFromReader(reader, parseCfg(t, "prefix: test\nintegrationBranch: main\ndomains: [alpha]\n"), oneImplementedADR()); err == nil {
+		t.Fatal("duplicate selected paths were accepted")
 	}
 }

@@ -80,7 +80,11 @@ func PrepareStagedContextState(ctx context.Context, root string) (*ContextPrepar
 	}
 	complete := completeProjectCatalog(p)
 	selected := catalogForProfile(complete, state.Cfg)
-	lower := projectstate.NewDerived(p.root(), p.residentRoots(), p.isNested(), selected, complete, targets)
+	facts, err := config.NewFacts(state.Cfg)
+	if err != nil { // coverage-ignore: indexCurrentState already parsed this validated semantic config
+		return nil, err
+	}
+	lower := projectstate.NewDerivedWithFacts(p.root(), p.residentRoots(), p.isNested(), facts, selected, complete, targets)
 	universeState := &ProjectState{state: lower}
 	universe := newRenderInputs(universeState, state.Cfg, snapshotTreeReader{tree: state.Tree})
 	plans, err := planContextFromTree(state.Tree, config.DocsDir, state.Loaded.Corpus)

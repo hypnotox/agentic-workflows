@@ -127,11 +127,12 @@ func TestCheckReportPropagatesAdvisorySidecarError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, planErr := testPlan(p)
+	prepared, planErr := testPublisher(operationInputs(p, testConfig(p))).Prepare()
 	if planErr != nil {
 		t.Fatal(planErr)
 	}
-	if _, err := BuildCheckReport(p, cfg, testRepo(p), testContext(t), plan); err == nil || !strings.Contains(err.Error(), "must be a list") {
+	semantics := OperationSemantics{ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: prepared.PlansError()}
+	if _, err := BuildCheckReport(p, cfg, testRepo(p), testContext(t), prepared.Plan(), semantics); err == nil || !strings.Contains(err.Error(), "must be a list") {
 		t.Fatalf("CheckReport advisory error = %v after %d glossary reads", err, reader.reads)
 	}
 }

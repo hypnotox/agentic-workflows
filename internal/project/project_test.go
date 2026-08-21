@@ -2278,3 +2278,14 @@ func TestInitializeAndSyncAuthorityRefusals(t *testing.T) {
 		t.Fatalf("bridge sync: %v", err)
 	}
 }
+
+func TestInitializeReportPropagatesResidentInspectionFailure(t *testing.T) {
+	state := csRepo(t, sampleYAML, map[string]string{})
+	residentRoot := filepath.Join(state.Root(), ".awf", "efforts")
+	if err := os.WriteFile(residentRoot, []byte("not a directory"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := initializeReportProject(state, InitAuthority{InitializedWithVersion: Version}); err == nil || !strings.Contains(err.Error(), "unsafe resident root") {
+		t.Fatalf("initialize resident inspection error = %v", err)
+	}
+}

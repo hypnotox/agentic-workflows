@@ -51,7 +51,7 @@ Verify: compare snapshots.
 	testsupport.WriteFile(t, filepath.Join(root, "internal/schedule.go"), "package schedule\n// touches-state: alpha/contracts:order - scheduler entry point\n")
 	testsupport.WriteFile(t, filepath.Join(root, "internal/stable_test.go"), "package schedule\n// touches-state: alpha/contracts:stable - snapshot boundary\n")
 	testsupport.WriteFile(t, filepath.Join(root, "pkg/global.go"), "package global\n// state: beta/global:shared\n")
-	corpus, err := LoadCorpus(root, cfg, adrs)
+	corpus, err := loadCorpusForTest(t, root, cfg, adrs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -272,7 +272,7 @@ func TestQueryResolvesAPendingSlugOrigin(t *testing.T) {
 			{Kind: adr.HistoryApplied, Operations: []adr.Operation{add}},
 		}}
 	adrs := mustCorpus([]adr.ADR{pending})
-	corpus, err := LoadCorpus(root, cfg, adrs)
+	corpus, err := loadCorpusForTest(t, root, cfg, adrs)
 	if err != nil {
 		t.Fatal(err)
 	}

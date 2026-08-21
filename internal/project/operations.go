@@ -3,11 +3,14 @@ package project
 import (
 	"context"
 
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/commitmsg"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
+	"github.com/hypnotox/agentic-workflows/internal/pitfall"
+	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
@@ -24,14 +27,25 @@ func NumberPendingADRs(state *ProjectState, cfg *config.Config, slugs []string, 
 	})
 }
 
-// AdvisoryNotes reports non-blocking project checks from the selected tree.
-func AdvisoryNotes(state *ProjectState, cfg *config.Config, plan outputplan.Plan) ([]string, error) {
-	return advisoryNotes(operationInputs(state, cfg), &plan)
+// OperationSemantics carries Publisher's direct semantic derivation to residual
+// project consumers without coupling project to application coordination.
+type OperationSemantics struct {
+	ADRs            adr.Corpus
+	Pitfalls        pitfall.Corpus
+	Topics          topic.Corpus
+	EffectiveSkills map[string]bool
+	Plans           []plan.Plan
+	PlansError      error
 }
 
-// BuildCheckReport checks the selected project tree and its repository state using one Publisher plan.
-func BuildCheckReport(state *ProjectState, cfg *config.Config, repo *awfgit.Repo, ctx context.Context, plan outputplan.Plan) (CheckReport, error) {
-	return checkReport(operationInputs(state, cfg), repo, ctx, &plan)
+// AdvisoryNotes reports non-blocking project checks from one prepared universe.
+func AdvisoryNotes(state *ProjectState, cfg *config.Config, output outputplan.Plan, semantics OperationSemantics) ([]string, error) {
+	return advisoryNotes(operationInputs(state, cfg), semantics.Pitfalls, semantics.Plans, semantics.PlansError, &output)
+}
+
+// BuildCheckReport checks the selected project tree using one prepared universe.
+func BuildCheckReport(state *ProjectState, cfg *config.Config, repo *awfgit.Repo, ctx context.Context, output outputplan.Plan, semantics OperationSemantics) (CheckReport, error) {
+	return checkReport(operationInputs(state, cfg), repo, ctx, semantics, &output)
 }
 
 // CheckCurrentState checks working-tree authority through the supplied repository.

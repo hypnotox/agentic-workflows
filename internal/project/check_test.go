@@ -996,26 +996,17 @@ func TestCheckGeneratedTrackingNoGitAndNestedResidentExclusion(t *testing.T) {
 	})
 }
 
-func TestCheckReportParsesPlansOnce(t *testing.T) {
+func TestCheckReportConsumesPreparedPlansWithoutParsing(t *testing.T) {
 	source, err := os.ReadFile(filepath.Join(testsupport.RepoRoot(t), "internal/project/check.go"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	text := string(source)
-	checkStart := strings.Index(text, "func checkReport")
-	checkEnd := strings.Index(text, "\nfunc finishCheckReport")
-	privateStart := strings.Index(text, "func checkWithTrackingState")
-	if checkStart < 0 || checkEnd <= checkStart || privateStart < 0 {
-		t.Fatal("check.go source boundaries changed")
+	if strings.Contains(text, "plan.ParseDir(") || strings.Contains(text, "adr.LoadCorpus(") || strings.Contains(text, "topic.LoadCorpus(") {
+		t.Fatal("project check or advisory policy re-derives Publisher-owned operation state")
 	}
-	if got := strings.Count(text[checkStart:checkEnd], "plan.ParseDir("); got != 1 {
-		t.Fatalf("CheckReport has %d plan.ParseDir calls, want exactly one", got)
-	}
-	if strings.Contains(text[privateStart:], "plan.ParseDir(") {
-		t.Fatal("a private check or advisory consumer reparses plans")
-	}
-	if got := strings.Count(text, "plan.ParseDir("); got != 2 {
-		t.Fatalf("check.go has %d plan.ParseDir calls, want CheckReport plus compatibility AdvisoryNotes", got)
+	if !strings.Contains(text, "semantics OperationSemantics") {
+		t.Fatal("checkReport no longer receives the prepared semantic universe")
 	}
 }
 
@@ -1043,7 +1034,7 @@ func TestCheckReportMapsPlanDiagnostics(t *testing.T) {
 	}
 }
 
-func TestCheckReportPropagatesPlanDirectoryReadError(t *testing.T) {
+func TestCheckReportPropagatesPreparedPlanReadError(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -1052,12 +1043,13 @@ func TestCheckReportPropagatesPlanDirectoryReadError(t *testing.T) {
 	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
-	bad := filepath.Join(root, "docs/plans/2026-07-12-directory.md")
-	if err := os.Mkdir(bad, 0o755); err != nil {
+	prepared, err := testPublisher(operationInputs(p, testConfig(p))).Prepare()
+	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := checkReportProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "read 2026-07-12-directory.md") {
-		t.Fatalf("CheckReport error = %v, want plan read failure", err)
+	semantics := OperationSemantics{ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: errors.New("read selected plans: injected fault")}
+	if _, err := BuildCheckReport(p, testConfig(p), testRepo(p), testContext(t), prepared.Plan(), semantics); err == nil || !strings.Contains(err.Error(), "injected fault") {
+		t.Fatalf("CheckReport error = %v, want prepared plan read failure", err)
 	}
 }
 

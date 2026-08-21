@@ -85,11 +85,11 @@ func productionRepoCheckDependencies() repoCheckDependencies {
 			return state, repo, openErr
 		},
 		checkReport: func(ctx context.Context, state *project.ProjectState, cfg *config.Config, repo *awfgit.Repo) (project.CheckReport, error) {
-			plan, err := operationPlan(state, cfg)
+			prepared, err := operationPreparation(state, cfg)
 			if err != nil {
 				return project.CheckReport{}, err
 			}
-			return project.BuildCheckReport(state, cfg, repo, ctx, plan)
+			return project.BuildCheckReport(state, cfg, repo, ctx, prepared.Plan(), projectSemantics(prepared))
 		},
 		currentState: func(ctx context.Context, root string, repo *awfgit.Repo) (project.CurrentStateReport, error) {
 			return project.CheckCurrentState(root, repo, ctx)

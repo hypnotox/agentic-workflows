@@ -164,11 +164,11 @@ func runInitWithProjectLoader(ctx context.Context, root string, force, describe 
 	// Post-init orientation: the same advisory notes awf check prints
 	// (ADR-0045, ADR-0070), then a fixed next-steps block.
 	return renderInitOutcome(syncedProject, syncedConfig, initspec.Outcome{ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers, Sync: syncResult, NextActions: initNextActions}, stdout, func(state *project.ProjectState, cfg *config.Config) ([]string, error) {
-		plan, err := operationPlan(state, cfg)
-		if err != nil { // coverage-ignore: sync just planned and published this unchanged tree; Publisher planning failures are covered at the owner boundary
+		prepared, err := operationPreparation(state, cfg)
+		if err != nil { // coverage-ignore: sync just prepared and published this unchanged tree; Publisher failures are covered at the owner boundary
 			return nil, err
 		}
-		return project.AdvisoryNotes(state, cfg, plan)
+		return project.AdvisoryNotes(state, cfg, prepared.Plan(), projectSemantics(prepared))
 	})
 }
 

@@ -13,8 +13,8 @@ import (
 // project state - the pre-adoption fallback `awf config` prints outside an
 // adopted tree.
 func StaticConfigReference() (ConfigReference, error) {
-	potential, err := PotentialVarConsumers()
-	if err != nil { // coverage-ignore: PotentialVarConsumers reads only embedded templates
+	potential, err := potentialVarConsumersForCatalog()
+	if err != nil { // coverage-ignore: potentialVarConsumersForCatalog reads only embedded templates
 		return ConfigReference{}, err
 	}
 	var ref ConfigReference

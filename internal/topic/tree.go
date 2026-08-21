@@ -12,12 +12,42 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// TreeReader is the neutral selected-tree contract used by operation loaders.
+type TreeReader interface {
+	ReadFile(path string) ([]byte, bool, error)
+	Paths(prefix string) ([]string, error)
+}
+
 const (
 	treeMetadataRoot   = config.DirName + "/topics/metadata"
 	treeMetadataPrefix = treeMetadataRoot + "/"
 	treePartsPrefix    = config.DirName + "/topics/parts/"
 	treePartSuffix     = "/current-state.md"
 )
+
+// LoadCorpusFromReader adapts a neutral selected operation tree to the
+// immutable snapshot representation owned by this package's existing loader.
+func LoadCorpusFromReader(read TreeReader, cfg *config.Config, adrs adr.Corpus) (Corpus, error) {
+	paths, err := read.Paths("")
+	if err != nil {
+		return Corpus{}, err
+	}
+	files := make([]snapshot.File, 0, len(paths))
+	for _, path := range paths {
+		data, found, err := read.ReadFile(path)
+		if err != nil {
+			return Corpus{}, err
+		}
+		if found {
+			files = append(files, snapshot.File{Path: path, Mode: snapshot.Regular, Bytes: data})
+		}
+	}
+	tree, err := snapshot.NewTree(files)
+	if err != nil {
+		return Corpus{}, err
+	}
+	return LoadCorpusFromTree(tree, cfg, adrs)
+}
 
 // LoadCorpusFromTree parses the complete current-state topic corpus from an
 // immutable snapshot. It retains domain ownership and marker validation for

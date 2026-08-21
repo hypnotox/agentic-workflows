@@ -37,21 +37,10 @@ type CheckAdvisories struct {
 
 // AdvisoryNotes returns the compatibility projection of the non-failing notes
 // produced by one operation-scoped plan parse.
-func advisoryNotes(p renderInputs, op *OutputPlan) ([]string, error) {
-	corpus, pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
-	if err != nil { // coverage-ignore: the supplied Publisher plan already derived the same operation state; only a concurrent tree mutation can make this residual projection fail
-		return nil, err
+func advisoryNotes(p renderInputs, pitfalls pitfall.Corpus, plans []plan.Plan, plansErr error, op *OutputPlan) ([]string, error) {
+	if plansErr != nil {
+		return nil, plansErr
 	}
-	plans := []plan.Plan{}
-	if fullProfile(p) {
-		plans, err = plan.ParseDir(filepath.Join(p.root(), config.DocsDir, "plans"))
-		if err != nil {
-			return nil, err
-		}
-	}
-	_ = corpus
-	_ = topics
-	_ = eff
 	advisories, err := advisoryNotesWithState(p, pitfalls, plans, op)
 	if err != nil { // coverage-ignore: operation state and sidecars were already parsed and validated before advisory projection
 		return nil, err
@@ -463,19 +452,12 @@ func agentGuideSizeAdvisory(op *OutputPlan) []string {
 
 // CheckReport performs one ordinary project check. Plans are parsed once and
 // the typed set is threaded to both blocking and advisory consumers.
-func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context, op *OutputPlan) (CheckReport, error) {
+func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context, semantics OperationSemantics, op *OutputPlan) (CheckReport, error) {
 	if err := validateCommandWiring(p.cfg); err != nil {
 		return CheckReport{}, err
 	}
-	corpus, pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
-	if err != nil { // coverage-ignore: the supplied Publisher plan already derived the same operation state; only a concurrent tree mutation can make this residual projection fail
-		return CheckReport{}, err
-	}
-	plans := []plan.Plan{}
-	var parseErr error
-	if fullProfile(p) {
-		plans, parseErr = plan.ParseDir(filepath.Join(p.root(), config.DocsDir, "plans"))
-	}
+	corpus, pitfalls, topics, eff := semantics.ADRs, semantics.Pitfalls, semantics.Topics, semantics.EffectiveSkills
+	plans, parseErr := semantics.Plans, semantics.PlansError
 	var planDrift []manifest.Drift
 	if parseErr != nil {
 		var diagnostics *plan.DiagnosticsError

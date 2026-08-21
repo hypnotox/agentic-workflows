@@ -1,7 +1,6 @@
 package publisher
 
 import (
-	"path/filepath"
 	"sort"
 	"strings"
 
@@ -85,11 +84,6 @@ func docOutPath(p renderInputs, name string) string {
 		path = name + ".md"
 	}
 	return config.DocsDir + "/" + path
-}
-
-// decisionsDir is the absolute ADR decisions directory.
-func decisionsDir(root string) string {
-	return filepath.Join(root, config.DocsDir, "decisions")
 }
 
 // resolvedDocs builds the non-singleton Document-map entries for the agents-doc

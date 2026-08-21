@@ -329,7 +329,7 @@ func TestLiveTemplateIDsResolve(t *testing.T) {
 	missing := selected.Docs["architecture"]
 	missing.TID = "missing/live-template.tmpl"
 	selected.Docs["missing-live-fixture"] = missing
-	lower := projectstate.NewDerived(base.Root(), base.Roots(), base.Nested(), selected, base.CompleteCatalog(), base.Targets())
+	lower := projectstate.NewDerivedWithFacts(base.Root(), base.Roots(), base.Nested(), base.Facts(), selected, base.CompleteCatalog(), base.Targets())
 	if _, err := New(lower, testConfig(p), NewFilesystemReader(p.Root()), project.Version).Plan(); err == nil || !strings.Contains(err.Error(), "missing/live-template.tmpl") {
 		t.Fatalf("missing live template error = %v", err)
 	}

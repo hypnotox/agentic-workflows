@@ -2,6 +2,7 @@ package publisher
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -176,7 +177,14 @@ func testTargets(state *ProjectState) []Target {
 	return state.Targets()
 }
 func lowerWithTargets(state *projectstate.ProjectState, targets []Target) *projectstate.ProjectState {
-	return projectstate.NewDerived(state.Root(), state.Roots(), state.Nested(), state.Catalog(), state.CompleteCatalog(), targets)
+	return projectstate.NewDerivedWithFacts(state.Root(), state.Roots(), state.Nested(), state.Facts(), state.Catalog(), state.CompleteCatalog(), targets)
+}
+func lowerForConfig(state *projectstate.ProjectState, cfg *config.Config) *projectstate.ProjectState {
+	facts, err := config.NewFacts(cfg)
+	if err != nil {
+		panic(err)
+	}
+	return projectstate.NewDerivedWithFacts(state.Root(), state.Roots(), state.Nested(), facts, state.Catalog(), state.CompleteCatalog(), state.Targets())
 }
 func (p renderInputs) residentRoots() resident.Roots { return p.state.Roots() }
 
@@ -306,34 +314,37 @@ func newADRProject(state *ProjectState, ctx context.Context, title string) (stri
 	}
 	return project.NewADR(state.Root(), testConfig(state), repo, ctx, title)
 }
+func projectOperationSemantics(prepared Preparation) project.OperationSemantics {
+	return project.OperationSemantics{ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: prepared.PlansError()}
+}
 func checkReportProject(state *ProjectState, ctx context.Context) (project.CheckReport, error) {
 	cfg := testConfig(state)
-	plan, err := New(state.OutputState(), cfg, NewFilesystemReader(state.Root()), project.Version).Plan()
+	prepared, err := New(lowerForConfig(state.OutputState(), cfg), cfg, NewFilesystemReader(state.Root()), project.Version).Prepare()
 	if err != nil {
 		return project.CheckReport{}, err
 	}
-	return project.BuildCheckReport(state, cfg, nil, ctx, plan)
+	return project.BuildCheckReport(state, cfg, nil, ctx, prepared.Plan(), projectOperationSemantics(prepared))
 }
 func checkProject(state *ProjectState, _ ...context.Context) ([]manifest.Drift, error) {
 	cfg := testConfig(state)
-	plan, err := New(state.OutputState(), cfg, NewFilesystemReader(state.Root()), project.Version).Plan()
+	prepared, err := New(lowerForConfig(state.OutputState(), cfg), cfg, NewFilesystemReader(state.Root()), project.Version).Prepare()
 	if err != nil {
 		return nil, err
 	}
-	report, err := project.BuildCheckReport(state, cfg, nil, context.Background(), plan)
+	report, err := project.BuildCheckReport(state, cfg, nil, context.Background(), prepared.Plan(), projectOperationSemantics(prepared))
 	return report.Drift, err
 }
 func advisoryNotesProject(state *ProjectState) ([]string, error) {
 	cfg := testConfig(state)
-	plan, err := New(state.OutputState(), cfg, NewFilesystemReader(state.Root()), project.Version).Plan()
+	prepared, err := New(lowerForConfig(state.OutputState(), cfg), cfg, NewFilesystemReader(state.Root()), project.Version).Prepare()
 	if err != nil {
 		return nil, err
 	}
-	return project.AdvisoryNotes(state, cfg, plan)
+	return project.AdvisoryNotes(state, cfg, prepared.Plan(), projectOperationSemantics(prepared))
 }
 func initializeReportProject(state *ProjectState, seed InitAuthority) ([]project.Backup, []project.Change, []string, error) {
 	cfg := testConfig(state)
-	plan, err := New(state.OutputState(), cfg, NewFilesystemReader(state.Root()), project.Version).Plan()
+	plan, err := New(lowerForConfig(state.OutputState(), cfg), cfg, NewFilesystemReader(state.Root()), project.Version).Plan()
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -341,7 +352,7 @@ func initializeReportProject(state *ProjectState, seed InitAuthority) ([]project
 }
 func syncReportProject(state *ProjectState) ([]project.Backup, []project.Change, []string, error) {
 	cfg := testConfig(state)
-	plan, err := New(state.OutputState(), cfg, NewFilesystemReader(state.Root()), project.Version).Plan()
+	plan, err := New(lowerForConfig(state.OutputState(), cfg), cfg, NewFilesystemReader(state.Root()), project.Version).Plan()
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -370,7 +381,7 @@ func StagedContextState(ctx context.Context, root string) (project.ContextState,
 	return project.CompleteStagedContextState(prep, plan), nil
 }
 func plannedOutputsProject(state *ProjectState) ([]string, error) {
-	plan, err := New(state.OutputState(), testConfig(state), NewFilesystemReader(state.Root()), project.Version).Plan()
+	plan, err := New(lowerForConfig(state.OutputState(), testConfig(state)), testConfig(state), NewFilesystemReader(state.Root()), project.Version).Plan()
 	if err != nil {
 		return nil, err
 	}
@@ -383,7 +394,17 @@ func outputPlanProject(state *ProjectState) (*OutputPlan, error) {
 	return outputPlan(renderInputsForTest(state))
 }
 func renderResidentMarkerProject(state *ProjectState, name string) (RenderedFile, error) {
-	return renderResidentMarkerOperation(renderInputsForTest(state), name)
+	plan, err := outputPlan(renderInputsForTest(state))
+	if err != nil {
+		return RenderedFile{}, err
+	}
+	want := config.DirName + "/" + name + "/.gitignore"
+	for _, node := range plan.Nodes {
+		if node.Path == want && node.file != nil {
+			return *node.file, nil
+		}
+	}
+	return RenderedFile{}, fmt.Errorf("resident marker %s is absent from test plan", want)
 }
 func renderAll(state *ProjectState) ([]RenderedFile, error) {
 	plan, err := outputPlan(renderInputsForTest(state))

@@ -1,6 +1,7 @@
 package topic
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -44,11 +45,20 @@ func rulePart(slug, origin, refs string) string {
 	}
 	return "Intro.\n\n## Claims\n\n### `rule: " + slug + "`\nRule prose.\nOrigin: ADR-" + origin + "\n" + r
 }
+
+// loadCorpusForTest adapts fixture files to the selected-tree loader. Production
+// callers provide their operation tree directly; the filesystem walk is test
+// fixture setup only.
+func loadCorpusForTest(t *testing.T, root string, cfg *config.Config, adrs adr.Corpus) (Corpus, error) {
+	t.Helper()
+	return LoadCorpusFromTree(treeFromDir(t, root), cfg, adrs)
+}
+
 func TestLoadCorpusAndIndexes(t *testing.T) {
 	root, cfg, adrs := corpusFixture(t)
 	writeTopic(t, root, "alpha", "one", "title: Zed\nsummary: Z.\npaths: [\"internal/**\"]\n", rulePart("same", "0001", "beta/two:same"))
 	writeTopic(t, root, "beta", "two", "title: Alpha\nsummary: A.\napplies: global\n", rulePart("same", "0001", "alpha/one:same"))
-	c, err := LoadCorpus(root, cfg, adrs)
+	c, err := loadCorpusForTest(t, root, cfg, adrs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +131,7 @@ func TestLoadCorpusRejected(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			root, cfg, adrs := corpusFixture(t)
 			setup(t, root)
-			_, err := LoadCorpus(root, cfg, adrs)
+			_, err := loadCorpusForTest(t, root, cfg, adrs)
 			if name == "ignored extension" {
 				if err != nil {
 					t.Fatal(err)
@@ -202,13 +212,13 @@ func TestLoadCorpusPropagatesMarkerFailure(t *testing.T) {
 	if err := cfg.Validate(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := LoadCorpus(root, cfg, adrs); err == nil {
+	if _, err := loadCorpusForTest(t, root, cfg, adrs); err == nil {
 		t.Fatal("marker failure was not propagated")
 	}
 }
 func TestLoadCorpusNoTopicTree(t *testing.T) {
 	root, cfg, adrs := corpusFixture(t)
-	c, err := LoadCorpus(root, cfg, adrs)
+	c, err := loadCorpusForTest(t, root, cfg, adrs)
 	if err != nil || len(c.All()) != 0 {
 		t.Fatalf("%#v %v", c, err)
 	}
@@ -222,4 +232,29 @@ func mustCorpus(adrs []adr.ADR) adr.Corpus {
 		panic(err)
 	}
 	return c
+}
+
+func TestLoadCorpusIgnoresNonCurrentStateSiblingPart(t *testing.T) {
+	root := t.TempDir()
+	metadata := filepath.Join(root, ".awf/topics/metadata/alpha")
+	parts := filepath.Join(root, ".awf/topics/parts/alpha/one")
+	if err := os.MkdirAll(metadata, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(parts, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(metadata, "one.yaml"), []byte("title: One\nsummary: One.\npaths: [\"internal/**\"]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(parts, "current-state.md"), []byte(rulePart("stable", "0001", "")), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(parts, "draft.md"), []byte("malformed sibling"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	corpus, err := loadCorpusForTest(t, root, parseCfg(t, "prefix: test\nintegrationBranch: main\ndomains: [alpha]\n"), oneImplementedADR())
+	if err != nil || len(corpus.All()) != 1 {
+		t.Fatalf("corpus = %#v, %v", corpus.All(), err)
+	}
 }

@@ -144,14 +144,11 @@ func TestScaffoldedZeroClaimTopicPipeline(t *testing.T) {
 	for _, file := range files {
 		testsupport.WriteFile(t, filepath.Join(root, filepath.FromSlash(file.Path)), string(file.Content))
 	}
-	adrs, err := adr.LoadCorpus(filepath.Join(root, "docs/decisions"))
+	prepared, err := New(lowerForConfig(p.OutputState(), testConfig(p)), testConfig(p), NewFilesystemReader(root), project.Version).Prepare()
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("prepare scaffold corpus: %v", err)
 	}
-	corpus, err := topic.LoadCorpus(root, testConfig(p), adrs)
-	if err != nil {
-		t.Fatalf("load scaffold corpus: %v", err)
-	}
+	corpus := prepared.Topics()
 	shell, ok := corpus.ByTopicID("rendering/prepared-shell")
 	if !ok || len(shell.Claims) != 0 {
 		t.Fatalf("scaffold shell = %#v, found %v", shell, ok)

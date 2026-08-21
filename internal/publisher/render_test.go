@@ -65,11 +65,11 @@ func TestLocalDocRendersAndPreservesBody(t *testing.T) {
 	if err != nil || !strings.Contains(string(second), "operator-owned body\n\nwith spacing") {
 		t.Fatalf("preserved local body = %q, %v", second, err)
 	}
-	corpus, err := adr.LoadCorpus(decisionsDir(p.Root()))
+	corpus, err := adr.LoadCorpusFromTree(NewFilesystemReader(p.Root()), filepath.ToSlash(filepath.Join(config.DocsDir, "decisions")))
 	if err != nil {
 		t.Fatal(err)
 	}
-	declarations, err := BuildOutputDeclarations(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: root}, corpus)
+	declarations, err := buildOutputDeclarations(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: root}, corpus)
 	if err != nil {
 		t.Fatal(err)
 	}

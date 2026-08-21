@@ -1,11 +1,18 @@
 package publisher
 
 import (
+	"fmt"
+	"maps"
+	"path"
+	"slices"
+	"strings"
+
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
+	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
@@ -32,11 +39,11 @@ func deriveOperationStateWithPitfalls(p renderInputs) (adr.Corpus, pitfall.Corpu
 	topics := topic.Corpus{}
 	var err error
 	if fullProfile(p) {
-		corpus, err = adr.LoadCorpus(decisionsDir(p.root()))
+		corpus, err = adr.LoadCorpusFromTree(p.read, path.Join(config.DocsDir, "decisions"))
 		if err != nil {
 			return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
 		}
-		topics, err = topic.LoadCorpus(p.root(), p.cfg, corpus)
+		topics, err = topic.LoadCorpusFromReader(p.read, p.cfg, corpus)
 		if err != nil {
 			return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
 		}
@@ -52,24 +59,108 @@ func deriveOperationStateWithPitfalls(p renderInputs) (adr.Corpus, pitfall.Corpu
 	return corpus, pitfalls, topics, eff, nil
 }
 
+func derivePlans(p renderInputs) ([]plan.Plan, error) {
+	if !fullProfile(p) {
+		return nil, nil
+	}
+	prefix := path.Join(config.DocsDir, "plans") + "/"
+	paths, err := p.read.Paths(prefix)
+	if err != nil {
+		return nil, err
+	}
+	slices.Sort(paths)
+	sources := make([]plan.Source, 0, len(paths))
+	for _, sourcePath := range paths {
+		if path.Dir(sourcePath) != strings.TrimSuffix(prefix, "/") {
+			continue
+		}
+		data, found, err := p.read.ReadFile(sourcePath)
+		if err != nil {
+			return nil, fmt.Errorf("read %s: %w", path.Base(sourcePath), err)
+		}
+		if found {
+			sources = append(sources, plan.Source{Filename: path.Base(sourcePath), Path: sourcePath, Bytes: data})
+		}
+	}
+	return plan.ParseSources(sources)
+}
+
 // Publisher is the sole output-plan construction and rendering coordinator.
 type Publisher struct{ inputs renderInputs }
+
+// Preparation is one Publisher-owned derivation and its direct semantic
+// projections for residual consumers.
+type Preparation struct {
+	plan       outputplan.Plan
+	adrs       adr.Corpus
+	pitfalls   pitfall.Corpus
+	topics     topic.Corpus
+	skills     map[string]bool
+	plans      []plan.Plan
+	plansError error
+}
 
 // New composes a Publisher from immutable loaded facts and an explicit operation tree reader.
 func New(state *projectstate.ProjectState, cfg *config.Config, read ProjectTreeReader, version string) *Publisher {
 	if state == nil || cfg == nil || read == nil {
 		panic("publisher: missing composition dependency")
 	}
-	return &Publisher{inputs: newRenderInputs(state, cfg, read, version)}
+	// Retain only the selected tree binding from cfg. Every semantic value is a
+	// fresh projection of the state's immutable loaded facts.
+	privateConfig := cfg.OperationTree().Bind(state.Facts())
+	return &Publisher{inputs: newRenderInputs(state, privateConfig, read, version)}
+}
+
+// Prepare derives one operation universe and constructs exactly one immutable plan.
+func (p *Publisher) Prepare() (Preparation, error) {
+	adrs, pitfalls, topics, skills, err := deriveOperationStateWithPitfalls(p.inputs)
+	if err != nil {
+		return Preparation{}, err
+	}
+	plans, plansErr := derivePlans(p.inputs)
+	built, err := outputPlanWithPitfalls(p.inputs, adrs, pitfalls, topics, skills)
+	if err != nil {
+		return Preparation{}, err
+	}
+	return Preparation{plan: freezePlan(built), adrs: adrs, pitfalls: pitfalls, topics: topics, skills: maps.Clone(skills), plans: slices.Clone(plans), plansError: plansErr}, nil
 }
 
 // Plan derives exactly one immutable plan for this operation.
 func (p *Publisher) Plan() (outputplan.Plan, error) {
-	plan, err := outputPlan(p.inputs)
-	if err != nil {
-		return outputplan.Plan{}, err
+	prepared, err := p.Prepare()
+	return prepared.Plan(), err
+}
+
+// Plan returns the one immutable plan constructed for this operation.
+func (p Preparation) Plan() outputplan.Plan { return p.plan }
+
+// ADRs returns the ADR corpus derived from the selected operation tree.
+func (p Preparation) ADRs() adr.Corpus { return p.adrs }
+
+// Pitfalls returns the pitfall corpus derived from the selected operation tree.
+func (p Preparation) Pitfalls() pitfall.Corpus { return p.pitfalls }
+
+// Topics returns the topic corpus derived from the selected operation tree.
+func (p Preparation) Topics() topic.Corpus { return p.topics }
+
+// EffectiveSkills returns a defensive projection of the operation's effective skills.
+func (p Preparation) EffectiveSkills() map[string]bool { return maps.Clone(p.skills) }
+
+// Plans returns a defensive projection of the operation's parsed plans.
+func (p Preparation) Plans() []plan.Plan { return slices.Clone(p.plans) }
+
+// PlansError returns diagnostics or another error from parsing the selected plans.
+func (p Preparation) PlansError() error { return p.plansError }
+
+// ResidentMarker selects the marker from this preparation's existing plan.
+func (p Preparation) ResidentMarker(name string) (outputplan.Output, error) {
+	want := ".awf/" + name + "/.gitignore"
+	for _, output := range p.plan.Outputs() {
+		if output.Path() == want {
+			return output, nil
+		}
 	}
-	return freezePlan(plan), nil
+	return outputplan.Output{}, fmt.Errorf("resident marker %q is not planned", name)
 }
 
 func freezeInputs(inputs []OutputInput) []outputplan.Input {
@@ -125,13 +216,4 @@ func (p *Publisher) BuildConfigReference() (ConfigReference, error) {
 // PreflightLocalDoc validates one candidate against the complete output inventory.
 func (p *Publisher) PreflightLocalDoc(doc config.LocalDoc) error {
 	return preflightLocalDoc(p.inputs, doc)
-}
-
-// RenderResidentMarker returns one resident marker from a single operation plan.
-func (p *Publisher) RenderResidentMarker(name string) (outputplan.Output, error) {
-	file, err := renderResidentMarkerOperation(p.inputs, name)
-	if err != nil {
-		return outputplan.Output{}, err
-	}
-	return freezeOutput(file), nil
 }

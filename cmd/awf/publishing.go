@@ -15,8 +15,20 @@ func composePublisher(state *project.ProjectState, cfg *config.Config) *publishe
 	return publisher.New(state.OutputState(), cfg, publisher.NewFilesystemReader(state.Root()), project.Version)
 }
 
+func operationPreparation(state *project.ProjectState, cfg *config.Config) (publisher.Preparation, error) {
+	return composePublisher(state, cfg).Prepare()
+}
+
 func operationPlan(state *project.ProjectState, cfg *config.Config) (outputplan.Plan, error) {
-	return composePublisher(state, cfg).Plan()
+	prepared, err := operationPreparation(state, cfg)
+	return prepared.Plan(), err
+}
+
+func projectSemantics(prepared publisher.Preparation) project.OperationSemantics {
+	return project.OperationSemantics{
+		ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(),
+		EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: prepared.PlansError(),
+	}
 }
 
 func preparedPublisher(prep *project.ContextPreparation) *publisher.Publisher {

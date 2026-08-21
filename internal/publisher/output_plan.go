@@ -128,9 +128,9 @@ func (r filesystemProjectReader) Paths(prefix string) ([]string, error) {
 	return out, nil
 }
 
-// BuildOutputDeclarations enumerates deterministic producer declarations without
+// buildOutputDeclarations enumerates deterministic producer declarations without
 // rendering or materializing the selected tree.
-func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader, adrs adr.Corpus) ([]OutputDeclaration, error) {
+func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader, adrs adr.Corpus) ([]OutputDeclaration, error) {
 	pitfalls, err := loadPitfallCorpusFrom(read)
 	if err != nil {
 		return nil, err
@@ -623,7 +623,7 @@ func outputPlan(p renderInputs) (*OutputPlan, error) {
 }
 
 func outputPlanWithPitfalls(p renderInputs, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error) {
-	declarationInventory, err := BuildOutputDeclarations(p.cfg, projectCatalog(p), p.targets(), projectTreeReader(p), corpus)
+	declarationInventory, err := buildOutputDeclarations(p.cfg, projectCatalog(p), p.targets(), projectTreeReader(p), corpus)
 	if err != nil {
 		return nil, err
 	}

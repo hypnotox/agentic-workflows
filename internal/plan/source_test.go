@@ -99,3 +99,10 @@ func TestParseSourcesAggregatesIndependentSnapshotDiagnostics(t *testing.T) {
 		t.Fatalf("diagnostics = %#v", diagnostics.Diagnostics)
 	}
 }
+
+func TestParseDirSourcesAcceptsAbsentDirectory(t *testing.T) {
+	sources, err := parseDirSources(filepath.Join(t.TempDir(), "absent"))
+	if err != nil || sources != nil {
+		t.Fatalf("absent plans directory = %#v, %v", sources, err)
+	}
+}

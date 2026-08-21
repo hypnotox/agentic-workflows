@@ -103,7 +103,7 @@ func TestBuildOutputDeclarationsPropagatesEnumerationFaults(t *testing.T) {
 		t.Run("site"+strconv.Itoa(site), func(t *testing.T) {
 			calls := 0
 			faulting := failingPathsReader{memoryProjectReader: read, failAt: site, calls: &calls}
-			if _, err := BuildOutputDeclarations(cfg, cat, nil, faulting, mustCorpus()); err == nil || !strings.Contains(err.Error(), "enumeration fault") {
+			if _, err := buildOutputDeclarations(cfg, cat, nil, faulting, mustCorpus()); err == nil || !strings.Contains(err.Error(), "enumeration fault") {
 				t.Fatalf("site %d: error = %v, want the enumeration fault", site, err)
 			}
 		})
@@ -117,7 +117,7 @@ func TestBuildOutputDeclarationsPropagatesReadFaults(t *testing.T) {
 		t.Fatal(err)
 	}
 	cat := &catalog.Catalog{Skills: map[string]catalog.SkillSpec{}, Agents: map[string]catalog.AgentSpec{}, Docs: map[string]catalog.DocEntry{}}
-	if _, err := BuildOutputDeclarations(cfg, cat, nil, read, mustCorpus()); err == nil || !strings.Contains(err.Error(), "read fault") {
+	if _, err := buildOutputDeclarations(cfg, cat, nil, read, mustCorpus()); err == nil || !strings.Contains(err.Error(), "read fault") {
 		t.Fatalf("error = %v, want the project-tree read fault", err)
 	}
 }
@@ -179,7 +179,7 @@ func TestOutputDeclarationsMatchThePlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	declarations, err := BuildOutputDeclarations(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: p.Root()}, corpus)
+	declarations, err := buildOutputDeclarations(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: p.Root()}, corpus)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +206,7 @@ func TestEnabledDeclarationsRejectMissingBridgeTemplate(t *testing.T) {
 	cfg := &config.Config{Prefix: "example", Render: &config.RenderConfig{TemplateSourceRoot: "templates"}}
 	cat := &catalog.Catalog{Skills: map[string]catalog.SkillSpec{}, Agents: map[string]catalog.AgentSpec{}, Docs: map[string]catalog.DocEntry{}}
 	targets := []Target{{Name: "broken", BridgeFile: "BRIDGE.md", BridgeTemplate: "missing/bridge.md.tmpl"}}
-	_, err := BuildOutputDeclarations(cfg, cat, targets, memoryProjectReader{}, mustCorpus())
+	_, err := buildOutputDeclarations(cfg, cat, targets, memoryProjectReader{}, mustCorpus())
 	if err == nil || !strings.Contains(err.Error(), "read template missing/bridge.md.tmpl") {
 		t.Fatalf("missing enabled bridge template error = %v", err)
 	}
@@ -230,7 +230,7 @@ func TestEnabledMarkdownDeclarationsMatchObservedTemplateSources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	declarations, err := BuildOutputDeclarations(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: p.Root()}, corpus)
+	declarations, err := buildOutputDeclarations(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: p.Root()}, corpus)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -265,7 +265,7 @@ func TestPitfallDeclarationPlanDependencyParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	declarations, err := BuildOutputDeclarations(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: root}, corpus)
+	declarations, err := buildOutputDeclarations(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: root}, corpus)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -360,7 +360,7 @@ func TestBuildOutputDeclarationsRejectsMalformedFullCatalogSidecars(t *testing.T
 			if _, err := cfg.Sidecar(tc.kind, tc.artifact); err == nil {
 				t.Fatalf("test fixture did not corrupt %s sidecar", tc.name)
 			}
-			if _, err := BuildOutputDeclarations(cfg, catalog.Standard, []Target{{Name: "test"}}, read, mustCorpus()); err == nil || !strings.Contains(err.Error(), tc.sidecar[5:]) {
+			if _, err := buildOutputDeclarations(cfg, catalog.Standard, []Target{{Name: "test"}}, read, mustCorpus()); err == nil || !strings.Contains(err.Error(), tc.sidecar[5:]) {
 				t.Fatalf("full-catalog malformed %s sidecar error = %v", tc.name, err)
 			}
 		})

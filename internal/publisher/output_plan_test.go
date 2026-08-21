@@ -8,12 +8,15 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
 // invariant: rendering/project-output-plan:output-plan-complete (TestLocalDocsOutputPlan)
@@ -73,7 +76,7 @@ func TestLocalDocDeclarationDeclaresExistingOutputInput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	declarations, err := BuildOutputDeclarations(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: p.Root()}, corpus)
+	declarations, err := buildOutputDeclarations(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: p.Root()}, corpus)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -508,5 +511,16 @@ func TestValidateLiveTemplatesRejectsMissingTargetTemplate(t *testing.T) {
 	p = setTestTargets(p, append(testTargets(p), Target{Outputs: []TargetOutput{{TemplateID: "missing/live-template.tmpl"}}}))
 	if err := validateLiveTemplates(renderInputsForTest(p)); err == nil || !strings.Contains(err.Error(), "read template missing/live-template.tmpl") {
 		t.Fatalf("missing live template error = %v", err)
+	}
+}
+
+func TestOutputPlanPropagatesTopicGenerationEnumerationFault(t *testing.T) {
+	state := testStateAt(t.TempDir())
+	calls := 0
+	failure := errors.New("topic enumeration failed")
+	reader := failingPathsReader{memoryProjectReader: memoryProjectReader{}, failAt: 3, calls: &calls}
+	_, err := outputPlanWithPitfalls(newRenderInputs(state, &config.Config{Profile: catalog.ProfileFull}, reader, project.Version), mustCorpus(), pitfall.Corpus{}, topic.Corpus{}, map[string]bool{})
+	if err == nil || !strings.Contains(err.Error(), failure.Error()) && !strings.Contains(err.Error(), "enumeration fault") {
+		t.Fatalf("output plan error = %v", err)
 	}
 }

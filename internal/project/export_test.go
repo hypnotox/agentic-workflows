@@ -214,7 +214,7 @@ func checkStagedDriftProject(state *ProjectState, ctx context.Context) ([]manife
 	}
 	base := state.OutputState()
 	selected := catalog.NewProfileView(base.CompleteCatalog(), prep.Config.Profile).Catalog()
-	prep.State = projectstate.NewDerived(prep.State.Root(), prep.State.Roots(), prep.State.Nested(), selected, base.CompleteCatalog(), prep.State.Targets())
+	prep.State = projectstate.NewDerivedWithFacts(prep.State.Root(), prep.State.Roots(), prep.State.Nested(), prep.State.Facts(), selected, base.CompleteCatalog(), prep.State.Targets())
 	plan, err := publisher.New(prep.State, prep.Config, prep.Reader, Version).Plan()
 	if err != nil {
 		return nil, err
@@ -239,13 +239,14 @@ func initializeReportProject(state *ProjectState, seed InitAuthority) ([]Backup,
 	return InitializeReport(state, testConfig(state), seed, plan)
 }
 func checkReportProject(state *ProjectState, ctx context.Context) (CheckReport, error) {
-	plan, err := testPlan(state)
+	prepared, err := testPublisher(operationInputs(state, testConfig(state))).Prepare()
 	if err != nil {
 		return CheckReport{}, err
 	}
-	return BuildCheckReport(state, testConfig(state), testRepo(state), ctx, plan)
+	semantics := OperationSemantics{ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: prepared.PlansError()}
+	return BuildCheckReport(state, testConfig(state), testRepo(state), ctx, prepared.Plan(), semantics)
 }
-func configReferenceProject(state *ProjectState) (ConfigReference, error) {
+func configReferenceProject(state *ProjectState) (publisher.ConfigReference, error) {
 	return testPublisher(operationInputs(state, testConfig(state))).BuildConfigReference()
 }
 func initCollisionsProject(state *ProjectState) ([]string, error) {
@@ -263,11 +264,12 @@ func plannedOutputsProject(state *ProjectState) ([]string, error) {
 	return plan.Paths(), nil
 }
 func advisoryNotesProject(state *ProjectState) ([]string, error) {
-	plan, err := testPlan(state)
+	prepared, err := testPublisher(operationInputs(state, testConfig(state))).Prepare()
 	if err != nil {
 		return nil, err
 	}
-	return AdvisoryNotes(state, testConfig(state), plan)
+	semantics := OperationSemantics{ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: prepared.PlansError()}
+	return AdvisoryNotes(state, testConfig(state), prepared.Plan(), semantics)
 }
 func contextStateProject(state *ProjectState, ctx context.Context) (ContextState, error) {
 	prep, err := PrepareContextState(state, testRepo(state), ctx)
@@ -287,7 +289,11 @@ func numberPendingADRsProject(state *ProjectState, slugs []string) (NumberingRep
 	return NumberPendingADRs(state, testConfig(state), slugs, func() (outputplan.Plan, error) { return testPlan(state) })
 }
 func renderResidentMarkerProject(state *ProjectState, name string) (RenderedFile, error) {
-	output, err := testPublisher(operationInputs(state, testConfig(state))).RenderResidentMarker(name)
+	prepared, err := testPublisher(operationInputs(state, testConfig(state))).Prepare()
+	if err != nil {
+		return RenderedFile{}, err
+	}
+	output, err := prepared.ResidentMarker(name)
 	if err != nil {
 		return RenderedFile{}, err
 	}

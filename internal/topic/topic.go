@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -410,12 +409,4 @@ func parseClaimList(v string) ([]string, error) {
 		out = append(out, p)
 	}
 	return out, nil
-}
-
-func readMetadata(metadataRoot, path string) (TopicID, Metadata, error) {
-	b, err := os.ReadFile(path)
-	if err != nil { // coverage-ignore: callers pass files just discovered by WalkDir; failure requires a concurrent filesystem race
-		return TopicID{}, Metadata{}, err
-	}
-	return ParseMetadata(metadataRoot, path, b)
 }

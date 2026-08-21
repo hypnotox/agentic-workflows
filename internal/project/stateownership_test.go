@@ -296,11 +296,11 @@ func declaredFuncNames(pkgs []*packages.Package) map[string]bool {
 }
 
 // producerCallSites collects, per enclosing function name, the production call
-// sites of the derivation producers named in the claim. Clause 2 is about those
-// values, so counting deriveOperationState alone would miss a nested consumer
-// that calls a producer directly and bypasses the aggregate.
+// sites of the remaining lower-package corpus producer. Clause 2 is about that
+// value, so counting the aggregate alone would miss a nested consumer that
+// calls the producer directly and bypasses the aggregate.
 func producerCallSites(pkgs []*packages.Package) map[string][]string {
-	producers := map[string]bool{"LoadCorpus": true, "effectiveSkills": true}
+	producers := map[string]bool{"LoadCorpus": true}
 	sites := map[string][]string{}
 	for _, pkg := range pkgs {
 		for _, file := range pkg.Syntax {
@@ -360,29 +360,16 @@ func TestProjectDerivedStateOwnership(t *testing.T) {
 		t.Error("beginInvocation is declared again; the claim says it no longer exists")
 	}
 
-	// Clause 2: the operation that needs the state derives it and threads it.
-	// Exactly the deriving entries call deriveOperationStateWithPitfalls, each once, so a
-	// nested re-derivation is a failure rather than an invisible regression.
-	wantEntries := map[string]bool{
-		"checkReport": true, "advisoryNotes": true,
-	}
-	entries := derivingEntries(production)
-	for name, count := range entries {
-		if !wantEntries[name] {
-			t.Errorf("%s derives operation state; only a deriving entry may, everything nested receives", name)
-		} else if count != 1 {
-			t.Errorf("%s derives operation state %d times; a deriving entry derives exactly once", name, count)
-		}
-	}
-	for name := range wantEntries {
-		if entries[name] == 0 {
-			t.Errorf("%s no longer derives operation state at its own entry", name)
-		}
+	// Clause 2: residual project policy receives Publisher's prepared semantic
+	// universe and never derives it. Any derivation entry in these lower packages
+	// is therefore a regression.
+	for name, count := range derivingEntries(production) {
+		t.Errorf("%s derives operation state %d times; lower consumers must only receive prepared values", name, count)
 	}
 
-	// Clause 2, at the level of the values themselves: a producer is called only
-	// from a function that derives on its own operation's behalf. Counting the
-	// aggregate alone would miss a consumer calling a producer directly.
+	// Clause 2, at the level of the remaining lower-package corpus producer: it is
+	// called only from a function that derives on its own operation's behalf.
+	// Counting the aggregate alone would miss a direct consumer.
 	//
 	// numberingCorpus and readPlan are the entries beside the aggregate deriver,
 	// and only for the ADR corpus. readPlan's root-only plan projection needs
@@ -445,10 +432,6 @@ func (p *ProjectState) mutationOverwritesWholeValue() {
 
 import "github.com/hypnotox/agentic-workflows/internal/adr"
 
-func (p *ProjectState) mutationRederivesNested() {
-	_, _, _, _, _ = deriveOperationStateWithPitfalls(newRenderInputs(&ProjectState{}, p.Config(), nil))
-}
-
 func (p *ProjectState) mutationRederivesCorpusDirectly() (adr.Corpus, error) {
 	return adr.LoadCorpus(decisionsDir("fixture-root"))
 }
@@ -483,9 +466,6 @@ func (q *Query) mutationReplacesStateAfterConstruction(state project.ContextStat
 		if strings.HasPrefix(finding, "mutationConstructsLocally") {
 			t.Errorf("a write to a locally constructed value was flagged: %q", finding)
 		}
-	}
-	if derivingEntries(mutation)["mutationRederivesNested"] != 1 {
-		t.Error("a nested deriveOperationState call escaped the deriving-entry scan")
 	}
 	var directFlagged bool
 	for _, owners := range producerCallSites(mutation) {

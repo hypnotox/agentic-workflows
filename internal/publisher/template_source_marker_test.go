@@ -35,7 +35,7 @@ func TestTemplateSourceMarkerProducerMatrix(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	declarations, err := BuildOutputDeclarations(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: p.Root()}, corpus)
+	declarations, err := buildOutputDeclarations(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: p.Root()}, corpus)
 	if err != nil {
 		t.Fatal(err)
 	}

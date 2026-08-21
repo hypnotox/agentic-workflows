@@ -2,9 +2,6 @@ package topic
 
 import (
 	"fmt"
-	"io/fs"
-	"os"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -61,59 +58,6 @@ var touchesPayloadRE = regexp.MustCompile(`^touches-state: (` + claimIDPattern +
 // Ordering makes this safe: proofPayloadRE is attempted first, so a well-formed
 // named marker never reaches it.
 var unnamedProofPayloadRE = regexp.MustCompile(`^invariant: (` + claimIDPattern + `)(?: \(.*\))?$`)
-
-type markerWalkDir func(string, fs.WalkDirFunc) error
-
-func BuildMarkerIndex(root string, corpus Corpus, cfg *config.CurrentStateConfig) (MarkerIndex, error) {
-	return buildMarkerIndex(root, corpus, cfg, filepath.WalkDir)
-}
-
-func buildMarkerIndex(root string, corpus Corpus, cfg *config.CurrentStateConfig, walk markerWalkDir) (MarkerIndex, error) {
-	idx := MarkerIndex{sites: map[string][]MarkerSite{}}
-	if cfg != nil {
-		err := walk(root, func(path string, de fs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-			if de.IsDir() {
-				switch de.Name() {
-				case ".git", "vendor", "node_modules":
-					return filepath.SkipDir
-				}
-				if path != root {
-					if _, err := os.Lstat(filepath.Join(path, ".git")); err == nil {
-						return filepath.SkipDir
-					}
-					if _, err := os.Lstat(filepath.Join(path, config.DirName)); err == nil {
-						return filepath.SkipDir
-					}
-				}
-				return nil
-			}
-			rel, err := filepath.Rel(root, path)
-			if err != nil { // coverage-ignore: WalkDir yields paths beneath root, so Rel cannot fail
-				return err
-			}
-			rel = filepath.ToSlash(rel)
-			sources := matchingSources(cfg, rel)
-			if len(sources) == 0 {
-				return nil
-			}
-			b, err := os.ReadFile(path)
-			if err != nil { // coverage-ignore: WalkDir just returned this file; failure requires a concurrent filesystem race
-				return err
-			}
-			return scanMarkerBytes(idx, rel, b, sources, corpus, cfg)
-		})
-		if err != nil {
-			return MarkerIndex{}, fmt.Errorf("scan current-state markers under %s: %w", filepath.ToSlash(root), err)
-		}
-	}
-	if err := finalizeMarkerIndex(idx, corpus); err != nil {
-		return MarkerIndex{}, err
-	}
-	return idx, nil
-}
 
 // matchingSources returns the configured marker-source families whose globs
 // select the repo-relative slash path rel.

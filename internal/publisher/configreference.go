@@ -21,9 +21,9 @@ func crefRel(p renderInputs) string {
 	return config.DocsDir + "/" + projectCatalog(p).Docs["config-reference"].Path
 }
 
-// PotentialVarConsumers inverts the complete catalog's raw template sources
+// potentialVarConsumersForCatalog inverts the complete catalog's raw template sources
 // into var -> sorted consumer labels for static catalog presentation.
-func PotentialVarConsumers() (map[string][]string, error) {
+func potentialVarConsumersForCatalog() (map[string][]string, error) {
 	return potentialVarConsumers(catalog.CompleteView().Catalog())
 }
 

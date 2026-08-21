@@ -1,9 +1,6 @@
 package topic
 
 import (
-	"errors"
-	"io/fs"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -20,6 +17,11 @@ func markerConfig() *config.CurrentStateConfig {
 	return &config.CurrentStateConfig{Sources: []config.CurrentStateSource{{Globs: []string{"internal/**"}, Marker: "//"}, {Globs: []string{"web/**"}, Marker: "<!--", Close: "-->"}}, TestGlobs: []string{"internal/**/*_test.go"}}
 }
 
+func markerIndexForTest(t *testing.T, root string, corpus Corpus, cfg *config.CurrentStateConfig) (MarkerIndex, error) {
+	t.Helper()
+	return markerIndexFromTreeFiles(treeFromDir(t, root).List(), corpus, cfg)
+}
+
 // invariant: invariants/topics-and-markers:invariants-marker-whitespace (TestBuildMarkerIndex)
 // invariant: invariants/topics-and-markers:invariants-multilang-scan (TestBuildMarkerIndex)
 // invariant: invariants/topics-and-markers:touches-marker-advisory (TestBuildMarkerIndex)
@@ -34,7 +36,7 @@ func TestBuildMarkerIndex(t *testing.T) {
 	c.all[0].Metadata.Applies = "global"
 	c.all[0].Metadata.Paths = nil
 	c.byTopic["alpha/contracts"] = &c.all[0]
-	idx, err := BuildMarkerIndex(root, c, markerConfig())
+	idx, err := markerIndexForTest(t, root, c, markerConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,16 +47,11 @@ func TestBuildMarkerIndex(t *testing.T) {
 		t.Fatalf("first site = %#v", got)
 	}
 }
-func TestBuildMarkerIndexPrunesForeignTrees(t *testing.T) {
+func TestMarkerIndexFromTreeSkipsNestedAdoptedProject(t *testing.T) {
 	root := t.TempDir()
 	for _, path := range []string{
-		"internal/git-directory/.git/config",
-		"internal/git-directory/ignored.go",
-		"internal/gitfile/ignored.go",
 		"internal/adopter/.awf/config.yaml",
 		"internal/adopter/ignored.go",
-		"internal/vendor/ignored.go",
-		"internal/node_modules/ignored.go",
 	} {
 		body := "ignored\n"
 		if strings.HasSuffix(path, ".go") {
@@ -62,35 +59,14 @@ func TestBuildMarkerIndexPrunesForeignTrees(t *testing.T) {
 		}
 		testsupport.WriteFile(t, filepath.Join(root, path), body)
 	}
-	testsupport.WriteFile(t, filepath.Join(root, "internal/gitfile/.git"), "gitdir: elsewhere\n")
-	// Hidden directories other than the explicitly reserved .git tree follow
-	// the current-state scanner's existing stance and remain eligible sources.
+	// Hidden directories remain eligible unless they belong to a nested adopted project.
 	testsupport.WriteFile(t, filepath.Join(root, "internal/.cache/kept.go"), "// state: alpha/contracts:rule\n")
-	idx, err := BuildMarkerIndex(root, markerCorpus(Unbacked), markerConfig())
+	idx, err := markerIndexForTest(t, root, markerCorpus(Unbacked), markerConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got := idx.ForClaim("alpha/contracts:rule"); len(got) != 1 || got[0].Path != "internal/.cache/kept.go" {
 		t.Fatalf("sites %#v", idx.All())
-	}
-}
-
-func TestBuildMarkerIndexWrapsDescendantWalkError(t *testing.T) {
-	root := t.TempDir()
-	want := errors.New("descendant unavailable")
-	walk := func(path string, fn fs.WalkDirFunc) error {
-		info, err := os.Stat(path)
-		if err != nil {
-			return err
-		}
-		if err := fn(path, fs.FileInfoToDirEntry(info), nil); err != nil {
-			return err
-		}
-		return fn(filepath.Join(path, "internal"), nil, want)
-	}
-	_, err := buildMarkerIndex(root, markerCorpus(Unbacked), markerConfig(), walk)
-	if !errors.Is(err, want) || !strings.Contains(err.Error(), "scan current-state markers") {
-		t.Fatalf("error = %v", err)
 	}
 }
 
@@ -122,7 +98,7 @@ func TestBuildMarkerIndexRejected(t *testing.T) {
 			if tc.mutate != nil {
 				tc.mutate(cfg)
 			}
-			_, err := BuildMarkerIndex(root, markerCorpus(tc.back), cfg)
+			_, err := markerIndexForTest(t, root, markerCorpus(tc.back), cfg)
 			if err == nil {
 				t.Fatal("wanted error")
 			}
@@ -138,15 +114,15 @@ func TestBuildMarkerIndexRejected(t *testing.T) {
 // invariant: invariants/topics-and-markers:invariants-unbacked-detected (TestBuildMarkerIndexBackingObligations)
 // invariant: invariants/topics-and-markers:unbacked-refuses-proof (TestBuildMarkerIndexBackingObligations)
 func TestBuildMarkerIndexBackingObligations(t *testing.T) {
-	if _, err := BuildMarkerIndex(t.TempDir(), markerCorpus(TestBacking), nil); err == nil {
+	if _, err := markerIndexForTest(t, t.TempDir(), markerCorpus(TestBacking), nil); err == nil {
 		t.Fatal("missing proof accepted")
 	}
 	root := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(root, "internal/a_test.go"), "// invariant: alpha/contracts:stable (TestStable)\nfunc TestStable() {}\n")
-	if _, err := BuildMarkerIndex(root, markerCorpus(Unbacked), markerConfig()); err == nil {
+	if _, err := markerIndexForTest(t, root, markerCorpus(Unbacked), markerConfig()); err == nil {
 		t.Fatal("unbacked proof accepted")
 	}
-	if idx, err := BuildMarkerIndex(t.TempDir(), markerCorpus(Unbacked), nil); err != nil || len(idx.All()) != 0 {
+	if idx, err := markerIndexForTest(t, t.TempDir(), markerCorpus(Unbacked), nil); err != nil || len(idx.All()) != 0 {
 		t.Fatalf("unbacked no marker: %#v %v", idx, err)
 	}
 }
@@ -185,7 +161,7 @@ func TestBuildMarkerIndexRequiresAProofName(t *testing.T) {
 	} {
 		root := t.TempDir()
 		testsupport.WriteFile(t, filepath.Join(root, "internal/a_test.go"), body)
-		idx, err := BuildMarkerIndex(root, markerCorpus(TestBacking), markerConfig())
+		idx, err := markerIndexForTest(t, root, markerCorpus(TestBacking), markerConfig())
 		if err != nil {
 			t.Fatalf("body %q rejected: %v", body, err)
 		}
@@ -205,7 +181,7 @@ func TestBuildMarkerIndexRequiresAProofName(t *testing.T) {
 	} {
 		root := t.TempDir()
 		testsupport.WriteFile(t, filepath.Join(root, "internal/a_test.go"), payload+"func TestStable() {}\n")
-		_, err := BuildMarkerIndex(root, markerCorpus(TestBacking), markerConfig())
+		_, err := markerIndexForTest(t, root, markerCorpus(TestBacking), markerConfig())
 		if err == nil || !strings.Contains(err.Error(), "does not name a proving unit") {
 			t.Fatalf("payload %q: err = %v, want it to report no proving unit", payload, err)
 		}
@@ -216,7 +192,7 @@ func TestBuildMarkerIndexRequiresAProofName(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(root, "internal/a.go"), "// state: alpha/contracts:rule (TestThing)\n")
 	testsupport.WriteFile(t, filepath.Join(root, "internal/a_test.go"), "// invariant: alpha/contracts:stable (TestStable)\nfunc TestStable() {}\n")
-	_, err := BuildMarkerIndex(root, markerCorpus(TestBacking), markerConfig())
+	_, err := markerIndexForTest(t, root, markerCorpus(TestBacking), markerConfig())
 	if err == nil || !strings.Contains(err.Error(), "malformed current-state marker") {
 		t.Fatalf("named state marker: err = %v, want malformed current-state marker", err)
 	}
@@ -231,7 +207,7 @@ func TestProofNameMustOccurInTheFile(t *testing.T) {
 		t.Helper()
 		root := t.TempDir()
 		testsupport.WriteFile(t, filepath.Join(root, "internal/a_test.go"), body)
-		_, err := BuildMarkerIndex(root, markerCorpus(TestBacking), markerConfig())
+		_, err := markerIndexForTest(t, root, markerCorpus(TestBacking), markerConfig())
 		return err
 	}
 

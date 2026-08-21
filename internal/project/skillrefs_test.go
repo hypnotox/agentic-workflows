@@ -78,20 +78,3 @@ func TestTaskSkillsOnlyConfigHasNoDeadRefs(t *testing.T) {
 		t.Fatalf("expected no dead skill references, got %v", got)
 	}
 }
-
-// invariant: rendering/project-output-plan:profile-projected-render (TestEffectiveSkillsMembership)
-func TestEffectiveSkillsMembership(t *testing.T) {
-	p, err := Open(testContext(t), scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	eff, err := effectiveSkills(renderInputsForTest(p))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for name := range projectCatalog(renderInputsForTest(p)).Skills {
-		if !eff[name] {
-			t.Errorf("catalog skill %q missing from effective set", name)
-		}
-	}
-}
