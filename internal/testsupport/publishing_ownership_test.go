@@ -141,6 +141,8 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 	}
 }
 
+// invariant: rendering/project-output-plan:check-report-single-plan (TestContextCompositionOwnershipRoutes)
+// invariant: tooling/context-and-topic:context-query-boundary (TestContextCompositionOwnershipRoutes)
 func TestContextCompositionOwnershipRoutes(t *testing.T) {
 	root := testsupport.RepoRoot(t)
 	for _, rel := range []string{"internal/contextq/context.go", "internal/contextq/context_artifacts.go"} {

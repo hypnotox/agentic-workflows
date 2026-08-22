@@ -3,7 +3,9 @@
 - `internal/publisher`: the application-level Publisher constructs output plans, coordinates rendering and publication, and owns immutable publication Results from immutable project facts plus an explicit tree reader.
 - `internal/checkresult`: owns immutable ranked findings with explicit protected properties and separately unranked information.
 - `internal/repositorycheck`: the policy-free RepositoryChecker preserves explicit owner-result order and compatibility projections without preparing inputs or inferring classification.
-- `internal/project`: `Loader` constructs the lower `ProjectState` facts while preserving its compatibility surface; focused functions compose semantic check owners and retain current-state coordination while consuming Publisher-produced plans through neutral values. CurrentStateCoordinator and command-use-case extraction remain future boundaries.
+- `internal/project`: `Loader` constructs the lower `ProjectState` facts while preserving bounded compatibility adapters and unrelated project operations.
+- `internal/currentstatecoord`: focused application operations select immutable universes, coordinate ADR, topic, plan, and current-state authority, and return semantic results without absorbing domain or commit-authorization policy.
+- `internal/contextinput`: owns the neutral immutable context input consumed below application coordination.
 - `internal/adr`, `internal/currentstate`, and `internal/plan`: decision, active-authority, and plan models.
 - `internal/effort` and `internal/worktree`: local residents and Git-backed topology.
 - `internal/git`: the sole semantic Git seam.

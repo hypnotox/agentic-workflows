@@ -1,4 +1,4 @@
-The read-only orientation surfaces: awf context, awf topic, describe, and uncovered reporting.
+The read-only orientation surfaces: awf context, awf topic, describe, and uncovered reporting. Focused current-state coordinator operations select one working or staged universe and assemble neutral immutable `internal/contextinput` values; `internal/contextq` owns classification and projection without importing project or application coordination.
 
 ## Claims
 

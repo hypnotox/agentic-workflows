@@ -18,7 +18,9 @@ awf renders workflow guidance from committed `.awf/` configuration. The CLI owns
 - `internal/publisher`: the application-level Publisher constructs output plans, coordinates rendering and publication, and owns immutable publication Results from immutable project facts plus an explicit tree reader.
 - `internal/checkresult`: owns immutable ranked findings with explicit protected properties and separately unranked information.
 - `internal/repositorycheck`: the policy-free RepositoryChecker preserves explicit owner-result order and compatibility projections without preparing inputs or inferring classification.
-- `internal/project`: `Loader` constructs the lower `ProjectState` facts while preserving its compatibility surface; focused functions compose semantic check owners and retain current-state coordination while consuming Publisher-produced plans through neutral values. CurrentStateCoordinator and command-use-case extraction remain future boundaries.
+- `internal/project`: `Loader` constructs the lower `ProjectState` facts while preserving bounded compatibility adapters and unrelated project operations.
+- `internal/currentstatecoord`: focused application operations select immutable universes, coordinate ADR, topic, plan, and current-state authority, and return semantic results without absorbing domain or commit-authorization policy.
+- `internal/contextinput`: owns the neutral immutable context input consumed below application coordination.
 - `internal/adr`, `internal/currentstate`, and `internal/plan`: decision, active-authority, and plan models.
 - `internal/effort` and `internal/worktree`: local residents and Git-backed topology.
 - `internal/git`: the sole semantic Git seam.
@@ -32,9 +34,9 @@ awf renders workflow guidance from committed `.awf/` configuration. The CLI owns
 <!-- awf:edit data-flow: from .awf/docs/parts/architecture/data-flow.md -->
 <!-- awf:template-source templates/docs/architecture.md.tmpl -->
 ## Data flow
-Commands load `.awf/` once, compose immutable `ProjectState` with the concrete config tree and Git handle required by one focused operation, then render its result or map its error. `.awf/awf.lock` records each render transaction. Working and staged checks load separate authority snapshots; audit reads selected history through `internal/git`. Effort residents remain local and unmanaged by rendering.
+Commands load `.awf/` once, compose immutable `ProjectState` with the concrete config tree and Git handle required by one focused operation, then render its result or map its error. `internal/currentstatecoord` selects each operation's immutable working, staged, parent, numbering, or context input and invokes the existing semantic owners. Context operations prepare Publisher from that same selected tree, then pass its defensive ADR, topic, plan, and output declarations through neutral `internal/contextinput` values without reparsing or sharing derived state across operations. `.awf/awf.lock` records each render transaction. Working and staged checks load separate authority snapshots; audit reads selected history through `internal/git`. Effort residents remain local and unmanaged by rendering.
 
-The dependency direction is `cmd/awf` to focused application operations, then to immutable project state and domain services, then to semantic Git, snapshot, filesystem, publication, and rendering mechanisms. Command code parses, composes, invokes, renders owner-produced results, selects streams, and maps exits. State, domain, and mechanism owners do not depend back on application or command coordination. The [dependency-composition topic](topics/code-design/dependency-composition.md) owns the detailed extraction owners, forbidden reverse edges, boundary values, and remaining coordinator extractions.
+The dependency direction is `cmd/awf` to focused application operations, then to immutable project state and domain services, then to semantic Git, snapshot, filesystem, publication, and rendering mechanisms. Command code parses, composes, invokes, renders owner-produced results, selects streams, and maps exits. State, domain, and mechanism owners do not depend back on application or command coordination. The [dependency-composition topic](topics/code-design/dependency-composition.md) owns the detailed extraction owners, forbidden reverse edges, and boundary values.
 
 
 <!-- awf:template-source templates/docs/architecture.md.tmpl#dependencies -->
