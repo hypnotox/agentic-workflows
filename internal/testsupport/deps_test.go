@@ -269,23 +269,88 @@ func TestRepositoryLayerDirection(t *testing.T) {
 	})
 }
 
+var currentStateLowerOwnerRoots = []string{
+	"internal/adr",
+	"internal/currentstate",
+	"internal/git",
+	"internal/projectstate",
+	"internal/publisher",
+	"internal/repositorycheck",
+	"internal/snapshot",
+}
+
+func currentStateCoordinatorImportViolations(path string, source any) ([]string, error) {
+	slashPath := strings.TrimPrefix(filepath.ToSlash(filepath.Clean(path)), "./")
+	directory := filepath.ToSlash(filepath.Dir(slashPath))
+	lowerOwner := false
+	for _, root := range currentStateLowerOwnerRoots {
+		if directory == root || strings.HasPrefix(directory, root+"/") {
+			lowerOwner = true
+			break
+		}
+	}
+	coordinator := directory == "internal/currentstatecoord" || strings.HasPrefix(directory, "internal/currentstatecoord/")
+	if !lowerOwner && !coordinator {
+		return nil, nil
+	}
+
+	file, err := parser.ParseFile(token.NewFileSet(), path, source, parser.ImportsOnly)
+	if err != nil {
+		return nil, fmt.Errorf("parse %s: %w", path, err)
+	}
+	var violations []string
+	for _, spec := range file.Imports {
+		importPath, err := strconv.Unquote(spec.Path.Value)
+		if err != nil {
+			return nil, fmt.Errorf("%s: unquote import %s: %w", path, spec.Path.Value, err)
+		}
+		if lowerOwner && importsPackage(importPath, repositoryModule+"/internal/currentstatecoord") {
+			violations = append(violations, fmt.Sprintf("%s lower owner imports current-state coordination %q", slashPath, importPath))
+		}
+		if coordinator && (importsPackage(importPath, repositoryModule+"/cmd/awf") || importsPackage(importPath, repositoryModule+"/internal/contextq")) {
+			violations = append(violations, fmt.Sprintf("%s current-state coordination imports forbidden consumer %q", slashPath, importPath))
+		}
+	}
+	return violations, nil
+}
+
 // TestCurrentStateCoordinatorDirection keeps application coordination above its
 // domain, state, snapshot, Git, publication, and aggregation consumers.
 func TestCurrentStateCoordinatorDirection(t *testing.T) {
-	root := testsupport.RepoRoot(t)
-	lowerOwners := map[string]bool{
-		"internal/adr": true, "internal/currentstate": true, "internal/git": true,
-		"internal/projectstate": true, "internal/publisher": true,
-		"internal/repositorycheck": true, "internal/snapshot": true,
+	tests := []struct {
+		name, path, source string
+		violations         int
+		wantErr            bool
+	}{
+		{name: "lower owner", path: "internal/currentstate/parse/parse.go", source: "package parse\nimport \"github.com/hypnotox/agentic-workflows/internal/currentstatecoord\"", violations: 1},
+		{name: "lower owner to coordinator descendant", path: "internal/snapshot/sub/tree.go", source: "package sub\nimport \"github.com/hypnotox/agentic-workflows/internal/currentstatecoord/private\"", violations: 1},
+		{name: "coordinator to context query descendant", path: "internal/currentstatecoord/sub/op.go", source: "package sub\nimport \"github.com/hypnotox/agentic-workflows/internal/contextq/private\"", violations: 1},
+		{name: "coordinator to command", path: "internal/currentstatecoord/op.go", source: "package currentstatecoord\nimport \"github.com/hypnotox/agentic-workflows/cmd/awf\"", violations: 1},
+		{name: "allowed lower mechanism", path: "internal/snapshot/sub/tree.go", source: "package sub\nimport \"github.com/hypnotox/agentic-workflows/internal/git\""},
+		{name: "allowed command consumer", path: "cmd/awf/check.go", source: "package main\nimport \"github.com/hypnotox/agentic-workflows/internal/currentstatecoord\""},
+		{name: "malformed protected source", path: "internal/currentstatecoord/op.go", source: "not go", wantErr: true},
+		{name: "malformed unrelated source", path: "internal/tool/tool.go", source: "not go"},
 	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := currentStateCoordinatorImportViolations(tt.path, tt.source)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if len(got) != tt.violations {
+				t.Fatalf("violations = %v, want %d", got, tt.violations)
+			}
+		})
+	}
+
+	root := testsupport.RepoRoot(t)
 	testsupport.WalkRepoSources(t, root, func(relative string, content []byte) {
-		directory := filepath.ToSlash(filepath.Dir(relative))
-		if lowerOwners[directory] {
-			assertImportsExclude(t, relative, content, "internal/currentstatecoord")
+		violations, err := currentStateCoordinatorImportViolations(relative, content)
+		if err != nil {
+			t.Fatal(err)
 		}
-		if directory == "internal/currentstatecoord" {
-			assertImportsExclude(t, relative, content, "cmd/awf")
-			assertImportsExclude(t, relative, content, "internal/contextq")
+		for _, violation := range violations {
+			t.Error(violation)
 		}
 	})
 }

@@ -93,7 +93,7 @@ func workingCurrentState(root string, repo *awfgit.Repo, ctx context.Context) (w
 	if err != nil {
 		return workingState{}, err
 	}
-	if cfg == nil { // coverage-ignore: Project.Open already required config; only a concurrent deletion after path enumeration can remove it
+	if cfg == nil {
 		return workingState{}, fmt.Errorf("working snapshot has no %s/config.yaml", config.DirName)
 	}
 	return workingState{Loaded: loaded, Tree: tree, Lock: lock, Cfg: cfg}, nil

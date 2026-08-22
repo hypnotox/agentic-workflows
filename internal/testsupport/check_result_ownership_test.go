@@ -173,27 +173,107 @@ func TestRepositoryCheckerOwnershipCensus(t *testing.T) {
 }
 
 // TestCurrentStateProductionRouteCensus keeps commands on the coordinator while
-// allowing project only the direct compatibility adapters used by legacy callers.
+// rejecting missing, duplicate, comment-only, and legacy project routes.
 func TestCurrentStateProductionRouteCensus(t *testing.T) {
-	root := testsupport.RepoRoot(t)
-	cases := []struct {
-		path, required, forbidden string
+	const (
+		coordinatorImport = "github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
+		projectImport     = "github.com/hypnotox/agentic-workflows/internal/project"
+	)
+	tests := []struct {
+		name, source    string
+		working, staged int
+		legacyWorking   int
+		legacyStaged    int
 	}{
-		{"cmd/awf/checkrepo.go", "currentstatecoord.CheckWorking", "project.CheckCurrentState"},
-		{"cmd/awf/checkstaged.go", "currentstatecoord.CheckStagedRoot", "project.CheckStagedRoot"},
+		{name: "working route", source: "package fixture\nimport c \"" + coordinatorImport + "\"\nfunc f() { c.CheckWorking() }", working: 1},
+		{name: "staged route", source: "package fixture\nimport \"" + coordinatorImport + "\"\nfunc f() { currentstatecoord.CheckStagedRoot() }", staged: 1},
+		{name: "missing route", source: "package fixture\nfunc f() {}"},
+		{name: "duplicate route", source: "package fixture\nimport c \"" + coordinatorImport + "\"\nfunc f() { c.CheckWorking(); c.CheckWorking() }", working: 2},
+		{name: "comment only", source: "package fixture\n// currentstatecoord.CheckWorking()\nfunc f() {}"},
+		{name: "legacy routes", source: "package fixture\nimport p \"" + projectImport + "\"\nfunc f() { p.CheckCurrentState(); p.CheckStagedRoot() }", legacyWorking: 1, legacyStaged: 1},
 	}
-	for _, tc := range cases {
-		source, err := os.ReadFile(filepath.Join(root, tc.path))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			file := parseRouteSource(t, tt.name+".go", []byte(tt.source))
+			if got := importedRouteCount(t, file, coordinatorImport, "CheckWorking"); got != tt.working {
+				t.Fatalf("working coordinator routes = %d, want %d", got, tt.working)
+			}
+			if got := importedRouteCount(t, file, coordinatorImport, "CheckStagedRoot"); got != tt.staged {
+				t.Fatalf("staged coordinator routes = %d, want %d", got, tt.staged)
+			}
+			if got := importedRouteCount(t, file, projectImport, "CheckCurrentState"); got != tt.legacyWorking {
+				t.Fatalf("legacy working routes = %d, want %d", got, tt.legacyWorking)
+			}
+			if got := importedRouteCount(t, file, projectImport, "CheckStagedRoot"); got != tt.legacyStaged {
+				t.Fatalf("legacy staged routes = %d, want %d", got, tt.legacyStaged)
+			}
+		})
+	}
+
+	root := testsupport.RepoRoot(t)
+	production := []struct {
+		path, function string
+	}{
+		{"cmd/awf/checkrepo.go", "CheckWorking"},
+		{"cmd/awf/checkstaged.go", "CheckStagedRoot"},
+	}
+	for _, route := range production {
+		source, err := os.ReadFile(filepath.Join(root, route.path))
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := strings.Count(string(source), tc.required); got != 1 {
-			t.Errorf("%s coordinator route %q count = %d, want 1", tc.path, tc.required, got)
+		file := parseRouteSource(t, route.path, source)
+		if got := importedRouteCount(t, file, coordinatorImport, route.function); got != 1 {
+			t.Errorf("%s coordinator route %s count = %d, want 1", route.path, route.function, got)
 		}
-		if strings.Contains(string(source), tc.forbidden) {
-			t.Errorf("%s retains replaced route %q", tc.path, tc.forbidden)
+		if got := importedRouteCount(t, file, projectImport, "CheckCurrentState") + importedRouteCount(t, file, projectImport, "CheckStagedRoot"); got != 0 {
+			t.Errorf("%s retains %d legacy project current-state route(s)", route.path, got)
 		}
 	}
+}
+
+func parseRouteSource(t *testing.T, path string, source []byte) *ast.File {
+	t.Helper()
+	file, err := parser.ParseFile(token.NewFileSet(), path, source, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return file
+}
+
+func importedRouteCount(t *testing.T, file *ast.File, importPath, function string) int {
+	t.Helper()
+	qualifiers := map[string]bool{}
+	for _, spec := range file.Imports {
+		path, err := strconv.Unquote(spec.Path.Value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if path != importPath {
+			continue
+		}
+		qualifier := filepath.Base(path)
+		if spec.Name != nil {
+			qualifier = spec.Name.Name
+		}
+		if qualifier == "." || qualifier == "_" {
+			t.Fatalf("unsupported import qualifier %q for %s", qualifier, importPath)
+		}
+		qualifiers[qualifier] = true
+	}
+	count := 0
+	ast.Inspect(file, func(node ast.Node) bool {
+		selector, ok := node.(*ast.SelectorExpr)
+		if !ok || selector.Sel.Name != function {
+			return true
+		}
+		qualifier, ok := selector.X.(*ast.Ident)
+		if ok && qualifiers[qualifier.Name] {
+			count++
+		}
+		return true
+	})
+	return count
 }
 
 func functionDeclarations(file *ast.File) map[string]*ast.FuncDecl {
