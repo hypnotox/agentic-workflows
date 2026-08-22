@@ -189,7 +189,7 @@ correction is allowed without unrelated cleanup riding along.
 | RF-008A | P1 | COMPLETE | Durable private compatibility policy and a real support-floor inventory | Program A milestone |
 | RF-008B | P1 | CONDITIONAL | Obsolete compatibility pruned below the support floor | RF-008A, managed repos upgraded |
 | RF-002 | P1 | COMPLETE | Residual project state separated from operations | RF-001 |
-| RF-003 | P1 | READY | One application owner for output planning and publication coordination | RF-002 |
+| RF-003 | P1 | COMPLETE | One application owner for output planning and publication coordination | RF-002 |
 | RF-004 | P1 | READY | Check aggregation separated from check policy; severity in the result model | AF-013, RF-002 |
 | RF-005 | P1 | READY | Current-state coordination extracted from project orchestration | RF-002 |
 | RF-006 | P1 | BLOCKED | `cmd/awf` reduced to parse, compose, invoke, render, exit | RF-002..RF-005 |
@@ -256,12 +256,12 @@ correction is allowed without unrelated cleanup riding along.
 
 ### Program B start gate
 
-**Status: OPEN; B-F1 THROUGH B-F3 COMPLETE.** Program A is complete; generated artifacts are stable
-under the new doctrine; changed behaviour has deterministic regression coverage; no known
-adopter-facing contradiction remains; RF-001 establishes the target dependency map and RF-002
-establishes immutable project state. RF-003 through RF-005 are dependency-ready but execute
-sequentially. RF-008B and RF-014B remain conditional because nine managed repositories have not
-upgraded from 0.39.1.
+**Status: OPEN; B-F1 THROUGH B-F3 AND RF-003 COMPLETE.** Program A is complete; generated artifacts
+are stable under the new doctrine; changed behaviour has deterministic regression coverage; no known
+adopter-facing contradiction remains; RF-001 establishes the target dependency map, RF-002
+establishes immutable project state, and RF-003 establishes publishing coordination. RF-004 and
+RF-005 remain dependency-ready but execute sequentially. RF-008B and RF-014B remain conditional
+because nine managed repositories have not upgraded from 0.39.1.
 
 Program A milestone complete; generated artifacts stable under the new doctrine; new behaviour has
 regression tests; no known adopter-facing contradiction remains; compatibility support policy decided
@@ -906,6 +906,49 @@ abstraction; oracle strength.
 - **Unblocked:** RF-003, RF-004, and RF-005 are dependency-ready. B-F4 remains sequential; RF-003 is
   selected next by listed order. RF-006 still waits on all three, and later issues retain their named
   dependencies and compatibility conditions.
+
+### RF-003
+
+- **Range:** Issue base `18fd4024e`; implementation, ADR-0299 numbering, integration, and terminal
+  range `18fd4024e..78192c1c9`.
+- **Protected contract:** Publisher constructs one immutable output plan per operation and owns
+  rendering coordination, sync, initialization, backup and sync-time prune policy, resident-marker
+  rendering, and the semantic publication Result. Immutable project facts and neutral plan values
+  cross lower boundaries without reversing dependencies. CLI bytes, streams, exits, errors, ordering,
+  generated paths and bytes, staged isolation, lock authority, atomic publication, backup behavior,
+  partial progress, and resident-owned full uninstall remain unchanged.
+- **Clean integration:** `internal/publisher` is the application coordinator, `internal/outputplan`
+  owns neutral values, and `internal/projectstate` owns immutable loaded facts. Project checks and
+  current-state consumers receive semantic projections without importing Publisher or rebuilding its
+  plan. Existing filesystem, filepublication, Git, rendering-syntax, snapshot, resident, and central
+  presentation owners remain focused. Obsolete project publishing paths, duplicate planners, dead
+  migration helpers, and duplicated constants are removed. One private defensive catalog snapshot is
+  reused within each operation without weakening caller isolation.
+- **Files changed:** Publisher planning, rendering, publication and result code; neutral output-plan
+  and immutable-state packages; command composition; residual project, context, ADR and topic tree
+  consumers; migrated owner tests and fault matrices; structural ownership and dependency oracles;
+  authored and rendered architecture and rendering authority; ADR-0299, its plan, decision index, and
+  generated lock establish and prove the boundary.
+- **Verification:** Focused state, planning, publication, partial-result, command, staged, context,
+  ownership, dependency, and performance tests passed. Repeated unmodified full gates passed with
+  21,149 of 21,149 statements covered, no production dead code, and only three pre-existing advisory
+  `Uid` findings. Final command coverage completed in 72.518 seconds during orchestrator verification.
+  Render, drift, staged, workflow, and local audits passed; the local audit retained one reasoned
+  no-changelog advisory and seventeen independently reviewed defensive coverage exclusions. Fresh
+  assurance covered the cleanup and catalog-snapshot settlement at the exact implementation tip.
+- **Deviations:** A lower immutable state owner broke the direct project-to-Publisher cycle, and a
+  neutral plan-value owner preserved lower consumer direction. Full uninstall stayed resident-owned.
+  Orchestrator audit removed range-created lint residue, false coverage exclusions, and a redundant
+  guard. Independent gating then exposed repeated catalog cloning that pushed command coverage beyond
+  the default timeout; operation-local snapshot reuse restored the unmodified gate without changing
+  observables or weakening verification. No changelog entry was added because the transaction changes
+  internal ownership only.
+- **Residual debt:** RepositoryChecker, CurrentStateCoordinator, focused command use cases, residual
+  mixed test ownership, and historical-comment cleanup remain assigned to RF-004 through RF-007 and
+  RF-010. Compatibility deletion remains gated under RF-008B and RF-014B.
+- **Unblocked:** RF-004 and RF-005 remain dependency-ready. B-F4 stays sequential and RF-004 is
+  selected next by listed order. RF-006 still waits on RF-004 and RF-005; later issues retain their
+  named dependencies and compatibility conditions.
 
 Close each later issue with the same evidence: identity; baseline and final range; protected contract;
 clean integration; files changed with reason; verification commands and results; material deviations;
