@@ -5,7 +5,7 @@
 
 Agent-guide and documentation template contracts.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/generatedcheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/project/**`, `internal/projectstate/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `templates/**`. Both domain and topic selectors must match. Run `awf topic rendering/guide-and-doc-templates --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/projectstate/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `internal/vocabularycheck/**`, `templates/**`. Topic selectors: `templates/**`. Both domain and topic selectors must match. Run `awf topic rendering/guide-and-doc-templates --coverage` for current applicable and owned paths and marker sites.
 
 Agent-guide and documentation template contracts: section parity, glossary rendering, scope derivation, and the document map.
 

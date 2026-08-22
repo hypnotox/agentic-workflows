@@ -1,4 +1,5 @@
-package project
+// Package glossary owns glossary records, parsing, and two-layer merge semantics.
+package glossary
 
 import (
 	"fmt"
@@ -9,45 +10,59 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
-// glossarySidecarPath names the authoring surface in every glossary content error.
-const glossarySidecarPath = config.DirName + "/docs/glossary.yaml"
+// SidecarPath names the authoring surface in every glossary content error.
+const SidecarPath = config.DirName + "/docs/glossary.yaml"
 
-// glossaryRecord is one authored term: the term itself, its meaning, and the
+// docDataTransform is the docs renderKindSpec transform (ADR-0089): the seam
+// where a doc's sidecar data is computed into rendered content upstream of both
+// renderTarget and artifactConfigHash, so a change to the computation itself
+// reflags the doc exactly like a config edit (the ADR-0045 both-consumers
+// pattern). The glossary doc computes today; the pitfall family is assembled
+// from its operation-owned corpus by the output planner.
+
+// Record is one authored term: the term itself, its meaning, and the
 // optional owning domains. Domains resolve against the project's configured
 // domains in checkGlossary, which this render-time path cannot see.
-type glossaryRecord struct {
+type Record struct {
 	Term    string
 	Meaning string
 	Domains []string
 }
 
-// glossaryRecordKeys is the closed set of keys a record may carry. An unknown
+// RecordKeys is the closed set of keys a record may carry. An unknown
 // key is a typo that would otherwise render as silent absence.
-var glossaryRecordKeys = map[string]bool{"term": true, "meaning": true, "domains": true}
+var recordKeys = map[string]bool{"term": true, "meaning": true, "domains": true}
 
-// glossaryMeaningMax bounds a meaning at roughly two sentences of ordinary
+// MeaningMax bounds a meaning at roughly two sentences of ordinary
 // prose, counted in runes (ADR-0207 decision 9). It is a fixed constant rather
 // than a config key on purpose: an adopter-raisable threshold is a suppressing
 // value, which this project's severity model does not have. The advisory
 // evaluates the merged set, so this bounds the shipped standard vocabulary as
 // well as authored terms (decision 10); the portability test is the additional
 // guard that awf never ships an over-length term in the first place.
-const glossaryMeaningMax = 280
+const MeaningMax = 280
 
-// mergedGlossaryRecords is the single home of the two-layer merge: the standard
+// glossaryTransform replaces data.terms with the finished, always-sorted
+// markdown table rows for the merged two-layer set (ADR-0089, ADR-0207). It
+// returns untouched only when neither layer is present at all; a null or empty
+// layer yields "", so the template's else branch renders the coherent
+// placeholder. standardTerms is consumed here and deleted, so the template sees
+// exactly one key. Content violations are hard errors naming the offending term.
+
+// Merge is the single home of the two-layer merge: the standard
 // vocabulary awf ships, overlaid by the project's authored terms. An authored
 // record overrides a shipped record whose term matches case-insensitively,
 // which is the only way to remove an unwanted shipped term. A case-insensitive
 // duplicate WITHIN either layer stays a hard error; a duplicate ACROSS layers is
 // the override. Order is not guaranteed; glossaryRows sorts.
-func mergedGlossaryRecords(sc config.Sidecar) ([]glossaryRecord, error) {
-	shipped, err := glossaryRecords(sc.Data["standardTerms"])
+func Merge(sc config.Sidecar) ([]Record, error) {
+	shipped, err := Records(sc.Data["standardTerms"])
 	if err != nil {
 		// The shipped layer is awf's own closed list, so a violation here is a
 		// defect in this binary rather than anything the adopter authored.
 		return nil, fmt.Errorf("standard vocabulary is malformed: %w", err)
 	}
-	authored, err := glossaryRecords(sc.Data["terms"])
+	authored, err := Records(sc.Data["terms"])
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +70,7 @@ func mergedGlossaryRecords(sc config.Sidecar) ([]glossaryRecord, error) {
 	for _, r := range authored {
 		overridden[strings.ToLower(r.Term)] = true
 	}
-	out := make([]glossaryRecord, 0, len(shipped)+len(authored))
+	out := make([]Record, 0, len(shipped)+len(authored))
 	for _, r := range shipped {
 		if !overridden[strings.ToLower(r.Term)] {
 			out = append(out, r)
@@ -64,13 +79,13 @@ func mergedGlossaryRecords(sc config.Sidecar) ([]glossaryRecord, error) {
 	return append(out, authored...), nil
 }
 
-// glossaryRecords validates one authored layer into its record list. An absent
+// Records validates one authored layer into its record list. An absent
 // or null value yields nil, nil (the template's else branch renders the
 // placeholder). A non-list value, a non-mapping element, a missing or
 // wrong-typed field, an unknown record key, or a case-insensitive duplicate
 // term within this layer is a hard error. Domain resolution is checkGlossary's
 // job (it needs the project's domains); this validates shape only.
-func glossaryRecords(raw any) ([]glossaryRecord, error) {
+func Records(raw any) ([]Record, error) {
 	if raw == nil {
 		return nil, nil
 	}
@@ -78,14 +93,14 @@ func glossaryRecords(raw any) ([]glossaryRecord, error) {
 	if !ok {
 		return nil, glossaryErr("must be a list of {term, meaning} records")
 	}
-	out := make([]glossaryRecord, 0, len(list))
+	out := make([]Record, 0, len(list))
 	seen := map[string]string{} // lower(term) -> first term carrying it
 	for i, el := range list {
 		m, err := glossaryStringMap(i, el)
 		if err != nil {
 			return nil, err
 		}
-		r, err := glossaryRecordFrom(i, m)
+		r, err := recordFrom(i, m)
 		if err != nil {
 			return nil, err
 		}
@@ -119,29 +134,29 @@ func glossaryStringMap(i int, el any) (map[string]any, error) {
 	}
 }
 
-// glossaryRecordFrom validates one mapping into a glossaryRecord. The term is
+// RecordFrom validates one mapping into a Record. The term is
 // read first so every later violation can name it; only a malformed term falls
 // back to the record index.
-func glossaryRecordFrom(i int, m map[string]any) (glossaryRecord, error) {
+func recordFrom(i int, m map[string]any) (Record, error) {
 	term, err := glossaryTerm(i, m)
 	if err != nil {
-		return glossaryRecord{}, err
+		return Record{}, err
 	}
 	meaning, err := glossaryMeaning(term, m)
 	if err != nil {
-		return glossaryRecord{}, err
+		return Record{}, err
 	}
 	domains, err := glossaryDomains(term, m)
 	if err != nil {
-		return glossaryRecord{}, err
+		return Record{}, err
 	}
 	// Sorted so a record carrying several unknown keys reports the same one every run.
 	for _, k := range slices.Sorted(maps.Keys(m)) {
-		if !glossaryRecordKeys[k] {
-			return glossaryRecord{}, glossaryErr(fmt.Sprintf("term %q: unknown key %q", term, k))
+		if !recordKeys[k] {
+			return Record{}, glossaryErr(fmt.Sprintf("term %q: unknown key %q", term, k))
 		}
 	}
-	return glossaryRecord{Term: term, Meaning: meaning, Domains: domains}, nil
+	return Record{Term: term, Meaning: meaning, Domains: domains}, nil
 }
 
 // glossaryTerm reads the required term. It is what names every other violation,
@@ -206,7 +221,14 @@ func glossaryDomains(term string, m map[string]any) ([]string, error) {
 	return out, nil
 }
 
+// glossaryRows renders the sorted table rows. Ordering is case-insensitive by
+// term; ties are impossible because case-insensitive duplicates are rejected
+// upstream, so equal record sets always render byte-identically regardless of
+// the authored order. The caller's slice is never reordered.
+
+// escapePipes keeps a term or meaning inside one GFM table cell.
+
 // glossaryErr prefixes every content violation with the authoring surface.
 func glossaryErr(msg string) error {
-	return fmt.Errorf("%s data.terms: %s", glossarySidecarPath, msg)
+	return fmt.Errorf("%s data.terms: %s", SidecarPath, msg)
 }

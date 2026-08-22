@@ -2,16 +2,12 @@ package project
 
 import (
 	"bytes"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
-	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
-	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
@@ -43,18 +39,6 @@ func TestAdvisoryNotesRejectMalformedRetainedData(t *testing.T) {
 			t.Fatalf("advisory pitfall error = %v", err)
 		}
 	})
-	t.Run("glossary", func(t *testing.T) {
-		root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", map[string]string{
-			"docs/glossary.yaml": "data:\n  terms: not-a-list\n",
-		})
-		p, err := Open(testContext(t), root)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := advisoryNotesWithState(renderInputsForTest(p), pitfall.Corpus{}, nil, &OutputPlan{}); err == nil || !strings.Contains(err.Error(), "must be a list") {
-			t.Fatalf("advisory glossary error = %v", err)
-		}
-	})
 }
 
 func TestOutputPlanRejectsMalformedRetainedData(t *testing.T) {
@@ -72,43 +56,6 @@ func TestOutputPlanRejectsMalformedRetainedData(t *testing.T) {
 			}
 			if _, err := outputPlanProject(p); err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("output-plan error = %v", err)
-			}
-		})
-	}
-}
-
-func TestCheckWithStatePropagatesMalformedRetainedData(t *testing.T) {
-	for _, tc := range []struct {
-		name, path, sidecar string
-	}{
-		{"glossary", "docs/glossary.yaml", "data:\n  terms: not-a-list\n"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
-			p, err := Open(testContext(t), root)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err := syncProject(p); err != nil {
-				t.Fatal(err)
-			}
-			corpus, pitfalls, topics, effective, err := deriveOperationStateWithPitfalls(renderInputsForTest(p))
-			if err != nil {
-				t.Fatal(err)
-			}
-			op, err := outputPlanWithPitfalls(renderInputsForTest(p), corpus, pitfalls, topics, effective)
-			if err != nil {
-				t.Fatal(err)
-			}
-			sidecarPath := filepath.Join(root, ".awf", tc.path)
-			if err := os.MkdirAll(filepath.Dir(sidecarPath), 0o755); err != nil {
-				t.Fatal(err)
-			}
-			if err := os.WriteFile(sidecarPath, []byte(tc.sidecar), 0o644); err != nil {
-				t.Fatal(err)
-			}
-			if _, _, err := checkWithTrackingState(renderInputsForTest(p), testRepo(p), testContext(t), corpus, pitfall.Corpus{}, effective, mustParsePlans(t, p), generatedcheck.AdditionalInput{}, op); err == nil || !strings.Contains(err.Error(), "must be a list") {
-				t.Fatalf("check-with-state error = %v", err)
 			}
 		})
 	}
@@ -132,7 +79,7 @@ func TestCheckReportUsesPreparedAdvisorySources(t *testing.T) {
 	if planErr != nil {
 		t.Fatal(planErr)
 	}
-	semantics := OperationSemantics{ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: prepared.PlansError(), GeneratedOutput: prepared.GeneratedOutput()}
+	semantics := OperationSemantics{ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: prepared.PlansError(), GeneratedOutput: prepared.GeneratedOutput(), Vocabulary: prepared.Vocabulary()}
 	if _, err := BuildCheckReport(p, cfg, testRepo(p), testContext(t), prepared.Plan(), semantics); err != nil {
 		t.Fatalf("CheckReport changed after preparation: %v after %d glossary reads", err, reader.reads)
 	}

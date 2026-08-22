@@ -1,61 +1,5 @@
 package project
 
-import "github.com/hypnotox/agentic-workflows/internal/config"
-
-// withDefaultData overlays a sidecar onto an artifact's catalog default data.
-// Catalog-backed lists are layered in authored order; non-list values retain
-// shallow top-level replacement. The effective sidecar feeds rendering and the
-// config hash.
-// touches-state: rendering/project-output-plan:sidecar-key-overrides-default - non-list sidecar-over-default data merge; proof in datamerge_test.go
-// touches-state: rendering/project-output-plan:catalog-list-data-layering - catalog list followed by authored list unless explicitly suppressed; proof in datamerge_test.go
-func withDefaultData(sc config.Sidecar, defaults map[string]any, listLayerExclusions ...string) config.Sidecar {
-	if len(defaults) == 0 {
-		return sc
-	}
-	excluded := make(map[string]bool, len(listLayerExclusions))
-	for _, key := range listLayerExclusions {
-		excluded[key] = true
-	}
-	merged := make(map[string]any, len(defaults)+len(sc.Data))
-	for key, rawDefault := range defaults {
-		defaultList, isList := rawDefault.([]any)
-		if !isList || excluded[key] {
-			merged[key] = cloneData(rawDefault)
-			continue
-		}
-		authored, present := sc.Data[key]
-		authoredList, authoredIsList := authored.([]any)
-		keepDefault := true
-		if value, configured := sc.DataDefaults[key]; configured && !value {
-			keepDefault = false
-		}
-		capacity := len(authoredList)
-		if keepDefault {
-			capacity += len(defaultList)
-		}
-		list := make([]any, 0, capacity)
-		if keepDefault {
-			for _, item := range defaultList {
-				list = append(list, cloneData(item))
-			}
-		}
-		if present && authoredIsList {
-			for _, item := range authoredList {
-				list = append(list, cloneData(item))
-			}
-		}
-		merged[key] = list
-	}
-	for key, value := range sc.Data {
-		if _, catalogList := defaults[key].([]any); catalogList && !excluded[key] {
-			continue
-		}
-		merged[key] = cloneData(value)
-	}
-	sc.Data = merged
-	return sc
-}
-
 // specializedListDataKeys excludes differently keyed, identity-aware
 // transforms from generic same-key list composition.
 func specializedListDataKeys(kind, artifact string) []string {
@@ -63,29 +7,4 @@ func specializedListDataKeys(kind, artifact string) []string {
 		return []string{"standardTerms"}
 	}
 	return nil
-}
-
-func cloneData(value any) any {
-	switch typed := value.(type) {
-	case []any:
-		out := make([]any, len(typed))
-		for i, item := range typed {
-			out[i] = cloneData(item)
-		}
-		return out
-	case map[string]any:
-		out := make(map[string]any, len(typed))
-		for key, item := range typed {
-			out[key] = cloneData(item)
-		}
-		return out
-	case map[any]any:
-		out := make(map[any]any, len(typed))
-		for key, item := range typed {
-			out[key] = cloneData(item)
-		}
-		return out
-	default:
-		return value
-	}
 }

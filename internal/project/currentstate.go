@@ -10,6 +10,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/commitmsg"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
@@ -17,6 +18,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
+	"github.com/hypnotox/agentic-workflows/internal/plancheck"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
@@ -210,10 +212,22 @@ func checkStaged(root string, repo *awfgit.Repo, ctx context.Context) (CurrentSt
 		return CurrentStateReport{}, err
 	}
 	report.PlanDrift = planDrift
-	artifactDrift, artifactNotes := planArtifactReport(plans, after.Corpus)
-	report.PlanDrift = append(report.PlanDrift, artifactDrift...)
-	report.PlanNotes = artifactNotes
+	planResult, err := plancheck.Artifact(plans, after.Corpus)
+	if err != nil { // coverage-ignore: staged plans and corpora are already validated semantic values
+		return CurrentStateReport{}, err
+	}
+	appendStagedPlanResult(&report, planResult)
 	return report, nil
+}
+
+func appendStagedPlanResult(report *CurrentStateReport, result checkresult.Result) {
+	for _, finding := range result.Findings() {
+		if finding.Rank == severity.Error {
+			report.PlanDrift = append(report.PlanDrift, manifest.Drift{Kind: finding.Evidence.Kind, Path: finding.Evidence.Path, Detail: finding.Evidence.Detail})
+		} else if finding.Evidence.Kind == "plan-advisory" {
+			report.PlanNotes = append(report.PlanNotes, finding.Evidence.Detail)
+		}
+	}
 }
 
 // CommitAuthorizationResult is the non-mutating outcome of definitive

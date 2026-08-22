@@ -4,16 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
 	"os"
 	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
-	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/configcheck"
@@ -22,10 +19,13 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
+	"github.com/hypnotox/agentic-workflows/internal/pitfallcheck"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
+	"github.com/hypnotox/agentic-workflows/internal/plancheck"
 	"github.com/hypnotox/agentic-workflows/internal/referencecheck"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
+	"github.com/hypnotox/agentic-workflows/internal/vocabularycheck"
 )
 
 // CheckAdvisories separates ranked warnings from unranked information without
@@ -37,36 +37,36 @@ type CheckAdvisories struct {
 
 // AdvisoryNotes returns the compatibility projection of the non-failing notes
 // produced by one operation-scoped plan parse.
-func advisoryNotes(p renderInputs, pitfalls pitfall.Corpus, plans []plan.Plan, plansErr error, op *OutputPlan) ([]string, error) {
+func advisoryNotes(p renderInputs, plans []plan.Plan, plansErr error, op *OutputPlan, vocabulary vocabularycheck.Input) ([]string, error) {
 	if plansErr != nil {
 		return nil, plansErr
 	}
-	advisories, err := advisoryNotesWithState(p, pitfalls, plans, op)
-	if err != nil { // coverage-ignore: operation state and sidecars were already parsed and validated before advisory projection
+	vocabularyResults, err := vocabularycheck.Evaluate(vocabulary)
+	if err != nil { // coverage-ignore: prepared vocabulary checks are infallible
 		return nil, err
 	}
+	advisories := advisoryNotesWithState(p, plans, op, vocabularyResults)
 	return append(slices.Clone(advisories.Warnings), advisories.Information...), nil
 }
 
 // advisoryNotesWithState classifies the non-failing render advisories from
 // operation-owned state, its already parsed plans, and its one prepared output
 // plan.
-func advisoryNotesWithState(p renderInputs, pitfalls pitfall.Corpus, plans []plan.Plan, op *OutputPlan) (CheckAdvisories, error) {
+func advisoryNotesWithState(p renderInputs, plans []plan.Plan, op *OutputPlan, vocabularyResults vocabularycheck.Results) CheckAdvisories {
 	files := planWriteFiles(op)
 	all := advisoryCompatibilityFiles(op)
 	information := append(unsetVarNotes(p, files), stubNotes(all)...)
 	information = append(information, markerNotes(all)...)
-	warnings, err := tagHealthNotes(p, pitfalls)
-	if err != nil { // coverage-ignore: advisory read errors are covered by direct helper tests
-		return CheckAdvisories{}, err
-	}
 	information = append(information, planCommitScopeNotes(p, plans)...)
-	glossaryWarnings, err := glossaryTersenessNotes(p)
-	if err != nil {
-		return CheckAdvisories{}, err
+	var warnings []string
+	for _, result := range []checkresult.Result{vocabularyResults.Tags, vocabularyResults.Glossary} {
+		for _, finding := range result.Findings() {
+			if finding.Rank == severity.Warn {
+				warnings = append(warnings, finding.Evidence.Detail)
+			}
+		}
 	}
-	warnings = append(warnings, glossaryWarnings...)
-	return CheckAdvisories{Warnings: warnings, Information: information}, nil
+	return CheckAdvisories{Warnings: warnings, Information: information}
 }
 
 // advisoryCompatibilityFiles preserves the established stub-note multiplicity
@@ -89,93 +89,6 @@ func advisoryCompatibilityFiles(op *OutputPlan) []RenderedFile {
 		}
 	}
 	return all
-}
-
-// glossaryTersenessNotes returns advisory (non-failing) notes for each glossary
-// term whose meaning exceeds glossaryMeaningMax. It evaluates the MERGED set,
-// so the threshold bounds the vocabulary awf ships as well as the project's own
-// terms (ADR-0207 decision 10). Inert when the glossary doc is disabled.
-func glossaryTersenessNotes(p renderInputs) ([]string, error) {
-	sc, err := p.cfg.Sidecar("docs", "glossary")
-	if err != nil { // coverage-ignore: the glossary sidecar's YAML was already parsed and validated at Open, so this re-read cannot fail
-		return nil, err
-	}
-	// The on-disk sidecar never carries standardTerms, so overlay the catalog
-	// default exactly as render.go does upstream of the transform; without this
-	// the shipped layer would escape the threshold entirely.
-	records, err := mergedGlossaryRecords(withDefaultData(sc, projectCatalog(p).Docs["glossary"].Data, specializedListDataKeys("docs", "glossary")...))
-	if err != nil {
-		return nil, err
-	}
-	slices.SortFunc(records, func(a, b glossaryRecord) int {
-		return strings.Compare(strings.ToLower(a.Term), strings.ToLower(b.Term))
-	})
-	var notes []string
-	for _, r := range records {
-		// Runes, not bytes: the guideline is a reading-length notion, and accented
-		// letters are ordinary text.
-		if n := utf8.RuneCountInString(r.Meaning); n > glossaryMeaningMax {
-			notes = append(notes, fmt.Sprintf("%s: term %q meaning is %d characters, over the %d-character guideline; tighten it", glossarySidecarPath, r.Term, n, glossaryMeaningMax))
-		}
-	}
-	return notes, nil
-}
-
-// tagFrequencyThreshold is the share of tag-bearing artifacts above which a tag
-// is flagged as coarsening toward domain scale (ADR-0109 item 4). Advisory only;
-// a documented constant, deliberately not a config key in this slice.
-const tagFrequencyThreshold = 0.25
-
-// tagHealthNotes returns advisory (non-failing) notes about the current pitfall
-// tag vocabulary: a frequency note for any tag carried by more than
-// tagFrequencyThreshold of the tag-bearing pitfalls, and a coverage note for
-// any pitfall carrying zero tags. Legacy ADR tags remain parsed history but do
-// not participate in current vocabulary health. Inert under an empty/absent
-// vocabulary, so an un-curated adopter - and the example - stays note-free.
-func tagHealthNotes(p renderInputs, supplied ...pitfall.Corpus) ([]string, error) {
-	if len(p.cfg.Tags) == 0 {
-		return nil, nil
-	}
-	pitfalls, err := compatPitfallCorpus(p, supplied)
-	if err != nil { // coverage-ignore: aggregate operations always supply the validated corpus; direct malformed-load propagation is covered separately
-		return nil, err
-	}
-
-	var notes []string
-	tagged := 0
-	freq := map[string]int{}
-	for _, entry := range pitfalls.All() {
-		if len(entry.Tags) == 0 {
-			notes = append(notes, entry.SourcePath+" carries no tags: add a narrow topic tag")
-			continue
-		}
-		// Count only vocabulary members - both the numerator and the denominator.
-		// The invariant speaks of "vocabulary tags" and "pitfalls carrying at
-		// least one vocabulary tag", and a non-member tag is already a hard
-		// checkTagVocabulary failure, so it must not skew the coarsening signal.
-		var vocab []string
-		for _, tag := range entry.Tags {
-			if _, ok := p.cfg.Tags[tag]; ok {
-				vocab = append(vocab, tag)
-			}
-		}
-		if len(vocab) == 0 {
-			continue
-		}
-		tagged++
-		for _, tag := range vocab {
-			freq[tag]++
-		}
-	}
-	// Empty-denominator guard: no tag-bearing artifacts, no frequency to compute.
-	if tagged > 0 {
-		for _, t := range slices.Sorted(maps.Keys(freq)) {
-			if float64(freq[t]) > tagFrequencyThreshold*float64(tagged) {
-				notes = append(notes, fmt.Sprintf("tag %q is on %d/%d tagged pitfalls (>%.0f%%): coarsening toward domain scale", t, freq[t], tagged, tagFrequencyThreshold*100))
-			}
-		}
-	}
-	return notes, nil
 }
 
 // unsetVarNotes reports, per rendered artifact, the vars its assembled template
@@ -356,21 +269,17 @@ func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context, semanti
 	corpus, pitfalls, eff := semantics.ADRs, semantics.Pitfalls, semantics.EffectiveSkills
 	plans, parseErr := semantics.Plans, semantics.PlansError
 	batch := checkBatch{}
-	planResults := checkBatch{}
-	if parseErr != nil {
-		var diagnostics *plan.DiagnosticsError
-		if !errors.As(parseErr, &diagnostics) {
-			return CheckReport{}, parseErr
-		}
-		rel := filepath.ToSlash(filepath.Join(config.DocsDir, "plans"))
-		for _, diagnostic := range diagnostics.Diagnostics {
-			if !knownDynamicPlanDiagnosticCategory(diagnostic.Category) {
-				return CheckReport{}, fmt.Errorf("unknown plan diagnostic category %q", diagnostic.Category)
-			}
-			planResults.error(propertyAuthority, "plan-"+diagnostic.Category, rel+"/"+diagnostic.Path, diagnostic.Detail)
-		}
+	planDiagnosticResult, err := plancheck.Diagnostics(parseErr)
+	if err != nil {
+		return CheckReport{}, err
 	}
-	producerResults, trackingNotes, err := checkWithTrackingState(p, repo, ctx, corpus, pitfalls, eff, plans, semantics.GeneratedOutput, op)
+	planResults := checkBatch{}
+	planResults.appendResult(planDiagnosticResult)
+	vocabularyResults, err := vocabularycheck.Evaluate(semantics.Vocabulary)
+	if err != nil { // coverage-ignore: Publisher preparation supplied validated vocabulary semantics
+		return CheckReport{}, err
+	}
+	producerResults, trackingNotes, err := checkWithTrackingState(p, repo, ctx, corpus, pitfalls, eff, plans, semantics.GeneratedOutput, op, vocabularyResults)
 	if err != nil {
 		return CheckReport{}, err
 	}
@@ -381,8 +290,8 @@ func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context, semanti
 		planArtifacts = planArtifactResults(plans, corpus)
 		batch.append(planArtifacts.withoutWarnings())
 	}
-	advisories, err := advisoryResultsWithState(p, pitfalls, plans, op)
-	if err != nil { // coverage-ignore: Publisher preparation already validated the advisory inputs consumed by this report
+	advisories, err := advisoryResultsWithState(p, plans, op, vocabularyResults)
+	if err != nil { // coverage-ignore: Publisher preparation validated advisory inputs and the output plan is immutable
 		return CheckReport{}, err
 	}
 	batch.append(advisories)
@@ -396,15 +305,6 @@ func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context, semanti
 // Dynamic plan diagnostics originate in a closed parser category set. Refusing
 // an unknown category keeps parser evolution from silently acquiring checker
 // policy or a fabricated finding identity.
-func knownDynamicPlanDiagnosticCategory(category string) bool {
-	switch category {
-	case "field", "frontmatter", "numbering", "path", "paths", "phase-close", "projection", "relationship", "structure":
-		return true
-	default:
-		return false
-	}
-}
-
 const (
 	propertyAuthority       checkresult.Property = "authority"
 	propertyCorrectness     checkresult.Property = "correctness"
@@ -413,7 +313,7 @@ const (
 	propertyPlanDetail      checkresult.Property = "plan-detail-quality"
 )
 
-func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, eff map[string]bool, plans []plan.Plan, generatedInput generatedcheck.AdditionalInput, op *OutputPlan) (checkBatch, []string, error) {
+func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, eff map[string]bool, plans []plan.Plan, generatedInput generatedcheck.AdditionalInput, op *OutputPlan, vocabularyResults vocabularycheck.Results) (checkBatch, []string, error) {
 	var indexPaths generatedcheck.IndexPaths
 	if repo != nil {
 		indexPaths = repo.IndexPaths
@@ -461,16 +361,11 @@ func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Conte
 		return checkBatch{}, nil, err
 	}
 	results.append(pitfallsResult)
-	glossary, err := glossaryResult(p)
-	if err != nil {
-		return checkBatch{}, nil, err
+	for _, result := range []checkresult.Result{vocabularyResults.Glossary, vocabularyResults.Tags} {
+		vocabularyBatch := checkBatch{}
+		vocabularyBatch.appendResult(result)
+		results.append(vocabularyBatch.withoutWarnings())
 	}
-	results.append(glossary)
-	tags, err := tagVocabularyResult(p, pitfalls)
-	if err != nil { // coverage-ignore: pitfall preparation already read the tag inputs
-		return checkBatch{}, nil, err
-	}
-	results.append(tags)
 	if fullProfile(p) {
 		related, err := adrRelatedResult(corpus)
 		if err != nil { // coverage-ignore: the immutable ADR corpus is already validated
@@ -502,35 +397,21 @@ func adrRelatedResult(corpus adr.Corpus) (checkresult.Result, error) {
 // remain available to direct callers, but ordinary CheckReport composition only
 // receives owner-classified batches.
 func planResult(p renderInputs, corpus adr.Corpus, plans []plan.Plan) checkBatch {
+	result, err := plancheck.Validity(plans, corpus, config.AuditScopes(p.cfg.Audit), fullProfile(p))
+	if err != nil { // coverage-ignore: validity over prepared semantic values is infallible
+		return checkBatch{}
+	}
 	batch := checkBatch{}
-	batch.errorDrift(propertyAuthority, checkPlans(p, corpus, plans))
+	batch.appendResult(result)
 	return batch
 }
 func pitfallResult(p renderInputs, corpus adr.Corpus, pitfalls pitfall.Corpus) (checkBatch, error) {
-	drift, err := checkPitfalls(p, corpus, pitfalls)
-	if err != nil { // coverage-ignore: this adapter receives the operation's already validated pitfall corpus
+	result, err := pitfallcheck.Check(p.cfg.Domains, pitfalls, corpus)
+	if err != nil { // coverage-ignore: pitfall checks over prepared corpora are infallible
 		return checkBatch{}, err
 	}
 	batch := checkBatch{}
-	batch.errorDrift(propertyCorrectness, drift)
-	return batch, nil
-}
-func glossaryResult(p renderInputs) (checkBatch, error) {
-	drift, err := checkGlossary(p)
-	if err != nil { // coverage-ignore: GuideSizeAdvisory has no fallible prepared-plan path
-		return checkBatch{}, err
-	}
-	batch := checkBatch{}
-	batch.errorDrift(propertyCorrectness, drift)
-	return batch, nil
-}
-func tagVocabularyResult(p renderInputs, pitfalls pitfall.Corpus) (checkBatch, error) {
-	drift, err := checkTagVocabulary(p, pitfalls)
-	if err != nil { // coverage-ignore: pitfallResult already read and failed on the only fallible tag-vocabulary input
-		return checkBatch{}, err
-	}
-	batch := checkBatch{}
-	batch.errorDrift(propertyCorrectness, drift)
+	batch.appendResult(result)
 	return batch, nil
 }
 func pendingADRResult(p renderInputs, repo *awfgit.Repo, ctx context.Context, corpus adr.Corpus) checkBatch {
@@ -539,19 +420,16 @@ func pendingADRResult(p renderInputs, repo *awfgit.Repo, ctx context.Context, co
 	return batch
 }
 func planArtifactResults(plans []plan.Plan, corpus adr.Corpus) checkBatch {
-	drift, notes := planArtifactReport(plans, corpus)
-	batch := checkBatch{}
-	batch.errorDrift(propertyAuthority, drift)
-	for _, note := range notes {
-		batch.warning(propertyPlanDetail, "plan-advisory", note)
+	result, err := plancheck.Artifact(plans, corpus)
+	if err != nil { // coverage-ignore: artifact checks over prepared semantic values are infallible
+		return checkBatch{}
 	}
+	batch := checkBatch{}
+	batch.appendResult(result)
 	return batch
 }
-func advisoryResultsWithState(p renderInputs, pitfalls pitfall.Corpus, plans []plan.Plan, op *OutputPlan) (checkBatch, error) {
-	advisories, err := advisoryNotesWithState(p, pitfalls, plans, op)
-	if err != nil { // coverage-ignore: Publisher preparation already validated the pitfall, plan, and output inputs consumed here
-		return checkBatch{}, err
-	}
+func advisoryResultsWithState(p renderInputs, plans []plan.Plan, op *OutputPlan, vocabularyResults vocabularycheck.Results) (checkBatch, error) {
+	advisories := advisoryNotesWithState(p, plans, op, vocabularyResults)
 	batch := checkBatch{}
 	for _, note := range advisories.Warnings {
 		batch.warning(propertyHeuristic, "advisory", note)
@@ -601,158 +479,19 @@ func checkPendingADRs(p renderInputs, repo *awfgit.Repo, ctx context.Context, co
 // drift; an unknown scope is advisory (planCommitScopeNotes), not drift (ADR-0111).
 // An adrs: entry resolves by identity, so a number and a pending record's slug
 // resolve through one lookup and a link survives numbering (ADR-0202 item 14).
-func checkPlans(p renderInputs, corpus adr.Corpus, plans []plan.Plan) []manifest.Drift {
-	aset := audit.Resolve(config.AuditScopes(p.cfg.Audit))
-	rel := filepath.ToSlash(filepath.Join(config.DocsDir, "plans"))
-	var drift []manifest.Drift
-	for _, pl := range plans {
-		if !pl.HasFrontmatter {
-			continue
-		}
-		path := rel + "/" + pl.Filename
-		if !plan.ValidStatuses[pl.Status] {
-			drift = append(drift, manifest.Drift{Path: path, Kind: "plan-frontmatter", Detail: fmt.Sprintf("status %q not in {Proposed, Implemented}", pl.Status)})
-		}
-		for _, link := range pl.ADRs {
-			id := link.Identity()
-			if _, ok := corpus.ByIdentity(id); !ok {
-				drift = append(drift, manifest.Drift{Path: path, Kind: "plan-adr-link", Detail: "ADR-" + id})
-			}
-		}
-		for _, sub := range pl.CommitSubjects {
-			for _, f := range audit.CheckPlannedSubject(sub, aset) {
-				if f.Severity == severity.Error {
-					drift = append(drift, manifest.Drift{Path: path, Kind: "plan-commit-subject", Detail: f.Detail})
-				}
-			}
-		}
-	}
-	return drift
-}
-
 // planCommitScopeNotes returns advisory (non-failing) notes for a plan's ```commit
 // subject naming a scope outside the configured allow-list. Unlike an over-length or
 // mistyped subject (hard drift in checkPlans), an unknown scope is advisory: a plan
 // may be the change that adds the scope (ADR-0111). Mirrors checkPlans' scan; a
 // frontmatter-less plan is skipped.
 func planCommitScopeNotes(p renderInputs, plans []plan.Plan) []string {
-	aset := audit.Resolve(config.AuditScopes(p.cfg.Audit))
-	rel := filepath.ToSlash(filepath.Join(config.DocsDir, "plans"))
-	var notes []string
-	for _, pl := range plans {
-		if !pl.HasFrontmatter {
-			continue
-		}
-		for _, sub := range pl.CommitSubjects {
-			for _, f := range audit.CheckPlannedSubject(sub, aset) {
-				if f.Severity == severity.Warn {
-					notes = append(notes, fmt.Sprintf("%s/%s: planned commit %s", rel, pl.Filename, f.Detail))
-				}
-			}
-		}
+	information, err := plancheck.ScopeInformation(plans, config.AuditScopes(p.cfg.Audit))
+	if err != nil { // coverage-ignore: prepared subject evaluation is infallible
+		return nil
+	}
+	notes := make([]string, len(information))
+	for i, item := range information {
+		notes[i] = item.Evidence.Detail
 	}
 	return notes
-}
-
-// checkPitfalls resolves corpus metadata against project-owned domains and ADRs.
-func checkPitfalls(p renderInputs, corpus adr.Corpus, supplied ...pitfall.Corpus) ([]manifest.Drift, error) {
-	pitfalls, err := compatPitfallCorpus(p, supplied)
-	if err != nil { // coverage-ignore: aggregate operations always supply their validated operation-owned corpus
-		return nil, err
-	}
-	domains := map[string]bool{}
-	for _, d := range p.cfg.Domains {
-		domains[d] = true
-	}
-	var drift []manifest.Drift
-	for _, e := range pitfalls.All() {
-		for _, d := range e.Domains {
-			if !domains[d] {
-				drift = append(drift, manifest.Drift{Path: e.SourcePath, Kind: "pitfall-domain", Detail: fmt.Sprintf("%s (%q): unknown domain %q", e.Slug, e.Title, d)})
-			}
-		}
-		for _, n := range e.Related {
-			if !corpus.Has(fmt.Sprintf("%04d", n)) {
-				drift = append(drift, manifest.Drift{Path: e.SourcePath, Kind: "pitfall-adr-link", Detail: fmt.Sprintf("%s (%q): ADR-%04d", e.Slug, e.Title, n)})
-			}
-		}
-	}
-	return drift, nil
-}
-
-// checkGlossary validates the glossary sidecar when the doc is enabled: each
-// record's domains: must resolve to a configured domain, mirroring checkPitfalls.
-// Structural validation (term/meaning) is the transform's job; this resolves the
-// domains the transform cannot see. A disabled glossary doc, or a sidecar with no
-// data.terms, yields no drift.
-func checkGlossary(p renderInputs) ([]manifest.Drift, error) {
-	sc, err := p.cfg.Sidecar("docs", "glossary")
-	if err != nil { // coverage-ignore: the glossary sidecar's YAML was already parsed and validated at Open, so this re-read cannot fail
-		return nil, err
-	}
-	records, err := glossaryRecords(sc.Data["terms"])
-	if err != nil {
-		return nil, err
-	}
-	domains := map[string]bool{}
-	for _, d := range p.cfg.Domains {
-		domains[d] = true
-	}
-	var drift []manifest.Drift
-	for _, r := range records {
-		for _, d := range r.Domains {
-			if !domains[d] {
-				drift = append(drift, manifest.Drift{Path: glossarySidecarPath, Kind: "glossary-domain", Detail: fmt.Sprintf("%q: unknown domain %q", r.Term, d)})
-			}
-		}
-	}
-	return drift, nil
-}
-
-// checkTagVocabulary validates current tag governance when the config tags:
-// vocabulary is non-empty: every tag used by a pitfall must be a declared
-// vocabulary member, and every member must declare a non-empty meaning. Legacy
-// ADR tags remain parsed history and do not require current membership. An empty
-// or absent vocabulary is inert (tags are then free-form). A declared member no
-// pitfall uses is intentionally permitted for generic adopters, mirroring an
-// unused configured domain under pitfall-domains-resolved.
-func checkTagVocabulary(p renderInputs, supplied ...pitfall.Corpus) ([]manifest.Drift, error) {
-	if len(p.cfg.Tags) == 0 {
-		return nil, nil
-	}
-	pitfalls, err := compatPitfallCorpus(p, supplied)
-	if err != nil {
-		return nil, err
-	}
-	cfgPath := config.DirName + "/config.yaml"
-	domainName := map[string]bool{}
-	for _, d := range p.cfg.Domains {
-		domainName[d] = true
-	}
-	var drift []manifest.Drift
-	for _, tag := range slices.Sorted(maps.Keys(p.cfg.Tags)) {
-		if strings.TrimSpace(p.cfg.Tags[tag]) == "" {
-			drift = append(drift, manifest.Drift{Path: cfgPath, Kind: "tag-vocabulary", Detail: fmt.Sprintf("tag %q has an empty meaning", tag)})
-		}
-		// A tag must be finer than a domain (ADR-0109): a vocabulary member that
-		// names a configured domain is the coarse-tag regression, gated exactly.
-		if domainName[tag] {
-			drift = append(drift, manifest.Drift{Path: cfgPath, Kind: "tag-domain-collision", Detail: fmt.Sprintf("tag %q equals a configured domain name: tags must be finer than domains", tag)})
-		}
-	}
-	for _, e := range pitfalls.All() {
-		for _, tag := range e.Tags {
-			if _, ok := p.cfg.Tags[tag]; !ok {
-				drift = append(drift, manifest.Drift{Path: e.SourcePath, Kind: "pitfall-tag", Detail: fmt.Sprintf("%s (%q): unknown tag %q", e.Slug, e.Title, tag)})
-			}
-		}
-	}
-	return drift, nil
-}
-
-func compatPitfallCorpus(p renderInputs, supplied []pitfall.Corpus) (pitfall.Corpus, error) {
-	if len(supplied) > 0 {
-		return supplied[0], nil
-	}
-	return loadPitfallCorpus(p)
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
+	"github.com/hypnotox/agentic-workflows/internal/plancheck"
 )
 
 // ReadPlan resolves an exact plan filename or stem beneath the configured plans
@@ -19,7 +20,7 @@ func readPlan(root, name, selector string) ([]byte, error) {
 	if selected.Format != "plan-v2" {
 		return plan.RenderProjection(selected, selector)
 	}
-	phase, task, err := selectedRefs(selected, selector)
+	phase, task, err := plancheck.Select(selected, selector)
 	if err != nil {
 		return nil, err
 	}
@@ -27,7 +28,7 @@ func readPlan(root, name, selector string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	applying, context, err := resolveSelectedPlanDecisions(selected, corpus, phase, task)
+	applying, context, err := plancheck.ResolveSelectedDecisions(selected, corpus, phase, task)
 	if err != nil {
 		return nil, err
 	}

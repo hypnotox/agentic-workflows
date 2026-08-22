@@ -13,6 +13,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -23,6 +24,15 @@ import (
 // mustDeriveCorpus derives the operation-owned ADR corpus the way a lifecycle
 // entry does, so a helper test exercises the same threaded value production
 // passes it (ADR-0180).
+func mustPitfallCorpus(t *testing.T, p *ProjectState) pitfall.Corpus {
+	t.Helper()
+	corpus, err := loadPitfallCorpus(renderInputsForTest(p))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return corpus
+}
+
 func mustDeriveCorpus(t *testing.T, p *ProjectState) adr.Corpus {
 	t.Helper()
 	corpus, _, _, _, err := deriveOperationStateWithPitfalls(renderInputsForTest(p))
@@ -71,7 +81,7 @@ func TestCheckPitfallsEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := checkPitfalls(renderInputsForTest(p), mustDeriveCorpus(t, p))
+	drift, err := checkPitfalls(renderInputsForTest(p), mustDeriveCorpus(t, p), mustPitfallCorpus(t, p))
 	if err != nil || drift != nil {
 		t.Errorf("empty pitfalls must yield no drift, got %v / %v", drift, err)
 	}
@@ -94,7 +104,7 @@ func TestCheckPitfallsValidatesDomainsAndLinks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := checkPitfalls(renderInputsForTest(p), mustDeriveCorpus(t, p))
+	drift, err := checkPitfalls(renderInputsForTest(p), mustDeriveCorpus(t, p), mustPitfallCorpus(t, p))
 	if err != nil {
 		t.Fatalf("checkPitfalls: %v", err)
 	}
@@ -219,7 +229,7 @@ func TestCheckTagVocabulary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := checkTagVocabulary(renderInputsForTest(p))
+	drift, err := checkTagVocabulary(renderInputsForTest(p), mustPitfallCorpus(t, p))
 	if err != nil {
 		t.Fatalf("checkTagVocabulary: %v", err)
 	}
@@ -247,7 +257,7 @@ func TestCheckTagVocabularyInert(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := checkTagVocabulary(renderInputsForTest(p))
+	drift, err := checkTagVocabulary(renderInputsForTest(p), mustPitfallCorpus(t, p))
 	if err != nil || drift != nil {
 		t.Fatalf("empty vocabulary must be inert, got %#v / %v", drift, err)
 	}
@@ -265,7 +275,7 @@ func TestCheckTagVocabularyPitfallsDisabled(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := checkTagVocabulary(renderInputsForTest(p))
+	drift, err := checkTagVocabulary(renderInputsForTest(p), mustPitfallCorpus(t, p))
 	if err != nil || drift != nil {
 		t.Fatalf("legacy ADR with pitfalls disabled must yield no drift, got %#v / %v", drift, err)
 	}
@@ -363,20 +373,6 @@ func TestCheckADRRelatedAscending(t *testing.T) {
 }
 
 // Direct vocabulary projection derives and rejects a malformed corpus source.
-func TestCheckTagVocabularyPitfallStructuralError(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\ndomains: []\ntags:\n  rendering: x\n",
-		map[string]string{"docs/pitfalls/bad.md": "---\ntitle: Bad\nunknown: value\n---\nbody\n"})
-	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
-		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
-			testsupport.WithTitle("0001: A"), testsupport.WithBody("## Context\nx\n")))
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := checkTagVocabulary(renderInputsForTest(p)); err == nil || !strings.Contains(err.Error(), "unknown") {
-		t.Fatalf("expected pitfalls structural error, got %v", err)
-	}
-}
 
 // TestCheckPlansValidatesFrontmatterAndLinks exercises checkPlans over a
 // docs/plans/ set: a plan linking a nonexistent ADR yields plan-adr-link drift,
@@ -1076,7 +1072,7 @@ func TestCheckTagVocabularyDomainCollision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := checkTagVocabulary(renderInputsForTest(p))
+	drift, err := checkTagVocabulary(renderInputsForTest(p), mustPitfallCorpus(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1096,7 +1092,7 @@ func TestCheckTagVocabularyDomainCollision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift2, err := checkTagVocabulary(renderInputsForTest(p2))
+	drift2, err := checkTagVocabulary(renderInputsForTest(p2), mustPitfallCorpus(t, p2))
 	if err != nil {
 		t.Fatal(err)
 	}

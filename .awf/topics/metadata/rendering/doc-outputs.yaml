@@ -5,4 +5,7 @@ paths:
   - internal/publisher/**
   - internal/project/**
   - internal/pitfall/**
+  - internal/pitfallcheck/**
+  - internal/vocabularycheck/**
+  - internal/glossary/**
   - internal/referencecheck/**

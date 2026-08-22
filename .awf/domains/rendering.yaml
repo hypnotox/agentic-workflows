@@ -7,6 +7,9 @@ paths:
   - internal/project/**
   - internal/projectstate/**
   - internal/pitfall/**
+  - internal/pitfallcheck/**
+  - internal/vocabularycheck/**
+  - internal/glossary/**
   - internal/resident/**
   - internal/refs/**
   - templates/**

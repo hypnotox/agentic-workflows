@@ -29,17 +29,8 @@ func TestOrdinaryCheckProducerCensus(t *testing.T) {
 	functions := functionDeclarations(file)
 
 	wantCompositionCalls := map[string]map[string]int{
-		"checkReport": {
-			"advisoryResultsWithState": 1, "checkWithTrackingState": 1,
-			"fullProfile": 1, "knownDynamicPlanDiagnosticCategory": 1,
-			"planArtifactResults": 1, "reportFromBatch": 1,
-		},
-		"checkWithTrackingState": {
-			"adrRelatedResult": 1, "append": 1, "fullProfile": 2,
-			"glossaryResult": 1, "len": 1, "lockPath": 1,
-			"pendingADRResult": 1, "pitfallResult": 1, "planResult": 1,
-			"referenceResult": 1, "tagVocabularyResult": 1,
-		},
+		"checkReport":            {"advisoryResultsWithState": 1, "checkWithTrackingState": 1, "fullProfile": 1, "planArtifactResults": 1, "reportFromBatch": 1},
+		"checkWithTrackingState": {"adrRelatedResult": 1, "append": 1, "fullProfile": 2, "len": 1, "lockPath": 1, "pendingADRResult": 1, "pitfallResult": 1, "planResult": 1, "referenceResult": 1},
 	}
 	for name, want := range wantCompositionCalls {
 		fn := functions[name]
@@ -52,13 +43,11 @@ func TestOrdinaryCheckProducerCensus(t *testing.T) {
 	}
 
 	wantSemanticCalls := map[string][]string{
-		"checkReport": {"error(propertyAuthority)", "informationItem"},
-		"planResult":  {"errorDrift(propertyAuthority)"}, "pitfallResult": {"errorDrift(propertyCorrectness)"},
-		"glossaryResult": {"errorDrift(propertyCorrectness)"}, "tagVocabularyResult": {"errorDrift(propertyCorrectness)"},
+		"checkReport":              {"informationItem"},
 		"pendingADRResult":         {"errorDrift(propertyAuthority)"},
-		"planArtifactResults":      {"errorDrift(propertyAuthority)", "warning(propertyPlanDetail)"},
 		"advisoryResultsWithState": {"informationItem", "warning(propertyHeuristic)"},
 	}
+
 	gotSemanticCalls := map[string][]string{}
 	for name, fn := range functions {
 		calls := semanticCalls(fset, fn)
@@ -80,7 +69,7 @@ func TestOrdinaryCheckProducerCensus(t *testing.T) {
 			t.Errorf("project retains duplicate %s policy", forbidden)
 		}
 	}
-	for _, owner := range []string{"internal/generatedcheck/generatedcheck.go", "internal/referencecheck/referencecheck.go", "internal/configcheck/configcheck.go"} {
+	for _, owner := range []string{"internal/generatedcheck/generatedcheck.go", "internal/referencecheck/referencecheck.go", "internal/configcheck/configcheck.go", "internal/plancheck/plancheck.go", "internal/pitfallcheck/pitfallcheck.go", "internal/vocabularycheck/vocabularycheck.go"} {
 		ownerFile, err := parser.ParseFile(fset, filepath.Join(root, owner), nil, 0)
 		if err != nil {
 			t.Fatal(err)

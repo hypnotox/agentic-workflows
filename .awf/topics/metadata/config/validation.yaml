@@ -4,3 +4,4 @@ paths:
   - internal/config/**
   - internal/configspec/**
   - internal/pathglob/**
+  - internal/vocabularycheck/**

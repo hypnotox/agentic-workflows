@@ -316,7 +316,7 @@ func TestTagHealthNotes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := tagHealthNotes(renderInputsForTest(p))
+	notes, err := tagHealthNotes(renderInputsForTest(p), mustPitfallCorpus(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -353,7 +353,7 @@ func TestTagHealthNotesIgnoresAllADRs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := tagHealthNotes(renderInputsForTest(p))
+	notes, err := tagHealthNotes(renderInputsForTest(p), mustPitfallCorpus(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -371,7 +371,7 @@ func TestTagHealthNotesEmptyVocabInert(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := tagHealthNotes(renderInputsForTest(p))
+	notes, err := tagHealthNotes(renderInputsForTest(p), mustPitfallCorpus(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -391,7 +391,7 @@ func TestTagHealthNotesEmptyDenominator(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := tagHealthNotes(renderInputsForTest(p))
+	notes, err := tagHealthNotes(renderInputsForTest(p), mustPitfallCorpus(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -407,18 +407,6 @@ func TestTagHealthNotesEmptyDenominator(t *testing.T) {
 }
 
 // A malformed pitfall source surfaces from direct tag-health projection.
-func TestTagHealthNotesPitfallError(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: awf\nintegrationBranch: main\ndomains: []\ntags:\n  alpha: A\n",
-		map[string]string{"docs/pitfalls/bad.md": "---\ntitle: Bad\nunknown: value\n---\nbody\n"})
-	writeADR(t, root, "0001-a.md", testsupport.ADR("Implemented", testsupport.WithTitle("0001: A"), testsupport.WithTags("alpha")))
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := tagHealthNotes(renderInputsForTest(p)); err == nil {
-		t.Fatal("expected pitfall corpus structural error, got nil")
-	}
-}
 
 // tagHealthNotes counts pitfall tags without legacy ADR participation and flags
 // an untagged pitfall.
@@ -433,7 +421,7 @@ func TestTagHealthNotesPitfalls(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := tagHealthNotes(renderInputsForTest(p))
+	notes, err := tagHealthNotes(renderInputsForTest(p), mustPitfallCorpus(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -11,11 +11,13 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
+	"github.com/hypnotox/agentic-workflows/internal/glossary"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
+	"github.com/hypnotox/agentic-workflows/internal/vocabularycheck"
 )
 
 type renderInputs struct {
@@ -101,6 +103,7 @@ type Preparation struct {
 	plans      []plan.Plan
 	plansError error
 	generated  generatedcheck.AdditionalInput
+	vocabulary vocabularycheck.Input
 }
 
 // New composes a Publisher from immutable loaded facts and an explicit operation tree reader.
@@ -125,11 +128,15 @@ func (p *Publisher) Prepare() (Preparation, error) {
 	if err != nil {
 		return Preparation{}, err
 	}
+	vocabulary, err := vocabularySemantics(p.inputs, pitfalls)
+	if err != nil { // coverage-ignore: output-plan construction already validated the same glossary input
+		return Preparation{}, err
+	}
 	generated, err := generatedSemantics(p.inputs, topics)
 	if err != nil {
 		return Preparation{}, err
 	}
-	return Preparation{plan: freezePlan(built), adrs: adrs, pitfalls: pitfalls, topics: topics, skills: maps.Clone(skills), plans: clonePlans(plans), plansError: plansErr, generated: generated}, nil
+	return Preparation{plan: freezePlan(built), adrs: adrs, pitfalls: pitfalls, topics: topics, skills: maps.Clone(skills), plans: clonePlans(plans), plansError: plansErr, generated: generated, vocabulary: vocabulary}, nil
 }
 
 // Plan derives exactly one immutable plan for this operation.
@@ -162,6 +169,41 @@ func (p Preparation) PlansError() error { return p.plansError }
 // GeneratedOutput returns a defensive prepared projection for generated-output checks.
 func (p Preparation) GeneratedOutput() generatedcheck.AdditionalInput {
 	return cloneGeneratedOutput(p.generated)
+}
+
+// Vocabulary returns a defensive prepared vocabulary projection.
+func (p Preparation) Vocabulary() vocabularycheck.Input { return cloneVocabularyInput(p.vocabulary) }
+
+func vocabularySemantics(p renderInputs, pitfalls pitfall.Corpus) (vocabularycheck.Input, error) {
+	sc, err := p.cfg.Sidecar("docs", "glossary")
+	if err != nil { // coverage-ignore: project loading already validated the selected sidecar
+		return vocabularycheck.Input{}, err
+	}
+	authored, err := glossary.Records(sc.Data["terms"])
+	if err != nil { // coverage-ignore: output-plan glossary transform already validated authored records
+		return vocabularycheck.Input{}, err
+	}
+	merged, err := glossary.Merge(withDefaultData(sc, projectCatalog(p).Docs["glossary"].Data, specializedListDataKeys("docs", "glossary")...))
+	if err != nil { // coverage-ignore: output-plan glossary transform already validated the merged records
+		return vocabularycheck.Input{}, err
+	}
+	enabled := fullProfile(p)
+	return vocabularycheck.Input{GlossaryEnabled: enabled, Authored: authored, Merged: merged, Domains: slices.Clone(p.cfg.Domains), Tags: maps.Clone(p.cfg.Tags), Pitfalls: clonePitfallCorpus(pitfalls)}, nil
+}
+func cloneVocabularyInput(in vocabularycheck.Input) vocabularycheck.Input {
+	out := in
+	out.Authored = slices.Clone(in.Authored)
+	out.Merged = slices.Clone(in.Merged)
+	out.Domains = slices.Clone(in.Domains)
+	out.Tags = maps.Clone(in.Tags)
+	out.Pitfalls = clonePitfallCorpus(in.Pitfalls)
+	for i := range out.Authored {
+		out.Authored[i].Domains = slices.Clone(out.Authored[i].Domains)
+	}
+	for i := range out.Merged {
+		out.Merged[i].Domains = slices.Clone(out.Merged[i].Domains)
+	}
+	return out
 }
 
 // ResidentMarker selects the marker from this preparation's existing plan.

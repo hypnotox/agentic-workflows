@@ -98,4 +98,3 @@ func (r filesystemProjectReader) Paths(prefix string) ([]string, error) {
 	slices.Sort(out)
 	return out, nil
 }
-func projectTreeReader(p renderInputs) ProjectTreeReader { return p.read }
