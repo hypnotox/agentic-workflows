@@ -10,6 +10,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/repositorycheck"
+	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"golang.org/x/mod/semver"
 )
 
@@ -30,6 +31,22 @@ func productionCheckStagedDependencies() checkStagedDependencies {
 			return repositorycheck.Present(result, check)
 		},
 	}
+}
+
+func unseenStagedPlanWarnings(result checkresult.Result, seen planNoteSink) (checkresult.Result, error) {
+	var findings []checkresult.Finding
+	for _, finding := range result.Findings() {
+		if finding.Rank != severity.Warn {
+			continue
+		}
+		note := finding.Evidence.Detail
+		if _, exists := seen[note]; exists {
+			continue
+		}
+		seen[note] = struct{}{}
+		findings = append(findings, finding)
+	}
+	return checkresult.New(findings, nil)
 }
 
 // runCheckStaged runs the staged transition universe. The commit child is direct-only.
@@ -77,10 +94,15 @@ func collectCheckStagedSelectionWith(ctx context.Context, root string, planNotes
 			ordinary.PlanNotes = nil
 			collection.warnings = append(collection.warnings, ordinary.Warnings()...)
 			collection.information = append(collection.information, ordinary.Information()...)
-			for _, note := range report.PlanNotes {
-				if _, seen := planNotes[note]; !seen {
-					planNotes[note] = struct{}{}
-					collection.warnings = append(collection.warnings, note)
+			planWarnings, planErr := unseenStagedPlanWarnings(report.PlanResult, planNotes)
+			if planErr != nil { // coverage-ignore: filtering validated immutable owner findings cannot invalidate them
+				collection.operational = append(collection.operational, planErr)
+			} else if len(planWarnings.Findings()) > 0 {
+				projected, projectErr := dependencies.present(planWarnings, "advisory", false)
+				if projectErr != nil {
+					collection.operational = append(collection.operational, projectErr)
+				} else {
+					collection.presentation = collection.presentation.Append(projected)
 				}
 			}
 			result := report.Result()

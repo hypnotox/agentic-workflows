@@ -54,6 +54,39 @@ func TestOrdinaryCheckProducerCensus(t *testing.T) {
 	}
 }
 
+// invariant: tooling/cli:check-severity-by-protected-property (TestStagedPlanResultTypedRouteCensus)
+func TestStagedPlanResultTypedRouteCensus(t *testing.T) {
+	root := testsupport.RepoRoot(t)
+	cases := []struct {
+		path, function string
+		want           map[string]int
+	}{
+		{"internal/project/currentstate.go", "currentStateResult", map[string]int{"PlanResult": 2}},
+		{"cmd/awf/checkstaged.go", "collectCheckStagedSelectionWith", map[string]int{"PlanNotes": 1, "PlanResult": 1}},
+	}
+	for _, tc := range cases {
+		file, err := parser.ParseFile(token.NewFileSet(), filepath.Join(root, tc.path), nil, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		fn := functionDeclarations(file)[tc.function]
+		if fn == nil {
+			t.Fatalf("%s is absent from %s", tc.function, tc.path)
+		}
+		got := map[string]int{}
+		ast.Inspect(fn.Body, func(node ast.Node) bool {
+			selector, ok := node.(*ast.SelectorExpr)
+			if ok && (selector.Sel.Name == "PlanResult" || selector.Sel.Name == "PlanNotes") {
+				got[selector.Sel.Name]++
+			}
+			return true
+		})
+		if !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("%s:%s typed plan route selectors = %v, want %v", tc.path, tc.function, got, tc.want)
+		}
+	}
+}
+
 // invariant: tooling/cli:check-severity-by-protected-property (TestProducerRankPropertyCensus)
 func TestProducerRankPropertyCensus(t *testing.T) {
 	root := testsupport.RepoRoot(t)

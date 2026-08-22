@@ -21,6 +21,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/prosegate"
 	"github.com/hypnotox/agentic-workflows/internal/repositorycheck"
+	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
@@ -992,6 +993,51 @@ func TestRunCheckStagedContinuesAfterStatePresentationFailure(t *testing.T) {
 	}
 }
 
+func TestCollectCheckStagedContinuesAfterPlanWarningPresentationFailure(t *testing.T) {
+	root := stagedCheckProject(t, map[string]string{".awf/config.yaml": checkYAML}, nil)
+	planResult, err := checkresult.New([]checkresult.Finding{{
+		Rank: severity.Warn, Property: "plan-detail-quality",
+		Evidence: checkresult.Evidence{Kind: "plan-assignment", Detail: "staged-plan-note-sentinel"},
+	}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	planFailure := errors.New("plan warning presentation failed")
+	dependencies := productionCheckStagedDependencies()
+	dependencies.stateRoot = func(context.Context, string) (project.CurrentStateReport, error) {
+		return project.CurrentStateReport{PlanResult: planResult}, nil
+	}
+	present := dependencies.present
+	dependencies.present = func(result checkresult.Result, check string, evidence bool) (repositorycheck.Presentation, error) {
+		if check == "advisory" {
+			return repositorycheck.Presentation{}, planFailure
+		}
+		return present(result, check, evidence)
+	}
+	driftRan := false
+	dependencies.driftRoot = func(context.Context, string) (checkresult.Result, error) {
+		driftRan = true
+		return checkresult.New(nil, nil)
+	}
+	collection, err := collectCheckStagedWith(testContext(t), root, planNoteSink{}, dependencies)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !driftRan {
+		t.Fatal("staged drift did not run after plan warning presentation failure")
+	}
+	if len(collection.operational) != 1 || !errors.Is(collection.operational[0], planFailure) {
+		t.Fatalf("operational errors = %v, want plan warning presentation failure", collection.operational)
+	}
+	var stdout bytes.Buffer
+	if err := renderCheckCollection(&stdout, collection); !errors.Is(err, planFailure) {
+		t.Fatalf("render error = %v, want plan warning presentation failure", err)
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout = %q, want suppressed partial report", stdout.String())
+	}
+}
+
 func TestCollectCheckStagedStateOnlyRetainsAbsentLockError(t *testing.T) {
 	root := syncedGitProject(t, checkYAML)
 	gitfixture.StageRemoval(t, gitfixture.At(root), ".awf/awf.lock")
@@ -1004,11 +1050,31 @@ func TestCollectCheckStagedStateOnlyRetainsAbsentLockError(t *testing.T) {
 	}
 }
 
-func TestCollectCheckStagedEmitsPlanNotesOnce(t *testing.T) {
+func TestCollectCheckStagedRoutesTypedPlanWarningsOnce(t *testing.T) {
 	root := stagedCheckProject(t, map[string]string{".awf/config.yaml": checkYAML}, nil)
+	planWarning := checkresult.Finding{
+		Rank: severity.Warn, Property: "plan-detail-quality",
+		Evidence: checkresult.Evidence{Kind: "plan-assignment", Detail: "staged-plan-note-sentinel"},
+	}
+	planResult, err := checkresult.New([]checkresult.Finding{planWarning, planWarning}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	dependencies := productionCheckStagedDependencies()
 	dependencies.stateRoot = func(context.Context, string) (project.CurrentStateReport, error) {
-		return project.CurrentStateReport{PlanNotes: []string{"staged-plan-note-sentinel"}}, nil
+		return project.CurrentStateReport{PlanResult: planResult, PlanNotes: []string{"staged-plan-note-sentinel"}}, nil
+	}
+	present := dependencies.present
+	typedWarningSeen := false
+	dependencies.present = func(result checkresult.Result, check string, evidence bool) (repositorycheck.Presentation, error) {
+		if check == "advisory" {
+			findings := result.Findings()
+			if len(findings) != 1 || findings[0].Rank != severity.Warn || findings[0].Property != "plan-detail-quality" {
+				t.Fatalf("staged plan presentation result = %#v", findings)
+			}
+			typedWarningSeen = true
+		}
+		return present(result, check, evidence)
 	}
 	collection, err := collectCheckStagedSelectionWith(testContext(t), root, planNoteSink{}, true, false, dependencies)
 	if err != nil {
@@ -1018,8 +1084,39 @@ func TestCollectCheckStagedEmitsPlanNotesOnce(t *testing.T) {
 	if err := renderCheckCollection(&stdout, collection); err != nil {
 		t.Fatal(err)
 	}
-	if got := strings.Count(stdout.String(), "staged-plan-note-sentinel"); got != 1 {
-		t.Fatalf("plan note occurrences = %d, want 1 in %q", got, stdout.String())
+	if !typedWarningSeen {
+		t.Fatal("staged plan warning did not reach presentation as an owner-classified result")
+	}
+	want := "status: warnings\n\nsummary:\n  findings: 0 errors, 1 warnings, 0 information\n\nfindings:\n  warnings:\n    advisory | staged-plan-note-sentinel\n"
+	if got := stdout.String(); got != want {
+		t.Fatalf("typed staged plan warning output = %q, want %q", got, want)
+	}
+
+	collection, err = collectCheckStagedSelectionWith(testContext(t), root, planNoteSink{"staged-plan-note-sentinel": {}}, true, false, dependencies)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stdout.Reset()
+	if err := renderCheckCollection(&stdout, collection); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(stdout.String(), "staged-plan-note-sentinel") {
+		t.Fatalf("shared plan warning was not deduplicated: %q", stdout.String())
+	}
+
+	dependencies.stateRoot = func(context.Context, string) (project.CurrentStateReport, error) {
+		return project.CurrentStateReport{PlanNotes: []string{"legacy-plan-note-must-not-route"}}, nil
+	}
+	collection, err = collectCheckStagedSelectionWith(testContext(t), root, planNoteSink{}, true, false, dependencies)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stdout.Reset()
+	if err := renderCheckCollection(&stdout, collection); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(stdout.String(), "legacy-plan-note-must-not-route") {
+		t.Fatalf("legacy PlanNotes routed staged warning policy: %q", stdout.String())
 	}
 }
 

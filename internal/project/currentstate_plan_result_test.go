@@ -5,6 +5,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
 
@@ -34,12 +35,26 @@ func TestAppendStagedPlanResultPreservesRankedProjections(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	report := CurrentStateReport{}
+	report, err := classifyCurrentState(CurrentStateReport{
+		PlanDrift:  []manifest.Drift{{Kind: "plan-frontmatter", Path: "docs/plans/bad.md", Detail: "malformed"}},
+		PlanResult: result,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	appendStagedPlanResult(&report, result)
-	if len(report.PlanDrift) != 1 || report.PlanDrift[0].Kind != "plan-reference" {
+	if len(report.PlanDrift) != 2 || report.PlanDrift[0].Kind != "plan-frontmatter" || report.PlanDrift[1].Kind != "plan-reference" {
 		t.Fatalf("plan drift = %#v", report.PlanDrift)
 	}
 	if len(report.PlanNotes) != 1 || report.PlanNotes[0] != "assignment" {
 		t.Fatalf("plan notes = %#v", report.PlanNotes)
+	}
+	findings := report.Result().Findings()
+	if len(findings) != 3 || findings[0].Rank != severity.Error || findings[0].Property != propertyPlanArtifact || findings[0].Evidence.Detail != "plan-frontmatter docs/plans/bad.md: malformed" || findings[1].Rank != severity.Error || findings[1].Property != "authority" || findings[1].Evidence.Detail != "plan-reference docs/plans/p.md: missing" || findings[2].Rank != severity.Warn || findings[2].Property != "plan-detail-quality" {
+		t.Fatalf("typed staged plan findings = %#v", findings)
+	}
+	report.PlanNotes[0] = "mutated compatibility note"
+	if got := report.Result().Findings()[2].Evidence.Detail; got != "assignment" {
+		t.Fatalf("typed staged plan warning changed with compatibility projection: %q", got)
 	}
 }

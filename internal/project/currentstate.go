@@ -39,6 +39,9 @@ type CurrentStateReport struct {
 	Coverage    []topic.CoverageFinding
 	PlanDrift   []manifest.Drift
 	PlanNotes   []string
+	// PlanResult retains PlanChecker classification while PlanDrift and
+	// PlanNotes remain compatibility projections.
+	PlanResult checkresult.Result
 	// OwnerResult is the immutable owner-classified projection consumed by
 	// repository aggregation. Legacy slices remain compatibility projections.
 	OwnerResult checkresult.Result
@@ -201,8 +204,13 @@ func checkStaged(root string, repo *awfgit.Repo, ctx context.Context) (CurrentSt
 	if err != nil { // coverage-ignore: staged plans and corpora are already validated semantic values
 		return CurrentStateReport{}, err
 	}
-	appendStagedPlanResult(&report, planResult)
-	return classifyCurrentState(report)
+	report.PlanResult = planResult
+	classified, err := classifyCurrentState(report)
+	if err != nil { // coverage-ignore: staged semantic owners supplied validated nonempty evidence
+		return CurrentStateReport{}, err
+	}
+	appendStagedPlanResult(&classified, planResult)
+	return classified, nil
 }
 
 const (
@@ -239,10 +247,17 @@ func currentStateResult(report CurrentStateReport) (checkresult.Result, error) {
 	for _, drift := range report.PlanDrift {
 		findings = append(findings, checkresult.Finding{Rank: severity.Error, Property: propertyPlanArtifact, Evidence: checkresult.Evidence{Kind: drift.Kind, Path: drift.Path, Detail: fmt.Sprintf("%s %s: %s", drift.Kind, drift.Path, drift.Detail)}})
 	}
+	for _, finding := range report.PlanResult.Findings() {
+		if finding.Rank == severity.Error {
+			finding.Evidence.Detail = fmt.Sprintf("%s %s: %s", finding.Evidence.Kind, finding.Evidence.Path, finding.Evidence.Detail)
+		}
+		findings = append(findings, finding)
+	}
 	var information []checkresult.Information
 	for _, message := range report.Information() {
 		information = append(information, checkresult.Information{Evidence: checkresult.Evidence{Kind: "current-state", Detail: message}})
 	}
+	information = append(information, report.PlanResult.Information()...)
 	return checkresult.New(findings, information)
 }
 
