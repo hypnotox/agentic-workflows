@@ -10,6 +10,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/project"
@@ -59,6 +60,31 @@ func TestPublisherDefensivelyOwnsConfigurationFacts(t *testing.T) {
 	}
 	if !reflect.DeepEqual(before.Paths(), after.Paths()) || !reflect.DeepEqual(before.Outputs(), after.Outputs()) {
 		t.Fatal("caller-owned config mutation changed an existing Publisher plan")
+	}
+}
+
+func TestPreparationFreezesGeneratedCheckSources(t *testing.T) {
+	state := csRepo(t, sampleYAML, map[string]string{".awf/skills/tdd.yaml": "data:\n  stale: before\n"})
+	prepared, err := New(state.OutputState(), testConfig(state), NewFilesystemReader(state.Root()), project.Version).Prepare()
+	if err != nil {
+		t.Fatal(err)
+	}
+	before, err := generatedcheck.Additional(prepared.GeneratedOutput(), prepared.Plan())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(state.Root(), ".awf/skills/tdd.yaml"), []byte("data:\n  stale: after\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(state.Root(), ".awf/after-prepare"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	after, err := generatedcheck.Additional(prepared.GeneratedOutput(), prepared.Plan())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(before, after) {
+		t.Fatalf("prepared generated check changed after source mutation: before=%#v after=%#v", before, after)
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
@@ -99,6 +100,7 @@ type Preparation struct {
 	skills     map[string]bool
 	plans      []plan.Plan
 	plansError error
+	generated  generatedcheck.AdditionalInput
 }
 
 // New composes a Publisher from immutable loaded facts and an explicit operation tree reader.
@@ -123,7 +125,11 @@ func (p *Publisher) Prepare() (Preparation, error) {
 	if err != nil {
 		return Preparation{}, err
 	}
-	return Preparation{plan: freezePlan(built), adrs: adrs, pitfalls: pitfalls, topics: topics, skills: maps.Clone(skills), plans: clonePlans(plans), plansError: plansErr}, nil
+	generated, err := generatedSemantics(p.inputs, topics)
+	if err != nil {
+		return Preparation{}, err
+	}
+	return Preparation{plan: freezePlan(built), adrs: adrs, pitfalls: pitfalls, topics: topics, skills: maps.Clone(skills), plans: clonePlans(plans), plansError: plansErr, generated: generated}, nil
 }
 
 // Plan derives exactly one immutable plan for this operation.
@@ -152,6 +158,11 @@ func (p Preparation) Plans() []plan.Plan { return clonePlans(p.plans) }
 
 // PlansError returns diagnostics or another error from parsing the selected plans.
 func (p Preparation) PlansError() error { return p.plansError }
+
+// GeneratedOutput returns a defensive prepared projection for generated-output checks.
+func (p Preparation) GeneratedOutput() generatedcheck.AdditionalInput {
+	return cloneGeneratedOutput(p.generated)
+}
 
 // ResidentMarker selects the marker from this preparation's existing plan.
 func (p Preparation) ResidentMarker(name string) (outputplan.Output, error) {

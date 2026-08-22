@@ -93,11 +93,11 @@ func Locked(nested bool, lock *manifest.Lock, plan outputplan.Plan, read ReadFil
 	for _, path := range slices.Sorted(maps.Keys(lock.Files)) {
 		output, ok := rendered[path]
 		entry := lock.Files[path]
+		if !ok {
+			findings = append(findings, errorFinding("orphaned", path, "in lock but no longer produced"))
+			continue
+		}
 		if output.Policy().Regenerate {
-			if !ok { // coverage-ignore: a regeneration-checked lock entry is always a Publisher plan output; malformed direct input cannot supply its policy
-				findings = append(findings, errorFinding("orphaned", path, "in lock but no longer produced"))
-				continue
-			}
 			observed, err := read(path)
 			if err != nil {
 				if errors.Is(err, os.ErrNotExist) && untracked[path] {
@@ -113,10 +113,6 @@ func Locked(nested bool, lock *manifest.Lock, plan outputplan.Plan, read ReadFil
 				}
 				findings = append(findings, errorFinding(kind, path, detail))
 			}
-			continue
-		}
-		if !ok {
-			findings = append(findings, errorFinding("orphaned", path, "in lock but no longer produced"))
 			continue
 		}
 		if output.TemplateHash() != entry.TemplateHash || output.ConfigHash() != entry.ConfigHash {

@@ -26,7 +26,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/referencecheck"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
-	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
 // CheckAdvisories separates ranked warnings from unranked information without
@@ -354,7 +353,7 @@ func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context, semanti
 	if err := configcheck.ValidateCommandWiring(p.cfg); err != nil {
 		return CheckReport{}, err
 	}
-	corpus, pitfalls, topics, eff := semantics.ADRs, semantics.Pitfalls, semantics.Topics, semantics.EffectiveSkills
+	corpus, pitfalls, eff := semantics.ADRs, semantics.Pitfalls, semantics.EffectiveSkills
 	plans, parseErr := semantics.Plans, semantics.PlansError
 	batch := checkBatch{}
 	planResults := checkBatch{}
@@ -371,7 +370,7 @@ func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context, semanti
 			planResults.error(propertyAuthority, "plan-"+diagnostic.Category, rel+"/"+diagnostic.Path, diagnostic.Detail)
 		}
 	}
-	producerResults, trackingNotes, err := checkWithTrackingState(p, repo, ctx, corpus, pitfalls, topics, eff, plans, op)
+	producerResults, trackingNotes, err := checkWithTrackingState(p, repo, ctx, corpus, pitfalls, eff, plans, semantics.GeneratedOutput, op)
 	if err != nil {
 		return CheckReport{}, err
 	}
@@ -383,7 +382,7 @@ func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context, semanti
 		batch.append(planArtifacts.withoutWarnings())
 	}
 	advisories, err := advisoryResultsWithState(p, pitfalls, plans, op)
-	if err != nil {
+	if err != nil { // coverage-ignore: Publisher preparation already validated the advisory inputs consumed by this report
 		return CheckReport{}, err
 	}
 	batch.append(advisories)
@@ -414,7 +413,7 @@ const (
 	propertyPlanDetail      checkresult.Property = "plan-detail-quality"
 )
 
-func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool, plans []plan.Plan, op *OutputPlan) (checkBatch, []string, error) {
+func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, eff map[string]bool, plans []plan.Plan, generatedInput generatedcheck.AdditionalInput, op *OutputPlan) (checkBatch, []string, error) {
 	var indexPaths generatedcheck.IndexPaths
 	if repo != nil {
 		indexPaths = repo.IndexPaths
@@ -444,11 +443,8 @@ func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Conte
 		return checkBatch{}, nil, err
 	}
 	results.appendResult(locked)
-	generated, err := generatedcheck.Additional(generatedcheck.AdditionalInput{
-		Root: p.root(), ResidentRoot: p.residentRoots().Resident, Config: p.cfg,
-		Catalog: projectCatalog(p), Topics: topics.All(), Paths: p.read.Paths,
-	}, *op)
-	if err != nil { // coverage-ignore: the operation supplied its validated pitfall corpus
+	generated, err := generatedcheck.Additional(generatedInput, *op)
+	if err != nil { // coverage-ignore: Additional constructs fixed nonempty evidence from immutable prepared semantic values
 		return checkBatch{}, nil, err
 	}
 	results.appendResult(generated)
@@ -553,7 +549,7 @@ func planArtifactResults(plans []plan.Plan, corpus adr.Corpus) checkBatch {
 }
 func advisoryResultsWithState(p renderInputs, pitfalls pitfall.Corpus, plans []plan.Plan, op *OutputPlan) (checkBatch, error) {
 	advisories, err := advisoryNotesWithState(p, pitfalls, plans, op)
-	if err != nil {
+	if err != nil { // coverage-ignore: Publisher preparation already validated the pitfall, plan, and output inputs consumed here
 		return checkBatch{}, err
 	}
 	batch := checkBatch{}

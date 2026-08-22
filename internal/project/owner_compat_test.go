@@ -13,6 +13,7 @@ import (
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
+	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/referencecheck"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
@@ -40,7 +41,11 @@ func compatibilityDrift(result checkresult.Result) []manifest.Drift {
 }
 
 func generatedAdditionalForTest(p renderInputs, files []RenderedFile) (checkresult.Result, error) {
-	return generatedcheck.Additional(generatedcheck.AdditionalInput{Root: p.root(), ResidentRoot: p.residentRoots().Resident, Config: p.cfg, Catalog: projectCatalog(p), Paths: p.read.Paths}, ownerPlan(files))
+	prepared, err := publisher.New(p.state.OutputState(), p.cfg, p.read, Version).Prepare()
+	if err != nil {
+		return checkresult.Result{}, err
+	}
+	return generatedcheck.Additional(prepared.GeneratedOutput(), ownerPlan(files))
 }
 func unusedVarDrift(p renderInputs, files []RenderedFile) []manifest.Drift {
 	result, err := generatedAdditionalForTest(p, files)
@@ -163,7 +168,16 @@ func checkStagedRenderedFiles(lock *manifest.Lock, rendered map[string]RenderedF
 }
 
 func sweepConfigTree(p renderInputs, files []RenderedFile, topics topic.Corpus) ([]manifest.Drift, error) {
-	result, err := generatedcheck.Additional(generatedcheck.AdditionalInput{Root: p.root(), ResidentRoot: p.residentRoots().Resident, Config: p.cfg, Catalog: projectCatalog(p), Topics: topics.All(), Paths: p.read.Paths}, ownerPlan(files))
+	prepared, err := publisher.New(p.state.OutputState(), p.cfg, p.read, Version).Prepare()
+	if err != nil {
+		return nil, err
+	}
+	input := prepared.GeneratedOutput()
+	input.Topics = make([]generatedcheck.Topic, 0, len(topics.All()))
+	for _, item := range topics.All() {
+		input.Topics = append(input.Topics, generatedcheck.Topic{Domain: item.ID.Domain, Slug: item.ID.Slug})
+	}
+	result, err := generatedcheck.Additional(input, ownerPlan(files))
 	if err != nil {
 		return nil, err
 	}

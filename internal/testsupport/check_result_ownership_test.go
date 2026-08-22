@@ -38,7 +38,7 @@ func TestOrdinaryCheckProducerCensus(t *testing.T) {
 			"adrRelatedResult": 1, "append": 1, "fullProfile": 2,
 			"glossaryResult": 1, "len": 1, "lockPath": 1,
 			"pendingADRResult": 1, "pitfallResult": 1, "planResult": 1,
-			"projectCatalog": 1, "referenceResult": 1, "tagVocabularyResult": 1,
+			"referenceResult": 1, "tagVocabularyResult": 1,
 		},
 	}
 	for name, want := range wantCompositionCalls {

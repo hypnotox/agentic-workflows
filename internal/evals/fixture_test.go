@@ -43,7 +43,7 @@ func checkProject(p *project.ProjectState, ctx context.Context) ([]manifest.Drif
 	}
 	semantics := project.OperationSemantics{
 		ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(),
-		EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: prepared.PlansError(),
+		EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: prepared.PlansError(), GeneratedOutput: prepared.GeneratedOutput(),
 	}
 	report, err := project.BuildCheckReport(p, cfg, nil, ctx, prepared.Plan(), semantics)
 	return report.Drift, err

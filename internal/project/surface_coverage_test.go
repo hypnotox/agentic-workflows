@@ -9,6 +9,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
@@ -106,14 +107,14 @@ func TestCheckWithStatePropagatesMalformedRetainedData(t *testing.T) {
 			if err := os.WriteFile(sidecarPath, []byte(tc.sidecar), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			if _, _, err := checkWithTrackingState(renderInputsForTest(p), testRepo(p), testContext(t), corpus, pitfall.Corpus{}, topics, effective, mustParsePlans(t, p), op); err == nil || !strings.Contains(err.Error(), "must be a list") {
+			if _, _, err := checkWithTrackingState(renderInputsForTest(p), testRepo(p), testContext(t), corpus, pitfall.Corpus{}, effective, mustParsePlans(t, p), generatedcheck.AdditionalInput{}, op); err == nil || !strings.Contains(err.Error(), "must be a list") {
 				t.Fatalf("check-with-state error = %v", err)
 			}
 		})
 	}
 }
 
-func TestCheckReportPropagatesAdvisorySidecarError(t *testing.T) {
+func TestCheckReportUsesPreparedAdvisorySources(t *testing.T) {
 	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars:\n  gateCmd: make gate\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -131,9 +132,9 @@ func TestCheckReportPropagatesAdvisorySidecarError(t *testing.T) {
 	if planErr != nil {
 		t.Fatal(planErr)
 	}
-	semantics := OperationSemantics{ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: prepared.PlansError()}
-	if _, err := BuildCheckReport(p, cfg, testRepo(p), testContext(t), prepared.Plan(), semantics); err == nil || !strings.Contains(err.Error(), "must be a list") {
-		t.Fatalf("CheckReport advisory error = %v after %d glossary reads", err, reader.reads)
+	semantics := OperationSemantics{ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: prepared.PlansError(), GeneratedOutput: prepared.GeneratedOutput()}
+	if _, err := BuildCheckReport(p, cfg, testRepo(p), testContext(t), prepared.Plan(), semantics); err != nil {
+		t.Fatalf("CheckReport changed after preparation: %v after %d glossary reads", err, reader.reads)
 	}
 }
 

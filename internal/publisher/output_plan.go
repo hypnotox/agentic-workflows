@@ -14,6 +14,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
@@ -93,6 +94,30 @@ func (r filesystemProjectReader) ReadFile(path string) ([]byte, bool, error) {
 	}
 	return slices.Clone(b), true, nil
 }
+func (r filesystemProjectReader) Entries(prefix string) ([]generatedcheck.TreeEntry, error) {
+	var out []generatedcheck.TreeEntry
+	base := filepath.Join(r.root, filepath.FromSlash(prefix))
+	err := filepath.WalkDir(base, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			if p == base && errors.Is(err, fs.ErrNotExist) {
+				return fs.SkipAll
+			}
+			return err
+		}
+		rel, e := filepath.Rel(r.root, p)
+		if e != nil { // coverage-ignore: WalkDir supplies paths rooted beneath r.root, so Rel cannot fail on a supported platform
+			return e
+		}
+		out = append(out, generatedcheck.TreeEntry{Path: filepath.ToSlash(rel), Directory: d.IsDir()})
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("enumerate %s: %w", prefix, err)
+	}
+	slices.SortFunc(out, func(a, b generatedcheck.TreeEntry) int { return strings.Compare(a.Path, b.Path) })
+	return out, nil
+}
+
 func (r filesystemProjectReader) Paths(prefix string) ([]string, error) {
 	out := []string{}
 	base := filepath.Join(r.root, filepath.FromSlash(prefix))

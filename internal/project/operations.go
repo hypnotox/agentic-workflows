@@ -7,6 +7,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/commitmsg"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
@@ -33,6 +34,7 @@ type OperationSemantics struct {
 	EffectiveSkills map[string]bool
 	Plans           []plan.Plan
 	PlansError      error
+	GeneratedOutput generatedcheck.AdditionalInput
 }
 
 // AdvisoryNotes reports non-blocking project checks from one prepared universe.

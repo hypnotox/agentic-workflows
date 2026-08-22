@@ -3,9 +3,30 @@ package project
 import (
 	"errors"
 	"io/fs"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestFilesystemProjectReaderEntries(t *testing.T) {
+	root := t.TempDir()
+	path := root + "/.awf/example/file"
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := (filesystemProjectReader{root: root}).Entries(".awf/")
+	if err != nil || len(entries) != 3 || !entries[0].Directory || entries[2].Path != ".awf/example/file" {
+		t.Fatalf("entries=%#v err=%v", entries, err)
+	}
+	entries, err = (filesystemProjectReader{root: t.TempDir()}).Entries(".awf/")
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("absent entries=%#v err=%v", entries, err)
+	}
+}
 
 func TestFilesystemProjectReaderPathsErrors(t *testing.T) {
 	validRoot := t.TempDir()
@@ -28,6 +49,9 @@ func TestFilesystemProjectReaderPathsErrors(t *testing.T) {
 			_, err := (filesystemProjectReader{root: tc.root}).Paths(tc.prefix)
 			if err == nil {
 				t.Fatal("Paths error = nil")
+			}
+			if _, entryErr := (filesystemProjectReader{root: tc.root}).Entries(tc.prefix); entryErr == nil {
+				t.Fatal("Entries error = nil")
 			}
 			var pathErr *fs.PathError
 			if !errors.As(err, &pathErr) {
