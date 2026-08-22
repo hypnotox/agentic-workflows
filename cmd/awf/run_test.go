@@ -1330,7 +1330,7 @@ func TestInitAbortsWhenInitCollisionsFails(t *testing.T) {
 	lockPath := config.LockPath(root)
 	beforeConfig := mustReadCLIFile(t, configPath)
 	beforeLock := mustReadCLIFile(t, lockPath)
-	writeMalformedConfigReferencePart(t, root)
+	writeMalformedPitfall(t, root)
 
 	var out bytes.Buffer
 	loaderReached := false
@@ -1338,8 +1338,8 @@ func TestInitAbortsWhenInitCollisionsFails(t *testing.T) {
 		loaderReached = true
 		return nil, errors.New("loader reached after collision failure")
 	})
-	if err == nil || !strings.Contains(err.Error(), "config-reference/intro.md") || !strings.Contains(err.Error(), "malformed awf:comment") {
-		t.Fatalf("init collision error = %v, want malformed config-reference part", err)
+	if err == nil || !strings.Contains(err.Error(), "bad.md") || !strings.Contains(err.Error(), "missing frontmatter") {
+		t.Fatalf("init collision error = %v, want malformed pitfall", err)
 	}
 	if loaderReached {
 		t.Fatal("init continued to loader after collision failure")

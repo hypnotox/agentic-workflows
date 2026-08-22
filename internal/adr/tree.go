@@ -42,9 +42,6 @@ func LoadCorpusFromTree(read TreeReader, dir string) (Corpus, error) {
 		if err != nil {
 			return Corpus{}, fmt.Errorf("parse %s: %w", base, err)
 		}
-		if a.Number == "" && a.Format != CurrentFormat() && !a.IsV3() { // coverage-ignore: ParseRecord only returns legacy/v1/v2 records with filename-derived numbers, v3 is explicitly exempt, and current v4 is excluded.
-			return Corpus{}, ErrNotADRRecord(base)
-		}
 		a.Path = sourcePath
 		adrs = append(adrs, a)
 	}

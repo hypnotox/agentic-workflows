@@ -10,15 +10,15 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
-func writeMalformedConfigReferencePart(t *testing.T, root string) {
+func writeMalformedPitfall(t *testing.T, root string) {
 	t.Helper()
-	testsupport.WriteFile(t, filepath.Join(root, ".awf", "parts", "config-reference", "intro.md"), "<!-- awf:comment\n")
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "docs", "pitfalls", "bad.md"), "malformed source\n")
 }
 
-func requireMalformedConfigReferencePartError(t *testing.T, err error) {
+func requireMalformedPitfallError(t *testing.T, err error) {
 	t.Helper()
-	if err == nil || !strings.Contains(err.Error(), "config-reference/intro.md") || !strings.Contains(err.Error(), "malformed awf:comment") {
-		t.Fatalf("publisher preparation error = %v, want malformed config-reference part", err)
+	if err == nil || !strings.Contains(err.Error(), "bad.md") || !strings.Contains(err.Error(), "missing frontmatter") {
+		t.Fatalf("publisher preparation error = %v, want malformed pitfall", err)
 	}
 }
 
@@ -28,10 +28,10 @@ func TestWorkingContextStatePropagatesPublisherPreparationFailure(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	writeMalformedConfigReferencePart(t, root)
+	writeMalformedPitfall(t, root)
 
 	_, err = workingContextState(context.Background(), state, repo)
-	requireMalformedConfigReferencePartError(t, err)
+	requireMalformedPitfallError(t, err)
 }
 
 func TestStagedPublisherPreparationFailuresPropagate(t *testing.T) {
@@ -51,10 +51,10 @@ func TestStagedPublisherPreparationFailuresPropagate(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			root := ctxCmdFixture(t)
-			writeMalformedConfigReferencePart(t, root)
+			writeMalformedPitfall(t, root)
 			gitfixture.AddAll(t, gitfixture.At(root))
 
-			requireMalformedConfigReferencePartError(t, tc.run(context.Background(), root))
+			requireMalformedPitfallError(t, tc.run(context.Background(), root))
 		})
 	}
 }
