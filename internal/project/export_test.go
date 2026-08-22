@@ -291,3 +291,12 @@ func setTestRoots(state *ProjectState, roots resident.Roots) *ProjectState {
 func renderInputsForTest(state *ProjectState) renderInputs {
 	return newRenderInputs(state, testConfig(state), filesystemProjectReader{root: state.Root()})
 }
+
+func checkLockedDrift(roots resident.Roots, lock *manifest.Lock, rendered map[string]RenderedFile, tracking []manifest.Drift) []manifest.Drift {
+	findings := checkLockedFiles(roots, lock, rendered, tracking)
+	drift := make([]manifest.Drift, 0, len(findings))
+	for _, finding := range findings {
+		drift = append(drift, finding.Drift)
+	}
+	return drift
+}

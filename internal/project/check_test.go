@@ -831,7 +831,7 @@ func TestCheckLockedFilesSuppressesMissingForUntrackedOutputs(t *testing.T) {
 		"normal.md": {OutputHash: manifest.Hash([]byte("normal"))},
 	}}
 	tracking := []manifest.Drift{{Path: "regen.md", Kind: "untracked"}, {Path: "normal.md", Kind: "untracked"}}
-	if got := checkLockedFiles(renderInputsForTest(p).residentRoots(), lock, rendered, tracking); len(got) != 0 {
+	if got := checkLockedDrift(renderInputsForTest(p).residentRoots(), lock, rendered, tracking); len(got) != 0 {
 		t.Fatalf("untracked missing files = %#v", got)
 	}
 	for path := range rendered {
@@ -839,7 +839,7 @@ func TestCheckLockedFilesSuppressesMissingForUntrackedOutputs(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	got := checkLockedFiles(renderInputsForTest(p).residentRoots(), lock, rendered, tracking)
+	got := checkLockedDrift(renderInputsForTest(p).residentRoots(), lock, rendered, tracking)
 	if len(got) != 2 || !slices.ContainsFunc(got, func(finding manifest.Drift) bool {
 		return finding.Path == "regen.md" && finding.Kind == "missing"
 	}) || !slices.ContainsFunc(got, func(finding manifest.Drift) bool {
@@ -920,6 +920,25 @@ func TestCheckReportMapsPlanDiagnostics(t *testing.T) {
 		return d.Path == "docs/plans/2026-07-12-broken.md" && d.Kind == "plan-frontmatter" && strings.Contains(d.Detail, "yaml")
 	}) {
 		t.Fatalf("plan diagnostic did not reach drift: %#v", report.Drift)
+	}
+}
+
+func TestBuildCheckReportRefusesUnknownDynamicPlanDiagnosticCategory(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := syncProject(p); err != nil {
+		t.Fatal(err)
+	}
+	prepared, err := testPublisher(operationInputs(p, testConfig(p))).Prepare()
+	if err != nil {
+		t.Fatal(err)
+	}
+	semantics := OperationSemantics{ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: &plan.DiagnosticsError{Diagnostics: []*plan.Diagnostic{{Category: "future-category", Path: "example.md", Detail: "future diagnostic"}}}}
+	if _, err := BuildCheckReport(p, testConfig(p), testRepo(p), testContext(t), prepared.Plan(), semantics); err == nil || !strings.Contains(err.Error(), "unknown plan diagnostic category") {
+		t.Fatalf("BuildCheckReport error = %v, want unknown diagnostic category refusal", err)
 	}
 }
 

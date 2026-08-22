@@ -5,29 +5,25 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/checkresult"
-	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
 
-func TestClassifiedCheckResultNamesRankAndProtectedProperty(t *testing.T) {
-	report := CheckReport{
-		Drift: []manifest.Drift{
-			{Kind: "missing", Path: "AGENTS.md", Detail: "file absent"},
-			{Kind: "plan-adr-link", Path: "docs/plans/example.md", Detail: "ADR not found"},
-			{Kind: "dead-reference", Path: "docs/example.md", Detail: "missing.md"},
-			{Kind: "unused-var", Path: ".awf/config.yaml", Detail: "var is unused"},
-		},
-		Warnings:            []string{"heuristic warning"},
-		PlanWarnings:        []string{"plan warning"},
-		Information:         []string{"optional cleanup"},
-		TrackingInformation: []string{"tracking unavailable"},
-	}
+func TestProducerBatchNamesRankAndProtectedProperty(t *testing.T) {
+	batch := checkBatch{}
+	batch.error(propertyReproducibility, "missing", "AGENTS.md", "file absent")
+	batch.error(propertyAuthority, "plan-adr-link", "docs/plans/example.md", "ADR not found")
+	batch.error(propertyCorrectness, "dead-reference", "docs/example.md", "missing.md")
+	batch.informationItem("unused-var", ".awf/config.yaml", "var is unused")
+	batch.warning(propertyHeuristic, "advisory", "heuristic warning")
+	batch.warning(propertyPlanDetail, "plan-advisory", "plan warning")
+	batch.informationItem("advisory", "", "optional cleanup")
+	batch.informationItem("tracking", "", "tracking unavailable")
 
-	result, err := classifiedCheckResult(report)
+	report, err := reportFromBatch(batch)
 	if err != nil {
 		t.Fatal(err)
 	}
-	findings := result.Findings()
+	findings := report.Result.Findings()
 	want := []struct {
 		rank     severity.Rank
 		property checkresult.Property
@@ -47,17 +43,13 @@ func TestClassifiedCheckResultNamesRankAndProtectedProperty(t *testing.T) {
 			t.Errorf("finding %d = %#v, want rank=%v property=%q kind=%q", i, findings[i], expected.rank, expected.property, expected.kind)
 		}
 	}
-	information := result.Information()
-	gotInformationKinds := make([]string, 0, len(information))
-	for _, item := range information {
-		gotInformationKinds = append(gotInformationKinds, item.Evidence.Kind)
+	var informationKinds []string
+	for _, item := range report.Result.Information() {
+		informationKinds = append(informationKinds, item.Evidence.Kind)
 	}
-	if wantKinds := []string{"unused-var", "advisory", "tracking"}; !slices.Equal(gotInformationKinds, wantKinds) {
-		t.Fatalf("information kinds = %v, want %v", gotInformationKinds, wantKinds)
+	if wantKinds := []string{"unused-var", "advisory", "tracking"}; !slices.Equal(informationKinds, wantKinds) {
+		t.Fatalf("information kinds = %v, want %v", informationKinds, wantKinds)
 	}
-
-	report.Result = result
-	report.classified = true
 	if got := report.OrdinaryWarnings(); !slices.Equal(got, []string{"heuristic warning"}) {
 		t.Fatalf("OrdinaryWarnings() = %v", got)
 	}
@@ -72,9 +64,38 @@ func TestClassifiedCheckResultNamesRankAndProtectedProperty(t *testing.T) {
 	}
 }
 
-func TestClassifiedCheckResultRefusesIncompleteOwnerEvidence(t *testing.T) {
-	_, err := classifiedCheckResult(CheckReport{Drift: []manifest.Drift{{Kind: "missing", Path: "AGENTS.md"}}})
-	if err == nil {
-		t.Fatal("classifiedCheckResult accepted a finding without owner evidence detail")
+func TestBatchSeparatesDeferredWarningsWithoutChangingSemanticProjections(t *testing.T) {
+	batch := checkBatch{}
+	batch.error(propertyAuthority, "plan-reference", "plan.md", "missing ADR")
+	batch.warning(propertyPlanDetail, "plan-advisory", "assignment missing")
+	batch.informationItem("advisory", "", "optional note")
+	withoutWarnings := batch.withoutWarnings()
+	result, err := withoutWarnings.result()
+	if err != nil || len(result.Findings()) != 1 || len(result.Information()) != 1 {
+		t.Fatalf("withoutWarnings result = %#v, %v", result, err)
+	}
+	warnings := batch.warningsOnly()
+	result, err = warnings.result()
+	if err != nil || len(result.Findings()) != 1 || len(result.Information()) != 0 {
+		t.Fatalf("warningsOnly result = %#v, %v", result, err)
+	}
+}
+
+func TestKnownDynamicPlanDiagnosticCategoriesAreClosed(t *testing.T) {
+	for _, category := range []string{"field", "frontmatter", "numbering", "path", "paths", "phase-close", "projection", "relationship", "structure"} {
+		if !knownDynamicPlanDiagnosticCategory(category) {
+			t.Errorf("known category %q was refused", category)
+		}
+	}
+	if knownDynamicPlanDiagnosticCategory("future-category") {
+		t.Fatal("unknown dynamic plan category was accepted")
+	}
+}
+
+func TestReportFinalizerRefusesIncompleteProducerEvidence(t *testing.T) {
+	batch := checkBatch{}
+	batch.error(propertyCorrectness, "missing", "AGENTS.md", "")
+	if _, err := reportFromBatch(batch); err == nil {
+		t.Fatal("report finalizer accepted a finding without evidence detail")
 	}
 }

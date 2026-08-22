@@ -2,7 +2,6 @@ package project
 
 import (
 	"bytes"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,9 +22,10 @@ func TestAdvisoryCompatibilityAndReportErrorPaths(t *testing.T) {
 	}()); len(got) != 0 {
 		t.Fatalf("compatibility files = %#v", got)
 	}
-	failure := errors.New("advisory failure")
-	if _, err := finishCheckReport(nil, nil, nil, CheckAdvisories{}, &OutputPlan{}, failure); !errors.Is(err, failure) {
-		t.Fatalf("finish error = %v", err)
+	batch := checkBatch{}
+	batch.error(propertyCorrectness, "broken", "path", "")
+	if _, err := reportFromBatch(batch); err == nil {
+		t.Fatal("report finalizer accepted invalid producer evidence")
 	}
 }
 

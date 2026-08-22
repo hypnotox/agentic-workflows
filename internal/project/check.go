@@ -480,7 +480,8 @@ func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context, semanti
 	}
 	corpus, pitfalls, topics, eff := semantics.ADRs, semantics.Pitfalls, semantics.Topics, semantics.EffectiveSkills
 	plans, parseErr := semantics.Plans, semantics.PlansError
-	var planDrift []manifest.Drift
+	batch := checkBatch{}
+	planResults := checkBatch{}
 	if parseErr != nil {
 		var diagnostics *plan.DiagnosticsError
 		if !errors.As(parseErr, &diagnostics) {
@@ -488,46 +489,45 @@ func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context, semanti
 		}
 		rel := filepath.ToSlash(filepath.Join(config.DocsDir, "plans"))
 		for _, diagnostic := range diagnostics.Diagnostics {
-			planDrift = append(planDrift, manifest.Drift{
-				Path: rel + "/" + diagnostic.Path, Kind: "plan-" + diagnostic.Category, Detail: diagnostic.Detail,
-			})
+			if !knownDynamicPlanDiagnosticCategory(diagnostic.Category) {
+				return CheckReport{}, fmt.Errorf("unknown plan diagnostic category %q", diagnostic.Category)
+			}
+			planResults.error(propertyAuthority, "plan-"+diagnostic.Category, rel+"/"+diagnostic.Path, diagnostic.Detail)
 		}
 	}
-	drift, trackingNotes, err := checkWithTrackingState(p, repo, ctx, corpus, pitfalls, topics, eff, plans, op)
+	producerResults, trackingNotes, err := checkWithTrackingState(p, repo, ctx, corpus, pitfalls, topics, eff, plans, op)
 	if err != nil {
 		return CheckReport{}, err
 	}
-	planWarnings := []string(nil)
+	batch.append(producerResults)
+	batch.append(planResults)
+	planArtifacts := checkBatch{}
 	if fullProfile(p) {
-		contextDrift, notes := planArtifactReport(plans, corpus)
-		planWarnings = notes
-		planDrift = append(planDrift, contextDrift...)
+		planArtifacts = planArtifactResults(plans, corpus)
+		batch.append(planArtifacts.withoutWarnings())
 	}
-	advisories, err := advisoryNotesWithState(p, pitfalls, plans, op)
-	report, err := finishCheckReport(drift, planDrift, planWarnings, advisories, op, err)
+	advisories, err := advisoryResultsWithState(p, pitfalls, plans, op)
 	if err != nil {
 		return CheckReport{}, err
 	}
-	report.TrackingInformation = trackingNotes
-	report.TrackingNotes = slices.Clone(trackingNotes)
-	report.Result, err = classifiedCheckResult(report)
-	if err != nil { // coverage-ignore: owner producers above emit fixed ranks, nonempty properties, and nonempty evidence already covered at the checkresult boundary
-		return CheckReport{}, err
+	batch.append(advisories)
+	for _, note := range trackingNotes {
+		batch.informationItem("tracking", "", note)
 	}
-	return report, nil
+	batch.append(planArtifacts.warningsOnly())
+	return reportFromBatch(batch)
 }
 
-func finishCheckReport(drift, planDrift []manifest.Drift, planWarnings []string, advisories CheckAdvisories, op *OutputPlan, err error) (CheckReport, error) {
-	if err != nil {
-		return CheckReport{}, err
+// Dynamic plan diagnostics originate in a closed parser category set. Refusing
+// an unknown category keeps parser evolution from silently acquiring checker
+// policy or a fabricated finding identity.
+func knownDynamicPlanDiagnosticCategory(category string) bool {
+	switch category {
+	case "field", "frontmatter", "numbering", "path", "paths", "phase-close", "projection", "relationship", "structure":
+		return true
+	default:
+		return false
 	}
-	advisories.Warnings = append(advisories.Warnings, agentGuideSizeAdvisory(op)...)
-	allNotes := append(slices.Clone(advisories.Information), advisories.Warnings...)
-	return CheckReport{
-		Drift: append(drift, planDrift...), Warnings: advisories.Warnings,
-		Information: advisories.Information, PlanWarnings: planWarnings, Notes: allNotes,
-		PlanNotes: slices.Clone(planWarnings), classified: true,
-	}, nil
 }
 
 const (
@@ -538,122 +538,186 @@ const (
 	propertyPlanDetail      checkresult.Property = "plan-detail-quality"
 )
 
-func classifiedCheckResult(report CheckReport) (checkresult.Result, error) {
-	findings := make([]checkresult.Finding, 0, len(report.Drift)+len(report.Warnings)+len(report.PlanWarnings))
-	information := make([]checkresult.Information, 0, len(report.Information)+len(report.TrackingInformation))
-	for _, drift := range report.Drift {
-		evidence := checkresult.Evidence{Kind: drift.Kind, Path: drift.Path, Detail: drift.Detail}
-		if drift.Kind == "unused-var" || drift.Kind == "unused-data" {
-			information = append(information, checkresult.Information{Evidence: evidence})
-			continue
-		}
-		findings = append(findings, checkresult.Finding{Rank: severity.Error, Property: driftProtectedProperty(drift.Kind), Evidence: evidence})
-	}
-	for _, warning := range report.Warnings {
-		findings = append(findings, checkresult.Finding{Rank: severity.Warn, Property: propertyHeuristic, Evidence: checkresult.Evidence{Kind: "advisory", Detail: warning}})
-	}
-	for _, warning := range report.PlanWarnings {
-		findings = append(findings, checkresult.Finding{Rank: severity.Warn, Property: propertyPlanDetail, Evidence: checkresult.Evidence{Kind: "plan-advisory", Detail: warning}})
-	}
-	for _, note := range report.Information {
-		information = append(information, checkresult.Information{Evidence: checkresult.Evidence{Kind: "advisory", Detail: note}})
-	}
-	for _, note := range report.TrackingInformation {
-		information = append(information, checkresult.Information{Evidence: checkresult.Evidence{Kind: "tracking", Detail: note}})
-	}
-	return checkresult.New(findings, information)
-}
-
-// driftProtectedProperty is the current check owner's explicit classification
-// adapter. Each extraction phase moves the corresponding case with its policy.
-func driftProtectedProperty(kind string) checkresult.Property {
-	switch {
-	case strings.HasPrefix(kind, "plan-"), strings.HasPrefix(kind, "adr-"), kind == "pending-adr-on-integration-branch":
-		return propertyAuthority
-	case kind == "untracked", kind == "unsynced", kind == "orphaned", kind == "missing", kind == "stale", kind == "hand-edited":
-		return propertyReproducibility
-	default:
-		return propertyCorrectness
-	}
-}
-
-func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool, plans []plan.Plan, op *OutputPlan) ([]manifest.Drift, []string, error) {
-	trackingDrift, trackingNotes, err := checkGeneratedTracking(p.isNested(), repo, ctx, op)
+func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool, plans []plan.Plan, op *OutputPlan) (checkBatch, []string, error) {
+	trackingResults, trackingNotes, err := checkGeneratedTracking(p.isNested(), repo, ctx, op)
 	if err != nil {
-		return nil, nil, err
+		return checkBatch{}, nil, err
 	}
 	lock, found, err := manifest.LoadOptional(lockPath(p.root()))
 	if err != nil {
-		return nil, nil, err
+		return checkBatch{}, nil, err
 	}
 	if !found {
-		if len(trackingDrift) > 0 {
-			return trackingDrift, trackingNotes, nil
+		if len(driftProjection(trackingResults.projection)) > 0 {
+			return trackingResults, trackingNotes, nil
 		}
-		return nil, nil, errors.New("no lock (run awf render)")
+		return checkBatch{}, nil, errors.New("no lock (run awf render)")
 	}
 	files := planWriteFiles(op)
 	rendered := map[string]RenderedFile{}
 	for _, f := range files {
 		rendered[f.Path] = f
 	}
-	var drift []manifest.Drift
-	drift = append(drift, trackingDrift...)
-	drift = append(drift, checkLockedFiles(p.residentRoots(), lock, rendered, trackingDrift)...)
+	results := checkBatch{}
+	results.append(trackingResults)
+	for _, finding := range checkLockedFiles(p.residentRoots(), lock, rendered, driftProjection(trackingResults.projection)) {
+		results.error(finding.Property, finding.Drift.Kind, finding.Drift.Path, finding.Drift.Detail)
+	}
 	// Closed-tree sweep: orphans, strays, backups (ADR-0086 Decision 1).
-	od, err := sweepConfigTree(p, files, topics)
+	sweep, err := sweepConfigTreeResult(p, files, topics)
 	if err != nil { // coverage-ignore: the sweep errors only on faults the outputPlan render above would have surfaced first (see its coverage-ignores)
-		return nil, nil, err
+		return checkBatch{}, nil, err
 	}
-	drift = append(drift, od...)
-
-	// Generated and ordinary outputs are already exactly the plan write nodes;
-	// do not regenerate a second, duplicate node set in Check.
-	drift = append(drift, unusedVarDrift(p, files)...)
-	ud, err := unusedDataDrift(p, files)
-	if err != nil { // coverage-ignore: unusedDataDrift re-reads sidecars the render pass in outputPlan already read
-		return nil, nil, err
+	results.append(sweep)
+	results.append(unusedVarResult(p, files))
+	unusedData, err := unusedDataResult(p, files)
+	if err != nil { // coverage-ignore: unusedDataResult re-reads sidecars the render pass in outputPlan already read
+		return checkBatch{}, nil, err
 	}
-	drift = append(drift, ud...)
-
-	drift = append(drift, checkDeadRefs(p, files)...)
-	drift = append(drift, checkDeadSkillRefs(p, files, eff)...)
-
+	results.append(unusedData)
+	results.append(deadReferenceResult(p, files))
+	results.append(deadSkillReferenceResult(p, files, eff))
 	if fullProfile(p) {
-		drift = append(drift, checkPlans(p, corpus, plans)...)
+		results.append(planResult(p, corpus, plans))
 	}
-	pitfallDrift, err := checkPitfalls(p, corpus, pitfalls)
+	pitfallsResult, err := pitfallResult(p, corpus, pitfalls)
 	if err != nil { // coverage-ignore: the operation supplied its already validated pitfall corpus
-		return nil, nil, err
+		return checkBatch{}, nil, err
 	}
-	drift = append(drift, pitfallDrift...)
-	glossaryDrift, err := checkGlossary(p)
+	results.append(pitfallsResult)
+	glossary, err := glossaryResult(p)
 	if err != nil {
-		return nil, nil, err
+		return checkBatch{}, nil, err
 	}
-	drift = append(drift, glossaryDrift...)
-	tagDrift, err := checkTagVocabulary(p, pitfalls)
-	if err != nil { // coverage-ignore: checkTagVocabulary now fails only through pitfallTagEntries, which reads the same data.pitfalls that checkPitfalls above already read and failed on
-		return nil, nil, err
+	results.append(glossary)
+	tags, err := tagVocabularyResult(p, pitfalls)
+	if err != nil { // coverage-ignore: tagVocabularyResult now fails only through pitfallTagEntries, which reads the same data.pitfalls that pitfallResult above already read and failed on
+		return checkBatch{}, nil, err
 	}
-	drift = append(drift, tagDrift...)
+	results.append(tags)
 	if fullProfile(p) {
-		drift = append(drift, checkADRRelatedLinks(corpus)...)
-		drift = append(drift, checkPendingADRs(p, repo, ctx, corpus)...)
+		results.append(adrRelatedLinkResult(corpus))
+		results.append(pendingADRResult(p, repo, ctx, corpus))
 	}
-	return drift, trackingNotes, nil
+	return results, trackingNotes, nil
+}
+
+// The result adapters are the Phase 1 producer boundary. Their legacy helpers
+// remain available to direct callers, but ordinary CheckReport composition only
+// receives owner-classified batches.
+func sweepConfigTreeResult(p renderInputs, files []RenderedFile, topics topic.Corpus) (checkBatch, error) {
+	drift, err := sweepConfigTree(p, files, topics)
+	if err != nil { // coverage-ignore: the outputPlan render already exercises the same config-tree reads before this adapter
+		return checkBatch{}, err
+	}
+	batch := checkBatch{}
+	batch.errorDrift(propertyReproducibility, drift)
+	return batch, nil
+}
+func unusedVarResult(p renderInputs, files []RenderedFile) checkBatch {
+	batch := checkBatch{}
+	batch.informationDrift(unusedVarDrift(p, files))
+	return batch
+}
+func unusedDataResult(p renderInputs, files []RenderedFile) (checkBatch, error) {
+	drift, err := unusedDataDrift(p, files)
+	if err != nil { // coverage-ignore: the outputPlan render already read the same sidecars before this adapter
+		return checkBatch{}, err
+	}
+	batch := checkBatch{}
+	batch.informationDrift(drift)
+	return batch, nil
+}
+func deadReferenceResult(p renderInputs, files []RenderedFile) checkBatch {
+	batch := checkBatch{}
+	batch.errorDrift(propertyCorrectness, checkDeadRefs(p, files))
+	return batch
+}
+func deadSkillReferenceResult(p renderInputs, files []RenderedFile, eff map[string]bool) checkBatch {
+	batch := checkBatch{}
+	batch.errorDrift(propertyCorrectness, checkDeadSkillRefs(p, files, eff))
+	return batch
+}
+func planResult(p renderInputs, corpus adr.Corpus, plans []plan.Plan) checkBatch {
+	batch := checkBatch{}
+	batch.errorDrift(propertyAuthority, checkPlans(p, corpus, plans))
+	return batch
+}
+func pitfallResult(p renderInputs, corpus adr.Corpus, pitfalls pitfall.Corpus) (checkBatch, error) {
+	drift, err := checkPitfalls(p, corpus, pitfalls)
+	if err != nil { // coverage-ignore: this adapter receives the operation's already validated pitfall corpus
+		return checkBatch{}, err
+	}
+	batch := checkBatch{}
+	batch.errorDrift(propertyCorrectness, drift)
+	return batch, nil
+}
+func glossaryResult(p renderInputs) (checkBatch, error) {
+	drift, err := checkGlossary(p)
+	if err != nil {
+		return checkBatch{}, err
+	}
+	batch := checkBatch{}
+	batch.errorDrift(propertyCorrectness, drift)
+	return batch, nil
+}
+func tagVocabularyResult(p renderInputs, pitfalls pitfall.Corpus) (checkBatch, error) {
+	drift, err := checkTagVocabulary(p, pitfalls)
+	if err != nil { // coverage-ignore: pitfallResult already read and failed on the only fallible tag-vocabulary input
+		return checkBatch{}, err
+	}
+	batch := checkBatch{}
+	batch.errorDrift(propertyCorrectness, drift)
+	return batch, nil
+}
+func adrRelatedLinkResult(corpus adr.Corpus) checkBatch {
+	batch := checkBatch{}
+	batch.errorDrift(propertyAuthority, checkADRRelatedLinks(corpus))
+	return batch
+}
+func pendingADRResult(p renderInputs, repo *awfgit.Repo, ctx context.Context, corpus adr.Corpus) checkBatch {
+	batch := checkBatch{}
+	batch.errorDrift(propertyAuthority, checkPendingADRs(p, repo, ctx, corpus))
+	return batch
+}
+func planArtifactResults(plans []plan.Plan, corpus adr.Corpus) checkBatch {
+	drift, notes := planArtifactReport(plans, corpus)
+	batch := checkBatch{}
+	batch.errorDrift(propertyAuthority, drift)
+	for _, note := range notes {
+		batch.warning(propertyPlanDetail, "plan-advisory", note)
+	}
+	return batch
+}
+func advisoryResultsWithState(p renderInputs, pitfalls pitfall.Corpus, plans []plan.Plan, op *OutputPlan) (checkBatch, error) {
+	advisories, err := advisoryNotesWithState(p, pitfalls, plans, op)
+	if err != nil {
+		return checkBatch{}, err
+	}
+	batch := checkBatch{}
+	for _, note := range advisories.Warnings {
+		batch.warning(propertyHeuristic, "advisory", note)
+	}
+	for _, note := range agentGuideSizeAdvisory(op) {
+		batch.warning(propertyHeuristic, "advisory", note)
+	}
+	for _, note := range advisories.Information {
+		batch.informationItem("advisory", "", note)
+	}
+	return batch, nil
 }
 
 // checkGeneratedTracking compares the operation-owned render writes plus the
 // separately written lock against metadata-only index membership. Resident
 // outputs are outside a nested adopter's index authority and remain excluded.
-func checkGeneratedTracking(nested bool, repo *awfgit.Repo, ctx context.Context, op *OutputPlan) ([]manifest.Drift, []string, error) {
+// The ordinary CheckReport consumes this owner-classified result directly.
+func checkGeneratedTracking(nested bool, repo *awfgit.Repo, ctx context.Context, op *OutputPlan) (checkBatch, []string, error) {
 	if repo == nil {
-		return nil, []string{"generated-artifact tracking is unavailable outside a Git repository"}, nil
+		return checkBatch{}, []string{"generated-artifact tracking is unavailable outside a Git repository"}, nil
 	}
 	indexed, err := repo.IndexPaths(ctx)
 	if err != nil {
-		return nil, nil, err
+		return checkBatch{}, nil, err
 	}
 	present := make(map[string]bool, len(indexed))
 	for _, path := range indexed {
@@ -666,13 +730,13 @@ func checkGeneratedTracking(nested bool, repo *awfgit.Repo, ctx context.Context,
 		}
 		required[file.Path] = true
 	}
-	var drift []manifest.Drift
+	results := checkBatch{}
 	for _, path := range slices.Sorted(maps.Keys(required)) {
 		if !present[path] {
-			drift = append(drift, manifest.Drift{Path: path, Kind: "untracked", Detail: "generated artifact is absent from the Git index; run awf render, then git add -f " + path})
+			results.error(propertyReproducibility, "untracked", path, "generated artifact is absent from the Git index; run awf render, then git add -f "+path)
 		}
 	}
-	return drift, nil, nil
+	return results, nil, nil
 }
 
 func untrackedPaths(drift []manifest.Drift) map[string]bool {
@@ -718,12 +782,19 @@ func checkPendingADRs(p renderInputs, repo *awfgit.Repo, ctx context.Context, co
 // stale, missing, hand-edited, or invalid-frontmatter. The reverse direction is
 // checked too: a rendered path with no lock entry - an artifact enabled since the
 // last sync - is flagged unsynced rather than silently skipped.
-func checkLockedFiles(roots resident.Roots, lock *manifest.Lock, rendered map[string]RenderedFile, trackingDrift []manifest.Drift) []manifest.Drift {
+type lockedFinding struct {
+	Drift    manifest.Drift
+	Property checkresult.Property
+}
+
+// The ordinary CheckReport consumes these owner-classified findings directly;
+// manifest.Drift remains their compatibility evidence projection.
+func checkLockedFiles(roots resident.Roots, lock *manifest.Lock, rendered map[string]RenderedFile, trackingDrift []manifest.Drift) []lockedFinding {
 	untracked := untrackedPaths(trackingDrift)
-	var drift []manifest.Drift
+	var drift []lockedFinding
 	for _, path := range slices.Sorted(maps.Keys(rendered)) {
 		if _, ok := lock.Files[path]; !ok {
-			drift = append(drift, manifest.Drift{Path: path, Kind: "unsynced", Detail: "enabled but not in lock; run awf render"})
+			drift = append(drift, lockedFinding{Drift: manifest.Drift{Path: path, Kind: "unsynced", Detail: "enabled but not in lock; run awf render"}, Property: propertyReproducibility})
 		}
 	}
 	for _, path := range slices.Sorted(maps.Keys(lock.Files)) {
@@ -733,7 +804,7 @@ func checkLockedFiles(roots resident.Roots, lock *manifest.Lock, rendered map[st
 			// Every regeneration-checked path is a planned rendered node. Compare
 			// it once here rather than reconstructing generated outputs elsewhere.
 			if !ok { // coverage-ignore: full Check first builds the complete planned node set; only a direct malformed lock/map call can omit a regeneration node.
-				drift = append(drift, manifest.Drift{Path: path, Kind: "orphaned", Detail: "in lock but no longer produced"})
+				drift = append(drift, lockedFinding{Drift: manifest.Drift{Path: path, Kind: "orphaned", Detail: "in lock but no longer produced"}, Property: propertyReproducibility})
 				continue
 			}
 			onDisk, err := os.ReadFile(roots.ResolveOutput(path))
@@ -741,31 +812,31 @@ func checkLockedFiles(roots resident.Roots, lock *manifest.Lock, rendered map[st
 				if errors.Is(err, os.ErrNotExist) && untracked[path] {
 					continue
 				}
-				drift = append(drift, manifest.Drift{Path: path, Kind: "missing", Detail: "file absent; run awf render"})
+				drift = append(drift, lockedFinding{Drift: manifest.Drift{Path: path, Kind: "missing", Detail: "file absent; run awf render"}, Property: propertyReproducibility})
 				continue
 			}
 			if manifest.Hash(onDisk) != manifest.Hash([]byte(rf.Content)) {
 				if rf.TemplateID == "" {
-					drift = append(drift, manifest.Drift{Path: path, Kind: "stale", Detail: "generated output out of date; run awf render"})
+					drift = append(drift, lockedFinding{Drift: manifest.Drift{Path: path, Kind: "stale", Detail: "generated output out of date; run awf render"}, Property: propertyReproducibility})
 				} else {
 					// touches-state: rendering/inplace-and-placeholders:in-place-tamper-drift - awf-region/structure edit drifts, in-place edit does not; proof in check_test.go
-					drift = append(drift, manifest.Drift{Path: path, Kind: "hand-edited", Detail: "on-disk output differs from the regenerated file; run awf render to restore awf-owned regions"})
+					drift = append(drift, lockedFinding{Drift: manifest.Drift{Path: path, Kind: "hand-edited", Detail: "on-disk output differs from the regenerated file; run awf render to restore awf-owned regions"}, Property: propertyReproducibility})
 				}
 			}
 			continue
 		}
 		if !ok {
-			drift = append(drift, manifest.Drift{Path: path, Kind: "orphaned", Detail: "in lock but no longer produced"})
+			drift = append(drift, lockedFinding{Drift: manifest.Drift{Path: path, Kind: "orphaned", Detail: "in lock but no longer produced"}, Property: propertyReproducibility})
 			continue
 		}
 		if rf.TemplateHash != e.TemplateHash || rf.ConfigHash != e.ConfigHash {
 			// stale takes precedence: a re-sync overwrites any hand-edit, so it
 			// is the actionable signal - one drift entry per path.
-			drift = append(drift, manifest.Drift{Path: path, Kind: "stale", Detail: "template or config changed; run awf render"})
+			drift = append(drift, lockedFinding{Drift: manifest.Drift{Path: path, Kind: "stale", Detail: "template or config changed; run awf render"}, Property: propertyReproducibility})
 			continue
 		}
 		if finding, found := classifyFrozenOutputFreshness(rf, e); found {
-			drift = append(drift, finding)
+			drift = append(drift, lockedFinding{Drift: finding, Property: propertyReproducibility})
 			continue
 		}
 		onDisk, err := os.ReadFile(roots.ResolveOutput(path))
@@ -773,18 +844,18 @@ func checkLockedFiles(roots resident.Roots, lock *manifest.Lock, rendered map[st
 			if errors.Is(err, os.ErrNotExist) && untracked[path] {
 				continue
 			}
-			drift = append(drift, manifest.Drift{Path: path, Kind: "missing", Detail: "file absent; run awf render"})
+			drift = append(drift, lockedFinding{Drift: manifest.Drift{Path: path, Kind: "missing", Detail: "file absent; run awf render"}, Property: propertyReproducibility})
 			continue
 		}
 		if finding, found := classifyFrozenObservedDrift(rf, e, onDisk, "on-disk output differs from lock; run awf render to discard the edit, or move it into a .awf convention part to keep it"); found {
-			drift = append(drift, finding)
+			drift = append(drift, lockedFinding{Drift: finding, Property: propertyReproducibility})
 			continue
 		}
 		// In-sync skill/agent files must still carry valid frontmatter (subordinate
 		// to the hash kinds above - a re-sync is the fix for those).
 		if rf.Policy.ValidateFrontmatter {
 			if err := validateArtifact(onDisk, rf.Encoder); err != nil {
-				drift = append(drift, manifest.Drift{Path: path, Kind: "invalid-frontmatter", Detail: err.Error()})
+				drift = append(drift, lockedFinding{Drift: manifest.Drift{Path: path, Kind: "invalid-frontmatter", Detail: err.Error()}, Property: propertyReproducibility})
 			}
 		}
 	}
