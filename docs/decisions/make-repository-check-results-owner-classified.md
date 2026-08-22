@@ -14,9 +14,10 @@ classifies every existing check by protected property. ADR-0296 assigns each che
 owner and reserves policy-free ordered aggregation for RepositoryChecker. ADR-0299 supplies one
 Publisher-produced output plan to every participating consumer; the RF-004 preparation-reuse
 boundary and current Publisher preparation seam also preserve reuse of derived corpora. RF-004 must
-realize those decisions without changing working or staged universes, result order, rendered output,
-Error-only exit behavior, failure propagation, direct-child suppression, or compatibility
-multiplicity.
+realize those decisions without changing working or staged universes, finding contents, category
+membership, Error-only exit behavior, failure propagation, direct-child suppression, or compatibility
+multiplicity. Aggregation and presentation remain deterministic, but relative placement among items in
+one Warning list is not a compatibility boundary.
 
 The current implementation does not yet carry that meaning at its boundary. `internal/project/check.go`
 combines individual policies, compatibility projection, and aggregate construction. Ranked errors
@@ -58,9 +59,11 @@ configuration, advisory, and compatibility functions in `internal/project/check.
    results and performs only explicit deterministic aggregation. It does not implement individual
    check policy, prepare or rediscover inputs, rebuild Publisher plans or corpora, select policy
    through a registry, or introduce configurable severity. Working and staged composition retain
-   their distinct universes, established semantic order, rendered output, failure versus finding
-   behavior, direct-child suppression, plan-note deduplication, ordinary evidence multiplicity,
-   compatibility projections and output multiplicity, and Error-only exit mapping.
+   their distinct universes, established semantic operation order, rendered finding content and
+   categories, failure versus finding behavior, direct-child suppression, plan-note deduplication,
+   compatibility projections and output multiplicity, and Error-only exit mapping. It preserves
+   semantic operation and presentation-category order and produces deterministic lists without
+   reproducing legacy relative placement among Warning items.
 
 ## State changes
 
@@ -79,8 +82,10 @@ new model rather than competing policy homes.
 
 The extraction moves policy and tests across package boundaries and requires explicit translations
 for existing `manifest.Drift`, warning, and note callers. Preserving those projections costs some
-bounded compatibility code. Current-state coordination, command use-case extraction, and
-compatibility deletion remain assigned to later authorized work.
+bounded compatibility code. Warning contents, category membership, multiplicity, and deterministic
+presentation remain stable, but consumers and tests cannot rely on legacy relative placement among
+Warning items. Current-state coordination, command use-case extraction, and compatibility deletion
+remain assigned to later authorized work.
 
 ## Alternatives Considered
 
@@ -90,9 +95,11 @@ compatibility deletion remain assigned to later authorized work.
 | Register checks through a plugin framework | The check set is closed and repository-owned; registration adds speculative indirection and contradicts ADR-0296. |
 | Move all policy into RepositoryChecker files | File splitting would reduce line length without establishing one semantic owner or a policy-free aggregator. |
 | Collapse working and staged preparation | Their snapshots and failure contracts are distinct, and current-state coordination remains reserved for RF-005. |
+| Reproduce legacy Warning-item order through compatibility partitions | Relative placement within one Warning list is not a protected compatibility boundary, so preserving it does not justify additional compatibility machinery. |
 
 ## Status history
 
 - 2026-08-22: Proposed
 - 2026-08-22: Implementing; content-sha256: bf4cf6ba626fa793c16a2e55945b265e551e11bf13ab9fe0ae0d89bec30acde1
 - 2026-08-22: Applied; operations: update `tooling/cli:repo-check-capability-plan`, update `tooling/cli:check-severity-by-protected-property`, update `rendering/project-output-plan:check-report-single-plan`, update `rendering/sync-and-drift:agent-guide-size-advisory`
+- 2026-08-22: Amended; content-sha256: bbd8c48cc788494f8e6f3c6d663c5dc8f20c504afdf9bd4e371a386e8f758a02
