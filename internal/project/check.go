@@ -24,6 +24,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/plancheck"
 	"github.com/hypnotox/agentic-workflows/internal/referencecheck"
 	"github.com/hypnotox/agentic-workflows/internal/render"
+	"github.com/hypnotox/agentic-workflows/internal/repositorycheck"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/vocabularycheck"
 )
@@ -190,116 +191,51 @@ func artifactLabel(tid string) string {
 	}
 }
 
-// CheckReport is the ordinary check operation's drift, ranked warnings, and
-// unranked information, derived from one operation-owned plan parse.
-type CheckReport struct {
-	Drift               []manifest.Drift
-	Warnings            []string
-	Information         []string
-	TrackingInformation []string
-	PlanWarnings        []string
-	Result              checkresult.Result
-	// Notes, TrackingNotes, and PlanNotes retain the pre-classification test and
-	// API projection. New operation reports set classified and use the fields above.
-	Notes         []string
-	TrackingNotes []string
-	PlanNotes     []string
-	classified    bool
-}
-
-// OrdinaryWarnings returns ranked non-plan aggregate warning notes.
-func (r CheckReport) OrdinaryWarnings() []string {
-	if !r.classified {
-		return slices.Clone(r.Notes)
-	}
-	return resultFindingDetails(r.Result, severity.Warn, "advisory")
-}
-
-// PlanWarningNotes returns ranked plan warning notes for sink deduplication.
-func (r CheckReport) PlanWarningNotes() []string {
-	if !r.classified {
-		return slices.Clone(r.PlanNotes)
-	}
-	return resultFindingDetails(r.Result, severity.Warn, "plan-advisory")
-}
-
-// AggregateInformation returns unranked aggregate information notes.
-func (r CheckReport) AggregateInformation() []string {
-	if !r.classified {
-		return nil
-	}
-	return resultInformationDetails(r.Result, "advisory")
-}
-
-// DirectTrackingInformation returns unranked tracking information shown by
-// both direct drift and aggregate checks.
-func (r CheckReport) DirectTrackingInformation() []string {
-	if !r.classified {
-		return slices.Clone(r.TrackingNotes)
-	}
-	return resultInformationDetails(r.Result, "tracking")
-}
-
-func resultFindingDetails(result checkresult.Result, rank severity.Rank, kind string) []string {
-	var details []string
-	for _, finding := range result.Findings() {
-		if finding.Rank == rank && finding.Evidence.Kind == kind {
-			details = append(details, finding.Evidence.Detail)
-		}
-	}
-	return details
-}
-
-func resultInformationDetails(result checkresult.Result, kind string) []string {
-	var details []string
-	for _, information := range result.Information() {
-		if information.Evidence.Kind == kind {
-			details = append(details, information.Evidence.Detail)
-		}
-	}
-	return details
-}
+// CheckReport is the ordinary check operation's compatibility projection.
+type CheckReport = repositorycheck.Report
 
 // CheckReport performs one ordinary project check. Plans are parsed once and
-// the typed set is threaded to both blocking and advisory consumers.
+// completed owner results are placed into RepositoryChecker's explicit slots.
 func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context, semantics OperationSemantics, op *OutputPlan) (CheckReport, error) {
 	if err := configcheck.ValidateCommandWiring(p.cfg); err != nil {
 		return CheckReport{}, err
 	}
 	corpus, pitfalls, eff := semantics.ADRs, semantics.Pitfalls, semantics.EffectiveSkills
 	plans, parseErr := semantics.Plans, semantics.PlansError
-	batch := checkBatch{}
-	planDiagnosticResult, err := plancheck.Diagnostics(parseErr)
+	planDiagnostics, err := plancheck.Diagnostics(parseErr)
 	if err != nil {
 		return CheckReport{}, err
 	}
-	planResults := checkBatch{}
-	planResults.appendResult(planDiagnosticResult)
 	vocabularyResults, err := vocabularycheck.Evaluate(semantics.Vocabulary)
 	if err != nil { // coverage-ignore: Publisher preparation supplied validated vocabulary semantics
 		return CheckReport{}, err
 	}
-	producerResults, trackingNotes, err := checkWithTrackingState(p, repo, ctx, corpus, pitfalls, eff, plans, semantics.GeneratedOutput, op, vocabularyResults)
+	trackingResult, producerResults, tracking, err := checkWithTrackingState(p, repo, ctx, corpus, pitfalls, eff, plans, semantics.GeneratedOutput, op, vocabularyResults)
 	if err != nil {
 		return CheckReport{}, err
 	}
-	batch.append(producerResults)
-	batch.append(planResults)
-	planArtifacts := checkBatch{}
+	var planArtifacts checkresult.Result
+	var planArtifactErrors, deferredPlanWarnings checkresult.Result
 	if fullProfile(p) {
 		planArtifacts = planArtifactResults(plans, corpus)
-		batch.append(planArtifacts.withoutWarnings())
+		planArtifactErrors, deferredPlanWarnings, err = repositorycheck.SplitWarnings(planArtifacts)
+		if err != nil { // coverage-ignore: splitting PlanChecker's validated immutable result cannot invalidate evidence
+			return CheckReport{}, err
+		}
 	}
 	advisories, err := advisoryResultsWithState(p, plans, op, vocabularyResults)
 	if err != nil { // coverage-ignore: Publisher preparation validated advisory inputs and the output plan is immutable
 		return CheckReport{}, err
 	}
-	batch.append(advisories)
-	for _, note := range trackingNotes {
-		batch.informationItem("tracking", "", note)
-	}
-	batch.append(planArtifacts.warningsOnly())
-	return reportFromBatch(batch)
+	return repositorycheck.Compose(repositorycheck.Inputs{
+		Tracking:             trackingResult,
+		ProducerResults:      producerResults,
+		PlanDiagnostics:      repositorycheck.Slot{Result: planDiagnostics},
+		PlanArtifactErrors:   repositorycheck.Slot{Result: planArtifactErrors},
+		OrdinaryAdvisories:   repositorycheck.Slot{Result: advisories},
+		TrackingInformation:  repositorycheck.Slot{Result: tracking},
+		DeferredPlanWarnings: repositorycheck.Slot{Result: deferredPlanWarnings},
+	})
 }
 
 // Dynamic plan diagnostics originate in a closed parser category set. Refusing
@@ -313,68 +249,73 @@ const (
 	propertyPlanDetail      checkresult.Property = "plan-detail-quality"
 )
 
-func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, eff map[string]bool, plans []plan.Plan, generatedInput generatedcheck.AdditionalInput, op *OutputPlan, vocabularyResults vocabularycheck.Results) (checkBatch, []string, error) {
+func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, eff map[string]bool, plans []plan.Plan, generatedInput generatedcheck.AdditionalInput, op *OutputPlan, vocabularyResults vocabularycheck.Results) (repositorycheck.Slot, []repositorycheck.Slot, checkresult.Result, error) {
 	var indexPaths generatedcheck.IndexPaths
 	if repo != nil {
 		indexPaths = repo.IndexPaths
 	}
 	tracking, err := generatedcheck.Tracking(ctx, p.isNested(), indexPaths, *op)
 	if err != nil { // coverage-ignore: the prepared output plan already read every output
-		return checkBatch{}, nil, err
-	}
-	var trackingNotes []string
-	for _, item := range tracking.Information() {
-		trackingNotes = append(trackingNotes, item.Evidence.Detail)
+		return repositorycheck.Slot{}, nil, checkresult.Result{}, err
 	}
 	lock, found, err := manifest.LoadOptional(lockPath(p.root()))
 	if err != nil { // coverage-ignore: prepared configuration facts already validated generated inputs
-		return checkBatch{}, nil, err
+		return repositorycheck.Slot{}, nil, checkresult.Result{}, err
 	}
-	results := checkBatch{}
-	results.appendResult(tracking)
+	results := []repositorycheck.Slot{}
 	if !found {
 		if len(tracking.Findings()) > 0 {
-			return results, trackingNotes, nil
+			return repositorycheck.Slot{Result: tracking}, results, trackingInformation(tracking), nil
 		}
-		return checkBatch{}, nil, errors.New("no lock (run awf render)")
+		return repositorycheck.Slot{}, nil, checkresult.Result{}, errors.New("no lock (run awf render)")
 	}
 	locked, err := generatedcheck.Locked(p.isNested(), lock, *op, func(path string) ([]byte, error) { return os.ReadFile(p.residentRoots().ResolveOutput(path)) }, tracking)
 	if err != nil { // coverage-ignore: ReferenceChecker has no operational failure path for prepared inputs
-		return checkBatch{}, nil, err
+		return repositorycheck.Slot{}, nil, checkresult.Result{}, err
 	}
-	results.appendResult(locked)
+	results = append(results, repositorycheck.Slot{Result: locked})
 	generated, err := generatedcheck.Additional(generatedInput, *op)
 	if err != nil { // coverage-ignore: Additional constructs fixed nonempty evidence from immutable prepared semantic values
-		return checkBatch{}, nil, err
+		return repositorycheck.Slot{}, nil, checkresult.Result{}, err
 	}
-	results.appendResult(generated)
+	results = append(results, repositorycheck.Slot{Result: generated, IncludeInformationInDrift: true})
 	references, err := referenceResult(p, *op, eff)
 	if err != nil { // coverage-ignore: pitfall preparation read the tag inputs
-		return checkBatch{}, nil, err
+		return repositorycheck.Slot{}, nil, checkresult.Result{}, err
 	}
-	results.appendResult(references)
+	results = append(results, repositorycheck.Slot{Result: references})
 	if fullProfile(p) {
-		results.append(planResult(p, corpus, plans))
+		results = append(results, repositorycheck.Slot{Result: planResult(p, corpus, plans)})
 	}
 	pitfallsResult, err := pitfallResult(p, corpus, pitfalls)
 	if err != nil { // coverage-ignore: the operation supplied its validated pitfall corpus
-		return checkBatch{}, nil, err
+		return repositorycheck.Slot{}, nil, checkresult.Result{}, err
 	}
-	results.append(pitfallsResult)
+	results = append(results, repositorycheck.Slot{Result: pitfallsResult})
 	for _, result := range []checkresult.Result{vocabularyResults.Glossary, vocabularyResults.Tags} {
-		vocabularyBatch := checkBatch{}
-		vocabularyBatch.appendResult(result)
-		results.append(vocabularyBatch.withoutWarnings())
+		withoutWarnings, _, err := repositorycheck.SplitWarnings(result)
+		if err != nil { // coverage-ignore: splitting VocabularyChecker's validated immutable result cannot invalidate evidence
+			return repositorycheck.Slot{}, nil, checkresult.Result{}, err
+		}
+		results = append(results, repositorycheck.Slot{Result: withoutWarnings})
 	}
 	if fullProfile(p) {
 		related, err := adrRelatedResult(corpus)
 		if err != nil { // coverage-ignore: the immutable ADR corpus is already validated
-			return checkBatch{}, nil, err
+			return repositorycheck.Slot{}, nil, checkresult.Result{}, err
 		}
-		results.appendResult(related)
-		results.append(pendingADRResult(p, repo, ctx, corpus))
+		results = append(results, repositorycheck.Slot{Result: related})
+		results = append(results, repositorycheck.Slot{Result: pendingADRResult(p, repo, ctx, corpus)})
 	}
-	return results, trackingNotes, nil
+	return repositorycheck.Slot{Result: tracking}, results, trackingInformation(tracking), nil
+}
+
+func trackingInformation(result checkresult.Result) checkresult.Result {
+	tracking, err := checkresult.New(nil, result.Information())
+	if err != nil { // coverage-ignore: tracking owner already validates its immutable evidence
+		return checkresult.Result{}
+	}
+	return tracking
 }
 
 func referenceResult(p renderInputs, op outputplan.Plan, effective map[string]bool) (checkresult.Result, error) {
@@ -395,54 +336,51 @@ func adrRelatedResult(corpus adr.Corpus) (checkresult.Result, error) {
 
 // The result adapters are the Phase 1 producer boundary. Their legacy helpers
 // remain available to direct callers, but ordinary CheckReport composition only
-// receives owner-classified batches.
-func planResult(p renderInputs, corpus adr.Corpus, plans []plan.Plan) checkBatch {
+// receives owner-classified results.
+func planResult(p renderInputs, corpus adr.Corpus, plans []plan.Plan) checkresult.Result {
 	result, err := plancheck.Validity(plans, corpus, config.AuditScopes(p.cfg.Audit), fullProfile(p))
 	if err != nil { // coverage-ignore: validity over prepared semantic values is infallible
-		return checkBatch{}
+		return checkresult.Result{}
 	}
-	batch := checkBatch{}
-	batch.appendResult(result)
-	return batch
+	return result
 }
-func pitfallResult(p renderInputs, corpus adr.Corpus, pitfalls pitfall.Corpus) (checkBatch, error) {
-	result, err := pitfallcheck.Check(p.cfg.Domains, pitfalls, corpus)
-	if err != nil { // coverage-ignore: pitfall checks over prepared corpora are infallible
-		return checkBatch{}, err
+func pitfallResult(p renderInputs, corpus adr.Corpus, pitfalls pitfall.Corpus) (checkresult.Result, error) {
+	return pitfallcheck.Check(p.cfg.Domains, pitfalls, corpus)
+}
+func pendingADRResult(p renderInputs, repo *awfgit.Repo, ctx context.Context, corpus adr.Corpus) checkresult.Result {
+	var findings []checkresult.Finding
+	for _, drift := range checkPendingADRs(p, repo, ctx, corpus) {
+		findings = append(findings, checkresult.Finding{Rank: severity.Error, Property: propertyAuthority, Evidence: checkresult.Evidence{Kind: drift.Kind, Path: drift.Path, Detail: drift.Detail}})
 	}
-	batch := checkBatch{}
-	batch.appendResult(result)
-	return batch, nil
+	result, err := checkresult.New(findings, nil)
+	if err != nil { // coverage-ignore: pending ADR evidence is constructed from nonempty corpus records
+		return checkresult.Result{}
+	}
+	return result
 }
-func pendingADRResult(p renderInputs, repo *awfgit.Repo, ctx context.Context, corpus adr.Corpus) checkBatch {
-	batch := checkBatch{}
-	batch.errorDrift(propertyAuthority, checkPendingADRs(p, repo, ctx, corpus))
-	return batch
-}
-func planArtifactResults(plans []plan.Plan, corpus adr.Corpus) checkBatch {
+func planArtifactResults(plans []plan.Plan, corpus adr.Corpus) checkresult.Result {
 	result, err := plancheck.Artifact(plans, corpus)
 	if err != nil { // coverage-ignore: artifact checks over prepared semantic values are infallible
-		return checkBatch{}
+		return checkresult.Result{}
 	}
-	batch := checkBatch{}
-	batch.appendResult(result)
-	return batch
+	return result
 }
-func advisoryResultsWithState(p renderInputs, plans []plan.Plan, op *OutputPlan, vocabularyResults vocabularycheck.Results) (checkBatch, error) {
+func advisoryResultsWithState(p renderInputs, plans []plan.Plan, op *OutputPlan, vocabularyResults vocabularycheck.Results) (checkresult.Result, error) {
 	advisories := advisoryNotesWithState(p, plans, op, vocabularyResults)
-	batch := checkBatch{}
+	var findings []checkresult.Finding
 	for _, note := range advisories.Warnings {
-		batch.warning(propertyHeuristic, "advisory", note)
+		findings = append(findings, checkresult.Finding{Rank: severity.Warn, Property: propertyHeuristic, Evidence: checkresult.Evidence{Kind: "advisory", Detail: note}})
 	}
 	guide, err := generatedcheck.GuideSizeAdvisory(*op)
 	if err != nil { // coverage-ignore: GuideSizeAdvisory has no fallible prepared-plan path
-		return checkBatch{}, err
+		return checkresult.Result{}, err
 	}
-	batch.appendResult(guide)
+	findings = append(findings, guide.Findings()...)
+	information := guide.Information()
 	for _, note := range advisories.Information {
-		batch.informationItem("advisory", "", note)
+		information = append(information, checkresult.Information{Evidence: checkresult.Evidence{Kind: "advisory", Detail: note}})
 	}
-	return batch, nil
+	return checkresult.New(findings, information)
 }
 
 // checkPendingADRs refuses a slug-identified pending record on the integration

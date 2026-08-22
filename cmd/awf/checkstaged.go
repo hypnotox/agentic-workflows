@@ -7,23 +7,28 @@ import (
 	"io"
 	"strings"
 
-	"github.com/hypnotox/agentic-workflows/internal/manifest"
-	"github.com/hypnotox/agentic-workflows/internal/presentation"
+	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/repositorycheck"
 	"golang.org/x/mod/semver"
 )
 
 type checkStagedDependencies struct {
-	stateRoot              func(context.Context, string) (project.CurrentStateReport, error)
-	driftRoot              func(context.Context, string) ([]manifest.Drift, error)
-	currentStateCategories func(project.CurrentStateReport, bool) ([]presentation.ReportCategory, error)
-	driftCategories        func([]manifest.Drift, bool) ([]presentation.ReportCategory, error)
+	stateRoot func(context.Context, string) (project.CurrentStateReport, error)
+	driftRoot func(context.Context, string) (checkresult.Result, error)
+	present   func(checkresult.Result, string, bool) (repositorycheck.Presentation, error)
 }
 
 func productionCheckStagedDependencies() checkStagedDependencies {
 	return checkStagedDependencies{
-		stateRoot: project.CheckStagedRoot, driftRoot: stagedDrift,
-		currentStateCategories: project.CurrentStateCategories, driftCategories: project.DriftCategories,
+		stateRoot: project.CheckStagedRoot,
+		driftRoot: stagedDriftResult,
+		present: func(result checkresult.Result, check string, evidence bool) (repositorycheck.Presentation, error) {
+			if evidence {
+				return repositorycheck.PresentEvidence(result, check)
+			}
+			return repositorycheck.Present(result, check)
+		},
 	}
 }
 
@@ -78,30 +83,35 @@ func collectCheckStagedSelectionWith(ctx context.Context, root string, planNotes
 					collection.warnings = append(collection.warnings, note)
 				}
 			}
-			categories, err := dependencies.currentStateCategories(report, true)
-			if err != nil {
-				collection.operational = append(collection.operational, err)
+			result, resultErr := report.Result()
+			if resultErr != nil {
+				collection.operational = append(collection.operational, resultErr)
 			} else {
-				collection.categories = append(collection.categories, categories...)
-				if len(report.Findings()) > 0 {
-					collection.failures = append(collection.failures, errors.New("check staged state failed"))
+				projected, projectErr := dependencies.present(repositorycheck.ErrorsOnly(result), "staged current-state", false)
+				if projectErr != nil {
+					collection.operational = append(collection.operational, projectErr)
+				} else {
+					collection.presentation = collection.presentation.Append(projected)
+					if repositorycheck.HasErrors(result) {
+						collection.failures = append(collection.failures, errors.New("check staged state failed"))
+					}
 				}
 			}
 		}
 	}
 	if drift {
-		findings, err := dependencies.driftRoot(ctx, root)
+		result, err := dependencies.driftRoot(ctx, root)
 		if err != nil {
 			collection.operational = append(collection.operational, err)
 		} else {
-			categories, err := dependencies.driftCategories(findings, true)
-			if err != nil {
-				collection.operational = append(collection.operational, err)
+			projected, projectErr := dependencies.present(result, "staged drift", true)
+			if projectErr != nil {
+				collection.operational = append(collection.operational, projectErr)
 			} else {
-				collection.categories = append(collection.categories, categories...)
-			}
-			if hasCheckErrors(categories) {
-				collection.failures = append(collection.failures, errors.New("check staged drift failed"))
+				collection.presentation = collection.presentation.Append(projected)
+				if repositorycheck.HasErrors(result) {
+					collection.failures = append(collection.failures, errors.New("check staged drift failed"))
+				}
 			}
 		}
 	}

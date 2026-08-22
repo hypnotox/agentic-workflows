@@ -6,10 +6,10 @@ import (
 	"io"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/execution"
 	"github.com/hypnotox/agentic-workflows/internal/memorycite"
-	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
 
@@ -18,7 +18,16 @@ func runMemoryGate(ctx context.Context, root string, stdout io.Writer) error {
 	return runRepoCheckSelection(ctx, root, stdout, []execution.StepID{repoStepMemory}, execution.StopOnFailure, false, productionRepoCheckDependencies())
 }
 
-func memoryCheckFindings(cfg *config.Config, tree *snapshot.Tree) ([]presentation.ReportCategory, error) {
+func memoryCheckResult(cfg *config.Config, tree *snapshot.Tree) (checkresult.Result, error) {
+	findings := memoryFindings(cfg, tree)
+	result, err := memorycite.Result(findings)
+	if err != nil { // coverage-ignore: Scan constructs every finding with fixed nonempty evidence
+		return checkresult.Result{}, err
+	}
+	return result, memoryFindingError(findings)
+}
+
+func memoryFindings(cfg *config.Config, tree *snapshot.Tree) []memorycite.Finding {
 	var configured []config.MemoryExemption
 	if cfg.MemoryCite != nil {
 		configured = cfg.MemoryCite.Exemptions
@@ -40,13 +49,12 @@ func memoryCheckFindings(cfg *config.Config, tree *snapshot.Tree) ([]presentatio
 			}
 		}
 	}
-	findings := memorycite.Scan(files, exemptions)
-	categories, err := memorycite.Categories(findings)
-	if err != nil { // coverage-ignore: Categories receives only scanner Findings and builds every nonempty record from fixed templates
-		return nil, err
+	return memorycite.Scan(files, exemptions)
+}
+
+func memoryFindingError(findings []memorycite.Finding) error {
+	if len(findings) == 0 {
+		return nil
 	}
-	if len(findings) > 0 {
-		return categories, producedCheckFailure{errors.New("check repo memory: remove the concrete effort-owned memory citation, name the bare .awf/efforts/ directory, use an angle-bracket slug placeholder, or exempt the path in memoryCite.exemptions")}
-	}
-	return categories, nil
+	return producedCheckFailure{errors.New("check repo memory: remove the concrete effort-owned memory citation, name the bare .awf/efforts/ directory, use an angle-bracket slug placeholder, or exempt the path in memoryCite.exemptions")}
 }

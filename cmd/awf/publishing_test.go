@@ -39,8 +39,8 @@ func TestStagedPublisherPreparationFailuresPropagate(t *testing.T) {
 		name string
 		run  func(context.Context, string) error
 	}{
-		{"drift", func(ctx context.Context, root string) error {
-			_, err := stagedDrift(ctx, root)
+		{"drift result", func(ctx context.Context, root string) error {
+			_, err := stagedDriftResult(ctx, root)
 			return err
 		}},
 		{"context state", func(ctx context.Context, root string) error {

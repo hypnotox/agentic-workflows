@@ -9,12 +9,13 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/execution"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
-	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/repositorycheck"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"golang.org/x/mod/semver"
 )
@@ -39,19 +40,18 @@ type repoCheckInputs struct {
 	checkReport  project.CheckReport
 	currentState project.CurrentStateReport
 	index        *snapshot.Tree
-	categories   []presentation.ReportCategory
+	presentation repositorycheck.Presentation
 	warnings     []string
 	information  []string
 }
 
 type repoCheckDependencies struct {
-	loadConfig             func(string) (*config.Config, error)
-	openProject            func(context.Context, string, *config.Config) (*project.ProjectState, *awfgit.Repo, error)
-	checkReport            func(context.Context, *project.ProjectState, *config.Config, *awfgit.Repo) (project.CheckReport, error)
-	currentState           func(context.Context, string, *awfgit.Repo) (project.CurrentStateReport, error)
-	indexTree              func(context.Context, string) (*snapshot.Tree, error)
-	driftCategories        func([]manifest.Drift, bool) ([]presentation.ReportCategory, error)
-	currentStateCategories func(project.CurrentStateReport, bool) ([]presentation.ReportCategory, error)
+	loadConfig   func(string) (*config.Config, error)
+	openProject  func(context.Context, string, *config.Config) (*project.ProjectState, *awfgit.Repo, error)
+	checkReport  func(context.Context, *project.ProjectState, *config.Config, *awfgit.Repo) (project.CheckReport, error)
+	currentState func(context.Context, string, *awfgit.Repo) (project.CurrentStateReport, error)
+	indexTree    func(context.Context, string) (*snapshot.Tree, error)
+	present      func(checkresult.Result, string, bool) (repositorycheck.Presentation, error)
 }
 
 type repoIndexPreparationError struct{ err error }
@@ -94,8 +94,12 @@ func productionRepoCheckDependencies() repoCheckDependencies {
 		currentState: func(ctx context.Context, root string, repo *awfgit.Repo) (project.CurrentStateReport, error) {
 			return project.CheckCurrentState(root, repo, ctx)
 		},
-		driftCategories:        project.DriftCategories,
-		currentStateCategories: project.CurrentStateCategories,
+		present: func(result checkresult.Result, check string, evidence bool) (repositorycheck.Presentation, error) {
+			if evidence {
+				return repositorycheck.PresentEvidence(result, check)
+			}
+			return repositorycheck.Present(result, check)
+		},
 		indexTree: func(ctx context.Context, root string) (*snapshot.Tree, error) {
 			tree, err := stagedTree(ctx, root)
 			if err != nil {
@@ -172,12 +176,12 @@ func repoCheckSystem(root string, aggregate bool, leadingNotes []string, planNot
 								}
 							}
 						}
-						categories, err := deps.driftCategories(report.Drift, false)
+						projected, err := deps.present(report.DirectResult, "drift", true)
 						if err != nil {
 							return err
 						}
-						inputs.categories = append(inputs.categories, categories...)
-						if hasCheckErrors(categories) {
+						inputs.presentation = inputs.presentation.Append(projected)
+						if repositorycheck.HasErrors(report.DirectResult) {
 							return producedCheckFailure{errors.New("check repo drift failed")}
 						}
 						return nil
@@ -187,12 +191,16 @@ func repoCheckSystem(root string, aggregate bool, leadingNotes []string, planNot
 					actions = append(actions, execution.BoundAction{Step: step, Run: func(context.Context) error {
 						inputs.warnings = append(inputs.warnings, report.Warnings()...)
 						inputs.information = append(inputs.information, report.Information()...)
-						categories, err := deps.currentStateCategories(report, false)
+						result, err := report.Result()
 						if err != nil {
 							return err
 						}
-						inputs.categories = append(inputs.categories, categories...)
-						if len(report.Findings()) > 0 {
+						projected, err := deps.present(repositorycheck.ErrorsOnly(result), "current-state", false)
+						if err != nil {
+							return err
+						}
+						inputs.presentation = inputs.presentation.Append(projected)
+						if repositorycheck.HasErrors(result) {
 							return producedCheckFailure{errors.New("check repo state failed")}
 						}
 						return nil
@@ -200,15 +208,23 @@ func repoCheckSystem(root string, aggregate bool, leadingNotes []string, planNot
 				case repoStepProse:
 					cfg, tree := inputs.config, inputs.index
 					actions = append(actions, execution.BoundAction{Step: step, Run: func(context.Context) error {
-						categories, err := proseCheckFindings(cfg, tree)
-						inputs.categories = append(inputs.categories, categories...)
+						result, err := proseCheckResult(cfg, tree)
+						if err != nil {
+							return err
+						}
+						projected, err := deps.present(result, "prose", false)
+						inputs.presentation = inputs.presentation.Append(projected)
 						return err
 					}})
 				case repoStepMemory:
 					cfg, tree := inputs.config, inputs.index
 					actions = append(actions, execution.BoundAction{Step: step, Run: func(context.Context) error {
-						categories, err := memoryCheckFindings(cfg, tree)
-						inputs.categories = append(inputs.categories, categories...)
+						result, err := memoryCheckResult(cfg, tree)
+						projected, projectErr := deps.present(result, "memory", false)
+						inputs.presentation = inputs.presentation.Append(projected)
+						if projectErr != nil {
+							return projectErr
+						}
 						return err
 					}})
 				}
@@ -244,7 +260,7 @@ func collectRepoCheckSelectionWithPlanNotes(ctx context.Context, root string, se
 	if err != nil {
 		return checkCollection{}, err
 	}
-	collection := checkCollection{warnings: inputs.warnings, information: inputs.information, categories: inputs.categories}
+	collection := checkCollection{warnings: inputs.warnings, information: inputs.information, presentation: inputs.presentation}
 	for _, outcome := range outcomes {
 		if outcome.Err == nil {
 			continue
@@ -265,7 +281,7 @@ func renderCheckCollection(stdout io.Writer, collection checkCollection) error {
 	if len(collection.operational) > 0 {
 		return errors.Join(collection.operational...)
 	}
-	report, err := checkReport(collection.warnings, collection.information, collection.categories)
+	report, err := checkReport(collection.warnings, collection.information, collection.presentation)
 	if err != nil {
 		return err
 	}
@@ -280,15 +296,6 @@ func renderCheckCollection(stdout io.Writer, collection checkCollection) error {
 		return &producedReportError{collection.failures[0]}
 	}
 	return nil
-}
-
-func hasCheckErrors(categories []presentation.ReportCategory) bool {
-	for _, category := range categories {
-		if category.Label == "errors" && len(category.Records) > 0 {
-			return true
-		}
-	}
-	return false
 }
 
 func repoScannerErrorPrefix(selected []execution.StepID) string {

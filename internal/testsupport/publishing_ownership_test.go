@@ -113,7 +113,7 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 		"preparePublisher":                {},
 		"operationPreparation":            {preparePublisher: 1},
 		"workingContextState":             {preparePublisher: 1, plan: 1},
-		"stagedDrift":                     {preparePublisher: 1, plan: 1},
+		"stagedDriftResult":               {preparePublisher: 1, plan: 1},
 		"stagedContextState":              {preparePublisher: 1, plan: 1},
 		"productionRepoCheckDependencies": {operationPreparation: 1, plan: 1},
 		"initAdvisoryNotes":               {injectedPrepare: 1, plan: 1},

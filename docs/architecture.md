@@ -16,7 +16,9 @@ awf renders workflow guidance from committed `.awf/` configuration. The CLI owns
 - `internal/projectstate`: owns immutable loaded project facts and resolved target declarations below application coordination.
 - `internal/outputplan`: owns neutral immutable output declarations, policies, recipes, rendered outputs, nodes, and operation plans shared below application coordination.
 - `internal/publisher`: the application-level Publisher constructs output plans, coordinates rendering and publication, and owns immutable publication Results from immutable project facts plus an explicit tree reader.
-- `internal/project`: `Loader` constructs the lower `ProjectState` facts while preserving its compatibility surface; focused functions retain repository checks and current-state projections while consuming Publisher-produced plans through neutral values. RepositoryChecker, CurrentStateCoordinator, and command-use-case extraction remain future boundaries.
+- `internal/checkresult`: owns immutable ranked findings with explicit protected properties and separately unranked information.
+- `internal/repositorycheck`: the policy-free RepositoryChecker preserves explicit owner-result order and compatibility projections without preparing inputs or inferring classification.
+- `internal/project`: `Loader` constructs the lower `ProjectState` facts while preserving its compatibility surface; focused functions compose semantic check owners and retain current-state coordination while consuming Publisher-produced plans through neutral values. CurrentStateCoordinator and command-use-case extraction remain future boundaries.
 - `internal/adr`, `internal/currentstate`, and `internal/plan`: decision, active-authority, and plan models.
 - `internal/effort` and `internal/worktree`: local residents and Git-backed topology.
 - `internal/git`: the sole semantic Git seam.

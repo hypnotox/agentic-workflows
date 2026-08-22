@@ -39,24 +39,9 @@ type CurrentStateReport struct {
 	Coverage    []topic.CoverageFinding
 	PlanDrift   []manifest.Drift
 	PlanNotes   []string
-}
-
-// Findings returns the blocking lines: every static handshake finding and every
-// coverage/fan-out finding at error severity.
-func (r CurrentStateReport) Findings() []string {
-	var out []string
-	for _, f := range r.Static {
-		out = append(out, f.Message)
-	}
-	for _, c := range r.Coverage {
-		if c.Severity == severity.Error {
-			out = append(out, c.Message())
-		}
-	}
-	for _, d := range r.PlanDrift {
-		out = append(out, fmt.Sprintf("%s %s: %s", d.Kind, d.Path, d.Detail))
-	}
-	return out
+	// OwnerResult is the immutable owner-classified projection consumed by
+	// repository aggregation. Legacy slices remain compatibility projections.
+	OwnerResult checkresult.Result
 }
 
 // Warnings returns ranked non-failing findings: coverage fan-out and Proposed
@@ -135,7 +120,7 @@ func checkCurrentState(root string, repo *awfgit.Repo, ctx context.Context) (Cur
 		Static: currentstate.Check(ws.Loaded.ADRs, ws.Loaded.Topics.All()),
 	}
 	report.Coverage = topic.EvaluateCoverage(ws.Loaded.Topics, eligiblePaths(ws.Tree, ws.Lock, ws.Cfg.ContextIgnore), coveragePolicy(ws.Cfg.CurrentState))
-	return report, nil
+	return classifyCurrentState(report)
 }
 
 // CheckStagedRoot validates the staged current-state transition without opening
@@ -217,14 +202,54 @@ func checkStaged(root string, repo *awfgit.Repo, ctx context.Context) (CurrentSt
 		return CurrentStateReport{}, err
 	}
 	appendStagedPlanResult(&report, planResult)
+	return classifyCurrentState(report)
+}
+
+const (
+	propertyCurrentState    checkresult.Property = "current-state-authority"
+	propertyCurrentCoverage checkresult.Property = "current-state-coverage"
+	propertyPlanArtifact    checkresult.Property = "plan-artifact-validity"
+)
+
+// Result returns the current-state coordinator's owner-classified result.
+func (r CurrentStateReport) Result() (checkresult.Result, error) {
+	return currentStateResult(r)
+}
+
+// classifyCurrentState stores the compatibility projection produced by the
+// current-state coordinator's narrow result adapter.
+func classifyCurrentState(report CurrentStateReport) (CurrentStateReport, error) {
+	result, err := currentStateResult(report)
+	if err != nil {
+		return CurrentStateReport{}, err
+	}
+	report.OwnerResult = result
 	return report, nil
+}
+
+func currentStateResult(report CurrentStateReport) (checkresult.Result, error) {
+	var findings []checkresult.Finding
+	for _, finding := range report.Static {
+		findings = append(findings, checkresult.Finding{Rank: severity.Error, Property: propertyCurrentState, Evidence: checkresult.Evidence{Kind: "current-state", Detail: finding.Message}})
+	}
+	for _, coverage := range report.Coverage {
+		findings = append(findings, checkresult.Finding{Rank: coverage.Severity, Property: propertyCurrentCoverage, Evidence: checkresult.Evidence{Kind: "current-state", Detail: coverage.Message()}})
+	}
+	for _, drift := range report.PlanDrift {
+		findings = append(findings, checkresult.Finding{Rank: severity.Error, Property: propertyPlanArtifact, Evidence: checkresult.Evidence{Kind: drift.Kind, Path: drift.Path, Detail: fmt.Sprintf("%s %s: %s", drift.Kind, drift.Path, drift.Detail)}})
+	}
+	var information []checkresult.Information
+	for _, message := range report.Information() {
+		information = append(information, checkresult.Information{Evidence: checkresult.Evidence{Kind: "current-state", Detail: message}})
+	}
+	return checkresult.New(findings, information)
 }
 
 func appendStagedPlanResult(report *CurrentStateReport, result checkresult.Result) {
 	for _, finding := range result.Findings() {
 		if finding.Rank == severity.Error {
 			report.PlanDrift = append(report.PlanDrift, manifest.Drift{Kind: finding.Evidence.Kind, Path: finding.Evidence.Path, Detail: finding.Evidence.Detail})
-		} else if finding.Evidence.Kind == "plan-advisory" {
+		} else {
 			report.PlanNotes = append(report.PlanNotes, finding.Evidence.Detail)
 		}
 	}

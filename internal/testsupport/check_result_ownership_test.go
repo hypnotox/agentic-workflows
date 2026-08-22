@@ -1,98 +1,90 @@
 package testsupport_test
 
 import (
-	"bytes"
 	"go/ast"
 	"go/format"
 	"go/parser"
 	"go/token"
 	"path/filepath"
 	"reflect"
-	"sort"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
-// TestOrdinaryCheckProducerCensus makes the Phase 1 conversion mutation
-// sensitive. It inventories the complete working composition and every
-// semantic constructor call, so a new producer, bypass, or property change
-// must declare its classification here rather than inherit consumer policy.
+// TestOrdinaryCheckProducerCensus inventories the complete working composition.
+// A producer can enter the aggregate only through an explicit, reviewed call in
+// one of these two composition functions.
 func TestOrdinaryCheckProducerCensus(t *testing.T) {
 	root := testsupport.RepoRoot(t)
-	fset := token.NewFileSet()
 	path := filepath.Join(root, "internal/project/check.go")
-	file, err := parser.ParseFile(fset, path, nil, 0)
+	file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
 	functions := functionDeclarations(file)
-
-	wantCompositionCalls := map[string]map[string]int{
-		"checkReport":            {"advisoryResultsWithState": 1, "checkWithTrackingState": 1, "fullProfile": 1, "planArtifactResults": 1, "reportFromBatch": 1},
-		"checkWithTrackingState": {"adrRelatedResult": 1, "append": 1, "fullProfile": 2, "len": 1, "lockPath": 1, "pendingADRResult": 1, "pitfallResult": 1, "planResult": 1, "referenceResult": 1},
+	want := map[string]map[string]int{
+		"checkReport": {
+			"Compose": 1, "Diagnostics": 1, "Evaluate": 1, "SplitWarnings": 1,
+			"ValidateCommandWiring": 1, "advisoryResultsWithState": 1,
+			"checkWithTrackingState": 1, "fullProfile": 1, "planArtifactResults": 1,
+		},
+		"checkWithTrackingState": {
+			"Additional": 1, "Findings": 1, "LoadOptional": 1, "Locked": 1,
+			"New": 1, "ReadFile": 1, "ResolveOutput": 1, "SplitWarnings": 1,
+			"Tracking": 1, "adrRelatedResult": 1, "append": 8, "fullProfile": 2,
+			"isNested": 2, "len": 1, "lockPath": 1, "pendingADRResult": 1,
+			"pitfallResult": 1, "planResult": 1, "referenceResult": 1,
+			"residentRoots": 1, "root": 1, "trackingInformation": 2,
+		},
 	}
-	for name, want := range wantCompositionCalls {
+	for name, expected := range want {
 		fn := functions[name]
 		if fn == nil {
 			t.Fatalf("ordinary working composition %s is absent", name)
 		}
-		if got := directCallCounts(fn); !reflect.DeepEqual(got, want) {
-			t.Errorf("%s direct calls = %v, want exact producer composition %v", name, got, want)
+		if got := directCallCounts(fn); !reflect.DeepEqual(got, expected) {
+			t.Errorf("%s direct calls = %v, want exact producer composition %v", name, got, expected)
 		}
 	}
+}
 
-	wantSemanticCalls := map[string][]string{
-		"checkReport":              {"informationItem"},
-		"pendingADRResult":         {"errorDrift(propertyAuthority)"},
-		"advisoryResultsWithState": {"informationItem", "warning(propertyHeuristic)"},
+// TestRepositoryCheckerOwnershipCensus protects the policy-free aggregation
+// boundary: semantic owners cannot depend on their aggregator, and aggregation
+// cannot reverse into project or application coordination.
+func TestRepositoryCheckerOwnershipCensus(t *testing.T) {
+	root := testsupport.RepoRoot(t)
+	owners := []string{
+		"internal/generatedcheck/generatedcheck.go",
+		"internal/referencecheck/referencecheck.go",
+		"internal/configcheck/configcheck.go",
+		"internal/plancheck/plancheck.go",
+		"internal/pitfallcheck/pitfallcheck.go",
+		"internal/vocabularycheck/vocabularycheck.go",
+		"internal/project/currentstate.go",
+		"internal/prosegate/prosegate.go",
+		"internal/memorycite/memorycite.go",
 	}
-
-	gotSemanticCalls := map[string][]string{}
-	for name, fn := range functions {
-		calls := semanticCalls(fset, fn)
-		if len(calls) == 0 {
-			continue
-		}
-		sort.Strings(calls)
-		gotSemanticCalls[name] = calls
+	for _, owner := range owners {
+		assertImportsExclude(t, filepath.Join(root, owner), "internal/repositorycheck")
 	}
-	for _, calls := range wantSemanticCalls {
-		sort.Strings(calls)
+	aggregator := filepath.Join(root, "internal/repositorycheck/repositorycheck.go")
+	for _, forbidden := range []string{"internal/project", "cmd/", "internal/application", "internal/currentstate"} {
+		assertImportsExclude(t, aggregator, forbidden)
 	}
-	if !reflect.DeepEqual(gotSemanticCalls, wantSemanticCalls) {
-		t.Errorf("semantic producer calls = %#v, want exact census %#v", gotSemanticCalls, wantSemanticCalls)
-	}
-
-	for _, forbidden := range []string{"checkLockedFiles", "checkDeadRefs", "checkDeadSkillRefs", "checkADRRelatedLinks", "sweepConfigTree", "unusedVarDrift", "unusedDataDrift", "validateCommandWiring"} {
-		if functions[forbidden] != nil {
-			t.Errorf("project retains duplicate %s policy", forbidden)
-		}
-	}
-	for _, owner := range []string{"internal/generatedcheck/generatedcheck.go", "internal/referencecheck/referencecheck.go", "internal/configcheck/configcheck.go", "internal/plancheck/plancheck.go", "internal/pitfallcheck/pitfallcheck.go", "internal/vocabularycheck/vocabularycheck.go"} {
-		ownerFile, err := parser.ParseFile(fset, filepath.Join(root, owner), nil, 0)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, imp := range ownerFile.Imports {
-			if imp.Path.Value == `"github.com/hypnotox/agentic-workflows/internal/project"` {
-				t.Errorf("owner %s imports project", owner)
-			}
-		}
-	}
-	referenceFile, err := parser.ParseFile(fset, filepath.Join(root, "internal/referencecheck/referencecheck.go"), nil, 0)
+	file, err := parser.ParseFile(token.NewFileSet(), aggregator, nil, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, declaration := range referenceFile.Decls {
-		fn, ok := declaration.(*ast.FuncDecl)
-		if !ok || fn.Name.Name != "Check" {
-			continue
+	ast.Inspect(file, func(node ast.Node) bool {
+		condition, ok := node.(*ast.IfStmt)
+		if ok && strings.Contains(expressionSource(condition.Cond), ".Kind") {
+			t.Error("RepositoryChecker routes a result destination by evidence Kind")
 		}
-		if len(fn.Type.Params.List) != 5 {
-			t.Errorf("ReferenceChecker Check parameter count = %d, want semantic plan/prefix/sets/existence only", len(fn.Type.Params.List))
-		}
-	}
+		return true
+	})
 }
 
 func functionDeclarations(file *ast.File) map[string]*ast.FuncDecl {
@@ -112,44 +104,38 @@ func directCallCounts(fn *ast.FuncDecl) map[string]int {
 		if !ok {
 			return true
 		}
-		if ident, ok := call.Fun.(*ast.Ident); ok {
-			out[ident.Name]++
+		switch called := call.Fun.(type) {
+		case *ast.Ident:
+			out[called.Name]++
+		case *ast.SelectorExpr:
+			out[called.Sel.Name]++
 		}
 		return true
 	})
 	return out
 }
 
-func semanticCalls(fset *token.FileSet, fn *ast.FuncDecl) []string {
-	var out []string
-	ast.Inspect(fn.Body, func(node ast.Node) bool {
-		call, ok := node.(*ast.CallExpr)
-		if !ok {
-			return true
-		}
-		selector, ok := call.Fun.(*ast.SelectorExpr)
-		if !ok {
-			return true
-		}
-		switch selector.Sel.Name {
-		case "error", "errorDrift", "warning":
-			property := "<missing>"
-			if len(call.Args) > 0 {
-				property = expressionText(fset, call.Args[0])
-			}
-			out = append(out, selector.Sel.Name+"("+property+")")
-		case "informationItem", "informationDrift":
-			out = append(out, selector.Sel.Name)
-		}
-		return true
-	})
-	return out
-}
-
-func expressionText(fset *token.FileSet, expression ast.Expr) string {
-	var out bytes.Buffer
-	if err := format.Node(&out, fset, expression); err != nil {
+func expressionSource(expression ast.Expr) string {
+	var out strings.Builder
+	if err := format.Node(&out, token.NewFileSet(), expression); err != nil {
 		return "<invalid>"
 	}
 	return out.String()
+}
+
+func assertImportsExclude(t *testing.T, path, forbidden string) {
+	t.Helper()
+	file, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.ImportsOnly)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, imp := range file.Imports {
+		value, err := strconv.Unquote(imp.Path.Value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(value, forbidden) {
+			t.Errorf("%s imports forbidden %q", path, value)
+		}
+	}
 }

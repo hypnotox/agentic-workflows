@@ -12,14 +12,15 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
-	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/prosegate"
+	"github.com/hypnotox/agentic-workflows/internal/repositorycheck"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
@@ -70,7 +71,7 @@ func TestRunCheckPropagatesOperationalGitAndStagedDriftFailures(t *testing.T) {
 	}
 	driftFailure := errors.New("staged drift failed")
 	stagedDependencies := productionCheckStagedDependencies()
-	stagedDependencies.driftRoot = func(context.Context, string) ([]manifest.Drift, error) { return nil, driftFailure }
+	stagedDependencies.driftRoot = func(context.Context, string) (checkresult.Result, error) { return checkresult.Result{}, driftFailure }
 	dependencies = productionCheckDependencies()
 	dependencies.collectStaged = func(ctx context.Context, root string, notes planNoteSink) (checkCollection, error) {
 		return collectCheckStagedWith(ctx, root, notes, stagedDependencies)
@@ -179,7 +180,7 @@ func TestProseCheckFindingsPropagatesScannerFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := proseCheckFindingsWith(&config.Config{ProseGate: &config.ProseGateConfig{}}, tree, dependencies); !errors.Is(err, failure) {
+	if _, err := scanProse(&config.Config{ProseGate: &config.ProseGateConfig{}}, tree, dependencies); !errors.Is(err, failure) {
 		t.Fatalf("scanner failure = %v, want %v", err, failure)
 	}
 }
@@ -966,13 +967,13 @@ func TestRunCheckStagedContinuesAfterStatePresentationFailure(t *testing.T) {
 	stateFailure := errors.New("state category mapping failed")
 	driftFailure := errors.New("staged drift failed")
 	dependencies := productionCheckStagedDependencies()
-	dependencies.currentStateCategories = func(project.CurrentStateReport, bool) ([]presentation.ReportCategory, error) {
-		return nil, stateFailure
+	dependencies.present = func(checkresult.Result, string, bool) (repositorycheck.Presentation, error) {
+		return repositorycheck.Presentation{}, stateFailure
 	}
 	driftRan := false
-	dependencies.driftRoot = func(context.Context, string) ([]manifest.Drift, error) {
+	dependencies.driftRoot = func(context.Context, string) (checkresult.Result, error) {
 		driftRan = true
-		return nil, driftFailure
+		return checkresult.Result{}, driftFailure
 	}
 	var stdout bytes.Buffer
 	collection, err := collectCheckStagedWith(testContext(t), root, planNoteSink{}, dependencies)
@@ -988,6 +989,21 @@ func TestRunCheckStagedContinuesAfterStatePresentationFailure(t *testing.T) {
 	}
 	if stdout.Len() != 0 {
 		t.Fatalf("stdout = %q, want suppressed partial report", stdout.String())
+	}
+}
+
+func TestCollectCheckStagedRetainsCurrentStateResultFailure(t *testing.T) {
+	root := stagedCheckProject(t, map[string]string{".awf/config.yaml": checkYAML}, nil)
+	dependencies := productionCheckStagedDependencies()
+	dependencies.stateRoot = func(context.Context, string) (project.CurrentStateReport, error) {
+		return project.CurrentStateReport{Static: []currentstate.Finding{{}}}, nil
+	}
+	collection, err := collectCheckStagedSelectionWith(testContext(t), root, planNoteSink{}, true, false, dependencies)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(collection.operational) != 1 {
+		t.Fatalf("operational failures = %v, want invalid owner result", collection.operational)
 	}
 }
 
@@ -1009,7 +1025,6 @@ func TestCollectCheckStagedEmitsPlanNotesOnce(t *testing.T) {
 	dependencies.stateRoot = func(context.Context, string) (project.CurrentStateReport, error) {
 		return project.CurrentStateReport{PlanNotes: []string{"staged-plan-note-sentinel"}}, nil
 	}
-	dependencies.currentStateCategories = func(project.CurrentStateReport, bool) ([]presentation.ReportCategory, error) { return nil, nil }
 	collection, err := collectCheckStagedSelectionWith(testContext(t), root, planNoteSink{}, true, false, dependencies)
 	if err != nil {
 		t.Fatal(err)
@@ -1030,8 +1045,16 @@ func TestCollectCheckStagedRetainsStateFailureWhenDriftCategoryMappingFails(t *t
 	dependencies.stateRoot = func(context.Context, string) (project.CurrentStateReport, error) {
 		return project.CurrentStateReport{Static: []currentstate.Finding{{Message: "state-failure-sentinel"}}}, nil
 	}
-	dependencies.driftRoot = func(context.Context, string) ([]manifest.Drift, error) { return nil, nil }
-	dependencies.driftCategories = func([]manifest.Drift, bool) ([]presentation.ReportCategory, error) { return nil, driftFailure }
+	dependencies.driftRoot = func(context.Context, string) (checkresult.Result, error) { return checkresult.New(nil, nil) }
+	dependencies.present = func(result checkresult.Result, check string, evidence bool) (repositorycheck.Presentation, error) {
+		if check == "staged drift" {
+			return repositorycheck.Presentation{}, driftFailure
+		}
+		if evidence {
+			return repositorycheck.PresentEvidence(result, check)
+		}
+		return repositorycheck.Present(result, check)
+	}
 	collection, err := collectCheckStagedSelectionWith(testContext(t), root, planNoteSink{}, true, true, dependencies)
 	if err != nil {
 		t.Fatalf("collection error = %v, want retained operational failures", err)
@@ -1039,8 +1062,8 @@ func TestCollectCheckStagedRetainsStateFailureWhenDriftCategoryMappingFails(t *t
 	if len(collection.failures) != 1 || collection.failures[0].Error() != "check staged state failed" {
 		t.Fatalf("state failures = %v, want staged state failure", collection.failures)
 	}
-	if len(collection.categories) == 0 {
-		t.Fatal("state categories were discarded")
+	if len(collection.presentation.Errors) == 0 {
+		t.Fatal("state errors were discarded")
 	}
 	if len(collection.operational) != 1 || !errors.Is(collection.operational[0], driftFailure) {
 		t.Fatalf("operational failures = %v, want drift category failure", collection.operational)

@@ -14,6 +14,9 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/hypnotox/agentic-workflows/internal/checkresult"
+	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
 
 // dir is the unified effort-resident prefix every owned-memory citation starts
@@ -169,6 +172,15 @@ func Scan(files []File, exemptions []Exemption) []Finding {
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Path < out[j].Path })
 	return out
+}
+
+// Result adapts completed memory-citation findings to immutable owner-classified results.
+func Result(findings []Finding) (checkresult.Result, error) {
+	out := make([]checkresult.Finding, 0, len(findings))
+	for _, finding := range findings {
+		out = append(out, checkresult.Finding{Rank: severity.Error, Property: "effort-memory-citation", Evidence: checkresult.Evidence{Kind: "memory", Path: finding.Path, Detail: Format(finding)}})
+	}
+	return checkresult.New(out, nil)
 }
 
 // Format renders one finding as a diagnostic line.

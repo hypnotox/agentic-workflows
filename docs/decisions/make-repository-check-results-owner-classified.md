@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: make-repository-check-results-owner-classified
-status: Proposed
+status: Implementing
 date: 2026-08-22
 ---
 # ADR-make-repository-check-results-owner-classified: Make Repository Check Results Owner-Classified
@@ -94,3 +94,5 @@ compatibility deletion remain assigned to later authorized work.
 ## Status history
 
 - 2026-08-22: Proposed
+- 2026-08-22: Implementing; content-sha256: bf4cf6ba626fa793c16a2e55945b265e551e11bf13ab9fe0ae0d89bec30acde1
+- 2026-08-22: Applied; operations: update `tooling/cli:repo-check-capability-plan`, update `tooling/cli:check-severity-by-protected-property`, update `rendering/project-output-plan:check-report-single-plan`, update `rendering/sync-and-drift:agent-guide-size-advisory`

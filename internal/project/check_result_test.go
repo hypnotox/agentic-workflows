@@ -5,79 +5,56 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/checkresult"
+	"github.com/hypnotox/agentic-workflows/internal/repositorycheck"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
 
-func TestProducerBatchNamesRankAndProtectedProperty(t *testing.T) {
-	batch := checkBatch{}
-	batch.error(propertyReproducibility, "missing", "AGENTS.md", "file absent")
-	batch.error(propertyAuthority, "plan-adr-link", "docs/plans/example.md", "ADR not found")
-	batch.error(propertyCorrectness, "dead-reference", "docs/example.md", "missing.md")
-	batch.informationItem("unused-var", ".awf/config.yaml", "var is unused")
-	batch.warning(propertyHeuristic, "advisory", "heuristic warning")
-	batch.warning(propertyPlanDetail, "plan-advisory", "plan warning")
-	batch.informationItem("advisory", "", "optional cleanup")
-	batch.informationItem("tracking", "", "tracking unavailable")
+func projectTestResult(t *testing.T, findings []checkresult.Finding, information []checkresult.Information) checkresult.Result {
+	t.Helper()
+	result, err := checkresult.New(findings, information)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return result
+}
 
-	report, err := reportFromBatch(batch)
+func TestProducerResultsNameRankAndProtectedProperty(t *testing.T) {
+	producer := projectTestResult(t, []checkresult.Finding{
+		{Rank: severity.Error, Property: propertyReproducibility, Evidence: checkresult.Evidence{Kind: "missing", Path: "AGENTS.md", Detail: "file absent"}},
+		{Rank: severity.Error, Property: propertyAuthority, Evidence: checkresult.Evidence{Kind: "plan-adr-link", Path: "docs/plans/example.md", Detail: "ADR not found"}},
+		{Rank: severity.Error, Property: propertyCorrectness, Evidence: checkresult.Evidence{Kind: "dead-reference", Path: "docs/example.md", Detail: "missing.md"}},
+	}, []checkresult.Information{{Evidence: checkresult.Evidence{Kind: "unused-var", Path: ".awf/config.yaml", Detail: "var is unused"}}})
+	advisories := projectTestResult(t, []checkresult.Finding{{Rank: severity.Warn, Property: propertyHeuristic, Evidence: checkresult.Evidence{Kind: "advisory", Detail: "heuristic warning"}}}, []checkresult.Information{{Evidence: checkresult.Evidence{Kind: "advisory", Detail: "optional cleanup"}}})
+	tracking := projectTestResult(t, nil, []checkresult.Information{{Evidence: checkresult.Evidence{Kind: "tracking", Detail: "tracking unavailable"}}})
+	planWarnings := projectTestResult(t, []checkresult.Finding{{Rank: severity.Warn, Property: propertyPlanDetail, Evidence: checkresult.Evidence{Kind: "plan-advisory", Detail: "plan warning"}}}, nil)
+
+	report, err := repositorycheck.Compose(repositorycheck.Inputs{
+		ProducerResults:      []repositorycheck.Slot{{Result: producer, IncludeInformationInDrift: true}},
+		OrdinaryAdvisories:   repositorycheck.Slot{Result: advisories},
+		TrackingInformation:  repositorycheck.Slot{Result: tracking},
+		DeferredPlanWarnings: repositorycheck.Slot{Result: planWarnings},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	findings := report.Result.Findings()
-	want := []struct {
-		rank     severity.Rank
-		property checkresult.Property
-		kind     string
-	}{
-		{severity.Error, propertyReproducibility, "missing"},
-		{severity.Error, propertyAuthority, "plan-adr-link"},
-		{severity.Error, propertyCorrectness, "dead-reference"},
-		{severity.Warn, propertyHeuristic, "advisory"},
-		{severity.Warn, propertyPlanDetail, "plan-advisory"},
-	}
-	if len(findings) != len(want) {
-		t.Fatalf("findings = %#v, want %d", findings, len(want))
-	}
-	for i, expected := range want {
-		if findings[i].Rank != expected.rank || findings[i].Property != expected.property || findings[i].Evidence.Kind != expected.kind {
-			t.Errorf("finding %d = %#v, want rank=%v property=%q kind=%q", i, findings[i], expected.rank, expected.property, expected.kind)
+	wantProperties := []checkresult.Property{propertyReproducibility, propertyAuthority, propertyCorrectness, propertyHeuristic, propertyPlanDetail}
+	for i, want := range wantProperties {
+		if findings[i].Property != want {
+			t.Errorf("finding %d property = %q, want %q", i, findings[i].Property, want)
 		}
 	}
-	var informationKinds []string
-	for _, item := range report.Result.Information() {
-		informationKinds = append(informationKinds, item.Evidence.Kind)
+	if got := report.Warnings; !slices.Equal(got, []string{"heuristic warning"}) {
+		t.Fatalf("Warnings = %v", got)
 	}
-	if wantKinds := []string{"unused-var", "advisory", "tracking"}; !slices.Equal(informationKinds, wantKinds) {
-		t.Fatalf("information kinds = %v, want %v", informationKinds, wantKinds)
+	if got := report.PlanWarnings; !slices.Equal(got, []string{"plan warning"}) {
+		t.Fatalf("PlanWarnings = %v", got)
 	}
-	if got := report.OrdinaryWarnings(); !slices.Equal(got, []string{"heuristic warning"}) {
-		t.Fatalf("OrdinaryWarnings() = %v", got)
+	if got := report.Information; !slices.Equal(got, []string{"optional cleanup"}) {
+		t.Fatalf("Information = %v", got)
 	}
-	if got := report.PlanWarningNotes(); !slices.Equal(got, []string{"plan warning"}) {
-		t.Fatalf("PlanWarningNotes() = %v", got)
-	}
-	if got := report.AggregateInformation(); !slices.Equal(got, []string{"optional cleanup"}) {
-		t.Fatalf("AggregateInformation() = %v", got)
-	}
-	if got := report.DirectTrackingInformation(); !slices.Equal(got, []string{"tracking unavailable"}) {
-		t.Fatalf("DirectTrackingInformation() = %v", got)
-	}
-}
-
-func TestBatchSeparatesDeferredWarningsWithoutChangingSemanticProjections(t *testing.T) {
-	batch := checkBatch{}
-	batch.error(propertyAuthority, "plan-reference", "plan.md", "missing ADR")
-	batch.warning(propertyPlanDetail, "plan-advisory", "assignment missing")
-	batch.informationItem("advisory", "", "optional note")
-	withoutWarnings := batch.withoutWarnings()
-	result, err := withoutWarnings.result()
-	if err != nil || len(result.Findings()) != 1 || len(result.Information()) != 1 {
-		t.Fatalf("withoutWarnings result = %#v, %v", result, err)
-	}
-	warnings := batch.warningsOnly()
-	result, err = warnings.result()
-	if err != nil || len(result.Findings()) != 1 || len(result.Information()) != 0 {
-		t.Fatalf("warningsOnly result = %#v, %v", result, err)
+	if got := report.TrackingInformation; !slices.Equal(got, []string{"tracking unavailable"}) {
+		t.Fatalf("TrackingInformation = %v", got)
 	}
 }
 
@@ -92,10 +69,8 @@ func TestKnownDynamicPlanDiagnosticCategoriesAreClosed(t *testing.T) {
 	}
 }
 
-func TestReportFinalizerRefusesIncompleteProducerEvidence(t *testing.T) {
-	batch := checkBatch{}
-	batch.error(propertyCorrectness, "missing", "AGENTS.md", "")
-	if _, err := reportFromBatch(batch); err == nil {
-		t.Fatal("report finalizer accepted a finding without evidence detail")
+func TestOwnerResultBoundaryRefusesIncompleteEvidence(t *testing.T) {
+	if _, err := checkresult.New([]checkresult.Finding{{Rank: severity.Error, Property: propertyCorrectness, Evidence: checkresult.Evidence{Kind: "missing", Path: "AGENTS.md"}}}, nil); err == nil {
+		t.Fatal("result boundary accepted a finding without evidence detail")
 	}
 }

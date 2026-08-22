@@ -23,5 +23,6 @@ paths:
   - internal/upgrade/**
   - internal/prosegate/**
   - internal/memorycite/**
+  - internal/repositorycheck/**
   - tools/**
   - x

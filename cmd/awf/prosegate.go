@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/execution"
-	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/prosegate"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
@@ -23,11 +23,15 @@ func runProseGate(ctx context.Context, root string, stdout io.Writer) error {
 	return runRepoCheckSelection(ctx, root, stdout, []execution.StepID{repoStepProse}, execution.StopOnFailure, false, productionRepoCheckDependencies())
 }
 
-func proseCheckFindings(cfg *config.Config, tree *snapshot.Tree) ([]presentation.ReportCategory, error) {
-	return proseCheckFindingsWith(cfg, tree, productionProseDependencies())
+func proseCheckResult(cfg *config.Config, tree *snapshot.Tree) (checkresult.Result, error) {
+	findings, err := scanProse(cfg, tree, productionProseDependencies())
+	if err != nil {
+		return checkresult.Result{}, err
+	}
+	return prosegate.Result(findings)
 }
 
-func proseCheckFindingsWith(cfg *config.Config, tree *snapshot.Tree, dependencies proseDependencies) ([]presentation.ReportCategory, error) {
+func scanProse(cfg *config.Config, tree *snapshot.Tree, dependencies proseDependencies) ([]prosegate.Finding, error) {
 	var configured []config.ProseExemption
 	if cfg.ProseGate != nil {
 		configured = cfg.ProseGate.Exemptions
@@ -45,13 +49,9 @@ func proseCheckFindingsWith(cfg *config.Config, tree *snapshot.Tree, dependencie
 	for i, blob := range blobs {
 		files[i] = prosegate.File{Path: blob.Path, Bytes: blob.Bytes}
 	}
-	findings, skipped, err := dependencies.scan(files, exemptions)
+	findings, _, err := dependencies.scan(files, exemptions)
 	if err != nil {
 		return nil, fmt.Errorf("check repo prose: %w", err)
 	}
-	categories, err := prosegate.Categories(findings, skipped)
-	if err != nil { // coverage-ignore: Categories receives only scanner findings and fixed skipped-binary diagnostics
-		return nil, err
-	}
-	return categories, nil
+	return findings, nil
 }

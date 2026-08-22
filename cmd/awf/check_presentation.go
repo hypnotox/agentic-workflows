@@ -4,14 +4,15 @@ import (
 	"fmt"
 
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
+	"github.com/hypnotox/agentic-workflows/internal/repositorycheck"
 )
 
 type checkCollection struct {
-	warnings    []string
-	information []string
-	categories  []presentation.ReportCategory
-	failures    []error
-	operational []error
+	warnings     []string
+	information  []string
+	presentation repositorycheck.Presentation
+	failures     []error
+	operational  []error
 }
 
 type producedCheckFailure struct{ err error }
@@ -27,13 +28,13 @@ func (c checkCollection) append(other checkCollection) checkCollection {
 	// Plan warnings are deduplicated at their dedicated planNoteSink boundary.
 	c.warnings = append(c.warnings, other.warnings...)
 	c.information = append(c.information, other.information...)
-	c.categories = append(c.categories, other.categories...)
+	c.presentation = c.presentation.Append(other.presentation)
 	c.failures = append(c.failures, other.failures...)
 	c.operational = append(c.operational, other.operational...)
 	return c
 }
 
-func checkReport(warningNotes, informationNotes []string, categories []presentation.ReportCategory) (presentation.Report, error) {
+func checkReport(warningNotes, informationNotes []string, projected repositorycheck.Presentation) (presentation.Report, error) {
 	warningRecords, err := advisoryRecords(warningNotes)
 	if err != nil {
 		return presentation.Report{}, err
@@ -42,19 +43,9 @@ func checkReport(warningNotes, informationNotes []string, categories []presentat
 	if err != nil {
 		return presentation.Report{}, err
 	}
-	errorRecords := []presentation.Record{}
-	for _, category := range categories {
-		switch category.Label {
-		case "errors":
-			errorRecords = append(errorRecords, category.Records...)
-		case "warnings":
-			warningRecords = append(warningRecords, category.Records...)
-		case "information":
-			informationRecords = append(informationRecords, category.Records...)
-		default:
-			return presentation.Report{}, fmt.Errorf("unknown check report category %q", category.Label)
-		}
-	}
+	errorRecords := projected.Errors
+	warningRecords = append(warningRecords, projected.Warnings...)
+	informationRecords = append(informationRecords, projected.Information...)
 	status := "completed"
 	if len(errorRecords) > 0 {
 		status = "failed"

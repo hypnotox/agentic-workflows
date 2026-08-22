@@ -9,6 +9,9 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/hypnotox/agentic-workflows/internal/checkresult"
+	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
 
 const (
@@ -197,6 +200,15 @@ func Scan(files []File, exemptions []Exemption) ([]Finding, []string, error) {
 		return out[i].Paragraph < out[j].Paragraph
 	})
 	return out, skipped, nil
+}
+
+// Result adapts completed prose findings to immutable owner-classified results.
+func Result(findings []Finding) (checkresult.Result, error) {
+	out := make([]checkresult.Finding, 0, len(findings))
+	for _, finding := range findings {
+		out = append(out, checkresult.Finding{Rank: severity.Warn, Property: "prose-restraint", Evidence: checkresult.Evidence{Kind: "prose", Path: finding.Path, Detail: Format(finding)}})
+	}
+	return checkresult.New(out, nil)
 }
 
 // Format renders one finding as a diagnostic line.

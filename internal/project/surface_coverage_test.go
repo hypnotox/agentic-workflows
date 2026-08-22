@@ -6,9 +6,11 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
+	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
@@ -19,9 +21,7 @@ func TestAdvisoryCompatibilityAndReportErrorPaths(t *testing.T) {
 	}()); len(got) != 0 {
 		t.Fatalf("compatibility files = %#v", got)
 	}
-	batch := checkBatch{}
-	batch.error(propertyCorrectness, "broken", "path", "")
-	if _, err := reportFromBatch(batch); err == nil {
+	if _, err := checkresult.New([]checkresult.Finding{{Rank: severity.Error, Property: propertyCorrectness, Evidence: checkresult.Evidence{Kind: "broken", Path: "path"}}}, nil); err == nil {
 		t.Fatal("report finalizer accepted invalid producer evidence")
 	}
 }

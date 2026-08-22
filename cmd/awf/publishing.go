@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 
+	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
-	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
@@ -51,16 +51,16 @@ func workingContextState(ctx context.Context, state *project.ProjectState, repo 
 	return project.CompleteContextState(prep, prepared.Plan()), nil
 }
 
-func stagedDrift(ctx context.Context, root string) ([]manifest.Drift, error) {
+func stagedDriftResult(ctx context.Context, root string) (checkresult.Result, error) {
 	prep, err := project.PrepareStagedContextState(ctx, root)
 	if err != nil {
-		return nil, err
+		return checkresult.Result{}, err
 	}
 	prepared, err := preparePublisher(preparedPublisher(prep))
 	if err != nil {
-		return nil, err
+		return checkresult.Result{}, err
 	}
-	return project.CheckStagedDrift(prep, prepared.Plan())
+	return project.CheckStagedDriftResult(prep, prepared.Plan())
 }
 
 func stagedContextState(ctx context.Context, root string) (project.ContextState, error) {

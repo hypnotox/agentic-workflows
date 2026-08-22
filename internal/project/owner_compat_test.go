@@ -105,22 +105,20 @@ func checkADRRelatedLinks(corpus adr.Corpus) []manifest.Drift {
 	return compatibilityDrift(result)
 }
 
-func checkGeneratedTracking(nested bool, repo *awfgit.Repo, ctx context.Context, op *OutputPlan) (checkBatch, []string, error) {
+func checkGeneratedTracking(nested bool, repo *awfgit.Repo, ctx context.Context, op *OutputPlan) (checkresult.Result, []string, error) {
 	var paths generatedcheck.IndexPaths
 	if repo != nil {
 		paths = repo.IndexPaths
 	}
 	result, err := generatedcheck.Tracking(ctx, nested, paths, *op)
 	if err != nil {
-		return checkBatch{}, nil, err
+		return checkresult.Result{}, nil, err
 	}
-	batch := checkBatch{}
-	batch.appendResult(result)
 	var notes []string
 	for _, item := range result.Information() {
 		notes = append(notes, item.Evidence.Detail)
 	}
-	return batch, notes, nil
+	return result, notes, nil
 }
 
 type lockedFinding struct {

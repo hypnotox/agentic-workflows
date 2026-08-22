@@ -21,32 +21,3 @@ func TestCommitGateDocumentOwnsExactFindingPresentation(t *testing.T) {
 		t.Fatalf("document = %q, want %q", out.String(), want)
 	}
 }
-
-func TestEmptyResults(t *testing.T) {
-	categories, err := Categories(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := (presentation.Report{Status: "completed", Categories: categories}).Document(); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestCategoriesOwnExactCheckVocabularyAndOrder(t *testing.T) {
-	categories, err := Categories([]Finding{{Path: "a.md", Lines: []int{3, 7}}, {Path: "b.md", Lines: []int{1}}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	document, err := (presentation.Report{Status: "failed", Categories: categories}).Document()
-	if err != nil {
-		t.Fatal(err)
-	}
-	var out strings.Builder
-	if err := presentation.Render(&out, document); err != nil {
-		t.Fatal(err)
-	}
-	want := "status: failed\n\nfindings:\n  errors:\n    memory | a.md: 2 effort-owned memory citation(s) on line(s) 3, 7; name the .awf/efforts/ directory, use an angle-bracket slug placeholder, or remove the ephemeral file citation\n    memory | b.md: 1 effort-owned memory citation(s) on line(s) 1; name the .awf/efforts/ directory, use an angle-bracket slug placeholder, or remove the ephemeral file citation\n"
-	if out.String() != want {
-		t.Fatalf("categories = %q, want %q", out.String(), want)
-	}
-}
