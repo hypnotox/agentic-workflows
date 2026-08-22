@@ -57,7 +57,7 @@ func renderInvocationSurface(t *testing.T, template string, data map[string]any)
 	if err != nil {
 		t.Fatal(err)
 	}
-	assembled, parts := assemble(parseSections(expanded), nil, render.HTMLComment)
+	assembled, parts := assemble(parseSections(expanded))
 	body, err := render.Execute(assembled, data, parts, "repository awf invocation")
 	if err != nil {
 		t.Fatal(err)

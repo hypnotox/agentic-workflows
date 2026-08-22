@@ -179,7 +179,7 @@ func testPitfallHashAndOutputLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, pruned, err := syncReportProject(p)
+	_, pruned, err := syncReportProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}

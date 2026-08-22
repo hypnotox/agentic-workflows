@@ -4,7 +4,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -323,43 +322,6 @@ func TestLoadAuthorityCorpusFromTreeOmitsMarkersAndDomainPaths(t *testing.T) {
 	if _, err := LoadCorpusFromTree(markerOnly, cfg, oneImplementedADR()); err == nil ||
 		!strings.Contains(err.Error(), "unknown claim ID") {
 		t.Fatalf("full corpus accepted malformed proof marker: %v", err)
-	}
-}
-
-// assertSameCorpus checks that two corpora carry identical semantic content -
-// topics, metadata, claims, ownership globs, and marker sites - ignoring only
-// the source paths, which legitimately differ between an absolute filesystem
-// path and a repo-relative snapshot path.
-func assertSameCorpus(t *testing.T, want, got Corpus) {
-	t.Helper()
-	byID := func(ts []Topic) map[string]Topic {
-		m := map[string]Topic{}
-		for _, tp := range ts {
-			m[tp.ID.String()] = tp
-		}
-		return m
-	}
-	wm, gm := byID(want.All()), byID(got.All())
-	if len(wm) != len(gm) {
-		t.Fatalf("topic count %d != %d", len(wm), len(gm))
-	}
-	for id, wt := range wm {
-		gt, ok := gm[id]
-		if !ok {
-			t.Fatalf("snapshot corpus missing topic %s", id)
-		}
-		if !reflect.DeepEqual(wt.Metadata, gt.Metadata) {
-			t.Fatalf("%s metadata: %#v != %#v", id, wt.Metadata, gt.Metadata)
-		}
-		if !reflect.DeepEqual(wt.Claims, gt.Claims) {
-			t.Fatalf("%s claims: %#v != %#v", id, wt.Claims, gt.Claims)
-		}
-	}
-	if !reflect.DeepEqual(want.DomainPaths, got.DomainPaths) {
-		t.Fatalf("domainPaths: %#v != %#v", want.DomainPaths, got.DomainPaths)
-	}
-	if !reflect.DeepEqual(want.Markers.All(), got.Markers.All()) {
-		t.Fatalf("markers: %#v != %#v", want.Markers.All(), got.Markers.All())
 	}
 }
 

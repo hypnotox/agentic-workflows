@@ -41,7 +41,7 @@ func TestConfigReferenceRowsPropagatesInjectedTemplateReadError(t *testing.T) {
 // invariant: config/configspec-and-reference:live-state-projection-explicit (TestLiveStateAuthorityRejectsOmissionAndWrongClass)
 func TestTemplateSourceRootCurrentValue(t *testing.T) {
 	cfg := &config.Config{}
-	p := testState(cfg)
+	p := testState()
 	if got := currentValueResolvers(newRenderInputs(p, cfg, nil, "test"))["render.templateSourceRoot"](); got != "(none)" {
 		t.Fatalf("absent root = %q", got)
 	}
@@ -242,7 +242,7 @@ func TestConfigReferenceDerivedLiveValues(t *testing.T) {
 
 	t.Run("non-nil empty grandfathered boundary", func(t *testing.T) {
 		cfg := &config.Config{CommitPolicy: &config.CommitPolicyConfig{}}
-		p := testState(cfg)
+		p := testState()
 		if got := currentValueResolvers(newRenderInputs(p, cfg, nil, "test"))["commitPolicy.grandfatheredThrough"](); got != "(none)" {
 			t.Errorf("empty grandfatheredThrough current = %q, want (none)", got)
 		}

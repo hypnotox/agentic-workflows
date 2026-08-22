@@ -481,7 +481,7 @@ func TestTargetOutputDeclarationsRejectUnreadableTemplate(t *testing.T) {
 	bad.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
 	bad.Outputs[0].TemplateID = "missing/target-output.tmpl"
 	cfg := &config.Config{Prefix: "example"}
-	p := testState(cfg)
+	p := testState()
 	p = lowerWithTargets(p, []Target{bad})
 	_, err := targetOutputDeclarations(newRenderInputs(p, cfg, nil, "test"), nil)
 	t.Logf("target output declaration error = %v", err)
@@ -495,7 +495,7 @@ func TestTargetOutputDeclarationsRejectUnknownRequiredSkill(t *testing.T) {
 	bad.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
 	bad.Outputs[0].RequiresSkill = "missing"
 	cfg := &config.Config{Prefix: "example"}
-	p := testState(cfg)
+	p := testState()
 	p = lowerWithTargets(p, []Target{bad})
 	if _, err := targetOutputDeclarations(newRenderInputs(p, cfg, nil, "test"), nil); err == nil || !strings.Contains(err.Error(), "unknown catalog skill") {
 		t.Fatalf("unknown target output requirement error = %v", err)

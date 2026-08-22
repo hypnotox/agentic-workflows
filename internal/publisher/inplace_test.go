@@ -471,7 +471,7 @@ func TestTemplateSourceSectionMarkerProjection(t *testing.T) {
 	}
 
 	cfg := &config.Config{}
-	p := testState(cfg)
+	p := testState()
 	if root := templateSourceRoot(newRenderInputs(p, cfg, nil, "test")); root != "" {
 		t.Fatalf("absent render root = %q", root)
 	}

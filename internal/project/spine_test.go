@@ -29,7 +29,7 @@ func renderGolden(t *testing.T, tmplPath string, data map[string]any) string {
 	if err != nil {
 		t.Fatalf("expand includes: %v", err)
 	}
-	asm, parts := assemble(parseSections(expanded), nil, render.HTMLComment)
+	asm, parts := assemble(parseSections(expanded))
 	out, err := render.Execute(asm, data, parts, "test")
 	if err != nil {
 		t.Fatalf("render: %v", err)

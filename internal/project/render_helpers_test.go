@@ -7,12 +7,12 @@ import (
 )
 
 // renderedByPath returns the content of the RenderAll output at path, failing if absent.
-func parseSections(src string, markdown ...bool) []render.Segment {
-	return render.ParseSourceSections(render.SourceText{Spans: []render.SourceSpan{{Text: src}}}, markdown...)
+func parseSections(src string) []render.Segment {
+	return render.ParseSourceSections(render.SourceText{Spans: []render.SourceSpan{{Text: src}}})
 }
 
-func assemble(segs []render.Segment, plan map[string]render.SectionPlan, style render.CommentStyle) (string, map[string]string) {
-	assembled, parts := render.AssembleSourceWithTemplateSource(segs, plan, style, render.TemplateSource{})
+func assemble(segs []render.Segment) (string, map[string]string) {
+	assembled, parts := render.AssembleSourceWithTemplateSource(segs, nil, render.HTMLComment, render.TemplateSource{})
 	return assembled.AuthoredText(), parts
 }
 

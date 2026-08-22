@@ -3,9 +3,6 @@ package project
 import (
 	"bytes"
 	"errors"
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"os"
 	"path/filepath"
 	"slices"
@@ -86,9 +83,9 @@ func TestCheckPitfallsEmpty(t *testing.T) {
 // invariant: rendering/doc-outputs:pitfall-adr-link-resolved (TestCheckPitfallsValidatesDomainsAndLinks)
 func TestCheckPitfallsValidatesDomainsAndLinks(t *testing.T) {
 	root := scaffoldFiles(t, pitfallsCheckCfg, map[string]string{
-		"docs/pitfalls/clean.md":      pitfallSource("Clean", "domains: [rendering]\nrelated: [1]\n", "ok\n"),
-		"docs/pitfalls/bad-domain.md": pitfallSource("BadDomain", "domains: [bogus]\n", "ok\n"),
-		"docs/pitfalls/bad-link.md":   pitfallSource("BadLink", "related: [42]\n", "ok\n"),
+		"docs/pitfalls/clean.md":      pitfallSource("Clean", "domains: [rendering]\nrelated: [1]\n"),
+		"docs/pitfalls/bad-domain.md": pitfallSource("BadDomain", "domains: [bogus]\n"),
+		"docs/pitfalls/bad-link.md":   pitfallSource("BadLink", "related: [42]\n"),
 	})
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-real.md"),
 		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-12"),
@@ -212,7 +209,7 @@ func TestCheckTagVocabulary(t *testing.T) {
 	cfg := "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\ndomains: [rendering]\n" +
 		"tags:\n  render-engine: the render engine\n  empty: \"\"\n"
 	root := scaffoldFiles(t, cfg, map[string]string{
-		"docs/pitfalls/p.md": pitfallSource("P", "tags: [render-engine, ghost]\n", "ok\n"),
+		"docs/pitfalls/p.md": pitfallSource("P", "tags: [render-engine, ghost]\n"),
 	})
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
 		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
@@ -648,107 +645,6 @@ func TestCheckPendingADRsIgnoresNumberedRecords(t *testing.T) {
 	if drift := checkPendingADRs(renderInputsForTest(p), testRepo(p), testContext(t), mustDeriveCorpus(t, p)); len(drift) != 0 {
 		t.Fatalf("a numbered corpus must not be blocked, got %#v", drift)
 	}
-}
-
-func parseCheckSource(t *testing.T) *ast.File {
-	t.Helper()
-	path := filepath.Join(testsupport.RepoRoot(t), "internal/project/check.go")
-	file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return file
-}
-
-func checkFunc(t *testing.T, file *ast.File, name string) *ast.FuncDecl {
-	t.Helper()
-	for _, decl := range file.Decls {
-		if fn, ok := decl.(*ast.FuncDecl); ok && fn.Name.Name == name {
-			return fn
-		}
-	}
-	t.Fatalf("check.go has no %s function", name)
-	return nil
-}
-
-func calledMethodCount(fn *ast.FuncDecl, name string) int {
-	count := 0
-	ast.Inspect(fn.Body, func(node ast.Node) bool {
-		call, ok := node.(*ast.CallExpr)
-		if !ok {
-			return true
-		}
-		if sel, ok := call.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == name {
-			count++
-		} else if ident, ok := call.Fun.(*ast.Ident); ok && ident.Name == name {
-			count++
-		}
-		return true
-	})
-	return count
-}
-
-func calledMethodPosition(fn *ast.FuncDecl, name string) token.Pos {
-	var position token.Pos
-	ast.Inspect(fn.Body, func(node ast.Node) bool {
-		call, ok := node.(*ast.CallExpr)
-		if !ok {
-			return true
-		}
-		if sel, ok := call.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == name && position == token.NoPos {
-			position = call.Pos()
-		} else if ident, ok := call.Fun.(*ast.Ident); ok && ident.Name == name && position == token.NoPos {
-			position = call.Pos()
-		}
-		return true
-	})
-	return position
-}
-
-func hasOutputPlanParameter(fn *ast.FuncDecl) bool {
-	for _, field := range fn.Type.Params.List {
-		ptr, ok := field.Type.(*ast.StarExpr)
-		if !ok {
-			continue
-		}
-		ident, ok := ptr.X.(*ast.Ident)
-		if !ok || ident.Name != "OutputPlan" {
-			continue
-		}
-		for _, name := range field.Names {
-			if name.Name == "op" {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func callsMethodWithIdent(fn *ast.FuncDecl, method, argument string) bool {
-	found := false
-	ast.Inspect(fn.Body, func(node ast.Node) bool {
-		call, ok := node.(*ast.CallExpr)
-		if !ok {
-			return true
-		}
-		matches := false
-		if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
-			matches = sel.Sel.Name == method
-		}
-		if ident, ok := call.Fun.(*ast.Ident); ok {
-			matches = ident.Name == method
-		}
-		if !matches {
-			return true
-		}
-		for _, arg := range call.Args {
-			if ident, ok := arg.(*ast.Ident); ok && ident.Name == argument {
-				found = true
-			}
-		}
-		return true
-	})
-	return found
 }
 
 // The construction-identity claim is backed by TestPublishingConsumerPlanIdentity;

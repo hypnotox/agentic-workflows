@@ -375,7 +375,7 @@ func TestTopicPruneRemoveAndRename(t *testing.T) {
 	}
 	writeProjectTopic(t, root, "new", "New", "paths: [\"internal/**\"]\n")
 	p2, _ := Open(testContext(t), root)
-	_, _, pruned, err := syncReportProject(p2)
+	_, pruned, err := syncReportProject(p2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -656,7 +656,7 @@ Backing: test
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, pruned, err := syncReportProject(p)
+	_, pruned, err := syncReportProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}

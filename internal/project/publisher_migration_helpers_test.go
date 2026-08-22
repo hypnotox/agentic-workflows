@@ -7,8 +7,8 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/clispec"
 )
 
-func pitfallSource(title, extra, body string) string {
-	return "---\ntitle: " + title + "\n" + extra + "---\n" + body
+func pitfallSource(title, extra string) string {
+	return "---\ntitle: " + title + "\n" + extra + "---\nok\n"
 }
 
 func (l Layout) templateMap() map[string]any {

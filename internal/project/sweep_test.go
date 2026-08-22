@@ -129,7 +129,7 @@ func TestSweepBaselineClean(t *testing.T) {
 
 func TestSweepClaimsOnlyTheTopicCurrentStatePart(t *testing.T) {
 	root := topicProject(t)
-	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
+	writeProjectTopic(t, root)
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/parts/rendering/contracts/notes.md"), "stray\n")
 	got := orphanedByPath(checkDrift(t, root))
 	if got[".awf/topics/parts/rendering/contracts/notes.md"] != unclaimedDetail {

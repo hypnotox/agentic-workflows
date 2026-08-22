@@ -259,7 +259,7 @@ func testConfig(state *ProjectState) *config.Config {
 	testConfigs.Store(state, cfg)
 	return cfg
 }
-func testState(cfg *config.Config) *projectstate.ProjectState {
+func testState() *projectstate.ProjectState {
 	return projectstate.NewDerived("", resident.NewRoots("", ""), false, catalog.Standard, catalog.Standard, nil)
 }
 func testStateAt(root string) *projectstate.ProjectState {
@@ -349,10 +349,10 @@ func initializeReportProject(state *ProjectState, seed InitAuthority) ([]Backup,
 	result, err := New(lowerForConfig(state.OutputState(), cfg), cfg, NewFilesystemReader(state.Root()), project.Version).Initialize(seed)
 	return result.Backups(), result.Changes(), result.Pruned(), err
 }
-func syncReportProject(state *ProjectState) ([]Backup, []Change, []string, error) {
+func syncReportProject(state *ProjectState) ([]Backup, []string, error) {
 	cfg := testConfig(state)
 	result, err := New(lowerForConfig(state.OutputState(), cfg), cfg, NewFilesystemReader(state.Root()), project.Version).Sync()
-	return result.Backups(), result.Changes(), result.Pruned(), err
+	return result.Backups(), result.Pruned(), err
 }
 func contextStateProject(state *ProjectState, ctx context.Context) (project.ContextState, error) {
 	prep, err := project.PrepareContextState(state, nil, ctx)

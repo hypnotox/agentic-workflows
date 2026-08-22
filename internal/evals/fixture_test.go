@@ -11,7 +11,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
-	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -24,11 +23,6 @@ const evalPrefix = "example"
 
 func evalPreparation(p *project.ProjectState, cfg *config.Config) (publisher.Preparation, error) {
 	return publisher.New(p.OutputState(), cfg, publisher.NewFilesystemReader(p.Root()), project.Version).Prepare()
-}
-
-func evalPlan(p *project.ProjectState, cfg *config.Config) (outputplan.Plan, error) {
-	prepared, err := evalPreparation(p, cfg)
-	return prepared.Plan(), err
 }
 
 func syncEvalProject(t *testing.T, p *project.ProjectState) error {

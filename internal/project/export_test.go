@@ -20,7 +20,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
-	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
 var testConfigs sync.Map
@@ -93,10 +92,10 @@ func writeADR(t *testing.T, root, name, body string) {
 	t.Helper()
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", name), body)
 }
-func writeProjectTopic(t *testing.T, root, slug, title, applies string) {
+func writeProjectTopic(t *testing.T, root string) {
 	t.Helper()
-	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/metadata/rendering", slug+".yaml"), "title: "+title+"\nsummary: Current "+title+" contracts.\n"+applies)
-	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/parts/rendering", slug, "current-state.md"), "<!-- awf:comment author note -->\nAuthored raw {{ .value }}.\n\n## Claims\n\n### `rule: stable`\nStable behavior.\nOrigin: ADR-0001\n")
+	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/metadata/rendering", "contracts.yaml"), "title: Contracts\nsummary: Current Contracts contracts.\npaths: [\"internal/**\"]\n")
+	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/parts/rendering", "contracts", "current-state.md"), "<!-- awf:comment author note -->\nAuthored raw {{ .value }}.\n\n## Claims\n\n### `rule: stable`\nStable behavior.\nOrigin: ADR-0001\n")
 }
 func topicProject(t *testing.T) string {
 	t.Helper()
@@ -259,17 +258,7 @@ func advisoryNotesProject(state *ProjectState) ([]string, error) {
 	semantics := OperationSemantics{ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: prepared.PlansError()}
 	return AdvisoryNotes(state, testConfig(state), prepared.Plan(), semantics)
 }
-func contextStateProject(state *ProjectState, ctx context.Context) (ContextState, error) {
-	prep, err := PrepareContextState(state, testRepo(state), ctx)
-	if err != nil {
-		return ContextState{}, err
-	}
-	plan, err := publisher.New(prep.State, prep.Config, prep.Reader, Version).Plan()
-	if err != nil {
-		return ContextState{}, err
-	}
-	return CompleteContextState(prep, plan), nil
-}
+
 func checkCurrentStateProject(state *ProjectState, ctx context.Context) (CurrentStateReport, error) {
 	return CheckCurrentState(state.Root(), testRepo(state), ctx)
 }
@@ -279,17 +268,7 @@ func numberPendingADRsProject(state *ProjectState, slugs []string) (NumberingRep
 		return err
 	})
 }
-func renderResidentMarkerProject(state *ProjectState, name string) (RenderedFile, error) {
-	prepared, err := testPublisher(operationInputs(state, testConfig(state))).Prepare()
-	if err != nil {
-		return RenderedFile{}, err
-	}
-	output, err := prepared.ResidentMarker(name)
-	if err != nil {
-		return RenderedFile{}, err
-	}
-	return checkFile(output), nil
-}
+
 func newADRProject(state *ProjectState, ctx context.Context, title string) (string, error) {
 	return NewADR(state.Root(), testConfig(state), testRepo(state), ctx, title)
 }
@@ -305,14 +284,7 @@ func checkCommitAuthorizationProject(state *ProjectState, ctx context.Context, m
 func readPlanProject(state *ProjectState, name, selector string) ([]byte, error) {
 	return ReadPlan(state.Root(), name, selector)
 }
-func queryTopicProject(state *ProjectState, ctx context.Context, selector string, opts topic.QueryOptions) (topic.QueryResult, error) {
-	return QueryTopic(state.Root(), testRepo(state), ctx, selector, opts)
-}
 
-func testTargets(state *ProjectState) []Target { return state.Targets() }
-func setTestTargets(state *ProjectState, targets []Target) *ProjectState {
-	return testStateWith(state, state.Root(), state.roots(), state.nested(), state.catalog(), state.completeCatalog(), targets)
-}
 func setTestRoots(state *ProjectState, roots resident.Roots) *ProjectState {
 	return testStateWith(state, state.Root(), roots, state.nested(), state.catalog(), state.completeCatalog(), state.Targets())
 }

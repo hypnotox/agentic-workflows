@@ -33,7 +33,7 @@ func TestGatedCommandsDisplay(t *testing.T) {
 	}
 
 	cfg := &config.Config{}
-	p := testState(cfg)
+	p := testState()
 	inputs := newRenderInputs(p, cfg, nil, "test")
 	registry, err := placeholderRegistry(inputs)
 	if err != nil {

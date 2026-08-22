@@ -502,7 +502,7 @@ func TestCommentWrappedScopePlaceholderDoesNotFold(t *testing.T) {
 
 func TestTopicMetadataAndPartBothDriveDrift(t *testing.T) {
 	root := topicProject(t)
-	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
+	writeProjectTopic(t, root)
 	p, _ := Open(testContext(t), root)
 	if err := syncProject(p); err != nil {
 		t.Fatal(err)

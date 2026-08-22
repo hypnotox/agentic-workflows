@@ -292,7 +292,7 @@ func TestSidecarAbsentRendersDefault(t *testing.T) {
 // (ADR-0037): one present, the other absent, is a fail at the missing target.
 func TestTopicPartUsesRawPublicationSafeAssembly(t *testing.T) {
 	root := topicProject(t)
-	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
+	writeProjectTopic(t, root)
 	p, _ := Open(testContext(t), root)
 	if err := syncProject(p); err != nil {
 		t.Fatal(err)

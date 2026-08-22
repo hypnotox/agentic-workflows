@@ -303,12 +303,12 @@ func TestUnsetVarNotesFullySetIsSilent(t *testing.T) {
 func TestTagHealthNotes(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: awf\nintegrationBranch: main\ndomains: []\n"+
 		"tags:\n  alpha: A\n  beta: B\n  gamma: C\n  delta: D\n  epsilon: E\n", map[string]string{
-		"docs/pitfalls/a.md": pitfallSource("A", "tags: [alpha, beta, bogus]\n", "ok\n"),
-		"docs/pitfalls/b.md": pitfallSource("B", "tags: [alpha, gamma, bogus]\n", "ok\n"),
-		"docs/pitfalls/c.md": pitfallSource("C", "tags: [delta]\n", "ok\n"),
-		"docs/pitfalls/d.md": pitfallSource("D", "tags: [epsilon]\n", "ok\n"),
-		"docs/pitfalls/e.md": pitfallSource("E", "", "ok\n"),
-		"docs/pitfalls/f.md": pitfallSource("F", "tags: [bogus]\n", "ok\n"),
+		"docs/pitfalls/a.md": pitfallSource("A", "tags: [alpha, beta, bogus]\n"),
+		"docs/pitfalls/b.md": pitfallSource("B", "tags: [alpha, gamma, bogus]\n"),
+		"docs/pitfalls/c.md": pitfallSource("C", "tags: [delta]\n"),
+		"docs/pitfalls/d.md": pitfallSource("D", "tags: [epsilon]\n"),
+		"docs/pitfalls/e.md": pitfallSource("E", ""),
+		"docs/pitfalls/f.md": pitfallSource("F", "tags: [bogus]\n"),
 	})
 	writeADR(t, root, "0001-a.md", testsupport.ADR("Implemented", testsupport.WithTitle("0001: A"), testsupport.WithTags("alpha")))
 	writeADR(t, root, "0002-b.md", testsupport.ADR("Implemented", testsupport.WithTitle("0002: B")))
@@ -384,8 +384,8 @@ func TestTagHealthNotesEmptyVocabInert(t *testing.T) {
 // the frequency computation is skipped (empty-denominator guard, no divide-by-zero).
 func TestTagHealthNotesEmptyDenominator(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: awf\nintegrationBranch: main\ndomains: []\ntags:\n  alpha: A\n", map[string]string{
-		"docs/pitfalls/a.md": pitfallSource("A", "", "ok\n"),
-		"docs/pitfalls/b.md": pitfallSource("B", "", "ok\n"),
+		"docs/pitfalls/a.md": pitfallSource("A", ""),
+		"docs/pitfalls/b.md": pitfallSource("B", ""),
 	})
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -425,8 +425,8 @@ func TestTagHealthNotesPitfallError(t *testing.T) {
 func TestTagHealthNotesPitfalls(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: awf\nintegrationBranch: main\ndomains: []\ntags:\n  alpha: A\n",
 		map[string]string{
-			"docs/pitfalls/tagged.md":   pitfallSource("Tagged", "tags: [alpha]\n", "ok\n"),
-			"docs/pitfalls/untagged.md": pitfallSource("Untagged", "", "ok\n"),
+			"docs/pitfalls/tagged.md":   pitfallSource("Tagged", "tags: [alpha]\n"),
+			"docs/pitfalls/untagged.md": pitfallSource("Untagged", ""),
 		})
 	writeADR(t, root, "0001-a.md", testsupport.ADR("Implemented", testsupport.WithTitle("0001: A"), testsupport.WithTags("alpha")))
 	p, err := Open(testContext(t), root)
