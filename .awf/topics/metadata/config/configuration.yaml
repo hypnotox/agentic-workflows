@@ -7,3 +7,4 @@ paths:
   - internal/pathglob/**
   - internal/project/render.go
   - internal/project/staged_drift_test.go
+  - internal/configcheck/**

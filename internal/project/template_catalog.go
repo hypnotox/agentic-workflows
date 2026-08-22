@@ -66,4 +66,3 @@ func plainSingletons(cat *catalog.Catalog) []singletonSpec {
 }
 
 var hookNames = []string{"pre-commit", "commit-msg", "pre-push", "pre-merge-commit", "reference-transaction"}
-var runnerSections = []string{"runner-body"}

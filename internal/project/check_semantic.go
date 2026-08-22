@@ -42,14 +42,23 @@ func (b *checkBatch) informationItem(kind, path, detail string) {
 	}
 }
 
-func (b *checkBatch) informationDrift(drift []manifest.Drift) {
-	for _, item := range drift {
-		b.informationItem(item.Kind, item.Path, item.Detail)
-	}
-}
-
 func (b *checkBatch) result() (checkresult.Result, error) {
 	return checkresult.New(b.findings, b.information)
+}
+
+func (b *checkBatch) appendResult(result checkresult.Result) {
+	b.findings = append(b.findings, result.Findings()...)
+	b.information = append(b.information, result.Information()...)
+	for _, finding := range result.Findings() {
+		if finding.Rank == severity.Error {
+			b.projection = append(b.projection, finding.Evidence)
+		}
+	}
+	for _, item := range result.Information() {
+		if item.Evidence.Kind != "advisory" && item.Evidence.Kind != "tracking" {
+			b.projection = append(b.projection, item.Evidence)
+		}
+	}
 }
 
 func (b *checkBatch) append(other checkBatch) {

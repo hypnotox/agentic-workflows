@@ -1,7 +1,6 @@
 package project
 
 import (
-	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 )
@@ -34,19 +33,6 @@ func checkFile(output outputplan.Output) RenderedFile {
 		assembled: output.Assembled(), stubDefaults: output.StubDefaults(), stubParts: output.StubParts(),
 		markerParts: output.MarkerParts(), kind: output.Kind(), artifact: output.Artifact(), partVarRefs: output.PartVarRefs(),
 	}
-}
-
-func classifyFrozenOutputFreshness(file RenderedFile, entry manifest.Entry) (manifest.Drift, bool) {
-	if manifest.Hash([]byte(file.Content)) != entry.OutputHash {
-		return manifest.Drift{Path: file.Path, Kind: "stale", Detail: "rendered output out of date; run awf render"}, true
-	}
-	return manifest.Drift{}, false
-}
-func classifyFrozenObservedDrift(file RenderedFile, entry manifest.Entry, observed []byte, detail string) (manifest.Drift, bool) {
-	if manifest.Hash(observed) != entry.OutputHash {
-		return manifest.Drift{Path: file.Path, Kind: "hand-edited", Detail: detail}, true
-	}
-	return manifest.Drift{}, false
 }
 
 func planWriteFiles(plan *outputplan.Plan) []RenderedFile {

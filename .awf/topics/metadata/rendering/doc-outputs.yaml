@@ -5,3 +5,4 @@ paths:
   - internal/publisher/**
   - internal/project/**
   - internal/pitfall/**
+  - internal/referencecheck/**

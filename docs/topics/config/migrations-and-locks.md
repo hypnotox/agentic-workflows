@@ -5,7 +5,7 @@
 
 Config schema-generation migrations and the awf.lock manifest.
 
-**Applicability:** Owning domain selectors: `internal/config/**`, `internal/configspec/**`, `internal/manifest/**`, `internal/migrate/**`, `internal/pathglob/**`, `internal/project/render.go`, `internal/project/staged_drift_test.go`, `internal/publisher/**`. Topic selectors: `internal/manifest/**`, `internal/migrate/**`. Both domain and topic selectors must match. Run `awf topic config/migrations-and-locks --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `internal/config/**`, `internal/configcheck/**`, `internal/configspec/**`, `internal/manifest/**`, `internal/migrate/**`, `internal/pathglob/**`, `internal/project/render.go`, `internal/project/staged_drift_test.go`, `internal/publisher/**`. Topic selectors: `internal/manifest/**`, `internal/migrate/**`. Both domain and topic selectors must match. Run `awf topic config/migrations-and-locks --coverage` for current applicable and owned paths and marker sites.
 
 These packages migrate the config tree across schema generations and read and write the awf.lock manifest. The claims below capture the current migration and lock contracts.
 

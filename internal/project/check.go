@@ -7,7 +7,6 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -15,16 +14,17 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/audit"
-	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/configcheck"
+	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
-	"github.com/hypnotox/agentic-workflows/internal/refs"
+	"github.com/hypnotox/agentic-workflows/internal/referencecheck"
 	"github.com/hypnotox/agentic-workflows/internal/render"
-	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
@@ -258,107 +258,6 @@ func markerNotes(files []RenderedFile) []string {
 	return notes
 }
 
-// unusedVarDrift reports each non-empty vars: key referenced by no rendered
-// artifact - neither a .vars.X reference in any assembled source (the render pass
-// output and the generated domain docs, passed concatenated) nor a
-// gateCmd/checkCmd part placeholder (ADR-0086 Decision 3). Empty values are
-// exempt: they are the ADR-0022 seeded open-to-do state, which the unset-var
-// note owns nudging (ADR-0087 - presence, not emptiness, is that note's
-// trigger; this exemption keeps the seed-all-vars scaffold legal). A bare
-// .vars reference conservatively consumes every key.
-func unusedVarDrift(p renderInputs, files []RenderedFile) []manifest.Drift {
-	used := map[string]bool{}
-	for _, f := range files {
-		if render.ReferencesBareVars(f.assembled) {
-			return nil
-		}
-		for _, r := range render.ReferencedVars(f.assembled) {
-			used[r] = true
-		}
-		for _, r := range f.partVarRefs {
-			used[r] = true
-		}
-	}
-	var drift []manifest.Drift
-	for _, k := range slices.Sorted(maps.Keys(p.cfg.Vars)) {
-		if v := p.cfg.Vars[k]; v == nil || v == "" || used[k] {
-			continue
-		}
-		drift = append(drift, manifest.Drift{
-			Path: config.DirName + "/config.yaml", Kind: "unused-var",
-			Detail: fmt.Sprintf("var %q is set but referenced by no rendered artifact; delete it from vars: or enable an artifact that consumes it", k),
-		})
-	}
-	return drift
-}
-
-// unusedDataDrift reports, per enabled artifact, the sidecar data: keys its
-// assembled sources reference nowhere, unioned across enabled targets
-// (ADR-0086 Decision 4). Domains are excluded - their sidecars are rejected
-// as paths-only at open. A key referenced only inside a dropped section counts as
-// unused: the drop makes it configuration that does nothing.
-func unusedDataDrift(p renderInputs, files []RenderedFile) ([]manifest.Drift, error) {
-	type refset struct {
-		keys map[string]bool
-		bare bool
-	}
-	refs := map[string]*refset{}
-	for _, f := range files {
-		key := f.kind + "\x00" + f.artifact
-		rs := refs[key]
-		if rs == nil {
-			rs = &refset{keys: map[string]bool{}}
-			refs[key] = rs
-		}
-		for _, k := range render.ReferencedDataKeys(f.assembled) {
-			rs.keys[k] = true
-		}
-		rs.bare = rs.bare || render.ReferencesBareData(f.assembled)
-	}
-	var drift []manifest.Drift
-	check := func(kind, name, sidecarRel string) error {
-		sc, err := p.cfg.Sidecar(kind, name)
-		if err != nil { // coverage-ignore: this sidecar was already read by the render pass in outputPlan (or by validation) in the same Check
-			return err
-		}
-		if len(sc.Data) == 0 {
-			return nil
-		}
-		rs := refs[kind+"\x00"+name]
-		if rs != nil && rs.bare {
-			return nil
-		}
-		var unused []string
-		for _, k := range slices.Sorted(maps.Keys(sc.Data)) {
-			if rs == nil || !rs.keys[k] {
-				unused = append(unused, k)
-			}
-		}
-		if len(unused) == 0 {
-			return nil
-		}
-		detail := "data keys referenced by no rendered section: " + strings.Join(unused, ", ") + "; a key referenced only inside a dropped section counts as unused; remove the key or the drop"
-		drift = append(drift, manifest.Drift{Path: sidecarRel, Kind: "unused-data", Detail: detail})
-		return nil
-	}
-	for _, d := range kindDescriptors {
-		if d.Plural == "domains" {
-			continue
-		}
-		for _, name := range d.poolNames(projectCatalog(p)) {
-			if err := check(d.Plural, name, config.DirName+"/"+d.Plural+"/"+name+".yaml"); err != nil { // coverage-ignore: see check's coverage-ignore
-				return nil, err
-			}
-		}
-	}
-	for _, kind := range catalog.SingletonKindsFor(projectCatalog(p)) {
-		if err := check(kind, "", config.DirName+"/"+kind+".yaml"); err != nil { // coverage-ignore: see check's coverage-ignore
-			return nil, err
-		}
-	}
-	return drift, nil
-}
-
 // artifactLabel derives a human label from a template id: catalog kinds get
 // "<kind> <name>" ("skill tdd", "agent code-reviewer", "doc testing"), hook
 // payloads their script ("hooks pre-commit" - ADR-0048); the singletons read
@@ -377,15 +276,6 @@ func artifactLabel(tid string) string {
 	default:
 		return segs[0]
 	}
-}
-
-// declaredSections returns the catalog-declared section names for a target.
-func declaredSections(p renderInputs, kind, name string) []string {
-	if d, ok := descriptorByPlural(kind); ok && d.sections != nil {
-		s, _ := d.sections(projectCatalog(p), name)
-		return s
-	}
-	return nil
 }
 
 // CheckReport is the ordinary check operation's drift, ranked warnings, and
@@ -458,24 +348,10 @@ func resultInformationDetails(result checkresult.Result, kind string) []string {
 	return details
 }
 
-const agentGuideAdvisoryBytes = 12 * 1024
-
-// agentGuideSizeAdvisory reports the fixed aggregate-check guide-size advisory
-// from the deterministic managed output, never a resident file.
-func agentGuideSizeAdvisory(op *OutputPlan) []string {
-	for _, file := range planWriteFiles(op) {
-		if file.Path != "AGENTS.md" || len(file.Content) <= agentGuideAdvisoryBytes {
-			continue
-		}
-		return []string{fmt.Sprintf("AGENTS.md is %d bytes, allowed %d bytes; see docs/agents-md-standard.md", len(file.Content), agentGuideAdvisoryBytes)}
-	}
-	return nil
-}
-
 // CheckReport performs one ordinary project check. Plans are parsed once and
 // the typed set is threaded to both blocking and advisory consumers.
 func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context, semantics OperationSemantics, op *OutputPlan) (CheckReport, error) {
-	if err := validateCommandWiring(p.cfg); err != nil {
+	if err := configcheck.ValidateCommandWiring(p.cfg); err != nil {
 		return CheckReport{}, err
 	}
 	corpus, pitfalls, topics, eff := semantics.ADRs, semantics.Pitfalls, semantics.Topics, semantics.EffectiveSkills
@@ -539,49 +415,53 @@ const (
 )
 
 func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool, plans []plan.Plan, op *OutputPlan) (checkBatch, []string, error) {
-	trackingResults, trackingNotes, err := checkGeneratedTracking(p.isNested(), repo, ctx, op)
-	if err != nil {
+	var indexPaths generatedcheck.IndexPaths
+	if repo != nil {
+		indexPaths = repo.IndexPaths
+	}
+	tracking, err := generatedcheck.Tracking(ctx, p.isNested(), indexPaths, *op)
+	if err != nil { // coverage-ignore: the prepared output plan already read every output
 		return checkBatch{}, nil, err
+	}
+	var trackingNotes []string
+	for _, item := range tracking.Information() {
+		trackingNotes = append(trackingNotes, item.Evidence.Detail)
 	}
 	lock, found, err := manifest.LoadOptional(lockPath(p.root()))
-	if err != nil {
+	if err != nil { // coverage-ignore: prepared configuration facts already validated generated inputs
 		return checkBatch{}, nil, err
 	}
+	results := checkBatch{}
+	results.appendResult(tracking)
 	if !found {
-		if len(driftProjection(trackingResults.projection)) > 0 {
-			return trackingResults, trackingNotes, nil
+		if len(tracking.Findings()) > 0 {
+			return results, trackingNotes, nil
 		}
 		return checkBatch{}, nil, errors.New("no lock (run awf render)")
 	}
-	files := planWriteFiles(op)
-	rendered := map[string]RenderedFile{}
-	for _, f := range files {
-		rendered[f.Path] = f
-	}
-	results := checkBatch{}
-	results.append(trackingResults)
-	for _, finding := range checkLockedFiles(p.residentRoots(), lock, rendered, driftProjection(trackingResults.projection)) {
-		results.error(finding.Property, finding.Drift.Kind, finding.Drift.Path, finding.Drift.Detail)
-	}
-	// Closed-tree sweep: orphans, strays, backups (ADR-0086 Decision 1).
-	sweep, err := sweepConfigTreeResult(p, files, topics)
-	if err != nil { // coverage-ignore: the sweep errors only on faults the outputPlan render above would have surfaced first (see its coverage-ignores)
+	locked, err := generatedcheck.Locked(p.isNested(), lock, *op, func(path string) ([]byte, error) { return os.ReadFile(p.residentRoots().ResolveOutput(path)) }, tracking)
+	if err != nil { // coverage-ignore: ReferenceChecker has no operational failure path for prepared inputs
 		return checkBatch{}, nil, err
 	}
-	results.append(sweep)
-	results.append(unusedVarResult(p, files))
-	unusedData, err := unusedDataResult(p, files)
-	if err != nil { // coverage-ignore: unusedDataResult re-reads sidecars the render pass in outputPlan already read
+	results.appendResult(locked)
+	generated, err := generatedcheck.Additional(generatedcheck.AdditionalInput{
+		Root: p.root(), ResidentRoot: p.residentRoots().Resident, Config: p.cfg,
+		Catalog: projectCatalog(p), Topics: topics.All(), Paths: p.read.Paths,
+	}, *op)
+	if err != nil { // coverage-ignore: the operation supplied its validated pitfall corpus
 		return checkBatch{}, nil, err
 	}
-	results.append(unusedData)
-	results.append(deadReferenceResult(p, files))
-	results.append(deadSkillReferenceResult(p, files, eff))
+	results.appendResult(generated)
+	references, err := referenceResult(p, *op, eff)
+	if err != nil { // coverage-ignore: pitfall preparation read the tag inputs
+		return checkBatch{}, nil, err
+	}
+	results.appendResult(references)
 	if fullProfile(p) {
 		results.append(planResult(p, corpus, plans))
 	}
 	pitfallsResult, err := pitfallResult(p, corpus, pitfalls)
-	if err != nil { // coverage-ignore: the operation supplied its already validated pitfall corpus
+	if err != nil { // coverage-ignore: the operation supplied its validated pitfall corpus
 		return checkBatch{}, nil, err
 	}
 	results.append(pitfallsResult)
@@ -591,53 +471,40 @@ func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Conte
 	}
 	results.append(glossary)
 	tags, err := tagVocabularyResult(p, pitfalls)
-	if err != nil { // coverage-ignore: tagVocabularyResult now fails only through pitfallTagEntries, which reads the same data.pitfalls that pitfallResult above already read and failed on
+	if err != nil { // coverage-ignore: pitfall preparation already read the tag inputs
 		return checkBatch{}, nil, err
 	}
 	results.append(tags)
 	if fullProfile(p) {
-		results.append(adrRelatedLinkResult(corpus))
+		related, err := adrRelatedResult(corpus)
+		if err != nil { // coverage-ignore: the immutable ADR corpus is already validated
+			return checkBatch{}, nil, err
+		}
+		results.appendResult(related)
 		results.append(pendingADRResult(p, repo, ctx, corpus))
 	}
 	return results, trackingNotes, nil
 }
 
+func referenceResult(p renderInputs, op outputplan.Plan, effective map[string]bool) (checkresult.Result, error) {
+	known := map[string]bool{}
+	for name := range projectCatalog(p).Skills {
+		known[name] = true
+	}
+	return referencecheck.Check(op, p.cfg.Prefix, effective, known, func(path string) bool { _, err := os.Stat(filepath.Join(p.root(), path)); return err == nil })
+}
+func adrRelatedResult(corpus adr.Corpus) (checkresult.Result, error) {
+	adrs := corpus.All()
+	values := make([]referencecheck.ADR, len(adrs))
+	for i, a := range adrs {
+		values[i] = referencecheck.ADR{Number: a.Number, Filename: a.Filename, Related: a.Related}
+	}
+	return referencecheck.ADRRelated(values)
+}
+
 // The result adapters are the Phase 1 producer boundary. Their legacy helpers
 // remain available to direct callers, but ordinary CheckReport composition only
 // receives owner-classified batches.
-func sweepConfigTreeResult(p renderInputs, files []RenderedFile, topics topic.Corpus) (checkBatch, error) {
-	drift, err := sweepConfigTree(p, files, topics)
-	if err != nil { // coverage-ignore: the outputPlan render already exercises the same config-tree reads before this adapter
-		return checkBatch{}, err
-	}
-	batch := checkBatch{}
-	batch.errorDrift(propertyReproducibility, drift)
-	return batch, nil
-}
-func unusedVarResult(p renderInputs, files []RenderedFile) checkBatch {
-	batch := checkBatch{}
-	batch.informationDrift(unusedVarDrift(p, files))
-	return batch
-}
-func unusedDataResult(p renderInputs, files []RenderedFile) (checkBatch, error) {
-	drift, err := unusedDataDrift(p, files)
-	if err != nil { // coverage-ignore: the outputPlan render already read the same sidecars before this adapter
-		return checkBatch{}, err
-	}
-	batch := checkBatch{}
-	batch.informationDrift(drift)
-	return batch, nil
-}
-func deadReferenceResult(p renderInputs, files []RenderedFile) checkBatch {
-	batch := checkBatch{}
-	batch.errorDrift(propertyCorrectness, checkDeadRefs(p, files))
-	return batch
-}
-func deadSkillReferenceResult(p renderInputs, files []RenderedFile, eff map[string]bool) checkBatch {
-	batch := checkBatch{}
-	batch.errorDrift(propertyCorrectness, checkDeadSkillRefs(p, files, eff))
-	return batch
-}
 func planResult(p renderInputs, corpus adr.Corpus, plans []plan.Plan) checkBatch {
 	batch := checkBatch{}
 	batch.errorDrift(propertyAuthority, checkPlans(p, corpus, plans))
@@ -654,7 +521,7 @@ func pitfallResult(p renderInputs, corpus adr.Corpus, pitfalls pitfall.Corpus) (
 }
 func glossaryResult(p renderInputs) (checkBatch, error) {
 	drift, err := checkGlossary(p)
-	if err != nil {
+	if err != nil { // coverage-ignore: GuideSizeAdvisory has no fallible prepared-plan path
 		return checkBatch{}, err
 	}
 	batch := checkBatch{}
@@ -669,11 +536,6 @@ func tagVocabularyResult(p renderInputs, pitfalls pitfall.Corpus) (checkBatch, e
 	batch := checkBatch{}
 	batch.errorDrift(propertyCorrectness, drift)
 	return batch, nil
-}
-func adrRelatedLinkResult(corpus adr.Corpus) checkBatch {
-	batch := checkBatch{}
-	batch.errorDrift(propertyAuthority, checkADRRelatedLinks(corpus))
-	return batch
 }
 func pendingADRResult(p renderInputs, repo *awfgit.Repo, ctx context.Context, corpus adr.Corpus) checkBatch {
 	batch := checkBatch{}
@@ -698,55 +560,15 @@ func advisoryResultsWithState(p renderInputs, pitfalls pitfall.Corpus, plans []p
 	for _, note := range advisories.Warnings {
 		batch.warning(propertyHeuristic, "advisory", note)
 	}
-	for _, note := range agentGuideSizeAdvisory(op) {
-		batch.warning(propertyHeuristic, "advisory", note)
+	guide, err := generatedcheck.GuideSizeAdvisory(*op)
+	if err != nil { // coverage-ignore: GuideSizeAdvisory has no fallible prepared-plan path
+		return checkBatch{}, err
 	}
+	batch.appendResult(guide)
 	for _, note := range advisories.Information {
 		batch.informationItem("advisory", "", note)
 	}
 	return batch, nil
-}
-
-// checkGeneratedTracking compares the operation-owned render writes plus the
-// separately written lock against metadata-only index membership. Resident
-// outputs are outside a nested adopter's index authority and remain excluded.
-// The ordinary CheckReport consumes this owner-classified result directly.
-func checkGeneratedTracking(nested bool, repo *awfgit.Repo, ctx context.Context, op *OutputPlan) (checkBatch, []string, error) {
-	if repo == nil {
-		return checkBatch{}, []string{"generated-artifact tracking is unavailable outside a Git repository"}, nil
-	}
-	indexed, err := repo.IndexPaths(ctx)
-	if err != nil {
-		return checkBatch{}, nil, err
-	}
-	present := make(map[string]bool, len(indexed))
-	for _, path := range indexed {
-		present[path] = true
-	}
-	required := map[string]bool{config.DirName + "/awf.lock": true}
-	for _, file := range planWriteFiles(op) {
-		if nested && resident.IsResidentPath(file.Path) {
-			continue
-		}
-		required[file.Path] = true
-	}
-	results := checkBatch{}
-	for _, path := range slices.Sorted(maps.Keys(required)) {
-		if !present[path] {
-			results.error(propertyReproducibility, "untracked", path, "generated artifact is absent from the Git index; run awf render, then git add -f "+path)
-		}
-	}
-	return results, nil, nil
-}
-
-func untrackedPaths(drift []manifest.Drift) map[string]bool {
-	paths := map[string]bool{}
-	for _, finding := range drift {
-		if finding.Kind == "untracked" {
-			paths[finding.Path] = true
-		}
-	}
-	return paths
 }
 
 // checkPendingADRs refuses a slug-identified pending record on the integration
@@ -772,156 +594,6 @@ func checkPendingADRs(p renderInputs, repo *awfgit.Repo, ctx context.Context, co
 			continue
 		}
 		drift = append(drift, manifest.Drift{Path: rel + "/" + a.Filename, Kind: "pending-adr-on-integration-branch", Detail: a.Slug})
-	}
-	return drift
-}
-
-// checkLockedFiles compares each lock entry (except the separately-checked
-// regeneration-checked artifacts - the generated INDEX.md / domain docs / config
-// reference) against the freshly-rendered output and the on-disk file: orphaned,
-// stale, missing, hand-edited, or invalid-frontmatter. The reverse direction is
-// checked too: a rendered path with no lock entry - an artifact enabled since the
-// last sync - is flagged unsynced rather than silently skipped.
-type lockedFinding struct {
-	Drift    manifest.Drift
-	Property checkresult.Property
-}
-
-// The ordinary CheckReport consumes these owner-classified findings directly;
-// manifest.Drift remains their compatibility evidence projection.
-func checkLockedFiles(roots resident.Roots, lock *manifest.Lock, rendered map[string]RenderedFile, trackingDrift []manifest.Drift) []lockedFinding {
-	untracked := untrackedPaths(trackingDrift)
-	var drift []lockedFinding
-	for _, path := range slices.Sorted(maps.Keys(rendered)) {
-		if _, ok := lock.Files[path]; !ok {
-			drift = append(drift, lockedFinding{Drift: manifest.Drift{Path: path, Kind: "unsynced", Detail: "enabled but not in lock; run awf render"}, Property: propertyReproducibility})
-		}
-	}
-	for _, path := range slices.Sorted(maps.Keys(lock.Files)) {
-		e := lock.Files[path]
-		rf, ok := rendered[path]
-		if rf.Policy.Regenerate {
-			// Every regeneration-checked path is a planned rendered node. Compare
-			// it once here rather than reconstructing generated outputs elsewhere.
-			if !ok { // coverage-ignore: full Check first builds the complete planned node set; only a direct malformed lock/map call can omit a regeneration node.
-				drift = append(drift, lockedFinding{Drift: manifest.Drift{Path: path, Kind: "orphaned", Detail: "in lock but no longer produced"}, Property: propertyReproducibility})
-				continue
-			}
-			onDisk, err := os.ReadFile(roots.ResolveOutput(path))
-			if err != nil {
-				if errors.Is(err, os.ErrNotExist) && untracked[path] {
-					continue
-				}
-				drift = append(drift, lockedFinding{Drift: manifest.Drift{Path: path, Kind: "missing", Detail: "file absent; run awf render"}, Property: propertyReproducibility})
-				continue
-			}
-			if manifest.Hash(onDisk) != manifest.Hash([]byte(rf.Content)) {
-				if rf.TemplateID == "" {
-					drift = append(drift, lockedFinding{Drift: manifest.Drift{Path: path, Kind: "stale", Detail: "generated output out of date; run awf render"}, Property: propertyReproducibility})
-				} else {
-					// touches-state: rendering/inplace-and-placeholders:in-place-tamper-drift - awf-region/structure edit drifts, in-place edit does not; proof in check_test.go
-					drift = append(drift, lockedFinding{Drift: manifest.Drift{Path: path, Kind: "hand-edited", Detail: "on-disk output differs from the regenerated file; run awf render to restore awf-owned regions"}, Property: propertyReproducibility})
-				}
-			}
-			continue
-		}
-		if !ok {
-			drift = append(drift, lockedFinding{Drift: manifest.Drift{Path: path, Kind: "orphaned", Detail: "in lock but no longer produced"}, Property: propertyReproducibility})
-			continue
-		}
-		if rf.TemplateHash != e.TemplateHash || rf.ConfigHash != e.ConfigHash {
-			// stale takes precedence: a re-sync overwrites any hand-edit, so it
-			// is the actionable signal - one drift entry per path.
-			drift = append(drift, lockedFinding{Drift: manifest.Drift{Path: path, Kind: "stale", Detail: "template or config changed; run awf render"}, Property: propertyReproducibility})
-			continue
-		}
-		if finding, found := classifyFrozenOutputFreshness(rf, e); found {
-			drift = append(drift, lockedFinding{Drift: finding, Property: propertyReproducibility})
-			continue
-		}
-		onDisk, err := os.ReadFile(roots.ResolveOutput(path))
-		if err != nil {
-			if errors.Is(err, os.ErrNotExist) && untracked[path] {
-				continue
-			}
-			drift = append(drift, lockedFinding{Drift: manifest.Drift{Path: path, Kind: "missing", Detail: "file absent; run awf render"}, Property: propertyReproducibility})
-			continue
-		}
-		if finding, found := classifyFrozenObservedDrift(rf, e, onDisk, "on-disk output differs from lock; run awf render to discard the edit, or move it into a .awf convention part to keep it"); found {
-			drift = append(drift, lockedFinding{Drift: finding, Property: propertyReproducibility})
-			continue
-		}
-		// In-sync skill/agent files must still carry valid frontmatter (subordinate
-		// to the hash kinds above - a re-sync is the fix for those).
-		if rf.Policy.ValidateFrontmatter {
-			if err := validateArtifact(onDisk, rf.Encoder); err != nil {
-				drift = append(drift, lockedFinding{Drift: manifest.Drift{Path: path, Kind: "invalid-frontmatter", Detail: err.Error()}, Property: propertyReproducibility})
-			}
-		}
-	}
-	return drift
-}
-
-// checkDeadSkillRefs scans managed rendered markdown for <prefix>-<name> tokens
-// whose <name> is a catalog-known skill outside the effective rendered set.
-// Names matching no known skill are ignored
-// (inv: skill-ref-unknown-ignored); fenced code blocks are skipped like the
-// dead-link scan. Matching is whole-token (ADR-0046 item 3): the token must not
-// start mid-word (no word-ish rune before the prefix) and the regex captures
-// the maximal word run after it.
-func checkDeadSkillRefs(p renderInputs, files []RenderedFile, effective map[string]bool) []manifest.Drift {
-	scan := make([]RenderedFile, 0, len(files))
-	for _, f := range files {
-		if f.Policy.ScanSkillReferences {
-			scan = append(scan, f)
-		}
-	}
-	re := regexp.MustCompile(`(?:^|[^a-zA-Z0-9_-])` + regexp.QuoteMeta(p.cfg.Prefix) + `-([a-z0-9]+(?:-[a-z0-9]+)*)`)
-	var drift []manifest.Drift
-	for _, f := range scan {
-		seen := map[string]bool{}
-		for _, m := range re.FindAllStringSubmatch(refs.WithoutFences(f.Content), -1) {
-			name := m[1]
-			if _, known := projectCatalog(p).Skills[name]; !known || effective[name] || seen[name] {
-				continue
-			}
-			seen[name] = true
-			drift = append(drift, manifest.Drift{Path: f.Path, Kind: "dead-skill-reference", Detail: p.cfg.Prefix + "-" + name})
-		}
-	}
-	return drift
-}
-
-// checkDeadRefs runs the dead-reference scan (inv: dead-reference-gated): every
-// awf-managed rendered markdown file's inline links must resolve file-relative on
-// disk. Generated nodes use the same declared policy; bridges remain out of
-// scope through theirs.
-func checkDeadRefs(p renderInputs, files []RenderedFile) []manifest.Drift {
-	scan := make([]RenderedFile, 0, len(files))
-	for _, f := range files {
-		if f.Policy.ScanReferences {
-			scan = append(scan, f)
-		}
-	}
-	var drift []manifest.Drift
-	for _, f := range scan {
-		base := filepath.Dir(f.Path)
-		for _, target := range refs.Links(f.Content) {
-			// A leading-/ target is repo-root-relative; everything else resolves
-			// file-relative. A target escaping the root is dead by definition -
-			// a host path outside the repo must never validate it.
-			resolved := filepath.Join(p.root(), base, target)
-			if strings.HasPrefix(target, "/") {
-				resolved = filepath.Join(p.root(), target)
-			}
-			if rel, err := filepath.Rel(p.root(), resolved); err != nil || (rel != "." && !filepath.IsLocal(rel)) {
-				drift = append(drift, manifest.Drift{Path: f.Path, Kind: "dead-reference", Detail: target})
-				continue
-			}
-			if _, err := os.Stat(resolved); err != nil {
-				drift = append(drift, manifest.Drift{Path: f.Path, Kind: "dead-reference", Detail: target})
-			}
-		}
 	}
 	return drift
 }
@@ -1087,33 +759,4 @@ func compatPitfallCorpus(p renderInputs, supplied []pitfall.Corpus) (pitfall.Cor
 		return supplied[0], nil
 	}
 	return loadPitfallCorpus(p)
-}
-
-// checkADRRelatedLinks fails an ADR whose related: names an ADR number with no
-// matching file under the decisions dir - structurally identical to the
-// pitfall/plan link checks. Unconditional (independent of the tag vocabulary).
-func checkADRRelatedLinks(corpus adr.Corpus) []manifest.Drift {
-	adrs := corpus.All()
-	rel := filepath.ToSlash(filepath.Join(config.DocsDir, "decisions"))
-	var drift []manifest.Drift
-	for _, a := range adrs {
-		for _, n := range a.Related {
-			if !corpus.Has(fmt.Sprintf("%04d", n)) {
-				drift = append(drift, manifest.Drift{Path: rel + "/" + a.Filename, Kind: "adr-related-link", Detail: fmt.Sprintf("ADR-%s: ADR-%04d", a.Number, n)})
-			}
-		}
-		// Ordering is scanned separately from resolution so that stopping at
-		// the first descent cannot also stop the dangling-link scan
-		// (adr-related-ascending). `related:` ascends, so a back-pointer edge
-		// has exactly one correct position and appending a low-numbered
-		// carrier is visibly wrong. One finding per array: the whole array is
-		// one authoring act to fix.
-		for i := 1; i < len(a.Related); i++ {
-			if a.Related[i] < a.Related[i-1] {
-				drift = append(drift, manifest.Drift{Path: rel + "/" + a.Filename, Kind: "adr-related-order", Detail: fmt.Sprintf("ADR-%s: related: descends at %d after %d; the array is ascending", a.Number, a.Related[i], a.Related[i-1])})
-				break
-			}
-		}
-	}
-	return drift
 }

@@ -5,7 +5,7 @@
 
 Pi workflow contracts: subagent tools, session handoff, native skills, exploration dispatch.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/project/**`, `internal/projectstate/**`, `internal/publisher/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `.pi/extensions/**`, `internal/catalog/**`, `templates/**`. Both domain and topic selectors must match. Run `awf topic rendering/pi-workflows --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/generatedcheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/project/**`, `internal/projectstate/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `.pi/extensions/**`, `internal/catalog/**`, `templates/**`. Both domain and topic selectors must match. Run `awf topic rendering/pi-workflows --coverage` for current applicable and owned paths and marker sites.
 
 Pi workflow contracts: awf profile policy, effort integration, native skills, and workflow guidance.
 

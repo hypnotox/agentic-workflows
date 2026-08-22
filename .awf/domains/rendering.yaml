@@ -10,3 +10,5 @@ paths:
   - internal/resident/**
   - internal/refs/**
   - templates/**
+  - internal/generatedcheck/**
+  - internal/referencecheck/**
