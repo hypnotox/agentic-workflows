@@ -98,8 +98,8 @@ func PrepareStagedContext(ctx context.Context, root string) (*ContextPreparation
 // Tree returns the immutable selected snapshot for a project-owned comparison.
 func (p *ContextPreparation) Tree() *snapshot.Tree { return p.tree }
 
-// Lock returns the selected snapshot's lock for a project-owned comparison.
-func (p *ContextPreparation) Lock() *manifest.Lock { return p.lock }
+// Lock returns a defensive projection for a project-owned comparison.
+func (p *ContextPreparation) Lock() *manifest.Lock { return p.lock.Clone() }
 
 func newContextPreparation(state *projectstate.ProjectState, cfg *config.Config, tree *snapshot.Tree, lock *manifest.Lock) *ContextPreparation {
 	cat := state.Catalog()

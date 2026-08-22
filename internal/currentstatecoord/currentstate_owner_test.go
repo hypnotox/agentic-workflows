@@ -33,6 +33,19 @@ func contextState(root string) *projectstate.ProjectState {
 	return projectstate.NewDerivedWithFacts(root, resident.NewRoots(root, ""), false, config.Facts{}, catalog.Standard, catalog.Standard, nil)
 }
 
+func TestContextPreparationLockIsDefensive(t *testing.T) {
+	root := t.TempDir()
+	lock := &manifest.Lock{Files: map[string]manifest.Entry{"generated": {}}, BridgeAttestation: &manifest.BridgeAttestation{LegacyADRGaps: []int{1}}}
+	prep := newContextPreparation(contextState(root), &config.Config{}, ownerTree(t), lock)
+	first := prep.Lock()
+	first.Files["mutated"] = manifest.Entry{}
+	first.BridgeAttestation.LegacyADRGaps[0] = 9
+	fresh := prep.Lock()
+	if _, ok := fresh.Files["mutated"]; ok || fresh.BridgeAttestation.LegacyADRGaps[0] != 1 {
+		t.Fatalf("context preparation lock aliases caller: %#v", fresh)
+	}
+}
+
 func writeContextFile(t *testing.T, root, path, contents string) {
 	t.Helper()
 	full := filepath.Join(root, path)

@@ -114,19 +114,7 @@ func cloneLayout(v Layout) Layout {
 	v.Singletons = maps.Clone(v.Singletons)
 	return v
 }
-func cloneLock(in *manifest.Lock) *manifest.Lock {
-	if in == nil {
-		return nil
-	}
-	out := *in
-	out.Files = maps.Clone(in.Files)
-	if in.BridgeAttestation != nil {
-		bridge := *in.BridgeAttestation
-		bridge.LegacyADRGaps = slices.Clone(in.BridgeAttestation.LegacyADRGaps)
-		out.BridgeAttestation = &bridge
-	}
-	return &out
-}
+func cloneLock(in *manifest.Lock) *manifest.Lock { return in.Clone() }
 func cloneLinks(in map[string][]PlanReference) map[string][]PlanReference {
 	out := map[string][]PlanReference{}
 	for k, v := range in {

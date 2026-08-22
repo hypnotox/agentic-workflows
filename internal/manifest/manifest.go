@@ -7,8 +7,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"golang.org/x/mod/semver"
@@ -32,6 +34,21 @@ type Lock struct {
 	Files                  map[string]Entry   `json:"files"`
 	BridgeAttestation      *BridgeAttestation `json:"bridgeAttestation,omitempty"`
 	InitializedWithVersion string             `json:"initializedWithVersion,omitempty"`
+}
+
+// Clone returns a fully independent lock projection.
+func (l *Lock) Clone() *Lock {
+	if l == nil {
+		return nil
+	}
+	out := *l
+	out.Files = maps.Clone(l.Files)
+	if l.BridgeAttestation != nil {
+		bridge := *l.BridgeAttestation
+		bridge.LegacyADRGaps = slices.Clone(l.BridgeAttestation.LegacyADRGaps)
+		out.BridgeAttestation = &bridge
+	}
+	return &out
 }
 
 // AuthorityState distinguishes the frozen bridge input from ordinary locks.
