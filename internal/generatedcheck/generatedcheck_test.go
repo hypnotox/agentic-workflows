@@ -10,6 +10,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
+	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
 
 func TestTrackingClassifiesMissingPlanOutput(t *testing.T) {
@@ -37,6 +38,9 @@ func TestStagedFreshnessPrecedesObservation(t *testing.T) {
 		t.Fatalf("drift=%#v", got)
 	}
 }
+
+// invariant: rendering/sync-and-drift:agent-guide-size-advisory (TestLockedValidationAndAdvisory)
+// invariant: tooling/cli:check-severity-by-protected-property (TestLockedValidationAndAdvisory)
 func TestLockedValidationAndAdvisory(t *testing.T) {
 	for _, content := range []string{"plain", "---\nname: x\n---\n", "---\nname: x\ndescription: ' '\n---\n", "---\nname: ' '\ndescription: x\n---\n"} {
 		if ValidateFrontmatter([]byte(content)) == nil {
@@ -57,6 +61,10 @@ func TestLockedValidationAndAdvisory(t *testing.T) {
 	advisory, err := GuideSizeAdvisory(planFor(guide))
 	if err != nil || len(advisory.Findings()) != 1 {
 		t.Fatalf("advisory=%#v err=%v", advisory, err)
+	}
+	finding := advisory.Findings()[0]
+	if finding.Rank != severity.Warn || finding.Property != "heuristic-quality" {
+		t.Fatalf("guide advisory classification = rank %v property %q", finding.Rank, finding.Property)
 	}
 }
 func TestGeneratedOwnerExceptionalBranches(t *testing.T) {

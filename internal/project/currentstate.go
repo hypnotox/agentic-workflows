@@ -211,9 +211,10 @@ const (
 	propertyPlanArtifact    checkresult.Property = "plan-artifact-validity"
 )
 
-// Result returns the current-state coordinator's owner-classified result.
-func (r CurrentStateReport) Result() (checkresult.Result, error) {
-	return currentStateResult(r)
+// Result returns the completed owner-classified result captured by the
+// current-state coordinator. Compatibility slices cannot change it afterward.
+func (r CurrentStateReport) Result() checkresult.Result {
+	return r.OwnerResult
 }
 
 // classifyCurrentState stores the compatibility projection produced by the

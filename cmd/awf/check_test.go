@@ -992,21 +992,6 @@ func TestRunCheckStagedContinuesAfterStatePresentationFailure(t *testing.T) {
 	}
 }
 
-func TestCollectCheckStagedRetainsCurrentStateResultFailure(t *testing.T) {
-	root := stagedCheckProject(t, map[string]string{".awf/config.yaml": checkYAML}, nil)
-	dependencies := productionCheckStagedDependencies()
-	dependencies.stateRoot = func(context.Context, string) (project.CurrentStateReport, error) {
-		return project.CurrentStateReport{Static: []currentstate.Finding{{}}}, nil
-	}
-	collection, err := collectCheckStagedSelectionWith(testContext(t), root, planNoteSink{}, true, false, dependencies)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(collection.operational) != 1 {
-		t.Fatalf("operational failures = %v, want invalid owner result", collection.operational)
-	}
-}
-
 func TestCollectCheckStagedStateOnlyRetainsAbsentLockError(t *testing.T) {
 	root := syncedGitProject(t, checkYAML)
 	gitfixture.StageRemoval(t, gitfixture.At(root), ".awf/awf.lock")
@@ -1043,7 +1028,7 @@ func TestCollectCheckStagedRetainsStateFailureWhenDriftCategoryMappingFails(t *t
 	driftFailure := errors.New("drift category mapping failed")
 	dependencies := productionCheckStagedDependencies()
 	dependencies.stateRoot = func(context.Context, string) (project.CurrentStateReport, error) {
-		return project.CurrentStateReport{Static: []currentstate.Finding{{Message: "state-failure-sentinel"}}}, nil
+		return currentStateReportForTest(t, project.CurrentStateReport{Static: []currentstate.Finding{{Message: "state-failure-sentinel"}}}), nil
 	}
 	dependencies.driftRoot = func(context.Context, string) (checkresult.Result, error) { return checkresult.New(nil, nil) }
 	dependencies.present = func(result checkresult.Result, check string, evidence bool) (repositorycheck.Presentation, error) {

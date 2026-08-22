@@ -32,6 +32,7 @@ type repoCheckCounters struct {
 
 func repoCheckTestDependencies(t *testing.T, cfg *config.Config, p *project.ProjectState, check project.CheckReport, state project.CurrentStateReport, tree *snapshot.Tree, counts *repoCheckCounters) repoCheckDependencies {
 	t.Helper()
+	state = currentStateReportForTest(t, state)
 	if len(check.DirectResult.Findings()) == 0 && len(check.DirectResult.Information()) == 0 && len(check.Drift) > 0 {
 		var findings []checkresult.Finding
 		var information []checkresult.Information
@@ -133,14 +134,21 @@ func TestRepoCheckCategoryFailuresPropagate(t *testing.T) {
 	}
 }
 
-func TestRepoCheckRetainsCurrentStateResultFailure(t *testing.T) {
-	cfg := &config.Config{}
-	p := &project.ProjectState{}
-	state := project.CurrentStateReport{Static: []currentstate.Finding{{}}}
-	deps := repoCheckTestDependencies(t, cfg, p, project.CheckReport{}, state, nil, &repoCheckCounters{})
-	if err := runRepoCheckSelection(context.Background(), t.TempDir(), io.Discard, []execution.StepID{repoStepState}, execution.StopOnFailure, false, deps); err == nil {
-		t.Fatal("state check accepted invalid owner evidence")
+func currentStateReportForTest(t *testing.T, report project.CurrentStateReport) project.CurrentStateReport {
+	t.Helper()
+	if len(report.Static) == 0 {
+		return report
 	}
+	findings := make([]checkresult.Finding, 0, len(report.Static))
+	for _, finding := range report.Static {
+		findings = append(findings, checkresult.Finding{Rank: severity.Error, Property: "current-state-authority", Evidence: checkresult.Evidence{Kind: "current-state", Detail: finding.Message}})
+	}
+	result, err := checkresult.New(findings, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	report.OwnerResult = result
+	return report
 }
 
 // invariant: rendering/sync-and-drift:generated-artifacts-tracked (TestRepoCheckCapabilityPlan)

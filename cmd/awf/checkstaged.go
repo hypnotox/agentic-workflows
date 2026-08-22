@@ -83,18 +83,14 @@ func collectCheckStagedSelectionWith(ctx context.Context, root string, planNotes
 					collection.warnings = append(collection.warnings, note)
 				}
 			}
-			result, resultErr := report.Result()
-			if resultErr != nil {
-				collection.operational = append(collection.operational, resultErr)
+			result := report.Result()
+			projected, projectErr := dependencies.present(repositorycheck.ErrorsOnly(result), "staged current-state", false)
+			if projectErr != nil {
+				collection.operational = append(collection.operational, projectErr)
 			} else {
-				projected, projectErr := dependencies.present(repositorycheck.ErrorsOnly(result), "staged current-state", false)
-				if projectErr != nil {
-					collection.operational = append(collection.operational, projectErr)
-				} else {
-					collection.presentation = collection.presentation.Append(projected)
-					if repositorycheck.HasErrors(result) {
-						collection.failures = append(collection.failures, errors.New("check staged state failed"))
-					}
+				collection.presentation = collection.presentation.Append(projected)
+				if repositorycheck.HasErrors(result) {
+					collection.failures = append(collection.failures, errors.New("check staged state failed"))
 				}
 			}
 		}

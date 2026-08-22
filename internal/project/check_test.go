@@ -16,6 +16,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
+	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
@@ -1418,6 +1419,7 @@ func TestInitializeReportAcceptsBrownfieldGovernedRecord(t *testing.T) {
 }
 
 // invariant: rendering/sync-and-drift:agent-guide-size-advisory (TestAgentGuideSizeAdvisoryBoundary)
+// invariant: rendering/sync-and-drift:agent-guide-size-advisory (TestAgentGuideSizeAdvisoryBoundary)
 func TestAgentGuideSizeAdvisoryBoundary(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
@@ -1476,6 +1478,13 @@ func TestAgentGuideSizeAdvisoryBoundary(t *testing.T) {
 				}
 			}
 			if tc.want {
+				var classified bool
+				for _, finding := range report.Result.Findings() {
+					classified = classified || finding.Rank == severity.Warn && finding.Property == "heuristic-quality" && strings.Contains(finding.Evidence.Detail, "12289")
+				}
+				if !classified {
+					t.Fatalf("CheckReport omitted owner-classified guide warning: %#v", report.Result.Findings())
+				}
 				if len(notes) != 1 || !strings.Contains(notes[0], "12289") || !strings.Contains(notes[0], "docs/agents-md-standard.md") {
 					t.Fatalf("overage note = %#v", notes)
 				}

@@ -5,6 +5,7 @@ import (
 	"go/format"
 	"go/parser"
 	"go/token"
+	"os"
 	"path/filepath"
 	"reflect"
 	"strconv"
@@ -51,6 +52,66 @@ func TestOrdinaryCheckProducerCensus(t *testing.T) {
 	}
 }
 
+// invariant: tooling/cli:check-severity-by-protected-property (TestProducerRankPropertyCensus)
+func TestProducerRankPropertyCensus(t *testing.T) {
+	root := testsupport.RepoRoot(t)
+	want := map[string][]string{
+		"internal/generatedcheck/generatedcheck.go": {
+			`PropertyReproducibility checkresult.Property = "reproducibility"`,
+			`Rank: severity.Error, Property: PropertyReproducibility`,
+			`Rank: severity.Warn, Property: "heuristic-quality"`,
+		},
+		"internal/referencecheck/referencecheck.go": {
+			`PropertyCorrectness checkresult.Property = "correctness"`,
+			`PropertyAuthority checkresult.Property = "authority"`,
+			`Rank: severity.Error, Property: property`,
+		},
+		"internal/plancheck/plancheck.go": {
+			`PropertyAuthority checkresult.Property = "authority"`,
+			`PropertyDetail checkresult.Property = "plan-detail-quality"`,
+			`Rank: rank, Property: property`,
+		},
+		"internal/pitfallcheck/pitfallcheck.go": {
+			`PropertyCorrectness checkresult.Property = "correctness"`,
+			`Rank: severity.Error, Property: PropertyCorrectness`,
+		},
+		"internal/vocabularycheck/vocabularycheck.go": {
+			`PropertyCorrectness checkresult.Property = "correctness"`,
+			`PropertyHeuristic     checkresult.Property = "heuristic-quality"`,
+			`Rank: severity.Error, Property: PropertyCorrectness`,
+			`Rank: severity.Warn, Property: PropertyHeuristic`,
+		},
+		"internal/prosegate/prosegate.go": {
+			`Rank: severity.Warn, Property: "prose-restraint"`,
+		},
+		"internal/memorycite/memorycite.go": {
+			`Rank: severity.Error, Property: "effort-memory-citation"`,
+		},
+		"internal/project/check.go": {
+			`Rank: severity.Error, Property: propertyAuthority`,
+			`Rank: severity.Warn, Property: propertyHeuristic`,
+		},
+		"internal/project/currentstate.go": {
+			`Rank: severity.Error, Property: propertyCurrentState`,
+			`Rank: coverage.Severity, Property: propertyCurrentCoverage`,
+			`Rank: severity.Error, Property: propertyPlanArtifact`,
+		},
+	}
+	for path, fragments := range want {
+		content, err := os.ReadFile(filepath.Join(root, path))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, fragment := range fragments {
+			if got := strings.Count(string(content), fragment); got != 1 {
+				t.Errorf("%s classification fragment %q occurs %d times, want exactly 1", path, fragment, got)
+			}
+		}
+	}
+}
+
+// invariant: rendering/project-output-plan:check-report-single-plan (TestRepositoryCheckerOwnershipCensus)
+// invariant: tooling/cli:check-severity-by-protected-property (TestRepositoryCheckerOwnershipCensus)
 // TestRepositoryCheckerOwnershipCensus protects the policy-free aggregation
 // boundary: semantic owners cannot depend on their aggregator, and aggregation
 // cannot reverse into project or application coordination.

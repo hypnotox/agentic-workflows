@@ -14,6 +14,18 @@ func TestClassifyCurrentStateRejectsInvalidOwnerEvidence(t *testing.T) {
 	}
 }
 
+func TestCurrentStateResultIsStableAfterCompatibilityMutation(t *testing.T) {
+	report, err := classifyCurrentState(CurrentStateReport{Static: []currentstate.Finding{{Message: "original"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	report.Static[0].Message = "mutated"
+	result := report.Result()
+	if got := result.Findings()[0].Evidence.Detail; got != "original" {
+		t.Fatalf("owner result changed with compatibility slice: %q", got)
+	}
+}
+
 func TestAppendStagedPlanResultPreservesRankedProjections(t *testing.T) {
 	result, err := checkresult.New([]checkresult.Finding{
 		{Rank: severity.Error, Property: "authority", Evidence: checkresult.Evidence{Kind: "plan-reference", Path: "docs/plans/p.md", Detail: "missing"}},

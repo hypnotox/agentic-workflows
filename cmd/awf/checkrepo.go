@@ -191,10 +191,7 @@ func repoCheckSystem(root string, aggregate bool, leadingNotes []string, planNot
 					actions = append(actions, execution.BoundAction{Step: step, Run: func(context.Context) error {
 						inputs.warnings = append(inputs.warnings, report.Warnings()...)
 						inputs.information = append(inputs.information, report.Information()...)
-						result, err := report.Result()
-						if err != nil {
-							return err
-						}
+						result := report.Result()
 						projected, err := deps.present(repositorycheck.ErrorsOnly(result), "current-state", false)
 						if err != nil {
 							return err
