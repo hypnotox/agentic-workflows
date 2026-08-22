@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/projectstate"
@@ -29,7 +30,7 @@ func ownerTree(t *testing.T, files ...snapshot.File) *snapshot.Tree {
 }
 
 func contextState(root string) *projectstate.ProjectState {
-	return projectstate.NewDerived(root, resident.NewRoots(root, ""), false, catalog.Standard, catalog.Standard, nil)
+	return projectstate.NewDerivedWithFacts(root, resident.NewRoots(root, ""), false, config.Facts{}, catalog.Standard, catalog.Standard, nil)
 }
 
 func writeContextFile(t *testing.T, root, path, contents string) {

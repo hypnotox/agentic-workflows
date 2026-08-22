@@ -26,11 +26,6 @@ func New(root string, roots resident.Roots, nested bool, cfg *config.Config, sel
 	return &ProjectState{root, roots, nested, facts, catalog.NewProfileView(selected, catalog.ProfileFull), catalog.NewProfileView(complete, catalog.ProfileFull), cloneTargets(targets)}, nil
 }
 
-// NewDerived constructs an already-derived universe with no configuration facts.
-func NewDerived(root string, roots resident.Roots, nested bool, selected, complete *catalog.Catalog, targets []Target) *ProjectState {
-	return NewDerivedWithFacts(root, roots, nested, config.Facts{}, selected, complete, targets)
-}
-
 // NewDerivedWithFacts constructs an already-derived universe while preserving
 // its immutable loaded configuration facts.
 func NewDerivedWithFacts(root string, roots resident.Roots, nested bool, facts config.Facts, selected, complete *catalog.Catalog, targets []Target) *ProjectState {

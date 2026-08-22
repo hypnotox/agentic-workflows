@@ -19,7 +19,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
-	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"golang.org/x/mod/semver"
 )
 
@@ -227,11 +226,10 @@ func newRenderInputs(state *ProjectState, cfg *config.Config, read ProjectTreeRe
 	return renderInputs{state: state, cfg: cfg, read: read}
 }
 
-func (p renderInputs) root() string                      { return p.state.Root() }
-func (p renderInputs) residentRoots() resident.Roots     { return p.state.roots() }
-func (p renderInputs) catalog() *catalog.Catalog         { return p.state.catalog() }
-func (p renderInputs) completeCatalog() *catalog.Catalog { return p.state.completeCatalog() }
-func (p renderInputs) isNested() bool                    { return p.state.nested() }
+func (p renderInputs) root() string                  { return p.state.Root() }
+func (p renderInputs) residentRoots() resident.Roots { return p.state.roots() }
+func (p renderInputs) catalog() *catalog.Catalog     { return p.state.catalog() }
+func (p renderInputs) isNested() bool                { return p.state.nested() }
 
 // gitRepo returns the handle this project reads Git through, or the reason it
 // has none. Opening is never retried per operation: the handle is chosen once,
@@ -309,29 +307,8 @@ func (l *Loader) OpenForOperation(ctx context.Context, root string) (*ProjectSta
 	return state, cfg, nil
 }
 
-// indexTree snapshots the project's staged universe through its handle.
-func indexTree(root string, repo *awfgit.Repo, ctx context.Context) (*snapshot.Tree, error) {
-	repo, err := gitRepo(root, repo)
-	if err != nil {
-		return nil, err
-	}
-	return snapshot.IndexTree(ctx, repo)
-}
-
-// stagedProject composes the minimal index-only rendering inputs. It never
-// invokes Loader or reads working-tree configuration; each staged operation
-// supplies the repository selected at its boundary.
-func stagedProject(root string, prefix string) renderInputs {
-	complete := catalog.CompleteView().Catalog()
-	state := &ProjectState{state: projectstate.NewDerived(root, resident.NewRoots(root, ""), prefix != "", complete, complete, nil)}
-	return newRenderInputs(state, nil, nil)
-}
-
 // catalog returns this project's one private selected-catalog snapshot.
 func projectCatalog(p renderInputs) *catalog.Catalog { return p.catalog() }
-
-// completeCatalog returns the private complete-catalog dependency supplied at composition.
-func completeProjectCatalog(p renderInputs) *catalog.Catalog { return p.completeCatalog() }
 
 func fullProfile(p renderInputs) bool { return p.cfg == nil || p.cfg.Profile != catalog.ProfileCore }
 

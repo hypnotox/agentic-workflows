@@ -71,7 +71,7 @@ func TestTargetAccessorsExposeDefensiveDeclaredFacts(t *testing.T) {
 
 func TestNewDerivedCopiesTargets(t *testing.T) {
 	targets := []Target{{Capabilities: []Capability{CapabilitySubagentTools}}}
-	state := NewDerived("", resident.Roots{}, false, catalog.Standard, catalog.Standard, targets)
+	state := NewDerivedWithFacts("", resident.Roots{}, false, config.Facts{}, catalog.Standard, catalog.Standard, targets)
 	targets[0].Capabilities[0] = CapabilitySessionHandoff
 	if got := state.Targets()[0].Capabilities[0]; got != CapabilitySubagentTools {
 		t.Fatalf("derived targets alias = %q", got)

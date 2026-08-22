@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -93,5 +94,19 @@ func TestRunADRRefusals(t *testing.T) {
 	}
 	if err := runADR(&cmdCtx{ctx: testContext(t), root: root, sub: "number", stdout: &out}); err == nil || err.Error() != "no pending ADR to number" {
 		t.Fatalf("engine refusal = %v", err)
+	}
+}
+
+func TestNumberingPresentationValidatesAssignments(t *testing.T) {
+	for _, report := range []currentstatecoord.NumberingReport{
+		{Assignments: []currentstatecoord.NumberAssignment{{Slug: "bad\nslug", Number: "0002"}}},
+		{Assignments: []currentstatecoord.NumberAssignment{{Slug: "slug", Number: "bad\nnumber"}}},
+	} {
+		if _, err := numberingPresentation(report); err == nil {
+			t.Fatal("invalid numbering assignment produced a presentation")
+		}
+	}
+	if _, err := numberingPresentation(currentstatecoord.NumberingReport{}); err != nil {
+		t.Fatalf("empty report: %v", err)
 	}
 }

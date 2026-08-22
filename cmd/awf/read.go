@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 )
 
 func runReadPlan(ctx context.Context, root string, args []string, stdout io.Writer) error {
@@ -15,7 +15,7 @@ func runReadPlan(ctx context.Context, root string, args []string, stdout io.Writ
 	if err != nil {
 		return err
 	}
-	projection, err := project.ReadPlan(state.Root(), args[0], args[1])
+	projection, err := currentstatecoord.ReadPlan(state.Root(), args[0], args[1])
 	if err != nil {
 		return err
 	}

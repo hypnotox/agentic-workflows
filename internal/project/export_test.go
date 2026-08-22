@@ -263,8 +263,8 @@ func advisoryNotesProject(state *ProjectState) ([]string, error) {
 func checkCurrentStateProject(state *ProjectState, ctx context.Context) (CurrentStateReport, error) {
 	return currentstatecoord.CheckWorking(state.Root(), testRepo(state), ctx)
 }
-func numberPendingADRsProject(state *ProjectState, slugs []string) (NumberingReport, error) {
-	return NumberPendingADRs(state, testConfig(state), slugs, func() error {
+func numberPendingADRsProject(state *ProjectState, slugs []string) (currentstatecoord.NumberingReport, error) {
+	return currentstatecoord.NumberPendingADRs(state.Root(), slugs, func() error {
 		_, err := publisher.New(state.OutputState(), testConfig(state), publisher.NewFilesystemReader(state.Root()), Version).Sync()
 		return err
 	})
@@ -279,11 +279,11 @@ func newPitfallProject(state *ProjectState, title string) (presentation.Document
 func auditProject(state *ProjectState, ctx context.Context, base, head string) ([]audit.Finding, int, error) {
 	return Audit(state.Root(), testConfig(state), ctx, base, head)
 }
-func checkCommitAuthorizationProject(state *ProjectState, ctx context.Context, msg commitmsg.Message) (CommitAuthorizationResult, error) {
-	return CheckCommitAuthorization(state.Root(), testRepo(state), ctx, msg)
+func checkCommitAuthorizationProject(state *ProjectState, ctx context.Context, msg commitmsg.Message) (currentstatecoord.CommitAuthorizationResult, error) {
+	return currentstatecoord.CheckCommitAuthorization(state.Root(), testRepo(state), ctx, msg)
 }
 func readPlanProject(state *ProjectState, name, selector string) ([]byte, error) {
-	return ReadPlan(state.Root(), name, selector)
+	return currentstatecoord.ReadPlan(state.Root(), name, selector)
 }
 
 func setTestRoots(state *ProjectState, roots resident.Roots) *ProjectState {

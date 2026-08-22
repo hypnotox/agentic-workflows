@@ -1,13 +1,14 @@
-package project
+package currentstatecoord
 
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"slices"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
-	"github.com/hypnotox/agentic-workflows/internal/presentation"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
@@ -19,33 +20,9 @@ type NumberAssignment struct {
 }
 
 // NumberingReport is the mapping one numbering run assigned, in assignment
-// order, so it can be pasted into the integration commit message.
+// order, so its caller can present it after a partial completion.
 type NumberingReport struct {
 	Assignments []NumberAssignment
-}
-
-// Presentation maps the project-owned numbering result to the closed tree.
-func (r NumberingReport) Presentation() (presentation.Document, error) {
-	records := make([]presentation.Record, 0, len(r.Assignments))
-	for _, assignment := range r.Assignments {
-		slug, err := presentation.Literal(assignment.Slug)
-		if err != nil {
-			return presentation.Document{}, err
-		}
-		number, err := presentation.Literal(assignment.Number)
-		if err != nil {
-			return presentation.Document{}, err
-		}
-		record, err := presentation.NewRecord(slug, number)
-		if err != nil { // coverage-ignore: two validated nonempty literals always form a valid record
-			return presentation.Document{}, err
-		}
-		records = append(records, record)
-	}
-	if len(records) == 0 {
-		return presentation.Document{}, nil
-	}
-	return (presentation.Collection{Status: "ADR numbering completed", Categories: []presentation.CollectionCategory{{Label: "assignments", Schema: []string{"slug", "number"}, Records: records}}}).Document()
 }
 
 // duplicateNumbersRecipe is the reset-remake recipe a duplicate-number corpus
@@ -55,31 +32,16 @@ func (r NumberingReport) Presentation() (presentation.Document, error) {
 const duplicateNumbersRecipe = "duplicate ADR numbers with no pending record: if a stale numbering commit collided, " +
 	"run: git reset --hard HEAD~1 && git merge <integration branch> && awf adr number, then gate and merge back"
 
-// NumberPendingADRs numbers the corpus's pending records at integration
-// (ADR-0202 item 8). It runs in the effort worktree after the integration
-// branch has been merged in and before the merge back: with exactly one pending
-// record a bare call numbers it, and with several the caller must name every
-// pending slug in the intended add-before-revise order.
+// NumberPendingADRs loads the pre-mutation authority universe, numbers its
+// pending records, substitutes their topic provenance, and then runs publish
+// against the separately selected post-mutation universe.
 //
-// The effect surface is exhaustive and matches item 9: each named record is
-// renamed and its heading rewritten through internal/adr's seam, the authored
-// claim parts take the slug-to-number substitution, and the project re-renders
-// so the generated topic docs and the decision INDEX match. No status-history
-// event, no already-numbered record, and no plan is touched.
-//
-// It deliberately does not precondition on a green check. A green check between
-// merge-in and numbering is the norm now that ADR-0191 removed the global state
-// sequence, but an unrelated merge finding must not deadlock the one command
-// that can resolve the corpus.
-//
-// Every refusal happens before the first rename, so a refused run leaves the
-// corpus exactly as it found it. Past that point the run is partial-completion:
-// the renames and the substitution are already on disk, so a failing re-render
-// returns the assignments alongside its error rather than an empty report. The
-// mapping is what the integration commit message needs, and the caller cannot
-// reconstruct it once the pending files are gone.
-func numberPendingADRs(p renderInputs, slugs []string, publish func() error) (NumberingReport, error) {
-	corpus, duplicates, err := numberingCorpus(p.root())
+// The callback keeps Publisher composition with its caller. Refusals happen
+// before the first rename and return no assignments. Once a rename succeeds,
+// later substitution or publication errors retain the assignments that describe
+// the partial completion.
+func NumberPendingADRs(root string, slugs []string, publish func() error) (NumberingReport, error) {
+	corpus, duplicates, err := numberingCorpus(root)
 	if err != nil {
 		return NumberingReport{}, err
 	}
@@ -100,19 +62,23 @@ func numberPendingADRs(p renderInputs, slugs []string, publish func() error) (Nu
 		// Highest-plus-one at assignment time: every prior assignment in this
 		// run has already raised the corpus's highest number by exactly one.
 		number := next + i
-		if err := adr.RenumberPending(decisionsDir(p.root()), slug, number); err != nil { // coverage-ignore: every named slug came from the corpus, whose pending records all parsed from a `<slug>.md` file carrying the slug-form heading
+		if err := adr.RenumberPending(decisionsDir(root), slug, number); err != nil { // coverage-ignore: every named slug came from the corpus, whose pending records all parsed from a `<slug>.md` file carrying the slug-form heading
 			return NumberingReport{}, err
 		}
 		renames[slug] = fmt.Sprintf("%04d", number)
 		report.Assignments = append(report.Assignments, NumberAssignment{Slug: slug, Number: renames[slug]})
 	}
-	if err := topic.SubstituteProvenance(p.root(), renames); err != nil { // coverage-ignore: SubstituteProvenance's own error paths are unreachable, so this propagation cannot be driven from here
+	if err := topic.SubstituteProvenance(root, renames); err != nil { // coverage-ignore: SubstituteProvenance's own error paths are unreachable, so this propagation cannot be driven from here
 		return report, err
 	}
 	if err := publish(); err != nil {
 		return report, err
 	}
 	return report, nil
+}
+
+func decisionsDir(root string) string {
+	return filepath.Join(root, config.DocsDir, "decisions")
 }
 
 // numberingCorpus loads the corpus through the construction seam, keeping a

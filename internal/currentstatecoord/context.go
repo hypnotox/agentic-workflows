@@ -95,6 +95,12 @@ func PrepareStagedContext(ctx context.Context, root string) (*ContextPreparation
 	return newContextPreparation(state, cfg, tree, lock), nil
 }
 
+// Tree returns the immutable selected snapshot for a project-owned comparison.
+func (p *ContextPreparation) Tree() *snapshot.Tree { return p.tree }
+
+// Lock returns the selected snapshot's lock for a project-owned comparison.
+func (p *ContextPreparation) Lock() *manifest.Lock { return p.lock }
+
 func newContextPreparation(state *projectstate.ProjectState, cfg *config.Config, tree *snapshot.Tree, lock *manifest.Lock) *ContextPreparation {
 	cat := state.Catalog()
 	docs := map[string]string{}

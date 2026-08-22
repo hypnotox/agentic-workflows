@@ -1,7 +1,6 @@
 package project
 
 import (
-	"bytes"
 	"fmt"
 	"path/filepath"
 	"reflect"
@@ -12,98 +11,26 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
-	"github.com/hypnotox/agentic-workflows/internal/migrate"
-	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
-	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-func TestCommitAuthorizationResultDiagnostic(t *testing.T) {
-	result := CommitAuthorizationResult{Category: "operation", Condition: "non-merge", ChangedIndex: true, NextActions: []string{"correct the message trailers", "run git commit"}}
-	diagnostic, err := result.Diagnostic()
-	if err != nil {
-		t.Fatal(err)
+func currentStateFindings(r CurrentStateReport) []string {
+	var out []string
+	for _, finding := range r.Static {
+		out = append(out, finding.Message)
 	}
-	document, err := diagnostic.Document()
-	if err != nil {
-		t.Fatal(err)
+	for _, coverage := range r.Coverage {
+		if coverage.Severity == severity.Error {
+			out = append(out, coverage.Message())
+		}
 	}
-	var got bytes.Buffer
-	if err := presentation.Render(&got, document); err != nil {
-		t.Fatal(err)
+	for _, drift := range r.PlanDrift {
+		out = append(out, fmt.Sprintf("%s %s: %s", drift.Kind, drift.Path, drift.Detail))
 	}
-	want := "condition: non-merge\nstate: operation\n\ndiagnostic:\n  changed:\n    index: yes\n    message: no\n    merge state: no\n  steps:\n    step 1: correct the message trailers\n    step 2: run git commit\n"
-	if got.String() != want {
-		t.Fatalf("diagnostic = %q, want %q", got.String(), want)
-	}
-}
-
-func TestLoadTreeCurrentStateRejectsFutureSchema(t *testing.T) {
-	tree, err := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: example\nprofile: full\nintegrationBranch: main\n")}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	lock := &manifest.Lock{SchemaVersion: migrate.Current() + 1}
-	if _, _, err := loadTreeCurrentState(".", tree, lock); err == nil || !strings.Contains(err.Error(), "ahead of current") {
-		t.Fatalf("future schema current-state load error = %v", err)
-	}
-}
-
-func TestSnapshotAuthorityRejectsSymlinkConfigAndLock(t *testing.T) {
-	lockTree, err := snapshot.NewTree([]snapshot.File{{Path: ".awf/awf.lock", Mode: snapshot.Symlink, Bytes: []byte("target")}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := lockFromTree(lockTree); err == nil {
-		t.Fatal("staged symlink lock accepted")
-	}
-	if _, found, err := optionalLockFromTree(lockTree); !found || err == nil {
-		t.Fatal("optional symlink lock accepted")
-	}
-	configTree, err := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Symlink, Bytes: []byte("target")}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, _, err := loadTreeCurrentState(".", configTree, nil); err == nil {
-		t.Fatal("symlink config accepted")
-	}
-	// A config today's schema cannot parse for a reason the retired-key
-	// port-forward does not fix. That pass strips keys whose struct field is
-	// gone, so only a key that was never declared still reaches the parser.
-	unknownKey, err := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: x\nintegrationBranch: main\nnoSuchKey: 1\n")}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, _, err := loadTreeCurrentState(".", unknownKey, nil); err == nil {
-		t.Fatal("unknown config key accepted")
-	}
-	invalidConfig, err := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: x\nintegrationBranch: main\nprofile: invalid\n")}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, _, err := loadTreeCurrentState(".", invalidConfig, nil); err == nil {
-		t.Fatal("invalid config accepted")
-	}
-	ordinary, _ := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: x\nintegrationBranch: main\n")}, {Path: "docs/decisions/0001-link.md", Mode: snapshot.Symlink, Bytes: []byte("bad")}})
-	reader := configSnapshotReader{tree: ordinary}
-	b, ok := reader.ReadFile("config.yaml")
-	if !ok || len(b) == 0 {
-		t.Fatal("snapshot config read")
-	}
-	b[0] = 'X'
-	again, _ := reader.ReadFile("config.yaml")
-	if again[0] == 'X' {
-		t.Fatal("snapshot config alias")
-	}
-	if _, ok := reader.ReadFile("missing"); ok {
-		t.Fatal("missing config read")
-	}
-	if got := reader.Paths(""); len(got) != 1 || got[0] != "config.yaml" {
-		t.Fatalf("snapshot config paths=%v", got)
-	}
+	return out
 }
 
 // TestCurrentStateReportRouting proves the report splits into blocking findings
@@ -336,12 +263,5 @@ func TestCheckCurrentStateLoadError(t *testing.T) {
 	})
 	if _, err := checkCurrentStateProject(p, testContext(t)); err == nil {
 		t.Fatal("expected a corpus load error from the malformed ADR")
-	}
-}
-
-func TestCommitAuthorizationResultDiagnosticRejectsInvalidAction(t *testing.T) {
-	result := CommitAuthorizationResult{Category: "operation", Condition: "refused", NextActions: []string{""}}
-	if _, err := result.Diagnostic(); err == nil {
-		t.Fatal("invalid action accepted")
 	}
 }

@@ -262,23 +262,23 @@ func testConfig(state *ProjectState) *config.Config {
 	return cfg
 }
 func testState() *projectstate.ProjectState {
-	return projectstate.NewDerived("", resident.NewRoots("", ""), false, catalog.Standard, catalog.Standard, nil)
+	return projectstate.NewDerivedWithFacts("", resident.NewRoots("", ""), false, config.Facts{}, catalog.Standard, catalog.Standard, nil)
 }
 func testStateAt(root string) *projectstate.ProjectState {
-	return projectstate.NewDerived(root, resident.NewRoots(root, root), false, catalog.Standard, catalog.Standard, nil)
+	return projectstate.NewDerivedWithFacts(root, resident.NewRoots(root, root), false, config.Facts{}, catalog.Standard, catalog.Standard, nil)
 }
 func renderInputsAt(root string) renderInputs {
 	cfg := &config.Config{}
-	state := projectstate.NewDerived(root, resident.NewRoots(root, root), false, catalog.Standard, catalog.Standard, nil)
+	state := projectstate.NewDerivedWithFacts(root, resident.NewRoots(root, root), false, config.Facts{}, catalog.Standard, catalog.Standard, nil)
 	return newRenderInputs(state, cfg, NewFilesystemReader(root), project.Version)
 }
 func testRenderInputs(cfg *config.Config, roots resident.Roots, selected, complete *catalog.Catalog, targets []Target) renderInputs {
-	state := projectstate.NewDerived("", roots, false, selected, complete, targets)
+	state := projectstate.NewDerivedWithFacts("", roots, false, config.Facts{}, selected, complete, targets)
 	return newRenderInputs(state, cfg, NewFilesystemReader(""), project.Version)
 }
 func renderInputsWithTargets(state *ProjectState, targets []Target) renderInputs {
 	base := state.OutputState()
-	lower := projectstate.NewDerived(base.Root(), base.Roots(), base.Nested(), base.Catalog(), base.CompleteCatalog(), targets)
+	lower := projectstate.NewDerivedWithFacts(base.Root(), base.Roots(), base.Nested(), config.Facts{}, base.Catalog(), base.CompleteCatalog(), targets)
 	return newRenderInputs(lower, testConfig(state), NewFilesystemReader(state.Root()), project.Version)
 }
 func setTestTargets(state *ProjectState, targets []Target) *ProjectState {
@@ -292,7 +292,7 @@ func testPublisher(inputs renderInputs) *Publisher {
 func renderInputsForTest(state *ProjectState) renderInputs {
 	lower := state.OutputState()
 	if value, ok := targetOverrides.Load(state); ok {
-		lower = projectstate.NewDerived(lower.Root(), lower.Roots(), lower.Nested(), lower.Catalog(), lower.CompleteCatalog(), value.([]Target))
+		lower = projectstate.NewDerivedWithFacts(lower.Root(), lower.Roots(), lower.Nested(), config.Facts{}, lower.Catalog(), lower.CompleteCatalog(), value.([]Target))
 	}
 	return newRenderInputs(lower, testConfig(state), NewFilesystemReader(state.Root()), project.Version)
 }
@@ -430,6 +430,6 @@ func syncProject(state *ProjectState) error {
 }
 func renderInputsWithCatalog(state *ProjectState, selected *catalog.Catalog) renderInputs {
 	base := state.OutputState()
-	lower := projectstate.NewDerived(base.Root(), base.Roots(), base.Nested(), selected, base.CompleteCatalog(), base.Targets())
+	lower := projectstate.NewDerivedWithFacts(base.Root(), base.Roots(), base.Nested(), config.Facts{}, selected, base.CompleteCatalog(), base.Targets())
 	return newRenderInputs(lower, testConfig(state), NewFilesystemReader(state.Root()), project.Version)
 }

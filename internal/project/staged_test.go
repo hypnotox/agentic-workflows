@@ -12,6 +12,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/commitmsg"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
+	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
@@ -531,7 +532,7 @@ func TestCheckCommitAuthorizationPropagatesEvidenceErrors(t *testing.T) {
 	t.Run("missing composed repository", func(t *testing.T) {
 		repo := gitfixture.InitRepo(t)
 		gitfixture.Commit(t, repo, "base", stagedHeadFiles())
-		if _, err := CheckCommitAuthorization(repo.Root(), nil, testContext(t), msg); err == nil || !strings.Contains(err.Error(), "open authorization repository") {
+		if _, err := currentstatecoord.CheckCommitAuthorization(repo.Root(), nil, testContext(t), msg); err == nil || !strings.Contains(err.Error(), "open authorization repository") {
 			t.Fatalf("missing composed repository error = %v", err)
 		}
 	})

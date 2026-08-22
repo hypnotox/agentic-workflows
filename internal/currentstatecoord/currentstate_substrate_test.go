@@ -1,10 +1,9 @@
-package project
+package currentstatecoord
 
 import (
-	"fmt"
+	"context"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
 
@@ -32,18 +31,8 @@ func TestLoadTreeCurrentStatePropagatesAuthorityParseFailure(t *testing.T) {
 	}
 }
 
-func currentStateFindings(r CurrentStateReport) []string {
-	var out []string
-	for _, finding := range r.Static {
-		out = append(out, finding.Message)
+func TestPrepareStagedContextPropagatesSnapshotFailure(t *testing.T) {
+	if _, err := PrepareStagedContext(context.Background(), t.TempDir()); err == nil {
+		t.Fatal("staged context accepted a non-repository")
 	}
-	for _, coverage := range r.Coverage {
-		if coverage.Severity == severity.Error {
-			out = append(out, coverage.Message())
-		}
-	}
-	for _, drift := range r.PlanDrift {
-		out = append(out, fmt.Sprintf("%s %s: %s", drift.Kind, drift.Path, drift.Detail))
-	}
-	return out
 }

@@ -482,3 +482,53 @@ func assertImportsExclude(t *testing.T, relative string, content []byte, forbidd
 		}
 	}
 }
+
+// TestAuthorityOperationProductionRouteCensus keeps application authority
+// preparation at the coordinator. Project retains only direct compatibility
+// adapters for supported callers; commands must not route through them.
+func TestAuthorityOperationProductionRouteCensus(t *testing.T) {
+	const (
+		coordinatorImport = "github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
+		projectImport     = "github.com/hypnotox/agentic-workflows/internal/project"
+	)
+	production := []struct {
+		path, function, legacy string
+	}{
+		{"cmd/awf/adr.go", "NumberPendingADRs", "NumberPendingADRs"},
+		{"cmd/awf/read.go", "ReadPlan", "ReadPlan"},
+		{"cmd/awf/commitgate.go", "CheckCommitAuthorization", "CheckCommitAuthorization"},
+	}
+	root := testsupport.RepoRoot(t)
+	for _, route := range production {
+		source, err := os.ReadFile(filepath.Join(root, route.path))
+		if err != nil {
+			t.Fatal(err)
+		}
+		file := parseRouteSource(t, route.path, source)
+		if got := importedRouteCount(t, file, coordinatorImport, route.function); got != 1 {
+			t.Errorf("%s coordinator route %s count = %d, want 1", route.path, route.function, got)
+		}
+		if got := importedRouteCount(t, file, projectImport, route.legacy); got != 0 {
+			t.Errorf("%s retains %d legacy project %s route(s)", route.path, got, route.legacy)
+		}
+	}
+
+	projectFiles, err := filepath.Glob(filepath.Join(root, "internal", "project", "*.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range projectFiles {
+		if strings.HasSuffix(path, "_test.go") {
+			continue
+		}
+		source, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, operation := range []string{"NumberPendingADRs", "ReadPlan", "CheckCommitAuthorization"} {
+			if strings.Contains(string(source), operation) {
+				t.Errorf("%s retains obsolete project authority operation %s", filepath.Base(path), operation)
+			}
+		}
+	}
+}

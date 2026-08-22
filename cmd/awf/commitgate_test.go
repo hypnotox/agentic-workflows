@@ -13,12 +13,40 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/commitmsg"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
-	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
+
+func TestCommitAuthorizationDiagnostic(t *testing.T) {
+	result := currentstatecoord.CommitAuthorizationResult{Category: "operation", Condition: "non-merge", ChangedIndex: true, ChangedMessage: true, ChangedMergeState: true, NextActions: []string{"correct the message trailers", "run git commit"}}
+	diagnostic, err := commitAuthorizationDiagnostic(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	document, err := diagnostic.Document()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := presentation.Render(&out, document); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"index: yes", "message: yes", "merge state: yes", "step 1: correct the message trailers", "step 2: run git commit"} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("diagnostic missing %q:\n%s", want, out.String())
+		}
+	}
+}
+
+func TestCommitAuthorizationDiagnosticRejectsInvalidAction(t *testing.T) {
+	result := currentstatecoord.CommitAuthorizationResult{Category: "operation", Condition: "refused", NextActions: []string{""}}
+	if _, err := commitAuthorizationDiagnostic(result); err == nil {
+		t.Fatal("invalid action accepted")
+	}
+}
 
 func writeMsg(t *testing.T, content string) string {
 	t.Helper()
@@ -86,9 +114,9 @@ func TestRunCommitGateCoreSkipsFullAuthorization(t *testing.T) {
 		return &config.Config{Profile: catalog.ProfileCore}, nil, nil
 	}
 	called := false
-	dependencies.authorize = func(context.Context, string, *awfgit.Repo, commitmsg.Message) (project.CommitAuthorizationResult, error) {
+	dependencies.authorize = func(context.Context, string, *awfgit.Repo, commitmsg.Message) (currentstatecoord.CommitAuthorizationResult, error) {
 		called = true
-		return project.CommitAuthorizationResult{}, errors.New("Full authorization reached")
+		return currentstatecoord.CommitAuthorizationResult{}, errors.New("Full authorization reached")
 	}
 	var out bytes.Buffer
 	err := runCommitGateWithDependencies(testContext(t), t.TempDir(), writeMsg(t, "feat: Core commit\n\nAWF-Allow-Version: legacy\n"), nil, &out, dependencies)
@@ -533,8 +561,8 @@ func TestRunCommitGateMechanismFailuresPreserveIdentity(t *testing.T) {
 	}
 	authorizationResult := func() commitGateDependencies {
 		dependencies := defaultCommitGateDependencies()
-		dependencies.authorize = func(context.Context, string, *awfgit.Repo, commitmsg.Message) (project.CommitAuthorizationResult, error) {
-			return project.CommitAuthorizationResult{Category: "operation", Condition: "refused"}, nil
+		dependencies.authorize = func(context.Context, string, *awfgit.Repo, commitmsg.Message) (currentstatecoord.CommitAuthorizationResult, error) {
+			return currentstatecoord.CommitAuthorizationResult{Category: "operation", Condition: "refused"}, nil
 		}
 		return dependencies
 	}
@@ -555,14 +583,14 @@ func TestRunCommitGateMechanismFailuresPreserveIdentity(t *testing.T) {
 	})
 	t.Run("policy and staged transition loading", func(t *testing.T) {
 		dependencies := defaultCommitGateDependencies()
-		dependencies.authorize = func(context.Context, string, *awfgit.Repo, commitmsg.Message) (project.CommitAuthorizationResult, error) {
-			return project.CommitAuthorizationResult{}, failure
+		dependencies.authorize = func(context.Context, string, *awfgit.Repo, commitmsg.Message) (currentstatecoord.CommitAuthorizationResult, error) {
+			return currentstatecoord.CommitAuthorizationResult{}, failure
 		}
 		assertFailure(t, dependencies, message(), nil)
 	})
 	t.Run("diagnostic construction", func(t *testing.T) {
 		dependencies := authorizationResult()
-		dependencies.diagnostic = func(project.CommitAuthorizationResult) (presentation.Diagnostic, error) {
+		dependencies.diagnostic = func(currentstatecoord.CommitAuthorizationResult) (presentation.Diagnostic, error) {
 			return presentation.Diagnostic{}, failure
 		}
 		assertFailure(t, dependencies, message(), nil)

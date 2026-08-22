@@ -12,18 +12,18 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/commitmsg"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 	"github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/memorycite"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
-	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
 type commitGateDependencies struct {
 	readFile           func(string) ([]byte, error)
 	readStdin          func(io.Reader) ([]byte, error)
 	openProject        func(context.Context, string) (*config.Config, *git.Repo, error)
-	authorize          func(context.Context, string, *git.Repo, commitmsg.Message) (project.CommitAuthorizationResult, error)
-	diagnostic         func(project.CommitAuthorizationResult) (presentation.Diagnostic, error)
+	authorize          func(context.Context, string, *git.Repo, commitmsg.Message) (currentstatecoord.CommitAuthorizationResult, error)
+	diagnostic         func(currentstatecoord.CommitAuthorizationResult) (presentation.Diagnostic, error)
 	diagnosticDocument func(presentation.Diagnostic) (presentation.Document, error)
 	render             func(io.Writer, presentation.Document) error
 }
@@ -33,17 +33,50 @@ func defaultCommitGateDependencies() commitGateDependencies {
 		readFile:    os.ReadFile,
 		readStdin:   io.ReadAll,
 		openProject: openCommitGateProjectFromDisk,
-		authorize: func(ctx context.Context, root string, repo *git.Repo, msg commitmsg.Message) (project.CommitAuthorizationResult, error) {
-			return project.CheckCommitAuthorization(root, repo, ctx, msg)
+		authorize: func(ctx context.Context, root string, repo *git.Repo, msg commitmsg.Message) (currentstatecoord.CommitAuthorizationResult, error) {
+			return currentstatecoord.CheckCommitAuthorization(root, repo, ctx, msg)
 		},
-		diagnostic: func(result project.CommitAuthorizationResult) (presentation.Diagnostic, error) {
-			return result.Diagnostic()
-		},
+		diagnostic: commitAuthorizationDiagnostic,
 		diagnosticDocument: func(diagnostic presentation.Diagnostic) (presentation.Document, error) {
 			return diagnostic.Document()
 		},
 		render: presentation.Render,
 	}
+}
+
+// commitAuthorizationDiagnostic maps a completed coordinator result to command output.
+func commitAuthorizationDiagnostic(result currentstatecoord.CommitAuthorizationResult) (presentation.Diagnostic, error) {
+	yesNo := func(changed bool) string {
+		if changed {
+			return "yes"
+		}
+		return "no"
+	}
+	changed := make([]presentation.Field, 0, 3)
+	for _, axis := range []struct{ label, value string }{
+		{"index", yesNo(result.ChangedIndex)},
+		{"message", yesNo(result.ChangedMessage)},
+		{"merge state", yesNo(result.ChangedMergeState)},
+	} {
+		value, err := presentation.Literal(axis.value)
+		if err != nil { // coverage-ignore: yes/no literal is fixed valid text
+			return presentation.Diagnostic{}, err
+		}
+		field, err := presentation.NewField(axis.label, value)
+		if err != nil { // coverage-ignore: fixed axis labels are presentation-valid
+			return presentation.Diagnostic{}, err
+		}
+		changed = append(changed, field)
+	}
+	steps := make([]presentation.Value, len(result.NextActions))
+	for i, action := range result.NextActions {
+		value, err := presentation.Prose(action)
+		if err != nil {
+			return presentation.Diagnostic{}, err
+		}
+		steps[i] = value
+	}
+	return presentation.Diagnostic{Condition: result.Condition, State: result.Category, Changed: changed, Steps: steps}, nil
 }
 
 func openCommitGateProjectFromDisk(ctx context.Context, root string) (*config.Config, *git.Repo, error) {

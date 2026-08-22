@@ -10,6 +10,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/projectstate"
@@ -297,7 +298,7 @@ func TestOpenSyncFilesystemsComposesDistinctRootsBeforeMutation(t *testing.T) {
 		t.Fatal(err)
 	}
 	base := state.OutputState()
-	inputs := newRenderInputs(projectstate.NewDerived(base.Root(), resident.NewRoots(root, t.TempDir()), base.Nested(), base.Catalog(), base.CompleteCatalog(), base.Targets()), testConfig(state), NewFilesystemReader(root), Version)
+	inputs := newRenderInputs(projectstate.NewDerivedWithFacts(base.Root(), resident.NewRoots(root, t.TempDir()), base.Nested(), config.Facts{}, base.Catalog(), base.CompleteCatalog(), base.Targets()), testConfig(state), NewFilesystemReader(root), Version)
 	filesystems, closeAll, err := openSyncFilesystems(inputs)
 	if err != nil {
 		t.Fatal(err)
@@ -306,11 +307,11 @@ func TestOpenSyncFilesystemsComposesDistinctRootsBeforeMutation(t *testing.T) {
 	if filesystems.tracked == filesystems.resident {
 		t.Fatal("distinct roots reused one handle")
 	}
-	inputs.state = projectstate.NewDerived(base.Root(), resident.NewRoots(root, filepath.Join(root, "missing")), base.Nested(), base.Catalog(), base.CompleteCatalog(), base.Targets())
+	inputs.state = projectstate.NewDerivedWithFacts(base.Root(), resident.NewRoots(root, filepath.Join(root, "missing")), base.Nested(), config.Facts{}, base.Catalog(), base.CompleteCatalog(), base.Targets())
 	if _, _, err := openSyncFilesystems(inputs); err == nil {
 		t.Fatal("missing resident root opened")
 	}
-	inputs.state = projectstate.NewDerived(base.Root(), resident.NewRoots(filepath.Join(root, "missing-tracked"), root), base.Nested(), base.Catalog(), base.CompleteCatalog(), base.Targets())
+	inputs.state = projectstate.NewDerivedWithFacts(base.Root(), resident.NewRoots(filepath.Join(root, "missing-tracked"), root), base.Nested(), config.Facts{}, base.Catalog(), base.CompleteCatalog(), base.Targets())
 	if _, _, err := openSyncFilesystems(inputs); err == nil {
 		t.Fatal("missing tracked root opened")
 	}

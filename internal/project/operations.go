@@ -5,7 +5,6 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/audit"
-	"github.com/hypnotox/agentic-workflows/internal/commitmsg"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
@@ -19,11 +18,6 @@ import (
 
 func operationInputs(state *ProjectState, cfg *config.Config) renderInputs {
 	return newRenderInputs(state, cfg, filesystemProjectReader{root: state.Root()})
-}
-
-// NumberPendingADRs assigns numbers using the selected project tree.
-func NumberPendingADRs(state *ProjectState, cfg *config.Config, slugs []string, publish func() error) (NumberingReport, error) {
-	return numberPendingADRs(operationInputs(state, cfg), slugs, publish)
 }
 
 // OperationSemantics carries Publisher's direct semantic derivation to residual
@@ -49,18 +43,10 @@ func BuildCheckReport(state *ProjectState, cfg *config.Config, repo *awfgit.Repo
 	return checkReport(operationInputs(state, cfg), repo, ctx, semantics, &output)
 }
 
-// CheckCommitAuthorization validates one commit message against staged repository state.
-func CheckCommitAuthorization(root string, repo *awfgit.Repo, ctx context.Context, msg commitmsg.Message) (CommitAuthorizationResult, error) {
-	return checkCommitAuthorization(root, repo, ctx, msg)
-}
-
 // BuildListDocument renders the requested project inventory.
 func BuildListDocument(state *ProjectState, cfg *config.Config, kindFilter string) (presentation.Document, error) {
 	return listDocument(cfg, state.catalog(), kindFilter)
 }
-
-// ReadPlan returns one executable plan projection from root.
-func ReadPlan(root, name, selector string) ([]byte, error) { return readPlan(root, name, selector) }
 
 // Audit evaluates the selected repository history against project configuration.
 func Audit(root string, cfg *config.Config, ctx context.Context, base, head string) ([]audit.Finding, int, error) {

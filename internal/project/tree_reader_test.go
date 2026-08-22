@@ -5,9 +5,33 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
+
+type snapshotTreeReader struct{ tree *snapshot.Tree }
+
+func (r snapshotTreeReader) ReadFile(path string) ([]byte, bool, error) {
+	f, ok := r.tree.Lookup(filepath.ToSlash(path))
+	if !ok || !f.Scannable() {
+		return nil, false, nil
+	}
+	return slices.Clone(f.Bytes), true, nil
+}
+
+func (r snapshotTreeReader) Paths(prefix string) ([]string, error) {
+	var out []string
+	prefix = filepath.ToSlash(prefix)
+	for _, f := range r.tree.List() {
+		if f.Scannable() && strings.HasPrefix(f.Path, prefix) {
+			out = append(out, f.Path)
+		}
+	}
+	return out, nil
+}
 
 func TestFilesystemProjectReaderEntries(t *testing.T) {
 	root := t.TempDir()

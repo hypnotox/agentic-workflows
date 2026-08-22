@@ -10,8 +10,8 @@ import (
 // index universe and retains generated-output classification from its owner.
 func CheckStagedDriftResult(prep *ContextPreparation, plan outputplan.Plan) (checkresult.Result, error) {
 	indexed := map[string]bool{}
-	for _, file := range prep.tree.List() {
+	for _, file := range prep.Tree().List() {
 		indexed[file.Path] = true
 	}
-	return generatedcheck.Staged(prep.State.Nested(), prep.lock, plan, prep.Reader, indexed)
+	return generatedcheck.Staged(prep.State.Nested(), prep.Lock(), plan, prep.Reader, indexed)
 }

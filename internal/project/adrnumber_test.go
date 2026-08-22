@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
@@ -107,26 +108,12 @@ func numberingFixture(t *testing.T) map[string]string {
 	}
 }
 
-func numberingReportText(report NumberingReport) string {
+func numberingReportText(report currentstatecoord.NumberingReport) string {
 	var output strings.Builder
 	for _, assignment := range report.Assignments {
 		output.WriteString(assignment.Slug + " -> " + assignment.Number + "\n")
 	}
 	return output.String()
-}
-
-func TestNumberingReportPresentationValidatesAssignments(t *testing.T) {
-	for _, report := range []NumberingReport{
-		{Assignments: []NumberAssignment{{Slug: "bad\nslug", Number: "0002"}}},
-		{Assignments: []NumberAssignment{{Slug: "slug", Number: "bad\nnumber"}}},
-	} {
-		if _, err := report.Presentation(); err == nil {
-			t.Fatal("invalid numbering assignment produced a presentation")
-		}
-	}
-	if _, err := (NumberingReport{}).Presentation(); err != nil {
-		t.Fatalf("empty report: %v", err)
-	}
 }
 
 // Numbering's whole authored effect surface in one run: each named record takes
@@ -140,7 +127,7 @@ func TestNumberingReportPresentationValidatesAssignments(t *testing.T) {
 func TestNumberPendingADRsPropagatesPublisherPlanFailure(t *testing.T) {
 	state, _ := numberingProject(t, numberingFixture(t))
 	boom := errors.New("plan failure")
-	_, err := NumberPendingADRs(state, testConfig(state), []string{"early", "late"}, func() error { return boom })
+	_, err := currentstatecoord.NumberPendingADRs(state.Root(), []string{"early", "late"}, func() error { return boom })
 	if !errors.Is(err, boom) {
 		t.Fatalf("plan error = %v", err)
 	}
@@ -148,7 +135,7 @@ func TestNumberPendingADRsPropagatesPublisherPlanFailure(t *testing.T) {
 
 func TestNumberPendingADRsPropagatesPublicationFailure(t *testing.T) {
 	state, _ := numberingProject(t, numberingFixture(t))
-	report, err := NumberPendingADRs(state, testConfig(state), []string{"early", "late"}, func() error {
+	report, err := currentstatecoord.NumberPendingADRs(state.Root(), []string{"early", "late"}, func() error {
 		agentsPath := filepath.Join(state.Root(), "AGENTS.md")
 		if err := os.Remove(agentsPath); err != nil {
 			return err

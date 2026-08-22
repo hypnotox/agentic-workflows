@@ -1,4 +1,4 @@
-package project
+package currentstatecoord
 
 import (
 	"path/filepath"
@@ -9,9 +9,10 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/plancheck"
 )
 
-// ReadPlan resolves an exact plan filename or stem beneath the configured plans
-// directory and returns internal/plan's executable projection unchanged.
-func readPlan(root, name, selector string) ([]byte, error) {
+// ReadPlan selects one plan from the working filesystem and completes its
+// plan-v2 authority projection. Parsing, selection, closure, and rendering
+// remain owned by plan and plancheck.
+func ReadPlan(root, name, selector string) ([]byte, error) {
 	plansDir := filepath.Join(root, config.DocsDir, "plans")
 	selected, err := plan.Resolve(plansDir, name)
 	if err != nil {
@@ -24,7 +25,7 @@ func readPlan(root, name, selector string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	corpus, err := adr.LoadCorpus(decisionsDir(root))
+	corpus, err := adr.LoadCorpus(filepath.Join(root, config.DocsDir, "decisions"))
 	if err != nil {
 		return nil, err
 	}
