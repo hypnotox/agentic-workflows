@@ -1333,9 +1333,16 @@ func TestInitAbortsWhenInitCollisionsFails(t *testing.T) {
 	writeMalformedConfigReferencePart(t, root)
 
 	var out bytes.Buffer
-	err := runInit(testContext(t), root, true, false, nil, "", &out)
+	loaderReached := false
+	err := runInitWithProjectLoader(testContext(t), root, true, false, nil, "", &out, func(string) (*project.Loader, error) {
+		loaderReached = true
+		return nil, errors.New("loader reached after collision failure")
+	})
 	if err == nil || !strings.Contains(err.Error(), "config-reference/intro.md") || !strings.Contains(err.Error(), "malformed awf:comment") {
 		t.Fatalf("init collision error = %v, want malformed config-reference part", err)
+	}
+	if loaderReached {
+		t.Fatal("init continued to loader after collision failure")
 	}
 	if out.Len() != 0 {
 		t.Fatalf("init stdout = %q, want empty", out.String())

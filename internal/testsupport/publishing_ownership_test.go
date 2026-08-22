@@ -32,7 +32,7 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 	}
 	type calls struct {
 		preparePublisher, operationPreparation, operationPlan int
-		plan, residentMarker                                  int
+		injectedPrepare, plan, residentMarker                 int
 	}
 	byFunction := map[string]calls{}
 	publisherPrepareSites, publisherPlanSites := 0, 0
@@ -64,6 +64,10 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 						got.operationPreparation++
 					case "operationPlan":
 						got.operationPlan++
+					case "prepare":
+						if fn.Name.Name == "initAdvisoryNotes" {
+							got.injectedPrepare++
+						}
 					}
 				case *ast.SelectorExpr:
 					receiver, receiverIsIdent := target.X.(*ast.Ident)
@@ -112,7 +116,7 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 		"stagedDrift":                     {preparePublisher: 1, plan: 1},
 		"stagedContextState":              {preparePublisher: 1, plan: 1},
 		"productionRepoCheckDependencies": {operationPreparation: 1, plan: 1},
-		"initAdvisoryNotes":               {plan: 1},
+		"initAdvisoryNotes":               {injectedPrepare: 1, plan: 1},
 		"probeCollisions":                 {operationPlan: 1},
 		"openEffortComposition":           {operationPreparation: 1, residentMarker: 1},
 	}
