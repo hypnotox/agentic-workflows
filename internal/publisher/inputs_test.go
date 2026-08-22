@@ -62,6 +62,24 @@ func TestPublisherDefensivelyOwnsConfigurationFacts(t *testing.T) {
 	}
 }
 
+func TestRenderInputsSnapshotsCatalogOnce(t *testing.T) {
+	state := csRepo(t, sampleYAML, map[string]string{})
+	lower := state.OutputState()
+	inputs := newRenderInputs(lower, testConfig(state), memoryProjectReader{}, project.Version)
+
+	first := projectCatalog(inputs)
+	second := projectCatalog(inputs)
+	if first != second {
+		t.Fatal("one render operation repeatedly cloned its immutable catalog snapshot")
+	}
+
+	projected := lower.Catalog()
+	delete(projected.Docs, "architecture")
+	if _, ok := projectCatalog(inputs).Docs["architecture"]; !ok {
+		t.Fatal("caller-owned catalog projection mutated the render operation snapshot")
+	}
+}
+
 func TestPublisherStagedTreeOwnsADRAndTopicDerivation(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "selected-tree", "Selected tree", "paths: [\"internal/**\"]\n")

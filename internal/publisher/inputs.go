@@ -18,18 +18,19 @@ import (
 )
 
 type renderInputs struct {
-	state   *projectstate.ProjectState
-	cfg     *config.Config
-	read    ProjectTreeReader
-	version string
+	state    *projectstate.ProjectState
+	cfg      *config.Config
+	read     ProjectTreeReader
+	version  string
+	selected *catalog.Catalog
 }
 
 func newRenderInputs(state *projectstate.ProjectState, cfg *config.Config, read ProjectTreeReader, version string) renderInputs {
-	return renderInputs{state: state, cfg: cfg, read: read, version: version}
+	return renderInputs{state: state, cfg: cfg, read: read, version: version, selected: state.Catalog()}
 }
 func (p renderInputs) root() string              { return p.state.Root() }
 func (p renderInputs) targets() []Target         { return p.state.Targets() }
-func (p renderInputs) catalog() *catalog.Catalog { return p.state.Catalog() }
+func (p renderInputs) catalog() *catalog.Catalog { return p.selected }
 
 func projectCatalog(p renderInputs) *catalog.Catalog { return p.catalog() }
 func fullProfile(p renderInputs) bool                { return p.cfg == nil || p.cfg.Profile != catalog.ProfileCore }
