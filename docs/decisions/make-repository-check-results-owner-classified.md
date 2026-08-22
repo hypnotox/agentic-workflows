@@ -12,7 +12,8 @@ date: 2026-08-22
 ADR-0295 fixes the repository check ranks at Error and Warning, keeps Information unranked, and
 classifies every existing check by protected property. ADR-0296 assigns each check one semantic
 owner and reserves policy-free ordered aggregation for RepositoryChecker. ADR-0299 supplies one
-Publisher-produced output plan and derived corpus set to every participating consumer. RF-004 must
+Publisher-produced output plan to every participating consumer; the RF-004 preparation-reuse
+boundary and current Publisher preparation seam also preserve reuse of derived corpora. RF-004 must
 realize those decisions without changing working or staged universes, result order, rendered output,
 Error-only exit behavior, failure propagation, direct-child suppression, or compatibility
 multiplicity.
@@ -33,10 +34,14 @@ coordination, not a reverse import, mutable shared state, or a check registry.
 
 ### Coupling audit
 
-- Top-level callers: `internal/project/operations.go`, `internal/project/staged_drift.go`, `internal/project/glossary.go`, `internal/publisher/glossary.go`, `cmd/awf/checkrepo.go`, `cmd/awf/init.go`, and `cmd/awf/publishing.go`; policy definitions currently remain concentrated in `internal/project/check.go`.
-- Sibling tests: N=77, M=94
-- Subpackage imports: `internal/contextq`, `internal/publisher`, `cmd/awf`, `cmd/releasecheck`, and `cmd/versioncheck` import `internal/project`; new check owners cannot import project or RepositoryChecker without preserving broad coupling or violating ADR-0296 direction.
-- Cross-package methods / init(): no implicated package has an `init()` chain; exported `CheckReport`, `BuildCheckReport`, `AdvisoryNotes`, and `CheckStagedDrift` have command, evaluation, Publisher-test, and project-test callers whose compatibility projections must remain until migrated or proven unsupported.
+The moved surface comprises `CheckReport`, `BuildCheckReport`, `AdvisoryNotes`,
+`CheckStagedDrift`, and the private generated-output, reference, plan, pitfall, vocabulary,
+configuration, advisory, and compatibility functions in `internal/project/check.go`.
+
+- Top-level callers: `internal/project/check.go:56`, `internal/project/check.go:139`, `internal/project/check.go:474`, `internal/project/check.go:505`, `internal/project/check.go:526`, `internal/project/check.go:543-559`, `internal/project/check.go:844`, and `internal/project/check.go:908`; exported facade definitions are in `internal/project/operations.go:39-44` and `internal/project/staged_drift.go:15`.
+- Sibling tests: N=77, M=94; test references occur in `internal/evals/fixture_test.go`, project check, drift, inplace, note, surface, export, helper, and project tests, Publisher catalog, config-reference, glossary, inplace, and helper tests, and command check-group, check-report, aggregate, and run tests.
+- Subpackage imports: no internal production subpackage imports the moved exported result or operation symbols; production command callers are `cmd/awf/checkrepo.go:39-92`, `cmd/awf/init.go:177`, and `cmd/awf/publishing.go:62`. Evaluation and Publisher coupling is test-only. New check owners cannot import project or RepositoryChecker without preserving broad coupling or violating ADR-0296 direction.
+- Cross-package methods / init(): no implicated package has an `init()` chain; `CheckReport` methods at `internal/project/check.go:407-432` supply command compatibility projections. RF-004 preserves every exported result and operation projection; deletion remains later authorized compatibility work.
 
 ## Decision
 
@@ -45,14 +50,17 @@ coordination, not a reverse import, mutable shared state, or a check registry.
    justifies that rank. Optional Information remains a separate unranked result and never becomes a
    third severity. Compatibility and presentation adapters may project those results into existing
    drift, warning, and note forms, but no consumer infers classification from a drift kind,
-   presentation category, or slice selection.
+   presentation category, or slice selection. GeneratedOutputChecker emits the managed agent-guide
+   size Warning with its fixed protected property, while RepositoryChecker only preserves that
+   result's aggregate-only placement.
 
 2. `decision: repository-checker-aggregates-results` RepositoryChecker consumes completed owner
    results and performs only explicit deterministic aggregation. It does not implement individual
    check policy, prepare or rediscover inputs, rebuild Publisher plans or corpora, select policy
-   through a registry or kind switch, or introduce configurable severity. Working and staged
-   composition retain their distinct universes, established semantic order, output, failure versus
-   finding behavior, compatibility multiplicity, and Error-only exit mapping.
+   through a registry, or introduce configurable severity. Working and staged composition retain
+   their distinct universes, established semantic order, rendered output, failure versus finding
+   behavior, direct-child suppression, plan-note deduplication, ordinary evidence multiplicity,
+   compatibility projections and output multiplicity, and Error-only exit mapping.
 
 ## State changes
 
