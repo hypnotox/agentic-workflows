@@ -22,31 +22,6 @@ type Layout struct {
 	DomainsDir string
 }
 
-func layout(p renderInputs) Layout {
-	d := config.DocsDir
-	dec := d + "/decisions"
-	// Docs maps every catalog document to its unconditional rendered output path.
-	docs := map[string]string{}
-	singletons := map[string]string{}
-	if projectCatalog(p) != nil {
-		for name, entry := range projectCatalog(p).Docs {
-			docs[name] = docOutPath(p, name)
-			if !entry.AgentsDoc && entry.TemplateKey != "" {
-				singletons[entry.TemplateKey] = docOutPath(p, name)
-			}
-		}
-	}
-	return Layout{
-		DocsDir:    d,
-		ADRDir:     dec,
-		IndexMd:    dec + "/INDEX.md",
-		PlansDir:   d + "/plans",
-		Docs:       docs,
-		Singletons: singletons,
-		DomainsDir: d + "/domains", // inv: domains-dir-given
-	}
-}
-
 // docOutPath is the catalog-declared output path for a managed doc.
 func docOutPath(p renderInputs, name string) string {
 	e := projectCatalog(p).Docs[name]

@@ -141,6 +141,139 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 	}
 }
 
+func TestContextCompositionOwnershipRoutes(t *testing.T) {
+	root := testsupport.RepoRoot(t)
+	for _, rel := range []string{"internal/contextq/context.go", "internal/contextq/context_artifacts.go"} {
+		assertNoImports(t, readProduction(t, root, rel), "internal/project", "internal/currentstatecoord")
+	}
+	assertNoImports(t, readProduction(t, root, "internal/contextinput/input.go"), "internal/currentstatecoord")
+
+	file, err := parser.ParseFile(token.NewFileSet(), filepath.Join(root, "cmd/awf/publishing.go"), nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]map[string]int{
+		"workingContextState": {"PrepareWorkingContext": 1, "CompleteContext": 1, "preparePublisher": 1},
+		"stagedContextState":  {"PrepareStagedContext": 1, "CompleteContext": 1, "preparePublisher": 1},
+	}
+	for _, decl := range file.Decls {
+		fn, ok := decl.(*ast.FuncDecl)
+		if !ok || want[fn.Name.Name] == nil {
+			continue
+		}
+		got := map[string]int{}
+		ast.Inspect(fn.Body, func(node ast.Node) bool {
+			call, ok := node.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			if ident, ok := call.Fun.(*ast.Ident); ok && ident.Name == "preparePublisher" {
+				got[ident.Name]++
+			}
+			if selector, ok := call.Fun.(*ast.SelectorExpr); ok {
+				if receiver, ok := selector.X.(*ast.Ident); ok && receiver.Name == "currentstatecoord" {
+					got[selector.Sel.Name]++
+				}
+			}
+			return true
+		})
+		if !reflect.DeepEqual(got, want[fn.Name.Name]) {
+			t.Errorf("%s context route = %#v, want %#v", fn.Name.Name, got, want[fn.Name.Name])
+		}
+	}
+	for _, rel := range []string{"cmd/awf/context.go", "cmd/awf/publishing.go"} {
+		source := readProduction(t, root, rel)
+		for _, forbidden := range []string{"project.PrepareContextState", "project.CompleteContextState", "planContextFromTree", "currentstate.LoadFromTree"} {
+			if strings.Contains(source, forbidden) {
+				t.Errorf("command context path retains project same-tree parsing through %q in %s", forbidden, rel)
+			}
+		}
+	}
+
+	publisherFile, err := parser.ParseFile(token.NewFileSet(), filepath.Join(root, "internal/publisher/inputs.go"), nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parserCalls := map[string]map[string]int{
+		"Prepare":                          {"deriveOperationStateWithPitfalls": 1, "derivePlans": 1},
+		"deriveOperationStateWithPitfalls": {"LoadCorpusFromTree": 1, "LoadCorpusFromReader": 1},
+		"derivePlans":                      {"ParseSources": 1},
+	}
+	for _, declaration := range publisherFile.Decls {
+		fn, ok := declaration.(*ast.FuncDecl)
+		if !ok || parserCalls[fn.Name.Name] == nil {
+			continue
+		}
+		got := map[string]int{}
+		ast.Inspect(fn.Body, func(node ast.Node) bool {
+			call, ok := node.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			name := ""
+			switch target := call.Fun.(type) {
+			case *ast.Ident:
+				name = target.Name
+			case *ast.SelectorExpr:
+				name = target.Sel.Name
+			}
+			if _, tracked := parserCalls[fn.Name.Name][name]; tracked {
+				got[name]++
+			}
+			return true
+		})
+		if !reflect.DeepEqual(got, parserCalls[fn.Name.Name]) {
+			t.Errorf("Publisher %s semantic parser calls = %#v, want %#v", fn.Name.Name, got, parserCalls[fn.Name.Name])
+		}
+	}
+
+	// Negative fixtures prove this is an import-aware check rather than a text
+	// census: aliases and unrelated strings cannot evade the boundary.
+	assertNoImportsFails(t, `package fixture; import p "github.com/hypnotox/agentic-workflows/internal/project"; var _ = p.Version`, "internal/project")
+	assertNoImports(t, `package fixture; var _ = "internal/project"`, "internal/project")
+}
+
+func assertNoImports(t *testing.T, source string, denied ...string) {
+	t.Helper()
+	path, err := forbiddenImport(source, denied...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if path != "" {
+		t.Fatalf("forbidden import %s", path)
+	}
+}
+
+func assertNoImportsFails(t *testing.T, source string, denied ...string) {
+	t.Helper()
+	path, err := forbiddenImport(source, denied...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if path == "" {
+		t.Fatal("negative import fixture passed")
+	}
+}
+
+func forbiddenImport(source string, denied ...string) (string, error) {
+	file, err := parser.ParseFile(token.NewFileSet(), "fixture.go", source, parser.ImportsOnly)
+	if err != nil {
+		return "", err
+	}
+	for _, spec := range file.Imports {
+		path, err := strconv.Unquote(spec.Path.Value)
+		if err != nil {
+			return "", err
+		}
+		for _, suffix := range denied {
+			if strings.HasSuffix(path, "/"+suffix) {
+				return path, nil
+			}
+		}
+	}
+	return "", nil
+}
+
 func TestPublishingPlanningOwnership(t *testing.T) {
 	root := testsupport.RepoRoot(t)
 	for _, dir := range []string{"internal/outputplan", "internal/publisher"} {

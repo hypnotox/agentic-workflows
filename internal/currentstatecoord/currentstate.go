@@ -387,27 +387,9 @@ func validateLockTransition(beforeTree *snapshot.Tree, before, after *manifest.L
 // config is nil, with no error, when the tree carries no .awf/config.yaml: a
 // pre-adoption or empty universe a caller may treat as an empty side.
 func loadTreeCurrentState(root string, tree *snapshot.Tree, lock *manifest.Lock) (currentstate.Loaded, *config.Config, error) {
-	cfgFile, ok := tree.Lookup(config.DirName + "/config.yaml")
-	if !ok {
-		return currentstate.Loaded{}, nil, nil
-	}
-	if !cfgFile.Scannable() {
-		return currentstate.Loaded{}, nil, fmt.Errorf("snapshot %s/config.yaml is not a scannable file", config.DirName)
-	}
-	schema := migrate.Current()
-	if lock != nil {
-		schema = lock.SchemaVersion
-	}
-	configBytes, err := migrate.ConfigForCurrentSchema(cfgFile.Bytes, schema)
-	if err != nil {
-		return currentstate.Loaded{}, nil, err
-	}
-	cfg, err := config.ParseTree(config.RootDir(root), configBytes, configSnapshotReader{tree: tree})
-	if err != nil {
-		return currentstate.Loaded{}, nil, err
-	}
-	if err := cfg.Validate(); err != nil {
-		return currentstate.Loaded{}, nil, err
+	cfg, found, err := configFromTree(root, tree, lock)
+	if err != nil || !found {
+		return currentstate.Loaded{}, cfg, err
 	}
 	if cfg.Profile == catalog.ProfileCore {
 		return currentstate.Loaded{}, cfg, nil
@@ -417,6 +399,35 @@ func loadTreeCurrentState(root string, tree *snapshot.Tree, lock *manifest.Lock)
 		return currentstate.Loaded{}, nil, err
 	}
 	return loaded, cfg, nil
+}
+
+// configFromTree parses and validates configuration from exactly the selected
+// immutable tree. Semantic consumers that hand the tree to Publisher use this
+// selection without independently loading ADR, topic, or plan corpora.
+func configFromTree(root string, tree *snapshot.Tree, lock *manifest.Lock) (*config.Config, bool, error) {
+	cfgFile, ok := tree.Lookup(config.DirName + "/config.yaml")
+	if !ok {
+		return nil, false, nil
+	}
+	if !cfgFile.Scannable() {
+		return nil, false, fmt.Errorf("snapshot %s/config.yaml is not a scannable file", config.DirName)
+	}
+	schema := migrate.Current()
+	if lock != nil {
+		schema = lock.SchemaVersion
+	}
+	configBytes, err := migrate.ConfigForCurrentSchema(cfgFile.Bytes, schema)
+	if err != nil {
+		return nil, false, err
+	}
+	cfg, err := config.ParseTree(config.RootDir(root), configBytes, configSnapshotReader{tree: tree})
+	if err != nil {
+		return nil, false, err
+	}
+	if err := cfg.Validate(); err != nil {
+		return nil, false, err
+	}
+	return cfg, true, nil
 }
 
 type configSnapshotReader struct{ tree *snapshot.Tree }

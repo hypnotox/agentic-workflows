@@ -12,6 +12,7 @@ paths:
   - internal/contextq/**
   - internal/contextdelivery/**
   - internal/contextspill/**
+  - internal/contextinput/**
   - internal/initspec/**
   - internal/git/**
   - internal/filesystem/**

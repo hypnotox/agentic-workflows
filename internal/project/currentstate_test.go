@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"reflect"
-	"slices"
 	"strings"
 	"testing"
 
@@ -15,7 +14,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
-	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -82,10 +80,14 @@ func TestSnapshotAuthorityRejectsSymlinkConfigAndLock(t *testing.T) {
 	if _, _, err := loadTreeCurrentState(".", unknownKey, nil); err == nil {
 		t.Fatal("unknown config key accepted")
 	}
-	ordinary, _ := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: x\nintegrationBranch: main\n")}, {Path: "docs/decisions/0001-link.md", Mode: snapshot.Symlink, Bytes: []byte("bad")}})
-	if got := eligiblePaths(configTree, nil, nil); len(got) != 0 {
-		t.Fatalf("eligible symlink=%v", got)
+	invalidConfig, err := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: x\nintegrationBranch: main\nprofile: invalid\n")}})
+	if err != nil {
+		t.Fatal(err)
 	}
+	if _, _, err := loadTreeCurrentState(".", invalidConfig, nil); err == nil {
+		t.Fatal("invalid config accepted")
+	}
+	ordinary, _ := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: x\nintegrationBranch: main\n")}, {Path: "docs/decisions/0001-link.md", Mode: snapshot.Symlink, Bytes: []byte("bad")}})
 	reader := configSnapshotReader{tree: ordinary}
 	b, ok := reader.ReadFile("config.yaml")
 	if !ok || len(b) == 0 {
@@ -101,41 +103,6 @@ func TestSnapshotAuthorityRejectsSymlinkConfigAndLock(t *testing.T) {
 	}
 	if got := reader.Paths(""); len(got) != 1 || got[0] != "config.yaml" {
 		t.Fatalf("snapshot config paths=%v", got)
-	}
-}
-
-func TestEligiblePathsExcludeNestedAdopter(t *testing.T) {
-	tree, err := snapshot.NewTree([]snapshot.File{
-		{Path: "nested/.awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: nested\nintegrationBranch: main\n")},
-		{Path: "nested/internal/x.go", Mode: snapshot.Regular, Bytes: []byte("package internal\n")},
-		{Path: "internal/owned.go", Mode: snapshot.Regular, Bytes: []byte("package internal\n")},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got, want := eligiblePaths(tree, nil, nil), []string{"internal/owned.go"}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("eligible paths=%v, want %v", got, want)
-	}
-}
-
-func TestResidentPathsAreNeverEligibleOrNested(t *testing.T) {
-	const adversarial = ".awf/efforts/e/.awf/config.yaml"
-	tree, err := snapshot.NewTree([]snapshot.File{
-		{Path: adversarial, Mode: snapshot.Regular, Bytes: []byte("prefix: nested\nintegrationBranch: main\n")},
-		{Path: "internal/owned.go", Mode: snapshot.Regular, Bytes: []byte("package internal\n")},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := eligiblePaths(tree, nil, nil)
-	if slices.Contains(got, adversarial) {
-		t.Fatalf("resident path is eligible: %v", got)
-	}
-	if !slices.Contains(got, "internal/owned.go") {
-		t.Fatalf("ordinary source was filtered: %v", got)
-	}
-	if !resident.IsResidentPath(adversarial) || resident.IsResidentPath(".awf/effort/other") {
-		t.Fatal("resident path predicate is not closed to resident roots")
 	}
 }
 

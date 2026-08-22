@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/contextinput"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
-	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
 
@@ -25,7 +25,7 @@ type artifactRecord struct {
 }
 
 type artifactAuthorities struct {
-	Layout project.Layout
+	Layout contextinput.Layout
 	ADRs   adr.Corpus
 }
 

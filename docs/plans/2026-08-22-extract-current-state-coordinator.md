@@ -205,7 +205,7 @@ refactor(code-design): publish current-state coordinator boundary
 
 ## Notes
 
-Phase 1 advanced the narrow tooling-domain and `tooling/context-and-topic` selectors for `internal/currentstatecoord/**` from Phase 4. The repository gate requires every new production package and owner test to be domain-owned and claim-covered in the same phase that creates it; this ordering change applies the already planned selectors without changing an active claim body. Phase 4 still owns the explanatory current-state and architecture reconciliation.
+Phase 1 advanced the narrow tooling-domain and `tooling/context-and-topic` selectors for `internal/currentstatecoord/**` from Phase 4. Phase 2 likewise advanced those selectors for `internal/contextinput/**`. The repository gate requires every new production package and owner test to be domain-owned and claim-covered in the same phase that creates it; these ordering changes apply the already planned selectors without changing an active claim body. Phase 4 still owns the explanatory current-state and architecture reconciliation.
 
 Apply the plan-flexibility rule above when recording deviations. Delegated owners report material cross-owner revisions rather than editing the plan; the parent supplies the report to phase review and reconciles required plan changes with findings in one focused post-review settlement commit before checkpointing or later execution. Record spike answers, follow-ups, and findings surfaced during implementation.
 

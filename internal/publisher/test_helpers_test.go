@@ -12,6 +12,8 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/contextinput"
+	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/project"
@@ -99,7 +101,7 @@ func queryTopicProject(state *ProjectState, ctx context.Context, selector string
 	if err != nil {
 		return topic.QueryResult{}, err
 	}
-	return project.QueryTopic(state.Root(), repo, ctx, selector, opts)
+	return currentstatecoord.QueryTopic(state.Root(), repo, ctx, selector, opts)
 }
 func repoRootDir(t *testing.T) string {
 	t.Helper()
@@ -354,27 +356,31 @@ func syncReportProject(state *ProjectState) ([]Backup, []string, error) {
 	result, err := New(lowerForConfig(state.OutputState(), cfg), cfg, NewFilesystemReader(state.Root()), project.Version).Sync()
 	return result.Backups(), result.Pruned(), err
 }
-func contextStateProject(state *ProjectState, ctx context.Context) (project.ContextState, error) {
-	prep, err := project.PrepareContextState(state, nil, ctx)
+func contextStateProject(state *ProjectState, ctx context.Context) (contextinput.Input, error) {
+	repo, _, err := awfgit.OpenContaining(state.Root())
 	if err != nil {
-		return project.ContextState{}, err
+		return contextinput.Input{}, err
 	}
-	plan, err := New(prep.State, prep.Config, prep.Reader, project.Version).Plan()
+	prep, err := currentstatecoord.PrepareWorkingContext(state.OutputState(), repo, ctx)
 	if err != nil {
-		return project.ContextState{}, err
+		return contextinput.Input{}, err
 	}
-	return project.CompleteContextState(prep, plan), nil
+	prepared, err := New(prep.State, prep.Config, prep.Reader, project.Version).Prepare()
+	if err != nil {
+		return contextinput.Input{}, err
+	}
+	return currentstatecoord.CompleteContext(prep, prepared.ADRs(), prepared.Topics(), prepared.Plans(), prepared.Plan().Declarations()), nil
 }
-func StagedContextState(ctx context.Context, root string) (project.ContextState, error) {
-	prep, err := project.PrepareStagedContextState(ctx, root)
+func StagedContextState(ctx context.Context, root string) (contextinput.Input, error) {
+	prep, err := currentstatecoord.PrepareStagedContext(ctx, root)
 	if err != nil {
-		return project.ContextState{}, err
+		return contextinput.Input{}, err
 	}
-	plan, err := New(prep.State, prep.Config, prep.Reader, project.Version).Plan()
+	prepared, err := New(prep.State, prep.Config, prep.Reader, project.Version).Prepare()
 	if err != nil {
-		return project.ContextState{}, err
+		return contextinput.Input{}, err
 	}
-	return project.CompleteStagedContextState(prep, plan), nil
+	return currentstatecoord.CompleteContext(prep, prepared.ADRs(), prepared.Topics(), prepared.Plans(), prepared.Plan().Declarations()), nil
 }
 func plannedOutputsProject(state *ProjectState) ([]string, error) {
 	plan, err := New(lowerForConfig(state.OutputState(), testConfig(state)), testConfig(state), NewFilesystemReader(state.Root()), project.Version).Plan()

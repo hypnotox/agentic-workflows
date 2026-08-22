@@ -8,8 +8,8 @@ import (
 	"os"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
-	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
@@ -32,7 +32,7 @@ func runTopic(ctx context.Context, cwd, selector string, history, references, co
 	if err != nil {
 		return err
 	}
-	result, err := project.QueryTopic(state.Root(), repo, ctx, selector, topic.QueryOptions{History: history, References: references, Coverage: coverage})
+	result, err := currentstatecoord.QueryTopic(state.Root(), repo, ctx, selector, topic.QueryOptions{History: history, References: references, Coverage: coverage})
 	if err != nil {
 		return err
 	}

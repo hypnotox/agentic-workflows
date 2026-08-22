@@ -77,8 +77,3 @@ func NewPlan(root, title string) (string, error) { return newPlan(root, title) }
 
 // NewPitfall scaffolds one authored pitfall beneath root.
 func NewPitfall(root, title string) (presentation.Document, error) { return newPitfall(root, title) }
-
-// QueryTopic runs one topic query through the supplied repository.
-func QueryTopic(root string, repo *awfgit.Repo, ctx context.Context, selector string, opts topic.QueryOptions) (topic.QueryResult, error) {
-	return queryTopic(root, repo, ctx, selector, opts)
-}

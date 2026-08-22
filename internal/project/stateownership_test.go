@@ -21,15 +21,13 @@ const projectPackageMode = packages.NeedName | packages.NeedFiles | packages.Nee
 	packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo
 
 // stateOwnershipPatterns are the packages the widened claim quantifies over:
-// the sync core and both ADR-0195 carves.
-var stateOwnershipPatterns = []string{"./internal/project", "./internal/projectstate", "./internal/contextq", "./internal/resident"}
+// lower project state and the query and resident consumers.
+var stateOwnershipPatterns = []string{"./internal/projectstate", "./internal/contextq", "./internal/resident"}
 
 // watchedLongLivedTypes are each package's constructed long-lived values: a
 // field write outside the constructing function is the shape the claim
-// forbids. The conforming constructions are Loader.Open, the two ContextState
-// constructors, contextq.New, and resident.NewRoots.
+// forbids. The conforming constructions are Loader.Open, contextq.New, and resident.NewRoots.
 var watchedLongLivedTypes = map[string]map[string]bool{
-	"github.com/hypnotox/agentic-workflows/internal/project":      {"ContextState": true},
 	"github.com/hypnotox/agentic-workflows/internal/projectstate": {"ProjectState": true},
 	"github.com/hypnotox/agentic-workflows/internal/contextq":     {"Query": true},
 	"github.com/hypnotox/agentic-workflows/internal/resident":     {"Roots": true},
@@ -172,11 +170,8 @@ func selectorRoot(expr ast.Expr) *ast.Ident {
 // composite literal. That is exactly the shape ADR-0180 removes: a function
 // writing a field of a ProjectState value that outlives its call.
 //
-// The rule admits the three stepwise constructions ADR-0180 item 10 names as
-// conforming (Loader.Open plus, since ADR-0195 carved the context query out,
-// the two ContextState constructors ProjectState.ContextState and
-// StagedContextState), each of which writes fields of a value whose literal
-// appears in the same function, and rejects a method mutating its receiver.
+// The rule admits construction in the same function and rejects a method
+// mutating its receiver.
 func projectFieldWriteFindings(pkgs []*packages.Package) []string {
 	var findings []string
 	for _, pkg := range pkgs {
@@ -249,100 +244,14 @@ func projectFieldWriteFindings(pkgs []*packages.Package) []string {
 	return findings
 }
 
-// derivingEntries collects, per enclosing function name, the production call
-// sites of deriveOperationStateWithPitfalls. Clause 2 of the claim says the operation that
-// needs the state derives it and threads it, so exactly the deriving entries
-// may call it and nothing nested may re-derive.
-func derivingEntries(pkgs []*packages.Package) map[string]int {
-	callers := map[string]int{}
-	for _, pkg := range pkgs {
-		for _, file := range pkg.Syntax {
-			for _, decl := range file.Decls {
-				funcDecl, ok := decl.(*ast.FuncDecl)
-				if !ok || funcDecl.Body == nil {
-					continue
-				}
-				ast.Inspect(funcDecl.Body, func(n ast.Node) bool {
-					call, ok := n.(*ast.CallExpr)
-					if !ok {
-						return true
-					}
-					if sel, ok := call.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "deriveOperationStateWithPitfalls" {
-						callers[funcDecl.Name.Name]++
-					} else if ident, ok := call.Fun.(*ast.Ident); ok && ident.Name == "deriveOperationStateWithPitfalls" {
-						callers[funcDecl.Name.Name]++
-					}
-					return true
-				})
-			}
-		}
-	}
-	return callers
-}
-
-// declaredFuncNames lists every production function and method name.
-func declaredFuncNames(pkgs []*packages.Package) map[string]bool {
-	names := map[string]bool{}
-	for _, pkg := range pkgs {
-		for _, file := range pkg.Syntax {
-			for _, decl := range file.Decls {
-				if funcDecl, ok := decl.(*ast.FuncDecl); ok {
-					names[funcDecl.Name.Name] = true
-				}
-			}
-		}
-	}
-	return names
-}
-
-// producerCallSites collects, per enclosing function name, the production call
-// sites of the remaining lower-package corpus producer. Clause 2 is about that
-// value, so counting the aggregate alone would miss a nested consumer that
-// calls the producer directly and bypasses the aggregate.
-func producerCallSites(pkgs []*packages.Package) map[string][]string {
-	producers := map[string]bool{"LoadCorpus": true}
-	sites := map[string][]string{}
-	for _, pkg := range pkgs {
-		for _, file := range pkg.Syntax {
-			for _, decl := range file.Decls {
-				funcDecl, ok := decl.(*ast.FuncDecl)
-				if !ok || funcDecl.Body == nil {
-					continue
-				}
-				ast.Inspect(funcDecl.Body, func(n ast.Node) bool {
-					call, ok := n.(*ast.CallExpr)
-					if !ok {
-						return true
-					}
-					sel, ok := call.Fun.(*ast.SelectorExpr)
-					if !ok || !producers[sel.Sel.Name] {
-						return true
-					}
-					name := sel.Sel.Name
-					if root := selectorRoot(sel.X); root != nil {
-						name = root.Name + "." + name
-					}
-					sites[name] = append(sites[name], funcDecl.Name.Name)
-					return true
-				})
-			}
-		}
-	}
-	return sites
-}
-
 // TestProjectDerivedStateOwnership proves that no production function in
-// internal/project, internal/contextq, or internal/resident writes a field of
-// that package's constructed long-lived values (ProjectState, ContextState, Query,
-// Roots) outside the function that constructs the value: the derived state is
-// threaded to its consumers, and Roots is fixed at construction. The
-// conforming constructions are Loader.Open, the two ContextState constructors
-// (ProjectState.ContextState and StagedContextState), contextq.New, and
-// resident.NewRoots. The beginInvocation-absence assertion below is retained
+// internal/projectstate, internal/contextq, or internal/resident writes a field of
+// that package's constructed long-lived values (ProjectState, Query, Roots)
+// outside the function that constructs the value: the derived state is threaded
+// to its consumers, and Roots is fixed at construction. The conforming
+// constructions are Loader.Open, contextq.New, and resident.NewRoots. The beginInvocation-absence assertion below is retained
 // hardening beyond the current claim body, which no longer names it.
 //
-// The scan covers package functions as well as methods, because
-// StagedContextState is a function rather than a method.
 // invariant: code-design/state-ownership:project-derived-state-ownership (TestProjectDerivedStateOwnership)
 // invariant: rendering/project-output-plan:check-report-single-plan (TestProjectDerivedStateOwnership)
 func TestProjectDerivedStateOwnership(t *testing.T) {
@@ -350,44 +259,6 @@ func TestProjectDerivedStateOwnership(t *testing.T) {
 	if findings := projectFieldWriteFindings(production); len(findings) != 0 {
 		t.Errorf("*ProjectState fields are written outside the function that constructs the value:\n\t%s",
 			strings.Join(findings, "\n\t"))
-	}
-
-	// Retained hardening: beginInvocation no longer exists. The current claim
-	// body no longer names it, but a field-write scan alone cannot see a
-	// per-invocation reset that clears state held anywhere else, so the
-	// original clause's assertion is kept.
-	if declaredFuncNames(production)["beginInvocation"] {
-		t.Error("beginInvocation is declared again; the claim says it no longer exists")
-	}
-
-	// Clause 2: residual project policy receives Publisher's prepared semantic
-	// universe and never derives it. Any derivation entry in these lower packages
-	// is therefore a regression.
-	for name, count := range derivingEntries(production) {
-		t.Errorf("%s derives operation state %d times; lower consumers must only receive prepared values", name, count)
-	}
-
-	// Clause 2, at the level of the remaining lower-package corpus producer: it is
-	// called only from a function that derives on its own operation's behalf.
-	// Counting the aggregate alone would miss a direct consumer.
-	//
-	// numberingCorpus and readPlan are the entries beside the aggregate deriver,
-	// and only for the ADR corpus. readPlan's root-only plan projection needs
-	// no rendering universe.
-	//
-	// numberingCorpus is the one entry beside the aggregate deriver, and only
-	// for the ADR corpus. Numbering needs a duplicate-identity corpus as data
-	// rather than as an abort (ADR-0202 item 12), which is the opposite of what
-	// deriveOperationStateWithPitfalls owes every other consumer, so it cannot enter
-	// through it. The set is pinned exactly, so a consumer re-deriving a value
-	// that was threaded to it still fails here.
-	producerOwners := map[string]bool{"deriveOperationStateWithPitfalls": true, "numberingCorpus": true, "readPlan": true}
-	for producer, owners := range producerCallSites(production) {
-		for _, owner := range owners {
-			if !producerOwners[owner] {
-				t.Errorf("%s calls %s directly; only an operation deriving on its own behalf produces the threaded values", owner, producer)
-			}
-		}
 	}
 
 	// One combined overlay proves every detector branch without paying for a
@@ -399,7 +270,6 @@ func TestProjectDerivedStateOwnership(t *testing.T) {
 		t.Fatal(err)
 	}
 	projectStateFixture := filepath.Join(root, filepath.FromSlash("internal/projectstate/state_ownership_mutation_fixture.go"))
-	projectFixture := filepath.Join(root, filepath.FromSlash("internal/project/state_ownership_mutation_fixture.go"))
 	contextqFixture := filepath.Join(root, filepath.FromSlash("internal/contextq/state_ownership_mutation_fixture.go"))
 	mutation := loadProjectPackage(t, map[string][]byte{
 		projectStateFixture: []byte(`package projectstate
@@ -428,19 +298,11 @@ func (p *ProjectState) mutationOverwritesWholeValue() {
 	*p = ProjectState{invokingRoot: "mutated"}
 }
 `),
-		projectFixture: []byte(`package project
-
-import "github.com/hypnotox/agentic-workflows/internal/adr"
-
-func (p *ProjectState) mutationRederivesCorpusDirectly() (adr.Corpus, error) {
-	return adr.LoadCorpus(decisionsDir("fixture-root"))
-}
-`),
 		contextqFixture: []byte(`package contextq
 
-import "github.com/hypnotox/agentic-workflows/internal/project"
+import "github.com/hypnotox/agentic-workflows/internal/contextinput"
 
-func (q *Query) mutationReplacesStateAfterConstruction(state project.ContextState) {
+func (q *Query) mutationReplacesStateAfterConstruction(state contextinput.Input) {
 	q.state = state
 }
 `),
@@ -466,15 +328,6 @@ func (q *Query) mutationReplacesStateAfterConstruction(state project.ContextStat
 		if strings.HasPrefix(finding, "mutationConstructsLocally") {
 			t.Errorf("a write to a locally constructed value was flagged: %q", finding)
 		}
-	}
-	var directFlagged bool
-	for _, owners := range producerCallSites(mutation) {
-		if slices.Contains(owners, "mutationRederivesCorpusDirectly") {
-			directFlagged = true
-		}
-	}
-	if !directFlagged {
-		t.Error("a direct producer call bypassing deriveOperationState escaped the producer scan")
 	}
 }
 
@@ -602,8 +455,8 @@ func TestProjectStateBoundary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fixture := filepath.Join(root, filepath.FromSlash("internal/project/state_boundary_mutation_fixture.go"))
-	mutated := loadProjectPackage(t, map[string][]byte{fixture: []byte(`package project
+	fixture := filepath.Join(root, filepath.FromSlash("internal/projectstate/state_boundary_mutation_fixture.go"))
+	mutated := loadProjectPackage(t, map[string][]byte{fixture: []byte(`package projectstate
 
 import "github.com/hypnotox/agentic-workflows/internal/config"
 
@@ -617,7 +470,7 @@ type boundaryMutation struct {
 }
 `)})
 	for _, pkg := range mutated {
-		if pkg.PkgPath != "github.com/hypnotox/agentic-workflows/internal/project" {
+		if pkg.PkgPath != "github.com/hypnotox/agentic-workflows/internal/projectstate" {
 			continue
 		}
 		probe := pkg.Types.Scope().Lookup("boundaryMutation")

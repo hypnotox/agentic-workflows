@@ -9,6 +9,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/contextdelivery"
+	"github.com/hypnotox/agentic-workflows/internal/contextinput"
 	"github.com/hypnotox/agentic-workflows/internal/contextq"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/project"
@@ -53,7 +54,7 @@ func runContext(ctx context.Context, cwd string, paths []string, staged bool, rn
 	options := contextq.ContextOptions{Selection: selection, Range: rng, Facets: facets}
 	result := contextq.ContextResult{Selection: selection, Range: rng}
 	header := "live state for this project"
-	var state project.ContextState
+	var state contextinput.Input
 	if staged {
 		if err := gateStaged(ctx, cwd); err != nil {
 			return err
@@ -86,7 +87,7 @@ func runUncovered(ctx context.Context, cwd string, roots []string, staged bool, 
 		return &usageErr{"awf context --uncovered takes optional scan-root paths, not --range"}
 	}
 	header := "coverage gaps for this project"
-	var state project.ContextState
+	var state contextinput.Input
 	var err error
 	if staged {
 		if err = gateStaged(ctx, cwd); err == nil {

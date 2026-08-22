@@ -17,48 +17,12 @@ import (
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
-	"github.com/hypnotox/agentic-workflows/internal/pathglob"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
-	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
 
 // CurrentStateReport is the direct compatibility projection of the focused coordinator result.
 type CurrentStateReport = currentstatecoord.CurrentStateReport
-
-// workingState is one loaded working-tree current-state universe: the parsed
-// ADR/topic view, the Tree it came from, and the lock.
-// It is the shared substrate for CheckCurrentState, keeping the loaded corpus,
-// tree, lock, and config in one working-tree universe.
-type workingState struct {
-	Loaded currentstate.Loaded
-	Tree   *snapshot.Tree
-	Lock   *manifest.Lock
-	Cfg    *config.Config
-}
-
-// workingCurrentState loads the working-tree ADR/topic view and recorded gaps.
-func workingCurrentState(root string, repo *awfgit.Repo, ctx context.Context) (workingState, error) {
-	tree, err := workingTree(root, repo, ctx)
-	if errors.Is(err, awfgit.ErrNotARepository) {
-		tree, err = snapshot.FilesystemTree(ctx, root)
-	}
-	if err != nil {
-		return workingState{}, err
-	}
-	lock, _, err := optionalLockFromTree(tree)
-	if err != nil {
-		return workingState{}, err
-	}
-	loaded, cfg, err := loadTreeCurrentState(root, tree, lock)
-	if err != nil {
-		return workingState{}, err
-	}
-	if cfg == nil { // coverage-ignore: Project.Open already required config; only a concurrent deletion after path enumeration can remove it
-		return workingState{}, fmt.Errorf("working snapshot has no %s/config.yaml", config.DirName)
-	}
-	return workingState{Loaded: loaded, Tree: tree, Lock: lock, Cfg: cfg}, nil
-}
 
 // CommitAuthorizationResult is the non-mutating outcome of definitive
 // commit-message stale-merge authorization.
@@ -297,50 +261,6 @@ func (r configSnapshotReader) Paths(prefix string) []string {
 		if f.Scannable() && strings.HasPrefix(f.Path, full) {
 			out = append(out, strings.TrimPrefix(f.Path, config.DirName+"/"))
 		}
-	}
-	return out
-}
-
-// eligiblePaths returns the snapshot files that are neither a generated output (a
-// lock entry) nor matched by one of the contextIgnore globs. Symlinks,
-// deletions, ignored, and nested-adopter paths are already excluded by the
-// snapshot Tree. It takes the contextIgnore list explicitly so each caller
-// filters its own universe by that universe's own config rather than the
-// working config.
-func eligiblePaths(tree *snapshot.Tree, lock *manifest.Lock, ignores []string) []string {
-	generated := map[string]bool{}
-	if lock != nil {
-		for path := range lock.Files {
-			generated[path] = true
-		}
-	}
-	files := tree.List()
-	var nested []string
-	for _, f := range files {
-		if !f.Scannable() || resident.IsResidentPath(f.Path) {
-			continue
-		}
-		const suffix = "/" + config.DirName + "/config.yaml"
-		if strings.HasSuffix(f.Path, suffix) {
-			nested = append(nested, strings.TrimSuffix(f.Path, suffix))
-		}
-	}
-	var out []string
-	for _, f := range files {
-		if !f.Scannable() || resident.IsResidentPath(f.Path) {
-			continue
-		}
-		insideNested := false
-		for _, root := range nested {
-			if f.Path == root || strings.HasPrefix(f.Path, root+"/") {
-				insideNested = true
-				break
-			}
-		}
-		if insideNested || generated[f.Path] || pathglob.MatchAny(ignores, f.Path) {
-			continue
-		}
-		out = append(out, f.Path)
 	}
 	return out
 }

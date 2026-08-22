@@ -1,4 +1,4 @@
-package project
+package contextinput
 
 import (
 	"slices"
@@ -24,7 +24,7 @@ func TestPlanContextResolvesAliasesAndOrdersLinks(t *testing.T) {
 		{Format: "plan-v1", Status: "Proposed", Filename: "2026-08-04-v1.md", Path: "docs/plans/2026-08-04-v1.md", ADRs: []plan.ADRLink{{Number: 7}}},
 		{Filename: "2026-08-05-legacy.md", Path: "docs/plans/2026-08-05-legacy.md", ADRs: []plan.ADRLink{{Number: 7}}},
 	}
-	context := planContext(plans, corpus)
+	context := NewPlanContext(plans, corpus)
 	if len(context.Plans) != len(plans) {
 		t.Fatalf("parsed plans = %d, want %d", len(context.Plans), len(plans))
 	}

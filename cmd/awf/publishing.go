@@ -5,6 +5,8 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/contextinput"
+	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/project"
@@ -35,20 +37,20 @@ func projectSemantics(prepared publisher.Preparation) project.OperationSemantics
 	}
 }
 
-func preparedPublisher(prep *project.ContextPreparation) *publisher.Publisher {
+func preparedPublisher(prep *currentstatecoord.ContextPreparation) *publisher.Publisher {
 	return publisher.New(prep.State, prep.Config, prep.Reader, project.Version)
 }
 
-func workingContextState(ctx context.Context, state *project.ProjectState, repo *awfgit.Repo) (project.ContextState, error) {
-	prep, err := project.PrepareContextState(state, repo, ctx)
+func workingContextState(ctx context.Context, state *project.ProjectState, repo *awfgit.Repo) (contextinput.Input, error) {
+	prep, err := currentstatecoord.PrepareWorkingContext(state.OutputState(), repo, ctx)
 	if err != nil {
-		return project.ContextState{}, err
+		return contextinput.Input{}, err
 	}
 	prepared, err := preparePublisher(preparedPublisher(prep))
 	if err != nil {
-		return project.ContextState{}, err
+		return contextinput.Input{}, err
 	}
-	return project.CompleteContextState(prep, prepared.Plan()), nil
+	return currentstatecoord.CompleteContext(prep, prepared.ADRs(), prepared.Topics(), prepared.Plans(), prepared.Plan().Declarations()), nil
 }
 
 func stagedDriftResult(ctx context.Context, root string) (checkresult.Result, error) {
@@ -56,21 +58,21 @@ func stagedDriftResult(ctx context.Context, root string) (checkresult.Result, er
 	if err != nil {
 		return checkresult.Result{}, err
 	}
-	prepared, err := preparePublisher(preparedPublisher(prep))
+	prepared, err := preparePublisher(publisher.New(prep.State, prep.Config, prep.Reader, project.Version))
 	if err != nil {
 		return checkresult.Result{}, err
 	}
 	return project.CheckStagedDriftResult(prep, prepared.Plan())
 }
 
-func stagedContextState(ctx context.Context, root string) (project.ContextState, error) {
-	prep, err := project.PrepareStagedContextState(ctx, root)
+func stagedContextState(ctx context.Context, root string) (contextinput.Input, error) {
+	prep, err := currentstatecoord.PrepareStagedContext(ctx, root)
 	if err != nil {
-		return project.ContextState{}, err
+		return contextinput.Input{}, err
 	}
 	prepared, err := preparePublisher(preparedPublisher(prep))
 	if err != nil {
-		return project.ContextState{}, err
+		return contextinput.Input{}, err
 	}
-	return project.CompleteStagedContextState(prep, prepared.Plan()), nil
+	return currentstatecoord.CompleteContext(prep, prepared.ADRs(), prepared.Topics(), prepared.Plans(), prepared.Plan().Declarations()), nil
 }

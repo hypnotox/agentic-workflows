@@ -1,13 +1,11 @@
 package project
 
 import (
-	"context"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
-	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
 func TestResidualPitfallLoaderReadsSnapshotTree(t *testing.T) {
@@ -29,8 +27,5 @@ func TestResidualSingletonProjectionAndTopicOpenFailure(t *testing.T) {
 	layout := Layout{DocsDir: config.DocsDir}
 	if got := entries[0].outPath(layout); got == "" {
 		t.Fatal("plain singleton projected an empty output path")
-	}
-	if _, err := queryTopic(t.TempDir(), nil, context.Background(), "missing", topic.QueryOptions{}); err == nil {
-		t.Fatal("queryTopic accepted a directory outside a repository")
 	}
 }

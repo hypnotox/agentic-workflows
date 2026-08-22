@@ -8,11 +8,15 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/contextinput"
+	"github.com/hypnotox/agentic-workflows/internal/currentstate"
+	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
+	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
@@ -71,32 +75,32 @@ func ctxRepo(t *testing.T, cfg string, files map[string]string) *project.Project
 	return p
 }
 
-func workingContextState(p *project.ProjectState) (project.ContextState, error) {
+func workingContextState(p *project.ProjectState) (contextinput.Input, error) {
 	repo, _, err := awfgit.OpenContaining(p.Root())
 	if err != nil {
-		return project.ContextState{}, err
+		return contextinput.Input{}, err
 	}
-	prep, err := project.PrepareContextState(p, repo, context.Background())
+	prep, err := currentstatecoord.PrepareWorkingContext(p.OutputState(), repo, context.Background())
 	if err != nil {
-		return project.ContextState{}, err
+		return contextinput.Input{}, err
 	}
-	plan, err := publisher.New(prep.State, prep.Config, prep.Reader, project.Version).Plan()
+	prepared, err := publisher.New(prep.State, prep.Config, prep.Reader, project.Version).Prepare()
 	if err != nil {
-		return project.ContextState{}, err
+		return contextinput.Input{}, err
 	}
-	return project.CompleteContextState(prep, plan), nil
+	return currentstatecoord.CompleteContext(prep, prepared.ADRs(), prepared.Topics(), prepared.Plans(), prepared.Plan().Declarations()), nil
 }
 
-func stagedContextState(ctx context.Context, root string) (project.ContextState, error) {
-	prep, err := project.PrepareStagedContextState(ctx, root)
+func stagedContextState(ctx context.Context, root string) (contextinput.Input, error) {
+	prep, err := currentstatecoord.PrepareStagedContext(ctx, root)
 	if err != nil {
-		return project.ContextState{}, err
+		return contextinput.Input{}, err
 	}
-	plan, err := publisher.New(prep.State, prep.Config, prep.Reader, project.Version).Plan()
+	prepared, err := publisher.New(prep.State, prep.Config, prep.Reader, project.Version).Prepare()
 	if err != nil {
-		return project.ContextState{}, err
+		return contextinput.Input{}, err
 	}
-	return project.CompleteStagedContextState(prep, plan), nil
+	return currentstatecoord.CompleteContext(prep, prepared.ADRs(), prepared.Topics(), prepared.Plans(), prepared.Plan().Declarations()), nil
 }
 
 // queryFor assembles the working context state and binds a query to it.
@@ -120,6 +124,19 @@ func stagedQueryFor(t *testing.T, root string) *Query {
 }
 
 func lockFile(root string) string { return filepath.Join(root, ".awf", "awf.lock") }
+
+func TestQuerySnapshotsMutableInput(t *testing.T) {
+	tree, err := snapshot.NewTree([]snapshot.File{{Path: "owned.go", Mode: snapshot.Regular, Bytes: []byte("package owned")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := contextinput.New(contextinput.Layout{}, currentstate.Loaded{}, contextinput.PlanContext{}, tree, nil, nil, []string{"owned.go"}, nil)
+	query := New(state)
+	state.Eligible[0] = "mutated.go"
+	if got := query.Uncovered(nil).Unowned; len(got) != 1 || got[0].Path != "." {
+		t.Fatalf("query aliases caller input: %#v", got)
+	}
+}
 
 // invariant: tooling/context-and-topic:context-read-only (TestContextRequestUniverse)
 // invariant: tooling/context-and-topic:context-path-attribution (TestContextRequestUniverse)
@@ -272,7 +289,7 @@ func TestStagedContextStatePropagatesInvalidStagedLock(t *testing.T) {
 		".awf/config.yaml": "prefix: example\nintegrationBranch: main\n",
 		".awf/awf.lock":    "{",
 	})
-	if _, err := stagedContextState(testContext(t), root); err == nil || !strings.Contains(err.Error(), "parse staged lock") {
+	if _, err := stagedContextState(testContext(t), root); err == nil || !strings.Contains(err.Error(), "parse snapshot lock") {
 		t.Fatalf("staged context state error = %v", err)
 	}
 }

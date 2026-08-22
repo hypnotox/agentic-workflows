@@ -15,8 +15,8 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/contextinput"
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
-	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
@@ -34,12 +34,11 @@ type pendingChange struct {
 // Query answers context questions over one assembled context state. It is the
 // package's only construction path: every entry point is a method, so a query
 // can never run against a partially-assembled universe.
-type Query struct{ state project.ContextState }
+type Query struct{ state contextinput.Input }
 
-// New binds a query to one assembled context state. The state is produced by
-// one of the core's two constructors - Project.ContextState for the working
-// tree, project.StagedContextState for the index - and is read, never written.
-func New(state project.ContextState) *Query { return &Query{state: state} }
+// New binds a query to one assembled context state. It snapshots mutable
+// projections so subsequent caller mutations cannot alter query results.
+func New(state contextinput.Input) *Query { return &Query{state: state.Clone()} }
 
 // ContextForOptions assembles the full context report for the queried paths.
 // It writes nothing and cannot fail: every fallible step already happened while
@@ -60,7 +59,7 @@ func (q *Query) ContextForOptions(queries []string, options ContextOptions) Cont
 		}
 	}
 	slices.Sort(nested)
-	set := contextPathSet{tree: state.Tree, nested: nested, outputs: outputs, ignores: state.Cfg.ContextIgnore, domainPaths: state.Loaded.Topics.DomainPaths, impacts: map[string]contextPathImpact{}}
+	set := contextPathSet{tree: state.Tree, nested: nested, outputs: outputs, ignores: state.ContextIgnore, domainPaths: state.Loaded.Topics.DomainPaths, impacts: map[string]contextPathImpact{}}
 	selectedADRs := state.Loaded.Corpus
 	lay := state.Layout
 	markerSitesByPath := map[string][]topic.MarkerSite{}

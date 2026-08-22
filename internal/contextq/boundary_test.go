@@ -42,22 +42,9 @@ var movedVocabulary = []string{
 	"ContextSelection", "UncoveredResult",
 }
 
-// seamSurface is every internal/project symbol this package may name: the
-// assembled-state value and its two core-side constructors, plus the core
-// declaration vocabulary the seam's fields are typed in. ArtifactRole and its
-// role constants stay core vocabulary by decision (ADR-0195 item 1); Layout and
-// OutputDeclaration type two ContextState fields. The set is exactly what
-// production names today, so extending it is a deliberate widening of the seam
-// rather than an accident. Test sources are outside the scan and may reach
-// further (Project, Open, Version) to build fixtures.
-var seamSurface = map[string]bool{
-	"ContextState": true, "StagedContextState": true,
-	"PlanContext": true, "Layout": true, "OutputDeclaration": true,
-	"ArtifactRole": true, "ArtifactConfig": true, "ArtifactLock": true,
-	"ArtifactManifest": true, "ArtifactTemplate": true, "ArtifactConventionPart": true,
-	"ArtifactAuthoredData": true, "ArtifactTopicMetadata": true, "ArtifactClaimPart": true,
-	"ArtifactDecisionRecord": true, "ArtifactManagedOutput": true, "ArtifactProtocolDescriptor": true,
-}
+// seamSurface is intentionally empty: contextinput owns the neutral seam, so
+// contextq has no production dependency on internal/project.
+var seamSurface = map[string]bool{}
 
 // loadBoundaryPackages loads the production sources of one pattern (tests
 // excluded), optionally overlaying one file so a negative case can be committed
@@ -389,7 +376,7 @@ func TestContextQueryBoundary(t *testing.T) {
 	}
 	query := loadBoundaryPackages(t, queryPattern, nil)
 	if findings := seamBreachFindings(query); len(findings) != 0 {
-		t.Errorf("contextq reaches into the core outside the ContextState seam:\n\t%s",
+		t.Errorf("contextq reaches into the project core:\n\t%s",
 			strings.Join(findings, "\n\t"))
 	}
 	if findings := contextqPresentationFindings(query); len(findings) != 0 {
@@ -431,7 +418,6 @@ import "github.com/hypnotox/agentic-workflows/internal/project"
 
 func fixtureReachesPastSeam() *project.Loader { return nil }
 
-func fixtureStaysInsideSeam(state project.ContextState) *Query { return New(state) }
 `)})
 	queryFindings := seamBreachFindings(violatingQuery)
 	var breaches int
@@ -440,11 +426,9 @@ func fixtureStaysInsideSeam(state project.ContextState) *Query { return New(stat
 			breaches++
 		}
 	}
-	// Exactly the Loader reach: the ContextState parameter in the same fixture is
-	// inside the seam, so the rule turns on which symbol is named, not on naming
-	// the package at all.
+	// Context queries must not name project at all.
 	if breaches != 1 {
-		t.Errorf("seam breaches flagged = %d, want 1 (project.Loader only): %#v", breaches, queryFindings)
+		t.Errorf("project boundary breaches flagged = %d, want 1 (project.Loader only): %#v", breaches, queryFindings)
 	}
 
 	renderFile := filepath.Join(root, filepath.FromSlash("internal/contextq/render.go"))

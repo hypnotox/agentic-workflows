@@ -5,6 +5,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
@@ -26,15 +27,15 @@ func TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	prep, err := project.PrepareContextState(p, repo, testContext(t))
+	prep, err := currentstatecoord.PrepareWorkingContext(p.OutputState(), repo, testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := publisher.New(prep.State, prep.Config, prep.Reader, project.Version).Plan()
+	prepared, err := publisher.New(prep.State, prep.Config, prep.Reader, project.Version).Prepare()
 	if err != nil {
 		t.Fatal(err)
 	}
-	state := project.CompleteContextState(prep, plan)
+	state := currentstatecoord.CompleteContext(prep, prepared.ADRs(), prepared.Topics(), prepared.Plans(), prepared.Plan().Declarations())
 	q := New(state)
 	for _, extension := range []string{".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-effort/index.ts"} {
 		result := q.ContextForOptions([]string{extension}, ContextOptions{Selection: SelectionExplicit})

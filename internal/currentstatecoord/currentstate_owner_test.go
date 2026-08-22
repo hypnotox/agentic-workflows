@@ -3,6 +3,8 @@ package currentstatecoord
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -10,8 +12,11 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/projectstate"
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
+	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
 func ownerTree(t *testing.T, files ...snapshot.File) *snapshot.Tree {
@@ -23,6 +28,21 @@ func ownerTree(t *testing.T, files ...snapshot.File) *snapshot.Tree {
 	return tree
 }
 
+func contextState(root string) *projectstate.ProjectState {
+	return projectstate.NewDerived(root, resident.NewRoots(root, ""), false, catalog.Standard, catalog.Standard, nil)
+}
+
+func writeContextFile(t *testing.T, root, path, contents string) {
+	t.Helper()
+	full := filepath.Join(root, path)
+	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(full, []byte(contents), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestWorkingCurrentStateRequiresConfigInSelectedTree(t *testing.T) {
 	fixture := gitfixture.InitRepo(t)
 	repo, err := awfgit.Open(fixture.Root())
@@ -32,6 +52,104 @@ func TestWorkingCurrentStateRequiresConfigInSelectedTree(t *testing.T) {
 	_, err = workingCurrentState(fixture.Root(), repo, context.Background())
 	if err == nil || !strings.Contains(err.Error(), "working snapshot has no .awf/config.yaml") {
 		t.Fatalf("working state without config error = %v", err)
+	}
+}
+
+func TestPrepareWorkingContextSelectedUniverseErrors(t *testing.T) {
+	ctx := context.Background()
+	if _, err := PrepareWorkingContext(nil, nil, ctx); err == nil || !strings.Contains(err.Error(), "missing project state") {
+		t.Fatalf("nil state error = %v", err)
+	}
+
+	outside := t.TempDir()
+	if _, err := PrepareWorkingContext(contextState(outside), nil, ctx); !errors.Is(err, awfgit.ErrNotARepository) {
+		t.Fatalf("outside repository error = %v", err)
+	}
+
+	for _, tc := range []struct {
+		name, config, lock, want string
+	}{
+		{name: "missing config", want: "working snapshot has no .awf/config.yaml"},
+		{name: "malformed lock", config: "prefix: x\nprofile: core\nintegrationBranch: main\n", lock: "not: [valid", want: "parse snapshot lock"},
+		{name: "malformed config", config: "not: [valid", want: "yaml:"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fixture := gitfixture.InitRepo(t)
+			if tc.config != "" {
+				writeContextFile(t, fixture.Root(), ".awf/config.yaml", tc.config)
+			}
+			if tc.lock != "" {
+				writeContextFile(t, fixture.Root(), ".awf/awf.lock", tc.lock)
+			}
+			repo, err := awfgit.Open(fixture.Root())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := PrepareWorkingContext(contextState(fixture.Root()), repo, ctx); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("PrepareWorkingContext() error = %v, want %q", err, tc.want)
+			}
+		})
+	}
+
+	fixture := gitfixture.InitRepo(t)
+	if err := os.Mkdir(filepath.Join(fixture.Root(), ".awf"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("elsewhere", filepath.Join(fixture.Root(), ".awf", "config.yaml")); err != nil {
+		t.Fatal(err)
+	}
+	repo, err := awfgit.Open(fixture.Root())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := PrepareWorkingContext(contextState(fixture.Root()), repo, ctx); err == nil || !strings.Contains(err.Error(), "not a scannable file") {
+		t.Fatalf("unscannable config error = %v", err)
+	}
+}
+
+func TestPrepareStagedContextSelectedUniverseErrors(t *testing.T) {
+	ctx := context.Background()
+	if _, err := PrepareStagedContext(ctx, t.TempDir()); !errors.Is(err, awfgit.ErrNotARepository) {
+		t.Fatalf("outside repository error = %v", err)
+	}
+
+	for _, tc := range []struct {
+		name, config, lock, want string
+		unmerged                 bool
+	}{
+		{name: "missing config", want: "no staged .awf/config.yaml"},
+		{name: "unmerged index", want: "index contains unmerged entries", unmerged: true},
+		{name: "malformed lock", config: "prefix: x\nprofile: core\nintegrationBranch: main\n", lock: "not: [valid", want: "parse snapshot lock"},
+		{name: "malformed config", config: "not: [valid", want: "yaml:"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fixture := gitfixture.InitRepo(t)
+			if tc.config != "" {
+				gitfixture.Stage(t, fixture, map[string]string{".awf/config.yaml": tc.config})
+			}
+			if tc.lock != "" {
+				gitfixture.Stage(t, fixture, map[string]string{".awf/awf.lock": tc.lock})
+			}
+			if tc.unmerged {
+				gitfixture.StageUnmerged(t, fixture, "conflict")
+			}
+			if _, err := PrepareStagedContext(ctx, fixture.Root()); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("PrepareStagedContext() error = %v, want %q", err, tc.want)
+			}
+		})
+	}
+
+	fixture := gitfixture.InitRepo(t)
+	if err := os.Mkdir(filepath.Join(fixture.Root(), ".awf"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(fixture.Root(), ".awf", "config.yaml")
+	if err := os.Symlink("elsewhere", path); err != nil {
+		t.Fatal(err)
+	}
+	gitfixture.Add(t, fixture, ".awf/config.yaml")
+	if _, err := PrepareStagedContext(ctx, fixture.Root()); err == nil || !strings.Contains(err.Error(), "not a scannable file") {
+		t.Fatalf("unscannable config error = %v", err)
 	}
 }
 
@@ -116,5 +234,11 @@ func TestCoordinatorLockTransitionAndCoreConfig(t *testing.T) {
 	loaded, cfg, err := loadTreeCurrentState(".", withConfig, nil)
 	if err != nil || cfg == nil || len(loaded.ADRs) != 0 || cfg.Profile != catalog.ProfileCore {
 		t.Fatalf("core config load = %#v, %#v, %v", loaded, cfg, err)
+	}
+}
+
+func TestQueryTopicPropagatesWorkingSnapshotFailure(t *testing.T) {
+	if _, err := QueryTopic(t.TempDir(), nil, context.Background(), "missing", topic.QueryOptions{}); err == nil {
+		t.Fatal("topic query accepted a directory outside a repository")
 	}
 }

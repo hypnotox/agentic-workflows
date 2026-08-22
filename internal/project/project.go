@@ -309,15 +309,6 @@ func (l *Loader) OpenForOperation(ctx context.Context, root string) (*ProjectSta
 	return state, cfg, nil
 }
 
-// workingTree snapshots the project's working universe through its handle.
-func workingTree(root string, repo *awfgit.Repo, ctx context.Context) (*snapshot.Tree, error) {
-	repo, err := gitRepo(root, repo)
-	if err != nil {
-		return nil, err
-	}
-	return snapshot.WorkingTree(ctx, repo)
-}
-
 // indexTree snapshots the project's staged universe through its handle.
 func indexTree(root string, repo *awfgit.Repo, ctx context.Context) (*snapshot.Tree, error) {
 	repo, err := gitRepo(root, repo)
