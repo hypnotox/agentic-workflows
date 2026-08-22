@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -55,58 +56,41 @@ func TestOrdinaryCheckProducerCensus(t *testing.T) {
 // invariant: tooling/cli:check-severity-by-protected-property (TestProducerRankPropertyCensus)
 func TestProducerRankPropertyCensus(t *testing.T) {
 	root := testsupport.RepoRoot(t)
-	want := map[string][]string{
-		"internal/generatedcheck/generatedcheck.go": {
-			`PropertyReproducibility checkresult.Property = "reproducibility"`,
-			`Rank: severity.Error, Property: PropertyReproducibility`,
-			`Rank: severity.Warn, Property: "heuristic-quality"`,
-		},
-		"internal/referencecheck/referencecheck.go": {
-			`PropertyCorrectness checkresult.Property = "correctness"`,
-			`PropertyAuthority checkresult.Property = "authority"`,
-			`Rank: severity.Error, Property: property`,
-		},
-		"internal/plancheck/plancheck.go": {
-			`PropertyAuthority checkresult.Property = "authority"`,
-			`PropertyDetail checkresult.Property = "plan-detail-quality"`,
-			`Rank: rank, Property: property`,
-		},
-		"internal/pitfallcheck/pitfallcheck.go": {
-			`PropertyCorrectness checkresult.Property = "correctness"`,
-			`Rank: severity.Error, Property: PropertyCorrectness`,
-		},
-		"internal/vocabularycheck/vocabularycheck.go": {
-			`PropertyCorrectness checkresult.Property = "correctness"`,
-			`PropertyHeuristic     checkresult.Property = "heuristic-quality"`,
-			`Rank: severity.Error, Property: PropertyCorrectness`,
-			`Rank: severity.Warn, Property: PropertyHeuristic`,
-		},
-		"internal/prosegate/prosegate.go": {
-			`Rank: severity.Warn, Property: "prose-restraint"`,
-		},
-		"internal/memorycite/memorycite.go": {
-			`Rank: severity.Error, Property: "effort-memory-citation"`,
-		},
-		"internal/project/check.go": {
-			`Rank: severity.Error, Property: propertyAuthority`,
-			`Rank: severity.Warn, Property: propertyHeuristic`,
-		},
-		"internal/project/currentstate.go": {
-			`Rank: severity.Error, Property: propertyCurrentState`,
-			`Rank: coverage.Severity, Property: propertyCurrentCoverage`,
-			`Rank: severity.Error, Property: propertyPlanArtifact`,
-		},
+	files := []string{
+		"internal/generatedcheck/generatedcheck.go",
+		"internal/referencecheck/referencecheck.go",
+		"internal/plancheck/plancheck.go",
+		"internal/pitfallcheck/pitfallcheck.go",
+		"internal/vocabularycheck/vocabularycheck.go",
+		"internal/prosegate/prosegate.go",
+		"internal/memorycite/memorycite.go",
+		"internal/project/check.go",
+		"internal/project/currentstate.go",
 	}
-	for path, fragments := range want {
-		content, err := os.ReadFile(filepath.Join(root, path))
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, fragment := range fragments {
-			if got := strings.Count(string(content), fragment); got != 1 {
-				t.Errorf("%s classification fragment %q occurs %d times, want exactly 1", path, fragment, got)
-			}
-		}
+	want := []string{
+		`internal/generatedcheck/generatedcheck.go:GuideSizeAdvisory:severity.Warn|"heuristic-quality"`,
+		`internal/generatedcheck/generatedcheck.go:errorFinding:severity.Error|PropertyReproducibility`,
+		`internal/memorycite/memorycite.go:Result:severity.Error|"effort-memory-citation"`,
+		`internal/pitfallcheck/pitfallcheck.go:finding:severity.Error|PropertyCorrectness`,
+		`internal/plancheck/plancheck.go:finding:rank|property`,
+		`internal/project/check.go:advisoryResultsWithState:severity.Warn|propertyHeuristic`,
+		`internal/project/check.go:pendingADRResult:severity.Error|propertyAuthority`,
+		`internal/project/currentstate.go:currentStateResult:coverage.Severity|propertyCurrentCoverage`,
+		`internal/project/currentstate.go:currentStateResult:severity.Error|propertyCurrentState`,
+		`internal/project/currentstate.go:currentStateResult:severity.Error|propertyPlanArtifact`,
+		`internal/prosegate/prosegate.go:Result:severity.Warn|"prose-restraint"`,
+		`internal/referencecheck/referencecheck.go:finding:severity.Error|property`,
+		`internal/vocabularycheck/vocabularycheck.go:errorFinding:severity.Error|PropertyCorrectness`,
+		`internal/vocabularycheck/vocabularycheck.go:warning:severity.Warn|PropertyHeuristic`,
+	}
+	var got []string
+	for _, path := range files {
+		got = append(got, findingConstructionCensus(t, root, path)...)
+	}
+	sort.Strings(got)
+	sort.Strings(want)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("production Finding construction census changed:\n got %v\nwant %v", got, want)
 	}
 }
 
@@ -132,9 +116,13 @@ func TestRepositoryCheckerOwnershipCensus(t *testing.T) {
 		assertImportsExclude(t, filepath.Join(root, owner), "internal/repositorycheck")
 	}
 	aggregator := filepath.Join(root, "internal/repositorycheck/repositorycheck.go")
-	for _, forbidden := range []string{"internal/project", "cmd/", "internal/application", "internal/currentstate"} {
-		assertImportsExclude(t, aggregator, forbidden)
-	}
+	assertExactImports(t, aggregator, []string{
+		"fmt", "slices",
+		"github.com/hypnotox/agentic-workflows/internal/checkresult",
+		"github.com/hypnotox/agentic-workflows/internal/manifest",
+		"github.com/hypnotox/agentic-workflows/internal/presentation",
+		"github.com/hypnotox/agentic-workflows/internal/severity",
+	})
 	file, err := parser.ParseFile(token.NewFileSet(), aggregator, nil, 0)
 	if err != nil {
 		t.Fatal(err)
@@ -176,12 +164,104 @@ func directCallCounts(fn *ast.FuncDecl) map[string]int {
 	return out
 }
 
+func findingConstructionCensus(t *testing.T, root, relative string) []string {
+	t.Helper()
+	path := filepath.Join(root, relative)
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	file, err := parser.ParseFile(token.NewFileSet(), path, content, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out []string
+	for _, declaration := range file.Decls {
+		fn, ok := declaration.(*ast.FuncDecl)
+		if !ok || fn.Body == nil {
+			continue
+		}
+		ast.Inspect(fn.Body, func(node ast.Node) bool {
+			literal, ok := node.(*ast.CompositeLit)
+			if !ok {
+				return true
+			}
+			if isCheckResultFindingType(literal.Type) {
+				out = append(out, findingConstruction(t, relative, fn.Name.Name, literal))
+				return false
+			}
+			array, ok := literal.Type.(*ast.ArrayType)
+			if !ok || !isCheckResultFindingType(array.Elt) {
+				return true
+			}
+			for _, element := range literal.Elts {
+				finding, ok := element.(*ast.CompositeLit)
+				if !ok {
+					t.Fatalf("%s:%s has non-literal Finding element", relative, fn.Name.Name)
+				}
+				out = append(out, findingConstruction(t, relative, fn.Name.Name, finding))
+			}
+			return false
+		})
+	}
+	return out
+}
+
+func isCheckResultFindingType(expression ast.Expr) bool {
+	selector, ok := expression.(*ast.SelectorExpr)
+	if !ok {
+		return false
+	}
+	ident, ok := selector.X.(*ast.Ident)
+	return ok && ident.Name == "checkresult" && selector.Sel.Name == "Finding"
+}
+
+func findingConstruction(t *testing.T, path, function string, literal *ast.CompositeLit) string {
+	t.Helper()
+	fields := map[string]string{}
+	for _, element := range literal.Elts {
+		pair, ok := element.(*ast.KeyValueExpr)
+		if !ok {
+			continue
+		}
+		key, ok := pair.Key.(*ast.Ident)
+		if ok && (key.Name == "Rank" || key.Name == "Property") {
+			fields[key.Name] = expressionSource(pair.Value)
+		}
+	}
+	if fields["Rank"] == "" || fields["Property"] == "" {
+		t.Fatalf("%s:%s Finding omits explicit rank or property", path, function)
+	}
+	return path + ":" + function + ":" + fields["Rank"] + "|" + fields["Property"]
+}
+
 func expressionSource(expression ast.Expr) string {
 	var out strings.Builder
 	if err := format.Node(&out, token.NewFileSet(), expression); err != nil {
 		return "<invalid>"
 	}
 	return out.String()
+}
+
+func assertExactImports(t *testing.T, path string, want []string) {
+	t.Helper()
+	file, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.ImportsOnly)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, imp := range file.Imports {
+		value, err := strconv.Unquote(imp.Path.Value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got = append(got, value)
+	}
+	sort.Strings(got)
+	sort.Strings(want)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("%s imports = %v, want exact policy-free allowlist %v", path, got, want)
+	}
 }
 
 func assertImportsExclude(t *testing.T, path, forbidden string) {
