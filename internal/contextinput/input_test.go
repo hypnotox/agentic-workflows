@@ -28,14 +28,21 @@ func TestNewDefensivelyCopiesMutableSemanticProjections(t *testing.T) {
 	lock.BridgeAttestation.LegacyADRGaps[0] = 9
 	declarations[0] = outputplan.NewDeclaration("mutated", "mutated", nil, nil, nil)
 
-	if input.Layout.Docs["guide"] != "docs/guide.md" || input.Layout.Singletons["guide"] != "docs/guide.md" || input.PlanState.Plans[0].Phases[0].Tasks[0].Fields.Paths[0].Value != "a" || input.PlanState.Plans[0].Phases[0].Tasks[0].Fields.Applying[0].ADR != "0001" || input.PlanState.Plans[0].Phases[0].Tasks[0].Fields.Context[0].ADR != "0002" || input.PlanState.Plans[0].Phases[0].Advances[0] != "advance" || input.PlanState.Plans[0].Phases[0].Completes[0] != "complete" || input.Lock.Files["mutated"] != (manifest.Entry{}) || input.Lock.BridgeAttestation.LegacyADRGaps[0] != 1 || input.Declarations[0].Path() != "docs/guide.md" {
-		t.Fatalf("input retained mutable caller state: %#v", input)
+	view := input.Snapshot()
+	if view.Layout.Docs["guide"] != "docs/guide.md" || view.Layout.Singletons["guide"] != "docs/guide.md" || view.PlanState.Plans[0].Phases[0].Tasks[0].Fields.Paths[0].Value != "a" || view.PlanState.Plans[0].Phases[0].Tasks[0].Fields.Applying[0].ADR != "0001" || view.PlanState.Plans[0].Phases[0].Tasks[0].Fields.Context[0].ADR != "0002" || view.PlanState.Plans[0].Phases[0].Advances[0] != "advance" || view.PlanState.Plans[0].Phases[0].Completes[0] != "complete" || view.Lock.Files["mutated"] != (manifest.Entry{}) || view.Lock.BridgeAttestation.LegacyADRGaps[0] != 1 || view.Declarations[0].Path() != "docs/guide.md" {
+		t.Fatalf("input retained mutable caller state: %#v", view)
 	}
 	eligible, ignores := []string{"eligible"}, []string{"ignore"}
 	input = New(Layout{}, currentstate.Loaded{}, PlanContext{}, nil, nil, nil, eligible, ignores)
 	eligible[0], ignores[0] = "mutated", "mutated"
-	if input.Eligible[0] != "eligible" || input.ContextIgnore[0] != "ignore" {
-		t.Fatalf("input aliases eligibility projections: %#v", input)
+	view = input.Snapshot()
+	if view.Eligible[0] != "eligible" || view.ContextIgnore[0] != "ignore" {
+		t.Fatalf("input aliases eligibility projections: %#v", view)
+	}
+	view.Eligible[0], view.ContextIgnore[0] = "mutated", "mutated"
+	fresh := input.Snapshot()
+	if fresh.Eligible[0] != "eligible" || fresh.ContextIgnore[0] != "ignore" {
+		t.Fatalf("snapshot mutation changed immutable input: %#v", fresh)
 	}
 }
 
@@ -64,7 +71,7 @@ func TestNewCopiesLoadedSources(t *testing.T) {
 	loaded := currentstate.Loaded{Sources: map[string][]byte{"source": []byte("original")}}
 	input := New(Layout{}, loaded, PlanContext{}, nil, nil, nil, nil, nil)
 	loaded.Sources["source"][0] = 'm'
-	if got := string(input.Loaded.Sources["source"]); got != "original" {
+	if got := string(input.Snapshot().Loaded.Sources["source"]); got != "original" {
 		t.Fatalf("loaded source = %q, want defensive copy", got)
 	}
 }

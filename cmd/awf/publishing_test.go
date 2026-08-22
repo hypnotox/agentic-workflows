@@ -7,6 +7,9 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/contextinput"
+	"github.com/hypnotox/agentic-workflows/internal/contextq"
+	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
@@ -81,7 +84,7 @@ func TestContextCompositionSelectsOneFreshTreeForPublisherAndCompletion(t *testi
 	}
 	assertTitle := func(want string, state contextinput.Input) {
 		t.Helper()
-		got, ok := state.Loaded.Topics.ByTopicID("alpha/one")
+		got, ok := state.Snapshot().Loaded.Topics.ByTopicID("alpha/one")
 		if !ok || got.Metadata.Title != want {
 			t.Fatalf("Publisher/completion topic = %#v, want title %q", got, want)
 		}
@@ -123,3 +126,108 @@ func TestStagedContextStatePropagatesPreparationFailure(t *testing.T) {
 		t.Fatal("stagedContextState accepted a directory outside a repository")
 	}
 }
+
+type countingContextReader struct {
+	outputplan.TreeReader
+	calls int
+	reads map[string]int
+}
+
+func (r *countingContextReader) ReadFile(path string) ([]byte, bool, error) {
+	r.calls++
+	r.reads[path]++
+	return r.TreeReader.ReadFile(path)
+}
+
+func (r *countingContextReader) Paths(prefix string) ([]string, error) {
+	r.calls++
+	return r.TreeReader.Paths(prefix)
+}
+
+func TestContextCompletionReusesPublisherParsedSemantics(t *testing.T) {
+	root := ctxCmdFixture(t)
+	testsupport.WriteFile(t, filepath.Join(root, "docs", "plans", "2026-08-03-context.md"), readCommandV2Plan)
+	state, _, repo, err := openProjectOperation(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gitfixture.AddAll(t, gitfixture.At(root))
+
+	operations := []struct {
+		name    string
+		prepare func() (*currentstatecoord.ContextPreparation, error)
+	}{
+		{"working", func() (*currentstatecoord.ContextPreparation, error) {
+			return currentstatecoord.PrepareWorkingContext(state.OutputState(), repo, context.Background())
+		}},
+		{"staged", func() (*currentstatecoord.ContextPreparation, error) {
+			return currentstatecoord.PrepareStagedContext(context.Background(), root)
+		}},
+	}
+	for _, operation := range operations {
+		t.Run(operation.name, func(t *testing.T) {
+			prep, err := operation.prepare()
+			if err != nil {
+				t.Fatal(err)
+			}
+			reader := &countingContextReader{TreeReader: prep.Reader, reads: map[string]int{}}
+			prep.Reader = reader
+			prepared, err := preparePublisher(preparedPublisher(prep))
+			if err != nil {
+				t.Fatal(err)
+			}
+			beforeCompletion := reader.calls
+			input := currentstatecoord.CompleteContext(prep, prepared.ADRs(), prepared.Topics(), prepared.Plans(), prepared.Plan().Declarations())
+			result := contextq.New(input).ContextForOptions([]string{"internal/foo/x.go"}, contextq.ContextOptions{})
+			if len(result.Requests) != 1 {
+				t.Fatalf("completed context requests = %#v", result.Requests)
+			}
+			if reader.calls != beforeCompletion {
+				t.Fatalf("completion reparsed Publisher semantics: reads %d -> %d", beforeCompletion, reader.calls)
+			}
+			for _, path := range []string{"docs/decisions/0001-first.md", ".awf/topics/metadata/alpha/one.yaml", ".awf/topics/parts/alpha/one/current-state.md", "docs/plans/2026-08-03-context.md"} {
+				if reader.reads[path] == 0 {
+					t.Errorf("Publisher preparation did not traverse representative semantic input %s", path)
+				}
+			}
+		})
+	}
+}
+
+func TestContextPreparationRespectsProfileAuthority(t *testing.T) {
+	for _, profile := range []struct {
+		name, config string
+		full         bool
+	}{
+		{name: "core", config: "prefix: example\nprofile: core\nintegrationBranch: main\n"},
+		{name: "full", config: strings.Replace(ctxCmdYAML, "integrationBranch: main\n", "profile: full\nintegrationBranch: main\n", 1), full: true},
+	} {
+		t.Run(profile.name, func(t *testing.T) {
+			root := ctxCmdFixture(t)
+			testsupport.WriteAwfConfig(t, root, profile.config)
+			testsupport.WriteFile(t, filepath.Join(root, "docs", "plans", "2026-08-03-context.md"), readCommandV2Plan)
+			gitfixture.AddAll(t, gitfixture.At(root))
+			state, _, repo, err := openProjectOperation(testContext(t), root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			working, err := workingContextState(context.Background(), state, repo)
+			if err != nil {
+				t.Fatal(err)
+			}
+			staged, err := stagedContextState(context.Background(), root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for name, input := range map[string]contextinput.Input{"working": working, "staged": staged} {
+				view := input.Snapshot()
+				hasFullAuthority := len(view.Loaded.ADRs) > 0 || len(view.Loaded.Topics.All()) > 0 || len(view.PlanState.Plans) > 0
+				if hasFullAuthority != profile.full {
+					t.Errorf("%s %s Full-only authority = %v, want %v", profile.name, name, hasFullAuthority, profile.full)
+				}
+			}
+		})
+	}
+}
+
+var _ outputplan.TreeReader = (*countingContextReader)(nil)

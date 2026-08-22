@@ -70,7 +70,22 @@ func (c PlanContext) LinkedPlans(identity string) []string {
 }
 
 // Input is the complete, immutable semantic universe consumed by contextq.
+// Its mutable representations remain private; Snapshot returns an independent
+// projection for one bound consumer.
 type Input struct {
+	layout        Layout
+	loaded        currentstate.Loaded
+	planState     PlanContext
+	tree          *snapshot.Tree
+	lock          *manifest.Lock
+	declarations  []outputplan.Declaration
+	eligible      []string
+	contextIgnore []string
+}
+
+// Snapshot is one defensive projection of an Input. The selected Tree is
+// deliberately shared because snapshot.Tree exposes immutable values only.
+type Snapshot struct {
 	Layout        Layout
 	Loaded        currentstate.Loaded
 	PlanState     PlanContext
@@ -83,13 +98,16 @@ type Input struct {
 
 // New defensively retains one selected semantic universe.
 func New(layout Layout, loaded currentstate.Loaded, plans PlanContext, tree *snapshot.Tree, lock *manifest.Lock, declarations []outputplan.Declaration, eligible, ignores []string) Input {
-	return Input{Layout: cloneLayout(layout), Loaded: cloneLoaded(loaded), PlanState: PlanContext{Plans: clonePlans(plans.Plans), byADR: cloneLinks(plans.byADR)}, Tree: tree, Lock: cloneLock(lock), Declarations: slices.Clone(declarations), Eligible: slices.Clone(eligible), ContextIgnore: slices.Clone(ignores)}
+	return Input{layout: cloneLayout(layout), loaded: cloneLoaded(loaded), planState: clonePlanContext(plans), tree: tree, lock: cloneLock(lock), declarations: slices.Clone(declarations), eligible: slices.Clone(eligible), contextIgnore: slices.Clone(ignores)}
 }
 
-// Clone returns an independent semantic input. The selected Tree is deliberately
-// shared because snapshot.Tree exposes immutable values only.
-func (v Input) Clone() Input {
-	return New(v.Layout, v.Loaded, v.PlanState, v.Tree, v.Lock, v.Declarations, v.Eligible, v.ContextIgnore)
+// Snapshot returns an independent semantic projection.
+func (v Input) Snapshot() Snapshot {
+	return Snapshot{Layout: cloneLayout(v.layout), Loaded: cloneLoaded(v.loaded), PlanState: clonePlanContext(v.planState), Tree: v.tree, Lock: cloneLock(v.lock), Declarations: slices.Clone(v.declarations), Eligible: slices.Clone(v.eligible), ContextIgnore: slices.Clone(v.contextIgnore)}
+}
+
+func clonePlanContext(v PlanContext) PlanContext {
+	return PlanContext{Plans: clonePlans(v.Plans), byADR: cloneLinks(v.byADR)}
 }
 func cloneLayout(v Layout) Layout {
 	v.Docs = maps.Clone(v.Docs)

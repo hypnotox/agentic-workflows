@@ -34,11 +34,11 @@ type pendingChange struct {
 // Query answers context questions over one assembled context state. It is the
 // package's only construction path: every entry point is a method, so a query
 // can never run against a partially-assembled universe.
-type Query struct{ state contextinput.Input }
+type Query struct{ state contextinput.Snapshot }
 
 // New binds a query to one assembled context state. It snapshots mutable
 // projections so subsequent caller mutations cannot alter query results.
-func New(state contextinput.Input) *Query { return &Query{state: state.Clone()} }
+func New(state contextinput.Input) *Query { return &Query{state: state.Snapshot()} }
 
 // ContextForOptions assembles the full context report for the queried paths.
 // It writes nothing and cannot fail: every fallible step already happened while

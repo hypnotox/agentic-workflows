@@ -125,16 +125,17 @@ func stagedQueryFor(t *testing.T, root string) *Query {
 
 func lockFile(root string) string { return filepath.Join(root, ".awf", "awf.lock") }
 
-func TestQuerySnapshotsMutableInput(t *testing.T) {
+func TestQuerySnapshotsImmutableInput(t *testing.T) {
 	tree, err := snapshot.NewTree([]snapshot.File{{Path: "owned.go", Mode: snapshot.Regular, Bytes: []byte("package owned")}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	state := contextinput.New(contextinput.Layout{}, currentstate.Loaded{}, contextinput.PlanContext{}, tree, nil, nil, []string{"owned.go"}, nil)
 	query := New(state)
-	state.Eligible[0] = "mutated.go"
+	projection := state.Snapshot()
+	projection.Eligible[0] = "mutated.go"
 	if got := query.Uncovered(nil).Unowned; len(got) != 1 || got[0].Path != "." {
-		t.Fatalf("query aliases caller input: %#v", got)
+		t.Fatalf("query aliases caller projection: %#v", got)
 	}
 }
 

@@ -302,7 +302,7 @@ func (p *ProjectState) mutationOverwritesWholeValue() {
 
 import "github.com/hypnotox/agentic-workflows/internal/contextinput"
 
-func (q *Query) mutationReplacesStateAfterConstruction(state contextinput.Input) {
+func (q *Query) mutationReplacesStateAfterConstruction(state contextinput.Snapshot) {
 	q.state = state
 }
 `),

@@ -205,7 +205,7 @@ func TestContextFacetProjectionAndClosestCategory(t *testing.T) {
 		t.Fatal(err)
 	}
 	q := New(state)
-	if got := claimStateForOperation("add", "alpha/one:order", "applied", state.Loaded.Topics, nil); got != "active-current" {
+	if got := claimStateForOperation("add", "alpha/one:order", "applied", state.Snapshot().Loaded.Topics, nil); got != "active-current" {
 		t.Fatal(got)
 	}
 	facets, _ := ParseContextFacets([]string{"invariants", "all-rules", "evidence", "selectors", "references", "pending"}, false)

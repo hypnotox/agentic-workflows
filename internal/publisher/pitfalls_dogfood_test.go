@@ -233,10 +233,12 @@ func testPitfallStagedDeclarationParity(t *testing.T) {
 		}
 		return out
 	}
-	if !slices.EqualFunc(pitfallDeclarations(working.Declarations), pitfallDeclarations(staged.Declarations), func(a, b outputplan.Declaration) bool {
+	workingDeclarations := working.Snapshot().Declarations
+	stagedDeclarations := staged.Snapshot().Declarations
+	if !slices.EqualFunc(pitfallDeclarations(workingDeclarations), pitfallDeclarations(stagedDeclarations), func(a, b outputplan.Declaration) bool {
 		return a.Path() == b.Path() && a.TemplateID() == b.TemplateID() && slices.Equal(a.Declarers(), b.Declarers()) && slices.Equal(a.Inputs(), b.Inputs())
 	}) {
-		t.Fatalf("working/staged pitfall declarations differ:\nworking=%#v\nstaged=%#v", pitfallDeclarations(working.Declarations), pitfallDeclarations(staged.Declarations))
+		t.Fatalf("working/staged pitfall declarations differ:\nworking=%#v\nstaged=%#v", pitfallDeclarations(workingDeclarations), pitfallDeclarations(stagedDeclarations))
 	}
 }
 
