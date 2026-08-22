@@ -101,6 +101,7 @@ func TestRepositoryCheckerOwnershipCensus(t *testing.T) {
 		"internal/referencecheck": true, "internal/vocabularycheck": true,
 	}
 	aggregatorImports := map[string]bool{}
+	var kindAccesses []string
 	testsupport.WalkRepoSources(t, root, func(relative string, content []byte) {
 		directory := filepath.ToSlash(filepath.Dir(relative))
 		if ownerPackages[directory] || relative == "internal/project/currentstate.go" {
@@ -116,13 +117,7 @@ func TestRepositoryCheckerOwnershipCensus(t *testing.T) {
 		for _, imported := range importPaths(t, file) {
 			aggregatorImports[imported] = true
 		}
-		ast.Inspect(file, func(node ast.Node) bool {
-			condition, ok := node.(*ast.IfStmt)
-			if ok && strings.Contains(expressionSource(condition.Cond), ".Kind") {
-				t.Errorf("%s routes a result destination by evidence Kind", relative)
-			}
-			return true
-		})
+		kindAccesses = append(kindAccesses, evidenceKindAccessCensus(relative, file)...)
 	})
 	assertExactImportSet(t, aggregatorImports, []string{
 		"fmt", "slices",
@@ -131,6 +126,16 @@ func TestRepositoryCheckerOwnershipCensus(t *testing.T) {
 		"github.com/hypnotox/agentic-workflows/internal/presentation",
 		"github.com/hypnotox/agentic-workflows/internal/severity",
 	})
+	sort.Strings(kindAccesses)
+	wantKindAccesses := []string{
+		"internal/repositorycheck/repositorycheck.go:Compose:finding.Evidence.Kind",
+		"internal/repositorycheck/repositorycheck.go:Compose:item.Evidence.Kind",
+		"internal/repositorycheck/repositorycheck.go:present:finding.Evidence.Kind",
+		"internal/repositorycheck/repositorycheck.go:present:item.Evidence.Kind",
+	}
+	if !reflect.DeepEqual(kindAccesses, wantKindAccesses) {
+		t.Fatalf("RepositoryChecker Evidence.Kind access census = %v, want projection-only allowlist %v", kindAccesses, wantKindAccesses)
+	}
 }
 
 func functionDeclarations(file *ast.File) map[string]*ast.FuncDecl {
@@ -189,45 +194,93 @@ func parsedCheckResultConsumer(t *testing.T, relative string, content []byte) (*
 
 func findingConstructionCensus(t *testing.T, relative string, file *ast.File, qualifier string) []string {
 	t.Helper()
+	aliases := findingTypeAliases(file, qualifier)
+	functions := functionDeclarations(file)
 	var out []string
-	for _, declaration := range file.Decls {
-		fn, ok := declaration.(*ast.FuncDecl)
-		if !ok || fn.Body == nil {
-			continue
+	ast.Inspect(file, func(node ast.Node) bool {
+		literal, ok := node.(*ast.CompositeLit)
+		if !ok {
+			return true
 		}
-		ast.Inspect(fn.Body, func(node ast.Node) bool {
-			literal, ok := node.(*ast.CompositeLit)
-			if !ok {
-				return true
-			}
-			if isCheckResultFindingType(literal.Type, qualifier) {
-				out = append(out, findingConstruction(t, relative, fn.Name.Name, literal))
-				return false
-			}
-			array, ok := literal.Type.(*ast.ArrayType)
-			if !ok || !isCheckResultFindingType(array.Elt, qualifier) {
-				return true
-			}
-			for _, element := range literal.Elts {
-				finding, ok := element.(*ast.CompositeLit)
-				if !ok {
-					t.Fatalf("%s:%s has non-literal Finding element", relative, fn.Name.Name)
-				}
-				out = append(out, findingConstruction(t, relative, fn.Name.Name, finding))
-			}
+		function := enclosingFunction(functions, literal.Pos())
+		if isCheckResultFindingType(literal.Type, qualifier, aliases) {
+			out = append(out, findingConstruction(t, relative, function, literal))
 			return false
-		})
-	}
+		}
+		array, ok := literal.Type.(*ast.ArrayType)
+		if !ok || !isCheckResultFindingType(array.Elt, qualifier, aliases) {
+			return true
+		}
+		for _, element := range literal.Elts {
+			finding, ok := element.(*ast.CompositeLit)
+			if !ok {
+				t.Fatalf("%s:%s has non-literal Finding element", relative, function)
+			}
+			out = append(out, findingConstruction(t, relative, function, finding))
+		}
+		return false
+	})
 	return out
 }
 
-func isCheckResultFindingType(expression ast.Expr, qualifier string) bool {
+func findingTypeAliases(file *ast.File, qualifier string) map[string]bool {
+	aliases := map[string]bool{}
+	changed := true
+	for changed {
+		changed = false
+		ast.Inspect(file, func(node ast.Node) bool {
+			spec, ok := node.(*ast.TypeSpec)
+			if !ok || !spec.Assign.IsValid() || aliases[spec.Name.Name] {
+				return true
+			}
+			if isCheckResultFindingType(spec.Type, qualifier, aliases) {
+				aliases[spec.Name.Name] = true
+				changed = true
+			}
+			return true
+		})
+	}
+	return aliases
+}
+
+func isCheckResultFindingType(expression ast.Expr, qualifier string, aliases map[string]bool) bool {
+	if ident, ok := expression.(*ast.Ident); ok {
+		return aliases[ident.Name]
+	}
 	selector, ok := expression.(*ast.SelectorExpr)
 	if !ok {
 		return false
 	}
 	ident, ok := selector.X.(*ast.Ident)
 	return ok && ident.Name == qualifier && selector.Sel.Name == "Finding"
+}
+
+func enclosingFunction(functions map[string]*ast.FuncDecl, position token.Pos) string {
+	name := "<package>"
+	for candidate, function := range functions {
+		if function.Body != nil && function.Body.Pos() <= position && position <= function.Body.End() {
+			name = candidate
+		}
+	}
+	return name
+}
+
+func evidenceKindAccessCensus(relative string, file *ast.File) []string {
+	functions := functionDeclarations(file)
+	var out []string
+	ast.Inspect(file, func(node ast.Node) bool {
+		kind, ok := node.(*ast.SelectorExpr)
+		if !ok || kind.Sel.Name != "Kind" {
+			return true
+		}
+		evidence, ok := kind.X.(*ast.SelectorExpr)
+		if !ok || evidence.Sel.Name != "Evidence" {
+			return true
+		}
+		out = append(out, relative+":"+enclosingFunction(functions, kind.Pos())+":"+expressionSource(kind))
+		return true
+	})
+	return out
 }
 
 func findingConstruction(t *testing.T, path, function string, literal *ast.CompositeLit) string {
