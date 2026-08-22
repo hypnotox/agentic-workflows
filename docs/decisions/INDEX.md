@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-0300: Make Repository Check Results Owner-Classified](0300-make-repository-check-results-owner-classified.md) (Implementing)
+_No decisions are in flight._
 
 ## History
 
@@ -305,3 +305,4 @@
 - [ADR-0297: Bound Compatibility Support to Managed Reality](0297-bound-compatibility-support-to-managed-reality.md) (Implemented)
 - [ADR-0298: Pitfalls as the Current Tag Vocabulary Carrier](0298-pitfalls-as-the-current-tag-vocabulary-carrier.md) (Implemented)
 - [ADR-0299: Make Publisher the Output Plan Construction Owner](0299-make-publisher-the-output-plan-construction-owner.md) (Implemented)
+- [ADR-0300: Make Repository Check Results Owner-Classified](0300-make-repository-check-results-owner-classified.md) (Implemented)

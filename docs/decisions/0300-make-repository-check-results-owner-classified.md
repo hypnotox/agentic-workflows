@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: make-repository-check-results-owner-classified
-status: Implementing
+status: Implemented
 date: 2026-08-22
 ---
 # ADR-0300: Make Repository Check Results Owner-Classified
@@ -104,3 +104,4 @@ remain assigned to later authorized work.
 - 2026-08-22: Applied; operations: update `tooling/cli:repo-check-capability-plan`, update `tooling/cli:check-severity-by-protected-property`, update `rendering/project-output-plan:check-report-single-plan`, update `rendering/sync-and-drift:agent-guide-size-advisory`
 - 2026-08-22: Amended; content-sha256: bbd8c48cc788494f8e6f3c6d663c5dc8f20c504afdf9bd4e371a386e8f758a02
 - 2026-08-22: Reapplied; operations: update `tooling/cli:repo-check-capability-plan`
+- 2026-08-22: Implemented; content-sha256: bbd8c48cc788494f8e6f3c6d663c5dc8f20c504afdf9bd4e371a386e8f758a02

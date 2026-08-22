@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-22
 adrs: [0295, 0296, 0299, make-repository-check-results-owner-classified]
-status: Proposed
+status: Implemented
 ---
 # Plan: Decompose Repository Checker
 
