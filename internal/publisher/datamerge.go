@@ -54,15 +54,6 @@ func withDefaultData(sc config.Sidecar, defaults map[string]any, listLayerExclus
 	return sc
 }
 
-// specializedListDataKeys excludes differently keyed, identity-aware
-// transforms from generic same-key list composition.
-func specializedListDataKeys(kind, artifact string) []string {
-	if kind == "docs" && artifact == "glossary" {
-		return []string{"standardTerms"}
-	}
-	return nil
-}
-
 func cloneData(value any) any {
 	switch typed := value.(type) {
 	case []any:

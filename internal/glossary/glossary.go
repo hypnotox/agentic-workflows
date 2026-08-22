@@ -10,8 +10,20 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
-// SidecarPath names the authoring surface in every glossary content error.
-const SidecarPath = config.DirName + "/docs/glossary.yaml"
+const (
+	// SidecarPath names the authoring surface in every glossary content error.
+	SidecarPath      = config.DirName + "/docs/glossary.yaml"
+	standardTermsKey = "standardTerms"
+)
+
+// SpecializedListDataKeys identifies glossary data that uses identity-aware
+// composition instead of generic same-key catalog-list layering.
+func SpecializedListDataKeys(kind, artifact string) []string {
+	if kind == "docs" && artifact == "glossary" {
+		return []string{standardTermsKey}
+	}
+	return nil
+}
 
 // docDataTransform is the docs renderKindSpec transform (ADR-0089): the seam
 // where a doc's sidecar data is computed into rendered content upstream of both
@@ -56,7 +68,7 @@ const MeaningMax = 280
 // duplicate WITHIN either layer stays a hard error; a duplicate ACROSS layers is
 // the override. Order is not guaranteed; glossaryRows sorts.
 func Merge(sc config.Sidecar) ([]Record, error) {
-	shipped, err := Records(sc.Data["standardTerms"])
+	shipped, err := Records(sc.Data[standardTermsKey])
 	if err != nil {
 		// The shipped layer is awf's own closed list, so a violation here is a
 		// defect in this binary rather than anything the adopter authored.

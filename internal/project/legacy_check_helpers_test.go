@@ -70,19 +70,13 @@ func glossaryTersenessNotes(p renderInputs) ([]string, error) {
 }
 
 func vocabularyInputForTest(p renderInputs, pitfalls pitfall.Corpus) (vocabularycheck.Input, error) {
-	sc, err := p.cfg.Sidecar("docs", "glossary")
+	prepared, err := testPublisher(p).Prepare()
 	if err != nil {
 		return vocabularycheck.Input{}, err
 	}
-	authored, err := glossary.Records(sc.Data["terms"])
-	if err != nil {
-		return vocabularycheck.Input{}, err
-	}
-	merged, err := glossary.Merge(withDefaultData(sc, projectCatalog(p).Docs["glossary"].Data, specializedListDataKeys("docs", "glossary")...))
-	if err != nil {
-		return vocabularycheck.Input{}, err
-	}
-	return vocabularycheck.Input{GlossaryEnabled: fullProfile(p), Authored: authored, Merged: merged, Domains: slices.Clone(p.cfg.Domains), Tags: maps.Clone(p.cfg.Tags), Pitfalls: pitfalls}, nil
+	input := prepared.Vocabulary()
+	input.Pitfalls = pitfalls
+	return input, nil
 }
 
 func mergedGlossaryRecords(sc config.Sidecar) ([]glossaryRecord, error) { return glossary.Merge(sc) }

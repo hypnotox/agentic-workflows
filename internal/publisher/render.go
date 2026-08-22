@@ -15,6 +15,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/glossary"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/refs"
@@ -458,7 +459,7 @@ func renderKind(p renderInputs, spec renderKindSpec, eff map[string]bool) ([]Ren
 			return nil, err
 		}
 		if spec.defaults != nil {
-			sc = withDefaultData(sc, spec.defaults(name), specializedListDataKeys(spec.kind, name)...)
+			sc = withDefaultData(sc, spec.defaults(name), glossary.SpecializedListDataKeys(spec.kind, name)...)
 		}
 		if spec.transform != nil {
 			if sc, err = spec.transform(name, sc); err != nil {

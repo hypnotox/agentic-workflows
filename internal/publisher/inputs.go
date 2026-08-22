@@ -183,7 +183,7 @@ func vocabularySemantics(p renderInputs, pitfalls pitfall.Corpus) (vocabularyche
 	if err != nil { // coverage-ignore: output-plan glossary transform already validated authored records
 		return vocabularycheck.Input{}, err
 	}
-	merged, err := glossary.Merge(withDefaultData(sc, projectCatalog(p).Docs["glossary"].Data, specializedListDataKeys("docs", "glossary")...))
+	merged, err := glossary.Merge(withDefaultData(sc, projectCatalog(p).Docs["glossary"].Data, glossary.SpecializedListDataKeys("docs", "glossary")...))
 	if err != nil { // coverage-ignore: output-plan glossary transform already validated the merged records
 		return vocabularycheck.Input{}, err
 	}

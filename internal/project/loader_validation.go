@@ -6,6 +6,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/glossary"
 )
 
 // validateAgainstCatalog checks that every enabled non-local target is in the
@@ -100,7 +101,7 @@ func checkKindAgainstCatalog(p renderInputs, d kindDescriptor) error {
 		if len(sc.Paths) > 0 {
 			return fmt.Errorf("%s %q: paths: is read only from domain sidecars; remove it from .awf/%s/%s.yaml", d.Singular, name, d.Plural, name)
 		}
-		if err := validateCatalogListData(d.Plural+"/"+name+".yaml", sc, catalogData(projectCatalog(p), d.Plural, name), specializedListDataKeys(d.Plural, name)...); err != nil {
+		if err := validateCatalogListData(d.Plural+"/"+name+".yaml", sc, catalogData(projectCatalog(p), d.Plural, name), glossary.SpecializedListDataKeys(d.Plural, name)...); err != nil {
 			return err
 		}
 		if declared, ok := d.sections(projectCatalog(p), name); ok {

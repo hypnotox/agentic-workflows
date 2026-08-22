@@ -11,6 +11,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/configspec"
+	"github.com/hypnotox/agentic-workflows/internal/glossary"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -435,7 +436,7 @@ func dataKeyRowsTyped(p renderInputs) ([]DataKeyRow, error) {
 		_, hasAuthored := sc.Data[d.Key]
 		defaultValue, hasDefault := declared[d.Key]
 		_, catalogList := defaultValue.([]any)
-		catalogList = catalogList && !slices.Contains(specializedListDataKeys(sidecarKind, sidecarName), d.Key)
+		catalogList = catalogList && !slices.Contains(glossary.SpecializedListDataKeys(sidecarKind, sidecarName), d.Key)
 		switch {
 		case catalogList:
 			keep, configured := sc.DataDefaults[d.Key]
