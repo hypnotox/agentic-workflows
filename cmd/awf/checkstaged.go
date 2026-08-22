@@ -8,20 +8,20 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/checkresult"
-	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 	"github.com/hypnotox/agentic-workflows/internal/repositorycheck"
 	"golang.org/x/mod/semver"
 )
 
 type checkStagedDependencies struct {
-	stateRoot func(context.Context, string) (project.CurrentStateReport, error)
+	stateRoot func(context.Context, string) (currentstatecoord.CurrentStateReport, error)
 	driftRoot func(context.Context, string) (checkresult.Result, error)
 	present   func(checkresult.Result, string, bool) (repositorycheck.Presentation, error)
 }
 
 func productionCheckStagedDependencies() checkStagedDependencies {
 	return checkStagedDependencies{
-		stateRoot: project.CheckStagedRoot,
+		stateRoot: currentstatecoord.CheckStagedRoot,
 		driftRoot: stagedDriftResult,
 		present: func(result checkresult.Result, check string, evidence bool) (repositorycheck.Presentation, error) {
 			if evidence {

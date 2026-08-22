@@ -2,7 +2,6 @@ package project
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"path/filepath"
 	"reflect"
@@ -12,7 +11,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
-	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
+	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
@@ -41,13 +40,6 @@ func TestCommitAuthorizationResultDiagnostic(t *testing.T) {
 	want := "condition: non-merge\nstate: operation\n\ndiagnostic:\n  changed:\n    index: yes\n    message: no\n    merge state: no\n  steps:\n    step 1: correct the message trailers\n    step 2: run git commit\n"
 	if got.String() != want {
 		t.Fatalf("diagnostic = %q, want %q", got.String(), want)
-	}
-}
-
-func TestHeadTreeAndLockRejectsMissingRepository(t *testing.T) {
-	tree, lock, err := headTreeAndLock(nil, testContext(t))
-	if tree != nil || lock != nil || !errors.Is(err, awfgit.ErrNotARepository) {
-		t.Fatalf("head tree without repository = (%v, %v, %v)", tree, lock, err)
 	}
 }
 
@@ -175,7 +167,7 @@ func TestCurrentStateReportRouting(t *testing.T) {
 			{Path: "internal/c.go", Domain: "alpha", Kind: topic.Uncovered, Severity: severity.Warn, CandidateTopics: []string{"alpha/a", "alpha/b"}},
 		},
 	}
-	findings := r.Findings()
+	findings := currentStateFindings(r)
 	wantCoverage := "uncovered: internal/a.go is owned by domain alpha with no claim-bearing topic owner; if global topic alpha/global naturally governs this path, add a matching domain-bounded paths selector; otherwise create/use an appropriate scoped claim-bearing topic"
 	if len(findings) != 3 || findings[0] != "handshake broke" || findings[1] != wantCoverage || findings[2] != "plan-reference docs/plans/v2.md: missing ADR" {
 		t.Fatalf("findings = %#v", findings)
@@ -264,7 +256,7 @@ func TestCheckCurrentState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CheckCurrentState: %v", err)
 	}
-	findings := report.Findings()
+	findings := currentStateFindings(report)
 	if len(findings) != 1 || !strings.Contains(findings[0], "internal/bar.go") {
 		t.Fatalf("findings = %#v; want exactly the internal/bar.go uncovered finding", findings)
 	}
@@ -331,7 +323,7 @@ func TestCheckCurrentStateNoPolicy(t *testing.T) {
 // TestCheckCurrentStateOutsideRepo covers the filesystem working-tree fallback
 // for a scaffolded project that is not a git repository.
 func TestCheckStagedRootOutsideRepo(t *testing.T) {
-	if _, err := CheckStagedRoot(testContext(t), t.TempDir()); err == nil {
+	if _, err := currentstatecoord.CheckStagedRoot(testContext(t), t.TempDir()); err == nil {
 		t.Fatal("CheckStagedRoot accepted a non-repository")
 	}
 }
@@ -353,7 +345,7 @@ func TestCheckCurrentStateNoInvariantClaims(t *testing.T) {
 	if err != nil {
 		t.Fatalf("current-state check with no invariant claims: %v", err)
 	}
-	if findings := report.Findings(); len(findings) != 0 {
+	if findings := currentStateFindings(report); len(findings) != 0 {
 		t.Fatalf("current-state findings with no invariant claims = %v, want none", findings)
 	}
 }

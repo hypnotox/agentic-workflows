@@ -121,7 +121,7 @@ func TestCheckStagedCleanWithCoverage(t *testing.T) {
 	if len(report.Static) != 0 {
 		t.Fatalf("static findings = %#v; want none for an unchanged topic set", report.Static)
 	}
-	findings := report.Findings()
+	findings := currentStateFindings(report)
 	if len(findings) != 1 || !strings.Contains(findings[0], "internal/bar.go") {
 		t.Fatalf("findings = %#v; want exactly the uncovered internal/bar.go", findings)
 	}
@@ -213,8 +213,8 @@ func TestCheckStagedMarksOlderIntroductionsProvisionalWithoutSuppressingFindings
 		t.Fatalf("clean CheckStaged: %v", err)
 	}
 	want := []currentstate.Introduction{{Identity: "0002", Format: adr.CurrentStateV2}}
-	if !reflect.DeepEqual(clean.Provisional, want) || len(clean.Findings()) != 0 {
-		t.Fatalf("clean provisional report = %#v, findings = %#v; want %#v and no findings", clean.Provisional, clean.Findings(), want)
+	if !reflect.DeepEqual(clean.Provisional, want) || len(currentStateFindings(clean)) != 0 {
+		t.Fatalf("clean provisional report = %#v, findings = %#v; want %#v and no findings", clean.Provisional, currentStateFindings(clean), want)
 	}
 
 	aggregate := publicV2ADR(t, "0004", "Aggregate", "Implementing", "- add `alpha/one:x`\n- add `alpha/one:y`\n- add `alpha/one:z`",
@@ -232,7 +232,7 @@ func TestCheckStagedMarksOlderIntroductionsProvisionalWithoutSuppressingFindings
 	if !reflect.DeepEqual(report.Provisional, want) {
 		t.Fatalf("provisional = %#v, want %#v", report.Provisional, want)
 	}
-	findings := strings.Join(report.Findings(), "\n")
+	findings := strings.Join(currentStateFindings(report), "\n")
 	for _, wantFinding := range []string{
 		"was removed with no ADR remove operation",
 		"internal/bar.go",
@@ -273,8 +273,8 @@ func TestCheckStagedNestedAdopter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("nested CheckStaged: %v", err)
 	}
-	if !strings.Contains(strings.Join(report.Findings(), "\n"), "was removed with no ADR remove operation") {
-		t.Fatalf("nested findings = %#v; want staged transition finding", report.Findings())
+	if !strings.Contains(strings.Join(currentStateFindings(report), "\n"), "was removed with no ADR remove operation") {
+		t.Fatalf("nested findings = %#v; want staged transition finding", currentStateFindings(report))
 	}
 }
 
@@ -309,8 +309,8 @@ func TestCheckStagedNoHead(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CheckStaged: %v", err)
 	}
-	if len(report.Findings()) != 0 {
-		t.Fatalf("findings = %#v; want none (covered universe, bootstrap add)", report.Findings())
+	if len(currentStateFindings(report)) != 0 {
+		t.Fatalf("findings = %#v; want none (covered universe, bootstrap add)", currentStateFindings(report))
 	}
 }
 
@@ -805,8 +805,8 @@ func TestCheckStagedIgnoresWorkingTree(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CheckStaged must ignore the dirty working tree, got: %v", err)
 	}
-	if len(report.Static) != 0 || len(report.Findings()) != 0 {
-		t.Fatalf("expected a clean staged result despite the dirty working tree, got static=%#v findings=%#v", report.Static, report.Findings())
+	if len(report.Static) != 0 || len(currentStateFindings(report)) != 0 {
+		t.Fatalf("expected a clean staged result despite the dirty working tree, got static=%#v findings=%#v", report.Static, currentStateFindings(report))
 	}
 }
 
@@ -892,7 +892,7 @@ func TestIncrementalADRLifecyclePublicPairs(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s staged check: %v", subject, err)
 		}
-		if got := report.Findings(); len(got) != 0 {
+		if got := currentStateFindings(report); len(got) != 0 {
 			t.Fatalf("%s findings = %v", subject, got)
 		}
 		gitfixture.Commit(t, repo, subject, nil)
@@ -964,8 +964,8 @@ func TestIncrementalADRLifecyclePublicPairs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(strings.Join(reversed.Findings(), "\n"), "history") {
-		t.Fatalf("reverse pair findings = %v", reversed.Findings())
+	if !strings.Contains(strings.Join(currentStateFindings(reversed), "\n"), "history") {
+		t.Fatalf("reverse pair findings = %v", currentStateFindings(reversed))
 	}
 	gitfixture.Stage(t, repo, map[string]string{
 		"docs/decisions/0005-partial.md":               abandoned5,
@@ -1053,25 +1053,5 @@ func TestCheckStagedRejectsInitializedVersionMutation(t *testing.T) {
 	p := openStaged(t, repo.Root())
 	if _, err := checkStagedProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "initializedWithVersion") {
 		t.Fatalf("error = %v, want initializedWithVersion refusal", err)
-	}
-}
-
-func TestValidateLockTransition(t *testing.T) {
-	empty, err := snapshot.NewTree(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := validateLockTransition(empty, nil, &manifest.Lock{}); err != nil {
-		t.Fatal(err)
-	}
-	withConfig, err := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Bytes: []byte("x")}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := validateLockTransition(withConfig, nil, &manifest.Lock{}); err == nil {
-		t.Fatal("accepted pretracking")
-	}
-	if err := validateLockTransition(empty, &manifest.Lock{InitializedWithVersion: "1.0.0"}, &manifest.Lock{InitializedWithVersion: "2.0.0"}); err == nil {
-		t.Fatal("accepted mutation")
 	}
 }

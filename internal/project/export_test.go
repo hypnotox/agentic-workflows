@@ -12,6 +12,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/commitmsg"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
@@ -201,7 +202,7 @@ func renderAll(state *ProjectState) ([]RenderedFile, error) {
 	return planWriteFiles(&plan), nil
 }
 func checkStagedProject(state *ProjectState, ctx context.Context) (CurrentStateReport, error) {
-	return checkStaged(state.Root(), testRepo(state), ctx)
+	return currentstatecoord.CheckStaged(state.Root(), testRepo(state), ctx)
 }
 func checkStagedDriftProject(state *ProjectState, ctx context.Context) ([]manifest.Drift, error) {
 	prep, err := PrepareStagedContextState(ctx, state.Root())
@@ -260,7 +261,7 @@ func advisoryNotesProject(state *ProjectState) ([]string, error) {
 }
 
 func checkCurrentStateProject(state *ProjectState, ctx context.Context) (CurrentStateReport, error) {
-	return CheckCurrentState(state.Root(), testRepo(state), ctx)
+	return currentstatecoord.CheckWorking(state.Root(), testRepo(state), ctx)
 }
 func numberPendingADRsProject(state *ProjectState, slugs []string) (NumberingReport, error) {
 	return NumberPendingADRs(state, testConfig(state), slugs, func() error {

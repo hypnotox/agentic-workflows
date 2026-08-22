@@ -269,6 +269,27 @@ func TestRepositoryLayerDirection(t *testing.T) {
 	})
 }
 
+// TestCurrentStateCoordinatorDirection keeps application coordination above its
+// domain, state, snapshot, Git, publication, and aggregation consumers.
+func TestCurrentStateCoordinatorDirection(t *testing.T) {
+	root := testsupport.RepoRoot(t)
+	lowerOwners := map[string]bool{
+		"internal/adr": true, "internal/currentstate": true, "internal/git": true,
+		"internal/projectstate": true, "internal/publisher": true,
+		"internal/repositorycheck": true, "internal/snapshot": true,
+	}
+	testsupport.WalkRepoSources(t, root, func(relative string, content []byte) {
+		directory := filepath.ToSlash(filepath.Dir(relative))
+		if lowerOwners[directory] {
+			assertImportsExclude(t, relative, content, "internal/currentstatecoord")
+		}
+		if directory == "internal/currentstatecoord" {
+			assertImportsExclude(t, relative, content, "cmd/awf")
+			assertImportsExclude(t, relative, content, "internal/contextq")
+		}
+	})
+}
+
 func TestDependencyProofRejectsThirdPartyImportFixture(t *testing.T) {
 	violations, err := dependencyViolations("testdata/thirdparty.go", nil)
 	if err != nil {

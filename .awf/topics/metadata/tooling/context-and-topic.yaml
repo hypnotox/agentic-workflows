@@ -6,4 +6,5 @@ paths:
   - internal/contextq/**
   - internal/contextdelivery/**
   - internal/contextspill/**
+  - internal/currentstatecoord/**
   - internal/initspec/**

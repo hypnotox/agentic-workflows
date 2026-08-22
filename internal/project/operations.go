@@ -49,11 +49,6 @@ func BuildCheckReport(state *ProjectState, cfg *config.Config, repo *awfgit.Repo
 	return checkReport(operationInputs(state, cfg), repo, ctx, semantics, &output)
 }
 
-// CheckCurrentState checks working-tree authority through the supplied repository.
-func CheckCurrentState(root string, repo *awfgit.Repo, ctx context.Context) (CurrentStateReport, error) {
-	return checkCurrentState(root, repo, ctx)
-}
-
 // CheckCommitAuthorization validates one commit message against staged repository state.
 func CheckCommitAuthorization(root string, repo *awfgit.Repo, ctx context.Context, msg commitmsg.Message) (CommitAuthorizationResult, error) {
 	return checkCommitAuthorization(root, repo, ctx, msg)

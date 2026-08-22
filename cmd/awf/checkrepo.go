@@ -11,6 +11,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 	"github.com/hypnotox/agentic-workflows/internal/execution"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
@@ -38,7 +39,7 @@ type repoCheckInputs struct {
 	projectState *project.ProjectState
 	repo         *awfgit.Repo
 	checkReport  project.CheckReport
-	currentState project.CurrentStateReport
+	currentState currentstatecoord.CurrentStateReport
 	index        *snapshot.Tree
 	presentation repositorycheck.Presentation
 }
@@ -47,7 +48,7 @@ type repoCheckDependencies struct {
 	loadConfig   func(string) (*config.Config, error)
 	openProject  func(context.Context, string, *config.Config) (*project.ProjectState, *awfgit.Repo, error)
 	checkReport  func(context.Context, *project.ProjectState, *config.Config, *awfgit.Repo) (project.CheckReport, error)
-	currentState func(context.Context, string, *awfgit.Repo) (project.CurrentStateReport, error)
+	currentState func(context.Context, string, *awfgit.Repo) (currentstatecoord.CurrentStateReport, error)
 	indexTree    func(context.Context, string) (*snapshot.Tree, error)
 	present      func(checkresult.Result, string, bool) (repositorycheck.Presentation, error)
 }
@@ -70,7 +71,7 @@ func informationResult(notes []string) checkresult.Result {
 	return result
 }
 
-func presentCurrentStateReport(report project.CurrentStateReport, check string, planNotes planNoteSink, present checkResultPresenter) (repositorycheck.Presentation, error) {
+func presentCurrentStateReport(report currentstatecoord.CurrentStateReport, check string, planNotes planNoteSink, present checkResultPresenter) (repositorycheck.Presentation, error) {
 	current, err := present(report.CurrentResult, check, false)
 	if err != nil {
 		return repositorycheck.Presentation{}, err
@@ -135,8 +136,8 @@ func productionRepoCheckDependencies() repoCheckDependencies {
 			}
 			return project.BuildCheckReport(state, cfg, repo, ctx, prepared.Plan(), projectSemantics(prepared))
 		},
-		currentState: func(ctx context.Context, root string, repo *awfgit.Repo) (project.CurrentStateReport, error) {
-			return project.CheckCurrentState(root, repo, ctx)
+		currentState: func(ctx context.Context, root string, repo *awfgit.Repo) (currentstatecoord.CurrentStateReport, error) {
+			return currentstatecoord.CheckWorking(root, repo, ctx)
 		},
 		present: func(result checkresult.Result, check string, evidence bool) (repositorycheck.Presentation, error) {
 			if evidence {

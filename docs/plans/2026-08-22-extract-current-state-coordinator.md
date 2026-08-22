@@ -205,6 +205,8 @@ refactor(code-design): publish current-state coordinator boundary
 
 ## Notes
 
+Phase 1 advanced the narrow tooling-domain and `tooling/context-and-topic` selectors for `internal/currentstatecoord/**` from Phase 4. The repository gate requires every new production package and owner test to be domain-owned and claim-covered in the same phase that creates it; this ordering change applies the already planned selectors without changing an active claim body. Phase 4 still owns the explanatory current-state and architecture reconciliation.
+
 Apply the plan-flexibility rule above when recording deviations. Delegated owners report material cross-owner revisions rather than editing the plan; the parent supplies the report to phase review and reconciles required plan changes with findings in one focused post-review settlement commit before checkpointing or later execution. Record spike answers, follow-ups, and findings surfaced during implementation.
 
 Grounding verified the existing operation universes, result and error contracts, same-tree parse duplication, package direction, and current-state documentation pressure at starting commit `cc0e17ed4550dfbf3a3a2bf95027f6062e9df687`. ADR-0296 fully authorizes the extraction. The plan preserves Publisher as the producer of semantic corpora for Publisher-participating context operations, so ADR-0299 needs no amendment. Numbering, plan-read preparation, and stale-merge authority loading are hosted as focused application operations in the same package but do not become domain, Publisher, or commit-authorization policy; this keeps the package's one concern at application current-state coordination rather than creating an all-purpose object.

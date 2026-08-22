@@ -6,6 +6,7 @@ import (
 	"go/parser"
 	"go/token"
 	"maps"
+	"os"
 	"path/filepath"
 	"reflect"
 	"slices"
@@ -61,7 +62,7 @@ func TestStagedPlanResultTypedRouteCensus(t *testing.T) {
 		path, function string
 		want           map[string]int
 	}{
-		{"internal/project/currentstate.go", "currentStateResult", map[string]int{"PlanResult": 2}},
+		{"internal/currentstatecoord/currentstate.go", "currentStateResult", map[string]int{"PlanResult": 2}},
 		{"cmd/awf/checkrepo.go", "presentCurrentStateReport", map[string]int{"CurrentResult": 1, "PlanArtifactResult": 1}},
 	}
 	for _, tc := range cases {
@@ -98,9 +99,9 @@ func TestProducerRankPropertyCensus(t *testing.T) {
 		`internal/plancheck/plancheck.go:finding:rank|property`,
 		`internal/project/check.go:advisoryResultsWithState:severity.Warn|propertyHeuristic`,
 		`internal/project/check.go:pendingADRResult:severity.Error|propertyAuthority`,
-		`internal/project/currentstate.go:currentStateResult:coverage.Severity|propertyCurrentCoverage`,
-		`internal/project/currentstate.go:currentStateResult:severity.Error|propertyCurrentState`,
-		`internal/project/currentstate.go:currentStateResult:severity.Error|propertyPlanArtifact`,
+		`internal/currentstatecoord/currentstate.go:currentStateResult:coverage.Severity|propertyCurrentCoverage`,
+		`internal/currentstatecoord/currentstate.go:currentStateResult:severity.Error|propertyCurrentState`,
+		`internal/currentstatecoord/currentstate.go:currentStateResult:severity.Error|propertyPlanArtifact`,
 		`internal/prosegate/prosegate.go:Result:severity.Warn|"prose-restraint"`,
 		`internal/referencecheck/referencecheck.go:finding:severity.Error|property`,
 		`internal/vocabularycheck/vocabularycheck.go:errorFinding:severity.Error|PropertyCorrectness`,
@@ -137,7 +138,7 @@ func TestRepositoryCheckerOwnershipCensus(t *testing.T) {
 	var kindAccesses []string
 	testsupport.WalkRepoSources(t, root, func(relative string, content []byte) {
 		directory := filepath.ToSlash(filepath.Dir(relative))
-		if ownerPackages[directory] || relative == "internal/project/currentstate.go" {
+		if ownerPackages[directory] || relative == "internal/currentstatecoord/currentstate.go" {
 			assertImportsExclude(t, relative, content, "internal/repositorycheck")
 		}
 		if directory != "internal/repositorycheck" {
@@ -168,6 +169,30 @@ func TestRepositoryCheckerOwnershipCensus(t *testing.T) {
 	}
 	if !reflect.DeepEqual(kindAccesses, wantKindAccesses) {
 		t.Fatalf("RepositoryChecker Evidence.Kind access census = %v, want projection-only allowlist %v", kindAccesses, wantKindAccesses)
+	}
+}
+
+// TestCurrentStateProductionRouteCensus keeps commands on the coordinator while
+// allowing project only the direct compatibility adapters used by legacy callers.
+func TestCurrentStateProductionRouteCensus(t *testing.T) {
+	root := testsupport.RepoRoot(t)
+	cases := []struct {
+		path, required, forbidden string
+	}{
+		{"cmd/awf/checkrepo.go", "currentstatecoord.CheckWorking", "project.CheckCurrentState"},
+		{"cmd/awf/checkstaged.go", "currentstatecoord.CheckStagedRoot", "project.CheckStagedRoot"},
+	}
+	for _, tc := range cases {
+		source, err := os.ReadFile(filepath.Join(root, tc.path))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := strings.Count(string(source), tc.required); got != 1 {
+			t.Errorf("%s coordinator route %q count = %d, want 1", tc.path, tc.required, got)
+		}
+		if strings.Contains(string(source), tc.forbidden) {
+			t.Errorf("%s retains replaced route %q", tc.path, tc.forbidden)
+		}
 	}
 }
 

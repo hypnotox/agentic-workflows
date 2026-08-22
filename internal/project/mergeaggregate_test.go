@@ -41,7 +41,7 @@ func TestCheckStagedMergeUsesTheAggregateContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CheckStaged: %v", err)
 	}
-	if got := strings.Join(authored.Findings(), "\n"); !strings.Contains(got, "target of more than one operation") {
+	if got := strings.Join(currentStateFindings(authored), "\n"); !strings.Contains(got, "target of more than one operation") {
 		t.Fatalf("an authored commit must refuse the same-claim chain, got:\n%s", got)
 	}
 
@@ -53,7 +53,7 @@ func TestCheckStagedMergeUsesTheAggregateContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CheckStaged during a merge: %v", err)
 	}
-	if got := merged.Findings(); len(got) != 0 {
+	if got := currentStateFindings(merged); len(got) != 0 {
 		t.Fatalf("a merge must accept the same-claim aggregate, got: %v", got)
 	}
 }
