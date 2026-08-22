@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-make-repository-check-results-owner-classified: Make Repository Check Results Owner-Classified](make-repository-check-results-owner-classified.md) (Proposed)
 
 ## History
 
