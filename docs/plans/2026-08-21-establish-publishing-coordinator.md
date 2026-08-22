@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-21
 adrs: [0296, make-publisher-the-output-plan-construction-owner]
-status: Proposed
+status: Implemented
 ---
 # Plan: Establish Publishing Coordinator
 
