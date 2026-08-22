@@ -15,7 +15,7 @@ How awf render and awf check detect and report drift: per-file config-hash input
 
 GeneratedOutputChecker classifies only the deterministic expected bytes of a managed `AGENTS.md`: at a fixed 12 KiB threshold, an overage is a Warning protecting heuristic quality with zero exit. RepositoryChecker preserves its aggregate-only placement, and non-aggregate consumers remain excluded.
 Origin: ADR-0241
-Revised-by: ADR-0251, ADR-0295, ADR-make-repository-check-results-owner-classified
+Revised-by: ADR-0251, ADR-0295, ADR-0300
 Backing: test
 
 ### `invariant: awf-bak-flagged`

@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-make-repository-check-results-owner-classified: Make Repository Check Results Owner-Classified](make-repository-check-results-owner-classified.md) (Implementing)
+- [ADR-0300: Make Repository Check Results Owner-Classified](0300-make-repository-check-results-owner-classified.md) (Implementing)
 
 ## History
 

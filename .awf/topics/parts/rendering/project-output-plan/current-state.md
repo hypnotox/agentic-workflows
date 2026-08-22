@@ -42,7 +42,7 @@ Backing: test
 
 Publisher constructs one immutable output plan after deriving the operation's ADR, pitfall, topic, and effective-skill state. Outer command composition passes that same neutral `internal/outputplan` value or its semantic projections to output, individual check owners, RepositoryChecker, tracking, advisory, staged, initialization-planning, resident-marker, and context consumers; project checks and current-state projections never import Publisher or reconstruct planning policy. RepositoryChecker consumes completed results and never rebuilds the plan or corpora. Tracking derives every planned write plus the separately written `.awf/awf.lock`, compares them with the Git seam's ignore-independent index metadata, and excludes resident-root outputs only for a nested adopter. Each working or staged operation constructs its own plan without a persistent cache or cross-universe mutable state, while every participating consumer within that operation reuses the produced value.
 Origin: ADR-0223
-Revised-by: ADR-0277, ADR-0299, ADR-make-repository-check-results-owner-classified
+Revised-by: ADR-0277, ADR-0299, ADR-0300
 Backing: test
 
 ### `invariant: output-policy-explicit`

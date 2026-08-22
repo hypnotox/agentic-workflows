@@ -105,14 +105,14 @@ Backing: test
 
 The direct drift, state, prose, and memory repository checks and their aggregate select from one closed capability plan. One operation loads working config once, conditionally opens one Project from that prepared config, derives one complete CheckReport and one working CurrentStateReport when selected, and captures one shared stage-0 index whenever either always-on scanner is selected; scanner-only selections acquire no unrelated capability. Repository drift presents its dedicated non-failing generated-artifact tracking-unavailable information both directly and in the aggregate, while aggregate-only render advisories remain absent from direct drift. RepositoryChecker consumes the completed owner results without preparing inputs or selecting check policy, preserves source order within Error, deterministically presents Warning findings without treating their relative legacy source order as protected, and orders categories as `errors`, `warnings`, then `information`. The aggregate executes drift, state, prose, then memory, continues after action errors and returns the first, while any preparation failure executes no step; the working report, current-state, and index universes never substitute for one another.
 Origin: ADR-0223
-Revised-by: ADR-0234, ADR-0253, ADR-0277, ADR-0295, ADR-make-repository-check-results-owner-classified
+Revised-by: ADR-0234, ADR-0253, ADR-0277, ADR-0295, ADR-0300
 Backing: test
 
 ### `invariant: check-severity-by-protected-property`
 
 Each semantic check owner emits immutable results in which every ranked finding names its fixed Error or Warning rank and protected property. No consumer recovers classification from evidence kind, presentation category, or slice placement. Every `awf check` Error protects correctness, safety, authority, or reproducibility and makes the command exit nonzero. Style, readability, plan-detail, fan-out, and other heuristic findings use Warning and exit zero. Optional improvements, unused vocabulary, context suggestions, non-blocking compatibility notices, and successful operation notes remain unranked Information and exit zero. Direct and aggregate readable output visibly separates `errors`, `warnings`, and `information`; information is not a third finding rank.
 Origin: ADR-0295
-Revised-by: ADR-make-repository-check-results-owner-classified
+Revised-by: ADR-0300
 Backing: test
 
 ### `invariant: single-os-exit`

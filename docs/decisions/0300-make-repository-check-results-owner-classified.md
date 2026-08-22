@@ -4,7 +4,7 @@ slug: make-repository-check-results-owner-classified
 status: Implementing
 date: 2026-08-22
 ---
-# ADR-make-repository-check-results-owner-classified: Make Repository Check Results Owner-Classified
+# ADR-0300: Make Repository Check Results Owner-Classified
 
 
 ## Context
