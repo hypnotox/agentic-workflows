@@ -1325,25 +1325,26 @@ func TestInitCollisionsOpenError(t *testing.T) {
 }
 
 func TestInitAbortsWhenInitCollisionsFails(t *testing.T) {
-	root := t.TempDir()
-	// An existing permanent project can still have a malformed ADR. --force skips
-	// the probe so runInit's own p.InitCollisions call forwards that deterministic
-	// planning error.
-	testsupport.WriteAwfConfig(t, root, minimalYAML)
-	if err := (&manifest.Lock{AWFVersion: project.Version, SchemaVersion: 14, Files: map[string]manifest.Entry{}}).Save(config.LockPath(root)); err != nil {
-		t.Fatal(err)
+	root := scaffoldProject(t)
+	configPath := config.ConfigPath(root)
+	lockPath := config.LockPath(root)
+	beforeConfig := mustReadCLIFile(t, configPath)
+	beforeLock := mustReadCLIFile(t, lockPath)
+	writeMalformedConfigReferencePart(t, root)
+
+	var out bytes.Buffer
+	err := runInit(testContext(t), root, true, false, nil, "", &out)
+	if err == nil || !strings.Contains(err.Error(), "config-reference/intro.md") || !strings.Contains(err.Error(), "malformed awf:comment") {
+		t.Fatalf("init collision error = %v, want malformed config-reference part", err)
 	}
-	dd := filepath.Join(root, "docs", "decisions")
-	if err := os.MkdirAll(dd, 0o755); err != nil {
-		t.Fatal(err)
+	if out.Len() != 0 {
+		t.Fatalf("init stdout = %q, want empty", out.String())
 	}
-	if err := os.WriteFile(filepath.Join(dd, "0099-bad.md"), []byte("---\nstatus: [unclosed\n---\n# Bad\n"), 0o644); err != nil {
-		t.Fatal(err)
+	if got := mustReadCLIFile(t, configPath); got != beforeConfig {
+		t.Fatalf("config changed after collision error")
 	}
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
-	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "init", "--force"}, &out, &errb); code == 0 {
-		t.Fatal("expected init to fail when p.InitCollisions errors")
+	if got := mustReadCLIFile(t, lockPath); got != beforeLock {
+		t.Fatalf("lock changed after collision error")
 	}
 }
 

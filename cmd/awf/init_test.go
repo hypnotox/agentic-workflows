@@ -13,6 +13,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/initspec"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -301,6 +302,53 @@ func TestInitProjectLoaderPropagatesFailure(t *testing.T) {
 	})
 	if !errors.Is(err, want) {
 		t.Fatalf("loader error = %v, want %v", err, want)
+	}
+}
+
+func TestInitSyncFailureKeepsExistingAuthorityAndSuppressesOutcome(t *testing.T) {
+	root := scaffoldProject(t)
+	configPath := config.ConfigPath(root)
+	lockPath := config.LockPath(root)
+	beforeConfig, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	beforeLock, err := os.ReadFile(lockPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	preparePublicSyncLaterFailure(t, root)
+
+	var out bytes.Buffer
+	err = runInit(testContext(t), root, true, false, nil, "", &out)
+	if err == nil {
+		t.Fatal("init accepted a later sync failure")
+	}
+	if out.Len() != 0 {
+		t.Fatalf("init stdout = %q, want no outcome after sync failure", out.String())
+	}
+	if got, readErr := os.ReadFile(configPath); readErr != nil || !bytes.Equal(got, beforeConfig) {
+		t.Fatalf("config after sync failure = %q, read error = %v", got, readErr)
+	}
+	if got, readErr := os.ReadFile(lockPath); readErr != nil || !bytes.Equal(got, beforeLock) {
+		t.Fatalf("lock after sync failure = %q, read error = %v", got, readErr)
+	}
+	info, statErr := os.Stat(filepath.Join(root, "AGENTS.md"))
+	if statErr != nil {
+		t.Fatal(statErr)
+	}
+	if got, want := info.Mode().Perm(), os.FileMode(0o644); got != want {
+		t.Fatalf("AGENTS.md mode = %o, want earlier correction committed as %o", got, want)
+	}
+}
+
+func TestInitAdvisoryNotesPropagatesPreparationFailure(t *testing.T) {
+	want := errors.New("preparation failed")
+	_, err := initAdvisoryNotes(nil, nil, func(*project.ProjectState, *config.Config) (publisher.Preparation, error) {
+		return publisher.Preparation{}, want
+	})
+	if !errors.Is(err, want) {
+		t.Fatalf("preparation error = %v, want %v", err, want)
 	}
 }
 

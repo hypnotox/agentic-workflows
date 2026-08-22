@@ -121,12 +121,12 @@ func runInitWithProjectLoader(ctx context.Context, root string, force, describe 
 		return err
 	}
 	collisions, err := composePublisher(state, cfg).InitCollisions()
-	if err != nil { // coverage-ignore: the freshly opened state and Publisher plan already establish every collision input; only a concurrent tree fault can fail this projection
+	if err != nil {
 		if scaffolded { // coverage-ignore: after first-adoption and scaffold validation, this cleanup requires a concurrent tree mutation to make InitCollisions fail
 			_ = os.Remove(cfgPath)
 			_ = os.Remove(filepath.Dir(cfgPath))
 		}
-		return err // coverage-ignore: propagation for the concurrent-fault-only InitCollisions branch above
+		return err
 	}
 	if len(collisions) > 0 && !force { // coverage-ignore: the non-force probe now plans the same full catalog; force makes this condition false
 		if scaffolded { // coverage-ignore: the enclosing post-scaffold collision path is unreachable after the identical full-catalog probe
@@ -161,16 +161,20 @@ func runInitWithProjectLoader(ctx context.Context, root string, force, describe 
 	// Post-init orientation: the same advisory notes awf check prints
 	// (ADR-0045, ADR-0070), then a fixed next-steps block.
 	return renderInitOutcome(syncedProject, syncedConfig, initspec.Outcome{ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers, Sync: syncResult, NextActions: initNextActions}, stdout, func(state *project.ProjectState, cfg *config.Config) ([]string, error) {
-		prepared, err := operationPreparation(state, cfg)
-		if err != nil { // coverage-ignore: sync just prepared and published this unchanged tree; Publisher failures are covered at the owner boundary
-			return nil, err
-		}
-		return project.AdvisoryNotes(state, cfg, prepared.Plan(), projectSemantics(prepared))
+		return initAdvisoryNotes(state, cfg, operationPreparation)
 	})
 }
 
 func initProjectLoader(root string, load func(string) (*project.Loader, error)) (*project.Loader, error) {
 	return load(root)
+}
+
+func initAdvisoryNotes(state *project.ProjectState, cfg *config.Config, prepare func(*project.ProjectState, *config.Config) (publisher.Preparation, error)) ([]string, error) {
+	prepared, err := prepare(state, cfg)
+	if err != nil {
+		return nil, err
+	}
+	return project.AdvisoryNotes(state, cfg, prepared.Plan(), projectSemantics(prepared))
 }
 
 func finishInitSyncFailure(cfgPath string, scaffolded bool, syncErr error) error {

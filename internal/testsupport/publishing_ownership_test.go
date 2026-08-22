@@ -112,7 +112,7 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 		"stagedDrift":                     {preparePublisher: 1, plan: 1},
 		"stagedContextState":              {preparePublisher: 1, plan: 1},
 		"productionRepoCheckDependencies": {operationPreparation: 1, plan: 1},
-		"runInitWithProjectLoader":        {operationPreparation: 1, plan: 1},
+		"initAdvisoryNotes":               {plan: 1},
 		"probeCollisions":                 {operationPlan: 1},
 		"openEffortComposition":           {operationPreparation: 1, residentMarker: 1},
 	}
@@ -130,6 +130,9 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 		source := readProduction(t, root, rel)
 		if strings.Count(source, "prepared.Plan(), projectSemantics(prepared)") != 1 {
 			t.Errorf("%s does not reuse one preparation for plan and semantics", rel)
+		}
+		if rel == "cmd/awf/init.go" && strings.Count(source, "initAdvisoryNotes(state, cfg, operationPreparation)") != 1 {
+			t.Errorf("%s does not pass the one Publisher preparation seam to init advisories", rel)
 		}
 	}
 }

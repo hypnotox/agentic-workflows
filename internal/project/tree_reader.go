@@ -52,7 +52,7 @@ func (r filesystemProjectReader) Paths(prefix string) ([]string, error) {
 			if p == base && errors.Is(err, fs.ErrNotExist) {
 				return fs.SkipAll
 			}
-			return err // coverage-ignore: WalkDir callback errors require a permission or concurrent filesystem fault; Paths error propagation is covered with injected readers
+			return err
 		}
 		if !d.IsDir() {
 			rel, e := filepath.Rel(r.root, p)
@@ -63,12 +63,12 @@ func (r filesystemProjectReader) Paths(prefix string) ([]string, error) {
 		}
 		return nil
 	})
-	if err != nil { // coverage-ignore: only the permission/concurrent filesystem faults delegated by the callback reach this wrapper; injected-reader tests cover callers
+	if err != nil {
 		subject := prefix
-		if subject == "" { // coverage-ignore: the same unportable root-walk fault with an empty prefix only changes its diagnostic subject
+		if subject == "" {
 			subject = "project tree"
 		}
-		return nil, fmt.Errorf("enumerate %s: %w", subject, err) // coverage-ignore: diagnostic wrapper for the unportable walk faults described above
+		return nil, fmt.Errorf("enumerate %s: %w", subject, err)
 	}
 	slices.Sort(out)
 	return out, nil
