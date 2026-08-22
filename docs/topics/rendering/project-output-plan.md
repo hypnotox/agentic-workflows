@@ -51,7 +51,7 @@ Backing: test
 
 Publisher constructs one immutable output plan after deriving the operation's ADR, pitfall, topic, and effective-skill state. Outer command composition passes that same neutral `internal/outputplan` value to output, drift, tracking, advisory, staged, initialization-planning, resident-marker, and context consumers; project checks and current-state projections never import Publisher or reconstruct planning policy. Tracking derives every planned write plus the separately written `.awf/awf.lock`, compares them with the Git seam's ignore-independent index metadata, and excludes resident-root outputs only for a nested adopter. Each direct operation constructs its own plan without a persistent cache, while every participating consumer within that operation reuses the produced value.
 Origin: ADR-0223
-Revised-by: ADR-0277, ADR-make-publisher-the-output-plan-construction-owner
+Revised-by: ADR-0277, ADR-0299
 Backing: test
 
 ### `invariant: output-policy-explicit`

@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-make-publisher-the-output-plan-construction-owner: Make Publisher the Output Plan Construction Owner](make-publisher-the-output-plan-construction-owner.md) (Implementing)
+- [ADR-0299: Make Publisher the Output Plan Construction Owner](0299-make-publisher-the-output-plan-construction-owner.md) (Implementing)
 
 ## History
 

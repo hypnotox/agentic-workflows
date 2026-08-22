@@ -4,7 +4,7 @@ slug: make-publisher-the-output-plan-construction-owner
 status: Implementing
 date: 2026-08-21
 ---
-# ADR-make-publisher-the-output-plan-construction-owner: Make Publisher the Output Plan Construction Owner
+# ADR-0299: Make Publisher the Output Plan Construction Owner
 
 
 ## Context
