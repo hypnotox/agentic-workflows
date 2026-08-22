@@ -67,11 +67,29 @@ func TestNewPlanContextDefensivelyProjectsAndOrdersLinks(t *testing.T) {
 	}
 }
 
-func TestNewCopiesLoadedSources(t *testing.T) {
-	loaded := currentstate.Loaded{Sources: map[string][]byte{"source": []byte("original")}}
+func TestNewCopiesLoadedSemanticRecordsAndSources(t *testing.T) {
+	operation := adr.Operation{Verb: adr.OpAdd, ID: "alpha/one:rule", Slug: "rule"}
+	loaded := currentstate.Loaded{
+		ADRs:    []adr.ADR{{Domains: []string{"alpha"}, Sections: map[string]string{"Context": "original"}, Operations: []adr.Operation{operation}, History: []adr.HistoryEvent{{Operations: []adr.Operation{operation}}}}},
+		Sources: map[string][]byte{"source": []byte("original")},
+	}
 	input := New(Layout{}, loaded, PlanContext{}, nil, nil, nil, nil, nil)
+	loaded.ADRs[0].Domains[0] = "mutated"
+	loaded.ADRs[0].Sections["Context"] = "mutated"
+	loaded.ADRs[0].Operations[0].ID = "mutated"
+	loaded.ADRs[0].History[0].Operations[0].ID = "mutated"
 	loaded.Sources["source"][0] = 'm'
-	if got := string(input.Snapshot().Loaded.Sources["source"]); got != "original" {
+
+	first := input.Snapshot()
+	first.Loaded.ADRs[0].Domains[0] = "snapshot-mutated"
+	first.Loaded.ADRs[0].Sections["Context"] = "snapshot-mutated"
+	first.Loaded.ADRs[0].Operations[0].ID = "snapshot-mutated"
+	first.Loaded.ADRs[0].History[0].Operations[0].ID = "snapshot-mutated"
+	fresh := input.Snapshot()
+	if record := fresh.Loaded.ADRs[0]; record.Domains[0] != "alpha" || record.Sections["Context"] != "original" || record.Operations[0].ID != operation.ID || record.History[0].Operations[0].ID != operation.ID {
+		t.Fatalf("loaded ADR aliases caller or snapshot: %#v", record)
+	}
+	if got := string(fresh.Loaded.Sources["source"]); got != "original" {
 		t.Fatalf("loaded source = %q, want defensive copy", got)
 	}
 }

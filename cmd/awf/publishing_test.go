@@ -221,9 +221,14 @@ func TestContextPreparationRespectsProfileAuthority(t *testing.T) {
 			}
 			for name, input := range map[string]contextinput.Input{"working": working, "staged": staged} {
 				view := input.Snapshot()
-				hasFullAuthority := len(view.Loaded.ADRs) > 0 || len(view.Loaded.Topics.All()) > 0 || len(view.PlanState.Plans) > 0
-				if hasFullAuthority != profile.full {
-					t.Errorf("%s %s Full-only authority = %v, want %v", profile.name, name, hasFullAuthority, profile.full)
+				for authority, present := range map[string]bool{
+					"ADRs":   len(view.Loaded.ADRs) > 0,
+					"topics": len(view.Loaded.Topics.All()) > 0,
+					"plans":  len(view.PlanState.Plans) > 0,
+				} {
+					if present != profile.full {
+						t.Errorf("%s %s %s authority present = %v, want %v", profile.name, name, authority, present, profile.full)
+					}
 				}
 			}
 		})

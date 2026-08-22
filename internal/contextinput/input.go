@@ -136,7 +136,7 @@ func cloneLinks(in map[string][]PlanReference) map[string][]PlanReference {
 }
 func cloneLoaded(v currentstate.Loaded) currentstate.Loaded {
 	out := v
-	out.ADRs = slices.Clone(v.ADRs)
+	out.ADRs = adr.CloneRecords(v.ADRs)
 	out.Corpus = v.Corpus.Clone()
 	out.Topics = v.Topics.Clone()
 	out.Sources = map[string][]byte{}

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/contextinput"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
@@ -130,12 +131,21 @@ func TestQuerySnapshotsImmutableInput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	state := contextinput.New(contextinput.Layout{}, currentstate.Loaded{}, contextinput.PlanContext{}, tree, nil, nil, []string{"owned.go"}, nil)
+	operation := adr.Operation{Verb: adr.OpAdd, ID: "alpha/one:rule", Slug: "rule"}
+	loaded := currentstate.Loaded{ADRs: []adr.ADR{{Domains: []string{"alpha"}, Sections: map[string]string{"Context": "original"}, Operations: []adr.Operation{operation}, History: []adr.HistoryEvent{{Operations: []adr.Operation{operation}}}}}}
+	state := contextinput.New(contextinput.Layout{}, loaded, contextinput.PlanContext{}, tree, nil, nil, []string{"owned.go"}, nil)
 	query := New(state)
 	projection := state.Snapshot()
 	projection.Eligible[0] = "mutated.go"
+	projection.Loaded.ADRs[0].Domains[0] = "mutated"
+	projection.Loaded.ADRs[0].Sections["Context"] = "mutated"
+	projection.Loaded.ADRs[0].Operations[0].ID = "mutated"
+	projection.Loaded.ADRs[0].History[0].Operations[0].ID = "mutated"
 	if got := query.Uncovered(nil).Unowned; len(got) != 1 || got[0].Path != "." {
 		t.Fatalf("query aliases caller projection: %#v", got)
+	}
+	if record := query.state.Loaded.ADRs[0]; record.Domains[0] != "alpha" || record.Sections["Context"] != "original" || record.Operations[0].ID != operation.ID || record.History[0].Operations[0].ID != operation.ID {
+		t.Fatalf("bound query aliases caller ADR projection: %#v", record)
 	}
 }
 

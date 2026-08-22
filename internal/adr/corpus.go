@@ -125,11 +125,11 @@ func LoadCorpus(dir string) (Corpus, error) {
 	return NewCorpus(adrs)
 }
 
-// Clone returns a fully independent corpus projection, including every nested
+// CloneRecords returns fully independent ADR records, including every nested
 // mutable field retained by parsed records.
-func (c Corpus) Clone() Corpus {
-	records := make([]ADR, len(c.all))
-	for i, record := range c.all {
+func CloneRecords(in []ADR) []ADR {
+	records := make([]ADR, len(in))
+	for i, record := range in {
 		record.Domains = slices.Clone(record.Domains)
 		record.Tags = slices.Clone(record.Tags)
 		record.Related = slices.Clone(record.Related)
@@ -143,7 +143,12 @@ func (c Corpus) Clone() Corpus {
 		}
 		records[i] = record
 	}
-	cloned, _ := NewCorpus(records)
+	return records
+}
+
+// Clone returns a fully independent corpus projection.
+func (c Corpus) Clone() Corpus {
+	cloned, _ := NewCorpus(CloneRecords(c.all))
 	return cloned
 }
 
