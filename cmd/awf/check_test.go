@@ -1005,7 +1005,7 @@ func TestCollectCheckStagedContinuesAfterPlanWarningPresentationFailure(t *testi
 	planFailure := errors.New("plan warning presentation failed")
 	dependencies := productionCheckStagedDependencies()
 	dependencies.stateRoot = func(context.Context, string) (project.CurrentStateReport, error) {
-		return project.CurrentStateReport{PlanResult: planResult}, nil
+		return project.CurrentStateReport{PlanResult: planResult, PlanArtifactResult: planResult, OwnerResult: planResult}, nil
 	}
 	present := dependencies.present
 	dependencies.present = func(result checkresult.Result, check string, evidence bool) (repositorycheck.Presentation, error) {
@@ -1050,6 +1050,76 @@ func TestCollectCheckStagedStateOnlyRetainsAbsentLockError(t *testing.T) {
 	}
 }
 
+func TestCollectCheckStagedRoutesOrdinaryCurrentStateOwnerResults(t *testing.T) {
+	root := stagedCheckProject(t, map[string]string{".awf/config.yaml": checkYAML}, nil)
+	ordinaryWarning := checkresult.Finding{
+		Rank: severity.Warn, Property: "current-state-coverage",
+		Evidence: checkresult.Evidence{Kind: "current-state", Detail: "ordinary coverage warning"},
+	}
+	planWarning := checkresult.Finding{
+		Rank: severity.Warn, Property: "plan-detail-quality",
+		Evidence: checkresult.Evidence{Kind: "plan-assignment", Detail: "plan warning"},
+	}
+	planResult, err := checkresult.New([]checkresult.Finding{planWarning}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ordinaryResult, err := checkresult.New([]checkresult.Finding{ordinaryWarning}, []checkresult.Information{{
+		Evidence: checkresult.Evidence{Kind: "current-state", Detail: "ordinary provisional information"},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ownerResult, err := checkresult.New([]checkresult.Finding{ordinaryWarning, planWarning}, ordinaryResult.Information())
+	if err != nil {
+		t.Fatal(err)
+	}
+	dependencies := productionCheckStagedDependencies()
+	dependencies.stateRoot = func(context.Context, string) (project.CurrentStateReport, error) {
+		return project.CurrentStateReport{
+			CurrentResult:      ordinaryResult,
+			PlanArtifactResult: planResult,
+			OwnerResult:        ownerResult,
+			PlanResult:         planResult,
+			PlanNotes:          []string{"mutated compatibility plan warning"},
+			Provisional:        []currentstate.Introduction{{Identity: "mutated-compatibility-information"}},
+		}, nil
+	}
+	present := dependencies.present
+	seen := map[checkresult.Property]bool{}
+	informationSeen := false
+	dependencies.present = func(result checkresult.Result, check string, evidence bool) (repositorycheck.Presentation, error) {
+		for _, finding := range result.Findings() {
+			seen[finding.Property] = true
+		}
+		for _, item := range result.Information() {
+			if item.Evidence.Kind == "current-state" {
+				informationSeen = true
+			}
+		}
+		return present(result, check, evidence)
+	}
+	collection, err := collectCheckStagedSelectionWith(testContext(t), root, planNoteSink{}, true, false, dependencies)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var stdout bytes.Buffer
+	if err := renderCheckCollection(&stdout, collection); err != nil {
+		t.Fatal(err)
+	}
+	if !seen["current-state-coverage"] || !seen["plan-detail-quality"] || !informationSeen {
+		t.Fatalf("staged typed route lost owner results: properties=%v information=%v", seen, informationSeen)
+	}
+	for _, want := range []string{"ordinary coverage warning", "plan warning", "ordinary provisional information"} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Fatalf("staged typed output missing %q: %q", want, stdout.String())
+		}
+	}
+	if strings.Contains(stdout.String(), "mutated compatibility") || strings.Contains(stdout.String(), "mutated-compatibility-information") {
+		t.Fatalf("compatibility projection changed staged routing: %q", stdout.String())
+	}
+}
+
 func TestCollectCheckStagedRoutesTypedPlanWarningsOnce(t *testing.T) {
 	root := stagedCheckProject(t, map[string]string{".awf/config.yaml": checkYAML}, nil)
 	planWarning := checkresult.Finding{
@@ -1062,7 +1132,7 @@ func TestCollectCheckStagedRoutesTypedPlanWarningsOnce(t *testing.T) {
 	}
 	dependencies := productionCheckStagedDependencies()
 	dependencies.stateRoot = func(context.Context, string) (project.CurrentStateReport, error) {
-		return project.CurrentStateReport{PlanResult: planResult, PlanNotes: []string{"staged-plan-note-sentinel"}}, nil
+		return project.CurrentStateReport{PlanResult: planResult, PlanArtifactResult: planResult, OwnerResult: planResult, PlanNotes: []string{"staged-plan-note-sentinel"}}, nil
 	}
 	present := dependencies.present
 	typedWarningSeen := false

@@ -42,21 +42,12 @@ type CurrentStateReport struct {
 	// PlanResult retains PlanChecker classification while PlanDrift and
 	// PlanNotes remain compatibility projections.
 	PlanResult checkresult.Result
-	// OwnerResult is the immutable owner-classified projection consumed by
-	// repository aggregation. Legacy slices remain compatibility projections.
-	OwnerResult checkresult.Result
-}
-
-// Warnings returns ranked non-failing findings: coverage fan-out and Proposed
-// plan assignment or detail advisories.
-func (r CurrentStateReport) Warnings() []string {
-	var out []string
-	for _, c := range r.Coverage {
-		if c.Severity == severity.Warn {
-			out = append(out, c.Message())
-		}
-	}
-	return append(out, r.PlanNotes...)
+	// CurrentResult and PlanArtifactResult retain disjoint typed partitions for
+	// command presentation. OwnerResult is their immutable aggregate. Legacy
+	// slices remain compatibility projections.
+	CurrentResult      checkresult.Result
+	PlanArtifactResult checkresult.Result
+	OwnerResult        checkresult.Result
 }
 
 // Information returns unranked provisional introductions. They are not
@@ -228,37 +219,54 @@ func (r CurrentStateReport) Result() checkresult.Result {
 // classifyCurrentState stores the compatibility projection produced by the
 // current-state coordinator's narrow result adapter.
 func classifyCurrentState(report CurrentStateReport) (CurrentStateReport, error) {
-	result, err := currentStateResult(report)
+	current, planArtifact, result, err := currentStateResult(report)
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
+	report.CurrentResult = current
+	report.PlanArtifactResult = planArtifact
 	report.OwnerResult = result
 	return report, nil
 }
 
-func currentStateResult(report CurrentStateReport) (checkresult.Result, error) {
-	var findings []checkresult.Finding
+func currentStateResult(report CurrentStateReport) (checkresult.Result, checkresult.Result, checkresult.Result, error) {
+	var currentFindings []checkresult.Finding
 	for _, finding := range report.Static {
-		findings = append(findings, checkresult.Finding{Rank: severity.Error, Property: propertyCurrentState, Evidence: checkresult.Evidence{Kind: "current-state", Detail: finding.Message}})
+		currentFindings = append(currentFindings, checkresult.Finding{Rank: severity.Error, Property: propertyCurrentState, Evidence: checkresult.Evidence{Kind: "current-state", Detail: finding.Message}})
 	}
 	for _, coverage := range report.Coverage {
-		findings = append(findings, checkresult.Finding{Rank: coverage.Severity, Property: propertyCurrentCoverage, Evidence: checkresult.Evidence{Kind: "current-state", Detail: coverage.Message()}})
+		currentFindings = append(currentFindings, checkresult.Finding{Rank: coverage.Severity, Property: propertyCurrentCoverage, Evidence: checkresult.Evidence{Kind: "current-state", Detail: coverage.Message()}})
 	}
+	var currentInformation []checkresult.Information
+	for _, message := range report.Information() {
+		currentInformation = append(currentInformation, checkresult.Information{Evidence: checkresult.Evidence{Kind: "current-state", Detail: message}})
+	}
+	current, err := checkresult.New(currentFindings, currentInformation)
+	if err != nil {
+		return checkresult.Result{}, checkresult.Result{}, checkresult.Result{}, err
+	}
+
+	var planFindings []checkresult.Finding
 	for _, drift := range report.PlanDrift {
-		findings = append(findings, checkresult.Finding{Rank: severity.Error, Property: propertyPlanArtifact, Evidence: checkresult.Evidence{Kind: drift.Kind, Path: drift.Path, Detail: fmt.Sprintf("%s %s: %s", drift.Kind, drift.Path, drift.Detail)}})
+		planFindings = append(planFindings, checkresult.Finding{Rank: severity.Error, Property: propertyPlanArtifact, Evidence: checkresult.Evidence{Kind: drift.Kind, Path: drift.Path, Detail: fmt.Sprintf("%s %s: %s", drift.Kind, drift.Path, drift.Detail)}})
 	}
 	for _, finding := range report.PlanResult.Findings() {
 		if finding.Rank == severity.Error {
 			finding.Evidence.Detail = fmt.Sprintf("%s %s: %s", finding.Evidence.Kind, finding.Evidence.Path, finding.Evidence.Detail)
 		}
-		findings = append(findings, finding)
+		planFindings = append(planFindings, finding)
 	}
-	var information []checkresult.Information
-	for _, message := range report.Information() {
-		information = append(information, checkresult.Information{Evidence: checkresult.Evidence{Kind: "current-state", Detail: message}})
+	planArtifact, err := checkresult.New(planFindings, report.PlanResult.Information())
+	if err != nil { // coverage-ignore: partitions copy only validated owner results and fixed nonempty parser evidence
+		return checkresult.Result{}, checkresult.Result{}, checkresult.Result{}, err
 	}
-	information = append(information, report.PlanResult.Information()...)
-	return checkresult.New(findings, information)
+	findings := append(current.Findings(), planArtifact.Findings()...)
+	information := append(current.Information(), planArtifact.Information()...)
+	result, err := checkresult.New(findings, information)
+	if err != nil { // coverage-ignore: aggregation copies only validated immutable partitions
+		return checkresult.Result{}, checkresult.Result{}, checkresult.Result{}, err
+	}
+	return current, planArtifact, result, nil
 }
 
 func appendStagedPlanResult(report *CurrentStateReport, result checkresult.Result) {

@@ -10,6 +10,7 @@ import (
 	"go/parser"
 	"go/token"
 	"io"
+	"slices"
 	"strings"
 	"testing"
 
@@ -33,6 +34,34 @@ type repoCheckCounters struct {
 func repoCheckTestDependencies(t *testing.T, cfg *config.Config, p *project.ProjectState, check project.CheckReport, state project.CurrentStateReport, tree *snapshot.Tree, counts *repoCheckCounters) repoCheckDependencies {
 	t.Helper()
 	state = currentStateReportForTest(t, state)
+	if !hasCheckResults(check.AggregateAdvisoryResult()) && !hasCheckResults(check.TrackingInformationResult()) && !hasCheckResults(check.DeferredPlanWarningResult()) && (len(check.Warnings) > 0 || len(check.Information) > 0 || len(check.TrackingInformation) > 0 || len(check.PlanWarnings) > 0) {
+		result := func(warnings []string, informationNotes []string, property checkresult.Property) checkresult.Result {
+			findings := make([]checkresult.Finding, 0, len(warnings))
+			for _, warning := range warnings {
+				findings = append(findings, checkresult.Finding{Rank: severity.Warn, Property: property, Evidence: checkresult.Evidence{Kind: "test-compatibility", Detail: warning}})
+			}
+			information := make([]checkresult.Information, 0, len(informationNotes))
+			for _, note := range informationNotes {
+				information = append(information, checkresult.Information{Evidence: checkresult.Evidence{Kind: "test-compatibility", Detail: note}})
+			}
+			out, err := checkresult.New(findings, information)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return out
+		}
+		typed, err := repositorycheck.Compose(repositorycheck.Inputs{
+			OrdinaryAdvisories:   repositorycheck.Slot{Result: result(check.Warnings, check.Information, "test-advisory")},
+			TrackingInformation:  repositorycheck.Slot{Result: result(nil, check.TrackingInformation, "test-tracking")},
+			DeferredPlanWarnings: repositorycheck.Slot{Result: result(check.PlanWarnings, nil, "test-plan")},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		typed.DirectResult = check.DirectResult
+		typed.Drift = check.Drift
+		check = typed
+	}
 	if len(check.DirectResult.Findings()) == 0 && len(check.DirectResult.Information()) == 0 && len(check.Drift) > 0 {
 		var findings []checkresult.Finding
 		var information []checkresult.Information
@@ -86,6 +115,183 @@ func repoCheckTestDependencies(t *testing.T, cfg *config.Config, p *project.Proj
 			counts.indexes++
 			return tree, nil
 		},
+	}
+}
+
+func TestRepoCheckRoutesAggregateOwnerResultsWithoutCompatibilitySlices(t *testing.T) {
+	ordinary, err := checkresult.New([]checkresult.Finding{{
+		Rank: severity.Warn, Property: "ordinary-property",
+		Evidence: checkresult.Evidence{Kind: "ordinary-kind", Detail: "ordinary warning"},
+	}}, []checkresult.Information{{Evidence: checkresult.Evidence{Kind: "ordinary-information-kind", Detail: "ordinary information"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tracking, err := checkresult.New(nil, []checkresult.Information{{Evidence: checkresult.Evidence{Kind: "tracking-kind", Detail: "tracking information"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan, err := checkresult.New([]checkresult.Finding{{
+		Rank: severity.Warn, Property: "plan-property",
+		Evidence: checkresult.Evidence{Kind: "plan-kind", Detail: "plan warning"},
+	}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	report, err := repositorycheck.Compose(repositorycheck.Inputs{
+		OrdinaryAdvisories:   repositorycheck.Slot{Result: ordinary},
+		TrackingInformation:  repositorycheck.Slot{Result: tracking},
+		DeferredPlanWarnings: repositorycheck.Slot{Result: plan},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	report.Warnings = []string{"mutated compatibility warning"}
+	report.Information = []string{"mutated compatibility information"}
+	report.TrackingInformation = []string{"mutated compatibility tracking"}
+	report.PlanWarnings = []string{"mutated compatibility plan warning"}
+
+	counts := &repoCheckCounters{}
+	deps := repoCheckTestDependencies(t, &config.Config{}, &project.ProjectState{}, report, project.CurrentStateReport{}, nil, counts)
+	present := deps.present
+	var properties []checkresult.Property
+	var informationKinds []string
+	deps.present = func(result checkresult.Result, check string, evidence bool) (repositorycheck.Presentation, error) {
+		for _, finding := range result.Findings() {
+			properties = append(properties, finding.Property)
+		}
+		for _, item := range result.Information() {
+			informationKinds = append(informationKinds, item.Evidence.Kind)
+		}
+		return present(result, check, evidence)
+	}
+	var stdout bytes.Buffer
+	if err := runRepoCheckSelection(context.Background(), t.TempDir(), &stdout, []execution.StepID{repoStepDrift}, execution.ContinueOnFailure, true, deps); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []checkresult.Property{"ordinary-property", "plan-property"} {
+		if !slices.Contains(properties, want) {
+			t.Fatalf("presented properties = %v, missing %q", properties, want)
+		}
+	}
+	for _, want := range []string{"ordinary-information-kind", "tracking-kind"} {
+		if !slices.Contains(informationKinds, want) {
+			t.Fatalf("presented information kinds = %v, missing %q", informationKinds, want)
+		}
+	}
+	for _, want := range []string{"ordinary warning", "plan warning", "ordinary information", "tracking information"} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Fatalf("typed aggregate output missing %q: %q", want, stdout.String())
+		}
+	}
+	if strings.Contains(stdout.String(), "mutated compatibility") {
+		t.Fatalf("compatibility projection changed aggregate routing: %q", stdout.String())
+	}
+}
+
+func TestRepoCheckRoutesWorkingCurrentStateOwnerResult(t *testing.T) {
+	result, err := checkresult.New([]checkresult.Finding{{
+		Rank: severity.Warn, Property: "current-state-coverage",
+		Evidence: checkresult.Evidence{Kind: "current-state", Detail: "coverage warning"},
+	}}, []checkresult.Information{{Evidence: checkresult.Evidence{Kind: "current-state", Detail: "provisional information"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := project.CurrentStateReport{
+		CurrentResult: result,
+		OwnerResult:   result,
+		PlanNotes:     []string{"mutated compatibility warning"},
+		Provisional:   []currentstate.Introduction{{Identity: "mutated-compatibility-information"}},
+	}
+	counts := &repoCheckCounters{}
+	deps := repoCheckTestDependencies(t, &config.Config{}, &project.ProjectState{}, project.CheckReport{}, state, nil, counts)
+	present := deps.present
+	var properties []checkresult.Property
+	var informationKinds []string
+	deps.present = func(result checkresult.Result, check string, evidence bool) (repositorycheck.Presentation, error) {
+		for _, finding := range result.Findings() {
+			properties = append(properties, finding.Property)
+		}
+		for _, item := range result.Information() {
+			informationKinds = append(informationKinds, item.Evidence.Kind)
+		}
+		return present(result, check, evidence)
+	}
+	var stdout bytes.Buffer
+	if err := runRepoCheckSelection(context.Background(), t.TempDir(), &stdout, []execution.StepID{repoStepState}, execution.StopOnFailure, false, deps); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(properties, "current-state-coverage") || !slices.Contains(informationKinds, "current-state") {
+		t.Fatalf("working current-state typed route lost owner results: properties=%v information=%v", properties, informationKinds)
+	}
+	if !strings.Contains(stdout.String(), "coverage warning") || !strings.Contains(stdout.String(), "provisional information") {
+		t.Fatalf("working current-state output = %q", stdout.String())
+	}
+	if strings.Contains(stdout.String(), "mutated compatibility") || strings.Contains(stdout.String(), "mutated-compatibility-information") {
+		t.Fatalf("compatibility projection changed current-state routing: %q", stdout.String())
+	}
+}
+
+func TestRepoCheckAggregateTypedPresentationFailuresPropagate(t *testing.T) {
+	warning, err := checkresult.New([]checkresult.Finding{{
+		Rank: severity.Warn, Property: "test-warning",
+		Evidence: checkresult.Evidence{Kind: "warning", Detail: "warning"},
+	}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	information, err := checkresult.New(nil, []checkresult.Information{{Evidence: checkresult.Evidence{Kind: "information", Detail: "information"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	report, err := repositorycheck.Compose(repositorycheck.Inputs{
+		OrdinaryAdvisories:   repositorycheck.Slot{Result: warning},
+		TrackingInformation:  repositorycheck.Slot{Result: information},
+		DeferredPlanWarnings: repositorycheck.Slot{Result: warning},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for target := 1; target <= 5; target++ {
+		t.Run(fmt.Sprintf("projection-%d", target), func(t *testing.T) {
+			failure := fmt.Errorf("projection %d failed", target)
+			deps := repoCheckTestDependencies(t, &config.Config{}, &project.ProjectState{}, report, project.CurrentStateReport{}, nil, &repoCheckCounters{})
+			present := deps.present
+			calls := 0
+			deps.present = func(result checkresult.Result, check string, evidence bool) (repositorycheck.Presentation, error) {
+				calls++
+				if calls == target {
+					return repositorycheck.Presentation{}, failure
+				}
+				return present(result, check, evidence)
+			}
+			err := runRepoCheckSelectionWithPlanNotes(context.Background(), t.TempDir(), io.Discard, []execution.StepID{repoStepDrift}, execution.ContinueOnFailure, true, []string{"leading information"}, planNoteSink{}, deps)
+			if !errors.Is(err, failure) {
+				t.Fatalf("presentation failure = %v, want %v", err, failure)
+			}
+		})
+	}
+}
+
+func TestPresentCurrentStateReportPropagatesPlanPartitionFailure(t *testing.T) {
+	planError, err := checkresult.New([]checkresult.Finding{{
+		Rank: severity.Error, Property: "plan-validity",
+		Evidence: checkresult.Evidence{Kind: "plan", Detail: "broken"},
+	}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	failure := errors.New("plan partition presentation failed")
+	calls := 0
+	present := func(result checkresult.Result, check string, evidence bool) (repositorycheck.Presentation, error) {
+		calls++
+		if calls == 2 {
+			return repositorycheck.Presentation{}, failure
+		}
+		return repositorycheck.Present(result, check)
+	}
+	_, err = presentCurrentStateReport(project.CurrentStateReport{PlanArtifactResult: planError, OwnerResult: planError}, "current-state", planNoteSink{}, present)
+	if !errors.Is(err, failure) {
+		t.Fatalf("plan partition failure = %v, want %v", err, failure)
 	}
 }
 
@@ -147,6 +353,7 @@ func currentStateReportForTest(t *testing.T, report project.CurrentStateReport) 
 	if err != nil {
 		t.Fatal(err)
 	}
+	report.CurrentResult = result
 	report.OwnerResult = result
 	return report
 }
@@ -154,7 +361,7 @@ func currentStateReportForTest(t *testing.T, report project.CurrentStateReport) 
 // invariant: rendering/sync-and-drift:generated-artifacts-tracked (TestRepoCheckCapabilityPlan)
 // invariant: tooling/cli:repo-check-capability-plan (TestRepoCheckCapabilityPlan)
 func TestRepoCheckCapabilityPlan(t *testing.T) {
-	t.Run("aggregate prepares each capability once and preserves successful output order", func(t *testing.T) {
+	t.Run("aggregate prepares each capability once and preserves successful output membership", func(t *testing.T) {
 		cfg := &config.Config{ProseGate: &config.ProseGateConfig{}, MemoryCite: &config.MemoryCiteConfig{}}
 		p := &project.ProjectState{}
 		tree, err := snapshot.NewTree(nil)
@@ -171,9 +378,15 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		if got, want := *counts, (repoCheckCounters{loads: 1, opens: 1, reports: 1, states: 1, indexes: 1}); got != want {
 			t.Fatalf("capability counts = %+v, want %+v", got, want)
 		}
-		want := "status: warnings\n\nsummary:\n  findings: 0 errors, 2 warnings, 0 information\n\nfindings:\n  warnings:\n    advisory | project-advisory-sentinel\n    advisory | working-plan-note-sentinel\n"
-		if got := out.String(); got != want {
-			t.Fatalf("output = %q, want %q", got, want)
+		got := out.String()
+		const prefix = "status: warnings\n\nsummary:\n  findings: 0 errors, 2 warnings, 0 information\n\nfindings:\n  warnings:\n"
+		if !strings.HasPrefix(got, prefix) {
+			t.Fatalf("output header = %q, want prefix %q", got, prefix)
+		}
+		for _, line := range []string{"    advisory | project-advisory-sentinel\n", "    advisory | working-plan-note-sentinel\n"} {
+			if strings.Count(got, line) != 1 {
+				t.Fatalf("output contains %q %d times, want once: %q", line, strings.Count(got, line), got)
+			}
 		}
 	})
 
@@ -222,9 +435,15 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		if got, want := *counts, (repoCheckCounters{loads: 1, opens: 1, reports: 1, states: 1, indexes: 1}); got != want {
 			t.Fatalf("capability counts = %+v, want %+v", got, want)
 		}
-		const want = "status: failed\n\nsummary:\n  findings: 3 errors, 2 warnings, 0 information\n\nfindings:\n  errors:\n    drift | changed: working-drift-sentinel: working bytes\n    current-state | current-state-sentinel\n    memory | docs/decisions/memory-index-sentinel.md: 1 effort-owned memory citation(s) on line(s) 1; name the .awf/efforts/ directory, use an angle-bracket slug placeholder, or remove the ephemeral file citation\n  warnings:\n    advisory | working-advisory-sentinel\n    prose | prose-index-sentinel.txt: en-dash (U+2013) appears 1 time(s); en dashes are not permitted\n"
-		if got := out.String(); got != want {
-			t.Fatalf("output = %q, want %q", got, want)
+		got := out.String()
+		const prefix = "status: failed\n\nsummary:\n  findings: 3 errors, 2 warnings, 0 information\n\nfindings:\n  errors:\n    drift | changed: working-drift-sentinel: working bytes\n    current-state | current-state-sentinel\n    memory | docs/decisions/memory-index-sentinel.md: 1 effort-owned memory citation(s) on line(s) 1; name the .awf/efforts/ directory, use an angle-bracket slug placeholder, or remove the ephemeral file citation\n  warnings:\n"
+		if !strings.HasPrefix(got, prefix) {
+			t.Fatalf("output = %q, want protected prefix %q", got, prefix)
+		}
+		for _, line := range []string{"    advisory | working-advisory-sentinel\n", "    prose | prose-index-sentinel.txt: en-dash (U+2013) appears 1 time(s); en dashes are not permitted\n"} {
+			if strings.Count(got, line) != 1 {
+				t.Fatalf("output contains %q %d times, want once: %q", line, strings.Count(got, line), got)
+			}
 		}
 	})
 
@@ -490,10 +709,20 @@ func TestAggregateCheckAgentGuideSizeWarning(t *testing.T) {
 		}
 	})
 
-	t.Run("production note order is preserved", func(t *testing.T) {
-		want := "status: warnings\n\nsummary:\n  findings: 0 errors, 2 warnings, 0 information\n\nfindings:\n  warnings:\n    advisory | ordinary-advisory\n    advisory | " + advisory + "\n"
-		if got := runAggregate(t, []string{"ordinary-advisory", advisory}); got != want {
-			t.Fatalf("aggregate output = %q, want %q", got, want)
+	t.Run("production warning membership is deterministic", func(t *testing.T) {
+		first := runAggregate(t, []string{"ordinary-advisory", advisory})
+		second := runAggregate(t, []string{"ordinary-advisory", advisory})
+		if first != second {
+			t.Fatalf("aggregate output is not deterministic: first=%q second=%q", first, second)
+		}
+		const prefix = "status: warnings\n\nsummary:\n  findings: 0 errors, 2 warnings, 0 information\n\nfindings:\n  warnings:\n"
+		if !strings.HasPrefix(first, prefix) {
+			t.Fatalf("aggregate output = %q, want prefix %q", first, prefix)
+		}
+		for _, line := range []string{"    advisory | ordinary-advisory\n", "    advisory | " + advisory + "\n"} {
+			if strings.Count(first, line) != 1 {
+				t.Fatalf("aggregate output contains %q %d times, want once: %q", line, strings.Count(first, line), first)
+			}
 		}
 	})
 

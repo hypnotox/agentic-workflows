@@ -25,6 +25,12 @@ func TestCurrentStateResultIsStableAfterCompatibilityMutation(t *testing.T) {
 	if got := result.Findings()[0].Evidence.Detail; got != "original" {
 		t.Fatalf("owner result changed with compatibility slice: %q", got)
 	}
+	if got := report.CurrentResult.Findings()[0].Evidence.Detail; got != "original" {
+		t.Fatalf("current-state partition changed with compatibility slice: %q", got)
+	}
+	if len(report.PlanArtifactResult.Findings()) != 0 {
+		t.Fatalf("empty plan partition = %#v", report.PlanArtifactResult.Findings())
+	}
 }
 
 func TestAppendStagedPlanResultPreservesRankedProjections(t *testing.T) {
@@ -52,6 +58,9 @@ func TestAppendStagedPlanResultPreservesRankedProjections(t *testing.T) {
 	findings := report.Result().Findings()
 	if len(findings) != 3 || findings[0].Rank != severity.Error || findings[0].Property != propertyPlanArtifact || findings[0].Evidence.Detail != "plan-frontmatter docs/plans/bad.md: malformed" || findings[1].Rank != severity.Error || findings[1].Property != "authority" || findings[1].Evidence.Detail != "plan-reference docs/plans/p.md: missing" || findings[2].Rank != severity.Warn || findings[2].Property != "plan-detail-quality" {
 		t.Fatalf("typed staged plan findings = %#v", findings)
+	}
+	if len(report.CurrentResult.Findings()) != 0 || len(report.PlanArtifactResult.Findings()) != 3 {
+		t.Fatalf("typed staged partitions = current %#v plan %#v", report.CurrentResult.Findings(), report.PlanArtifactResult.Findings())
 	}
 	report.PlanNotes[0] = "mutated compatibility note"
 	if got := report.Result().Findings()[2].Evidence.Detail; got != "assignment" {

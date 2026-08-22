@@ -41,8 +41,6 @@ type repoCheckInputs struct {
 	currentState project.CurrentStateReport
 	index        *snapshot.Tree
 	presentation repositorycheck.Presentation
-	warnings     []string
-	information  []string
 }
 
 type repoCheckDependencies struct {
@@ -52,6 +50,52 @@ type repoCheckDependencies struct {
 	currentState func(context.Context, string, *awfgit.Repo) (project.CurrentStateReport, error)
 	indexTree    func(context.Context, string) (*snapshot.Tree, error)
 	present      func(checkresult.Result, string, bool) (repositorycheck.Presentation, error)
+}
+
+type checkResultPresenter func(checkresult.Result, string, bool) (repositorycheck.Presentation, error)
+
+func hasCheckResults(result checkresult.Result) bool {
+	return len(result.Findings()) > 0 || len(result.Information()) > 0
+}
+
+func informationResult(notes []string) checkresult.Result {
+	information := make([]checkresult.Information, 0, len(notes))
+	for _, note := range notes {
+		information = append(information, checkresult.Information{Evidence: checkresult.Evidence{Kind: "repository-check", Detail: note}})
+	}
+	result, err := checkresult.New(nil, information)
+	if err != nil { // coverage-ignore: callers supply only fixed command-owned nonempty notes
+		return checkresult.Result{}
+	}
+	return result
+}
+
+func presentCurrentStateReport(report project.CurrentStateReport, check string, planNotes planNoteSink, present checkResultPresenter) (repositorycheck.Presentation, error) {
+	current, err := present(report.CurrentResult, check, false)
+	if err != nil {
+		return repositorycheck.Presentation{}, err
+	}
+	out := current
+	withoutWarnings, warnings, err := repositorycheck.SplitWarnings(report.PlanArtifactResult)
+	if err != nil { // coverage-ignore: the current-state owner supplied a validated immutable result
+		return repositorycheck.Presentation{}, err
+	}
+	if hasCheckResults(withoutWarnings) {
+		projected, err := present(withoutWarnings, check, false)
+		if err != nil {
+			return repositorycheck.Presentation{}, err
+		}
+		out = out.Append(projected)
+	}
+	warnings = unseenPlanWarnings(warnings, planNotes)
+	if hasCheckResults(warnings) {
+		projected, err := present(warnings, "advisory", false)
+		if err != nil {
+			return repositorycheck.Presentation{}, err
+		}
+		out = out.Append(projected)
+	}
+	return out, nil
 }
 
 type repoIndexPreparationError struct{ err error }
@@ -164,17 +208,29 @@ func repoCheckSystem(root string, aggregate bool, leadingNotes []string, planNot
 				case repoStepDrift:
 					report := inputs.checkReport
 					actions = append(actions, execution.BoundAction{Step: step, Run: func(context.Context) error {
-						inputs.information = append(inputs.information, report.DirectTrackingInformation()...)
+						tracking, err := deps.present(report.TrackingInformationResult(), "advisory", false)
+						if err != nil {
+							return err
+						}
+						inputs.presentation = inputs.presentation.Append(tracking)
 						if aggregate {
-							inputs.information = append(inputs.information, leadingNotes...)
-							inputs.warnings = append(inputs.warnings, report.OrdinaryWarnings()...)
-							inputs.information = append(inputs.information, report.AggregateInformation()...)
-							for _, note := range report.PlanWarningNotes() {
-								if _, seen := planNotes[note]; !seen {
-									planNotes[note] = struct{}{}
-									inputs.warnings = append(inputs.warnings, note)
-								}
+							leading := informationResult(leadingNotes)
+							projected, err := deps.present(leading, "advisory", false)
+							if err != nil {
+								return err
 							}
+							inputs.presentation = inputs.presentation.Append(projected)
+							projected, err = deps.present(report.AggregateAdvisoryResult(), "advisory", false)
+							if err != nil {
+								return err
+							}
+							inputs.presentation = inputs.presentation.Append(projected)
+							planWarnings := unseenPlanWarnings(report.DeferredPlanWarningResult(), planNotes)
+							projected, err = deps.present(planWarnings, "advisory", false)
+							if err != nil {
+								return err
+							}
+							inputs.presentation = inputs.presentation.Append(projected)
 						}
 						projected, err := deps.present(report.DirectResult, "drift", true)
 						if err != nil {
@@ -189,15 +245,12 @@ func repoCheckSystem(root string, aggregate bool, leadingNotes []string, planNot
 				case repoStepState:
 					report := inputs.currentState
 					actions = append(actions, execution.BoundAction{Step: step, Run: func(context.Context) error {
-						inputs.warnings = append(inputs.warnings, report.Warnings()...)
-						inputs.information = append(inputs.information, report.Information()...)
-						result := report.Result()
-						projected, err := deps.present(repositorycheck.ErrorsOnly(result), "current-state", false)
+						projected, err := presentCurrentStateReport(report, "current-state", planNotes, deps.present)
 						if err != nil {
 							return err
 						}
 						inputs.presentation = inputs.presentation.Append(projected)
-						if repositorycheck.HasErrors(result) {
+						if repositorycheck.HasErrors(report.Result()) {
 							return producedCheckFailure{errors.New("check repo state failed")}
 						}
 						return nil
@@ -257,7 +310,7 @@ func collectRepoCheckSelectionWithPlanNotes(ctx context.Context, root string, se
 	if err != nil {
 		return checkCollection{}, err
 	}
-	collection := checkCollection{warnings: inputs.warnings, information: inputs.information, presentation: inputs.presentation}
+	collection := checkCollection{presentation: inputs.presentation}
 	for _, outcome := range outcomes {
 		if outcome.Err == nil {
 			continue

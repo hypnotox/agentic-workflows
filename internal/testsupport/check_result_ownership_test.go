@@ -62,7 +62,7 @@ func TestStagedPlanResultTypedRouteCensus(t *testing.T) {
 		want           map[string]int
 	}{
 		{"internal/project/currentstate.go", "currentStateResult", map[string]int{"PlanResult": 2}},
-		{"cmd/awf/checkstaged.go", "collectCheckStagedSelectionWith", map[string]int{"PlanNotes": 1, "PlanResult": 1}},
+		{"cmd/awf/checkrepo.go", "presentCurrentStateReport", map[string]int{"CurrentResult": 1, "PlanArtifactResult": 1}},
 	}
 	for _, tc := range cases {
 		file, err := parser.ParseFile(token.NewFileSet(), filepath.Join(root, tc.path), nil, 0)
@@ -76,7 +76,7 @@ func TestStagedPlanResultTypedRouteCensus(t *testing.T) {
 		got := map[string]int{}
 		ast.Inspect(fn.Body, func(node ast.Node) bool {
 			selector, ok := node.(*ast.SelectorExpr)
-			if ok && (selector.Sel.Name == "PlanResult" || selector.Sel.Name == "PlanNotes") {
+			if ok && (selector.Sel.Name == "PlanResult" || selector.Sel.Name == "PlanNotes" || selector.Sel.Name == "CurrentResult" || selector.Sel.Name == "PlanArtifactResult") {
 				got[selector.Sel.Name]++
 			}
 			return true

@@ -10,7 +10,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/repositorycheck"
-	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"golang.org/x/mod/semver"
 )
 
@@ -33,12 +32,9 @@ func productionCheckStagedDependencies() checkStagedDependencies {
 	}
 }
 
-func unseenStagedPlanWarnings(result checkresult.Result, seen planNoteSink) (checkresult.Result, error) {
+func unseenPlanWarnings(result checkresult.Result, seen planNoteSink) checkresult.Result {
 	var findings []checkresult.Finding
 	for _, finding := range result.Findings() {
-		if finding.Rank != severity.Warn {
-			continue
-		}
 		note := finding.Evidence.Detail
 		if _, exists := seen[note]; exists {
 			continue
@@ -46,7 +42,11 @@ func unseenStagedPlanWarnings(result checkresult.Result, seen planNoteSink) (che
 		seen[note] = struct{}{}
 		findings = append(findings, finding)
 	}
-	return checkresult.New(findings, nil)
+	filtered, err := checkresult.New(findings, nil)
+	if err != nil { // coverage-ignore: callers supply only validated immutable Warning partitions
+		return checkresult.Result{}
+	}
+	return filtered
 }
 
 // runCheckStaged runs the staged transition universe. The commit child is direct-only.
@@ -90,28 +90,12 @@ func collectCheckStagedSelectionWith(ctx context.Context, root string, planNotes
 		if err != nil {
 			collection.operational = append(collection.operational, err)
 		} else {
-			ordinary := report
-			ordinary.PlanNotes = nil
-			collection.warnings = append(collection.warnings, ordinary.Warnings()...)
-			collection.information = append(collection.information, ordinary.Information()...)
-			planWarnings, planErr := unseenStagedPlanWarnings(report.PlanResult, planNotes)
-			if planErr != nil { // coverage-ignore: filtering validated immutable owner findings cannot invalidate them
-				collection.operational = append(collection.operational, planErr)
-			} else if len(planWarnings.Findings()) > 0 {
-				projected, projectErr := dependencies.present(planWarnings, "advisory", false)
-				if projectErr != nil {
-					collection.operational = append(collection.operational, projectErr)
-				} else {
-					collection.presentation = collection.presentation.Append(projected)
-				}
-			}
-			result := report.Result()
-			projected, projectErr := dependencies.present(repositorycheck.ErrorsOnly(result), "staged current-state", false)
+			projected, projectErr := presentCurrentStateReport(report, "staged current-state", planNotes, dependencies.present)
 			if projectErr != nil {
 				collection.operational = append(collection.operational, projectErr)
 			} else {
 				collection.presentation = collection.presentation.Append(projected)
-				if repositorycheck.HasErrors(result) {
+				if repositorycheck.HasErrors(report.Result()) {
 					collection.failures = append(collection.failures, errors.New("check staged state failed"))
 				}
 			}

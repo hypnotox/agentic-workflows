@@ -866,8 +866,8 @@ func TestCheckGeneratedTrackingNoGitAndNestedResidentExclusion(t *testing.T) {
 			t.Fatal(err)
 		}
 		const unavailable = "generated-artifact tracking is unavailable outside a Git repository"
-		if got := report.DirectTrackingInformation(); !slices.Equal(got, []string{unavailable}) {
-			t.Fatalf("no-Git report tracking information = %q, want one compatibility projection", got)
+		if !slices.Equal(report.TrackingInformation, []string{unavailable}) {
+			t.Fatalf("no-Git report tracking information = %q, want one compatibility projection", report.TrackingInformation)
 		}
 		count := 0
 		for _, item := range report.Result.Information() {

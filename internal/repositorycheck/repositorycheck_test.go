@@ -48,17 +48,17 @@ func TestComposePreservesExplicitSlotOrderAndCompatibilityProjections(t *testing
 	if want := []string{"first", "unused", "plan", "artifact"}; !slices.Equal(driftKinds, want) {
 		t.Fatalf("drift order = %v, want %v", driftKinds, want)
 	}
-	if got := report.OrdinaryWarnings(); !slices.Equal(got, []string{"ordinary warning"}) {
-		t.Fatalf("ordinary warnings = %v", got)
+	if !slices.Equal(report.Warnings, []string{"ordinary warning"}) {
+		t.Fatalf("ordinary warnings = %v", report.Warnings)
 	}
-	if got := report.AggregateInformation(); !slices.Equal(got, []string{"ordinary information"}) {
-		t.Fatalf("aggregate information = %v", got)
+	if !slices.Equal(report.Information, []string{"ordinary information"}) {
+		t.Fatalf("aggregate information = %v", report.Information)
 	}
-	if got := report.DirectTrackingInformation(); !slices.Equal(got, []string{"tracking information"}) {
-		t.Fatalf("tracking information = %v", got)
+	if !slices.Equal(report.TrackingInformation, []string{"tracking information"}) {
+		t.Fatalf("tracking information = %v", report.TrackingInformation)
 	}
-	if got := report.PlanWarningNotes(); !slices.Equal(got, []string{"deferred warning"}) {
-		t.Fatalf("deferred plan warnings = %v", got)
+	if !slices.Equal(report.PlanWarnings, []string{"deferred warning"}) {
+		t.Fatalf("deferred plan warnings = %v", report.PlanWarnings)
 	}
 	if !slices.Equal(report.Notes, []string{"ordinary information", "ordinary warning"}) || !slices.Equal(report.TrackingNotes, []string{"tracking information"}) || !slices.Equal(report.PlanNotes, []string{"deferred warning"}) {
 		t.Fatalf("compatibility notes = %#v", report)
@@ -99,10 +99,6 @@ func TestPresentationUsesExplicitRanksAndPreservesEvidence(t *testing.T) {
 	}
 	if !HasErrors(mixed) || HasErrors(result(t, nil, nil)) {
 		t.Fatal("HasErrors did not follow explicit ranks")
-	}
-	errorsOnly := ErrorsOnly(mixed)
-	if len(errorsOnly.Findings()) != 1 || len(errorsOnly.Information()) != 0 || errorsOnly.Findings()[0].Rank != severity.Error {
-		t.Fatalf("ErrorsOnly = %#v", errorsOnly)
 	}
 }
 

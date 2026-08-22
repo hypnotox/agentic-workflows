@@ -154,6 +154,16 @@ func TestResidentPathsAreNeverEligibleOrNested(t *testing.T) {
 // The claim's routing clause is marked here rather than named in prose from
 // internal/currentstate, which cannot see CurrentStateReport.
 // invariant: invariants/current-state-authority:currentstate-handshake-findings-unranked (TestCurrentStateReportRouting)
+func currentStateWarningNotes(report CurrentStateReport) []string {
+	var out []string
+	for _, finding := range report.Coverage {
+		if finding.Severity == severity.Warn {
+			out = append(out, finding.Message())
+		}
+	}
+	return append(out, report.PlanNotes...)
+}
+
 func TestCurrentStateReportRouting(t *testing.T) {
 	r := CurrentStateReport{
 		Static:      []currentstate.Finding{{Message: "handshake broke"}},
@@ -170,7 +180,7 @@ func TestCurrentStateReportRouting(t *testing.T) {
 	if len(findings) != 3 || findings[0] != "handshake broke" || findings[1] != wantCoverage || findings[2] != "plan-reference docs/plans/v2.md: missing ADR" {
 		t.Fatalf("findings = %#v", findings)
 	}
-	notes := append(r.Information(), r.Warnings()...)
+	notes := append(r.Information(), currentStateWarningNotes(r)...)
 	wantNote := "uncovered: internal/c.go is owned by domain alpha with no claim-bearing topic owner; if one of global topics alpha/a, alpha/b naturally governs this path, add a matching domain-bounded paths selector; otherwise create/use an appropriate scoped claim-bearing topic"
 	if len(notes) != 5 || !strings.Contains(notes[0], "provisional older-format ADR-0002") || !strings.Contains(notes[1], "ADR-0003 (legacy)") || !strings.Contains(notes[2], "ADR-0004 (legacy)") || !strings.Contains(notes[3], "internal/b.go is matched by 3 owning topics") || notes[4] != wantNote {
 		t.Fatalf("notes = %#v", notes)
@@ -265,7 +275,7 @@ func TestCheckCurrentState(t *testing.T) {
 			}
 		}
 	}
-	notes := append(report.Information(), report.Warnings()...)
+	notes := append(report.Information(), currentStateWarningNotes(report)...)
 	if len(notes) != 0 {
 		t.Errorf("notes = %#v; want none", notes)
 	}

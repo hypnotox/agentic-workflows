@@ -118,7 +118,7 @@ func TestCheckSeverityByProtectedProperty(t *testing.T) {
 
 func TestCheckReportIncludesExplicitInformationAndWarnings(t *testing.T) {
 	record := checkPresentationRecord(t, "finding")
-	report, err := checkReport(nil, nil, repositorycheck.Presentation{Warnings: []presentation.Record{record}, Information: []presentation.Record{record}})
+	report, err := checkReport([]string{"compatibility warning"}, []string{"compatibility information"}, repositorycheck.Presentation{Warnings: []presentation.Record{record}, Information: []presentation.Record{record}})
 	if err != nil {
 		t.Fatal(err)
 	}

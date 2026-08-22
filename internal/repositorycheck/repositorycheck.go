@@ -40,21 +40,25 @@ type Report struct {
 	Result              checkresult.Result
 	// DirectResult is the explicitly placed direct-drift projection. Aggregate
 	// advisories remain in Result but never appear in a direct child.
-	DirectResult  checkresult.Result
-	Notes         []string
-	TrackingNotes []string
-	PlanNotes     []string
+	DirectResult checkresult.Result
+	// Typed aggregate partitions retain owner classification for command consumers.
+	aggregateAdvisoryResult   checkresult.Result
+	trackingInformationResult checkresult.Result
+	deferredPlanWarningResult checkresult.Result
+	Notes                     []string
+	TrackingNotes             []string
+	PlanNotes                 []string
 }
 
 // Presentation is the explicit ranked projection of owner-classified results.
-// Its fields preserve source order without recovering meaning from category labels.
+// Its fields preserve deterministic append order without recovering meaning from category labels.
 type Presentation struct {
 	Errors      []presentation.Record
 	Warnings    []presentation.Record
 	Information []presentation.Record
 }
 
-// Append preserves ordinary evidence multiplicity and source order.
+// Append preserves ordinary evidence multiplicity and deterministic category order.
 func (p Presentation) Append(other Presentation) Presentation {
 	p.Errors = append(p.Errors, other.Errors...)
 	p.Warnings = append(p.Warnings, other.Warnings...)
@@ -114,21 +118,6 @@ func present(result checkresult.Result, check string, evidencePrefix bool) (Pres
 		out.Information = append(out.Information, record)
 	}
 	return out, nil
-}
-
-// ErrorsOnly projects only Error findings for direct check children.
-func ErrorsOnly(result checkresult.Result) checkresult.Result {
-	var findings []checkresult.Finding
-	for _, finding := range result.Findings() {
-		if finding.Rank == severity.Error {
-			findings = append(findings, finding)
-		}
-	}
-	out, err := checkresult.New(findings, nil)
-	if err != nil { // coverage-ignore: filtering a validated immutable result cannot create invalid evidence
-		return checkresult.Result{}
-	}
-	return out
 }
 
 // HasErrors reports whether owner-classified results contain Error findings.
@@ -192,7 +181,14 @@ func Compose(input Inputs) (Report, error) {
 	if err != nil { // coverage-ignore: the direct projection copies only validated owner evidence
 		return Report{}, fmt.Errorf("finalize direct owner-classified check results: %w", err)
 	}
-	report := Report{Result: result, DirectResult: direct, Drift: drift}
+	report := Report{
+		Result:                    result,
+		DirectResult:              direct,
+		Drift:                     drift,
+		aggregateAdvisoryResult:   input.OrdinaryAdvisories.Result,
+		trackingInformationResult: input.TrackingInformation.Result,
+		deferredPlanWarningResult: input.DeferredPlanWarnings.Result,
+	}
 	report.Warnings = findingDetails(input.OrdinaryAdvisories.Result)
 	report.Information = informationDetails(input.OrdinaryAdvisories.Result)
 	report.TrackingInformation = append(informationDetails(input.Tracking.Result), informationDetails(input.TrackingInformation.Result)...)
@@ -222,25 +218,19 @@ func SplitWarnings(result checkresult.Result) (withoutWarnings, warnings checkre
 	return withoutWarnings, warnings, err
 }
 
-// OrdinaryWarnings returns ranked non-plan aggregate warning notes.
-func (r Report) OrdinaryWarnings() []string {
-	return slices.Clone(r.Warnings)
+// AggregateAdvisoryResult returns the typed non-plan Warning and Information partition.
+func (r Report) AggregateAdvisoryResult() checkresult.Result {
+	return r.aggregateAdvisoryResult
 }
 
-// PlanWarningNotes returns ranked plan warning notes for sink deduplication.
-func (r Report) PlanWarningNotes() []string {
-	return slices.Clone(r.PlanWarnings)
+// TrackingInformationResult returns the typed aggregate tracking Information partition.
+func (r Report) TrackingInformationResult() checkresult.Result {
+	return r.trackingInformationResult
 }
 
-// AggregateInformation returns unranked aggregate information notes.
-func (r Report) AggregateInformation() []string {
-	return slices.Clone(r.Information)
-}
-
-// DirectTrackingInformation returns unranked tracking information shown by
-// both direct drift and aggregate checks.
-func (r Report) DirectTrackingInformation() []string {
-	return slices.Clone(r.TrackingInformation)
+// DeferredPlanWarningResult returns the typed plan Warning partition.
+func (r Report) DeferredPlanWarningResult() checkresult.Result {
+	return r.deferredPlanWarningResult
 }
 
 func requireAdvisories(role string, result checkresult.Result) error {
