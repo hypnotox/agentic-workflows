@@ -64,28 +64,40 @@ func TestPublisherDefensivelyOwnsConfigurationFacts(t *testing.T) {
 }
 
 func TestPreparationFreezesGeneratedCheckSources(t *testing.T) {
-	state := csRepo(t, sampleYAML, map[string]string{".awf/skills/tdd.yaml": "data:\n  stale: before\n"})
-	prepared, err := New(state.OutputState(), testConfig(state), NewFilesystemReader(state.Root()), project.Version).Prepare()
-	if err != nil {
-		t.Fatal(err)
+	checkFrozen := func(t *testing.T, mutate func(string)) {
+		t.Helper()
+		state := csRepo(t, sampleYAML, map[string]string{".awf/skills/tdd.yaml": "data:\n  stale: before\n"})
+		prepared, err := New(state.OutputState(), testConfig(state), NewFilesystemReader(state.Root()), project.Version).Prepare()
+		if err != nil {
+			t.Fatal(err)
+		}
+		before, err := generatedcheck.Additional(prepared.GeneratedOutput(), prepared.Plan())
+		if err != nil {
+			t.Fatal(err)
+		}
+		mutate(state.Root())
+		after, err := generatedcheck.Additional(prepared.GeneratedOutput(), prepared.Plan())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(before, after) {
+			t.Fatalf("prepared generated check changed after source mutation: before=%#v after=%#v", before, after)
+		}
 	}
-	before, err := generatedcheck.Additional(prepared.GeneratedOutput(), prepared.Plan())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(state.Root(), ".awf/skills/tdd.yaml"), []byte("data:\n  stale: after\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(state.Root(), ".awf/after-prepare"), []byte("x"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	after, err := generatedcheck.Additional(prepared.GeneratedOutput(), prepared.Plan())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(before, after) {
-		t.Fatalf("prepared generated check changed after source mutation: before=%#v after=%#v", before, after)
-	}
+	t.Run("sidecar key membership", func(t *testing.T) {
+		checkFrozen(t, func(root string) {
+			if err := os.WriteFile(filepath.Join(root, ".awf/skills/tdd.yaml"), []byte("data:\n  stale: before\n  added-after-prepare: value\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		})
+	})
+	t.Run("closed tree entries", func(t *testing.T) {
+		checkFrozen(t, func(root string) {
+			if err := os.WriteFile(filepath.Join(root, ".awf/after-prepare"), []byte("x"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		})
+	})
 }
 
 func TestRenderInputsSnapshotsCatalogOnce(t *testing.T) {

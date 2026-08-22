@@ -86,4 +86,13 @@ func TestGeneratedSemanticClosedKinds(t *testing.T) {
 	if artifactNames(c, "unknown") != nil || artifactSections(c, "unknown", "") != nil {
 		t.Fatal("unknown generated semantic kind was accepted")
 	}
+	projected := map[string]bool{}
+	for _, name := range artifactNames(catalog.Standard, "docs") {
+		projected[name] = true
+	}
+	for _, singleton := range catalog.SingletonKindsFor(catalog.Standard) {
+		if _, shared := catalog.Standard.Docs[singleton]; shared && !projected[singleton] {
+			t.Errorf("singleton-backed docs artifact %q omitted from closed-tree projection", singleton)
+		}
+	}
 }

@@ -81,7 +81,7 @@ func artifactNames(c *catalog.Catalog, kind string) []string {
 	case "agents":
 		return slices.Sorted(maps.Keys(c.Agents))
 	case "docs":
-		return catalog.NameDerivedDocNames(c)
+		return slices.Sorted(maps.Keys(c.Docs))
 	}
 	return nil
 }
