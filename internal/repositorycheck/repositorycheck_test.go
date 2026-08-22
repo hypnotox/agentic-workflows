@@ -30,7 +30,7 @@ func TestComposePreservesExplicitSlotOrderAndCompatibilityProjections(t *testing
 	deferred := result(t, []checkresult.Finding{{Rank: severity.Warn, Property: "plan-detail", Evidence: checkresult.Evidence{Kind: "not-a-routing-key", Detail: "deferred warning"}}}, nil)
 
 	report, err := Compose(Inputs{
-		Tracking:             Slot{Result: tracking},
+		Tracking:             Slot{},
 		ProducerResults:      []Slot{{Result: producer, IncludeInformationInDrift: true}},
 		PlanDiagnostics:      Slot{Result: planDiagnostic},
 		PlanArtifactErrors:   Slot{Result: artifact},
@@ -54,13 +54,13 @@ func TestComposePreservesExplicitSlotOrderAndCompatibilityProjections(t *testing
 	if got := report.AggregateInformation(); !slices.Equal(got, []string{"ordinary information"}) {
 		t.Fatalf("aggregate information = %v", got)
 	}
-	if got := report.DirectTrackingInformation(); !slices.Equal(got, []string{"tracking information", "tracking information"}) {
+	if got := report.DirectTrackingInformation(); !slices.Equal(got, []string{"tracking information"}) {
 		t.Fatalf("tracking information = %v", got)
 	}
 	if got := report.PlanWarningNotes(); !slices.Equal(got, []string{"deferred warning"}) {
 		t.Fatalf("deferred plan warnings = %v", got)
 	}
-	if !slices.Equal(report.Notes, []string{"ordinary information", "ordinary warning"}) || !slices.Equal(report.TrackingNotes, []string{"tracking information", "tracking information"}) || !slices.Equal(report.PlanNotes, []string{"deferred warning"}) {
+	if !slices.Equal(report.Notes, []string{"ordinary information", "ordinary warning"}) || !slices.Equal(report.TrackingNotes, []string{"tracking information"}) || !slices.Equal(report.PlanNotes, []string{"deferred warning"}) {
 		t.Fatalf("compatibility notes = %#v", report)
 	}
 }

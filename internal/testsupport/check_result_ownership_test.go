@@ -5,9 +5,10 @@ import (
 	"go/format"
 	"go/parser"
 	"go/token"
-	"os"
+	"maps"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -39,7 +40,7 @@ func TestOrdinaryCheckProducerCensus(t *testing.T) {
 			"Tracking": 1, "adrRelatedResult": 1, "append": 8, "fullProfile": 2,
 			"isNested": 2, "len": 1, "lockPath": 1, "pendingADRResult": 1,
 			"pitfallResult": 1, "planResult": 1, "referenceResult": 1,
-			"residentRoots": 1, "root": 1, "trackingInformation": 2,
+			"residentRoots": 1, "root": 1, "trackingFindings": 2, "trackingInformation": 2,
 		},
 	}
 	for name, expected := range want {
@@ -56,17 +57,6 @@ func TestOrdinaryCheckProducerCensus(t *testing.T) {
 // invariant: tooling/cli:check-severity-by-protected-property (TestProducerRankPropertyCensus)
 func TestProducerRankPropertyCensus(t *testing.T) {
 	root := testsupport.RepoRoot(t)
-	files := []string{
-		"internal/generatedcheck/generatedcheck.go",
-		"internal/referencecheck/referencecheck.go",
-		"internal/plancheck/plancheck.go",
-		"internal/pitfallcheck/pitfallcheck.go",
-		"internal/vocabularycheck/vocabularycheck.go",
-		"internal/prosegate/prosegate.go",
-		"internal/memorycite/memorycite.go",
-		"internal/project/check.go",
-		"internal/project/currentstate.go",
-	}
 	want := []string{
 		`internal/generatedcheck/generatedcheck.go:GuideSizeAdvisory:severity.Warn|"heuristic-quality"`,
 		`internal/generatedcheck/generatedcheck.go:errorFinding:severity.Error|PropertyReproducibility`,
@@ -84,9 +74,12 @@ func TestProducerRankPropertyCensus(t *testing.T) {
 		`internal/vocabularycheck/vocabularycheck.go:warning:severity.Warn|PropertyHeuristic`,
 	}
 	var got []string
-	for _, path := range files {
-		got = append(got, findingConstructionCensus(t, root, path)...)
-	}
+	testsupport.WalkRepoSources(t, root, func(relative string, content []byte) {
+		file, qualifier, imported := parsedCheckResultConsumer(t, relative, content)
+		if imported {
+			got = append(got, findingConstructionCensus(t, relative, file, qualifier)...)
+		}
+	})
 	sort.Strings(got)
 	sort.Strings(want)
 	if !reflect.DeepEqual(got, want) {
@@ -101,38 +94,42 @@ func TestProducerRankPropertyCensus(t *testing.T) {
 // cannot reverse into project or application coordination.
 func TestRepositoryCheckerOwnershipCensus(t *testing.T) {
 	root := testsupport.RepoRoot(t)
-	owners := []string{
-		"internal/generatedcheck/generatedcheck.go",
-		"internal/referencecheck/referencecheck.go",
-		"internal/configcheck/configcheck.go",
-		"internal/plancheck/plancheck.go",
-		"internal/pitfallcheck/pitfallcheck.go",
-		"internal/vocabularycheck/vocabularycheck.go",
-		"internal/project/currentstate.go",
-		"internal/prosegate/prosegate.go",
-		"internal/memorycite/memorycite.go",
+	ownerPackages := map[string]bool{
+		"internal/configcheck": true, "internal/generatedcheck": true,
+		"internal/memorycite": true, "internal/pitfallcheck": true,
+		"internal/plancheck": true, "internal/prosegate": true,
+		"internal/referencecheck": true, "internal/vocabularycheck": true,
 	}
-	for _, owner := range owners {
-		assertImportsExclude(t, filepath.Join(root, owner), "internal/repositorycheck")
-	}
-	aggregator := filepath.Join(root, "internal/repositorycheck/repositorycheck.go")
-	assertExactImports(t, aggregator, []string{
+	aggregatorImports := map[string]bool{}
+	testsupport.WalkRepoSources(t, root, func(relative string, content []byte) {
+		directory := filepath.ToSlash(filepath.Dir(relative))
+		if ownerPackages[directory] || relative == "internal/project/currentstate.go" {
+			assertImportsExclude(t, relative, content, "internal/repositorycheck")
+		}
+		if directory != "internal/repositorycheck" {
+			return
+		}
+		file, err := parser.ParseFile(token.NewFileSet(), relative, content, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, imported := range importPaths(t, file) {
+			aggregatorImports[imported] = true
+		}
+		ast.Inspect(file, func(node ast.Node) bool {
+			condition, ok := node.(*ast.IfStmt)
+			if ok && strings.Contains(expressionSource(condition.Cond), ".Kind") {
+				t.Errorf("%s routes a result destination by evidence Kind", relative)
+			}
+			return true
+		})
+	})
+	assertExactImportSet(t, aggregatorImports, []string{
 		"fmt", "slices",
 		"github.com/hypnotox/agentic-workflows/internal/checkresult",
 		"github.com/hypnotox/agentic-workflows/internal/manifest",
 		"github.com/hypnotox/agentic-workflows/internal/presentation",
 		"github.com/hypnotox/agentic-workflows/internal/severity",
-	})
-	file, err := parser.ParseFile(token.NewFileSet(), aggregator, nil, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ast.Inspect(file, func(node ast.Node) bool {
-		condition, ok := node.(*ast.IfStmt)
-		if ok && strings.Contains(expressionSource(condition.Cond), ".Kind") {
-			t.Error("RepositoryChecker routes a result destination by evidence Kind")
-		}
-		return true
 	})
 }
 
@@ -164,17 +161,34 @@ func directCallCounts(fn *ast.FuncDecl) map[string]int {
 	return out
 }
 
-func findingConstructionCensus(t *testing.T, root, relative string) []string {
+func parsedCheckResultConsumer(t *testing.T, relative string, content []byte) (*ast.File, string, bool) {
 	t.Helper()
-	path := filepath.Join(root, relative)
-	content, err := os.ReadFile(path)
+	file, err := parser.ParseFile(token.NewFileSet(), relative, content, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	file, err := parser.ParseFile(token.NewFileSet(), path, content, 0)
-	if err != nil {
-		t.Fatal(err)
+	for _, spec := range file.Imports {
+		path, err := strconv.Unquote(spec.Path.Value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if path != "github.com/hypnotox/agentic-workflows/internal/checkresult" {
+			continue
+		}
+		qualifier := "checkresult"
+		if spec.Name != nil {
+			qualifier = spec.Name.Name
+			if qualifier == "." || qualifier == "_" {
+				t.Fatalf("%s imports checkresult with unsupported alias %q", relative, qualifier)
+			}
+		}
+		return file, qualifier, true
 	}
+	return file, "", false
+}
+
+func findingConstructionCensus(t *testing.T, relative string, file *ast.File, qualifier string) []string {
+	t.Helper()
 	var out []string
 	for _, declaration := range file.Decls {
 		fn, ok := declaration.(*ast.FuncDecl)
@@ -186,12 +200,12 @@ func findingConstructionCensus(t *testing.T, root, relative string) []string {
 			if !ok {
 				return true
 			}
-			if isCheckResultFindingType(literal.Type) {
+			if isCheckResultFindingType(literal.Type, qualifier) {
 				out = append(out, findingConstruction(t, relative, fn.Name.Name, literal))
 				return false
 			}
 			array, ok := literal.Type.(*ast.ArrayType)
-			if !ok || !isCheckResultFindingType(array.Elt) {
+			if !ok || !isCheckResultFindingType(array.Elt, qualifier) {
 				return true
 			}
 			for _, element := range literal.Elts {
@@ -207,13 +221,13 @@ func findingConstructionCensus(t *testing.T, root, relative string) []string {
 	return out
 }
 
-func isCheckResultFindingType(expression ast.Expr) bool {
+func isCheckResultFindingType(expression ast.Expr, qualifier string) bool {
 	selector, ok := expression.(*ast.SelectorExpr)
 	if !ok {
 		return false
 	}
 	ident, ok := selector.X.(*ast.Ident)
-	return ok && ident.Name == "checkresult" && selector.Sel.Name == "Finding"
+	return ok && ident.Name == qualifier && selector.Sel.Name == "Finding"
 }
 
 func findingConstruction(t *testing.T, path, function string, literal *ast.CompositeLit) string {
@@ -243,40 +257,37 @@ func expressionSource(expression ast.Expr) string {
 	return out.String()
 }
 
-func assertExactImports(t *testing.T, path string, want []string) {
+func importPaths(t *testing.T, file *ast.File) []string {
 	t.Helper()
-	file, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.ImportsOnly)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var got []string
-	for _, imp := range file.Imports {
-		value, err := strconv.Unquote(imp.Path.Value)
+	paths := make([]string, 0, len(file.Imports))
+	for _, imported := range file.Imports {
+		value, err := strconv.Unquote(imported.Path.Value)
 		if err != nil {
 			t.Fatal(err)
 		}
-		got = append(got, value)
+		paths = append(paths, value)
 	}
-	sort.Strings(got)
+	return paths
+}
+
+func assertExactImportSet(t *testing.T, gotSet map[string]bool, want []string) {
+	t.Helper()
+	got := slices.Sorted(maps.Keys(gotSet))
 	sort.Strings(want)
 	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("%s imports = %v, want exact policy-free allowlist %v", path, got, want)
+		t.Fatalf("RepositoryChecker package imports = %v, want exact policy-free allowlist %v", got, want)
 	}
 }
 
-func assertImportsExclude(t *testing.T, path, forbidden string) {
+func assertImportsExclude(t *testing.T, relative string, content []byte, forbidden string) {
 	t.Helper()
-	file, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.ImportsOnly)
+	file, err := parser.ParseFile(token.NewFileSet(), relative, content, parser.ImportsOnly)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, imp := range file.Imports {
-		value, err := strconv.Unquote(imp.Path.Value)
-		if err != nil {
-			t.Fatal(err)
-		}
+	for _, value := range importPaths(t, file) {
 		if strings.Contains(value, forbidden) {
-			t.Errorf("%s imports forbidden %q", path, value)
+			t.Errorf("%s imports forbidden %q", relative, value)
 		}
 	}
 }

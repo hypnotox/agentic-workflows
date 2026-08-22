@@ -265,7 +265,7 @@ func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Conte
 	results := []repositorycheck.Slot{}
 	if !found {
 		if len(tracking.Findings()) > 0 {
-			return repositorycheck.Slot{Result: tracking}, results, trackingInformation(tracking), nil
+			return repositorycheck.Slot{Result: trackingFindings(tracking)}, results, trackingInformation(tracking), nil
 		}
 		return repositorycheck.Slot{}, nil, checkresult.Result{}, errors.New("no lock (run awf render)")
 	}
@@ -307,7 +307,15 @@ func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Conte
 		results = append(results, repositorycheck.Slot{Result: related})
 		results = append(results, repositorycheck.Slot{Result: pendingADRResult(p, repo, ctx, corpus)})
 	}
-	return repositorycheck.Slot{Result: tracking}, results, trackingInformation(tracking), nil
+	return repositorycheck.Slot{Result: trackingFindings(tracking)}, results, trackingInformation(tracking), nil
+}
+
+func trackingFindings(result checkresult.Result) checkresult.Result {
+	tracking, err := checkresult.New(result.Findings(), nil)
+	if err != nil { // coverage-ignore: tracking owner already validates its immutable evidence
+		return checkresult.Result{}
+	}
+	return tracking
 }
 
 func trackingInformation(result checkresult.Result) checkresult.Result {

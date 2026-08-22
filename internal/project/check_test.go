@@ -849,10 +849,34 @@ func TestCheckLockedFilesSuppressesMissingForUntrackedOutputs(t *testing.T) {
 // invariant: rendering/sync-and-drift:generated-artifacts-tracked (TestCheckGeneratedTrackingNoGitAndNestedResidentExclusion)
 func TestCheckGeneratedTrackingNoGitAndNestedResidentExclusion(t *testing.T) {
 	t.Run("no Git", func(t *testing.T) {
-		p := testStateAt(t.TempDir())
+		root := scaffold(t, withTestGateCmd("prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n"))
+		p, err := Open(testContext(t), root)
+		if err != nil {
+			t.Fatal(err)
+		}
 		_, notes, err := checkGeneratedTracking(p.nested(), testRepo(p), testContext(t), &OutputPlan{})
 		if err != nil || len(notes) != 1 || !strings.Contains(notes[0], "unavailable outside a Git repository") {
 			t.Fatalf("no-Git tracking = notes %q, err %v", notes, err)
+		}
+		if err := syncProject(p); err != nil {
+			t.Fatal(err)
+		}
+		report, err := checkReportProject(p, testContext(t))
+		if err != nil {
+			t.Fatal(err)
+		}
+		const unavailable = "generated-artifact tracking is unavailable outside a Git repository"
+		if got := report.DirectTrackingInformation(); !slices.Equal(got, []string{unavailable}) {
+			t.Fatalf("no-Git report tracking information = %q, want one compatibility projection", got)
+		}
+		count := 0
+		for _, item := range report.Result.Information() {
+			if item.Evidence.Detail == unavailable {
+				count++
+			}
+		}
+		if count != 1 {
+			t.Fatalf("no-Git aggregate tracking information count = %d, want 1", count)
 		}
 	})
 	t.Run("nested resident output", func(t *testing.T) {
