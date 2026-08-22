@@ -5,7 +5,7 @@
 
 How awf surfaces refusals and results for caller action, and how error identity is declared, matched, and tested.
 
-**Applicability:** Global topic: applies repository-wide. It declares no bounded ownership selectors. Run `awf topic code-design/outcome-modeling --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Global topic: applies repository-wide. Bounded ownership selectors: `internal/checkresult/**`. Owning domain selectors: `internal/checkresult/**`, `internal/execution/**`, `internal/presentation/**`. Both ownership and owning-domain selectors must match. Run `awf topic code-design/outcome-modeling --coverage` for current applicable and owned paths and marker sites.
 
 This topic governs outcomes introduced by new work and sites deliberately converted under
 its authority, failure and success alike. Existing message-text identities, shallow

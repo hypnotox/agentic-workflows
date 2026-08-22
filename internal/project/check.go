@@ -16,6 +16,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
@@ -395,6 +396,7 @@ type CheckReport struct {
 	Information         []string
 	TrackingInformation []string
 	PlanWarnings        []string
+	Result              checkresult.Result
 	// Notes, TrackingNotes, and PlanNotes retain the pre-classification test and
 	// API projection. New operation reports set classified and use the fields above.
 	Notes         []string
@@ -408,7 +410,7 @@ func (r CheckReport) OrdinaryWarnings() []string {
 	if !r.classified {
 		return slices.Clone(r.Notes)
 	}
-	return slices.Clone(r.Warnings)
+	return resultFindingDetails(r.Result, severity.Warn, "advisory")
 }
 
 // PlanWarningNotes returns ranked plan warning notes for sink deduplication.
@@ -416,7 +418,7 @@ func (r CheckReport) PlanWarningNotes() []string {
 	if !r.classified {
 		return slices.Clone(r.PlanNotes)
 	}
-	return slices.Clone(r.PlanWarnings)
+	return resultFindingDetails(r.Result, severity.Warn, "plan-advisory")
 }
 
 // AggregateInformation returns unranked aggregate information notes.
@@ -424,7 +426,7 @@ func (r CheckReport) AggregateInformation() []string {
 	if !r.classified {
 		return nil
 	}
-	return slices.Clone(r.Information)
+	return resultInformationDetails(r.Result, "advisory")
 }
 
 // DirectTrackingInformation returns unranked tracking information shown by
@@ -433,7 +435,27 @@ func (r CheckReport) DirectTrackingInformation() []string {
 	if !r.classified {
 		return slices.Clone(r.TrackingNotes)
 	}
-	return slices.Clone(r.TrackingInformation)
+	return resultInformationDetails(r.Result, "tracking")
+}
+
+func resultFindingDetails(result checkresult.Result, rank severity.Rank, kind string) []string {
+	var details []string
+	for _, finding := range result.Findings() {
+		if finding.Rank == rank && finding.Evidence.Kind == kind {
+			details = append(details, finding.Evidence.Detail)
+		}
+	}
+	return details
+}
+
+func resultInformationDetails(result checkresult.Result, kind string) []string {
+	var details []string
+	for _, information := range result.Information() {
+		if information.Evidence.Kind == kind {
+			details = append(details, information.Evidence.Detail)
+		}
+	}
+	return details
 }
 
 const agentGuideAdvisoryBytes = 12 * 1024
@@ -483,9 +505,16 @@ func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context, semanti
 	}
 	advisories, err := advisoryNotesWithState(p, pitfalls, plans, op)
 	report, err := finishCheckReport(drift, planDrift, planWarnings, advisories, op, err)
+	if err != nil {
+		return CheckReport{}, err
+	}
 	report.TrackingInformation = trackingNotes
 	report.TrackingNotes = slices.Clone(trackingNotes)
-	return report, err
+	report.Result, err = classifiedCheckResult(report)
+	if err != nil { // coverage-ignore: owner producers above emit fixed ranks, nonempty properties, and nonempty evidence already covered at the checkresult boundary
+		return CheckReport{}, err
+	}
+	return report, nil
 }
 
 func finishCheckReport(drift, planDrift []manifest.Drift, planWarnings []string, advisories CheckAdvisories, op *OutputPlan, err error) (CheckReport, error) {
@@ -499,6 +528,53 @@ func finishCheckReport(drift, planDrift []manifest.Drift, planWarnings []string,
 		Information: advisories.Information, PlanWarnings: planWarnings, Notes: allNotes,
 		PlanNotes: slices.Clone(planWarnings), classified: true,
 	}, nil
+}
+
+const (
+	propertyAuthority       checkresult.Property = "authority"
+	propertyCorrectness     checkresult.Property = "correctness"
+	propertyReproducibility checkresult.Property = "reproducibility"
+	propertyHeuristic       checkresult.Property = "heuristic-quality"
+	propertyPlanDetail      checkresult.Property = "plan-detail-quality"
+)
+
+func classifiedCheckResult(report CheckReport) (checkresult.Result, error) {
+	findings := make([]checkresult.Finding, 0, len(report.Drift)+len(report.Warnings)+len(report.PlanWarnings))
+	information := make([]checkresult.Information, 0, len(report.Information)+len(report.TrackingInformation))
+	for _, drift := range report.Drift {
+		evidence := checkresult.Evidence{Kind: drift.Kind, Path: drift.Path, Detail: drift.Detail}
+		if drift.Kind == "unused-var" || drift.Kind == "unused-data" {
+			information = append(information, checkresult.Information{Evidence: evidence})
+			continue
+		}
+		findings = append(findings, checkresult.Finding{Rank: severity.Error, Property: driftProtectedProperty(drift.Kind), Evidence: evidence})
+	}
+	for _, warning := range report.Warnings {
+		findings = append(findings, checkresult.Finding{Rank: severity.Warn, Property: propertyHeuristic, Evidence: checkresult.Evidence{Kind: "advisory", Detail: warning}})
+	}
+	for _, warning := range report.PlanWarnings {
+		findings = append(findings, checkresult.Finding{Rank: severity.Warn, Property: propertyPlanDetail, Evidence: checkresult.Evidence{Kind: "plan-advisory", Detail: warning}})
+	}
+	for _, note := range report.Information {
+		information = append(information, checkresult.Information{Evidence: checkresult.Evidence{Kind: "advisory", Detail: note}})
+	}
+	for _, note := range report.TrackingInformation {
+		information = append(information, checkresult.Information{Evidence: checkresult.Evidence{Kind: "tracking", Detail: note}})
+	}
+	return checkresult.New(findings, information)
+}
+
+// driftProtectedProperty is the current check owner's explicit classification
+// adapter. Each extraction phase moves the corresponding case with its policy.
+func driftProtectedProperty(kind string) checkresult.Property {
+	switch {
+	case strings.HasPrefix(kind, "plan-"), strings.HasPrefix(kind, "adr-"), kind == "pending-adr-on-integration-branch":
+		return propertyAuthority
+	case kind == "untracked", kind == "unsynced", kind == "orphaned", kind == "missing", kind == "stale", kind == "hand-edited":
+		return propertyReproducibility
+	default:
+		return propertyCorrectness
+	}
 }
 
 func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool, plans []plan.Plan, op *OutputPlan) ([]manifest.Drift, []string, error) {
