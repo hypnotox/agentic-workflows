@@ -190,7 +190,7 @@ correction is allowed without unrelated cleanup riding along.
 | RF-008B | P1 | CONDITIONAL | Obsolete compatibility pruned below the support floor | RF-008A, managed repos upgraded |
 | RF-002 | P1 | COMPLETE | Residual project state separated from operations | RF-001 |
 | RF-003 | P1 | COMPLETE | One application owner for output planning and publication coordination | RF-002 |
-| RF-004 | P1 | READY | Check aggregation separated from check policy; severity in the result model | AF-013, RF-002 |
+| RF-004 | P1 | COMPLETE | Check aggregation separated from check policy; severity in the result model | AF-013, RF-002 |
 | RF-005 | P1 | READY | Current-state coordination extracted from project orchestration | RF-002 |
 | RF-006 | P1 | BLOCKED | `cmd/awf` reduced to parse, compose, invoke, render, exit | RF-002..RF-005 |
 | RF-007 | P2 | BLOCKED | Residual giant tests split by observable behaviour and semantic owner | RF-002..RF-006 |
@@ -256,12 +256,12 @@ correction is allowed without unrelated cleanup riding along.
 
 ### Program B start gate
 
-**Status: OPEN; B-F1 THROUGH B-F3 AND RF-003 COMPLETE.** Program A is complete; generated artifacts
-are stable under the new doctrine; changed behaviour has deterministic regression coverage; no known
-adopter-facing contradiction remains; RF-001 establishes the target dependency map, RF-002
-establishes immutable project state, and RF-003 establishes publishing coordination. RF-004 and
-RF-005 remain dependency-ready but execute sequentially. RF-008B and RF-014B remain conditional
-because nine managed repositories have not upgraded from 0.39.1.
+**Status: OPEN; B-F1 THROUGH B-F3, RF-003, AND RF-004 COMPLETE.** Program A is complete;
+generated artifacts are stable under the new doctrine; changed behaviour has deterministic regression
+coverage; no known adopter-facing contradiction remains; RF-001 establishes the target dependency
+map, RF-002 establishes immutable project state, RF-003 establishes publishing coordination, and
+RF-004 establishes policy-free repository-check aggregation. RF-005 is selected next. RF-008B and
+RF-014B remain conditional because nine managed repositories have not upgraded from 0.39.1.
 
 Program A milestone complete; generated artifacts stable under the new doctrine; new behaviour has
 regression tests; no known adopter-facing contradiction remains; compatibility support policy decided
@@ -949,6 +949,51 @@ abstraction; oracle strength.
 - **Unblocked:** RF-004 and RF-005 remain dependency-ready. B-F4 stays sequential and RF-004 is
   selected next by listed order. RF-006 still waits on RF-004 and RF-005; later issues retain their
   named dependencies and compatibility conditions.
+
+### RF-004
+
+- **Range:** Issue base `684063861`; implementation, ADR-0300 numbering, integration, and terminal
+  range `684063861..95844122b`.
+- **Protected contract:** Each repository check has one semantic owner and emits immutable results
+  with an explicit Error or Warning rank and protected property; Information remains unranked.
+  RepositoryChecker performs policy-free deterministic aggregation. Working and staged universes,
+  finding content and categories, Error-only exits, failure propagation, direct-child suppression,
+  plan-note deduplication, ordinary multiplicity, compatibility projections, and Publisher-prepared
+  plans and corpora remain intact. By owner ruling, relative placement among items within one Warning
+  list is not a compatibility boundary.
+- **Clean integration:** `internal/checkresult` owns the neutral result model; focused generated,
+  reference, configuration, plan, pitfall, vocabulary, glossary, current-state, prose, and memory
+  owners emit their results; `internal/repositorycheck` only aggregates and presents them. Command
+  code composes the distinct working and staged preparations and maps results to streams and exits.
+  Duplicate preparation, project-owned leaf policy, unreachable legacy helpers, and severity or
+  property inference from kind, category, or slice placement are removed. RF-005 current-state
+  coordination and later command extraction remain outside this issue.
+- **Files changed:** The neutral result and focused checker packages, RepositoryChecker, project and
+  Publisher preparation adapters, command composition and presentation, migrated owner tests,
+  mutation-sensitive ownership and typed-routing censuses, authored architecture and current-state
+  selectors and claims, ADR-0300, its implementation plan, generated topics, decision index, and lock
+  establish and prove the boundary.
+- **Verification:** Focused parity and mutation tests covered direct and aggregate output, categories,
+  exits, operational failures, deduplication, compatibility multiplicity, exact universes, typed
+  staged plan routing, and owner/package censuses. Repeated unmodified full gates passed, with the
+  final implementation gate covering 21,211 of 21,211 statements at 100 percent; dead-code and pin
+  checks were clean, and lint retained only three pre-existing `Uid` advisories. `./awf audit` over
+  the complete issue range reported zero findings. The local audit reported only the reviewed
+  no-changelog and defensive coverage-ignore advisories. Numbering and terminal transactions passed
+  their staged checks and gates.
+- **Deviations:** Independent assurance found that staged PlanChecker warnings initially lost typed
+  rank and property through a legacy note slice; settlement retained typed current-state, plan, and
+  plan-artifact results through command routing and added mutation-sensitive proof. A follow-up review
+  identified changed relative ordering inside the Warning list; the owner ruled that unordered list
+  placement is not protected, so ADR-0300 and the plan narrowed that boundary instead of adding
+  compatibility machinery. Renewed assurance then strengthened typed-route censuses and removed six
+  production-dead helpers. No adopter-facing changelog entry was added because finding semantics and
+  command behavior remain unchanged apart from unprotected Warning-item placement.
+- **Residual debt:** Current-state coordination, focused command use cases, residual mixed test
+  ownership, and historical-comment cleanup remain assigned to RF-005 through RF-007 and RF-010.
+  Compatibility deletion remains gated under RF-008B and RF-014B.
+- **Unblocked:** RF-005 is selected next in B-F4. RF-006 still waits on RF-005; later issues retain
+  their named dependencies and compatibility conditions.
 
 Close each later issue with the same evidence: identity; baseline and final range; protected contract;
 clean integration; files changed with reason; verification commands and results; material deviations;
