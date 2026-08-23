@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-23
 adrs: []
-status: Proposed
+status: Implemented
 ---
 # Plan: Split Residual Tests by Behavior Owner
 
