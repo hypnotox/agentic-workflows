@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -26,14 +27,23 @@ func requireMalformedPitfallError(t *testing.T, err error) {
 	}
 }
 
-func TestWorkingContextStatePropagatesSelectionFailure(t *testing.T) {
+func TestWorkingContextStateUsesFilesystemWithoutRepository(t *testing.T) {
 	root := ctxCmdFixture(t)
 	state, _, _, err := openProjectOperation(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := workingContextState(context.Background(), state, nil); err == nil {
-		t.Fatal("working context accepted a missing repository")
+	input, err := workingContextState(context.Background(), state, nil)
+	if err != nil {
+		t.Fatalf("working context filesystem fallback: %v", err)
+	}
+	if _, found := input.Snapshot().Tree.Lookup("internal/foo/x.go"); !found {
+		t.Fatal("working context filesystem fallback omitted project input")
+	}
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := workingContextState(canceled, state, nil); !errors.Is(err, context.Canceled) {
+		t.Fatalf("working context filesystem cancellation error = %v", err)
 	}
 }
 

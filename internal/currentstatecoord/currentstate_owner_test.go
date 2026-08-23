@@ -33,10 +33,51 @@ func contextState(root string) *projectstate.ProjectState {
 	return projectstate.NewDerivedWithFacts(root, resident.NewRoots(root, ""), false, config.Facts{}, catalog.Standard, catalog.Standard, nil)
 }
 
+func TestContextPreparationUsesSnapshotConfigForOperationState(t *testing.T) {
+	root := t.TempDir()
+	callerConfig := &config.Config{Profile: catalog.ProfileFull}
+	callerFacts, err := config.NewFacts(callerConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+	caller := projectstate.NewDerivedWithFacts(root, resident.NewRoots(root, "resident"), true, callerFacts, catalog.Standard, catalog.Standard, nil)
+	selectedConfig := &config.Config{Profile: catalog.ProfileCore}
+	prep, err := newContextPreparation(caller, selectedConfig, ownerTree(t), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if prep.State.Config().Profile != catalog.ProfileCore {
+		t.Fatalf("operation state profile = %q, want selected snapshot core", prep.State.Config().Profile)
+	}
+	fullOnlyChecked := false
+	for name, spec := range catalog.Standard.Skills {
+		if spec.FullOnly {
+			fullOnlyChecked = true
+			if _, found := prep.State.Catalog().Skills[name]; found {
+				t.Fatalf("operation state retained full-only caller skill %q", name)
+			}
+			break
+		}
+	}
+	if !fullOnlyChecked {
+		t.Fatal("standard catalog has no full-only skill to falsify caller selection")
+	}
+	if prep.State.Roots() != caller.Roots() || prep.State.Nested() != caller.Nested() || !reflect.DeepEqual(prep.State.Targets(), caller.Targets()) {
+		t.Fatalf("operation state changed stable caller facts: %#v", prep.State)
+	}
+	invalidConfig := &config.Config{Profile: catalog.ProfileFull, Vars: map[string]any{"unsupported": make(chan int)}}
+	if _, err := newContextPreparation(caller, invalidConfig, ownerTree(t), nil); err == nil || !strings.Contains(err.Error(), "snapshot config facts") {
+		t.Fatalf("invalid selected snapshot facts error = %v", err)
+	}
+}
+
 func TestContextPreparationLockIsDefensive(t *testing.T) {
 	root := t.TempDir()
 	lock := &manifest.Lock{Files: map[string]manifest.Entry{"generated": {}}, BridgeAttestation: &manifest.BridgeAttestation{LegacyADRGaps: []int{1}}}
-	prep := newContextPreparation(contextState(root), &config.Config{}, ownerTree(t), lock)
+	prep, err := newContextPreparation(contextState(root), &config.Config{Profile: catalog.ProfileFull}, ownerTree(t), lock)
+	if err != nil {
+		t.Fatal(err)
+	}
 	first := prep.Lock()
 	first.Files["mutated"] = manifest.Entry{}
 	first.BridgeAttestation.LegacyADRGaps[0] = 9
@@ -76,8 +117,14 @@ func TestPrepareWorkingContextSelectedUniverseErrors(t *testing.T) {
 	}
 
 	outside := t.TempDir()
-	if _, err := PrepareWorkingContext(contextState(outside), nil, ctx); !errors.Is(err, awfgit.ErrNotARepository) {
-		t.Fatalf("outside repository error = %v", err)
+	if _, err := PrepareWorkingContext(contextState(outside), nil, ctx); err == nil || !strings.Contains(err.Error(), "working snapshot has no .awf/config.yaml") {
+		t.Fatalf("outside repository filesystem fallback error = %v", err)
+	}
+	writeContextFile(t, outside, ".awf/config.yaml", "prefix: x\nprofile: full\nintegrationBranch: main\n")
+	canceled, cancel := context.WithCancel(ctx)
+	cancel()
+	if _, err := PrepareWorkingContext(contextState(outside), nil, canceled); !errors.Is(err, context.Canceled) {
+		t.Fatalf("filesystem fallback cancellation error = %v", err)
 	}
 
 	for _, tc := range []struct {

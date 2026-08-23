@@ -94,6 +94,20 @@ func ctxCmdFixture(t *testing.T) string {
 	return root
 }
 
+func TestRunContextAdoptedNonGitProject(t *testing.T) {
+	root := ctxCmdFixture(t)
+	if err := os.RemoveAll(filepath.Join(root, ".git")); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := runContext(testContext(t), root, []string{"internal/foo/x.go"}, false, "", false, false, nil, &out); err != nil {
+		t.Fatalf("context in adopted non-Git project: %v", err)
+	}
+	if got := out.String(); !strings.Contains(got, "alpha/one | One") || !strings.Contains(got, "classification: covered") {
+		t.Fatalf("non-Git context omitted live authority:\n%s", got)
+	}
+}
+
 func TestRunContextHumanAndFacets(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx

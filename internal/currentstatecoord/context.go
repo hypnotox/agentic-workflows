@@ -42,6 +42,9 @@ func PrepareWorkingContext(state *projectstate.ProjectState, repo *awfgit.Repo, 
 		return nil, errors.New("context preparation: missing project state")
 	}
 	tree, err := workingTree(state.Root(), repo, ctx)
+	if errors.Is(err, awfgit.ErrNotARepository) {
+		tree, err = snapshot.FilesystemTree(ctx, state.Root())
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +59,7 @@ func PrepareWorkingContext(state *projectstate.ProjectState, repo *awfgit.Repo, 
 	if !found {
 		return nil, fmt.Errorf("working snapshot has no %s/config.yaml", config.DirName)
 	}
-	return newContextPreparation(state, cfg, tree, lock), nil
+	return newContextPreparation(state, cfg, tree, lock)
 }
 
 // PrepareStagedContext selects only the index universe for staged context
@@ -92,7 +95,7 @@ func PrepareStagedContext(ctx context.Context, root string) (*ContextPreparation
 		return nil, err
 	}
 	state := projectstate.NewDerivedWithFacts(root, resident.NewRoots(root, ""), prefix != "", facts, selected, complete, targets)
-	return newContextPreparation(state, cfg, tree, lock), nil
+	return newContextPreparation(state, cfg, tree, lock)
 }
 
 // Tree returns the immutable selected snapshot for a project-owned comparison.
@@ -101,8 +104,14 @@ func (p *ContextPreparation) Tree() *snapshot.Tree { return p.tree }
 // Lock returns a defensive projection for a project-owned comparison.
 func (p *ContextPreparation) Lock() *manifest.Lock { return p.lock.Clone() }
 
-func newContextPreparation(state *projectstate.ProjectState, cfg *config.Config, tree *snapshot.Tree, lock *manifest.Lock) *ContextPreparation {
-	cat := state.Catalog()
+func newContextPreparation(state *projectstate.ProjectState, cfg *config.Config, tree *snapshot.Tree, lock *manifest.Lock) (*ContextPreparation, error) {
+	complete := state.CompleteCatalog()
+	selected := catalog.NewProfileView(complete, cfg.Profile).Catalog()
+	operationState, err := projectstate.New(state.Root(), state.Roots(), state.Nested(), cfg, selected, complete, state.Targets())
+	if err != nil {
+		return nil, err
+	}
+	cat := operationState.Catalog()
 	docs := map[string]string{}
 	singletons := map[string]string{}
 	for name, entry := range cat.Docs {
@@ -117,7 +126,7 @@ func newContextPreparation(state *projectstate.ProjectState, cfg *config.Config,
 			singletons[entry.TemplateKey] = out
 		}
 	}
-	return &ContextPreparation{State: state, Config: cfg, Reader: snapshotReader{tree}, layout: contextinput.Layout{DocsDir: config.DocsDir, ADRDir: config.DocsDir + "/decisions", IndexMd: config.DocsDir + "/decisions/INDEX.md", PlansDir: config.DocsDir + "/plans", DomainsDir: config.DocsDir + "/domains", Docs: docs, Singletons: singletons}, tree: tree, lock: lock, eligible: eligiblePaths(tree, lock, cfg.ContextIgnore)}
+	return &ContextPreparation{State: operationState, Config: cfg, Reader: snapshotReader{tree}, layout: contextinput.Layout{DocsDir: config.DocsDir, ADRDir: config.DocsDir + "/decisions", IndexMd: config.DocsDir + "/decisions/INDEX.md", PlansDir: config.DocsDir + "/plans", DomainsDir: config.DocsDir + "/domains", Docs: docs, Singletons: singletons}, tree: tree, lock: lock, eligible: eligiblePaths(tree, lock, cfg.ContextIgnore)}, nil
 }
 
 // CompleteContext consumes Publisher's defensive semantic projections. The
