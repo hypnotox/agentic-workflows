@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
-	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
@@ -46,11 +45,6 @@ func BuildCheckReport(state *ProjectState, cfg *config.Config, repo *awfgit.Repo
 // BuildListDocument renders the requested project inventory.
 func BuildListDocument(state *ProjectState, cfg *config.Config, kindFilter string) (presentation.Document, error) {
 	return listDocument(cfg, state.catalog(), kindFilter)
-}
-
-// Audit evaluates the selected repository history against project configuration.
-func Audit(root string, cfg *config.Config, ctx context.Context, base, head string) ([]audit.Finding, int, error) {
-	return auditOperation(root, cfg, ctx, base, head)
 }
 
 // NewADR scaffolds one branch-aware ADR through the supplied repository.

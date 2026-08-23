@@ -10,11 +10,9 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
-	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
-	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/projectstate"
@@ -314,33 +312,6 @@ func fullProfile(p renderInputs) bool { return p.cfg == nil || p.cfg.Profile != 
 
 func lockPath(root string) string {
 	return config.LockPath(root)
-}
-
-// Audit runs the process-conformance audit (ADR-0017) over the caller-supplied
-// commit range. No config key supplies a base: the range is always explicit
-// (ADR-0127 Decision 3).
-func auditOperation(root string, cfg *config.Config, ctx context.Context, base, head string) ([]audit.Finding, int, error) {
-	s := audit.Resolve(config.AuditScopes(cfg.Audit))
-	generated := map[string]bool{}
-	lock, _, err := manifest.LoadOptional(lockPath(root))
-	if err != nil {
-		return nil, 0, err
-	}
-	if lock != nil {
-		for path := range lock.Files {
-			generated[path] = true
-		}
-	}
-	docsDir := config.DocsDir
-	adrDir := docsDir + "/decisions"
-	return audit.Run(ctx, root, base, head, audit.Inputs{
-		Settings:       s,
-		GeneratedPaths: generated,
-		ADRDir:         adrDir,
-		DocsDir:        docsDir,
-		IndexMd:        adrDir + "/INDEX.md",
-		PlansDir:       docsDir + "/plans",
-	})
 }
 
 // onIntegrationBranch reports whether this checkout is positively identified as

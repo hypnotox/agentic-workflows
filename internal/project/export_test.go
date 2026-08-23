@@ -277,7 +277,25 @@ func newPitfallProject(state *ProjectState, title string) (presentation.Document
 	return NewPitfall(state.Root(), title)
 }
 func auditProject(state *ProjectState, ctx context.Context, base, head string) ([]audit.Finding, int, error) {
-	return Audit(state.Root(), testConfig(state), ctx, base, head)
+	generated := map[string]bool{}
+	lock, _, err := manifest.LoadOptional(config.LockPath(state.Root()))
+	if err != nil {
+		return nil, 0, err
+	}
+	if lock != nil {
+		for path := range lock.Files {
+			generated[path] = true
+		}
+	}
+	docsDir := config.DocsDir
+	return audit.Run(ctx, state.Root(), base, head, audit.Inputs{
+		Settings:       audit.Resolve(config.AuditScopes(testConfig(state).Audit)),
+		GeneratedPaths: generated,
+		ADRDir:         docsDir + "/decisions",
+		DocsDir:        docsDir,
+		IndexMd:        docsDir + "/decisions/INDEX.md",
+		PlansDir:       docsDir + "/plans",
+	})
 }
 func checkCommitAuthorizationProject(state *ProjectState, ctx context.Context, msg commitmsg.Message) (currentstatecoord.CommitAuthorizationResult, error) {
 	return currentstatecoord.CheckCommitAuthorization(state.Root(), testRepo(state), ctx, msg)

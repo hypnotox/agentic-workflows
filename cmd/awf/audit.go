@@ -8,7 +8,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
-	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
 func runAudit(ctx context.Context, root, rangeArg string, stdout io.Writer) error {
@@ -23,23 +22,19 @@ func runAudit(ctx context.Context, root, rangeArg string, stdout io.Writer) erro
 	if err != nil {
 		return err
 	}
-	findings, commits, err := project.Audit(root, cfg, ctx, base, head)
+	outcome, err := audit.RunConfigured(ctx, root, cfg, base, head)
 	if err != nil {
 		return err
 	}
-	report, err := audit.Report(findings, commits, base, head)
-	if err != nil { // coverage-ignore: audit owns fixed grammar-valid semantic fields
-		return err
-	}
-	document, err := report.Document()
+	document, err := outcome.Report.Document()
 	if err != nil { // coverage-ignore: the audit mapping has already validated every shape
 		return err
 	}
 	if err := presentation.Render(stdout, document); err != nil {
 		return err
 	}
-	if report.Status == "failed" {
-		return &producedReportError{fmt.Errorf("awf audit: error-ranked findings over %d commit(s) in %s..%s", commits, base, head)}
+	if outcome.Failed {
+		return &producedReportError{fmt.Errorf("awf audit: error-ranked findings over %d commit(s) in %s..%s", outcome.Commits, base, head)}
 	}
 	return nil
 }
