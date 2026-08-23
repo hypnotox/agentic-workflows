@@ -23,6 +23,46 @@ func readProduction(t *testing.T, root, rel string) string {
 	return string(data)
 }
 
+func publisherImportName(file *ast.File) string {
+	for _, spec := range file.Imports {
+		path, err := strconv.Unquote(spec.Path.Value)
+		if err != nil || path != "github.com/hypnotox/agentic-workflows/internal/publisher" {
+			continue
+		}
+		if spec.Name != nil {
+			return spec.Name.Name
+		}
+		return "publisher"
+	}
+	return ""
+}
+
+func publisherNewPrepareCall(construction *ast.CallExpr, publisherName string) bool {
+	constructor, ok := construction.Fun.(*ast.SelectorExpr)
+	if !ok || constructor.Sel.Name != "New" {
+		return false
+	}
+	return isIdent(constructor.X, publisherName)
+}
+
+func completePublisherPreparationValid(t *testing.T, expression, publisherName string) bool {
+	t.Helper()
+	expr, err := parser.ParseExpr(expression)
+	if err != nil {
+		t.Fatal(err)
+	}
+	prepare, ok := expr.(*ast.CallExpr)
+	if !ok {
+		return false
+	}
+	selector, ok := prepare.Fun.(*ast.SelectorExpr)
+	if !ok || selector.Sel.Name != "Prepare" {
+		return false
+	}
+	construction, ok := selector.X.(*ast.CallExpr)
+	return ok && publisherNewPrepareCall(construction, publisherName)
+}
+
 // invariant: rendering/project-output-plan:check-report-single-plan (TestPublishingConsumerPlanIdentity)
 func TestPublishingConsumerPlanIdentity(t *testing.T) {
 	root := testsupport.RepoRoot(t)
@@ -50,7 +90,7 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 		injectedPrepare, plan, residentMarker                 int
 	}
 	byFunction := map[string]calls{}
-	publisherPrepareSites, publisherPlanSites := 0, 0
+	publisherPrepareSites, publisherNewPrepareSites, publisherPlanSites := 0, 0, 0
 	for _, path := range files {
 		if strings.HasSuffix(path, "_test.go") {
 			continue
@@ -59,6 +99,7 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		publisherName := publisherImportName(file)
 		for _, declaration := range file.Decls {
 			fn, ok := declaration.(*ast.FuncDecl)
 			if !ok || fn.Body == nil {
@@ -91,16 +132,21 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 						if receiverIsIdent && receiver.Name == "execution" {
 							return true
 						}
-						publisherPrepareSites++
 						allowed := receiverIsIdent && receiver.Name == "composed" && (fn.Name.Name == "preparePublisher" || fn.Name.Name == "Run")
 						if call, ok := target.X.(*ast.CallExpr); ok {
 							constructor, constructorOK := call.Fun.(*ast.Ident)
 							allowed = constructorOK && constructor.Name == "composePublisher" && fn.Name.Name == "probeCollisions"
-							if constructor, ok := call.Fun.(*ast.SelectorExpr); ok && constructor.Sel.Name == "New" && fn.Name.Name == "complete" {
-								allowed = true
+							if constructor, ok := call.Fun.(*ast.SelectorExpr); ok && constructor.Sel.Name == "New" {
+								isPublisherNew := publisherNewPrepareCall(call, publisherName)
+								allowed = isPublisherNew && fn.Name.Name == "complete"
+								if isPublisherNew {
+									publisherNewPrepareSites++
+								}
 							}
 						}
-						if !allowed {
+						if allowed {
+							publisherPrepareSites++
+						} else {
 							t.Errorf("unexpected Publisher preparation site %s in %s", target.Sel.Name, fn.Name.Name)
 						}
 					case "Plan":
@@ -132,6 +178,15 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 	}
 	if publisherPrepareSites != 5 || publisherPlanSites != 0 {
 		t.Errorf("Publisher construction sites = %d Prepare and %d direct Plan, want check, context, command, final-init, and temporary collision-probe semantic seams with no separate Publisher plan route", publisherPrepareSites, publisherPlanSites)
+	}
+	if publisherNewPrepareSites != 1 {
+		t.Errorf("package-qualified Publisher New(...).Prepare() sites = %d, want the one complete route", publisherNewPrepareSites)
+	}
+	if !completePublisherPreparationValid(t, "pub.New(state, config, reader, version).Prepare()", "pub") {
+		t.Fatal("package-qualified Publisher New(...).Prepare() fixture failed")
+	}
+	if completePublisherPreparationValid(t, "other.New(state, config, reader, version).Prepare()", "pub") {
+		t.Fatal("another package's New(...).Prepare() was accepted as Publisher preparation")
 	}
 	expected := map[string]calls{
 		"preparePublisher":                {},
