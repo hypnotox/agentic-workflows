@@ -19,16 +19,25 @@ type Sync func(context.Context, string) (presentation.Mutation, error)
 // composed by the command because command execution owns the concrete gate.
 type Gate func(context.Context, string) error
 
-// ProjectPresent reports whether root contains an awf project. The focused
-// migration-owner inputs below are required because migrate already owns lower
-// upgrade mechanisms. cmd/awf supplies their concrete implementations.
+// ProjectPresent reports whether root contains an awf project.
 type ProjectPresent func(string) bool
+
+// AuthorityLockPath resolves the active migration authority lock for root.
 type AuthorityLockPath func(string) string
+
+// SchemaGate reports root's migration relation and schema generation.
 type SchemaGate func(string) (string, int, error)
+
+// SchemaAheadError constructs the refusal for an unsupported future schema.
 type SchemaAheadError func(int) error
+
+// Migration applies the migration sequence and returns its semantic results.
 type Migration func(context.Context, string) (MigrationResult, error)
+
+// CurrentSchemaChange describes stamping the current schema generation.
 type CurrentSchemaChange func() string
 
+// MigrationResult records applied migration steps and user-facing changes.
 type MigrationResult struct {
 	Applied []string
 	Changes []string
