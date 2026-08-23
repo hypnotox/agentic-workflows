@@ -2,18 +2,17 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/initspec"
 	"github.com/hypnotox/agentic-workflows/internal/project"
-	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -269,37 +268,11 @@ func (w *nthInitErrorWriter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func TestFinishInitSyncFailureRollsBackOnlyScaffoldedConfig(t *testing.T) {
-	for _, scaffolded := range []bool{false, true} {
-		t.Run(strconv.FormatBool(scaffolded), func(t *testing.T) {
-			cfgPath := filepath.Join(t.TempDir(), ".awf", "config.yaml")
-			if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil {
-				t.Fatal(err)
-			}
-			if err := os.WriteFile(cfgPath, []byte("config"), 0o644); err != nil {
-				t.Fatal(err)
-			}
-			want := errors.New("sync failed")
-			if err := finishInitSyncFailure(cfgPath, scaffolded, want); !errors.Is(err, want) {
-				t.Fatalf("sync error = %v, want %v", err, want)
-			}
-			_, err := os.Stat(cfgPath)
-			if scaffolded && !os.IsNotExist(err) {
-				t.Fatalf("scaffolded config survived rollback: %v", err)
-			}
-			if !scaffolded && err != nil {
-				t.Fatalf("existing config was removed: %v", err)
-			}
-		})
-	}
-}
-
 func TestInitProjectLoaderPropagatesFailure(t *testing.T) {
-	forceNonInteractive(t)
 	want := errors.New("loader failed")
-	err := runInitWithProjectLoader(testContext(t), scaffoldProject(t), true, false, nil, "", io.Discard, func(string) (*project.Loader, error) {
+	err := runInitWithProjectLoader(testContext(t), scaffoldProject(t), true, false, nil, "", strings.NewReader(""), false, io.Discard, func(string) (*project.Loader, error) {
 		return nil, want
-	})
+	}, func(context.Context, string) error { return nil })
 	if !errors.Is(err, want) {
 		t.Fatalf("loader error = %v, want %v", err, want)
 	}
@@ -342,28 +315,11 @@ func TestInitSyncFailureKeepsExistingAuthorityAndSuppressesOutcome(t *testing.T)
 	}
 }
 
-func TestInitAdvisoryNotesPropagatesPreparationFailure(t *testing.T) {
-	want := errors.New("preparation failed")
-	_, err := initAdvisoryNotes(nil, nil, func(*project.ProjectState, *config.Config) (publisher.Preparation, error) {
-		return publisher.Preparation{}, want
-	})
-	if !errors.Is(err, want) {
-		t.Fatalf("preparation error = %v, want %v", err, want)
-	}
-}
-
 func TestRenderInitOutcomePropagatesFailures(t *testing.T) {
-	want := errors.New("advisory failed")
-	if err := renderInitOutcome(nil, nil, initspec.Outcome{ConfigPath: "config"}, io.Discard, func(*project.ProjectState, *config.Config) ([]string, error) {
-		return nil, want
-	}); !errors.Is(err, want) {
-		t.Fatalf("advisory error = %v, want %v", err, want)
-	}
-	advisories := func(*project.ProjectState, *config.Config) ([]string, error) { return nil, nil }
-	if err := renderInitOutcome(nil, nil, initspec.Outcome{ConfigPath: "bad\npath"}, io.Discard, advisories); err == nil {
+	if err := renderInitOutcome(initspec.Outcome{ConfigPath: "bad\npath"}, io.Discard); err == nil {
 		t.Fatal("invalid outcome accepted")
 	}
-	if err := renderInitOutcome(nil, nil, initspec.Outcome{ConfigPath: "config"}, errorWriter{}, advisories); err == nil || !strings.Contains(err.Error(), "write failed") {
+	if err := renderInitOutcome(initspec.Outcome{ConfigPath: "config"}, errorWriter{}); err == nil || !strings.Contains(err.Error(), "write failed") {
 		t.Fatalf("writer error = %v", err)
 	}
 }

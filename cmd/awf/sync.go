@@ -37,8 +37,22 @@ func runSync(ctx context.Context, root string, stdout io.Writer) error {
 }
 
 func runSyncPrinting(ctx context.Context, loader *project.Loader, root string, seed *publisher.InitAuthority, stdout io.Writer) error {
-	mutation, _, _, err := syncMutation(ctx, loader, root, seed)
+	state, cfg, err := loader.OpenForOperation(ctx, root)
 	if err != nil {
+		return err
+	}
+	composed := composePublisher(state, cfg)
+	var result publisher.Result
+	if seed == nil {
+		result, err = composed.Sync()
+	} else {
+		result, err = composed.Initialize(*seed)
+	}
+	if err != nil {
+		return err
+	}
+	mutation, err := result.Mutation()
+	if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
 		return err
 	}
 	return renderSyncMutation(stdout, mutation)
@@ -50,26 +64,4 @@ func renderSyncMutation(stdout io.Writer, mutation presentation.Mutation) error 
 		return err
 	}
 	return presentation.Render(stdout, document)
-}
-
-func syncMutation(ctx context.Context, loader *project.Loader, root string, seed *publisher.InitAuthority) (presentation.Mutation, *project.ProjectState, *config.Config, error) {
-	state, cfg, err := loader.OpenForOperation(ctx, root)
-	if err != nil {
-		return presentation.Mutation{}, nil, nil, err
-	}
-	pub := composePublisher(state, cfg)
-	var result publisher.Result
-	if seed == nil {
-		result, err = pub.Sync()
-	} else {
-		result, err = pub.Initialize(*seed)
-	}
-	if err != nil {
-		return presentation.Mutation{}, nil, nil, err
-	}
-	mutation, err := result.Mutation()
-	if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
-		return presentation.Mutation{}, nil, nil, err
-	}
-	return mutation, state, cfg, nil
 }

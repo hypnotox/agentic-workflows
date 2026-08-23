@@ -30,6 +30,11 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	initFiles, err := filepath.Glob(filepath.Join(root, "internal", "initop", "*.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	files = append(files, initFiles...)
 	type calls struct {
 		preparePublisher, operationPreparation, operationPlan int
 		injectedPrepare, plan, residentMarker                 int
@@ -77,7 +82,8 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 							return true
 						}
 						publisherPrepareSites++
-						if fn.Name.Name != "preparePublisher" || !receiverIsIdent || receiver.Name != "composed" {
+						allowed := receiverIsIdent && receiver.Name == "composed" && (fn.Name.Name == "preparePublisher" || fn.Name.Name == "Run")
+						if !allowed {
 							t.Errorf("unexpected Publisher preparation site %s in %s", target.Sel.Name, fn.Name.Name)
 						}
 					case "Plan":
@@ -87,8 +93,9 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 						}
 						composed, ok := target.X.(*ast.CallExpr)
 						constructor, constructorOK := composed.Fun.(*ast.Ident)
-						if !ok || !constructorOK || constructor.Name != "composePublisher" || fn.Name.Name != "operationPlan" {
-							t.Errorf("%s calls Publisher Plan outside the single plan-only seam", fn.Name.Name)
+						allowed := ok && constructorOK && constructor.Name == "composePublisher" && fn.Name.Name == "probeCollisions"
+						if !allowed {
+							t.Errorf("%s calls Publisher Plan outside an owned plan-only seam", fn.Name.Name)
 							break
 						}
 						publisherPlanSites++
@@ -106,8 +113,8 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 			}
 		}
 	}
-	if publisherPrepareSites != 1 || publisherPlanSites != 1 {
-		t.Errorf("Publisher construction sites = %d Prepare and %d Plan, want one semantic and one plan-only outer seam", publisherPrepareSites, publisherPlanSites)
+	if publisherPrepareSites != 2 || publisherPlanSites != 1 {
+		t.Errorf("Publisher construction sites = %d Prepare and %d Plan, want command and init-operation semantic seams plus the init collision plan-only seam", publisherPrepareSites, publisherPlanSites)
 	}
 	expected := map[string]calls{
 		"preparePublisher":                {},
@@ -116,8 +123,7 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 		"stagedDriftResult":               {preparePublisher: 1, plan: 1},
 		"stagedContextState":              {preparePublisher: 1, plan: 1},
 		"productionRepoCheckDependencies": {operationPreparation: 1, plan: 1},
-		"initAdvisoryNotes":               {injectedPrepare: 1, plan: 1},
-		"probeCollisions":                 {operationPlan: 1},
+		"Run":                             {plan: 1},
 		"openEffortComposition":           {operationPreparation: 1, residentMarker: 1},
 	}
 	// preparePublisher's one direct .Prepare call is separately counted above;
@@ -130,13 +136,10 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 	// The check and advisory consumers must hand both projections the same local
 	// preparation variable. The exact AST argument census makes replacing either
 	// use with another preparation (or adding a second call) fail this proof.
-	for _, rel := range []string{"cmd/awf/checkrepo.go", "cmd/awf/init.go"} {
+	for _, rel := range []string{"cmd/awf/checkrepo.go", "internal/initop/init.go"} {
 		source := readProduction(t, root, rel)
 		if strings.Count(source, "prepared.Plan(), projectSemantics(prepared)") != 1 {
 			t.Errorf("%s does not reuse one preparation for plan and semantics", rel)
-		}
-		if rel == "cmd/awf/init.go" && strings.Count(source, "initAdvisoryNotes(state, cfg, operationPreparation)") != 1 {
-			t.Errorf("%s does not pass the one Publisher preparation seam to init advisories", rel)
 		}
 	}
 }
@@ -452,11 +455,17 @@ func TestPublishingPlanningOwnership(t *testing.T) {
 	}
 	cmdSources := map[string]string{
 		"check":                readProduction(t, root, "cmd/awf/checkrepo.go"),
-		"initialization":       readProduction(t, root, "cmd/awf/init.go"),
+		"initialization":       readProduction(t, root, "internal/initop/init.go"),
 		"resident-marker":      readProduction(t, root, "cmd/awf/effort.go"),
 		"outer/staged/context": readProduction(t, root, "cmd/awf/publishing.go"),
 	}
 	for class, source := range cmdSources {
+		if class == "initialization" {
+			if !strings.Contains(source, "composed.Prepare()") {
+				t.Errorf("%s consumer does not visibly prepare through its focused operation", class)
+			}
+			continue
+		}
 		if !strings.Contains(source, "operationPreparation") && class != "outer/staged/context" {
 			t.Errorf("%s consumer does not visibly prepare through outer composition", class)
 		}

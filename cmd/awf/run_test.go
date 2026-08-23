@@ -216,8 +216,8 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 		{file: "projectstate.go", owner: "openProjectOperation", name: "OpenForOperation"}:                   2,
 		{file: "sync.go", owner: "newProjectLoader", name: "NewLoader"}:                                      1,
 		{file: "sync.go", owner: "newProjectLoader", name: "NewLoaderWithoutRepository"}:                     1,
-		{file: "sync.go", owner: "syncMutation", name: "OpenForOperation"}:                                   1,
-		{file: "sync.go", owner: "syncMutation", name: "Sync"}:                                               1,
+		{file: "sync.go", owner: "runSyncPrinting", name: "OpenForOperation"}:                                1,
+		{file: "sync.go", owner: "runSyncPrinting", name: "Sync"}:                                            1,
 		{file: "upgrade_presentation.go", owner: "productionUpgradeSyncDependencies", name: "Sync"}:          1,
 		{file: "upgrade_presentation.go", owner: "upgradeSyncMutationWith", name: "OpenForOperation"}:        1,
 		{file: "adr.go", owner: "runADR", name: "Sync"}:                                                      1,
@@ -1122,14 +1122,10 @@ func TestGateRejectsStaleSchema(t *testing.T) {
 	}
 }
 
-func TestProbeCollisionsOpenError(t *testing.T) {
-	ctx := testContext(t)
+func TestInitCollisionProbeOpenError(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, "prefix: [bad\n")
-	if _, err := probeCollisions(testContext(t), root); err == nil {
-		t.Fatal("expected config open error")
-	}
-	if err := runInit(ctx, root, false, false, nil, "", io.Discard); err == nil {
+	if err := runInit(testContext(t), root, false, false, nil, "", io.Discard); err == nil {
 		t.Fatal("expected init probe error")
 	}
 }
@@ -1333,16 +1329,9 @@ func TestInitAbortsWhenInitCollisionsFails(t *testing.T) {
 	writeMalformedPitfall(t, root)
 
 	var out bytes.Buffer
-	loaderReached := false
-	err := runInitWithProjectLoader(testContext(t), root, true, false, nil, "", &out, func(string) (*project.Loader, error) {
-		loaderReached = true
-		return nil, errors.New("loader reached after collision failure")
-	})
+	err := runInit(testContext(t), root, true, false, nil, "", &out)
 	if err == nil || !strings.Contains(err.Error(), "bad.md") || !strings.Contains(err.Error(), "missing frontmatter") {
 		t.Fatalf("init collision error = %v, want malformed pitfall", err)
-	}
-	if loaderReached {
-		t.Fatal("init continued to loader after collision failure")
 	}
 	if out.Len() != 0 {
 		t.Fatalf("init stdout = %q, want empty", out.String())

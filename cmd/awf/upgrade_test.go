@@ -494,17 +494,6 @@ func TestPublicSyncPartialResultHasDivergentUpgradeAndSyncPresentation(t *testin
 	t.Run("ordinary sync discards the real partial result", func(t *testing.T) {
 		root := scaffoldProject(t)
 		preparePublicSyncLaterFailure(t, root)
-		loader, err := newProjectLoader(root)
-		if err != nil {
-			t.Fatal(err)
-		}
-		mutation, _, _, syncErr := syncMutation(testContext(t), loader, root, nil)
-		if syncErr == nil {
-			t.Fatal("ordinary sync accepted an unreplaceable later output")
-		}
-		if mutation.Status != "" || len(mutation.Changes) != 0 || len(mutation.Notes) != 0 || len(mutation.NextActions) != 0 {
-			t.Fatalf("ordinary sync mutation = %#v, want empty mutation on error", mutation)
-		}
 		var stdout bytes.Buffer
 		if err := runSync(testContext(t), root, &stdout); err == nil {
 			t.Fatal("ordinary sync command accepted an unreplaceable later output")

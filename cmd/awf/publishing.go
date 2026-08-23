@@ -8,7 +8,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/contextinput"
 	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
-	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
 )
@@ -23,10 +22,6 @@ func preparePublisher(composed *publisher.Publisher) (publisher.Preparation, err
 
 func operationPreparation(state *project.ProjectState, cfg *config.Config) (publisher.Preparation, error) {
 	return preparePublisher(composePublisher(state, cfg))
-}
-
-func operationPlan(state *project.ProjectState, cfg *config.Config) (outputplan.Plan, error) {
-	return composePublisher(state, cfg).Plan()
 }
 
 func projectSemantics(prepared publisher.Preparation) project.OperationSemantics {
