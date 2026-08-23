@@ -193,7 +193,7 @@ correction is allowed without unrelated cleanup riding along.
 | RF-004 | P1 | COMPLETE | Check aggregation separated from check policy; severity in the result model | AF-013, RF-002 |
 | RF-005 | P1 | COMPLETE | Current-state coordination extracted from project orchestration | RF-002 |
 | RF-006 | P1 | COMPLETE | `cmd/awf` reduced to parse, compose, invoke, render, exit | RF-002..RF-005 |
-| RF-007 | P2 | READY | Residual giant tests split by observable behaviour and semantic owner | RF-002..RF-006 |
+| RF-007 | P2 | COMPLETE | Residual giant tests split by observable behaviour and semantic owner | RF-002..RF-006 |
 | RF-009 | P1 | DECISION | Post-refactor critical-path coverage policy and regression control | RF-007, owner ruling |
 | RF-014A | P2 | COMPLETE | Obsolete Program A machinery deleted | Program A milestone |
 | RF-014B | P2 | CONDITIONAL | Obsolete compatibility residue deleted | RF-008B, compatibility removals applicable |
@@ -256,14 +256,14 @@ correction is allowed without unrelated cleanup riding along.
 
 ### Program B start gate
 
-**Status: OPEN; B-F1 THROUGH B-F3 AND RF-003 THROUGH RF-006 COMPLETE.** Program A is complete;
+**Status: OPEN; B-F1 THROUGH B-F3 AND RF-003 THROUGH RF-007 COMPLETE.** Program A is complete;
 generated artifacts are stable under the new doctrine; changed behaviour has deterministic regression
 coverage; no known adopter-facing contradiction remains; RF-001 establishes the target dependency
 map, RF-002 establishes immutable project state, RF-003 establishes publishing coordination, RF-004
 establishes policy-free repository-check aggregation, RF-005 establishes focused current-state
-coordination, and RF-006 establishes the thin command composition boundary. RF-007 is selected next.
-RF-008B and RF-014B remain conditional because nine managed repositories have not upgraded from
-0.39.1.
+coordination, RF-006 establishes the thin command composition boundary, and RF-007 establishes direct
+residual test-oracle ownership. RF-009 now requires its deferred owner ruling. RF-008B and RF-014B
+remain conditional because nine managed repositories have not upgraded from 0.39.1.
 
 Program A milestone complete; generated artifacts stable under the new doctrine; new behaviour has
 regression tests; no known adopter-facing contradiction remains; compatibility support policy decided
@@ -1099,6 +1099,50 @@ abstraction; oracle strength.
 - **Unblocked:** The terminal-assurance effort topology is removed and its archive is confirmed;
   RF-007 is selected next in B-F4. RF-009 still awaits the post-RF-007 evidence and an owner ruling;
   later issues retain their named dependencies and compatibility conditions.
+
+### RF-007
+
+- **Range:** Issue base `822d04dfb`; plan, implementation, integration, and terminal plan range
+  `822d04dfb..3ffca5ff2`; exact implementation and settlement range
+  `426be3f88..cbbb2fe1`.
+- **Protected contract:** Split only the five residual mixed-ownership test aggregates by observable
+  behavior and semantic owner. Preserve every test declaration, behavior, package-local fixture home,
+  runtime, isolation property, and the 100 percent coverage gate. Do not change production behavior or
+  architecture, coverage policy, compatibility, historical comments, generalized test support, or
+  cohesive large tests outside the selected aggregates.
+- **Clean integration:** Rendered-template, project-operation, repository-check, staged-universe,
+  audit-lifecycle, and command oracles now live in directly named owner files within their existing Go
+  packages. Genuinely shared fixtures have one package-local helper home. The five mixed aggregates are
+  absent. Current TDD and debugging references, the Publisher catalog scan, and one proof-pointer
+  comment follow the new homes without changing shipped semantics.
+- **Files changed:** Test declarations and imports moved from the five aggregates into direct
+  behavior-owner files under `internal/project` and `cmd/awf`; package-local helper files hold only
+  genuinely shared fixtures. The Publisher catalog test scans every new rendered-template owner, and
+  authored plus rendered TDD/debugging references, the generated lock, the implementation plan, and
+  the Publisher proof pointer retain current source locations.
+- **Verification:** A temporary Go parser and formatter comparison proved that every original
+  top-level test, helper, fixture, constant, variable, attached comment, and subtest declaration
+  appeared exactly once with identical canonical bytes. Successful raw `go test -list '^Test'`
+  inventories retained 438 project tests at
+  `e0d928e4a66646ec018040ca8a8b95ae486b71218031fba31b7c73ffeb2c84de`, 317 command tests at
+  `7a812c25f0a2c1b618d52bf1924e036532d671de7301daa9ca213c36343a8465`, and 62 test-support tests at
+  `2a51927101300dac58c30700faf1423b3ce1bcbb6f3313cef7e71e2eab2536e9`. Sequential uncached ordinary
+  and fixed-seed shuffled package runs, `go test ./...`, render and drift checks, staged checks, and
+  repeated unmodified full gates passed. The final gate covered 21,358 of 21,358 statements at 100
+  percent; dead-code and pin checks were clean, with only three pre-existing `Uid` advisories. Shipped
+  and local audits over the complete five-commit implementation range were clean.
+- **Deviations:** Plan review added Publisher catalog completeness coverage, exact declaration-content
+  comparison, current-reference currency, and exact-tip terminal assurance. Phase review removed a new
+  package global and mutation-proved the catalog scan's forward, reverse, and non-artifact directions.
+  Terminal assurance moved six unchanged workflow oracles to more direct semantic-owner files. Every
+  correction remained test-only or current-reference currency; no observable behavior, production
+  owner, isolation property, or coverage policy changed. No verify pass was required because the
+  terminal findings were mechanical only.
+- **Residual debt:** RF-009 now owns the deferred critical-path coverage-policy ruling using RF-007's
+  behavior-owner, census, runtime, isolation, and mutation evidence. RF-010 remains blocked until the
+  compatibility lane closes. RF-008B and RF-014B retain their managed-repository upgrade condition.
+- **Unblocked:** RF-009 is ready for its owner decision in B-F5. RF-010 retains its named dependency
+  and compatibility condition; later issues retain their recorded gates.
 
 Close each later issue with the same evidence: identity; baseline and final range; protected contract;
 clean integration; files changed with reason; verification commands and results; material deviations;
