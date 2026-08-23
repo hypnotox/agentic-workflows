@@ -46,7 +46,7 @@ func Show(service *effort.Service, slug string) (presentation.Document, error) {
 		return presentation.Document{}, err
 	}
 	detail, err := record.Detail()
-	if err != nil { // coverage-ignore: Service.Show returns only validated persisted records
+	if err != nil { // coverage-ignore: production composition resolves control roots first, rejecting line breaks before absolute resident paths can reach presentation
 		return presentation.Document{}, err
 	}
 	return detail.Document()
@@ -59,7 +59,7 @@ func Finish(ctx context.Context, service *effort.Service, slug string) (presenta
 		return presentation.Document{}, err
 	}
 	mutation, err := result.FinishMutation(slug)
-	if err != nil { // coverage-ignore: Service.Finish constructs the fixed grammar-valid mutation input
+	if err != nil { // coverage-ignore: production composition resolves control roots first, rejecting line breaks before absolute archive paths can reach presentation
 		return presentation.Document{}, err
 	}
 	return mutation.Document()
