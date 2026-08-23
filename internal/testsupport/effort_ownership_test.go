@@ -92,6 +92,36 @@ func runEffort() {
 }`,
 			want: "direct effort operation Show",
 		},
+		{
+			name: "rollback operation is rejected",
+			source: `package fixture
+import e "github.com/hypnotox/agentic-workflows/internal/effortop"
+func runEffort() {
+ resident := composed.service
+ switch c.sub { case "show": e.Show(); resident.RollbackCreation() }
+}`,
+			want: "direct effort operation RollbackCreation",
+		},
+		{
+			name: "immediately invoked closure cannot hide an owner call",
+			source: `package fixture
+import e "github.com/hypnotox/agentic-workflows/internal/effortop"
+func runEffort() {
+ resident := composed.service
+ switch c.sub { case "show": e.Show(); func() { resident.Show() }() }
+}`,
+			want: "direct effort operation Show",
+		},
+		{
+			name: "method value cannot hide an owner operation",
+			source: `package fixture
+import e "github.com/hypnotox/agentic-workflows/internal/effortop"
+func runEffort() {
+ resident := composed.service
+ switch c.sub { case "show": e.Show(); hidden := resident.Show; hidden() }
+}`,
+			want: "direct effort operation Show",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -129,8 +159,9 @@ var effortLeafOperations = map[string]string{
 }
 
 var directEffortOperations = map[string]bool{
-	"New": true, "List": true, "Show": true, "Finish": true, "Memory": true,
-	"UpdateMemory": true, "AttachActivity": true, "HeartbeatActivity": true, "DetachActivity": true,
+	"New": true, "InvokingRoot": true, "List": true, "Show": true, "Finish": true,
+	"RollbackCreation": true, "Memory": true, "UpdateMemory": true,
+	"AttachActivity": true, "HeartbeatActivity": true, "DetachActivity": true,
 }
 
 var directWorktreeOperations = map[string]bool{
@@ -326,9 +357,6 @@ func focusedCalls(statements []ast.Stmt, imports map[string]string) ([]string, e
 func effortOwnerReceivers(fn *ast.FuncDecl) map[string]string {
 	owners := map[string]string{}
 	ast.Inspect(fn.Body, func(node ast.Node) bool {
-		if _, ok := node.(*ast.FuncLit); ok {
-			return false
-		}
 		assignment, ok := node.(*ast.AssignStmt)
 		if !ok || len(assignment.Lhs) != len(assignment.Rhs) {
 			return true
@@ -365,26 +393,15 @@ func effortOwnerExpression(expression ast.Expr, owners map[string]string) string
 func rejectOwnerReceiverOperations(fn *ast.FuncDecl, owners map[string]string) error {
 	var found error
 	ast.Inspect(fn.Body, func(node ast.Node) bool {
-		if _, ok := node.(*ast.FuncLit); ok {
-			return false
-		}
-		call, ok := node.(*ast.CallExpr)
+		selector, ok := node.(*ast.SelectorExpr)
 		if !ok || found != nil {
 			return found == nil
 		}
-		selector, ok := call.Fun.(*ast.SelectorExpr)
-		if !ok {
-			return true
-		}
 		switch effortOwnerExpression(selector.X, owners) {
 		case effortImport:
-			if directEffortOperations[selector.Sel.Name] {
-				found = fmt.Errorf("direct effort operation %s", selector.Sel.Name)
-			}
+			found = fmt.Errorf("direct effort operation %s", selector.Sel.Name)
 		case worktreeImport:
-			if directWorktreeOperations[selector.Sel.Name] {
-				found = fmt.Errorf("direct worktree operation %s", selector.Sel.Name)
-			}
+			found = fmt.Errorf("direct worktree operation %s", selector.Sel.Name)
 		}
 		return true
 	})
@@ -394,13 +411,9 @@ func rejectOwnerReceiverOperations(fn *ast.FuncDecl, owners map[string]string) e
 func rejectDirectOwnerOperations(file *ast.File, imports map[string]string) error {
 	var found error
 	ast.Inspect(file, func(node ast.Node) bool {
-		call, ok := node.(*ast.CallExpr)
+		selector, ok := node.(*ast.SelectorExpr)
 		if !ok || found != nil {
 			return found == nil
-		}
-		selector, ok := call.Fun.(*ast.SelectorExpr)
-		if !ok {
-			return true
 		}
 		receiver, ok := selector.X.(*ast.Ident)
 		if !ok {
