@@ -191,8 +191,8 @@ correction is allowed without unrelated cleanup riding along.
 | RF-002 | P1 | COMPLETE | Residual project state separated from operations | RF-001 |
 | RF-003 | P1 | COMPLETE | One application owner for output planning and publication coordination | RF-002 |
 | RF-004 | P1 | COMPLETE | Check aggregation separated from check policy; severity in the result model | AF-013, RF-002 |
-| RF-005 | P1 | READY | Current-state coordination extracted from project orchestration | RF-002 |
-| RF-006 | P1 | BLOCKED | `cmd/awf` reduced to parse, compose, invoke, render, exit | RF-002..RF-005 |
+| RF-005 | P1 | COMPLETE | Current-state coordination extracted from project orchestration | RF-002 |
+| RF-006 | P1 | READY | `cmd/awf` reduced to parse, compose, invoke, render, exit | RF-002..RF-005 |
 | RF-007 | P2 | BLOCKED | Residual giant tests split by observable behaviour and semantic owner | RF-002..RF-006 |
 | RF-009 | P1 | DECISION | Post-refactor critical-path coverage policy and regression control | RF-007, owner ruling |
 | RF-014A | P2 | COMPLETE | Obsolete Program A machinery deleted | Program A milestone |
@@ -256,12 +256,13 @@ correction is allowed without unrelated cleanup riding along.
 
 ### Program B start gate
 
-**Status: OPEN; B-F1 THROUGH B-F3, RF-003, AND RF-004 COMPLETE.** Program A is complete;
-generated artifacts are stable under the new doctrine; changed behaviour has deterministic regression
-coverage; no known adopter-facing contradiction remains; RF-001 establishes the target dependency
-map, RF-002 establishes immutable project state, RF-003 establishes publishing coordination, and
-RF-004 establishes policy-free repository-check aggregation. RF-005 is selected next. RF-008B and
-RF-014B remain conditional because nine managed repositories have not upgraded from 0.39.1.
+**Status: OPEN; B-F1 THROUGH B-F3, RF-003, RF-004, AND RF-005 COMPLETE.** Program A is
+complete; generated artifacts are stable under the new doctrine; changed behaviour has deterministic
+regression coverage; no known adopter-facing contradiction remains; RF-001 establishes the target
+dependency map, RF-002 establishes immutable project state, RF-003 establishes publishing
+coordination, RF-004 establishes policy-free repository-check aggregation, and RF-005 establishes
+focused current-state coordination. RF-006 is selected next. RF-008B and RF-014B remain conditional
+because nine managed repositories have not upgraded from 0.39.1.
 
 Program A milestone complete; generated artifacts stable under the new doctrine; new behaviour has
 regression tests; no known adopter-facing contradiction remains; compatibility support policy decided
@@ -994,6 +995,54 @@ abstraction; oracle strength.
   Compatibility deletion remains gated under RF-008B and RF-014B.
 - **Unblocked:** RF-005 is selected next in B-F4. RF-006 still waits on RF-005; later issues retain
   their named dependencies and compatibility conditions.
+
+### RF-005
+
+- **Range:** Issue base `cc0e17ed4`; implementation, ADR-0301 numbering, integration, and terminal
+  range `cc0e17ed4..03fb839b8`.
+- **Protected contract:** Application current-state coordination selects immutable operation universes
+  and returns semantic results while ADR, current-state, topic, plan, Publisher, RepositoryChecker,
+  snapshot, Git, project-state, commit-policy, and command presentation owners retain their policy.
+  Working report, working current-state, stage-0 index, staged state, staged Publisher drift, result
+  index, first parent, every merge parent, numbering before and after, context range, and history
+  universes remain distinct. Typed result partitions, compatibility projections, error identities,
+  partial numbering, finding contents and categories, multiplicity, deduplication, Error-only exits,
+  and presentation remain intact. Relative item order within one Warning list remains unprotected by
+  owner ruling.
+- **Clean integration:** `internal/currentstatecoord` owns focused application operations without a
+  service locator or persistent cache. `internal/contextinput` owns the neutral immutable query input;
+  `internal/contextq` retains classification and projection without importing project or the
+  coordinator. Publisher-produced ADR, topic, plan, and output-plan semantics are reused within each
+  participating context operation without sharing across distinct universes. Project retains Loader,
+  unrelated operations, and bounded compatibility adapters. Duplicate project orchestration and
+  parsers are removed while lower semantic and mechanism owners remain explicit.
+- **Files changed:** The coordinator and context-input packages; project compatibility and command
+  composition; Publisher semantic projections; ADR, manifest, and project-state defensive values;
+  context, topic, numbering, plan-read, commit-authorization, ownership, dependency, universe,
+  cardinality, alias, and presentation tests; authored and rendered architecture and tooling
+  authority; ADR-0301, its plan, decision index, selectors, and generated lock establish and prove the
+  boundary.
+- **Verification:** Focused domain, coordinator, context, Publisher, project, commit-policy,
+  structural, and command suites passed. Mutation-sensitive evidence covers typed routing, every
+  selected universe, dirty-working isolation, fresh operations, defensive ownership, and one parse of
+  each selected corpus within Publisher-participating context operations. Repeated unmodified full
+  gates passed, with the final implementation gate covering 21,257 of 21,257 statements at 100
+  percent; dead-code and pin checks were clean, and lint retained only three pre-existing `Uid`
+  advisories. `./awf audit` over the complete implementation range reported zero findings. The local
+  audit retained only the reviewed no-changelog and defensive coverage-ignore advisories. Numbering
+  and terminal transactions passed their staged checks and gates.
+- **Deviations:** Implementation exposed a stale active claim that required the narrow successor
+  ADR-0301 rather than restoring obsolete project coordination. Independent terminal assurance found
+  that working context had lost its supported non-Git filesystem fallback and could combine
+  snapshot-derived configuration with caller-derived project state. Settlement restored the fallback,
+  derived one operation-local state from the selected snapshot and stable facts, and added
+  command-level and mutation-sensitive regression evidence. The single renewed verify pass reported
+  no findings. No observable behavior, compatibility, owner, or universe changed.
+- **Residual debt:** Focused command use cases, residual mixed test ownership, and historical-comment
+  cleanup remain assigned to RF-006, RF-007, and RF-010. Compatibility deletion remains gated under
+  RF-008B and RF-014B.
+- **Unblocked:** RF-006 is selected next in B-F4. RF-007 and later issues retain their named
+  dependencies and compatibility conditions.
 
 Close each later issue with the same evidence: identity; baseline and final range; protected contract;
 clean integration; files changed with reason; verification commands and results; material deviations;
