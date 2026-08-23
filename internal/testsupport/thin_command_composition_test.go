@@ -52,7 +52,7 @@ func TestThinCommandCompositionCensus(t *testing.T) {
 			continue
 		}
 		body := routedBody(t, pkg, route)
-		got, evasions := operationCalls(pkg, body)
+		got, evasions := operationCallsForRoute(pkg, body, route.path)
 		evasions = unexpectedRouteEvasions(route.path, evasions)
 		if len(evasions) != 0 {
 			t.Errorf("route %q hides semantic operations through %v", route.path, evasions)
@@ -459,16 +459,12 @@ func sortedRouteNames(values map[string]commandRoute) []string {
 
 func verifyVariantCardinality(t *testing.T, pkg *packages.Package, routes map[string]commandRoute) {
 	t.Helper()
-	initBody := functionBody(t, pkg, "runInitWithProjectLoader")
-	branch := firstIf(initBody.List)
-	if branch == nil {
-		t.Fatal("init describe/ordinary branch is absent")
-	}
-	assertBranchOperations(t, pkg, "init describe", branch.Body, []string{"github.com/hypnotox/agentic-workflows/internal/initspec.Describe"})
-	assertBranchOperations(t, pkg, "init ordinary", &ast.BlockStmt{List: initBody.List[1:]}, []string{"github.com/hypnotox/agentic-workflows/internal/initop.Run"})
+	describeBody, ordinaryBody := initVariantBodies(t, pkg)
+	assertBranchOperations(t, pkg, "init describe", describeBody, []string{"github.com/hypnotox/agentic-workflows/internal/initspec.Describe"})
+	assertBranchOperations(t, pkg, "init ordinary", ordinaryBody, []string{"github.com/hypnotox/agentic-workflows/internal/initop.Run"})
 
 	worktree := routedBody(t, pkg, routes["effort worktree"])
-	branch = firstIf(worktree.List)
+	branch := firstIf(worktree.List)
 	if branch == nil || branch.Else == nil {
 		t.Fatal("effort worktree does not have add/remove branches")
 	}
@@ -508,6 +504,89 @@ func verifyVariantCardinality(t *testing.T, pkg *packages.Package, routes map[st
 	}
 }
 
+func initVariantBodies(t *testing.T, pkg *packages.Package) (*ast.BlockStmt, *ast.BlockStmt) {
+	t.Helper()
+	declaration := functionDeclaration(t, pkg, "runInitWithProjectLoader")
+	var describeObject types.Object
+	for _, field := range declaration.Type.Params.List {
+		for _, name := range field.Names {
+			if name.Name == "describe" {
+				describeObject = pkg.TypesInfo.Defs[name]
+			}
+		}
+	}
+	if describeObject == nil {
+		t.Fatal("runInitWithProjectLoader describe parameter is absent")
+	}
+
+	branchIndex := -1
+	var branch *ast.IfStmt
+	for i, statement := range declaration.Body.List {
+		candidate, ok := statement.(*ast.IfStmt)
+		if !ok || typedBooleanIdent(pkg.TypesInfo, candidate.Cond) != describeObject {
+			continue
+		}
+		if branch != nil {
+			t.Fatal("runInitWithProjectLoader has multiple typed describe branches")
+		}
+		branchIndex, branch = i, candidate
+	}
+	if branch == nil {
+		t.Fatal("init describe/ordinary branch is absent")
+	}
+
+	prefix := append([]ast.Stmt(nil), declaration.Body.List[:branchIndex]...)
+	suffix := append([]ast.Stmt(nil), declaration.Body.List[branchIndex+1:]...)
+	describe := append(append([]ast.Stmt(nil), prefix...), branch.Body.List...)
+	if !blockTerminates(branch.Body) {
+		describe = append(describe, suffix...)
+	}
+	ordinary := append([]ast.Stmt(nil), prefix...)
+	if branch.Else != nil {
+		ordinary = append(ordinary, statementBlock(branch.Else).List...)
+	}
+	if branch.Else == nil || !blockTerminates(statementBlock(branch.Else)) {
+		ordinary = append(ordinary, suffix...)
+	}
+	return &ast.BlockStmt{List: describe}, &ast.BlockStmt{List: ordinary}
+}
+
+func functionDeclaration(t *testing.T, pkg *packages.Package, name string) *ast.FuncDecl {
+	t.Helper()
+	for _, file := range pkg.Syntax {
+		for _, declaration := range file.Decls {
+			if function, ok := declaration.(*ast.FuncDecl); ok && function.Name.Name == name {
+				return function
+			}
+		}
+	}
+	t.Fatalf("function %s not found", name)
+	return nil
+}
+
+func typedBooleanIdent(info *types.Info, expression ast.Expr) types.Object {
+	for {
+		parenthesized, ok := expression.(*ast.ParenExpr)
+		if !ok {
+			break
+		}
+		expression = parenthesized.X
+	}
+	ident, ok := expression.(*ast.Ident)
+	if !ok {
+		return nil
+	}
+	return info.Uses[ident]
+}
+
+func blockTerminates(block *ast.BlockStmt) bool {
+	if block == nil || len(block.List) == 0 {
+		return false
+	}
+	_, ok := block.List[len(block.List)-1].(*ast.ReturnStmt)
+	return ok
+}
+
 func statementBlock(statement ast.Stmt) *ast.BlockStmt {
 	if block, ok := statement.(*ast.BlockStmt); ok {
 		return block
@@ -528,9 +607,19 @@ func assertBranchOperations(t *testing.T, pkg *packages.Package, name string, bo
 // Any operation selected as a value, through a constructor chain, or inside a
 // closure is reported as an evasion instead of operation evidence.
 func operationCalls(pkg *packages.Package, body *ast.BlockStmt) ([]string, []string) {
+	return operationCallsForRoute(pkg, body, "")
+}
+
+func operationCallsForRoute(pkg *packages.Package, body *ast.BlockStmt, path string) ([]string, []string) {
 	var names []string
 	for _, route := range commandRoutes() {
 		names = append(names, route.operations...)
+	}
+	// Publisher.BuildConfigReference is legitimate dependency composition for
+	// other command routes, but config must reach that model policy only through
+	// configop.Run. Route-local protection overrides the global boundary allowance.
+	if path == "config" {
+		names = append(names, "github.com/hypnotox/agentic-workflows/internal/publisher.BuildConfigReference")
 	}
 	return operationCallsForOwners(pkg, body, names, semanticOwnerPackages())
 }
@@ -767,10 +856,65 @@ func TestThinCompositionConfigRouteProofRejectsDuplicateOperation(t *testing.T) 
 		t.Fatal("config operation mutation was not applied")
 	}
 	pkg := loadAWFCommandPackageWithOverlay(t, map[string][]byte{path: []byte(mutated)})
-	got, evasions := operationCalls(pkg, functionBody(t, pkg, "runConfig"))
+	got, evasions := operationCallsForRoute(pkg, functionBody(t, pkg, "runConfig"), "config")
 	want := []string{"github.com/hypnotox/agentic-workflows/internal/configop.Run"}
 	if len(evasions) == 0 && sameOperations(got, want) {
 		t.Fatalf("duplicate config operation escaped route proof: calls = %v, evasions = %v", got, evasions)
+	}
+}
+
+func TestThinCompositionConfigRouteProofRejectsRestoredModelPolicy(t *testing.T) {
+	root := testsupport.RepoRoot(t)
+	path := filepath.Join(root, "cmd", "awf", "config.go")
+	source, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const call = `document, err := configop.Run(ctx, cwd, key, newProjectLoader, gate)`
+	mutated := strings.Replace(string(source), call, `state, cfg, _, modelErr := openProjectOperation(ctx, cwd)
+	if modelErr != nil {
+		return modelErr
+	}
+	_, modelErr = composePublisher(state, cfg).BuildConfigReference()
+	if modelErr != nil {
+		return modelErr
+	}
+	`+call, 1)
+	if mutated == string(source) {
+		t.Fatal("config model-policy mutation was not applied")
+	}
+	pkg := loadAWFCommandPackageWithOverlay(t, map[string][]byte{path: []byte(mutated)})
+	body := functionBody(t, pkg, "runConfig")
+	got, evasions := operationCallsForRoute(pkg, body, "config")
+	const hidden = "github.com/hypnotox/agentic-workflows/internal/publisher.BuildConfigReference"
+	if !semanticOperationNames(append(got, evasions...))[hidden] {
+		t.Fatalf("restored cmd config model policy escaped route proof: calls = %v, evasions = %v", got, evasions)
+	}
+	genericCalls, genericEvasions := operationCalls(pkg, body)
+	if semanticOperationNames(append(genericCalls, genericEvasions...))[hidden] {
+		t.Fatalf("config-specific protection leaked into the global boundary allowance: calls = %v, evasions = %v", genericCalls, genericEvasions)
+	}
+}
+
+func TestThinCompositionInitVariantProofAcceptsSharedPrecondition(t *testing.T) {
+	root := testsupport.RepoRoot(t)
+	path := filepath.Join(root, "cmd", "awf", "init.go")
+	source, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mutated := strings.Replace(string(source), "\tif describe {", "\tif len(sets) < 0 {\n\t\treturn nil\n\t}\n\tif describe {", 1)
+	if mutated == string(source) {
+		t.Fatal("init shared-precondition mutation was not applied")
+	}
+	pkg := loadAWFCommandPackageWithOverlay(t, map[string][]byte{path: []byte(mutated)})
+	describeBody, ordinaryBody := initVariantBodies(t, pkg)
+	describeCalls, describeEvasions := operationCalls(pkg, describeBody)
+	describeWant := []string{"github.com/hypnotox/agentic-workflows/internal/initspec.Describe"}
+	ordinaryCalls, ordinaryEvasions := operationCalls(pkg, ordinaryBody)
+	ordinaryWant := []string{"github.com/hypnotox/agentic-workflows/internal/initop.Run"}
+	if len(describeEvasions) != 0 || !sameOperations(describeCalls, describeWant) || len(ordinaryEvasions) != 0 || !sameOperations(ordinaryCalls, ordinaryWant) {
+		t.Fatalf("harmless shared precondition changed init classification: describe calls = %v, evasions = %v; ordinary calls = %v, evasions = %v", describeCalls, describeEvasions, ordinaryCalls, ordinaryEvasions)
 	}
 }
 
@@ -788,15 +932,38 @@ func TestThinCompositionInitVariantProofRejectsDuplicateDescribeOperation(t *tes
 		t.Fatal("init describe mutation was not applied")
 	}
 	pkg := loadAWFCommandPackageWithOverlay(t, map[string][]byte{path: []byte(mutated)})
-	body := functionBody(t, pkg, "runInitWithProjectLoader")
-	branch := firstIf(body.List)
-	if branch == nil {
-		t.Fatal("mutated init describe branch is absent")
-	}
-	got, evasions := operationCalls(pkg, branch.Body)
+	describeBody, _ := initVariantBodies(t, pkg)
+	got, evasions := operationCalls(pkg, describeBody)
 	want := []string{"github.com/hypnotox/agentic-workflows/internal/initspec.Describe"}
 	if len(evasions) == 0 && sameOperations(got, want) {
 		t.Fatalf("duplicate describe operation escaped branch proof: calls = %v, evasions = %v", got, evasions)
+	}
+}
+
+func TestThinCompositionInitVariantProofRejectsLocalDescriptorPolicy(t *testing.T) {
+	root := testsupport.RepoRoot(t)
+	path := filepath.Join(root, "cmd", "awf", "init.go")
+	source, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	withImport := strings.Replace(string(source), `"bytes"`, `"bytes"
+	"encoding/json"`, 1)
+	if withImport == string(source) {
+		t.Fatal("init local descriptor-policy import mutation was not applied")
+	}
+	mutated := strings.Replace(withImport,
+		`out, err := initspec.Describe(initspec.InitDescriptors(catalog.Standard.Vars))`,
+		`out, err := json.Marshal(initspec.InitDescriptors(catalog.Standard.Vars))`, 1)
+	if mutated == withImport {
+		t.Fatal("init local descriptor-policy call mutation was not applied")
+	}
+	pkg := loadAWFCommandPackageWithOverlay(t, map[string][]byte{path: []byte(mutated)})
+	describeBody, _ := initVariantBodies(t, pkg)
+	got, evasions := operationCalls(pkg, describeBody)
+	want := []string{"github.com/hypnotox/agentic-workflows/internal/initspec.Describe"}
+	if len(evasions) == 0 && sameOperations(got, want) {
+		t.Fatalf("cmd-local descriptor/JSON policy escaped describe proof: calls = %v, evasions = %v", got, evasions)
 	}
 }
 
