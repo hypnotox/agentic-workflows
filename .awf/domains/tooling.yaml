@@ -5,6 +5,7 @@ paths:
   - internal/coverage/**
   - internal/changelog/**
   - internal/checkop/**
+  - internal/configop/**
   - internal/commitgateop/**
   - internal/domainop/**
   - internal/localdocop/**

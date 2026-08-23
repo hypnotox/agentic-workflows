@@ -87,7 +87,7 @@ type commandRoute struct {
 // set, so a new flag branch or dispatch leaf fails closed until represented.
 func commandRoutes() map[string]commandRoute {
 	entries := []commandRoute{
-		{"init", "init", "runInitWithProjectLoader", []string{"github.com/hypnotox/agentic-workflows/internal/initop.Run"}, false},
+		{"init", "init", "runInitWithProjectLoader", []string{"github.com/hypnotox/agentic-workflows/internal/initspec.Describe", "github.com/hypnotox/agentic-workflows/internal/initop.Run"}, false},
 		{"render", "render", "runSyncPrinting", []string{"github.com/hypnotox/agentic-workflows/internal/publisher.Sync"}, false},
 		{"check", "check", "runCheck", []string{"github.com/hypnotox/agentic-workflows/internal/checkop.Run"}, false},
 		{"check commit-policy", "check", "runCommitPolicy", []string{"github.com/hypnotox/agentic-workflows/internal/project.VerifyCommitPolicyAt"}, false},
@@ -116,7 +116,7 @@ func commandRoutes() map[string]commandRoute {
 		{"effort activity detach", "effort", "runEffort", []string{"github.com/hypnotox/agentic-workflows/internal/effortop.DetachActivity"}, false},
 		{"adr number", "adr", "runADR", []string{"github.com/hypnotox/agentic-workflows/internal/currentstatecoord.NumberPendingADRs"}, false},
 		{"list", "list", "runList", []string{"github.com/hypnotox/agentic-workflows/internal/project.BuildListDocument"}, false},
-		{"config", "config", "runConfig", []string{"github.com/hypnotox/agentic-workflows/internal/publisher.ConfigReferencePresentation", "github.com/hypnotox/agentic-workflows/internal/publisher.ConfigReferencePresentation"}, false},
+		{"config", "config", "runConfig", []string{"github.com/hypnotox/agentic-workflows/internal/configop.Run"}, false},
 		{"context", "context", "runContextWithDelivery", []string{"github.com/hypnotox/agentic-workflows/internal/contextop.Run"}, false},
 		{"topic", "topic", "runTopic", []string{"github.com/hypnotox/agentic-workflows/internal/topicop.Run"}, false},
 		{"new adr", "new", "newADR", []string{"github.com/hypnotox/agentic-workflows/internal/project.NewADR"}, false},
@@ -459,22 +459,21 @@ func sortedRouteNames(values map[string]commandRoute) []string {
 
 func verifyVariantCardinality(t *testing.T, pkg *packages.Package, routes map[string]commandRoute) {
 	t.Helper()
+	initBody := functionBody(t, pkg, "runInitWithProjectLoader")
+	branch := firstIf(initBody.List)
+	if branch == nil {
+		t.Fatal("init describe/ordinary branch is absent")
+	}
+	assertBranchOperations(t, pkg, "init describe", branch.Body, []string{"github.com/hypnotox/agentic-workflows/internal/initspec.Describe"})
+	assertBranchOperations(t, pkg, "init ordinary", &ast.BlockStmt{List: initBody.List[1:]}, []string{"github.com/hypnotox/agentic-workflows/internal/initop.Run"})
+
 	worktree := routedBody(t, pkg, routes["effort worktree"])
-	branch := firstIf(worktree.List)
+	branch = firstIf(worktree.List)
 	if branch == nil || branch.Else == nil {
 		t.Fatal("effort worktree does not have add/remove branches")
 	}
 	assertBranchOperations(t, pkg, "effort worktree add", branch.Body, []string{"github.com/hypnotox/agentic-workflows/internal/effortop.AddWorktree"})
 	assertBranchOperations(t, pkg, "effort worktree remove", statementBlock(branch.Else), []string{"github.com/hypnotox/agentic-workflows/internal/effortop.RemoveWorktree"})
-
-	config := functionBody(t, pkg, "runConfig")
-	branch = firstIf(config.List)
-	if branch == nil {
-		t.Fatal("config static/live branch is absent")
-	}
-	configOperation := []string{"github.com/hypnotox/agentic-workflows/internal/publisher.ConfigReferencePresentation"}
-	assertBranchOperations(t, pkg, "config static", branch.Body, configOperation)
-	assertBranchOperations(t, pkg, "config live", &ast.BlockStmt{List: config.List[1:]}, configOperation)
 
 	upgrade := functionBody(t, pkg, "runUpgradeFlags")
 	branch = firstIf(upgrade.List)
@@ -628,7 +627,7 @@ func semanticOwnerPackages() map[string]bool {
 	const module = "github.com/hypnotox/agentic-workflows/internal/"
 	owners := map[string]bool{}
 	for _, name := range []string{
-		"audit", "changelog", "checkop", "commitgateop", "contextop", "contextq",
+		"audit", "changelog", "checkop", "commitgateop", "configop", "contextop", "contextq",
 		"currentstatecoord", "domainop", "effort", "effortop", "initop", "localdocop",
 		"project", "publisher", "repositorycheck", "resident", "topicop", "upgrade", "worktree",
 	} {
@@ -751,6 +750,53 @@ func TestThinCompositionProofRejectsUnlistedOwnerOperation(t *testing.T) {
 	const hidden = "github.com/hypnotox/agentic-workflows/internal/repositorycheck.Compose"
 	if !semanticOperationNames(append(calls, evasions...))[hidden] {
 		t.Fatalf("unlisted owner operation escaped proof: calls = %v, evasions = %v", calls, evasions)
+	}
+}
+
+func TestThinCompositionConfigRouteProofRejectsDuplicateOperation(t *testing.T) {
+	root := testsupport.RepoRoot(t)
+	path := filepath.Join(root, "cmd", "awf", "config.go")
+	source, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const call = `document, err := configop.Run(ctx, cwd, key, newProjectLoader, gate)`
+	mutated := strings.Replace(string(source), call, `_, _ = configop.Run(ctx, cwd, key, newProjectLoader, gate)
+	`+call, 1)
+	if mutated == string(source) {
+		t.Fatal("config operation mutation was not applied")
+	}
+	pkg := loadAWFCommandPackageWithOverlay(t, map[string][]byte{path: []byte(mutated)})
+	got, evasions := operationCalls(pkg, functionBody(t, pkg, "runConfig"))
+	want := []string{"github.com/hypnotox/agentic-workflows/internal/configop.Run"}
+	if len(evasions) == 0 && sameOperations(got, want) {
+		t.Fatalf("duplicate config operation escaped route proof: calls = %v, evasions = %v", got, evasions)
+	}
+}
+
+func TestThinCompositionInitVariantProofRejectsDuplicateDescribeOperation(t *testing.T) {
+	root := testsupport.RepoRoot(t)
+	path := filepath.Join(root, "cmd", "awf", "init.go")
+	source, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const call = `out, err := initspec.Describe(initspec.InitDescriptors(catalog.Standard.Vars))`
+	mutated := strings.Replace(string(source), call, `_ , _ = initspec.Describe(initspec.InitDescriptors(catalog.Standard.Vars))
+		`+call, 1)
+	if mutated == string(source) {
+		t.Fatal("init describe mutation was not applied")
+	}
+	pkg := loadAWFCommandPackageWithOverlay(t, map[string][]byte{path: []byte(mutated)})
+	body := functionBody(t, pkg, "runInitWithProjectLoader")
+	branch := firstIf(body.List)
+	if branch == nil {
+		t.Fatal("mutated init describe branch is absent")
+	}
+	got, evasions := operationCalls(pkg, branch.Body)
+	want := []string{"github.com/hypnotox/agentic-workflows/internal/initspec.Describe"}
+	if len(evasions) == 0 && sameOperations(got, want) {
+		t.Fatalf("duplicate describe operation escaped branch proof: calls = %v, evasions = %v", got, evasions)
 	}
 }
 
