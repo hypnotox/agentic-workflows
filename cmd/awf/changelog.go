@@ -3,21 +3,17 @@ package main
 import (
 	"fmt"
 	"io"
-	"io/fs"
 
-	changelogfs "github.com/hypnotox/agentic-workflows/changelog"
 	"github.com/hypnotox/agentic-workflows/internal/changelog"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
-// runChangelog prints the embedded CHANGELOG.md, or a version/since/range-filtered
-// slice of it. version/since/rng are mutually exclusive; checkArgs has already
-// validated the flag names and zero positional arity, but not this mutual
-// exclusivity or --range's "from..to" shape.
+// runChangelog selects one focused changelog query and writes its closed
+// authored payload without routing it through structured presentation.
 func runChangelog(version, since, rng string, stdout io.Writer) error {
 	set := 0
-	for _, v := range []string{version, since, rng} {
-		if v != "" {
+	for _, value := range []string{version, since, rng} {
+		if value != "" {
 			set++
 		}
 	}
@@ -26,56 +22,44 @@ func runChangelog(version, since, rng string, stdout io.Writer) error {
 	}
 	switch {
 	case version != "":
-		entries, err := changelog.Load(changelogfs.FS)
-		if err != nil { // coverage-ignore: changelog.Load over the embedded FS cannot fail at runtime
-			return err
-		}
-		e, err := changelog.Version(entries, version)
+		payload, err := changelog.EmbeddedVersion(version)
 		if err != nil {
 			return err
 		}
-		return writeChangelogPayload(stdout, e.Raw)
+		return writeChangelogPayload(stdout, payload)
 	case since != "":
-		entries, err := changelog.Load(changelogfs.FS)
-		if err != nil { // coverage-ignore: changelog.Load over the embedded FS cannot fail at runtime
-			return err
-		}
-		matched, err := changelog.Since(entries, since)
+		payloads, err := changelog.EmbeddedSince(since)
 		if err != nil {
 			return err
 		}
-		if len(matched) == 0 {
+		if len(payloads) == 0 {
 			return writeStatus(stdout, "no releases since "+since)
 		}
-		for _, e := range matched {
-			if err := writeChangelogPayload(stdout, e.Raw+"\n"); err != nil {
-				return err
-			}
-		}
+		return writeChangelogPayloads(stdout, payloads)
 	case rng != "":
-		from, to, perr := awfgit.ParseRange(rng, false)
-		if perr != nil {
-			return &usageErr{fmt.Sprintf("awf changelog: --range %v", perr)}
+		from, to, err := awfgit.ParseRange(rng, false)
+		if err != nil {
+			return &usageErr{fmt.Sprintf("awf changelog: --range %v", err)}
 		}
-		entries, err := changelog.Load(changelogfs.FS)
-		if err != nil { // coverage-ignore: changelog.Load over the embedded FS cannot fail at runtime
-			return err
-		}
-		matched, err := changelog.Range(entries, from, to)
+		payloads, err := changelog.EmbeddedRange(from, to)
 		if err != nil {
 			return err
 		}
-		for _, e := range matched {
-			if err := writeChangelogPayload(stdout, e.Raw+"\n"); err != nil {
-				return err
-			}
-		}
+		return writeChangelogPayloads(stdout, payloads)
 	default:
-		b, err := fs.ReadFile(changelogfs.FS, "CHANGELOG.md")
-		if err != nil { // coverage-ignore: same embedded-asset guarantee as changelog.Load above
+		payload, err := changelog.Embedded()
+		if err != nil { // coverage-ignore: the compiled embedded changelog asset is fixed
 			return err
 		}
-		return writeChangelogPayload(stdout, string(b))
+		return writeChangelogPayload(stdout, payload)
+	}
+}
+
+func writeChangelogPayloads(stdout io.Writer, payloads []string) error {
+	for _, payload := range payloads {
+		if err := writeChangelogPayload(stdout, payload+"\n"); err != nil {
+			return err
+		}
 	}
 	return nil
 }

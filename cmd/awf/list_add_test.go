@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"io"
 	"os"
@@ -14,181 +13,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
-
-func TestDomainCurrentStateFilesystemFailures(t *testing.T) {
-	open := func(t *testing.T) (*config.Config, string) {
-		t.Helper()
-		root := scaffoldProject(t)
-		_, p, _, err := openProjectOperation(testContext(t), root)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return p, root
-	}
-
-	t.Run("existing", func(t *testing.T) {
-		p, root := open(t)
-		path := filepath.Join(root, ".awf", "domains", "parts", "payments", "current-state.md")
-		testsupport.WriteFile(t, path, "authored\n")
-		if err := scaffoldDomainCurrentState(p, "payments"); err != nil {
-			t.Fatal(err)
-		}
-		if got, err := os.ReadFile(path); err != nil || string(got) != "authored\n" {
-			t.Fatalf("existing part = %q, %v", got, err)
-		}
-	})
-	t.Run("stat", func(t *testing.T) {
-		p, root := open(t)
-		dir := filepath.Join(root, ".awf", "domains", "parts", "payments")
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.Symlink("current-state.md", filepath.Join(dir, "current-state.md")); err != nil {
-			t.Fatal(err)
-		}
-		if err := scaffoldDomainCurrentState(p, "payments"); err == nil {
-			t.Fatal("symlink loop stat error was not propagated")
-		}
-	})
-	t.Run("mkdir", func(t *testing.T) {
-		p, root := open(t)
-		parts := filepath.Join(root, ".awf", "domains", "parts")
-		testsupport.WriteFile(t, parts, "collision\n")
-		if err := scaffoldDomainCurrentState(p, "payments"); err == nil {
-			t.Fatal("directory collision was not propagated")
-		}
-	})
-	t.Run("write", func(t *testing.T) {
-		p, root := open(t)
-		dir := filepath.Join(root, ".awf", "domains", "parts", "payments")
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.Symlink(filepath.Join(root, "missing", "part.md"), filepath.Join(dir, "current-state.md")); err != nil {
-			t.Fatal(err)
-		}
-		if err := scaffoldDomainCurrentState(p, "payments"); err == nil {
-			t.Fatal("part write error was not propagated")
-		}
-	})
-}
-
-func TestDomainLifecyclePropagatesDependencies(t *testing.T) {
-	failure := errors.New("injected failure")
-	newCases := []struct {
-		name   string
-		mutate func(*domainDependencies)
-	}{
-		{"open", func(d *domainDependencies) {
-			d.open = func(context.Context, string) (*config.Config, error) { return nil, failure }
-		}},
-		{"edit", func(d *domainDependencies) {
-			d.edit = func([]byte, string, string, bool) ([]byte, error) { return nil, failure }
-		}},
-		{"write", func(d *domainDependencies) { d.write = func(string, []byte, os.FileMode) error { return failure } }},
-		{"scaffold", func(d *domainDependencies) { d.scaffold = func(*config.Config, string) error { return failure } }},
-		{"sync", func(d *domainDependencies) {
-			d.synchronize = func(context.Context, string, io.Writer) error { return failure }
-		}},
-	}
-	for _, test := range newCases {
-		t.Run("new "+test.name, func(t *testing.T) {
-			dependencies := productionDomainDependencies()
-			test.mutate(&dependencies)
-			if err := runNewDomainWith(testContext(t), scaffoldProject(t), "payments", io.Discard, dependencies); !errors.Is(err, failure) {
-				t.Fatalf("error = %v, want injected failure", err)
-			}
-		})
-	}
-	removeCases := newCases[:3]
-	removeCases = append(removeCases, newCases[4])
-	for _, test := range removeCases {
-		t.Run("remove "+test.name, func(t *testing.T) {
-			root := scaffoldProject(t)
-			if err := runNewDomain(testContext(t), root, "payments", io.Discard); err != nil {
-				t.Fatal(err)
-			}
-			dependencies := productionDomainDependencies()
-			test.mutate(&dependencies)
-			if err := runRemoveDomainWith(testContext(t), root, "payments", io.Discard, dependencies); !errors.Is(err, failure) {
-				t.Fatalf("error = %v, want injected failure", err)
-			}
-		})
-	}
-}
-
-func TestHasSidecarOrParts(t *testing.T) {
-	root := t.TempDir()
-	if found, err := hasDomainSidecarOrParts(root, "payments"); err != nil || found {
-		t.Fatalf("absent authored domain = %t, %v", found, err)
-	}
-	sidecar := filepath.Join(root, ".awf", "domains", "payments.yaml")
-	testsupport.WriteFile(t, sidecar, "paths: []\n")
-	if found, err := hasDomainSidecarOrParts(root, "payments"); err != nil || !found {
-		t.Fatalf("sidecar = %t, %v", found, err)
-	}
-	if err := os.Remove(sidecar); err != nil {
-		t.Fatal(err)
-	}
-	parts := filepath.Join(root, ".awf", "domains", "parts", "payments")
-	if err := os.MkdirAll(parts, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if found, err := hasDomainSidecarOrParts(root, "payments"); err != nil || !found {
-		t.Fatalf("parts = %t, %v", found, err)
-	}
-	if err := os.RemoveAll(parts); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(filepath.Dir(sidecar), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink("payments.yaml", sidecar); err != nil {
-		t.Fatal(err)
-	}
-	if found, err := hasDomainSidecarOrParts(root, "payments"); err == nil || found || !strings.Contains(err.Error(), "payments.yaml") {
-		t.Fatalf("stat failure = %t, %v", found, err)
-	}
-}
-
-func TestRemoveDomainOrphanAndCleanCompletion(t *testing.T) {
-	failureWriterRoot := scaffoldProject(t)
-	if err := runNewDomain(testContext(t), failureWriterRoot, "payments", io.Discard); err != nil {
-		t.Fatal(err)
-	}
-	dependencies := productionDomainDependencies()
-	dependencies.synchronize = func(context.Context, string, io.Writer) error { return nil }
-	if err := runRemoveDomainWith(testContext(t), failureWriterRoot, "payments", errorWriter{}, dependencies); err == nil || !strings.Contains(err.Error(), "write failed") {
-		t.Fatalf("orphan note error = %v", err)
-	}
-
-	statFailureRoot := scaffoldProject(t)
-	if err := runNewDomain(testContext(t), statFailureRoot, "payments", io.Discard); err != nil {
-		t.Fatal(err)
-	}
-	dependencies.authored = func(string, string) (bool, error) { return false, errors.New("injected inspection failure") }
-	if err := runRemoveDomainWith(testContext(t), statFailureRoot, "payments", io.Discard, dependencies); err == nil || !strings.Contains(err.Error(), "injected inspection failure") {
-		t.Fatalf("orphan inspection error = %v", err)
-	}
-	dependencies.authored = hasDomainSidecarOrParts
-
-	cleanRoot := scaffoldProject(t)
-	cfgPath := config.ConfigPath(cleanRoot)
-	src, err := os.ReadFile(cfgPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	updated, err := config.SetArrayMember(src, "domains", "clean", true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(cfgPath, updated, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := runRemoveDomainWith(testContext(t), cleanRoot, "clean", io.Discard, dependencies); err != nil {
-		t.Fatalf("clean removal = %v", err)
-	}
-}
 
 func TestRetainedNewUsageAndProjectErrors(t *testing.T) {
 	if err := runNew(testContext(t), t.TempDir(), "domain", nil, io.Discard); err == nil {
@@ -281,6 +105,27 @@ func TestRetainedDomainAndListCLIPaths(t *testing.T) {
 		}
 	})
 
+	t.Run("loader errors", func(t *testing.T) {
+		for _, operation := range []struct {
+			name string
+			run  func(string) error
+		}{
+			{name: "add", run: func(root string) error { return runNewDomain(ctx, root, "payments", io.Discard) }},
+			{name: "remove", run: func(root string) error { return runRemoveDomain(ctx, root, "payments", io.Discard) }},
+		} {
+			t.Run(operation.name, func(t *testing.T) {
+				root := scaffoldProject(t)
+				if err := os.RemoveAll(filepath.Join(root, ".git")); err != nil {
+					t.Fatal(err)
+				}
+				testsupport.WriteFile(t, filepath.Join(root, ".git"), "not a gitdir pointer\n")
+				if err := operation.run(root); err == nil {
+					t.Fatal("malformed repository accepted")
+				}
+			})
+		}
+	})
+
 	t.Run("remove absence and validation", func(t *testing.T) {
 		root := scaffoldProject(t)
 		if err := runRemoveDomain(ctx, root, "../bad", io.Discard); err == nil {
@@ -288,6 +133,23 @@ func TestRetainedDomainAndListCLIPaths(t *testing.T) {
 		}
 		if err := runRemoveDomain(ctx, root, "payments", io.Discard); err == nil || !strings.Contains(err.Error(), "not configured") {
 			t.Fatalf("absent domain error = %v", err)
+		}
+	})
+
+	t.Run("remove without orphan", func(t *testing.T) {
+		root := scaffoldProject(t)
+		if err := runNewDomain(ctx, root, "payments", io.Discard); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.RemoveAll(filepath.Join(root, ".awf", "domains", "parts", "payments")); err != nil {
+			t.Fatal(err)
+		}
+		var out bytes.Buffer
+		if err := runRemoveDomain(ctx, root, "payments", &out); err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(out.String(), "orphaned") {
+			t.Fatalf("unexpected orphan note: %q", out.String())
 		}
 	})
 

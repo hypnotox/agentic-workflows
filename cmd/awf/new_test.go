@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"io"
 	"maps"
@@ -17,6 +16,34 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
+
+func TestNewOwnerWrappersRejectUsageAndMalformedRepository(t *testing.T) {
+	if err := newDoc(testContext(t), t.TempDir(), nil, nil, io.Discard); err == nil {
+		t.Fatal("local document without arguments accepted")
+	}
+	for _, operation := range []struct {
+		name string
+		run  func(string) error
+	}{
+		{name: "local document", run: func(root string) error {
+			return newDoc(testContext(t), root, []string{"runbooks/api", "Operate API"}, nil, io.Discard)
+		}},
+		{name: "topic", run: func(root string) error {
+			return newTopic(testContext(t), root, []string{"tooling", "API"}, io.Discard)
+		}},
+	} {
+		t.Run(operation.name, func(t *testing.T) {
+			root := scaffoldProject(t)
+			if err := os.RemoveAll(filepath.Join(root, ".git")); err != nil {
+				t.Fatal(err)
+			}
+			testsupport.WriteFile(t, filepath.Join(root, ".git"), "not a gitdir pointer\n")
+			if err := operation.run(root); err == nil {
+				t.Fatal("malformed repository accepted")
+			}
+		})
+	}
+}
 
 func TestRunNewScaffoldsADR(t *testing.T) {
 	ctx := testContext(t)
@@ -132,75 +159,6 @@ func TestRunNewDocRefusesBeforeMutation(t *testing.T) {
 				t.Fatal("flag refusal mutated lock")
 			}
 		})
-	}
-}
-
-func TestProductionLocalDocPreparationPropagatesOpenFailure(t *testing.T) {
-	dependencies := productionLocalDocDependencies()
-	if _, err := dependencies.prepare(testContext(t), t.TempDir()); err == nil {
-		t.Fatal("missing project config accepted")
-	}
-}
-
-func TestNewDocPreservesProjectOpenFailurePrecedence(t *testing.T) {
-	root := scaffoldProject(t)
-	openFailure := errors.New("open failure")
-	laterFailure := errors.New("later failure")
-	dependencies := productionLocalDocDependencies()
-	dependencies.prepare = func(context.Context, string) (localDocPreflight, error) { return nil, openFailure }
-	dependencies.read = func(string) ([]byte, error) { return nil, laterFailure }
-	if err := newDocWith(testContext(t), root, []string{"runbooks/api", "Description"}, nil, io.Discard, dependencies); !errors.Is(err, openFailure) {
-		t.Fatalf("error = %v, want project-open failure", err)
-	}
-}
-
-func TestNewDocDependencyFailures(t *testing.T) {
-	failure := errors.New("injected failure")
-	for _, step := range []string{"prepare", "read", "append", "inspect", "preflight", "write", "synchronize"} {
-		t.Run(step, func(t *testing.T) {
-			root := scaffoldProject(t)
-			beforeConfig := mustReadCLIFile(t, config.ConfigPath(root))
-			beforeLock := mustReadCLIFile(t, config.LockPath(root))
-			dependencies := productionLocalDocDependencies()
-			switch step {
-			case "prepare":
-				dependencies.prepare = func(context.Context, string) (localDocPreflight, error) { return nil, failure }
-			case "read":
-				dependencies.read = func(string) ([]byte, error) { return nil, failure }
-			case "append":
-				dependencies.append = func([]byte, config.LocalDoc) ([]byte, error) { return nil, failure }
-			case "inspect":
-				dependencies.inspect = func(string) (os.FileInfo, error) { return nil, failure }
-			case "preflight":
-				dependencies.prepare = func(context.Context, string) (localDocPreflight, error) {
-					return func(context.Context, config.LocalDoc) error { return failure }, nil
-				}
-			case "write":
-				dependencies.write = func(string, []byte, os.FileMode) error { return failure }
-			case "synchronize":
-				dependencies.synchronize = func(context.Context, string, io.Writer) error { return failure }
-			}
-			if err := newDocWith(testContext(t), root, []string{"runbooks/api", "Description"}, nil, io.Discard, dependencies); !errors.Is(err, failure) {
-				t.Fatalf("error = %v", err)
-			}
-			if got := mustReadCLIFile(t, config.LockPath(root)); got != beforeLock {
-				t.Fatal("failure mutated lock")
-			}
-			gotConfig := mustReadCLIFile(t, config.ConfigPath(root))
-			if step == "synchronize" {
-				if gotConfig == beforeConfig || !strings.Contains(gotConfig, "name: runbooks/api") {
-					t.Fatal("sync failure did not retain the valid declaration for retry")
-				}
-			} else if gotConfig != beforeConfig {
-				t.Fatal("pre-publication failure mutated config")
-			}
-			if _, err := os.Stat(filepath.Join(root, "docs/runbooks/api.md")); !errors.Is(err, os.ErrNotExist) {
-				t.Fatalf("failure destination state = %v", err)
-			}
-		})
-	}
-	if err := newDocWith(testContext(t), t.TempDir(), nil, nil, io.Discard, localDocDependencies{}); err == nil {
-		t.Fatal("missing arguments accepted")
 	}
 }
 
@@ -378,322 +336,6 @@ func TestRunNewTopicUsageAndValidation(t *testing.T) {
 		if err := runNew(ctx, root, "topic", []string{tc.domain, "Title"}, io.Discard); err == nil || !strings.Contains(err.Error(), tc.want) {
 			t.Fatalf("domain %q: %v", tc.domain, err)
 		}
-	}
-}
-
-type partialFailWriteCloser struct {
-	file *os.File
-	err  error
-}
-
-func (w *partialFailWriteCloser) Write(data []byte) (int, error) {
-	n, writeErr := w.file.Write(data[:3])
-	if writeErr != nil {
-		return n, writeErr
-	}
-	return n, w.err
-}
-
-func (w *partialFailWriteCloser) Close() error { return w.file.Close() }
-
-type errorWriteCloser struct {
-	write func([]byte) (int, error)
-	close func() error
-}
-
-func (w errorWriteCloser) Write(data []byte) (int, error) { return w.write(data) }
-func (w errorWriteCloser) Close() error                   { return w.close() }
-
-func TestWriteAndCloseTopicFileErrors(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	closeErr := errors.New("close failed")
-	writer := errorWriteCloser{
-		write: func(data []byte) (int, error) { return len(data), nil },
-		close: func() error { return closeErr },
-	}
-	if err := writeAndCloseTopicFile("topic.yaml", writer, []byte("content")); !errors.Is(err, closeErr) || !strings.Contains(err.Error(), "close topic scaffold path") {
-		t.Fatalf("close error = %v", err)
-	}
-
-	writer = errorWriteCloser{
-		write: func([]byte) (int, error) { return 0, nil },
-		close: func() error { return nil },
-	}
-	if err := writeAndCloseTopicFile("topic.yaml", writer, []byte("content")); !errors.Is(err, io.ErrShortWrite) {
-		t.Fatalf("short write error = %v", err)
-	}
-}
-
-func TestCreateTopicParentsErrors(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	t.Run("file ancestor", func(t *testing.T) {
-		file := filepath.Join(t.TempDir(), "file")
-		if err := os.WriteFile(file, []byte("x"), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := createTopicParents(file); err == nil || !strings.Contains(err.Error(), "is not a directory") {
-			t.Fatalf("error = %v", err)
-		}
-	})
-	t.Run("stat failure", func(t *testing.T) {
-		statErr := errors.New("stat failed")
-		testsupport.SwapVar(t, &topicStat, func(string) (os.FileInfo, error) { return nil, statErr })
-		if _, err := createTopicParents(filepath.Join(t.TempDir(), "child")); !errors.Is(err, statErr) {
-			t.Fatalf("error = %v", err)
-		}
-	})
-}
-
-func TestRollbackTopicScaffoldDirectoryInspection(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	t.Run("missing directory is already clean", func(t *testing.T) {
-		primary := errors.New("primary")
-		err := rollbackTopicScaffold(primary, nil, []string{filepath.Join(t.TempDir(), "missing")})
-		if !errors.Is(err, primary) || strings.Contains(err.Error(), "inspect created") {
-			t.Fatalf("error = %v", err)
-		}
-	})
-	t.Run("inspection failure is joined", func(t *testing.T) {
-		primary := errors.New("primary")
-		inspectErr := errors.New("inspect failed")
-		testsupport.SwapVar(t, &topicReadDir, func(string) ([]os.DirEntry, error) { return nil, inspectErr })
-		err := rollbackTopicScaffold(primary, nil, []string{t.TempDir()})
-		if !errors.Is(err, primary) || !errors.Is(err, inspectErr) || !strings.Contains(err.Error(), "inspect created topic scaffold directory") {
-			t.Fatalf("error = %v", err)
-		}
-	})
-}
-
-func TestRunNewTopicRollsBackSecondMkdirFailure(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := topicCLIProject(t)
-	before := topicTreeShape(t, root)
-	mkdirErr := errors.New("second parent failed")
-	testsupport.SwapVar(t, &topicMkdirAll, func(path string, mode os.FileMode) error {
-		if strings.Contains(filepath.ToSlash(path), "/topics/parts/") {
-			return mkdirErr
-		}
-		return os.MkdirAll(path, mode)
-	})
-	err := runNew(ctx, root, "topic", []string{"rendering", "Mkdir Rollback"}, io.Discard)
-	if !errors.Is(err, mkdirErr) || !strings.Contains(err.Error(), "/topics/parts/rendering/mkdir-rollback/current-state.md") {
-		t.Fatalf("error = %v", err)
-	}
-	if after := topicTreeShape(t, root); !slices.Equal(after, before) {
-		t.Fatalf("rollback changed tree shape:\nbefore %v\nafter  %v", before, after)
-	}
-}
-
-func TestRunNewTopicRollsBackPartialSecondWriteInReverseOrder(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := topicCLIProject(t)
-	writeErr := errors.New("partial second write failed")
-	opens := 0
-	testsupport.SwapVar(t, &topicOpenFile, func(path string, flag int, mode os.FileMode) (topicWriteCloser, error) {
-		opens++
-		file, err := os.OpenFile(path, flag, mode)
-		if err != nil || opens == 1 {
-			return file, err
-		}
-		return &partialFailWriteCloser{file: file, err: writeErr}, nil
-	})
-	var removed []string
-	testsupport.SwapVar(t, &topicRemove, func(path string) error {
-		removed = append(removed, filepath.ToSlash(path))
-		return os.Remove(path)
-	})
-	err := runNew(ctx, root, "topic", []string{"rendering", "Partial"}, io.Discard)
-	if !errors.Is(err, writeErr) || !strings.Contains(err.Error(), "/topics/parts/rendering/partial/current-state.md") {
-		t.Fatalf("error = %v", err)
-	}
-	wantFiles := []string{
-		filepath.ToSlash(filepath.Join(root, ".awf/topics/parts/rendering/partial/current-state.md")),
-		filepath.ToSlash(filepath.Join(root, ".awf/topics/metadata/rendering/partial.yaml")),
-	}
-	if len(removed) < len(wantFiles) || !slices.Equal(removed[:len(wantFiles)], wantFiles) {
-		t.Fatalf("file rollback order = %v, want prefix %v", removed, wantFiles)
-	}
-	lastDepth := int(^uint(0) >> 1)
-	for _, path := range removed[len(wantFiles):] {
-		depth := strings.Count(path, "/")
-		if depth > lastDepth {
-			t.Fatalf("directory rollback was not deepest-first: %v", removed)
-		}
-		lastDepth = depth
-	}
-	for _, path := range []string{
-		filepath.Join(root, ".awf/topics/metadata/rendering/partial.yaml"),
-		filepath.Join(root, ".awf/topics/parts/rendering/partial/current-state.md"),
-	} {
-		if _, statErr := os.Stat(path); !errors.Is(statErr, os.ErrNotExist) {
-			t.Fatalf("created file survived rollback at %s: %v", path, statErr)
-		}
-	}
-}
-
-func TestRunNewTopicPreservesPreExistingParentOnRollback(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := topicCLIProject(t)
-	preExisting := filepath.Join(root, ".awf/topics/parts/rendering/preserved")
-	if err := os.MkdirAll(preExisting, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	before := topicTreeShape(t, root)
-	writeErr := errors.New("second write failed")
-	opens := 0
-	testsupport.SwapVar(t, &topicOpenFile, func(path string, flag int, mode os.FileMode) (topicWriteCloser, error) {
-		opens++
-		file, err := os.OpenFile(path, flag, mode)
-		if err != nil || opens == 1 {
-			return file, err
-		}
-		return &partialFailWriteCloser{file: file, err: writeErr}, nil
-	})
-	if err := runNew(ctx, root, "topic", []string{"rendering", "Preserved"}, io.Discard); !errors.Is(err, writeErr) {
-		t.Fatalf("error = %v", err)
-	}
-	if after := topicTreeShape(t, root); !slices.Equal(after, before) {
-		t.Fatalf("rollback did not preserve tree shape:\nbefore %v\nafter  %v", before, after)
-	}
-}
-
-func TestRunNewTopicJoinsCleanupFailure(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := topicCLIProject(t)
-	writeErr := errors.New("second write failed")
-	cleanupErr := errors.New("cleanup failed")
-	opens := 0
-	testsupport.SwapVar(t, &topicOpenFile, func(path string, flag int, mode os.FileMode) (topicWriteCloser, error) {
-		opens++
-		file, err := os.OpenFile(path, flag, mode)
-		if err != nil || opens == 1 {
-			return file, err
-		}
-		return &partialFailWriteCloser{file: file, err: writeErr}, nil
-	})
-	removes := 0
-	testsupport.SwapVar(t, &topicRemove, func(path string) error {
-		removes++
-		if removes == 1 {
-			return cleanupErr
-		}
-		return os.Remove(path)
-	})
-	err := runNew(ctx, root, "topic", []string{"rendering", "Cleanup"}, io.Discard)
-	if !errors.Is(err, writeErr) || !errors.Is(err, cleanupErr) || !strings.Contains(err.Error(), "remove created topic scaffold path") {
-		t.Fatalf("joined error = %v", err)
-	}
-}
-
-func TestRunNewTopicJoinsDirectoryCleanupFailure(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := topicCLIProject(t)
-	writeErr := errors.New("second write failed")
-	cleanupErr := errors.New("directory cleanup failed")
-	opens := 0
-	testsupport.SwapVar(t, &topicOpenFile, func(path string, flag int, mode os.FileMode) (topicWriteCloser, error) {
-		opens++
-		file, err := os.OpenFile(path, flag, mode)
-		if err != nil || opens == 1 {
-			return file, err
-		}
-		return &partialFailWriteCloser{file: file, err: writeErr}, nil
-	})
-	testsupport.SwapVar(t, &topicRemove, func(path string) error {
-		info, err := os.Stat(path)
-		if err == nil && info.IsDir() {
-			return cleanupErr
-		}
-		return os.Remove(path)
-	})
-	err := runNew(ctx, root, "topic", []string{"rendering", "Directory Cleanup"}, io.Discard)
-	if !errors.Is(err, writeErr) || !errors.Is(err, cleanupErr) || !strings.Contains(err.Error(), "remove created topic scaffold directory") {
-		t.Fatalf("joined error = %v", err)
-	}
-}
-
-func topicTreeShape(t *testing.T, root string) []string {
-	t.Helper()
-	var shape []string
-	if err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if path == root {
-			return nil
-		}
-		rel, err := filepath.Rel(root, path)
-		if err != nil {
-			return err
-		}
-		rel = filepath.ToSlash(rel)
-		if entry.IsDir() {
-			rel += "/"
-		}
-		shape = append(shape, rel)
-		return nil
-	}); err != nil {
-		t.Fatal(err)
-	}
-	return shape
-}
-
-func TestRunNewTopicLateCollisionPreservesExistingBytes(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := topicCLIProject(t)
-	const existing = "existing authored bytes\n"
-	opens := 0
-	testsupport.SwapVar(t, &topicOpenFile, func(path string, flag int, mode os.FileMode) (topicWriteCloser, error) {
-		opens++
-		if opens == 2 {
-			if err := os.WriteFile(path, []byte(existing), 0o644); err != nil {
-				t.Fatal(err)
-			}
-		}
-		return os.OpenFile(path, flag, mode)
-	})
-	err := runNew(ctx, root, "topic", []string{"rendering", "Late Collision"}, io.Discard)
-	part := filepath.Join(root, ".awf/topics/parts/rendering/late-collision/current-state.md")
-	if !errors.Is(err, os.ErrExist) || !strings.Contains(err.Error(), filepath.ToSlash(part)) {
-		t.Fatalf("collision error = %v", err)
-	}
-	if got := mustReadCLIFile(t, part); got != existing {
-		t.Fatalf("existing bytes = %q, want %q", got, existing)
-	}
-	metadata := filepath.Join(root, ".awf/topics/metadata/rendering/late-collision.yaml")
-	if _, statErr := os.Stat(metadata); !errors.Is(statErr, os.ErrNotExist) {
-		t.Fatalf("first file survived rollback: %v", statErr)
-	}
-}
-
-func TestRunNewTopicFirstWriteAndOpenErrors(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	if err := runNew(ctx, t.TempDir(), "topic", []string{"rendering", "Failure"}, io.Discard); err == nil || !strings.Contains(err.Error(), "awf init") {
-		t.Fatalf("unadopted project error = %v", err)
-	}
-
-	root := topicCLIProject(t)
-	testsupport.SwapVar(t, &topicOpenFile, func(string, int, os.FileMode) (topicWriteCloser, error) {
-		return nil, errors.New("open failed")
-	})
-	if err := runNew(ctx, root, "topic", []string{"rendering", "Failure"}, io.Discard); err == nil || !strings.Contains(err.Error(), "open failed") {
-		t.Fatalf("open error = %v", err)
-	}
-
-	root = topicCLIProject(t)
-	testsupport.WriteAwfConfig(t, root, minimalYAML+"domains: [rendering]\n")
-	if err := runNew(ctx, root, "topic", []string{"rendering", "Failure"}, io.Discard); err == nil {
-		t.Fatal("expected project.Open error")
 	}
 }
 

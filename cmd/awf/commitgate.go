@@ -2,19 +2,15 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
-	"strings"
 
-	"github.com/hypnotox/agentic-workflows/internal/audit"
-	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/commitgateop"
 	"github.com/hypnotox/agentic-workflows/internal/commitmsg"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 	"github.com/hypnotox/agentic-workflows/internal/git"
-	"github.com/hypnotox/agentic-workflows/internal/memorycite"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
 
@@ -36,7 +32,7 @@ func defaultCommitGateDependencies() commitGateDependencies {
 		authorize: func(ctx context.Context, root string, repo *git.Repo, msg commitmsg.Message) (currentstatecoord.CommitAuthorizationResult, error) {
 			return currentstatecoord.CheckCommitAuthorization(root, repo, ctx, msg)
 		},
-		diagnostic: commitAuthorizationDiagnostic,
+		diagnostic: commitgateop.AuthorizationDiagnostic,
 		diagnosticDocument: func(diagnostic presentation.Diagnostic) (presentation.Document, error) {
 			return diagnostic.Document()
 		},
@@ -44,57 +40,14 @@ func defaultCommitGateDependencies() commitGateDependencies {
 	}
 }
 
-// commitAuthorizationDiagnostic maps a completed coordinator result to command output.
-func commitAuthorizationDiagnostic(result currentstatecoord.CommitAuthorizationResult) (presentation.Diagnostic, error) {
-	yesNo := func(changed bool) string {
-		if changed {
-			return "yes"
-		}
-		return "no"
-	}
-	changed := make([]presentation.Field, 0, 3)
-	for _, axis := range []struct{ label, value string }{
-		{"index", yesNo(result.ChangedIndex)},
-		{"message", yesNo(result.ChangedMessage)},
-		{"merge state", yesNo(result.ChangedMergeState)},
-	} {
-		value, err := presentation.Literal(axis.value)
-		if err != nil { // coverage-ignore: yes/no literal is fixed valid text
-			return presentation.Diagnostic{}, err
-		}
-		field, err := presentation.NewField(axis.label, value)
-		if err != nil { // coverage-ignore: fixed axis labels are presentation-valid
-			return presentation.Diagnostic{}, err
-		}
-		changed = append(changed, field)
-	}
-	steps := make([]presentation.Value, len(result.NextActions))
-	for i, action := range result.NextActions {
-		value, err := presentation.Prose(action)
-		if err != nil {
-			return presentation.Diagnostic{}, err
-		}
-		steps[i] = value
-	}
-	return presentation.Diagnostic{Condition: result.Condition, State: result.Category, Changed: changed, Steps: steps}, nil
-}
-
 func openCommitGateProjectFromDisk(ctx context.Context, root string) (*config.Config, *git.Repo, error) {
 	_, cfg, repo, err := openProjectOperation(ctx, root)
 	return cfg, repo, err
 }
 
-// runCommitGate validates one commit message and returns an error (mapped to a
-// non-zero exit) on any violation, so a commit-msg hook calling it blocks the
-// commit. It applies the shared Conventional Commits rule and a scan of every
-// cleaned message for a citation of a specific working-memory file (ADR-0158).
-// Full additionally applies the definitive stale-merge authorization check. The
-// git-generated-subject exemption scopes the Conventional Commits check alone:
-// git writes the subject, but a person may edit a merge or autosquash body, so
-// the citation and authorization checks apply to every recorded message. The
-// message comes from msgPath (the file a commit-msg hook
-// passes as $1) or stdin when msgPath is empty; citation line numbers are
-// relative to the git-cleaned message, not to the raw file.
+// runCommitGate reads one CLI-selected message source, composes the focused
+// staged-commit operation, renders its optional partial result, and preserves
+// the operation's refusal for process-level exit mapping.
 func runCommitGate(ctx context.Context, root, msgPath string, stdin io.Reader, stdout io.Writer) error {
 	return runCommitGateWithDependencies(ctx, root, msgPath, stdin, stdout, defaultCommitGateDependencies())
 }
@@ -110,78 +63,20 @@ func runCommitGateWithDependencies(ctx context.Context, root, msgPath string, st
 	if err != nil {
 		return fmt.Errorf("check staged commit: read message: %w", err)
 	}
-	msg := commitmsg.Clean(raw)
 	cfg, repo, err := dependencies.openProject(ctx, root)
 	if err != nil {
 		return fmt.Errorf("check staged commit: %w", err)
 	}
-	if msg.Subject != "" {
-		// Scan the cleaned message, never the raw bytes: `git commit -v` appends
-		// the staged diff below a scissors line, and a diff may legitimately carry
-		// text git itself discards.
-		refs := memorycite.ScanText("commit message", []byte(msg.Text))
-		if len(refs) > 0 {
-			document, documentErr := memorycite.CommitGateDocument(refs)
-			if documentErr != nil { // coverage-ignore: ScanText produces nonempty single-line reference fields and the owner mapping uses fixed grammar
-				return documentErr
+	result, operationErr := commitgateop.RunWithDependencies(ctx, root, cfg, repo, raw, commitgateop.Dependencies{
+		Authorize: dependencies.authorize, Diagnostic: dependencies.diagnostic, DiagnosticDocument: dependencies.diagnosticDocument,
+	})
+	if result.HasDocument {
+		if err := dependencies.render(stdout, result.Document); err != nil {
+			if result.Authorization {
+				return fmt.Errorf("check staged commit: render authorization diagnostic: %w", err)
 			}
-			if renderErr := dependencies.render(stdout, document); renderErr != nil {
-				return renderErr
-			}
-			return errors.New("check staged commit: a commit message must not cite a concrete effort-owned memory file; name the bare .awf/efforts/ directory or use an angle-bracket slug placeholder")
-		}
-		// A git-generated merge or autosquash subject is exempt from the Conventional
-		// Commits rule - never block what git produced or will rewrite.
-		if !isExemptSubject(msg.Subject) {
-			findings := audit.CheckConventionalCommit(
-				git.Commit{Subject: msg.Subject}, audit.Resolve(config.AuditScopes(cfg.Audit)))
-			if len(findings) > 0 {
-				document, documentErr := audit.ConventionalCommitDocument(findings)
-				if documentErr != nil { // coverage-ignore: CheckConventionalCommit produces fixed single-line detail and the owner mapping uses fixed grammar
-					return documentErr
-				}
-				if renderErr := dependencies.render(stdout, document); renderErr != nil {
-					return renderErr
-				}
-				return fmt.Errorf("check staged commit: rejected %q", msg.Subject)
-			}
+			return err
 		}
 	}
-	if cfg.Profile == catalog.ProfileCore {
-		return nil
-	}
-	result, authErr := dependencies.authorize(ctx, root, repo, msg)
-	if result.Category != "" {
-		diagnostic, diagnosticErr := dependencies.diagnostic(result)
-		if diagnosticErr != nil {
-			return fmt.Errorf("check staged commit: render authorization diagnostic: %w", diagnosticErr)
-		}
-		document, diagnosticErr := dependencies.diagnosticDocument(diagnostic)
-		if diagnosticErr != nil {
-			return fmt.Errorf("check staged commit: render authorization diagnostic: %w", diagnosticErr)
-		}
-		if diagnosticErr := dependencies.render(stdout, document); diagnosticErr != nil {
-			return fmt.Errorf("check staged commit: render authorization diagnostic: %w", diagnosticErr)
-		}
-	}
-	if authErr != nil {
-		var syntax *commitmsg.SyntaxError
-		if errors.As(authErr, &syntax) {
-			return fmt.Errorf("check staged commit: stale merge authorization refused: %w", authErr)
-		}
-		return fmt.Errorf("check staged commit: stale merge authorization: %w", authErr)
-	}
-	if len(result.NextActions) > 0 {
-		return errors.New("check staged commit: stale merge authorization refused")
-	}
-	return nil
-}
-
-// isExemptSubject reports whether a subject is one git itself generates - a merge
-// or an autosquash (fixup!/squash!/amend!) - which the gate must not block.
-func isExemptSubject(s string) bool {
-	return strings.HasPrefix(s, "Merge ") ||
-		strings.HasPrefix(s, "fixup!") ||
-		strings.HasPrefix(s, "squash!") ||
-		strings.HasPrefix(s, "amend!")
+	return operationErr
 }

@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/commitgateop"
 	"github.com/hypnotox/agentic-workflows/internal/commitmsg"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
@@ -22,7 +23,7 @@ import (
 
 func TestCommitAuthorizationDiagnostic(t *testing.T) {
 	result := currentstatecoord.CommitAuthorizationResult{Category: "operation", Condition: "non-merge", ChangedIndex: true, ChangedMessage: true, ChangedMergeState: true, NextActions: []string{"correct the message trailers", "run git commit"}}
-	diagnostic, err := commitAuthorizationDiagnostic(result)
+	diagnostic, err := commitgateop.AuthorizationDiagnostic(result)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +44,7 @@ func TestCommitAuthorizationDiagnostic(t *testing.T) {
 
 func TestCommitAuthorizationDiagnosticRejectsInvalidAction(t *testing.T) {
 	result := currentstatecoord.CommitAuthorizationResult{Category: "operation", Condition: "refused", NextActions: []string{""}}
-	if _, err := commitAuthorizationDiagnostic(result); err == nil {
+	if _, err := commitgateop.AuthorizationDiagnostic(result); err == nil {
 		t.Fatal("invalid action accepted")
 	}
 }
@@ -96,13 +97,13 @@ func TestIsExemptSubject(t *testing.T) {
 	_ = ctx
 	exempt := []string{"Merge branch 'x'", "fixup! feat: a", "squash! fix: b", "amend! docs: c"}
 	for _, s := range exempt {
-		if !isExemptSubject(s) {
+		if !commitgateop.IsExemptSubject(s) {
 			t.Errorf("expected %q exempt", s)
 		}
 	}
 	notExempt := []string{"feat: x", "Merged the configs", "fix: merge handling"}
 	for _, s := range notExempt {
-		if isExemptSubject(s) {
+		if commitgateop.IsExemptSubject(s) {
 			t.Errorf("expected %q not exempt", s)
 		}
 	}

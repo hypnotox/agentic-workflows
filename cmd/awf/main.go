@@ -236,9 +236,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 			return dispatchFailure(stdout, stderr, loadErr)
 		}
 	}
-	// A committed current-state journal or attestation makes ordinary project
-	// commands non-operational; the guard refuses them before gating so no state
-	// is reachable without protection (Plan 2 Task 3.3).
+	// Process guards own interruption before dispatch so independently invocable
+	// handlers receive only operational project state.
 	guardCtx, cancel := newGitCommandContext()
 	if err := guardProjectState(guardCtx, cwd, cmd, top, sub, inv); err != nil {
 		cancel()

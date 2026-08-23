@@ -3,6 +3,9 @@ summary: Command dispatch and the behaviour of the awf command surfaces.
 paths:
   - cmd/**
   - internal/checkop/**
+  - internal/commitgateop/**
+  - internal/domainop/**
+  - internal/localdocop/**
   - internal/clispec/**
   - internal/commitmsg/**
   - internal/initspec/**

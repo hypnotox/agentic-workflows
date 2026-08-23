@@ -5,6 +5,9 @@ paths:
   - internal/coverage/**
   - internal/changelog/**
   - internal/checkop/**
+  - internal/commitgateop/**
+  - internal/domainop/**
+  - internal/localdocop/**
   - internal/evals/**
   - internal/clispec/**
   - internal/commitmsg/**

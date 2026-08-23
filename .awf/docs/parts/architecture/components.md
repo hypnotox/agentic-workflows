@@ -5,11 +5,12 @@
 - `internal/repositorycheck`: the policy-free RepositoryChecker preserves explicit owner-result order and compatibility projections without preparing inputs or inferring classification.
 - `internal/project`: `Loader` constructs the lower `ProjectState` facts while preserving bounded compatibility adapters and unrelated project operations.
 - `internal/currentstatecoord`: focused application operations select immutable universes, coordinate ADR, topic, plan, and current-state authority, and return semantic results without absorbing domain or commit-authorization policy.
+- Focused operation packages: `internal/initop`, `internal/checkop`, `internal/contextop`, `internal/topicop`, `internal/effortop`, `internal/commitgateop`, `internal/domainop`, and `internal/localdocop` own bounded command use cases above their semantic mechanisms.
 - `internal/contextinput`: owns the neutral immutable context input consumed below application coordination.
 - `internal/adr`, `internal/currentstate`, and `internal/plan`: decision, active-authority, and plan models.
 - `internal/effort` and `internal/worktree`: local residents and Git-backed topology.
 - `internal/git`: the sole semantic Git seam.
 - `internal/snapshot` and `internal/filesystem`: immutable input and confined filesystem boundaries.
-- `cmd/awf`: CLI composition root.
+- `cmd/awf`: thin CLI composition root for command lookup, parsing, concrete construction, one focused invocation, renderer or protocol-bypass selection, streams, and exit mapping.
 - Generated Pi extensions: an awf-owned protocol-v2 profile adapter and retained effort integration. Independently installed, unpinned `hypnotox/pi-tools` owns general context usage, handoff, scheduling, child execution, confinement, execution facts, and presentation; successful handshake and final profile registration define compatibility, with an actionable no-fallback failure otherwise.
 - Auxiliary commands: `cmd/contextspilllog`, `cmd/covercheck`, `cmd/deadcodecheck`, `cmd/mutants`, `cmd/pincheck`, `cmd/releasecheck`, `cmd/repoaudit`, and `cmd/versioncheck`.
