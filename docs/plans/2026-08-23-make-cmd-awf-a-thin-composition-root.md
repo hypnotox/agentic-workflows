@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-23
 adrs: [0296, 0299, 0300, 0301]
-status: Proposed
+status: Implemented
 ---
 # Plan: Make cmd/awf a Thin Composition Root
 
