@@ -145,8 +145,23 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 // invariant: tooling/context-and-topic:context-query-boundary (TestContextCompositionOwnershipRoutes)
 func TestContextCompositionOwnershipRoutes(t *testing.T) {
 	root := testsupport.RepoRoot(t)
-	for _, rel := range []string{"internal/contextq/context.go", "internal/contextq/context_artifacts.go"} {
-		assertNoImports(t, readProduction(t, root, rel), "internal/project", "internal/currentstatecoord")
+	contextqFiles := 0
+	testsupport.WalkRepoSources(t, root, func(rel string, body []byte) {
+		path, err := forbiddenContextQueryImport(rel, string(body))
+		if err != nil {
+			t.Errorf("parse %s imports: %v", rel, err)
+			return
+		}
+		if !strings.HasPrefix(rel, "internal/contextq/") {
+			return
+		}
+		contextqFiles++
+		if path != "" {
+			t.Errorf("%s imports forbidden package %s", rel, path)
+		}
+	})
+	if contextqFiles == 0 {
+		t.Fatal("contextq production-source scan matched no files")
 	}
 	assertNoImports(t, readProduction(t, root, "internal/contextinput/input.go"), "internal/currentstatecoord")
 
@@ -175,6 +190,9 @@ func TestContextCompositionOwnershipRoutes(t *testing.T) {
 			if selector, ok := call.Fun.(*ast.SelectorExpr); ok {
 				if receiver, ok := selector.X.(*ast.Ident); ok && receiver.Name == "currentstatecoord" {
 					got[selector.Sel.Name]++
+					if selector.Sel.Name == "CompleteContext" && !completeContextArgumentsValid(call) {
+						t.Errorf("%s does not complete context from its selected universe and one Publisher preparation", fn.Name.Name)
+					}
 				}
 			}
 			return true
@@ -229,10 +247,83 @@ func TestContextCompositionOwnershipRoutes(t *testing.T) {
 		}
 	}
 
-	// Negative fixtures prove this is an import-aware check rather than a text
-	// census: aliases and unrelated strings cannot evade the boundary.
-	assertNoImportsFails(t, `package fixture; import p "github.com/hypnotox/agentic-workflows/internal/project"; var _ = p.Version`, "internal/project")
-	assertNoImports(t, `package fixture; var _ = "internal/project"`, "internal/project")
+	// Negative fixtures prove the complete-package import scan catches a future
+	// contextq file while ignoring the same import outside that protected package.
+	violating := `package contextq; import p "github.com/hypnotox/agentic-workflows/internal/project"; var _ = p.Version`
+	if path, err := forbiddenContextQueryImport("internal/contextq/future.go", violating); err != nil || path == "" {
+		t.Fatalf("future contextq reverse import = %q, %v; want a violation", path, err)
+	}
+	if path, err := forbiddenContextQueryImport("internal/project/future.go", violating); err != nil || path != "" {
+		t.Fatalf("out-of-scope import = %q, %v; want ignored", path, err)
+	}
+
+	valid := `currentstatecoord.CompleteContext(prep, prepared.ADRs(), prepared.Topics(), prepared.Plans(), prepared.Plan().Declarations())`
+	if !completeContextExpressionValid(t, valid) {
+		t.Fatal("valid context completion fixture failed")
+	}
+	for _, mutation := range []string{
+		`currentstatecoord.CompleteContext(other, prepared.ADRs(), prepared.Topics(), prepared.Plans(), prepared.Plan().Declarations())`,
+		`currentstatecoord.CompleteContext(prep, other.ADRs(), prepared.Topics(), prepared.Plans(), prepared.Plan().Declarations())`,
+		`currentstatecoord.CompleteContext(prep, prepared.ADRs(), other.Topics(), prepared.Plans(), prepared.Plan().Declarations())`,
+		`currentstatecoord.CompleteContext(prep, prepared.ADRs(), prepared.Topics(), other.Plans(), prepared.Plan().Declarations())`,
+		`currentstatecoord.CompleteContext(prep, prepared.ADRs(), prepared.Topics(), prepared.Plans(), other.Plan().Declarations())`,
+	} {
+		if completeContextExpressionValid(t, mutation) {
+			t.Errorf("mutated context completion passed: %s", mutation)
+		}
+	}
+}
+
+func forbiddenContextQueryImport(rel, source string) (string, error) {
+	if !strings.HasPrefix(rel, "internal/contextq/") {
+		return "", nil
+	}
+	return forbiddenImport(source, "internal/project", "internal/currentstatecoord")
+}
+
+func completeContextExpressionValid(t *testing.T, expression string) bool {
+	t.Helper()
+	expr, err := parser.ParseExpr(expression)
+	if err != nil {
+		t.Fatal(err)
+	}
+	call, ok := expr.(*ast.CallExpr)
+	return ok && completeContextArgumentsValid(call)
+}
+
+func completeContextArgumentsValid(call *ast.CallExpr) bool {
+	if len(call.Args) != 5 || !isIdent(call.Args[0], "prep") {
+		return false
+	}
+	if !isPreparedCall(call.Args[1], "ADRs") ||
+		!isPreparedCall(call.Args[2], "Topics") ||
+		!isPreparedCall(call.Args[3], "Plans") {
+		return false
+	}
+	declarations, ok := call.Args[4].(*ast.CallExpr)
+	if !ok || len(declarations.Args) != 0 {
+		return false
+	}
+	selector, ok := declarations.Fun.(*ast.SelectorExpr)
+	if !ok || selector.Sel.Name != "Declarations" {
+		return false
+	}
+	plan, ok := selector.X.(*ast.CallExpr)
+	return ok && len(plan.Args) == 0 && isPreparedCall(plan, "Plan")
+}
+
+func isPreparedCall(expr ast.Expr, method string) bool {
+	call, ok := expr.(*ast.CallExpr)
+	if !ok || len(call.Args) != 0 {
+		return false
+	}
+	selector, ok := call.Fun.(*ast.SelectorExpr)
+	return ok && selector.Sel.Name == method && isIdent(selector.X, "prepared")
+}
+
+func isIdent(expr ast.Expr, name string) bool {
+	ident, ok := expr.(*ast.Ident)
+	return ok && ident.Name == name
 }
 
 func assertNoImports(t *testing.T, source string, denied ...string) {
@@ -243,17 +334,6 @@ func assertNoImports(t *testing.T, source string, denied ...string) {
 	}
 	if path != "" {
 		t.Fatalf("forbidden import %s", path)
-	}
-}
-
-func assertNoImportsFails(t *testing.T, source string, denied ...string) {
-	t.Helper()
-	path, err := forbiddenImport(source, denied...)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if path == "" {
-		t.Fatal("negative import fixture passed")
 	}
 }
 

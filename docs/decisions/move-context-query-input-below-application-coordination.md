@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: move-context-query-input-below-application-coordination
-status: Proposed
+status: Implementing
 date: 2026-08-23
 ---
 # ADR-move-context-query-input-below-application-coordination: Move Context Query Input Below Application Coordination
@@ -32,3 +32,5 @@ Current-state authority matches the implemented dependency direction and no long
 ## Status history
 
 - 2026-08-23: Proposed
+- 2026-08-23: Implementing; content-sha256: 7dd89cea8ef0b20148723463410484a1c3560d6d7175a9fc95e5ca3978a80a83
+- 2026-08-23: Applied; operations: update `tooling/context-and-topic:context-query-boundary`

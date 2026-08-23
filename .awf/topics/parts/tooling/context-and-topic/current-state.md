@@ -65,9 +65,9 @@ Backing: test
 
 ### `invariant: context-query-boundary`
 
-Context query assembly, classification, projection, and semantic mapping into presentation nodes live in internal/contextq; internal/presentation alone validates nodes and renders syntax. internal/project's exported surface carries no context result vocabulary, and contextq reaches core state only through the assembled context-state value and its two core-side constructors.
+Context queries consume a defensive snapshot of the neutral immutable `internal/contextinput` value assembled by `internal/currentstatecoord` from one selected operation universe and lower semantic values, including Publisher-produced corpora where Publisher participates. `internal/contextq` owns classification, projection, and semantic mapping into presentation nodes without importing project or application coordination; `internal/presentation` alone validates nodes and renders syntax. Bounded project compatibility adapters delegate to the coordinator without constructing an alternate context-state seam.
 Origin: ADR-0195
-Revised-by: ADR-0234
+Revised-by: ADR-0234, ADR-move-context-query-input-below-application-coordination
 Backing: test
 
 ### `invariant: context-read-only`
