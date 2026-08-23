@@ -6,6 +6,8 @@ import (
 	"go/parser"
 	"go/token"
 	"go/types"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -155,8 +157,16 @@ func executableCommands(commands []clispec.Command, prefix []string) map[string]
 
 func loadAWFCommandPackage(t *testing.T) *packages.Package {
 	t.Helper()
+	return loadAWFCommandPackageWithOverlay(t, nil)
+}
+
+func loadAWFCommandPackageWithOverlay(t *testing.T, overlay map[string][]byte) *packages.Package {
+	t.Helper()
 	root := testsupport.RepoRoot(t)
-	loaded, err := packages.Load(&packages.Config{Dir: root, Mode: packages.NeedName | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo}, "./cmd/awf")
+	loaded, err := packages.Load(&packages.Config{
+		Dir: root, Mode: packages.NeedName | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo,
+		Overlay: overlay,
+	}, "./cmd/awf")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -523,11 +533,16 @@ func operationCalls(pkg *packages.Package, body *ast.BlockStmt) ([]string, []str
 	for _, route := range commandRoutes() {
 		names = append(names, route.operations...)
 	}
-	return operationCallsFor(pkg, body, names)
+	return operationCallsForOwners(pkg, body, names, semanticOwnerPackages(names))
 }
 
 func operationCallsFor(pkg *packages.Package, body *ast.BlockStmt, names []string) ([]string, []string) {
+	return operationCallsForOwners(pkg, body, names, nil)
+}
+
+func operationCallsForOwners(pkg *packages.Package, body *ast.BlockStmt, names []string, ownerPackages map[string]bool) ([]string, []string) {
 	known := semanticOperationNames(names)
+	boundary := allowedOwnerBoundaryFunctions()
 	var calls, evasions []string
 	seenLocal := map[*types.Func]bool{}
 	var visit func(*ast.BlockStmt, bool)
@@ -563,7 +578,8 @@ func operationCallsFor(pkg *packages.Package, body *ast.BlockStmt, names []strin
 					}
 				}
 				if fn := expressionFunction(pkg.TypesInfo, expression); fn != nil {
-					if name := qualifiedFunction(fn); known[name] {
+					name := qualifiedFunction(fn)
+					if known[name] || ownerPackages[functionPackagePath(fn)] && !boundary[name] {
 						call, isCall := parent.(*ast.CallExpr)
 						var direct *types.Func
 						isDirect := false
@@ -603,6 +619,46 @@ func semanticOperationNames(names []string) map[string]bool {
 		known[name] = true
 	}
 	return known
+}
+
+func semanticOwnerPackages(names []string) map[string]bool {
+	owners := map[string]bool{}
+	for _, name := range names {
+		if split := strings.LastIndexByte(name, '.'); split > 0 {
+			owners[name[:split]] = true
+		}
+	}
+	return owners
+}
+
+// allowedOwnerBoundaryFunctions is the closed set of owner-package calls that
+// compose dependencies, expose immutable operation state, or map a completed
+// result for rendering. Every other function or method from an operation-owner
+// package is treated as semantic even when no command route lists it.
+func allowedOwnerBoundaryFunctions() map[string]bool {
+	const module = "github.com/hypnotox/agentic-workflows/internal/"
+	return map[string]bool{
+		module + "currentstatecoord.Document":           true,
+		module + "project.NewLoader":                    true,
+		module + "project.NewLoaderWithoutRepository":   true,
+		module + "project.OpenForOperation":             true,
+		module + "project.OutputState":                  true,
+		module + "project.Root":                         true,
+		module + "project.ValidateSchemaMinimumVersion": true,
+		module + "publisher.BuildConfigReference":       true,
+		module + "publisher.IsLocalDocTemplate":         true,
+		module + "publisher.Mutation":                   true,
+		module + "publisher.New":                        true,
+		module + "publisher.NewFilesystemReader":        true,
+		module + "resident.Document":                    true,
+	}
+}
+
+func functionPackagePath(fn *types.Func) string {
+	if fn == nil || fn.Pkg() == nil {
+		return ""
+	}
+	return fn.Pkg().Path()
 }
 
 func qualifiedFunction(fn *types.Func) string {
@@ -664,6 +720,31 @@ func stringLiteral(expr ast.Expr) (string, bool) {
 		return "", false
 	}
 	return strings.Trim(lit.Value, "\""), true
+}
+
+func TestThinCompositionProofRejectsUnlistedOwnerOperation(t *testing.T) {
+	root := testsupport.RepoRoot(t)
+	path := filepath.Join(root, "cmd", "awf", "list_add.go")
+	source, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mutated := strings.Replace(string(source),
+		`"github.com/hypnotox/agentic-workflows/internal/domainop"`,
+		`"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
+	"github.com/hypnotox/agentic-workflows/internal/domainop"`, 1)
+	mutated = strings.Replace(mutated,
+		"\tdocument, err := project.BuildListDocument(state, cfg, kindFilter)",
+		"\t_, _ = currentstatecoord.CheckStagedRoot(ctx, root)\n\tdocument, err := project.BuildListDocument(state, cfg, kindFilter)", 1)
+	if mutated == string(source) {
+		t.Fatal("production-route mutation was not applied")
+	}
+	pkg := loadAWFCommandPackageWithOverlay(t, map[string][]byte{path: []byte(mutated)})
+	calls, evasions := operationCalls(pkg, functionBody(t, pkg, "runList"))
+	const hidden = "github.com/hypnotox/agentic-workflows/internal/currentstatecoord.CheckStagedRoot"
+	if !semanticOperationNames(append(calls, evasions...))[hidden] {
+		t.Fatalf("unlisted owner operation escaped proof: calls = %v, evasions = %v", calls, evasions)
+	}
 }
 
 func TestThinCompositionProofRejectsEvasions(t *testing.T) {

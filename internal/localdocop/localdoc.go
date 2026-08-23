@@ -47,7 +47,7 @@ func Run(ctx context.Context, root string, doc config.LocalDoc, loader *project.
 		return err
 	}
 	result, err := publisher.New(state.OutputState(), cfg, publisher.NewFilesystemReader(state.Root()), project.Version).Sync()
-	if err != nil { // coverage-ignore: PreflightLocalDoc prepared and validated this output universe; failure now requires concurrent source or storage mutation
+	if err != nil {
 		return err
 	}
 	mutation, err := result.Mutation()

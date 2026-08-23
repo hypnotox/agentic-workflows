@@ -188,7 +188,11 @@ func syncProject(state *ProjectState) error {
 		return err
 	}
 	if !found {
-		_, err = pub.Initialize(publisher.InitAuthority{InitializedWithVersion: Version})
+		prepared, prepareErr := pub.Prepare()
+		if prepareErr != nil {
+			return prepareErr
+		}
+		_, err = prepared.Initialize(publisher.InitAuthority{InitializedWithVersion: Version})
 	} else {
 		_, err = pub.Sync()
 	}
@@ -228,7 +232,11 @@ func syncReportProject(state *ProjectState) ([]Backup, []Change, []string, error
 	return projectResult(publisher.New(state.OutputState(), testConfig(state), publisher.NewFilesystemReader(state.Root()), Version).Sync())
 }
 func initializeReportProject(state *ProjectState, seed InitAuthority) ([]Backup, []Change, []string, error) {
-	return projectResult(publisher.New(state.OutputState(), testConfig(state), publisher.NewFilesystemReader(state.Root()), Version).Initialize(seed))
+	prepared, err := publisher.New(state.OutputState(), testConfig(state), publisher.NewFilesystemReader(state.Root()), Version).Prepare()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	return projectResult(prepared.Initialize(seed))
 }
 func checkReportProject(state *ProjectState, ctx context.Context) (CheckReport, error) {
 	prepared, err := testPublisher(operationInputs(state, testConfig(state))).Prepare()

@@ -10,7 +10,6 @@ import (
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
-	"github.com/hypnotox/agentic-workflows/internal/publisher"
 )
 
 // newProjectLoader composes the project-opening policy for one invocation: the
@@ -33,21 +32,16 @@ func runSync(ctx context.Context, root string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	return runSyncPrinting(ctx, loader, root, nil, stdout)
+	return runSyncPrinting(ctx, loader, root, stdout)
 }
 
-func runSyncPrinting(ctx context.Context, loader *project.Loader, root string, seed *publisher.InitAuthority, stdout io.Writer) error {
+func runSyncPrinting(ctx context.Context, loader *project.Loader, root string, stdout io.Writer) error {
 	state, cfg, err := loader.OpenForOperation(ctx, root)
 	if err != nil {
 		return err
 	}
 	composed := composePublisher(state, cfg)
-	var result publisher.Result
-	if seed == nil {
-		result, err = composed.Sync()
-	} else {
-		result, err = composed.Initialize(*seed)
-	}
+	result, err := composed.Sync()
 	if err != nil {
 		return err
 	}

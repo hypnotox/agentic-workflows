@@ -124,7 +124,11 @@ func syncFullCatalogForTarget(t *testing.T, cat *catalog.Catalog, target string)
 	if err != nil {
 		t.Fatalf("load config: %v", err)
 	}
-	if _, err := publisher.New(p.OutputState(), cfg, publisher.NewFilesystemReader(p.Root()), project.Version).Initialize(publisher.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
+	prepared, err := publisher.New(p.OutputState(), cfg, publisher.NewFilesystemReader(p.Root()), project.Version).Prepare()
+	if err != nil {
+		t.Fatalf("prepare: %v", err)
+	}
+	if _, err := prepared.Initialize(publisher.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
 		t.Fatalf("initialize: %v", err)
 	}
 	return root

@@ -28,7 +28,11 @@ func initializedLoader(t *testing.T, root string) *project.Loader {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := publisher.New(state.OutputState(), cfg, publisher.NewFilesystemReader(state.Root()), project.Version).Initialize(publisher.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
+	prepared, err := publisher.New(state.OutputState(), cfg, publisher.NewFilesystemReader(state.Root()), project.Version).Prepare()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := prepared.Initialize(publisher.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
 		t.Fatal(err)
 	}
 	return loader

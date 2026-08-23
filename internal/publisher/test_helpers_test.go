@@ -348,7 +348,11 @@ func advisoryNotesProject(state *ProjectState) ([]string, error) {
 }
 func initializeReportProject(state *ProjectState, seed InitAuthority) ([]Backup, []Change, []string, error) {
 	cfg := testConfig(state)
-	result, err := New(lowerForConfig(state.OutputState(), cfg), cfg, NewFilesystemReader(state.Root()), project.Version).Initialize(seed)
+	prepared, err := New(lowerForConfig(state.OutputState(), cfg), cfg, NewFilesystemReader(state.Root()), project.Version).Prepare()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	result, err := prepared.Initialize(seed)
 	return result.Backups(), result.Changes(), result.Pruned(), err
 }
 func syncReportProject(state *ProjectState) ([]Backup, []string, error) {
@@ -424,7 +428,11 @@ func syncProject(state *ProjectState) error {
 	if found {
 		_, err = pub.Sync()
 	} else {
-		_, err = pub.Initialize(InitAuthority{InitializedWithVersion: project.Version})
+		prepared, prepareErr := pub.Prepare()
+		if prepareErr != nil {
+			return prepareErr
+		}
+		_, err = prepared.Initialize(InitAuthority{InitializedWithVersion: project.Version})
 	}
 	return err
 }

@@ -849,12 +849,12 @@ func TestSyncReportReplacesManagedFinalSymlinkWithoutTargetAccess(t *testing.T) 
 func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, _ := Open(testContext(t), root)
-	_, changes, _, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version})
+	_, changes, pruned, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(changes) != 0 {
-		t.Errorf("first sync has no baseline and must report no changes, got %v", changes)
+	if len(changes) != 0 || len(pruned) != 0 {
+		t.Errorf("first sync has no baseline and must report no changes or prunes, got changes %v, pruned %v", changes, pruned)
 	}
 	lock, err := manifest.Load(lockPath(p.Root()))
 	if err != nil {

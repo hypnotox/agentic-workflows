@@ -64,15 +64,6 @@ func (p *Publisher) Sync() (Result, error) {
 	return prepared.Sync()
 }
 
-// Initialize publishes a first adoption under explicit lock authority.
-func (p *Publisher) Initialize(seed InitAuthority) (Result, error) {
-	prepared, err := p.Prepare()
-	if err != nil {
-		return Result{}, err
-	}
-	return prepared.Initialize(seed)
-}
-
 // Sync publishes the exact operation universe captured by this preparation.
 func (p Preparation) Sync() (Result, error) {
 	if p.publisher == nil {

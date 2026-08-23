@@ -46,8 +46,23 @@ func initializeProject(ctx context.Context, root string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	seed := &publisher.InitAuthority{InitializedWithVersion: project.Version}
-	return runSyncPrinting(ctx, loader, root, seed, out)
+	state, cfg, err := loader.OpenForOperation(ctx, root)
+	if err != nil {
+		return err
+	}
+	prepared, err := composePublisher(state, cfg).Prepare()
+	if err != nil {
+		return err
+	}
+	result, err := prepared.Initialize(publisher.InitAuthority{InitializedWithVersion: project.Version})
+	if err != nil {
+		return err
+	}
+	mutation, err := result.Mutation()
+	if err != nil {
+		return err
+	}
+	return renderSyncMutation(out, mutation)
 }
 
 func scaffoldProject(t *testing.T) string {
@@ -185,12 +200,15 @@ func TestRunSyncPrintingUsesInjectedLoader(t *testing.T) {
 	if _, err := os.Stat(config.LockPath(root)); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("lock stat error = %v, want not exist", err)
 	}
+	if err := initializeProject(ctx, root, io.Discard); err != nil {
+		t.Fatal(err)
+	}
 	var loadPaths []string
 	loader := project.NewLoader(func(path string) (*config.Config, error) {
 		loadPaths = append(loadPaths, path)
 		return config.Load(path)
 	}, catalog.Standard, func(_ context.Context, got string) string { return got }, mustOpenGit(t, root))
-	if err := runSyncPrinting(ctx, loader, root, &publisher.InitAuthority{InitializedWithVersion: project.Version}, io.Discard); err != nil {
+	if err := runSyncPrinting(ctx, loader, root, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	want := config.RootDir(root)

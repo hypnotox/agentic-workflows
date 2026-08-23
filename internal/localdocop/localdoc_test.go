@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"testing"
 
@@ -29,7 +30,11 @@ func initializedLoader(t *testing.T, root string) *project.Loader {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := publisher.New(state.OutputState(), cfg, publisher.NewFilesystemReader(state.Root()), project.Version).Initialize(publisher.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
+	prepared, err := publisher.New(state.OutputState(), cfg, publisher.NewFilesystemReader(state.Root()), project.Version).Prepare()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := prepared.Initialize(publisher.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
 		t.Fatal(err)
 	}
 	return loader
@@ -60,6 +65,37 @@ func TestRunRejectsUnavailableAndInvalidInputs(t *testing.T) {
 	testsupport.WriteAwfConfig(t, root, fixtureConfig)
 	if err := Run(context.Background(), root, config.LocalDoc{Name: "bad name", Title: "API", Description: "Operate API"}, initializedLoader(t, root)); err == nil {
 		t.Fatal("invalid local document accepted")
+	}
+}
+
+func TestRunRetainsDeclarationWhenSynchronizationFails(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteAwfConfig(t, root, fixtureConfig)
+	loader := initializedLoader(t, root)
+	beforeLock, err := os.ReadFile(config.LockPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	invalid := strings.Replace(fixtureConfig, ", gateCmd: make gate", "", 1)
+	if err := os.WriteFile(config.ConfigPath(root), []byte(invalid), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	doc := config.LocalDoc{Name: "runbooks/api", Title: "API", Description: "Operate API"}
+	err = Run(context.Background(), root, doc, loader)
+	if err == nil || !strings.Contains(err.Error(), "vars.gateCmd") {
+		t.Fatalf("synchronization error = %v", err)
+	}
+	cfg, loadErr := config.Load(config.RootDir(root))
+	if loadErr != nil || len(cfg.LocalDocs) != 1 || cfg.LocalDocs[0] != doc {
+		t.Fatalf("retryable declaration = %#v, %v", cfg.LocalDocs, loadErr)
+	}
+	afterLock, readErr := os.ReadFile(config.LockPath(root))
+	if readErr != nil || string(afterLock) != string(beforeLock) {
+		t.Fatalf("lock changed after failed synchronization: %v", readErr)
+	}
+	if _, statErr := os.Stat(filepath.Join(root, "docs", "runbooks", "api.md")); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("local document output exists after failed synchronization: %v", statErr)
 	}
 }
 
