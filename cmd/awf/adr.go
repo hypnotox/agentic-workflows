@@ -31,33 +31,9 @@ func runADR(c *cmdCtx) error {
 	if len(report.Assignments) == 0 {
 		return numberErr
 	}
-	document, presentationErr := numberingPresentation(report)
+	document, presentationErr := report.Document()
 	if presentationErr != nil { // coverage-ignore: numbering emits validated slugs and four-digit numeric assignments
 		return errors.Join(numberErr, presentationErr)
 	}
 	return errors.Join(numberErr, presentation.Render(c.stdout, document))
-}
-
-// numberingPresentation maps the coordinator-owned assignments to command output.
-func numberingPresentation(report currentstatecoord.NumberingReport) (presentation.Document, error) {
-	records := make([]presentation.Record, 0, len(report.Assignments))
-	for _, assignment := range report.Assignments {
-		slug, err := presentation.Literal(assignment.Slug)
-		if err != nil {
-			return presentation.Document{}, err
-		}
-		number, err := presentation.Literal(assignment.Number)
-		if err != nil {
-			return presentation.Document{}, err
-		}
-		record, err := presentation.NewRecord(slug, number)
-		if err != nil { // coverage-ignore: two validated nonempty literals always form a valid record
-			return presentation.Document{}, err
-		}
-		records = append(records, record)
-	}
-	if len(records) == 0 {
-		return presentation.Document{}, nil
-	}
-	return (presentation.Collection{Status: "ADR numbering completed", Categories: []presentation.CollectionCategory{{Label: "assignments", Schema: []string{"slug", "number"}, Records: records}}}).Document()
 }

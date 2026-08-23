@@ -16,9 +16,10 @@ import (
 // the sync core whose exported surface must carry no context result vocabulary,
 // and this package whose reach into that core must stay inside the seam.
 const (
-	corePattern  = "./internal/project"
-	queryPattern = "./internal/contextq"
-	cmdPattern   = "./cmd/awf"
+	corePattern      = "./internal/project"
+	queryPattern     = "./internal/contextq"
+	cmdPattern       = "./cmd/awf"
+	contextopPattern = "./internal/contextop"
 )
 
 // movedVocabulary is the context result vocabulary this package took over
@@ -278,8 +279,8 @@ func takesContextResult(fn *ast.FuncDecl) bool {
 	return false
 }
 
-// cmdContextEntryFindings proves both production command paths hand their
-// result to contextq's semantic render entries instead of mapping it locally.
+// cmdContextEntryFindings proves the focused context operation reaches both
+// contextq semantic render entries instead of mapping results in its caller.
 func cmdContextEntryFindings(pkgs []*packages.Package) []string {
 	calls := map[string]map[string]bool{}
 	for _, pkg := range pkgs {
@@ -308,9 +309,9 @@ func cmdContextEntryFindings(pkgs []*packages.Package) []string {
 		}
 	}
 	var findings []string
-	for _, want := range []struct{ function, entry string }{{"runContext", "RenderContextText"}, {"runUncovered", "RenderUncoveredText"}} {
-		if !calls[want.function][want.entry] {
-			findings = append(findings, "cmd/awf "+want.function+" does not reach contextq."+want.entry)
+	for _, entry := range []string{"RenderContextText", "RenderUncoveredText"} {
+		if !calls["Run"][entry] && !calls["uncovered"][entry] {
+			findings = append(findings, "internal/contextop does not reach contextq."+entry)
 		}
 	}
 	return findings
@@ -389,8 +390,9 @@ func TestContextQueryBoundary(t *testing.T) {
 	if findings := cmdPresentationFindings(command); len(findings) != 0 {
 		t.Errorf("cmd/awf maps context results through presentation:\n\t%s", strings.Join(findings, "\n\t"))
 	}
-	if findings := cmdContextEntryFindings(command); len(findings) != 0 {
-		t.Errorf("cmd/awf no longer reaches contextq render entries:\n\t%s", strings.Join(findings, "\n\t"))
+	contextop := loadBoundaryPackages(t, contextopPattern, nil)
+	if findings := cmdContextEntryFindings(contextop); len(findings) != 0 {
+		t.Errorf("context operation no longer reaches contextq render entries:\n\t%s", strings.Join(findings, "\n\t"))
 	}
 
 	// Committed negative cases: each half must flag its own violation, so the
@@ -494,12 +496,12 @@ func fixtureEncodesResult(w io.Writer, result contextq.ContextResult) error {
 		t.Errorf("cmd-side presentation mapping findings = %#v, want one mapping", presentationFindings)
 	}
 
-	contextFile := filepath.Join(root, filepath.FromSlash("cmd/awf/context.go"))
+	contextFile := filepath.Join(root, filepath.FromSlash("internal/contextop/context.go"))
 	contextSource, err := os.ReadFile(contextFile)
 	if err != nil {
 		t.Fatal(err)
 	}
-	missingEntries := loadBoundaryPackages(t, cmdPattern, map[string][]byte{contextFile: []byte(strings.ReplaceAll(strings.ReplaceAll(string(contextSource), "RenderContextText", "NoContextRender"), "RenderUncoveredText", "NoUncoveredRender"))})
+	missingEntries := loadBoundaryPackages(t, contextopPattern, map[string][]byte{contextFile: []byte(strings.ReplaceAll(strings.ReplaceAll(string(contextSource), "RenderContextText", "NoContextRender"), "RenderUncoveredText", "NoUncoveredRender"))})
 	entryFindings := cmdContextEntryFindings(missingEntries)
 	if len(entryFindings) != 2 {
 		t.Errorf("missing context render entry findings = %#v, want both command paths", entryFindings)

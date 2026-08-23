@@ -9,6 +9,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
@@ -23,6 +24,30 @@ type NumberAssignment struct {
 // order, so its caller can present it after a partial completion.
 type NumberingReport struct {
 	Assignments []NumberAssignment
+}
+
+// Document maps numbering assignments to their semantic presentation.
+func (r NumberingReport) Document() (presentation.Document, error) {
+	records := make([]presentation.Record, 0, len(r.Assignments))
+	for _, assignment := range r.Assignments {
+		slug, err := presentation.Literal(assignment.Slug)
+		if err != nil {
+			return presentation.Document{}, err
+		}
+		number, err := presentation.Literal(assignment.Number)
+		if err != nil {
+			return presentation.Document{}, err
+		}
+		record, err := presentation.NewRecord(slug, number)
+		if err != nil { // coverage-ignore: validated nonempty literals always form a valid record
+			return presentation.Document{}, err
+		}
+		records = append(records, record)
+	}
+	if len(records) == 0 {
+		return presentation.Document{}, nil
+	}
+	return (presentation.Collection{Status: "ADR numbering completed", Categories: []presentation.CollectionCategory{{Label: "assignments", Schema: []string{"slug", "number"}, Records: records}}}).Document()
 }
 
 // duplicateNumbersRecipe is the reset-remake recipe a duplicate-number corpus

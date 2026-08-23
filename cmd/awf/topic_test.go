@@ -170,7 +170,7 @@ func TestPrintTopicPreservesLiteralIdentities(t *testing.T) {
 		}},
 	}
 	var out bytes.Buffer
-	if err := printTopic(&out, result); err != nil {
+	if err := printTopicDetail(&out, result.Detail()); err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
@@ -196,7 +196,7 @@ func TestPrintTopicPreservesLiteralIdentities(t *testing.T) {
 func TestPrintTopicHistoryText(t *testing.T) {
 	result := topic.QueryResult{Kind: "topic", ID: "d/t", Claims: []topic.QueryClaim{}, History: []topic.ClaimHistory{{ClaimID: "d/t:x", Origin: &topic.ADRHistory{Number: "0001", Title: "Origin", Status: "Implemented"}, RevisedBy: []topic.ADRHistory{{Number: "0002", Title: "Revision", Status: "Implementing"}}, RemovedBy: &topic.ADRHistory{Number: "0003", Title: "Removal", Status: "Abandoned"}}}}
 	var out bytes.Buffer
-	if err := printTopic(&out, result); err != nil {
+	if err := printTopicDetail(&out, result.Detail()); err != nil {
 		t.Fatal(err)
 	}
 	const historyGolden = "identity: topic d/t\n\nhistory:\n  claim:\n    identity: d/t:x\n    origin: ADR-0001 | Implemented | Origin\n    revised-by: ADR-0002 | Implementing | Revision\n    removed-by: ADR-0003 | Abandoned | Removal\n"
@@ -241,12 +241,12 @@ func TestPrintTopicPropagatesEveryHumanWriteFailure(t *testing.T) {
 		return global
 	}()} {
 		counter := &failOnWrite{failAt: -1, err: sentinel}
-		if err := printTopic(counter, result); err != nil {
+		if err := printTopicDetail(counter, result.Detail()); err != nil {
 			t.Fatal(err)
 		}
 		for failAt := 1; failAt <= counter.calls; failAt++ {
 			writer := &failOnWrite{failAt: failAt, err: sentinel}
-			err := printTopic(writer, result)
+			err := printTopicDetail(writer, result.Detail())
 			if !errors.Is(err, sentinel) || !strings.Contains(err.Error(), "write presentation") {
 				t.Fatalf("write %d/%d error = %v", failAt, counter.calls, err)
 			}
@@ -266,7 +266,7 @@ func TestPrintTopicOptionalHumanFields(t *testing.T) {
 		}}}},
 	}
 	var out bytes.Buffer
-	if err := printTopic(&out, result); err != nil {
+	if err := printTopicDetail(&out, result.Detail()); err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{"verify: Inspect output.", "declared: global", "entry point"} {

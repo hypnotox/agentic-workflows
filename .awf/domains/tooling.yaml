@@ -14,6 +14,8 @@ paths:
   - internal/contextdelivery/**
   - internal/contextspill/**
   - internal/contextinput/**
+  - internal/contextop/**
+  - internal/topicop/**
   - internal/initop/**
   - internal/initspec/**
   - internal/git/**

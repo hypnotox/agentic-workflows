@@ -7,5 +7,7 @@ paths:
   - internal/contextdelivery/**
   - internal/contextspill/**
   - internal/contextinput/**
+  - internal/contextop/**
+  - internal/topicop/**
   - internal/currentstatecoord/**
   - internal/initspec/**

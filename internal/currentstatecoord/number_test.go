@@ -42,6 +42,20 @@ func TestNumberPendingADRsSeparatesPreAndPostMutationUniverses(t *testing.T) {
 	}
 }
 
+func TestNumberingReportDocumentValidatesAssignments(t *testing.T) {
+	for _, report := range []NumberingReport{
+		{Assignments: []NumberAssignment{{Slug: "bad\nslug", Number: "0002"}}},
+		{Assignments: []NumberAssignment{{Slug: "slug", Number: "bad\nnumber"}}},
+	} {
+		if _, err := report.Document(); err == nil {
+			t.Fatal("invalid numbering assignment produced a presentation")
+		}
+	}
+	if _, err := (NumberingReport{}).Document(); err != nil {
+		t.Fatalf("empty report: %v", err)
+	}
+}
+
 func pendingNumberingRecord(t *testing.T, slug string) string {
 	t.Helper()
 	body := func(digest string) string {

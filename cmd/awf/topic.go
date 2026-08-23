@@ -4,43 +4,22 @@ import (
 	"context"
 	"errors"
 	"io"
-	"io/fs"
-	"os"
 
-	"github.com/hypnotox/agentic-workflows/internal/config"
-	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
-	"github.com/hypnotox/agentic-workflows/internal/topic"
+	"github.com/hypnotox/agentic-workflows/internal/topicop"
 )
 
-// runTopic validates the selector before inspecting project state, then mirrors
-// config/context's static-fallback and in-handler version-gate boundary.
+// runTopic composes the live operation and retains command rendering and exits.
 func runTopic(ctx context.Context, cwd, selector string, history, references, coverage bool, stdout io.Writer) error {
-	if _, _, err := topic.ParseSelector(selector); err != nil {
-		return &usageErr{err.Error()}
-	}
-	if _, err := os.Stat(config.ConfigPath(cwd)); err != nil {
-		if !errors.Is(err, fs.ErrNotExist) {
-			return err
+	detail, err := topicop.Run(ctx, cwd, topicop.Input{Selector: selector, History: history, References: references, Coverage: coverage}, openProjectOperation, gate)
+	if err != nil {
+		var usage *topicop.UsageError
+		if errors.As(err, &usage) {
+			return &usageErr{usage.Message}
 		}
-		return printTopicDetail(stdout, topic.StaticReferenceDetail())
-	}
-	if err := gate(ctx, cwd); err != nil {
 		return err
 	}
-	state, _, repo, err := openProjectOperation(ctx, cwd)
-	if err != nil {
-		return err
-	}
-	result, err := currentstatecoord.QueryTopic(state.Root(), repo, ctx, selector, topic.QueryOptions{History: history, References: references, Coverage: coverage})
-	if err != nil {
-		return err
-	}
-	return printTopic(stdout, result)
-}
-
-func printTopic(stdout io.Writer, result topic.QueryResult) error {
-	return printTopicDetail(stdout, result.Detail())
+	return printTopicDetail(stdout, detail)
 }
 
 func printTopicDetail(stdout io.Writer, detail presentation.Detail) error {

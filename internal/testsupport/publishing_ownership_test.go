@@ -38,8 +38,13 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	contextFiles, err := filepath.Glob(filepath.Join(root, "internal", "contextop", "*.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	files = append(files, checkFiles...)
 	files = append(files, initFiles...)
+	files = append(files, contextFiles...)
 	type calls struct {
 		preparePublisher, operationPreparation, operationPlan int
 		injectedPrepare, plan, residentMarker                 int
@@ -88,9 +93,12 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 						}
 						publisherPrepareSites++
 						allowed := receiverIsIdent && receiver.Name == "composed" && (fn.Name.Name == "preparePublisher" || fn.Name.Name == "Run")
-						if call, ok := target.X.(*ast.CallExpr); ok && fn.Name.Name == "probeCollisions" {
+						if call, ok := target.X.(*ast.CallExpr); ok {
 							constructor, constructorOK := call.Fun.(*ast.Ident)
-							allowed = constructorOK && constructor.Name == "composePublisher"
+							allowed = constructorOK && constructor.Name == "composePublisher" && fn.Name.Name == "probeCollisions"
+							if constructor, ok := call.Fun.(*ast.SelectorExpr); ok && constructor.Sel.Name == "New" && fn.Name.Name == "complete" {
+								allowed = true
+							}
 						}
 						if !allowed {
 							t.Errorf("unexpected Publisher preparation site %s in %s", target.Sel.Name, fn.Name.Name)
@@ -122,15 +130,14 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 			}
 		}
 	}
-	if publisherPrepareSites != 4 || publisherPlanSites != 0 {
-		t.Errorf("Publisher construction sites = %d Prepare and %d direct Plan, want check, command, final-init, and temporary collision-probe semantic seams with no separate Publisher plan route", publisherPrepareSites, publisherPlanSites)
+	if publisherPrepareSites != 5 || publisherPlanSites != 0 {
+		t.Errorf("Publisher construction sites = %d Prepare and %d direct Plan, want check, context, command, final-init, and temporary collision-probe semantic seams with no separate Publisher plan route", publisherPrepareSites, publisherPlanSites)
 	}
 	expected := map[string]calls{
 		"preparePublisher":                {},
 		"operationPreparation":            {preparePublisher: 1},
-		"workingContextState":             {preparePublisher: 1, plan: 1},
 		"stagedDriftResult":               {preparePublisher: 1, plan: 1},
-		"stagedContextState":              {preparePublisher: 1, plan: 1},
+		"complete":                        {plan: 1},
 		"productionRepoCheckDependencies": {operationPreparation: 1, plan: 1},
 		"Run":                             {plan: 1},
 		"probeCollisions":                 {plan: 1},
@@ -238,13 +245,14 @@ func TestContextCompositionOwnershipRoutes(t *testing.T) {
 	}
 	assertNoImports(t, readProduction(t, root, "internal/contextinput/input.go"), "internal/currentstatecoord")
 
-	file, err := parser.ParseFile(token.NewFileSet(), filepath.Join(root, "cmd/awf/publishing.go"), nil, 0)
+	file, err := parser.ParseFile(token.NewFileSet(), filepath.Join(root, "internal/contextop/context.go"), nil, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := map[string]map[string]int{
-		"workingContextState": {"PrepareWorkingContext": 1, "CompleteContext": 1, "preparePublisher": 1},
-		"stagedContextState":  {"PrepareStagedContext": 1, "CompleteContext": 1, "preparePublisher": 1},
+		"workingState": {"PrepareWorkingContext": 1},
+		"stagedState":  {"PrepareStagedContext": 1},
+		"complete":     {"CompleteContext": 1, "Prepare": 1},
 	}
 	for _, decl := range file.Decls {
 		fn, ok := decl.(*ast.FuncDecl)
@@ -257,15 +265,15 @@ func TestContextCompositionOwnershipRoutes(t *testing.T) {
 			if !ok {
 				return true
 			}
-			if ident, ok := call.Fun.(*ast.Ident); ok && ident.Name == "preparePublisher" {
-				got[ident.Name]++
-			}
 			if selector, ok := call.Fun.(*ast.SelectorExpr); ok {
 				if receiver, ok := selector.X.(*ast.Ident); ok && receiver.Name == "currentstatecoord" {
 					got[selector.Sel.Name]++
 					if selector.Sel.Name == "CompleteContext" && !completeContextArgumentsValid(call) {
 						t.Errorf("%s does not complete context from its selected universe and one Publisher preparation", fn.Name.Name)
 					}
+				}
+				if selector.Sel.Name == "Prepare" {
+					got[selector.Sel.Name]++
 				}
 			}
 			return true

@@ -201,21 +201,19 @@ func TestRenderContextRequestSourceAttribution(t *testing.T) {
 func TestRunContextModesShareDeliveryIncludingOversize(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	oldDeliver := deliverContext
 	var sizes []int
-	deliverContext = func(rendered []byte, root string, stdout io.Writer) error {
+	deliver := func(rendered []byte, root string, stdout io.Writer) error {
 		sizes = append(sizes, len(rendered))
 		return nil
 	}
-	t.Cleanup(func() { deliverContext = oldDeliver })
 	root := ctxCmdFixture(t)
-	if err := runContext(ctx, root, []string{"internal/foo/x.go"}, false, "", false, false, nil, io.Discard); err != nil {
+	if err := runContextWithDelivery(ctx, root, []string{"internal/foo/x.go"}, false, "", false, false, nil, io.Discard, deliver); err != nil {
 		t.Fatal(err)
 	}
-	if err := runContext(ctx, root, []string{"internal"}, false, "", true, false, nil, io.Discard); err != nil {
+	if err := runContextWithDelivery(ctx, root, []string{"internal"}, false, "", true, false, nil, io.Discard, deliver); err != nil {
 		t.Fatal(err)
 	}
-	if err := runContext(ctx, t.TempDir(), []string{"x"}, false, "", false, false, nil, io.Discard); err != nil {
+	if err := runContextWithDelivery(ctx, t.TempDir(), []string{"x"}, false, "", false, false, nil, io.Discard, deliver); err != nil {
 		t.Fatal(err)
 	}
 	var part strings.Builder
@@ -226,7 +224,7 @@ func TestRunContextModesShareDeliveryIncludingOversize(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".awf", "topics", "parts", "alpha", "one", "current-state.md"), []byte(part.String()), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runContext(ctx, root, []string{"internal/foo/x.go"}, false, "", false, false, []string{"all-rules"}, io.Discard); err != nil {
+	if err := runContextWithDelivery(ctx, root, []string{"internal/foo/x.go"}, false, "", false, false, []string{"all-rules"}, io.Discard, deliver); err != nil {
 		t.Fatal(err)
 	}
 	if len(sizes) != 4 || sizes[0] == 0 || sizes[1] == 0 || sizes[2] == 0 || sizes[3] <= 8192 {
