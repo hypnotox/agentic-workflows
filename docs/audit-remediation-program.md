@@ -192,8 +192,8 @@ correction is allowed without unrelated cleanup riding along.
 | RF-003 | P1 | COMPLETE | One application owner for output planning and publication coordination | RF-002 |
 | RF-004 | P1 | COMPLETE | Check aggregation separated from check policy; severity in the result model | AF-013, RF-002 |
 | RF-005 | P1 | COMPLETE | Current-state coordination extracted from project orchestration | RF-002 |
-| RF-006 | P1 | READY | `cmd/awf` reduced to parse, compose, invoke, render, exit | RF-002..RF-005 |
-| RF-007 | P2 | BLOCKED | Residual giant tests split by observable behaviour and semantic owner | RF-002..RF-006 |
+| RF-006 | P1 | COMPLETE | `cmd/awf` reduced to parse, compose, invoke, render, exit | RF-002..RF-005 |
+| RF-007 | P2 | READY | Residual giant tests split by observable behaviour and semantic owner | RF-002..RF-006 |
 | RF-009 | P1 | DECISION | Post-refactor critical-path coverage policy and regression control | RF-007, owner ruling |
 | RF-014A | P2 | COMPLETE | Obsolete Program A machinery deleted | Program A milestone |
 | RF-014B | P2 | CONDITIONAL | Obsolete compatibility residue deleted | RF-008B, compatibility removals applicable |
@@ -256,13 +256,14 @@ correction is allowed without unrelated cleanup riding along.
 
 ### Program B start gate
 
-**Status: OPEN; B-F1 THROUGH B-F3, RF-003, RF-004, AND RF-005 COMPLETE.** Program A is
-complete; generated artifacts are stable under the new doctrine; changed behaviour has deterministic
-regression coverage; no known adopter-facing contradiction remains; RF-001 establishes the target
-dependency map, RF-002 establishes immutable project state, RF-003 establishes publishing
-coordination, RF-004 establishes policy-free repository-check aggregation, and RF-005 establishes
-focused current-state coordination. RF-006 is selected next. RF-008B and RF-014B remain conditional
-because nine managed repositories have not upgraded from 0.39.1.
+**Status: OPEN; B-F1 THROUGH B-F3 AND RF-003 THROUGH RF-006 COMPLETE.** Program A is complete;
+generated artifacts are stable under the new doctrine; changed behaviour has deterministic regression
+coverage; no known adopter-facing contradiction remains; RF-001 establishes the target dependency
+map, RF-002 establishes immutable project state, RF-003 establishes publishing coordination, RF-004
+establishes policy-free repository-check aggregation, RF-005 establishes focused current-state
+coordination, and RF-006 establishes the thin command composition boundary. RF-007 is selected next.
+RF-008B and RF-014B remain conditional because nine managed repositories have not upgraded from
+0.39.1.
 
 Program A milestone complete; generated artifacts stable under the new doctrine; new behaviour has
 regression tests; no known adopter-facing contradiction remains; compatibility support policy decided
@@ -1043,6 +1044,49 @@ abstraction; oracle strength.
   RF-008B and RF-014B.
 - **Unblocked:** RF-006 is selected next in B-F4. RF-007 and later issues retain their named
   dependencies and compatibility conditions.
+
+### RF-006
+
+- **Range:** Issue base `f6fb63f63`; implementation, integration, and terminal plan range
+  `f6fb63f63..81fe5f425`.
+- **Protected contract:** Each resolved command leaf owns command-spec lookup, argument parsing,
+  concrete dependency composition, one focused operation invocation, renderer or protocol-bypass
+  selection, CLI wording and streams, and exit mapping. Focused application operations own use-case
+  orchestration while established domain and mechanism owners retain policy. Help, output bytes,
+  partial outcomes, safety, command universes, ordered mechanisms, and error identities remain
+  unchanged. No all-purpose application object, service locator, generic dependency bag, speculative
+  interface, or new mutable production seam is introduced.
+- **Clean integration:** Bounded `initop`, `checkop`, `contextop`, `topicop`, `effortop`, `domainop`,
+  `localdocop`, and `commitgateop` operations own their focused use cases. Upgrade, audit, changelog,
+  Publisher, RepositoryChecker, current-state, effort, and worktree owners retain their established
+  responsibilities. A structural oracle independently censuses executable command leaves,
+  application owners, and protected lower owners, then proves typed operation cardinality and rejects
+  unlisted semantic calls and common source-shape evasions.
+- **Files changed:** Command composition and retained boundary tests; focused operation owners and
+  their business, failure, partial-state, and atomicity tests; project and Publisher adapters made
+  obsolete by extraction; mutation-sensitive ownership and route proofs; package registration; and
+  authored and rendered architecture and tooling authority establish and prove the boundary. The
+  implementation plan records phase routes, review settlements, output evidence, and residual debt.
+- **Verification:** Focused owner and command suites, representative readable, JSON, payload, and
+  effort-protocol output review, `go test ./...`, render and drift checks, staged checks, lint,
+  dead-code and pin checks, and repeated unmodified full gates passed. The final implementation gate
+  covered 21,357 of 21,357 statements at 100 percent; lint retained only three pre-existing `Uid`
+  advisories. The current-binary shipped audit over all 18 implementation commits reported no
+  findings. The local audit reported no errors and only the reviewed deferred-changelog and
+  coverage-ignore advisories. The terminal plan transaction passed its staged checks and gate.
+- **Deviations:** Phase work added bounded owners for topic scaffolding, local-document sync, domain
+  lifecycle, staged commit policy, and embedded changelog queries when grounding showed their ordered
+  use cases were not legitimate command responsibilities. Independent assurance found that a
+  route-derived owner population could miss an unlisted established-owner call and that local-document
+  sync failure lacked a partial-state oracle. Settlement defined owner populations independently,
+  mutation-proved rejection of an unlisted real-route call, and proved retryable local-document state
+  after synchronization failure. The single verify pass found and closed the remaining owner-census
+  derivation. No command behavior or protected owner boundary changed.
+- **Residual debt:** Residual mixed giant-test ownership remains assigned to RF-007, and broad
+  historical-comment cleanup remains assigned to RF-010. Compatibility deletion remains gated under
+  RF-008B and RF-014B.
+- **Unblocked:** RF-007 is selected next in B-F4. RF-009 still awaits the post-RF-007 evidence and an
+  owner ruling; later issues retain their named dependencies and compatibility conditions.
 
 Close each later issue with the same evidence: identity; baseline and final range; protected contract;
 clean integration; files changed with reason; verification commands and results; material deviations;
