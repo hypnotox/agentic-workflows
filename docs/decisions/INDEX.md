@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-move-context-query-input-below-application-coordination: Move Context Query Input Below Application Coordination](move-context-query-input-below-application-coordination.md) (Proposed)
 
 ## History
 
