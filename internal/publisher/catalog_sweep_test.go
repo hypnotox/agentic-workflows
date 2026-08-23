@@ -748,25 +748,23 @@ func kebabToCamel(name string) string {
 	return strings.Join(parts, "")
 }
 
-// goldenTestSourcePaths are the semantic-owner test files containing golden
-// declarations. The publisher scans every owner rather than an aggregate file.
-var goldenTestSourcePaths = []string{
-	"../project/agent_template_test.go",
-	"../project/maintainable_workflow_template_test.go",
-	"../project/plan_execution_workflow_template_test.go",
-	"../project/diagnostic_workflow_template_test.go",
-	"../project/authoring_workflow_template_test.go",
-	"../project/review_workflow_template_test.go",
-	"../project/effort_workflow_template_test.go",
-	"../project/publication_safe_template_test.go",
-	"../project/agents_doc_template_test.go",
-	"../project/documentation_template_test.go",
-}
-
 func goldenTestSource(t *testing.T) string {
 	t.Helper()
+	// Scan every semantic-owner test file rather than one aggregate.
+	paths := []string{
+		"../project/agent_template_test.go",
+		"../project/maintainable_workflow_template_test.go",
+		"../project/plan_execution_workflow_template_test.go",
+		"../project/diagnostic_workflow_template_test.go",
+		"../project/authoring_workflow_template_test.go",
+		"../project/review_workflow_template_test.go",
+		"../project/effort_workflow_template_test.go",
+		"../project/publication_safe_template_test.go",
+		"../project/agents_doc_template_test.go",
+		"../project/documentation_template_test.go",
+	}
 	var source strings.Builder
-	for _, path := range goldenTestSourcePaths {
+	for _, path := range paths {
 		body, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatalf("read golden test source %s: %v", path, err)
