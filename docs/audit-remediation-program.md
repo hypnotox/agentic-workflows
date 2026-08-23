@@ -193,7 +193,7 @@ correction is allowed without unrelated cleanup riding along.
 | RF-004 | P1 | COMPLETE | Check aggregation separated from check policy; severity in the result model | AF-013, RF-002 |
 | RF-005 | P1 | COMPLETE | Current-state coordination extracted from project orchestration | RF-002 |
 | RF-006 | P1 | COMPLETE | `cmd/awf` reduced to parse, compose, invoke, render, exit | RF-002..RF-005 |
-| RF-007 | P2 | BLOCKED | Residual giant tests split by observable behaviour and semantic owner | RF-006 terminal-assurance lifecycle |
+| RF-007 | P2 | READY | Residual giant tests split by observable behaviour and semantic owner | RF-002..RF-006 |
 | RF-009 | P1 | DECISION | Post-refactor critical-path coverage policy and regression control | RF-007, owner ruling |
 | RF-014A | P2 | COMPLETE | Obsolete Program A machinery deleted | Program A milestone |
 | RF-014B | P2 | CONDITIONAL | Obsolete compatibility residue deleted | RF-008B, compatibility removals applicable |
@@ -1096,9 +1096,9 @@ abstraction; oracle strength.
 - **Residual debt:** Residual mixed giant-test ownership remains assigned to RF-007, and broad
   historical-comment cleanup remains assigned to RF-010. Compatibility deletion remains gated under
   RF-008B and RF-014B.
-- **Unblocked:** RF-007 remains operationally blocked until the terminal-assurance effort topology is
-  removed and its archive is confirmed. RF-009 still awaits the post-RF-007 evidence and an owner
-  ruling; later issues retain their named dependencies and compatibility conditions.
+- **Unblocked:** The terminal-assurance effort topology is removed and its archive is confirmed;
+  RF-007 is selected next in B-F4. RF-009 still awaits the post-RF-007 evidence and an owner ruling;
+  later issues retain their named dependencies and compatibility conditions.
 
 Close each later issue with the same evidence: identity; baseline and final range; protected contract;
 clean integration; files changed with reason; verification commands and results; material deviations;
