@@ -115,8 +115,13 @@ func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (
 		return initspec.Outcome{}, err
 	}
 	composed := composePublisher(state, cfg)
-	collisions, err := composed.InitCollisions()
+	prepared, err := composed.Prepare()
 	if err != nil {
+		cleanupScaffold(cfgPath, scaffolded)
+		return initspec.Outcome{}, err
+	}
+	collisions, err := prepared.InitCollisions()
+	if err != nil { // coverage-ignore: preparation validated every planned path; failure now requires an unportable root-confined filesystem fault
 		cleanupScaffold(cfgPath, scaffolded)
 		return initspec.Outcome{}, err
 	}
@@ -130,9 +135,9 @@ func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (
 
 	var result publisher.Result
 	if !configExists && !lockExists {
-		result, err = composed.Initialize(publisher.InitAuthority{InitializedWithVersion: project.Version})
+		result, err = prepared.Initialize(publisher.InitAuthority{InitializedWithVersion: project.Version})
 	} else {
-		result, err = composed.Sync()
+		result, err = prepared.Sync()
 	}
 	if err != nil {
 		cleanupScaffold(cfgPath, scaffolded)
@@ -141,10 +146,6 @@ func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (
 	mutation, err := result.Mutation()
 	if err != nil { // coverage-ignore: typed Publisher results and fixed presentation grammar make this mapping failure unreachable
 		cleanupScaffold(cfgPath, scaffolded)
-		return initspec.Outcome{}, err
-	}
-	prepared, err := composed.Prepare()
-	if err != nil { // coverage-ignore: the same immutable state and operation tree completed Publisher publication immediately above; failure requires a concurrent tree mutation
 		return initspec.Outcome{}, err
 	}
 	advisories, err := project.AdvisoryNotes(state, cfg, prepared.Plan(), projectSemantics(prepared))
@@ -214,11 +215,11 @@ func probeCollisions(ctx context.Context, root string, loadProject LoadProject) 
 	if err != nil { // coverage-ignore: a freshly-scaffolded default config always opens
 		return nil, err
 	}
-	plan, err := composePublisher(state, cfg).Plan()
+	prepared, err := composePublisher(state, cfg).Prepare()
 	if err != nil { // coverage-ignore: rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail
 		return nil, err
 	}
-	return resident.CollisionsAt(root, plan.Paths())
+	return resident.CollisionsAt(root, prepared.Plan().Paths())
 }
 
 var nextActions = [...]string{

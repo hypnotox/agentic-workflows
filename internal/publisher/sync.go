@@ -57,23 +57,40 @@ type Change struct {
 // byte-identical, and first-adoption initialization with no prior lock reports
 // no change - a routine re-sync stays silent).
 func (p *Publisher) Sync() (Result, error) {
-	plan, err := p.Plan()
+	prepared, err := p.Prepare()
 	if err != nil {
 		return Result{}, err
 	}
-	if err := configcheck.ValidateCommandWiring(p.inputs.cfg); err != nil {
-		return Result{}, err
-	}
-	return p.sync(nil, &plan)
+	return prepared.Sync()
 }
 
 // Initialize publishes a first adoption under explicit lock authority.
 func (p *Publisher) Initialize(seed InitAuthority) (Result, error) {
-	plan, err := p.Plan()
+	prepared, err := p.Prepare()
 	if err != nil {
 		return Result{}, err
 	}
-	return p.sync(&seed, &plan)
+	return prepared.Initialize(seed)
+}
+
+// Sync publishes the exact operation universe captured by this preparation.
+func (p Preparation) Sync() (Result, error) {
+	if p.publisher == nil {
+		return Result{}, errors.New("publisher: unbound preparation")
+	}
+	if err := configcheck.ValidateCommandWiring(p.publisher.inputs.cfg); err != nil {
+		return Result{}, err
+	}
+	return p.publisher.sync(nil, &p.plan)
+}
+
+// Initialize publishes a first adoption from the exact operation universe
+// captured by this preparation.
+func (p Preparation) Initialize(seed InitAuthority) (Result, error) {
+	if p.publisher == nil {
+		return Result{}, errors.New("publisher: unbound preparation")
+	}
+	return p.publisher.sync(&seed, &p.plan)
 }
 
 // InitAuthority is the explicit provenance supplied only by first adoption.
@@ -450,6 +467,15 @@ func (p *Publisher) InitCollisions() ([]string, error) {
 		return nil, err
 	}
 	return resident.CollisionsAt(p.inputs.root(), plan.Paths())
+}
+
+// InitCollisions reports unmanaged paths in this exact prepared universe that
+// already exist at the tracked root.
+func (p Preparation) InitCollisions() ([]string, error) {
+	if p.publisher == nil {
+		return nil, errors.New("publisher: unbound preparation")
+	}
+	return resident.CollisionsAt(p.publisher.inputs.root(), p.plan.Paths())
 }
 
 // IsLocalDocTemplate is the bounded recognition policy outer composition passes to uninstall.

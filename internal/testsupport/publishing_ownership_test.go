@@ -83,6 +83,10 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 						}
 						publisherPrepareSites++
 						allowed := receiverIsIdent && receiver.Name == "composed" && (fn.Name.Name == "preparePublisher" || fn.Name.Name == "Run")
+						if call, ok := target.X.(*ast.CallExpr); ok && fn.Name.Name == "probeCollisions" {
+							constructor, constructorOK := call.Fun.(*ast.Ident)
+							allowed = constructorOK && constructor.Name == "composePublisher"
+						}
 						if !allowed {
 							t.Errorf("unexpected Publisher preparation site %s in %s", target.Sel.Name, fn.Name.Name)
 						}
@@ -113,8 +117,8 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 			}
 		}
 	}
-	if publisherPrepareSites != 2 || publisherPlanSites != 1 {
-		t.Errorf("Publisher construction sites = %d Prepare and %d Plan, want command and init-operation semantic seams plus the init collision plan-only seam", publisherPrepareSites, publisherPlanSites)
+	if publisherPrepareSites != 3 || publisherPlanSites != 0 {
+		t.Errorf("Publisher construction sites = %d Prepare and %d direct Plan, want command, final-init, and temporary collision-probe semantic seams with no separate Publisher plan route", publisherPrepareSites, publisherPlanSites)
 	}
 	expected := map[string]calls{
 		"preparePublisher":                {},
@@ -124,6 +128,7 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 		"stagedContextState":              {preparePublisher: 1, plan: 1},
 		"productionRepoCheckDependencies": {operationPreparation: 1, plan: 1},
 		"Run":                             {plan: 1},
+		"probeCollisions":                 {plan: 1},
 		"openEffortComposition":           {operationPreparation: 1, residentMarker: 1},
 	}
 	// preparePublisher's one direct .Prepare call is separately counted above;
@@ -140,6 +145,22 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 		source := readProduction(t, root, rel)
 		if strings.Count(source, "prepared.Plan(), projectSemantics(prepared)") != 1 {
 			t.Errorf("%s does not reuse one preparation for plan and semantics", rel)
+		}
+	}
+	initSource := readProduction(t, root, "internal/initop/init.go")
+	for route, want := range map[string]int{
+		"composed.Prepare()":        1,
+		"prepared.InitCollisions()": 1,
+		"prepared.Initialize(":      1,
+		"prepared.Sync()":           1,
+	} {
+		if got := strings.Count(initSource, route); got != want {
+			t.Errorf("initialization prepared-universe route %q count = %d, want %d", route, got, want)
+		}
+	}
+	for _, forbidden := range []string{"composed.InitCollisions()", "composed.Initialize(", "composed.Sync()"} {
+		if strings.Contains(initSource, forbidden) {
+			t.Errorf("initialization reconstructs its prepared universe through %q", forbidden)
 		}
 	}
 }

@@ -95,6 +95,7 @@ type Publisher struct{ inputs renderInputs }
 // Preparation is one Publisher-owned derivation and its direct semantic
 // projections for residual consumers.
 type Preparation struct {
+	publisher  *Publisher
 	plan       outputplan.Plan
 	adrs       adr.Corpus
 	pitfalls   pitfall.Corpus
@@ -136,7 +137,7 @@ func (p *Publisher) Prepare() (Preparation, error) {
 	if err != nil {
 		return Preparation{}, err
 	}
-	return Preparation{plan: freezePlan(built), adrs: adrs, pitfalls: pitfalls, topics: topics, skills: maps.Clone(skills), plans: clonePlans(plans), plansError: plansErr, generated: generated, vocabulary: vocabulary}, nil
+	return Preparation{publisher: p, plan: freezePlan(built), adrs: adrs, pitfalls: pitfalls, topics: topics, skills: maps.Clone(skills), plans: clonePlans(plans), plansError: plansErr, generated: generated, vocabulary: vocabulary}, nil
 }
 
 // Plan derives exactly one immutable plan for this operation.
