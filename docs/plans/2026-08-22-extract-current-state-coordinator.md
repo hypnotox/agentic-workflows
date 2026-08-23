@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-22
 adrs: [0296, 0299, 0300, move-context-query-input-below-application-coordination]
-status: Proposed
+status: Implemented
 ---
 # Plan: Extract Current-State Coordinator
 
