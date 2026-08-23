@@ -14,8 +14,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/effort"
+	"github.com/hypnotox/agentic-workflows/internal/effortop"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/worktree"
@@ -116,79 +116,84 @@ func runEffort(c *cmdCtx, compose composeEffort) error {
 	}
 	service, manager := composed.service, composed.manager
 	selected := firstPos(c.inv.positionals)
+	var document presentation.Document
 	switch c.sub {
 	case "new":
-		input := effort.NewInput{Slug: c.inv.values["--slug"], Title: selected}
-		if c.inv.bools["--no-worktree"] {
-			record, err := service.New(c.ctx, input)
-			if err != nil {
-				return err
-			}
-			absent := worktree.Result{Condition: "no managed worktree", ChangedTopology: false, NextAction: "continue the effort in " + service.InvokingRoot()}
-			return writeEffortNew(c.stdout, record, absent)
-		}
-		record, result, err := manager.NewEffort(c.ctx, input, c.inv.values["--base"])
-		if err != nil {
-			return err
-		}
-		return writeEffortNew(c.stdout, record, result)
+		document, err = effortop.New(c.ctx, service, manager, effort.NewInput{Slug: c.inv.values["--slug"], Title: selected}, c.inv.values["--base"], c.inv.bools["--no-worktree"])
 	case "list":
-		records, err := service.List()
-		if err != nil {
-			return err
-		}
-		document, err := effort.ListDocument(records)
-		if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
-			return err
-		}
-		return presentation.Render(c.stdout, document)
+		document, err = effortop.List(service)
 	case "show":
-		record, err := service.Show(selected)
-		if err != nil {
-			return err
-		}
-		return writeEffort(c.stdout, record)
+		document, err = effortop.Show(service, selected)
 	case "finish":
-		result, err := service.Finish(c.ctx, selected)
-		if err != nil {
-			return err
-		}
-		mutation, err := result.FinishMutation(selected)
-		if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
-			return err
-		}
-		document, err := mutation.Document()
-		if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
-			return err
-		}
-		return presentation.Render(c.stdout, document)
+		document, err = effortop.Finish(c.ctx, service, selected)
 	case "worktree":
-		action, selected := c.inv.positionals[0], c.inv.positionals[1]
-		var result worktree.Result
-		var err error
-		switch action {
-		case "add":
-			result, err = manager.Add(c.ctx, selected, c.inv.values["--base"])
-		case "remove":
-			result, err = manager.Remove(c.ctx, selected)
-		default: // coverage-ignore: validateEffortGrammar accepts only add or remove before this closed dispatch
-			return &usageErr{"usage: awf effort worktree <add|remove> <slug>"}
+		slug := c.inv.positionals[1]
+		if c.inv.positionals[0] == "add" {
+			document, err = effortop.AddWorktree(c.ctx, manager, slug, c.inv.values["--base"])
+		} else {
+			document, err = effortop.RemoveWorktree(c.ctx, manager, slug)
 		}
-		return writeWorktreeResult(c.stdout, result, err)
 	case "integrate":
-		gateCommand, err := integrationGateCommand(c.root)
-		if err != nil {
-			return err
-		}
-		result, err := manager.Integrate(c.ctx, selected, gateCommand)
-		return writeWorktreeResult(c.stdout, result, err)
-	case "memory read", "memory edit", "memory update":
-		return runEffortMemory(c, service, editRequest)
-	case "activity attach", "activity heartbeat", "activity detach":
-		return writeActivityReply(c.stdout, runEffortActivity(c, service))
+		document, err = effortop.Integrate(c.ctx, c.root, manager, selected)
+	case "memory read":
+		result, operationErr := effortop.ReadMemory(service, memoryReadInput(c))
+		return writeEffortMemoryResult(c, result, operationErr)
+	case "memory edit":
+		result, operationErr := effortop.EditMemory(service, memoryEditInput(c, editRequest))
+		return writeEffortMemoryResult(c, result, operationErr)
+	case "memory update":
+		result, operationErr := effortop.UpdateMemory(service, memoryUpdateInput(c))
+		return writeEffortMemoryResult(c, result, operationErr)
+	case "activity attach":
+		return writeEffortActivityProtocol(c.stdout, effortop.AttachActivity(service, selected, c.inv.values["--owner"]))
+	case "activity heartbeat":
+		return writeEffortActivityProtocol(c.stdout, effortop.HeartbeatActivity(service, selected, c.inv.values["--owner"]))
+	case "activity detach":
+		return writeEffortActivityProtocol(c.stdout, effortop.DetachActivity(service, selected, c.inv.values["--owner"]))
 	default:
 		return &usageErr{"usage: awf effort <new|list|show|finish|worktree|integrate|memory|activity>"}
 	}
+	if err != nil {
+		return err
+	}
+	return presentation.Render(c.stdout, document)
+}
+
+func memoryReadInput(c *cmdCtx) effort.MemoryReadInput {
+	offset, limit := 0, 0
+	if value, ok := c.inv.values["--offset"]; ok {
+		offset, _ = strconv.Atoi(value)
+	}
+	if value, ok := c.inv.values["--limit"]; ok {
+		limit, _ = strconv.Atoi(value)
+	}
+	return effort.MemoryReadInput{Slug: firstPos(c.inv.positionals), Owner: c.inv.values["--owner"], Offset: offset, Limit: limit}
+}
+
+func memoryEditInput(c *cmdCtx, request *memoryEditRequest) effort.MemoryEditInput {
+	edits := make([]effort.MemoryReplacement, len(request.Edits))
+	for i, edit := range request.Edits {
+		edits[i] = effort.MemoryReplacement{OldText: edit.OldText, NewText: edit.NewText}
+	}
+	return effort.MemoryEditInput{Slug: firstPos(c.inv.positionals), Owner: c.inv.values["--owner"], Edits: edits, Preview: c.inv.bools["--preview"]}
+}
+
+func memoryUpdateInput(c *cmdCtx) effort.MemoryUpdateInput {
+	return effort.MemoryUpdateInput{Slug: firstPos(c.inv.positionals), Owner: c.inv.values["--owner"], Update: effort.MemoryUpdate{Phase: effortValue(c.inv, "--phase"), Next: effortValue(c.inv, "--next")}, Preview: c.inv.bools["--preview"]}
+}
+
+func writeEffortMemoryResult(c *cmdCtx, result effort.MemoryOperationResult, operationErr error) error {
+	if operationErr != nil {
+		return operationErr
+	}
+	if c.inv.bools["--json"] {
+		return writeEffortMemoryProtocol(c.stdout, result)
+	}
+	document, err := result.MemoryDocument()
+	if err != nil {
+		return err
+	}
+	return presentation.Render(c.stdout, document)
 }
 
 func effortValue(inv invocation, flag string) *string {
@@ -197,38 +202,6 @@ func effortValue(inv invocation, flag string) *string {
 		return nil
 	}
 	return &value
-}
-
-func runEffortActivity(c *cmdCtx, service *effort.Service) effort.ActivityReply {
-	slug := firstPos(c.inv.positionals)
-	switch c.sub {
-	case "activity attach":
-		return service.AttachActivity(slug, c.inv.values["--owner"])
-	case "activity heartbeat":
-		return service.HeartbeatActivity(slug, c.inv.values["--owner"])
-	case "activity detach":
-		return service.DetachActivity(slug, c.inv.values["--owner"])
-	default:
-		panic("unreachable effort activity action")
-	}
-}
-func writeActivityReply(out io.Writer, reply effort.ActivityReply) error {
-	return writeEffortActivityProtocol(out, reply)
-}
-
-func integrationGateCommand(root string) (string, error) {
-	cfg, err := config.Load(config.RootDir(root))
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return "", nil
-		}
-		return "", err
-	}
-	command, ok := cfg.Vars["gateCmd"].(string)
-	if !ok {
-		return "", nil
-	}
-	return strings.TrimSpace(command), nil
 }
 
 func validateEffortGrammar(c *cmdCtx) error {
@@ -421,51 +394,6 @@ func decodeMemoryEditRequest(input io.Reader) (memoryEditRequest, error) {
 	return request, nil
 }
 
-func runEffortMemory(c *cmdCtx, service *effort.Service, request *memoryEditRequest) error {
-	slug := firstPos(c.inv.positionals)
-	owner := c.inv.values["--owner"]
-	var input effort.MemoryOperationInput
-	switch c.sub {
-	case "memory read":
-		offset, limit := 0, 0
-		if value, ok := c.inv.values["--offset"]; ok {
-			offset, _ = strconv.Atoi(value)
-		}
-		if value, ok := c.inv.values["--limit"]; ok {
-			limit, _ = strconv.Atoi(value)
-		}
-		input = effort.MemoryReadInput{Slug: slug, Owner: owner, Offset: offset, Limit: limit}
-	case "memory edit":
-		edits := make([]effort.MemoryReplacement, len(request.Edits))
-		for i, edit := range request.Edits {
-			edits[i] = effort.MemoryReplacement{OldText: edit.OldText, NewText: edit.NewText}
-		}
-		input = effort.MemoryEditInput{Slug: slug, Owner: owner, Edits: edits, Preview: c.inv.bools["--preview"]}
-	case "memory update":
-		input = effort.MemoryUpdateInput{Slug: slug, Owner: owner, Update: effort.MemoryUpdate{Phase: effortValue(c.inv, "--phase"), Next: effortValue(c.inv, "--next")}, Preview: c.inv.bools["--preview"]}
-	default: // coverage-ignore: validateEffortGrammar and closed command dispatch admit only the three memory leaves
-		return errors.New("unsupported memory command")
-	}
-	var result effort.MemoryOperationResult
-	var err error
-	if update, ok := input.(effort.MemoryUpdateInput); ok {
-		result, err = service.UpdateMemory(update)
-	} else {
-		result, err = service.Memory(input)
-	}
-	if err != nil {
-		return err
-	}
-	if c.inv.bools["--json"] {
-		return writeEffortMemoryProtocol(c.stdout, result)
-	}
-	document, err := result.MemoryDocument()
-	if err != nil { // coverage-ignore: service results satisfy the effort-owned presentation model
-		return err
-	}
-	return presentation.Render(c.stdout, document)
-}
-
 func validateEffortActivityGrammar(c *cmdCtx) error {
 	usage := "usage: awf effort " + c.sub
 	if len(c.inv.positionals) != 1 || !activitySlugPattern.MatchString(firstPos(c.inv.positionals)) || len(firstPos(c.inv.positionals)) > 63 {
@@ -495,48 +423,6 @@ func activityRequiredFlags(action string) []string {
 	default:
 		return nil
 	}
-}
-func writeWorktreeResult(out io.Writer, result worktree.Result, operationErr error) error {
-	if operationErr != nil {
-		return operationErr
-	}
-	mutation, err := result.Mutation()
-	if err != nil {
-		return err
-	}
-	document, err := mutation.Document()
-	if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
-		return err
-	}
-	return presentation.Render(out, document)
-}
-
-func writeEffort(out io.Writer, record effort.Record) error {
-	detail, err := record.Detail()
-	if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
-		return err
-	}
-	document, err := detail.Document()
-	if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
-		return err
-	}
-	return presentation.Render(out, document)
-}
-
-func writeEffortNew(out io.Writer, record effort.Record, result worktree.Result) error {
-	mutation, err := result.Mutation()
-	if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
-		return err
-	}
-	mutation, err = record.NewEffortMutation(mutation)
-	if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
-		return err
-	}
-	document, err := mutation.Document()
-	if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
-		return err
-	}
-	return presentation.Render(out, document)
 }
 
 type memoryProtocolMetadata struct {

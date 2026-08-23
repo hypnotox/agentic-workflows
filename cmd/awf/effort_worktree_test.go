@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -157,50 +156,6 @@ func TestEffortWorktreeCLIComposition(t *testing.T) {
 	}
 	if _, err := filepath.Abs(root); err != nil {
 		t.Fatal(err)
-	}
-}
-
-func TestIntegrationGateCommandUsesOnlyAConfiguredString(t *testing.T) {
-	for _, test := range []struct {
-		name       string
-		configYAML string
-		want       string
-		wantErr    bool
-	}{
-		{name: "absent config"},
-		{name: "configured", configYAML: "prefix: example\nvars: {gateCmd: make gate}\n", want: "make gate"},
-		{name: "blank", configYAML: "prefix: example\nvars: {gateCmd: \"  \"}\n"},
-		{name: "non-string", configYAML: "prefix: example\nvars: {gateCmd: [make, gate]}\n"},
-		{name: "malformed", configYAML: "unknown: value\n", wantErr: true},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			root := t.TempDir()
-			if test.configYAML != "" {
-				if err := os.Mkdir(filepath.Join(root, ".awf"), 0o755); err != nil {
-					t.Fatal(err)
-				}
-				if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte(test.configYAML), 0o644); err != nil {
-					t.Fatal(err)
-				}
-			}
-			got, err := integrationGateCommand(root)
-			if (err != nil) != test.wantErr || got != test.want {
-				t.Fatalf("integrationGateCommand() = %q, %v; want %q, error=%v", got, err, test.want, test.wantErr)
-			}
-			if test.wantErr {
-				commandRoot := commandRepo(t)
-				if err := os.MkdirAll(filepath.Join(commandRoot, ".awf"), 0o755); err != nil {
-					t.Fatal(err)
-				}
-				if err := os.WriteFile(filepath.Join(commandRoot, ".awf", "config.yaml"), []byte(test.configYAML), 0o644); err != nil {
-					t.Fatal(err)
-				}
-				err = runEffort(&cmdCtx{ctx: testContext(t), root: commandRoot, sub: "integrate", inv: invocation{positionals: []string{"any-effort"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: io.Discard}, openEffortComposition)
-				if err == nil || !strings.Contains(err.Error(), "unknown") {
-					t.Fatalf("integrate malformed config error = %v", err)
-				}
-			}
-		})
 	}
 }
 

@@ -16,9 +16,9 @@ import (
 	"unicode/utf8"
 
 	"github.com/hypnotox/agentic-workflows/internal/effort"
+	"github.com/hypnotox/agentic-workflows/internal/effortop"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
-	"github.com/hypnotox/agentic-workflows/internal/worktree"
 )
 
 func writePersistedEffortFixture(t *testing.T, root, slug string) {
@@ -191,7 +191,7 @@ func TestEffortMemoryAndActivityCLIContract(t *testing.T) {
 	} {
 		t.Run("protocol bytes/"+name, func(t *testing.T) {
 			var out bytes.Buffer
-			if err := writeActivityReply(&out, reply.reply); err != nil {
+			if err := writeEffortActivityProtocol(&out, reply.reply); err != nil {
 				t.Fatal(err)
 			}
 			if got := out.String(); got != reply.want {
@@ -485,7 +485,7 @@ func TestMemoryEditDecoderAndGrammarRefuseBeforeComposition(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = runEffortMemory(&cmdCtx{sub: "memory read", inv: invocation{positionals: []string{"bad_slug"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: &bytes.Buffer{}}, composition.service, nil)
+	_, err = effortop.ReadMemory(composition.service, effort.MemoryReadInput{Slug: "bad_slug"})
 	if err == nil {
 		t.Fatal("service input failure was not propagated")
 	}
@@ -726,25 +726,12 @@ func TestEffortOutputAndGrammarBranches(t *testing.T) {
 	if value := effortValue(invocation{values: map[string]string{}}, "--phase"); value != nil {
 		t.Fatal("absent value present")
 	}
-	record := effort.Record{SchemaVersion: effort.SchemaVersion, Slug: "presentation", Title: "Presentation", MemoryPath: ".awf/efforts/presentation/memory.md"}
-	var out bytes.Buffer
-	if err := writeEffort(&out, record); err != nil {
-		t.Fatal(err)
+	memoryCtx := &cmdCtx{inv: invocation{bools: map[string]bool{}}, stdout: &bytes.Buffer{}}
+	if err := writeEffortMemoryResult(memoryCtx, effort.MemoryOperationResult{}, os.ErrInvalid); !errors.Is(err, os.ErrInvalid) {
+		t.Fatalf("memory operation error = %v", err)
 	}
-	if out.Len() == 0 {
-		t.Fatal("empty effort output")
-	}
-	if err := writeEffort(effortErrorWriter{}, record); err == nil {
-		t.Fatal("text writer error ignored")
-	}
-	if err := writeEffortActivityProtocol(effortErrorWriter{}, record); err == nil {
-		t.Fatal("JSON writer error ignored")
-	}
-	if err := writeWorktreeResult(&bytes.Buffer{}, worktree.Result{}, os.ErrInvalid); !errors.Is(err, os.ErrInvalid) {
-		t.Fatalf("result error = %v", err)
-	}
-	if err := writeWorktreeResult(effortErrorWriter{}, worktree.Result{Condition: "done"}, nil); err == nil {
-		t.Fatal("worktree writer error ignored")
+	if err := writeEffortMemoryResult(memoryCtx, effort.MemoryOperationResult{}, nil); err == nil {
+		t.Fatal("invalid readable memory result accepted")
 	}
 	for _, args := range [][]string{
 		{"effort", "new", "--slug", "command-branches", "Command branches", "--no-worktree"},
@@ -851,14 +838,6 @@ func TestRunEffortFailureDispatches(t *testing.T) {
 	if err := runEffort(ctx("removed"), func(context.Context, string) (effortComposition, error) { return effortComposition{}, nil }); err == nil {
 		t.Fatal("unknown effort action accepted")
 	}
-	func() {
-		defer func() {
-			if recover() == nil {
-				t.Fatal("unknown activity action did not panic")
-			}
-		}()
-		_ = runEffortActivity(ctx("activity removed", "duplicate"), nil)
-	}()
 }
 
 var _ = strings.Contains
