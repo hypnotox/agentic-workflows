@@ -4,7 +4,7 @@ slug: move-context-query-input-below-application-coordination
 status: Implementing
 date: 2026-08-23
 ---
-# ADR-move-context-query-input-below-application-coordination: Move Context Query Input Below Application Coordination
+# ADR-0301: Move Context Query Input Below Application Coordination
 
 
 ## Context

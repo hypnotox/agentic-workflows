@@ -67,7 +67,7 @@ Backing: test
 
 Context queries consume a defensive snapshot of the neutral immutable `internal/contextinput` value assembled by `internal/currentstatecoord` from one selected operation universe and lower semantic values, including Publisher-produced corpora where Publisher participates. `internal/contextq` owns classification, projection, and semantic mapping into presentation nodes without importing project or application coordination; `internal/presentation` alone validates nodes and renders syntax. Bounded project compatibility adapters delegate to the coordinator without constructing an alternate context-state seam.
 Origin: ADR-0195
-Revised-by: ADR-0234, ADR-move-context-query-input-below-application-coordination
+Revised-by: ADR-0234, ADR-0301
 Backing: test
 
 ### `invariant: context-read-only`
