@@ -147,3 +147,21 @@ func TestExploringTemplate(t *testing.T) {
 		t.Errorf("fallback exploring dispatch is not generic:\n%s", fallback)
 	}
 }
+
+func TestGroundingTemplate(t *testing.T) {
+	out := renderSkillGolden(t, "grounding", map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}})
+	if !strings.Contains(out, "broad or uncertain repository premises") {
+		t.Fatal("grounding contract missing")
+	}
+}
+
+func TestIndependentWorkflowEscalation(t *testing.T) {
+	body := renderGolden(t, "skills/grounding/SKILL.md.tmpl", map[string]any{
+		"prefix": "example", "layout": map[string]any{},
+	})
+	for _, want := range []string{"broad or uncertain repository premises", "advisory, report-only, single-pass, effort-noncreating", "never a workflow-chain prerequisite"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("grounding missing %q", want)
+		}
+	}
+}

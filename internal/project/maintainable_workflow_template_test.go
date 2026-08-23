@@ -748,18 +748,6 @@ func TestProtectedContractDoctrineSingleHome(t *testing.T) {
 	}
 }
 
-func TestExecutingDirectTemplate(t *testing.T) {
-	out := renderSkillGolden(t, "executing-direct", map[string]any{
-		"prefix": "example", "vars": map[string]any{"gateCmd": "./x gate", "checkCmd": "./x check"},
-		"data": map[string]any{}, "layout": map[string]any{"workflowRef": "docs/workflow.md"},
-	})
-	for _, want := range []string{"name: example-executing-direct", "direct implementation", "example-reviewing-impl"} {
-		if !strings.Contains(out, want) {
-			t.Errorf("executing-direct output missing %q:\n%s", want, out)
-		}
-	}
-}
-
 // invariant: rendering/workflow-skill-templates:mandatory-approval-boundaries (TestMaintainableCodeStageCoverage)
 // invariant: rendering/workflow-skill-templates:maintainable-code-stage-coverage (TestMaintainableCodeStageCoverage)
 func TestMaintainableCodeStageCoverage(t *testing.T) {

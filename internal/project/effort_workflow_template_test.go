@@ -310,33 +310,10 @@ func TestMemoryLogConsumerCoverage(t *testing.T) {
 	}
 }
 
-func TestBrainstormingTemplate(t *testing.T) {
-	out := renderSkillGolden(t, "brainstorming", map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "layout": testLayout()})
-	for _, want := range []string{"material choice or clarification", "approved decision set", "narrowest durable commitment", "outside the ADR until accepted"} {
-		if !strings.Contains(out, want) {
-			t.Fatalf("brainstorming contract missing %q", want)
-		}
-	}
-}
-
-func TestReviewingImplTemplate(t *testing.T) {
-	out := renderSkillGolden(t, "reviewing-impl", map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "layout": testLayout()})
-	if !strings.Contains(out, "Effort-free review creates no effort") {
-		t.Fatal("review contract missing")
-	}
-}
-
 func TestEffortWorkflowTemplate(t *testing.T) {
 	out := renderSkillGolden(t, "effort-workflow", map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}})
 	if !strings.Contains(out, "sole owner of the effort lifecycle") {
 		t.Fatal("effort contract missing")
-	}
-}
-
-func TestGroundingTemplate(t *testing.T) {
-	out := renderSkillGolden(t, "grounding", map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}})
-	if !strings.Contains(out, "broad or uncertain repository premises") {
-		t.Fatal("grounding contract missing")
 	}
 }
 

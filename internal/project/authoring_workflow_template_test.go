@@ -296,3 +296,12 @@ func TestAdrLifecycleTemplate(t *testing.T) {
 		}
 	}
 }
+
+func TestBrainstormingTemplate(t *testing.T) {
+	out := renderSkillGolden(t, "brainstorming", map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "layout": testLayout()})
+	for _, want := range []string{"material choice or clarification", "approved decision set", "narrowest durable commitment", "outside the ADR until accepted"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("brainstorming contract missing %q", want)
+		}
+	}
+}
