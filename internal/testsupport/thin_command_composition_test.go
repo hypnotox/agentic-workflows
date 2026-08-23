@@ -533,7 +533,7 @@ func operationCalls(pkg *packages.Package, body *ast.BlockStmt) ([]string, []str
 	for _, route := range commandRoutes() {
 		names = append(names, route.operations...)
 	}
-	return operationCallsForOwners(pkg, body, names, semanticOwnerPackages(names))
+	return operationCallsForOwners(pkg, body, names, semanticOwnerPackages())
 }
 
 func operationCallsFor(pkg *packages.Package, body *ast.BlockStmt, names []string) ([]string, []string) {
@@ -621,12 +621,18 @@ func semanticOperationNames(names []string) map[string]bool {
 	return known
 }
 
-func semanticOwnerPackages(names []string) map[string]bool {
+// semanticOwnerPackages is independent of the route contracts it checks. It
+// names every established application owner and protected lower owner whose
+// semantic entry points may not be invoked as an extra command operation.
+func semanticOwnerPackages() map[string]bool {
+	const module = "github.com/hypnotox/agentic-workflows/internal/"
 	owners := map[string]bool{}
-	for _, name := range names {
-		if split := strings.LastIndexByte(name, '.'); split > 0 {
-			owners[name[:split]] = true
-		}
+	for _, name := range []string{
+		"audit", "changelog", "checkop", "commitgateop", "contextop", "contextq",
+		"currentstatecoord", "domainop", "effort", "effortop", "initop", "localdocop",
+		"project", "publisher", "repositorycheck", "resident", "topicop", "upgrade", "worktree",
+	} {
+		owners[module+name] = true
 	}
 	return owners
 }
@@ -639,6 +645,7 @@ func allowedOwnerBoundaryFunctions() map[string]bool {
 	const module = "github.com/hypnotox/agentic-workflows/internal/"
 	return map[string]bool{
 		module + "currentstatecoord.Document":           true,
+		module + "effort.MemoryDocument":                true,
 		module + "project.NewLoader":                    true,
 		module + "project.NewLoaderWithoutRepository":   true,
 		module + "project.OpenForOperation":             true,
@@ -731,17 +738,17 @@ func TestThinCompositionProofRejectsUnlistedOwnerOperation(t *testing.T) {
 	}
 	mutated := strings.Replace(string(source),
 		`"github.com/hypnotox/agentic-workflows/internal/domainop"`,
-		`"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
-	"github.com/hypnotox/agentic-workflows/internal/domainop"`, 1)
+		`"github.com/hypnotox/agentic-workflows/internal/domainop"
+	"github.com/hypnotox/agentic-workflows/internal/repositorycheck"`, 1)
 	mutated = strings.Replace(mutated,
 		"\tdocument, err := project.BuildListDocument(state, cfg, kindFilter)",
-		"\t_, _ = currentstatecoord.CheckStagedRoot(ctx, root)\n\tdocument, err := project.BuildListDocument(state, cfg, kindFilter)", 1)
+		"\t_, _ = repositorycheck.Compose(repositorycheck.Inputs{})\n\tdocument, err := project.BuildListDocument(state, cfg, kindFilter)", 1)
 	if mutated == string(source) {
 		t.Fatal("production-route mutation was not applied")
 	}
 	pkg := loadAWFCommandPackageWithOverlay(t, map[string][]byte{path: []byte(mutated)})
 	calls, evasions := operationCalls(pkg, functionBody(t, pkg, "runList"))
-	const hidden = "github.com/hypnotox/agentic-workflows/internal/currentstatecoord.CheckStagedRoot"
+	const hidden = "github.com/hypnotox/agentic-workflows/internal/repositorycheck.Compose"
 	if !semanticOperationNames(append(calls, evasions...))[hidden] {
 		t.Fatalf("unlisted owner operation escaped proof: calls = %v, evasions = %v", calls, evasions)
 	}
