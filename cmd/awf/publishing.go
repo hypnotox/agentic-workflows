@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 
-	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/contextinput"
 	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
@@ -24,14 +23,6 @@ func operationPreparation(state *project.ProjectState, cfg *config.Config) (publ
 	return preparePublisher(composePublisher(state, cfg))
 }
 
-func projectSemantics(prepared publisher.Preparation) project.OperationSemantics {
-	return project.OperationSemantics{
-		ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(),
-		EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: prepared.PlansError(), GeneratedOutput: prepared.GeneratedOutput(),
-		Vocabulary: prepared.Vocabulary(),
-	}
-}
-
 func preparedPublisher(prep *currentstatecoord.ContextPreparation) *publisher.Publisher {
 	return publisher.New(prep.State, prep.Config, prep.Reader, project.Version)
 }
@@ -46,18 +37,6 @@ func workingContextState(ctx context.Context, state *project.ProjectState, repo 
 		return contextinput.Input{}, err
 	}
 	return currentstatecoord.CompleteContext(prep, prepared.ADRs(), prepared.Topics(), prepared.Plans(), prepared.Plan().Declarations()), nil
-}
-
-func stagedDriftResult(ctx context.Context, root string) (checkresult.Result, error) {
-	prep, err := project.PrepareStagedContextState(ctx, root)
-	if err != nil {
-		return checkresult.Result{}, err
-	}
-	prepared, err := preparePublisher(publisher.New(prep.State, prep.Config, prep.Reader, project.Version))
-	if err != nil {
-		return checkresult.Result{}, err
-	}
-	return project.CheckStagedDriftResult(prep, prepared.Plan())
 }
 
 func stagedContextState(ctx context.Context, root string) (contextinput.Input, error) {

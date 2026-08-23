@@ -59,29 +59,13 @@ func TestWorkingContextStatePropagatesPublisherPreparationFailure(t *testing.T) 
 	requireMalformedPitfallError(t, err)
 }
 
-func TestStagedPublisherPreparationFailuresPropagate(t *testing.T) {
-	cases := []struct {
-		name string
-		run  func(context.Context, string) error
-	}{
-		{"drift result", func(ctx context.Context, root string) error {
-			_, err := stagedDriftResult(ctx, root)
-			return err
-		}},
-		{"context state", func(ctx context.Context, root string) error {
-			_, err := stagedContextState(ctx, root)
-			return err
-		}},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			root := ctxCmdFixture(t)
-			writeMalformedPitfall(t, root)
-			gitfixture.AddAll(t, gitfixture.At(root))
+func TestStagedContextPublisherPreparationFailurePropagates(t *testing.T) {
+	root := ctxCmdFixture(t)
+	writeMalformedPitfall(t, root)
+	gitfixture.AddAll(t, gitfixture.At(root))
 
-			requireMalformedPitfallError(t, tc.run(context.Background(), root))
-		})
-	}
+	_, err := stagedContextState(context.Background(), root)
+	requireMalformedPitfallError(t, err)
 }
 
 // invariant: tooling/context-and-topic:context-query-boundary (TestContextCompositionSelectsOneFreshTreeForPublisherAndCompletion)

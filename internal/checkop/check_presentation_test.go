@@ -1,4 +1,4 @@
-package main
+package checkop
 
 import (
 	"errors"

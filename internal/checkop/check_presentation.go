@@ -1,4 +1,4 @@
-package main
+package checkop
 
 import (
 	"fmt"
@@ -14,6 +14,10 @@ type checkCollection struct {
 	failures     []error
 	operational  []error
 }
+
+type producedReportError struct{ error }
+
+func (e *producedReportError) Unwrap() error { return e.error }
 
 type producedCheckFailure struct{ err error }
 

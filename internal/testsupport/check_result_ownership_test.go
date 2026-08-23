@@ -63,7 +63,7 @@ func TestStagedPlanResultTypedRouteCensus(t *testing.T) {
 		want           map[string]int
 	}{
 		{"internal/currentstatecoord/currentstate.go", "currentStateResult", map[string]int{"PlanResult": 2}},
-		{"cmd/awf/checkrepo.go", "presentCurrentStateReport", map[string]int{"CurrentResult": 1, "PlanArtifactResult": 1}},
+		{"internal/checkop/checkrepo.go", "presentCurrentStateReport", map[string]int{"CurrentResult": 1, "PlanArtifactResult": 1}},
 	}
 	for _, tc := range cases {
 		file, err := parser.ParseFile(token.NewFileSet(), filepath.Join(root, tc.path), nil, 0)
@@ -214,8 +214,8 @@ func TestCurrentStateProductionRouteCensus(t *testing.T) {
 	production := []struct {
 		path, function string
 	}{
-		{"cmd/awf/checkrepo.go", "CheckWorking"},
-		{"cmd/awf/checkstaged.go", "CheckStagedRoot"},
+		{"internal/checkop/checkrepo.go", "CheckWorking"},
+		{"internal/checkop/checkstaged.go", "CheckStagedRoot"},
 	}
 	for _, route := range production {
 		source, err := os.ReadFile(filepath.Join(root, route.path))

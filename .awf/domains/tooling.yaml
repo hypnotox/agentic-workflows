@@ -4,6 +4,7 @@ paths:
   - internal/severity/**
   - internal/coverage/**
   - internal/changelog/**
+  - internal/checkop/**
   - internal/evals/**
   - internal/clispec/**
   - internal/commitmsg/**

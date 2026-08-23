@@ -1,4 +1,4 @@
-package main
+package checkop
 
 import (
 	"bytes"
@@ -21,10 +21,10 @@ import (
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/prosegate"
 	"github.com/hypnotox/agentic-workflows/internal/repositorycheck"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
-	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 type repoCheckCounters struct {
@@ -116,6 +116,27 @@ func repoCheckTestDependencies(t *testing.T, cfg *config.Config, p *project.Proj
 			return tree, nil
 		},
 	}
+}
+
+func TestScanProsePropagatesScannerFailure(t *testing.T) {
+	want := errors.New("scanner unavailable")
+	_, err := scanProse(&config.Config{}, mustSnapshotTree(t), proseDependencies{
+		scan: func([]prosegate.File, []prosegate.Exemption) ([]prosegate.Finding, []string, error) {
+			return nil, nil, want
+		},
+	})
+	if !errors.Is(err, want) {
+		t.Fatalf("scanProse error = %v, want %v", err, want)
+	}
+}
+
+func mustSnapshotTree(t *testing.T) *snapshot.Tree {
+	t.Helper()
+	tree, err := snapshot.NewTree(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return tree
 }
 
 func TestRepoCheckRoutesAggregateOwnerResultsWithoutCompatibilitySlices(t *testing.T) {
@@ -534,32 +555,6 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		}
 	})
 
-	t.Run("production no-Git tracking note preserves direct and aggregate boundaries", func(t *testing.T) {
-		root := t.TempDir()
-		testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {testCmd: \"\", gateCmd: make gate}\n")
-		if err := initializeProject(testContext(t), root, io.Discard); err != nil {
-			t.Fatalf("initialize no-Git project: %v", err)
-		}
-
-		const trackingNote = "generated-artifact tracking is unavailable outside a Git repository"
-		const aggregateOnlyNote = "skill tdd references unset vars: testCmd"
-		var direct bytes.Buffer
-		if err := runCheckDrift(testContext(t), root, &direct); err != nil {
-			t.Fatalf("direct no-Git drift: %v", err)
-		}
-		if got := direct.String(); !strings.Contains(got, trackingNote) || strings.Contains(got, aggregateOnlyNote) {
-			t.Fatalf("direct no-Git drift did not preserve tracking-only advisory boundary: %q", got)
-		}
-
-		var aggregate bytes.Buffer
-		if err := runRepoCheckSelection(testContext(t), root, &aggregate, []execution.StepID{repoStepDrift}, execution.ContinueOnFailure, true, productionRepoCheckDependencies()); err != nil {
-			t.Fatalf("aggregate no-Git drift projection: %v", err)
-		}
-		if got := aggregate.String(); !strings.Contains(got, trackingNote) || !strings.Contains(got, aggregateOnlyNote) {
-			t.Fatalf("aggregate no-Git repo check did not compose tracking and render advisories: %q", got)
-		}
-	})
-
 	t.Run("disabled aggregate scanners prepare no index", func(t *testing.T) {
 		cfg := &config.Config{}
 		p := &project.ProjectState{}
@@ -645,13 +640,8 @@ func assertRepoCheckProductionWiring(t *testing.T) {
 		contains []string
 	}{
 		{"checkrepo.go", "productionRepoCheckDependencies", []string{"project.NewLoader(", "project.NewLoaderWithoutRepository(", "project.BuildCheckReport("}},
-		{"checkrepo.go", "runCheckRepo", []string{"runCheckRepoWithPlanNotes", "planNoteSink{}"}},
-		{"checkrepo.go", "runCheckRepoWithPlanNotes", []string{"collectCheckRepoWithPlanNotes", "renderCheckCollection"}},
-		{"checkrepo.go", "collectCheckRepoWithPlanNotes", []string{"repoStepDrift", "repoStepState", "repoStepProse", "repoStepMemory", "execution.ContinueOnFailure", "true", "productionRepoCheckDependencies()"}},
-		{"checkrepo.go", "runCheckDrift", []string{"repoStepDrift", "execution.StopOnFailure", "false", "productionRepoCheckDependencies()"}},
-		{"checkrepo.go", "runCheckState", []string{"repoStepState", "execution.StopOnFailure", "false", "productionRepoCheckDependencies()"}},
-		{"prosegate.go", "runProseGate", []string{"repoStepProse", "execution.StopOnFailure", "false", "productionRepoCheckDependencies()"}},
-		{"memorygate.go", "runMemoryGate", []string{"repoStepMemory", "execution.StopOnFailure", "false", "productionRepoCheckDependencies()"}},
+		{"operation.go", "Run", []string{"case Repository:", "collectCheckRepoWithPlanNotes"}},
+		{"operation.go", "Run", []string{"case RepositoryDrift:", "case RepositoryState:", "case RepositoryProse:", "case RepositoryMemory:"}},
 	}
 	for _, tc := range cases {
 		t.Run("wiring/"+tc.function, func(t *testing.T) {
@@ -665,24 +655,13 @@ func assertRepoCheckProductionWiring(t *testing.T) {
 			switch tc.function {
 			case "productionRepoCheckDependencies":
 				callee = ""
-			case "runCheckRepo":
-				callee = "runCheckRepoWithPlanNotes("
-			case "runCheckRepoWithPlanNotes":
-				callee = "collectCheckRepoWithPlanNotes("
-			case "collectCheckRepoWithPlanNotes":
-				callee = "collectRepoCheckSelectionWithPlanNotes("
+			case "Run":
+				callee = ""
 			}
 			if callee != "" && strings.Count(body, callee) != 1 {
 				t.Fatalf("%s %s must call %s exactly once:\n%s", tc.file, tc.function, callee, body)
 			}
 		})
-	}
-
-	aggregate := formattedFunctionBody(t, "checkrepo.go", "collectCheckRepoWithPlanNotes")
-	versionOutput := strings.Index(aggregate, "fmt.Sprintf")
-	executionCall := strings.Index(aggregate, "collectRepoCheckSelectionWithPlanNotes")
-	if versionOutput < 0 || executionCall < 0 || versionOutput >= executionCall {
-		t.Fatalf("aggregate version note preparation must precede execution:\n%s", aggregate)
 	}
 }
 

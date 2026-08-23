@@ -30,10 +30,15 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	checkFiles, err := filepath.Glob(filepath.Join(root, "internal", "checkop", "*.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	initFiles, err := filepath.Glob(filepath.Join(root, "internal", "initop", "*.go"))
 	if err != nil {
 		t.Fatal(err)
 	}
+	files = append(files, checkFiles...)
 	files = append(files, initFiles...)
 	type calls struct {
 		preparePublisher, operationPreparation, operationPlan int
@@ -117,8 +122,8 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 			}
 		}
 	}
-	if publisherPrepareSites != 3 || publisherPlanSites != 0 {
-		t.Errorf("Publisher construction sites = %d Prepare and %d direct Plan, want command, final-init, and temporary collision-probe semantic seams with no separate Publisher plan route", publisherPrepareSites, publisherPlanSites)
+	if publisherPrepareSites != 4 || publisherPlanSites != 0 {
+		t.Errorf("Publisher construction sites = %d Prepare and %d direct Plan, want check, command, final-init, and temporary collision-probe semantic seams with no separate Publisher plan route", publisherPrepareSites, publisherPlanSites)
 	}
 	expected := map[string]calls{
 		"preparePublisher":                {},
@@ -141,7 +146,7 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 	// The check and advisory consumers must hand both projections the same local
 	// preparation variable. The exact AST argument census makes replacing either
 	// use with another preparation (or adding a second call) fail this proof.
-	for _, rel := range []string{"cmd/awf/checkrepo.go", "internal/initop/init.go"} {
+	for _, rel := range []string{"internal/checkop/checkrepo.go", "internal/initop/init.go"} {
 		source := readProduction(t, root, rel)
 		if strings.Count(source, "prepared.Plan(), projectSemantics(prepared)") != 1 {
 			t.Errorf("%s does not reuse one preparation for plan and semantics", rel)
@@ -519,7 +524,7 @@ func TestPublishingPlanningOwnership(t *testing.T) {
 		}
 	}
 	cmdSources := map[string]string{
-		"check":                readProduction(t, root, "cmd/awf/checkrepo.go"),
+		"check":                readProduction(t, root, "internal/checkop/checkrepo.go"),
 		"initialization":       readProduction(t, root, "internal/initop/init.go"),
 		"resident-marker":      readProduction(t, root, "cmd/awf/effort.go"),
 		"outer/staged/context": readProduction(t, root, "cmd/awf/publishing.go"),
