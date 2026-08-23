@@ -550,3 +550,21 @@ func TestGlossaryTersenessNotesCoversShippedLayer(t *testing.T) {
 		}
 	})
 }
+
+// AdvisoryNotes and ConfigReferenceModel both forward the operation
+// derivation's fault; a malformed ADR reaches each one's wiring branch.
+func TestAdvisoryNotesAndConfigReferenceSurfaceMalformedADR(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-broken.md"),
+		"---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n")
+	if _, err := advisoryNotesProject(p); err == nil {
+		t.Fatal("expected AdvisoryNotes to surface the malformed ADR, got nil")
+	}
+	if _, err := configReferenceProject(p); err == nil {
+		t.Fatal("expected ConfigReferenceModel to surface the malformed ADR, got nil")
+	}
+}

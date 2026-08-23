@@ -516,3 +516,201 @@ func TestTopicMetadataAndPartBothDriveDrift(t *testing.T) {
 		t.Fatalf("metadata drift = %#v", drift)
 	}
 }
+
+func TestCheckCleanAfterSync(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, _ := Open(testContext(t), root)
+	if err := syncProject(p); err != nil {
+		t.Fatal(err)
+	}
+	drift, err := checkProject(p, testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(drift) != 0 {
+		t.Errorf("expected clean, got drift: %#v", drift)
+	}
+}
+
+func TestCheckDetectsHandEdit(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, _ := Open(testContext(t), root)
+	_ = syncProject(p)
+	skill := filepath.Join(root, ".claude/skills/example-tdd/SKILL.md")
+	_ = os.WriteFile(skill, []byte("hand edited\n"), 0o644)
+	drift, _ := checkProject(p, testContext(t))
+	if len(drift) == 0 || drift[0].Kind != "hand-edited" {
+		t.Errorf("expected hand-edited drift, got %#v", drift)
+	}
+}
+
+func TestCheckStaleTakesPrecedence(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, _ := Open(testContext(t), root)
+	if err := syncProject(p); err != nil {
+		t.Fatal(err)
+	}
+	skillPath := ".claude/skills/example-tdd/SKILL.md"
+	// Make the lock entry stale by corrupting its TemplateHash.
+	lock, err := manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	e := lock.Files[skillPath]
+	e.TemplateHash = "sha256:bogus"
+	lock.Files[skillPath] = e
+	if err := lock.Save(lockFile(root)); err != nil {
+		t.Fatal(err)
+	}
+	// Also hand-edit the rendered file so its on-disk content differs too.
+	if err := os.WriteFile(filepath.Join(root, skillPath), []byte("hand edited\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	drift, err := checkProject(p, testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var forPath []manifest.Drift
+	for _, d := range drift {
+		if d.Path == skillPath {
+			forPath = append(forPath, d)
+		}
+	}
+	if len(forPath) != 1 {
+		t.Fatalf("expected exactly one drift entry for %s, got %#v", skillPath, forPath)
+	}
+	if forPath[0].Kind != "stale" {
+		t.Errorf("expected stale, got %q", forPath[0].Kind)
+	}
+}
+
+// invariant: rendering/sync-and-drift:sync-always-writes-active-md (TestSyncGeneratesActiveMDAndCheckDetectsStaleness)
+// invariant: rendering/sync-and-drift:check-active-md-stale (TestSyncGeneratesActiveMDAndCheckDetectsStaleness)
+func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	adrDir := filepath.Join(root, "docs", "decisions")
+	if err := os.MkdirAll(adrDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	adrBody := testsupport.ADR("Accepted", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
+		testsupport.WithTitle("0001: First"), testsupport.WithBody("## Context\nx\n## Decision\n\n1. x.\n"))
+	testsupport.WriteFile(t, filepath.Join(adrDir, "0001-first.md"), adrBody)
+
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	if err := syncProject(p); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	index, err := os.ReadFile(filepath.Join(adrDir, "INDEX.md"))
+	if err != nil {
+		t.Fatalf("INDEX.md not generated: %v", err)
+	}
+	// The Accepted ADR renders under the In flight status section.
+	inflightPos := strings.Index(string(index), "## In flight")
+	entryPos := strings.Index(string(index), "ADR-0001: First")
+	if inflightPos < 0 || !strings.Contains(string(index), "## History") {
+		t.Errorf("INDEX.md missing status sections:\n%s", index)
+	}
+	if entryPos < 0 || entryPos < inflightPos {
+		t.Errorf("INDEX.md missing the ADR entry under In flight:\n%s", index)
+	}
+	if drift, err := checkProject(p, testContext(t)); err != nil || len(drift) != 0 {
+		t.Fatalf("expected clean check after sync, got drift=%#v err=%v", drift, err)
+	}
+
+	// Change frontmatter status (Accepted In flight -> Implemented History); the
+	// on-disk INDEX.md is now stale.
+	adr2 := strings.Replace(adrBody, "status: Accepted", "status: Implemented", 1)
+	testsupport.WriteFile(t, filepath.Join(adrDir, "0001-first.md"), adr2)
+	drift, err := checkProject(p, testContext(t))
+	if err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+	found := false
+	for _, d := range drift {
+		if strings.HasSuffix(d.Path, "decisions/INDEX.md") && d.Kind == "stale" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected stale drift for INDEX.md, got %#v", drift)
+	}
+}
+
+// invariant: rendering/sync-and-drift:check-invalid-frontmatter (TestCheckDetectsInvalidFrontmatter)
+func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const skillPath = ".claude/skills/example-tdd/SKILL.md"
+	broken := "---\nname: \"\"\ndescription: \"\"\n---\nbody\n"
+	// Fresh planned bytes, the locked hash, and observed bytes all agree, so
+	// frontmatter validation is the first applicable finding.
+	testsupport.WriteFile(t, filepath.Join(root, skillPath), broken)
+	file := RenderedFile{Path: skillPath, Content: broken, Policy: OutputPolicy{ValidateFrontmatter: true}, Encoder: MarkdownAgentDialect}
+	lock := &manifest.Lock{Files: map[string]manifest.Entry{
+		skillPath: {OutputHash: manifest.Hash([]byte(broken))},
+	}}
+	findings := checkLockedFiles(renderInputsForTest(p).residentRoots(), lock, map[string]RenderedFile{skillPath: file}, nil)
+	if len(findings) != 1 || findings[0].Property != propertyReproducibility {
+		t.Fatalf("invalid-frontmatter semantic finding = %#v, want reproducibility", findings)
+	}
+	drift := checkLockedDrift(renderInputsForTest(p).residentRoots(), lock, map[string]RenderedFile{skillPath: file}, nil)
+	want := []manifest.Drift{{Path: skillPath, Kind: "invalid-frontmatter", Detail: "frontmatter name is empty"}}
+	if !slices.Equal(drift, want) {
+		t.Errorf("invalid-frontmatter drift = %#v, want %#v", drift, want)
+	}
+}
+
+// The generated indexes carry RegenChecked=true (drift checked by regeneration,
+// not the frozen OutputHash); an ordinary rendered file carries false. This is the
+// single source of truth that replaced the hardcoded index-path literals.
+func TestRegenCheckedAttribute(t *testing.T) {
+	root := scaffold(t, domainCfg)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// invariant: rendering/sync-and-drift:regeneration-checked-attribute (TestRegenCheckedAttribute)
+	amd := generateIndexMD(renderInputsForTest(p), mustDeriveCorpus(t, p))
+	if !amd.RegenChecked {
+		t.Errorf("INDEX.md must be regeneration-checked")
+	}
+	dds, err := generateDomainDocs(renderInputsForTest(p), mustDeriveTopics(t, p), mustDeriveSkills(t, p))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(dds) == 0 {
+		t.Fatal("fixture must declare at least one domain")
+	}
+	for _, dd := range dds {
+		if !dd.RegenChecked {
+			t.Errorf("domain doc %s must be regeneration-checked", dd.Path)
+		}
+	}
+	files, err := renderAll(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cref, ok, err := generateConfigReference(renderInputsForTest(p), slices.Concat(files, dds), mustDeriveSkills(t, p))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok || !cref.RegenChecked {
+		t.Errorf("config reference must be regeneration-checked (ok=%v)", ok)
+	}
+	// Ordinary planned writes are frozen-OutputHash-checked; generated plan
+	// nodes are explicitly regeneration-checked.
+	if len(files) == 0 {
+		t.Fatal("RenderAll produced no files")
+	}
+	for _, f := range files {
+		if f.Policy.Regenerate != f.RegenChecked {
+			t.Errorf("plan policy and RegenChecked disagree for %s: policy=%v regenChecked=%v", f.Path, f.Policy.Regenerate, f.RegenChecked)
+		}
+	}
+}

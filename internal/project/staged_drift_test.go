@@ -2,6 +2,8 @@ package project
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io/fs"
 	"maps"
 	"os"
@@ -11,14 +13,18 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
+	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
+	"github.com/hypnotox/agentic-workflows/internal/topic"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
@@ -502,5 +508,392 @@ func TestCheckStagedDriftProjectsFullFromAWorkingCoreTree(t *testing.T) {
 	}
 	if len(drift) != 0 {
 		t.Fatalf("Core working tree contaminated coherent Full index: %#v", drift)
+	}
+}
+func boundaryADR(format, title string) string {
+	return "---\nformat: " + format + "\nstatus: Proposed\ndate: 2026-07-21\n---\n" +
+		"# ADR-0002: " + title + "\n\n## Context\n\nContext.\n\n## Decision\n\n1. Decide.\n\n" +
+		"## State changes\n\nNone.\n\n## Consequences\n\nConsequence.\n\n" +
+		"## Alternatives Considered\n\nNone.\n\n## Status history\n\n- 2026-07-21: Proposed\n"
+}
+
+func TestCheckStagedCleanWithCoverage(t *testing.T) {
+	t.Parallel()
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Stage(t, repo, stagedHeadFiles())
+	gitfixture.Commit(t, repo, "head", nil)
+	gitfixture.Stage(t, repo, map[string]string{"internal/bar.go": "package internalx\n"})
+	p := openStaged(t, dir)
+	writeLock(t, p, attestedLock())
+	// A different working lock must not contaminate the staged universe.
+	testsupport.WriteFile(t, lockFile(p.Root()), "{not json")
+
+	report, err := checkStagedProject(p, testContext(t))
+	if err != nil {
+		t.Fatalf("CheckStaged: %v", err)
+	}
+	if len(report.Static) != 0 {
+		t.Fatalf("static findings = %#v; want none for an unchanged topic set", report.Static)
+	}
+	findings := currentStateFindings(report)
+	if len(findings) != 1 || !strings.Contains(findings[0], "internal/bar.go") {
+		t.Fatalf("findings = %#v; want exactly the uncovered internal/bar.go", findings)
+	}
+}
+
+// TestCheckStagedNoPolicy proves the staged path evaluates coverage and fan-out
+// for a tree that declares no currentState block, the staged half of the
+// contract TestCheckCurrentStateNoPolicy pins for the working tree (ADR-0192).
+// stagedHeadFiles already scopes one claim-bearing topic to internal/foo/**, so
+// eight more claimless topics take that path over the nil-receiver budget of 8.
+// invariant: rendering/sync-and-drift:coverage-evaluation-unconditional (TestCheckStagedNoPolicy)
+func TestCheckStagedNoPolicy(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	head := stagedHeadFiles()
+	head[".awf/config.yaml"] = csNoPolicyYAML
+	for i := 1; i <= 8; i++ {
+		name := fmt.Sprintf("fan%d", i)
+		head[".awf/topics/metadata/alpha/"+name+".yaml"] = fmt.Sprintf("title: Fan %d\nsummary: Fan-out fixture topic %d.\npaths:\n  - internal/foo/**\n", i, i)
+		head[".awf/topics/parts/alpha/"+name+"/current-state.md"] = "Intro.\n\n## Claims\n"
+	}
+	gitfixture.Stage(t, repo, head)
+	gitfixture.Commit(t, repo, "head", nil)
+	gitfixture.Stage(t, repo, map[string]string{
+		"internal/bar.go":   "package internalx\n",
+		"internal/foo/x.go": "package foo\n",
+	})
+	p := openStaged(t, dir)
+	writeLock(t, p, attestedLock())
+
+	report, err := checkStagedProject(p, testContext(t))
+	if err != nil {
+		t.Fatalf("CheckStaged: %v", err)
+	}
+	if report.Coverage == nil {
+		t.Fatal("staged coverage = nil; want evaluation without a currentState policy")
+	}
+	want := []topic.CoverageFinding{
+		{Path: "internal/bar.go", Domain: "alpha", Kind: topic.Uncovered, Severity: severity.Error},
+		{Path: "internal/foo/x.go", Kind: topic.Fanout, Severity: severity.Warn, Topics: 9},
+	}
+	if !reflect.DeepEqual(report.Coverage, want) {
+		t.Fatalf("staged coverage:\n got %#v\nwant %#v", report.Coverage, want)
+	}
+}
+
+// TestCheckStagedRejectsBridgePromotionWithArbitraryV2Boundary uses snapshots
+// whose ADR-0002 bytes are valid only under each side's own lock: V1 under the
+// bridge HEAD and V2 under the staged permanent lock. Phase 3 must reject that
+// arbitrary V2 activation rather than treating it as the sealed V1 promotion.
+// TestCheckStagedTransitionFinding stages a claim removal with no removing ADR:
+// the HEAD-to-index diff surfaces the unmatched mutation.
+func TestCheckStagedTransitionFinding(t *testing.T) {
+	t.Parallel()
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Stage(t, repo, stagedHeadFiles())
+	gitfixture.Commit(t, repo, "head", nil)
+	// Re-stage the topic part with its claim removed.
+	gitfixture.Stage(t, repo, map[string]string{".awf/topics/parts/alpha/one/current-state.md": "Intro only.\n\n## Claims\n"})
+	p := openStaged(t, dir)
+	writeLock(t, p, attestedLock())
+
+	report, err := checkStagedProject(p, testContext(t))
+	if err != nil {
+		t.Fatalf("CheckStaged: %v", err)
+	}
+	if len(report.Static) == 0 || !strings.Contains(report.Static[0].Message, "was removed with no ADR remove operation") {
+		t.Fatalf("static = %#v; want the unmatched-removal finding", report.Static)
+	}
+}
+
+// invariant: invariants/current-state-authority:merge-transition-ordered-aggregate (TestCheckStagedMarksOlderIntroductionsProvisionalWithoutSuppressingFindings)
+func TestCheckStagedMarksOlderIntroductionsProvisionalWithoutSuppressingFindings(t *testing.T) {
+	t.Parallel()
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	head := stagedHeadFiles()
+	head["docs/decisions/0003-existing.md"] = boundaryADR(adr.V1FormatMarker, "Existing")
+	head["docs/decisions/0004-aggregate.md"] = publicV2ADR(t, "0004", "Aggregate", "Proposed", "- add `alpha/one:x`\n- add `alpha/one:y`\n- add `alpha/one:z`", "")
+	gitfixture.Stage(t, repo, head)
+	gitfixture.Commit(t, repo, "head", nil)
+
+	gitfixture.Stage(t, repo, map[string]string{"docs/decisions/0002-stale.md": boundaryADR(adr.V2FormatMarker, "Stale")})
+	p := openStaged(t, dir)
+	writeLock(t, p, attestedLock())
+	clean, err := checkStagedProject(p, testContext(t))
+	if err != nil {
+		t.Fatalf("clean CheckStaged: %v", err)
+	}
+	want := []currentstate.Introduction{{Identity: "0002", Format: adr.CurrentStateV2}}
+	if !reflect.DeepEqual(clean.Provisional, want) || len(currentStateFindings(clean)) != 0 {
+		t.Fatalf("clean provisional report = %#v, findings = %#v; want %#v and no findings", clean.Provisional, currentStateFindings(clean), want)
+	}
+
+	aggregate := publicV2ADR(t, "0004", "Aggregate", "Implementing", "- add `alpha/one:x`\n- add `alpha/one:y`\n- add `alpha/one:z`",
+		"- 2026-07-22: Implementing; content-sha256: %s\n- 2026-07-22: Applied; operations: add `alpha/one:x`\n- 2026-07-22: Applied; operations: add `alpha/one:y`")
+	gitfixture.Stage(t, repo, map[string]string{
+		"docs/decisions/0003-existing.md":              boundaryADR(adr.V2FormatMarker, "Existing"),
+		"docs/decisions/0004-aggregate.md":             aggregate,
+		".awf/topics/parts/alpha/one/current-state.md": "Intro only.\n\n## Claims\n",
+		"internal/bar.go":                              "package internalx\n",
+	})
+	report, err := checkStagedProject(p, testContext(t))
+	if err != nil {
+		t.Fatalf("CheckStaged with unrelated violations: %v", err)
+	}
+	if !reflect.DeepEqual(report.Provisional, want) {
+		t.Fatalf("provisional = %#v, want %#v", report.Provisional, want)
+	}
+	findings := strings.Join(currentStateFindings(report), "\n")
+	for _, wantFinding := range []string{
+		"was removed with no ADR remove operation",
+		"internal/bar.go",
+		"changed governed format across this transition",
+		"adds claim alpha/one:x, which has no active claim",
+	} {
+		if !strings.Contains(findings, wantFinding) {
+			t.Fatalf("unrelated blocking finding %q was suppressed:\n%s", wantFinding, findings)
+		}
+	}
+	if notes := strings.Join(report.Information(), "\n"); !strings.Contains(notes, "provisional older-format ADR-0002") {
+		t.Fatalf("provisional note missing:\n%s", notes)
+	}
+}
+
+// TestCheckStagedNestedAdopter validates HEAD/index snapshots through a project
+// rooted inside a containing monorepo.
+func TestCheckStagedNestedAdopter(t *testing.T) {
+	t.Parallel()
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	files := map[string]string{}
+	for path, body := range stagedHeadFiles() {
+		files["fixtures/nested-adopter/"+path] = body
+	}
+	lockBytes, err := attestedLock().Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	files["fixtures/nested-adopter/.awf/awf.lock"] = string(lockBytes)
+	gitfixture.Stage(t, repo, files)
+	gitfixture.Commit(t, repo, "nested head", nil)
+	gitfixture.Stage(t, repo, map[string]string{
+		"fixtures/nested-adopter/.awf/topics/parts/alpha/one/current-state.md": "Intro only.\n\n## Claims\n",
+	})
+	p := openStaged(t, filepath.Join(dir, "fixtures", "nested-adopter"))
+	report, err := checkStagedProject(p, testContext(t))
+	if err != nil {
+		t.Fatalf("nested CheckStaged: %v", err)
+	}
+	if !strings.Contains(strings.Join(currentStateFindings(report), "\n"), "was removed with no ADR remove operation") {
+		t.Fatalf("nested findings = %#v; want staged transition finding", currentStateFindings(report))
+	}
+}
+
+// TestCheckStagedUnmergedIndex rejects a conflicted index at the staged-check
+// boundary rather than attempting to construct a partial after universe.
+func TestCheckStagedUnmergedIndex(t *testing.T) {
+	t.Parallel()
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Stage(t, repo, stagedHeadFiles())
+	gitfixture.Commit(t, repo, "head", nil)
+	gitfixture.StageUnmerged(t, repo, "conflict.md")
+	p := openStaged(t, dir)
+	if _, err := checkStagedProject(p, testContext(t)); !errors.Is(err, awfgit.ErrIndexUnmerged) {
+		t.Fatalf("CheckStaged unmerged index: got %v, want ErrIndexUnmerged", err)
+	}
+}
+
+// TestCheckStagedNoHead covers the unborn-HEAD before side: a repository with no
+// commit yet stages a complete covered universe.
+func TestCheckStagedNoHead(t *testing.T) {
+	t.Parallel()
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	files := stagedHeadFiles()
+	files["internal/foo/x.go"] = "package foo\n"
+	gitfixture.Stage(t, repo, files)
+	p := openStaged(t, dir)
+	writeLock(t, p, attestedLock())
+
+	report, err := checkStagedProject(p, testContext(t))
+	if err != nil {
+		t.Fatalf("CheckStaged: %v", err)
+	}
+	if len(currentStateFindings(report)) != 0 {
+		t.Fatalf("findings = %#v; want none (covered universe, bootstrap add)", currentStateFindings(report))
+	}
+}
+
+// TestCheckStagedNoStagedConfig covers the missing index config: the working tree
+// carries a config so Open succeeds, but it is never staged.
+func TestCheckStagedNoStagedConfig(t *testing.T) {
+	t.Parallel()
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
+	testsupport.WriteAwfConfig(t, dir, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	gitfixture.Stage(t, repo, map[string]string{"internal/x.go": "package x\n"})
+	p := openStaged(t, dir)
+	if _, err := checkStagedProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "no staged") {
+		t.Fatalf("CheckStaged err = %v; want a no-staged-config error", err)
+	}
+}
+
+// TestCheckStagedRequiresStagedLock proves an adopted staged universe cannot
+// silently fall back to cutoff zero when its lock is deleted. The same staged
+// slice also deletes a governed current-state-v1 ADR, which cutoff zero would
+// misroute as legacy and fail to diagnose.
+func TestCheckStagedRequiresStagedLock(t *testing.T) {
+	t.Parallel()
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	files := stagedHeadFiles()
+	files["docs/decisions/0002-v1.md"] = "---\nformat: current-state-v1\nstatus: Proposed\ndate: 2026-07-20\n---\n" +
+		"# ADR-0002: V1\n\n## Context\n\nContext.\n\n## Decision\n\n1. Decide.\n\n" +
+		"## State changes\n\nNone.\n\n## Consequences\n\nConsequence.\n\n" +
+		"## Alternatives Considered\n\nNone.\n\n## Status history\n\n- 2026-07-20: Proposed\n"
+	lockBytes, err := attestedLock().Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	files[".awf/awf.lock"] = string(lockBytes)
+	gitfixture.Stage(t, repo, files)
+	gitfixture.Commit(t, repo, "head", nil)
+	gitfixture.StageRemoval(t, repo, ".awf/awf.lock", "docs/decisions/0002-v1.md")
+	p := openStaged(t, dir)
+	if _, err := checkStagedProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "no staged .awf/awf.lock") {
+		t.Fatalf("CheckStaged err = %v; want required staged-lock diagnostic", err)
+	}
+}
+
+// TestCheckStagedLockError covers the lock-read failure in the staged check.
+func TestCheckStagedLockError(t *testing.T) {
+	t.Parallel()
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Stage(t, repo, stagedHeadFiles())
+	gitfixture.Commit(t, repo, "head", nil)
+	p := openStaged(t, dir)
+	gitfixture.Stage(t, repo, map[string]string{".awf/awf.lock": "{not json"})
+	if _, err := checkStagedProject(p, testContext(t)); err == nil {
+		t.Fatal("expected a lock parse error")
+	}
+}
+
+func TestCheckStagedRejectsCorruptHeadLock(t *testing.T) {
+	t.Parallel()
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	files := stagedHeadFiles()
+	files[".awf/awf.lock"] = "{not json"
+	gitfixture.Stage(t, repo, files)
+	gitfixture.Commit(t, repo, "head", nil)
+	p := openStaged(t, dir)
+	writeLock(t, p, attestedLock())
+	if _, err := checkStagedProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "snapshot lock") {
+		t.Fatalf("corrupt HEAD lock error = %v", err)
+	}
+}
+
+// TestCheckStagedHeadLoadError covers a load failure on the HEAD (before) side: a
+// committed ADR whose frontmatter does not parse.
+func TestCheckStagedHeadLoadError(t *testing.T) {
+	t.Parallel()
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	files := stagedHeadFiles()
+	files["docs/decisions/0001-first.md"] = "---\nstatus: [unterminated\n---\n# X\n"
+	gitfixture.Stage(t, repo, files)
+	gitfixture.Commit(t, repo, "head", nil)
+	p := openStaged(t, dir)
+	if _, err := checkStagedProject(p, testContext(t)); err == nil {
+		t.Fatal("expected a HEAD-side corpus load error")
+	}
+}
+
+func TestCheckStagedIndexConfigValidationError(t *testing.T) {
+	t.Parallel()
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Stage(t, repo, stagedHeadFiles())
+	gitfixture.Commit(t, repo, "head", nil)
+	gitfixture.Stage(t, repo, map[string]string{".awf/config.yaml": "prefix: \"\"\n"})
+	testsupport.WriteFile(t, filepath.Join(dir, ".awf/config.yaml"), csYAML)
+	p := openStaged(t, dir)
+	if _, err := checkStagedProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "prefix") {
+		t.Fatalf("validation error = %v", err)
+	}
+}
+
+// TestCheckStagedIndexLoadError covers a load failure on the index (after) side:
+// HEAD is clean, but a malformed ADR is staged.
+func TestCheckStagedIndexLoadError(t *testing.T) {
+	t.Parallel()
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Stage(t, repo, stagedHeadFiles())
+	gitfixture.Commit(t, repo, "head", nil)
+	gitfixture.Stage(t, repo, map[string]string{"docs/decisions/0002-bad.md": "---\nstatus: [unterminated\n---\n# X\n"})
+	p := openStaged(t, dir)
+	if _, err := checkStagedProject(p, testContext(t)); err == nil {
+		t.Fatal("expected an index-side corpus load error")
+	}
+}
+
+// TestCheckStagedOutsideRepo covers the before-side HEAD probe failing: a
+// scaffolded project that is not a git repository.
+func TestCheckStagedOutsideRepo(t *testing.T) {
+	t.Parallel()
+	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", nil)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := checkStagedProject(p, testContext(t)); err == nil {
+		t.Fatal("expected an error outside a git repository")
+	}
+}
+
+// TestCheckStagedHeadConfigParseError covers loadTreeCurrentState's config parse
+// failure: the committed HEAD config is malformed while the working tree carries
+// a valid one, so Open succeeds but the HEAD universe cannot load.
+func TestCheckStagedHeadConfigParseError(t *testing.T) {
+	t.Parallel()
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Stage(t, repo, map[string]string{".awf/config.yaml": "prefix: example\nprofile: full\nintegrationBranch: main\n"})
+	gitfixture.Commit(t, repo, "head", nil)
+	testsupport.WriteAwfConfig(t, dir, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	p := openStaged(t, dir)
+	if _, err := checkStagedProject(p, testContext(t)); err == nil {
+		t.Fatal("expected a HEAD-side config parse error")
+	}
+}
+
+// TestCheckStagedIgnoresWorkingTree proves the staged check reads the index and
+// HEAD, never the working tree: a garbage working-tree topic part that would fail
+// to parse leaves the staged result clean.
+func TestCheckStagedIgnoresWorkingTree(t *testing.T) {
+	t.Parallel()
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Stage(t, repo, stagedHeadFiles())
+	gitfixture.Commit(t, repo, "head", nil)
+	p := openStaged(t, dir)
+	writeLock(t, p, attestedLock())
+	// Corrupt the topic part on disk only; the index and HEAD keep the valid one.
+	testsupport.WriteFile(t, filepath.Join(dir, ".awf/topics/parts/alpha/one/current-state.md"), "garbage, no Claims section\n")
+
+	report, err := checkStagedProject(p, testContext(t))
+	if err != nil {
+		t.Fatalf("CheckStaged must ignore the dirty working tree, got: %v", err)
+	}
+	if len(report.Static) != 0 || len(currentStateFindings(report)) != 0 {
+		t.Fatalf("expected a clean staged result despite the dirty working tree, got static=%#v findings=%#v", report.Static, currentStateFindings(report))
 	}
 }

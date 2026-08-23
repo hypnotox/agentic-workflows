@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -13,6 +16,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/commitpolicy"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
@@ -334,5 +338,83 @@ func TestVerifyCommitPolicyAtReturnsTypedRootAndConfigRefusals(t *testing.T) {
 	text = documentText(t, document)
 	if out.Refusal == nil || out.Refusal.Category != commitpolicy.ConfigFailure || !strings.Contains(text, "load commitPolicy") {
 		t.Fatalf("validation refusal = %#v, %q", out, text)
+	}
+}
+
+func TestCommitPolicyManifestProjection(t *testing.T) {
+	const base = "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: make gate}\n"
+	root := scaffold(t, base)
+	syncAndLoad := func() *manifest.Lock {
+		t.Helper()
+		p, err := Open(testContext(t), root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := syncProject(p); err != nil {
+			t.Fatal(err)
+		}
+		lock, err := manifest.Load(lockFile(root))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return lock
+	}
+	absent := syncAndLoad()
+	absentAgain := syncAndLoad()
+	if !reflect.DeepEqual(absent, absentAgain) {
+		t.Fatal("repeated absent-policy sync changed the manifest")
+	}
+	consumerPath := "docs/architecture.md"
+	unrelatedPath := "AGENTS.md"
+	consumerBefore, ok := absent.Files[consumerPath]
+	if !ok {
+		t.Fatalf("manifest missing consumer %s", consumerPath)
+	}
+	unrelatedBefore, ok := absent.Files[unrelatedPath]
+	if !ok {
+		t.Fatalf("manifest missing unrelated output %s", unrelatedPath)
+	}
+	generateKey := func(name string) string {
+		t.Helper()
+		path := filepath.Join(t.TempDir(), name)
+		if output, err := exec.Command("ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", path).CombinedOutput(); err != nil {
+			t.Fatalf("generate SSH key: %v: %s", err, output)
+		}
+		body, err := os.ReadFile(path + ".pub")
+		if err != nil {
+			t.Fatal(err)
+		}
+		fields := strings.Fields(string(body))
+		if len(fields) < 2 {
+			t.Fatalf("generated public key = %q", body)
+		}
+		return strings.Join(fields[:2], " ")
+	}
+	key1, key2 := generateKey("one"), generateKey("two")
+	policyYAML := func(baseline, name, email string, signed bool, principal, key string) string {
+		body := fmt.Sprintf("%scommitPolicy:\n  grandfatheredThrough: %s\n  allowedIdentities:\n    - name: %s\n      email: %s\n", base, baseline, name, email)
+		if signed {
+			body += fmt.Sprintf("  requireSignedCommits: true\n  allowedSigners:\n    - principal: %s\n      key: %s\n", principal, key)
+		}
+		return body
+	}
+	variants := []string{
+		policyYAML(strings.Repeat("a", 40), "Ada", "ada@example.test", true, "ada@example.test", key1),
+		policyYAML(strings.Repeat("b", 40), "Ada", "ada@example.test", true, "ada@example.test", key1),
+		policyYAML(strings.Repeat("b", 40), "Grace", "grace@example.test", true, "ada@example.test", key1),
+		policyYAML(strings.Repeat("b", 40), "Grace", "grace@example.test", false, "", ""),
+		policyYAML(strings.Repeat("b", 40), "Grace", "grace@example.test", true, "grace@example.test", key2),
+	}
+	previous := consumerBefore.ConfigHash
+	for i, policy := range variants {
+		testsupport.WriteAwfConfig(t, root, policy)
+		lock := syncAndLoad()
+		if lock.Files[consumerPath].ConfigHash == previous {
+			t.Fatalf("normalized policy mutation %d did not change consumer manifest hash", i)
+		}
+		if lock.Files[unrelatedPath].ConfigHash != unrelatedBefore.ConfigHash {
+			t.Fatalf("unrelated manifest hash changed with policy mutation %d", i)
+		}
+		previous = lock.Files[consumerPath].ConfigHash
 	}
 }

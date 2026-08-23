@@ -4,9 +4,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/severity"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 const (
@@ -92,5 +96,112 @@ func TestAgentsDocBudgetDiagnostics(t *testing.T) {
 	}
 	if _, over := agentsDocBudgetDiagnostic("fixture AGENTS.md", body, len(body)); over {
 		t.Fatal("exact budget boundary reported an overage")
+	}
+}
+
+// invariant: rendering/sync-and-drift:agent-guide-size-advisory (TestAgentGuideSizeAdvisoryBoundary)
+// invariant: rendering/sync-and-drift:agent-guide-size-advisory (TestAgentGuideSizeAdvisoryBoundary)
+func TestAgentGuideSizeAdvisoryBoundary(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		bytes int
+		want  bool
+	}{
+		{name: "below", bytes: 12*1024 - 1},
+		{name: "boundary", bytes: 12 * 1024},
+		{name: "over", bytes: 12*1024 + 1, want: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\naudit:\n  allowedScopes:\n    - name: awf\n", map[string]string{"parts/agents-doc/identity.md": "x"})
+			p, err := Open(testContext(t), root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			op, err := outputPlanProject(p)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var actual int
+			for _, file := range planWriteFiles(op) {
+				if file.Path == "AGENTS.md" {
+					actual = len(file.Content)
+				}
+			}
+			testsupport.WriteFile(t, filepath.Join(root, ".awf/parts/agents-doc/identity.md"), strings.Repeat("x", tc.bytes-actual+1))
+			p, err = Open(testContext(t), root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			op, err = outputPlanProject(p)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, file := range planWriteFiles(op) {
+				if file.Path == "AGENTS.md" && len(file.Content) != tc.bytes {
+					t.Fatalf("expected guide bytes = %d, want %d", len(file.Content), tc.bytes)
+				}
+			}
+			if err := syncProject(p); err != nil {
+				t.Fatal(err)
+			}
+			if tc.want {
+				testsupport.WriteFile(t, filepath.Join(root, "docs/plans/2026-07-14-scope.md"),
+					"---\ndate: 2026-07-14\nadrs: []\nstatus: Proposed\n---\n# Plan: Scope\n\n```commit\nfeat(nope): unknown scope\n```\n")
+			}
+			report, err := checkReportProject(p, testContext(t))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var notes []string
+			for _, note := range report.Notes {
+				if strings.Contains(note, "AGENTS.md") && strings.Contains(note, "12288") {
+					notes = append(notes, note)
+				}
+			}
+			if tc.want {
+				var classified bool
+				for _, finding := range report.Result.Findings() {
+					classified = classified || finding.Rank == severity.Warn && finding.Property == "heuristic-quality" && strings.Contains(finding.Evidence.Detail, "12289")
+				}
+				if !classified {
+					t.Fatalf("CheckReport omitted owner-classified guide warning: %#v", report.Result.Findings())
+				}
+				if len(notes) != 1 || !strings.Contains(notes[0], "12289") || !strings.Contains(notes[0], "docs/agents-md-standard.md") {
+					t.Fatalf("overage note = %#v", notes)
+				}
+				ordinaryIndex := slices.IndexFunc(report.Notes, func(note string) bool { return strings.Contains(note, "disallowed scope") })
+				sizeIndex := slices.Index(report.Notes, notes[0])
+				if ordinaryIndex < 0 || sizeIndex < 0 || ordinaryIndex >= sizeIndex {
+					t.Fatalf("CheckReport notes do not place ordinary advisory before size advisory: %#v", report.Notes)
+				}
+				direct, err := advisoryNotesProject(p)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if strings.Contains(strings.Join(direct, "\n"), "12288") {
+					t.Fatalf("AdvisoryNotes included aggregate-only size note: %#v", direct)
+				}
+				for _, resident := range []string{"missing", "stale"} {
+					if resident == "missing" {
+						if err := os.Remove(filepath.Join(root, "AGENTS.md")); err != nil {
+							t.Fatal(err)
+						}
+					} else {
+						testsupport.WriteFile(t, filepath.Join(root, "AGENTS.md"), "stale")
+					}
+					residentReport, err := checkReportProject(p, testContext(t))
+					if err != nil {
+						t.Fatal(err)
+					}
+					if got := strings.Count(strings.Join(residentReport.Notes, "\n"), "12289"); got != 1 {
+						t.Fatalf("%s resident size notes = %d, want 1: %#v", resident, got, residentReport.Notes)
+					}
+				}
+				return
+			}
+			if len(notes) != 0 {
+				t.Fatalf("notes = %#v, want none", notes)
+			}
+		})
 	}
 }

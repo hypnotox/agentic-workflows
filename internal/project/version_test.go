@@ -9,6 +9,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
 // invariant: config/migrations-and-locks:schema-min-version (TestSchemaMinimumVersionAuthority)
@@ -185,4 +186,16 @@ func TestArchiveRootUpgradeBoundary(t *testing.T) {
 	}
 	assertMarker("stale repair")
 	assertArchiveDescendant("stale marker repair")
+}
+func TestCheckStagedRejectsInitializedVersionMutation(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	gitfixture.Stage(t, repo, stagedHeadFiles())
+	gitfixture.Commit(t, repo, "head", nil)
+	gitfixture.Stage(t, repo, map[string]string{
+		".awf/awf.lock": lockJSON(t, &manifest.Lock{AWFVersion: "0.18.0", SchemaVersion: 14, InitializedWithVersion: "0.18.0", Files: map[string]manifest.Entry{}}),
+	})
+	p := openStaged(t, repo.Root())
+	if _, err := checkStagedProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "initializedWithVersion") {
+		t.Fatalf("error = %v, want initializedWithVersion refusal", err)
+	}
 }
