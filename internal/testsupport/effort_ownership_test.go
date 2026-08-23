@@ -122,6 +122,19 @@ func runEffort() {
 }`,
 			want: "direct effort operation Show",
 		},
+		{
+			name: "immediately invoked closure parameter retains owner",
+			source: `package fixture
+import (
+ e "github.com/hypnotox/agentic-workflows/internal/effortop"
+ effort "github.com/hypnotox/agentic-workflows/internal/effort"
+)
+func runEffort() {
+ service := composed.service
+ switch c.sub { case "show": e.Show(); func(resident *effort.Service) { resident.Show() }(service) }
+}`,
+			want: "direct effort operation Show",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -357,22 +370,54 @@ func focusedCalls(statements []ast.Stmt, imports map[string]string) ([]string, e
 func effortOwnerReceivers(fn *ast.FuncDecl) map[string]string {
 	owners := map[string]string{}
 	ast.Inspect(fn.Body, func(node ast.Node) bool {
-		assignment, ok := node.(*ast.AssignStmt)
-		if !ok || len(assignment.Lhs) != len(assignment.Rhs) {
-			return true
-		}
-		for i, right := range assignment.Rhs {
-			left, ok := assignment.Lhs[i].(*ast.Ident)
-			if !ok {
-				continue
+		switch value := node.(type) {
+		case *ast.AssignStmt:
+			if len(value.Lhs) != len(value.Rhs) {
+				return true
 			}
-			if owner := effortOwnerExpression(right, owners); owner != "" {
-				owners[left.Name] = owner
+			for i, right := range value.Rhs {
+				left, ok := value.Lhs[i].(*ast.Ident)
+				if !ok {
+					continue
+				}
+				if owner := effortOwnerExpression(right, owners); owner != "" {
+					owners[left.Name] = owner
+				}
 			}
+		case *ast.CallExpr:
+			recordInvokedOwnerParameters(value, owners)
 		}
 		return true
 	})
 	return owners
+}
+
+func recordInvokedOwnerParameters(call *ast.CallExpr, owners map[string]string) {
+	literal, ok := call.Fun.(*ast.FuncLit)
+	if !ok || literal.Type.Params == nil {
+		return
+	}
+	var parameters []string
+	for _, field := range literal.Type.Params.List {
+		if len(field.Names) == 0 {
+			parameters = append(parameters, "")
+			continue
+		}
+		for _, name := range field.Names {
+			parameters = append(parameters, name.Name)
+		}
+	}
+	if len(parameters) != len(call.Args) {
+		return
+	}
+	for i, argument := range call.Args {
+		if parameters[i] == "" {
+			continue
+		}
+		if owner := effortOwnerExpression(argument, owners); owner != "" {
+			owners[parameters[i]] = owner
+		}
+	}
 }
 
 func effortOwnerExpression(expression ast.Expr, owners map[string]string) string {
