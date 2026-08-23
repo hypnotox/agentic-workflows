@@ -193,7 +193,7 @@ correction is allowed without unrelated cleanup riding along.
 | RF-004 | P1 | COMPLETE | Check aggregation separated from check policy; severity in the result model | AF-013, RF-002 |
 | RF-005 | P1 | COMPLETE | Current-state coordination extracted from project orchestration | RF-002 |
 | RF-006 | P1 | COMPLETE | `cmd/awf` reduced to parse, compose, invoke, render, exit | RF-002..RF-005 |
-| RF-007 | P2 | READY | Residual giant tests split by observable behaviour and semantic owner | RF-002..RF-006 |
+| RF-007 | P2 | BLOCKED | Residual giant tests split by observable behaviour and semantic owner | RF-006 terminal-assurance lifecycle |
 | RF-009 | P1 | DECISION | Post-refactor critical-path coverage policy and regression control | RF-007, owner ruling |
 | RF-014A | P2 | COMPLETE | Obsolete Program A machinery deleted | Program A milestone |
 | RF-014B | P2 | CONDITIONAL | Obsolete compatibility residue deleted | RF-008B, compatibility removals applicable |
@@ -1048,7 +1048,7 @@ abstraction; oracle strength.
 ### RF-006
 
 - **Range:** Issue base `f6fb63f63`; implementation, integration, and terminal plan range
-  `f6fb63f63..81fe5f425`.
+  `f6fb63f63..81fe5f425`; terminal-assurance correction range `e3743eb68..91b299a17`.
 - **Protected contract:** Each resolved command leaf owns command-spec lookup, argument parsing,
   concrete dependency composition, one focused operation invocation, renderer or protocol-bypass
   selection, CLI wording and streams, and exit mapping. Focused application operations own use-case
@@ -1080,13 +1080,25 @@ abstraction; oracle strength.
   route-derived owner population could miss an unlisted established-owner call and that local-document
   sync failure lacked a partial-state oracle. Settlement defined owner populations independently,
   mutation-proved rejection of an unlisted real-route call, and proved retryable local-document state
-  after synchronization failure. The single verify pass found and closed the remaining owner-census
-  derivation. No command behavior or protected owner boundary changed.
+  after synchronization failure. The initial verify pass found and closed the remaining owner-census
+  derivation. RF-006 was then prematurely finalized before terminal assurance had settled. The
+  forward correction extracted static-versus-live selection, compatibility gating, project opening,
+  and Publisher model assembly into `configop.Run`, leaving `cmd/awf` with dependency composition,
+  one operation invocation, and rendering. It also made the config route proof protect
+  `publisher.BuildConfigReference` without disturbing its legitimate use by other routes, added a
+  compiling policy-restoration falsifier, and made init variant proof follow the typed `describe`
+  condition with applicable shared prefix and suffix statements. The proof accepts harmless shared
+  preconditions while rejecting duplicate describe operations and command-local descriptor/JSON
+  policy. Focused falsifiers and the unmodified full gate passed at 21,358 of 21,358 statements with
+  100 percent coverage. The shipped audit over the complete two-commit correction range reported no
+  errors and only the governed no-plan size advisory; the local audit reported no errors and only the
+  unchanged-behavior changelog advisory. No command behavior or protected owner boundary changed.
 - **Residual debt:** Residual mixed giant-test ownership remains assigned to RF-007, and broad
   historical-comment cleanup remains assigned to RF-010. Compatibility deletion remains gated under
   RF-008B and RF-014B.
-- **Unblocked:** RF-007 is selected next in B-F4. RF-009 still awaits the post-RF-007 evidence and an
-  owner ruling; later issues retain their named dependencies and compatibility conditions.
+- **Unblocked:** RF-007 remains operationally blocked until the terminal-assurance effort topology is
+  removed and its archive is confirmed. RF-009 still awaits the post-RF-007 evidence and an owner
+  ruling; later issues retain their named dependencies and compatibility conditions.
 
 Close each later issue with the same evidence: identity; baseline and final range; protected contract;
 clean integration; files changed with reason; verification commands and results; material deviations;
