@@ -48,8 +48,7 @@ func unseenPlanWarnings(result checkresult.Result, seen planNoteSink) checkresul
 	return filtered
 }
 
-// runCheckStaged runs the staged transition universe. The commit child is direct-only.
-
+// collectCheckStaged runs the staged transition universe. The commit child is direct-only.
 func collectCheckStaged(ctx context.Context, root string, planNotes planNoteSink) (checkCollection, error) {
 	return collectCheckStagedWith(ctx, root, planNotes, productionCheckStagedDependencies())
 }

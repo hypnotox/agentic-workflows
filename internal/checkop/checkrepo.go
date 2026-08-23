@@ -327,8 +327,7 @@ func repoScannerErrorPrefix(selected []execution.StepID) string {
 	panic("repo index preparation without a selected scanner") // coverage-ignore: only scanner resolvers request the index requirement
 }
 
-// runCheckRepo runs the repository-universe aggregate and owns its version note.
-
+// collectCheckRepoWithPlanNotes runs the repository-universe aggregate and owns its version note.
 func collectCheckRepoWithPlanNotes(ctx context.Context, root string, planNotes planNoteSink) (checkCollection, error) {
 	lockV, binV, ok, err := checkLockVsBinary(root)
 	if err != nil {
