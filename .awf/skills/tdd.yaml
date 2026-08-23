@@ -4,7 +4,7 @@ data:
       location: internal/<pkg>
       name: Package unit tests
     - kind: render assertions
-      location: internal/project/spine_test.go
+      location: internal/project/*_template_test.go
       name: Template golden tests
     - kind: subprocess/temp-dir
       location: cmd/awf

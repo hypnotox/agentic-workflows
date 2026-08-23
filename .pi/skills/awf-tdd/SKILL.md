@@ -27,7 +27,7 @@ For a nondeterministic race, stress or invariant evidence may be the strongest p
 <!-- awf:template-source templates/skills/tdd/SKILL.md.tmpl -->
 ## Pick the right test surface
 - **Package unit tests** → Go _test.go in `internal/<pkg>`
-- **Template golden tests** → render assertions in `internal/project/spine_test.go`
+- **Template golden tests** → render assertions in `internal/project/*_template_test.go`
 - **CLI integration tests** → subprocess/temp-dir in `cmd/awf`
 
 

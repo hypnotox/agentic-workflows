@@ -3,7 +3,7 @@
    - **`go test -run TestX -v ./pkg/...`**: run a single test verbosely; the output shows which assertion failed and what was expected vs. actual.
    - **`go test -v ./... 2>&1 | grep -A5 FAIL`**: skim all failures with context lines.
    - **`./awf check`**: catches rendered no-value tokens and manifest drift; run after any render to confirm the output is clean.
-   - **Golden-test diffs** (`internal/project/spine_test.go`): if a template render changed unexpectedly, the golden diff shows the exact line-level divergence; update goldens only when the change is intentional.
+   - **Golden-test diffs** (`internal/project/*_template_test.go`): if a template render changed unexpectedly, the golden diff shows the exact line-level divergence; update goldens only when the change is intentional.
    - **`go vet ./...`**: catches type-system violations, printf format mismatches, and unreachable code the compiler accepts.
    - **`dlv test ./pkg/... -- -test.run TestX`**: attach Delve to a test binary for breakpoint-level inspection when log output is insufficient.
    - **Print/log debugging**: add `t.Logf(...)` or `fmt.Fprintf(os.Stderr, ...)` inline; remove before committing. For template render bugs, log the `data` map before `tmpl.Execute` to confirm what the renderer sees.

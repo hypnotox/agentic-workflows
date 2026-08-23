@@ -748,36 +748,63 @@ func kebabToCamel(name string) string {
 	return strings.Join(parts, "")
 }
 
+// goldenTestSourcePaths are the semantic-owner test files containing golden
+// declarations. The publisher scans every owner rather than an aggregate file.
+var goldenTestSourcePaths = []string{
+	"../project/agent_template_test.go",
+	"../project/maintainable_workflow_template_test.go",
+	"../project/plan_execution_workflow_template_test.go",
+	"../project/diagnostic_workflow_template_test.go",
+	"../project/authoring_workflow_template_test.go",
+	"../project/review_workflow_template_test.go",
+	"../project/effort_workflow_template_test.go",
+	"../project/publication_safe_template_test.go",
+	"../project/agents_doc_template_test.go",
+	"../project/documentation_template_test.go",
+}
+
+func goldenTestSource(t *testing.T) string {
+	t.Helper()
+	var source strings.Builder
+	for _, path := range goldenTestSourcePaths {
+		body, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read golden test source %s: %v", path, err)
+		}
+		source.Write(body)
+		source.WriteByte('\n')
+	}
+	return source.String()
+}
+
 // TestEveryCatalogArtifactHasGoldenTest asserts a per-artifact golden test
-// func exists in this package's test source for every catalog skill and
-// agent - the goldens live in spine_test.go by convention (source-scan
-// mechanic, precedent TestArchitectureDocNamesEveryCmd; ADR-0080 Decision 4).
+// func exists across the semantic-owner test sources for every catalog skill
+// and agent (source-scan mechanic, precedent TestArchitectureDocNamesEveryCmd;
+// ADR-0080 Decision 4).
 // invariant: rendering/templates:golden-test-completeness (TestEveryCatalogArtifactHasGoldenTest)
 func TestEveryCatalogArtifactHasGoldenTest(t *testing.T) {
-	src, err := os.ReadFile("../project/spine_test.go")
-	if err != nil {
-		t.Fatalf("read spine_test.go: %v", err)
-	}
+	src := goldenTestSource(t)
 	for name := range catalog.Standard.Skills {
-		if needle := "func Test" + kebabToCamel(name) + "Template("; !strings.Contains(string(src), needle) {
-			t.Errorf("no golden test for skill %q - add %s to internal/project/spine_test.go", name, needle)
+		if needle := "func Test" + kebabToCamel(name) + "Template("; !strings.Contains(src, needle) {
+			t.Errorf("no golden test for skill %q - add %s to a semantic-owner golden test file", name, needle)
 		}
 	}
 	for name := range catalog.Standard.Agents {
-		if needle := "func Test" + kebabToCamel(name) + "Agent("; !strings.Contains(string(src), needle) {
-			t.Errorf("no golden test for agent %q - add %s to internal/project/spine_test.go", name, needle)
+		if needle := "func Test" + kebabToCamel(name) + "Agent("; !strings.Contains(src, needle) {
+			t.Errorf("no golden test for agent %q - add %s to a semantic-owner golden test file", name, needle)
 		}
 	}
 }
 
-// goldenFuncRe matches a golden-shaped test declaration in spine_test.go:
-// Test<Stem>Template or Test<Stem>Agent with the suffix directly before the
-// parenthesis (TestAgentsDocTemplateConfigDriven is not golden-shaped).
+// goldenFuncRe matches a golden-shaped declaration in a semantic-owner test
+// source: Test<Stem>Template or Test<Stem>Agent with the suffix directly
+// before the parenthesis (TestAgentsDocTemplateConfigDriven is not
+// golden-shaped).
 var goldenFuncRe = regexp.MustCompile(`func Test([A-Za-z0-9]+)(Template|Agent)\(`)
 
-// nonArtifactGoldens lists the golden-shaped Template test stems in
-// spine_test.go that test non-catalog artifacts (doc singletons); entries
-// fail when stale (ADR-0080 Decision 7).
+// nonArtifactGoldens lists the golden-shaped Template test stems in the
+// semantic-owner sources that test non-catalog artifacts (doc singletons);
+// entries fail when stale (ADR-0080 Decision 7).
 var nonArtifactGoldens = map[string]bool{
 	"DocArchitecture":   true,
 	"Glossary":          true,
@@ -785,14 +812,11 @@ var nonArtifactGoldens = map[string]bool{
 }
 
 // TestNoOrphanGoldenTest is the reverse of TestEveryCatalogArtifactHasGoldenTest:
-// every golden-shaped test func in spine_test.go must name a current catalog
-// artifact, so a golden orphaned by a catalog removal fails here even while
-// its lingering .tmpl file keeps it rendering.
+// every golden-shaped test func in the semantic-owner sources must name a
+// current catalog artifact, so a golden orphaned by a catalog removal fails
+// here even while its lingering .tmpl file keeps it rendering.
 func TestNoOrphanGoldenTest(t *testing.T) {
-	src, err := os.ReadFile("../project/spine_test.go")
-	if err != nil {
-		t.Fatalf("read spine_test.go: %v", err)
-	}
+	src := goldenTestSource(t)
 	skills, agents := map[string]bool{}, map[string]bool{}
 	for name := range catalog.Standard.Skills {
 		skills[kebabToCamel(name)] = true
@@ -801,7 +825,7 @@ func TestNoOrphanGoldenTest(t *testing.T) {
 		agents[kebabToCamel(name)] = true
 	}
 	seenExempt := map[string]bool{}
-	for _, m := range goldenFuncRe.FindAllStringSubmatch(string(src), -1) {
+	for _, m := range goldenFuncRe.FindAllStringSubmatch(src, -1) {
 		stem, kind := m[1], m[2]
 		switch {
 		case kind == "Template" && nonArtifactGoldens[stem]:
@@ -814,7 +838,7 @@ func TestNoOrphanGoldenTest(t *testing.T) {
 	}
 	for stem := range nonArtifactGoldens {
 		if !seenExempt[stem] {
-			t.Errorf("stale nonArtifactGoldens entry %q: no such golden-shaped func in spine_test.go", stem)
+			t.Errorf("stale nonArtifactGoldens entry %q: no such golden-shaped func in semantic-owner sources", stem)
 		}
 	}
 }
