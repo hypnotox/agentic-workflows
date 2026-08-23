@@ -19,9 +19,9 @@ type Sync func(context.Context, string) (presentation.Mutation, error)
 // composed by the command because command execution owns the concrete gate.
 type Gate func(context.Context, string) error
 
-// ProjectPresent, AuthorityLockPath, SchemaGate, and Migration are the focused
-// migration-owner inputs required because migrate already owns lower upgrade
-// mechanisms. cmd/awf supplies their concrete implementations.
+// ProjectPresent reports whether root contains an awf project. The focused
+// migration-owner inputs below are required because migrate already owns lower
+// upgrade mechanisms. cmd/awf supplies their concrete implementations.
 type ProjectPresent func(string) bool
 type AuthorityLockPath func(string) string
 type SchemaGate func(string) (string, int, error)
@@ -34,7 +34,7 @@ type MigrationResult struct {
 	Changes []string
 }
 
-// Outcome is the semantic presentation result of an upgrade operation.
+// OperationOutcome is the semantic presentation result of an upgrade operation.
 type OperationOutcome struct {
 	Document presentation.Document
 }
@@ -116,7 +116,7 @@ func Run(ctx context.Context, root string, sync Sync, gate Gate, present Project
 			return OperationOutcome{}, newUpgradeFailure(applied, changes, presentation.Mutation{}, err)
 		} else if !found {
 			lock.SchemaVersion = 14
-			if err := lock.Save(config.LockPath(root)); err != nil { // coverage-ignore: the absent owned lock's parent was successfully read immediately above; a save failure requires a concurrent filesystem or storage fault
+			if err := lock.Save(config.LockPath(root)); err != nil {
 				return OperationOutcome{}, newUpgradeFailure(applied, changes, presentation.Mutation{}, err)
 			}
 			changes = append(changes, "created and schema-stamped .awf/awf.lock")

@@ -290,6 +290,37 @@ func TestRunRelocatedLockCompletionFailureRetainsCreatedLockAxis(t *testing.T) {
 	}
 }
 
+func TestRunRelocatedLockSaveFailureRetainsMigrationFacts(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root bypasses directory permissions")
+	}
+	root := t.TempDir()
+	legacy := filepath.Join(root, ".claude", "awf.lock")
+	if err := os.MkdirAll(filepath.Dir(legacy), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := (&manifest.Lock{AWFVersion: "0.19.0", SchemaVersion: 2, Files: map[string]manifest.Entry{}}).Save(legacy); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Run(testContext(t), root, nil, nil, func(string) bool { return true }, func(string) string { return legacy }, func(string) (string, int, error) { return "behind", 2, nil }, func(int) error { return nil }, func(context.Context, string) (MigrationResult, error) {
+		if err := os.MkdirAll(config.RootDir(root), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(config.RootDir(root), 0o555); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(config.RootDir(root), 0o755) })
+		return MigrationResult{Applied: []string{"relocate"}, Changes: []string{"moved config"}}, nil
+	}, func() string { return "current schema" })
+	if err == nil || !strings.Contains(err.Error(), "permission denied") {
+		t.Fatalf("error = %v, want destination lock save failure", err)
+	}
+	var partial upgradeFailure
+	if !errors.As(err, &partial) || strings.Join(partial.changes, ",") != "moved config" {
+		t.Fatalf("failure = %#v, want retained migration fact", partial)
+	}
+}
+
 func TestRunRelocatedLockReadFailureRetainsMigrationFacts(t *testing.T) {
 	root := t.TempDir()
 	legacy := filepath.Join(root, ".claude", "awf.lock")

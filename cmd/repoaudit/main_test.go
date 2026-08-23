@@ -8,9 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/hypnotox/agentic-workflows/internal/audit"
-	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
 
 // fakeGit supplies the repoaudit consumer contract.
@@ -176,16 +173,6 @@ func TestWarnMissingEntry(t *testing.T) {
 	}
 	if !strings.Contains(out, "adopter-facing paths in b..h: templates/x.tmpl") {
 		t.Fatalf("missing considered-paths log: %q", out)
-	}
-	report, err := audit.Report([]audit.Finding{
-		{Rule: "error-rule", Detail: "failed", Severity: severity.Error},
-		{Rule: "warn-rule", Detail: "advisory", Severity: severity.Warn},
-	}, 1, "base", "head")
-	if err != nil {
-		t.Fatalf("audit report: %v", err)
-	}
-	if len(report.Categories) != 2 || report.Categories[0].Label != "errors" || report.Categories[1].Label != "warnings" {
-		t.Fatalf("presentation categories = %#v, want errors then warnings", report.Categories)
 	}
 }
 

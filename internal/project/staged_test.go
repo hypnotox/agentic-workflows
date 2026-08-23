@@ -677,9 +677,12 @@ func TestRangePairUniversesUsesEachFirstParentSnapshotBoundary(t *testing.T) {
 	})
 	head := gitfixture.Commit(t, repo, "v2 boundary", nil)
 	p := openStaged(t, dir)
-	findings, _, err := auditProject(p, testContext(t), base, head)
+	findings, commits, err := auditProject(p, testContext(t), base, head)
 	if err != nil {
 		t.Fatalf("Audit: %v", err)
+	}
+	if commits != 1 {
+		t.Fatalf("audit commits = %d, want 1", commits)
 	}
 	var transitions []audit.Finding
 	for _, finding := range findings {

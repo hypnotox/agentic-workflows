@@ -20,7 +20,7 @@ import (
 )
 
 // preparePublicSyncLaterFailure makes public Publisher.Sync commit the earlier
-// AGENTS.md mode correction before the later bridge path cannot be replaced.
+// AGENTS.md mode correction before the later bridge path cannot be read.
 func preparePublicSyncLaterFailure(t *testing.T, root string) {
 	t.Helper()
 	if err := os.Chmod(filepath.Join(root, "AGENTS.md"), 0o600); err != nil {
@@ -33,6 +33,35 @@ func preparePublicSyncLaterFailure(t *testing.T, root string) {
 	if err := os.Mkdir(bridge, 0o755); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestPublicSyncPartialResultHasDivergentUpgradeAndSyncPresentation(t *testing.T) {
+	t.Run("upgrade retains the real partial result", func(t *testing.T) {
+		root := scaffoldProject(t)
+		preparePublicSyncLaterFailure(t, root)
+		var stdout, stderr bytes.Buffer
+		if code := runAt(t, root, []string{"awf", "upgrade"}, &stdout, &stderr); code == 0 {
+			t.Fatal("upgrade accepted an unreplaceable later output")
+		}
+		if stdout.Len() != 0 {
+			t.Fatalf("stdout = %q, want no partial success mutation", stdout.String())
+		}
+		if got := stderr.String(); !strings.Contains(got, "outputs: changed AGENTS.md (internal)") || !strings.Contains(got, "cause: filesystem: read \"CLAUDE.md\"") {
+			t.Fatalf("upgrade failure diagnostic = %q, want committed output and sync cause", got)
+		}
+	})
+
+	t.Run("ordinary sync discards the real partial result", func(t *testing.T) {
+		root := scaffoldProject(t)
+		preparePublicSyncLaterFailure(t, root)
+		var stdout bytes.Buffer
+		if err := runSync(testContext(t), root, &stdout); err == nil {
+			t.Fatal("ordinary sync accepted an unreplaceable later output")
+		}
+		if stdout.Len() != 0 {
+			t.Fatalf("ordinary sync stdout = %q, want no partial output", stdout.String())
+		}
+	})
 }
 
 func TestUpgradeMigrationAdaptsGroundingCollision(t *testing.T) {

@@ -28,16 +28,16 @@ func ConventionalCommitDocument(findings []Finding) (presentation.Document, erro
 	return presentation.NewDocument(section)
 }
 
-// Report maps audit-owned findings into the shared representation without
-// changing rank tokens or evaluation order.
-func Report(findings []Finding, commits int, base, head string) (presentation.Report, error) {
+// reportOutcome maps audit-owned findings into the shared representation and
+// classifies command failure in one pass without changing evaluation order.
+func reportOutcome(findings []Finding, commits int, base, head string) (presentation.Report, bool, error) {
 	contextValue, err := presentation.Literal(fmt.Sprintf("%d commit(s) in %s..%s", commits, base, head))
 	if err != nil {
-		return presentation.Report{}, err
+		return presentation.Report{}, false, err
 	}
 	context, err := presentation.NewField("scope", contextValue)
 	if err != nil { // coverage-ignore: the fixed grammar-valid scope label receives the validated Literal value
-		return presentation.Report{}, err
+		return presentation.Report{}, false, err
 	}
 	contextFields := []presentation.Field{context}
 	if commits == 0 {
@@ -58,12 +58,12 @@ func Report(findings []Finding, commits int, base, head string) (presentation.Re
 		for i, value := range values {
 			recordValues[i], err = presentation.Prose(value)
 			if err != nil {
-				return presentation.Report{}, err
+				return presentation.Report{}, false, err
 			}
 		}
 		record, err := presentation.NewRecord(recordValues...)
 		if err != nil { // coverage-ignore: every record element was validated by Prose in the preceding loop
-			return presentation.Report{}, err
+			return presentation.Report{}, false, err
 		}
 		if finding.Severity == severity.Error {
 			errors = append(errors, record)
@@ -71,9 +71,10 @@ func Report(findings []Finding, commits int, base, head string) (presentation.Re
 			warnings = append(warnings, record)
 		}
 	}
+	failed := len(errors) > 0
 	status := "clean"
 	switch {
-	case len(errors) > 0:
+	case failed:
 		status = "failed"
 	case len(warnings) > 0:
 		status = "warnings"
@@ -82,11 +83,11 @@ func Report(findings []Finding, commits int, base, head string) (presentation.Re
 	}
 	countValue, err := presentation.Literal(fmt.Sprintf("%d errors, %d warnings", len(errors), len(warnings)))
 	if err != nil { // coverage-ignore: the fixed decimal-only count format always satisfies Literal's grammar
-		return presentation.Report{}, err
+		return presentation.Report{}, false, err
 	}
 	count, err := presentation.NewField("findings", countValue)
 	if err != nil { // coverage-ignore: the fixed grammar-valid findings label receives the validated Literal value
-		return presentation.Report{}, err
+		return presentation.Report{}, false, err
 	}
 	categories := []presentation.ReportCategory{}
 	if len(errors) > 0 {
@@ -95,5 +96,5 @@ func Report(findings []Finding, commits int, base, head string) (presentation.Re
 	if len(warnings) > 0 {
 		categories = append(categories, presentation.ReportCategory{Label: "warnings", Schema: []string{"rule", "location", "detail"}, Records: warnings})
 	}
-	return presentation.Report{Status: status, Context: contextFields, Summary: []presentation.Field{count}, Categories: categories}, nil
+	return presentation.Report{Status: status, Context: contextFields, Summary: []presentation.Field{count}, Categories: categories}, failed, nil
 }

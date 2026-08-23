@@ -38,7 +38,7 @@ func TestReportOwnsExactCategoriesAndStatus(t *testing.T) {
 		{"clean", "status: clean", nil, 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			report, err := Report(tc.findings, tc.commits, "base", "head")
+			report, _, err := reportOutcome(tc.findings, tc.commits, "base", "head")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -64,10 +64,10 @@ func TestReportOwnsExactCategoriesAndStatus(t *testing.T) {
 }
 
 func TestReportRejectsInvalidFindingVocabulary(t *testing.T) {
-	if _, err := Report([]Finding{{Rule: "\n", Detail: "bad", Severity: severity.Error}}, 1, "base", "head"); err == nil {
+	if _, _, err := reportOutcome([]Finding{{Rule: "\n", Detail: "bad", Severity: severity.Error}}, 1, "base", "head"); err == nil {
 		t.Fatal("invalid finding accepted")
 	}
-	if _, err := Report(nil, 1, "base\n", "head"); err == nil {
+	if _, _, err := reportOutcome(nil, 1, "base\n", "head"); err == nil {
 		t.Fatal("invalid scope accepted")
 	}
 }

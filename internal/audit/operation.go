@@ -6,7 +6,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
-	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
 
 // Outcome is the configured audit result for command rendering and exit mapping.
@@ -41,16 +40,9 @@ func RunConfigured(ctx context.Context, root string, cfg *config.Config, base, h
 	if err != nil {
 		return Outcome{}, err
 	}
-	report, err := Report(findings, commits, base, head)
+	report, failed, err := reportOutcome(findings, commits, base, head)
 	if err != nil { // coverage-ignore: Run has accepted the grammar-valid range passed from the CLI parser
 		return Outcome{}, err
-	}
-	failed := false
-	for _, finding := range findings {
-		if finding.Severity == severity.Error {
-			failed = true
-			break
-		}
 	}
 	return Outcome{Report: report, Failed: failed, Commits: commits}, nil
 }
