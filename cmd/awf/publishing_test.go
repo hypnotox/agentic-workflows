@@ -74,6 +74,7 @@ func TestStagedPublisherPreparationFailuresPropagate(t *testing.T) {
 	}
 }
 
+// invariant: tooling/context-and-topic:context-query-boundary (TestContextCompositionSelectsOneFreshTreeForPublisherAndCompletion)
 func TestContextCompositionSelectsOneFreshTreeForPublisherAndCompletion(t *testing.T) {
 	root := ctxCmdFixture(t)
 	gitfixture.AddAll(t, gitfixture.At(root))
@@ -144,6 +145,7 @@ func (r *countingContextReader) Paths(prefix string) ([]string, error) {
 	return r.TreeReader.Paths(prefix)
 }
 
+// invariant: tooling/context-and-topic:context-query-boundary (TestContextCompletionReusesPublisherParsedSemantics)
 func TestContextCompletionReusesPublisherParsedSemantics(t *testing.T) {
 	root := ctxCmdFixture(t)
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "plans", "2026-08-03-context.md"), readCommandV2Plan)

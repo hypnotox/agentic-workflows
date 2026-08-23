@@ -126,6 +126,7 @@ func stagedQueryFor(t *testing.T, root string) *Query {
 
 func lockFile(root string) string { return filepath.Join(root, ".awf", "awf.lock") }
 
+// invariant: tooling/context-and-topic:context-query-boundary (TestQuerySnapshotsImmutableInput)
 func TestQuerySnapshotsImmutableInput(t *testing.T) {
 	tree, err := snapshot.NewTree([]snapshot.File{{Path: "owned.go", Mode: snapshot.Regular, Bytes: []byte("package owned")}})
 	if err != nil {

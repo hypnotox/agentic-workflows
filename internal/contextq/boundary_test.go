@@ -355,11 +355,11 @@ func cmdRenderFindings(pkgs []*packages.Package) []string {
 	return findings
 }
 
-// TestContextQueryBoundary proves the claim: context assembly, classification,
-// projection, and result rendering live here; internal/project's exported
-// surface carries no context result vocabulary; and this package reaches core
-// state only through the assembled context-state value and its two core-side
-// constructors.
+// TestContextQueryBoundary proves the structural claim: classification,
+// projection, and semantic presentation mapping live here; internal/project's
+// exported surface carries no context result vocabulary; and this package
+// imports neither project nor application coordination across the neutral
+// contextinput seam.
 //
 // The detector is syntactic. It matches exported top-level declarations on the
 // core side, qualified selector expressions on the query side, and
