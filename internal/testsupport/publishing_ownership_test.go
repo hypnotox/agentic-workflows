@@ -163,6 +163,50 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 			t.Errorf("initialization reconstructs its prepared universe through %q", forbidden)
 		}
 	}
+
+	publisherFile, err := parser.ParseFile(token.NewFileSet(), filepath.Join(root, "internal", "publisher", "sync.go"), nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	preparedRoutes := map[string]bool{"Sync": false, "Initialize": false, "InitCollisions": false}
+	for _, declaration := range publisherFile.Decls {
+		fn, ok := declaration.(*ast.FuncDecl)
+		if !ok || fn.Recv == nil || len(fn.Recv.List) != 1 || fn.Body == nil {
+			continue
+		}
+		receiver := fn.Recv.List[0].Type
+		if pointer, ok := receiver.(*ast.StarExpr); ok {
+			receiver = pointer.X
+		}
+		name, ok := receiver.(*ast.Ident)
+		_, tracked := preparedRoutes[fn.Name.Name]
+		if !ok || name.Name != "Preparation" || !tracked {
+			continue
+		}
+		planUses, reconstructed := 0, 0
+		ast.Inspect(fn.Body, func(node ast.Node) bool {
+			selector, ok := node.(*ast.SelectorExpr)
+			if !ok {
+				return true
+			}
+			if ident, ok := selector.X.(*ast.Ident); ok && ident.Name == "p" && selector.Sel.Name == "plan" {
+				planUses++
+			}
+			if selector.Sel.Name == "Prepare" || selector.Sel.Name == "Plan" {
+				reconstructed++
+			}
+			return true
+		})
+		if planUses != 1 || reconstructed != 0 {
+			t.Errorf("Preparation.%s plan uses = %d and reconstruction calls = %d, want one bound p.plan use and no Prepare/Plan call", fn.Name.Name, planUses, reconstructed)
+		}
+		preparedRoutes[fn.Name.Name] = true
+	}
+	for route, found := range preparedRoutes {
+		if !found {
+			t.Errorf("Publisher prepared-universe route Preparation.%s not inspected", route)
+		}
+	}
 }
 
 // invariant: rendering/project-output-plan:check-report-single-plan (TestContextCompositionOwnershipRoutes)
