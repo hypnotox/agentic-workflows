@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
@@ -285,5 +286,47 @@ func TestCheckFullySetArtifactEmitsNoUnsetVarNote(t *testing.T) {
 	// (agents-doc) legitimately reference more and may still note.
 	if strings.Contains(out.String(), "skill tdd references unset vars") {
 		t.Errorf("unexpected unset-var note for the fully-set skill:\n%s", out.String())
+	}
+}
+
+func TestRunInitSyncError(t *testing.T) {
+	ctx := testContext(t)
+	// Config exists (skip scaffold); a squatting output dir makes the inner
+	// runSync fail, covering runInit's runSync error return.
+	root := scaffoldProject(t)
+	out := filepath.Join(root, ".claude", "skills", "example-tdd", "SKILL.md")
+	if err := os.RemoveAll(out); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(out, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := runInit(ctx, root, false, false, nil, "", io.Discard); err == nil {
+		t.Error("expected runInit to surface the sync error")
+	}
+}
+
+func TestInitAndUpgradeRefusePreTrackingAuthority(t *testing.T) {
+	ctx := testContext(t)
+	for _, tc := range []struct{ name, lock, want string }{
+		{"missing", "", "bridge release"},
+		{"invalid", `{`, "restore .awf/awf.lock"},
+		{"bridge", `{"awfVersion":"0.1.0","schemaVersion":30,"files":{},"bridgeAttestation":{"version":1,"preparedHead":"h","treeDigest":"sha256:x","adrFormatV1From":1,"legacyADRGaps":[]}}`, "bridge release"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			testsupport.WriteAwfConfig(t, root, minimalYAML)
+			if tc.lock != "" {
+				testsupport.WriteFile(t, config.LockPath(root), tc.lock)
+			}
+			if err := runInit(ctx, root, true, false, nil, "", io.Discard); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("init=%v", err)
+			}
+			if tc.name == "missing" {
+				if err := runUpgrade(ctx, root, io.Discard); err == nil || !strings.Contains(err.Error(), tc.want) {
+					t.Fatalf("upgrade=%v", err)
+				}
+			}
+		})
 	}
 }

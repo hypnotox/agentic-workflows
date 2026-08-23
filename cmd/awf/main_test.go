@@ -124,3 +124,30 @@ func TestParseArgs(t *testing.T) {
 		})
 	}
 }
+
+// invariant: tooling/cli:single-os-exit (TestNoOsExitOutsideMain)
+func TestNoOsExitOutsideMain(t *testing.T) {
+	files, err := filepath.Glob("*.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range files {
+		if strings.HasSuffix(f, "_test.go") {
+			continue
+		}
+		src, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for i, line := range strings.Split(string(src), "\n") {
+			if !strings.Contains(line, "os.Exit") {
+				continue
+			}
+			// The sole permitted os.Exit is main's one-line wrapper.
+			if f == "main.go" && strings.Contains(line, "func main()") {
+				continue
+			}
+			t.Errorf("%s:%d: os.Exit outside main's wrapper: %s", f, i+1, strings.TrimSpace(line))
+		}
+	}
+}

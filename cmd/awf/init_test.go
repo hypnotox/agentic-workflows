@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -12,8 +13,10 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/initspec"
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
 // forceNonInteractive pins the isInteractive seam to false for the test, so the
@@ -367,5 +370,369 @@ func TestInitPrintsNotesAndNextSteps(t *testing.T) {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("init output missing %q:\n%s", want, out.String())
 		}
+	}
+}
+
+func TestInitRejectsAmbiguousBrownfieldAuthority(t *testing.T) {
+	ctx := testContext(t)
+	for _, tc := range []struct {
+		name  string
+		files map[string]string
+	}{
+		{"malformed", map[string]string{"docs/decisions/0001-bad.md": "---\nstatus: [bad\n---\n"}},
+		{"duplicate", map[string]string{
+			"docs/decisions/0001-one.md": testsupport.ADR("Accepted", testsupport.WithDate("2026-07-21"), testsupport.WithTitle("0001: One")),
+			"docs/decisions/0001-two.md": testsupport.ADR("Accepted", testsupport.WithDate("2026-07-21"), testsupport.WithTitle("0001: Two")),
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			testsupport.SwapVar(t, &isInteractive, func() bool { return false })
+			for path, body := range tc.files {
+				testsupport.WriteFile(t, filepath.Join(root, path), body)
+			}
+			before := snapshotTree(t, root)
+			var out bytes.Buffer
+			if err := runInit(ctx, root, false, false, nil, "", &out); err == nil {
+				t.Fatal("expected refusal")
+			}
+			if after := snapshotTree(t, root); after != before {
+				t.Fatal("ambiguous first adoption mutated the repository tree")
+			}
+			if out.Len() != 0 {
+				t.Fatalf("ambiguous first adoption wrote output: %q", out.String())
+			}
+		})
+	}
+}
+
+func TestInitFirstADRChecksClean(t *testing.T) {
+	testInitFirstADRChecksClean(t)
+}
+
+func testInitFirstADRChecksClean(t *testing.T) {
+	ctx := testContext(t)
+	for _, tc := range []struct {
+		name       string
+		legacy     []string
+		nextNumber int
+	}{
+		{name: "fresh", nextNumber: 1},
+		{name: "brownfield", legacy: []string{"0001-old.md", "0003-old.md"}, nextNumber: 4},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := gitfixture.InitRepo(t)
+			root := repo.Root()
+			gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
+			for _, name := range tc.legacy {
+				testsupport.WriteFile(t, filepath.Join(root, "docs/decisions", name), testsupport.ADR("Accepted", testsupport.WithDate("2026-07-21"), testsupport.WithTitle(name[:4]+": Old")))
+			}
+			testsupport.SwapVar(t, &isInteractive, func() bool { return false })
+			// The gateCmd answer keeps the scaffold's enabled hooks singleton
+			// valid for the post-init syncs (ADR-0156 Decision 5).
+			if err := runInit(ctx, root, false, false, []string{"profile=full", "gateCmd=make gate"}, "", io.Discard); err != nil {
+				t.Fatal(err)
+			}
+
+			gitfixture.AddAll(t, repo)
+			gitfixture.Commit(t, repo, "initialize", nil)
+			// The scaffold writes integrationBranch: main while a go-git
+			// fixture starts on master; put the checkout on the branch the
+			// scaffolded config names, so `new adr` takes the numbered path
+			// this test is about (ADR-0202 item 5).
+			gitfixture.NativeBranch(t, repo, "main")
+			gitfixture.NativeCheckout(t, repo, "main")
+			if err := runNew(ctx, root, "adr", []string{"First", "Current"}, io.Discard); err != nil {
+				t.Fatal(err)
+			}
+			want := fmt.Sprintf("%04d-", tc.nextNumber)
+			entries, err := os.ReadDir(filepath.Join(root, "docs/decisions"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var created string
+			for _, entry := range entries {
+				if strings.HasPrefix(entry.Name(), want) {
+					created = filepath.Join(root, "docs/decisions", entry.Name())
+				}
+			}
+			if created == "" {
+				t.Fatalf("new ADR not created at next number %d", tc.nextNumber)
+			}
+			body, err := os.ReadFile(created)
+			if err != nil {
+				t.Fatal(err)
+			}
+			text := string(body)
+			// Scaffolding uses the activation registry's current format, so a new
+			// record is V3 with its slug key regardless of existing ADR numbers.
+			if !strings.Contains(text, "format: current-state-v4\n") {
+				t.Fatalf("new ADR at next number %d is not current-state-v4", tc.nextNumber)
+			}
+			start, end := strings.Index(text, "## State changes\n"), strings.Index(text, "## Consequences\n")
+			if start < 0 || end < 0 || end <= start {
+				t.Fatal("scaffold lacks state-change section")
+			}
+			text = text[:start] + "## State changes\n\nNone.\n\n" + text[end:]
+			history := strings.Index(text, "## Status history\n")
+			if history < 0 {
+				t.Fatal("scaffold lacks status history")
+			}
+			text = text[:history] + "## Status history\n\n- 2026-07-21: Proposed\n"
+			if err := os.WriteFile(created, []byte(text), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := runSync(ctx, root, io.Discard); err != nil {
+				t.Fatal(err)
+			}
+			if err := runCheckRepo(ctx, root, io.Discard); err != nil {
+				t.Fatalf("repo check: %v", err)
+			}
+		})
+	}
+}
+
+func TestInitCollisionProbeOpenError(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteAwfConfig(t, root, "prefix: [bad\n")
+	if err := runInit(testContext(t), root, false, false, nil, "", io.Discard); err == nil {
+		t.Fatal("expected init probe error")
+	}
+}
+
+func TestRunInitOnExistingConfigSkipsScaffold(t *testing.T) {
+	ctx := testContext(t)
+	// Pre-existing config -> scaffold branch is skipped; init still syncs.
+	root := scaffoldProject(t)
+	if err := runInit(ctx, root, false, false, nil, "", io.Discard); err != nil {
+		t.Fatalf("runInit on existing config: %v", err)
+	}
+}
+
+// invariant: tooling/init-and-enablement:init-collision-guard (TestInitGuardBlocksAndForceOverrides)
+func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
+	forceNonInteractive(t)
+	root := t.TempDir()
+	// A pre-existing, non-awf CLAUDE.md is a collision.
+	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte("mine\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "init"}, &out, &errb); code == 0 {
+		t.Fatal("expected init to fail on collision")
+	}
+	if !strings.Contains(errb.String(), "refusing to overwrite") {
+		t.Fatalf("stderr = %q", errb.String())
+	}
+	// Nothing written: the scaffolded config tree was rolled back.
+	if _, err := os.Stat(filepath.Join(root, ".awf", "config.yaml")); !os.IsNotExist(err) {
+		t.Fatal("expected .awf to be rolled back")
+	}
+	if b, _ := os.ReadFile(filepath.Join(root, "CLAUDE.md")); string(b) != "mine\n" {
+		t.Fatalf("CLAUDE.md clobbered: %q", b)
+	}
+	// --force backs up the colliding file, then overwrites and completes.
+	out.Reset()
+	errb.Reset()
+	if code := run([]string{"awf", "init", "--force"}, &out, &errb); code != 0 {
+		t.Fatalf("init --force failed: %s", errb.String())
+	}
+	// The original is preserved at <path>.awf-bak.
+	// invariant: tooling/init-and-enablement:init-force-backs-up (TestInitGuardBlocksAndForceOverrides)
+	if b, _ := os.ReadFile(filepath.Join(root, "CLAUDE.md.awf-bak")); string(b) != "mine\n" {
+		t.Fatalf("CLAUDE.md.awf-bak = %q, want original %q", b, "mine\n")
+	}
+	// And the live file was overwritten with managed content.
+	if b, _ := os.ReadFile(filepath.Join(root, "CLAUDE.md")); string(b) == "mine\n" {
+		t.Fatalf("CLAUDE.md should have been overwritten, still %q", b)
+	}
+	initForceMutation := fmt.Sprintf("status: initialization completed\n\nmutation:\n  identity:\n    config: %s/.awf/config.yaml\n    config action: scaffolded\n  changes:\n    backups:\n      CLAUDE.md to CLAUDE.md.awf-bak\n  notes:\n    agent adr-reviewer references unset vars: invariantTestPath; set a value, or delete the key to accept the generic prose\n    agent implementer references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    agents-doc references unset vars: checkCmd, gateCmd, testCmd; set a value, or delete the key to accept the generic prose\n    doc workflow references unset vars: checkCmd, gateCmd, gateCmdFull, testCmd; set a value, or delete the key to accept the generic prose\n    hooks commit-msg references unset vars: commitGateCmd; set a value, or delete the key to accept the generic prose\n    hooks pre-commit references unset vars: checkCmd, gateCmd; set a value, or delete the key to accept the generic prose\n    hooks pre-merge-commit references unset vars: checkCmd; set a value, or delete the key to accept the generic prose\n    hooks pre-push references unset vars: checkCmd, gateCmd, gateCmdFull; set a value, or delete the key to accept the generic prose\n    plans-template references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    skill adr-lifecycle references unset vars: activeMdRegenCmd, gateCmd; set a value, or delete the key to accept the generic prose\n    skill executing-plans references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    skill proposing-adr references unset vars: activeMdRegenCmd; set a value, or delete the key to accept the generic prose\n    skill retrospective references unset vars: gateCmd, invariantTestPath; set a value, or delete the key to accept the generic prose\n    skill reviewing-impl references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    skill subagent-driven-development references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    skill writing-plans references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    AGENTS.md has unauthored stub content: sections at stub default: identity\n  next actions:\n    step 1: continue with the rendered project state\n    step 2: fill the Identity section at .awf/parts/agents-doc/identity.md, then run awf render\n    step 3: set still-empty vars in .awf/config.yaml (the notes above list what each artifact misses), then run awf render\n    step 4: wire rendered hook payloads under .awf/hooks/ into git hooks you own (see the workflow doc's local-hooks section); awf never activates hooks itself\n    step 5: commit .awf/ and the rendered files together\n", root)
+	if !strings.HasPrefix(out.String(), strings.Split(initForceMutation, "  notes:\n")[0]) {
+		t.Errorf("init --force lost its scaffold identity or backup report:\n%s", out.String())
+	}
+	for _, want := range []string{
+		"skill bugfix references unset vars",
+		"skill tdd references unset vars",
+		"docs/architecture.md has unauthored stub content",
+		"step 5: commit .awf/ and the rendered files together",
+	} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("init --force Core report missing %q:\n%s", want, out.String())
+		}
+	}
+	// Regression: init delegates its backup to the chained sync (one BackupFile path,
+	// ADR-0035), so the colliding file is backed up exactly once - no double-backup.
+	if _, err := os.Stat(filepath.Join(root, "CLAUDE.md.awf-bak.1")); !os.IsNotExist(err) {
+		t.Error("expected exactly one backup; CLAUDE.md.awf-bak.1 should not exist")
+	}
+}
+
+func TestInitRollbackPreservesExistingAwf(t *testing.T) {
+	ctx := testContext(t)
+	root := t.TempDir()
+	// Pre-existing authored .awf/ content but no config.yaml -> init scaffolds config,
+	// then a collision (non-managed CLAUDE.md) forces a refusal + rollback.
+	part := filepath.Join(root, ".awf", "skills", "parts", "foo", "extra.md")
+	if err := os.MkdirAll(filepath.Dir(part), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(part, []byte("hand-authored\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte("mine\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := runInit(ctx, root, false, false, nil, "", io.Discard); err == nil {
+		t.Fatal("expected init to refuse on collision")
+	}
+	// The scaffolded config.yaml is rolled back...
+	if _, err := os.Stat(filepath.Join(root, ".awf", "config.yaml")); !os.IsNotExist(err) {
+		t.Error("config.yaml should have been removed on rollback")
+	}
+	// ...but the pre-existing authored content survives.
+	if _, err := os.Stat(part); err != nil {
+		t.Errorf("pre-existing .awf content must be preserved, got: %v", err)
+	}
+}
+
+func TestInitForceBackupDoesNotClobberPriorBak(t *testing.T) {
+	root := t.TempDir()
+	// A colliding CLAUDE.md plus a pre-existing backup from an earlier --force.
+	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte("v2\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md.awf-bak"), []byte("v1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "init", "--force"}, &out, &errb); code != 0 {
+		t.Fatalf("init --force: %s", errb.String())
+	}
+	if b, _ := os.ReadFile(filepath.Join(root, "CLAUDE.md.awf-bak")); string(b) != "v1\n" {
+		t.Errorf("prior .awf-bak clobbered: %q", b)
+	}
+	if b, _ := os.ReadFile(filepath.Join(root, "CLAUDE.md.awf-bak.1")); string(b) != "v2\n" {
+		t.Errorf("CLAUDE.md.awf-bak.1 = %q, want v2", b)
+	}
+}
+
+func TestInitIdempotentReinitNoCollision(t *testing.T) {
+	root := scaffoldProject(t)
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "init"}, &out, &errb); code != 0 {
+		t.Fatalf("first init failed: %s", errb.String())
+	}
+	// Re-init over the now-managed tree: every planned path is in the prior lock,
+	// so p.InitCollisions skips them all and init proceeds without --force.
+	out.Reset()
+	errb.Reset()
+	if code := run([]string{"awf", "init"}, &out, &errb); code != 0 {
+		t.Fatalf("re-init failed: %s", errb.String())
+	}
+}
+
+func TestInitCollisionsOpenError(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, ".awf")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Unknown field → strict config.Load fails → project.Open errors inside runInit.
+	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte("bogusField: true\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: 14, Files: map[string]manifest.Entry{}}
+	if err := lock.Save(config.LockPath(root)); err != nil {
+		t.Fatal(err)
+	}
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "init"}, &out, &errb); code == 0 {
+		t.Fatal("expected init to fail when project.Open errors")
+	}
+	// --force skips the probe, so the same malformed config now fails at
+	// runInit's own post-scaffold project.Open - keeping that branch covered.
+	if code := run([]string{"awf", "init", "--force"}, &out, &errb); code == 0 {
+		t.Fatal("expected init --force to fail when project.Open errors")
+	}
+}
+
+func TestInitAbortsWhenInitCollisionsFails(t *testing.T) {
+	root := scaffoldProject(t)
+	configPath := config.ConfigPath(root)
+	lockPath := config.LockPath(root)
+	beforeConfig := mustReadCLIFile(t, configPath)
+	beforeLock := mustReadCLIFile(t, lockPath)
+	writeMalformedPitfall(t, root)
+
+	var out bytes.Buffer
+	err := runInit(testContext(t), root, true, false, nil, "", &out)
+	if err == nil || !strings.Contains(err.Error(), "bad.md") || !strings.Contains(err.Error(), "missing frontmatter") {
+		t.Fatalf("init collision error = %v, want malformed pitfall", err)
+	}
+	if out.Len() != 0 {
+		t.Fatalf("init stdout = %q, want empty", out.String())
+	}
+	if got := mustReadCLIFile(t, configPath); got != beforeConfig {
+		t.Fatalf("config changed after collision error")
+	}
+	if got := mustReadCLIFile(t, lockPath); got != beforeLock {
+		t.Fatalf("lock changed after collision error")
+	}
+}
+
+// A collision refuses BEFORE any prompt: with a colliding AGENTS.md and an
+// interactive stdin, init exits without emitting a single prompt line and
+// without creating .awf/.
+func TestInitCollisionProbeRefusesBeforePrompts(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte("mine\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+	testsupport.SwapVar(t, &isInteractive, func() bool { return true })
+	testsupport.SwapVar(t, &stdin, io.Reader(strings.NewReader("SHOULD-NOT-BE-CONSUMED\n")))
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "init"}, &out, &errb); code == 0 {
+		t.Fatal("expected init to refuse on collision")
+	}
+	if !strings.Contains(errb.String(), "refusing to overwrite") {
+		t.Fatalf("stderr = %q", errb.String())
+	}
+	if out.String() != "" {
+		t.Errorf("prompt text emitted before the collision refusal:\n%s", out.String())
+	}
+	if _, err := os.Stat(filepath.Join(root, ".awf")); !os.IsNotExist(err) {
+		t.Errorf(".awf/ should not exist after a probe refusal (err=%v)", err)
+	}
+}
+
+// A trim answer can enable a non-core artifact the curated-core probe set does
+// not cover: the probe passes, and the accurate post-answer check still
+// refuses and rolls the scaffolded config back. (The leaves-only trim derives
+// zero agents under ADR-0081, so the selection is closure-valid.)
+func TestInitPostAnswerCollisionAfterProbePasses(t *testing.T) {
+	root := t.TempDir()
+	skillPath := filepath.Join(root, ".claude", "skills", filepath.Base(root)+"-tdd", "SKILL.md")
+	if err := os.MkdirAll(filepath.Dir(skillPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(skillPath, []byte("mine\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+	forceNonInteractive(t)
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "init", "--set", "skills=tdd"}, &out, &errb); code == 0 {
+		t.Fatal("expected init to refuse on the post-answer collision")
+	}
+	if !strings.Contains(errb.String(), "refusing to overwrite") {
+		t.Fatalf("stderr = %q", errb.String())
+	}
+	if _, err := os.Stat(filepath.Join(root, ".awf", "config.yaml")); !os.IsNotExist(err) {
+		t.Error("scaffolded config should have been rolled back")
 	}
 }

@@ -139,6 +139,15 @@ Apply the plan-flexibility rule above when recording deviations. Delegated owner
 
 Authoring baseline on Go 1.26.6 linux/amd64 with 12 CPUs: three isolated sequential ordinary passes reported project `51.888s`, `50.154s`, `49.424s`; command `49.689s`, `50.266s`, `52.132s`; and testsupport `2.381s`, `1.798s`, `1.708s`. Fixed-seed shuffled runs at seed `1771736407` reported `78.481s`, `171.096s`, and `9.167s` respectively and all passed. Shuffled duration is order-sensitive diagnostic evidence, not a strict performance threshold.
 
+Phase 3 candidate evidence on Go 1.26.6 linux/amd64 with 12 CPUs:
+
+- The successful raw-list and C-locale sort procedure produced 438 project tests at `e0d928e4a66646ec018040ca8a8b95ae486b71218031fba31b7c73ffeb2c84de`, 317 command tests at `7a812c25f0a2c1b618d52bf1924e036532d671de7301daa9ca213c36343a8465`, and 62 testsupport tests at `2a51927101300dac58c30700faf1423b3ce1bcbb6f3313cef7e71e2eab2536e9`.
+- The temporary Go parser and formatter oracle matched all 75 spine, 54 project, 49 check, 39 staged, and 56 command top-level non-import declarations exactly once with identical canonical bytes. All five aggregates are absent.
+- Sequential uncached ordinary runs passed for project at `55.452s` package and `55.797s` wall, command at `51.067s` package and `51.606s` wall, and testsupport at `2.037s` package and `2.343s` wall. The modest project variance from the authoring range is consistent with the loaded Phase 1 and Phase 2 runs and has no correctness or isolation symptom.
+- Fixed-seed `1771736407` shuffled runs passed for project at `53.529s` package and `53.910s` wall, command at `49.018s` package and `49.543s` wall, and testsupport at `2.013s` package and `2.249s` wall. `go test -count=1 ./...` passed in `78.932s` wall.
+- The full implementation-range path and source probes found only test reorganization, the authorized current TDD and debugging reference currency and generated lock transaction, the catalog scanner adjustment, this Notes evidence, and the authorized publisher proof-pointer comment. They found no production behavior, export, seam, global, dependency, coverage-policy or `// coverage-ignore` change, generalized testsupport API, compatibility or historical cleanup, or excluded cohesive test change.
+- The pre-candidate unmodified gate passed at 100% statement coverage, `21358/21358`, with deadcode and pincheck clean and only the three pre-existing `Uid` advisories. No material route deviation occurred.
+
 Plan review dispositions:
 
 - Reasoned, phase gateability: add the publisher catalog-golden census to Phase 1 and preserve its forward, reverse, orphan, and non-artifact completeness checks across the new owner files.

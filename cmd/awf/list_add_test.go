@@ -202,3 +202,63 @@ func TestRetainedDomainAndListCLIPaths(t *testing.T) {
 		}
 	})
 }
+
+func TestRunAddMissingSkillArg(t *testing.T) {
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return t.TempDir(), nil })
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "enable"}, &out, &errb); code != 2 {
+		t.Fatalf("expected exit 2 for add without skill, got %d", code)
+	}
+}
+
+func TestRunArgValidation(t *testing.T) {
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return t.TempDir(), nil })
+	cases := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"unknown flag", []string{"awf", "check", "--bogus"}, "unknown flag"},
+		{"unexpected positional", []string{"awf", "render", "extra"}, "unexpected arguments"},
+		{"value flag without value", []string{"awf", "context", "--range"}, "needs a value"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			var out, errb bytes.Buffer
+			if code := run(c.args, &out, &errb); code != 2 {
+				t.Fatalf("expected exit 2, got %d", code)
+			}
+			if !strings.Contains(errb.String(), c.want) {
+				t.Errorf("missing %q in stderr: %q", c.want, errb.String())
+			}
+		})
+	}
+}
+
+func TestRunListSidecarError(t *testing.T) {
+	ctx := testContext(t)
+	// A malformed sidecar for the enabled skill makes Sidecar() error.
+	root := scaffoldProject(t)
+	skillsDir := filepath.Join(root, ".awf", "skills")
+	if err := os.MkdirAll(skillsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillsDir, "tdd.yaml"), []byte("data: [not, a, map]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := runList(ctx, root, "", io.Discard); err == nil {
+		t.Error("expected Sidecar parse error")
+	}
+}
+
+func TestRunListPrintsSkills(t *testing.T) {
+	ctx := testContext(t)
+	root := scaffoldProject(t)
+	var out bytes.Buffer
+	if err := runList(ctx, root, "", &out); err != nil {
+		t.Fatalf("runList: %v", err)
+	}
+	if !strings.Contains(out.String(), "tdd") {
+		t.Errorf("expected tdd in listing, got %q", out.String())
+	}
+}

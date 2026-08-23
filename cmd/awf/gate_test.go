@@ -364,3 +364,25 @@ func aheadSchemaProject(t *testing.T) string {
 	}
 	return root
 }
+
+func TestGateRejectsStaleSchema(t *testing.T) {
+	ctx := testContext(t)
+	// A legacy single-file layout (.claude/awf.yaml, no tree config) reports
+	// generation 0 -> GateState "gate".
+	root := t.TempDir()
+	claude := filepath.Join(root, ".claude")
+	if err := os.MkdirAll(claude, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(claude, "awf.yaml"), []byte("prefix: x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := gate(ctx, root); err == nil {
+		t.Fatal("expected gate to reject stale schema")
+	}
+	// render is Gated: the driver surfaces the same gate error before the handler.
+	var out, errb bytes.Buffer
+	if code := runAt(t, root, []string{"awf", "render"}, &out, &errb); code != 1 {
+		t.Errorf("expected the driver to fail render on stale schema, got %d", code)
+	}
+}

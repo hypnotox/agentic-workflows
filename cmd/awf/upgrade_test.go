@@ -341,3 +341,110 @@ func TestValidJournalRecoveryRollsBackInterrupted(t *testing.T) {
 		t.Fatal("journal residue after rollback")
 	}
 }
+
+func TestRunUpgradeLegacyAdopterRendersAndChecksClean(t *testing.T) {
+	ctx := testContext(t)
+	// A legacy single-file project migrates to the tree layout, covering the
+	// applied-migrations loop and the terminal sync.
+	repo := gitfixture.InitRepo(t)
+	root := repo.Root()
+	claude := filepath.Join(root, ".claude")
+	if err := os.MkdirAll(claude, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	legacy := "prefix: example\nvars:\n  testCmd: go test ./...\n  gateCmd: make gate\n"
+	if err := os.WriteFile(filepath.Join(claude, "awf.yaml"), []byte(legacy), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := (&manifest.Lock{AWFVersion: "0.1.0", Files: map[string]manifest.Entry{}}).Save(filepath.Join(claude, "awf.lock")); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := runUpgrade(ctx, root, &out); err != nil {
+		t.Fatalf("runUpgrade legacy: %v", err)
+	}
+	if !strings.Contains(out.String(), "status: completed") || !strings.Contains(out.String(), "awf-dir-relocation: moved .claude/awf to .awf") || strings.Contains(out.String(), "note:") {
+		t.Errorf("expected structured migration mutation with production relocation evidence, got %q", out.String())
+	}
+	for _, path := range []string{".awf/config.yaml", ".awf/awf.lock"} {
+		if _, err := os.Stat(filepath.Join(root, path)); err != nil {
+			t.Errorf("upgraded project missing %s: %v", path, err)
+		}
+	}
+	agents, err := os.ReadFile(filepath.Join(root, "AGENTS.md"))
+	if err != nil {
+		t.Fatalf("read rendered AGENTS.md: %v", err)
+	}
+	if !strings.Contains(string(agents), "# example Agent Guide") {
+		t.Errorf("rendered AGENTS.md missing stable heading: %q", agents)
+	}
+	gitfixture.AddAll(t, repo)
+	if err := runCheckRepo(ctx, root, io.Discard); err != nil {
+		t.Fatalf("repository check after upgrade: %v", err)
+	}
+}
+
+// A schema-7 config the ADR-0081 closure validation refuses is repaired by
+// awf upgrade: close-enabled-set closes the enabled set, then the terminal
+// sync opens it cleanly.
+func TestRunUpgradeRepairsUnclosedConfig(t *testing.T) {
+	ctx := testContext(t)
+	repo := gitfixture.InitRepo(t)
+	root := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {gateCmd: make gate}\n")
+	lock := &manifest.Lock{SchemaVersion: 7, Files: map[string]manifest.Entry{}}
+	if err := lock.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
+		t.Fatal(err)
+	}
+	if err := runCheck(ctx, root, io.Discard); err == nil {
+		t.Fatal("pre-upgrade check should refuse (schema gate)")
+	}
+	var out bytes.Buffer
+	if err := runUpgrade(ctx, root, &out); err != nil {
+		t.Fatalf("runUpgrade: %v", err)
+	}
+	if strings.Contains(out.String(), `close-enabled-set: enabled skill`) {
+		t.Errorf("advisory workflow catalog unexpectedly closed requirements: %q", out.String())
+	}
+	// The migration's resident-root rewrite is validated by its own focused tests;
+	// this fixture has no generated resident files to compare after the upgrade.
+}
+
+func TestRunUpgradeMigrationError(t *testing.T) {
+	ctx := testContext(t)
+	// A legacy config that fails to parse makes the migration error.
+	root := t.TempDir()
+	claude := filepath.Join(root, ".claude")
+	if err := os.MkdirAll(claude, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(claude, "awf.yaml"), []byte(": : not valid : :\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	lock := &manifest.Lock{AWFVersion: "0.1.0", Files: map[string]manifest.Entry{}}
+	if err := lock.Save(filepath.Join(claude, "awf.lock")); err != nil {
+		t.Fatal(err)
+	}
+	if err := runUpgrade(ctx, root, io.Discard); err == nil {
+		t.Error("expected migration error for a malformed legacy config")
+	}
+}
+
+// invariant: tooling/cli:upgrade-always-syncs (TestRunUpgradeAlreadyCurrentStillSyncs)
+func TestRunUpgradeAlreadyCurrentStillSyncs(t *testing.T) {
+	ctx := testContext(t)
+	root := scaffoldProject(t)
+	var out bytes.Buffer
+	if err := runUpgrade(ctx, root, &out); err != nil {
+		t.Fatalf("runUpgrade: %v", err)
+	}
+	if !strings.Contains(out.String(), "migration changes:\n      config schema already current") {
+		t.Errorf("expected the schema-current fact, got %q", out.String())
+	}
+	// The zero-migrations path must still sync: a same-schema binary bump
+	// re-renders every managed file and re-pins the bootstrap (ADR-0085).
+	if !strings.Contains(out.String(), "status: completed") || !strings.Contains(out.String(), "continue with the rendered project state") {
+		t.Errorf("expected the schema-current upgrade to run a sync, got %q", out.String())
+	}
+}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -187,4 +188,25 @@ func TestUninstallAndInitRefuseCorruptLock(t *testing.T) {
 			})
 		}
 	}
+}
+
+// TestHandlersOnBareDirError covers each handler's project.Open error return.
+func TestHandlersOnBareDirError(t *testing.T) {
+	ctx := testContext(t)
+	bare := func(t *testing.T) string { return t.TempDir() }
+	t.Run("check", func(t *testing.T) {
+		if err := runCheck(ctx, bare(t), io.Discard); err == nil {
+			t.Error("expected Open error")
+		}
+	})
+	t.Run("list", func(t *testing.T) {
+		if err := runList(ctx, bare(t), "", io.Discard); err == nil {
+			t.Error("expected Open error")
+		}
+	})
+	t.Run("new", func(t *testing.T) {
+		if err := runNew(ctx, bare(t), "adr", []string{"x"}, io.Discard); err == nil {
+			t.Error("expected Open error")
+		}
+	})
 }
