@@ -196,7 +196,7 @@ correction is allowed without unrelated cleanup riding along.
 | RF-005 | P1 | COMPLETE | Current-state coordination extracted from project orchestration | RF-002 |
 | RF-006 | P1 | COMPLETE | `cmd/awf` reduced to parse, compose, invoke, render, exit | RF-002..RF-005 |
 | RF-007 | P2 | COMPLETE | Residual giant tests split by observable behaviour and semantic owner | RF-002..RF-006 |
-| RF-009 | P1 | READY | Post-refactor critical-path coverage policy and regression control | RF-007, owner ruling |
+| RF-009 | P1 | COMPLETE | Post-refactor critical-path coverage policy and regression control | RF-007, owner ruling |
 | RF-014A | P2 | COMPLETE | Obsolete Program A machinery deleted | Program A milestone |
 | RF-014B | P2 | CONDITIONAL | Obsolete compatibility residue deleted | RF-008B, compatibility removals applicable |
 | RF-010 | P2 | BLOCKED | Current code comments explain invariants, not historical plans and tranches | RF-002..RF-007, compatibility lane closed |
@@ -270,15 +270,13 @@ correction is allowed without unrelated cleanup riding along.
 
 ### Program B start gate
 
-**Status: OPEN; B-F1 THROUGH B-F3 AND RF-003 THROUGH RF-007 COMPLETE.** Program A is complete;
-generated artifacts are stable under the new doctrine; changed behaviour has deterministic regression
-coverage; no known adopter-facing contradiction remains; RF-001 establishes the target dependency
-map, RF-002 establishes immutable project state, RF-003 establishes publishing coordination, RF-004
-establishes policy-free repository-check aggregation, RF-005 establishes focused current-state
-coordination, RF-006 establishes the thin command composition boundary, and RF-007 establishes direct
-residual test-oracle ownership. RF-009 has its owner ruling and is ready for governed ADR, plan, and
-implementation work. RF-008B and RF-014B remain conditional because nine managed repositories have
-not upgraded from 0.39.1.
+**Status: OPEN; B-F1 THROUGH B-F5 COMPLETE EXCEPT THE CONDITIONAL COMPATIBILITY LANE.** Program A
+is complete; generated artifacts are stable under the new doctrine; changed behaviour has
+deterministic regression coverage; no known adopter-facing contradiction remains; RF-001 through
+RF-007 establish the architecture and direct residual test-oracle ownership; and RF-009 establishes
+the post-refactor coverage and mutation regression policy. RF-008B and RF-014B remain conditional
+because the managed-repository upgrade gate is open. RF-010 remains blocked until that compatibility
+lane closes.
 
 Program A milestone complete; generated artifacts stable under the new doctrine; new behaviour has
 regression tests; no known adopter-facing contradiction remains; compatibility support policy decided
@@ -300,7 +298,8 @@ history. Items joined by `||` may implement concurrently; integrations remain se
 - **B-F3:** RF-002 || RF-012 after their dependencies and applicable cleanup integrate.
 - **B-F4:** RF-003, RF-004, RF-005, RF-006, RF-007, and RF-010 sequentially. The orchestrator may
   choose the order of RF-003 through RF-005 after RF-002, but they do not implement concurrently.
-- **B-F5:** RF-009 governed ADR, plan, and implementation under its approved evidence boundary.
+- **B-F5:** RF-009 governed ADR, plan, and implementation under its approved evidence boundary;
+  complete.
 
 ## Child implementation brief
 
@@ -1158,6 +1157,45 @@ abstraction; oracle strength.
   compatibility lane closes. RF-008B and RF-014B retain their managed-repository upgrade condition.
 - **Unblocked:** RF-009 is ready for its owner decision in B-F5. RF-010 retains its named dependency
   and compatibility condition; later issues retain their recorded gates.
+
+### RF-009
+
+- **Range:** Issue authorization `209c01b69`; ADR, plan, implementation, integration, and terminal
+  range `6e4c3396d..7a6b17ff0`.
+- **Protected contract:** ADR-0302 replaces filtered 100 percent blocking with exact raw uncovered
+  identities for the repository and six whole-profile critical selectors. Percentages remain reports.
+  A generated reviewed baseline admits exact misses and retained directives, keeps platform-only
+  entries explicitly unmeasured, rejects executed ignored bodies, and mutation-blocks only owned
+  `cmd/covercheck` changes under the pinned complete-report trust contract.
+- **Clean integration:** `internal/coverage` owns policy identities, profile interpretation, directive
+  reconciliation, selectors, baseline loading, and evaluation. `cmd/covercheck` remains its adapter;
+  `cmd/mutants` owns report trust; one project-owned detector serves staged and explicit-range
+  selection; and the existing repository audit reports reviewed additions and moves. No second
+  profile, threshold layer, broad mutation gate, production metric seam, or adopter configuration was
+  added.
+- **Files changed:** Coverage policy and command adapters, mutation validation and runner orchestration,
+  gate and CI selection, the canonical baseline and directive review artifact, false-ignore removals,
+  repository-audit evidence, direct invariant tests, authored and rendered current-state and runner
+  documentation, ADR-0302, its plan, decision index, and generated lock implement and prove the
+  boundary.
+- **Verification:** Exact review admits 715 raw-miss identities representing 732 statements, with no
+  unreviewed selector, directive, platform, or mutant entry and no executed ignored body. Three
+  preserved qualification runs each dry-discovered the same 23 runnable mutants and killed all 23;
+  their total duration was 355.146483712 seconds. Deterministic regeneration, focused suites, repeated
+  full gates, render and drift checks, staged checks, dead-code checks, and exact-tip independent
+  assurance passed. The complete shipped audit reported zero findings; the local audit reported no
+  errors and only the expected activation warnings.
+- **Deviations:** Canonical syntax-position mapping found every guarded-body positive rather than the
+  smaller preliminary estimate. Whole-repository per-mutant integration could not complete within the
+  limit, so an independently reviewed amendment retained whole-target discovery while using
+  package-owned behavior tests after one whole-repository preflight. Shared `/tmp` capacity and an
+  in-repository temporary-root isolation failure invalidated two calibrations before the external
+  temporary-root recipe completed. These corrections preserved the approved outcome and verification
+  strength.
+- **Residual debt:** None within RF-009. Compatibility removal remains gated by RF-008B and RF-014B;
+  RF-010 remains blocked until that lane closes.
+- **Unblocked:** No further issue becomes ready. The remaining program work is conditional on the
+  managed-repository upgrade gate and its compatibility removals.
 
 Close each later issue with the same evidence: identity; baseline and final range; protected contract;
 clean integration; files changed with reason; verification commands and results; material deviations;
