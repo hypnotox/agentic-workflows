@@ -426,6 +426,8 @@ func TestCovercheckMutantsRunnerContract(t *testing.T) {
 	}
 }
 
+// invariant: tooling/quality-gates:coverage-raw-identity-ratchet (TestCoverageActivationContracts)
+// invariant: tooling/quality-gates:covercheck-mutation-regression (TestCoverageActivationContracts)
 func TestCoverageActivationContracts(t *testing.T) {
 	runner, err := os.ReadFile("../../x")
 	if err != nil {
@@ -435,6 +437,7 @@ func TestCoverageActivationContracts(t *testing.T) {
 	for _, required := range []string{
 		`run_gate_step covercheck go run ./cmd/covercheck --policy "$prof" coverage-baseline.json`,
 		`run_gate_step covercheck-mutation-regression run_covercheck_mutants --select-staged`,
+		`evidence="$root/.cache/covercheck-mutants-evidence"`,
 	} {
 		if !strings.Contains(text, required) {
 			t.Errorf("runner missing activation contract %q", required)
@@ -442,6 +445,9 @@ func TestCoverageActivationContracts(t *testing.T) {
 	}
 	if strings.Contains(text, `run_gate_step covercheck go run ./cmd/covercheck "$prof"`) {
 		t.Error("runner retains the percentage-only coverage blocker")
+	}
+	if strings.Contains(text, `evidence="$root/.awf/efforts/`) {
+		t.Error("runner retains mutation evidence in the managed awf config tree")
 	}
 	if strings.Index(text, `run_gate_step covercheck go run ./cmd/covercheck --policy "$prof" coverage-baseline.json`) > strings.Index(text, `run_gate_step covercheck-mutation-regression run_covercheck_mutants --select-staged`) {
 		t.Error("runner invokes the mutation blocker before policy evaluation")

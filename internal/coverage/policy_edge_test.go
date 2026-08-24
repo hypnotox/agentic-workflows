@@ -12,6 +12,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
+// invariant: tooling/quality-gates:coverage-raw-identity-ratchet (TestAnalyzeDerivesEveryExactSelectorRoot)
 func TestAnalyzeDerivesEveryExactSelectorRoot(t *testing.T) {
 	files := make(map[string]string)
 	var profile strings.Builder
@@ -316,10 +317,13 @@ func TestStrictJSONRejectsMultipleValuesAndTrailingGarbage(t *testing.T) {
 	}
 }
 
+// invariant: tooling/quality-gates:coverage-ignore-admission (TestAWFPlatformLedgerIsExactAndRelatedToProductionInventory)
 func TestAWFPlatformLedgerIsExactAndRelatedToProductionInventory(t *testing.T) {
 	analysis := analyzePolicy(t, map[string]string{"p/f.go": "package p\nfunc F() {}\n"}, "example.com/m/p/f.go:2.1,2.5 1 0\n")
 	base := mustBaseline(t, analysis)
 	base.ModulePath = awfModulePath
+	ordinary := Directive{File: "p/f.go", Line: 2, TargetLine: 2, Reason: "impossible state"}
+	base.ProductionDirectives = append(base.ProductionDirectives, DirectiveAdmission{Directive: ordinary, Class: IgnoreImpossibleState, Evidence: "direct test"})
 	for _, spec := range []struct {
 		file     string
 		platform string
@@ -343,7 +347,25 @@ func TestAWFPlatformLedgerIsExactAndRelatedToProductionInventory(t *testing.T) {
 		"duplicate":      func(b *Baseline) { b.PlatformDirectives[1] = b.PlatformDirectives[0] },
 		"wrong platform": func(b *Baseline) { b.PlatformDirectives[0].Platforms = []string{"linux"} },
 		"unrelated path": func(b *Baseline) { b.PlatformDirectives[0].Directive.File = "internal/other/file.go" },
-		"not admitted":   func(b *Baseline) { b.ProductionDirectives = b.ProductionDirectives[:len(b.ProductionDirectives)-1] },
+		"not admitted": func(b *Baseline) {
+			b.ProductionDirectives = slices.DeleteFunc(b.ProductionDirectives, func(admission DirectiveAdmission) bool {
+				return admission.Directive == b.PlatformDirectives[0].Directive
+			})
+		},
+		"added unledgered platform admission": func(b *Baseline) {
+			b.ProductionDirectives = append(b.ProductionDirectives, DirectiveAdmission{
+				Directive: Directive{File: "p/extra_darwin.go", Line: 3, TargetLine: 3, Reason: "rollback"},
+				Class:     IgnorePlatformOnly,
+				Evidence:  "platform test",
+			})
+		},
+		"substituted unledgered platform admission": func(b *Baseline) {
+			for index := range b.ProductionDirectives {
+				if b.ProductionDirectives[index].Directive == ordinary {
+					b.ProductionDirectives[index].Class = IgnorePlatformOnly
+				}
+			}
+		},
 		"imbalanced paths": func(b *Baseline) {
 			old := b.PlatformDirectives[0].Directive
 			replacement := old

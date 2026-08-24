@@ -146,6 +146,7 @@ func completeReport(statuses ...string) []byte {
 	return []byte(fmt.Sprintf(`{"go_module":"github.com/hypnotox/agentic-workflows","files":[{"file_name":"cmd/covercheck/main.go","mutations":[%s]}],"test_efficacy":100,"mutations_coverage":100,"mutants_total":%d,"mutants_killed":%d,"mutants_lived":%d,"mutants_not_viable":%d,"mutants_not_covered":%d,"elapsed_time":12,"mutator_statistics":{"arithmetic_base":%d}}`, strings.Join(mutations, ","), total, killed, lived, notViable, notCovered, len(statuses)))
 }
 
+// invariant: tooling/quality-gates:covercheck-mutation-regression (TestBlockingReportTrustContract)
 func TestBlockingReportTrustContract(t *testing.T) {
 	dry := completeReport("RUNNABLE", "RUNNABLE")
 	actual := completeReport("KILLED", "KILLED")

@@ -1,6 +1,6 @@
-// Command covercheck reports raw and filtered statement coverage and, until the
-// raw-identity policy is activated, preserves the existing filtered 100 percent
-// gate. It also generates and diagnoses the canonical coverage policy.
+// Command covercheck enforces the repository's raw-identity coverage policy and
+// reports raw and filtered statement coverage. It also generates the canonical
+// baseline; its legacy standalone form keeps the filtered 100 percent check.
 package main
 
 import (

@@ -72,6 +72,7 @@ func mustBaseline(t *testing.T, a Analysis) Baseline {
 	return b
 }
 
+// invariant: tooling/quality-gates:coverage-raw-identity-ratchet (TestAnalyzeUsesExactRawIdentitiesAndWholeProfileSelectors)
 func TestAnalyzeUsesExactRawIdentitiesAndWholeProfileSelectors(t *testing.T) {
 	files := map[string]string{
 		"internal/coverage/a.go": "package coverage\nfunc A() {}\n",
@@ -112,6 +113,7 @@ func TestAnalyzeUsesExactRawIdentitiesAndWholeProfileSelectors(t *testing.T) {
 	}
 }
 
+// invariant: tooling/quality-gates:coverage-ignore-admission (TestAnalyzeInventoriesProductionTestAndExecutedDirectives)
 func TestAnalyzeInventoriesProductionTestAndExecutedDirectives(t *testing.T) {
 	marker := "//" + " coverage-ignore: "
 	files := map[string]string{
@@ -143,6 +145,7 @@ func TestAnalyzeInventoriesProductionTestAndExecutedDirectives(t *testing.T) {
 	}
 }
 
+// invariant: tooling/quality-gates:coverage-executed-ignore-errors (TestAnalyzeMapsExecutedIgnoreToExactGuardedBodyEntry)
 func TestAnalyzeMapsExecutedIgnoreToExactGuardedBodyEntry(t *testing.T) {
 	marker := "//" + " coverage-ignore: guarded body"
 	cases := []struct {
@@ -197,6 +200,7 @@ func TestAnalyzeMapsExecutedIgnoreToExactGuardedBodyEntry(t *testing.T) {
 	}
 }
 
+// invariant: tooling/quality-gates:coverage-executed-ignore-errors (TestAnalyzeORsExactGuardedBodyDuplicatesRegardlessOfOrder)
 func TestAnalyzeORsExactGuardedBodyDuplicatesRegardlessOfOrder(t *testing.T) {
 	marker := "//" + " coverage-ignore: guarded body"
 	files := map[string]string{"p/f.go": "package p\nfunc F(x bool) {\n if x { " + marker + "\n  println(x)\n }\n}\n"}
@@ -232,6 +236,7 @@ func TestAnalyzeRejectsAmbiguousDirectiveTargetSyntax(t *testing.T) {
 	}
 }
 
+// invariant: tooling/quality-gates:coverage-raw-identity-ratchet (TestRegenerateRequiresReviewedAdditionsAndPreservesImprovements)
 func TestRegenerateRequiresReviewedAdditionsAndPreservesImprovements(t *testing.T) {
 	files := map[string]string{"p/f.go": "package p\nfunc F() {}\nfunc G() {}\n"}
 	missA := "example.com/m/p/f.go:2.1,2.5 1 0\n"

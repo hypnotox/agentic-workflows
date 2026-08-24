@@ -884,8 +884,12 @@ func validateAWFPlatformLedger(baseline Baseline) error {
 		return fmt.Errorf("coverage: awf platform ledger has %d entries, want 4", len(baseline.PlatformDirectives))
 	}
 	production := make(map[Directive]DirectiveAdmission)
+	unmeasuredPlatform := make(map[Directive]bool)
 	for _, admission := range baseline.ProductionDirectives {
 		production[admission.Directive] = admission
+		if admission.Class == IgnorePlatformOnly && !admission.Directive.Mapped {
+			unmeasuredPlatform[admission.Directive] = true
+		}
 	}
 	counts := make(map[string]int)
 	seen := make(map[string]bool)
@@ -897,7 +901,11 @@ func validateAWFPlatformLedger(baseline Baseline) error {
 			return fmt.Errorf("coverage: awf platform ledger has invalid entry %s:%d", platform.Directive.File, platform.Directive.Line)
 		}
 		seen[key] = true
+		delete(unmeasuredPlatform, platform.Directive)
 		counts[platform.Directive.File]++
+	}
+	if len(unmeasuredPlatform) != 0 {
+		return errors.New("coverage: awf platform ledger omits an unmeasured platform-only production directive")
 	}
 	for file := range expectedPlatforms {
 		if counts[file] != 2 {

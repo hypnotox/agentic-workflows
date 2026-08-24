@@ -147,7 +147,7 @@ covercheck_mutants_selected() {
 run_covercheck_mutants() {
   local root evidence baseline selection=always base= head= arg tmp config dry actual status
   root="$(git rev-parse --show-toplevel)" || { echo "covercheck-mutants: repository root unavailable" >&2; return 1; }
-  evidence="$root/.awf/efforts/covercheck-mutants-evidence"
+  evidence="$root/.cache/covercheck-mutants-evidence"
   baseline="$root/coverage-baseline.json"
   while [ "$#" -gt 0 ]; do
     case "$1" in
