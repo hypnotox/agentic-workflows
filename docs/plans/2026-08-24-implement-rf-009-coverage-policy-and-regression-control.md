@@ -341,7 +341,9 @@ recipe commands under one exported temporary environment, and makes cleanup cons
 data rather than trap source. The mutation checker now loads the canonical generated baseline through
 `internal/coverage`; the explicit `-` input is the no-equivalents qualification path before Phase 4
 activation. These corrections invalidate the earlier qualification evidence and require one fresh
-three-run set against the complete corrected staged tree.
+three-run set against the complete corrected staged tree. The single verify pass found one residual
+mechanical oracle gap: renewal fixtures now use distinct paths and durations, reject corrupt second
+and third pairs, and fail under a controlled constant-index reader mutation.
 
 After the Phase 4 commit exists, run the repo-local audit over the complete implementation range.
 After terminal implementation assurance settles over that exact tip and audit evidence, return

@@ -239,9 +239,12 @@ func TestRenewalRequiresThreeMatchingTrustedRunsWithinBudget(t *testing.T) {
 }
 
 func TestRunRenewal(t *testing.T) {
-	dry := writeJSON(t, string(completeReport("RUNNABLE", "RUNNABLE")))
-	actual := writeJSON(t, string(completeReport("KILLED", "KILLED")))
-	args := []string{"mutants", "renewal", "-", "cmd/covercheck", "500", dry, actual, "500", dry, actual, "500", dry, actual}
+	dry1, actual1 := writeJSON(t, string(completeReport("RUNNABLE"))), writeJSON(t, string(completeReport("KILLED")))
+	dry2 := writeJSON(t, strings.Replace(string(completeReport("RUNNABLE")), `"elapsed_time":12`, `"elapsed_time":11`, 1))
+	actual2 := writeJSON(t, strings.Replace(string(completeReport("KILLED")), `"elapsed_time":12`, `"elapsed_time":11`, 1))
+	dry3 := writeJSON(t, strings.Replace(string(completeReport("RUNNABLE")), `"elapsed_time":12`, `"elapsed_time":13`, 1))
+	actual3 := writeJSON(t, strings.Replace(string(completeReport("KILLED")), `"elapsed_time":12`, `"elapsed_time":13`, 1))
+	args := []string{"mutants", "renewal", "-", "cmd/covercheck", "100", dry1, actual1, "200", dry2, actual2, "300", dry3, actual3}
 	var out, errb bytes.Buffer
 	if code := run(args, &out, &errb); code != 0 {
 		t.Fatalf("renewal = %d: %s", code, errb.String())
@@ -253,33 +256,36 @@ func TestRunRenewal(t *testing.T) {
 
 func TestRunRenewalRejectsInvalidInputs(t *testing.T) {
 	invalidBaseline := writeJSON(t, `{"equivalentMutants":[]}`)
-	dry := writeJSON(t, string(completeReport("RUNNABLE")))
-	actual := writeJSON(t, string(completeReport("KILLED")))
+	dry1, actual1 := writeJSON(t, string(completeReport("RUNNABLE"))), writeJSON(t, string(completeReport("KILLED")))
+	dry2 := writeJSON(t, strings.Replace(string(completeReport("RUNNABLE")), `"elapsed_time":12`, `"elapsed_time":11`, 1))
+	actual2 := writeJSON(t, strings.Replace(string(completeReport("KILLED")), `"elapsed_time":12`, `"elapsed_time":11`, 1))
+	dry3 := writeJSON(t, strings.Replace(string(completeReport("RUNNABLE")), `"elapsed_time":12`, `"elapsed_time":13`, 1))
+	actual3 := writeJSON(t, strings.Replace(string(completeReport("KILLED")), `"elapsed_time":12`, `"elapsed_time":13`, 1))
 	invalidReport := writeJSON(t, `{}`)
 	missing := filepath.Join(t.TempDir(), "missing.json")
-	valid := []string{"mutants", "renewal", "-", "cmd/covercheck", "1", dry, actual, "1", dry, actual, "1", dry, actual}
+	valid := []string{"mutants", "renewal", "-", "cmd/covercheck", "100", dry1, actual1, "200", dry2, actual2, "300", dry3, actual3}
 	cases := map[string][]string{
-		"wrong arity":       {"mutants", "renewal"},
-		"missing baseline":  append([]string(nil), valid...),
-		"partial baseline":  append([]string(nil), valid...),
-		"invalid elapsed":   append([]string(nil), valid...),
-		"nonfinite elapsed": append([]string(nil), valid...),
-		"missing dry":       append([]string(nil), valid...),
-		"missing actual":    append([]string(nil), valid...),
-		"untrusted dry":     append([]string(nil), valid...),
-		"untrusted actual":  append([]string(nil), valid...),
-		"mismatched pair":   append([]string(nil), valid...),
-		"over budget":       append([]string(nil), valid...),
+		"wrong arity":            {"mutants", "renewal"},
+		"missing baseline":       append([]string(nil), valid...),
+		"partial baseline":       append([]string(nil), valid...),
+		"invalid elapsed":        append([]string(nil), valid...),
+		"nonfinite elapsed":      append([]string(nil), valid...),
+		"missing second dry":     append([]string(nil), valid...),
+		"missing second actual":  append([]string(nil), valid...),
+		"untrusted second dry":   append([]string(nil), valid...),
+		"untrusted third actual": append([]string(nil), valid...),
+		"mismatched second pair": append([]string(nil), valid...),
+		"over budget":            append([]string(nil), valid...),
 	}
 	cases["missing baseline"][2] = missing
 	cases["partial baseline"][2] = invalidBaseline
 	cases["invalid elapsed"][4] = "bad"
 	cases["nonfinite elapsed"][4] = "NaN"
-	cases["missing dry"][5] = missing
-	cases["missing actual"][6] = missing
-	cases["untrusted dry"][5] = invalidReport
-	cases["untrusted actual"][6] = invalidReport
-	cases["mismatched pair"][5] = writeJSON(t, string(completeReport("RUNNABLE", "RUNNABLE")))
+	cases["missing second dry"][8] = missing
+	cases["missing second actual"][9] = missing
+	cases["untrusted second dry"][8] = invalidReport
+	cases["untrusted third actual"][12] = invalidReport
+	cases["mismatched second pair"][8] = writeJSON(t, string(completeReport("RUNNABLE", "RUNNABLE")))
 	cases["over budget"][4], cases["over budget"][7], cases["over budget"][10] = "501", "501", "501"
 	for name, args := range cases {
 		t.Run(name, func(t *testing.T) {
