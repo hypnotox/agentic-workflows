@@ -245,13 +245,13 @@ func (s store) replaceResidentExpected(path string, raw []byte, label string, ex
 				return activityStorageFailure(operation, "replace", err)
 			}
 		}
-		if err := filepublication.Publish(path, raw, 0o600); err != nil { // coverage-ignore: activity creation collisions and mechanism faults are covered by the shared publisher
+		if err := filepublication.Publish(path, raw, 0o600); err != nil {
 			if errors.Is(err, os.ErrExist) {
 				return activityStorageFailure(operation, "replace", publicationIdentityRefusal(err))
 			}
 			return activityStorageFailure(operation, "replace", err)
 		}
-		if err := s.hit(label + ".directory-fsync"); err != nil { // coverage-ignore: activity fault-matrix callers cover this boundary through replacement
+		if err := s.hit(label + ".directory-fsync"); err != nil {
 			return activityStorageFailure(operation, "directory-fsync", err)
 		}
 		if err := syncDirectory(filepath.Dir(path)); err != nil { // coverage-ignore: injected directory-fsync faults cover this durability boundary; a real failure requires a storage fault

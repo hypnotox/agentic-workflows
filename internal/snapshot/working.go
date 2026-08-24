@@ -43,7 +43,7 @@ func WorkingTree(ctx context.Context, repo *git.Repo) (*Tree, error) {
 			}
 			var readErr error
 			data, readErr = os.ReadFile(full)
-			if readErr != nil { // coverage-ignore: Lstat just identified this regular file; only a concurrent mutation can fail its read
+			if readErr != nil {
 				return nil, fmt.Errorf("snapshot working read %s: %w", p, readErr)
 			}
 			if info.Mode().Perm()&0o111 != 0 {

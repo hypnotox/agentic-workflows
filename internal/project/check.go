@@ -255,11 +255,11 @@ func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Conte
 		indexPaths = repo.IndexPaths
 	}
 	tracking, err := generatedcheck.Tracking(ctx, p.isNested(), indexPaths, *op)
-	if err != nil { // coverage-ignore: the prepared output plan already read every output
+	if err != nil {
 		return repositorycheck.Slot{}, nil, checkresult.Result{}, err
 	}
 	lock, found, err := manifest.LoadOptional(lockPath(p.root()))
-	if err != nil { // coverage-ignore: prepared configuration facts already validated generated inputs
+	if err != nil {
 		return repositorycheck.Slot{}, nil, checkresult.Result{}, err
 	}
 	results := []repositorycheck.Slot{}

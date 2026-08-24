@@ -80,7 +80,7 @@ func openEffortComposition(ctx context.Context, root string) (effortComposition,
 		RemoveTree:            os.RemoveAll,
 		ExpectedArchiveMarker: archiveMarker,
 	})
-	if err != nil { // coverage-ignore: the complete literal dependency set and already-resolved roots make service composition infallible
+	if err != nil {
 		return effortComposition{}, err
 	}
 	manager, err := worktree.Open(roots, openCheckout, service)

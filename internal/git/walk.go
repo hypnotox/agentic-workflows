@@ -350,7 +350,7 @@ func mergeTouchesPrefix(ctx context.Context, c *object.Commit, prefix string) (b
 		if contextErr := ctx.Err(); contextErr != nil {
 			return false, contextErr
 		}
-		return false, err // coverage-ignore: the validated change frontier leaves cancellation as the only reachable diff failure
+		return false, err
 	}
 	for _, change := range changes {
 		_, oldInside := scopedPath(change.From.Name, prefix)

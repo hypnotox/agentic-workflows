@@ -89,7 +89,7 @@ func scaffoldCurrentState(cfg *config.Config, name string) error {
 
 func synchronize(ctx context.Context, root string, loader *project.Loader) (presentation.Document, error) {
 	state, cfg, err := loader.OpenForOperation(ctx, root)
-	if err != nil { // coverage-ignore: the operation just wrote a Loader-derived valid config; failure requires concurrent project mutation
+	if err != nil {
 		return presentation.Document{}, err
 	}
 	result, err := publisher.New(state.OutputState(), cfg, publisher.NewFilesystemReader(state.Root()), project.Version).Sync()

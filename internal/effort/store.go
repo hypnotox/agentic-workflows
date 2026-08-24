@@ -465,7 +465,7 @@ func (s store) findTombstones(slug string) ([]string, error) {
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, nil
 	}
-	if err != nil { // coverage-ignore: callers validate the efforts root; ReadDir failure requires a concurrent namespace or storage fault
+	if err != nil {
 		return nil, err
 	}
 	var matches []string

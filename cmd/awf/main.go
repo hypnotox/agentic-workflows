@@ -59,7 +59,7 @@ func globalHelp() (presentation.Document, error) {
 		return presentation.Document{}, err // coverage-ignore: checked-in command metadata is presentation-valid
 	}
 	commands, err := commandSections(clispec.Commands)
-	if err != nil { // coverage-ignore: checked-in command metadata is presentation-valid
+	if err != nil {
 		return presentation.Document{}, err // coverage-ignore: checked-in command metadata is presentation-valid
 	}
 	related, err := presentation.NewList("related commands", mustValues("awf <command> --help")...)
@@ -141,11 +141,11 @@ func commandRecords(specs []clispec.Command) ([]presentation.Record, error) {
 
 func commandRecord(spec clispec.Command) (presentation.Record, error) {
 	name, err := presentation.Literal(spec.Name)
-	if err != nil { // coverage-ignore: checked-in command metadata is presentation-valid
+	if err != nil {
 		return presentation.Record{}, err // coverage-ignore: checked-in command metadata is presentation-valid
 	}
 	summary, err := presentation.Prose(spec.Summary)
-	if err != nil { // coverage-ignore: checked-in command metadata is presentation-valid
+	if err != nil {
 		return presentation.Record{}, err // coverage-ignore: checked-in command metadata is presentation-valid
 	}
 	return presentation.NewRecord(name, summary)

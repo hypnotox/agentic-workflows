@@ -74,7 +74,7 @@ func artifactConfigHash(p renderInputs, assembled string, sc config.Sidecar, par
 		// so it must not fold config into the hash. The hash itself stays over
 		// the raw on-disk bytes below.
 		stripped, serr := render.StripAuthoringComments(string(b))
-		if serr != nil { // coverage-ignore: planSections stripped this same consumed part earlier in the render pass and errored there, so a malformed opener cannot reach this re-read
+		if serr != nil {
 			return "", serr
 		}
 		if render.ReferencesScopePlaceholder(stripped) {

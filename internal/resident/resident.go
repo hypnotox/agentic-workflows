@@ -172,7 +172,7 @@ func InspectRoots(root string) ([]string, error) {
 		if err != nil { // coverage-ignore: root discovery's lstat error needs an external filesystem fault; unsafe and non-empty roots are covered
 			return nil, fmt.Errorf("inspect resident root %s: %w", name, err)
 		}
-		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() { // coverage-ignore: resident-root tests exercise unsafe filesystem entries through the public uninstall path
+		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
 			return nil, fmt.Errorf("unsafe resident root %s", name)
 		}
 		entries, err := os.ReadDir(path)

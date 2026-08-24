@@ -24,7 +24,7 @@ func injectSourceMarker(content string, sources []string) string {
 	}
 	banner := "<!-- " + bannerText + " -->\n"
 	at := strings.Index(content, banner)
-	if at < 0 { // coverage-ignore: source markers are only applied after an HTML banner
+	if at < 0 {
 		return content
 	}
 	marker := "<!-- awf:source " + strings.Join(sources, " ") + " -->\n"

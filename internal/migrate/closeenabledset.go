@@ -52,7 +52,7 @@ func closeEnabledSetWithEditor(root string, cat *catalog.Catalog, out *Changes, 
 	for _, a := range cfg.Agents {
 		enabled[historicalNode{Kind: "agent", Name: a}] = true
 	}
-	for _, d := range cfg.Docs { // coverage-ignore: close-enabled-set test fixtures exercise skill/agent closure; docs are inert in this migration's enabled map
+	for _, d := range cfg.Docs {
 		enabled[historicalNode{Kind: "doc", Name: d}] = true
 	}
 

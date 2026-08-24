@@ -46,13 +46,13 @@ func TestRunHundredPercent(t *testing.T) {
 }
 
 func TestRunBelowHundred(t *testing.T) {
-	prof := modWith(t, "example.com/m/f.go:2.1,2.5 1 0\n")
+	prof := modWith(t, "example.com/m/f.go:2.1,2.5 1 1\nexample.com/m/f.go:3.1,3.5 1 0\n")
 	var out, errb bytes.Buffer
 	if code := run([]string{"covercheck", prof}, &out, &errb); code != 1 {
 		t.Fatalf("expected exit 1 below 100%%, got %d", code)
 	}
-	if !strings.Contains(errb.String(), "below 100%") {
-		t.Errorf("expected below-100 message, got %q", errb.String())
+	if got, want := errb.String(), "covercheck: coverage below 100% (1 uncovered statement(s))\n"; got != want {
+		t.Errorf("diagnostic = %q, want %q", got, want)
 	}
 }
 

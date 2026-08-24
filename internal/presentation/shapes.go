@@ -253,7 +253,7 @@ func (m Mutation) Document() (Document, error) {
 	}
 	if len(m.NextActions) > 0 {
 		steps, err := NewSteps("next actions", m.NextActions...)
-		if err != nil { // coverage-ignore: typed Values and fixed grammar-valid next-actions label already validate
+		if err != nil {
 			return Document{}, err
 		}
 		children = append(children, steps)

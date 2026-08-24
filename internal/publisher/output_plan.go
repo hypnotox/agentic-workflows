@@ -377,7 +377,7 @@ func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			}
 		}
 		declaredInputs, err := markdownInputs(e.TID, authored...)
-		if err != nil { // coverage-ignore: catalog document template IDs and embedded sources are validated static authority
+		if err != nil {
 			return nil, err
 		}
 		add(out, e.TID, declarer, declaredInputs)
@@ -627,7 +627,7 @@ func targetOutputDeclarations(p renderInputs, eff map[string]bool) (map[string]t
 		}
 		for _, o := range resolvedTargetOutputs(t, p.cfg.Prefix, slices.Sorted(maps.Keys(projectCatalog(p).Skills))) {
 			src, err := fs.ReadFile(templates.FS, o.TemplateID)
-			if err != nil { // coverage-ignore: TestTargetOutputDeclarationsRejectUnreadableTemplate proves this error; Go's embedded-filesystem profile does not attribute its return block.
+			if err != nil {
 				return nil, fmt.Errorf("read template %s: %w", o.TemplateID, err)
 			}
 			expanded, err := render.ExpandIncludes(string(src), templates.FS)
@@ -673,7 +673,7 @@ func targetOutputDeclarations(p renderInputs, eff map[string]bool) (map[string]t
 // lifecycle call performs each derivation exactly once.
 func outputPlan(p renderInputs) (*OutputPlan, error) {
 	corpus, pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
-	if err != nil { // coverage-ignore: direct compatibility entry; lifecycle entries derive this corpus before calling the threaded planner
+	if err != nil {
 		return nil, err
 	}
 	return outputPlanWithPitfalls(p, corpus, pitfalls, topics, eff)
@@ -714,7 +714,6 @@ func outputPlanWithPitfalls(p renderInputs, corpus adr.Corpus, pitfalls pitfall.
 			if plan.Nodes[i].Recipe != recipe {
 				return fmt.Errorf("two artifacts render to the same output path %q: conflicting output recipes", f.Path)
 			}
-			// coverage-ignore: target-output duplicates coalesce before rendering and all other producer paths are unique.
 			plan.Nodes[i].Declarers = append(plan.Nodes[i].Declarers, f.Declarer)
 			plan.Nodes[i].DeclarerProjections = append(plan.Nodes[i].DeclarerProjections, f.DeclarerProjection)
 			return nil
@@ -742,7 +741,7 @@ func outputPlanWithPitfalls(p renderInputs, corpus adr.Corpus, pitfalls pitfall.
 		return nil, err
 	}
 	for _, f := range localDocs {
-		if err := add(f, f.Declarer); err != nil { // coverage-ignore: normalized local names are unique and validation rejects every output collision before render
+		if err := add(f, f.Declarer); err != nil {
 			return nil, err
 		}
 	}

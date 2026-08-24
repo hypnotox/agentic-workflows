@@ -219,7 +219,7 @@ func blobsOfTree(ctx context.Context, tree *object.Tree, prefix string) ([]Index
 		out = append(out, IndexBlob{Path: path, Bytes: data, Mode: blobModeOf(f.Mode)})
 		return nil
 	})
-	if err != nil { // coverage-ignore: the callback only returns the impossible blob-reader faults excluded above
+	if err != nil {
 		return nil, err
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Path < out[j].Path })

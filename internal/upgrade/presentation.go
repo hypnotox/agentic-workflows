@@ -32,7 +32,7 @@ func (o Outcome) mutation(status string) (presentation.Mutation, error) {
 // diagnostic using only axes still changed at return.
 func (o Outcome) FailureDiagnostic(condition string, cause error) (presentation.Diagnostic, error) {
 	changed, err := journalFields(o.terminalChanged())
-	if err != nil { // coverage-ignore: terminal evidence formatting always includes the fixed nonempty separator
+	if err != nil {
 		return presentation.Diagnostic{}, err
 	}
 	steps, err := upgradeRemedies(len(changed) > 0)

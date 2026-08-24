@@ -128,11 +128,12 @@ it satisfy a production entry.
 ### Task 2.2: Close the two known `cmd/covercheck` mutation survivors in tests only
 Applying: ["hybrid-raw-coverage-ratchet-and-targeted-mutation-regression:targeted-mutation-blocker", "hybrid-raw-coverage-ratchet-and-targeted-mutation-regression:behavior-first-oracles"]
 Paths: ["cmd/covercheck/main_test.go", "cmd/covercheck/main.go"]
-Post-check: "Capture a complete focused gremlins v0.6.0 report against the unchanged `./cmd/covercheck` surface and confirm it contains the two known genuine arithmetic survivors. Strengthen the result assertions without changing `cmd/covercheck/main.go`, rerun focused tests, then rerun the identical mutation recipe and require both survivor identities to be killed with no new survivor or timeout. `git diff --exit-code -- cmd/covercheck/main.go` against the phase base succeeds."
+Post-check: "Retain the invalid current Gremlins cutoff evidence only as corroboration that the two immutable-base arithmetic gaps recur before cutoff; never treat it as complete, timeout-free, survivor-complete, baseline, qualification, or blocker evidence. Strengthen the exact partial-profile diagnostic assertion without changing `cmd/covercheck/main.go`. Temporarily replace its unchanged subtraction with addition, require the focused test to fail on the exact diagnostic, fully restore production, and require the same test to pass. `git diff --exit-code b8905f02c -- cmd/covercheck/main.go` succeeds."
 
 Assert the exact covered, total, and reported percentage relationship instead of merely asserting
-that subtraction fails. Mutation is the durable red/green oracle because ordinary tests already pass
-before the assertion is strengthened. Preserve every production branch and interface.
+that subtraction fails. The temporary, fully restored subtraction-to-addition mutation and exact
+diagnostic are the current-tip red/green oracle for both duplicate-semantic arithmetic gaps. Preserve
+every production branch and interface.
 
 ### Phase close
 
@@ -272,6 +273,27 @@ Plan review disposition: keep executed-ignore Error evaluation under the canonic
 `internal/coverage` owner and limit `cmd/repoaudit` to range-based baseline addition and move evidence.
 This avoids a stale or parallel executed-body policy while preserving the ADR's Error and Warning
 boundaries.
+
+Phase 2 directive adjudication: an uncached terminal whole profile reports raw 22,049/22,776,
+filtered 21,914/21,914, 748 production directives, 35 disjoint test directives, and zero positively
+executed ignored bodies after removing every member of the fresh 27-member canonical live set. Direct
+source, caller, and owned-test review classifies the retained production inventory as 17 directly tested
+process-exit seams, 534 revalidated impossible states, 193 safely uninducible deterministic faults, and
+four platform-only rollback branches. The platform set is exactly lines 23 and 41 of
+`internal/effort/publication_darwin.go` and lines 73 and 94 of
+`internal/effort/publication_windows.go`; no retained entry is unclassified or unsupported.
+
+Phase 2 reasoned deviation: after Phase 1 expanded `cmd/covercheck`, two operator-pinned,
+single-worker integration runs reached the 900-second cutoff without a report, and one diagnostic run
+remained incomplete at 1,800 seconds after processing 21 mutants. These runs are invalid for baseline,
+qualification, completeness, timeout, survivor, or blocker claims. Combined with the prior three
+complete immutable-base runs, they corroborate only the two recurring arithmetic gaps at the unchanged
+coverage subtraction. Phase 2 therefore uses a fully restored subtraction-to-addition mutation and the
+exact partial-profile diagnostic assertion as its current-tip red/green oracle. The controlled mutant
+reports three uncovered statements instead of one and makes `TestRunBelowHundred` fail; the restored
+production subtraction makes the same focused test pass, and `cmd/covercheck/main.go` is byte-unchanged
+from the phase base. Phase 3 cannot proceed until a separately reviewed authority amendment establishes
+a complete deterministic recipe within the approved outcome and runtime budget.
 
 After the Phase 4 commit exists, run the repo-local audit over the complete implementation range.
 After terminal implementation assurance settles over that exact tip and audit evidence, return

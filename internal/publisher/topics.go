@@ -111,7 +111,7 @@ func topicHash(root string, read ProjectTreeReader, model topic.TopicRenderModel
 }
 func relSlash(root, path string) string {
 	r, err := filepath.Rel(root, path)
-	if err != nil { // coverage-ignore: every topic input is discovered beneath the project root
+	if err != nil {
 		return filepath.ToSlash(path)
 	}
 	return filepath.ToSlash(r)

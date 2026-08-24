@@ -123,7 +123,7 @@ func commitScopesDisplay(p renderInputs) string {
 func effectiveSkills(p renderInputs) (map[string]bool, error) {
 	eff := map[string]bool{}
 	for name := range projectCatalog(p).Skills {
-		if _, err := p.cfg.Sidecar("skills", name); err != nil { // coverage-ignore: declaration-first planning just parsed this catalog skill sidecar
+		if _, err := p.cfg.Sidecar("skills", name); err != nil {
 			return nil, err
 		}
 		eff[name] = true
@@ -135,7 +135,7 @@ func effectiveSkills(p renderInputs) (map[string]bool, error) {
 // derived from the absolute PartPath so the parts-path structure has one source.
 func partRel(p renderInputs, kind, artifact, section string) string {
 	rel, err := filepath.Rel(p.root(), p.cfg.PartPath(kind, artifact, section))
-	if err != nil { // coverage-ignore: PartPath is always rooted under p.root(), so Rel cannot fail
+	if err != nil {
 		return ""
 	}
 	return filepath.ToSlash(rel)
