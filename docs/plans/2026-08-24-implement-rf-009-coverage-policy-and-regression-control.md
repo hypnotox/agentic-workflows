@@ -112,10 +112,10 @@ Advances: ["ignore-accountability", "mutation-regression", "reporting-compatibil
 ### Task 2.1: Adjudicate executed ignores and prepare the retained directive inventory
 Kind: batch
 Applying: ["hybrid-raw-coverage-ratchet-and-targeted-mutation-regression:retained-ignore-admission", "hybrid-raw-coverage-ratchet-and-targeted-mutation-regression:platform-ledger", "hybrid-raw-coverage-ratchet-and-targeted-mutation-regression:executed-ignore-error", "hybrid-raw-coverage-ratchet-and-targeted-mutation-regression:behavior-first-oracles"]
-Paths: ["glob:**/*.go", "internal/coverage/policy_test.go"]
+Paths: ["glob:**/*.go", "internal/coverage/policy_test.go", "coverage-review.json"]
 Representative: "A production directive remains only when direct source and behavioral evidence place it in one admitted class; an executed guarded body loses its false ignore while its existing behavior oracle remains unchanged."
 Edge: "The Darwin and Windows publication rollback entries remain present as static platform-only evidence and are not claimed as measured by the Linux profile; `_test.go` directives remain visible only in the test inventory."
-Post-check: "Run an uncached whole-module profile and the policy diagnostic after confirming the profile command succeeded. Before marker correction, capture its nonzero result and exact positively executed ignored guarded-body findings; after correction it reports a zero terminal set of those findings, a zero terminal set of unclassified or unsupported retained production directives, disjoint production and test inventories, and exactly the source-proven platform ledger entries from the ADR. Focused affected-package tests and `go test ./internal/coverage ./cmd/covercheck` exit zero; the source diff contains no control-flow, export, seam, or assertion weakening introduced for a metric."
+Post-check: "Run an uncached whole-module profile and the policy diagnostic after confirming the profile command succeeded. Before marker correction, capture its nonzero result and exact positively executed ignored guarded-body findings; after correction it reports a zero terminal set of those findings, a zero terminal set of unclassified or unsupported retained production directives, disjoint production and test inventories, and exactly the source-proven platform ledger entries from the ADR. `coverage-review.json` loads strictly and maps every terminal production directive identity to one admitted class and concrete source/caller/test evidence. Focused affected-package tests and `go test ./internal/coverage ./cmd/covercheck` exit zero; the source diff contains no control-flow, export, seam, or assertion weakening introduced for a metric."
 
 Use the canonical diagnostic to adjudicate every member of the live positively executed guarded-body
 set from the fresh canonical OR-merged profile, without freezing a count or preselecting identities.
@@ -198,7 +198,7 @@ Completes: ["raw-identity-ratchet", "critical-selector-protection", "ignore-acco
 ### Task 4.1: Generate and independently review the initial canonical baseline
 Kind: batch
 Applying: ["hybrid-raw-coverage-ratchet-and-targeted-mutation-regression:generated-baseline-owner", "hybrid-raw-coverage-ratchet-and-targeted-mutation-regression:critical-selectors", "hybrid-raw-coverage-ratchet-and-targeted-mutation-regression:retained-ignore-admission", "hybrid-raw-coverage-ratchet-and-targeted-mutation-regression:platform-ledger", "hybrid-raw-coverage-ratchet-and-targeted-mutation-regression:mutation-trust-contract"]
-Paths: ["coverage-baseline.json", "glob:**/*.go"]
+Paths: ["coverage-baseline.json", "coverage-review.json", "glob:**/*.go"]
 Representative: "Each raw repository miss appears by exact identity with its reviewed admission reason and in every applicable whole-derived selector; each retained production directive has one admitted class and direct evidence."
 Edge: "A moved span remains an addition requiring review even when an unrelated baseline identity disappears; the four platform entries remain unmeasured; the clean qualified mutation run contributes no fabricated equivalent survivor."
 Post-check: "After a successful uncached whole-module profile, regenerate and read back `coverage-baseline.json`; a second regeneration produces an empty diff. Deterministic set comparisons report zero unbaselined repository or selector identities, zero stale identities, zero unsupported production directives, zero production/test overlap, zero positively executed ignored bodies, zero noncanonical fields, and zero unreviewed equivalent survivors. Independently review every initial raw identity, directive admission, platform entry, selector membership, and mutation entry by exact range rather than aggregate count, and record the review range and disposition in Notes."
@@ -277,11 +277,14 @@ boundaries.
 Phase 2 directive adjudication: an uncached terminal whole profile reports raw 22,049/22,776,
 filtered 21,914/21,914, 748 production directives, 35 disjoint test directives, and zero positively
 executed ignored bodies after removing every member of the fresh 27-member canonical live set. Direct
-source, caller, and owned-test review classifies the retained production inventory as 17 directly tested
-process-exit seams, 534 revalidated impossible states, 193 safely uninducible deterministic faults, and
-four platform-only rollback branches. The platform set is exactly lines 23 and 41 of
-`internal/effort/publication_darwin.go` and lines 73 and 94 of
-`internal/effort/publication_windows.go`; no retained entry is unclassified or unsupported.
+source, caller, and owned-test review is recorded by exact identity in `coverage-review.json`: 17
+directly tested process-exit seams, 406 revalidated impossible states, 321 safely uninducible
+deterministic faults, and four platform-only rollback branches. The platform set is exactly lines 23
+and 41 of `internal/effort/publication_darwin.go` and lines 73 and 94 of
+`internal/effort/publication_windows.go`; no retained entry is unclassified or unsupported. Strict
+loading and exact-set reconciliation against the terminal analysis pass; the evidence artifact has
+SHA-256 `cc26bc0e99619c4c11c5944c9fd9a933cd6be56ba851d25d5868247a58bba58c` and remains the Phase 4
+baseline-generation input.
 
 Phase 2 reasoned deviation: after Phase 1 expanded `cmd/covercheck`, two operator-pinned,
 single-worker integration runs reached the 900-second cutoff without a report, and one diagnostic run
