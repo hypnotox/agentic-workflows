@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-hybrid-raw-coverage-ratchet-and-targeted-mutation-regression: Hybrid raw coverage ratchet and targeted mutation regression](hybrid-raw-coverage-ratchet-and-targeted-mutation-regression.md) (Proposed)
 
 ## History
 
