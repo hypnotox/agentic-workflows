@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: hybrid-raw-coverage-ratchet-and-targeted-mutation-regression
-status: Proposed
+status: Accepted
 date: 2026-08-24
 ---
 # ADR-hybrid-raw-coverage-ratchet-and-targeted-mutation-regression: Hybrid raw coverage ratchet and targeted mutation regression
@@ -174,3 +174,4 @@ repository-local development tooling.
 ## Status history
 
 - 2026-08-24: Proposed
+- 2026-08-24: Accepted; content-sha256: 8aa65de13e681adee3792959abaff17174152a6752c9ed16e12436f391556564
