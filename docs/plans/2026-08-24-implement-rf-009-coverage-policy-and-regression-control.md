@@ -87,6 +87,22 @@ old gate remains authoritative and green.
 feat(tooling): establish raw coverage policy owner
 ```
 
+### Completed Phase 1 inventory and required freshness barrier
+
+Phase 1 landed the typed identity and policy model, exact selector derivation, canonical regeneration,
+separate directive inventories, static platform ledger validation, policy diagnostics, and compatible
+CLI in `cadc5688c`, then settled its exact-range mechanical review in `5c2b96a6b`. The completed
+mapper incorrectly treated every positive same-line condition or evaluation block as guarded-body
+entry, so its executed-ignore diagnostic is affected by the ADR amendment.
+
+Before any Phase 2 marker or assertion change, correct that completed Phase 1 mapper to canonically
+OR-merge duplicate exact identities and match exact syntax-position guarded-body entry. First add
+failing fixtures that distinguish same-line condition and evaluation blocks from body entry and that
+require duplicate mode-set counts to combine by logical OR. Then make those fixtures pass, capture a
+fresh uncached diagnostic and its exact live set, run the focused tests, staged check, and full gate,
+and obtain renewed independent implementation assurance over the complete corrected Phase 1 range.
+Phase 2 cannot begin until that correction and renewed assurance settle.
+
 ## Phase 2: Settle directive truth and behavior-first assertions
 
 **Execution mode: inline.**
@@ -101,7 +117,8 @@ Representative: "A production directive remains only when direct source and beha
 Edge: "The Darwin and Windows publication rollback entries remain present as static platform-only evidence and are not claimed as measured by the Linux profile; `_test.go` directives remain visible only in the test inventory."
 Post-check: "Run an uncached whole-module profile and the policy diagnostic after confirming the profile command succeeded. Before marker correction, capture its nonzero result and exact positively executed ignored guarded-body findings; after correction it reports a zero terminal set of those findings, a zero terminal set of unclassified or unsupported retained production directives, disjoint production and test inventories, and exactly the source-proven platform ledger entries from the ADR. Focused affected-package tests and `go test ./internal/coverage ./cmd/covercheck` exit zero; the source diff contains no control-flow, export, seam, or assertion weakening introduced for a metric."
 
-Use the canonical diagnostic to adjudicate the measured positives named by the approved evidence.
+Use the canonical diagnostic to adjudicate every member of the live positively executed guarded-body
+set from the fresh canonical OR-merged profile, without freezing a count or preselecting identities.
 Remove a false marker rather than changing behavior or manufacturing reachability. Review every
 retained production directive against one of the four admitted classes and record direct evidence
 for later baseline generation; never infer admission from reason text alone. Treat the historical
