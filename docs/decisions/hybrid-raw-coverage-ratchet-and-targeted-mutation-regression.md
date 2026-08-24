@@ -39,10 +39,14 @@ grandfathered exception.
 
 ADR-0065 keeps raw and filtered Codecov line coverage informational. ADR-0066 keeps mutation testing
 advisory because broad mutation is too slow and equivalent-mutant noise is too high for a general
-blocker. The narrower `cmd/covercheck` surface is different: three deterministic runs found the same
-11 mutants, with 9 killed, 2 genuinely surviving at `main.go:42:13`, and no timeouts. Both survivors
-exist because the tests assert only that subtraction reports a failure, so addition produces the
-same observed result. This exact surface is small enough to protect within the admitted budget.
+blocker. At the immutable evidence revision, three deterministic integration-mode runs found the
+same 11 `cmd/covercheck` mutants, with 9 killed, 2 genuinely surviving at `main.go:42:13`, and no
+timeouts. Phase 1 expanded the target, after which integration mode could not complete within the
+900-second limit because it ran the whole repository test suite for every mutant. A current-tip
+normal-mode calibration instead dry-discovered and executed the same complete 23-identity target
+against the package-owned behavior tests, killed every mutant, and completed its whole-repository
+preflight, discovery, execution, and validation in 96 seconds. This keeps the complete target and
+behavior boundary within the admitted budget without weakening the oracle.
 
 ## Decision
 
@@ -108,11 +112,29 @@ same observed result. This exact surface is small enough to protect within the a
    call one shared fail-conservative ownership detector, so unavailable or uncertain change evidence
    runs the blocker rather than silently skipping it.
 
-9. `decision: mutation-trust-contract` Pin gremlins v0.6.0 and explicitly pin the current operator
-   set: arithmetic base, conditionals boundary, conditionals negation, increment/decrement, and
-   invert negatives. Use the deterministic integration recipe with one worker. Limit a blocking run
-   to 900 seconds; a missing, malformed, incomplete, or timed-out result is invalid. A survivor
-   passes only when its exact identity is baseline-listed as independently reviewed equivalent.
+9. `decision: mutation-trust-contract` Pin gremlins v0.6.0 and explicitly set all operator booleans:
+   arithmetic base, conditionals boundary, conditionals negation, increment/decrement, and invert
+   negatives are true; invert assignments, invert bitwise, invert bitwise assignments, invert
+   logical, invert loop control, and remove self assignments are false. Reject every `GREMLINS_*`
+   environment override and use an empty temporary config.
+
+   Run an ordinary uncached whole-repository green preflight once, then use one-worker normal mode to
+   dry-discover and execute the complete whole `./cmd/covercheck` target against its package-owned
+   `go test ./cmd/covercheck` behavior-test universe. Before execution, require the package's exact
+   filesystem `_test.go` census to equal its no-tag `TestGoFiles` and `XTestGoFiles` census, require
+   `cmd/covercheck` to import `internal/coverage` directly, and require the compiled test dependency
+   graph to contain `internal/coverage`.
+
+   Set `TMPDIR`, `GOTMPDIR`, `TMP`, and `TEMP` to one uniquely owned subtree directly under external
+   `/tmp`; prove adequate capacity and that Git does not discover a repository there. Retain evidence
+   only in ignored effort scratch, and remove only the owned temporary subtree after proving that no
+   process or descriptor owns it. A mutant identity is its module-relative file, line, column, and
+   mutator. Require every unique dry identity to be `RUNNABLE`, require the actual report to contain
+   exactly the same unique identities, and accept only `KILLED` or an exact `LIVED` identity listed in
+   the baseline as independently reviewed equivalent. Reject missing or extra identities,
+   `NOT COVERED`, `NOT VIABLE`, `SKIPPED`, `TIMED OUT`, unknown statuses, duplicates, and every
+   missing, malformed, or incomplete report. Limit the aggregate preflight, discovery, execution,
+   and validation run to 900 seconds.
 
 10. `decision: mutation-renewal` After a gremlins version, operator set, or deterministic recipe
     change, require three complete mutation runs to produce the same trusted status set within a
@@ -155,10 +177,13 @@ reduces hand editing, but admitted regressions and equivalent mutants still requ
 Platform-only entries are honest about being unmeasured on Linux rather than disappearing from the
 inventory. Test directives remain visible without diluting production admission rules.
 
-Mutation adds bounded local and CI cost only when `cmd/covercheck` changes. Timeouts, incomplete
-reports, and configuration drift fail closed. Broad mutation and the roadmap question of mutation for
-nominal invariant proofs remain outside this decision. The exact blocker can later widen only through
-a separate decision with measured budget and noise evidence.
+Mutation adds bounded local and CI cost only when `cmd/covercheck` changes. The whole-repository
+preflight guards dependencies once, while normal-mode execution keeps each mutant inside the complete
+package-owned behavior-test universe. Exact test and dependency censuses, hermetic configuration,
+dry-to-actual identity equality, timeouts, incomplete reports, and temporary-root ownership all fail
+closed. Broad mutation and the roadmap question of mutation for nominal invariant proofs remain
+outside this decision. The exact blocker can later widen only through a separate decision with
+measured budget and noise evidence.
 
 Partial enforcement would be unsafe because a baseline without its blocker, or a blocker without its
 trusted evidence, cannot prove the policy. No adopter-facing configuration or shipped workflow
@@ -176,6 +201,9 @@ repository-local development tooling.
 | Keep ignores without classes or executed-body validation | Leaves false reachability claims mechanically indistinguishable from genuine exclusions. |
 | Gate broad mutation | The measured budget and equivalent-mutant noise do not admit a deterministic repository-wide blocker. |
 | Keep all mutation advisory | Leaves the two proven weak `cmd/covercheck` assertions without regression control despite an admitted exact budget. |
+| Retain integration-mode mutation | Repeats the whole repository suite for every mutant and no longer completes within the admitted budget. |
+| Select only changed mutants | Weakens complete whole-target discovery and cannot establish the target's trusted identity set. |
+| Replace Gremlins | Introduces unqualified semantics and another mechanism when the pinned normal-mode route is proven. |
 | Shape production for metric reachability | Makes production serve a metric rather than behavior and weakens the oracle boundary. |
 
 ## Status history
@@ -183,3 +211,4 @@ repository-local development tooling.
 - 2026-08-24: Proposed
 - 2026-08-24: Accepted; content-sha256: 8aa65de13e681adee3792959abaff17174152a6752c9ed16e12436f391556564
 - 2026-08-24: Amended; content-sha256: c9611892211abfc8f21b5c6058f86860df98cbe86b66162c9350381a19c4cb3f
+- 2026-08-24: Amended; content-sha256: 4c4333f950614995a22e4ec381b27063cac93f6e3d00bc2c0b8a8ac4ec2e3243
