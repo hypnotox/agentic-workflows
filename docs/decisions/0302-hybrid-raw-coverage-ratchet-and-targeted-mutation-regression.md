@@ -4,7 +4,7 @@ slug: hybrid-raw-coverage-ratchet-and-targeted-mutation-regression
 status: Implementing
 date: 2026-08-24
 ---
-# ADR-hybrid-raw-coverage-ratchet-and-targeted-mutation-regression: Hybrid raw coverage ratchet and targeted mutation regression
+# ADR-0302: Hybrid raw coverage ratchet and targeted mutation regression
 
 
 ## Context

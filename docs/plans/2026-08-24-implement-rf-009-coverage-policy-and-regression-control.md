@@ -373,3 +373,16 @@ integration-ready with the ADR still
 Implementing, this plan still Proposed, and managed topology intact. Effort workflow owns terminal
 ADR and plan closure, integration, topology removal, retrospective, and finish. The audit remediation
 program, later issues, and archived evidence remain outside this effort.
+
+Terminal assurance settlement: exact-range review found six authority-preserving gaps in proof backing,
+platform-ledger completeness, and package prose. Settlement commit `cdfee6f27` adds direct invariant
+markers, makes the platform ledger equal the complete unmeasured platform-only production set, and
+clarifies active repository policy versus legacy standalone compatibility. A gate-exposed activation
+omission moved automatic mutation evidence from a managed configuration path to ignored cache
+storage without changing explicit evidence handling. Canonical regeneration changed only the
+baseline universe hash to `3ddba33180dfa028a5596a777a8e67af7b54a4eb1d2687da4c5c984f7fc85514`.
+The live targeted blocker again found exact dry and actual equality for all 23 identities and killed
+every mutant. The single permitted terminal verify pass returned zero findings at the exact clean tip;
+focused tests, staged check, the full gate, complete-range audit, and repo-local audit passed. The ADR
+remains Implementing with every operation Applied, and terminal lifecycle closure remains deferred to
+effort finalization after integration.
