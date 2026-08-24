@@ -113,10 +113,142 @@ run_pi_runtime_smoke() {
   done
 }
 
+covercheck_mutants_path_owned() {
+  case "$1" in cmd/covercheck|cmd/covercheck/*) return 0;; *) return 1;; esac
+}
+
+covercheck_mutants_selected() {
+  # The staged and explicit-range callers deliberately share this one
+  # rename-disabled NUL stream parser. Any unread byte or Git failure is
+  # uncertainty, and therefore selects the blocker.
+  local mode="$1" path stream size consumed=0 saw=false
+  shift
+  stream="$(mktemp)"
+  cleanup_paths+=("$stream")
+  if [ "$mode" = staged ]; then
+    git diff --cached --name-only -z --no-renames >"$stream" || return 2
+  else
+    [ "$#" -eq 2 ] || return 2
+    git cat-file -e "$1^{commit}" && git cat-file -e "$2^{commit}" || return 2
+    git diff --name-only -z --no-renames "$1" "$2" >"$stream" || return 2
+  fi
+  while IFS= read -r -d '' path; do
+    [ -n "$path" ] || return 2
+    saw=true
+    consumed=$((consumed + ${#path} + 1))
+    covercheck_mutants_path_owned "$path" && return 0
+  done <"$stream"
+  size="$(wc -c <"$stream")" || return 2
+  [ "$consumed" -eq "$size" ] || return 2
+  "$saw" && return 1
+  return 1
+}
+
+run_covercheck_mutants() {
+  local root evidence baseline selection=always base= head= arg tmp config dry actual status
+  root="$(git rev-parse --show-toplevel)" || { echo "covercheck-mutants: repository root unavailable" >&2; return 1; }
+  evidence="$root/.awf/efforts/covercheck-mutants-evidence"
+  baseline="$root/coverage-baseline.json"
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --select-staged) [ "$selection" = always ] || { echo "covercheck-mutants: select flags conflict" >&2; return 2; }; selection=staged ;;
+      --select-range) [ "$selection" = always ] && [ "$#" -ge 3 ] || { echo "usage: ./x covercheck-mutants [--select-staged|--select-range <base> <head>] [--evidence <dir>] [--baseline <path>]" >&2; return 2; }; selection=range; base="$2"; head="$3"; shift 2 ;;
+      --evidence) [ "$#" -ge 2 ] || return 2; evidence="$2"; shift ;;
+      --baseline) [ "$#" -ge 2 ] || return 2; baseline="$2"; shift ;;
+      *) echo "usage: ./x covercheck-mutants [--select-staged|--select-range <base> <head>] [--evidence <dir>] [--baseline <path>]" >&2; return 2 ;;
+    esac
+    shift
+  done
+  case "$selection" in
+    staged) if covercheck_mutants_selected staged; then status=0; else status=$?; fi ;;
+    range) if covercheck_mutants_selected range "$base" "$head"; then status=0; else status=$?; fi ;;
+    *) status=0 ;;
+  esac
+  if [ "$status" -eq 1 ]; then echo "covercheck-mutants: no cmd/covercheck changes" >&2; return 0; fi
+  if [ "$status" -eq 2 ]; then echo "covercheck-mutants: uncertain change selection; running blocker" >&2; fi
+  mkdir -p -- "$evidence" || return 1
+  # Enclose every expensive trust step in one aggregate deadline.
+  timeout 900s bash "$0" __covercheck-mutants-inner "$root" "$evidence" "$baseline"
+}
+
+run_mutation_segment() {
+  local segments="$1" name="$2" started ended status
+  shift 2
+  started="$(date +%s%N)"
+  if "$@"; then status=0; else status=$?; fi
+  ended="$(date +%s%N)"
+  printf '%s\t%s\t%s\t%s\n' "$name" "$started" "$ended" "$status" >>"$segments"
+  return "$status"
+}
+
+cleanup_covercheck_mutation_tmp() {
+  local owned="$1" evidence="$2" status
+  if lsof +D "$owned" >"$evidence/cleanup-lsof.txt" 2>&1; then status=0; else status=$?; fi
+  if [ "$status" -ne 1 ]; then
+    echo "covercheck-mutants: temporary root still has an owner or cannot be inspected: $owned" >&2
+    printf 'preserved=%s lsof_status=%s\n' "$owned" "$status" >"$evidence/cleanup.txt"
+    return 1
+  fi
+  rm -rf -- "$owned"
+  printf 'removed=%s lsof_status=1\n' "$owned" >"$evidence/cleanup.txt"
+}
+
+run_covercheck_mutants_inner() {
+  local root="$1" evidence="$2" baseline="$3" name value tmp config dry actual imports deps tool segments
+  local census=() expected=() operators=()
+  # Preserve the command transcript alongside both machine reports for later
+  # qualification review without placing evidence in the source tree.
+  exec > >(tee -a "$evidence/runner.log") 2>&1
+  for name in $(compgen -v); do
+    case "$name" in GREMLINS_*) echo "covercheck-mutants: GREMLINS_* overrides are forbidden" >&2; return 1;; esac
+  done
+  printf '(none)\n' >"$evidence/gremlins-environment.txt"
+  [ "$(go list -m -f '{{.Version}}' github.com/go-gremlins/gremlins)" = v0.6.0 ] || { echo "covercheck-mutants: gremlins module must be v0.6.0" >&2; return 1; }
+  tool="$(go tool -n gremlins)" || return 1
+  go version -m "$tool" >"$evidence/tool-version.txt"
+  grep -F $'mod\tgithub.com/go-gremlins/gremlins\tv0.6.0\t' "$evidence/tool-version.txt" >/dev/null || { echo "covercheck-mutants: gremlins tool must be v0.6.0" >&2; return 1; }
+  tmp="$(mktemp -d /tmp/covercheck-mutants.XXXXXX)" || return 1
+  trap "status=\$?; trap - EXIT TERM; cleanup_covercheck_mutation_tmp '$tmp' '$evidence' || exit 1; exit \$status" EXIT TERM
+  df -B1 /tmp >"$evidence/capacity-before.txt"
+  [ "$(df -Pk /tmp | awk 'END { print $4 }')" -ge 1048576 ] || { echo "covercheck-mutants: /tmp capacity below 1 GiB" >&2; return 1; }
+  if git -C "$tmp" rev-parse --show-toplevel >"$evidence/git-isolation.stdout" 2>"$evidence/git-isolation.stderr"; then echo "covercheck-mutants: temporary root is inside Git discovery" >&2; return 1; fi
+  printf 'outside-git=%s\n' "$tmp" >"$evidence/git-isolation.txt"
+  config="$tmp/gremlins.yaml"; printf 'config: {}\n' >"$config"
+  sha256sum "$config" >"$evidence/config.sha256"
+  git rev-parse HEAD >"$evidence/base-head.txt"
+  git write-tree >"$evidence/staged-tree.txt"
+  mapfile -t census < <(find "$root/cmd/covercheck" -maxdepth 1 -type f -name '*_test.go' -printf '%f\n' | LC_ALL=C sort)
+  mapfile -t expected < <(go list -f '{{join .TestGoFiles "\n"}}{{"\n"}}{{join .XTestGoFiles "\n"}}' ./cmd/covercheck | sed '/^$/d' | LC_ALL=C sort)
+  [ "${census[*]}" = "${expected[*]}" ] || { echo "covercheck-mutants: test census differs from no-tag go list" >&2; return 1; }
+  printf '%s\n' "${census[@]}" >"$evidence/test-files.txt"
+  imports="$(go list -f '{{join .Imports "\n"}}' ./cmd/covercheck)"
+  grep -Fxq 'github.com/hypnotox/agentic-workflows/internal/coverage' <<<"$imports" || { echo "covercheck-mutants: cmd/covercheck lacks direct internal/coverage import" >&2; return 1; }
+  deps="$(go list -deps -test ./cmd/covercheck)"
+  grep -Fxq 'github.com/hypnotox/agentic-workflows/internal/coverage' <<<"$deps" || { echo "covercheck-mutants: compiled covercheck tests lack internal/coverage dependency" >&2; return 1; }
+  printf 'direct-import=true\ncompiled-test-dependency=true\n' >"$evidence/dependency-contract.txt"
+  while IFS= read -r value; do operators+=("$value"); done < <(go run ./cmd/mutants operators)
+  [ "${#operators[@]}" -eq 11 ] || { echo "covercheck-mutants: operator inventory is incomplete" >&2; return 1; }
+  printf '%s\n' "${operators[@]}" >"$evidence/operators.txt"
+  dry="$evidence/dry.json"; actual="$evidence/actual.json"; segments="$evidence/segments.tsv"; : >"$segments"
+  run_mutation_segment "$segments" preflight env TMPDIR="$tmp" GOTMPDIR="$tmp" TMP="$tmp" TEMP="$tmp" go test -count=1 ./...
+  run_mutation_segment "$segments" discovery env TMPDIR="$tmp" GOTMPDIR="$tmp" TMP="$tmp" TEMP="$tmp" go tool gremlins --config "$config" unleash --integration=false --workers=1 --test-cpu=1 --timeout-coefficient=20 --threshold-efficacy=0 --threshold-mcover=0 --tags= --coverpkg= --diff= --dry-run "${operators[@]}" --output "$dry" ./cmd/covercheck
+  run_mutation_segment "$segments" mutation env TMPDIR="$tmp" GOTMPDIR="$tmp" TMP="$tmp" TEMP="$tmp" go tool gremlins --config "$config" unleash --integration=false --workers=1 --test-cpu=1 --timeout-coefficient=20 --threshold-efficacy=0 --threshold-mcover=0 --tags= --coverpkg= --diff= "${operators[@]}" --output "$actual" ./cmd/covercheck
+  run_mutation_segment "$segments" validation sh -c 'go run ./cmd/mutants validate "$1" "$2" "$3" cmd/covercheck >"$4"' sh "$dry" "$actual" "$baseline" "$evidence/validation.txt"
+  cat "$evidence/validation.txt"
+  printf 'covercheck mutation blocker completed\n' >"$evidence/summary.txt"
+}
+
 cmd="${1:-}"
 shift || true
 
 case "$cmd" in
+  __covercheck-mutants-inner)
+    run_covercheck_mutants_inner "$@"
+    ;;
+  covercheck-mutants)
+    run_covercheck_mutants "$@"
+    ;;
+
   gate)
     if [ "$#" -eq 1 ] && [ "$1" = timings ]; then
       gate_timings=true
@@ -262,7 +394,7 @@ case "$cmd" in
     go run ./cmd/repoaudit "$@"
     ;;
   *)
-    echo "usage: ./x <gate [timings]|lint|fmt|test|clean-test-tmp [--all]|deadcode|render|check|context|pi-test <run>|build|install|mutants|audit-local>" >&2
+    echo "usage: ./x <gate [timings]|lint|fmt|test|clean-test-tmp [--all]|deadcode|render|check|context|pi-test <run>|build|install|mutants|covercheck-mutants [--select-staged|--select-range <base> <head>]|audit-local>" >&2
     exit 2
     ;;
 esac

@@ -321,6 +321,19 @@ fresh; D16 is single-run route evidence only and does not satisfy Phase 3's thre
 Ordinary linked-plan review must confirm this affected-phase inventory before Phase 3 can be
 authorized.
 
+Phase 3 qualification evidence handling: D18 requires the complete tracked transaction to be staged
+before qualification and its `git write-tree` identity to remain byte-identical through the phase
+commit. The three run-specific status digests, timings, reports, cleanup proofs, base commit, and
+staged-tree identity therefore remain in ignored effort evidence and the phase checkpoint rather than
+being appended to this tracked plan after the runs. This preserves the stricter authorized identity
+oracle while phase review receives the complete evidence inventory and exact retained locations. The
+first three clean runs at staged tree `ebee6a3e4598724e896d04c601c348afeb30385c` are diagnostic only:
+the old filtered-coverage gate then exposed missing parser branch tests, and the required test-only
+repair changed the staged identity, invalidating that entire set before phase close. A second clean
+set at staged tree `ec8e4fe2d07261d1734073069c0499a6a2c45b3b` is also diagnostic only: the subsequent
+full gate exposed two ineffectual increments immediately before fail-closed parser returns, and the
+minimal lint correction changed the staged identity again.
+
 After the Phase 4 commit exists, run the repo-local audit over the complete implementation range.
 After terminal implementation assurance settles over that exact tip and audit evidence, return
 integration-ready with the ADR still

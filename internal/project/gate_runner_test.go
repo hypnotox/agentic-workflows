@@ -271,6 +271,174 @@ func TestRunnerFmtRestoresMissingImport(t *testing.T) {
 	}
 }
 
+func TestCovercheckMutantsRunnerContract(t *testing.T) {
+	root, logPath := mutationRunnerFixture(t)
+	run := func(env []string, args ...string) (string, int, []string) {
+		t.Helper()
+		if err := os.WriteFile(logPath, nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command("bash", append([]string{"./x"}, args...)...)
+		cmd.Dir = root
+		cmd.Env = append(os.Environ(), append([]string{"PATH=" + filepath.Join(root, "fake-bin") + ":" + os.Getenv("PATH"), "INVOCATION_LOG=" + logPath, "MUTATION_ARGS=" + filepath.Join(root, "gremlins.args")}, env...)...)
+		out, err := cmd.CombinedOutput()
+		status := 0
+		if err != nil {
+			var exit *exec.ExitError
+			if !errors.As(err, &exit) {
+				t.Fatal(err)
+			}
+			status = exit.ExitCode()
+		}
+		data, readErr := os.ReadFile(logPath)
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		return string(out), status, strings.Fields(string(data))
+	}
+
+	output, status, lines := run(nil, "covercheck-mutants", "--evidence", "evidence", "--baseline", "baseline.json")
+	if status != 0 {
+		t.Fatalf("default blocker status=%d output=%q", status, output)
+	}
+	wantOrder := []string{"list-module", "tool-lookup", "tool-version", "df", "df", "git-isolation", "list-tests", "list-imports", "list-deps", "test", "gremlins-dry", "gremlins-actual", "validate", "lsof"}
+	if !slices.Equal(lines, wantOrder) {
+		t.Fatalf("orchestration order=%q, want %q", lines, wantOrder)
+	}
+	if _, err := os.Stat(filepath.Join(root, "evidence", "dry.json")); err != nil {
+		t.Fatalf("retained dry evidence: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "evidence", "actual.json")); err != nil {
+		t.Fatalf("retained actual evidence: %v", err)
+	}
+	gremlinsArgs, err := os.ReadFile(filepath.Join(root, "gremlins.args"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, flag := range []string{"--integration=false", "--workers=1", "--test-cpu=1", "--timeout-coefficient=20", "--threshold-efficacy=0", "--threshold-mcover=0", "--tags=", "--coverpkg=", "--diff=", "--arithmetic-base=true", "--conditionals-boundary=true", "--conditionals-negation=true", "--increment-decrement=true", "--invert-negatives=true", "--invert-assignments=false", "--invert-bitwise=false", "--invert-bwassign=false", "--invert-logical=false", "--invert-loopctrl=false", "--remove-self-assignments=false"} {
+		if !strings.Contains(string(gremlinsArgs), flag) {
+			t.Errorf("missing required gremlins argument %q in %q", flag, gremlinsArgs)
+		}
+	}
+
+	for _, tc := range []struct {
+		name, gitBody string
+		args          []string
+		wantRun       bool
+	}{
+		{"staged owned addition", "printf 'cmd/covercheck/new.go\\0'", []string{"--select-staged"}, true},
+		{"staged owned modification", "printf 'cmd/covercheck/main.go\\0'", []string{"--select-staged"}, true},
+		{"staged owned deletion", "printf 'cmd/covercheck/old.go\\0'", []string{"--select-staged"}, true},
+		{"range rename pair selects destination", "printf 'cmd/other.go\\0cmd/covercheck/new.go\\0'", []string{"--select-range", "base", "head"}, true},
+		{"nonowned skips", "printf 'cmd/mutants/main.go\\0'", []string{"--select-staged"}, false},
+		{"empty skips", "", []string{"--select-staged"}, false},
+		{"malformed fails closed", "printf 'cmd/covercheck/main.go'", []string{"--select-staged"}, true},
+		{"unavailable fails closed", "if [[ \"$*\" == diff* ]]; then exit 17; fi\nexit 0", []string{"--select-staged"}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			testsupport.WriteFile(t, filepath.Join(root, "fake-bin", "git"), "#!/usr/bin/env bash\nset -e\nif [[ \"$*\" == *-C* ]]; then echo git-isolation >>\"$INVOCATION_LOG\"; [ \"${FAKE_GIT_INSIDE:-}\" = 1 ] && exit 0 || exit 1; fi\nif [[ \"$*\" == *'rev-parse --show-toplevel'* ]]; then pwd; exit 0; fi\nif [[ \"$*\" == *cat-file* ]]; then [ \"${FAKE_GIT_MISSING:-}\" = 1 ] && exit 17 || exit 0; fi\n"+tc.gitBody+"\n")
+			if err := os.Chmod(filepath.Join(root, "fake-bin", "git"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			_, got, logged := run(nil, append([]string{"covercheck-mutants", "--evidence", "evidence"}, tc.args...)...)
+			if tc.wantRun && (got != 0 || !slices.Contains(logged, "validate")) {
+				t.Fatalf("status=%d log=%q", got, logged)
+			}
+			if !tc.wantRun && (got != 0 || slices.Contains(logged, "validate")) {
+				t.Fatalf("status=%d log=%q", got, logged)
+			}
+		})
+	}
+	for _, tc := range []struct {
+		name string
+		env  []string
+		want string
+	}{
+		{"GREMLINS override rejected", []string{"GREMLINS_WORKERS=99"}, "GREMLINS_"},
+		{"missing range endpoint selects", []string{"FAKE_GIT_MISSING=1"}, ""},
+		{"census refusal", []string{"FAKE_TEST_CENSUS=wrong"}, "test census"},
+		{"dependency refusal", []string{"FAKE_NO_DEP=1"}, "dependency"},
+		{"capacity refusal", []string{"FAKE_DF_LOW=1"}, "capacity"},
+		{"Git isolation refusal", []string{"FAKE_GIT_INSIDE=1"}, "Git"},
+		{"incomplete report propagates", []string{"FAKE_INCOMPLETE=1"}, "untrusted"},
+		{"aggregate timeout propagates", []string{"FAKE_TIMEOUT=1"}, ""},
+		{"owned cleanup refusal propagates", []string{"FAKE_LSOF_STATUS=0"}, "temporary root"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// Restore a known non-repository fake before each refusal case; the
+			// selection matrix deliberately replaces this binary.
+			testsupport.WriteFile(t, filepath.Join(root, "fake-bin", "git"), "#!/usr/bin/env bash\nif [[ \"$*\" == *-C* ]]; then [ \"${FAKE_GIT_INSIDE:-}\" = 1 && exit 0 || exit 1; fi\nif [[ \"$*\" == *'rev-parse --show-toplevel'* ]]; then pwd; exit 0; fi\n")
+			if err := os.Chmod(filepath.Join(root, "fake-bin", "git"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			args := []string{"covercheck-mutants", "--evidence", "evidence"}
+			if tc.name == "missing range endpoint selects" {
+				testsupport.WriteFile(t, filepath.Join(root, "fake-bin", "git"), "#!/usr/bin/env bash\nif [[ \"$*\" == *-C* ]]; then exit 1; fi\nif [[ \"$*\" == *'rev-parse --show-toplevel'* ]]; then pwd; exit 0; fi\nif [[ \"$*\" == *cat-file* ]]; then exit 17; fi\n")
+				if err := os.Chmod(filepath.Join(root, "fake-bin", "git"), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				args = append(args, "--select-range", "base", "head")
+			}
+			if tc.name == "Git isolation refusal" {
+				testsupport.WriteFile(t, filepath.Join(root, "fake-bin", "git"), "#!/usr/bin/env bash\nif [[ \"$*\" == *-C* ]]; then exit 0; fi\nif [[ \"$*\" == *'rev-parse --show-toplevel'* ]]; then pwd; fi\n")
+				if err := os.Chmod(filepath.Join(root, "fake-bin", "git"), 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			output, status, _ := run(tc.env, args...)
+			if tc.name == "missing range endpoint selects" && status == 0 {
+				return
+			}
+			if status == 0 || (tc.want != "" && !strings.Contains(output, tc.want)) {
+				t.Fatalf("status=%d output=%q", status, output)
+			}
+		})
+	}
+}
+
+func mutationRunnerFixture(t *testing.T) (string, string) {
+	t.Helper()
+	root, _ := gateRunnerFixture(t)
+	testsupport.WriteFile(t, filepath.Join(root, "baseline.json"), "{}\n")
+	testsupport.WriteFile(t, filepath.Join(root, "cmd", "covercheck", "main_test.go"), "package covercheck\n")
+	testsupport.WriteFile(t, filepath.Join(root, "cmd", "covercheck", "policy_edge_test.go"), "package covercheck\n")
+	if err := os.Mkdir(filepath.Join(root, "evidence"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	testsupport.WriteFile(t, filepath.Join(root, "fake-bin", "git"), "#!/usr/bin/env bash\n[[ \"$*\" == *-C* ]] && { echo git-isolation >>\"$INVOCATION_LOG\"; exit 1; }\n[[ \"$*\" == *'rev-parse --show-toplevel'* ]] && { pwd; exit 0; }\nexit 0\n")
+	fake := `#!/usr/bin/env bash
+set -euo pipefail
+case "$*" in
+  *"list -m"*) echo list-module >>"$INVOCATION_LOG"; echo v0.6.0 ;;
+  "tool -n gremlins") echo tool-lookup >>"$INVOCATION_LOG"; echo /fake/gremlins ;;
+  "version -m /fake/gremlins") echo tool-version >>"$INVOCATION_LOG"; printf '/fake/gremlins\n\tmod\tgithub.com/go-gremlins/gremlins\tv0.6.0\th1:fake\n' ;;
+  *"list -f"*"TestGoFiles"*) echo list-tests >>"$INVOCATION_LOG"; if [ "${FAKE_TEST_CENSUS:-}" = wrong ]; then echo wrong_test.go; else printf 'main_test.go\npolicy_edge_test.go\n'; fi ;;
+  *"list -f"*".Imports"*) echo list-imports >>"$INVOCATION_LOG"; echo github.com/hypnotox/agentic-workflows/internal/coverage ;;
+  *"list -deps -test"*) echo list-deps >>"$INVOCATION_LOG"; [ "${FAKE_NO_DEP:-}" = 1 ] || echo github.com/hypnotox/agentic-workflows/internal/coverage ;;
+  *"test -count=1 ./..."*) echo test >>"$INVOCATION_LOG" ;;
+  *"tool gremlins"*) printf '%s ' "$@" >"$MUTATION_ARGS"; if [[ "$*" == *--dry-run* ]]; then echo gremlins-dry >>"$INVOCATION_LOG"; else echo gremlins-actual >>"$INVOCATION_LOG"; fi; out=""; eval 'args=("${@}")'; for ((i=0;i<${#args[@]};i++)); do { [ "${args[i]}" = -o ] || [ "${args[i]}" = --output ]; } && out="${args[i+1]}"; done; if [ "${FAKE_INCOMPLETE:-}" = 1 ]; then : >"$out"; else echo '{}' >"$out"; fi ;;
+  *"run ./cmd/mutants operators"*) printf '%s\n' '--arithmetic-base=true' '--conditionals-boundary=true' '--conditionals-negation=true' '--increment-decrement=true' '--invert-negatives=true' '--invert-assignments=false' '--invert-bitwise=false' '--invert-bwassign=false' '--invert-logical=false' '--invert-loopctrl=false' '--remove-self-assignments=false' ;;
+  *"run ./cmd/mutants validate"*) echo validate >>"$INVOCATION_LOG"; if [ "${FAKE_INCOMPLETE:-}" = 1 ]; then echo untrusted >&2; exit 1; fi; echo 'trusted mutation reports: 1 identities; status-sha256=fake' ;;
+  *) echo "unexpected go $*" >&2; exit 19 ;;
+esac
+`
+	testsupport.WriteFile(t, filepath.Join(root, "fake-bin", "go"), fake)
+	for _, name := range []string{"go", "git"} {
+		if err := os.Chmod(filepath.Join(root, "fake-bin", name), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	testsupport.WriteFile(t, filepath.Join(root, "fake-bin", "df"), "#!/usr/bin/env bash\necho df >>\"$INVOCATION_LOG\"\nif [ \"${FAKE_DF_LOW:-}\" = 1 ]; then echo 'x 1 1 1 1% /tmp'; else echo 'x 1 1 1048576 1% /tmp'; fi\n")
+	testsupport.WriteFile(t, filepath.Join(root, "fake-bin", "lsof"), "#!/usr/bin/env bash\necho lsof >>\"$INVOCATION_LOG\"\nexit \"${FAKE_LSOF_STATUS:-1}\"\n")
+	testsupport.WriteFile(t, filepath.Join(root, "fake-bin", "timeout"), "#!/usr/bin/env bash\nif [ \"${FAKE_TIMEOUT:-}\" = 1 ]; then exit 124; fi\nshift\nexec \"$@\"\n")
+	for _, name := range []string{"df", "lsof", "timeout"} {
+		if err := os.Chmod(filepath.Join(root, "fake-bin", name), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return root, filepath.Join(root, "invocations.log")
+}
+
 func gateRunnerFixture(t *testing.T) (string, string) {
 	t.Helper()
 	root := t.TempDir()
