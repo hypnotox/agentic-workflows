@@ -260,8 +260,8 @@ correction is allowed without unrelated cleanup riding along.
   explicitly unmeasured ledger for the four Darwin and Windows directives. Permit ignores only for
   directly tested process-exit seams, revalidated impossible state, safely uninducible deterministic
   faults, and platform-only branches with explicit evidence; inventory test-source directives
-  separately. Adjudicate the seven measured guarded-body positives, then make future executed ignored
-  bodies an Error. Keep `coverage-ignore-added` a complementary Warning and retain the historical
+  separately. Adjudicate every guarded-body positive from the canonical merged profile, then make
+  future executed ignored bodies an Error. Keep `coverage-ignore-added` a complementary Warning and retain the historical
   eight as aggregate context only. Initially mutation-block only `cmd/covercheck` when its owned paths
   change, with the pinned operators, a 900-second run limit, invalidation on incomplete output or any
   timeout, and only reviewed equivalent survivors allowed. Fix its two genuine diagnostic survivors
