@@ -318,6 +318,7 @@ func TestCanonicalBaselineRoundTripAndStrictEvidence(t *testing.T) {
 	}
 }
 
+// invariant: tooling/quality-gates:coverage-raw-identity-ratchet (TestEvaluateUsesIdentitySetsNotPercentagesOrLocalProfiles)
 func TestEvaluateUsesIdentitySetsNotPercentagesOrLocalProfiles(t *testing.T) {
 	files := map[string]string{"p/f.go": "package p\nfunc F() {}\nfunc G() {}\n"}
 	a := analyzePolicy(t, files, "example.com/m/p/f.go:2.1,2.5 1 0\nexample.com/m/p/f.go:3.1,3.5 1 1\n")
@@ -342,6 +343,7 @@ func TestEvaluateUsesIdentitySetsNotPercentagesOrLocalProfiles(t *testing.T) {
 	}
 }
 
+// invariant: tooling/quality-gates:coverage-executed-ignore-errors (TestEvaluateRejectsExecutedIgnoreAndDirectiveDrift)
 func TestEvaluateRejectsExecutedIgnoreAndDirectiveDrift(t *testing.T) {
 	marker := "//" + " coverage-ignore: "
 	files := map[string]string{"p/f.go": "package p\nfunc F() { " + marker + "impossible\n}\n"}
@@ -359,6 +361,7 @@ func TestEvaluateRejectsExecutedIgnoreAndDirectiveDrift(t *testing.T) {
 	}
 }
 
+// invariant: tooling/quality-gates:coverage-ignore-admission (TestBaselineValidationRejectsInvalidPolicyEvidence)
 func TestBaselineValidationRejectsInvalidPolicyEvidence(t *testing.T) {
 	a := analyzePolicy(t, map[string]string{"p/f.go": "package p\nfunc F() {}\n"}, "example.com/m/p/f.go:2.1,2.5 1 0\n")
 	valid := mustBaseline(t, a)

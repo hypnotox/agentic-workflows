@@ -49,7 +49,7 @@ tags:
   commit-gate: The deterministic commit-message gate
   context-query: The awf context read-only query command
   convention-parts: Convention-part section overrides
-  coverage-gate: The 100% coverage gate and coverage-ignore convention
+  coverage-gate: The raw-identity coverage ratchet, ignore-accountability policy, and targeted mutation blocker
   cross-references: Inter-doc and ADR link references
   editable-sections: The awf:edit editable-section markers
   git-hooks: The git-hook payloads and their wiring

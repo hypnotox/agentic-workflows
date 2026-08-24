@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: hybrid-raw-coverage-ratchet-and-targeted-mutation-regression
-status: Accepted
+status: Implementing
 date: 2026-08-24
 ---
 # ADR-hybrid-raw-coverage-ratchet-and-targeted-mutation-regression: Hybrid raw coverage ratchet and targeted mutation regression
@@ -212,3 +212,5 @@ repository-local development tooling.
 - 2026-08-24: Accepted; content-sha256: 8aa65de13e681adee3792959abaff17174152a6752c9ed16e12436f391556564
 - 2026-08-24: Amended; content-sha256: c9611892211abfc8f21b5c6058f86860df98cbe86b66162c9350381a19c4cb3f
 - 2026-08-24: Amended; content-sha256: 4c4333f950614995a22e4ec381b27063cac93f6e3d00bc2c0b8a8ac4ec2e3243
+- 2026-08-24: Implementing; content-sha256: 4c4333f950614995a22e4ec381b27063cac93f6e3d00bc2c0b8a8ac4ec2e3243
+- 2026-08-24: Applied; operations: remove `tooling/quality-gates:coverage-gate-100`, add `tooling/quality-gates:coverage-raw-identity-ratchet`, add `tooling/quality-gates:coverage-ignore-admission`, add `tooling/quality-gates:coverage-executed-ignore-errors`, add `tooling/quality-gates:covercheck-mutation-regression`, update `tooling/quality-gates:covered-profile-honors-ignores`, update `tooling/quality-gates:gate-severity-by-protected-property`

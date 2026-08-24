@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-hybrid-raw-coverage-ratchet-and-targeted-mutation-regression: Hybrid raw coverage ratchet and targeted mutation regression](hybrid-raw-coverage-ratchet-and-targeted-mutation-regression.md) (Accepted)
+- [ADR-hybrid-raw-coverage-ratchet-and-targeted-mutation-regression: Hybrid raw coverage ratchet and targeted mutation regression](hybrid-raw-coverage-ratchet-and-targeted-mutation-regression.md) (Implementing)
 
 ## History
 

@@ -10,10 +10,28 @@ The prose and memory-citation repository checks always scan, retain their config
 Origin: ADR-0253
 Backing: test
 
-### `invariant: coverage-gate-100`
+### `invariant: coverage-raw-identity-ratchet`
 
-The coverage checker exits non-zero whenever the total over non-ignored statements in a coverprofile falls below 100%, and passes only when that total is exactly 100%.
-Origin: ADR-0012
+The gate evaluates one merged whole-module profile against the canonical `coverage-baseline.json`: every raw uncovered block is identified by module-relative file, exact span, and statement count, and any identity absent from the repository baseline or an applicable one of the six exact critical selectors blocks. Covered identities disappear on regeneration, while additions and moved spans require stored reasons, so an unrelated removal or aggregate-count swap cannot authorize a regression. Raw and filtered percentages remain reports only.
+Origin: ADR-hybrid-raw-coverage-ratchet-and-targeted-mutation-regression
+Backing: test
+
+### `invariant: coverage-ignore-admission`
+
+The canonical baseline inventories production and test `coverage-ignore` directives separately. Every retained production directive has explicit evidence and exactly one admitted class: directly tested process-exit seam, revalidated impossible state, safely uninducible deterministic fault, or platform-only branch. Its static unmeasured ledger contains exactly the four Darwin and Windows publication rollback directives and never claims that the Linux profile measured them.
+Origin: ADR-hybrid-raw-coverage-ratchet-and-targeted-mutation-regression
+Backing: test
+
+### `invariant: coverage-executed-ignore-errors`
+
+Coverage policy evaluation canonically OR-merges duplicate exact profile blocks, matches directives to guarded-body entry positions, and exits nonzero if any measured ignored guarded body has a positive execution count.
+Origin: ADR-hybrid-raw-coverage-ratchet-and-targeted-mutation-regression
+Backing: test
+
+### `invariant: covercheck-mutation-regression`
+
+An exact `cmd/covercheck` owned-path change selected from either the local staged snapshot or an explicit CI range runs the pinned, hermetic whole-target mutation blocker; missing, malformed, or unavailable selection evidence runs rather than skips it. The blocker requires the whole-repository preflight, package-test and dependency censuses, dry-to-actual exact identity equality, complete timeout-free trusted reports, and only killed or independently reviewed equivalent survivors. Mutation remains advisory outside that owned path.
+Origin: ADR-hybrid-raw-coverage-ratchet-and-targeted-mutation-regression
 Backing: test
 
 ### `invariant: coverage-ignore-reason`
@@ -24,8 +42,9 @@ Backing: test
 
 ### `invariant: covered-profile-honors-ignores`
 
-The filtered coverprofile emitted by internal/coverage contains a block if and only if that block is not coverage-ignore-d under the same ignored-lines logic the coverage gate uses, so the filtered profile and the gate never diverge on what ignored means.
+The filtered coverprofile emitted by internal/coverage contains a block if and only if that block is not coverage-ignore-d under the same directive interpretation used by the raw-identity policy, so filtered Codecov reporting and policy diagnostics never diverge on what ignored means. The filtered percentage is informational rather than a blocking threshold.
 Origin: ADR-0065
+Revised-by: ADR-hybrid-raw-coverage-ratchet-and-targeted-mutation-regression
 Backing: test
 
 ### `invariant: deadcode-gate`
@@ -77,8 +96,9 @@ Backing: test
 
 ### `invariant: gate-severity-by-protected-property`
 
-The repository gate exits nonzero for version or schema incompatibility, required test or coverage loss, vet or build failure, concrete defect lint, unreachable production code, workflow pin failure, and any checker execution or configuration failure because they protect correctness, safety, authority, or reproducibility. Its separate advisory lint lane reports style, wording, formatting, preferred idiom, speculative performance, possible cohesion, and heuristic maintainability findings as visible Warning output with successful exit. Every enabled lint rule belongs to exactly one classified lane before it runs.
+The repository gate exits nonzero for version or schema incompatibility, required test loss, raw-identity or critical-selector coverage regression, false or unsupported ignore evidence, selected `cmd/covercheck` mutation regression, vet or build failure, concrete defect lint, unreachable production code, workflow pin failure, and any checker execution or configuration failure because they protect correctness, safety, authority, or reproducibility. Its separate advisory lint lane reports style, wording, formatting, preferred idiom, speculative performance, possible cohesion, and heuristic maintainability findings as visible Warning output with successful exit. Every enabled lint rule belongs to exactly one classified lane before it runs.
 Origin: ADR-0295
+Revised-by: ADR-hybrid-raw-coverage-ratchet-and-targeted-mutation-regression
 Backing: test
 
 ### `invariant: testsupport-zero-internal-deps`

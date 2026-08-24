@@ -42,7 +42,7 @@ Hard rules every change must respect:
 - **Backed invariants.** Declare and prove current-state invariants; see the current-state contract. (ADR-0134)
 - **Punctuation restraint.** Prefer ordinary punctuation; prohibit en dashes and use at most two em dashes per paragraph in tracked text. Ellipses and curly quotes are permitted; see the prose gate contract. (ADR-replace-plain-punctuation-ban-with-punctuation-restraint)
 - **No memory citation.** Never cite concrete effort memory paths in durable records. (ADR-0158, ADR-0175)
-- **100% coverage gate.** Keep `./x gate` at 100% statement coverage. (ADR-0012)
+- **Coverage identity ratchet.** Keep `./x gate` green against the canonical raw-miss baseline, critical selectors, ignore evidence, and targeted `cmd/covercheck` mutation blocker. (ADR-hybrid-raw-coverage-ratchet-and-targeted-mutation-regression)
 - **Dead-code gate.** Keep production code reachable from a `main`. (ADR-0063)
 - **Binary-version gate.** Use a current binary for gated commands; see the command reference. (ADR-0039)
 

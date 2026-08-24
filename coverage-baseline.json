@@ -1,5 +1,8 @@
 {
-  "misses": [
+  "version": 1,
+  "modulePath": "github.com/hypnotox/agentic-workflows",
+  "universeSHA256": "c6f4db6f7cb784369b5ca5be3bdc9a3799c511e757dff4a375f508d6912d5e87",
+  "repository": [
     {
       "identity": {
         "file": "cmd/awf/adr.go",
@@ -6028,7 +6031,7 @@
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/migrate/dropreplacewith.go:64.17,66.4 1 in function treeSidecars, beginning `{ // coverage-ignore: a present <kind> dir under a readable awfDir does not fault on read`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/migrate/dropreplacewith.go:64.17,66.4 1 in function treeSidecars, beginning `{ // coverage-ignore: a present \u003ckind\u003e dir under a readable awfDir does not fault on read`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
@@ -10726,7 +10729,6333 @@
       "reason": "Initial RF-009 admission of existing uncovered behavior at tools/pi-extension-test/lockrun/lockrun_unix.go:60.3,61.11 2 in function run, beginning `fmt.Fprintf(os.Stderr, \"pi-extension-test: wait for worker: %v\\n\", err) // coverage-ignore: Wait...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     }
   ],
-  "directives": [
+  "selectors": [
+    {
+      "name": "command-boundary",
+      "roots": [
+        "cmd/awf"
+      ],
+      "misses": [
+        {
+          "file": "cmd/awf/adr.go",
+          "start": {
+            "line": 35,
+            "column": 28
+          },
+          "end": {
+            "line": 37,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/audit.go",
+          "start": {
+            "line": 30,
+            "column": 16
+          },
+          "end": {
+            "line": 32,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/changelog.go",
+          "start": {
+            "line": 51,
+            "column": 17
+          },
+          "end": {
+            "line": 53,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/commitpolicy.go",
+          "start": {
+            "line": 25,
+            "column": 16
+          },
+          "end": {
+            "line": 27,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/dispatch.go",
+          "start": {
+            "line": 140,
+            "column": 22
+          },
+          "end": {
+            "line": 142,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/effort.go",
+          "start": {
+            "line": 56,
+            "column": 16
+          },
+          "end": {
+            "line": 58,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/effort.go",
+          "start": {
+            "line": 61,
+            "column": 17
+          },
+          "end": {
+            "line": 63,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/effort.go",
+          "start": {
+            "line": 65,
+            "column": 17
+          },
+          "end": {
+            "line": 67,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/effort.go",
+          "start": {
+            "line": 69,
+            "column": 17
+          },
+          "end": {
+            "line": 71,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/effort.go",
+          "start": {
+            "line": 87,
+            "column": 16
+          },
+          "end": {
+            "line": 89,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/effort.go",
+          "start": {
+            "line": 333,
+            "column": 12
+          },
+          "end": {
+            "line": 335,
+            "column": 6
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/effort.go",
+          "start": {
+            "line": 354,
+            "column": 11
+          },
+          "end": {
+            "line": 355,
+            "column": 60
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/effort.go",
+          "start": {
+            "line": 567,
+            "column": 16
+          },
+          "end": {
+            "line": 569,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/effort.go",
+          "start": {
+            "line": 588,
+            "column": 16
+          },
+          "end": {
+            "line": 590,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/gate.go",
+          "start": {
+            "line": 41,
+            "column": 94
+          },
+          "end": {
+            "line": 43,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/gate.go",
+          "start": {
+            "line": 65,
+            "column": 94
+          },
+          "end": {
+            "line": 67,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/init.go",
+          "start": {
+            "line": 23,
+            "column": 17
+          },
+          "end": {
+            "line": 25,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/main.go",
+          "start": {
+            "line": 23,
+            "column": 13
+          },
+          "end": {
+            "line": 23,
+            "column": 60
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/main.go",
+          "start": {
+            "line": 50,
+            "column": 16
+          },
+          "end": {
+            "line": 52,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/main.go",
+          "start": {
+            "line": 54,
+            "column": 16
+          },
+          "end": {
+            "line": 56,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/main.go",
+          "start": {
+            "line": 58,
+            "column": 16
+          },
+          "end": {
+            "line": 60,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/main.go",
+          "start": {
+            "line": 66,
+            "column": 16
+          },
+          "end": {
+            "line": 68,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/main.go",
+          "start": {
+            "line": 70,
+            "column": 16
+          },
+          "end": {
+            "line": 72,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/main.go",
+          "start": {
+            "line": 86,
+            "column": 16
+          },
+          "end": {
+            "line": 88,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/main.go",
+          "start": {
+            "line": 109,
+            "column": 16
+          },
+          "end": {
+            "line": 111,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/main.go",
+          "start": {
+            "line": 164,
+            "column": 16
+          },
+          "end": {
+            "line": 166,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/main.go",
+          "start": {
+            "line": 190,
+            "column": 80
+          },
+          "end": {
+            "line": 192,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/main.go",
+          "start": {
+            "line": 196,
+            "column": 17
+          },
+          "end": {
+            "line": 198,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/main.go",
+          "start": {
+            "line": 199,
+            "column": 63
+          },
+          "end": {
+            "line": 201,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/main.go",
+          "start": {
+            "line": 213,
+            "column": 86
+          },
+          "end": {
+            "line": 215,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/main.go",
+          "start": {
+            "line": 354,
+            "column": 21
+          },
+          "end": {
+            "line": 356,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/main.go",
+          "start": {
+            "line": 368,
+            "column": 10
+          },
+          "end": {
+            "line": 369,
+            "column": 85
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/main.go",
+          "start": {
+            "line": 485,
+            "column": 16
+          },
+          "end": {
+            "line": 487,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/main.go",
+          "start": {
+            "line": 489,
+            "column": 16
+          },
+          "end": {
+            "line": 491,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/projectstate.go",
+          "start": {
+            "line": 26,
+            "column": 34
+          },
+          "end": {
+            "line": 28,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/sync.go",
+          "start": {
+            "line": 49,
+            "column": 16
+          },
+          "end": {
+            "line": 51,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/sync.go",
+          "start": {
+            "line": 57,
+            "column": 16
+          },
+          "end": {
+            "line": 59,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/topic.go",
+          "start": {
+            "line": 27,
+            "column": 16
+          },
+          "end": {
+            "line": 29,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/uninstall.go",
+          "start": {
+            "line": 22,
+            "column": 16
+          },
+          "end": {
+            "line": 24,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/upgrade_presentation.go",
+          "start": {
+            "line": 39,
+            "column": 24
+          },
+          "end": {
+            "line": 41,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/version.go",
+          "start": {
+            "line": 23,
+            "column": 17
+          },
+          "end": {
+            "line": 25,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/version.go",
+          "start": {
+            "line": 27,
+            "column": 17
+          },
+          "end": {
+            "line": 29,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/version.go",
+          "start": {
+            "line": 31,
+            "column": 17
+          },
+          "end": {
+            "line": 33,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/version.go",
+          "start": {
+            "line": 37,
+            "column": 16
+          },
+          "end": {
+            "line": 39,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/version.go",
+          "start": {
+            "line": 41,
+            "column": 16
+          },
+          "end": {
+            "line": 43,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/version.go",
+          "start": {
+            "line": 45,
+            "column": 16
+          },
+          "end": {
+            "line": 47,
+            "column": 3
+          },
+          "statements": 1
+        }
+      ]
+    },
+    {
+      "name": "hard-safety",
+      "roots": [
+        "cmd/covercheck",
+        "cmd/mutants",
+        "internal/commitpolicy",
+        "internal/coverage",
+        "internal/filepublication"
+      ],
+      "misses": [
+        {
+          "file": "cmd/covercheck/main.go",
+          "start": {
+            "line": 17,
+            "column": 13
+          },
+          "end": {
+            "line": 17,
+            "column": 60
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/covercheck/main.go",
+          "start": {
+            "line": 117,
+            "column": 16
+          },
+          "end": {
+            "line": 120,
+            "column": 3
+          },
+          "statements": 2
+        },
+        {
+          "file": "cmd/covercheck/main.go",
+          "start": {
+            "line": 125,
+            "column": 63
+          },
+          "end": {
+            "line": 128,
+            "column": 3
+          },
+          "statements": 2
+        },
+        {
+          "file": "cmd/mutants/main.go",
+          "start": {
+            "line": 73,
+            "column": 13
+          },
+          "end": {
+            "line": 73,
+            "column": 60
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/commitpolicy/render.go",
+          "start": {
+            "line": 15,
+            "column": 17
+          },
+          "end": {
+            "line": 17,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/commitpolicy/render.go",
+          "start": {
+            "line": 19,
+            "column": 17
+          },
+          "end": {
+            "line": 21,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/commitpolicy/render.go",
+          "start": {
+            "line": 27,
+            "column": 17
+          },
+          "end": {
+            "line": 29,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/commitpolicy/render.go",
+          "start": {
+            "line": 31,
+            "column": 17
+          },
+          "end": {
+            "line": 33,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/commitpolicy/render.go",
+          "start": {
+            "line": 35,
+            "column": 17
+          },
+          "end": {
+            "line": 37,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/commitpolicy/render.go",
+          "start": {
+            "line": 39,
+            "column": 17
+          },
+          "end": {
+            "line": 41,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/commitpolicy/render.go",
+          "start": {
+            "line": 57,
+            "column": 17
+          },
+          "end": {
+            "line": 59,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/commitpolicy/render.go",
+          "start": {
+            "line": 61,
+            "column": 17
+          },
+          "end": {
+            "line": 63,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/commitpolicy/render.go",
+          "start": {
+            "line": 83,
+            "column": 17
+          },
+          "end": {
+            "line": 85,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/commitpolicy/render.go",
+          "start": {
+            "line": 94,
+            "column": 16
+          },
+          "end": {
+            "line": 96,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/commitpolicy/render.go",
+          "start": {
+            "line": 98,
+            "column": 16
+          },
+          "end": {
+            "line": 100,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/commitpolicy/render.go",
+          "start": {
+            "line": 108,
+            "column": 22
+          },
+          "end": {
+            "line": 110,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/commitpolicy/render.go",
+          "start": {
+            "line": 126,
+            "column": 22
+          },
+          "end": {
+            "line": 128,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/commitpolicy/render.go",
+          "start": {
+            "line": 133,
+            "column": 22
+          },
+          "end": {
+            "line": 135,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/commitpolicy/render.go",
+          "start": {
+            "line": 139,
+            "column": 16
+          },
+          "end": {
+            "line": 141,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/coverage/policy.go",
+          "start": {
+            "line": 291,
+            "column": 31
+          },
+          "end": {
+            "line": 293,
+            "column": 6
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/coverage/policy.go",
+          "start": {
+            "line": 302,
+            "column": 17
+          },
+          "end": {
+            "line": 304,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/filepublication/publication.go",
+          "start": {
+            "line": 77,
+            "column": 48
+          },
+          "end": {
+            "line": 79,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/filepublication/publication.go",
+          "start": {
+            "line": 115,
+            "column": 18
+          },
+          "end": {
+            "line": 117,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/filepublication/publication.go",
+          "start": {
+            "line": 129,
+            "column": 41
+          },
+          "end": {
+            "line": 131,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/filepublication/publication.go",
+          "start": {
+            "line": 132,
+            "column": 48
+          },
+          "end": {
+            "line": 134,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/filepublication/publication.go",
+          "start": {
+            "line": 134,
+            "column": 31
+          },
+          "end": {
+            "line": 136,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/filepublication/publication.go",
+          "start": {
+            "line": 137,
+            "column": 36
+          },
+          "end": {
+            "line": 139,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/filepublication/publication.go",
+          "start": {
+            "line": 140,
+            "column": 37
+          },
+          "end": {
+            "line": 142,
+            "column": 3
+          },
+          "statements": 1
+        }
+      ]
+    },
+    {
+      "name": "migration-recovery",
+      "roots": [
+        "internal/config",
+        "internal/migrate",
+        "internal/upgrade"
+      ],
+      "misses": [
+        {
+          "file": "internal/config/config.go",
+          "start": {
+            "line": 319,
+            "column": 64
+          },
+          "end": {
+            "line": 321,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/config/config.go",
+          "start": {
+            "line": 680,
+            "column": 51
+          },
+          "end": {
+            "line": 682,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/config/config.go",
+          "start": {
+            "line": 789,
+            "column": 16
+          },
+          "end": {
+            "line": 791,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/config/edit.go",
+          "start": {
+            "line": 53,
+            "column": 16
+          },
+          "end": {
+            "line": 55,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/config/edit.go",
+          "start": {
+            "line": 65,
+            "column": 38
+          },
+          "end": {
+            "line": 67,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/config/edit.go",
+          "start": {
+            "line": 70,
+            "column": 49
+          },
+          "end": {
+            "line": 72,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/config/edit.go",
+          "start": {
+            "line": 82,
+            "column": 16
+          },
+          "end": {
+            "line": 84,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/config/edit.go",
+          "start": {
+            "line": 86,
+            "column": 16
+          },
+          "end": {
+            "line": 88,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/config/edit.go",
+          "start": {
+            "line": 173,
+            "column": 16
+          },
+          "end": {
+            "line": 175,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/config/edit.go",
+          "start": {
+            "line": 586,
+            "column": 38
+          },
+          "end": {
+            "line": 588,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/config/edit.go",
+          "start": {
+            "line": 605,
+            "column": 17
+          },
+          "end": {
+            "line": 607,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/adrnumberprovenance.go",
+          "start": {
+            "line": 61,
+            "column": 18
+          },
+          "end": {
+            "line": 63,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/adrnumberprovenance.go",
+          "start": {
+            "line": 78,
+            "column": 78
+          },
+          "end": {
+            "line": 80,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/adrnumberprovenance.go",
+          "start": {
+            "line": 86,
+            "column": 16
+          },
+          "end": {
+            "line": 88,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/adrnumberprovenance.go",
+          "start": {
+            "line": 92,
+            "column": 17
+          },
+          "end": {
+            "line": 94,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/adrnumberprovenance.go",
+          "start": {
+            "line": 100,
+            "column": 70
+          },
+          "end": {
+            "line": 102,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/closeenabledset.go",
+          "start": {
+            "line": 110,
+            "column": 80
+          },
+          "end": {
+            "line": 112,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/closeenabledset.go",
+          "start": {
+            "line": 115,
+            "column": 79
+          },
+          "end": {
+            "line": 117,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/configedit.go",
+          "start": {
+            "line": 19,
+            "column": 16
+          },
+          "end": {
+            "line": 21,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/configedit.go",
+          "start": {
+            "line": 35,
+            "column": 16
+          },
+          "end": {
+            "line": 37,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/configedit.go",
+          "start": {
+            "line": 48,
+            "column": 17
+          },
+          "end": {
+            "line": 50,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/configedit.go",
+          "start": {
+            "line": 78,
+            "column": 16
+          },
+          "end": {
+            "line": 80,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/dropreplacewith.go",
+          "start": {
+            "line": 38,
+            "column": 16
+          },
+          "end": {
+            "line": 40,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/dropreplacewith.go",
+          "start": {
+            "line": 64,
+            "column": 17
+          },
+          "end": {
+            "line": 66,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/dropreplacewith.go",
+          "start": {
+            "line": 87,
+            "column": 16
+          },
+          "end": {
+            "line": 89,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/dropseveritysettings.go",
+          "start": {
+            "line": 51,
+            "column": 17
+          },
+          "end": {
+            "line": 53,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/dropseveritysettings.go",
+          "start": {
+            "line": 58,
+            "column": 17
+          },
+          "end": {
+            "line": 60,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/dropseveritysettings.go",
+          "start": {
+            "line": 69,
+            "column": 17
+          },
+          "end": {
+            "line": 71,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/dropseveritysettings.go",
+          "start": {
+            "line": 73,
+            "column": 17
+          },
+          "end": {
+            "line": 75,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/dropworkflowtelemetry.go",
+          "start": {
+            "line": 14,
+            "column": 17
+          },
+          "end": {
+            "line": 16,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/groundingskillbackfill.go",
+          "start": {
+            "line": 31,
+            "column": 17
+          },
+          "end": {
+            "line": 33,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/groundingskillbackfill.go",
+          "start": {
+            "line": 35,
+            "column": 17
+          },
+          "end": {
+            "line": 37,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/groundingskillbackfill.go",
+          "start": {
+            "line": 50,
+            "column": 17
+          },
+          "end": {
+            "line": 52,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/groundingskillbackfill.go",
+          "start": {
+            "line": 98,
+            "column": 17
+          },
+          "end": {
+            "line": 100,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/integrationbranch.go",
+          "start": {
+            "line": 35,
+            "column": 17
+          },
+          "end": {
+            "line": 37,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/layercataloglists.go",
+          "start": {
+            "line": 141,
+            "column": 19
+          },
+          "end": {
+            "line": 143,
+            "column": 6
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/layercataloglists.go",
+          "start": {
+            "line": 154,
+            "column": 17
+          },
+          "end": {
+            "line": 156,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/migrate.go",
+          "start": {
+            "line": 188,
+            "column": 17
+          },
+          "end": {
+            "line": 190,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/migrate.go",
+          "start": {
+            "line": 207,
+            "column": 18
+          },
+          "end": {
+            "line": 209,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/migrate.go",
+          "start": {
+            "line": 212,
+            "column": 19
+          },
+          "end": {
+            "line": 214,
+            "column": 6
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/migrate.go",
+          "start": {
+            "line": 219,
+            "column": 18
+          },
+          "end": {
+            "line": 221,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/migrate.go",
+          "start": {
+            "line": 224,
+            "column": 19
+          },
+          "end": {
+            "line": 226,
+            "column": 6
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/migrate.go",
+          "start": {
+            "line": 232,
+            "column": 18
+          },
+          "end": {
+            "line": 234,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/migrate.go",
+          "start": {
+            "line": 330,
+            "column": 16
+          },
+          "end": {
+            "line": 332,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/orientingbackfill.go",
+          "start": {
+            "line": 30,
+            "column": 17
+          },
+          "end": {
+            "line": 32,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/pitfallcorpus.go",
+          "start": {
+            "line": 198,
+            "column": 16
+          },
+          "end": {
+            "line": 200,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/pitfalls.go",
+          "start": {
+            "line": 44,
+            "column": 16
+          },
+          "end": {
+            "line": 46,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/pitfalls.go",
+          "start": {
+            "line": 147,
+            "column": 16
+          },
+          "end": {
+            "line": 149,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/pitfalls.go",
+          "start": {
+            "line": 150,
+            "column": 60
+          },
+          "end": {
+            "line": 152,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/profile.go",
+          "start": {
+            "line": 16,
+            "column": 17
+          },
+          "end": {
+            "line": 18,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/profile.go",
+          "start": {
+            "line": 23,
+            "column": 17
+          },
+          "end": {
+            "line": 25,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/renameretiredcommands.go",
+          "start": {
+            "line": 86,
+            "column": 19
+          },
+          "end": {
+            "line": 88,
+            "column": 6
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/retargetcheckcommands.go",
+          "start": {
+            "line": 71,
+            "column": 17
+          },
+          "end": {
+            "line": 73,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/retargetcheckcommands.go",
+          "start": {
+            "line": 81,
+            "column": 53
+          },
+          "end": {
+            "line": 83,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/retargetcheckcommands.go",
+          "start": {
+            "line": 96,
+            "column": 18
+          },
+          "end": {
+            "line": 98,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/retargetcheckcommands.go",
+          "start": {
+            "line": 100,
+            "column": 18
+          },
+          "end": {
+            "line": 102,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/retargetcheckcommands.go",
+          "start": {
+            "line": 106,
+            "column": 17
+          },
+          "end": {
+            "line": 108,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/retargetcheckcommands.go",
+          "start": {
+            "line": 112,
+            "column": 54
+          },
+          "end": {
+            "line": 114,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/retargetcheckcommands.go",
+          "start": {
+            "line": 129,
+            "column": 18
+          },
+          "end": {
+            "line": 131,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/retargetcheckcommands.go",
+          "start": {
+            "line": 142,
+            "column": 17
+          },
+          "end": {
+            "line": 144,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/retargetcheckcommands.go",
+          "start": {
+            "line": 147,
+            "column": 18
+          },
+          "end": {
+            "line": 149,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/retargetcheckcommands.go",
+          "start": {
+            "line": 151,
+            "column": 18
+          },
+          "end": {
+            "line": 153,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/retargetcheckcommands.go",
+          "start": {
+            "line": 155,
+            "column": 18
+          },
+          "end": {
+            "line": 157,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/retargetcheckcommands.go",
+          "start": {
+            "line": 172,
+            "column": 17
+          },
+          "end": {
+            "line": 174,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/retirementtokens.go",
+          "start": {
+            "line": 93,
+            "column": 17
+          },
+          "end": {
+            "line": 95,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/retirementtokens.go",
+          "start": {
+            "line": 168,
+            "column": 17
+          },
+          "end": {
+            "line": 170,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/singletonstandarddocs.go",
+          "start": {
+            "line": 72,
+            "column": 44
+          },
+          "end": {
+            "line": 74,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/singletonstandarddocs.go",
+          "start": {
+            "line": 107,
+            "column": 16
+          },
+          "end": {
+            "line": 109,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/singletonstandarddocs.go",
+          "start": {
+            "line": 111,
+            "column": 64
+          },
+          "end": {
+            "line": 113,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/structuralheadings.go",
+          "start": {
+            "line": 232,
+            "column": 18
+          },
+          "end": {
+            "line": 234,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/structuralheadings.go",
+          "start": {
+            "line": 298,
+            "column": 17
+          },
+          "end": {
+            "line": 300,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/structuralheadings.go",
+          "start": {
+            "line": 340,
+            "column": 16
+          },
+          "end": {
+            "line": 342,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/supersessionkeys.go",
+          "start": {
+            "line": 118,
+            "column": 17
+          },
+          "end": {
+            "line": 120,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/supersessionkeys.go",
+          "start": {
+            "line": 149,
+            "column": 17
+          },
+          "end": {
+            "line": 151,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/supersessionkeys.go",
+          "start": {
+            "line": 186,
+            "column": 17
+          },
+          "end": {
+            "line": 188,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/supersessionkeys.go",
+          "start": {
+            "line": 277,
+            "column": 17
+          },
+          "end": {
+            "line": 279,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/treelayout.go",
+          "start": {
+            "line": 77,
+            "column": 46
+          },
+          "end": {
+            "line": 79,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/treelayout.go",
+          "start": {
+            "line": 189,
+            "column": 8
+          },
+          "end": {
+            "line": 189,
+            "column": 44
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/treelayout.go",
+          "start": {
+            "line": 189,
+            "column": 44
+          },
+          "end": {
+            "line": 191,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/treelayout.go",
+          "start": {
+            "line": 220,
+            "column": 16
+          },
+          "end": {
+            "line": 222,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/unified_effort_residents.go",
+          "start": {
+            "line": 198,
+            "column": 16
+          },
+          "end": {
+            "line": 200,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/unified_effort_residents.go",
+          "start": {
+            "line": 202,
+            "column": 16
+          },
+          "end": {
+            "line": 204,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/unified_effort_residents.go",
+          "start": {
+            "line": 296,
+            "column": 17
+          },
+          "end": {
+            "line": 298,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/unified_effort_residents.go",
+          "start": {
+            "line": 409,
+            "column": 17
+          },
+          "end": {
+            "line": 411,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/unified_effort_residents.go",
+          "start": {
+            "line": 416,
+            "column": 17
+          },
+          "end": {
+            "line": 418,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/unified_effort_residents.go",
+          "start": {
+            "line": 442,
+            "column": 16
+          },
+          "end": {
+            "line": 444,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/unified_effort_residents.go",
+          "start": {
+            "line": 449,
+            "column": 16
+          },
+          "end": {
+            "line": 451,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/unified_effort_residents.go",
+          "start": {
+            "line": 464,
+            "column": 64
+          },
+          "end": {
+            "line": 466,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/unified_effort_residents.go",
+          "start": {
+            "line": 474,
+            "column": 16
+          },
+          "end": {
+            "line": 476,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/workflowtelemetry.go",
+          "start": {
+            "line": 19,
+            "column": 71
+          },
+          "end": {
+            "line": 21,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/workflowtelemetry.go",
+          "start": {
+            "line": 29,
+            "column": 612
+          },
+          "end": {
+            "line": 31,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/migrate/workflowtelemetry.go",
+          "start": {
+            "line": 36,
+            "column": 42
+          },
+          "end": {
+            "line": 38,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/journal.go",
+          "start": {
+            "line": 145,
+            "column": 16
+          },
+          "end": {
+            "line": 147,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/journal.go",
+          "start": {
+            "line": 160,
+            "column": 63
+          },
+          "end": {
+            "line": 162,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/journal.go",
+          "start": {
+            "line": 185,
+            "column": 70
+          },
+          "end": {
+            "line": 187,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/journal.go",
+          "start": {
+            "line": 206,
+            "column": 70
+          },
+          "end": {
+            "line": 208,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/journal.go",
+          "start": {
+            "line": 381,
+            "column": 16
+          },
+          "end": {
+            "line": 383,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/journal.go",
+          "start": {
+            "line": 473,
+            "column": 48
+          },
+          "end": {
+            "line": 475,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/journal.go",
+          "start": {
+            "line": 585,
+            "column": 2
+          },
+          "end": {
+            "line": 585,
+            "column": 16
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/operation.go",
+          "start": {
+            "line": 62,
+            "column": 16
+          },
+          "end": {
+            "line": 64,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/operation.go",
+          "start": {
+            "line": 66,
+            "column": 16
+          },
+          "end": {
+            "line": 68,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/operation.go",
+          "start": {
+            "line": 88,
+            "column": 16
+          },
+          "end": {
+            "line": 90,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/operation.go",
+          "start": {
+            "line": 98,
+            "column": 17
+          },
+          "end": {
+            "line": 100,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/operation.go",
+          "start": {
+            "line": 102,
+            "column": 17
+          },
+          "end": {
+            "line": 104,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/operation.go",
+          "start": {
+            "line": 107,
+            "column": 10
+          },
+          "end": {
+            "line": 108,
+            "column": 105
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/operation_presentation.go",
+          "start": {
+            "line": 83,
+            "column": 17
+          },
+          "end": {
+            "line": 85,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/operation_presentation.go",
+          "start": {
+            "line": 104,
+            "column": 17
+          },
+          "end": {
+            "line": 106,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/presentation.go",
+          "start": {
+            "line": 39,
+            "column": 16
+          },
+          "end": {
+            "line": 41,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/presentation.go",
+          "start": {
+            "line": 81,
+            "column": 17
+          },
+          "end": {
+            "line": 83,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/presentation.go",
+          "start": {
+            "line": 101,
+            "column": 17
+          },
+          "end": {
+            "line": 103,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/upgrade.go",
+          "start": {
+            "line": 78,
+            "column": 16
+          },
+          "end": {
+            "line": 80,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/upgrade.go",
+          "start": {
+            "line": 100,
+            "column": 16
+          },
+          "end": {
+            "line": 102,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/upgrade.go",
+          "start": {
+            "line": 116,
+            "column": 16
+          },
+          "end": {
+            "line": 118,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/upgrade.go",
+          "start": {
+            "line": 121,
+            "column": 16
+          },
+          "end": {
+            "line": 123,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/upgrade.go",
+          "start": {
+            "line": 156,
+            "column": 16
+          },
+          "end": {
+            "line": 158,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/upgrade.go",
+          "start": {
+            "line": 160,
+            "column": 16
+          },
+          "end": {
+            "line": 162,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/upgrade.go",
+          "start": {
+            "line": 167,
+            "column": 16
+          },
+          "end": {
+            "line": 169,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/upgrade.go",
+          "start": {
+            "line": 174,
+            "column": 48
+          },
+          "end": {
+            "line": 176,
+            "column": 3
+          },
+          "statements": 1
+        }
+      ]
+    },
+    {
+      "name": "publication-application",
+      "roots": [
+        "internal/project",
+        "internal/publisher"
+      ],
+      "misses": [
+        {
+          "file": "internal/project/check.go",
+          "start": {
+            "line": 46,
+            "column": 16
+          },
+          "end": {
+            "line": 48,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/check.go",
+          "start": {
+            "line": 210,
+            "column": 16
+          },
+          "end": {
+            "line": 212,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/check.go",
+          "start": {
+            "line": 222,
+            "column": 17
+          },
+          "end": {
+            "line": 224,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/check.go",
+          "start": {
+            "line": 227,
+            "column": 16
+          },
+          "end": {
+            "line": 229,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/check.go",
+          "start": {
+            "line": 273,
+            "column": 16
+          },
+          "end": {
+            "line": 275,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/check.go",
+          "start": {
+            "line": 278,
+            "column": 16
+          },
+          "end": {
+            "line": 280,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/check.go",
+          "start": {
+            "line": 283,
+            "column": 16
+          },
+          "end": {
+            "line": 285,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/check.go",
+          "start": {
+            "line": 291,
+            "column": 16
+          },
+          "end": {
+            "line": 293,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/check.go",
+          "start": {
+            "line": 297,
+            "column": 17
+          },
+          "end": {
+            "line": 299,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/check.go",
+          "start": {
+            "line": 304,
+            "column": 17
+          },
+          "end": {
+            "line": 306,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/check.go",
+          "start": {
+            "line": 315,
+            "column": 16
+          },
+          "end": {
+            "line": 317,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/check.go",
+          "start": {
+            "line": 323,
+            "column": 16
+          },
+          "end": {
+            "line": 325,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/check.go",
+          "start": {
+            "line": 350,
+            "column": 16
+          },
+          "end": {
+            "line": 352,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/check.go",
+          "start": {
+            "line": 364,
+            "column": 16
+          },
+          "end": {
+            "line": 366,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/check.go",
+          "start": {
+            "line": 371,
+            "column": 16
+          },
+          "end": {
+            "line": 373,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/check.go",
+          "start": {
+            "line": 383,
+            "column": 16
+          },
+          "end": {
+            "line": 385,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/check.go",
+          "start": {
+            "line": 435,
+            "column": 16
+          },
+          "end": {
+            "line": 437,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/commitpolicy.go",
+          "start": {
+            "line": 119,
+            "column": 16
+          },
+          "end": {
+            "line": 123,
+            "column": 3
+          },
+          "statements": 3
+        },
+        {
+          "file": "internal/project/gatedcommands.go",
+          "start": {
+            "line": 22,
+            "column": 16
+          },
+          "end": {
+            "line": 24,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/gatedcommands.go",
+          "start": {
+            "line": 26,
+            "column": 16
+          },
+          "end": {
+            "line": 28,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/gatedcommands.go",
+          "start": {
+            "line": 30,
+            "column": 16
+          },
+          "end": {
+            "line": 32,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/project.go",
+          "start": {
+            "line": 292,
+            "column": 16
+          },
+          "end": {
+            "line": 294,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/scaffold.go",
+          "start": {
+            "line": 40,
+            "column": 85
+          },
+          "end": {
+            "line": 42,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/scaffold.go",
+          "start": {
+            "line": 48,
+            "column": 67
+          },
+          "end": {
+            "line": 50,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/scaffold.go",
+          "start": {
+            "line": 55,
+            "column": 74
+          },
+          "end": {
+            "line": 57,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/scaffold.go",
+          "start": {
+            "line": 84,
+            "column": 16
+          },
+          "end": {
+            "line": 86,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/scaffold.go",
+          "start": {
+            "line": 151,
+            "column": 17
+          },
+          "end": {
+            "line": 153,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/scaffold.go",
+          "start": {
+            "line": 155,
+            "column": 17
+          },
+          "end": {
+            "line": 157,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/scaffold.go",
+          "start": {
+            "line": 218,
+            "column": 16
+          },
+          "end": {
+            "line": 220,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/scaffold.go",
+          "start": {
+            "line": 222,
+            "column": 16
+          },
+          "end": {
+            "line": 224,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/scaffold.go",
+          "start": {
+            "line": 230,
+            "column": 16
+          },
+          "end": {
+            "line": 232,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/scaffold.go",
+          "start": {
+            "line": 252,
+            "column": 78
+          },
+          "end": {
+            "line": 254,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/scaffold.go",
+          "start": {
+            "line": 256,
+            "column": 59
+          },
+          "end": {
+            "line": 258,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/scaffold.go",
+          "start": {
+            "line": 261,
+            "column": 66
+          },
+          "end": {
+            "line": 263,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/tree_reader.go",
+          "start": {
+            "line": 38,
+            "column": 15
+          },
+          "end": {
+            "line": 40,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/tree_reader.go",
+          "start": {
+            "line": 63,
+            "column": 16
+          },
+          "end": {
+            "line": 65,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/banner.go",
+          "start": {
+            "line": 50,
+            "column": 13
+          },
+          "end": {
+            "line": 52,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/confighash.go",
+          "start": {
+            "line": 92,
+            "column": 16
+          },
+          "end": {
+            "line": 94,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/configreference.go",
+          "start": {
+            "line": 56,
+            "column": 56
+          },
+          "end": {
+            "line": 58,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/configreference.go",
+          "start": {
+            "line": 60,
+            "column": 37
+          },
+          "end": {
+            "line": 62,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/configreference.go",
+          "start": {
+            "line": 65,
+            "column": 44
+          },
+          "end": {
+            "line": 67,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/configreference.go",
+          "start": {
+            "line": 280,
+            "column": 71
+          },
+          "end": {
+            "line": 282,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/configreference.go",
+          "start": {
+            "line": 342,
+            "column": 16
+          },
+          "end": {
+            "line": 344,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/configreference.go",
+          "start": {
+            "line": 357,
+            "column": 16
+          },
+          "end": {
+            "line": 359,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/configreference.go",
+          "start": {
+            "line": 433,
+            "column": 17
+          },
+          "end": {
+            "line": 435,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/configreference.go",
+          "start": {
+            "line": 488,
+            "column": 16
+          },
+          "end": {
+            "line": 490,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/configreference.go",
+          "start": {
+            "line": 493,
+            "column": 16
+          },
+          "end": {
+            "line": 495,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/configreference.go",
+          "start": {
+            "line": 528,
+            "column": 16
+          },
+          "end": {
+            "line": 530,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/configreference_print.go",
+          "start": {
+            "line": 17,
+            "column": 16
+          },
+          "end": {
+            "line": 19,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/configreference_print.go",
+          "start": {
+            "line": 52,
+            "column": 17
+          },
+          "end": {
+            "line": 54,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/generated_semantics.go",
+          "start": {
+            "line": 23,
+            "column": 18
+          },
+          "end": {
+            "line": 25,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/generated_semantics.go",
+          "start": {
+            "line": 35,
+            "column": 17
+          },
+          "end": {
+            "line": 37,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/inputs.go",
+          "start": {
+            "line": 133,
+            "column": 16
+          },
+          "end": {
+            "line": 135,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/inputs.go",
+          "start": {
+            "line": 180,
+            "column": 16
+          },
+          "end": {
+            "line": 182,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/inputs.go",
+          "start": {
+            "line": 184,
+            "column": 16
+          },
+          "end": {
+            "line": 186,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/inputs.go",
+          "start": {
+            "line": 188,
+            "column": 16
+          },
+          "end": {
+            "line": 190,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/output_plan.go",
+          "start": {
+            "line": 108,
+            "column": 15
+          },
+          "end": {
+            "line": 110,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/output_plan.go",
+          "start": {
+            "line": 151,
+            "column": 15
+          },
+          "end": {
+            "line": 153,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/output_plan.go",
+          "start": {
+            "line": 247,
+            "column": 17
+          },
+          "end": {
+            "line": 249,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/output_plan.go",
+          "start": {
+            "line": 286,
+            "column": 18
+          },
+          "end": {
+            "line": 288,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/output_plan.go",
+          "start": {
+            "line": 301,
+            "column": 19
+          },
+          "end": {
+            "line": 303,
+            "column": 6
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/output_plan.go",
+          "start": {
+            "line": 319,
+            "column": 19
+          },
+          "end": {
+            "line": 321,
+            "column": 6
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/output_plan.go",
+          "start": {
+            "line": 392,
+            "column": 17
+          },
+          "end": {
+            "line": 394,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/output_plan.go",
+          "start": {
+            "line": 399,
+            "column": 17
+          },
+          "end": {
+            "line": 401,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/output_plan.go",
+          "start": {
+            "line": 424,
+            "column": 18
+          },
+          "end": {
+            "line": 426,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/output_plan.go",
+          "start": {
+            "line": 439,
+            "column": 18
+          },
+          "end": {
+            "line": 441,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/output_plan.go",
+          "start": {
+            "line": 447,
+            "column": 18
+          },
+          "end": {
+            "line": 449,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/output_plan.go",
+          "start": {
+            "line": 458,
+            "column": 19
+          },
+          "end": {
+            "line": 460,
+            "column": 6
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/output_plan.go",
+          "start": {
+            "line": 634,
+            "column": 18
+          },
+          "end": {
+            "line": 636,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/output_plan.go",
+          "start": {
+            "line": 638,
+            "column": 18
+          },
+          "end": {
+            "line": 640,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/output_plan.go",
+          "start": {
+            "line": 642,
+            "column": 18
+          },
+          "end": {
+            "line": 644,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/output_plan.go",
+          "start": {
+            "line": 698,
+            "column": 49
+          },
+          "end": {
+            "line": 700,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/output_plan.go",
+          "start": {
+            "line": 735,
+            "column": 55
+          },
+          "end": {
+            "line": 737,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/output_plan.go",
+          "start": {
+            "line": 749,
+            "column": 16
+          },
+          "end": {
+            "line": 751,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/output_plan.go",
+          "start": {
+            "line": 754,
+            "column": 78
+          },
+          "end": {
+            "line": 756,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/output_plan.go",
+          "start": {
+            "line": 772,
+            "column": 55
+          },
+          "end": {
+            "line": 774,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/output_plan.go",
+          "start": {
+            "line": 776,
+            "column": 17
+          },
+          "end": {
+            "line": 778,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/output_plan.go",
+          "start": {
+            "line": 780,
+            "column": 53
+          },
+          "end": {
+            "line": 782,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/output_plan.go",
+          "start": {
+            "line": 794,
+            "column": 75
+          },
+          "end": {
+            "line": 796,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/pitfalls.go",
+          "start": {
+            "line": 30,
+            "column": 18
+          },
+          "end": {
+            "line": 32,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/pitfalls.go",
+          "start": {
+            "line": 39,
+            "column": 10
+          },
+          "end": {
+            "line": 41,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/render.go",
+          "start": {
+            "line": 212,
+            "column": 17
+          },
+          "end": {
+            "line": 214,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/render.go",
+          "start": {
+            "line": 332,
+            "column": 16
+          },
+          "end": {
+            "line": 334,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/render.go",
+          "start": {
+            "line": 458,
+            "column": 17
+          },
+          "end": {
+            "line": 460,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/render.go",
+          "start": {
+            "line": 596,
+            "column": 18
+          },
+          "end": {
+            "line": 598,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/render.go",
+          "start": {
+            "line": 604,
+            "column": 46
+          },
+          "end": {
+            "line": 606,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/render.go",
+          "start": {
+            "line": 613,
+            "column": 16
+          },
+          "end": {
+            "line": 615,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/render.go",
+          "start": {
+            "line": 628,
+            "column": 74
+          },
+          "end": {
+            "line": 630,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/render.go",
+          "start": {
+            "line": 680,
+            "column": 17
+          },
+          "end": {
+            "line": 682,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/render.go",
+          "start": {
+            "line": 689,
+            "column": 17
+          },
+          "end": {
+            "line": 691,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/render.go",
+          "start": {
+            "line": 719,
+            "column": 16
+          },
+          "end": {
+            "line": 721,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/render.go",
+          "start": {
+            "line": 723,
+            "column": 16
+          },
+          "end": {
+            "line": 725,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/render.go",
+          "start": {
+            "line": 762,
+            "column": 16
+          },
+          "end": {
+            "line": 764,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/render.go",
+          "start": {
+            "line": 770,
+            "column": 75
+          },
+          "end": {
+            "line": 772,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/render.go",
+          "start": {
+            "line": 787,
+            "column": 16
+          },
+          "end": {
+            "line": 789,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/render.go",
+          "start": {
+            "line": 813,
+            "column": 16
+          },
+          "end": {
+            "line": 815,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/render.go",
+          "start": {
+            "line": 856,
+            "column": 23
+          },
+          "end": {
+            "line": 858,
+            "column": 6
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/render.go",
+          "start": {
+            "line": 866,
+            "column": 17
+          },
+          "end": {
+            "line": 868,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/render.go",
+          "start": {
+            "line": 896,
+            "column": 17
+          },
+          "end": {
+            "line": 898,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/render.go",
+          "start": {
+            "line": 965,
+            "column": 17
+          },
+          "end": {
+            "line": 967,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/render.go",
+          "start": {
+            "line": 1008,
+            "column": 17
+          },
+          "end": {
+            "line": 1010,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/sync.go",
+          "start": {
+            "line": 217,
+            "column": 102
+          },
+          "end": {
+            "line": 219,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/sync.go",
+          "start": {
+            "line": 388,
+            "column": 16
+          },
+          "end": {
+            "line": 390,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/sync.go",
+          "start": {
+            "line": 448,
+            "column": 16
+          },
+          "end": {
+            "line": 450,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/topics.go",
+          "start": {
+            "line": 21,
+            "column": 16
+          },
+          "end": {
+            "line": 23,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/topics.go",
+          "start": {
+            "line": 25,
+            "column": 16
+          },
+          "end": {
+            "line": 27,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/topics.go",
+          "start": {
+            "line": 42,
+            "column": 17
+          },
+          "end": {
+            "line": 44,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/topics.go",
+          "start": {
+            "line": 47,
+            "column": 17
+          },
+          "end": {
+            "line": 49,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/topics.go",
+          "start": {
+            "line": 52,
+            "column": 17
+          },
+          "end": {
+            "line": 54,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/topics.go",
+          "start": {
+            "line": 68,
+            "column": 17
+          },
+          "end": {
+            "line": 70,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/topics.go",
+          "start": {
+            "line": 72,
+            "column": 17
+          },
+          "end": {
+            "line": 74,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/topics.go",
+          "start": {
+            "line": 100,
+            "column": 10
+          },
+          "end": {
+            "line": 102,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/topics.go",
+          "start": {
+            "line": 107,
+            "column": 16
+          },
+          "end": {
+            "line": 109,
+            "column": 3
+          },
+          "statements": 1
+        }
+      ]
+    },
+    {
+      "name": "repository-effort-lifecycle",
+      "roots": [
+        "internal/effort",
+        "internal/git",
+        "internal/worktree"
+      ],
+      "misses": [
+        {
+          "file": "internal/effort/activity.go",
+          "start": {
+            "line": 205,
+            "column": 16
+          },
+          "end": {
+            "line": 207,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/activity.go",
+          "start": {
+            "line": 221,
+            "column": 17
+          },
+          "end": {
+            "line": 223,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/activity.go",
+          "start": {
+            "line": 225,
+            "column": 37
+          },
+          "end": {
+            "line": 227,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/activity.go",
+          "start": {
+            "line": 236,
+            "column": 58
+          },
+          "end": {
+            "line": 238,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/activity.go",
+          "start": {
+            "line": 257,
+            "column": 59
+          },
+          "end": {
+            "line": 259,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/activity.go",
+          "start": {
+            "line": 273,
+            "column": 74
+          },
+          "end": {
+            "line": 275,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/activity.go",
+          "start": {
+            "line": 280,
+            "column": 42
+          },
+          "end": {
+            "line": 282,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/activity.go",
+          "start": {
+            "line": 286,
+            "column": 35
+          },
+          "end": {
+            "line": 288,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/activity.go",
+          "start": {
+            "line": 289,
+            "column": 36
+          },
+          "end": {
+            "line": 291,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/activity.go",
+          "start": {
+            "line": 302,
+            "column": 42
+          },
+          "end": {
+            "line": 304,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/memory.go",
+          "start": {
+            "line": 9,
+            "column": 16
+          },
+          "end": {
+            "line": 10,
+            "column": 13
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/memory_metadata.go",
+          "start": {
+            "line": 295,
+            "column": 16
+          },
+          "end": {
+            "line": 297,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/memory_operations.go",
+          "start": {
+            "line": 80,
+            "column": 45
+          },
+          "end": {
+            "line": 80,
+            "column": 46
+          },
+          "statements": 0
+        },
+        {
+          "file": "internal/effort/memory_operations.go",
+          "start": {
+            "line": 81,
+            "column": 45
+          },
+          "end": {
+            "line": 81,
+            "column": 46
+          },
+          "statements": 0
+        },
+        {
+          "file": "internal/effort/memory_operations.go",
+          "start": {
+            "line": 82,
+            "column": 45
+          },
+          "end": {
+            "line": 82,
+            "column": 46
+          },
+          "statements": 0
+        },
+        {
+          "file": "internal/effort/memory_operations.go",
+          "start": {
+            "line": 312,
+            "column": 16
+          },
+          "end": {
+            "line": 314,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/memory_operations.go",
+          "start": {
+            "line": 466,
+            "column": 97
+          },
+          "end": {
+            "line": 468,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/memory_operations.go",
+          "start": {
+            "line": 470,
+            "column": 16
+          },
+          "end": {
+            "line": 472,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/memory_operations.go",
+          "start": {
+            "line": 649,
+            "column": 23
+          },
+          "end": {
+            "line": 651,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/paths.go",
+          "start": {
+            "line": 39,
+            "column": 16
+          },
+          "end": {
+            "line": 41,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/paths.go",
+          "start": {
+            "line": 42,
+            "column": 37
+          },
+          "end": {
+            "line": 44,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/paths.go",
+          "start": {
+            "line": 45,
+            "column": 19
+          },
+          "end": {
+            "line": 47,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/paths.go",
+          "start": {
+            "line": 70,
+            "column": 54
+          },
+          "end": {
+            "line": 72,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 13,
+            "column": 16
+          },
+          "end": {
+            "line": 15,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 17,
+            "column": 16
+          },
+          "end": {
+            "line": 19,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 38,
+            "column": 16
+          },
+          "end": {
+            "line": 40,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 42,
+            "column": 16
+          },
+          "end": {
+            "line": 44,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 53,
+            "column": 17
+          },
+          "end": {
+            "line": 55,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 57,
+            "column": 17
+          },
+          "end": {
+            "line": 59,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 77,
+            "column": 17
+          },
+          "end": {
+            "line": 79,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 81,
+            "column": 17
+          },
+          "end": {
+            "line": 83,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 92,
+            "column": 22
+          },
+          "end": {
+            "line": 94,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 107,
+            "column": 16
+          },
+          "end": {
+            "line": 109,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 111,
+            "column": 16
+          },
+          "end": {
+            "line": 113,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 144,
+            "column": 17
+          },
+          "end": {
+            "line": 146,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 156,
+            "column": 17
+          },
+          "end": {
+            "line": 158,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 160,
+            "column": 17
+          },
+          "end": {
+            "line": 162,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 168,
+            "column": 17
+          },
+          "end": {
+            "line": 170,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 174,
+            "column": 16
+          },
+          "end": {
+            "line": 176,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 178,
+            "column": 16
+          },
+          "end": {
+            "line": 180,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 210,
+            "column": 17
+          },
+          "end": {
+            "line": 212,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 224,
+            "column": 62
+          },
+          "end": {
+            "line": 226,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 228,
+            "column": 86
+          },
+          "end": {
+            "line": 230,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 232,
+            "column": 61
+          },
+          "end": {
+            "line": 234,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 243,
+            "column": 18
+          },
+          "end": {
+            "line": 245,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 247,
+            "column": 18
+          },
+          "end": {
+            "line": 249,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 281,
+            "column": 61
+          },
+          "end": {
+            "line": 283,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 300,
+            "column": 61
+          },
+          "end": {
+            "line": 302,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 346,
+            "column": 16
+          },
+          "end": {
+            "line": 348,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 354,
+            "column": 16
+          },
+          "end": {
+            "line": 356,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 366,
+            "column": 17
+          },
+          "end": {
+            "line": 368,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 372,
+            "column": 16
+          },
+          "end": {
+            "line": 374,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/presentation.go",
+          "start": {
+            "line": 388,
+            "column": 17
+          },
+          "end": {
+            "line": 390,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/publication_linux.go",
+          "start": {
+            "line": 27,
+            "column": 123
+          },
+          "end": {
+            "line": 29,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/publication_linux.go",
+          "start": {
+            "line": 36,
+            "column": 107
+          },
+          "end": {
+            "line": 38,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/publication_linux.go",
+          "start": {
+            "line": 41,
+            "column": 45
+          },
+          "end": {
+            "line": 43,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/publication_linux.go",
+          "start": {
+            "line": 50,
+            "column": 123
+          },
+          "end": {
+            "line": 52,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/safeio.go",
+          "start": {
+            "line": 44,
+            "column": 16
+          },
+          "end": {
+            "line": 46,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/safeio.go",
+          "start": {
+            "line": 50,
+            "column": 62
+          },
+          "end": {
+            "line": 52,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/safeio.go",
+          "start": {
+            "line": 53,
+            "column": 55
+          },
+          "end": {
+            "line": 55,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/safeio.go",
+          "start": {
+            "line": 57,
+            "column": 16
+          },
+          "end": {
+            "line": 59,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/safeio.go",
+          "start": {
+            "line": 60,
+            "column": 53
+          },
+          "end": {
+            "line": 62,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/safeio.go",
+          "start": {
+            "line": 63,
+            "column": 36
+          },
+          "end": {
+            "line": 65,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/safeio.go",
+          "start": {
+            "line": 94,
+            "column": 20
+          },
+          "end": {
+            "line": 96,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/safeio.go",
+          "start": {
+            "line": 100,
+            "column": 21
+          },
+          "end": {
+            "line": 102,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/safeio.go",
+          "start": {
+            "line": 104,
+            "column": 16
+          },
+          "end": {
+            "line": 106,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/safeio.go",
+          "start": {
+            "line": 107,
+            "column": 48
+          },
+          "end": {
+            "line": 109,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/safeio_linux.go",
+          "start": {
+            "line": 16,
+            "column": 2
+          },
+          "end": {
+            "line": 16,
+            "column": 10
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/safeio_unix.go",
+          "start": {
+            "line": 20,
+            "column": 20
+          },
+          "end": {
+            "line": 22,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/safeio_unix.go",
+          "start": {
+            "line": 34,
+            "column": 59
+          },
+          "end": {
+            "line": 36,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/service.go",
+          "start": {
+            "line": 167,
+            "column": 67
+          },
+          "end": {
+            "line": 169,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/service.go",
+          "start": {
+            "line": 175,
+            "column": 57
+          },
+          "end": {
+            "line": 177,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/service.go",
+          "start": {
+            "line": 181,
+            "column": 44
+          },
+          "end": {
+            "line": 183,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/service.go",
+          "start": {
+            "line": 205,
+            "column": 16
+          },
+          "end": {
+            "line": 207,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/service.go",
+          "start": {
+            "line": 234,
+            "column": 44
+          },
+          "end": {
+            "line": 236,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/service.go",
+          "start": {
+            "line": 283,
+            "column": 62
+          },
+          "end": {
+            "line": 285,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/service.go",
+          "start": {
+            "line": 292,
+            "column": 56
+          },
+          "end": {
+            "line": 294,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/service.go",
+          "start": {
+            "line": 316,
+            "column": 44
+          },
+          "end": {
+            "line": 318,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/service.go",
+          "start": {
+            "line": 357,
+            "column": 68
+          },
+          "end": {
+            "line": 359,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/service.go",
+          "start": {
+            "line": 364,
+            "column": 55
+          },
+          "end": {
+            "line": 366,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/service.go",
+          "start": {
+            "line": 377,
+            "column": 55
+          },
+          "end": {
+            "line": 379,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/store.go",
+          "start": {
+            "line": 116,
+            "column": 65
+          },
+          "end": {
+            "line": 118,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/store.go",
+          "start": {
+            "line": 190,
+            "column": 3
+          },
+          "end": {
+            "line": 190,
+            "column": 69
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/store.go",
+          "start": {
+            "line": 207,
+            "column": 16
+          },
+          "end": {
+            "line": 209,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/store.go",
+          "start": {
+            "line": 216,
+            "column": 55
+          },
+          "end": {
+            "line": 218,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/store.go",
+          "start": {
+            "line": 240,
+            "column": 16
+          },
+          "end": {
+            "line": 242,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/store.go",
+          "start": {
+            "line": 250,
+            "column": 81
+          },
+          "end": {
+            "line": 252,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/store.go",
+          "start": {
+            "line": 258,
+            "column": 43
+          },
+          "end": {
+            "line": 260,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/store.go",
+          "start": {
+            "line": 260,
+            "column": 26
+          },
+          "end": {
+            "line": 262,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/store.go",
+          "start": {
+            "line": 266,
+            "column": 36
+          },
+          "end": {
+            "line": 268,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/store.go",
+          "start": {
+            "line": 269,
+            "column": 37
+          },
+          "end": {
+            "line": 271,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/store.go",
+          "start": {
+            "line": 276,
+            "column": 50
+          },
+          "end": {
+            "line": 278,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/store.go",
+          "start": {
+            "line": 283,
+            "column": 43
+          },
+          "end": {
+            "line": 285,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/store.go",
+          "start": {
+            "line": 299,
+            "column": 66
+          },
+          "end": {
+            "line": 301,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/store.go",
+          "start": {
+            "line": 305,
+            "column": 58
+          },
+          "end": {
+            "line": 307,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/store.go",
+          "start": {
+            "line": 313,
+            "column": 16
+          },
+          "end": {
+            "line": 315,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/store.go",
+          "start": {
+            "line": 316,
+            "column": 35
+          },
+          "end": {
+            "line": 319,
+            "column": 3
+          },
+          "statements": 2
+        },
+        {
+          "file": "internal/effort/store.go",
+          "start": {
+            "line": 335,
+            "column": 16
+          },
+          "end": {
+            "line": 337,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/store.go",
+          "start": {
+            "line": 404,
+            "column": 16
+          },
+          "end": {
+            "line": 406,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/effort/store.go",
+          "start": {
+            "line": 431,
+            "column": 24
+          },
+          "end": {
+            "line": 433,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/controlroot.go",
+          "start": {
+            "line": 68,
+            "column": 16
+          },
+          "end": {
+            "line": 70,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/controlroot.go",
+          "start": {
+            "line": 96,
+            "column": 16
+          },
+          "end": {
+            "line": 98,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/controlroot.go",
+          "start": {
+            "line": 100,
+            "column": 16
+          },
+          "end": {
+            "line": 102,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/controlroot.go",
+          "start": {
+            "line": 103,
+            "column": 61
+          },
+          "end": {
+            "line": 105,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/controlroot.go",
+          "start": {
+            "line": 107,
+            "column": 16
+          },
+          "end": {
+            "line": 109,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/controlroot.go",
+          "start": {
+            "line": 111,
+            "column": 16
+          },
+          "end": {
+            "line": 113,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/controlroot.go",
+          "start": {
+            "line": 115,
+            "column": 16
+          },
+          "end": {
+            "line": 117,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/controlroot.go",
+          "start": {
+            "line": 132,
+            "column": 17
+          },
+          "end": {
+            "line": 134,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/controlroot.go",
+          "start": {
+            "line": 198,
+            "column": 44
+          },
+          "end": {
+            "line": 200,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/controlroot.go",
+          "start": {
+            "line": 201,
+            "column": 57
+          },
+          "end": {
+            "line": 203,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/controlroot.go",
+          "start": {
+            "line": 278,
+            "column": 25
+          },
+          "end": {
+            "line": 280,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/controlroot.go",
+          "start": {
+            "line": 334,
+            "column": 25
+          },
+          "end": {
+            "line": 336,
+            "column": 6
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/controlroot.go",
+          "start": {
+            "line": 378,
+            "column": 16
+          },
+          "end": {
+            "line": 380,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/controlroot.go",
+          "start": {
+            "line": 434,
+            "column": 46
+          },
+          "end": {
+            "line": 436,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/controlroot.go",
+          "start": {
+            "line": 471,
+            "column": 16
+          },
+          "end": {
+            "line": 473,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/controlroot.go",
+          "start": {
+            "line": 492,
+            "column": 22
+          },
+          "end": {
+            "line": 493,
+            "column": 12
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/controlroot.go",
+          "start": {
+            "line": 509,
+            "column": 22
+          },
+          "end": {
+            "line": 510,
+            "column": 12
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/controlroot.go",
+          "start": {
+            "line": 515,
+            "column": 24
+          },
+          "end": {
+            "line": 517,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/controlroot.go",
+          "start": {
+            "line": 525,
+            "column": 23
+          },
+          "end": {
+            "line": 527,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/controlroot_unix.go",
+          "start": {
+            "line": 32,
+            "column": 16
+          },
+          "end": {
+            "line": 34,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/controlroot_unix.go",
+          "start": {
+            "line": 36,
+            "column": 16
+          },
+          "end": {
+            "line": 38,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/controlroot_unix.go",
+          "start": {
+            "line": 50,
+            "column": 47
+          },
+          "end": {
+            "line": 52,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/git.go",
+          "start": {
+            "line": 50,
+            "column": 16
+          },
+          "end": {
+            "line": 52,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/git.go",
+          "start": {
+            "line": 181,
+            "column": 16
+          },
+          "end": {
+            "line": 183,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/git.go",
+          "start": {
+            "line": 186,
+            "column": 20
+          },
+          "end": {
+            "line": 188,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/git.go",
+          "start": {
+            "line": 189,
+            "column": 21
+          },
+          "end": {
+            "line": 191,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/git.go",
+          "start": {
+            "line": 208,
+            "column": 17
+          },
+          "end": {
+            "line": 210,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/git.go",
+          "start": {
+            "line": 213,
+            "column": 17
+          },
+          "end": {
+            "line": 215,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/git.go",
+          "start": {
+            "line": 216,
+            "column": 22
+          },
+          "end": {
+            "line": 218,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/git.go",
+          "start": {
+            "line": 236,
+            "column": 16
+          },
+          "end": {
+            "line": 238,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/handle.go",
+          "start": {
+            "line": 54,
+            "column": 16
+          },
+          "end": {
+            "line": 56,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/handle.go",
+          "start": {
+            "line": 70,
+            "column": 16
+          },
+          "end": {
+            "line": 72,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/handle.go",
+          "start": {
+            "line": 77,
+            "column": 21
+          },
+          "end": {
+            "line": 79,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/handle.go",
+          "start": {
+            "line": 176,
+            "column": 17
+          },
+          "end": {
+            "line": 178,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/handle.go",
+          "start": {
+            "line": 180,
+            "column": 17
+          },
+          "end": {
+            "line": 182,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/handle.go",
+          "start": {
+            "line": 205,
+            "column": 17
+          },
+          "end": {
+            "line": 207,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/handle.go",
+          "start": {
+            "line": 336,
+            "column": 16
+          },
+          "end": {
+            "line": 338,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/handle.go",
+          "start": {
+            "line": 341,
+            "column": 16
+          },
+          "end": {
+            "line": 343,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/handle.go",
+          "start": {
+            "line": 345,
+            "column": 16
+          },
+          "end": {
+            "line": 347,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/handle.go",
+          "start": {
+            "line": 362,
+            "column": 23
+          },
+          "end": {
+            "line": 363,
+            "column": 23
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/handle.go",
+          "start": {
+            "line": 456,
+            "column": 16
+          },
+          "end": {
+            "line": 458,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/handle.go",
+          "start": {
+            "line": 638,
+            "column": 16
+          },
+          "end": {
+            "line": 640,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/handle.go",
+          "start": {
+            "line": 642,
+            "column": 16
+          },
+          "end": {
+            "line": 644,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/handle.go",
+          "start": {
+            "line": 657,
+            "column": 18
+          },
+          "end": {
+            "line": 659,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/merge.go",
+          "start": {
+            "line": 62,
+            "column": 16
+          },
+          "end": {
+            "line": 64,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/walk.go",
+          "start": {
+            "line": 57,
+            "column": 16
+          },
+          "end": {
+            "line": 59,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/walk.go",
+          "start": {
+            "line": 65,
+            "column": 16
+          },
+          "end": {
+            "line": 67,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/walk.go",
+          "start": {
+            "line": 224,
+            "column": 16
+          },
+          "end": {
+            "line": 226,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/walk.go",
+          "start": {
+            "line": 291,
+            "column": 17
+          },
+          "end": {
+            "line": 293,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/walk.go",
+          "start": {
+            "line": 307,
+            "column": 3
+          },
+          "end": {
+            "line": 307,
+            "column": 23
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/walk.go",
+          "start": {
+            "line": 322,
+            "column": 17
+          },
+          "end": {
+            "line": 324,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/walk.go",
+          "start": {
+            "line": 338,
+            "column": 16
+          },
+          "end": {
+            "line": 340,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/walk.go",
+          "start": {
+            "line": 421,
+            "column": 16
+          },
+          "end": {
+            "line": 423,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/git/walk.go",
+          "start": {
+            "line": 472,
+            "column": 16
+          },
+          "end": {
+            "line": 474,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/worktree/manager.go",
+          "start": {
+            "line": 134,
+            "column": 45
+          },
+          "end": {
+            "line": 136,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/worktree/manager.go",
+          "start": {
+            "line": 241,
+            "column": 63
+          },
+          "end": {
+            "line": 243,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/worktree/manager.go",
+          "start": {
+            "line": 506,
+            "column": 49
+          },
+          "end": {
+            "line": 508,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/worktree/manager.go",
+          "start": {
+            "line": 561,
+            "column": 46
+          },
+          "end": {
+            "line": 563,
+            "column": 6
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/worktree/presentation.go",
+          "start": {
+            "line": 14,
+            "column": 16
+          },
+          "end": {
+            "line": 16,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/worktree/presentation.go",
+          "start": {
+            "line": 18,
+            "column": 16
+          },
+          "end": {
+            "line": 20,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/worktree/presentation.go",
+          "start": {
+            "line": 46,
+            "column": 17
+          },
+          "end": {
+            "line": 48,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/worktree/presentation.go",
+          "start": {
+            "line": 50,
+            "column": 17
+          },
+          "end": {
+            "line": 52,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/worktree/presentation.go",
+          "start": {
+            "line": 123,
+            "column": 17
+          },
+          "end": {
+            "line": 125,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/worktree/presentation.go",
+          "start": {
+            "line": 131,
+            "column": 17
+          },
+          "end": {
+            "line": 133,
+            "column": 4
+          },
+          "statements": 1
+        }
+      ]
+    },
+    {
+      "name": "state-authority",
+      "roots": [
+        "internal/adr",
+        "internal/currentstate",
+        "internal/currentstatecoord",
+        "internal/topic"
+      ],
+      "misses": [
+        {
+          "file": "internal/adr/adr.go",
+          "start": {
+            "line": 518,
+            "column": 16
+          },
+          "end": {
+            "line": 520,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/adr/adr.go",
+          "start": {
+            "line": 529,
+            "column": 41
+          },
+          "end": {
+            "line": 531,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/adr/adr.go",
+          "start": {
+            "line": 531,
+            "column": 32
+          },
+          "end": {
+            "line": 533,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/adr/application.go",
+          "start": {
+            "line": 104,
+            "column": 12
+          },
+          "end": {
+            "line": 105,
+            "column": 105
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/adr/corpus.go",
+          "start": {
+            "line": 115,
+            "column": 17
+          },
+          "end": {
+            "line": 117,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/adr/corpus.go",
+          "start": {
+            "line": 168,
+            "column": 17
+          },
+          "end": {
+            "line": 170,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/adr/format.go",
+          "start": {
+            "line": 532,
+            "column": 34
+          },
+          "end": {
+            "line": 534,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/adr/operations.go",
+          "start": {
+            "line": 74,
+            "column": 2
+          },
+          "end": {
+            "line": 74,
+            "column": 11
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/adr/renumber.go",
+          "start": {
+            "line": 28,
+            "column": 16
+          },
+          "end": {
+            "line": 30,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/adr/renumber.go",
+          "start": {
+            "line": 50,
+            "column": 94
+          },
+          "end": {
+            "line": 52,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/adr/scaffold_lock.go",
+          "start": {
+            "line": 21,
+            "column": 36
+          },
+          "end": {
+            "line": 23,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/adr/scaffold_lock.go",
+          "start": {
+            "line": 24,
+            "column": 51
+          },
+          "end": {
+            "line": 26,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/adr/scaffold_lock.go",
+          "start": {
+            "line": 43,
+            "column": 47
+          },
+          "end": {
+            "line": 45,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/adr/scaffold_lock.go",
+          "start": {
+            "line": 51,
+            "column": 53
+          },
+          "end": {
+            "line": 53,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/currentstate/qualification.go",
+          "start": {
+            "line": 51,
+            "column": 2
+          },
+          "end": {
+            "line": 51,
+            "column": 25
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/currentstate/transition.go",
+          "start": {
+            "line": 391,
+            "column": 11
+          },
+          "end": {
+            "line": 392,
+            "column": 76
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/currentstate/transition.go",
+          "start": {
+            "line": 407,
+            "column": 10
+          },
+          "end": {
+            "line": 408,
+            "column": 75
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/currentstatecoord/commit.go",
+          "start": {
+            "line": 61,
+            "column": 3
+          },
+          "end": {
+            "line": 61,
+            "column": 47
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/currentstatecoord/commit.go",
+          "start": {
+            "line": 81,
+            "column": 16
+          },
+          "end": {
+            "line": 83,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/currentstatecoord/context.go",
+          "start": {
+            "line": 90,
+            "column": 16
+          },
+          "end": {
+            "line": 92,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/currentstatecoord/context.go",
+          "start": {
+            "line": 94,
+            "column": 16
+          },
+          "end": {
+            "line": 96,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/currentstatecoord/currentstate.go",
+          "start": {
+            "line": 190,
+            "column": 16
+          },
+          "end": {
+            "line": 192,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/currentstatecoord/currentstate.go",
+          "start": {
+            "line": 195,
+            "column": 16
+          },
+          "end": {
+            "line": 197,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/currentstatecoord/currentstate.go",
+          "start": {
+            "line": 200,
+            "column": 16
+          },
+          "end": {
+            "line": 202,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/currentstatecoord/currentstate.go",
+          "start": {
+            "line": 260,
+            "column": 16
+          },
+          "end": {
+            "line": 262,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/currentstatecoord/currentstate.go",
+          "start": {
+            "line": 266,
+            "column": 16
+          },
+          "end": {
+            "line": 268,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/currentstatecoord/currentstate.go",
+          "start": {
+            "line": 310,
+            "column": 2
+          },
+          "end": {
+            "line": 310,
+            "column": 60
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/currentstatecoord/currentstate.go",
+          "start": {
+            "line": 336,
+            "column": 16
+          },
+          "end": {
+            "line": 338,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/currentstatecoord/currentstate.go",
+          "start": {
+            "line": 344,
+            "column": 16
+          },
+          "end": {
+            "line": 346,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/currentstatecoord/number.go",
+          "start": {
+            "line": 42,
+            "column": 17
+          },
+          "end": {
+            "line": 44,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/currentstatecoord/number.go",
+          "start": {
+            "line": 81,
+            "column": 16
+          },
+          "end": {
+            "line": 83,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/currentstatecoord/number.go",
+          "start": {
+            "line": 90,
+            "column": 79
+          },
+          "end": {
+            "line": 92,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/currentstatecoord/number.go",
+          "start": {
+            "line": 96,
+            "column": 66
+          },
+          "end": {
+            "line": 98,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/topic/corpus.go",
+          "start": {
+            "line": 100,
+            "column": 37
+          },
+          "end": {
+            "line": 102,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/topic/corpus.go",
+          "start": {
+            "line": 171,
+            "column": 4
+          },
+          "end": {
+            "line": 171,
+            "column": 14
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/topic/markers.go",
+          "start": {
+            "line": 141,
+            "column": 73
+          },
+          "end": {
+            "line": 143,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/topic/presentation.go",
+          "start": {
+            "line": 107,
+            "column": 17
+          },
+          "end": {
+            "line": 108,
+            "column": 14
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/topic/presentation.go",
+          "start": {
+            "line": 113,
+            "column": 16
+          },
+          "end": {
+            "line": 114,
+            "column": 13
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/topic/presentation.go",
+          "start": {
+            "line": 122,
+            "column": 16
+          },
+          "end": {
+            "line": 123,
+            "column": 13
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/topic/presentation.go",
+          "start": {
+            "line": 126,
+            "column": 16
+          },
+          "end": {
+            "line": 127,
+            "column": 13
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/topic/presentation.go",
+          "start": {
+            "line": 133,
+            "column": 16
+          },
+          "end": {
+            "line": 134,
+            "column": 13
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/topic/presentation.go",
+          "start": {
+            "line": 137,
+            "column": 16
+          },
+          "end": {
+            "line": 138,
+            "column": 13
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/topic/presentation.go",
+          "start": {
+            "line": 144,
+            "column": 16
+          },
+          "end": {
+            "line": 145,
+            "column": 13
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/topic/provenance.go",
+          "start": {
+            "line": 41,
+            "column": 17
+          },
+          "end": {
+            "line": 43,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/topic/provenance.go",
+          "start": {
+            "line": 48,
+            "column": 65
+          },
+          "end": {
+            "line": 50,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/topic/provenance.go",
+          "start": {
+            "line": 53,
+            "column": 16
+          },
+          "end": {
+            "line": 55,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/topic/scaffold.go",
+          "start": {
+            "line": 34,
+            "column": 16
+          },
+          "end": {
+            "line": 36,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/topic/scaffold.go",
+          "start": {
+            "line": 38,
+            "column": 16
+          },
+          "end": {
+            "line": 40,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/topic/scaffold.go",
+          "start": {
+            "line": 98,
+            "column": 16
+          },
+          "end": {
+            "line": 100,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/topic/topic.go",
+          "start": {
+            "line": 175,
+            "column": 16
+          },
+          "end": {
+            "line": 177,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/topic/topic.go",
+          "start": {
+            "line": 283,
+            "column": 17
+          },
+          "end": {
+            "line": 285,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/topic/topic.go",
+          "start": {
+            "line": 286,
+            "column": 64
+          },
+          "end": {
+            "line": 288,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/topic/tree.go",
+          "start": {
+            "line": 113,
+            "column": 85
+          },
+          "end": {
+            "line": 115,
+            "column": 5
+          },
+          "statements": 1
+        }
+      ]
+    }
+  ],
+  "productionDirectives": [
     {
       "directive": {
         "file": "cmd/awf/adr.go",
@@ -11001,7 +17330,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func globalHelp() (presentation.Document, error)` begins at cmd/awf/main.go:48; its branch `if err != nil {` at cmd/awf/main.go:58 follows `usage, err := presentation.NewList(\"usage\", mustValues(\"awf <command> [flags]\")...)` at cmd/awf/main.go:57. That flow establishes checked-in command metadata is presentation-valid, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func globalHelp() (presentation.Document, error)` begins at cmd/awf/main.go:48; its branch `if err != nil {` at cmd/awf/main.go:58 follows `usage, err := presentation.NewList(\"usage\", mustValues(\"awf \u003ccommand\u003e [flags]\")...)` at cmd/awf/main.go:57. That flow establishes checked-in command metadata is presentation-valid, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
@@ -11037,7 +17366,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At cmd/awf/main.go:66, `if err != nil {` is guarded by the preceding `related, err := presentation.NewList(\"related commands\", mustValues(\"awf <command> --help\")...)` at cmd/awf/main.go:65; in `func globalHelp() (presentation.Document, error)` (cmd/awf/main.go:48), the predecessor invariant is checked-in command metadata is presentation-valid. Only violation of that closed state reaches this guard."
+      "evidence": "At cmd/awf/main.go:66, `if err != nil {` is guarded by the preceding `related, err := presentation.NewList(\"related commands\", mustValues(\"awf \u003ccommand\u003e --help\")...)` at cmd/awf/main.go:65; in `func globalHelp() (presentation.Document, error)` (cmd/awf/main.go:48), the predecessor invariant is checked-in command metadata is presentation-valid. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
@@ -12369,7 +18698,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err := value.Decode(&c.RequireSignedCommits); err != nil {` at internal/config/config.go:319 is `}` (internal/config/config.go:318). Within `func (c *CommitPolicyConfig) UnmarshalYAML(node *yaml.Node) error` at internal/config/config.go:294, source review establishes a yaml bool scalar is fully decoded by yaml.v3 after the kind and tag check above; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err := value.Decode(\u0026c.RequireSignedCommits); err != nil {` at internal/config/config.go:319 is `}` (internal/config/config.go:318). Within `func (c *CommitPolicyConfig) UnmarshalYAML(node *yaml.Node) error` at internal/config/config.go:294, source review establishes a yaml bool scalar is fully decoded by yaml.v3 after the kind and tag check above; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
@@ -12381,7 +18710,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/config/config.go:680, `if err := yaml.Unmarshal(b, &source); err != nil {` is guarded by the preceding `var source yaml.Node` at internal/config/config.go:679; in `func ParseTree(awfDir string, b []byte, read TreeReader) (*Config, error)` (internal/config/config.go:672), the predecessor invariant is the strict decoder accepted the same YAML bytes above. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/config/config.go:680, `if err := yaml.Unmarshal(b, \u0026source); err != nil {` is guarded by the preceding `var source yaml.Node` at internal/config/config.go:679; in `func ParseTree(awfDir string, b []byte, read TreeReader) (*Config, error)` (internal/config/config.go:672), the predecessor invariant is the strict decoder accepted the same YAML bytes above. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
@@ -12429,7 +18758,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/config/edit.go:70, `if err := item.Decode(&existing); err != nil {` is guarded by the preceding `var existing LocalDoc` at internal/config/edit.go:69; in `func AppendLocalDoc(src []byte, doc LocalDoc) ([]byte, error)` (internal/config/edit.go:48), the predecessor invariant is strict Parse decoded every existing item immediately above. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/config/edit.go:70, `if err := item.Decode(\u0026existing); err != nil {` is guarded by the preceding `var existing LocalDoc` at internal/config/edit.go:69; in `func AppendLocalDoc(src []byte, doc LocalDoc) ([]byte, error)` (internal/config/edit.go:48), the predecessor invariant is strict Parse decoded every existing item immediately above. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
@@ -12489,7 +18818,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func resolvedScalar(node *yaml.Node) (*yaml.Node, bool)` begins at internal/config/edit.go:602; its branch `if seen[node] {` at internal/config/edit.go:605 follows `for node != nil && node.Kind == yaml.AliasNode {` at internal/config/edit.go:604. That flow establishes yaml.v3 rejects cyclic alias graphs before the editor receives a document, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func resolvedScalar(node *yaml.Node) (*yaml.Node, bool)` begins at internal/config/edit.go:602; its branch `if seen[node] {` at internal/config/edit.go:605 follows `for node != nil \u0026\u0026 node.Kind == yaml.AliasNode {` at internal/config/edit.go:604. That flow establishes yaml.v3 rejects cyclic alias graphs before the editor receives a document, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
@@ -12609,7 +18938,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func renderDetail(detail presentation.Detail) string` begins at internal/contextq/render.go:352; its branch `if presentation.Render(&out, document) != nil {` at internal/contextq/render.go:358 follows `var out strings.Builder` at internal/contextq/render.go:357. That flow establishes a validated document cannot fail buffer rendering, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func renderDetail(detail presentation.Detail) string` begins at internal/contextq/render.go:352; its branch `if presentation.Render(\u0026out, document) != nil {` at internal/contextq/render.go:358 follows `var out strings.Builder` at internal/contextq/render.go:357. That flow establishes a validated document cannot fail buffer rendering, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
@@ -12856,12 +19185,12 @@
         "file": "internal/currentstatecoord/number.go",
         "line": 90,
         "targetLine": 90,
-        "reason": "every named slug came from the corpus, whose pending records all parsed from a `<slug>.md` file carrying the slug-form heading",
+        "reason": "every named slug came from the corpus, whose pending records all parsed from a `\u003cslug\u003e.md` file carrying the slug-form heading",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/currentstatecoord/number.go:90, `if err := adr.RenumberPending(decisionsDir(root), slug, number); err != nil {` is guarded by the preceding `number := next + i` at internal/currentstatecoord/number.go:89; in `func NumberPendingADRs(root string, slugs []string, publish func() error) (NumberingReport, error)` (internal/currentstatecoord/number.go:68), the predecessor invariant is every named slug came from the corpus, whose pending records all parsed from a `<slug>.md` file carrying the slug-form heading. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/currentstatecoord/number.go:90, `if err := adr.RenumberPending(decisionsDir(root), slug, number); err != nil {` is guarded by the preceding `number := next + i` at internal/currentstatecoord/number.go:89; in `func NumberPendingADRs(root string, slugs []string, publish func() error) (NumberingReport, error)` (internal/currentstatecoord/number.go:68), the predecessor invariant is every named slug came from the corpus, whose pending records all parsed from a `\u003cslug\u003e.md` file carrying the slug-form heading. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
@@ -13005,7 +19334,7 @@
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/effort/activity.go:273, `if e := os.Remove(tempPath); e != nil && !errors.Is(e, os.ErrNotExist) {` follows the concrete operation `}` at internal/effort/activity.go:272 in `func (s store) replaceResidentExpected(path string, raw []byte, label string, expected *fileIdentity, operation activityOperation) (returnErr error)` (internal/effort/activity.go:241). The reviewed failure condition is cleanup of a local temporary can only fail through a storage fault; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
+      "evidence": "At internal/effort/activity.go:273, `if e := os.Remove(tempPath); e != nil \u0026\u0026 !errors.Is(e, os.ErrNotExist) {` follows the concrete operation `}` at internal/effort/activity.go:272 in `func (s store) replaceResidentExpected(path string, raw []byte, label string, expected *fileIdentity, operation activityOperation) (returnErr error)` (internal/effort/activity.go:241). The reviewed failure condition is cleanup of a local temporary can only fail through a storage fault; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
     },
     {
       "directive": {
@@ -13185,7 +19514,7 @@
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/effort/paths.go:42, `if info.Mode()&os.ModeSymlink != 0 {` follows the concrete operation `}` at internal/effort/paths.go:41 in `func (p paths) ensure(root string) error` (internal/effort/paths.go:34). The reviewed failure condition is MkdirAll rejects a symlink leaf and ResidentRoot rejects ancestor symlinks; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
+      "evidence": "At internal/effort/paths.go:42, `if info.Mode()\u0026os.ModeSymlink != 0 {` follows the concrete operation `}` at internal/effort/paths.go:41 in `func (p paths) ensure(root string) error` (internal/effort/paths.go:34). The reviewed failure condition is MkdirAll rejects a symlink leaf and ResidentRoot rejects ancestor symlinks; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
     },
     {
       "directive": {
@@ -13629,7 +19958,7 @@
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `if err == nil && os.SameFile(expected.info, displaced.info) {` at internal/effort/publication_linux.go:40 feeds `if err := os.Remove(tempPath); err != nil {` at internal/effort/publication_linux.go:41 in `func removeAtomic(tempPath, path string, expected *fileIdentity) error` (internal/effort/publication_linux.go:35). Its concrete fault condition is the exchanged temporary is a same-owner regular file; failure requires a storage fault, so no safe portable production input induces this error path."
+      "evidence": "The source predecessor `if err == nil \u0026\u0026 os.SameFile(expected.info, displaced.info) {` at internal/effort/publication_linux.go:40 feeds `if err := os.Remove(tempPath); err != nil {` at internal/effort/publication_linux.go:41 in `func removeAtomic(tempPath, path string, expected *fileIdentity) error` (internal/effort/publication_linux.go:35). Its concrete fault condition is the exchanged temporary is a same-owner regular file; failure requires a storage fault, so no safe portable production input induces this error path."
     },
     {
       "directive": {
@@ -14025,7 +20354,7 @@
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func (s store) replaceMemory(path string, raw []byte) (returnErr error)` (starts internal/effort/store.go:237) checks `if err := os.Remove(tempPath); err != nil && !errors.Is(err, os.ErrNotExist) {` at internal/effort/store.go:250 after `if !published {` at internal/effort/store.go:249. Here the locally-created sibling can disappear, but a non-ENOENT removal failure requires a kernel or storage fault; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "`func (s store) replaceMemory(path string, raw []byte) (returnErr error)` (starts internal/effort/store.go:237) checks `if err := os.Remove(tempPath); err != nil \u0026\u0026 !errors.Is(err, os.ErrNotExist) {` at internal/effort/store.go:250 after `if !published {` at internal/effort/store.go:249. Here the locally-created sibling can disappear, but a non-ENOENT removal failure requires a kernel or storage fault; exercising this exact branch requires an unportable environmental failure."
     },
     {
       "directive": {
@@ -14481,7 +20810,7 @@
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `if temporary != \"\" {` at internal/filesystem/handle.go:167 feeds `if err := h.root.Remove(temporary); err != nil && !errors.Is(err, fs.ErrNotExist) {` at internal/filesystem/handle.go:168 in `func (h *Handle) Replace(destination string, contents []byte, mode fs.FileMode) (returnErr error)` (internal/filesystem/handle.go:138). Its concrete fault condition is the concrete root can fault here only through a concurrent namespace change or storage fault, so no safe portable production input induces this error path."
+      "evidence": "The source predecessor `if temporary != \"\" {` at internal/filesystem/handle.go:167 feeds `if err := h.root.Remove(temporary); err != nil \u0026\u0026 !errors.Is(err, fs.ErrNotExist) {` at internal/filesystem/handle.go:168 in `func (h *Handle) Replace(destination string, contents []byte, mode fs.FileMode) (returnErr error)` (internal/filesystem/handle.go:138). Its concrete fault condition is the concrete root can fault here only through a concurrent namespace change or storage fault, so no safe portable production input induces this error path."
     },
     {
       "directive": {
@@ -14493,7 +20822,7 @@
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/filesystem/handle.go:169, `returnErr = errors.Join(returnErr, fmt.Errorf(\"filesystem: remove replacement temporary %q: %w\", temporary, err))` follows the concrete operation `if err := h.root.Remove(temporary); err != nil && !errors.Is(err, fs.ErrNotExist) {` at internal/filesystem/handle.go:168 in `func (h *Handle) Replace(destination string, contents []byte, mode fs.FileMode) (returnErr error)` (internal/filesystem/handle.go:138). The reviewed failure condition is the concrete root can fault here only through a concurrent namespace change or storage fault; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
+      "evidence": "At internal/filesystem/handle.go:169, `returnErr = errors.Join(returnErr, fmt.Errorf(\"filesystem: remove replacement temporary %q: %w\", temporary, err))` follows the concrete operation `if err := h.root.Remove(temporary); err != nil \u0026\u0026 !errors.Is(err, fs.ErrNotExist) {` at internal/filesystem/handle.go:168 in `func (h *Handle) Replace(destination string, contents []byte, mode fs.FileMode) (returnErr error)` (internal/filesystem/handle.go:138). The reviewed failure condition is the concrete root can fault here only through a concurrent namespace change or storage fault; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
     },
     {
       "directive": {
@@ -14649,7 +20978,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err := dec.Decode(&extra); !errors.Is(err, io.EOF) {` at internal/frontmatter/frontmatter.go:57 is `var extra any` (internal/frontmatter/frontmatter.go:56). Within `func ParseStrict(content []byte, out any) (body []byte, found bool, err error)` at internal/frontmatter/frontmatter.go:46, source review establishes Split ends the block at the first exact delimiter, so a second YAML document cannot remain inside it; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err := dec.Decode(\u0026extra); !errors.Is(err, io.EOF) {` at internal/frontmatter/frontmatter.go:57 is `var extra any` (internal/frontmatter/frontmatter.go:56). Within `func ParseStrict(content []byte, out any) (body []byte, found bool, err error)` at internal/frontmatter/frontmatter.go:46, source review establishes Split ends the block at the first exact delimiter, so a second YAML document cannot remain inside it; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
@@ -14661,7 +20990,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/frontmatter/frontmatter.go:58, `if err != nil {` is guarded by the preceding `if err := dec.Decode(&extra); !errors.Is(err, io.EOF) {` at internal/frontmatter/frontmatter.go:57; in `func ParseStrict(content []byte, out any) (body []byte, found bool, err error)` (internal/frontmatter/frontmatter.go:46), the predecessor invariant is the first decode consumed the complete delimiter-bounded YAML block. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/frontmatter/frontmatter.go:58, `if err != nil {` is guarded by the preceding `if err := dec.Decode(\u0026extra); !errors.Is(err, io.EOF) {` at internal/frontmatter/frontmatter.go:57; in `func ParseStrict(content []byte, out any) (body []byte, found bool, err error)` (internal/frontmatter/frontmatter.go:46), the predecessor invariant is the first decode consumed the complete delimiter-bounded YAML block. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
@@ -14937,7 +21266,7 @@
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func platformLstatComponent(path string, requireOwner bool) (os.FileInfo, error)` (starts internal/git/controlroot_unix.go:42) checks `if requireOwner && !ownedByCurrentUser(info) {` at internal/git/controlroot_unix.go:50 after `}` at internal/git/controlroot_unix.go:49. Here exercised only when the test process can create a foreign-owned fixture; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "`func platformLstatComponent(path string, requireOwner bool) (os.FileInfo, error)` (starts internal/git/controlroot_unix.go:42) checks `if requireOwner \u0026\u0026 !ownedByCurrentUser(info) {` at internal/git/controlroot_unix.go:50 after `}` at internal/git/controlroot_unix.go:49. Here exercised only when the test process can create a foreign-owned fixture; exercising this exact branch requires an unportable environmental failure."
     },
     {
       "directive": {
@@ -15393,7 +21722,7 @@
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (initspec.Outcome, error)` (starts internal/initop/init.go:43) checks `if len(collisions) > 0 && !input.Force {` at internal/initop/init.go:128 after `}` at internal/initop/init.go:127. Here the non-force probe plans the same full catalog; force makes this condition false; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "`func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (initspec.Outcome, error)` (starts internal/initop/init.go:43) checks `if len(collisions) \u003e 0 \u0026\u0026 !input.Force {` at internal/initop/init.go:128 after `}` at internal/initop/init.go:127. Here the non-force probe plans the same full catalog; force makes this condition false; exercising this exact branch requires an unportable environmental failure."
     },
     {
       "directive": {
@@ -15940,12 +22269,12 @@
         "file": "internal/migrate/dropreplacewith.go",
         "line": 64,
         "targetLine": 64,
-        "reason": "a present <kind> dir under a readable awfDir does not fault on read",
+        "reason": "a present \u003ckind\u003e dir under a readable awfDir does not fault on read",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/migrate/dropreplacewith.go:64, `if err != nil {` follows the concrete operation `}` at internal/migrate/dropreplacewith.go:63 in `func treeSidecars(awfDir string) ([]sidecarRef, error)` (internal/migrate/dropreplacewith.go:53). The reviewed failure condition is a present <kind> dir under a readable awfDir does not fault on read; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
+      "evidence": "At internal/migrate/dropreplacewith.go:64, `if err != nil {` follows the concrete operation `}` at internal/migrate/dropreplacewith.go:63 in `func treeSidecars(awfDir string) ([]sidecarRef, error)` (internal/migrate/dropreplacewith.go:53). The reviewed failure condition is a present \u003ckind\u003e dir under a readable awfDir does not fault on read; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
     },
     {
       "directive": {
@@ -16005,7 +22334,7 @@
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `out, err = dropSeverityKeys(seeded, &Changes{})` at internal/migrate/dropseveritysettings.go:72 feeds `if err != nil {` at internal/migrate/dropseveritysettings.go:73 in `func applyDropSeveritySettings(root string, w *Changes) error` (internal/migrate/dropseveritysettings.go:41). Its concrete fault condition is seeded is a re-encode of bytes whose removals already succeeded, so no safe portable production input induces this error path."
+      "evidence": "The source predecessor `out, err = dropSeverityKeys(seeded, \u0026Changes{})` at internal/migrate/dropseveritysettings.go:72 feeds `if err != nil {` at internal/migrate/dropseveritysettings.go:73 in `func applyDropSeveritySettings(root string, w *Changes) error` (internal/migrate/dropseveritysettings.go:41). Its concrete fault condition is seeded is a re-encode of bytes whose removals already succeeded, so no safe portable production input induces this error path."
     },
     {
       "directive": {
@@ -16305,7 +22634,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err := yaml.Unmarshal(out, &parsed); err != nil {` at internal/migrate/retargetcheckcommands.go:81 is `parsed.Vars = nil` (internal/migrate/retargetcheckcommands.go:80). Within `func retargetCheckCommandBytes(src []byte) ([]byte, []string, error)` at internal/migrate/retargetcheckcommands.go:58, source review establishes the same valid YAML was changed only by config's validated node editor; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err := yaml.Unmarshal(out, \u0026parsed); err != nil {` at internal/migrate/retargetcheckcommands.go:81 is `parsed.Vars = nil` (internal/migrate/retargetcheckcommands.go:80). Within `func retargetCheckCommandBytes(src []byte) ([]byte, []string, error)` at internal/migrate/retargetcheckcommands.go:58, source review establishes the same valid YAML was changed only by config's validated node editor; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
@@ -16341,7 +22670,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/migrate/retargetcheckcommands.go:106, `if err != nil {` is guarded by the preceding `edited, err := config.RemoveMappingKey(out, \"vars\", \"<<\")` at internal/migrate/retargetcheckcommands.go:105; in `func retargetCheckCommandBytes(src []byte) ([]byte, []string, error)` (internal/migrate/retargetcheckcommands.go:58), the predecessor invariant is the materialization edits above returned validated YAML. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/migrate/retargetcheckcommands.go:106, `if err != nil {` is guarded by the preceding `edited, err := config.RemoveMappingKey(out, \"vars\", \"\u003c\u003c\")` at internal/migrate/retargetcheckcommands.go:105; in `func retargetCheckCommandBytes(src []byte) ([]byte, []string, error)` (internal/migrate/retargetcheckcommands.go:58), the predecessor invariant is the materialization edits above returned validated YAML. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
@@ -16353,7 +22682,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/migrate/retargetcheckcommands.go:112, `if err := yaml.Unmarshal(out, &parsed); err != nil {` is guarded by the preceding `parsed.Vars = nil` at internal/migrate/retargetcheckcommands.go:111; in `func retargetCheckCommandBytes(src []byte) ([]byte, []string, error)` (internal/migrate/retargetcheckcommands.go:58), the predecessor invariant is RemoveMappingKey returned validated YAML. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/migrate/retargetcheckcommands.go:112, `if err := yaml.Unmarshal(out, \u0026parsed); err != nil {` is guarded by the preceding `parsed.Vars = nil` at internal/migrate/retargetcheckcommands.go:111; in `func retargetCheckCommandBytes(src []byte) ([]byte, []string, error)` (internal/migrate/retargetcheckcommands.go:58), the predecessor invariant is RemoveMappingKey returned validated YAML. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
@@ -16749,7 +23078,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func applyWorkflowTelemetry(root string, out *Changes) error` begins at internal/migrate/workflowtelemetry.go:13; its branch `if err := enc.Encode(&doc); err != nil {` at internal/migrate/workflowtelemetry.go:36 follows `enc.SetIndent(2)` at internal/migrate/workflowtelemetry.go:35. That flow establishes bytes.Buffer writes cannot fail, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func applyWorkflowTelemetry(root string, out *Changes) error` begins at internal/migrate/workflowtelemetry.go:13; its branch `if err := enc.Encode(\u0026doc); err != nil {` at internal/migrate/workflowtelemetry.go:36 follows `enc.SetIndent(2)` at internal/migrate/workflowtelemetry.go:35. That flow establishes bytes.Buffer writes cannot fail, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
@@ -16821,7 +23150,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func parsePlan(path string, source, body string, p *Plan, v2 bool) error` begins at internal/plan/structure.go:162; its branch `if lineText(lines[idx]) != \"## Notes\" {` at internal/plan/structure.go:242 follows `if idx < len(lines) {` at internal/plan/structure.go:241. That flow establishes dodEnd moves below len only when this exact heading is found, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func parsePlan(path string, source, body string, p *Plan, v2 bool) error` begins at internal/plan/structure.go:162; its branch `if lineText(lines[idx]) != \"## Notes\" {` at internal/plan/structure.go:242 follows `if idx \u003c len(lines) {` at internal/plan/structure.go:241. That flow establishes dodEnd moves below len only when this exact heading is found, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
@@ -16845,7 +23174,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func sectionBodyNonempty(lines []string, start, end int) bool` begins at internal/plan/structure.go:298; its branch `if start > end || start < 0 || end > len(lines) {` at internal/plan/structure.go:299 follows `func sectionBodyNonempty(lines []string, start, end int) bool {` at internal/plan/structure.go:298. That flow establishes parser-owned boundaries are constructed within the same line slice, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func sectionBodyNonempty(lines []string, start, end int) bool` begins at internal/plan/structure.go:298; its branch `if start \u003e end || start \u003c 0 || end \u003e len(lines) {` at internal/plan/structure.go:299 follows `func sectionBodyNonempty(lines []string, start, end int) bool {` at internal/plan/structure.go:298. That flow establishes parser-owned boundaries are constructed within the same line slice, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
@@ -17433,7 +23762,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/publisher/banner.go:50, `if nl < 0 {` is guarded by the preceding `nl := strings.IndexByte(content, '\\n')` at internal/publisher/banner.go:49; in `func injectBanner(content, tid string, styles ...render.CommentStyle) string` (internal/publisher/banner.go:34), the predecessor invariant is a rendered shebang script always has a trailing newline body. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/publisher/banner.go:50, `if nl \u003c 0 {` is guarded by the preceding `nl := strings.IndexByte(content, '\\n')` at internal/publisher/banner.go:49; in `func injectBanner(content, tid string, styles ...render.CommentStyle) string` (internal/publisher/banner.go:34), the predecessor invariant is a rendered shebang script always has a trailing newline body. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
@@ -18057,7 +24386,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/publisher/render.go:680, `if err != nil {` is guarded by the preceding `&renderOutputOptions{encoder: PlainAgentDialect})` at internal/publisher/render.go:679; in `func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclaration, eff map[string]bool, pitfalls pitfall.Corpus) ([]RenderedFile, error)` (internal/publisher/render.go:514), the predecessor invariant is conditional units use only fixed embedded templates and validated fixed output paths; renderTarget owns malformed-input error coverage. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/publisher/render.go:680, `if err != nil {` is guarded by the preceding `\u0026renderOutputOptions{encoder: PlainAgentDialect})` at internal/publisher/render.go:679; in `func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclaration, eff map[string]bool, pitfalls pitfall.Corpus) ([]RenderedFile, error)` (internal/publisher/render.go:514), the predecessor invariant is conditional units use only fixed embedded templates and validated fixed output paths; renderTarget owns malformed-input error coverage. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
@@ -18189,19 +24518,19 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/publisher/render.go:965, `if err != nil {` is guarded by the preceding `&renderOutputOptions{sources: []string{entry.SourcePath}})` at internal/publisher/render.go:964; in `func generatePitfallLeaves(p renderInputs, corpus pitfall.Corpus, eff map[string]bool) ([]RenderedFile, error)` (internal/publisher/render.go:958), the predecessor invariant is embedded leaf template and validated typed data cannot fail at this point. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/publisher/render.go:965, `if err != nil {` is guarded by the preceding `\u0026renderOutputOptions{sources: []string{entry.SourcePath}})` at internal/publisher/render.go:964; in `func generatePitfallLeaves(p renderInputs, corpus pitfall.Corpus, eff map[string]bool) ([]RenderedFile, error)` (internal/publisher/render.go:958), the predecessor invariant is embedded leaf template and validated typed data cannot fail at this point. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
         "file": "internal/publisher/render.go",
         "line": 1008,
         "targetLine": 1008,
-        "reason": ".data.domain/.data.topics are always set and the template is embedded, so renderTarget cannot produce <no value> or a read error here",
+        "reason": ".data.domain/.data.topics are always set and the template is embedded, so renderTarget cannot produce \u003cno value\u003e or a read error here",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func generateDomainDocs(p renderInputs, topics topic.Corpus, eff map[string]bool) ([]RenderedFile, error)` begins at internal/publisher/render.go:996; its branch `if err != nil {` at internal/publisher/render.go:1008 follows `}})` at internal/publisher/render.go:1007. That flow establishes .data.domain/.data.topics are always set and the template is embedded, so renderTarget cannot produce <no value> or a read error here, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func generateDomainDocs(p renderInputs, topics topic.Corpus, eff map[string]bool) ([]RenderedFile, error)` begins at internal/publisher/render.go:996; its branch `if err != nil {` at internal/publisher/render.go:1008 follows `}})` at internal/publisher/render.go:1007. That flow establishes .data.domain/.data.topics are always set and the template is embedded, so renderTarget cannot produce \u003cno value\u003e or a read error here, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
@@ -18573,7 +24902,7 @@
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func AddAll(t testing.TB, f Fixture)` (starts internal/testsupport/gitfixture/gitfixture.go:101) checks `if err := worktree(t, f).AddWithOptions(&git.AddOptions{All: true}); err != nil {` at internal/testsupport/gitfixture/gitfixture.go:103 after `t.Helper()` at internal/testsupport/gitfixture/gitfixture.go:102. Here staging a readable fixture worktree wholesale fails only on a permission fault a test cannot trigger; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "`func AddAll(t testing.TB, f Fixture)` (starts internal/testsupport/gitfixture/gitfixture.go:101) checks `if err := worktree(t, f).AddWithOptions(\u0026git.AddOptions{All: true}); err != nil {` at internal/testsupport/gitfixture/gitfixture.go:103 after `t.Helper()` at internal/testsupport/gitfixture/gitfixture.go:102. Here staging a readable fixture worktree wholesale fails only on a permission fault a test cannot trigger; exercising this exact branch requires an unportable environmental failure."
     },
     {
       "directive": {
@@ -18585,7 +24914,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/testsupport/gitfixture/gitfixture.go:141, `if err != nil {` is guarded by the preceding `h, err := wt.Commit(msg, &git.CommitOptions{Author: Sig, Committer: Sig})` at internal/testsupport/gitfixture/gitfixture.go:140; in `func Commit(t testing.TB, f Fixture, msg string, write map[string]string, remove ...string) string` (internal/testsupport/gitfixture/gitfixture.go:135), the predecessor invariant is Commit with a valid signature and staged tree cannot fail. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/testsupport/gitfixture/gitfixture.go:141, `if err != nil {` is guarded by the preceding `h, err := wt.Commit(msg, \u0026git.CommitOptions{Author: Sig, Committer: Sig})` at internal/testsupport/gitfixture/gitfixture.go:140; in `func Commit(t testing.TB, f Fixture, msg string, write map[string]string, remove ...string) string` (internal/testsupport/gitfixture/gitfixture.go:135), the predecessor invariant is Commit with a valid signature and staged tree cannot fail. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
@@ -18789,7 +25118,7 @@
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func NativeSSHKey(t *testing.T) (string, string)` (starts internal/testsupport/gitfixture/native.go:113) checks `if len(fields) < 2 {` at internal/testsupport/gitfixture/native.go:125 after `fields := strings.Fields(string(body))` at internal/testsupport/gitfixture/native.go:124. Here ssh-keygen emits an algorithm and base64 record; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "`func NativeSSHKey(t *testing.T) (string, string)` (starts internal/testsupport/gitfixture/native.go:113) checks `if len(fields) \u003c 2 {` at internal/testsupport/gitfixture/native.go:125 after `fields := strings.Fields(string(body))` at internal/testsupport/gitfixture/native.go:124. Here ssh-keygen emits an algorithm and base64 record; exercising this exact branch requires an unportable environmental failure."
     },
     {
       "directive": {
@@ -18981,7 +25310,7 @@
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func assembleCorpus(metadata map[string]metaEntry, parts map[string]partEntry, domains []string, domainPaths map[string][]string, adrs adr.Corpus) (Corpus, error)` (starts internal/topic/corpus.go:56) checks `if _, ok := c.byClaim[cl.ID]; ok {` at internal/topic/corpus.go:100 after `cl := &t.Claims[j]` at internal/topic/corpus.go:99. Here one canonical pair owns each path-derived topic ID, and local duplicates fail ParsePart; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "`func assembleCorpus(metadata map[string]metaEntry, parts map[string]partEntry, domains []string, domainPaths map[string][]string, adrs adr.Corpus) (Corpus, error)` (starts internal/topic/corpus.go:56) checks `if _, ok := c.byClaim[cl.ID]; ok {` at internal/topic/corpus.go:100 after `cl := \u0026t.Claims[j]` at internal/topic/corpus.go:99. Here one canonical pair owns each path-derived topic ID, and local duplicates fail ParsePart; exercising this exact branch requires an unportable environmental failure."
     },
     {
       "directive": {
@@ -19005,7 +25334,7 @@
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func finalizeMarkerIndex(idx MarkerIndex, corpus Corpus) error` (starts internal/topic/markers.go:129) checks `if claim.Type == Invariant && claim.Backing == Unbacked && proofs > 0 {` at internal/topic/markers.go:141 after `}` at internal/topic/markers.go:140. Here resolveMarker rejects an unbacked proof before it can enter the index; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "`func finalizeMarkerIndex(idx MarkerIndex, corpus Corpus) error` (starts internal/topic/markers.go:129) checks `if claim.Type == Invariant \u0026\u0026 claim.Backing == Unbacked \u0026\u0026 proofs \u003e 0 {` at internal/topic/markers.go:141 after `}` at internal/topic/markers.go:140. Here resolveMarker rejects an unbacked proof before it can enter the index; exercising this exact branch requires an unportable environmental failure."
     },
     {
       "directive": {
@@ -19401,7 +25730,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/upgrade/presentation.go:39 is `steps, err := upgradeRemedies(len(changed) > 0)` (internal/upgrade/presentation.go:38). Within `func (o Outcome) FailureDiagnostic(condition string, cause error) (presentation.Diagnostic, error)` at internal/upgrade/presentation.go:33, source review establishes closed remedy literals are presentation-valid; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err != nil {` at internal/upgrade/presentation.go:39 is `steps, err := upgradeRemedies(len(changed) \u003e 0)` (internal/upgrade/presentation.go:38). Within `func (o Outcome) FailureDiagnostic(condition string, cause error) (presentation.Diagnostic, error)` at internal/upgrade/presentation.go:33, source review establishes closed remedy literals are presentation-valid; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
@@ -19702,6 +26031,288 @@
       },
       "class": "revalidated-impossible-state",
       "evidence": "The immediate predecessor for `fmt.Fprintf(os.Stderr, \"pi-extension-test: wait for worker: %v\\n\", err)` at tools/pi-extension-test/lockrun/lockrun_unix.go:60 is `}` (tools/pi-extension-test/lockrun/lockrun_unix.go:59). Within `func run(args []string) int` at tools/pi-extension-test/lockrun/lockrun_unix.go:17, source review establishes Wait returns only ExitError after a successfully started command; this is therefore a closed-state fail-closed branch."
+    }
+  ],
+  "testDirectives": [
+    {
+      "file": "internal/contextq/context_adr_test.go",
+      "line": 223,
+      "targetLine": 223,
+      "reason": "fixture records are duplicate-free by construction",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/effort/store_test.go",
+      "line": 487,
+      "targetLine": 487,
+      "reason": "every walked path is rooted at base by construction",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/effort/store_test.go",
+      "line": 495,
+      "targetLine": 495,
+      "reason": "the walk just proved this readable regular leaf exists",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/effort/store_test.go",
+      "line": 501,
+      "targetLine": 501,
+      "reason": "the efforts root is an owned readable directory in every fixture",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/effort/store_test.go",
+      "line": 516,
+      "targetLine": 516,
+      "reason": "the reservation created this owned readable directory",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/git/entrypoints_test.go",
+      "line": 103,
+      "targetLine": 103,
+      "reason": "Abs fails only when the working directory cannot be resolved, which would fail the test binary first",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/git/entrypoints_test.go",
+      "line": 115,
+      "targetLine": 115,
+      "reason": "both parsed directories are checked-in package directories",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/git/entrypoints_test.go",
+      "line": 125,
+      "targetLine": 125,
+      "reason": "every file in a compiling package parses",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/git/entrypoints_test.go",
+      "line": 160,
+      "targetLine": 160,
+      "reason": "the parser rejects a method with an empty receiver list",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/git/entrypoints_test.go",
+      "line": 168,
+      "targetLine": 168,
+      "reason": "no generic receiver exists in this package",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/git/entrypoints_test.go",
+      "line": 191,
+      "targetLine": 191,
+      "reason": "printing a parsed block to an in-memory buffer has no failure a test can provoke",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/git/seamwalker_test.go",
+      "line": 61,
+      "targetLine": 61,
+      "reason": "the parser accepted the file, so every import path is a well-formed quoted string",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/git/seamwalker_test.go",
+      "line": 142,
+      "targetLine": 142,
+      "reason": "the parser accepted the literal, so it unquotes",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/git/seamwalker_test.go",
+      "line": 179,
+      "targetLine": 179,
+      "reason": "the parser accepted the literal, so it unquotes",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/git/seamwalker_test.go",
+      "line": 189,
+      "targetLine": 189,
+      "reason": "every parsed string literal unquotes",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/git/seamwalker_test.go",
+      "line": 235,
+      "targetLine": 235,
+      "reason": "the parser accepted every import path in this file",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/git/seamwalker_test.go",
+      "line": 254,
+      "targetLine": 254,
+      "reason": "the parser accepted this literal, so it unquotes",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/git/seamwalker_test.go",
+      "line": 287,
+      "targetLine": 287,
+      "reason": "every non-allowlisted module file compiles, so it parses",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/migrate/dropauditbase_test.go",
+      "line": 53,
+      "targetLine": 53,
+      "reason": "the migration just wrote this path",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/migrate/dropauditbase_test.go",
+      "line": 69,
+      "targetLine": 69,
+      "reason": "the path was read successfully a moment ago",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/migrate/dropmaxclaimspertopic_test.go",
+      "line": 59,
+      "targetLine": 59,
+      "reason": "the migration just wrote this path",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/migrate/dropmaxclaimspertopic_test.go",
+      "line": 77,
+      "targetLine": 77,
+      "reason": "the path was read successfully a moment ago",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/migrate/dropseveritysettings_test.go",
+      "line": 79,
+      "targetLine": 79,
+      "reason": "the migration just wrote this path",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/migrate/dropseveritysettings_test.go",
+      "line": 111,
+      "targetLine": 111,
+      "reason": "the path was read successfully a moment ago",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/migrate/dropseveritysettings_test.go",
+      "line": 139,
+      "targetLine": 139,
+      "reason": "the migration just wrote this path",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/project/pitfalls_test_helper_test.go",
+      "line": 37,
+      "targetLine": 37,
+      "reason": "Paths just enumerated this same filesystem entry; reaching Lstat failure requires a concurrent removal or IO race",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/project/pitfalls_test_helper_test.go",
+      "line": 46,
+      "targetLine": 46,
+      "reason": "filesystem Lstat proved presence and snapshot enumeration includes only the same immutable tree",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/project/staged_plan_test.go",
+      "line": 43,
+      "targetLine": 43,
+      "reason": "ParseSources converts every parser failure into DiagnosticsError",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/publisher/glossary_test.go",
+      "line": 32,
+      "targetLine": 32,
+      "reason": "t.Fatal never returns",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/publisher/output_declarations_test.go",
+      "line": 453,
+      "targetLine": 453,
+      "reason": "fixture records are duplicate-free by construction",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/publisher/templateid_test.go",
+      "line": 54,
+      "targetLine": 54,
+      "reason": "a parsed STRING literal always unquotes",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/publisher/templateid_test.go",
+      "line": 126,
+      "targetLine": 126,
+      "reason": "every loaded production file lies under the module root",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/resident/singlehome_test.go",
+      "line": 85,
+      "targetLine": 85,
+      "reason": "a parsed STRING literal always unquotes",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/worktree/wiring_test.go",
+      "line": 144,
+      "targetLine": 144,
+      "reason": "every stubbed opener names a checkout the fixture just created",
+      "mapped": false,
+      "executed": false
+    },
+    {
+      "file": "internal/worktree/wiring_test.go",
+      "line": 273,
+      "targetLine": 273,
+      "reason": "the fixture just created this checkout",
+      "mapped": false,
+      "executed": false
     }
   ],
   "platformDirectives": [

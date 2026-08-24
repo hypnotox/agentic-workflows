@@ -25,8 +25,8 @@ data:
           text: '**Punctuation restraint.** Prefer ordinary punctuation; prohibit en dashes and use at most two em dashes per paragraph in tracked text. Ellipses and curly quotes are permitted; see the prose gate contract.'
         - ref: ADR-0158, ADR-0175
           text: '**No memory citation.** Never cite concrete effort memory paths in durable records.'
-        - ref: ADR-0012
-          text: '**100% coverage gate.** Keep `./x gate` at 100% statement coverage.'
+        - ref: ADR-hybrid-raw-coverage-ratchet-and-targeted-mutation-regression
+          text: '**Coverage identity ratchet.** Keep `./x gate` green against the canonical raw-miss baseline, critical selectors, ignore evidence, and targeted `cmd/covercheck` mutation blocker.'
         - ref: ADR-0063
           text: '**Dead-code gate.** Keep production code reachable from a `main`.'
         - kind: gated-commands

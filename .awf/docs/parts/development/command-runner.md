@@ -2,14 +2,15 @@ Run `./x` at the repository root with no argument for usage. Use rendered `./awf
 
 | Command | Purpose |
 |---|---|
-| `./x gate [timings]` | Pre-commit gate: staged documentation-only transactions skip both test lanes; Pi-only changes run Pi smoke only; Go-only changes run Go tests and coverage only; overlapping or uncertain changes run both. Vet, builds, lint, dead code, and pin checks always run. `timings` reports only executed stages. Prose and memory scans are hook/CI checks, not gate steps. |
+| `./x gate [timings]` | Pre-commit gate: staged documentation-only transactions skip both test lanes; Pi-only changes run Pi smoke only; Go-only changes run Go tests and the raw-identity coverage policy; overlapping or uncertain changes run both. Exact `cmd/covercheck` staged changes also run its targeted mutation blocker. Vet, builds, lint, dead code, and pin checks always run. `timings` reports only executed stages. Prose and memory scans are hook/CI checks, not gate steps. |
 | `./x test [args]` | `go test ./...`, passing arguments through, without the host Pi lane. It names `./x pi-test run` and `./x gate` for the skipped lane and complete transaction. |
 | `./x pi-test run` | Run Pi tests on the pinned host Node runtime. The lane lock serializes each checkout; every run uses a narrow throwaway workspace. |
 | `./x clean-test-tmp [--all]` | Remove managed Linux/macOS test homes older than 24 hours, or all homes after warning. Partial cleanup exits nonzero. |
 | `./x lint` / `./x fmt` | Run `golangci-lint run` / `golangci-lint fmt`. |
 | `./x deadcode` | Run the dead-code check (ADR-0063). |
 | `./x mutants [pkg]` | Advisory mutation triage against `main` or one package (ADR-0066). |
-| `./x audit-local <range>` | Advisory repository conformance audit via `cmd/repoaudit`; requires `<base>..<head>` and reports missing `[Unreleased]` entries and changed production `coverage-ignore` directives (ADR-0073). |
+| `./x covercheck-mutants [--select-staged\|--select-range <base> <head>]` | Run the pinned, hermetic `cmd/covercheck` mutation blocker. Selection skips only a proven non-owned change set and runs on uncertainty. |
+| `./x audit-local <range>` | Advisory repository conformance audit via `cmd/repoaudit`; requires `<base>..<head>` and reports missing `[Unreleased]` entries, changed production `coverage-ignore` directives, and added or moved raw coverage-baseline identities (ADR-0073). |
 | `./awf check commit-policy <revision-or-range>...` | Preview author, committer, and SSH-signature provenance. |
 | `./x build` / `./x install` | Build `bin/awf` / install `./cmd/awf`. |
 | `./awf effort ...` | Create, list, show, or finish schema-2 efforts; worktree commands remain separate and stateless. No standalone memory, lifecycle repair, manual integration, or force-discard command exists. |

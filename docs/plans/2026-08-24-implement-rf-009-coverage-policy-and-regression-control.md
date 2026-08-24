@@ -345,6 +345,28 @@ three-run set against the complete corrected staged tree. The single verify pass
 mechanical oracle gap: renewal fixtures now use distinct paths and durations, reject corrupt second
 and third pairs, and fail under a controlled constant-index reader mutation.
 
+Phase 4 final baseline evidence: after all Go changes, the uncached whole profile has SHA-256
+`f6e8f834795a8f1aa2d5cdebf801dd270d8b257b873dbfc49d1e016f75a509c0`, raw
+22,285/23,017, filtered 22,150/22,155, and 715 exact raw-miss identities representing 732
+statements. The independently reviewed input has SHA-256
+`ef86d1d84d443cd9cbb9c29f3f937fcb1e2862f22c1c7f21e0f816d614ae34dc`; every miss has a
+unique exact-range, owning-behavior, visible-debt reason. The generated baseline has SHA-256
+`c5c0d0b4e38d5f7a35edc9caf9939a8abc15f77918808cafbb1c6b31b71df9c8` and is byte-identical
+after a second regeneration. Exact reconciliation proves all six selector projections, 748 admitted
+production directives, 35 disjoint test directives, four unmeasured platform entries, zero executed
+ignored bodies, and zero equivalent mutants. Exhaustive independent review first exposed generic miss
+reasons and two stale same-key directive citations, then six weak brace-only snippets and seven empty
+source citations. Fresh-from-absence regeneration plus exact evidence corrections settled every
+finding; the final targeted renewal passed with no residual aggregate-only assumption or evidence
+quality defect.
+
+Phase 4 reporting compatibility preserves the qualified mutation target: the unchanged legacy
+`covercheck <profile>` invocation retains its historical filtered-threshold exit behavior but is no
+longer the repository gate. The gate calls `covercheck --policy`, where raw and filtered percentages
+are reports and exact policy findings determine exit status; `--emit-filtered` remains compatible.
+This satisfies the Accepted replacement of the repository percentage blocker without silently
+breaking the existing standalone interface.
+
 After the Phase 4 commit exists, run the repo-local audit over the complete implementation range.
 After terminal implementation assurance settles over that exact tip and audit evidence, return
 integration-ready with the ADR still

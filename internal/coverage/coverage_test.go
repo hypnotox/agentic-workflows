@@ -53,7 +53,6 @@ func TestCheckCountsCoveredAndTotal(t *testing.T) {
 	}
 }
 
-// invariant: tooling/quality-gates:coverage-gate-100 (TestCheckFailsBelow100)
 func TestCheckFailsBelow100(t *testing.T) {
 	root, modPath := module(t, "package m\nfunc F() {}\n")
 	prof := writeProfile(t, root, modPath+"/f.go:2.1,2.5 1 0\n")

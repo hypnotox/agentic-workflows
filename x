@@ -271,10 +271,10 @@ case "$cmd" in
       exit 2
     fi
     unset AWF_PI_RUNTIME_SMOKE
-    # Sequential gate: profiled tests + 100% coverage check + the explicitly
-    # enabled uncached Pi runtime smoke + vet + lint. The coverage step
-    # (ADR-0012) fails below 100% of non-ignored statements; -coverpkg=./... so
-    # every package contributes. Ordinary Go runs skip the host Pi lane;
+    # Sequential gate: profiled tests + raw-identity coverage policy + the
+    # explicitly enabled uncached Pi runtime smoke + vet + lint. The policy
+    # evaluates one whole-module profile against its canonical baseline;
+    # -coverpkg=./... makes every package contribute. Ordinary Go runs skip the host Pi lane;
     # this gate invokes both proving units below while their shared helper runs
     # the host lane exactly once.
     # The profile is durable (gitignored via *.out) so CI can upload it to
@@ -290,7 +290,7 @@ case "$cmd" in
     prof="coverage.out"
     if "$gate_go_tests"; then
       run_gate_step go-test env -u AWF_PI_RUNTIME_SMOKE go test ./... -coverpkg=./... -coverprofile="$prof"
-      run_gate_step covercheck go run ./cmd/covercheck "$prof"
+      run_gate_step covercheck go run ./cmd/covercheck --policy "$prof" coverage-baseline.json
     elif "$gate_pi_tests"; then
       echo "gate: skipping Go tests and coverage for Pi-only staged changes" >&2
     else
@@ -321,6 +321,7 @@ case "$cmd" in
     run_gate_step advisory-lint run_advisory_lint
     run_gate_step deadcode run_deadcode_gate
     run_gate_step pincheck go run ./cmd/pincheck
+    run_gate_step covercheck-mutation-regression run_covercheck_mutants --select-staged
     ;;
   lint)
     go tool golangci-lint run "$@"

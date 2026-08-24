@@ -8,6 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/coverage"
+	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
 
 // fakeGit supplies the repoaudit consumer contract.
@@ -39,8 +42,14 @@ func (f fakeGit) RangeDiffText(_ context.Context, a, b string) (string, error) {
 	return f.result("-c diff.noprefix=false -c diff.mnemonicprefix=false -c diff.dstPrefix=b/ diff --no-ext-diff -U0 " + a + " " + b + " -- *.go")
 }
 func (f fakeGit) FileText(_ context.Context, rev, path string) (string, bool, error) {
-	out, err := f.result("show " + rev + ":" + path)
-	return out, err == nil, err
+	key := "show " + rev + ":" + path
+	if result, ok := f[key]; ok {
+		return result.out, result.err == nil, result.err
+	}
+	if path == coverageBaselinePath {
+		return "", false, nil
+	}
+	return "", false, fmt.Errorf("unexpected git call: %s", key)
 }
 
 func changelog(unreleased string) string {
@@ -401,5 +410,112 @@ func TestCoverageIgnoreCleanRange(t *testing.T) {
 	code, out := runFake([]string{"repoaudit", "b..h"}, g)
 	if code != 0 || !strings.Contains(out, "repoaudit: clean") {
 		t.Fatalf("code=%d out=%q", code, out)
+	}
+}
+
+func baselineFixture(t *testing.T, admissions ...coverage.MissAdmission) string {
+	t.Helper()
+	roots := map[string][]string{
+		"hard-safety":                 {"cmd/covercheck", "cmd/mutants", "internal/commitpolicy", "internal/coverage", "internal/filepublication"},
+		"state-authority":             {"internal/adr", "internal/currentstate", "internal/currentstatecoord", "internal/topic"},
+		"repository-effort-lifecycle": {"internal/effort", "internal/git", "internal/worktree"},
+		"migration-recovery":          {"internal/config", "internal/migrate", "internal/upgrade"},
+		"publication-application":     {"internal/project", "internal/publisher"},
+		"command-boundary":            {"cmd/awf"},
+	}
+	selectors := make([]coverage.SelectorBaseline, 0, len(roots))
+	for name, selectorRoots := range roots {
+		var misses []coverage.Identity
+		for _, admission := range admissions {
+			for _, root := range selectorRoots {
+				if admission.Identity.File == root || strings.HasPrefix(admission.Identity.File, root+"/") {
+					misses = append(misses, admission.Identity)
+				}
+			}
+		}
+		selectors = append(selectors, coverage.SelectorBaseline{Name: name, Roots: selectorRoots, Misses: misses})
+	}
+	raw, err := coverage.CanonicalBaseline(coverage.Baseline{
+		Version: 1, ModulePath: "example.test", UniverseSHA256: strings.Repeat("0", 64),
+		Repository: admissions, Selectors: selectors,
+	})
+	if err != nil {
+		t.Fatalf("canonical fixture: %v", err)
+	}
+	return string(raw)
+}
+
+func baselineAdmission(file string, line int, reason string) coverage.MissAdmission {
+	return coverage.MissAdmission{Identity: coverage.Identity{
+		File: file, Start: coverage.Position{Line: line, Column: 1},
+		End: coverage.Position{Line: line, Column: 2}, Statements: 1,
+	}, Reason: reason}
+}
+
+func TestCoverageBaselineAddedAndMovedWarnDeterministically(t *testing.T) {
+	old := baselineAdmission("internal/old.go", 1, "old admission")
+	added := baselineAdmission("internal/z.go", 2, "added because reviewed")
+	moved := baselineAdmission("internal/a.go", 3, "moved because reviewed")
+	moved.MovedFrom = &old.Identity
+	g := fakeGit{
+		"merge-base b h":                {out: "b\n"},
+		"show b:coverage-baseline.json": {out: baselineFixture(t, old)},
+		"show h:coverage-baseline.json": {out: baselineFixture(t, added, moved)},
+	}
+	findings := coverageBaselineRule(context.Background(), g, "b", "h", nil)
+	if len(findings) != 2 {
+		t.Fatalf("findings = %#v, want two warnings", findings)
+	}
+	if findings[0].sev != severity.Warn || findings[0].rule != "coverage-baseline-added" || !strings.Contains(findings[0].detail, "internal/a.go:3.1,3.2 1") || !strings.Contains(findings[0].detail, moved.Reason) || !strings.Contains(findings[0].detail, "moved from internal/old.go:1.1,1.2 1") {
+		t.Fatalf("moved finding = %#v", findings[0])
+	}
+	if findings[1].sev != severity.Warn || !strings.Contains(findings[1].detail, "internal/z.go:2.1,2.2 1") || !strings.Contains(findings[1].detail, added.Reason) {
+		t.Fatalf("added finding = %#v", findings[1])
+	}
+}
+
+func TestCoverageBaselineInitialAdmissionsWarn(t *testing.T) {
+	admission := baselineAdmission("internal/new.go", 2, "initial independent review")
+	g := fakeGit{
+		"merge-base b h":                {out: "b\n"},
+		"show h:coverage-baseline.json": {out: baselineFixture(t, admission)},
+	}
+	findings := coverageBaselineRule(context.Background(), g, "b", "h", nil)
+	if len(findings) != 1 || findings[0].sev != severity.Warn || !strings.Contains(findings[0].detail, admission.Reason) {
+		t.Fatalf("initial baseline findings = %#v", findings)
+	}
+}
+
+func TestCoverageBaselineRemovalOnlyIsClean(t *testing.T) {
+	old := baselineAdmission("internal/old.go", 1, "old admission")
+	g := fakeGit{
+		"merge-base b h":                {out: "b\n"},
+		"show b:coverage-baseline.json": {out: baselineFixture(t, old)},
+		"show h:coverage-baseline.json": {out: baselineFixture(t)},
+	}
+	if findings := coverageBaselineRule(context.Background(), g, "b", "h", nil); len(findings) != 0 {
+		t.Fatalf("removal-only findings = %#v", findings)
+	}
+}
+
+func TestCoverageBaselineEvidenceFailuresAreErrors(t *testing.T) {
+	valid := baselineFixture(t)
+	for _, tc := range []struct {
+		name string
+		git  fakeGit
+	}{
+		{name: "read failure", git: fakeGit{"merge-base b h": {out: "b\n"}, "show b:coverage-baseline.json": {out: valid}, "show h:coverage-baseline.json": {err: errors.New("gone")}}},
+		{name: "invalid", git: fakeGit{"merge-base b h": {out: "b\n"}, "show b:coverage-baseline.json": {out: valid}, "show h:coverage-baseline.json": {out: "not json"}}},
+		{name: "removed", git: fakeGit{"merge-base b h": {out: "b\n"}, "show b:coverage-baseline.json": {out: valid}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			findings := coverageBaselineRule(context.Background(), tc.git, "b", "h", nil)
+			if len(findings) != 1 || findings[0].sev != severity.Error || findings[0].rule != "coverage-baseline-added" {
+				t.Fatalf("findings = %#v", findings)
+			}
+			if tc.name == "read failure" && !strings.Contains(findings[0].detail, "gone") {
+				t.Fatalf("read failure detail = %q", findings[0].detail)
+			}
+		})
 	}
 }

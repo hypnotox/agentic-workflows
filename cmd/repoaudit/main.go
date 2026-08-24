@@ -3,7 +3,7 @@
 // internal/severity, and exits non-zero only on an error finding. It is deliberately
 // NOT part of the shipped awf standard: it is repo-local dev tooling wired as
 // `./x audit-local` and invoked by awf-reviewing-impl (ADR-0073). It never runs the
-// gate. Two rules: changelog conformance - an adopter-facing change in the range with
+// gate. Three rules: changelog conformance - an adopter-facing change in the range with
 // no CHANGELOG [Unreleased] entry is an error - and coverage-ignore re-evaluation - an
 // added or touched coverage-ignore directive in a production Go file is a warn
 // prompting a reachability re-check.
@@ -14,7 +14,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
+
+	"github.com/hypnotox/agentic-workflows/internal/coverage"
 
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
@@ -53,6 +56,8 @@ func main() { // coverage-ignore: process-exit composition boundary; runWith has
 
 const changelogPath = "changelog/CHANGELOG.md"
 
+const coverageBaselinePath = "coverage-baseline.json"
+
 // adopterFacingPrefixes are the path roots whose change is adopter-visible: the
 // rendered templates, the shipped CLI, the config/lock schema, the artifact catalog
 // (since ADR-0068 a new shipped skill/agent can land as a pure catalog entry), and
@@ -76,6 +81,7 @@ var adopterFacingPrefixes = []string{
 var rules = []func(ctx context.Context, git gitReader, base, head string, log io.Writer) []finding{
 	changelogRule,
 	coverageIgnoreRule,
+	coverageBaselineRule,
 }
 
 func runWith(ctx context.Context, args []string, stdout, stderr io.Writer, git gitReader) int {
@@ -123,6 +129,90 @@ func runRange(ctx context.Context, base, head string, stdout io.Writer, git gitR
 	}
 	fmt.Fprintln(stdout, "repoaudit: clean")
 	return 0
+}
+
+// coverageBaselineRule reports each newly admitted raw miss as review evidence.
+// The gate owns policy enforcement; this range-oriented audit only makes the
+// stored admission reason visible to reviewers.
+func coverageBaselineRule(ctx context.Context, git gitReader, base, head string, _ io.Writer) []finding {
+	mb, err := git.MergeBase(ctx, base, head)
+	if err != nil {
+		return []finding{{severity.Error, "coverage-baseline-added", fmt.Sprintf("git merge-base %s %s failed: %v", base, head, err)}}
+	}
+	from := strings.TrimSpace(mb)
+	previous, previousFound, err := baselineAt(ctx, git, from)
+	if err != nil {
+		return []finding{{severity.Error, "coverage-baseline-added", fmt.Sprintf("reading %s at %s: %v", coverageBaselinePath, from, err)}}
+	}
+	current, currentFound, err := baselineAt(ctx, git, head)
+	if err != nil {
+		return []finding{{severity.Error, "coverage-baseline-added", fmt.Sprintf("reading %s at %s: %v", coverageBaselinePath, head, err)}}
+	}
+	if !previousFound && !currentFound {
+		return nil
+	}
+	if !currentFound {
+		return []finding{{severity.Error, "coverage-baseline-added", fmt.Sprintf("%s is unavailable at %s", coverageBaselinePath, head)}}
+	}
+
+	known := make(map[coverage.Identity]bool)
+	if previousFound {
+		for _, admission := range previous.Repository {
+			known[admission.Identity] = true
+		}
+	}
+	var added []coverage.MissAdmission
+	for _, admission := range current.Repository {
+		if !known[admission.Identity] {
+			added = append(added, admission)
+		}
+	}
+	slices.SortFunc(added, func(a, b coverage.MissAdmission) int {
+		return strings.Compare(formatCoverageIdentity(a.Identity), formatCoverageIdentity(b.Identity))
+	})
+	findings := make([]finding, 0, len(added))
+	for _, admission := range added {
+		detail := fmt.Sprintf("%s: added raw baseline identity; reviewed reason: %s", formatCoverageIdentity(admission.Identity), admission.Reason)
+		if admission.MovedFrom != nil {
+			detail = fmt.Sprintf("%s: moved from %s to raw baseline identity; reviewed reason: %s", formatCoverageIdentity(admission.Identity), formatCoverageIdentity(*admission.MovedFrom), admission.Reason)
+		}
+		findings = append(findings, finding{severity.Warn, "coverage-baseline-added", detail})
+	}
+	return findings
+}
+
+// baselineAt delegates strict parsing and canonical validation to the canonical
+// coverage owner after the git seam supplies endpoint content.
+func baselineAt(ctx context.Context, git gitReader, rev string) (coverage.Baseline, bool, error) {
+	raw, found, err := git.FileText(ctx, rev, coverageBaselinePath)
+	if err != nil {
+		return coverage.Baseline{}, false, err
+	}
+	if !found {
+		return coverage.Baseline{}, false, nil
+	}
+	file, err := os.CreateTemp("", "repoaudit-coverage-baseline-*.json")
+	if err != nil {
+		return coverage.Baseline{}, false, err
+	}
+	name := file.Name()
+	defer os.Remove(name)
+	if _, err := io.WriteString(file, raw); err != nil {
+		file.Close()
+		return coverage.Baseline{}, false, err
+	}
+	if err := file.Close(); err != nil {
+		return coverage.Baseline{}, false, err
+	}
+	baseline, err := coverage.LoadBaseline(name)
+	if err != nil {
+		return coverage.Baseline{}, false, err
+	}
+	return baseline, true, nil
+}
+
+func formatCoverageIdentity(identity coverage.Identity) string {
+	return fmt.Sprintf("%s:%d.%d,%d.%d %d", identity.File, identity.Start.Line, identity.Start.Column, identity.End.Line, identity.End.Column, identity.Statements)
 }
 
 // changelogRule flags an adopter-facing change in base..head that lacks a CHANGELOG
