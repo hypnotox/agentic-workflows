@@ -22,7 +22,7 @@ selectors derived from that same whole profile contain 24 misses out of 398 stat
 safety, 53 of 3,133 for state authority, 162 of 3,352 for repository and effort lifecycle, 118 of
 3,357 for migration and recovery, 115 of 2,978 for publication and application, and 46 of 1,086 for
 the `cmd/awf` boundary. The hard-safety packages report 374 of 398 covered from the whole profile
-and 373 of 398 from a package-local profile. The difference demonstrates why local-owner profiles
+and 373 of 398 from a local-owner profile. The difference demonstrates why local-owner profiles
 are useful diagnostics but cannot replace the canonical whole-derived evidence.
 
 The source census contains 806 directive lines: 733 map to blocks in the canonical profile and 73
@@ -53,8 +53,8 @@ same observed result. This exact surface is small enough to protect within the a
    directive inventories and evidence, the static platform ledger, and exact reviewed equivalent
    mutants. A profile may remove baseline misses without approval, and canonical regeneration drops
    them automatically. Every addition or moved identity requires a stored reason and independent
-   review. Missing, malformed, noncanonical, or unavailable baseline evidence is a blocking
-   verification failure.
+   review, and the existing repo-local audit registry reports each as Warning evidence. Missing,
+   malformed, noncanonical, or unavailable baseline evidence is a blocking verification failure.
 
 3. `decision: critical-selectors` Derive all six blocking selectors from the same whole-module
    profile, with these exact package roots:
@@ -68,7 +68,7 @@ same observed result. This exact surface is small enough to protect within the a
    - publication and application: `internal/project` and `internal/publisher`;
    - command boundary: `cmd/awf`.
 
-   Package-local and owner-local profiles remain diagnostic and never satisfy a blocker.
+   Local-owner profiles remain diagnostic and never satisfy a blocker.
 
 4. `decision: percentages-report-only` Continue reporting the raw statement percentage and the
    filtered statement percentage, including a filtered 100 percent result when present, but make
@@ -88,33 +88,35 @@ same observed result. This exact surface is small enough to protect within the a
    them. Their source identities, platform constraints, retained-ignore class, and evidence remain
    reviewable even while the canonical Linux profile cannot map them.
 
-7. `decision: executed-ignore-error` Adjudicate the seven currently measured ignored bodies before
-   activation, removing a false directive or strengthening its behavioral evidence as appropriate.
-   After activation, a measured ignored body with a positive execution count is an Error because
-   its exclusion claim is false. Keep `coverage-ignore-added` as a complementary repo-local Warning.
-   Preserve the historical eight only as aggregate context, not as identities or exceptions.
+7. `decision: executed-ignore-error` Terminal adjudication of the seven currently measured ignored
+   bodies must leave no positively executed guarded body ignored. A measured ignored body with a
+   positive execution count is an Error because its exclusion claim is false. Keep
+   `coverage-ignore-added` as a complementary repo-local Warning. Preserve the historical eight only
+   as aggregate context, not as identities or exceptions. The implementation plan owns the concrete
+   correction mechanics.
 
 8. `decision: targeted-mutation-blocker` Refine ADR-0066 only for exact `cmd/covercheck` changes.
    A change under the `cmd/covercheck` owned path triggers blocking mutation of `./cmd/covercheck`;
-   mutation remains advisory everywhere else. Local staged selection and CI range selection use the
-   same fail-conservative ownership rule, so unavailable or uncertain change evidence runs the
-   blocker rather than silently skipping it.
+   mutation remains advisory everywhere else. Local staged selection and explicit-range CI selection
+   call one shared fail-conservative ownership detector, so unavailable or uncertain change evidence
+   runs the blocker rather than silently skipping it.
 
 9. `decision: mutation-trust-contract` Pin gremlins v0.6.0 and explicitly pin the current operator
    set: arithmetic base, conditionals boundary, conditionals negation, increment/decrement, and
    invert negatives. Use the deterministic integration recipe with one worker. Limit a blocking run
    to 900 seconds; a missing, malformed, incomplete, or timed-out result is invalid. A survivor
    passes only when its exact identity is baseline-listed as independently reviewed equivalent.
-   Fix the two current genuine survivors by strengthening assertions rather than changing production.
 
-10. `decision: activation-and-renewal` Activate the coverage and mutation baselines only after the
-    seven ignored-body candidates are adjudicated, the two genuine mutation survivors are killed,
-    and three complete mutation runs produce the same trusted status set within a total 25-minute
-    budget. Repeat that three-run qualification after a gremlins version, operator set, or
-    deterministic recipe change. Baseline generation and blocker wiring land together so no partial
-    policy becomes current.
+10. `decision: mutation-renewal` After a gremlins version, operator set, or deterministic recipe
+    change, require three complete mutation runs to produce the same trusted status set within a
+    total 25-minute renewal budget before accepting renewed baseline evidence.
 
-11. `decision: behavior-first-oracles` Never add a production seam, distort production control flow,
+11. `decision: test-backed-policy` The four added claims, `coverage-raw-identity-ratchet`,
+    `coverage-ignore-admission`, `coverage-executed-ignore-errors`, and
+    `covercheck-mutation-regression`, are test-backed invariants. Each lands with `Backing: test` and
+    valid proof annotations on durable tests owned by its implementation surface.
+
+12. `decision: behavior-first-oracles` Never add a production seam, distort production control flow,
     weaken an assertion, or broaden an ignore merely to improve a coverage or mutation result.
     Behavioral evidence remains the oracle; metrics detect regression in that evidence. Add no
     second profile, rigor mode, threshold layer, or broad mutation gate under this decision.
@@ -151,11 +153,10 @@ reports, and configuration drift fail closed. Broad mutation and the roadmap que
 nominal invariant proofs remain outside this decision. The exact blocker can later widen only through
 a separate decision with measured budget and noise evidence.
 
-The activation transaction is reversible as a unit: before it settles, retain the ADR-0012 blocker;
-if activation evidence fails, revert the baseline and wiring together rather than disable one oracle
-or leave a partial policy. No adopter-facing configuration or shipped workflow contract changes,
-because the checker, baseline, runner, CI wiring, and audit prompt are repository-local development
-tooling.
+Partial enforcement would be unsafe because a baseline without its blocker, or a blocker without its
+trusted evidence, cannot prove the policy. No adopter-facing configuration or shipped workflow
+contract changes, because the checker, baseline, runner, CI wiring, and audit prompt are
+repository-local development tooling.
 
 ## Alternatives Considered
 
