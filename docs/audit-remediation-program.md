@@ -42,8 +42,10 @@ The audit is an external opinion. These rulings bind its adoption:
   RF-007 performs the final residual ownership census and cleanup.
 - **RF-014 is split.** RF-014A owns Program A residue. RF-014B owns compatibility residue after the
   support-floor and managed-repository gates.
-- **RF-009 remains a deferred decision.** Decide thresholds, critical surfaces, and any ratchet only
-  after RF-007 establishes the post-refactor evidence baseline.
+- **RF-009 is approved as a hybrid raw ratchet.** Replace the filtered 100 percent blocker with
+  reviewed exact uncovered-identity baselines for the repository and six whole-derived critical
+  behaviour selectors. The implementation boundary below binds reporting, exclusions, platforms,
+  false ignores, baseline amendments, and targeted mutation.
 - **No new workflow layer.** Do not answer a finding with another profile, rigor mode, depth knob,
   router, second plan format, lifecycle state, or a skill that restates an existing principle.
 
@@ -194,7 +196,7 @@ correction is allowed without unrelated cleanup riding along.
 | RF-005 | P1 | COMPLETE | Current-state coordination extracted from project orchestration | RF-002 |
 | RF-006 | P1 | COMPLETE | `cmd/awf` reduced to parse, compose, invoke, render, exit | RF-002..RF-005 |
 | RF-007 | P2 | COMPLETE | Residual giant tests split by observable behaviour and semantic owner | RF-002..RF-006 |
-| RF-009 | P1 | DECISION | Post-refactor critical-path coverage policy and regression control | RF-007, owner ruling |
+| RF-009 | P1 | READY | Post-refactor critical-path coverage policy and regression control | RF-007, owner ruling |
 | RF-014A | P2 | COMPLETE | Obsolete Program A machinery deleted | Program A milestone |
 | RF-014B | P2 | CONDITIONAL | Obsolete compatibility residue deleted | RF-008B, compatibility removals applicable |
 | RF-010 | P2 | BLOCKED | Current code comments explain invariants, not historical plans and tranches | RF-002..RF-007, compatibility lane closed |
@@ -249,10 +251,22 @@ correction is allowed without unrelated cleanup riding along.
 - **RF-010:** After the refactors and compatibility lane close, replace comments that cite plans,
   tasks, or tranches with current invariants, constraints, or removal conditions. Keep useful ADR
   rationale and avoid unrelated prose churn.
-- **RF-009:** Defer the policy ruling until RF-007 provides the post-refactor behaviour-owner,
-  coverage, exclusion, and mutation evidence. Preserve strong evidence for critical safety and state
-  behaviour, prevent unexplained regression, and never weaken an oracle to improve a metric. No
-  threshold, package set, or ratchet percentage is pre-approved.
+- **RF-009:** Use exact raw uncovered-block identities as the blocking repository ratchet and for the
+  six whole-derived critical selectors: hard safety, state authority, repository and effort
+  lifecycle, migration and recovery, publication and application, and the `cmd/awf` boundary. Keep
+  owner-local profiles diagnostic and filtered 100 percent plus raw percentages as reporting. Store
+  a tracked generated baseline; additions and moved spans require independent review, removals are
+  improvements, and net-count swaps cannot authorize unrelated misses. Begin with a static,
+  explicitly unmeasured ledger for the four Darwin and Windows directives. Permit ignores only for
+  directly tested process-exit seams, revalidated impossible state, safely uninducible deterministic
+  faults, and platform-only branches with explicit evidence; inventory test-source directives
+  separately. Adjudicate the seven measured guarded-body positives, then make future executed ignored
+  bodies an Error. Keep `coverage-ignore-added` a complementary Warning and retain the historical
+  eight as aggregate context only. Initially mutation-block only `cmd/covercheck` when its owned paths
+  change, with the pinned operators, a 900-second run limit, invalidation on incomplete output or any
+  timeout, and only reviewed equivalent survivors allowed. Fix its two genuine diagnostic survivors
+  and obtain three clean deterministic runs before activating the baseline; use a 25-minute budget
+  for three-run renewal. Never weaken an oracle to improve a metric or add another gate profile.
 
 ### Program B start gate
 
@@ -262,8 +276,9 @@ coverage; no known adopter-facing contradiction remains; RF-001 establishes the 
 map, RF-002 establishes immutable project state, RF-003 establishes publishing coordination, RF-004
 establishes policy-free repository-check aggregation, RF-005 establishes focused current-state
 coordination, RF-006 establishes the thin command composition boundary, and RF-007 establishes direct
-residual test-oracle ownership. RF-009 now requires its deferred owner ruling. RF-008B and RF-014B
-remain conditional because nine managed repositories have not upgraded from 0.39.1.
+residual test-oracle ownership. RF-009 has its owner ruling and is ready for governed ADR, plan, and
+implementation work. RF-008B and RF-014B remain conditional because nine managed repositories have
+not upgraded from 0.39.1.
 
 Program A milestone complete; generated artifacts stable under the new doctrine; new behaviour has
 regression tests; no known adopter-facing contradiction remains; compatibility support policy decided
@@ -285,7 +300,7 @@ history. Items joined by `||` may implement concurrently; integrations remain se
 - **B-F3:** RF-002 || RF-012 after their dependencies and applicable cleanup integrate.
 - **B-F4:** RF-003, RF-004, RF-005, RF-006, RF-007, and RF-010 sequentially. The orchestrator may
   choose the order of RF-003 through RF-005 after RF-002, but they do not implement concurrently.
-- **B-F5:** RF-009 owner ruling and any resulting implementation after RF-007 evidence exists.
+- **B-F5:** RF-009 governed ADR, plan, and implementation under its approved evidence boundary.
 
 ## Child implementation brief
 
