@@ -189,7 +189,7 @@ correction is allowed without unrelated cleanup riding along.
 |---|---|---|---|---|
 | RF-001 | P1 | COMPLETE | Concrete dependency direction and one named semantic owner per extraction | Program A milestone |
 | RF-008A | P1 | COMPLETE | Durable private compatibility policy and a real support-floor inventory | Program A milestone |
-| RF-008B | P1 | CONDITIONAL | Obsolete compatibility pruned below the support floor | RF-008A, managed repos upgraded |
+| RF-008B | P1 | READY | Obsolete compatibility pruned below the support floor | RF-008A, managed repos upgraded |
 | RF-002 | P1 | COMPLETE | Residual project state separated from operations | RF-001 |
 | RF-003 | P1 | COMPLETE | One application owner for output planning and publication coordination | RF-002 |
 | RF-004 | P1 | COMPLETE | Check aggregation separated from check policy; severity in the result model | AF-013, RF-002 |
@@ -203,6 +203,17 @@ correction is allowed without unrelated cleanup riding along.
 | RF-011 | P2 | COMPLETE | Roadmap, known issues, and research separated by owner | Program A milestone |
 | RF-012 | P2 | COMPLETE | Tag vocabulary culled to terms with a real consumer | RF-011 |
 | RF-013 | P2 | COMPLETE | Documented remote enforcement matches configured GitHub policy | Program A milestone, live policy verification |
+
+### Managed-repository upgrade gate
+
+**Status: SATISFIED.** Every repository in ADR-0297's managed corpus has a `0.39.2` lock and
+version-matched binary. Each primary was clean after its upgrade transaction, `./awf check` passed,
+and the repository-required gate passed before commit. The adopter upgrade commits are
+`aeonseed@3cc8492`, `fleet@afaef79`, `go-php@7e7649dd`, `jugend-im-zentrum@d41b054`,
+`nouris@2468d0d`, `pi-science@ab434da`, `pi-tools@489e6e3`, `remote_pi@141e782`, and
+`sudoku-solver@17435bd`; agentic-workflows supplied the `0.39.2` producer baseline and revalidated at
+`cb044a262`. RF-008B is `READY`. Its candidate-specific no-dependency adjudication remains inside
+that issue.
 
 ### Pre-approved Program B boundaries
 
@@ -270,13 +281,12 @@ correction is allowed without unrelated cleanup riding along.
 
 ### Program B start gate
 
-**Status: OPEN; B-F1 THROUGH B-F5 COMPLETE EXCEPT THE CONDITIONAL COMPATIBILITY LANE.** Program A
-is complete; generated artifacts are stable under the new doctrine; changed behaviour has
-deterministic regression coverage; no known adopter-facing contradiction remains; RF-001 through
-RF-007 establish the architecture and direct residual test-oracle ownership; and RF-009 establishes
-the post-refactor coverage and mutation regression policy. RF-008B and RF-014B remain conditional
-because the managed-repository upgrade gate is open. RF-010 remains blocked until that compatibility
-lane closes.
+**Status: OPEN; RF-008B IS READY.** Program A is complete; generated artifacts are stable under the
+new doctrine; changed behaviour has deterministic regression coverage; no known adopter-facing
+contradiction remains; RF-001 through RF-007 establish the architecture and direct residual
+test-oracle ownership; and RF-009 establishes the post-refactor coverage and mutation regression
+policy. The managed-repository upgrade gate is satisfied. RF-014B remains conditional on applicable
+RF-008B removals, and RF-010 remains blocked until that compatibility lane closes.
 
 Program A milestone complete; generated artifacts stable under the new doctrine; new behaviour has
 regression tests; no known adopter-facing contradiction remains; compatibility support policy decided
@@ -292,9 +302,8 @@ history. Items joined by `||` may implement concurrently; integrations remain se
 - **A-F3:** AF-011 || AF-013 after their dependencies integrate.
 - **A-F4:** AF-010, then AF-012, then AF-014B and the Program A milestone, sequentially.
 - **B-F1:** after the milestone, RF-001 || RF-008A || RF-011 || RF-013.
-- **B-F2 cleanup lane:** RF-014A; then RF-008B and RF-014B when their external conditions hold.
-  Do not overlap this lane with architecture refactors. If managed upgrades remain outstanding,
-  preserve required wrappers and continue only architecture work that does not invalidate them.
+- **B-F2 cleanup lane:** RF-014A is complete; RF-008B is next, followed by RF-014B only when its
+  applicability condition holds. Do not overlap this lane with architecture refactors.
 - **B-F3:** RF-002 || RF-012 after their dependencies and applicable cleanup integrate.
 - **B-F4:** RF-003, RF-004, RF-005, RF-006, RF-007, and RF-010 sequentially. The orchestrator may
   choose the order of RF-003 through RF-005 after RF-002, but they do not implement concurrently.
