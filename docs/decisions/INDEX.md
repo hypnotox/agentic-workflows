@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-0302: Hybrid raw coverage ratchet and targeted mutation regression](0302-hybrid-raw-coverage-ratchet-and-targeted-mutation-regression.md) (Implementing)
+_No decisions are in flight._
 
 ## History
 
@@ -307,3 +307,4 @@
 - [ADR-0299: Make Publisher the Output Plan Construction Owner](0299-make-publisher-the-output-plan-construction-owner.md) (Implemented)
 - [ADR-0300: Make Repository Check Results Owner-Classified](0300-make-repository-check-results-owner-classified.md) (Implemented)
 - [ADR-0301: Move Context Query Input Below Application Coordination](0301-move-context-query-input-below-application-coordination.md) (Implemented)
+- [ADR-0302: Hybrid raw coverage ratchet and targeted mutation regression](0302-hybrid-raw-coverage-ratchet-and-targeted-mutation-regression.md) (Implemented)

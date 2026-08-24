@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-24
 adrs: [hybrid-raw-coverage-ratchet-and-targeted-mutation-regression]
-status: Proposed
+status: Implemented
 ---
 # Plan: Implement RF-009 coverage policy and regression control
 
