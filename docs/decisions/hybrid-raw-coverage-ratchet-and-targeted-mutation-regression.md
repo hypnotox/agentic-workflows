@@ -28,9 +28,14 @@ are useful diagnostics but cannot replace the canonical whole-derived evidence.
 The source census contains 806 directive lines: 733 map to blocks in the canonical profile and 73
 do not. Four unmapped production directives are Darwin or Windows immediate rollback branches in
 `internal/effort/publication_darwin.go` and `internal/effort/publication_windows.go`; a Linux profile
-cannot measure them. Seven mapped ignored bodies currently have positive execution counts. Earlier
-review found eight false exclusions in aggregate, but that historical number does not establish a
-stable identity list or a grandfathered exception.
+cannot measure them. Canonical duplicate merging ORs mode-set counts for each exact file, span, and statement-count
+identity before a directive is evaluated. Exact syntax-position matching then distinguishes a
+same-line condition or evaluation block from entry into its guarded body. This reproducible rule
+finds 27 positively executed ignored guarded bodies both at the immutable evidence revision and in
+the fresh profile after Phase 1. The earlier count of seven came from an incorrect interpretation of
+duplicate or same-line profile blocks and is not authoritative. Earlier review found eight false
+exclusions in aggregate, but that historical number does not establish a stable identity list or a
+grandfathered exception.
 
 ADR-0065 keeps raw and filtered Codecov line coverage informational. ADR-0066 keeps mutation testing
 advisory because broad mutation is too slow and equivalent-mutant noise is too high for a general
@@ -88,8 +93,10 @@ same observed result. This exact surface is small enough to protect within the a
    them. Their source identities, platform constraints, retained-ignore class, and evidence remain
    reviewable even while the canonical Linux profile cannot map them.
 
-7. `decision: executed-ignore-error` Terminal adjudication of the seven currently measured ignored
-   bodies must leave no positively executed guarded body ignored. A measured ignored body with a
+7. `decision: executed-ignore-error` Canonically OR-merge duplicate profile blocks by exact file,
+   span, and statement-count identity, then match each directive to exact guarded-body entry
+   positions rather than every block starting on the same line. Terminal adjudication of every
+   positively executed ignored guarded body must leave none ignored. A measured ignored body with a
    positive execution count is an Error because its exclusion claim is false. Keep
    `coverage-ignore-added` as a complementary repo-local Warning. Preserve the historical eight only
    as aggregate context, not as identities or exceptions. The implementation plan owns the concrete
@@ -175,3 +182,4 @@ repository-local development tooling.
 
 - 2026-08-24: Proposed
 - 2026-08-24: Accepted; content-sha256: 8aa65de13e681adee3792959abaff17174152a6752c9ed16e12436f391556564
+- 2026-08-24: Amended; content-sha256: c9611892211abfc8f21b5c6058f86860df98cbe86b66162c9350381a19c4cb3f
