@@ -28,9 +28,12 @@ the four Darwin and Windows publication rollback directives remain explicitly un
 entries.
 
 Build the mutation trust path on the existing gremlins v0.6.0 and `cmd/mutants` parser. First close
-the two known assertion gaps without changing production. Then require complete, timeout-free,
-operator-pinned single-worker reports and compare exact survivors with the reviewed equivalent set
-in the coverage baseline. One fail-conservative gate-owned path detector consumes either the local
+the two known assertion gaps without changing production. Then run one ordinary uncached
+whole-repository preflight followed by hermetic one-worker normal-mode dry discovery and actual
+execution over the complete whole `./cmd/covercheck` target. Execute each mutant against the
+package-owned `go test ./cmd/covercheck` behavior-test universe, require exact dry-to-actual identity
+equality and complete timeout-free reports, and compare exact survivors with the reviewed equivalent
+set in the coverage baseline. One fail-conservative gate-owned path detector consumes either the local
 staged snapshot or an explicit CI range and selects the exact `cmd/covercheck` blocker. It does not
 change the broader test-lane classifier and never turns global advisory mutation into a blocker.
 
@@ -152,13 +155,13 @@ Advances: ["mutation-regression"]
 
 ### Task 3.1: Make the existing mutation report owner enforce the trust contract
 Applying: ["hybrid-raw-coverage-ratchet-and-targeted-mutation-regression:mutation-trust-contract", "hybrid-raw-coverage-ratchet-and-targeted-mutation-regression:mutation-renewal", "hybrid-raw-coverage-ratchet-and-targeted-mutation-regression:behavior-first-oracles"]
-Paths: ["cmd/mutants/main.go", "cmd/mutants/main_test.go", ".gremlins.yaml", "go.mod", "go.sum"]
-Post-check: "Observe focused parser fixtures fail before implementation, then require `go test ./cmd/mutants` to exit zero. Fixtures cover the explicitly pinned operator set and gremlins version, exact survivor identities, reviewed-equivalent acceptance, missing, empty, malformed, structurally incomplete, unknown-status, and timed-out reports, deterministic ordering, the 900-second limit, and renewal evidence that is rejected unless three complete runs have one identical trusted status set within the total budget."
+Paths: ["cmd/mutants/main.go", "cmd/mutants/main_test.go", "go.mod", "go.sum"]
+Post-check: "Observe focused parser fixtures fail before implementation, then require `go test ./cmd/mutants` to exit zero. Fixtures cover gremlins v0.6.0; all eleven explicit true and false operator booleans; exact module-relative file, line, column, and mutator identities; reviewed-equivalent acceptance; exact dry/actual identity equality; and rejection of duplicate, missing, extra, empty, malformed, structurally incomplete, `NOT COVERED`, `NOT VIABLE`, `SKIPPED`, `TIMED OUT`, unknown-status, and timed-out reports. Renewal evidence is rejected unless three complete runs have one identical trusted status set, each aggregate run stays within 900 seconds, and their total stays within 25 minutes."
 
 Extend the existing parser rather than introducing a second mutation report owner. Distinguish a
-complete clean report from a pre-created file that gremlins never completed. Accept a lived mutant
-only when its exact stable identity is in the baseline's independently reviewed equivalent set.
-Keep the general `./x mutants` path advisory while giving the targeted caller a blocking result.
+complete clean report from a pre-created file that gremlins never completed. Accept only `KILLED` or
+a `LIVED` mutant whose exact stable identity is in the baseline's independently reviewed equivalent
+set. Keep the general `./x mutants` path advisory while giving the targeted caller a blocking result.
 
 ### Task 3.2: Share fail-conservative owned-path selection across staged and range inputs
 Applying: ["hybrid-raw-coverage-ratchet-and-targeted-mutation-regression:targeted-mutation-blocker", "hybrid-raw-coverage-ratchet-and-targeted-mutation-regression:mutation-trust-contract"]
@@ -173,12 +176,20 @@ dormant until Phase 4 activation.
 
 ### Task 3.3: Run and preserve deterministic mutation qualification evidence
 Applying: ["hybrid-raw-coverage-ratchet-and-targeted-mutation-regression:mutation-trust-contract", "hybrid-raw-coverage-ratchet-and-targeted-mutation-regression:mutation-renewal"]
-Paths: ["x", ".gremlins.yaml", "cmd/covercheck", "cmd/mutants"]
-Post-check: "Run the exact pinned single-worker `./cmd/covercheck` mutation recipe three times from one unchanged candidate tree. Each report must be complete, contain no timeout or unreviewed survivor, produce the same trusted status set, and the measured total wall time must not exceed 25 minutes. Hash or canonicalize the three parsed status sets, record commands, tool version, operator configuration, elapsed times, and equality evidence in Notes, and reject the qualification if the tree or recipe changes between runs."
+Paths: ["x", "internal/project/gate_runner_test.go", "cmd/covercheck", "cmd/mutants"]
+Post-check: "First add fake-command gate-runner fixtures and observe them fail before orchestration implementation, then require focused tests to pass for exact preflight, census, discovery, execution, validation, and cleanup order; all operator flags and environment isolation; configuration, census, and dependency refusals; aggregate timeout and incomplete-report failure; and cleanup confined to the proven owned subtree. Stage the complete Phase 3 transaction, require no qualification-relevant unstaged or untracked path, record its `git write-tree` identity and base commit, and keep that staged tree byte-identical through Phase 3 close. Run the exact hermetic recipe three times against that staged tree. Each run proves a uniquely owned external `/tmp` root has adequate capacity and lies outside Git discovery; rejects every `GREMLINS_*` override; supplies an empty temporary config; explicitly sets all eleven operator booleans; verifies the exact filesystem versus no-tag `TestGoFiles` and `XTestGoFiles` census plus direct and compiled-test `internal/coverage` dependencies; runs `go test -count=1 ./...` once; and uses one-worker gremlins normal mode to dry-discover and actually execute the complete whole `./cmd/covercheck` target against `go test ./cmd/covercheck` per mutant. Every dry identity is unique and `RUNNABLE`; every actual identity exactly matches the dry set and is `KILLED` or an exact reviewed-equivalent `LIVED`; every other status and incomplete report fails. Retain evidence in ignored effort scratch, clean only the owned temporary subtree after proving no process or descriptor owns it, require each aggregate run to stay within 900 seconds, require the three runs to total at most 25 minutes, and require identical trusted status sets."
 
-Expose a focused local command for the exact blocker so qualification and later gate invocation use
-the same recipe. Do not baseline an equivalent mutant merely to make qualification pass. Any recipe,
-tool, or operator change after this evidence invalidates it and requires a fresh three-run renewal.
+Expose one focused local command for the exact blocker so qualification and later gate invocation use
+the same preflight, census, hermetic environment, dry-discovery, execution, validation, and owned
+cleanup recipe. Keep its orchestration behind fake-command contract tests so the live runs qualify
+behavior already protected by durable red-then-green oracles. Hash or canonicalize the three parsed
+status sets and record commands, tool version, all operator values, base commit, staged-tree identity,
+elapsed segments, identity equality, report disposition, and cleanup evidence in Notes. Recheck the
+same staged-tree identity and absence of qualification-relevant unstaged or untracked paths after each
+run and immediately before the Phase 3 commit. Do not track a repository Gremlins config or baseline
+an equivalent mutant merely to make qualification pass. Any recipe, tool, operator, package-test
+census, dependency contract, or staged-tree identity change after this evidence invalidates it and
+requires a fresh three-run renewal.
 
 ### Phase close
 
@@ -257,7 +268,7 @@ feat(tooling): activate RF-009 regression policy (applies ADR batch)
 - `dod: critical-selector-protection` The repository and all six exact ADR-defined critical path sets derive identities from the same merged whole-module profile, block independently, and cannot be satisfied by a local-owner profile or an aggregate-count swap.
 - `dod: ignore-accountability` Every retained production directive has one admitted class and explicit evidence, test directives are separately inventoried, static platform entries remain honestly unmeasured, future executed ignored bodies are Errors, and repo-local addition or move and ignore-addition Warnings remain visible.
 - `dod: reporting-compatibility` The existing profile invocation and `--emit-filtered` interface remain compatible, use one directive interpretation, report raw and filtered statement percentages, and preserve separate informational Codecov raw and covered uploads.
-- `dod: mutation-regression` Exact `cmd/covercheck` owned-path changes trigger the pinned, complete, timeout-free blocking mutation recipe from both local staged and explicit CI range evidence; uncertainty runs it, only reviewed exact equivalents pass, three-run renewal stays within budget, and mutation elsewhere remains advisory.
+- `dod: mutation-regression` Exact `cmd/covercheck` owned-path changes trigger the pinned, hermetic, whole-target normal-mode recipe from both local staged and explicit CI range evidence; an ordinary whole-repository preflight and exact package-test and dependency censuses guard the narrowed per-mutant execution boundary, dry and actual identities must match, uncertainty runs the blocker, only reviewed exact equivalents pass, three-run renewal stays within budget, and mutation elsewhere remains advisory.
 - `dod: current-authority` All declared State changes are applied with valid direct test backing, authored and rendered current-state and runner documentation match enforcement, the canonical artifact is independently range-reviewed, and focused checks, drift, staged check, and the gate pass at the activation tip.
 
 ## Notes
@@ -295,8 +306,20 @@ coverage subtraction. Phase 2 therefore uses a fully restored subtraction-to-add
 exact partial-profile diagnostic assertion as its current-tip red/green oracle. The controlled mutant
 reports three uncovered statements instead of one and makes `TestRunBelowHundred` fail; the restored
 production subtraction makes the same focused test pass, and `cmd/covercheck/main.go` is byte-unchanged
-from the phase base. Phase 3 cannot proceed until a separately reviewed authority amendment establishes
-a complete deterministic recipe within the approved outcome and runtime budget.
+from the phase base.
+
+Recipe-amendment freshness: the independently reviewed Accepted ADR now replaces only the future
+integration-mode Phase 3 route with the D16-proven package-owned normal-mode route. D16 ran at the
+clean completed-Phase-2 tip `69a374aec`, proved the exact two-file compiled and filesystem test census,
+the direct and compiled-test `internal/coverage` dependency contract, dry/actual equality for the
+complete 23-identity target, and 23 killed mutants with no other status in 96 aggregate seconds. The
+amendment changes no Phase 1 or Phase 2 implementation contract: Phase 1 still owns the target and
+dependency behavior, and Phase 2 still owns marker truth and test-only assertion strength. Their landed
+code already supplied the successful D16 calibration universe, while no completed phase implemented
+or qualified the rejected integration recipe. Existing completed-phase assurance therefore remains
+fresh; D16 is single-run route evidence only and does not satisfy Phase 3's three-run qualification.
+Ordinary linked-plan review must confirm this affected-phase inventory before Phase 3 can be
+authorized.
 
 After the Phase 4 commit exists, run the repo-local audit over the complete implementation range.
 After terminal implementation assurance settles over that exact tip and audit evidence, return
