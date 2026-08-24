@@ -3,10 +3,13 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	coveragepolicy "github.com/hypnotox/agentic-workflows/internal/coverage"
 )
 
 // writeJSON writes body to a temp file and returns its path.
@@ -219,7 +222,10 @@ func TestRenewalRequiresThreeMatchingTrustedRunsWithinBudget(t *testing.T) {
 		t.Fatalf("valid renewal: %v", err)
 	}
 	cases := map[string][]timedReport{
-		"not three": {{report, 1}, {report, 1}}, "over run": {{report, 901}, {report, 1}, {report, 1}},
+		"not three":          {{report, 1}, {report, 1}},
+		"over run":           {{report, 901}, {report, 1}, {report, 1}},
+		"nan run":            {{report, math.NaN()}, {report, 1}, {report, 1}},
+		"infinite run":       {{report, math.Inf(1)}, {report, 1}, {report, 1}},
 		"over total":         {{report, 501}, {report, 501}, {report, 501}},
 		"different statuses": {{report, 1}, {report, 1}, {trustedReport{statuses: map[mutationIdentity]string{{File: "cmd/covercheck/main.go", Line: 1, Column: 13, Mutator: "ARITHMETIC_BASE"}: "LIVED"}}, 1}},
 	}
@@ -233,9 +239,9 @@ func TestRenewalRequiresThreeMatchingTrustedRunsWithinBudget(t *testing.T) {
 }
 
 func TestRunRenewal(t *testing.T) {
-	baseline := writeJSON(t, `{"equivalentMutants":[]}`)
+	dry := writeJSON(t, string(completeReport("RUNNABLE", "RUNNABLE")))
 	actual := writeJSON(t, string(completeReport("KILLED", "KILLED")))
-	args := []string{"mutants", "renewal", baseline, "cmd/covercheck", "500", actual, "500", actual, "500", actual}
+	args := []string{"mutants", "renewal", "-", "cmd/covercheck", "500", dry, actual, "500", dry, actual, "500", dry, actual}
 	var out, errb bytes.Buffer
 	if code := run(args, &out, &errb); code != 0 {
 		t.Fatalf("renewal = %d: %s", code, errb.String())
@@ -246,27 +252,35 @@ func TestRunRenewal(t *testing.T) {
 }
 
 func TestRunRenewalRejectsInvalidInputs(t *testing.T) {
-	baseline := writeJSON(t, `{"equivalentMutants":[]}`)
-	invalidBaseline := writeJSON(t, `{}`)
+	invalidBaseline := writeJSON(t, `{"equivalentMutants":[]}`)
+	dry := writeJSON(t, string(completeReport("RUNNABLE")))
 	actual := writeJSON(t, string(completeReport("KILLED")))
-	invalidActual := writeJSON(t, `{}`)
+	invalidReport := writeJSON(t, `{}`)
 	missing := filepath.Join(t.TempDir(), "missing.json")
-	valid := []string{"mutants", "renewal", baseline, "cmd/covercheck", "1", actual, "1", actual, "1", actual}
+	valid := []string{"mutants", "renewal", "-", "cmd/covercheck", "1", dry, actual, "1", dry, actual, "1", dry, actual}
 	cases := map[string][]string{
-		"wrong arity":      {"mutants", "renewal"},
-		"missing baseline": append([]string(nil), valid...),
-		"invalid baseline": append([]string(nil), valid...),
-		"invalid elapsed":  append([]string(nil), valid...),
-		"missing report":   append([]string(nil), valid...),
-		"untrusted report": append([]string(nil), valid...),
-		"over budget":      append([]string(nil), valid...),
+		"wrong arity":       {"mutants", "renewal"},
+		"missing baseline":  append([]string(nil), valid...),
+		"partial baseline":  append([]string(nil), valid...),
+		"invalid elapsed":   append([]string(nil), valid...),
+		"nonfinite elapsed": append([]string(nil), valid...),
+		"missing dry":       append([]string(nil), valid...),
+		"missing actual":    append([]string(nil), valid...),
+		"untrusted dry":     append([]string(nil), valid...),
+		"untrusted actual":  append([]string(nil), valid...),
+		"mismatched pair":   append([]string(nil), valid...),
+		"over budget":       append([]string(nil), valid...),
 	}
 	cases["missing baseline"][2] = missing
-	cases["invalid baseline"][2] = invalidBaseline
+	cases["partial baseline"][2] = invalidBaseline
 	cases["invalid elapsed"][4] = "bad"
-	cases["missing report"][5] = missing
-	cases["untrusted report"][5] = invalidActual
-	cases["over budget"][4], cases["over budget"][6], cases["over budget"][8] = "501", "501", "501"
+	cases["nonfinite elapsed"][4] = "NaN"
+	cases["missing dry"][5] = missing
+	cases["missing actual"][6] = missing
+	cases["untrusted dry"][5] = invalidReport
+	cases["untrusted actual"][6] = invalidReport
+	cases["mismatched pair"][5] = writeJSON(t, string(completeReport("RUNNABLE", "RUNNABLE")))
+	cases["over budget"][4], cases["over budget"][7], cases["over budget"][10] = "501", "501", "501"
 	for name, args := range cases {
 		t.Run(name, func(t *testing.T) {
 			var out, errb bytes.Buffer
@@ -281,9 +295,8 @@ func TestRunRenewalRejectsInvalidInputs(t *testing.T) {
 
 func TestRunValidate(t *testing.T) {
 	dry, actual := writeJSON(t, string(completeReport("RUNNABLE", "RUNNABLE"))), writeJSON(t, string(completeReport("KILLED", "KILLED")))
-	baseline := writeJSON(t, `{"equivalentMutants":[]}`)
 	var out, errb bytes.Buffer
-	if code := run([]string{"mutants", "validate", dry, actual, baseline, "cmd/covercheck"}, &out, &errb); code != 0 {
+	if code := run([]string{"mutants", "validate", dry, actual, "-", "cmd/covercheck"}, &out, &errb); code != 0 {
 		t.Fatalf("validate = %d: %s", code, errb.String())
 	}
 	if !strings.Contains(out.String(), "trusted mutation reports") {
@@ -294,14 +307,13 @@ func TestRunValidate(t *testing.T) {
 func TestRunValidateRejectsUnreadableInputsAndInvalidBaseline(t *testing.T) {
 	dry := writeJSON(t, string(completeReport("RUNNABLE")))
 	actual := writeJSON(t, string(completeReport("KILLED")))
-	baseline := writeJSON(t, `{"equivalentMutants":[]}`)
 	missing := filepath.Join(t.TempDir(), "missing.json")
 	for name, args := range map[string][]string{
-		"wrong arity":  {"mutants", "validate"},
-		"dry":          {"mutants", "validate", missing, actual, baseline, "cmd/covercheck"},
-		"actual":       {"mutants", "validate", dry, missing, baseline, "cmd/covercheck"},
-		"baseline":     {"mutants", "validate", dry, actual, missing, "cmd/covercheck"},
-		"bad baseline": {"mutants", "validate", dry, actual, writeJSON(t, `{}`), "cmd/covercheck"},
+		"wrong arity":      {"mutants", "validate"},
+		"dry":              {"mutants", "validate", missing, actual, "-", "cmd/covercheck"},
+		"actual":           {"mutants", "validate", dry, missing, "-", "cmd/covercheck"},
+		"baseline":         {"mutants", "validate", dry, actual, missing, "cmd/covercheck"},
+		"partial baseline": {"mutants", "validate", dry, actual, writeJSON(t, `{"equivalentMutants":[]}`), "cmd/covercheck"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			var out, errb bytes.Buffer
@@ -334,6 +346,7 @@ func TestTrustContractRejectsEveryMalformedBoundary(t *testing.T) {
 	for name, actual := range map[string][]byte{
 		"invalid statistics":  []byte(strings.Replace(string(validActual), `{"arithmetic_base":1}`, `[]`, 1)),
 		"empty module":        []byte(strings.Replace(string(validActual), `"go_module":"github.com/hypnotox/agentic-workflows"`, `"go_module":""`, 1)),
+		"wrong module":        []byte(strings.Replace(string(validActual), `"go_module":"github.com/hypnotox/agentic-workflows"`, `"go_module":"example.com/other"`, 1)),
 		"empty mutations":     []byte(strings.Replace(string(validActual), `"mutations":[{"type":"ARITHMETIC_BASE","status":"KILLED","line":1,"column":13}]`, `"mutations":[]`, 1)),
 		"missing identity":    []byte(strings.Replace(string(validActual), `"column":13`, `"column":0`, 1)),
 		"actual runnable":     completeReport("RUNNABLE"),
@@ -352,26 +365,63 @@ func TestTrustContractRejectsEveryMalformedBoundary(t *testing.T) {
 	assertRejected(t, otherDry, validActual, "cmd/covercheck")
 }
 
-func TestEquivalentMutantsRejectsMalformedAndNormalizesValidEntries(t *testing.T) {
-	for name, data := range map[string][]byte{
-		"malformed": []byte(`{`), "missing": []byte(`{}`),
-		"incomplete": []byte(`{"equivalentMutants":[{"file":"cmd/covercheck/main.go","line":1,"column":13,"mutator":"ARITHMETIC_BASE","reason":" "}]}`),
-		"duplicate":  []byte(`{"equivalentMutants":[{"file":"cmd/covercheck/main.go","line":1,"column":13,"mutator":"ARITHMETIC_BASE","reason":"equivalent"},{"file":"cmd/covercheck/main.go","line":1,"column":13,"mutator":"ARITHMETIC_BASE","reason":"also equivalent"}]}`),
+func TestEquivalentMutantsRequireCanonicalBaselineOrExplicitEmptySet(t *testing.T) {
+	got, err := equivalentMutants("-")
+	if err != nil || len(got) != 0 {
+		t.Fatalf("explicit empty equivalents = %#v, %v", got, err)
+	}
+	for name, data := range map[string]string{
+		"malformed": `{`,
+		"partial":   `{"equivalentMutants":[]}`,
 	} {
 		t.Run(name, func(t *testing.T) {
-			if _, err := equivalentMutants(data); err == nil {
-				t.Fatal("invalid equivalent set accepted")
+			if _, err := equivalentMutants(writeJSON(t, data)); err == nil {
+				t.Fatal("noncanonical baseline accepted")
 			}
 		})
 	}
-	identity := mutationIdentity{File: "cmd/covercheck/main.go", Line: 1, Column: 13, Mutator: "ARITHMETIC_BASE"}
-	got, err := equivalentMutants([]byte(`{"equivalentMutants":[{"file":"cmd/covercheck/main.go","line":1,"column":13,"mutator":"ARITHMETIC_BASE","reason":"equivalent expression"}]}`))
+
+	mutant := coveragepolicy.EquivalentMutant{File: "cmd/covercheck/main.go", Line: 1, Column: 13, Mutator: "ARITHMETIC_BASE", Reason: "reviewed equivalent"}
+	got, err = equivalentMutants(canonicalMutationBaseline(t, repositoryModule, []coveragepolicy.EquivalentMutant{mutant}))
+	identity := mutationIdentity{File: mutant.File, Line: mutant.Line, Column: mutant.Column, Mutator: mutant.Mutator}
 	if err != nil || len(got) != 1 {
-		t.Fatalf("valid equivalents = %#v, %v", got, err)
+		t.Fatalf("canonical equivalents = %#v, %v", got, err)
 	}
 	if _, ok := got[identity]; !ok {
-		t.Fatalf("missing identity: %#v", got)
+		t.Fatalf("canonical equivalents omit %#v: %#v", identity, got)
 	}
+	if _, err := equivalentMutants(canonicalMutationBaseline(t, "example.com/other", nil)); err == nil {
+		t.Fatal("baseline for another module accepted")
+	}
+}
+
+func canonicalMutationBaseline(t *testing.T, module string, mutants []coveragepolicy.EquivalentMutant) string {
+	t.Helper()
+	selectors := []coveragepolicy.SelectorBaseline{
+		{Name: "hard-safety", Roots: []string{"cmd/covercheck", "cmd/mutants", "internal/commitpolicy", "internal/coverage", "internal/filepublication"}},
+		{Name: "state-authority", Roots: []string{"internal/adr", "internal/currentstate", "internal/currentstatecoord", "internal/topic"}},
+		{Name: "repository-effort-lifecycle", Roots: []string{"internal/effort", "internal/git", "internal/worktree"}},
+		{Name: "migration-recovery", Roots: []string{"internal/config", "internal/migrate", "internal/upgrade"}},
+		{Name: "publication-application", Roots: []string{"internal/project", "internal/publisher"}},
+		{Name: "command-boundary", Roots: []string{"cmd/awf"}},
+	}
+	var production []coveragepolicy.DirectiveAdmission
+	var platforms []coveragepolicy.PlatformDirective
+	for _, item := range []struct {
+		file, platform string
+	}{{"internal/effort/publication_darwin.go", "darwin"}, {"internal/effort/publication_windows.go", "windows"}} {
+		for line := 1; line <= 2; line++ {
+			directive := coveragepolicy.Directive{File: item.file, Line: line, TargetLine: line, Reason: "rollback"}
+			production = append(production, coveragepolicy.DirectiveAdmission{Directive: directive, Class: coveragepolicy.IgnorePlatformOnly, Evidence: "platform source"})
+			platforms = append(platforms, coveragepolicy.PlatformDirective{Directive: directive, Platforms: []string{item.platform}, Class: coveragepolicy.IgnorePlatformOnly, Evidence: "platform source"})
+		}
+	}
+	baseline := coveragepolicy.Baseline{Version: 1, ModulePath: module, UniverseSHA256: strings.Repeat("0", 64), Selectors: selectors, ProductionDirectives: production, PlatformDirectives: platforms, EquivalentMutants: mutants}
+	raw, err := coveragepolicy.CanonicalBaseline(baseline)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return writeJSON(t, string(raw))
 }
 
 func TestSetComparisonsRejectEqualLengthDifferences(t *testing.T) {
@@ -389,9 +439,8 @@ func TestSetComparisonsRejectEqualLengthDifferences(t *testing.T) {
 func TestRunValidateRejectsUntrustedReport(t *testing.T) {
 	dry := writeJSON(t, string(completeReport("RUNNABLE")))
 	actual := writeJSON(t, string(completeReport("LIVED")))
-	baseline := writeJSON(t, `{"equivalentMutants":[]}`)
 	var out, errb bytes.Buffer
-	if code := run([]string{"mutants", "validate", dry, actual, baseline, "cmd/covercheck"}, &out, &errb); code != 1 {
+	if code := run([]string{"mutants", "validate", dry, actual, "-", "cmd/covercheck"}, &out, &errb); code != 1 {
 		t.Fatalf("untrusted report exit = %d, want 1; out=%q err=%q", code, out.String(), errb.String())
 	}
 	if !strings.Contains(errb.String(), "untrusted report") {
@@ -408,11 +457,5 @@ func TestParserRejectsTypeMismatchesAndUnreviewedLivedMutation(t *testing.T) {
 	}
 	if _, err := mutationFileIdentity("/cmd/covercheck/main.go", "cmd/covercheck"); err == nil {
 		t.Fatal("absolute mutation file accepted")
-	}
-}
-
-func TestEquivalentMutantsRejectsWrongFieldType(t *testing.T) {
-	if _, err := equivalentMutants([]byte(`{"equivalentMutants":1}`)); err == nil {
-		t.Fatal("wrong equivalentMutants type accepted")
 	}
 }

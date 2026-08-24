@@ -193,6 +193,15 @@ cleanup_covercheck_mutation_tmp() {
   printf 'removed=%s lsof_status=1\n' "$owned" >"$evidence/cleanup.txt"
 }
 
+covercheck_mutation_tmp=
+covercheck_mutation_evidence=
+cleanup_covercheck_mutation_exit() {
+  local status=$?
+  trap - EXIT TERM
+  cleanup_covercheck_mutation_tmp "$covercheck_mutation_tmp" "$covercheck_mutation_evidence" || exit 1
+  exit "$status"
+}
+
 run_covercheck_mutants_inner() {
   local root="$1" evidence="$2" baseline="$3" name value tmp config dry actual imports deps tool segments
   local census=() expected=() operators=()
@@ -208,7 +217,10 @@ run_covercheck_mutants_inner() {
   go version -m "$tool" >"$evidence/tool-version.txt"
   grep -F $'mod\tgithub.com/go-gremlins/gremlins\tv0.6.0\t' "$evidence/tool-version.txt" >/dev/null || { echo "covercheck-mutants: gremlins tool must be v0.6.0" >&2; return 1; }
   tmp="$(mktemp -d /tmp/covercheck-mutants.XXXXXX)" || return 1
-  trap "status=\$?; trap - EXIT TERM; cleanup_covercheck_mutation_tmp '$tmp' '$evidence' || exit 1; exit \$status" EXIT TERM
+  covercheck_mutation_tmp="$tmp"
+  covercheck_mutation_evidence="$evidence"
+  trap cleanup_covercheck_mutation_exit EXIT TERM
+  export TMPDIR="$tmp" GOTMPDIR="$tmp" TMP="$tmp" TEMP="$tmp"
   df -B1 /tmp >"$evidence/capacity-before.txt"
   [ "$(df -Pk /tmp | awk 'END { print $4 }')" -ge 1048576 ] || { echo "covercheck-mutants: /tmp capacity below 1 GiB" >&2; return 1; }
   if git -C "$tmp" rev-parse --show-toplevel >"$evidence/git-isolation.stdout" 2>"$evidence/git-isolation.stderr"; then echo "covercheck-mutants: temporary root is inside Git discovery" >&2; return 1; fi
@@ -229,10 +241,12 @@ run_covercheck_mutants_inner() {
   while IFS= read -r value; do operators+=("$value"); done < <(go run ./cmd/mutants operators)
   [ "${#operators[@]}" -eq 11 ] || { echo "covercheck-mutants: operator inventory is incomplete" >&2; return 1; }
   printf '%s\n' "${operators[@]}" >"$evidence/operators.txt"
-  dry="$evidence/dry.json"; actual="$evidence/actual.json"; segments="$evidence/segments.tsv"; : >"$segments"
-  run_mutation_segment "$segments" preflight env TMPDIR="$tmp" GOTMPDIR="$tmp" TMP="$tmp" TEMP="$tmp" go test -count=1 ./...
-  run_mutation_segment "$segments" discovery env TMPDIR="$tmp" GOTMPDIR="$tmp" TMP="$tmp" TEMP="$tmp" go tool gremlins --config "$config" unleash --integration=false --workers=1 --test-cpu=1 --timeout-coefficient=20 --threshold-efficacy=0 --threshold-mcover=0 --tags= --coverpkg= --diff= --dry-run "${operators[@]}" --output "$dry" ./cmd/covercheck
-  run_mutation_segment "$segments" mutation env TMPDIR="$tmp" GOTMPDIR="$tmp" TMP="$tmp" TEMP="$tmp" go tool gremlins --config "$config" unleash --integration=false --workers=1 --test-cpu=1 --timeout-coefficient=20 --threshold-efficacy=0 --threshold-mcover=0 --tags= --coverpkg= --diff= "${operators[@]}" --output "$actual" ./cmd/covercheck
+  dry="$evidence/dry.json"; actual="$evidence/actual.json"; segments="$evidence/segments.tsv"
+  rm -f -- "$dry" "$actual"
+  : >"$segments"
+  run_mutation_segment "$segments" preflight go test -count=1 ./...
+  run_mutation_segment "$segments" discovery go tool gremlins --config "$config" unleash --integration=false --workers=1 --test-cpu=1 --timeout-coefficient=20 --threshold-efficacy=0 --threshold-mcover=0 --tags= --coverpkg= --diff= --dry-run "${operators[@]}" --output "$dry" ./cmd/covercheck
+  run_mutation_segment "$segments" mutation go tool gremlins --config "$config" unleash --integration=false --workers=1 --test-cpu=1 --timeout-coefficient=20 --threshold-efficacy=0 --threshold-mcover=0 --tags= --coverpkg= --diff= "${operators[@]}" --output "$actual" ./cmd/covercheck
   run_mutation_segment "$segments" validation sh -c 'go run ./cmd/mutants validate "$1" "$2" "$3" cmd/covercheck >"$4"' sh "$dry" "$actual" "$baseline" "$evidence/validation.txt"
   cat "$evidence/validation.txt"
   printf 'covercheck mutation blocker completed\n' >"$evidence/summary.txt"

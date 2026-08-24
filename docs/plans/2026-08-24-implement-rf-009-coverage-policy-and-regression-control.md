@@ -334,6 +334,15 @@ set at staged tree `ec8e4fe2d07261d1734073069c0499a6a2c45b3b` is also diagnostic
 full gate exposed two ineffectual increments immediately before fail-closed parser returns, and the
 minimal lint correction changed the staged identity again.
 
+Phase 3 exact-range review at `b2c8cc99e` found seven authority-preserving trust gaps. Settlement
+removes stale dry and actual reports before execution, validates every renewal as three dry/actual
+pairs, binds reports to the repository module, rejects non-finite durations, keeps all post-root
+recipe commands under one exported temporary environment, and makes cleanup consume caller paths as
+data rather than trap source. The mutation checker now loads the canonical generated baseline through
+`internal/coverage`; the explicit `-` input is the no-equivalents qualification path before Phase 4
+activation. These corrections invalidate the earlier qualification evidence and require one fresh
+three-run set against the complete corrected staged tree.
+
 After the Phase 4 commit exists, run the repo-local audit over the complete implementation range.
 After terminal implementation assurance settles over that exact tip and audit evidence, return
 integration-ready with the ADR still

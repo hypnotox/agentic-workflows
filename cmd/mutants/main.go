@@ -12,15 +12,19 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path"
 	"sort"
 	"strconv"
 	"strings"
+
+	coveragepolicy "github.com/hypnotox/agentic-workflows/internal/coverage"
 )
 
 const maxRunSeconds = 900
 const maxRenewalSeconds = 1500
+const repositoryModule = "github.com/hypnotox/agentic-workflows"
 
 type mutation struct {
 	Type   string `json:"type"`
@@ -79,7 +83,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runRenewal(args, stdout, stderr)
 	}
 	if len(args) < 2 {
-		fmt.Fprintln(stderr, "usage: mutants <gremlins-json> | mutants validate <dry-json> <actual-json> <coverage-baseline-json> <target-root> | mutants renewal <coverage-baseline-json> <target-root> <seconds-1> <actual-1> <seconds-2> <actual-2> <seconds-3> <actual-3> | mutants operators")
+		fmt.Fprintln(stderr, "usage: mutants <gremlins-json> | mutants validate <dry-json> <actual-json> <coverage-baseline-json|-> <target-root> | mutants renewal <coverage-baseline-json|-> <target-root> <seconds-1> <dry-1> <actual-1> <seconds-2> <dry-2> <actual-2> <seconds-3> <dry-3> <actual-3> | mutants operators")
 		return 2
 	}
 	// ./x mutants pre-creates the report via mktemp, so a nonexistent path is a
@@ -128,7 +132,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 
 func runValidate(args []string, stdout, stderr io.Writer) int {
 	if len(args) != 6 {
-		fmt.Fprintln(stderr, "usage: mutants validate <dry-json> <actual-json> <coverage-baseline-json> <target-root>")
+		fmt.Fprintln(stderr, "usage: mutants validate <dry-json> <actual-json> <coverage-baseline-json|-> <target-root>")
 		return 2
 	}
 	dry, err := os.ReadFile(args[2])
@@ -141,12 +145,7 @@ func runValidate(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "mutants: reading actual report:", err)
 		return 1
 	}
-	baseline, err := os.ReadFile(args[4])
-	if err != nil {
-		fmt.Fprintln(stderr, "mutants: reading coverage baseline:", err)
-		return 1
-	}
-	equivalents, err := equivalentMutants(baseline)
+	equivalents, err := equivalentMutants(args[4])
 	if err != nil {
 		fmt.Fprintln(stderr, "mutants: parsing coverage baseline:", err)
 		return 1
@@ -161,35 +160,35 @@ func runValidate(args []string, stdout, stderr io.Writer) int {
 }
 
 func runRenewal(args []string, stdout, stderr io.Writer) int {
-	if len(args) != 10 {
-		fmt.Fprintln(stderr, "usage: mutants renewal <coverage-baseline-json> <target-root> <seconds-1> <actual-1> <seconds-2> <actual-2> <seconds-3> <actual-3>")
+	if len(args) != 13 {
+		fmt.Fprintln(stderr, "usage: mutants renewal <coverage-baseline-json|-> <target-root> <seconds-1> <dry-1> <actual-1> <seconds-2> <dry-2> <actual-2> <seconds-3> <dry-3> <actual-3>")
 		return 2
 	}
-	baseline, err := os.ReadFile(args[2])
-	if err != nil {
-		fmt.Fprintln(stderr, "mutants: reading coverage baseline:", err)
-		return 1
-	}
-	equivalents, err := equivalentMutants(baseline)
+	equivalents, err := equivalentMutants(args[2])
 	if err != nil {
 		fmt.Fprintln(stderr, "mutants: parsing coverage baseline:", err)
 		return 1
 	}
 	runs := make([]timedReport, 0, 3)
 	for i := range 3 {
-		elapsed, err := strconv.ParseFloat(args[4+i*2], 64)
-		if err != nil {
-			fmt.Fprintf(stderr, "mutants: parsing run %d elapsed seconds: %v\n", i+1, err)
+		elapsed, err := strconv.ParseFloat(args[4+i*3], 64)
+		if err != nil || math.IsNaN(elapsed) || math.IsInf(elapsed, 0) {
+			fmt.Fprintf(stderr, "mutants: parsing run %d elapsed seconds: finite number required\n", i+1)
 			return 1
 		}
-		data, err := os.ReadFile(args[5+i*2])
+		dry, err := os.ReadFile(args[5+i*3])
 		if err != nil {
-			fmt.Fprintf(stderr, "mutants: reading run %d report: %v\n", i+1, err)
+			fmt.Fprintf(stderr, "mutants: reading run %d dry report: %v\n", i+1, err)
 			return 1
 		}
-		report, err := validateActual(data, equivalents, args[3])
+		actual, err := os.ReadFile(args[6+i*3])
 		if err != nil {
-			fmt.Fprintf(stderr, "mutants: untrusted run %d report: %v\n", i+1, err)
+			fmt.Fprintf(stderr, "mutants: reading run %d actual report: %v\n", i+1, err)
+			return 1
+		}
+		report, err := validateDryActual(dry, actual, equivalents, args[3])
+		if err != nil {
+			fmt.Fprintf(stderr, "mutants: untrusted run %d report pair: %v\n", i+1, err)
 			return 1
 		}
 		runs = append(runs, timedReport{report: report, elapsedSeconds: elapsed})
@@ -269,7 +268,7 @@ func validateReport(data []byte, dry bool, equivalents map[mutationIdentity]stru
 	if err := json.Unmarshal(rep.MutatorStatistics, &mutatorStatistics); err != nil {
 		return trustedReport{}, fmt.Errorf("incomplete mutator statistics: %w", err)
 	}
-	if rep.GoModule == "" || len(rep.Files) == 0 || rep.ElapsedTime < 0 || rep.ElapsedTime > maxRunSeconds {
+	if rep.GoModule != repositoryModule || len(rep.Files) == 0 || math.IsNaN(rep.ElapsedTime) || math.IsInf(rep.ElapsedTime, 0) || rep.ElapsedTime < 0 || rep.ElapsedTime > maxRunSeconds {
 		return trustedReport{}, errors.New("incomplete or over-budget report")
 	}
 	cleanTarget := path.Clean(targetRoot)
@@ -374,7 +373,7 @@ func validateRenewal(runs []timedReport) error {
 	}
 	total := 0.0
 	for i, run := range runs {
-		if run.elapsedSeconds < 0 || run.elapsedSeconds > maxRunSeconds {
+		if math.IsNaN(run.elapsedSeconds) || math.IsInf(run.elapsedSeconds, 0) || run.elapsedSeconds < 0 || run.elapsedSeconds > maxRunSeconds {
 			return fmt.Errorf("run %d exceeds %d seconds", i+1, maxRunSeconds)
 		}
 		total += run.elapsedSeconds
@@ -410,36 +409,20 @@ func sameStatusSet(left, right map[mutationIdentity]string) bool {
 	return true
 }
 
-func equivalentMutants(data []byte) (map[mutationIdentity]struct{}, error) {
-	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(data, &fields); err != nil {
+func equivalentMutants(baselinePath string) (map[mutationIdentity]struct{}, error) {
+	if baselinePath == "-" {
+		return map[mutationIdentity]struct{}{}, nil
+	}
+	baseline, err := coveragepolicy.LoadBaseline(baselinePath)
+	if err != nil {
 		return nil, err
 	}
-	raw, ok := fields["equivalentMutants"]
-	if !ok || string(raw) == "null" {
-		return nil, errors.New("missing equivalentMutants")
-	}
-	var baseline struct {
-		EquivalentMutants []struct {
-			File    string `json:"file"`
-			Line    int    `json:"line"`
-			Column  int    `json:"column"`
-			Mutator string `json:"mutator"`
-			Reason  string `json:"reason"`
-		} `json:"equivalentMutants"`
-	}
-	if err := json.Unmarshal(data, &baseline); err != nil {
-		return nil, err
+	if baseline.ModulePath != repositoryModule {
+		return nil, fmt.Errorf("baseline module %q does not match %q", baseline.ModulePath, repositoryModule)
 	}
 	result := make(map[mutationIdentity]struct{}, len(baseline.EquivalentMutants))
 	for _, mutant := range baseline.EquivalentMutants {
 		identity := mutationIdentity{File: mutant.File, Line: mutant.Line, Column: mutant.Column, Mutator: mutant.Mutator}
-		if !moduleRelative(identity.File) || identity.File == "." || identity.Line <= 0 || identity.Column <= 0 || identity.Mutator == "" || strings.TrimSpace(mutant.Reason) == "" {
-			return nil, errors.New("incomplete equivalent mutant")
-		}
-		if _, exists := result[identity]; exists {
-			return nil, errors.New("duplicate equivalent mutant")
-		}
 		result[identity] = struct{}{}
 	}
 	return result, nil

@@ -349,6 +349,35 @@ func TestCovercheckMutantsRunnerContract(t *testing.T) {
 			}
 		})
 	}
+	staleEvidence := filepath.Join(root, "stale-evidence")
+	if err := os.Mkdir(staleEvidence, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"dry.json", "actual.json"} {
+		testsupport.WriteFile(t, filepath.Join(staleEvidence, name), "stale report must not survive\n")
+	}
+	if output, status, _ := run([]string{"FAKE_GREMLINS_FAIL=1"}, "covercheck-mutants", "--evidence", staleEvidence, "--baseline", "-"); status == 0 {
+		t.Fatalf("failed Gremlins command succeeded: %q", output)
+	}
+	for _, name := range []string{"dry.json", "actual.json"} {
+		if data, err := os.ReadFile(filepath.Join(staleEvidence, name)); err == nil && strings.Contains(string(data), "stale report") {
+			t.Errorf("%s retained stale report", name)
+		}
+	}
+
+	if output, status, _ := run([]string{"REQUIRE_TMP_ENV=1"}, "covercheck-mutants", "--evidence", "tmp-env-evidence", "--baseline", "-"); status != 0 {
+		t.Fatalf("post-root command lacks exported temporary environment: status=%d output=%q", status, output)
+	}
+
+	injected := filepath.Join(root, "trap-injected")
+	trapEvidence := "trap-evidence'; touch '" + injected + "'; #"
+	if output, status, _ := run(nil, "covercheck-mutants", "--evidence", trapEvidence, "--baseline", "-"); status != 0 {
+		t.Fatalf("quoted evidence path failed: status=%d output=%q", status, output)
+	}
+	if _, err := os.Stat(injected); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("caller-controlled evidence path executed by trap: %v", err)
+	}
+
 	for _, tc := range []struct {
 		name string
 		env  []string
@@ -408,17 +437,20 @@ func mutationRunnerFixture(t *testing.T) (string, string) {
 	testsupport.WriteFile(t, filepath.Join(root, "fake-bin", "git"), "#!/usr/bin/env bash\n[[ \"$*\" == *-C* ]] && { echo git-isolation >>\"$INVOCATION_LOG\"; exit 1; }\n[[ \"$*\" == *'rev-parse --show-toplevel'* ]] && { pwd; exit 0; }\nexit 0\n")
 	fake := `#!/usr/bin/env bash
 set -euo pipefail
+require_tmp_env() {
+  [ "${REQUIRE_TMP_ENV:-}" != 1 ] || { [ -n "${TMPDIR:-}" ] && [ "$TMPDIR" = "${GOTMPDIR:-}" ] && [ "$TMPDIR" = "${TMP:-}" ] && [ "$TMPDIR" = "${TEMP:-}" ]; }
+}
 case "$*" in
   *"list -m"*) echo list-module >>"$INVOCATION_LOG"; echo v0.6.0 ;;
   "tool -n gremlins") echo tool-lookup >>"$INVOCATION_LOG"; echo /fake/gremlins ;;
   "version -m /fake/gremlins") echo tool-version >>"$INVOCATION_LOG"; printf '/fake/gremlins\n\tmod\tgithub.com/go-gremlins/gremlins\tv0.6.0\th1:fake\n' ;;
-  *"list -f"*"TestGoFiles"*) echo list-tests >>"$INVOCATION_LOG"; if [ "${FAKE_TEST_CENSUS:-}" = wrong ]; then echo wrong_test.go; else printf 'main_test.go\npolicy_edge_test.go\n'; fi ;;
-  *"list -f"*".Imports"*) echo list-imports >>"$INVOCATION_LOG"; echo github.com/hypnotox/agentic-workflows/internal/coverage ;;
-  *"list -deps -test"*) echo list-deps >>"$INVOCATION_LOG"; [ "${FAKE_NO_DEP:-}" = 1 ] || echo github.com/hypnotox/agentic-workflows/internal/coverage ;;
-  *"test -count=1 ./..."*) echo test >>"$INVOCATION_LOG" ;;
-  *"tool gremlins"*) printf '%s ' "$@" >"$MUTATION_ARGS"; if [[ "$*" == *--dry-run* ]]; then echo gremlins-dry >>"$INVOCATION_LOG"; else echo gremlins-actual >>"$INVOCATION_LOG"; fi; out=""; eval 'args=("${@}")'; for ((i=0;i<${#args[@]};i++)); do { [ "${args[i]}" = -o ] || [ "${args[i]}" = --output ]; } && out="${args[i+1]}"; done; if [ "${FAKE_INCOMPLETE:-}" = 1 ]; then : >"$out"; else echo '{}' >"$out"; fi ;;
+  *"list -f"*"TestGoFiles"*) require_tmp_env; echo list-tests >>"$INVOCATION_LOG"; if [ "${FAKE_TEST_CENSUS:-}" = wrong ]; then echo wrong_test.go; else printf 'main_test.go\npolicy_edge_test.go\n'; fi ;;
+  *"list -f"*".Imports"*) require_tmp_env; echo list-imports >>"$INVOCATION_LOG"; echo github.com/hypnotox/agentic-workflows/internal/coverage ;;
+  *"list -deps -test"*) require_tmp_env; echo list-deps >>"$INVOCATION_LOG"; [ "${FAKE_NO_DEP:-}" = 1 ] || echo github.com/hypnotox/agentic-workflows/internal/coverage ;;
+  *"test -count=1 ./..."*) require_tmp_env; echo test >>"$INVOCATION_LOG" ;;
+  *"tool gremlins"*) require_tmp_env; printf '%s ' "$@" >"$MUTATION_ARGS"; if [[ "$*" == *--dry-run* ]]; then echo gremlins-dry >>"$INVOCATION_LOG"; else echo gremlins-actual >>"$INVOCATION_LOG"; fi; [ "${FAKE_GREMLINS_FAIL:-}" != 1 ] || exit 42; out=""; eval 'args=("${@}")'; for ((i=0;i<${#args[@]};i++)); do { [ "${args[i]}" = -o ] || [ "${args[i]}" = --output ]; } && out="${args[i+1]}"; done; if [ "${FAKE_INCOMPLETE:-}" = 1 ]; then : >"$out"; else echo '{}' >"$out"; fi ;;
   *"run ./cmd/mutants operators"*) printf '%s\n' '--arithmetic-base=true' '--conditionals-boundary=true' '--conditionals-negation=true' '--increment-decrement=true' '--invert-negatives=true' '--invert-assignments=false' '--invert-bitwise=false' '--invert-bwassign=false' '--invert-logical=false' '--invert-loopctrl=false' '--remove-self-assignments=false' ;;
-  *"run ./cmd/mutants validate"*) echo validate >>"$INVOCATION_LOG"; if [ "${FAKE_INCOMPLETE:-}" = 1 ]; then echo untrusted >&2; exit 1; fi; echo 'trusted mutation reports: 1 identities; status-sha256=fake' ;;
+  *"run ./cmd/mutants validate"*) require_tmp_env; echo validate >>"$INVOCATION_LOG"; if [ "${FAKE_INCOMPLETE:-}" = 1 ]; then echo untrusted >&2; exit 1; fi; echo 'trusted mutation reports: 1 identities; status-sha256=fake' ;;
   *) echo "unexpected go $*" >&2; exit 19 ;;
 esac
 `
