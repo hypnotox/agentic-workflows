@@ -86,6 +86,28 @@ func TestAnalyzeSortsExactPositionsAndRejectsInvalidInputs(t *testing.T) {
 	if _, err := Analyze(profilePath, filepath.Join(root, "missing-root"), "example.com/m"); err == nil {
 		t.Fatal("expected missing source root error")
 	}
+	for _, escaped := range []string{"..", "../outside.go", "./f.go", "p/../f.go"} {
+		profilePath = policyProfile(t, root, "example.com/m/"+escaped+":1.1,1.2 1 0\n")
+		if _, err := Analyze(profilePath, root, "example.com/m"); err == nil || !strings.Contains(err.Error(), "invalid identity") {
+			t.Fatalf("noncanonical profile path %q error = %v", escaped, err)
+		}
+	}
+}
+
+func TestSourceDirectivesRejectsMalformedReason(t *testing.T) {
+	if _, err := sourceDirectives("p/f.go", []byte("//"+" coverage-ignore\n"), nil); err == nil {
+		t.Fatal("expected malformed directive error")
+	}
+}
+
+func TestAnalyzePreservesLegalZeroStatementBlocks(t *testing.T) {
+	analysis := analyzePolicy(t, map[string]string{"p/f.go": "package p\nfunc F() {}\n"}, "example.com/m/p/f.go:2.10,2.10 0 0\n")
+	if len(analysis.RawMisses) != 1 || analysis.RawMisses[0].Statements != 0 {
+		t.Fatalf("zero-statement raw misses = %#v", analysis.RawMisses)
+	}
+	if _, err := CanonicalBaseline(mustBaseline(t, analysis)); err != nil {
+		t.Fatalf("canonical zero-statement baseline: %v", err)
+	}
 }
 
 func TestAnalyzeProfilePropagatesModuleResolutionErrors(t *testing.T) {
@@ -111,6 +133,10 @@ func TestAnalyzeDirectiveValidationAndSkippedTrees(t *testing.T) {
 	policyFile(t, root, "p/f.go", "package p\nfunc F() {}\n")
 	policyFile(t, root, ".hidden/bad.go", "package hidden\n"+markerText+"\n")
 	policyFile(t, root, "vendor/bad.go", "package vendor\n"+markerText+"\n")
+	policyFile(t, root, "nested-repo/.git/config", "fixture")
+	policyFile(t, root, "nested-repo/bad.go", "package nested\n"+markerText+"\n")
+	policyFile(t, root, "nested-worktree/.git", "gitdir: elsewhere")
+	policyFile(t, root, "nested-worktree/bad.go", "package nested\n"+markerText+"\n")
 	profilePath := policyProfile(t, root, "example.com/m/p/f.go:2.1,2.5 1 1\n")
 	if _, err := Analyze(profilePath, root, "example.com/m"); err != nil {
 		t.Fatalf("skipped trees affected inventory: %v", err)
@@ -190,6 +216,19 @@ func TestRegenerateRejectsInvalidMoveAndUnreviewedDirective(t *testing.T) {
 	}
 }
 
+func TestCanonicalBaselineRequiresCompleteSelectorProjection(t *testing.T) {
+	analysis := analyzePolicy(t, map[string]string{"internal/git/f.go": "package git\nfunc F() {}\n"}, "example.com/m/internal/git/f.go:2.1,2.5 1 0\n")
+	base := mustBaseline(t, analysis)
+	for index := range base.Selectors {
+		if base.Selectors[index].Name == "repository-effort-lifecycle" {
+			base.Selectors[index].Misses = nil
+		}
+	}
+	if _, err := CanonicalBaseline(base); err == nil || !strings.Contains(err.Error(), "omits applicable miss") {
+		t.Fatalf("selector omission error = %v", err)
+	}
+}
+
 func TestEvaluateReportsSelectorAndRemovedDirectiveDrift(t *testing.T) {
 	files := map[string]string{"internal/git/f.go": "package git\nfunc F() {}\nfunc G() {}\n"}
 	first := analyzePolicy(t, files, "example.com/m/internal/git/f.go:2.1,2.5 1 0\nexample.com/m/internal/git/f.go:3.1,3.5 1 1\n")
@@ -206,6 +245,28 @@ func TestEvaluateReportsSelectorAndRemovedDirectiveDrift(t *testing.T) {
 	withoutDirective := analyzePolicy(t, map[string]string{"p/f.go": "package p\nfunc F() {}\n"}, "example.com/m/p/f.go:2.12,3.2 1 0\n")
 	if findings := Evaluate(withoutDirective, directiveBase); !hasFinding(findings, "production-directive-removed") {
 		t.Fatalf("removed directive findings = %#v", findings)
+	}
+}
+
+func TestEvaluateComparesMeasuredAndTestDirectiveState(t *testing.T) {
+	markerText := "//" + " coverage-ignore: impossible"
+	files := map[string]string{
+		"p/f.go":      "package p\nfunc F() { " + markerText + "\n}\n",
+		"p/f_test.go": "package p\n" + markerText + "\nfunc helper() {}\n",
+	}
+	mapped := analyzePolicy(t, files, "example.com/m/p/f.go:2.12,3.2 1 0\n")
+	base := mustBaseline(t, mapped)
+	unmapped := analyzePolicy(t, files, "example.com/m/p/f.go:3.1,3.2 1 0\n")
+	if findings := Evaluate(unmapped, base); !hasFinding(findings, "production-directive-changed") {
+		t.Fatalf("mapping drift findings = %#v", findings)
+	}
+	changedFiles := map[string]string{
+		"p/f.go":      files["p/f.go"],
+		"p/f_test.go": "package p\n//" + " coverage-ignore: changed test reason\nfunc helper() {}\n",
+	}
+	changed := analyzePolicy(t, changedFiles, "example.com/m/p/f.go:2.12,3.2 1 0\n")
+	if findings := Evaluate(changed, base); !hasFinding(findings, "test-directive-changed") || !hasFinding(findings, "test-directive-removed") {
+		t.Fatalf("test directive drift findings = %#v", findings)
 	}
 }
 
@@ -255,10 +316,70 @@ func TestStrictJSONRejectsMultipleValuesAndTrailingGarbage(t *testing.T) {
 	}
 }
 
+func TestAWFPlatformLedgerIsExactAndRelatedToProductionInventory(t *testing.T) {
+	analysis := analyzePolicy(t, map[string]string{"p/f.go": "package p\nfunc F() {}\n"}, "example.com/m/p/f.go:2.1,2.5 1 0\n")
+	base := mustBaseline(t, analysis)
+	base.ModulePath = awfModulePath
+	for _, spec := range []struct {
+		file     string
+		platform string
+		lines    []int
+	}{
+		{file: "internal/effort/publication_darwin.go", platform: "darwin", lines: []int{73, 94}},
+		{file: "internal/effort/publication_windows.go", platform: "windows", lines: []int{73, 94}},
+	} {
+		for _, line := range spec.lines {
+			directive := Directive{File: spec.file, Line: line, TargetLine: line, Reason: "rollback", Mapped: false}
+			base.ProductionDirectives = append(base.ProductionDirectives, DirectiveAdmission{Directive: directive, Class: IgnorePlatformOnly, Evidence: "platform test"})
+			base.PlatformDirectives = append(base.PlatformDirectives, PlatformDirective{Directive: directive, Platforms: []string{spec.platform}, Class: IgnorePlatformOnly, Evidence: "platform test"})
+		}
+	}
+	if _, err := CanonicalBaseline(base); err != nil {
+		t.Fatalf("valid awf ledger: %v", err)
+	}
+	mutations := map[string]func(*Baseline){
+		"missing":        func(b *Baseline) { b.PlatformDirectives = b.PlatformDirectives[:3] },
+		"extra":          func(b *Baseline) { b.PlatformDirectives = append(b.PlatformDirectives, b.PlatformDirectives[0]) },
+		"duplicate":      func(b *Baseline) { b.PlatformDirectives[1] = b.PlatformDirectives[0] },
+		"wrong platform": func(b *Baseline) { b.PlatformDirectives[0].Platforms = []string{"linux"} },
+		"unrelated path": func(b *Baseline) { b.PlatformDirectives[0].Directive.File = "internal/other/file.go" },
+		"not admitted":   func(b *Baseline) { b.ProductionDirectives = b.ProductionDirectives[:len(b.ProductionDirectives)-1] },
+		"imbalanced paths": func(b *Baseline) {
+			old := b.PlatformDirectives[0].Directive
+			replacement := old
+			replacement.File = "internal/effort/publication_windows.go"
+			replacement.Line = 75
+			replacement.TargetLine = 75
+			b.PlatformDirectives[0].Directive = replacement
+			b.PlatformDirectives[0].Platforms = []string{"windows"}
+			for index := range b.ProductionDirectives {
+				if b.ProductionDirectives[index].Directive == old {
+					b.ProductionDirectives[index].Directive = replacement
+				}
+			}
+		},
+	}
+	for name, mutate := range mutations {
+		t.Run(name, func(t *testing.T) {
+			copy := base
+			copy.ProductionDirectives = slices.Clone(base.ProductionDirectives)
+			copy.PlatformDirectives = append([]PlatformDirective(nil), base.PlatformDirectives...)
+			for index := range copy.PlatformDirectives {
+				copy.PlatformDirectives[index].Platforms = slices.Clone(base.PlatformDirectives[index].Platforms)
+			}
+			mutate(&copy)
+			if _, err := CanonicalBaseline(copy); err == nil {
+				t.Fatal("expected exact awf ledger error")
+			}
+		})
+	}
+}
+
 func TestBaselineValidationAdditionalInvalidEvidence(t *testing.T) {
 	analysis := analyzePolicy(t, map[string]string{"p/f.go": "package p\nfunc F() {}\n"}, "example.com/m/p/f.go:2.1,2.5 1 0\n")
 	valid := mustBaseline(t, analysis)
 	tests := map[string]func(*Baseline){
+		"module path":    func(b *Baseline) { b.ModulePath = "" },
 		"selector count": func(b *Baseline) { b.Selectors = b.Selectors[:len(b.Selectors)-1] },
 		"selector name":  func(b *Baseline) { b.Selectors[0].Name = "unknown" },
 		"selector duplicate": func(b *Baseline) {
@@ -269,6 +390,13 @@ func TestBaselineValidationAdditionalInvalidEvidence(t *testing.T) {
 			d := DirectiveAdmission{Directive: Directive{File: "p/f.go", Line: 2, TargetLine: 2, Reason: "x"}, Class: IgnoreImpossibleState, Evidence: "x"}
 			b.ProductionDirectives = []DirectiveAdmission{d, d}
 		},
+		"invalid test directive": func(b *Baseline) {
+			b.TestDirectives = []Directive{{File: "../test.go", Line: 2, TargetLine: 2, Reason: "x"}}
+		},
+		"duplicate test directive": func(b *Baseline) {
+			d := Directive{File: "p/f_test.go", Line: 2, TargetLine: 2, Reason: "x"}
+			b.TestDirectives = []Directive{d, d}
+		},
 		"platform class": func(b *Baseline) {
 			b.PlatformDirectives = []PlatformDirective{{Directive: Directive{File: "p/f.go", Line: 2, TargetLine: 2, Reason: "x"}, Platforms: []string{"darwin"}, Class: IgnoreImpossibleState, Evidence: "x"}}
 		},
@@ -276,7 +404,11 @@ func TestBaselineValidationAdditionalInvalidEvidence(t *testing.T) {
 			m := EquivalentMutant{File: "p/f.go", Line: 2, Column: 1, Mutator: "A", Reason: "x"}
 			b.EquivalentMutants = []EquivalentMutant{m, m}
 		},
-		"bad identity": func(b *Baseline) { b.Repository[0].Identity.File = "/absolute.go" },
+		"bad identity":     func(b *Baseline) { b.Repository[0].Identity.File = "/absolute.go" },
+		"dot-dot identity": func(b *Baseline) { b.Repository[0].Identity.File = ".." },
+		"parent identity":  func(b *Baseline) { b.Repository[0].Identity.File = "../outside.go" },
+		"unclean identity": func(b *Baseline) { b.Repository[0].Identity.File = "p/../f.go" },
+		"dot identity":     func(b *Baseline) { b.Repository[0].Identity.File = "./p/f.go" },
 	}
 	for name, mutate := range tests {
 		t.Run(name, func(t *testing.T) {
