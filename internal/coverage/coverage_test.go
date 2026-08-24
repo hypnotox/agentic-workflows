@@ -10,6 +10,16 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
+var Check = func(profilePath, srcRoot, modPath string) (Report, error) {
+	analysis, err := Analyze(profilePath, srcRoot, modPath)
+	return analysis.Filtered, err
+}
+
+var CheckProfile = func(profilePath string) (Report, error) {
+	analysis, err := AnalyzeProfile(profilePath)
+	return analysis.Filtered, err
+}
+
 // writeProfile writes a coverprofile and returns its path.
 func writeProfile(t *testing.T, dir, body string) string {
 	t.Helper()
@@ -124,14 +134,19 @@ func TestCheckMissingSourceFile(t *testing.T) {
 func TestCheckMalformedLines(t *testing.T) {
 	root, modPath := module(t, "package m\n")
 	for name, body := range map[string]string{
-		"no-colon":   "garbage line\n",
-		"few-fields": modPath + "/f.go:2.1,2.5 1\n",
-		"bad-span":   modPath + "/f.go:nope 1 0\n",
-		"bad-stmt":   modPath + "/f.go:2.1,2.5 x 0\n",
-		"bad-count":  modPath + "/f.go:2.1,2.5 1 x\n",
-		"no-comma":   modPath + "/f.go:2.1 1 0\n",
-		"no-dot":     modPath + "/f.go:2,3.4 1 0\n",   // span has a comma but no dot before it
-		"bad-start":  modPath + "/f.go:x.1,2.3 1 0\n", // start line is non-numeric
+		"no-colon":       "garbage line\n",
+		"few-fields":     modPath + "/f.go:2.1,2.5 1\n",
+		"bad-span":       modPath + "/f.go:nope 1 0\n",
+		"bad-stmt":       modPath + "/f.go:2.1,2.5 x 0\n",
+		"bad-count":      modPath + "/f.go:2.1,2.5 1 x\n",
+		"no-comma":       modPath + "/f.go:2.1 1 0\n",
+		"no-dot":         modPath + "/f.go:2,3.4 1 0\n",   // span has a comma but no dot before it
+		"bad-start":      modPath + "/f.go:x.1,2.3 1 0\n", // start line is non-numeric
+		"bad-start-col":  modPath + "/f.go:1.x,2.3 1 0\n",
+		"bad-end-dot":    modPath + "/f.go:1.2,3 1 0\n",
+		"bad-end-line":   modPath + "/f.go:1.2,x.3 1 0\n",
+		"bad-end-column": modPath + "/f.go:1.2,3.x 1 0\n",
+		"zero-position":  modPath + "/f.go:0.1,2.3 1 0\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			prof := writeProfile(t, root, body)

@@ -52,59 +52,13 @@ var hasGoMod = func(dir string) bool {
 	return err == nil
 }
 
-// CheckProfile resolves the module root from the working directory (nearest
-// ancestor with a go.mod) and checks profilePath against the module sources.
-func CheckProfile(profilePath string) (Report, error) {
-	root, err := moduleRoot()
-	if err != nil {
-		return Report{}, err
-	}
-	modPath, err := modulePath(filepath.Join(root, "go.mod"))
-	if err != nil {
-		return Report{}, err
-	}
-	return Check(profilePath, root, modPath)
-}
-
-// Check parses the coverprofile at profilePath and returns a Report over blocks
-// not marked for ignore. srcRoot is the module root on disk; modPath is the
-// go.mod module path, used to map profile paths to files on disk.
-//
-// A profile produced by `go test ./... -coverpkg=./...` emits each instrumented
-// block once per test binary, so the same block recurs many times with differing
-// counts. Blocks are first merged by identity (file + span), OR-ing the counts
-// (mode: set), exactly as `go tool cover` does - otherwise the denominator is
-// inflated by the duplication.
-func Check(profilePath, srcRoot, modPath string) (Report, error) {
-	blocks, err := parseProfile(profilePath)
-	if err != nil {
-		return Report{}, err
-	}
-	uniq := mergeBlocks(blocks)
-	ignored, err := ignoredLines(uniq, srcRoot, modPath)
-	if err != nil {
-		return Report{}, err
-	}
-	var rep Report
-	for _, b := range uniq {
-		if ignored[b.file][b.startLine] {
-			continue
-		}
-		rep.Total += b.numStmt
-		if b.count > 0 {
-			rep.Covered += b.numStmt
-		}
-	}
-	return rep, nil
-}
-
 // mergeBlocks collapses the per-test-binary duplication of a `-coverpkg` profile:
 // blocks sharing a file+span identity merge into one, OR-ing the counts (mode: set)
 // exactly as `go tool cover` does, so the denominator is not inflated.
 func mergeBlocks(blocks []block) []block {
 	merged := map[string]block{}
 	for _, b := range blocks {
-		k := b.file + ":" + b.span
+		k := fmt.Sprintf("%s:%s:%d", b.file, b.span, b.numStmt)
 		if prev, ok := merged[k]; ok {
 			if b.count > prev.count {
 				prev.count = b.count
@@ -178,11 +132,14 @@ func Filter(profilePath, srcRoot, modPath string) (string, error) {
 
 // block is one parsed coverprofile line.
 type block struct {
-	file      string // module-qualified source path, e.g. mod/pkg/file.go
-	span      string // raw "startLine.col,endLine.col" - block identity within a file
-	startLine int
-	numStmt   int
-	count     int
+	file        string // module-qualified source path, e.g. mod/pkg/file.go
+	span        string // raw "startLine.col,endLine.col" - block identity within a file
+	startLine   int
+	startColumn int
+	endLine     int
+	endColumn   int
+	numStmt     int
+	count       int
 }
 
 func parseProfile(path string) ([]block, error) {
@@ -225,7 +182,7 @@ func parseLine(line string) (block, error) {
 	if len(fields) != 3 {
 		return block{}, fmt.Errorf("coverage: malformed profile line %q", line)
 	}
-	startLine, err := startLineOf(fields[0])
+	startLine, startColumn, endLine, endColumn, err := positionsOf(fields[0])
 	if err != nil {
 		return block{}, err
 	}
@@ -237,24 +194,45 @@ func parseLine(line string) (block, error) {
 	if err != nil {
 		return block{}, fmt.Errorf("coverage: bad count in %q: %w", line, err)
 	}
-	return block{file: line[:colon], span: fields[0], startLine: startLine, numStmt: numStmt, count: count}, nil
+	return block{
+		file: line[:colon], span: fields[0], startLine: startLine, startColumn: startColumn,
+		endLine: endLine, endColumn: endColumn, numStmt: numStmt, count: count,
+	}, nil
 }
 
-// startLineOf extracts startLine from "startLine.startCol,endLine.endCol".
-func startLineOf(span string) (int, error) {
+// positionsOf parses "startLine.startCol,endLine.endCol".
+func positionsOf(span string) (startLine, startColumn, endLine, endColumn int, err error) {
 	comma := strings.IndexByte(span, ',')
 	if comma < 0 {
-		return 0, fmt.Errorf("coverage: bad span %q", span)
+		return 0, 0, 0, 0, fmt.Errorf("coverage: bad span %q", span)
 	}
-	dot := strings.IndexByte(span[:comma], '.')
-	if dot < 0 {
-		return 0, fmt.Errorf("coverage: bad span %q", span)
+	parse := func(value string) (int, int, error) {
+		dot := strings.IndexByte(value, '.')
+		if dot < 0 {
+			return 0, 0, fmt.Errorf("coverage: bad span %q", span)
+		}
+		line, parseErr := strconv.Atoi(value[:dot])
+		if parseErr != nil {
+			return 0, 0, fmt.Errorf("coverage: bad position %q: %w", span, parseErr)
+		}
+		column, parseErr := strconv.Atoi(value[dot+1:])
+		if parseErr != nil {
+			return 0, 0, fmt.Errorf("coverage: bad position %q: %w", span, parseErr)
+		}
+		if line <= 0 || column <= 0 {
+			return 0, 0, fmt.Errorf("coverage: bad position %q", span)
+		}
+		return line, column, nil
 	}
-	n, err := strconv.Atoi(span[:dot])
+	startLine, startColumn, err = parse(span[:comma])
 	if err != nil {
-		return 0, fmt.Errorf("coverage: bad start line %q: %w", span, err)
+		return 0, 0, 0, 0, err
 	}
-	return n, nil
+	endLine, endColumn, err = parse(span[comma+1:])
+	if err != nil {
+		return 0, 0, 0, 0, err
+	}
+	return startLine, startColumn, endLine, endColumn, nil
 }
 
 // ignoredLines returns, per file, the set of block start lines to drop. A
@@ -273,23 +251,13 @@ func ignoredLines(blocks []block, srcRoot, modPath string) (map[string]map[int]b
 		if err != nil {
 			return nil, err
 		}
+		directives, err := sourceDirectives(rel, src, blocksForFile(blocks, file))
+		if err != nil {
+			return nil, err
+		}
 		set := map[int]bool{}
-		for i, line := range strings.Split(string(src), "\n") {
-			idx := strings.Index(line, marker)
-			if idx < 0 {
-				continue
-			}
-			reason := strings.TrimSpace(line[idx+len(marker):])
-			if !strings.HasPrefix(reason, ":") || strings.TrimSpace(reason[1:]) == "" {
-				return nil, fmt.Errorf("%s:%d: %s requires a non-empty reason (use %q)",
-					rel, i+1, marker, marker+": <why>")
-			}
-			lineNo := i + 1 // 1-based
-			if strings.TrimSpace(line[:idx]) == "" {
-				set[lineNo+1] = true // standalone directive -> block on the line below
-			} else {
-				set[lineNo] = true // trailing directive -> block on this line
-			}
+		for _, directive := range directives {
+			set[directive.TargetLine] = true
 		}
 		ignored[file] = set
 	}
