@@ -68,14 +68,14 @@ func TestRunPolicyReportsExecutedIgnoredBody(t *testing.T) {
 	root := t.TempDir()
 	markerText := "//" + " coverage-ignore: impossible"
 	testsupport.WriteGoModule(t, root, "example.com/m", "package m\nfunc F() { "+markerText+"\n}\n")
-	uncovered := testsupport.WriteProfile(t, root, "example.com/m/f.go:2.12,3.2 1 0\n")
+	uncovered := testsupport.WriteProfile(t, root, "example.com/m/f.go:2.10,3.2 1 0\n")
 	reviewPath := writeReview(t, root, reviewedAnalysis(t, root, uncovered))
 	baselinePath := filepath.Join(root, "coverage-baseline.json")
 	var out, errb bytes.Buffer
 	if code := run([]string{"covercheck", "--generate-policy", uncovered, baselinePath, reviewPath}, &out, &errb); code != 0 {
 		t.Fatalf("generation exit %d: %s", code, errb.String())
 	}
-	executed := testsupport.WriteProfile(t, root, "example.com/m/f.go:2.12,3.2 1 1\n")
+	executed := testsupport.WriteProfile(t, root, "example.com/m/f.go:2.10,3.2 1 1\n")
 	out.Reset()
 	errb.Reset()
 	if code := run([]string{"covercheck", "--policy", executed, baselinePath}, &out, &errb); code != 1 {

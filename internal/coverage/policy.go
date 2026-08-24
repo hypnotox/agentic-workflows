@@ -7,6 +7,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"io"
 	"io/fs"
 	"os"
@@ -299,7 +302,7 @@ func scanDirectives(root string, blocks []block, modPath string) ([]Directive, e
 		if err != nil { // coverage-ignore: WalkDir just read this regular entry; failure requires a concurrent namespace, permission, or storage change
 			return err
 		}
-		found, err := sourceDirectives(rel, source, measured[rel])
+		found, err := sourcePolicyDirectives(rel, source, measured[rel])
 		if err != nil {
 			return err
 		}
@@ -314,6 +317,14 @@ func scanDirectives(root string, blocks []block, modPath string) ([]Directive, e
 }
 
 func sourceDirectives(rel string, source []byte, measured []block) ([]Directive, error) {
+	return sourceDirectivesMode(rel, source, measured, false)
+}
+
+func sourcePolicyDirectives(rel string, source []byte, measured []block) ([]Directive, error) {
+	return sourceDirectivesMode(rel, source, measured, true)
+}
+
+func sourceDirectivesMode(rel string, source []byte, measured []block, exactExecution bool) ([]Directive, error) {
 	var directives []Directive
 	for index, line := range strings.Split(string(source), "\n") {
 		markerIndex := strings.Index(line, marker)
@@ -325,20 +336,119 @@ func sourceDirectives(rel string, source []byte, measured []block) ([]Directive,
 			return nil, fmt.Errorf("%s:%d: %s requires a non-empty reason (use %q)", rel, index+1, marker, marker+": <why>")
 		}
 		target := index + 1
-		if strings.TrimSpace(line[:markerIndex]) == "" {
+		standalone := strings.TrimSpace(line[:markerIndex]) == ""
+		if standalone {
 			target++
 		}
 		directive := Directive{File: rel, Line: index + 1, TargetLine: target, Reason: strings.TrimSpace(reason[1:])}
-		for _, current := range measured {
-			if current.startLine != target {
-				continue
+		position := Position{Line: target}
+		if exactExecution {
+			resolved, ok, err := directiveEntryPosition(source, target, markerIndex+1, standalone)
+			if err != nil {
+				return nil, fmt.Errorf("%s:%d: %w", rel, index+1, err)
 			}
+			if ok {
+				position = resolved
+			}
+		}
+		matching := blocksAtPosition(measured, position)
+		if exactExecution && position.Column == 0 && len(matching) > 1 {
+			return nil, fmt.Errorf("%s:%d: coverage-ignore target syntax is ambiguous", rel, index+1)
+		}
+		for _, current := range matching {
 			directive.Mapped = true
 			directive.Executed = directive.Executed || current.count > 0
 		}
 		directives = append(directives, directive)
 	}
 	return directives, nil
+}
+
+func blocksAtPosition(measured []block, position Position) []block {
+	var matching []block
+	seen := make(map[string]bool)
+	for _, current := range measured {
+		if current.startLine != position.Line || position.Column > 0 && current.startColumn != position.Column {
+			continue
+		}
+		key := fmt.Sprintf("%s:%d", current.span, current.numStmt)
+		if !seen[key] {
+			matching = append(matching, current)
+			seen[key] = true
+		}
+	}
+	return matching
+}
+
+func directiveEntryPosition(source []byte, targetLine, markerColumn int, standalone bool) (Position, bool, error) {
+	fileset := token.NewFileSet()
+	file := parseDirectiveSource(fileset, source)
+	if file == nil {
+		return Position{}, false, nil
+	}
+	var blocks, clauses, statements []Position
+	ast.Inspect(file, func(node ast.Node) bool {
+		if node == nil {
+			return true
+		}
+		var pos token.Pos
+		switch current := node.(type) {
+		case *ast.BlockStmt:
+			pos = current.Lbrace
+			blocks = appendPositionOnLine(fileset, blocks, pos, targetLine, markerColumn, standalone, 0)
+		case *ast.CaseClause:
+			pos = current.Colon
+			clauses = appendPositionOnLine(fileset, clauses, pos, targetLine, markerColumn, standalone, 1)
+		case *ast.CommClause:
+			pos = current.Colon
+			clauses = appendPositionOnLine(fileset, clauses, pos, targetLine, markerColumn, standalone, 1)
+		case ast.Stmt:
+			pos = current.Pos()
+			statements = appendPositionOnLine(fileset, statements, pos, targetLine, markerColumn, standalone, 0)
+		}
+		return true
+	})
+	for _, candidates := range [][]Position{blocks, clauses, statements} {
+		candidates = uniquePositions(candidates)
+		switch len(candidates) {
+		case 0:
+			continue
+		case 1:
+			return candidates[0], true, nil
+		default:
+			return Position{}, false, errors.New("coverage-ignore target syntax is ambiguous")
+		}
+	}
+	return Position{}, false, nil
+}
+
+func parseDirectiveSource(fileset *token.FileSet, source []byte) *ast.File {
+	file, err := parser.ParseFile(fileset, "source.go", source, 0)
+	if err != nil {
+		return nil
+	}
+	return file
+}
+
+func appendPositionOnLine(fileset *token.FileSet, positions []Position, pos token.Pos, line, markerColumn int, standalone bool, columnOffset int) []Position {
+	resolved := fileset.Position(pos)
+	resolved.Column += columnOffset
+	if resolved.Line != line || !standalone && resolved.Column >= markerColumn {
+		return positions
+	}
+	return append(positions, Position{Line: resolved.Line, Column: resolved.Column})
+}
+
+func uniquePositions(positions []Position) []Position {
+	seen := make(map[Position]bool)
+	unique := positions[:0]
+	for _, position := range positions {
+		if !seen[position] {
+			unique = append(unique, position)
+			seen[position] = true
+		}
+	}
+	return unique
 }
 
 func blocksForFile(blocks []block, file string) []block {

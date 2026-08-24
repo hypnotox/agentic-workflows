@@ -119,7 +119,7 @@ func TestAnalyzeInventoriesProductionTestAndExecutedDirectives(t *testing.T) {
 		"p/f_test.go":          "package p\n" + marker + "test process exit\nfunc helper() {}\n",
 		"p/platform_darwin.go": "package p\nfunc rollback() { " + marker + "darwin rollback\n}\n",
 	}
-	profile := "example.com/m/p/f.go:3.11,4.10 1 1\n"
+	profile := "example.com/m/p/f.go:3.9,5.2 1 1\n"
 	a := analyzePolicy(t, files, profile)
 	if len(a.ProductionDirectives) != 2 || len(a.TestDirectives) != 1 {
 		t.Fatalf("directive split: production=%#v test=%#v", a.ProductionDirectives, a.TestDirectives)
@@ -140,6 +140,95 @@ func TestAnalyzeInventoriesProductionTestAndExecutedDirectives(t *testing.T) {
 	}
 	if a.TestDirectives[0].File != "p/f_test.go" || a.TestDirectives[0].Mapped {
 		t.Fatalf("test directive = %+v", a.TestDirectives[0])
+	}
+}
+
+func TestAnalyzeMapsExecutedIgnoreToExactGuardedBodyEntry(t *testing.T) {
+	marker := "//" + " coverage-ignore: guarded body"
+	cases := []struct {
+		name     string
+		source   string
+		profile  string
+		executed bool
+	}{
+		{
+			name:    "positive trailing header does not enter body",
+			source:  "package p\nfunc F(x bool) {\n if x { " + marker + "\n  println(x)\n }\n}\n",
+			profile: "example.com/m/p/f.go:3.2,3.6 1 1\nexample.com/m/p/f.go:3.7,5.3 1 0\n",
+		},
+		{
+			name:    "positive standalone header does not enter body",
+			source:  "package p\nfunc F(x bool) {\n " + marker + "\n if x {\n  println(x)\n }\n}\n",
+			profile: "example.com/m/p/f.go:4.2,4.6 1 1\nexample.com/m/p/f.go:4.7,6.3 1 0\n",
+		},
+		{
+			name:     "exact trailing body entry executed",
+			source:   "package p\nfunc F(x bool) {\n if x { " + marker + "\n  println(x)\n }\n}\n",
+			profile:  "example.com/m/p/f.go:3.2,3.6 1 1\nexample.com/m/p/f.go:3.7,5.3 1 1\n",
+			executed: true,
+		},
+		{
+			name:     "exact standalone body entry executed",
+			source:   "package p\nfunc F(x bool) {\n " + marker + "\n if x {\n  println(x)\n }\n}\n",
+			profile:  "example.com/m/p/f.go:4.2,4.6 1 1\nexample.com/m/p/f.go:4.7,6.3 1 1\n",
+			executed: true,
+		},
+		{
+			name:     "switch clause entry executed",
+			source:   "package p\nfunc F(x int) {\n switch x {\n default: " + marker + "\n  println(x)\n }\n}\n",
+			profile:  "example.com/m/p/f.go:4.10,5.13 1 1\n",
+			executed: true,
+		},
+		{
+			name:     "select clause entry executed",
+			source:   "package p\nfunc F(ch chan int) {\n select {\n default: " + marker + "\n  println(ch)\n }\n}\n",
+			profile:  "example.com/m/p/f.go:4.10,5.14 1 1\n",
+			executed: true,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			a := analyzePolicy(t, map[string]string{"p/f.go": tc.source}, tc.profile)
+			got := a.ProductionDirectives[0]
+			if !got.Mapped || got.Executed != tc.executed {
+				t.Fatalf("directive = %+v, want mapped=true executed=%t", got, tc.executed)
+			}
+		})
+	}
+}
+
+func TestAnalyzeORsExactGuardedBodyDuplicatesRegardlessOfOrder(t *testing.T) {
+	marker := "//" + " coverage-ignore: guarded body"
+	files := map[string]string{"p/f.go": "package p\nfunc F(x bool) {\n if x { " + marker + "\n  println(x)\n }\n}\n"}
+	zero := "example.com/m/p/f.go:3.7,5.3 1 0\n"
+	positive := "example.com/m/p/f.go:3.7,5.3 1 1\n"
+	for _, profile := range []string{zero + positive, positive + zero} {
+		a := analyzePolicy(t, files, profile)
+		if got := a.ProductionDirectives[0]; !got.Mapped || !got.Executed {
+			t.Fatalf("directive after canonical duplicate merge = %+v", got)
+		}
+	}
+}
+
+func TestAnalyzeRejectsAmbiguousDirectiveTargetSyntax(t *testing.T) {
+	marker := "//" + " coverage-ignore: ambiguous target"
+	for name, source := range map[string]string{
+		"multiple statements": "package p\nfunc F() {\n x := 1; x++ " + marker + "\n}\n",
+		"unparseable source":  "package p\nfunc F() {\n x := ; x++ " + marker + "\n}\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			const mod = "example.com/m"
+			if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("module "+mod+"\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			policyFile(t, root, "p/f.go", source)
+			profile := "example.com/m/p/f.go:3.2,3.8 1 1\nexample.com/m/p/f.go:3.10,3.13 1 0\n"
+			_, err := Analyze(policyProfile(t, root, profile), root, mod)
+			if err == nil || !strings.Contains(err.Error(), "ambiguous") {
+				t.Fatalf("ambiguous directive error = %v", err)
+			}
+		})
 	}
 }
 
@@ -256,15 +345,15 @@ func TestEvaluateUsesIdentitySetsNotPercentagesOrLocalProfiles(t *testing.T) {
 func TestEvaluateRejectsExecutedIgnoreAndDirectiveDrift(t *testing.T) {
 	marker := "//" + " coverage-ignore: "
 	files := map[string]string{"p/f.go": "package p\nfunc F() { " + marker + "impossible\n}\n"}
-	uncovered := analyzePolicy(t, files, "example.com/m/p/f.go:2.12,3.2 1 0\n")
+	uncovered := analyzePolicy(t, files, "example.com/m/p/f.go:2.10,3.2 1 0\n")
 	base := mustBaseline(t, uncovered)
-	executed := analyzePolicy(t, files, "example.com/m/p/f.go:2.12,3.2 1 1\n")
+	executed := analyzePolicy(t, files, "example.com/m/p/f.go:2.10,3.2 1 1\n")
 	if findings := Evaluate(executed, base); !hasFinding(findings, "executed-ignore") {
 		t.Fatalf("executed ignore findings = %#v", findings)
 	}
 
 	changedFiles := map[string]string{"p/f.go": "package p\nfunc F() { " + marker + "different reason\n}\n"}
-	changed := analyzePolicy(t, changedFiles, "example.com/m/p/f.go:2.12,3.2 1 0\n")
+	changed := analyzePolicy(t, changedFiles, "example.com/m/p/f.go:2.10,3.2 1 0\n")
 	if findings := Evaluate(changed, base); !hasFinding(findings, "production-directive-changed") {
 		t.Fatalf("directive drift findings = %#v", findings)
 	}

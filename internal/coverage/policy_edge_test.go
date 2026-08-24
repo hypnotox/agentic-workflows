@@ -153,7 +153,7 @@ func TestRegeneratePreservesReviewedDirectiveAndOptionalLedgers(t *testing.T) {
 		"p/f.go":      "package p\nfunc F() { " + markerText + "\n}\n",
 		"p/f_test.go": "package p\n" + markerText + "\nfunc helper() {}\n",
 	}
-	analysis := analyzePolicy(t, files, "example.com/m/p/f.go:2.12,3.2 1 0\n")
+	analysis := analyzePolicy(t, files, "example.com/m/p/f.go:2.10,3.2 1 0\n")
 	base := mustBaseline(t, analysis)
 	regenerated, err := Regenerate(analysis, &base, Review{})
 	if err != nil {
@@ -205,7 +205,7 @@ func TestRegenerateRejectsInvalidMoveAndUnreviewedDirective(t *testing.T) {
 	}
 
 	markerText := "//" + " coverage-ignore: impossible"
-	directiveAnalysis := analyzePolicy(t, map[string]string{"p/f.go": "package p\nfunc F() { " + markerText + "\n}\n"}, "example.com/m/p/f.go:2.12,3.2 1 0\n")
+	directiveAnalysis := analyzePolicy(t, map[string]string{"p/f.go": "package p\nfunc F() { " + markerText + "\n}\n"}, "example.com/m/p/f.go:2.10,3.2 1 0\n")
 	if _, err := Regenerate(directiveAnalysis, nil, Review{Misses: []MissAdmission{{Identity: directiveAnalysis.RawMisses[0], Reason: "reviewed"}}}); err == nil || !strings.Contains(err.Error(), "directive") {
 		t.Fatalf("unreviewed directive error = %v", err)
 	}
@@ -240,9 +240,9 @@ func TestEvaluateReportsSelectorAndRemovedDirectiveDrift(t *testing.T) {
 	}
 
 	markerText := "//" + " coverage-ignore: impossible"
-	withDirective := analyzePolicy(t, map[string]string{"p/f.go": "package p\nfunc F() { " + markerText + "\n}\n"}, "example.com/m/p/f.go:2.12,3.2 1 0\n")
+	withDirective := analyzePolicy(t, map[string]string{"p/f.go": "package p\nfunc F() { " + markerText + "\n}\n"}, "example.com/m/p/f.go:2.10,3.2 1 0\n")
 	directiveBase := mustBaseline(t, withDirective)
-	withoutDirective := analyzePolicy(t, map[string]string{"p/f.go": "package p\nfunc F() {}\n"}, "example.com/m/p/f.go:2.12,3.2 1 0\n")
+	withoutDirective := analyzePolicy(t, map[string]string{"p/f.go": "package p\nfunc F() {}\n"}, "example.com/m/p/f.go:2.10,3.2 1 0\n")
 	if findings := Evaluate(withoutDirective, directiveBase); !hasFinding(findings, "production-directive-removed") {
 		t.Fatalf("removed directive findings = %#v", findings)
 	}
@@ -254,7 +254,7 @@ func TestEvaluateComparesMeasuredAndTestDirectiveState(t *testing.T) {
 		"p/f.go":      "package p\nfunc F() { " + markerText + "\n}\n",
 		"p/f_test.go": "package p\n" + markerText + "\nfunc helper() {}\n",
 	}
-	mapped := analyzePolicy(t, files, "example.com/m/p/f.go:2.12,3.2 1 0\n")
+	mapped := analyzePolicy(t, files, "example.com/m/p/f.go:2.10,3.2 1 0\n")
 	base := mustBaseline(t, mapped)
 	unmapped := analyzePolicy(t, files, "example.com/m/p/f.go:3.1,3.2 1 0\n")
 	if findings := Evaluate(unmapped, base); !hasFinding(findings, "production-directive-changed") {
@@ -264,7 +264,7 @@ func TestEvaluateComparesMeasuredAndTestDirectiveState(t *testing.T) {
 		"p/f.go":      files["p/f.go"],
 		"p/f_test.go": "package p\n//" + " coverage-ignore: changed test reason\nfunc helper() {}\n",
 	}
-	changed := analyzePolicy(t, changedFiles, "example.com/m/p/f.go:2.12,3.2 1 0\n")
+	changed := analyzePolicy(t, changedFiles, "example.com/m/p/f.go:2.10,3.2 1 0\n")
 	if findings := Evaluate(changed, base); !hasFinding(findings, "test-directive-changed") || !hasFinding(findings, "test-directive-removed") {
 		t.Fatalf("test directive drift findings = %#v", findings)
 	}
