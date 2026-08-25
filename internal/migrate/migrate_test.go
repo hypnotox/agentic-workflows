@@ -1390,6 +1390,33 @@ func upgradeLegacyForTest(ctx context.Context, root string) ([]string, []Change,
 	return upgradeUnchecked(ctx, root, from, func(lock *manifest.Lock, path string) error { return lock.Save(path) })
 }
 
+func TestCheckLiveSurfacesLockReadErrors(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteFile(t, config.ConfigPath(root), "prefix: test\n")
+	if err := os.Mkdir(config.LockPath(root), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := CheckLive(root)
+	if err == nil || !strings.Contains(err.Error(), "read lock") {
+		t.Fatalf("CheckLive() error = %v, want lock read failure", err)
+	}
+}
+
+func TestCheckLiveRejectsBelowFloorBeforeAuthorityValidation(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteFile(t, config.ConfigPath(root), "prefix: test\n")
+	testsupport.WriteFile(t, config.LockPath(root), `{"awfVersion":"0.39.2","schemaVersion":45,"files":{},"bridgeAttestation":{"version":1,"adrFormatV1From":1,"legacyADRGaps":null}}`)
+
+	_, err := CheckLive(root)
+	if !errors.Is(err, manifest.ErrUnsupportedLiveSource) {
+		t.Fatalf("CheckLive() error = %v, want unsupported live source", err)
+	}
+	if strings.Contains(err.Error(), "invalid lock authority") {
+		t.Fatalf("CheckLive() interpreted below-floor authority: %v", err)
+	}
+}
+
 func TestUpgradeLiveSchemaAdmission(t *testing.T) {
 	t.Run("below floor refuses before dispatch", func(t *testing.T) {
 		root := t.TempDir()

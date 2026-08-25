@@ -78,7 +78,8 @@ func Run(ctx context.Context, root string, sync Sync, gate Gate, present Project
 		return OperationOutcome{}, errors.New("not an awf project (run `awf init`)")
 	}
 	lockPath := authorityPath(root)
-	lock, found, err := manifest.LoadOptional(lockPath)
+	floor, current := liveSchemaRange()
+	lock, found, err := manifest.LoadLiveOptional(lockPath, floor, current)
 	if err != nil {
 		return OperationOutcome{}, err
 	}
@@ -97,16 +98,12 @@ func Run(ctx context.Context, root string, sync Sync, gate Gate, present Project
 			}
 		}
 	}
-	floor, current := liveSchemaRange()
-	if err := manifest.ValidateLive(lock, floor, current); err != nil {
-		return OperationOutcome{}, err
-	}
 	state, _, err := schemaGate(root)
 	if err != nil {
 		return OperationOutcome{}, err
 	}
 	authority, err := lock.AuthorityState()
-	if err != nil { // coverage-ignore: LoadOptional parses and validates the unchanged authority construction immediately above
+	if err != nil { // coverage-ignore: LoadLiveOptional parses and validates the unchanged authority construction immediately above
 		return OperationOutcome{}, fmt.Errorf("invalid authority: restore .awf/awf.lock from version control; if a cutover journal exists run `awf upgrade --recover`: %w", err)
 	}
 	switch authority {
@@ -135,7 +132,7 @@ func Run(ctx context.Context, root string, sync Sync, gate Gate, present Project
 	}
 	schemaCurrent := state == "ok"
 	if lockPath != config.LockPath(root) {
-		if _, found, err := manifest.LoadOptional(config.LockPath(root)); err != nil {
+		if _, found, err := manifest.LoadLiveOptional(config.LockPath(root), floor, current); err != nil {
 			return OperationOutcome{}, newUpgradeFailure(applied, changes, presentation.Mutation{}, err)
 		} else if !found {
 			lock.SchemaVersion = 14

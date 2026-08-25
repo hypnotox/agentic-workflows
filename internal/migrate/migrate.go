@@ -154,24 +154,24 @@ func Generation(root string) (int, error) {
 	oldTree := filepath.Join(root, ".claude", "awf", "config.yaml")
 	legacy := filepath.Join(root, ".claude", "awf.yaml")
 	if _, err := os.Stat(newTree); err == nil {
-		l, found, err := manifest.LoadOptional(config.LockPath(root))
+		generation, found, err := manifest.LoadSchemaOptional(config.LockPath(root))
 		if err != nil {
 			return 0, err
 		}
 		if !found {
 			return Current(), nil
 		}
-		return l.SchemaVersion, nil
+		return generation, nil
 	}
 	if _, err := os.Stat(oldTree); err == nil {
-		l, found, err := manifest.LoadOptional(filepath.Join(root, ".claude", "awf", "awf.lock"))
+		generation, found, err := manifest.LoadSchemaOptional(filepath.Join(root, ".claude", "awf", "awf.lock"))
 		if err != nil {
 			return 0, err
 		}
 		if !found {
 			return 1, nil
 		}
-		return l.SchemaVersion, nil
+		return generation, nil
 	}
 	if _, err := os.Stat(legacy); err == nil {
 		return 0, nil

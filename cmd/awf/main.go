@@ -307,6 +307,16 @@ func selectsStagedDrift(top clispec.Command, sub string) bool {
 	return top.Name == "check" && (sub == "staged" || sub == "staged drift")
 }
 
+func validateCurrentAuthority(found, currentConfig, currentLock bool) error {
+	if currentConfig != currentLock {
+		return &manifest.PartialAuthorityError{Config: currentConfig, Lock: currentLock}
+	}
+	if !found {
+		return &manifest.PartialAuthorityError{Config: currentConfig, Lock: false}
+	}
+	return nil
+}
+
 func guardProjectState(ctx context.Context, root string, cmd clispec.Command, top clispec.Command, sub string, inv invocation) error {
 	if cmd.StateExempt {
 		return nil
@@ -344,14 +354,14 @@ func guardProjectState(ctx context.Context, root string, cmd clispec.Command, to
 	// reach AuthorityState, and an incomplete current control pair is partial
 	// authority rather than missing bridge provenance.
 	if loadErr != nil {
+		if errors.Is(loadErr, manifest.ErrUnsupportedLiveSource) {
+			return presentLiveSourceRefusal(loadErr)
+		}
 		return fmt.Errorf("invalid authority: restore .awf/awf.lock from version control: %w", loadErr)
 	}
-	if currentConfig != currentLock {
-		return presentUpgradeRefusal(&manifest.PartialAuthorityError{Config: currentConfig, Lock: currentLock})
-	}
-	if currentConfig {
-		if err := manifest.ValidateLive(lock, migrate.LiveSchemaFloor, migrate.Current()); err != nil {
-			return presentLiveSourceRefusal(err)
+	if currentConfig || currentLock {
+		if err := validateCurrentAuthority(found, currentConfig, currentLock); err != nil {
+			return presentUpgradeRefusal(err)
 		}
 	} else {
 		if staged {
@@ -361,9 +371,6 @@ func guardProjectState(ctx context.Context, root string, cmd clispec.Command, to
 			return presentGateRefusal(err)
 		}
 		return fmt.Errorf("retired project layout is unsupported at live floor %d; restore a supported .awf control pair", migrate.LiveSchemaFloor)
-	}
-	if !found { // coverage-ignore: the current lock was statted above; absence now requires a concurrent namespace change
-		return presentUpgradeRefusal(&manifest.PartialAuthorityError{Config: currentConfig, Lock: false})
 	}
 	state, stateErr := lock.AuthorityState()
 	if stateErr != nil { // coverage-ignore: projectGuardState loaded and validated this unchanged lock
@@ -399,10 +406,16 @@ func projectGuardState(ctx context.Context, root string, staged bool) (present b
 			return false, nil, false, nil, false, false, false, nil, err
 		}
 		_, configErr := os.Stat(config.ConfigPath(root))
+		if configErr != nil && !errors.Is(configErr, os.ErrNotExist) {
+			return false, nil, false, nil, false, false, false, nil, fmt.Errorf("stat .awf/config.yaml: %w", configErr)
+		}
 		currentConfig = configErr == nil
 		_, lockErr := os.Stat(config.LockPath(root))
+		if lockErr != nil && !errors.Is(lockErr, os.ErrNotExist) {
+			return false, nil, false, nil, false, false, false, nil, fmt.Errorf("stat .awf/awf.lock: %w", lockErr)
+		}
 		currentLock = lockErr == nil
-		lock, lockFound, loadErr = manifest.LoadOptional(authorityLockPath(root))
+		lock, lockFound, loadErr = manifest.LoadLiveOptional(authorityLockPath(root), migrate.LiveSchemaFloor, migrate.Current())
 		return
 	}
 	tree, err := stagedTree(ctx, root)
@@ -420,7 +433,7 @@ func projectGuardState(ctx context.Context, root string, staged bool) (present b
 	}
 	if file, ok := tree.Lookup(config.DirName + "/awf.lock"); ok {
 		lockFound = true
-		lock, loadErr = manifest.Parse(file.Bytes)
+		lock, loadErr = manifest.ParseLive(file.Bytes, migrate.LiveSchemaFloor, migrate.Current())
 		if loadErr != nil {
 			loadErr = fmt.Errorf("parse staged lock: %w", loadErr)
 		}

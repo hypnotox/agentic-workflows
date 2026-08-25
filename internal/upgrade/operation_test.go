@@ -153,7 +153,7 @@ func TestRunSequencingAndCurrentSchemaPresentation(t *testing.T) {
 func TestRunPropagatesAuthorityAndSchemaFailures(t *testing.T) {
 	root := t.TempDir()
 	path := operationLock(t, root)
-	testsupport.WriteFile(t, path, `{"awfVersion":"0.19.0","initializedWithVersion":"bad","files":{}}`)
+	testsupport.WriteFile(t, path, `{"awfVersion":"0.19.0","schemaVersion":46,"initializedWithVersion":"bad","files":{}}`)
 	_, err := Run(testContext(t), root, nil, nil, func(string) bool { return true }, config.LockPath, testLiveSchemaRange, nil, nil, nil)
 	if err == nil || !strings.Contains(err.Error(), "invalid lock authority") {
 		t.Fatalf("authority error = %v", err)
@@ -163,6 +163,23 @@ func TestRunPropagatesAuthorityAndSchemaFailures(t *testing.T) {
 	_, err = runOperation(t, root, nil, nil, nil, func(string) (string, int, error) { return "", 0, failure })
 	if !errors.Is(err, failure) {
 		t.Fatalf("schema error = %v", err)
+	}
+}
+
+func TestRunRejectsBelowFloorBeforeAuthorityValidation(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteFile(t, config.ConfigPath(root), "prefix: test\n")
+	testsupport.WriteFile(t, config.LockPath(root), `{"awfVersion":"0.39.2","schemaVersion":45,"files":{},"bridgeAttestation":{"version":1,"adrFormatV1From":1,"legacyADRGaps":null}}`)
+
+	called := false
+	_, err := Run(testContext(t), root, nil, nil, func(string) bool { return true }, config.LockPath, testLiveSchemaRange,
+		func(string) (string, int, error) { called = true; return "ok", 45, nil },
+		func(context.Context, string) (MigrationResult, error) { called = true; return MigrationResult{}, nil }, nil)
+	if !errors.Is(err, manifest.ErrUnsupportedLiveSource) || called {
+		t.Fatalf("Run() error = %v, dispatch = %t, want schema-first refusal", err, called)
+	}
+	if strings.Contains(err.Error(), "invalid lock authority") {
+		t.Fatalf("Run() interpreted below-floor authority: %v", err)
 	}
 }
 

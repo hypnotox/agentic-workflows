@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/clispec"
@@ -404,6 +405,44 @@ func TestGateRejectsStaleSchema(t *testing.T) {
 	}
 }
 
+func TestValidateCurrentAuthorityHandlesConcurrentLockDisappearance(t *testing.T) {
+	err := validateCurrentAuthority(false, true, true)
+	var partial *manifest.PartialAuthorityError
+	if !errors.As(err, &partial) || partial.Config != true || partial.Lock != false {
+		t.Fatalf("validateCurrentAuthority() error = %#v, want config-only partial authority", err)
+	}
+}
+
+func TestProjectGuardStateSurfacesControlStatErrors(t *testing.T) {
+	for _, rel := range []string{"config.yaml", "awf.lock"} {
+		t.Run(rel, func(t *testing.T) {
+			root := t.TempDir()
+			if err := os.MkdirAll(filepath.Join(root, config.DirName), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if rel == "config.yaml" {
+				if err := os.Symlink(rel, config.ConfigPath(root)); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(config.LockPath(root), []byte(`{"awfVersion":"0.39.2","schemaVersion":46,"files":{}}`), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				if err := os.WriteFile(config.ConfigPath(root), []byte("prefix: test\n"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink(rel, config.LockPath(root)); err != nil {
+					t.Fatal(err)
+				}
+			}
+			_, _, _, _, _, _, _, _, err := projectGuardState(testContext(t), root, false)
+			if !errors.Is(err, syscall.ELOOP) {
+				t.Fatalf("projectGuardState() error = %v, want symlink-loop stat error", err)
+			}
+		})
+	}
+}
+
 func TestCommandStateGuardAdmitsOnlyCompleteLiveAuthority(t *testing.T) {
 	t.Run("below-floor bridge is refused before authority dispatch", func(t *testing.T) {
 		root := scaffoldProject(t)
@@ -422,6 +461,33 @@ func TestCommandStateGuardAdmitsOnlyCompleteLiveAuthority(t *testing.T) {
 		}
 		if got := stderr.String(); !strings.Contains(got, "below live floor") || strings.Contains(got, "consume") {
 			t.Fatalf("below-floor bridge refusal = %q", got)
+		}
+	})
+
+	t.Run("working below-floor authority refuses before malformed bridge interpretation", func(t *testing.T) {
+		root := scaffoldProject(t)
+		testsupport.WriteFile(t, config.LockPath(root), `{"awfVersion":"0.39.2","schemaVersion":45,"files":{},"bridgeAttestation":{"version":1,"adrFormatV1From":1,"legacyADRGaps":null}}`)
+		var stdout, stderr bytes.Buffer
+		if code := runAt(t, root, []string{"awf", "render"}, &stdout, &stderr); code != 1 {
+			t.Fatalf("exit = %d, stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+		}
+		if got := stderr.String(); !strings.Contains(got, "below live floor") || strings.Contains(got, "invalid lock authority") {
+			t.Fatalf("working below-floor refusal = %q", got)
+		}
+	})
+
+	t.Run("staged below-floor authority refuses before malformed bridge interpretation", func(t *testing.T) {
+		repo := gitfixture.InitRepo(t)
+		gitfixture.Stage(t, repo, map[string]string{
+			".awf/config.yaml": "prefix: test\n",
+			".awf/awf.lock":    `{"awfVersion":"0.39.2","schemaVersion":45,"files":{},"bridgeAttestation":{"version":1,"adrFormatV1From":1,"legacyADRGaps":null}}` + "\n",
+		})
+		var stdout, stderr bytes.Buffer
+		if code := runAt(t, repo.Root(), []string{"awf", "check", "staged"}, &stdout, &stderr); code != 1 {
+			t.Fatalf("exit = %d, stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+		}
+		if got := stderr.String(); !strings.Contains(got, "below live floor") || strings.Contains(got, "invalid lock authority") {
+			t.Fatalf("staged below-floor refusal = %q", got)
 		}
 	})
 

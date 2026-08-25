@@ -60,6 +60,17 @@ func TestParseLiveAcceptsOnlyCurrentLiveSchema(t *testing.T) {
 	}
 }
 
+func TestParseLiveRejectsBelowFloorBeforeAuthorityValidation(t *testing.T) {
+	b := []byte(`{"awfVersion":"0.39.2","schemaVersion":45,"files":{},"bridgeAttestation":{"version":1,"adrFormatV1From":1,"legacyADRGaps":null}}`)
+	_, err := ParseLive(b, 46, 46)
+	if !errors.Is(err, ErrUnsupportedLiveSource) {
+		t.Fatalf("ParseLive() error = %v, want unsupported live source", err)
+	}
+	if strings.Contains(err.Error(), "invalid lock authority") {
+		t.Fatalf("ParseLive() interpreted below-floor authority: %v", err)
+	}
+}
+
 func TestLoadMissingFile(t *testing.T) {
 	// A non-existent lock path surfaces a wrapped read error.
 	p := filepath.Join(t.TempDir(), "absent.lock")

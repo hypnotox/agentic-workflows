@@ -1,7 +1,7 @@
 {
   "version": 1,
   "modulePath": "github.com/hypnotox/agentic-workflows",
-  "universeSHA256": "c69e21ae12620ecebcb2c844c1114fe3117884c43703b1d936f5fd71a80e6518",
+  "universeSHA256": "75be95a4e55dd58384698b69465b585303769c0902c84108552a246112cf4481",
   "repository": [
     {
       "identity": {
@@ -232,6 +232,21 @@
       "identity": {
         "file": "cmd/awf/gate.go",
         "start": {
+          "line": 58,
+          "column": 72
+        },
+        "end": {
+          "line": 60,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "RF-008B Phase 1 retains the explicit future supported-migration seam: while live floor and current are both schema 46, ParseLive admits no generation for which CheckLiveGeneration can require migration. internal/migrate TestUpgradeLiveSchemaAdmission covers the owner behavior after registering a future migration; this command arm becomes reachable when current advances above the floor and must then present that owner result."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/gate.go",
+        "start": {
           "line": 61,
           "column": 94
         },
@@ -457,26 +472,11 @@
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 365,
-          "column": 12
-        },
-        "end": {
-          "line": 367,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "The command guard already statted the current lock before loading it; absence here requires a concurrent namespace change and cannot be induced safely and portably."
-    },
-    {
-      "identity": {
-        "file": "cmd/awf/main.go",
-        "start": {
-          "line": 369,
+          "line": 376,
           "column": 21
         },
         "end": {
-          "line": 371,
+          "line": 378,
           "column": 3
         },
         "statements": 1
@@ -487,11 +487,11 @@
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 383,
+          "line": 390,
           "column": 10
         },
         "end": {
-          "line": 384,
+          "line": 391,
           "column": 85
         },
         "statements": 1
@@ -502,11 +502,11 @@
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 506,
+          "line": 519,
           "column": 16
         },
         "end": {
-          "line": 508,
+          "line": 521,
           "column": 3
         },
         "statements": 1
@@ -517,11 +517,11 @@
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 510,
+          "line": 523,
           "column": 16
         },
         "end": {
-          "line": 512,
+          "line": 525,
           "column": 3
         },
         "statements": 1
@@ -5917,16 +5917,16 @@
       "identity": {
         "file": "internal/manifest/manifest.go",
         "start": {
-          "line": 183,
+          "line": 181,
           "column": 16
         },
         "end": {
-          "line": 185,
+          "line": 183,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/manifest/manifest.go:183.16,185.3 1 in function Marshal, beginning `{ // coverage-ignore: Lock contains only JSON-supported fields`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/manifest/manifest.go:181.16,185.3 1 in function Marshal, beginning `{ // coverage-ignore: Lock contains only JSON-supported fields`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
@@ -10327,26 +10327,26 @@
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 95,
+          "line": 96,
           "column": 25
         },
         "end": {
-          "line": 97,
+          "line": 98,
           "column": 5
         },
         "statements": 1
       },
-      "reason": "The current lock proves a current authority root before this config stat; an error other than absence requires a concurrent namespace, permission, or storage fault and cannot be induced safely and portably."
+      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam."
     },
     {
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 109,
+          "line": 106,
           "column": 16
         },
         "end": {
-          "line": 111,
+          "line": 108,
           "column": 3
         },
         "statements": 1
@@ -10357,11 +10357,11 @@
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 119,
+          "line": 116,
           "column": 17
         },
         "end": {
-          "line": 121,
+          "line": 118,
           "column": 4
         },
         "statements": 1
@@ -10372,26 +10372,26 @@
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 123,
+          "line": 120,
           "column": 17
         },
         "end": {
+          "line": 122,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam."
+    },
+    {
+      "identity": {
+        "file": "internal/upgrade/operation.go",
+        "start": {
           "line": 125,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam."
-    },
-    {
-      "identity": {
-        "file": "internal/upgrade/operation.go",
-        "start": {
-          "line": 128,
           "column": 10
         },
         "end": {
-          "line": 129,
+          "line": 126,
           "column": 105
         },
         "statements": 1
@@ -11009,6 +11009,18 @@
         {
           "file": "cmd/awf/gate.go",
           "start": {
+            "line": 58,
+            "column": 72
+          },
+          "end": {
+            "line": 60,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/gate.go",
+          "start": {
             "line": 61,
             "column": 94
           },
@@ -11189,23 +11201,11 @@
         {
           "file": "cmd/awf/main.go",
           "start": {
-            "line": 365,
-            "column": 12
-          },
-          "end": {
-            "line": 367,
-            "column": 3
-          },
-          "statements": 1
-        },
-        {
-          "file": "cmd/awf/main.go",
-          "start": {
-            "line": 369,
+            "line": 376,
             "column": 21
           },
           "end": {
-            "line": 371,
+            "line": 378,
             "column": 3
           },
           "statements": 1
@@ -11213,11 +11213,11 @@
         {
           "file": "cmd/awf/main.go",
           "start": {
-            "line": 383,
+            "line": 390,
             "column": 10
           },
           "end": {
-            "line": 384,
+            "line": 391,
             "column": 85
           },
           "statements": 1
@@ -11225,11 +11225,11 @@
         {
           "file": "cmd/awf/main.go",
           "start": {
-            "line": 506,
+            "line": 519,
             "column": 16
           },
           "end": {
-            "line": 508,
+            "line": 521,
             "column": 3
           },
           "statements": 1
@@ -11237,11 +11237,11 @@
         {
           "file": "cmd/awf/main.go",
           "start": {
-            "line": 510,
+            "line": 523,
             "column": 16
           },
           "end": {
-            "line": 512,
+            "line": 525,
             "column": 3
           },
           "statements": 1
@@ -12939,11 +12939,11 @@
         {
           "file": "internal/upgrade/operation.go",
           "start": {
-            "line": 95,
+            "line": 96,
             "column": 25
           },
           "end": {
-            "line": 97,
+            "line": 98,
             "column": 5
           },
           "statements": 1
@@ -12951,11 +12951,11 @@
         {
           "file": "internal/upgrade/operation.go",
           "start": {
-            "line": 109,
+            "line": 106,
             "column": 16
           },
           "end": {
-            "line": 111,
+            "line": 108,
             "column": 3
           },
           "statements": 1
@@ -12963,11 +12963,11 @@
         {
           "file": "internal/upgrade/operation.go",
           "start": {
-            "line": 119,
+            "line": 116,
             "column": 17
           },
           "end": {
-            "line": 121,
+            "line": 118,
             "column": 4
           },
           "statements": 1
@@ -12975,23 +12975,23 @@
         {
           "file": "internal/upgrade/operation.go",
           "start": {
-            "line": 123,
+            "line": 120,
             "column": 17
           },
           "end": {
+            "line": 122,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/operation.go",
+          "start": {
             "line": 125,
-            "column": 4
-          },
-          "statements": 1
-        },
-        {
-          "file": "internal/upgrade/operation.go",
-          "start": {
-            "line": 128,
             "column": 10
           },
           "end": {
-            "line": 129,
+            "line": 126,
             "column": 105
           },
           "statements": 1
@@ -17617,62 +17617,50 @@
     {
       "directive": {
         "file": "cmd/awf/main.go",
-        "line": 365,
-        "targetLine": 365,
-        "reason": "the current lock was statted above; absence now requires a concurrent namespace change",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "At cmd/awf/main.go:365, the guard already statted the current lock path before loading it. Absence at the immediately repeated load requires a concurrent namespace change, which cannot be induced safely and portably without a production fault seam."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/main.go",
-        "line": 369,
-        "targetLine": 369,
+        "line": 376,
+        "targetLine": 376,
         "reason": "projectGuardState loaded and validated this unchanged lock",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At cmd/awf/main.go:369, `if stateErr != nil {` is guarded by the preceding `state, stateErr := lock.AuthorityState()` at cmd/awf/main.go:368; in `func guardProjectState(ctx context.Context, root string, cmd clispec.Command, top clispec.Command, sub string, inv invocation) error` (cmd/awf/main.go:310), the predecessor invariant is projectGuardState loaded and validated this unchanged lock. Only violation of that closed state reaches this guard."
+      "evidence": "At cmd/awf/main.go:376, `if stateErr != nil {` is guarded by the preceding `state, stateErr := lock.AuthorityState()` at cmd/awf/main.go:368; in `func guardProjectState(ctx context.Context, root string, cmd clispec.Command, top clispec.Command, sub string, inv invocation) error` (cmd/awf/main.go:310), the predecessor invariant is projectGuardState loaded and validated this unchanged lock. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
         "file": "cmd/awf/main.go",
-        "line": 383,
-        "targetLine": 383,
+        "line": 390,
+        "targetLine": 390,
         "reason": "AuthorityState returns only the closed enum values",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `default:` at cmd/awf/main.go:383 is `return nil` (cmd/awf/main.go:382). Within `func guardProjectState(ctx context.Context, root string, cmd clispec.Command, top clispec.Command, sub string, inv invocation) error` at cmd/awf/main.go:310, source review establishes AuthorityState returns only the closed enum values; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `default:` at cmd/awf/main.go:390 is `return nil` (cmd/awf/main.go:382). Within `func guardProjectState(ctx context.Context, root string, cmd clispec.Command, top clispec.Command, sub string, inv invocation) error` at cmd/awf/main.go:310, source review establishes AuthorityState returns only the closed enum values; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
         "file": "cmd/awf/main.go",
-        "line": 506,
-        "targetLine": 506,
+        "line": 519,
+        "targetLine": 519,
         "reason": "Prose validated the value and status is a fixed grammar-valid label",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at cmd/awf/main.go:506 is `field, err := presentation.NewField(\"status\", value)` (cmd/awf/main.go:505). Within `func writeStatus(stdout io.Writer, status string) error` at cmd/awf/main.go:500, source review establishes Prose validated the value and status is a fixed grammar-valid label; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err != nil {` at cmd/awf/main.go:519 is `field, err := presentation.NewField(\"status\", value)` (cmd/awf/main.go:505). Within `func writeStatus(stdout io.Writer, status string) error` at cmd/awf/main.go:500, source review establishes Prose validated the value and status is a fixed grammar-valid label; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
         "file": "cmd/awf/main.go",
-        "line": 510,
-        "targetLine": 510,
+        "line": 523,
+        "targetLine": 523,
         "reason": "the validated Field is always a valid root node",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At cmd/awf/main.go:510, `if err != nil {` is guarded by the preceding `document, err := presentation.NewDocument(field)` at cmd/awf/main.go:509; in `func writeStatus(stdout io.Writer, status string) error` (cmd/awf/main.go:500), the predecessor invariant is the validated Field is always a valid root node. Only violation of that closed state reaches this guard."
+      "evidence": "At cmd/awf/main.go:523, `if err != nil {` is guarded by the preceding `document, err := presentation.NewDocument(field)` at cmd/awf/main.go:509; in `func writeStatus(stdout io.Writer, status string) error` (cmd/awf/main.go:500), the predecessor invariant is the validated Field is always a valid root node. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
@@ -22189,14 +22177,14 @@
     {
       "directive": {
         "file": "internal/manifest/manifest.go",
-        "line": 183,
-        "targetLine": 183,
+        "line": 181,
+        "targetLine": 181,
         "reason": "Lock contains only JSON-supported fields",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `b, err := json.MarshalIndent(l, \"\", \"  \")` at internal/manifest/manifest.go:182 feeds `if err != nil {` at internal/manifest/manifest.go:183 in `func (l *Lock) Marshal() ([]byte, error)` (internal/manifest/manifest.go:178). Its concrete fault condition is Lock contains only JSON-supported fields, so no safe portable production input induces this error path."
+      "evidence": "The source predecessor `b, err := json.MarshalIndent(l, \"\", \"  \")` at internal/manifest/manifest.go:182 feeds `if err != nil {` at internal/manifest/manifest.go:181 in `func (l *Lock) Marshal() ([]byte, error)` (internal/manifest/manifest.go:178). Its concrete fault condition is Lock contains only JSON-supported fields, so no safe portable production input induces this error path."
     },
     {
       "directive": {
@@ -25693,62 +25681,62 @@
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 95,
-        "targetLine": 95,
+        "line": 96,
+        "targetLine": 96,
         "reason": "after the lock proves this is a current authority root, config stat can fail only through a concurrent namespace, permission, or storage fault",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/upgrade/operation.go:95, the current lock has already proved a current authority root and the preceding config stat handles absence as partial authority. An error other than absence therefore requires a concurrent namespace, permission, or storage fault rather than a safe portable input."
+      "evidence": "At internal/upgrade/operation.go:96, the current lock has already proved a current authority root and the preceding config stat handles absence as partial authority. An error other than absence therefore requires a concurrent namespace, permission, or storage fault rather than a safe portable input."
     },
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 109,
-        "targetLine": 109,
-        "reason": "LoadOptional parses and validates the unchanged authority construction immediately above",
+        "line": 106,
+        "targetLine": 106,
+        "reason": "LoadLiveOptional parses and validates the unchanged authority construction immediately above",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The directive at internal/upgrade/operation.go:109 follows the validated closed invariant stated in source: LoadOptional parses and validates the unchanged authority construction immediately above. Its error arm requires an invariant breach, not a supported input."
+      "evidence": "The directive at internal/upgrade/operation.go:106 follows the validated closed invariant stated in source: LoadLiveOptional parses and validates the unchanged authority construction immediately above. Its error arm requires an invariant breach, not a supported input."
     },
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 119,
-        "targetLine": 119,
+        "line": 116,
+        "targetLine": 116,
         "reason": "FinalUpgrade constructs its terminal evidence from validated transaction operations",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The directive at internal/upgrade/operation.go:119 follows the validated closed invariant stated in source: FinalUpgrade constructs its terminal evidence from validated transaction operations. Its error arm requires an invariant breach, not a supported input."
+      "evidence": "The directive at internal/upgrade/operation.go:116 follows the validated closed invariant stated in source: FinalUpgrade constructs its terminal evidence from validated transaction operations. Its error arm requires an invariant breach, not a supported input."
     },
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 123,
-        "targetLine": 123,
+        "line": 120,
+        "targetLine": 120,
         "reason": "CompletedMutation supplies the fixed valid status and only validated journal literals",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The directive at internal/upgrade/operation.go:123 follows the validated closed invariant stated in source: CompletedMutation supplies the fixed valid status and only validated journal literals. Its error arm requires an invariant breach, not a supported input."
+      "evidence": "The directive at internal/upgrade/operation.go:120 follows the validated closed invariant stated in source: CompletedMutation supplies the fixed valid status and only validated journal literals. Its error arm requires an invariant breach, not a supported input."
     },
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 128,
-        "targetLine": 128,
+        "line": 125,
+        "targetLine": 125,
         "reason": "AuthorityState returns only Bridge or Permanent when its validation succeeds",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The directive at internal/upgrade/operation.go:128 follows the validated closed invariant stated in source: AuthorityState returns only Bridge or Permanent when its validation succeeds. Its error arm requires an invariant breach, not a supported input."
+      "evidence": "The directive at internal/upgrade/operation.go:125 follows the validated closed invariant stated in source: AuthorityState returns only Bridge or Permanent when its validation succeeds. Its error arm requires an invariant breach, not a supported input."
     },
     {
       "directive": {

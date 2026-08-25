@@ -362,3 +362,12 @@ Only shifted closed-invariant branches, concurrent filesystem disappearance, and
 retained until Phase 2 remain reviewed misses. `go test ./...` passed before reconciliation, the
 focused init test passed afterward, and the regenerated policy reports 96.8% raw and 99.9% filtered
 coverage.
+
+Final renewed-review settlement makes live schema admission precede current authority decoding in
+manifest, command, staged, migrate, and upgrade paths. Red-first tests proved that malformed
+below-floor bridge bytes previously reached `AuthorityState`; replacement tests also cover lock
+absence after presence observation and both current control-path stat failures. The command guard now
+checks lock presence before using the loaded value and preserves non-absence stat errors. Focused
+owner tests and `go test ./...` pass. Coverage reconciliation directly covers the new reachable
+branches, retains one reviewed command arm for the future supported-migration seam, and regenerates
+the 96.8% raw and 99.9% filtered baseline.

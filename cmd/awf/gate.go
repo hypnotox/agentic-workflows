@@ -119,9 +119,9 @@ func stagedLock(ctx context.Context, root string) (*manifest.Lock, error) {
 	if !ok {
 		return nil, fmt.Errorf("%w: no staged %s/awf.lock", errNoStagedLock, config.DirName)
 	}
-	lock, err := manifest.Parse(file.Bytes)
+	lock, err := manifest.ParseLive(file.Bytes, migrate.LiveSchemaFloor, migrate.Current())
 	if err != nil {
-		return nil, fmt.Errorf("parse staged lock: %w", err)
+		return nil, fmt.Errorf("parse staged lock: %w", presentLiveSourceRefusal(err))
 	}
 	return lock, nil
 }
@@ -133,9 +133,9 @@ func stagedLock(ctx context.Context, root string) (*manifest.Lock, error) {
 // lock now errors upstream via the LoadOptional choke point (ADR-0076 partially
 // supersedes ADR-0039 Decision 5).
 func lockVsBinary(root string) (lockV, binV string, ok bool, err error) {
-	l, found, err := manifest.LoadOptional(config.LockPath(root))
+	l, found, err := manifest.LoadLiveOptional(config.LockPath(root), migrate.LiveSchemaFloor, migrate.Current())
 	if err != nil {
-		return "", "", false, err
+		return "", "", false, presentLiveSourceRefusal(err)
 	}
 	if !found {
 		return "", "", false, nil
