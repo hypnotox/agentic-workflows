@@ -46,7 +46,7 @@ func testLiveSchemaRange() (int, int) { return 46, 46 }
 
 func runOperation(t *testing.T, root string, sync Sync, gate Gate, migration Migration, schema SchemaGate) (OperationOutcome, error) {
 	t.Helper()
-	return Run(testContext(t), root, sync, gate, func(string) bool { return true }, config.LockPath, testLiveSchemaRange, schema, migration, func() string { return "current schema" })
+	return Run(testContext(t), root, sync, gate, func(string) bool { return true }, testLiveSchemaRange, schema, migration, func() string { return "current schema" })
 }
 
 func TestRecoverOperationRoutesJournalOutcomeAndFailure(t *testing.T) {
@@ -79,17 +79,17 @@ func TestRecoverOperationRoutesJournalOutcomeAndFailure(t *testing.T) {
 }
 
 func TestRunRejectsAbsentProjectAndAuthority(t *testing.T) {
-	_, err := Run(context.Background(), t.TempDir(), nil, nil, func(string) bool { return false }, config.LockPath, testLiveSchemaRange, nil, nil, nil)
+	_, err := Run(context.Background(), t.TempDir(), nil, nil, func(string) bool { return false }, testLiveSchemaRange, nil, nil, nil)
 	if err == nil || !strings.Contains(err.Error(), "not an awf project") {
 		t.Fatalf("absent project error = %v", err)
 	}
 	root := t.TempDir()
-	_, err = Run(context.Background(), root, nil, nil, func(string) bool { return true }, config.LockPath, testLiveSchemaRange, nil, nil, nil)
+	_, err = Run(context.Background(), root, nil, nil, func(string) bool { return true }, testLiveSchemaRange, nil, nil, nil)
 	if err == nil || !strings.Contains(err.Error(), "not an awf project") {
 		t.Fatalf("absent authority error = %v", err)
 	}
 	testsupport.WriteFile(t, config.LockPath(root), "{")
-	_, err = Run(context.Background(), root, nil, nil, func(string) bool { return true }, config.LockPath, testLiveSchemaRange, nil, nil, nil)
+	_, err = Run(context.Background(), root, nil, nil, func(string) bool { return true }, testLiveSchemaRange, nil, nil, nil)
 	if err == nil || !strings.Contains(err.Error(), "restore") {
 		t.Fatalf("corrupt authority error = %v", err)
 	}
@@ -102,7 +102,7 @@ func TestRunRoutesBridgeAuthorityToFinalCutover(t *testing.T) {
 	outcome, err := Run(testContext(t), root, func(context.Context, string) (presentation.Mutation, error) {
 		called = true
 		return presentation.Mutation{}, nil
-	}, func(context.Context, string) error { called = true; return nil }, func(string) bool { return true }, config.LockPath, testLiveSchemaRange, func(string) (string, int, error) { return "ok", 46, nil }, nil, nil)
+	}, func(context.Context, string) error { called = true; return nil }, func(string) bool { return true }, testLiveSchemaRange, func(string) (string, int, error) { return "ok", 46, nil }, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,7 +155,7 @@ func TestRunPropagatesAuthorityAndSchemaFailures(t *testing.T) {
 	root := t.TempDir()
 	path := operationLock(t, root)
 	testsupport.WriteFile(t, path, `{"awfVersion":"0.19.0","schemaVersion":46,"initializedWithVersion":"bad","files":{}}`)
-	_, err := Run(testContext(t), root, nil, nil, func(string) bool { return true }, config.LockPath, testLiveSchemaRange, nil, nil, nil)
+	_, err := Run(testContext(t), root, nil, nil, func(string) bool { return true }, testLiveSchemaRange, nil, nil, nil)
 	if err == nil || !strings.Contains(err.Error(), "invalid lock authority") {
 		t.Fatalf("authority error = %v", err)
 	}
@@ -173,7 +173,7 @@ func TestRunRejectsBelowFloorBeforeAuthorityValidation(t *testing.T) {
 	testsupport.WriteFile(t, config.LockPath(root), `{"awfVersion":"0.39.2","schemaVersion":45,"files":{},"bridgeAttestation":{"version":1,"adrFormatV1From":1,"legacyADRGaps":null}}`)
 
 	called := false
-	_, err := Run(testContext(t), root, nil, nil, func(string) bool { return true }, config.LockPath, testLiveSchemaRange,
+	_, err := Run(testContext(t), root, nil, nil, func(string) bool { return true }, testLiveSchemaRange,
 		func(string) (string, int, error) { called = true; return "ok", 45, nil },
 		func(context.Context, string) (MigrationResult, error) { called = true; return MigrationResult{}, nil }, nil)
 	if !errors.Is(err, manifest.ErrUnsupportedLiveSource) || called {
@@ -199,7 +199,7 @@ func TestRunRefusesUnsupportedLiveAuthorityBeforeDispatch(t *testing.T) {
 			operationLock(t, root)
 			setOperationLockSchema(t, root, tc.schema)
 			called := false
-			_, err := Run(testContext(t), root, nil, nil, func(string) bool { return true }, config.LockPath, tc.rangeFn,
+			_, err := Run(testContext(t), root, nil, nil, func(string) bool { return true }, tc.rangeFn,
 				func(string) (string, int, error) { called = true; return "ok", tc.schema, nil },
 				func(context.Context, string) (MigrationResult, error) { called = true; return MigrationResult{}, nil }, nil)
 			if err == nil || !strings.Contains(err.Error(), tc.want) || called {
@@ -239,7 +239,7 @@ func TestRunRefusesPartialCurrentAuthorityBeforeDispatch(t *testing.T) {
 			root := t.TempDir()
 			tc.writeAuthority(t, root)
 			called := false
-			_, err := Run(testContext(t), root, nil, nil, func(string) bool { return true }, config.LockPath, testLiveSchemaRange,
+			_, err := Run(testContext(t), root, nil, nil, func(string) bool { return true }, testLiveSchemaRange,
 				func(string) (string, int, error) { called = true; return "ok", 46, nil },
 				func(context.Context, string) (MigrationResult, error) { called = true; return MigrationResult{}, nil }, nil)
 			var partial *manifest.PartialAuthorityError
@@ -279,7 +279,7 @@ func TestRunPreservesCurrentAuthorityStatFailuresBeforeDispatch(t *testing.T) {
 					return presentation.Mutation{}, nil
 				},
 				func(context.Context, string) error { called = true; return nil },
-				func(string) bool { return true }, config.LockPath, testLiveSchemaRange,
+				func(string) bool { return true }, testLiveSchemaRange,
 				func(string) (string, int, error) { called = true; return "ok", 46, nil },
 				func(context.Context, string) (MigrationResult, error) { called = true; return MigrationResult{}, nil }, nil)
 			if !errors.Is(err, syscall.ELOOP) || called {
@@ -305,7 +305,7 @@ func TestRunPreservesInitialLockStatFailure(t *testing.T) {
 			return presentation.Mutation{}, nil
 		},
 		func(context.Context, string) error { called = true; return nil },
-		func(string) bool { return true }, config.LockPath, testLiveSchemaRange,
+		func(string) bool { return true }, testLiveSchemaRange,
 		func(string) (string, int, error) { called = true; return "ok", 46, nil },
 		func(context.Context, string) (MigrationResult, error) { called = true; return MigrationResult{}, nil }, nil)
 	if !errors.Is(err, syscall.ELOOP) || called {
@@ -377,7 +377,7 @@ func TestRunRevalidatesCurrentAuthorityAfterSchemaClassification(t *testing.T) {
 					return presentation.Mutation{}, nil
 				},
 				func(context.Context, string) error { called = true; return nil },
-				func(string) bool { return true }, config.LockPath, testLiveSchemaRange,
+				func(string) bool { return true }, testLiveSchemaRange,
 				func(string) (string, int, error) {
 					tc.mutate(t, lockPath)
 					return "ok", 46, nil
@@ -401,7 +401,7 @@ func TestRunRevalidatesConfigAfterSchemaClassification(t *testing.T) {
 			return presentation.Mutation{}, nil
 		},
 		func(context.Context, string) error { called = true; return nil },
-		func(string) bool { return true }, config.LockPath, testLiveSchemaRange,
+		func(string) bool { return true }, testLiveSchemaRange,
 		func(string) (string, int, error) {
 			if err := os.Remove(config.ConfigPath(root)); err != nil {
 				t.Fatal(err)
@@ -515,89 +515,6 @@ func TestRunMigrationAndPresentationRejectInvalidSemanticValues(t *testing.T) {
 	}, func(string) (string, int, error) { return "behind", 13, nil })
 	if err == nil {
 		t.Fatal("invalid migration name accepted")
-	}
-}
-
-func TestRunRelocatedLockCompletionFailureRetainsCreatedLockAxis(t *testing.T) {
-	root := t.TempDir()
-	legacy := filepath.Join(root, ".claude", "awf.lock")
-	if err := os.MkdirAll(filepath.Dir(legacy), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := (&manifest.Lock{AWFVersion: "0.19.0", SchemaVersion: 46, Files: map[string]manifest.Entry{}}).Save(legacy); err != nil {
-		t.Fatal(err)
-	}
-	failure := errors.New("completion failed")
-	calls := 0
-	_, err := Run(testContext(t), root, nil, nil, func(string) bool { return true }, func(string) string { return legacy }, testLiveSchemaRange, func(string) (string, int, error) { return "behind", 2, nil }, func(context.Context, string) (MigrationResult, error) {
-		calls++
-		if calls == 1 {
-			if err := os.MkdirAll(config.RootDir(root), 0o755); err != nil {
-				t.Fatal(err)
-			}
-			return MigrationResult{Applied: []string{"relocate"}, Changes: []string{"moved config"}}, nil
-		}
-		return MigrationResult{}, failure
-	}, func() string { return "current schema" })
-	var partial upgradeFailure
-	if !errors.Is(err, failure) || !errors.As(err, &partial) {
-		t.Fatalf("error = %v", err)
-	}
-	if got := strings.Join(partial.changes, ","); got != "moved config,created and schema-stamped .awf/awf.lock" {
-		t.Fatalf("changes = %q", got)
-	}
-}
-
-func TestRunRelocatedLockSaveFailureRetainsMigrationFacts(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Skip("root bypasses directory permissions")
-	}
-	root := t.TempDir()
-	legacy := filepath.Join(root, ".claude", "awf.lock")
-	if err := os.MkdirAll(filepath.Dir(legacy), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := (&manifest.Lock{AWFVersion: "0.19.0", SchemaVersion: 46, Files: map[string]manifest.Entry{}}).Save(legacy); err != nil {
-		t.Fatal(err)
-	}
-	_, err := Run(testContext(t), root, nil, nil, func(string) bool { return true }, func(string) string { return legacy }, testLiveSchemaRange, func(string) (string, int, error) { return "behind", 2, nil }, func(context.Context, string) (MigrationResult, error) {
-		if err := os.MkdirAll(config.RootDir(root), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.Chmod(config.RootDir(root), 0o555); err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(func() { _ = os.Chmod(config.RootDir(root), 0o755) })
-		return MigrationResult{Applied: []string{"relocate"}, Changes: []string{"moved config"}}, nil
-	}, func() string { return "current schema" })
-	if err == nil || !strings.Contains(err.Error(), "permission denied") {
-		t.Fatalf("error = %v, want destination lock save failure", err)
-	}
-	var partial upgradeFailure
-	if !errors.As(err, &partial) || strings.Join(partial.changes, ",") != "moved config" {
-		t.Fatalf("failure = %#v, want retained migration fact", partial)
-	}
-}
-
-func TestRunRelocatedLockReadFailureRetainsMigrationFacts(t *testing.T) {
-	root := t.TempDir()
-	legacy := filepath.Join(root, ".claude", "awf.lock")
-	if err := os.MkdirAll(filepath.Dir(legacy), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := (&manifest.Lock{AWFVersion: "0.19.0", SchemaVersion: 46, Files: map[string]manifest.Entry{}}).Save(legacy); err != nil {
-		t.Fatal(err)
-	}
-	_, err := Run(testContext(t), root, nil, nil, func(string) bool { return true }, func(string) string { return legacy }, testLiveSchemaRange, func(string) (string, int, error) { return "behind", 2, nil }, func(context.Context, string) (MigrationResult, error) {
-		testsupport.WriteFile(t, config.LockPath(root), "{")
-		return MigrationResult{Applied: []string{"relocate"}, Changes: []string{"moved config"}}, nil
-	}, func() string { return "current schema" })
-	if err == nil || !strings.Contains(err.Error(), "unexpected end of JSON input") {
-		t.Fatalf("error = %v, want malformed replacement lock failure", err)
-	}
-	var partial upgradeFailure
-	if !errors.As(err, &partial) || strings.Join(partial.changes, ",") != "moved config" {
-		t.Fatalf("failure = %#v, want retained migration fact", partial)
 	}
 }
 

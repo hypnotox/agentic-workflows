@@ -14,11 +14,20 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 )
 
+// FileMutation is a planned replacement. migrate owns the semantic plan, while
+// its caller owns the transaction that applies it.
+type FileMutation struct {
+	Path    string
+	Content []byte
+	Mode    os.FileMode
+	Remove  bool
+}
+
 // Migration is one ordered upgrade step for a supported live generation.
 type Migration struct {
 	To    int
 	Name  string
-	Apply func(context.Context, string, *Changes) error
+	Build func(context.Context, string, *Changes) ([]FileMutation, error)
 }
 
 // LiveSchemaFloor is the oldest source generation this binary can operate on.
@@ -31,6 +40,18 @@ var registry = []Migration{{To: LiveSchemaFloor, Name: "supported-schema-46"}}
 func Current() int                { return registry[len(registry)-1].To }
 func LiveSchemaRange() (int, int) { return LiveSchemaFloor, Current() }
 
+func validateRegistry() error {
+	if len(registry) == 0 || registry[0].To != LiveSchemaFloor {
+		return fmt.Errorf("migration registry must begin at supported floor %d", LiveSchemaFloor)
+	}
+	for i := 1; i < len(registry); i++ {
+		if registry[i].To <= registry[i-1].To {
+			return fmt.Errorf("migration registry is not strictly ascending at schema %d", registry[i].To)
+		}
+	}
+	return nil
+}
+
 // RetiredLayoutError identifies a removed layout without decoding its config.
 type RetiredLayoutError struct{ Layout string }
 
@@ -41,29 +62,45 @@ func (e *RetiredLayoutError) Is(target error) bool {
 	return target == manifest.ErrUnsupportedLiveSource
 }
 
-func currentConfigPresent(root string) bool {
+func currentConfigPresent(root string) (bool, error) {
 	_, err := os.Stat(config.ConfigPath(root))
-	return err == nil
+	if err == nil {
+		return true, nil
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	return false, fmt.Errorf("stat .awf/config.yaml: %w", err)
 }
-func retiredLayout(root string) string {
+func retiredLayout(root string) (string, error) {
 	for _, layout := range []struct{ path, name string }{
 		{filepath.Join(root, ".claude", "awf.yaml"), ".claude/awf.yaml"},
 		{filepath.Join(root, ".claude", "awf"), ".claude/awf/"},
 	} {
 		if _, err := os.Stat(layout.path); err == nil {
-			return layout.name
+			return layout.name, nil
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return "", fmt.Errorf("stat %s: %w", layout.name, err)
 		}
 	}
-	return ""
+	return "", nil
 }
 
 // Generation reads only a current-layout lock schema. Retired layouts receive a
 // typed refusal before their authority representation can be decoded.
 func Generation(root string) (int, error) {
-	if layout := retiredLayout(root); layout != "" && !currentConfigPresent(root) {
+	currentConfig, err := currentConfigPresent(root)
+	if err != nil {
+		return 0, err
+	}
+	layout, err := retiredLayout(root)
+	if err != nil {
+		return 0, err
+	}
+	if layout != "" && !currentConfig {
 		return 0, &RetiredLayoutError{Layout: layout}
 	}
-	if !currentConfigPresent(root) {
+	if !currentConfig {
 		return Current(), nil
 	}
 	generation, found, err := manifest.LoadSchemaOptional(config.LockPath(root))
@@ -91,9 +128,6 @@ func ProjectPresentFromFiles(has func(string) bool) bool {
 	return has(config.DirName+"/config.yaml") || has(config.DirName+"/awf.lock") || has(".claude/awf.yaml") || has(".claude/awf/config.yaml") || has(".claude/awf/awf.lock")
 }
 
-// AuthorityLockPath is always the current control lock. Retired layouts have
-// no live authority lock.
-func AuthorityLockPath(root string) string { return config.LockPath(root) }
 func registryTos() []int {
 	tos := make([]int, len(registry))
 	for i, m := range registry {
@@ -146,28 +180,35 @@ func GateState(root string) (string, int, error) {
 	return GateStateForGeneration(gen), gen, nil
 }
 
-// Upgrade executes only registered supported migrations. It never decodes or
-// writes a below-floor source.
-func Upgrade(ctx context.Context, root string) ([]string, []Change, error) {
+// Build produces only registered supported migrations. It never decodes a
+// below-floor source or writes the filesystem; the command composition maps
+// its file mutations to the upgrade journal.
+func Build(ctx context.Context, root string) ([]string, []Change, []FileMutation, error) {
+	if err := validateRegistry(); err != nil {
+		return nil, nil, nil, err
+	}
 	from, err := Generation(root)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	if err := manifest.ValidateLive(&manifest.Lock{SchemaVersion: from}, LiveSchemaFloor, Current()); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	changes := &Changes{}
 	var applied []string
+	var mutations []FileMutation
 	for _, m := range registry {
 		if m.To <= from {
 			continue
 		}
-		if err := m.Apply(ctx, root, changes); err != nil {
-			return applied, changes.Items(), fmt.Errorf("migration %q (to %d): %w", m.Name, m.To, err)
+		planned, err := m.Build(ctx, root, changes)
+		if err != nil {
+			return applied, changes.Items(), mutations, fmt.Errorf("migration %q (to %d): %w", m.Name, m.To, err)
 		}
+		mutations = append(mutations, planned...)
 		applied = append(applied, m.Name)
 	}
-	return applied, changes.Items(), nil
+	return applied, changes.Items(), mutations, nil
 }
 
 // IsRetiredLayout makes presentation boundaries distinguish layout refusal

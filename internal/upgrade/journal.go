@@ -251,11 +251,11 @@ func dropQuarantineRoot(root string) {
 }
 
 // applyOperation performs one operation's mutation according to its kind.
-func applyOperation(root string, op Operation) error {
+func applyOperation(root string, op Operation, operation journalOperation) error {
 	if op.residentTree() {
 		return quarantineTree(root, op)
 	}
-	return applyImage(root, op.Path, op.Replacement)
+	return operation.applyImage(root, op.Path, op.Replacement)
 }
 
 // imagesEqual reports whether two images are byte-for-byte and mode-for-mode
@@ -484,13 +484,13 @@ func commitTransactionWith(root string, ops []Operation, operation journalOperat
 	evidence := make([]Evidence, 0, len(ops)+1)
 	lockOp := ops[len(ops)-1]
 	for _, op := range ops[:len(ops)-1] {
-		if err := applyOperation(root, op); err != nil {
+		if err := applyOperation(root, op, operation); err != nil {
 			candidate := appendEvidence(evidence, Evidence{Action: "pending", Path: op.Path})
 			return rollBack(root, j, fmt.Errorf("apply %s: %w", op.Path, err), candidate, operation)
 		}
 		evidence = append(evidence, Evidence{Action: "applied", Path: op.Path})
 	}
-	if err := applyImage(root, lockOp.Path, lockOp.Replacement); err != nil {
+	if err := operation.applyImage(root, lockOp.Path, lockOp.Replacement); err != nil {
 		candidate := appendEvidence(evidence, Evidence{Action: "pending", Path: lockOp.Path})
 		return rollBack(root, j, fmt.Errorf("apply %s: %w", lockOp.Path, err), candidate, operation)
 	}

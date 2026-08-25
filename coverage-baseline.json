@@ -1,7 +1,7 @@
 {
   "version": 1,
   "modulePath": "github.com/hypnotox/agentic-workflows",
-  "universeSHA256": "1ba859b99fa79225917a1466d0d8b2e39852922ee633b18588d0733b940563bc",
+  "universeSHA256": "09833fa1359b535a972bb2fdfd8a397974693006da3b69ca13a1d51e328b1116",
   "repository": [
     {
       "identity": {
@@ -532,11 +532,11 @@
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 546,
+          "line": 542,
           "column": 16
         },
         "end": {
-          "line": 548,
+          "line": 544,
           "column": 3
         },
         "statements": 1
@@ -547,16 +547,16 @@
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 550,
+          "line": 546,
           "column": 16
         },
         "end": {
-          "line": 552,
+          "line": 548,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/main.go:489.16,491.3 1 in function writeStatus, beginning `{ // coverage-ignore: the validated Field is always a valid root node`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/main.go:485.16,487.3 1 in function writeStatus, beginning `{ // coverage-ignore: Prose validated the value and status is a fixed grammar-valid label`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
@@ -647,6 +647,21 @@
         "statements": 1
       },
       "reason": "Command-boundary compatibility presentation is exercised through the CLI refusal paths; this raw error-construction identity is an equivalent alternate semantic-error formatting arm and does not justify test-shaped production seams."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/upgrade.go",
+        "start": {
+          "line": 60,
+          "column": 35
+        },
+        "end": {
+          "line": 62,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "The live registry currently contains only the schema-46 floor entry, so command mapping of planned file mutations is reachable only when a future supported migration is registered; the migrate and upgrade package tests exercise that retained seam directly without test-only production registration."
     },
     {
       "identity": {
@@ -9367,11 +9382,11 @@
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 63,
+          "line": 70,
           "column": 16
         },
         "end": {
-          "line": 65,
+          "line": 72,
           "column": 3
         },
         "statements": 1
@@ -9382,11 +9397,11 @@
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 67,
+          "line": 74,
           "column": 16
         },
         "end": {
-          "line": 69,
+          "line": 76,
           "column": 3
         },
         "statements": 1
@@ -9397,11 +9412,11 @@
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 84,
+          "line": 91,
           "column": 16
         },
         "end": {
-          "line": 86,
+          "line": 93,
           "column": 3
         },
         "statements": 1
@@ -9412,11 +9427,11 @@
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 142,
+          "line": 192,
           "column": 21
         },
         "end": {
-          "line": 144,
+          "line": 194,
           "column": 4
         },
         "statements": 1
@@ -9427,109 +9442,61 @@
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 169,
+          "line": 214,
           "column": 16
         },
         "end": {
-          "line": 171,
+          "line": 216,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam.",
-      "movedFrom": {
-        "file": "internal/upgrade/operation.go",
-        "start": {
-          "line": 148,
-          "column": 16
-        },
-        "end": {
-          "line": 150,
-          "column": 3
-        },
-        "statements": 1
-      }
+      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam."
     },
     {
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 179,
+          "line": 224,
           "column": 17
         },
         "end": {
-          "line": 181,
+          "line": 226,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam.",
-      "movedFrom": {
-        "file": "internal/upgrade/operation.go",
-        "start": {
-          "line": 158,
-          "column": 17
-        },
-        "end": {
-          "line": 160,
-          "column": 4
-        },
-        "statements": 1
-      }
+      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam."
     },
     {
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 183,
+          "line": 228,
           "column": 17
         },
         "end": {
-          "line": 185,
+          "line": 230,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam.",
-      "movedFrom": {
-        "file": "internal/upgrade/operation.go",
-        "start": {
-          "line": 162,
-          "column": 17
-        },
-        "end": {
-          "line": 164,
-          "column": 4
-        },
-        "statements": 1
-      }
+      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam."
     },
     {
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 188,
+          "line": 233,
           "column": 10
         },
         "end": {
-          "line": 189,
+          "line": 234,
           "column": 105
         },
         "statements": 1
       },
-      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam.",
-      "movedFrom": {
-        "file": "internal/upgrade/operation.go",
-        "start": {
-          "line": 167,
-          "column": 10
-        },
-        "end": {
-          "line": 168,
-          "column": 105
-        },
-        "statements": 1
-      }
+      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam."
     },
     {
       "identity": {
@@ -10397,11 +10364,11 @@
         {
           "file": "cmd/awf/main.go",
           "start": {
-            "line": 546,
+            "line": 542,
             "column": 16
           },
           "end": {
-            "line": 548,
+            "line": 544,
             "column": 3
           },
           "statements": 1
@@ -10409,11 +10376,11 @@
         {
           "file": "cmd/awf/main.go",
           "start": {
-            "line": 550,
+            "line": 546,
             "column": 16
           },
           "end": {
-            "line": 552,
+            "line": 548,
             "column": 3
           },
           "statements": 1
@@ -10486,6 +10453,18 @@
           },
           "end": {
             "line": 58,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/upgrade.go",
+          "start": {
+            "line": 60,
+            "column": 35
+          },
+          "end": {
+            "line": 62,
             "column": 3
           },
           "statements": 1
@@ -11127,11 +11106,11 @@
         {
           "file": "internal/upgrade/operation.go",
           "start": {
-            "line": 63,
+            "line": 70,
             "column": 16
           },
           "end": {
-            "line": 65,
+            "line": 72,
             "column": 3
           },
           "statements": 1
@@ -11139,11 +11118,11 @@
         {
           "file": "internal/upgrade/operation.go",
           "start": {
-            "line": 67,
+            "line": 74,
             "column": 16
           },
           "end": {
-            "line": 69,
+            "line": 76,
             "column": 3
           },
           "statements": 1
@@ -11151,11 +11130,11 @@
         {
           "file": "internal/upgrade/operation.go",
           "start": {
-            "line": 84,
+            "line": 91,
             "column": 16
           },
           "end": {
-            "line": 86,
+            "line": 93,
             "column": 3
           },
           "statements": 1
@@ -11163,11 +11142,11 @@
         {
           "file": "internal/upgrade/operation.go",
           "start": {
-            "line": 142,
+            "line": 192,
             "column": 21
           },
           "end": {
-            "line": 144,
+            "line": 194,
             "column": 4
           },
           "statements": 1
@@ -11175,11 +11154,11 @@
         {
           "file": "internal/upgrade/operation.go",
           "start": {
-            "line": 169,
+            "line": 214,
             "column": 16
           },
           "end": {
-            "line": 171,
+            "line": 216,
             "column": 3
           },
           "statements": 1
@@ -11187,11 +11166,11 @@
         {
           "file": "internal/upgrade/operation.go",
           "start": {
-            "line": 179,
+            "line": 224,
             "column": 17
           },
           "end": {
-            "line": 181,
+            "line": 226,
             "column": 4
           },
           "statements": 1
@@ -11199,11 +11178,11 @@
         {
           "file": "internal/upgrade/operation.go",
           "start": {
-            "line": 183,
+            "line": 228,
             "column": 17
           },
           "end": {
-            "line": 185,
+            "line": 230,
             "column": 4
           },
           "statements": 1
@@ -11211,11 +11190,11 @@
         {
           "file": "internal/upgrade/operation.go",
           "start": {
-            "line": 188,
+            "line": 233,
             "column": 10
           },
           "end": {
-            "line": 189,
+            "line": 234,
             "column": 105
           },
           "statements": 1
@@ -15841,26 +15820,26 @@
     {
       "directive": {
         "file": "cmd/awf/main.go",
-        "line": 546,
-        "targetLine": 546,
+        "line": 542,
+        "targetLine": 542,
         "reason": "Prose validated the value and status is a fixed grammar-valid label",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at cmd/awf/main.go:546 is `field, err := presentation.NewField(\"status\", value)` (cmd/awf/main.go:545). Within `func writeStatus(stdout io.Writer, status string) error` at cmd/awf/main.go:540, source review establishes Prose validated the value and status is a fixed grammar-valid label; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err != nil {` at cmd/awf/main.go:542 is `field, err := presentation.NewField(\"status\", value)` (cmd/awf/main.go:541). Within `func writeStatus(stdout io.Writer, status string) error` at cmd/awf/main.go:536, source review establishes Prose validated the value and status is a fixed grammar-valid label; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
         "file": "cmd/awf/main.go",
-        "line": 550,
-        "targetLine": 550,
+        "line": 546,
+        "targetLine": 546,
         "reason": "the validated Field is always a valid root node",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At cmd/awf/main.go:550, `if err != nil {` is guarded by the preceding `document, err := presentation.NewDocument(field)` at cmd/awf/main.go:549; in `func writeStatus(stdout io.Writer, status string) error` (cmd/awf/main.go:540), the predecessor invariant is the validated Field is always a valid root node. Only violation of that closed state reaches this guard."
+      "evidence": "At cmd/awf/main.go:546, `if err != nil {` is guarded by the preceding `document, err := presentation.NewDocument(field)` at cmd/awf/main.go:545; in `func writeStatus(stdout io.Writer, status string) error` (cmd/awf/main.go:536), the predecessor invariant is the validated Field is always a valid root node. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
@@ -22945,74 +22924,74 @@
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 63,
-        "targetLine": 63,
+        "line": 70,
+        "targetLine": 70,
         "reason": "Recover validates journal evidence before producing its Outcome, so its terminal evidence always lowers to literals",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The directive at internal/upgrade/operation.go:63 follows the validated closed invariant stated in source: Recover validates journal evidence before producing its Outcome, so its terminal evidence always lowers to literals. Its error arm requires an invariant breach, not a supported input."
+      "evidence": "`func RecoverOperation(root string, present ProjectPresent) (OperationOutcome, error)` begins at internal/upgrade/operation.go:61; its branch `if err != nil {` at internal/upgrade/operation.go:66 follows `mutation, err := outcome.RecoveredMutation()` at internal/upgrade/operation.go:69. That flow establishes Recover validates journal evidence before producing its Outcome, so its terminal evidence always lowers to literals, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 67,
-        "targetLine": 67,
+        "line": 74,
+        "targetLine": 74,
         "reason": "RecoveredMutation supplies the fixed valid status and only validated journal literals",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The directive at internal/upgrade/operation.go:67 follows the validated closed invariant stated in source: RecoveredMutation supplies the fixed valid status and only validated journal literals. Its error arm requires an invariant breach, not a supported input."
+      "evidence": "The immediate predecessor for `if err != nil {` at internal/upgrade/operation.go:74 is `document, err := mutation.Document()` (internal/upgrade/operation.go:73). Within `func RecoverOperation(root string, present ProjectPresent) (OperationOutcome, error)` at internal/upgrade/operation.go:61, source review establishes RecoveredMutation supplies the fixed valid status and only validated journal literals; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 169,
-        "targetLine": 169,
+        "line": 214,
+        "targetLine": 214,
         "reason": "LoadLiveOptional parses and validates the unchanged authority construction immediately above",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The directive at internal/upgrade/operation.go:148 follows the validated closed invariant stated in source: LoadLiveOptional parses and validates the unchanged authority construction immediately above. Its error arm requires an invariant breach, not a supported input."
+      "evidence": "The directive at internal/upgrade/operation.go:214 follows the validated closed invariant stated in source: LoadLiveOptional parses and validates the unchanged authority construction immediately above. Its error arm requires an invariant breach, not a supported input."
     },
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 179,
-        "targetLine": 179,
+        "line": 224,
+        "targetLine": 224,
         "reason": "FinalUpgrade constructs its terminal evidence from validated transaction operations",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func Run(ctx context.Context, root string, sync Sync, gate Gate, present ProjectPresent, authorityPath AuthorityLockPath, schemaGate SchemaGate, schemaAhead SchemaAheadError, migrate Migration, currentSchemaChange CurrentSchemaChange) (OperationOutcome, error)` begins at internal/upgrade/operation.go:79; its branch `if err != nil {` at internal/upgrade/operation.go:122 follows `mutation, err := outcome.CompletedMutation()` at internal/upgrade/operation.go:121. That flow establishes FinalUpgrade constructs its terminal evidence from validated transaction operations, making the defensive return unreachable without an invariant breach."
+      "evidence": "Within Run, the branch at internal/upgrade/operation.go:224 follows outcome.CompletedMutation after FinalUpgrade returned validated transaction evidence. That closed construction makes the defensive propagation arm unreachable without an invariant breach."
     },
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 183,
-        "targetLine": 183,
+        "line": 228,
+        "targetLine": 228,
         "reason": "CompletedMutation supplies the fixed valid status and only validated journal literals",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/upgrade/operation.go:126 is `document, err := mutation.Document()` (internal/upgrade/operation.go:125). Within `func Run(ctx context.Context, root string, sync Sync, gate Gate, present ProjectPresent, authorityPath AuthorityLockPath, schemaGate SchemaGate, schemaAhead SchemaAheadError, migrate Migration, currentSchemaChange CurrentSchemaChange) (OperationOutcome, error)` at internal/upgrade/operation.go:79, source review establishes CompletedMutation supplies the fixed valid status and only validated journal literals; this is therefore a closed-state fail-closed branch."
+      "evidence": "Within Run, the branch at internal/upgrade/operation.go:228 follows mutation.Document after CompletedMutation supplied fixed valid status and validated journal literals. That closed construction makes the defensive propagation arm unreachable without an invariant breach."
     },
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 188,
-        "targetLine": 188,
+        "line": 233,
+        "targetLine": 233,
         "reason": "AuthorityState returns only Bridge or Permanent when its validation succeeds",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func Run(ctx context.Context, root string, sync Sync, gate Gate, present ProjectPresent, authorityPath AuthorityLockPath, schemaGate SchemaGate, schemaAhead SchemaAheadError, migrate Migration, currentSchemaChange CurrentSchemaChange) (OperationOutcome, error)` begins at internal/upgrade/operation.go:79; its branch `default:` at internal/upgrade/operation.go:131 follows `case manifest.AuthorityPermanent:` at internal/upgrade/operation.go:130. That flow establishes AuthorityState returns only Bridge or Permanent when its validation succeeds, making the defensive return unreachable without an invariant breach."
+      "evidence": "Within Run, the default at internal/upgrade/operation.go:233 follows AuthorityState validation, whose closed result set is Bridge or Permanent. Reaching the default requires an invariant breach."
     },
     {
       "directive": {

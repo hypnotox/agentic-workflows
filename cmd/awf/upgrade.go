@@ -30,7 +30,7 @@ func runRecover(root string, stdout io.Writer) error {
 }
 
 func runUpgrade(ctx context.Context, root string, stdout io.Writer) error {
-	outcome, err := upgrade.Run(ctx, root, upgradeSyncMutation, gate, migrate.ProjectPresent, migrate.AuthorityLockPath, migrate.LiveSchemaRange, migrate.GateState, upgradeMigration, upgradeCurrentSchemaChange)
+	outcome, err := upgrade.Run(ctx, root, upgradeSyncMutation, gate, migrate.ProjectPresent, migrate.LiveSchemaRange, migrate.GateState, upgradeMigration, upgradeCurrentSchemaChange)
 	if err != nil {
 		return presentUpgradeRefusal(err)
 	}
@@ -51,12 +51,16 @@ func presentUpgradeRefusal(err error) error {
 }
 
 func upgradeMigration(ctx context.Context, root string) (upgrade.MigrationResult, error) {
-	applied, changes, err := migrate.Upgrade(ctx, root)
+	applied, changes, planned, err := migrate.Build(ctx, root)
 	texts := make([]string, len(changes))
 	for i, change := range changes {
 		texts[i] = change.Text
 	}
-	return upgrade.MigrationResult{Applied: applied, Changes: texts}, err
+	mutations := make([]upgrade.FileMutation, len(planned))
+	for i, mutation := range planned {
+		mutations[i] = upgrade.FileMutation{Path: mutation.Path, Content: mutation.Content, Mode: mutation.Mode, Remove: mutation.Remove}
+	}
+	return upgrade.MigrationResult{Applied: applied, Changes: texts, Mutations: mutations}, err
 }
 
 func upgradeCurrentSchemaChange() string { return migrate.CurrentSchemaChange().Text }

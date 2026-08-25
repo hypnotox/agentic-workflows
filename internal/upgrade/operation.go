@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
@@ -23,9 +24,6 @@ type Gate func(context.Context, string) error
 // ProjectPresent reports whether root contains an awf project.
 type ProjectPresent func(string) bool
 
-// AuthorityLockPath resolves the active migration authority lock for root.
-type AuthorityLockPath func(string) string
-
 // SchemaGate reports root's migration relation and schema generation.
 type SchemaGate func(string) (string, int, error)
 
@@ -38,10 +36,19 @@ type Migration func(context.Context, string) (MigrationResult, error)
 // CurrentSchemaChange describes stamping the current schema generation.
 type CurrentSchemaChange func() string
 
+// FileMutation is one journal-owned replacement or removal.
+type FileMutation struct {
+	Path    string
+	Content []byte
+	Mode    os.FileMode
+	Remove  bool
+}
+
 // MigrationResult records applied migration steps and user-facing changes.
 type MigrationResult struct {
-	Applied []string
-	Changes []string
+	Applied   []string
+	Changes   []string
+	Mutations []FileMutation
 }
 
 // OperationOutcome is the semantic presentation result of an upgrade operation.
@@ -90,8 +97,51 @@ func requireCurrentConfig(root string) error {
 	return nil
 }
 
-func reloadCurrentAuthority(root, lockPath string, floor, current int) (*manifest.Lock, error) {
-	lock, found, err := manifest.LoadLiveOptional(lockPath, floor, current)
+// commitMigration converts planned migration file replacements into the existing
+// journal transaction. The replacement current-schema lock is deliberately the
+// final operation, making rollback and --recover use the same safety boundary.
+func commitMigration(root string, lock *manifest.Lock, current int, mutations []FileMutation) (Outcome, error) {
+	return commitMigrationWith(root, lock, current, mutations, productionJournalOperation())
+}
+
+func commitMigrationWith(root string, lock *manifest.Lock, current int, mutations []FileMutation, operation journalOperation) (Outcome, error) {
+	seen := make(map[string]bool, len(mutations))
+	ops := make([]Operation, 0, len(mutations)+1)
+	for _, mutation := range mutations {
+		if mutation.Path == LockRel() || !safeRelPath(mutation.Path) || seen[mutation.Path] {
+			return Outcome{}, fmt.Errorf("invalid planned migration path %q", mutation.Path)
+		}
+		if !mutation.Remove && mutation.Mode == 0 {
+			return Outcome{}, fmt.Errorf("planned migration path %q has no mode", mutation.Path)
+		}
+		if mutation.Remove && (mutation.Mode != 0 || len(mutation.Content) != 0) {
+			return Outcome{}, fmt.Errorf("planned removal %q carries replacement data", mutation.Path)
+		}
+		seen[mutation.Path] = true
+		prior, err := imageOf(root, mutation.Path)
+		if err != nil {
+			return Outcome{}, fmt.Errorf("read planned migration path %s: %w", mutation.Path, err)
+		}
+		replacement := Image{Present: !mutation.Remove, Mode: uint32(mutation.Mode.Perm()), Content: mutation.Content}
+		ops = append(ops, Operation{Path: mutation.Path, Prior: prior, Replacement: replacement})
+	}
+	sort.Slice(ops, func(i, j int) bool { return ops[i].Path < ops[j].Path })
+	finalLock := lock.Clone()
+	finalLock.SchemaVersion = current
+	bytes, err := finalLock.Marshal()
+	if err != nil {
+		return Outcome{}, err
+	}
+	prior, err := imageOf(root, LockRel())
+	if err != nil {
+		return Outcome{}, err
+	}
+	ops = append(ops, Operation{Path: LockRel(), Prior: prior, Replacement: Image{Present: true, Mode: 0o644, Content: bytes}})
+	return commitTransactionWith(root, ops, operation)
+}
+
+func reloadCurrentAuthority(root string, floor, current int) (*manifest.Lock, error) {
+	lock, found, err := manifest.LoadLiveOptional(config.LockPath(root), floor, current)
 	if err != nil {
 		return nil, err
 	}
@@ -108,11 +158,11 @@ func reloadCurrentAuthority(root, lockPath string, floor, current int) (*manifes
 // Run executes the normal upgrade use case. Migration, authority and journal
 // coordination live here; cmd/awf supplies only its concrete terminal sync and
 // gate dependencies.
-func Run(ctx context.Context, root string, sync Sync, gate Gate, present ProjectPresent, authorityPath AuthorityLockPath, liveSchemaRange LiveSchemaRange, schemaGate SchemaGate, migrate Migration, currentSchemaChange CurrentSchemaChange) (OperationOutcome, error) {
+func Run(ctx context.Context, root string, sync Sync, gate Gate, present ProjectPresent, liveSchemaRange LiveSchemaRange, schemaGate SchemaGate, migrate Migration, currentSchemaChange CurrentSchemaChange) (OperationOutcome, error) {
 	if !present(root) {
 		return OperationOutcome{}, errors.New("not an awf project (run `awf init`)")
 	}
-	lockPath := authorityPath(root)
+	lockPath := config.LockPath(root)
 	floor, current := liveSchemaRange()
 	// A retired layout has neither current control file. Classify it before
 	// loading authority so its removed representation is never decoded.
@@ -133,7 +183,7 @@ func Run(ctx context.Context, root string, sync Sync, gate Gate, present Project
 			return OperationOutcome{}, err
 		}
 	}
-	lock, found, err := manifest.LoadLiveOptional(lockPath, floor, current)
+	_, found, err := manifest.LoadLiveOptional(lockPath, floor, current)
 	if err != nil {
 		return OperationOutcome{}, err
 	}
@@ -147,23 +197,18 @@ func Run(ctx context.Context, root string, sync Sync, gate Gate, present Project
 		}
 		return OperationOutcome{}, errors.New("not an awf project")
 	}
-	currentAuthority := lockPath == config.LockPath(root)
-	if currentAuthority {
-		if err := requireCurrentConfig(root); err != nil {
-			return OperationOutcome{}, err
-		}
-		if schemaGate != nil {
-			state, _, err = schemaGate(root)
-			if err != nil {
-				return OperationOutcome{}, err
-			}
-		}
+	if err := requireCurrentConfig(root); err != nil {
+		return OperationOutcome{}, err
 	}
-	if currentAuthority {
-		lock, err = reloadCurrentAuthority(root, lockPath, floor, current)
+	if schemaGate != nil {
+		state, _, err = schemaGate(root)
 		if err != nil {
 			return OperationOutcome{}, err
 		}
+	}
+	lock, err := reloadCurrentAuthority(root, floor, current)
+	if err != nil {
+		return OperationOutcome{}, err
 	}
 	authority, err := lock.AuthorityState()
 	if err != nil { // coverage-ignore: LoadLiveOptional parses and validates the unchanged authority construction immediately above
@@ -194,21 +239,10 @@ func Run(ctx context.Context, root string, sync Sync, gate Gate, present Project
 		return OperationOutcome{}, newUpgradeFailure(applied, changes, presentation.Mutation{}, err)
 	}
 	schemaCurrent := state == "ok"
-	if lockPath != config.LockPath(root) {
-		if _, found, err := manifest.LoadLiveOptional(config.LockPath(root), floor, current); err != nil {
-			return OperationOutcome{}, newUpgradeFailure(applied, changes, presentation.Mutation{}, err)
-		} else if !found {
-			lock.SchemaVersion = 14
-			if err := lock.Save(config.LockPath(root)); err != nil {
-				return OperationOutcome{}, newUpgradeFailure(applied, changes, presentation.Mutation{}, err)
-			}
-			changes = append(changes, "created and schema-stamped .awf/awf.lock")
-			completion, completionErr := migrate(ctx, root)
-			applied = append(applied, completion.Applied...)
-			changes = append(changes, completion.Changes...)
-			if completionErr != nil {
-				return OperationOutcome{}, newUpgradeFailure(applied, changes, presentation.Mutation{}, completionErr)
-			}
+	if len(migration.Mutations) > 0 || len(applied) > 0 {
+		journalOutcome, journalErr := commitMigration(root, lock, current, migration.Mutations)
+		if journalErr != nil {
+			return OperationOutcome{}, newJournalFailure("migration has not reached terminal state", journalOutcome, journalErr)
 		}
 	}
 	if err := gate(ctx, root); err != nil {

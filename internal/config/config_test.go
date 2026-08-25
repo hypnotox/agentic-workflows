@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
-	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 // writeConfig writes config.yaml into a fresh awf dir and returns that dir.
@@ -184,11 +183,8 @@ func TestRootAndSidecarRetiredKeysAreRejected(t *testing.T) {
 }
 
 // invariant: config/configuration:awf-config-root (TestLoadReadsTreeRoot)
-// TestLoadReadsTreeRoot pins the config root to .awf/config.yaml and
-// co-owns (with the migrate package's TestLegacyReadOnlyInMigrate, ADR-0010
-// inv: legacy-read-isolation) the exemption that ONLY internal/migrate reads the
-// legacy .claude/awf.yaml: the import-graph assertion below scans the repo and
-// fails if any non-migrate, non-test source references the legacy path.
+// TestLoadReadsTreeRoot pins the config root to .awf/config.yaml. Retired
+// layouts are migration-owned presence-only refusals, not config inputs.
 func TestLoadReadsTreeRoot(t *testing.T) {
 	root := t.TempDir()
 	awfDir := filepath.Join(root, ".awf")
@@ -212,29 +208,6 @@ func TestLoadReadsTreeRoot(t *testing.T) {
 	if c.Prefix != "tree-root" {
 		t.Errorf("Load read the wrong file: prefix = %q, want tree-root", c.Prefix)
 	}
-
-	repo := testsupport.RepoRoot(t)
-	legacyRefs := scanLegacyRefs(t, repo)
-	if len(legacyRefs) != 0 {
-		t.Errorf("only internal/migrate may reference the legacy .claude/awf.yaml; found refs in: %v", legacyRefs)
-	}
-}
-
-// scanLegacyRefs returns non-test, non-migrate Go files that mention the legacy
-// awf.yaml filename. The repo-walk boundary (hidden trees, nested checkouts,
-// test files) is owned by testsupport.WalkRepoSources.
-func scanLegacyRefs(t *testing.T, repo string) []string {
-	t.Helper()
-	var hits []string
-	testsupport.WalkRepoSources(t, repo, func(rel string, body []byte) {
-		if strings.HasPrefix(rel, "internal/migrate/") {
-			return
-		}
-		if strings.Contains(string(body), "awf.yaml") {
-			hits = append(hits, rel)
-		}
-	})
-	return hits
 }
 
 func TestSidecarReadsDataSections(t *testing.T) {

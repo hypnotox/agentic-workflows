@@ -419,10 +419,6 @@ func guardProjectState(ctx context.Context, root string, cmd clispec.Command, to
 	}
 }
 
-// authorityLockPath resolves the lock belonging to the active config layout so
-// pre-tree adopters can still prove permanent authority before migration.
-func authorityLockPath(root string) string { return migrate.AuthorityLockPath(root) }
-
 // projectGuardState captures the presence, journal, and lock used by the
 // command-state guard. A staged check derives all three from the index snapshot;
 // every other command derives all three from the working project.
@@ -442,7 +438,7 @@ func projectGuardState(ctx context.Context, root string, staged bool) (present b
 			return false, nil, false, nil, false, false, false, nil, fmt.Errorf("stat .awf/awf.lock: %w", lockErr)
 		}
 		currentLock = lockErr == nil
-		lock, lockFound, loadErr = manifest.LoadLiveOptional(authorityLockPath(root), migrate.LiveSchemaFloor, migrate.Current())
+		lock, lockFound, loadErr = manifest.LoadLiveOptional(config.LockPath(root), migrate.LiveSchemaFloor, migrate.Current())
 		return
 	}
 	tree, err := stagedTree(ctx, root)
