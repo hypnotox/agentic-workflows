@@ -120,8 +120,7 @@ func TestVersionAuthority(t *testing.T) {
 	}
 }
 
-// invariant: config/migrations-and-locks:archive-root-upgrade-boundary (TestArchiveRootUpgradeBoundary)
-func TestArchiveRootUpgradeBoundary(t *testing.T) {
+func TestSchema41RefusesBeforeEffortOrUpgrade(t *testing.T) {
 	binary := filepath.Join(t.TempDir(), "awf")
 	build := exec.CommandContext(testContext(t), "go", "build", "-o", binary, "./cmd/awf")
 	build.Dir = repoRootDir(t)
@@ -142,8 +141,8 @@ func TestArchiveRootUpgradeBoundary(t *testing.T) {
 	if err := lock.Save(lockPath); err != nil {
 		t.Fatal(err)
 	}
-	if output, err := run(root, "effort", "list"); err == nil || !strings.Contains(output, "awf upgrade") {
-		t.Fatalf("generation-41 effort command = %v\n%s; want upgrade gate", err, output)
+	if output, err := run(root, "effort", "list"); err == nil || !strings.Contains(output, "below live floor 46") || strings.Contains(output, "run awf upgrade") {
+		t.Fatalf("generation-41 effort command = %v\n%s; want unsupported live-source refusal", err, output)
 	}
 
 	before := snapshotVersionFixture(t, root)

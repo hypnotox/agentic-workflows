@@ -315,7 +315,7 @@ func guardProjectState(ctx context.Context, root string, cmd clispec.Command, to
 		return nil
 	}
 	staged := top.Name == "check" && (sub == "staged" || strings.HasPrefix(sub, "staged "))
-	present, journal, journalFound, lock, found, loadErr, err := projectGuardState(ctx, root, staged)
+	present, journal, journalFound, lock, found, currentConfig, currentLock, loadErr, err := projectGuardState(ctx, root, staged)
 	if err != nil {
 		return err
 	}
@@ -339,16 +339,31 @@ func guardProjectState(ctx context.Context, root string, cmd clispec.Command, to
 		}
 		return errors.New("a current-state upgrade journal is present; run `awf upgrade --recover` before any other command")
 	}
-	// No journal: classify the lock before any authority-consuming command can
-	// mutate or interpret the project.
+	// No journal: admit complete live authority before any bridge or permanent
+	// authority interpretation. Retired layouts and below-floor locks cannot
+	// reach AuthorityState, and an incomplete current control pair is partial
+	// authority rather than missing bridge provenance.
 	if loadErr != nil {
 		return fmt.Errorf("invalid authority: restore .awf/awf.lock from version control: %w", loadErr)
 	}
-	if !found {
-		if staged && selectsStagedDrift(top, sub) {
-			return nil
+	if currentConfig != currentLock {
+		return presentUpgradeRefusal(&manifest.PartialAuthorityError{Config: currentConfig, Lock: currentLock})
+	}
+	if currentConfig {
+		if err := manifest.ValidateLive(lock, migrate.LiveSchemaFloor, migrate.Current()); err != nil {
+			return presentLiveSourceRefusal(err)
 		}
-		return errors.New("pre-tracking authority: use the bridge release to attest before continuing")
+	} else {
+		if staged {
+			return fmt.Errorf("retired project authority is below live floor %d; restore a supported .awf control pair or use a release that supports the retired layout", migrate.LiveSchemaFloor)
+		}
+		if _, err := migrate.CheckLive(root); err != nil {
+			return presentGateRefusal(err)
+		}
+		return fmt.Errorf("retired project layout is unsupported at live floor %d; restore a supported .awf control pair", migrate.LiveSchemaFloor)
+	}
+	if !found { // coverage-ignore: the current lock was statted above; absence now requires a concurrent namespace change
+		return presentUpgradeRefusal(&manifest.PartialAuthorityError{Config: currentConfig, Lock: false})
 	}
 	state, stateErr := lock.AuthorityState()
 	if stateErr != nil { // coverage-ignore: projectGuardState loaded and validated this unchanged lock
@@ -377,23 +392,29 @@ func authorityLockPath(root string) string { return migrate.AuthorityLockPath(ro
 // projectGuardState captures the presence, journal, and lock used by the
 // command-state guard. A staged check derives all three from the index snapshot;
 // every other command derives all three from the working project.
-func projectGuardState(ctx context.Context, root string, staged bool) (present bool, journal []byte, journalFound bool, lock *manifest.Lock, lockFound bool, loadErr, err error) {
+func projectGuardState(ctx context.Context, root string, staged bool) (present bool, journal []byte, journalFound bool, lock *manifest.Lock, lockFound, currentConfig, currentLock bool, loadErr, err error) {
 	if !staged {
 		present = migrate.ProjectPresent(root)
 		if journalFound, err = upgrade.JournalPresent(root); err != nil {
-			return false, nil, false, nil, false, nil, err
+			return false, nil, false, nil, false, false, false, nil, err
 		}
+		_, configErr := os.Stat(config.ConfigPath(root))
+		currentConfig = configErr == nil
+		_, lockErr := os.Stat(config.LockPath(root))
+		currentLock = lockErr == nil
 		lock, lockFound, loadErr = manifest.LoadOptional(authorityLockPath(root))
 		return
 	}
 	tree, err := stagedTree(ctx, root)
 	if err != nil {
-		return false, nil, false, nil, false, nil, err
+		return false, nil, false, nil, false, false, false, nil, err
 	}
 	present = migrate.ProjectPresentFromFiles(func(path string) bool {
 		_, ok := tree.Lookup(path)
 		return ok
 	})
+	_, currentConfig = tree.Lookup(config.DirName + "/config.yaml")
+	_, currentLock = tree.Lookup(config.DirName + "/awf.lock")
 	if file, ok := tree.Lookup(config.DirName + "/current-state-upgrade.journal"); ok {
 		journal, journalFound = file.Bytes, true
 	}

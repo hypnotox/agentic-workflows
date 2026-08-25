@@ -278,9 +278,40 @@ func GateStateForGeneration(gen int) string {
 	return gateStateFor(gen, Current(), registryTos())
 }
 
+// UpgradeRequiredError identifies a supported live generation that only upgrade
+// may migrate. It carries facts only; the command boundary owns recovery prose.
+type UpgradeRequiredError struct{ Generation, Current int }
+
+func (e *UpgradeRequiredError) Error() string {
+	return fmt.Sprintf("schema %d requires migration to schema %d", e.Generation, e.Current)
+}
+
+// CheckLiveGeneration admits only the live schema range and reports whether the
+// selected generation requires an executable registered migration. A no-op gap
+// remains admissible because ordinary sync owns its schema autobump.
+func CheckLiveGeneration(gen int) error {
+	if err := manifest.ValidateLive(&manifest.Lock{SchemaVersion: gen}, LiveSchemaFloor, Current()); err != nil {
+		return err
+	}
+	if GateStateForGeneration(gen) == "gate" {
+		return &UpgradeRequiredError{Generation: gen, Current: Current()}
+	}
+	return nil
+}
+
+// CheckLive classifies the working project's generation through migration-owned
+// layout and registry policy.
+func CheckLive(root string) (int, error) {
+	gen, err := Generation(root)
+	if err != nil {
+		return 0, err
+	}
+	return gen, CheckLiveGeneration(gen)
+}
+
 // GateState classifies a project ("ok" | "gate" | "autobump" | "ahead") and
-// returns the generation it classified, so callers need only one Generation
-// call for both the state and their messages.
+// returns the generation it classified, so upgrade needs only one Generation
+// call for both migration sequencing and current-schema presentation.
 func GateState(root string) (string, int, error) {
 	gen, err := Generation(root)
 	if err != nil {

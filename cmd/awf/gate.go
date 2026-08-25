@@ -31,12 +31,9 @@ func normalizeSemver(s string) (string, bool) { return manifest.NormalizeSemver(
 // tolerance.
 // touches-state: tooling/cli:version-compat-gate - binary-vs-config version gate; proof in gate_test.go
 func gate(ctx context.Context, root string) error {
-	state, gen, err := migrate.GateState(root)
+	_, err := migrate.CheckLive(root)
 	if err != nil {
-		return err
-	}
-	if err := gateGeneration(state, gen); err != nil {
-		return err
+		return presentGateRefusal(err)
 	}
 	if err := project.ValidateSchemaMinimumVersion(migrate.Current(), awfVersion()); err != nil { // coverage-ignore: compile-time schema map and version are exhaustively validated in project tests; this remains fail-closed for a future registration mistake
 		return err
@@ -58,9 +55,8 @@ func gateStaged(ctx context.Context, root string) error {
 	if err != nil {
 		return err
 	}
-	gen := lock.SchemaVersion
-	if err := gateGeneration(migrate.GateStateForGeneration(gen), gen); err != nil {
-		return err
+	if err := migrate.CheckLiveGeneration(lock.SchemaVersion); err != nil {
+		return presentGateRefusal(err)
 	}
 	if err := project.ValidateSchemaMinimumVersion(migrate.Current(), awfVersion()); err != nil { // coverage-ignore: compile-time schema map and version are exhaustively validated in project tests; this remains fail-closed for a future registration mistake
 		return err
@@ -69,14 +65,25 @@ func gateStaged(ctx context.Context, root string) error {
 	return gateLockVersion(lockV, binV, ok)
 }
 
-func gateGeneration(state string, gen int) error {
-	switch state {
-	case "gate":
-		return fmt.Errorf("config schema is behind (generation %d < %d); run awf upgrade", gen, migrate.Current())
-	case "ahead":
-		return schemaAheadError(gen)
+func presentGateRefusal(err error) error {
+	var required *migrate.UpgradeRequiredError
+	if errors.As(err, &required) {
+		return fmt.Errorf("config schema is behind (generation %d < %d); run awf upgrade", required.Generation, required.Current)
 	}
-	return nil
+	return presentLiveSourceRefusal(err)
+}
+
+// presentLiveSourceRefusal is the shared command boundary for live-source
+// compatibility guidance. Semantic classifiers below cmd carry facts only.
+func presentLiveSourceRefusal(err error) error {
+	var live *manifest.LiveSourceError
+	if !errors.As(err, &live) {
+		return err
+	}
+	if live.Schema < live.Floor {
+		return fmt.Errorf("%w: use a release that supports schema %d, then upgrade to schema %d", err, live.Schema, live.Floor)
+	}
+	return fmt.Errorf("%w: update your pinned awf to a supporting release for schema %d", err, live.Schema)
 }
 
 func gateLockVersion(lockV, binV string, ok bool) error {
@@ -117,14 +124,6 @@ func stagedLock(ctx context.Context, root string) (*manifest.Lock, error) {
 		return nil, fmt.Errorf("parse staged lock: %w", err)
 	}
 	return lock, nil
-}
-
-// schemaAheadError is the single "config schema ahead of this binary" message,
-// shared by gate(ctx, ) and runUpgrade so the guidance cannot drift between the two
-// entry points that classify the ahead state.
-func schemaAheadError(gen int) error {
-	return fmt.Errorf("awf %s is behind this project's config (schema generation %d > %d); update your pinned awf",
-		awfVersion(), gen, migrate.Current())
 }
 
 // lockVsBinary returns the normalized lock awfVersion and binary version for the

@@ -14,6 +14,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"github.com/hypnotox/agentic-workflows/internal/upgrade"
@@ -434,6 +435,43 @@ func TestRunUpgradeRefusesBelowFloorWithoutMutation(t *testing.T) {
 		t.Fatalf("below-floor refusal presentation = %q, want recovery guidance", err)
 	}
 	assertUpgradeFixtureUnchanged(t, root, before)
+}
+
+func TestRunUpgradePresentsAheadAndPartialAuthorityRefusals(t *testing.T) {
+	t.Run("schema ahead", func(t *testing.T) {
+		root := scaffoldProject(t)
+		lock, err := manifest.Load(config.LockPath(root))
+		if err != nil {
+			t.Fatal(err)
+		}
+		lock.SchemaVersion = migrate.Current() + 1
+		if err := lock.Save(config.LockPath(root)); err != nil {
+			t.Fatal(err)
+		}
+		err = runUpgrade(testContext(t), root, io.Discard)
+		if !errors.Is(err, manifest.ErrUnsupportedLiveSource) || !strings.Contains(err.Error(), "update your pinned awf") {
+			t.Fatalf("ahead refusal = %v", err)
+		}
+	})
+
+	for _, tc := range []struct {
+		name   string
+		remove string
+	}{
+		{name: "config only", remove: ".awf/awf.lock"},
+		{name: "lock only", remove: ".awf/config.yaml"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := scaffoldProject(t)
+			if err := os.Remove(filepath.Join(root, filepath.FromSlash(tc.remove))); err != nil {
+				t.Fatal(err)
+			}
+			err := runUpgrade(testContext(t), root, io.Discard)
+			if err == nil || !strings.Contains(err.Error(), "restore the complete .awf/config.yaml and .awf/awf.lock control pair") {
+				t.Fatalf("partial refusal = %v", err)
+			}
+		})
+	}
 }
 
 func TestRunUpgradeMigrationError(t *testing.T) {

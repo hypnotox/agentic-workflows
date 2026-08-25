@@ -347,3 +347,18 @@ Fresh review after ADR amendment found additional current-authority and generate
 Post-review settlement at `ae3e51763`: Phase 1 now refuses below-floor and incomplete live authority before bridge or migration dispatch, keeps the bridge path only as a Phase 2 deletion candidate, and treats every `.awf/**` residue without the complete control pair as historical partial authority. Audit owns the read-only schema-3-through-46 decoder and accepts unknown historical lock fields without importing live migration or manifest decoding. Semantic classifiers carry facts only; CLI and audit presentation boundaries render recovery direction.
 
 Verification completed after settlement: focused `go test ./cmd/awf ./internal/project ./internal/upgrade ./internal/audit ./internal/migrate`, full `go test ./...`, `./awf check` (warnings only: advisory verification-discipline tag concentration), and `./x gate` all passed. The whole-module coverage profile was regenerated through `cmd/covercheck --generate-policy`; `coverage-baseline.json` records the measured 96.8% raw and 99.9% filtered profile. `coverage-review.json` admits only exact uncovered defensive error-formatting and legacy package-only migration identities: decoder malformed-formatting arms, command/transaction closed lowering arms, replay/current-state fault-invariant arms, and schemas retired from the schema-46 live route. Reachable partial authority, horizon, malformed decoder, unknown-field, and no-write paths are covered rather than ignored.
+
+Renewed Phase 1 settlement after review: command admission now rejects below-floor, retired-layout,
+and partial authority before bridge or AuthorityState dispatch; staged HEAD emptiness examines the
+complete `.awf/**` tree; gate and upgrade presentation share migration-owned live classification;
+and audit owns its refusal presentation. Red-first command, audit, migrate, upgrade, current-state,
+and staged-tree tests cover every supported or input-reachable branch. The obsolete archive-root
+migration claim was removed in this settlement because the strict floor made its live-upgrade
+promise false; the retained bridge and migration implementations remain Phase 2 scope.
+
+Coverage reconciliation added direct tests for audit passthrough, future supported migration,
+retired-layout and partial-authority refusal, staged retired authority, and init loader-open failure.
+Only shifted closed-invariant branches, concurrent filesystem disappearance, and migration paths
+retained until Phase 2 remain reviewed misses. `go test ./...` passed before reconciliation, the
+focused init test passed afterward, and the regenerated policy reports 96.8% raw and 99.9% filtered
+coverage.

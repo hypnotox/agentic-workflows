@@ -1413,6 +1413,14 @@ func TestUpgradeLiveSchemaAdmission(t *testing.T) {
 		original := registry
 		defer func() { registry = original }()
 		registry = append(registry, Migration{To: from + 1, Name: "live-seam", Apply: func(context.Context, string, *Changes) error { return nil }})
+		generation, err := CheckLive(root)
+		var required *UpgradeRequiredError
+		if generation != from || !errors.As(err, &required) || required.Generation != from || required.Current != from+1 {
+			t.Fatalf("live admission generation=%d err=%v, want supported migration requirement %d -> %d", generation, err, from, from+1)
+		}
+		if got := required.Error(); !strings.Contains(got, fmt.Sprintf("schema %d requires migration to schema %d", from, from+1)) {
+			t.Fatalf("migration requirement = %q", got)
+		}
 		if applied, _, err := Upgrade(testContext(t), root); err != nil || !slices.Equal(applied, []string{"live-seam"}) {
 			t.Fatalf("supported upgrade applied=%v err=%v", applied, err)
 		}

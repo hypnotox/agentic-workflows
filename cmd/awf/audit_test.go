@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
@@ -57,6 +59,29 @@ func TestRunAuditPropagatesAuditFailure(t *testing.T) {
 	repo, _ := auditProject(t)
 	if err := runAudit(testContext(t), repo.Root(), "does-not-exist", out(t)); err == nil {
 		t.Fatal("unresolvable audit range accepted")
+	}
+}
+
+func TestPresentAuditRefusal(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		err  error
+		want string
+	}{
+		{name: "below horizon", err: &audit.HistoricalHorizonError{Schema: 2, Floor: 3, Horizon: 46}, want: "supporting schemas 3 through 46"},
+		{name: "above horizon", err: &audit.HistoricalHorizonError{Schema: 47, Floor: 3, Horizon: 46}, want: "supporting schemas 3 through 46"},
+		{name: "partial authority", err: &audit.PartialHistoricalAuthorityError{Config: true, Lock: false}, want: "restore the complete .awf/config.yaml and .awf/awf.lock pair"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := presentAuditRefusal(tc.err)
+			if !errors.Is(got, tc.err) || !strings.Contains(got.Error(), tc.want) {
+				t.Fatalf("refusal = %v, want wrapped source and %q", got, tc.want)
+			}
+		})
+	}
+	other := errors.New("other audit failure")
+	if got := presentAuditRefusal(other); !errors.Is(got, other) {
+		t.Fatalf("unclassified refusal = %v, want source identity", got)
 	}
 }
 

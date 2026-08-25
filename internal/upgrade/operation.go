@@ -32,9 +32,6 @@ type SchemaGate func(string) (string, int, error)
 // LiveSchemaRange supplies the migrate-owned live compatibility bounds.
 type LiveSchemaRange func() (floor, current int)
 
-// SchemaAheadError constructs the refusal for an unsupported future schema.
-type SchemaAheadError func(int) error
-
 // Migration applies the migration sequence and returns its semantic results.
 type Migration func(context.Context, string) (MigrationResult, error)
 
@@ -76,7 +73,7 @@ func RecoverOperation(root string, present ProjectPresent) (OperationOutcome, er
 // Run executes the normal upgrade use case. Migration, authority and journal
 // coordination live here; cmd/awf supplies only its concrete terminal sync and
 // gate dependencies.
-func Run(ctx context.Context, root string, sync Sync, gate Gate, present ProjectPresent, authorityPath AuthorityLockPath, liveSchemaRange LiveSchemaRange, schemaGate SchemaGate, schemaAhead SchemaAheadError, migrate Migration, currentSchemaChange CurrentSchemaChange) (OperationOutcome, error) {
+func Run(ctx context.Context, root string, sync Sync, gate Gate, present ProjectPresent, authorityPath AuthorityLockPath, liveSchemaRange LiveSchemaRange, schemaGate SchemaGate, migrate Migration, currentSchemaChange CurrentSchemaChange) (OperationOutcome, error) {
 	if !present(root) {
 		return OperationOutcome{}, errors.New("not an awf project (run `awf init`)")
 	}
@@ -104,7 +101,7 @@ func Run(ctx context.Context, root string, sync Sync, gate Gate, present Project
 	if err := manifest.ValidateLive(lock, floor, current); err != nil {
 		return OperationOutcome{}, err
 	}
-	state, generation, err := schemaGate(root)
+	state, _, err := schemaGate(root)
 	if err != nil {
 		return OperationOutcome{}, err
 	}
@@ -130,9 +127,6 @@ func Run(ctx context.Context, root string, sync Sync, gate Gate, present Project
 	case manifest.AuthorityPermanent:
 	default: // coverage-ignore: AuthorityState returns only Bridge or Permanent when its validation succeeds
 		return OperationOutcome{}, errors.New("invalid authority: restore .awf/awf.lock from version control")
-	}
-	if state == "ahead" {
-		return OperationOutcome{}, schemaAhead(generation)
 	}
 	migration, err := migrate(ctx, root)
 	applied, changes := migration.Applied, migration.Changes

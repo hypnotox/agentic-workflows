@@ -946,8 +946,8 @@
     "docs/topics/config/migrations-and-locks.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:24dd287851a407680a66ed6e2502f26624003943b99a8c94080899f621027194",
-      "outputHash": "sha256:76c5166dae56a12c3ff8cfd8223bb71698e83b3303a237bcf4f0a2c9ca13005c"
+      "configHash": "sha256:6bd8dd8e9533e7ec4c4f60654bce188d6a8d31b836925b8b167570519dff34f4",
+      "outputHash": "sha256:493fbdfcdacc3ebd38cfa52313919244f2ff6db5c0d599460f8575b46ebdb90e"
     },
     "docs/topics/config/validation.md": {
       "templateId": "topics/topic.md.tmpl",

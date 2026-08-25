@@ -292,6 +292,10 @@ func TestCoordinatorLockTransitionAndCoreConfig(t *testing.T) {
 	if err := validateLockTransition(empty, afterWithConfig, nil, &manifest.Lock{}); err != nil {
 		t.Fatal(err)
 	}
+	residualHead := ownerTree(t, snapshot.File{Path: ".awf/orphan", Mode: snapshot.Regular, Bytes: []byte("residue")})
+	if err := validateLockTransition(residualHead, afterWithConfig, nil, &manifest.Lock{}); err == nil || !strings.Contains(err.Error(), "complete pre-adoption HEAD") {
+		t.Fatalf("residual .awf HEAD error = %v", err)
+	}
 	withConfig := ownerTree(t,
 		snapshot.File{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: x\nprofile: core\nintegrationBranch: main\n")},
 		snapshot.File{Path: ".awf/awf.lock", Mode: snapshot.Regular, Bytes: []byte(`{"awfVersion":"0.39.2","schemaVersion":46,"files":{}}`)},

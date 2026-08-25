@@ -131,12 +131,6 @@ Schema generation 40 handles a generation-39-stamped tree that did not receive t
 Origin: ADR-0255
 Backing: test
 
-### `invariant: archive-root-upgrade-boundary`
-
-A project below schema generation 42 is gated before effort commands run; `awf upgrade` applies the effort-archive-root generation, publishes `.awf/effort-archive/.gitignore`, and writes a current lock. At the current generation ordinary render repairs that governed marker without interpreting archive descendants.
-Origin: ADR-0259
-Backing: test
-
 ### `invariant: schema-min-version`
 
 Every config-schema generation is paired with a minimum binary version in a lookup table, and the current schema generation always has an entry. The binary's own version is never below the minimum recorded for the current schema generation.

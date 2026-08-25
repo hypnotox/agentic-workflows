@@ -1,7 +1,7 @@
 {
   "version": 1,
   "modulePath": "github.com/hypnotox/agentic-workflows",
-  "universeSHA256": "c8d0f84b6061a94ec8002363db936e2b40f6bfb0211b2c1320cdcb47ea6c2c3a",
+  "universeSHA256": "c69e21ae12620ecebcb2c844c1114fe3117884c43703b1d936f5fd71a80e6518",
   "repository": [
     {
       "identity": {
@@ -22,46 +22,16 @@
       "identity": {
         "file": "cmd/awf/audit.go",
         "start": {
-          "line": 29,
-          "column": 31
-        },
-        "end": {
           "line": 31,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Audit command presentation maps typed semantic historical refusals at the command boundary; these alternate error-formatting arms are covered by the same command outcome contract without synthetic error construction."
-    },
-    {
-      "identity": {
-        "file": "cmd/awf/audit.go",
-        "start": {
-          "line": 33,
-          "column": 31
-        },
-        "end": {
-          "line": 35,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Audit command presentation maps typed semantic historical refusals at the command boundary; these alternate error-formatting arms are covered by the same command outcome contract without synthetic error construction."
-    },
-    {
-      "identity": {
-        "file": "cmd/awf/audit.go",
-        "start": {
-          "line": 39,
           "column": 16
         },
         "end": {
-          "line": 41,
+          "line": 33,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Audit command presentation maps typed semantic historical refusals at the command boundary; these alternate error-formatting arms are covered by the same command outcome contract without synthetic error construction."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/audit.go:30.16,32.3 1 in function runAudit, beginning `{ // coverage-ignore: the audit mapping has already validated every shape`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
@@ -247,11 +217,11 @@
       "identity": {
         "file": "cmd/awf/gate.go",
         "start": {
-          "line": 41,
+          "line": 38,
           "column": 94
         },
         "end": {
-          "line": 43,
+          "line": 40,
           "column": 3
         },
         "statements": 1
@@ -262,11 +232,11 @@
       "identity": {
         "file": "cmd/awf/gate.go",
         "start": {
-          "line": 65,
+          "line": 61,
           "column": 94
         },
         "end": {
-          "line": 67,
+          "line": 63,
           "column": 3
         },
         "statements": 1
@@ -487,11 +457,26 @@
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 354,
+          "line": 365,
+          "column": 12
+        },
+        "end": {
+          "line": 367,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "The command guard already statted the current lock before loading it; absence here requires a concurrent namespace change and cannot be induced safely and portably."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 369,
           "column": 21
         },
         "end": {
-          "line": 356,
+          "line": 371,
           "column": 3
         },
         "statements": 1
@@ -502,11 +487,11 @@
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 368,
+          "line": 383,
           "column": 10
         },
         "end": {
-          "line": 369,
+          "line": 384,
           "column": 85
         },
         "statements": 1
@@ -517,11 +502,11 @@
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 485,
+          "line": 506,
           "column": 16
         },
         "end": {
-          "line": 487,
+          "line": 508,
           "column": 3
         },
         "statements": 1
@@ -532,11 +517,11 @@
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 489,
+          "line": 510,
           "column": 16
         },
         "end": {
-          "line": 491,
+          "line": 512,
           "column": 3
         },
         "statements": 1
@@ -622,11 +607,11 @@
       "identity": {
         "file": "cmd/awf/upgrade.go",
         "start": {
-          "line": 60,
+          "line": 56,
           "column": 33
         },
         "end": {
-          "line": 62,
+          "line": 58,
           "column": 3
         },
         "statements": 1
@@ -637,11 +622,11 @@
       "identity": {
         "file": "cmd/awf/upgrade.go",
         "start": {
-          "line": 65,
+          "line": 61,
           "column": 33
         },
         "end": {
-          "line": 67,
+          "line": 63,
           "column": 4
         },
         "statements": 1
@@ -1363,21 +1348,6 @@
         "end": {
           "line": 888,
           "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Historical replay defensive branch is guarded by graph and parser invariants exercised by replay tests; its raw identity has no independently constructible valid input."
-    },
-    {
-      "identity": {
-        "file": "internal/audit/history.go",
-        "start": {
-          "line": 940,
-          "column": 49
-        },
-        "end": {
-          "line": 942,
-          "column": 2
         },
         "statements": 1
       },
@@ -2662,11 +2632,11 @@
       "identity": {
         "file": "internal/currentstatecoord/currentstate.go",
         "start": {
-          "line": 392,
+          "line": 394,
           "column": 31
         },
         "end": {
-          "line": 394,
+          "line": 396,
           "column": 3
         },
         "statements": 1
@@ -6407,6 +6377,21 @@
         "statements": 1
       },
       "reason": "Initial RF-009 admission of existing uncovered behavior at internal/migrate/migrate.go:330.16,332.3 1 in function stampLockSchemaWithSave, beginning `{ // coverage-ignore: reached only via Upgrade, whose upfront Generation now hard-errors on a co...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+    },
+    {
+      "identity": {
+        "file": "internal/migrate/migrate.go",
+        "start": {
+          "line": 317,
+          "column": 16
+        },
+        "end": {
+          "line": 319,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "The retained upgrade classifier repeats Generation only after live command admission has validated the same authority; its defensive propagation arm remains until Phase 2 deletes the below-floor migration topology."
     },
     {
       "identity": {
@@ -10312,41 +10297,41 @@
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 66,
+          "line": 63,
           "column": 16
         },
         "end": {
-          "line": 68,
+          "line": 65,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/upgrade/operation.go:62.16,64.3 1 in function RecoverOperation, beginning `{ // coverage-ignore: Recover validates journal evidence before producing its Outcome, so its te...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam."
     },
     {
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 70,
+          "line": 67,
           "column": 16
         },
         "end": {
-          "line": 72,
+          "line": 69,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/upgrade/operation.go:66.16,68.3 1 in function RecoverOperation, beginning `{ // coverage-ignore: RecoveredMutation supplies the fixed valid status and only validated journ...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam."
     },
     {
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 98,
+          "line": 95,
           "column": 25
         },
         "end": {
-          "line": 100,
+          "line": 97,
           "column": 5
         },
         "statements": 1
@@ -10357,61 +10342,61 @@
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 112,
+          "line": 109,
           "column": 16
         },
         "end": {
-          "line": 114,
+          "line": 111,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/upgrade/operation.go:88.16,90.3 1 in function Run, beginning `{ // coverage-ignore: LoadOptional parses and validates the unchanged authority construction imm...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam."
     },
     {
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 122,
+          "line": 119,
           "column": 17
         },
         "end": {
-          "line": 124,
+          "line": 121,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/upgrade/operation.go:98.17,100.4 1 in function Run, beginning `{ // coverage-ignore: FinalUpgrade constructs its terminal evidence from validated transaction o...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam."
     },
     {
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 126,
+          "line": 123,
           "column": 17
         },
         "end": {
+          "line": 125,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam."
+    },
+    {
+      "identity": {
+        "file": "internal/upgrade/operation.go",
+        "start": {
           "line": 128,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/upgrade/operation.go:102.17,104.4 1 in function Run, beginning `{ // coverage-ignore: CompletedMutation supplies the fixed valid status and only validated journ...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "internal/upgrade/operation.go",
-        "start": {
-          "line": 131,
           "column": 10
         },
         "end": {
-          "line": 132,
+          "line": 129,
           "column": 105
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/upgrade/operation.go:107.10,108.105 1 in function Run, beginning `// coverage-ignore: AuthorityState returns only Bridge or Permanent when its validation succeeds`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam."
     },
     {
       "identity": {
@@ -10856,35 +10841,11 @@
         {
           "file": "cmd/awf/audit.go",
           "start": {
-            "line": 29,
-            "column": 31
-          },
-          "end": {
             "line": 31,
-            "column": 4
-          },
-          "statements": 1
-        },
-        {
-          "file": "cmd/awf/audit.go",
-          "start": {
-            "line": 33,
-            "column": 31
-          },
-          "end": {
-            "line": 35,
-            "column": 4
-          },
-          "statements": 1
-        },
-        {
-          "file": "cmd/awf/audit.go",
-          "start": {
-            "line": 39,
             "column": 16
           },
           "end": {
-            "line": 41,
+            "line": 33,
             "column": 3
           },
           "statements": 1
@@ -11036,11 +10997,11 @@
         {
           "file": "cmd/awf/gate.go",
           "start": {
-            "line": 41,
+            "line": 38,
             "column": 94
           },
           "end": {
-            "line": 43,
+            "line": 40,
             "column": 3
           },
           "statements": 1
@@ -11048,11 +11009,11 @@
         {
           "file": "cmd/awf/gate.go",
           "start": {
-            "line": 65,
+            "line": 61,
             "column": 94
           },
           "end": {
-            "line": 67,
+            "line": 63,
             "column": 3
           },
           "statements": 1
@@ -11228,11 +11189,11 @@
         {
           "file": "cmd/awf/main.go",
           "start": {
-            "line": 354,
-            "column": 21
+            "line": 365,
+            "column": 12
           },
           "end": {
-            "line": 356,
+            "line": 367,
             "column": 3
           },
           "statements": 1
@@ -11240,11 +11201,23 @@
         {
           "file": "cmd/awf/main.go",
           "start": {
-            "line": 368,
+            "line": 369,
+            "column": 21
+          },
+          "end": {
+            "line": 371,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/main.go",
+          "start": {
+            "line": 383,
             "column": 10
           },
           "end": {
-            "line": 369,
+            "line": 384,
             "column": 85
           },
           "statements": 1
@@ -11252,11 +11225,11 @@
         {
           "file": "cmd/awf/main.go",
           "start": {
-            "line": 485,
+            "line": 506,
             "column": 16
           },
           "end": {
-            "line": 487,
+            "line": 508,
             "column": 3
           },
           "statements": 1
@@ -11264,11 +11237,11 @@
         {
           "file": "cmd/awf/main.go",
           "start": {
-            "line": 489,
+            "line": 510,
             "column": 16
           },
           "end": {
-            "line": 491,
+            "line": 512,
             "column": 3
           },
           "statements": 1
@@ -11336,11 +11309,11 @@
         {
           "file": "cmd/awf/upgrade.go",
           "start": {
-            "line": 60,
+            "line": 56,
             "column": 33
           },
           "end": {
-            "line": 62,
+            "line": 58,
             "column": 3
           },
           "statements": 1
@@ -11348,11 +11321,11 @@
         {
           "file": "cmd/awf/upgrade.go",
           "start": {
-            "line": 65,
+            "line": 61,
             "column": 33
           },
           "end": {
-            "line": 67,
+            "line": 63,
             "column": 4
           },
           "statements": 1
@@ -12256,6 +12229,18 @@
           "statements": 1
         },
         {
+          "file": "internal/migrate/migrate.go",
+          "start": {
+            "line": 317,
+            "column": 16
+          },
+          "end": {
+            "line": 319,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
           "file": "internal/migrate/orientingbackfill.go",
           "start": {
             "line": 30,
@@ -12930,11 +12915,11 @@
         {
           "file": "internal/upgrade/operation.go",
           "start": {
-            "line": 66,
+            "line": 63,
             "column": 16
           },
           "end": {
-            "line": 68,
+            "line": 65,
             "column": 3
           },
           "statements": 1
@@ -12942,11 +12927,11 @@
         {
           "file": "internal/upgrade/operation.go",
           "start": {
-            "line": 70,
+            "line": 67,
             "column": 16
           },
           "end": {
-            "line": 72,
+            "line": 69,
             "column": 3
           },
           "statements": 1
@@ -12954,11 +12939,11 @@
         {
           "file": "internal/upgrade/operation.go",
           "start": {
-            "line": 98,
+            "line": 95,
             "column": 25
           },
           "end": {
-            "line": 100,
+            "line": 97,
             "column": 5
           },
           "statements": 1
@@ -12966,11 +12951,11 @@
         {
           "file": "internal/upgrade/operation.go",
           "start": {
-            "line": 112,
+            "line": 109,
             "column": 16
           },
           "end": {
-            "line": 114,
+            "line": 111,
             "column": 3
           },
           "statements": 1
@@ -12978,11 +12963,11 @@
         {
           "file": "internal/upgrade/operation.go",
           "start": {
-            "line": 122,
+            "line": 119,
             "column": 17
           },
           "end": {
-            "line": 124,
+            "line": 121,
             "column": 4
           },
           "statements": 1
@@ -12990,23 +12975,23 @@
         {
           "file": "internal/upgrade/operation.go",
           "start": {
-            "line": 126,
+            "line": 123,
             "column": 17
           },
           "end": {
+            "line": 125,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/operation.go",
+          "start": {
             "line": 128,
-            "column": 4
-          },
-          "statements": 1
-        },
-        {
-          "file": "internal/upgrade/operation.go",
-          "start": {
-            "line": 131,
             "column": 10
           },
           "end": {
-            "line": 132,
+            "line": 129,
             "column": 105
           },
           "statements": 1
@@ -16872,11 +16857,11 @@
         {
           "file": "internal/currentstatecoord/currentstate.go",
           "start": {
-            "line": 392,
+            "line": 394,
             "column": 31
           },
           "end": {
-            "line": 394,
+            "line": 396,
             "column": 3
           },
           "statements": 1
@@ -17188,14 +17173,14 @@
     {
       "directive": {
         "file": "cmd/awf/audit.go",
-        "line": 39,
-        "targetLine": 39,
+        "line": 31,
+        "targetLine": 31,
         "reason": "the audit mapping has already validated every shape",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The report mapping has already validated every shape, so this document-construction failure arm requires an invariant breach."
+      "evidence": "At cmd/awf/audit.go:31, the report mapping has already validated every shape before Document lowers it. This document-construction failure arm therefore requires an invariant breach."
     },
     {
       "directive": {
@@ -17344,26 +17329,26 @@
     {
       "directive": {
         "file": "cmd/awf/gate.go",
-        "line": 41,
-        "targetLine": 41,
+        "line": 38,
+        "targetLine": 38,
         "reason": "compile-time schema map and version are exhaustively validated in project tests; this remains fail-closed for a future registration mistake",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err := project.ValidateSchemaMinimumVersion(migrate.Current(), awfVersion()); err != nil {` at cmd/awf/gate.go:41 is `}` (cmd/awf/gate.go:40). Within `func gate(ctx context.Context, root string) error` at cmd/awf/gate.go:33, source review establishes compile-time schema map and version are exhaustively validated in project tests; this remains fail-closed for a future registration mistake; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err := project.ValidateSchemaMinimumVersion(migrate.Current(), awfVersion()); err != nil {` at cmd/awf/gate.go:38 is `}` (cmd/awf/gate.go:37). Within `func gate(ctx context.Context, root string) error` at cmd/awf/gate.go:33, source review establishes compile-time schema map and version are exhaustively validated in project tests; this remains fail-closed for a future registration mistake; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
         "file": "cmd/awf/gate.go",
-        "line": 65,
-        "targetLine": 65,
+        "line": 61,
+        "targetLine": 61,
         "reason": "compile-time schema map and version are exhaustively validated in project tests; this remains fail-closed for a future registration mistake",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err := project.ValidateSchemaMinimumVersion(migrate.Current(), awfVersion()); err != nil {` at cmd/awf/gate.go:65 is `}` (cmd/awf/gate.go:64). Within `func gateStaged(ctx context.Context, root string) error` at cmd/awf/gate.go:56, source review establishes compile-time schema map and version are exhaustively validated in project tests; this remains fail-closed for a future registration mistake; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err := project.ValidateSchemaMinimumVersion(migrate.Current(), awfVersion()); err != nil {` at cmd/awf/gate.go:61 is `}` (cmd/awf/gate.go:60). Within `func gateStaged(ctx context.Context, root string) error` at cmd/awf/gate.go:56, source review establishes compile-time schema map and version are exhaustively validated in project tests; this remains fail-closed for a future registration mistake; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
@@ -17632,50 +17617,62 @@
     {
       "directive": {
         "file": "cmd/awf/main.go",
-        "line": 354,
-        "targetLine": 354,
+        "line": 365,
+        "targetLine": 365,
+        "reason": "the current lock was statted above; absence now requires a concurrent namespace change",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "At cmd/awf/main.go:365, the guard already statted the current lock path before loading it. Absence at the immediately repeated load requires a concurrent namespace change, which cannot be induced safely and portably without a production fault seam."
+    },
+    {
+      "directive": {
+        "file": "cmd/awf/main.go",
+        "line": 369,
+        "targetLine": 369,
         "reason": "projectGuardState loaded and validated this unchanged lock",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At cmd/awf/main.go:354, `if stateErr != nil {` is guarded by the preceding `state, stateErr := lock.AuthorityState()` at cmd/awf/main.go:353; in `func guardProjectState(ctx context.Context, root string, cmd clispec.Command, top clispec.Command, sub string, inv invocation) error` (cmd/awf/main.go:310), the predecessor invariant is projectGuardState loaded and validated this unchanged lock. Only violation of that closed state reaches this guard."
+      "evidence": "At cmd/awf/main.go:369, `if stateErr != nil {` is guarded by the preceding `state, stateErr := lock.AuthorityState()` at cmd/awf/main.go:368; in `func guardProjectState(ctx context.Context, root string, cmd clispec.Command, top clispec.Command, sub string, inv invocation) error` (cmd/awf/main.go:310), the predecessor invariant is projectGuardState loaded and validated this unchanged lock. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
         "file": "cmd/awf/main.go",
-        "line": 368,
-        "targetLine": 368,
+        "line": 383,
+        "targetLine": 383,
         "reason": "AuthorityState returns only the closed enum values",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `default:` at cmd/awf/main.go:368 is `return nil` (cmd/awf/main.go:367). Within `func guardProjectState(ctx context.Context, root string, cmd clispec.Command, top clispec.Command, sub string, inv invocation) error` at cmd/awf/main.go:310, source review establishes AuthorityState returns only the closed enum values; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `default:` at cmd/awf/main.go:383 is `return nil` (cmd/awf/main.go:382). Within `func guardProjectState(ctx context.Context, root string, cmd clispec.Command, top clispec.Command, sub string, inv invocation) error` at cmd/awf/main.go:310, source review establishes AuthorityState returns only the closed enum values; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
         "file": "cmd/awf/main.go",
-        "line": 485,
-        "targetLine": 485,
+        "line": 506,
+        "targetLine": 506,
         "reason": "Prose validated the value and status is a fixed grammar-valid label",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at cmd/awf/main.go:485 is `field, err := presentation.NewField(\"status\", value)` (cmd/awf/main.go:484). Within `func writeStatus(stdout io.Writer, status string) error` at cmd/awf/main.go:479, source review establishes Prose validated the value and status is a fixed grammar-valid label; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err != nil {` at cmd/awf/main.go:506 is `field, err := presentation.NewField(\"status\", value)` (cmd/awf/main.go:505). Within `func writeStatus(stdout io.Writer, status string) error` at cmd/awf/main.go:500, source review establishes Prose validated the value and status is a fixed grammar-valid label; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
         "file": "cmd/awf/main.go",
-        "line": 489,
-        "targetLine": 489,
+        "line": 510,
+        "targetLine": 510,
         "reason": "the validated Field is always a valid root node",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At cmd/awf/main.go:489, `if err != nil {` is guarded by the preceding `document, err := presentation.NewDocument(field)` at cmd/awf/main.go:488; in `func writeStatus(stdout io.Writer, status string) error` (cmd/awf/main.go:479), the predecessor invariant is the validated Field is always a valid root node. Only violation of that closed state reaches this guard."
+      "evidence": "At cmd/awf/main.go:510, `if err != nil {` is guarded by the preceding `document, err := presentation.NewDocument(field)` at cmd/awf/main.go:509; in `func writeStatus(stdout io.Writer, status string) error` (cmd/awf/main.go:500), the predecessor invariant is the validated Field is always a valid root node. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
@@ -25672,8 +25669,8 @@
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 66,
-        "targetLine": 66,
+        "line": 63,
+        "targetLine": 63,
         "reason": "Recover validates journal evidence before producing its Outcome, so its terminal evidence always lowers to literals",
         "mapped": true,
         "executed": false
@@ -25684,8 +25681,8 @@
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 70,
-        "targetLine": 70,
+        "line": 67,
+        "targetLine": 67,
         "reason": "RecoveredMutation supplies the fixed valid status and only validated journal literals",
         "mapped": true,
         "executed": false
@@ -25696,62 +25693,62 @@
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 98,
-        "targetLine": 98,
+        "line": 95,
+        "targetLine": 95,
         "reason": "after the lock proves this is a current authority root, config stat can fail only through a concurrent namespace, permission, or storage fault",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/upgrade/operation.go:98, the current lock has already proved a current authority root and the preceding config stat handles absence as partial authority. An error other than absence therefore requires a concurrent namespace, permission, or storage fault rather than a safe portable input."
+      "evidence": "At internal/upgrade/operation.go:95, the current lock has already proved a current authority root and the preceding config stat handles absence as partial authority. An error other than absence therefore requires a concurrent namespace, permission, or storage fault rather than a safe portable input."
     },
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 112,
-        "targetLine": 112,
+        "line": 109,
+        "targetLine": 109,
         "reason": "LoadOptional parses and validates the unchanged authority construction immediately above",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The directive at internal/upgrade/operation.go:104 follows the validated closed invariant stated in source: LoadOptional parses and validates the unchanged authority construction immediately above. Its error arm requires an invariant breach, not a supported input."
+      "evidence": "The directive at internal/upgrade/operation.go:109 follows the validated closed invariant stated in source: LoadOptional parses and validates the unchanged authority construction immediately above. Its error arm requires an invariant breach, not a supported input."
     },
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 122,
-        "targetLine": 122,
+        "line": 119,
+        "targetLine": 119,
         "reason": "FinalUpgrade constructs its terminal evidence from validated transaction operations",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The directive at internal/upgrade/operation.go:114 follows the validated closed invariant stated in source: FinalUpgrade constructs its terminal evidence from validated transaction operations. Its error arm requires an invariant breach, not a supported input."
+      "evidence": "The directive at internal/upgrade/operation.go:119 follows the validated closed invariant stated in source: FinalUpgrade constructs its terminal evidence from validated transaction operations. Its error arm requires an invariant breach, not a supported input."
     },
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 126,
-        "targetLine": 126,
+        "line": 123,
+        "targetLine": 123,
         "reason": "CompletedMutation supplies the fixed valid status and only validated journal literals",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The directive at internal/upgrade/operation.go:118 follows the validated closed invariant stated in source: CompletedMutation supplies the fixed valid status and only validated journal literals. Its error arm requires an invariant breach, not a supported input."
+      "evidence": "The directive at internal/upgrade/operation.go:123 follows the validated closed invariant stated in source: CompletedMutation supplies the fixed valid status and only validated journal literals. Its error arm requires an invariant breach, not a supported input."
     },
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 131,
-        "targetLine": 131,
+        "line": 128,
+        "targetLine": 128,
         "reason": "AuthorityState returns only Bridge or Permanent when its validation succeeds",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The directive at internal/upgrade/operation.go:123 follows the validated closed invariant stated in source: AuthorityState returns only Bridge or Permanent when its validation succeeds. Its error arm requires an invariant breach, not a supported input."
+      "evidence": "The directive at internal/upgrade/operation.go:128 follows the validated closed invariant stated in source: AuthorityState returns only Bridge or Permanent when its validation succeeds. Its error arm requires an invariant breach, not a supported input."
     },
     {
       "directive": {

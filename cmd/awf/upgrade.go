@@ -30,7 +30,7 @@ func runRecover(root string, stdout io.Writer) error {
 }
 
 func runUpgrade(ctx context.Context, root string, stdout io.Writer) error {
-	outcome, err := upgrade.Run(ctx, root, upgradeSyncMutation, gate, migrate.ProjectPresent, migrate.AuthorityLockPath, migrate.LiveSchemaRange, migrate.GateState, schemaAheadError, upgradeMigration, upgradeCurrentSchemaChange)
+	outcome, err := upgrade.Run(ctx, root, upgradeSyncMutation, gate, migrate.ProjectPresent, migrate.AuthorityLockPath, migrate.LiveSchemaRange, migrate.GateState, upgradeMigration, upgradeCurrentSchemaChange)
 	if err != nil {
 		return presentUpgradeRefusal(err)
 	}
@@ -40,12 +40,8 @@ func runUpgrade(ctx context.Context, root string, stdout io.Writer) error {
 // presentUpgradeRefusal is the command boundary for recovery guidance; semantic
 // compatibility errors remain machine-classifiable below this boundary.
 func presentUpgradeRefusal(err error) error {
-	var live *manifest.LiveSourceError
-	if errors.As(err, &live) {
-		if live.Schema < live.Floor {
-			return fmt.Errorf("%w: use a release that supports schema %d, then upgrade to schema %d", err, live.Schema, live.Floor)
-		}
-		return fmt.Errorf("%w: update your pinned awf to a supporting release for schema %d", err, live.Schema)
+	if errors.Is(err, manifest.ErrUnsupportedLiveSource) {
+		return presentLiveSourceRefusal(err)
 	}
 	var partial *manifest.PartialAuthorityError
 	if errors.As(err, &partial) {

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
@@ -30,6 +31,24 @@ func TestCleanupScaffoldRemovesOnlyOperationOwnedConfig(t *testing.T) {
 				t.Fatalf("existing config was removed: %v", err)
 			}
 		})
+	}
+}
+
+func TestRunPropagatesLoaderOpenFailure(t *testing.T) {
+	root := t.TempDir()
+	want := errors.New("open project")
+	_, err := Run(context.Background(), Input{Root: root, Force: true}, func(string) (*project.Loader, error) {
+		return project.NewLoaderWithoutRepository(
+			func(string) (*config.Config, error) { return nil, want },
+			catalog.Standard,
+			func(_ context.Context, selected string) string { return selected },
+		), nil
+	}, func(context.Context, string) error {
+		t.Fatal("gate called after loader open failure")
+		return nil
+	})
+	if !errors.Is(err, want) {
+		t.Fatalf("Run error = %v, want %v", err, want)
 	}
 }
 

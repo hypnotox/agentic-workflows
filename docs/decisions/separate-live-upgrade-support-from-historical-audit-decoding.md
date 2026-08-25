@@ -143,3 +143,4 @@ cleanup remain outside this decision.
 - 2026-08-25: Accepted; content-sha256: 3348947adb9e0f61ee2b0c845eb80522f6cfc38b824e6abd5d119eeaca5c4349
 - 2026-08-25: Implementing; content-sha256: 3348947adb9e0f61ee2b0c845eb80522f6cfc38b824e6abd5d119eeaca5c4349
 - 2026-08-25: Applied; operations: update `config/migrations-and-locks:retired-keys-forward-ported`, update `config/migrations-and-locks:upgrade-gate`, update `config/migrations-and-locks:live-source-compatibility-floor`, update `tooling/audit-and-snapshots:managed-history-decode-horizon`
+- 2026-08-25: Applied; operations: remove `config/migrations-and-locks:archive-root-upgrade-boundary`

@@ -372,10 +372,12 @@ func validateLockTransition(beforeTree, afterTree *snapshot.Tree, before, after 
 		return errors.New("partial staged .awf authority: awf.lock requires .awf/config.yaml; restore it or delete .awf deliberately to re-adopt")
 	}
 	if before == nil {
-		if _, hasConfig := beforeTree.Lookup(config.DirName + "/config.yaml"); !hasConfig {
-			return nil
+		for _, file := range beforeTree.List() {
+			if file.Path == config.DirName || strings.HasPrefix(file.Path, config.DirName+"/") {
+				return errors.New("pre-tracking authority: staged lock requires a complete pre-adoption HEAD without any .awf authority or residue")
+			}
 		}
-		return errors.New("pre-tracking authority: staged lock requires an empty pre-adoption HEAD without .awf/config.yaml")
+		return nil
 	}
 	if before.InitializedWithVersion != after.InitializedWithVersion {
 		return errors.New("staged .awf/awf.lock changes immutable initializedWithVersion authority")

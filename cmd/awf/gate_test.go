@@ -72,8 +72,20 @@ func TestGateAheadSchemaErrors(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected gate error on ahead schema")
 	}
-	if !strings.Contains(err.Error(), "update your pinned awf") || !strings.Contains(err.Error(), "schema generation") {
+	if !strings.Contains(err.Error(), "update your pinned awf") || !strings.Contains(err.Error(), "ahead of live schema") {
 		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestGateRefusalPresentation(t *testing.T) {
+	required := &migrate.UpgradeRequiredError{Generation: migrate.LiveSchemaFloor, Current: migrate.LiveSchemaFloor + 1}
+	if got := presentGateRefusal(required); !strings.Contains(got.Error(), "run awf upgrade") {
+		t.Fatalf("supported migration refusal = %v", got)
+	}
+
+	other := errors.New("other gate failure")
+	if got := presentLiveSourceRefusal(other); !errors.Is(got, other) {
+		t.Fatalf("unclassified refusal = %v, want source identity", got)
 	}
 }
 
@@ -368,7 +380,8 @@ func aheadSchemaProject(t *testing.T) string {
 func TestGateRejectsStaleSchema(t *testing.T) {
 	ctx := testContext(t)
 	// A legacy single-file layout (.claude/awf.yaml, no tree config) reports
-	// generation 0 -> GateState "gate".
+	// generation 0, which is below the live floor rather than an executable
+	// migration route for this binary.
 	root := t.TempDir()
 	claude := filepath.Join(root, ".claude")
 	if err := os.MkdirAll(claude, 0o755); err != nil {
@@ -377,12 +390,83 @@ func TestGateRejectsStaleSchema(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(claude, "awf.yaml"), []byte("prefix: x\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := gate(ctx, root); err == nil {
-		t.Fatal("expected gate to reject stale schema")
+	if err := gate(ctx, root); !errors.Is(err, manifest.ErrUnsupportedLiveSource) || strings.Contains(err.Error(), "run awf upgrade") {
+		t.Fatalf("stale schema refusal = %v, want unsupported live source without an impossible upgrade direction", err)
 	}
-	// render is Gated: the driver surfaces the same gate error before the handler.
+	// render is Gated: command-state admission must preserve that refusal rather
+	// than route the missing retired-layout lock through bridge authority.
 	var out, errb bytes.Buffer
 	if code := runAt(t, root, []string{"awf", "render"}, &out, &errb); code != 1 {
 		t.Errorf("expected the driver to fail render on stale schema, got %d", code)
 	}
+	if got := errb.String(); !strings.Contains(got, "below live floor") || strings.Contains(got, "attest") || strings.Contains(got, "run awf upgrade") {
+		t.Fatalf("driver stale-schema refusal = %q", got)
+	}
+}
+
+func TestCommandStateGuardAdmitsOnlyCompleteLiveAuthority(t *testing.T) {
+	t.Run("below-floor bridge is refused before authority dispatch", func(t *testing.T) {
+		root := scaffoldProject(t)
+		attestLock(t, root)
+		lock, err := manifest.Load(config.LockPath(root))
+		if err != nil {
+			t.Fatal(err)
+		}
+		lock.SchemaVersion = migrate.LiveSchemaFloor - 1
+		if err := lock.Save(config.LockPath(root)); err != nil {
+			t.Fatal(err)
+		}
+		var stdout, stderr bytes.Buffer
+		if code := runAt(t, root, []string{"awf", "render"}, &stdout, &stderr); code != 1 {
+			t.Fatalf("exit = %d, stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+		}
+		if got := stderr.String(); !strings.Contains(got, "below live floor") || strings.Contains(got, "consume") {
+			t.Fatalf("below-floor bridge refusal = %q", got)
+		}
+	})
+
+	t.Run("config-only authority is partial, not pre-tracking", func(t *testing.T) {
+		root := scaffoldProject(t)
+		if err := os.Remove(config.LockPath(root)); err != nil {
+			t.Fatal(err)
+		}
+		var stdout, stderr bytes.Buffer
+		if code := runAt(t, root, []string{"awf", "render"}, &stdout, &stderr); code != 1 {
+			t.Fatalf("exit = %d, stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+		}
+		if got := stderr.String(); !strings.Contains(got, "partial authority") || strings.Contains(got, "pre-tracking") {
+			t.Fatalf("config-only refusal = %q", got)
+		}
+	})
+
+	t.Run("retired working layout is refused even at current schema", func(t *testing.T) {
+		root := t.TempDir()
+		testsupport.WriteFile(t, filepath.Join(root, ".claude/awf/config.yaml"), "prefix: test\n")
+		lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
+		if err := lock.Save(filepath.Join(root, ".claude/awf/awf.lock")); err != nil {
+			t.Fatal(err)
+		}
+		var stdout, stderr bytes.Buffer
+		if code := runAt(t, root, []string{"awf", "render"}, &stdout, &stderr); code != 1 {
+			t.Fatalf("exit = %d, stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+		}
+		if got := stderr.String(); !strings.Contains(got, "retired project layout is unsupported") || strings.Contains(got, "attest") {
+			t.Fatalf("retired-layout refusal = %q", got)
+		}
+	})
+
+	t.Run("staged retired authority is refused before staged loading", func(t *testing.T) {
+		repo := gitfixture.InitRepo(t)
+		gitfixture.Stage(t, repo, map[string]string{
+			".claude/awf/config.yaml": "prefix: test\n",
+			".claude/awf/awf.lock":    `{"awfVersion":"0.39.2","schemaVersion":46,"files":{}}` + "\n",
+		})
+		var stdout, stderr bytes.Buffer
+		if code := runAt(t, repo.Root(), []string{"awf", "check", "staged"}, &stdout, &stderr); code != 1 {
+			t.Fatalf("exit = %d, stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+		}
+		if got := stderr.String(); !strings.Contains(got, "retired project authority is below live floor") || strings.Contains(got, "attest") {
+			t.Fatalf("staged retired-authority refusal = %q", got)
+		}
+	})
 }

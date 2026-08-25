@@ -452,7 +452,7 @@ func TestCheckStagedDriftRenderedOutput(t *testing.T) {
 			if code := runAt(t, root, args, &out, &errOut); code != 1 {
 				t.Fatalf("%v exit = %d, want 1; stdout=%q stderr=%q", args, code, out.String(), errOut.String())
 			}
-			if out.Len() != 0 || !strings.Contains(errOut.String(), "partial .awf authority") {
+			if out.Len() != 0 || !strings.Contains(errOut.String(), "partial authority") {
 				t.Fatalf("%v absent-lock refusal streams stdout=%q stderr=%q", args, out.String(), errOut.String())
 			}
 		}
@@ -465,7 +465,7 @@ func TestCheckStagedDriftRenderedOutput(t *testing.T) {
 		if code := runAt(t, root, []string{"awf", "check", "staged", "state"}, &out, &errOut); code != 1 {
 			t.Fatalf("staged state exit = %d, want 1; stdout=%q stderr=%q", code, out.String(), errOut.String())
 		}
-		if out.Len() != 0 || !strings.Contains(errOut.String(), "pre-tracking authority") {
+		if out.Len() != 0 || !strings.Contains(errOut.String(), "partial authority") {
 			t.Fatalf("staged state absent-lock streams stdout=%q stderr=%q", out.String(), errOut.String())
 		}
 	})
@@ -638,7 +638,7 @@ func TestCheckStagedCommandUsesIndexLockForGateAndAheadNote(t *testing.T) {
 		if code := run([]string{"awf", "check", "staged"}, &out, &errOut); code != 1 {
 			t.Fatalf("staged ahead-schema exit = %d, stdout=%q stderr=%q", code, out.String(), errOut.String())
 		}
-		if !strings.Contains(errOut.String(), "schema generation") || !strings.Contains(errOut.String(), strconv.Itoa(migrate.Current()+1)) {
+		if !strings.Contains(errOut.String(), "ahead of live schema") || !strings.Contains(errOut.String(), strconv.Itoa(migrate.Current()+1)) {
 			t.Fatalf("staged schema diagnostic = %q", errOut.String())
 		}
 	})
