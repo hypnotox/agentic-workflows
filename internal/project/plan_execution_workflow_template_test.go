@@ -39,10 +39,7 @@ func TestCheckpointDigestShape(t *testing.T) {
 			t.Errorf("%s has %d structured memory updates, want exactly one", partial, got)
 		}
 		for _, phrase := range []string{
-			"either legacy `Effort: <slug>` or canonical `effort: <slug>` identity",
-			"canonical form is YAML",
-			"legacy form is deprecated",
-			"until active efforts finish",
+			"canonical YAML `effort: <slug>` identity",
 			"sole writer of phase, next action, and time",
 			"executable `./awf read plan` projection never creates a checkpoint or fresh-boundary log",
 			"judge retained-context relevance and successor work",
@@ -127,9 +124,7 @@ func TestCheckpointDigestShape(t *testing.T) {
 		"generated task scope notice",
 		"phase-owned Advances and Completes outcomes",
 		"projection changes neither phase ownership nor checkpoint boundaries",
-		"either legacy `Effort: <slug>` or canonical `effort: <slug>` identity",
-		"legacy form is deprecated",
-		"until active efforts finish",
+		"canonical YAML `effort: <slug>` identity",
 	} {
 		if !strings.Contains(executionBody, phrase) {
 			t.Errorf("executing-plans missing checkpoint contract %q", phrase)

@@ -351,7 +351,7 @@ func (s *Service) UpdateMemory(input MemoryUpdateInput) (MemoryOperationResult, 
 		return result, nil //nolint:nilerr // unsafe repair is a typed handled refusal
 	}
 	if input.Preview {
-		diff := updatePreviewDiff(raw, encoded, doc, input.Update)
+		diff := updatePreviewDiff(raw, encoded)
 		return MemoryOperationResult{Condition: MemoryPreviewed, Diff: &diff}, nil
 	}
 	if len(encoded) > maxMemoryBytes {
@@ -435,7 +435,7 @@ func (s *Service) inspectMemoryOperation(slug, owner string) ([]byte, memoryDocu
 
 func invalidMemoryUpdateFor(slug string, doc memoryDocument, update MemoryUpdate) *invalidMemoryUpdate {
 	if !doc.boundary || doc.identity != slug {
-		return &invalidMemoryUpdate{NextAction: "repair memory.md manually with a matching bounded canonical or legacy identity"}
+		return &invalidMemoryUpdate{NextAction: "repair memory.md manually with matching canonical YAML identity"}
 	}
 	if doc.err != nil && (doc.invalid["phase"] && update.Phase == nil || doc.invalid["next"] && update.Next == nil || len(doc.invalid) == 0) {
 		return &invalidMemoryUpdate{NextAction: memoryUpdateCommand(slug, doc.invalid)}
@@ -727,33 +727,7 @@ func renderSelectedDisplayRows(rows []displayDiffRow, selected []bool, width int
 	return string(out), true
 }
 
-// updatePreviewDiff compares the current document against the one the update
-// would produce. A canonical resident is previewed through the publication
-// encoding itself, so reordered keys, an absent key that safe repair inserts,
-// and YAML quoting all appear exactly as they will be written. A legacy
-// resident promises no such publication equivalence: publication rewrites it
-// into canonical form wholesale, and legacyPreviewDocument deliberately shows
-// the in-place rewrite at the line offsets its reader is looking at instead.
-func updatePreviewDiff(raw, encoded []byte, doc memoryDocument, update MemoryUpdate) MemoryDiff {
-	if doc.legacy {
-		return memoryDiff(raw, legacyPreviewDocument(doc, update), 0)
-	}
+// updatePreviewDiff compares the canonical document against the one an update would publish.
+func updatePreviewDiff(raw, encoded []byte) MemoryDiff {
 	return memoryDiff(raw, encoded, 0)
-}
-
-// A legacy resident is accepted only as exactly four "Key: value" lines before
-// a blank separator, so reconstructing that grammar reproduces the original
-// bytes wherever the update changes nothing. Publication rewrites a legacy
-// resident into canonical form; the preview keeps the legacy line offsets the
-// reader is looking at.
-func legacyPreviewDocument(doc memoryDocument, update MemoryUpdate) []byte {
-	metadata := doc.metadata
-	if update.Phase != nil {
-		metadata.Phase = *update.Phase
-	}
-	if update.Next != nil {
-		metadata.Next = *update.Next
-	}
-	header := fmt.Sprintf("Effort: %s\nPhase: %s\nNext: %s\nUpdated: %s\n\n", metadata.Effort, metadata.Phase, metadata.Next, metadata.Updated)
-	return append([]byte(header), doc.body...)
 }

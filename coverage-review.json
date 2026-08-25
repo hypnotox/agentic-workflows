@@ -3172,16 +3172,16 @@
       "identity": {
         "file": "internal/effort/memory_metadata.go",
         "start": {
-          "line": 295,
+          "line": 249,
           "column": 16
         },
         "end": {
-          "line": 297,
+          "line": 251,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/effort/memory_metadata.go:295.16,297.3 1 in function encodeMemoryDocument, beginning `{ // coverage-ignore: yaml.Marshal of a mapping node of parsed and scalar-only values cannot fai...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/effort/memory_metadata.go:249.16,251.3 1 in function encodeMemoryDocument, beginning `{ // coverage-ignore: yaml.Marshal of a mapping node of parsed and scalar-only values cannot fai...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
@@ -12575,14 +12575,14 @@
     {
       "directive": {
         "file": "internal/effort/memory_metadata.go",
-        "line": 295,
-        "targetLine": 295,
+        "line": 249,
+        "targetLine": 249,
         "reason": "yaml.Marshal of a mapping node of parsed and scalar-only values cannot fail",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/effort/memory_metadata.go:295 is `encoded, err := yaml.Marshal(mapping)` (internal/effort/memory_metadata.go:294). Within `func encodeMemoryDocument(metadata MemoryMetadata, updated *yaml.Node, body []byte) ([]byte, error)` at internal/effort/memory_metadata.go:286, source review establishes yaml.Marshal of a mapping node of parsed and scalar-only values cannot fail; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err != nil {` at internal/effort/memory_metadata.go:249 is `encoded, err := yaml.Marshal(mapping)` (internal/effort/memory_metadata.go:248). Within `func encodeMemoryDocument(metadata MemoryMetadata, updated *yaml.Node, body []byte) ([]byte, error)` at internal/effort/memory_metadata.go:240, source review establishes yaml.Marshal of a mapping node of parsed and scalar-only values cannot fail; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {

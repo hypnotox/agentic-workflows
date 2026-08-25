@@ -28,8 +28,8 @@ func TestMemoryMetadataReadersAreDeliberatelySeparate(t *testing.T) {
 	if _, _, err := readMemoryMetadata(invalidMutable, "sample"); err == nil {
 		t.Fatal("metadata reader accepted invalid mutable fields")
 	}
-	if err := readMemoryIdentity([]byte("Effort: sample\nanything"), "sample"); err != nil {
-		t.Fatal(err)
+	if err := readMemoryIdentity([]byte("Effort: sample\nanything"), "sample"); err == nil {
+		t.Fatal("legacy identity accepted")
 	}
 }
 
@@ -71,40 +71,22 @@ func TestUpdateMemoryRejectsOversizedResidentWithoutChangingBytes(t *testing.T) 
 	}
 }
 
-func TestUpdateMemoryMigratesLegacyAndPreservesBody(t *testing.T) {
-	t.Parallel()
+func TestUpdateMemoryRefusesLegacyWithoutChangingBytes(t *testing.T) {
 	root := initEffortRepo(t)
-	now := time.Date(2026, 8, 2, 12, 0, 0, 123456789, time.UTC)
-	service := openTestService(t, root, func(deps *Dependencies) { deps.Clock = func() time.Time { return now } })
+	service := openTestService(t, root, nil)
 	if _, err := service.New(testContext(t), NewInput{Slug: "migration", Title: "Migration"}); err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(root, ".awf", "efforts", "migration", "memory.md")
-	body := "## Brief\r\n\r\nbody bytes stay exact\r\n"
-	legacy := "Effort: migration\nPhase: old\nNext: old next\nUpdated: Not yet updated.\n\n" + body
-	if err := os.WriteFile(path, []byte(legacy), 0o600); err != nil {
+	legacy := []byte("Effort: migration\nPhase: old\nNext: old next\nUpdated: Not yet updated.\n\nbody")
+	if err := os.WriteFile(path, legacy, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	phase := "  punctuation: [] {} #  "
-	if result, err := updateMemoryForTest(service, "migration", MemoryUpdate{Phase: &phase}); err != nil || result.Condition != MemoryUpdated {
-		t.Fatalf("migration result=%#v err=%v", result, err)
-	}
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	metadata, gotBody, err := readMemoryMetadata(raw, "migration")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if metadata.Phase != phase || metadata.Next != "old next" || metadata.Updated != now.Format(time.RFC3339Nano) {
-		t.Fatalf("metadata=%#v", metadata)
-	}
-	if string(gotBody) != body {
-		t.Fatalf("body changed: %q", gotBody)
-	}
-	if !strings.HasPrefix(string(raw), "---\n") {
-		t.Fatalf("not migrated: %q", raw)
+	phase := "replacement"
+	result, err := updateMemoryForTest(service, "migration", MemoryUpdate{Phase: &phase})
+	after, readErr := os.ReadFile(path)
+	if err != nil || readErr != nil || result.Condition != MemoryInvalid || !bytes.Equal(after, legacy) || result.Outcome == nil || len(result.Outcome.NextActions) == 0 {
+		t.Fatalf("result=%#v err=%v readErr=%v changed=%t", result, err, readErr, !bytes.Equal(after, legacy))
 	}
 }
 
@@ -176,11 +158,11 @@ func TestMemoryMetadataGrammarAndErrorContracts(t *testing.T) {
 		}
 	}
 	for _, value := range []string{"Not yet updated.", "2026-08-02T12:00:00+00:00", "nope"} {
-		if validateUpdated(value, false) == nil {
+		if validateUpdated(value) == nil {
 			t.Fatalf("canonical updated accepted: %q", value)
 		}
 	}
-	if validateUpdated(notYetUpdated, true) != nil || formatMemoryTime(time.Date(2026, 8, 2, 12, 0, 0, 0, time.FixedZone("x", 3600))) != "2026-08-02T11:00:00Z" {
+	if formatMemoryTime(time.Date(2026, 8, 2, 12, 0, 0, 0, time.FixedZone("x", 3600))) != "2026-08-02T11:00:00Z" {
 		t.Fatal("updated normalization")
 	}
 	if _, err := encodeMemory(MemoryMetadata{Effort: "sample", Phase: "[]", Next: "#", Updated: "2026-08-02T12:00:00Z"}, []byte("body")); err != nil {

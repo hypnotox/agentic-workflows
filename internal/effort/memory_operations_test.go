@@ -373,24 +373,13 @@ func TestMemoryPreviewDoesNotPublishOrClock(t *testing.T) {
 	}
 
 	legacyRaw := []byte("Effort: preview\nPhase: old phase\nNext: old next\nUpdated: Not yet updated.\n\nold body")
-	legacy := previewUpdateOf(legacyRaw, MemoryUpdate{Next: &next})
-	if legacy.FirstChangedLine == nil || *legacy.FirstChangedLine != 3 || !strings.Contains(legacy.Text, "-3 Next: old next") || !strings.Contains(legacy.Text, "+3 Next: next action") || strings.Contains(legacy.Text, "+4 Updated:") || strings.Contains(legacy.Text, "-4 Updated:") {
-		t.Fatalf("legacy preview=%#v", legacy)
-	}
-	legacyPhase := previewUpdateOf(legacyRaw, MemoryUpdate{Phase: &phase})
-	if !strings.Contains(legacyPhase.Text, "-2 Phase: old phase") || !strings.Contains(legacyPhase.Text, "+2 Phase: next phase") || strings.Contains(changedDiffRows(legacyPhase.Text), "Next:") {
-		t.Fatalf("legacy phase preview=%#v", legacyPhase)
-	}
 	if err := os.WriteFile(path, legacyRaw, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	legacyEdit, err := service.Memory(MemoryEditInput{Slug: "preview", Edits: []MemoryReplacement{{OldText: "old", NewText: "new"}}, Preview: true})
-	if err != nil || legacyEdit.Diff == nil || legacyEdit.Diff.FirstChangedLine == nil || *legacyEdit.Diff.FirstChangedLine != 6 {
-		t.Fatalf("legacy edit preview=%#v err=%v", legacyEdit, err)
-	}
-	publishedEdit, err := service.Memory(MemoryEditInput{Slug: "preview", Edits: []MemoryReplacement{{OldText: "old", NewText: "new"}}})
-	if err != nil || publishedEdit.Diff == nil || publishedEdit.Diff.FirstChangedLine == nil || *publishedEdit.Diff.FirstChangedLine != 7 {
-		t.Fatalf("canonical edit result=%#v err=%v", publishedEdit, err)
+	afterLegacy, readErr := os.ReadFile(path)
+	if err != nil || readErr != nil || legacyEdit.Condition != MemoryInvalid || !bytes.Equal(afterLegacy, legacyRaw) || legacyEdit.Outcome == nil {
+		t.Fatalf("legacy preview refusal=%#v err=%v readErr=%v changed=%t", legacyEdit, err, readErr, !bytes.Equal(afterLegacy, legacyRaw))
 	}
 
 	largeBody := []byte("OLD" + strings.Repeat("x", maxMemoryBytes-200))
@@ -517,8 +506,8 @@ func TestMemoryOperationsReadEditAndUpdateCanonicalResident(t *testing.T) {
 	}
 }
 
-// invariant: tooling/effort-management:memory-skeleton-purpose-partition (TestMemoryReadPaginationBoundariesAndLegacyInput)
-func TestMemoryReadPaginationBoundariesAndLegacyInput(t *testing.T) {
+// invariant: tooling/effort-management:memory-skeleton-purpose-partition (TestMemoryReadPaginationBoundariesAndLegacyRefusal)
+func TestMemoryReadPaginationBoundariesAndLegacyRefusal(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, nil)
 	if _, err := service.New(testContext(t), NewInput{Slug: "pagination", Title: "Pagination"}); err != nil {
@@ -531,8 +520,8 @@ func TestMemoryReadPaginationBoundariesAndLegacyInput(t *testing.T) {
 		t.Fatal(err)
 	}
 	got, err := service.Memory(MemoryReadInput{Slug: "pagination"})
-	if err != nil || got.Condition != MemoryRead || got.Content != string(legacy) || got.Range.TotalLines != 6 || got.Range.EndLine != 6 || got.Range.NextOffset != nil || got.Range.TruncatedBy != "none" || got.Memory.Updated != notYetUpdated {
-		t.Fatalf("legacy read=%#v err=%v", got, err)
+	if err != nil || got.Condition != MemoryInvalid || got.Outcome == nil {
+		t.Fatalf("legacy read refusal=%#v err=%v", got, err)
 	}
 
 	lines := strings.Repeat("x\n", maxMemoryReadLines+1)

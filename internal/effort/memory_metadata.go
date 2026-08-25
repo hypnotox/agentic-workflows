@@ -14,7 +14,6 @@ import (
 )
 
 const maxMemoryBytes = 1 << 20
-const notYetUpdated = "Not yet updated."
 
 // MemoryMetadata is the closed, mutable header of an owned memory file.
 type MemoryMetadata struct {
@@ -37,7 +36,6 @@ type invalidMemoryUpdate struct {
 type memoryDocument struct {
 	metadata MemoryMetadata
 	body     []byte
-	legacy   bool
 	identity string
 	boundary bool
 	invalid  map[string]bool
@@ -57,9 +55,6 @@ func readMemoryIdentity(raw []byte, slug string) error {
 	}
 	if !utf8.Valid(raw) {
 		return errors.New("memory is not valid UTF-8")
-	}
-	if bytes.HasPrefix(raw, []byte("Effort: "+slug+"\n")) {
-		return nil
 	}
 	block, _, found := frontmatter.Split(raw)
 	if !found {
@@ -91,10 +86,10 @@ func inspectMemory(raw []byte, slug string) memoryDocument {
 		return memoryDocument{err: errors.New("memory is not valid UTF-8")}
 	}
 	block, body, found := frontmatter.Split(raw)
-	if found {
-		return inspectCanonical(block, body, slug)
+	if !found {
+		return memoryDocument{err: errors.New("memory must use canonical YAML frontmatter")}
 	}
-	return inspectLegacy(raw, slug)
+	return inspectCanonical(block, body, slug)
 }
 
 func inspectCanonical(block, body []byte, slug string) memoryDocument {
@@ -154,49 +149,11 @@ func inspectCanonical(block, body []byte, slug string) memoryDocument {
 	if _, missing := doc.invalid["next"]; !missing && validateMemoryMutable(doc.metadata.Next) != nil {
 		doc.invalid["next"] = true
 	}
-	if _, missing := doc.invalid["updated"]; !missing && validateUpdated(doc.metadata.Updated, false) != nil {
+	if _, missing := doc.invalid["updated"]; !missing && validateUpdated(doc.metadata.Updated) != nil {
 		doc.invalid["updated"] = true
 	}
 	if len(doc.invalid) != 0 {
 		doc.err = errors.New("invalid canonical memory metadata")
-	}
-	return doc
-}
-
-func inspectLegacy(raw []byte, slug string) memoryDocument {
-	prefixEnd := bytes.Index(raw, []byte("\n\n"))
-	if prefixEnd < 0 {
-		return memoryDocument{err: errors.New("legacy memory has no exact four-line boundary")}
-	}
-	lines := strings.Split(string(raw[:prefixEnd]), "\n")
-	if len(lines) != 4 {
-		return memoryDocument{err: errors.New("legacy memory must have exactly four metadata lines")}
-	}
-	keys := []string{"Effort", "Phase", "Next", "Updated"}
-	values := make([]string, 4)
-	for i, key := range keys {
-		prefix := key + ": "
-		if !strings.HasPrefix(lines[i], prefix) {
-			return memoryDocument{err: errors.New("legacy memory metadata is malformed")}
-		}
-		values[i] = strings.TrimPrefix(lines[i], prefix)
-	}
-	doc := memoryDocument{metadata: MemoryMetadata{Effort: values[0], Phase: values[1], Next: values[2], Updated: values[3]}, body: raw[prefixEnd+2:], legacy: true, identity: values[0], boundary: true, invalid: map[string]bool{}, updated: memoryScalar(values[3])}
-	if doc.identity != slug {
-		doc.err = errors.New("memory effort identity does not match directory")
-		return doc
-	}
-	if validateMemoryMutable(doc.metadata.Phase) != nil {
-		doc.invalid["phase"] = true
-	}
-	if validateMemoryMutable(doc.metadata.Next) != nil {
-		doc.invalid["next"] = true
-	}
-	if validateUpdated(doc.metadata.Updated, true) != nil {
-		doc.invalid["updated"] = true
-	}
-	if len(doc.invalid) != 0 {
-		doc.err = errors.New("invalid legacy memory metadata")
 	}
 	return doc
 }
@@ -259,10 +216,7 @@ func validateMemoryMutable(value string) error {
 	return nil
 }
 
-func validateUpdated(value string, legacy bool) error {
-	if legacy && value == notYetUpdated {
-		return nil
-	}
+func validateUpdated(value string) error {
 	parsed, err := time.Parse(time.RFC3339Nano, value)
 	if err != nil || parsed.Location() != time.UTC || !strings.HasSuffix(value, "Z") || parsed.Format(time.RFC3339Nano) != value {
 		return errors.New("memory updated must be RFC3339Nano UTC")

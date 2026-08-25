@@ -68,11 +68,11 @@ async function request(h: any, args: any, signal = new AbortController().signal)
 function lastText(r: any) { return r.content[0].text; }
 function recordedTool(h: any, name: string): any { return h.recorder.tools.find((candidate: any) => candidate.name === name); }
 
-test("client covers sentinel metadata, exact condition shapes, and cancellation transport", async () => {
-  const sentinel = success(); sentinel.memory.updated = "Not yet updated.";
-  assert.equal((await decode(sentinel)).memory?.updated, "Not yet updated.");
+test("client rejects sentinel metadata and covers exact condition shapes and cancellation transport", async () => {
   const nano = success(); nano.activity.attachedAt = "2026-08-03T00:00:00.123456789Z"; nano.activity.heartbeatAt = "2026-08-03T00:00:00.1Z";
   assert.equal((await decode(nano)).activity?.attachedAt, nano.activity.attachedAt);
+  const sentinel = success(); sentinel.memory.updated = "Not yet updated.";
+  await assert.rejects(decode(sentinel), /invalid envelope/);
   const invalidSentinel = success(); invalidSentinel.activity.attachedAt = "Not yet updated.";
   await assert.rejects(decode(invalidSentinel), /invalid envelope/);
   const malformed = [
@@ -590,15 +590,14 @@ test("mutation call rendering previews once per key, serializes, invalidates asy
 });
 
 test("mutation execution awaits the rendered preview, queues only the mutation, and drops settled preview state", async () => {
-  // The preview numbers a retained legacy body from line 6; the authoritative
-  // published result numbers the canonical document from line 7. The row must
-  // end up showing the canonical numbering alone (ADR Context, legacy offsets).
+  // The call-time preview and authoritative result deliberately use different
+  // line numbers. The row must end up showing only the authoritative result.
   const calls: string[][] = []; const replies: any[] = [previewDiff(), memoryEditReply({ diff: { text: "-7 old\n+7 new", firstChangedLine: 7, truncated: false } })];
   const memoryExec = async (_command: string, argv: readonly string[]) => { calls.push([...argv]); return { code: 0, stdout: line(replies.shift()), stderr: "" }; };
   const h = await harness([success()], { memoryExec }); await request(h, { effort: "demo" });
   const tool = recordedTool(h, "effort_memory_edit"); const context = rowContext({ args: editArgs, toolCallId: "call-7" });
   const row = tool.renderCall(editArgs, fakeTheme, context); await settle();
-  assert.match(rowText(row), /\+6 new/, "the legacy-offset preview was not rendered verbatim");
+  assert.match(rowText(row), /\+6 new/, "the call-time preview was not rendered verbatim");
   const result = await tool.execute("call-7", editArgs, new AbortController().signal, () => {}, h.ctx);
   assert.equal(lastText(result), "Replaced 1 block(s) in effort memory."); assert.equal(result.details.condition, "edited");
   assert.deepEqual(calls.map((argv) => argv.includes("--preview")), [true, false], "execution re-previewed instead of awaiting the rendered preview");
@@ -608,7 +607,7 @@ test("mutation execution awaits the rendered preview, queues only the mutation, 
   assert.deepEqual(empty.render(80), []);
   resultContext.lastComponent = empty; tool.renderResult(result, { expanded: false, isPartial: false }, fakeTheme, resultContext);
   const settled = rowText(row); assert.match(settled, /toolSuccessBg/); assert.match(settled, /\+7 new/);
-  assert.equal(settled.includes("+6 new"), false, "the authoritative result did not replace the legacy-offset preview");
+  assert.equal(settled.includes("+6 new"), false, "the authoritative result did not replace the call-time preview");
   replies.push(previewDiff(), memoryEditReply());
   await tool.execute("call-7", editArgs, new AbortController().signal, () => {}, h.ctx);
   assert.equal(calls.length, 4, "a settled preview entry survived its tool call");

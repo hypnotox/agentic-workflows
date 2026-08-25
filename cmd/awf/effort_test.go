@@ -596,7 +596,7 @@ func TestMemoryMalformedDiagnosticIsEntirelyBoundedAndUTF8Safe(t *testing.T) {
 
 // invariant: tooling/cli:explicit-output-bypasses (TestMemoryProtocolBaseRefusalAndNullableMatrices)
 func TestMemoryProtocolBaseRefusalAndNullableMatrices(t *testing.T) {
-	metadata := &effort.MemoryMetadata{Effort: "demo", Phase: "phase", Next: "next", Updated: "Not yet updated."}
+	metadata := &effort.MemoryMetadata{Effort: "demo", Phase: "phase", Next: "next", Updated: "2026-08-05T12:00:00Z"}
 	baseConditions := []effort.MemoryCondition{
 		effort.MemoryNotOwner,
 		effort.MemoryMissing,

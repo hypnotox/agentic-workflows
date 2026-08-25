@@ -281,7 +281,7 @@ func TestInvokingCheckoutCleanlinessGuardsDestructiveOperations(t *testing.T) {
 	if err := os.Remove(foreign); err != nil {
 		t.Fatal(err)
 	}
-	writeWorktreeFile(t, filepath.Join(root, ".awf", "efforts", "invoking-cleanliness", "memory.md"), "Effort: invoking-cleanliness\n")
+	writeWorktreeFile(t, filepath.Join(root, ".awf", "efforts", "invoking-cleanliness", "memory.md"), "---\neffort: invoking-cleanliness\nphase: active\nnext: finish\nupdated: \"2026-08-25T00:00:00Z\"\n---\n")
 	if _, err := manager.Remove(testContext(t), "invoking-cleanliness"); err != nil {
 		t.Fatalf("remove with only owned resident state present = %v, want success", err)
 	}

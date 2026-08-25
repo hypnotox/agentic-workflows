@@ -107,7 +107,7 @@ For the detailed criteria of when a decision is load-bearing enough to warrant a
 
 - The owned memory stays under the primary checkout: the literal `.awf/efforts/<slug>/memory.md` spelling is primary-root-relative, and effort commands print a resolvable absolute path from anywhere else.
 
-- New memories use closed YAML frontmatter with `effort`, `phase`, `next`, and `updated`; an exact legacy four-line header migrates on its first structured update.
+- Memories use closed YAML frontmatter with `effort`, `phase`, `next`, and `updated`.
 
 - Resume from `phase` and `next` only after revalidating them against the repository sources{{if ne .profile "core"}} and current-state documentation{{end}}, which remain authoritative over checkpoint prose; the rendered orienting skill's resume-revalidation section is the procedural home of that check.
 
@@ -122,7 +122,7 @@ For the detailed criteria of when a decision is load-bearing enough to warrant a
 
 - A checkpoint never creates an effort.
 
-- For effort-backed work it validates existing ownership, accepts deprecated legacy `Effort: <slug>` or canonical frontmatter `effort: <slug>`, and updates the owned file in one writer-owned tool batch with `./awf effort memory update <slug> --phase "..." --next "..."`; effort-free work omits persistence rather than fabricating memory.
+- For effort-backed work it validates existing ownership, accepts canonical YAML frontmatter `effort: <slug>`, and updates the owned file in one writer-owned tool batch with `./awf effort memory update <slug> --phase "..." --next "..."`; effort-free work omits persistence rather than fabricating memory.
 
 - It then routes a new material decision or changed approved boundary through the active workflow to brainstorming, while separately reporting a correctness or safety concern, blocker, or failed required verification through the active workflow only when it remains unresolved after required diagnosis and authority-guided remediation; either condition stops progression, while its absence permits a continuity notice and continuation.
 
@@ -145,7 +145,7 @@ A routine implementation checkpoint occurs only after a phase's closing commit h
 
 - `effort` never changes.
 
-- Checkpoints use structured memory update rather than direct replacement; it updates selected `phase`/`next` values and UTC time, publishes the literal legacy `Not yet updated.` sentinel until its first update, migrates an exact legacy four-line header on that update, and safely repairs mutable metadata only when identity and its recognized boundary are safe.
+- Checkpoints use structured memory update rather than direct replacement; it updates selected `phase`/`next` values and UTC time, and safely repairs mutable metadata only when canonical identity and its recognized boundary are safe.
 
 - The Brief states the outcome and links the effort's durable artifacts as they come to exist.
 
