@@ -21,6 +21,16 @@ schema 46, contains none of the routing keys, and contains no file with the reti
 Historical pre-31 routing remains represented in reachable Git history and therefore stays inside
 audit's read-only decoder rather than the live manifest model.
 
+The affected consumer boundary is closed:
+
+| Consumer | Disposition |
+|---|---|
+| Config | Current semantic config remains schema 46 input; retired lock routing fields never enter config decoding. |
+| Manifest | Live parsing keeps schema-first admission and rejects every retired routing key after admission. |
+| Migrate | Schema-only classification and live-floor validation continue to refuse schemas below 46; the ordered future migration seam begins at 46 and needs no retired routing value. |
+| Render and sync | Admitted operations continue to read the current lock before publication; no managed current lock presents a retired routing key or co-owned runner identity. |
+| Audit | The separate historical decoder retains read-only schemas 3 through 46 and treats pre-31 routing fields as historical evidence rather than live authority. |
+
 Other RF-014B candidates remain represented or current. They include authored ADR and plan formats,
 schema-2 effort residents, missing initialization provenance, punctuation exemptions, historical
 schemas, and generic journal recovery. Their consumers do not justify retaining these two overlooked
