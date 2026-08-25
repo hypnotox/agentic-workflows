@@ -170,11 +170,23 @@ func TestHandleOperations(t *testing.T) {
 	if readErr != nil || statErr != nil || string(raw) != "replacement" || replacedInfo.Mode().Perm() != 0o600 {
 		t.Fatalf("replacement = %q, %v, %v", raw, replacedInfo, errors.Join(readErr, statErr))
 	}
-	if err := h.Remove("created/child/artifact"); err != nil {
+	if err := h.Rename("created/child/artifact", "created/child/renamed"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(root, "created/child/artifact")); !errors.Is(err, fs.ErrNotExist) {
+	if err := h.Remove("created/child/renamed"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "created/child/renamed")); !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("removed path remains: %v", err)
+	}
+	if err := h.MkdirAll("created/removable/child", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.RemoveAll("created/removable"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "created/removable")); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("removed tree remains: %v", err)
 	}
 	if err := h.Remove("missing"); !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("remove error identity = %v", err)
@@ -205,6 +217,12 @@ func TestHandleOperations(t *testing.T) {
 	}
 	if err := h.Remove("escape/victim"); err == nil {
 		t.Fatal("remove through escaping symlink succeeded")
+	}
+	if err := h.RemoveAll("escape/victim"); err == nil {
+		t.Fatal("remove-all through escaping symlink succeeded")
+	}
+	if err := h.Rename("escape/victim", "created/escaped"); err == nil {
+		t.Fatal("rename through escaping symlink succeeded")
 	}
 	afterOutsideInfo, statErr := os.Stat(outsidePath)
 	if raw, readErr := os.ReadFile(outsidePath); readErr != nil || statErr != nil || string(raw) != "outside" || afterOutsideInfo.Mode().Perm() != outsideInfo.Mode().Perm() {
@@ -243,6 +261,9 @@ func TestHandleOperations(t *testing.T) {
 		func() error { return h.Replace("../artifact", nil, 0o644) },
 		func() error { return h.Replace("dir/file/child", nil, 0o644) },
 		func() error { return h.Remove("../artifact") },
+		func() error { return h.RemoveAll("../artifact") },
+		func() error { return h.Rename("dir/file", "../artifact") },
+		func() error { return h.Rename("../artifact", "dir/file") },
 		func() error { return h.Chmod("../artifact", 0o644) },
 		func() error { _, _, err := h.ReadWithMode("../artifact"); return err },
 		func() error { return h.MkdirAll("dir/file/child", 0o755) },

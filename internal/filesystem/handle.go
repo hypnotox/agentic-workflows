@@ -188,6 +188,31 @@ func (h *Handle) Replace(destination string, contents []byte, mode fs.FileMode) 
 	return nil
 }
 
+// Rename moves oldPath to newPath beneath the selected root.
+func (h *Handle) Rename(oldPath, newPath string) error {
+	if err := validPath(oldPath); err != nil {
+		return fmt.Errorf("filesystem: rename %q: %w", oldPath, err)
+	}
+	if err := validPath(newPath); err != nil {
+		return fmt.Errorf("filesystem: rename %q: %w", newPath, err)
+	}
+	if err := h.root.Rename(oldPath, newPath); err != nil {
+		return fmt.Errorf("filesystem: rename %q to %q: %w", oldPath, newPath, err)
+	}
+	return nil
+}
+
+// RemoveAll removes path and its descendants beneath the selected root.
+func (h *Handle) RemoveAll(path string) error {
+	if err := validPath(path); err != nil {
+		return fmt.Errorf("filesystem: remove-all %q: %w", path, err)
+	}
+	if err := h.root.RemoveAll(path); err != nil {
+		return fmt.Errorf("filesystem: remove-all %q: %w", path, err)
+	}
+	return nil
+}
+
 // Remove removes path beneath the selected root.
 func (h *Handle) Remove(path string) error {
 	if err := validPath(path); err != nil {

@@ -2,10 +2,13 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/clispec"
@@ -48,6 +51,21 @@ func TestRunFullOnlyCapabilityFollowsLiveAuthorityAdmission(t *testing.T) {
 	}
 	if got := stderr.String(); !strings.Contains(got, "below live floor") || strings.Contains(got, "parse config") {
 		t.Fatalf("Full-only admission order = %q", got)
+	}
+}
+
+func TestRequireCommandCapabilityPreservesProjectPresenceFailure(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(config.RootDir(root), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	lockPath := config.LockPath(root)
+	if err := os.Symlink(filepath.Base(lockPath), lockPath); err != nil {
+		t.Skipf("symlink unsupported: %v", err)
+	}
+	err := requireCommandCapability(context.Background(), root, clispec.Command{Name: "audit"}, "", invocation{})
+	if !errors.Is(err, syscall.ELOOP) {
+		t.Fatalf("capability project-presence error = %v, want symlink loop", err)
 	}
 }
 

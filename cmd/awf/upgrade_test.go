@@ -22,6 +22,10 @@ import (
 
 // preparePublicSyncLaterFailure makes public Publisher.Sync commit the earlier
 // AGENTS.md mode correction before the later bridge path cannot be read.
+func upgradeJournalPath(root string) string {
+	return filepath.Join(root, filepath.FromSlash(upgrade.JournalRel))
+}
+
 func snapshotUpgradeFixture(t *testing.T, root string) map[string][]byte {
 	t.Helper()
 	files := make(map[string][]byte)
@@ -197,7 +201,7 @@ func writeValidJournal(t *testing.T, root, phase string, finalMatchesLock bool) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(upgrade.JournalPath(root), append(b, '\n'), 0o644); err != nil {
+	if err := os.WriteFile(upgradeJournalPath(root), append(b, '\n'), 0o644); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -252,11 +256,24 @@ func TestGuardValidJournalPermitsOnlyRecover(t *testing.T) {
 	}
 }
 
-// TestGuardRefusesWhenJournalPresenceIsUnreadable pins that the command-state
-// guard refuses when it cannot determine whether a journal exists. Reading the
-// fault as absence permitted every command an unrecovered upgrade must block,
-// including the ones that mutate the tree.
-func TestGuardRefusesWhenJournalPresenceIsUnreadable(t *testing.T) {
+// TestGuardRefusesWhenProjectAuthorityIsUnreadable pins that the command-state
+// guard refuses when project-presence inspection cannot complete. Reading the
+// fault as absence would permit commands against an authority tree whose state
+// was never established.
+func TestGuardRefusesWhenJournalPresenceInspectionFails(t *testing.T) {
+	root := scaffoldProject(t)
+	journalPath := upgradeJournalPath(root)
+	if err := os.Symlink(filepath.Base(journalPath), journalPath); err != nil {
+		t.Skipf("symlink unsupported: %v", err)
+	}
+	var out, errb bytes.Buffer
+	code := runAt(t, root, []string{"awf", "check"}, &out, &errb)
+	if code == 0 || !strings.Contains(errb.String(), "current-state upgrade journal") {
+		t.Fatalf("journal inspection failure not refused: code=%d\n%s", code, errb.String())
+	}
+}
+
+func TestGuardRefusesWhenProjectAuthorityIsUnreadable(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("root bypasses directory permissions")
 	}
@@ -268,8 +285,8 @@ func TestGuardRefusesWhenJournalPresenceIsUnreadable(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chmod(awfDir, 0o755) })
 	var out, errb bytes.Buffer
 	code := runAt(t, root, []string{"awf", "check"}, &out, &errb)
-	if code == 0 || !strings.Contains(errb.String(), "current-state upgrade journal") {
-		t.Fatalf("unreadable journal location not refused: code=%d\n%s", code, errb.String())
+	if code == 0 || !strings.Contains(errb.String(), "permission denied") {
+		t.Fatalf("unreadable project authority not refused: code=%d\n%s", code, errb.String())
 	}
 }
 
@@ -277,7 +294,7 @@ func TestGuardMalformedJournalRefusesEveryMode(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	root := scaffoldProject(t)
-	if err := os.WriteFile(upgrade.JournalPath(root), []byte("{not json"), 0o644); err != nil {
+	if err := os.WriteFile(upgradeJournalPath(root), []byte("{not json"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	for _, args := range [][]string{{"awf", "upgrade", "--recover"}, {"awf", "check"}} {
@@ -370,7 +387,7 @@ func TestValidJournalRecoveryRollsBackInterrupted(t *testing.T) {
 		},
 	}
 	b, _ := json.MarshalIndent(j, "", "  ")
-	if err := os.WriteFile(upgrade.JournalPath(root), append(b, '\n'), 0o644); err != nil {
+	if err := os.WriteFile(upgradeJournalPath(root), append(b, '\n'), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := runRecover(root, io.Discard); err != nil {

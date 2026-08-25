@@ -13,11 +13,20 @@ import (
 	"testing"
 )
 
+func JournalPath(root string) string {
+	return filepath.Join(root, filepath.FromSlash(JournalRel))
+}
+
 // TestJournalPresentSeparatesAbsenceFromFault pins that an unreadable journal
 // location is reported as a fault rather than as absence. Folding the two
 // together told the command-state guard there was no journal to recover from,
 // so it permitted exactly the commands an unrecovered upgrade must block.
 func TestJournalPresentSeparatesAbsenceFromFault(t *testing.T) {
+	missingRoot := filepath.Join(t.TempDir(), "missing")
+	if found, err := JournalPresent(missingRoot); found || err == nil {
+		t.Fatalf("missing root: found=%v err=%v, want false and open failure", found, err)
+	}
+
 	root := t.TempDir()
 	found, err := JournalPresent(root)
 	if found || err != nil {
@@ -77,6 +86,10 @@ func TestApplyImageRestoresContentAndModeAtomically(t *testing.T) {
 	ents, err := os.ReadDir(root)
 	if err != nil || len(ents) != 1 {
 		t.Fatalf("temp residue left behind: %v (err %v)", ents, err)
+	}
+	mustWrite(t, filepath.Join(root, "blocking-parent"), []byte("file"))
+	if err := applyImage(root, "blocking-parent/child", Image{Present: true, Mode: 0o600, Content: []byte("prior")}); err == nil {
+		t.Fatal("restore created a child beneath a regular file")
 	}
 }
 
@@ -469,7 +482,7 @@ func TestRecoverPropagatesLockInspectionFailure(t *testing.T) {
 func TestAppliedOperationsPropagatesResidentInspectionFailure(t *testing.T) {
 	failure := errors.New("inspect quarantine")
 	operation := productionJournalOperation()
-	operation.lstat = func(string) (os.FileInfo, error) { return nil, failure }
+	operation.lstat = func(string, string) (os.FileInfo, error) { return nil, failure }
 	journal := Journal{Operations: []Operation{{Kind: KindResidentTree, Path: ".awf/efforts", Quarantine: ".awf/.upgrade-quarantine/efforts"}}}
 	if _, err := appliedOperations(t.TempDir(), journal, operation); !errors.Is(err, failure) || !strings.Contains(err.Error(), "inspect quarantine .awf/.upgrade-quarantine/efforts") {
 		t.Fatalf("error = %v, want wrapped inspection failure with quarantine path", err)
@@ -478,7 +491,7 @@ func TestAppliedOperationsPropagatesResidentInspectionFailure(t *testing.T) {
 
 func TestAppliedOperationsTreatsWrappedResidentAbsenceAsUnapplied(t *testing.T) {
 	operation := productionJournalOperation()
-	operation.lstat = func(string) (os.FileInfo, error) {
+	operation.lstat = func(string, string) (os.FileInfo, error) {
 		return nil, fmt.Errorf("quarantine unavailable: %w", fs.ErrNotExist)
 	}
 	journal := Journal{Operations: []Operation{{Kind: KindResidentTree, Path: ".awf/efforts", Quarantine: ".awf/.upgrade-quarantine/efforts"}}}
@@ -531,7 +544,7 @@ func TestRecoveryJournalWriteFailureRetainsTerminalJournalAxis(t *testing.T) {
 	if !errors.Is(err, failure) {
 		t.Fatalf("error = %v", err)
 	}
-	if want := []Evidence{{Action: "pending", Path: LockRel()}, {Action: "retained", Path: journalRel}}; !slices.Equal(outcome.Changed, want) {
+	if want := []Evidence{{Action: "pending", Path: LockRel()}, {Action: "retained", Path: JournalRel}}; !slices.Equal(outcome.Changed, want) {
 		t.Fatalf("changed = %#v, want %#v", outcome.Changed, want)
 	}
 }
@@ -572,7 +585,7 @@ func TestJournalWriteFailuresReportTerminalJournalAxis(t *testing.T) {
 			}
 			for i := range tc.want {
 				if tc.want[i].Path == "" {
-					tc.want[i].Path = journalRel
+					tc.want[i].Path = JournalRel
 				}
 			}
 			if !slices.Equal(outcome.Changed, tc.want) {
@@ -910,18 +923,55 @@ func TestJournalResidentInterruption(t *testing.T) {
 // treat an absent source as already-converged so a restarted run makes
 // progress, and both surface an unreadable source rather than silently
 // treating it as absent.
+func TestJournalResidentRenameHelpersPreserveDestinationInspectionFailures(t *testing.T) {
+	op := Operation{Kind: KindResidentTree, Path: ".awf/efforts", Quarantine: ".awf/.upgrade-quarantine/efforts"}
+	failure := errors.New("inspect destination")
+
+	t.Run("quarantine", func(t *testing.T) {
+		root := t.TempDir()
+		mustMkdir(t, filepath.Join(root, filepath.FromSlash(op.Path)))
+		operation := productionJournalOperation()
+		lstat := operation.lstat
+		operation.lstat = func(root, path string) (os.FileInfo, error) {
+			if path == op.Quarantine {
+				return nil, failure
+			}
+			return lstat(root, path)
+		}
+		if err := quarantineTree(root, op, operation); !errors.Is(err, failure) {
+			t.Fatalf("quarantine destination error = %v, want %v", err, failure)
+		}
+	})
+
+	t.Run("restore", func(t *testing.T) {
+		root := t.TempDir()
+		mustMkdir(t, filepath.Join(root, filepath.FromSlash(op.Quarantine)))
+		operation := productionJournalOperation()
+		lstat := operation.lstat
+		operation.lstat = func(root, path string) (os.FileInfo, error) {
+			if path == op.Path {
+				return nil, failure
+			}
+			return lstat(root, path)
+		}
+		if err := restoreTree(root, op, operation); !errors.Is(err, failure) {
+			t.Fatalf("restore destination error = %v, want %v", err, failure)
+		}
+	})
+}
+
 func TestJournalResidentRenameHelpers(t *testing.T) {
 	op := treeOp(".awf/efforts/legacy.json", "efforts-legacy.json")
 	t.Run("absent-source-converges", func(t *testing.T) {
 		root := t.TempDir()
 		mustMkdir(t, filepath.Join(root, ".awf", "efforts"))
-		if err := quarantineTree(root, op); err != nil {
+		if err := quarantineTree(root, op, productionJournalOperation()); err != nil {
 			t.Fatalf("quarantine an absent resident: %v", err)
 		}
 		if exists(t, filepath.Join(root, filepath.FromSlash(QuarantineRel()))) {
 			t.Fatal("quarantine root created for an absent resident")
 		}
-		if err := restoreTree(root, op); err != nil {
+		if err := restoreTree(root, op, productionJournalOperation()); err != nil {
 			t.Fatalf("restore an absent quarantine: %v", err)
 		}
 		if exists(t, filepath.Join(root, filepath.FromSlash(op.Path))) {
@@ -943,10 +993,10 @@ func TestJournalResidentRenameHelpers(t *testing.T) {
 			}
 			defer func() { _ = os.Chmod(dir, 0o755) }()
 		}
-		if err := quarantineTree(root, op); err == nil {
+		if err := quarantineTree(root, op, productionJournalOperation()); err == nil {
 			t.Fatal("unreadable resident quarantined")
 		}
-		if err := restoreTree(root, op); err == nil {
+		if err := restoreTree(root, op, productionJournalOperation()); err == nil {
 			t.Fatal("unreadable quarantine restored")
 		}
 	})
@@ -1102,7 +1152,7 @@ func TestJournalCleanupFaultOutcomes(t *testing.T) {
 			{Action: "committed", Path: LockRel()},
 			{Action: "discarded", Path: ".awf/efforts/legacy.json"},
 			{Action: "discarded", Path: ".awf/memory"},
-			{Action: "recovered", Path: journalRel},
+			{Action: "recovered", Path: JournalRel},
 		}
 		if !slices.Equal(outcome.Evidence, wantEvidence) {
 			t.Fatalf("evidence = %#v, want %#v", outcome.Evidence, wantEvidence)
@@ -1124,14 +1174,14 @@ func TestJournalCleanupFaultOutcomes(t *testing.T) {
 		seedResidents(t, root)
 		failure := errors.New("discard second quarantine")
 		operation := productionJournalOperation()
-		priorRemoveAll := os.RemoveAll
+		priorRemoveAll := operation.removeAll
 		calls := 0
-		operation.removeAll = func(path string) error {
+		operation.removeAll = func(root, path string) error {
 			calls++
 			if calls == 2 {
 				return failure
 			}
-			return priorRemoveAll(path)
+			return priorRemoveAll(root, path)
 		}
 
 		outcome, err := commitTransactionWith(root, residentJournal(phasePrepared).Operations, operation)
@@ -1168,7 +1218,7 @@ func TestJournalCleanupFaultOutcomes(t *testing.T) {
 		mustMkdir(t, filepath.Join(root, ".awf"))
 		failure := errors.New("remove committed journal")
 		operation := productionJournalOperation()
-		operation.remove = func(string) error { return failure }
+		operation.remove = func(string, string) error { return failure }
 
 		outcome, err := commitTransactionWith(root, lockJournal(phasePrepared).Operations, operation)
 		if !errors.Is(err, failure) {
@@ -1189,7 +1239,7 @@ func TestJournalCleanupFaultOutcomes(t *testing.T) {
 		mustWrite(t, filepath.Join(root, "a.txt"), []byte("new"))
 		failure := errors.New("remove rollback journal")
 		operation := productionJournalOperation()
-		operation.remove = func(string) error { return failure }
+		operation.remove = func(string, string) error { return failure }
 
 		outcome, err := rollBack(root, lockJournal(phaseApplying), errors.New("apply blocked"), []Evidence{{Action: "applied", Path: "a.txt"}}, operation)
 		if !errors.Is(err, failure) {
@@ -1211,14 +1261,14 @@ func TestJournalCleanupFaultOutcomes(t *testing.T) {
 		writeRawJournal(t, root, residentJournal(phaseLockCommitted))
 		failure := errors.New("discard second quarantine")
 		operation := productionJournalOperation()
-		priorRemoveAll := os.RemoveAll
+		priorRemoveAll := operation.removeAll
 		calls := 0
-		operation.removeAll = func(path string) error {
+		operation.removeAll = func(root, path string) error {
 			calls++
 			if calls == 2 {
 				return failure
 			}
-			return priorRemoveAll(path)
+			return priorRemoveAll(root, path)
 		}
 
 		outcome, err := recoverWith(root, operation)
@@ -1254,7 +1304,7 @@ func TestJournalCleanupFaultOutcomes(t *testing.T) {
 		root := t.TempDir()
 		failure := errors.New("remove recovery journal")
 		operation := productionJournalOperation()
-		operation.remove = func(string) error { return failure }
+		operation.remove = func(string, string) error { return failure }
 
 		evidence := []Evidence{{Action: "applied", Path: "a.txt"}}
 		changed := []Evidence{{Action: "applied", Path: "a.txt"}}
@@ -1273,14 +1323,14 @@ func TestJournalCleanupFaultOutcomes(t *testing.T) {
 
 	t.Run("wrapped-absence-is-idempotent", func(t *testing.T) {
 		operation := productionJournalOperation()
-		operation.remove = func(string) error {
+		operation.remove = func(string, string) error {
 			return fmt.Errorf("journal already removed: %w", fs.ErrNotExist)
 		}
 		outcome, err := cleanupJournal(t.TempDir(), nil, nil, operation)
 		if err != nil {
 			t.Fatalf("cleanupJournal: %v", err)
 		}
-		if want := []Evidence{{Action: "recovered", Path: journalRel}}; !slices.Equal(outcome.Evidence, want) {
+		if want := []Evidence{{Action: "recovered", Path: JournalRel}}; !slices.Equal(outcome.Evidence, want) {
 			t.Fatalf("evidence = %#v, want %#v", outcome.Evidence, want)
 		}
 	})

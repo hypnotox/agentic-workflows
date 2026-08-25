@@ -18,7 +18,7 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
-	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 )
 
 // JournalVersion is the only accepted current-state upgrade journal schema.
@@ -107,106 +107,122 @@ type Journal struct {
 	Operations      []Operation `json:"operations"`
 }
 
-const journalRel = config.DirName + "/current-state-upgrade.journal"
+// JournalRel is the fixed repo-relative current-state upgrade journal path.
+const JournalRel = config.DirName + "/current-state-upgrade.journal"
 
 // LockRel is the repo-relative lock path every journal ends on.
 func LockRel() string { return config.DirName + "/awf.lock" }
-
-// JournalPath returns the fixed journal path under root.
-func JournalPath(root string) string {
-	return filepath.Join(root, journalRel)
-}
 
 // JournalPresent reports whether a journal file exists under root. A fault is
 // returned rather than folded into absence: answering "no journal" from a read
 // that never completed would let the command-state guard permit the commands an
 // unrecovered upgrade must block.
 func JournalPresent(root string) (bool, error) {
-	if _, err := os.Stat(JournalPath(root)); err != nil {
-		if os.IsNotExist(err) {
-			return false, nil
+	var present bool
+	err := withJournalFilesystem(root, func(files *filesystem.Handle) error {
+		_, err := files.Info(JournalRel)
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil
 		}
+		if err != nil {
+			return err
+		}
+		present = true
+		return nil
+	})
+	if err != nil {
 		return false, fmt.Errorf("inspect current-state upgrade journal: %w", err)
 	}
-	return true, nil
+	return present, nil
 }
 
-// imageOf reads path's current image from the working tree.
-func imageOf(root, path string) (Image, error) {
-	full := filepath.Join(root, filepath.FromSlash(path))
-	content, err := os.ReadFile(full)
+func withJournalFilesystem(root string, run func(*filesystem.Handle) error) error {
+	files, err := filesystem.Open(root)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return Image{Present: false}, nil
+		return err
+	}
+	return errors.Join(run(files), files.Close())
+}
+
+// imageOf reads path's current image from the root-confined working tree.
+func imageOf(root, path string) (image Image, err error) {
+	err = withJournalFilesystem(root, func(files *filesystem.Handle) error {
+		content, mode, readErr := files.ReadWithMode(path)
+		if errors.Is(readErr, fs.ErrNotExist) {
+			image = Image{Present: false}
+			return nil
 		}
-		return Image{}, err
-	}
-	info, err := os.Stat(full)
-	if err != nil { // coverage-ignore: ReadFile just succeeded for this path; failure requires a concurrent filesystem race
-		return Image{}, err
-	}
-	return Image{Present: true, Mode: uint32(info.Mode().Perm()), Content: content}, nil
+		if readErr != nil {
+			return readErr
+		}
+		image = Image{Present: true, Mode: uint32(mode.Perm()), Content: content}
+		return nil
+	})
+	return image, err
 }
 
 // applyImage writes or removes path so it exactly matches img, chmod included.
 func applyImage(root, path string, img Image) error {
-	full := filepath.Join(root, filepath.FromSlash(path))
-	if !img.Present {
-		if err := os.Remove(full); err != nil && !os.IsNotExist(err) {
+	return withJournalFilesystem(root, func(files *filesystem.Handle) error {
+		if !img.Present {
+			if err := files.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+				return err
+			}
+			return nil
+		}
+		parent := filepath.ToSlash(filepath.Dir(filepath.FromSlash(path)))
+		if err := files.MkdirAll(parent, 0o755); err != nil {
 			return err
 		}
-		return nil
-	}
-	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil { // coverage-ignore: the parent of every journaled path exists in the prepared tree
-		return err
-	}
-	// Atomic like the journal that records it: a crash mid-restore would
-	// otherwise leave a truncated file where the recovery had promised either
-	// the prior image or the replacement, and nothing in between.
-	return manifest.WriteFileAtomicMode(full, img.Content, os.FileMode(img.Mode))
+		// Atomic like the journal that records it: a crash mid-restore would
+		// otherwise leave a truncated file where recovery promised a whole image.
+		return files.Replace(path, img.Content, os.FileMode(img.Mode))
+	})
 }
 
 // quarantineTree renames a resident tree aside. An absent source is already in
 // the desired state, so a restarted run converges instead of failing. An
 // existing destination is never overwritten: that would destroy the only copy
 // of whatever a previous interrupted run put there.
-func quarantineTree(root string, op Operation) error {
-	source := filepath.Join(root, filepath.FromSlash(op.Path))
-	destination := filepath.Join(root, filepath.FromSlash(op.Quarantine))
-	if _, err := os.Lstat(source); err != nil {
-		if os.IsNotExist(err) {
+func quarantineTree(root string, op Operation, operation journalOperation) error {
+	if _, err := operation.lstat(root, op.Path); err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
 			return nil
 		}
 		return err
 	}
-	if _, err := os.Lstat(destination); err == nil {
+	if _, err := operation.lstat(root, op.Quarantine); err == nil {
 		return fmt.Errorf("quarantine destination %s already exists; %s", op.Quarantine, gitRestorationGuidance)
-	}
-	if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil { // coverage-ignore: the quarantine root's parent is the awf directory the journal itself lives in
+	} else if !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
-	return os.Rename(source, destination)
+	parent := filepath.ToSlash(filepath.Dir(filepath.FromSlash(op.Quarantine)))
+	if err := operation.mkdirAll(root, parent, 0o755); err != nil { // coverage-ignore: the quarantine root's parent is the awf directory the journal itself lives in
+		return err
+	}
+	return operation.rename(root, op.Path, op.Quarantine)
 }
 
 // restoreTree renames a quarantined tree back to its resident path. It mirrors
 // quarantineTree's restart tolerance: an absent quarantine means the tree is
 // already home, and an occupied resident path is never overwritten.
-func restoreTree(root string, op Operation) error {
-	source := filepath.Join(root, filepath.FromSlash(op.Quarantine))
-	destination := filepath.Join(root, filepath.FromSlash(op.Path))
-	if _, err := os.Lstat(source); err != nil {
-		if os.IsNotExist(err) {
+func restoreTree(root string, op Operation, operation journalOperation) error {
+	if _, err := operation.lstat(root, op.Quarantine); err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
 			return nil
 		}
 		return err
 	}
-	if _, err := os.Lstat(destination); err == nil {
+	if _, err := operation.lstat(root, op.Path); err == nil {
 		return fmt.Errorf("cannot restore %s because it already exists; %s", op.Path, gitRestorationGuidance)
-	}
-	if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil { // coverage-ignore: the resident path's parent is the awf directory
+	} else if !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
-	return os.Rename(source, destination)
+	parent := filepath.ToSlash(filepath.Dir(filepath.FromSlash(op.Path)))
+	if err := operation.mkdirAll(root, parent, 0o755); err != nil { // coverage-ignore: the resident path's parent is the awf directory
+		return err
+	}
+	return operation.rename(root, op.Quarantine, op.Path)
 }
 
 // completeQuarantine discards every quarantined tree once the lock has
@@ -215,16 +231,39 @@ func restoreTree(root string, op Operation) error {
 // journalOperation owns volatile filesystem dependencies for one transaction
 // or recovery. Tests compose a faulting value without mutable package state.
 type journalOperation struct {
-	removeAll  func(string) error
-	remove     func(string) error
+	removeAll  func(string, string) error
+	remove     func(string, string) error
 	imageOf    func(string, string) (Image, error)
 	applyImage func(string, string, Image) error
 	write      func(string, Journal) error
-	lstat      func(string) (os.FileInfo, error)
+	lstat      func(string, string) (os.FileInfo, error)
+	mkdirAll   func(string, string, os.FileMode) error
+	rename     func(string, string, string) error
 }
 
 func productionJournalOperation() journalOperation {
-	return journalOperation{os.RemoveAll, os.Remove, imageOf, applyImage, writeJournal, os.Lstat}
+	return journalOperation{
+		removeAll: func(root, path string) error {
+			return withJournalFilesystem(root, func(files *filesystem.Handle) error { return files.RemoveAll(path) })
+		},
+		remove: func(root, path string) error {
+			return withJournalFilesystem(root, func(files *filesystem.Handle) error { return files.Remove(path) })
+		},
+		imageOf: imageOf, applyImage: applyImage, write: writeJournal,
+		lstat: func(root, path string) (info os.FileInfo, err error) {
+			err = withJournalFilesystem(root, func(files *filesystem.Handle) error {
+				info, err = files.LinkInfo(path)
+				return err
+			})
+			return info, err
+		},
+		mkdirAll: func(root, path string, mode os.FileMode) error {
+			return withJournalFilesystem(root, func(files *filesystem.Handle) error { return files.MkdirAll(path, mode) })
+		},
+		rename: func(root, oldPath, newPath string) error {
+			return withJournalFilesystem(root, func(files *filesystem.Handle) error { return files.Rename(oldPath, newPath) })
+		},
+	}
 }
 
 func completeQuarantine(root string, j Journal, operation journalOperation) ([]Evidence, error) {
@@ -233,12 +272,12 @@ func completeQuarantine(root string, j Journal, operation journalOperation) ([]E
 		if !op.residentTree() {
 			continue
 		}
-		if err := operation.removeAll(filepath.Join(root, filepath.FromSlash(op.Quarantine))); err != nil {
+		if err := operation.removeAll(root, op.Quarantine); err != nil {
 			return evidence, fmt.Errorf("discard quarantine %s: %w", op.Quarantine, err)
 		}
 		evidence = append(evidence, Evidence{Action: "discarded", Path: op.Path})
 	}
-	dropQuarantineRoot(root)
+	dropQuarantineRoot(root, operation)
 	return evidence, nil
 }
 
@@ -246,14 +285,14 @@ func completeQuarantine(root string, j Journal, operation journalOperation) ([]E
 // deliberately best effort: the root only becomes removable after the last tree
 // has left it, and unrelated bytes someone else put under it are not this
 // transaction's to delete.
-func dropQuarantineRoot(root string) {
-	_ = os.Remove(filepath.Join(root, filepath.FromSlash(QuarantineRel())))
+func dropQuarantineRoot(root string, operation journalOperation) {
+	_ = operation.remove(root, QuarantineRel())
 }
 
 // applyOperation performs one operation's mutation according to its kind.
 func applyOperation(root string, op Operation, operation journalOperation) error {
 	if op.residentTree() {
-		return quarantineTree(root, op)
+		return quarantineTree(root, op, operation)
 	}
 	return operation.applyImage(root, op.Path, op.Replacement)
 }
@@ -381,14 +420,21 @@ func writeJournal(root string, j Journal) error {
 	if err != nil { // coverage-ignore: Journal holds only JSON-representable scalars, slices, and byte content
 		return err
 	}
-	return manifest.WriteFileAtomic(JournalPath(root), append(b, '\n'))
+	return withJournalFilesystem(root, func(files *filesystem.Handle) error {
+		return files.Replace(JournalRel, append(b, '\n'), 0o644)
+	})
 }
 
 // LoadJournal reads and validates the journal under root. A malformed or
 // contract-violating journal is a hard error naming the Git-restoration escape,
 // so no caller mutates the tree on a journal it cannot trust.
 func LoadJournal(root string) (Journal, error) {
-	b, err := os.ReadFile(JournalPath(root))
+	var b []byte
+	err := withJournalFilesystem(root, func(files *filesystem.Handle) error {
+		var readErr error
+		b, readErr = files.Read(JournalRel)
+		return readErr
+	})
 	if err != nil {
 		return Journal{}, err
 	}
@@ -426,7 +472,7 @@ func ParseJournal(b []byte) (Journal, error) {
 // recoverable journal. It returns ordered typed terminal evidence; the command
 // owner renders it only after the outcome is known.
 func retainedJournal(string) Evidence {
-	return Evidence{Action: "retained", Path: journalRel}
+	return Evidence{Action: "retained", Path: JournalRel}
 }
 
 func appendEvidence(values []Evidence, evidence ...Evidence) []Evidence {
@@ -508,7 +554,7 @@ func commitTransactionWith(root string, ops []Operation, operation journalOperat
 	if err != nil {
 		return outcomeWithRetainedJournal(root, evidence, changed), fmt.Errorf("lock committed but quarantine cleanup failed (%w); run `awf upgrade --recover`", err)
 	}
-	if err := operation.remove(JournalPath(root)); err != nil {
+	if err := operation.remove(root, JournalRel); err != nil {
 		return outcomeWithRetainedJournal(root, evidence, changed), fmt.Errorf("lock committed but journal cleanup failed (%w); run `awf upgrade --recover`", err)
 	}
 	return Outcome{Evidence: evidence, Changed: changed}, nil
@@ -527,7 +573,7 @@ func rollBack(root string, j Journal, cause error, applied []Evidence, operation
 	if err != nil {
 		return outcomeWithRetainedJournal(root, evidence, remaining), fmt.Errorf("%w; rollback halted: %w", cause, err)
 	}
-	if err := operation.remove(JournalPath(root)); err != nil {
+	if err := operation.remove(root, JournalRel); err != nil {
 		return outcomeWithRetainedJournal(root, evidence, nil), fmt.Errorf("%w; rollback done but journal cleanup failed: %w", cause, err)
 	}
 	return Outcome{Evidence: evidence, Changed: []Evidence{}}, cause
@@ -550,7 +596,7 @@ func restorePriors(root string, j Journal, applied []Evidence, operation journal
 			continue
 		}
 		if op.residentTree() {
-			if err := restoreTree(root, op); err != nil {
+			if err := restoreTree(root, op, operation); err != nil {
 				return evidence, remaining, fmt.Errorf("restore %s: %w", op.Path, err)
 			}
 			evidence = append(evidence, Evidence{Action: "restored", Path: op.Path})
@@ -572,7 +618,7 @@ func restorePriors(root string, j Journal, applied []Evidence, operation journal
 	}
 	// Every tree is home again, so a fully restored transaction leaves no
 	// quarantine residue behind for the next run to trip over.
-	dropQuarantineRoot(root)
+	dropQuarantineRoot(root, operation)
 	return evidence, remaining, nil
 }
 
@@ -649,10 +695,10 @@ func finishCommitted(root string, j Journal, operation journalOperation) (Outcom
 
 // cleanupJournal removes the journal residue idempotently.
 func cleanupJournal(root string, evidence, changed []Evidence, operation journalOperation) (Outcome, error) {
-	if err := operation.remove(JournalPath(root)); err != nil && !errors.Is(err, fs.ErrNotExist) {
+	if err := operation.remove(root, JournalRel); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return outcomeWithRetainedJournal(root, evidence, changed), fmt.Errorf("remove current-state upgrade journal: %w", err)
 	}
-	evidence = append(evidence, Evidence{Action: "recovered", Path: journalRel})
+	evidence = append(evidence, Evidence{Action: "recovered", Path: JournalRel})
 	return Outcome{Evidence: evidence, Changed: changed}, nil
 }
 
@@ -660,7 +706,7 @@ func appliedOperations(root string, j Journal, operation journalOperation) ([]Ev
 	var applied []Evidence
 	for _, op := range j.Operations {
 		if op.residentTree() {
-			if _, err := operation.lstat(filepath.Join(root, filepath.FromSlash(op.Quarantine))); err == nil {
+			if _, err := operation.lstat(root, op.Quarantine); err == nil {
 				applied = append(applied, Evidence{Action: "applied", Path: op.Path})
 			} else if !errors.Is(err, fs.ErrNotExist) {
 				return nil, fmt.Errorf("inspect quarantine %s: %w", op.Quarantine, err)

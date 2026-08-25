@@ -7,10 +7,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 )
 
@@ -23,11 +26,54 @@ type FileMutation struct {
 	Remove  bool
 }
 
+// ProposedTree is the read-only tree view supplied to one migration step. It
+// overlays every earlier step's plan on the confined project root, so ordered
+// steps observe the state they are collectively proposing without mutating it.
+type ProposedTree struct {
+	files     *filesystem.Handle
+	mutations map[string]FileMutation
+}
+
+// Read returns the proposed bytes and mode for path.
+func (t *ProposedTree) Read(path string) ([]byte, os.FileMode, error) {
+	if mutation, ok := t.mutations[path]; ok {
+		if mutation.Remove {
+			return nil, 0, fs.ErrNotExist
+		}
+		return append([]byte(nil), mutation.Content...), mutation.Mode.Perm(), nil
+	}
+	return t.files.ReadWithMode(path)
+}
+
+func (t *ProposedTree) overlay(planned []FileMutation) error {
+	for _, mutation := range planned {
+		if _, _, err := t.Read(mutation.Path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+		mutation.Content = append([]byte(nil), mutation.Content...)
+		t.mutations[mutation.Path] = mutation
+	}
+	return nil
+}
+
+func (t *ProposedTree) coalesced() []FileMutation {
+	paths := make([]string, 0, len(t.mutations))
+	for path := range t.mutations {
+		paths = append(paths, path)
+	}
+	sort.Strings(paths)
+	mutations := make([]FileMutation, 0, len(paths))
+	for _, path := range paths {
+		mutations = append(mutations, t.mutations[path])
+	}
+	return mutations
+}
+
 // Migration is one ordered upgrade step for a supported live generation.
 type Migration struct {
 	To    int
 	Name  string
-	Build func(context.Context, string, *Changes) ([]FileMutation, error)
+	Build func(context.Context, *ProposedTree, *Changes) ([]FileMutation, error)
 }
 
 // LiveSchemaFloor is the oldest source generation this binary can operate on.
@@ -115,13 +161,15 @@ func Generation(root string) (int, error) {
 
 // ProjectPresent recognizes current control files and retired layouts without
 // interpreting their content.
-func ProjectPresent(root string) bool {
+func ProjectPresent(root string) (bool, error) {
 	for _, path := range []string{config.ConfigPath(root), config.LockPath(root), filepath.Join(root, ".claude", "awf.yaml"), filepath.Join(root, ".claude", "awf")} {
 		if _, err := os.Stat(path); err == nil {
-			return true
+			return true, nil
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return false, fmt.Errorf("stat project authority %s: %w", path, err)
 		}
 	}
-	return false
+	return false, nil
 }
 
 func ProjectPresentFromFiles(has func(string) bool) bool {
@@ -194,21 +242,28 @@ func Build(ctx context.Context, root string) ([]string, []Change, []FileMutation
 	if err := manifest.ValidateLive(&manifest.Lock{SchemaVersion: from}, LiveSchemaFloor, Current()); err != nil {
 		return nil, nil, nil, err
 	}
+	files, err := filesystem.Open(root)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	defer files.Close()
+	proposed := &ProposedTree{files: files, mutations: map[string]FileMutation{}}
 	changes := &Changes{}
 	var applied []string
-	var mutations []FileMutation
 	for _, m := range registry {
 		if m.To <= from {
 			continue
 		}
-		planned, err := m.Build(ctx, root, changes)
+		planned, err := m.Build(ctx, proposed, changes)
 		if err != nil {
-			return applied, changes.Items(), mutations, fmt.Errorf("migration %q (to %d): %w", m.Name, m.To, err)
+			return applied, changes.Items(), proposed.coalesced(), fmt.Errorf("migration %q (to %d): %w", m.Name, m.To, err)
 		}
-		mutations = append(mutations, planned...)
+		if err := proposed.overlay(planned); err != nil {
+			return applied, changes.Items(), proposed.coalesced(), fmt.Errorf("migration %q (to %d): validate planned files: %w", m.Name, m.To, err)
+		}
 		applied = append(applied, m.Name)
 	}
-	return applied, changes.Items(), mutations, nil
+	return applied, changes.Items(), proposed.coalesced(), nil
 }
 
 // IsRetiredLayout makes presentation boundaries distinguish layout refusal

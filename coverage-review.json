@@ -484,11 +484,11 @@
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 400,
+          "line": 406,
           "column": 3
         },
         "end": {
-          "line": 400,
+          "line": 406,
           "column": 142
         },
         "statements": 1
@@ -499,11 +499,11 @@
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 403,
+          "line": 409,
           "column": 21
         },
         "end": {
-          "line": 405,
+          "line": 411,
           "column": 3
         },
         "statements": 1
@@ -514,11 +514,11 @@
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 417,
+          "line": 423,
           "column": 10
         },
         "end": {
-          "line": 418,
+          "line": 424,
           "column": 85
         },
         "statements": 1
@@ -529,11 +529,26 @@
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 542,
+          "line": 441,
+          "column": 64
+        },
+        "end": {
+          "line": 443,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "ProjectPresent successfully observed the working config immediately before this second control-pair stat. Reaching this propagation arm requires a concurrent namespace or permission change between adjacent observations; it remains fail-closed without a filesystem race seam."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 551,
           "column": 16
         },
         "end": {
-          "line": 544,
+          "line": 553,
           "column": 3
         },
         "statements": 1
@@ -544,11 +559,11 @@
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 546,
+          "line": 555,
           "column": 16
         },
         "end": {
-          "line": 548,
+          "line": 557,
           "column": 3
         },
         "statements": 1
@@ -4672,11 +4687,11 @@
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 229,
+          "line": 254,
           "column": 20
         },
         "end": {
-          "line": 231,
+          "line": 256,
           "column": 3
         },
         "statements": 1
@@ -4687,11 +4702,11 @@
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 232,
+          "line": 257,
           "column": 21
         },
         "end": {
-          "line": 234,
+          "line": 259,
           "column": 3
         },
         "statements": 1
@@ -6170,6 +6185,21 @@
         "statements": 1
       },
       "reason": "Initial RF-009 admission of existing uncovered behavior at internal/memorycite/presentation.go:25.16,27.3 1 in function CommitGateDocument, beginning `{ // coverage-ignore: the validated List is always an admitted Section child`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+    },
+    {
+      "identity": {
+        "file": "internal/migrate/migrate.go",
+        "start": {
+          "line": 246,
+          "column": 16
+        },
+        "end": {
+          "line": 248,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Build successfully read and validated the live lock from the same project root immediately before opening the confined planning handle. Reaching this propagation arm requires concurrent root disappearance or a permission change between adjacent observations; it remains fail-closed without a filesystem race seam."
     },
     {
       "identity": {
@@ -9259,41 +9289,11 @@
       "identity": {
         "file": "internal/upgrade/journal.go",
         "start": {
-          "line": 145,
-          "column": 16
+          "line": 200,
+          "column": 64
         },
         "end": {
-          "line": 147,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/upgrade/journal.go:145.16,147.3 1 in function imageOf, beginning `{ // coverage-ignore: ReadFile just succeeded for this path; failure requires a concurrent files...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "internal/upgrade/journal.go",
-        "start": {
-          "line": 160,
-          "column": 63
-        },
-        "end": {
-          "line": 162,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/upgrade/journal.go:160.63,162.3 1 in function applyImage, beginning `{ // coverage-ignore: the parent of every journaled path exists in the prepared tree`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "internal/upgrade/journal.go",
-        "start": {
-          "line": 185,
-          "column": 70
-        },
-        "end": {
-          "line": 187,
+          "line": 202,
           "column": 3
         },
         "statements": 1
@@ -9304,11 +9304,11 @@
       "identity": {
         "file": "internal/upgrade/journal.go",
         "start": {
-          "line": 206,
-          "column": 70
+          "line": 222,
+          "column": 64
         },
         "end": {
-          "line": 208,
+          "line": 224,
           "column": 3
         },
         "statements": 1
@@ -9319,11 +9319,11 @@
       "identity": {
         "file": "internal/upgrade/journal.go",
         "start": {
-          "line": 381,
+          "line": 420,
           "column": 16
         },
         "end": {
-          "line": 383,
+          "line": 422,
           "column": 3
         },
         "statements": 1
@@ -9334,11 +9334,11 @@
       "identity": {
         "file": "internal/upgrade/journal.go",
         "start": {
-          "line": 473,
+          "line": 519,
           "column": 48
         },
         "end": {
-          "line": 475,
+          "line": 521,
           "column": 3
         },
         "statements": 1
@@ -9349,11 +9349,11 @@
       "identity": {
         "file": "internal/upgrade/journal.go",
         "start": {
-          "line": 585,
+          "line": 631,
           "column": 2
         },
         "end": {
-          "line": 585,
+          "line": 631,
           "column": 16
         },
         "statements": 1
@@ -9364,11 +9364,11 @@
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 70,
+          "line": 75,
           "column": 16
         },
         "end": {
-          "line": 72,
+          "line": 77,
           "column": 3
         },
         "statements": 1
@@ -9379,11 +9379,11 @@
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 74,
+          "line": 79,
           "column": 16
         },
         "end": {
-          "line": 76,
+          "line": 81,
           "column": 3
         },
         "statements": 1
@@ -9394,11 +9394,11 @@
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 91,
+          "line": 96,
           "column": 16
         },
         "end": {
-          "line": 93,
+          "line": 98,
           "column": 3
         },
         "statements": 1
@@ -9409,11 +9409,11 @@
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 192,
+          "line": 201,
           "column": 21
         },
         "end": {
-          "line": 194,
+          "line": 203,
           "column": 4
         },
         "statements": 1
@@ -9424,11 +9424,11 @@
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 214,
+          "line": 223,
           "column": 16
         },
         "end": {
-          "line": 216,
+          "line": 225,
           "column": 3
         },
         "statements": 1
@@ -9439,41 +9439,41 @@
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 224,
-          "column": 17
-        },
-        "end": {
-          "line": 226,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam."
-    },
-    {
-      "identity": {
-        "file": "internal/upgrade/operation.go",
-        "start": {
-          "line": 228,
-          "column": 17
-        },
-        "end": {
-          "line": 230,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam."
-    },
-    {
-      "identity": {
-        "file": "internal/upgrade/operation.go",
-        "start": {
           "line": 233,
+          "column": 17
+        },
+        "end": {
+          "line": 235,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam."
+    },
+    {
+      "identity": {
+        "file": "internal/upgrade/operation.go",
+        "start": {
+          "line": 237,
+          "column": 17
+        },
+        "end": {
+          "line": 239,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam."
+    },
+    {
+      "identity": {
+        "file": "internal/upgrade/operation.go",
+        "start": {
+          "line": 242,
           "column": 10
         },
         "end": {
-          "line": 234,
+          "line": 243,
           "column": 105
         },
         "statements": 1
@@ -10388,50 +10388,50 @@
     {
       "directive": {
         "file": "cmd/awf/main.go",
-        "line": 403,
-        "targetLine": 403,
+        "line": 409,
+        "targetLine": 409,
         "reason": "projectGuardState loaded and validated this unchanged lock",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At cmd/awf/main.go:403, `if stateErr != nil {` is guarded by the preceding `state, stateErr := lock.AuthorityState()` at cmd/awf/main.go:402; in `func guardProjectState(ctx context.Context, root string, cmd clispec.Command, top clispec.Command, sub string, inv invocation) error` (cmd/awf/main.go:347), the predecessor invariant is projectGuardState loaded and validated this unchanged lock. Only violation of that closed state reaches this guard."
+      "evidence": "At cmd/awf/main.go:409, `if stateErr != nil {` is guarded by the preceding `state, stateErr := lock.AuthorityState()` at cmd/awf/main.go:402; in `func guardProjectState(ctx context.Context, root string, cmd clispec.Command, top clispec.Command, sub string, inv invocation) error` (cmd/awf/main.go:347), the predecessor invariant is projectGuardState loaded and validated this unchanged lock. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
         "file": "cmd/awf/main.go",
-        "line": 417,
-        "targetLine": 417,
+        "line": 423,
+        "targetLine": 423,
         "reason": "AuthorityState returns only the closed enum values",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `default:` at cmd/awf/main.go:417 is `return nil` (cmd/awf/main.go:416). Within `func guardProjectState(ctx context.Context, root string, cmd clispec.Command, top clispec.Command, sub string, inv invocation) error` at cmd/awf/main.go:347, source review establishes AuthorityState returns only the closed enum values; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `default:` at cmd/awf/main.go:423 is `return nil` (cmd/awf/main.go:416). Within `func guardProjectState(ctx context.Context, root string, cmd clispec.Command, top clispec.Command, sub string, inv invocation) error` at cmd/awf/main.go:347, source review establishes AuthorityState returns only the closed enum values; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
         "file": "cmd/awf/main.go",
-        "line": 542,
-        "targetLine": 542,
+        "line": 551,
+        "targetLine": 551,
         "reason": "Prose validated the value and status is a fixed grammar-valid label",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at cmd/awf/main.go:542 is `field, err := presentation.NewField(\"status\", value)` (cmd/awf/main.go:541). Within `func writeStatus(stdout io.Writer, status string) error` at cmd/awf/main.go:536, source review establishes Prose validated the value and status is a fixed grammar-valid label; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err != nil {` at cmd/awf/main.go:551 is `field, err := presentation.NewField(\"status\", value)` (cmd/awf/main.go:541). Within `func writeStatus(stdout io.Writer, status string) error` at cmd/awf/main.go:536, source review establishes Prose validated the value and status is a fixed grammar-valid label; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
         "file": "cmd/awf/main.go",
-        "line": 546,
-        "targetLine": 546,
+        "line": 555,
+        "targetLine": 555,
         "reason": "the validated Field is always a valid root node",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At cmd/awf/main.go:546, `if err != nil {` is guarded by the preceding `document, err := presentation.NewDocument(field)` at cmd/awf/main.go:545; in `func writeStatus(stdout io.Writer, status string) error` (cmd/awf/main.go:536), the predecessor invariant is the validated Field is always a valid root node. Only violation of that closed state reaches this guard."
+      "evidence": "At cmd/awf/main.go:555, `if err != nil {` is guarded by the preceding `document, err := presentation.NewDocument(field)` at cmd/awf/main.go:545; in `func writeStatus(stdout io.Writer, status string) error` (cmd/awf/main.go:536), the predecessor invariant is the validated Field is always a valid root node. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
@@ -13772,50 +13772,50 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 229,
-        "targetLine": 229,
+        "line": 254,
+        "targetLine": 254,
         "reason": "stat on a successfully read confined regular file requires a storage fault",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/filesystem/handle.go:229, `if statErr != nil {` follows the concrete operation `}` at internal/filesystem/handle.go:228 in `func (h *Handle) ReadWithMode(path string) ([]byte, fs.FileMode, error)` (internal/filesystem/handle.go:215). The reviewed failure condition is stat on a successfully read confined regular file requires a storage fault; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
+      "evidence": "At internal/filesystem/handle.go:254, `if statErr != nil {` follows the concrete operation `}` at internal/filesystem/handle.go:228 in `func (h *Handle) ReadWithMode(path string) ([]byte, fs.FileMode, error)` (internal/filesystem/handle.go:215). The reviewed failure condition is stat on a successfully read confined regular file requires a storage fault; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 230,
-        "targetLine": 230,
+        "line": 255,
+        "targetLine": 255,
         "reason": "stat on a successfully read confined regular file requires a storage fault",
         "mapped": false,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func (h *Handle) ReadWithMode(path string) ([]byte, fs.FileMode, error)` (starts internal/filesystem/handle.go:215) checks `return nil, 0, fmt.Errorf(\"filesystem: read %q: %w\", path, errors.Join(statErr, closeErr))` at internal/filesystem/handle.go:230 after `if statErr != nil {` at internal/filesystem/handle.go:229. Here stat on a successfully read confined regular file requires a storage fault; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "`func (h *Handle) ReadWithMode(path string) ([]byte, fs.FileMode, error)` (starts internal/filesystem/handle.go:215) checks `return nil, 0, fmt.Errorf(\"filesystem: read %q: %w\", path, errors.Join(statErr, closeErr))` at internal/filesystem/handle.go:255 after `if statErr != nil {` at internal/filesystem/handle.go:229. Here stat on a successfully read confined regular file requires a storage fault; exercising this exact branch requires an unportable environmental failure."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 232,
-        "targetLine": 232,
+        "line": 257,
+        "targetLine": 257,
         "reason": "close after a successful confined read requires a storage fault",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/filesystem/handle.go:232, `if closeErr != nil {` follows the concrete operation `}` at internal/filesystem/handle.go:231 in `func (h *Handle) ReadWithMode(path string) ([]byte, fs.FileMode, error)` (internal/filesystem/handle.go:215). The reviewed failure condition is close after a successful confined read requires a storage fault; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
+      "evidence": "At internal/filesystem/handle.go:257, `if closeErr != nil {` follows the concrete operation `}` at internal/filesystem/handle.go:231 in `func (h *Handle) ReadWithMode(path string) ([]byte, fs.FileMode, error)` (internal/filesystem/handle.go:215). The reviewed failure condition is close after a successful confined read requires a storage fault; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 233,
-        "targetLine": 233,
+        "line": 258,
+        "targetLine": 258,
         "reason": "close after a successful confined read requires a storage fault",
         "mapped": false,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func (h *Handle) ReadWithMode(path string) ([]byte, fs.FileMode, error)` (starts internal/filesystem/handle.go:215) checks `return nil, 0, fmt.Errorf(\"filesystem: read %q: %w\", path, closeErr)` at internal/filesystem/handle.go:233 after `if closeErr != nil {` at internal/filesystem/handle.go:232. Here close after a successful confined read requires a storage fault; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "`func (h *Handle) ReadWithMode(path string) ([]byte, fs.FileMode, error)` (starts internal/filesystem/handle.go:215) checks `return nil, 0, fmt.Errorf(\"filesystem: read %q: %w\", path, closeErr)` at internal/filesystem/handle.go:258 after `if closeErr != nil {` at internal/filesystem/handle.go:232. Here close after a successful confined read requires a storage fault; exercising this exact branch requires an unportable environmental failure."
     },
     {
       "directive": {
@@ -17432,92 +17432,68 @@
     {
       "directive": {
         "file": "internal/upgrade/journal.go",
-        "line": 145,
-        "targetLine": 145,
-        "reason": "ReadFile just succeeded for this path; failure requires a concurrent filesystem race",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "`func imageOf(root, path string) (Image, error)` (starts internal/upgrade/journal.go:135) checks `if err != nil {` at internal/upgrade/journal.go:145 after `info, err := os.Stat(full)` at internal/upgrade/journal.go:144. Here ReadFile just succeeded for this path; failure requires a concurrent filesystem race; exercising this exact branch requires an unportable environmental failure."
-    },
-    {
-      "directive": {
-        "file": "internal/upgrade/journal.go",
-        "line": 160,
-        "targetLine": 160,
-        "reason": "the parent of every journaled path exists in the prepared tree",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "`func applyImage(root, path string, img Image) error` (starts internal/upgrade/journal.go:152) checks `if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {` at internal/upgrade/journal.go:160 after `}` at internal/upgrade/journal.go:159. Here the parent of every journaled path exists in the prepared tree; exercising this exact branch requires an unportable environmental failure."
-    },
-    {
-      "directive": {
-        "file": "internal/upgrade/journal.go",
-        "line": 185,
-        "targetLine": 185,
+        "line": 200,
+        "targetLine": 200,
         "reason": "the quarantine root's parent is the awf directory the journal itself lives in",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `}` at internal/upgrade/journal.go:184 feeds `if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {` at internal/upgrade/journal.go:185 in `func quarantineTree(root string, op Operation) error` (internal/upgrade/journal.go:173). Its concrete fault condition is the quarantine root's parent is the awf directory the journal itself lives in, so no safe portable production input induces this error path."
+      "evidence": "The source predecessor `}` at internal/upgrade/journal.go:184 feeds `if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {` at internal/upgrade/journal.go:200 in `func quarantineTree(root string, op Operation) error` (internal/upgrade/journal.go:173). Its concrete fault condition is the quarantine root's parent is the awf directory the journal itself lives in, so no safe portable production input induces this error path."
     },
     {
       "directive": {
         "file": "internal/upgrade/journal.go",
-        "line": 206,
-        "targetLine": 206,
+        "line": 222,
+        "targetLine": 222,
         "reason": "the resident path's parent is the awf directory",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `}` at internal/upgrade/journal.go:205 feeds `if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {` at internal/upgrade/journal.go:206 in `func restoreTree(root string, op Operation) error` (internal/upgrade/journal.go:194). Its concrete fault condition is the resident path's parent is the awf directory, so no safe portable production input induces this error path."
+      "evidence": "The source predecessor `}` at internal/upgrade/journal.go:205 feeds `if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {` at internal/upgrade/journal.go:222 in `func restoreTree(root string, op Operation) error` (internal/upgrade/journal.go:194). Its concrete fault condition is the resident path's parent is the awf directory, so no safe portable production input induces this error path."
     },
     {
       "directive": {
         "file": "internal/upgrade/journal.go",
-        "line": 381,
-        "targetLine": 381,
+        "line": 420,
+        "targetLine": 420,
         "reason": "Journal holds only JSON-representable scalars, slices, and byte content",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/upgrade/journal.go:381, `if err != nil {` follows the concrete operation `b, err := json.MarshalIndent(j, \"\", \"  \")` at internal/upgrade/journal.go:380 in `func writeJournal(root string, j Journal) error` (internal/upgrade/journal.go:379). The reviewed failure condition is Journal holds only JSON-representable scalars, slices, and byte content; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
+      "evidence": "At internal/upgrade/journal.go:420, `if err != nil {` follows the concrete operation `b, err := json.MarshalIndent(j, \"\", \"  \")` at internal/upgrade/journal.go:380 in `func writeJournal(root string, j Journal) error` (internal/upgrade/journal.go:379). The reviewed failure condition is Journal holds only JSON-representable scalars, slices, and byte content; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
     },
     {
       "directive": {
         "file": "internal/upgrade/journal.go",
-        "line": 473,
-        "targetLine": 473,
+        "line": 519,
+        "targetLine": 519,
         "reason": "the final-upgrade planner validated the same set before this call",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err := validateOperations(ops); err != nil {` at internal/upgrade/journal.go:473 is `func commitTransactionWith(root string, ops []Operation, operation journalOperation) (Outcome, error) {` (internal/upgrade/journal.go:472). Within `func commitTransactionWith(root string, ops []Operation, operation journalOperation) (Outcome, error)` at internal/upgrade/journal.go:472, source review establishes the final-upgrade planner validated the same set before this call; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err := validateOperations(ops); err != nil {` at internal/upgrade/journal.go:519 is `func commitTransactionWith(root string, ops []Operation, operation journalOperation) (Outcome, error) {` (internal/upgrade/journal.go:472). Within `func commitTransactionWith(root string, ops []Operation, operation journalOperation) (Outcome, error)` at internal/upgrade/journal.go:472, source review establishes the final-upgrade planner validated the same set before this call; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
         "file": "internal/upgrade/journal.go",
-        "line": 585,
-        "targetLine": 585,
+        "line": 631,
+        "targetLine": 631,
         "reason": "no caller provides a changed set without its path",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/upgrade/journal.go:585, `return changed` follows the concrete operation `}` at internal/upgrade/journal.go:584 in `func removeChangedPath(changed []Evidence, path string) []Evidence` (internal/upgrade/journal.go:579). The reviewed failure condition is no caller provides a changed set without its path; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
+      "evidence": "At internal/upgrade/journal.go:631, `return changed` follows the concrete operation `}` at internal/upgrade/journal.go:584 in `func removeChangedPath(changed []Evidence, path string) []Evidence` (internal/upgrade/journal.go:579). The reviewed failure condition is no caller provides a changed set without its path; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
     },
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 70,
-        "targetLine": 70,
+        "line": 75,
+        "targetLine": 75,
         "reason": "Recover validates journal evidence before producing its Outcome, so its terminal evidence always lowers to literals",
         "mapped": true,
         "executed": false
@@ -17528,62 +17504,62 @@
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 74,
-        "targetLine": 74,
+        "line": 79,
+        "targetLine": 79,
         "reason": "RecoveredMutation supplies the fixed valid status and only validated journal literals",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/upgrade/operation.go:74 is `document, err := mutation.Document()` (internal/upgrade/operation.go:73). Within `func RecoverOperation(root string, present ProjectPresent) (OperationOutcome, error)` at internal/upgrade/operation.go:61, source review establishes RecoveredMutation supplies the fixed valid status and only validated journal literals; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err != nil {` at internal/upgrade/operation.go:79 is `document, err := mutation.Document()` (internal/upgrade/operation.go:73). Within `func RecoverOperation(root string, present ProjectPresent) (OperationOutcome, error)` at internal/upgrade/operation.go:61, source review establishes RecoveredMutation supplies the fixed valid status and only validated journal literals; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 214,
-        "targetLine": 214,
+        "line": 223,
+        "targetLine": 223,
         "reason": "LoadLiveOptional parses and validates the unchanged authority construction immediately above",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The directive at internal/upgrade/operation.go:214 follows the validated closed invariant stated in source: LoadLiveOptional parses and validates the unchanged authority construction immediately above. Its error arm requires an invariant breach, not a supported input."
-    },
-    {
-      "directive": {
-        "file": "internal/upgrade/operation.go",
-        "line": 224,
-        "targetLine": 224,
-        "reason": "FinalUpgrade constructs its terminal evidence from validated transaction operations",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "Within Run, the branch at internal/upgrade/operation.go:224 follows outcome.CompletedMutation after FinalUpgrade returned validated transaction evidence. That closed construction makes the defensive propagation arm unreachable without an invariant breach."
-    },
-    {
-      "directive": {
-        "file": "internal/upgrade/operation.go",
-        "line": 228,
-        "targetLine": 228,
-        "reason": "CompletedMutation supplies the fixed valid status and only validated journal literals",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "Within Run, the branch at internal/upgrade/operation.go:228 follows mutation.Document after CompletedMutation supplied fixed valid status and validated journal literals. That closed construction makes the defensive propagation arm unreachable without an invariant breach."
+      "evidence": "The directive at internal/upgrade/operation.go:223 follows the validated closed invariant stated in source: LoadLiveOptional parses and validates the unchanged authority construction immediately above. Its error arm requires an invariant breach, not a supported input."
     },
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
         "line": 233,
         "targetLine": 233,
+        "reason": "FinalUpgrade constructs its terminal evidence from validated transaction operations",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "Within Run, the branch at internal/upgrade/operation.go:233 follows outcome.CompletedMutation after FinalUpgrade returned validated transaction evidence. That closed construction makes the defensive propagation arm unreachable without an invariant breach."
+    },
+    {
+      "directive": {
+        "file": "internal/upgrade/operation.go",
+        "line": 237,
+        "targetLine": 237,
+        "reason": "CompletedMutation supplies the fixed valid status and only validated journal literals",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "Within Run, the branch at internal/upgrade/operation.go:237 follows mutation.Document after CompletedMutation supplied fixed valid status and validated journal literals. That closed construction makes the defensive propagation arm unreachable without an invariant breach."
+    },
+    {
+      "directive": {
+        "file": "internal/upgrade/operation.go",
+        "line": 242,
+        "targetLine": 242,
         "reason": "AuthorityState returns only Bridge or Permanent when its validation succeeds",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "Within Run, the default at internal/upgrade/operation.go:233 follows AuthorityState validation, whose closed result set is Bridge or Permanent. Reaching the default requires an invariant breach."
+      "evidence": "Within Run, the default at internal/upgrade/operation.go:242 follows AuthorityState validation, whose closed result set is Bridge or Permanent. Reaching the default requires an invariant breach."
     },
     {
       "directive": {

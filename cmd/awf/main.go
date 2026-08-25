@@ -321,8 +321,14 @@ func requireCommandCapability(ctx context.Context, root string, top clispec.Comm
 		cfg, err = config.Parse(config.RootDir(root), file.Bytes)
 	} else {
 		cfg, err = config.Load(config.RootDir(root))
-		if errors.Is(err, os.ErrNotExist) && !migrate.ProjectPresent(root) {
-			return nil
+		if errors.Is(err, os.ErrNotExist) {
+			present, presentErr := migrate.ProjectPresent(root)
+			if presentErr != nil {
+				return presentErr
+			}
+			if !present {
+				return nil
+			}
 		}
 	}
 	if err != nil {
@@ -424,7 +430,10 @@ func guardProjectState(ctx context.Context, root string, cmd clispec.Command, to
 // every other command derives all three from the working project.
 func projectGuardState(ctx context.Context, root string, staged bool) (present bool, journal []byte, journalFound bool, lock *manifest.Lock, lockFound, currentConfig, currentLock bool, loadErr, err error) {
 	if !staged {
-		present = migrate.ProjectPresent(root)
+		present, err = migrate.ProjectPresent(root)
+		if err != nil {
+			return false, nil, false, nil, false, false, false, nil, err
+		}
 		if journalFound, err = upgrade.JournalPresent(root); err != nil {
 			return false, nil, false, nil, false, false, false, nil, err
 		}

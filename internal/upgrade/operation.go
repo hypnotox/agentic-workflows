@@ -21,8 +21,9 @@ type Sync func(context.Context, string) (presentation.Mutation, error)
 // composed by the command because command execution owns the concrete gate.
 type Gate func(context.Context, string) error
 
-// ProjectPresent reports whether root contains an awf project.
-type ProjectPresent func(string) bool
+// ProjectPresent reports whether root contains an awf project and preserves
+// inspection failures rather than treating an unreadable authority path as absent.
+type ProjectPresent func(string) (bool, error)
 
 // SchemaGate reports root's migration relation and schema generation.
 type SchemaGate func(string) (string, int, error)
@@ -59,7 +60,11 @@ type OperationOutcome struct {
 // RecoverOperation replays an interrupted upgrade transaction and maps its
 // terminal evidence into the operation's presentation result.
 func RecoverOperation(root string, present ProjectPresent) (OperationOutcome, error) {
-	if !present(root) {
+	found, err := present(root)
+	if err != nil {
+		return OperationOutcome{}, err
+	}
+	if !found {
 		return OperationOutcome{}, errors.New("not an awf project (run `awf init`)")
 	}
 	outcome, err := Recover(root)
@@ -159,7 +164,11 @@ func reloadCurrentAuthority(root string, floor, current int) (*manifest.Lock, er
 // coordination live here; cmd/awf supplies only its concrete terminal sync and
 // gate dependencies.
 func Run(ctx context.Context, root string, sync Sync, gate Gate, present ProjectPresent, liveSchemaRange LiveSchemaRange, schemaGate SchemaGate, migrate Migration, currentSchemaChange CurrentSchemaChange) (OperationOutcome, error) {
-	if !present(root) {
+	projectFound, err := present(root)
+	if err != nil {
+		return OperationOutcome{}, err
+	}
+	if !projectFound {
 		return OperationOutcome{}, errors.New("not an awf project (run `awf init`)")
 	}
 	lockPath := config.LockPath(root)

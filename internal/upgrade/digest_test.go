@@ -195,7 +195,9 @@ func upgradeProductionSources(t *testing.T) map[string]string {
 	t.Helper()
 	sources := map[string]string{}
 	testsupport.WalkRepoSources(t, testsupport.RepoRoot(t), func(rel string, body []byte) {
-		if strings.HasPrefix(rel, "internal/upgrade/") {
+		if strings.HasPrefix(rel, "internal/upgrade/") && rel != "internal/upgrade/journal.go" {
+			// The generic journal independently owns a root-confined transaction
+			// handle; this census is specific to attestation verification wiring.
 			sources[rel] = string(body)
 		}
 	})
