@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: separate-live-upgrade-support-from-historical-audit-decoding
-status: Proposed
+status: Implementing
 date: 2026-08-25
 ---
 # ADR-separate-live-upgrade-support-from-historical-audit-decoding: Separate Live Upgrade Support from Historical Audit Decoding
@@ -140,3 +140,6 @@ cleanup remain outside this decision.
 ## Status history
 
 - 2026-08-25: Proposed
+- 2026-08-25: Accepted; content-sha256: 3348947adb9e0f61ee2b0c845eb80522f6cfc38b824e6abd5d119eeaca5c4349
+- 2026-08-25: Implementing; content-sha256: 3348947adb9e0f61ee2b0c845eb80522f6cfc38b824e6abd5d119eeaca5c4349
+- 2026-08-25: Applied; operations: update `config/migrations-and-locks:retired-keys-forward-ported`, update `config/migrations-and-locks:upgrade-gate`, update `config/migrations-and-locks:live-source-compatibility-floor`, update `tooling/audit-and-snapshots:managed-history-decode-horizon`

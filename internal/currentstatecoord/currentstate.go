@@ -16,7 +16,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
-	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/plancheck"
@@ -150,7 +149,7 @@ func CheckStaged(root string, repo *awfgit.Repo, ctx context.Context) (CurrentSt
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
-	if err := validateLockTransition(beforeTree, beforeLock, afterLock); err != nil {
+	if err := validateLockTransition(beforeTree, afterTree, beforeLock, afterLock); err != nil {
 		return CurrentStateReport{}, err
 	}
 	before, _, err := loadTreeCurrentState(root, beforeTree, beforeLock)
@@ -161,9 +160,7 @@ func CheckStaged(root string, repo *awfgit.Repo, ctx context.Context) (CurrentSt
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
-	if afterCfg == nil {
-		return CurrentStateReport{}, fmt.Errorf("no staged %s/config.yaml", config.DirName)
-	}
+
 	// A merge integrates a branch whose commits were each validated as they were
 	// authored, so the pair carries several steps at once and takes the aggregate
 	// contract (ADR-0182). Provenance decides this, not the shape of the diff.
@@ -318,7 +315,7 @@ func lockFromTree(tree *snapshot.Tree) (*manifest.Lock, error) {
 	if !file.Scannable() {
 		return nil, fmt.Errorf("staged %s/awf.lock is not a scannable file", config.DirName)
 	}
-	lock, err := manifest.Parse(file.Bytes)
+	lock, err := manifest.ParseLive(file.Bytes)
 	if err != nil {
 		return nil, fmt.Errorf("parse staged lock: %w", err)
 	}
@@ -359,7 +356,7 @@ func optionalLockFromTree(tree *snapshot.Tree) (*manifest.Lock, bool, error) {
 	if !file.Scannable() {
 		return nil, true, fmt.Errorf("snapshot %s/awf.lock is not a scannable file", config.DirName)
 	}
-	lock, err := manifest.Parse(file.Bytes)
+	lock, err := manifest.ParseLive(file.Bytes)
 	if err != nil {
 		return nil, true, fmt.Errorf("parse snapshot lock: %w", err)
 	}
@@ -369,7 +366,10 @@ func optionalLockFromTree(tree *snapshot.Tree) (*manifest.Lock, bool, error) {
 // validateLockTransition preserves the remaining first-adoption identity. A
 // schema-31 migration is the only accepted lock-shape change: compatibility
 // routing input is parsed from the old side and discarded in the new lock.
-func validateLockTransition(beforeTree *snapshot.Tree, before, after *manifest.Lock) error {
+func validateLockTransition(beforeTree, afterTree *snapshot.Tree, before, after *manifest.Lock) error {
+	if _, hasConfig := afterTree.Lookup(config.DirName + "/config.yaml"); !hasConfig {
+		return errors.New("partial staged .awf authority: awf.lock requires .awf/config.yaml; restore it or delete .awf deliberately to re-adopt")
+	}
 	if before == nil {
 		if _, hasConfig := beforeTree.Lookup(config.DirName + "/config.yaml"); !hasConfig {
 			return nil
@@ -412,15 +412,10 @@ func configFromTree(root string, tree *snapshot.Tree, lock *manifest.Lock) (*con
 	if !cfgFile.Scannable() {
 		return nil, false, fmt.Errorf("snapshot %s/config.yaml is not a scannable file", config.DirName)
 	}
-	schema := migrate.Current()
-	if lock != nil {
-		schema = lock.SchemaVersion
+	if lock == nil {
+		return nil, false, fmt.Errorf("partial .awf authority: .awf/config.yaml requires .awf/awf.lock; restore it or delete .awf deliberately to re-adopt")
 	}
-	configBytes, err := migrate.ConfigForCurrentSchema(cfgFile.Bytes, schema)
-	if err != nil {
-		return nil, false, err
-	}
-	cfg, err := config.ParseTree(config.RootDir(root), configBytes, configSnapshotReader{tree: tree})
+	cfg, err := config.ParseTree(config.RootDir(root), cfgFile.Bytes, configSnapshotReader{tree: tree})
 	if err != nil {
 		return nil, false, err
 	}

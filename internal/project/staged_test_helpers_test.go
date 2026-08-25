@@ -13,7 +13,7 @@ import (
 // internal/foo/**, and the Implemented ADR the claim cites.
 func stagedHeadFiles() map[string]string {
 	return map[string]string{
-		".awf/awf.lock":                                `{"awfVersion":"0.18.0","schemaVersion":14,"files":{},"adrFormatV1From":2,"legacyAdrGaps":[]}`,
+		".awf/awf.lock":                                `{"awfVersion":"0.39.2","schemaVersion":46,"files":{}}`,
 		".awf/config.yaml":                             csYAML,
 		".awf/domains/alpha.yaml":                      "paths:\n  - internal/**\n",
 		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths:\n  - internal/foo/**\n",
@@ -26,7 +26,7 @@ func stagedHeadFiles() map[string]string {
 
 // attestedLock returns the permanent cutoff used by staged fixtures.
 func attestedLock() *manifest.Lock {
-	return &manifest.Lock{AWFVersion: "0.18.0", SchemaVersion: 14}
+	return &manifest.Lock{AWFVersion: "0.39.2", SchemaVersion: 46}
 }
 
 func lockJSON(t *testing.T, lock *manifest.Lock) string {

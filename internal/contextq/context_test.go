@@ -61,6 +61,9 @@ func ctxRepo(t *testing.T, cfg string, files map[string]string) *project.Project
 	// stay untracked-nonignored and are still part of the working universe.
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, dir, cfg)
+	if err := (&manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}).Save(lockFile(dir)); err != nil {
+		t.Fatal(err)
+	}
 	if _, ok := files["docs/decisions/0001-first.md"]; !ok {
 		files["docs/decisions/0001-first.md"] = testsupport.ADR("Implemented",
 			testsupport.WithDate("2026-06-25"), testsupport.WithTitle("0001: First"),
@@ -399,7 +402,7 @@ func TestUncovered(t *testing.T) {
 	files["gen/output.md"] = "generated\n"
 	files["gen/skipped.md"] = "ignored\n"
 	p := ctxRepo(t, cfg, files)
-	lock := &manifest.Lock{AWFVersion: "0.19.0", SchemaVersion: 14, Files: map[string]manifest.Entry{"gen/output.md": {}}}
+	lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: manifest.LiveSchemaCurrent, Files: map[string]manifest.Entry{"gen/output.md": {}}}
 	if err := lock.Save(lockFile(p.Root())); err != nil {
 		t.Fatal(err)
 	}
@@ -433,7 +436,7 @@ func TestUncoveredCollapsesToRoot(t *testing.T) {
 	res := queryFor(t, ctxRepo(t, cfg, files)).Uncovered(nil)
 	// top.txt, the committed README.md, and the auto-added decision record are
 	// unowned; the .awf config tree is context-ignored and counts as excluded.
-	want := []unownedEntry{{Path: ".", UnownedCount: 3, ExcludedCount: 2}}
+	want := []unownedEntry{{Path: ".", UnownedCount: 3, ExcludedCount: 3}}
 	if !reflect.DeepEqual(res.Unowned, want) {
 		t.Errorf("unowned = %#v; want %#v", res.Unowned, want)
 	}

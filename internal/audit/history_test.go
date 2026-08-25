@@ -24,6 +24,46 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
+func TestAuditLockHistoricalHorizonAndRouting(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		lock    string
+		wantErr error
+	}{
+		{name: "lower horizon", lock: `{"awfVersion":"0.1.0","schemaVersion":3,"adrFormatV1From":1,"adrFormatV2From":2,"adrFormatV3From":3,"legacyAdrGaps":[],"files":{}}`},
+		{name: "upper horizon", lock: `{"awfVersion":"0.39.2","schemaVersion":46,"files":{}}`},
+		{name: "below horizon", lock: `{"awfVersion":"0.1.0","schemaVersion":2,"files":{}}`, wantErr: ErrHistoricalHorizon},
+		{name: "above horizon", lock: `{"awfVersion":"0.39.2","schemaVersion":47,"files":{}}`, wantErr: ErrHistoricalHorizon},
+		{name: "malformed JSON", lock: `{`, wantErr: nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			selection, err := snapshot.NewSelection([]snapshot.File{{Path: ".awf/awf.lock", Mode: snapshot.Regular, Bytes: []byte(tc.lock)}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			lock, found, err := auditLockFromSelection(selection)
+			if !found {
+				t.Fatal("historical lock was not found")
+			}
+			if tc.wantErr != nil {
+				if !errors.Is(err, tc.wantErr) {
+					t.Fatalf("auditLockFromSelection() error = %v, want %v", err, tc.wantErr)
+				}
+				return
+			}
+			if tc.name == "malformed JSON" {
+				if err == nil {
+					t.Fatal("malformed lock was accepted")
+				}
+				return
+			}
+			if err != nil || lock == nil {
+				t.Fatalf("auditLockFromSelection() lock = %#v, error = %v", lock, err)
+			}
+		})
+	}
+}
+
 func TestAuditConfigTreatsOnlyPreProfileSnapshotAsFull(t *testing.T) {
 	tree := auditTree(t, []snapshot.File{{
 		Path: ".awf/config.yaml", Mode: snapshot.Regular,
@@ -1261,14 +1301,17 @@ func TestAuditPropagatesHistoricalCancellation(t *testing.T) {
 				state, err := loadSelectedRevision(ctx, t.TempDir(), "revision",
 					func(context.Context, string) ([]awfgit.TreeEntry, error) {
 						events = append(events, "enumerate")
-						return []awfgit.TreeEntry{{Path: ".awf/config.yaml", Mode: awfgit.BlobRegular}}, nil
+						return []awfgit.TreeEntry{{Path: ".awf/config.yaml", Mode: awfgit.BlobRegular}, {Path: ".awf/awf.lock", Mode: awfgit.BlobRegular}}, nil
 					},
 					func(_ context.Context, _ string, _ []string) ([]awfgit.IndexBlob, error) {
 						events = append(events, "selected blob read")
 						if len(events)-1 == cancelAfterRead {
 							cancel()
 						}
-						return []awfgit.IndexBlob{{Path: ".awf/config.yaml", Mode: awfgit.BlobRegular, Bytes: []byte("prefix: test\nprofile: full\nintegrationBranch: main\n")}}, nil
+						return []awfgit.IndexBlob{
+							{Path: ".awf/config.yaml", Mode: awfgit.BlobRegular, Bytes: []byte("prefix: test\nprofile: full\nintegrationBranch: main\n")},
+							{Path: ".awf/awf.lock", Mode: awfgit.BlobRegular, Bytes: []byte(`{"awfVersion":"0.39.2","schemaVersion":46,"files":{}}`)},
+						}, nil
 					})
 				if err == nil {
 					_, err = state.currentState()
@@ -1655,6 +1698,7 @@ func TestHistoricalStateUsesPolicyProjectionAndReusesIrrelevantCommits(t *testin
 		repo := gitfixture.InitRepo(t)
 		base := gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{
 			".awf/config.yaml": "prefix: test\nprofile: full\nintegrationBranch: master\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: [\"internal/**/*_test.go\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n",
+			".awf/awf.lock":    `{"awfVersion":"0.39.2","schemaVersion":46,"files":{}}`,
 		})
 		gitfixture.Commit(t, repo, "not conventional", map[string]string{"internal/code.go": "package internal\n"})
 		gitfixture.Commit(t, repo, "feat(awf): malformed marker", map[string]string{
@@ -1677,11 +1721,12 @@ func TestHistoricalStateUsesPolicyProjectionAndReusesIrrelevantCommits(t *testin
 		repo := gitfixture.InitRepo(t)
 		base := gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{
 			".awf/config.yaml": "prefix: test\nprofile: full\nintegrationBranch: master\n",
+			".awf/awf.lock":    `{"awfVersion":"0.39.2","schemaVersion":46,"files":{}}`,
 		})
 		main := gitfixture.Merge(t, repo, "feat(awf): main")
 		gitfixture.CheckoutNewBranch(t, repo, "feature", base)
 		feature := gitfixture.Commit(t, repo, "feat(awf): feature", map[string]string{
-			".awf/config.yaml": "prefix: [\n",
+			".awf/config.yaml": "prefix: changed\nprofile: full\nintegrationBranch: master\n",
 			"go.mod":           "module example.com/merge\n",
 			"docs/merge.md":    "historical" + string(rune(0x2014)) + "punctuation\n",
 			"large.go":         "package large\n" + strings.Repeat("var Value = 1\n", 5),
@@ -1694,8 +1739,8 @@ func TestHistoricalStateUsesPolicyProjectionAndReusesIrrelevantCommits(t *testin
 		if err != nil {
 			t.Fatal(err)
 		}
-		if countRule(findings, currentStateTransitionRule, severity.Warn) != 1 {
-			t.Fatalf("merge authority change did not force a historical reload: %#v", findings)
+		if countRule(findings, currentStateTransitionRule, severity.Warn) != 0 {
+			t.Fatalf("valid merge authority produced a transition warning: %#v", findings)
 		}
 		for _, rule := range []string{"dependency-adr", "plan-for-large-change", "plain-punctuation"} {
 			if countRule(findings, rule, severity.Warn) != 0 {
@@ -1841,7 +1886,7 @@ func TestHistoricalStateSelectsOnlyAuthorityBlobs(t *testing.T) {
 		{"default", base, string(bodies[configPath]), lock, [][]string{{configPath, lockPath}, {".awf/topics/metadata/alpha/one.yaml", ".awf/topics/parts/alpha/one/current-state.md", "docs/decisions/0001-one.md"}}, false},
 		{"custom docs config still uses docs authority", base, "prefix: test\nprofile: full\nintegrationBranch: main\ntargets: [claude]\ndomains: [alpha]\ndocsDir: records\n", lock, [][]string{{configPath, lockPath}, {".awf/topics/metadata/alpha/one.yaml", ".awf/topics/parts/alpha/one/current-state.md", "docs/decisions/0001-one.md"}}, false},
 		{"absent config", base[1:], "", lock, nil, false},
-		{"absent lock", append([]awfgit.TreeEntry{base[0]}, base[2:]...), string(bodies[configPath]), "", [][]string{{configPath}, {".awf/topics/metadata/alpha/one.yaml", ".awf/topics/parts/alpha/one/current-state.md", "docs/decisions/0001-one.md"}}, false},
+		{"absent lock", append([]awfgit.TreeEntry{base[0]}, base[2:]...), string(bodies[configPath]), "", [][]string{{configPath}}, true},
 		{"symlink authority", append([]awfgit.TreeEntry{{Path: configPath, Mode: awfgit.BlobSymlink}}, base[1:]...), string(bodies[configPath]), lock, [][]string{{configPath, lockPath}}, true},
 		{"historical schema", base, "prefix: test\ndomains: [alpha]\nskills: []\nworkflowTelemetry:\n  retention:\n    maxCompletedEffortAgeDays: 1\n", `{"awfVersion":"v0.18.0","schemaVersion":19,"files":{}}`, [][]string{{configPath, lockPath}, {".awf/topics/metadata/alpha/one.yaml", ".awf/topics/parts/alpha/one/current-state.md", "docs/decisions/0001-one.md"}}, false},
 	} {
@@ -1879,14 +1924,16 @@ func TestHistoricalStateSelectsOnlyAuthorityBlobs(t *testing.T) {
 			_, stateErr := state.currentState()
 			if tc.wantErr {
 				if stateErr == nil {
-					t.Fatal("symlink authority was accepted")
+					t.Fatal("invalid authority was accepted")
 				}
-				lock, found, lockErr := state.lockEvidence()
-				if lockErr != nil || !found || lock == nil || lock.SchemaVersion != 31 {
-					t.Fatalf("symlink config lost safe lock evidence: lock=%#v found=%v err=%v", lock, found, lockErr)
+				if tc.name == "symlink authority" {
+					lock, found, lockErr := state.lockEvidence()
+					if lockErr != nil || !found || lock == nil || lock.SchemaVersion != 31 {
+						t.Fatalf("symlink config lost safe lock evidence: lock=%#v found=%v err=%v", lock, found, lockErr)
+					}
 				}
 				if !slices.EqualFunc(reads, tc.wantReads, slices.Equal[[]string]) {
-					t.Fatalf("selected reads before symlink error = %#v, want %#v", reads, tc.wantReads)
+					t.Fatalf("selected reads before authority error = %#v, want %#v", reads, tc.wantReads)
 				}
 				return
 			}
@@ -1971,7 +2018,7 @@ func TestLoadSelectedRevisionRejectsIncompleteOrUnscannableEvidence(t *testing.T
 			func(context.Context, string, []string) ([]awfgit.IndexBlob, error) {
 				calls++
 				if calls == 1 {
-					return []awfgit.IndexBlob{configBlob}, nil
+					return []awfgit.IndexBlob{configBlob, {Path: ".awf/awf.lock", Mode: awfgit.BlobRegular, Bytes: []byte(`{"awfVersion":"0.39.2","schemaVersion":46,"files":{}}`)}}, nil
 				}
 				return nil, boom
 			})

@@ -257,6 +257,7 @@ func TestCheckStagedDriftTracksWholeOutputPlan(t *testing.T) {
 	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
+	gitfixture.Add(t, repo, ".awf/awf.lock")
 	corpus, pitfalls, topics, effective, err := deriveOperationStateWithPitfalls(renderInputsForTest(p))
 	if err != nil {
 		t.Fatal(err)
@@ -265,7 +266,7 @@ func TestCheckStagedDriftTracksWholeOutputPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{config.DirName + "/awf.lock"}
+	var want []string
 	for _, output := range planWriteFiles(op) {
 		want = append(want, output.Path)
 	}
@@ -825,7 +826,7 @@ func TestCheckStagedIndexConfigValidationError(t *testing.T) {
 	gitfixture.Stage(t, repo, map[string]string{".awf/config.yaml": "prefix: \"\"\n"})
 	testsupport.WriteFile(t, filepath.Join(dir, ".awf/config.yaml"), csYAML)
 	p := openStaged(t, dir)
-	if _, err := checkStagedProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "prefix") {
+	if _, err := checkStagedProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "profile") {
 		t.Fatalf("validation error = %v", err)
 	}
 }

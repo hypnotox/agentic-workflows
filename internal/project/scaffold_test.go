@@ -601,6 +601,9 @@ func TestInitializeAndSyncAuthorityRefusals(t *testing.T) {
 
 func TestInitializeReportPropagatesResidentInspectionFailure(t *testing.T) {
 	state := csRepo(t, sampleYAML, map[string]string{})
+	if err := os.Remove(lockFile(state.Root())); err != nil {
+		t.Fatal(err)
+	}
 	residentRoot := filepath.Join(state.Root(), ".awf", "efforts")
 	if err := os.WriteFile(residentRoot, []byte("not a directory"), 0o644); err != nil {
 		t.Fatal(err)

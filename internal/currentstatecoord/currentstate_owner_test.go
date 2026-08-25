@@ -141,6 +141,8 @@ func TestPrepareWorkingContextSelectedUniverseErrors(t *testing.T) {
 			}
 			if tc.lock != "" {
 				writeContextFile(t, fixture.Root(), ".awf/awf.lock", tc.lock)
+			} else if tc.config != "" {
+				writeContextFile(t, fixture.Root(), ".awf/awf.lock", `{"awfVersion":"0.39.2","schemaVersion":46,"files":{}}`)
 			}
 			repo, err := awfgit.Open(fixture.Root())
 			if err != nil {
@@ -159,6 +161,7 @@ func TestPrepareWorkingContextSelectedUniverseErrors(t *testing.T) {
 	if err := os.Symlink("elsewhere", filepath.Join(fixture.Root(), ".awf", "config.yaml")); err != nil {
 		t.Fatal(err)
 	}
+	writeContextFile(t, fixture.Root(), ".awf/awf.lock", `{"awfVersion":"0.39.2","schemaVersion":46,"files":{}}`)
 	repo, err := awfgit.Open(fixture.Root())
 	if err != nil {
 		t.Fatal(err)
@@ -190,6 +193,8 @@ func TestPrepareStagedContextSelectedUniverseErrors(t *testing.T) {
 			}
 			if tc.lock != "" {
 				gitfixture.Stage(t, fixture, map[string]string{".awf/awf.lock": tc.lock})
+			} else if tc.config != "" {
+				gitfixture.Stage(t, fixture, map[string]string{".awf/awf.lock": `{"awfVersion":"0.39.2","schemaVersion":46,"files":{}}`})
 			}
 			if tc.unmerged {
 				gitfixture.StageUnmerged(t, fixture, "conflict")
@@ -208,7 +213,8 @@ func TestPrepareStagedContextSelectedUniverseErrors(t *testing.T) {
 	if err := os.Symlink("elsewhere", path); err != nil {
 		t.Fatal(err)
 	}
-	gitfixture.Add(t, fixture, ".awf/config.yaml")
+	writeContextFile(t, fixture.Root(), ".awf/awf.lock", `{"awfVersion":"0.39.2","schemaVersion":46,"files":{}}`)
+	gitfixture.Add(t, fixture, ".awf/config.yaml", ".awf/awf.lock")
 	if _, err := PrepareStagedContext(ctx, fixture.Root()); err == nil || !strings.Contains(err.Error(), "not a scannable file") {
 		t.Fatalf("unscannable config error = %v", err)
 	}
@@ -282,17 +288,21 @@ func TestCoordinatorSnapshotReaderAndEligiblePaths(t *testing.T) {
 
 func TestCoordinatorLockTransitionAndCoreConfig(t *testing.T) {
 	empty := ownerTree(t)
-	if err := validateLockTransition(empty, nil, &manifest.Lock{}); err != nil {
+	afterWithConfig := ownerTree(t, snapshot.File{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: x\nprofile: core\nintegrationBranch: main\n")})
+	if err := validateLockTransition(empty, afterWithConfig, nil, &manifest.Lock{}); err != nil {
 		t.Fatal(err)
 	}
-	withConfig := ownerTree(t, snapshot.File{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: x\nprofile: core\nintegrationBranch: main\n")})
-	if err := validateLockTransition(withConfig, nil, &manifest.Lock{}); err == nil {
+	withConfig := ownerTree(t,
+		snapshot.File{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: x\nprofile: core\nintegrationBranch: main\n")},
+		snapshot.File{Path: ".awf/awf.lock", Mode: snapshot.Regular, Bytes: []byte(`{"awfVersion":"0.39.2","schemaVersion":46,"files":{}}`)},
+	)
+	if err := validateLockTransition(withConfig, withConfig, nil, &manifest.Lock{}); err == nil {
 		t.Fatal("pre-adoption config accepted")
 	}
-	if err := validateLockTransition(empty, &manifest.Lock{InitializedWithVersion: "one"}, &manifest.Lock{InitializedWithVersion: "two"}); err == nil {
+	if err := validateLockTransition(empty, afterWithConfig, &manifest.Lock{InitializedWithVersion: "one"}, &manifest.Lock{InitializedWithVersion: "two"}); err == nil {
 		t.Fatal("initialized version mutation accepted")
 	}
-	loaded, cfg, err := loadTreeCurrentState(".", withConfig, nil)
+	loaded, cfg, err := loadTreeCurrentState(".", withConfig, &manifest.Lock{AWFVersion: "0.39.2", SchemaVersion: 46})
 	if err != nil || cfg == nil || len(loaded.ADRs) != 0 || cfg.Profile != catalog.ProfileCore {
 		t.Fatalf("core config load = %#v, %#v, %v", loaded, cfg, err)
 	}

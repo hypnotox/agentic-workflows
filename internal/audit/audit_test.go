@@ -937,6 +937,7 @@ func TestRunNestedAdopterUsesEmptyStateBeforeCreation(t *testing.T) {
 	base := gitfixture.Commit(t, repo, "feat(awf): containing repository", map[string]string{"outside.txt": "outside\n"})
 	head := gitfixture.Commit(t, repo, "feat(awf): create nested adopter", map[string]string{
 		"nested/.awf/config.yaml": "prefix: nested\nprofile: full\nintegrationBranch: main\n",
+		"nested/.awf/awf.lock":    `{"awfVersion":"0.39.2","schemaVersion":46,"files":{}}`,
 	})
 
 	findings, count, err := Run(testContext(t), filepath.Join(repo.Root(), "nested"), base, head, Inputs{})
@@ -951,6 +952,7 @@ func TestRunLoadsOnlySelectedCommittedBlobs(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	base := gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{
 		".awf/config.yaml": "prefix: test\nprofile: full\nintegrationBranch: main\n",
+		".awf/awf.lock":    `{"awfVersion":"0.39.2","schemaVersion":46,"files":{}}`,
 		"unrelated.txt":    "unselected committed bytes\n",
 	})
 	head := gitfixture.Commit(t, repo, "feat(awf): code", map[string]string{"code.go": "package code\n"})

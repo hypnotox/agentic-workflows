@@ -1,6 +1,7 @@
 package manifest
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -34,6 +35,28 @@ func TestLoadOldLockZeroSchema(t *testing.T) {
 	}
 	if l.SchemaVersion != 0 {
 		t.Errorf("SchemaVersion = %d, want 0 for a lock with no schemaVersion field", l.SchemaVersion)
+	}
+}
+
+func TestParseLiveAcceptsOnlyCurrentLiveSchema(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		schema int
+		wantOK bool
+	}{
+		{name: "floor", schema: LiveSchemaFloor, wantOK: true},
+		{name: "below floor", schema: LiveSchemaFloor - 1},
+		{name: "ahead", schema: LiveSchemaCurrent + 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := ParseLive([]byte(fmt.Sprintf(`{"awfVersion":"0.39.2","schemaVersion":%d,"files":{}}`, tc.schema)))
+			if tc.wantOK && err != nil {
+				t.Fatalf("ParseLive() error = %v", err)
+			}
+			if !tc.wantOK && !errors.Is(err, ErrUnsupportedLiveSource) {
+				t.Fatalf("ParseLive() error = %v, want unsupported live source", err)
+			}
+		})
 	}
 }
 

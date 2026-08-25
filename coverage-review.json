@@ -2404,11 +2404,11 @@
       "identity": {
         "file": "internal/currentstatecoord/currentstate.go",
         "start": {
-          "line": 190,
+          "line": 187,
           "column": 16
         },
         "end": {
-          "line": 192,
+          "line": 189,
           "column": 3
         },
         "statements": 1
@@ -2419,11 +2419,11 @@
       "identity": {
         "file": "internal/currentstatecoord/currentstate.go",
         "start": {
-          "line": 195,
+          "line": 192,
           "column": 16
         },
         "end": {
-          "line": 197,
+          "line": 194,
           "column": 3
         },
         "statements": 1
@@ -2434,11 +2434,11 @@
       "identity": {
         "file": "internal/currentstatecoord/currentstate.go",
         "start": {
-          "line": 200,
+          "line": 197,
           "column": 16
         },
         "end": {
-          "line": 202,
+          "line": 199,
           "column": 3
         },
         "statements": 1
@@ -2449,11 +2449,11 @@
       "identity": {
         "file": "internal/currentstatecoord/currentstate.go",
         "start": {
-          "line": 260,
+          "line": 257,
           "column": 16
         },
         "end": {
-          "line": 262,
+          "line": 259,
           "column": 3
         },
         "statements": 1
@@ -2464,11 +2464,11 @@
       "identity": {
         "file": "internal/currentstatecoord/currentstate.go",
         "start": {
-          "line": 266,
+          "line": 263,
           "column": 16
         },
         "end": {
-          "line": 268,
+          "line": 265,
           "column": 3
         },
         "statements": 1
@@ -2479,11 +2479,11 @@
       "identity": {
         "file": "internal/currentstatecoord/currentstate.go",
         "start": {
-          "line": 310,
+          "line": 307,
           "column": 2
         },
         "end": {
-          "line": 310,
+          "line": 307,
           "column": 60
         },
         "statements": 1
@@ -2494,11 +2494,11 @@
       "identity": {
         "file": "internal/currentstatecoord/currentstate.go",
         "start": {
-          "line": 336,
+          "line": 333,
           "column": 16
         },
         "end": {
-          "line": 338,
+          "line": 335,
           "column": 3
         },
         "statements": 1
@@ -2509,11 +2509,11 @@
       "identity": {
         "file": "internal/currentstatecoord/currentstate.go",
         "start": {
-          "line": 344,
+          "line": 341,
           "column": 16
         },
         "end": {
-          "line": 346,
+          "line": 343,
           "column": 3
         },
         "statements": 1
@@ -10724,6 +10724,66 @@
         "statements": 2
       },
       "reason": "Initial RF-009 admission of existing uncovered behavior at tools/pi-extension-test/lockrun/lockrun_unix.go:60.3,61.11 2 in function run, beginning `fmt.Fprintf(os.Stderr, \"pi-extension-test: wait for worker: %v\\n\", err) // coverage-ignore: Wait...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+    },
+    {
+      "identity": {
+        "file": "internal/audit/history.go",
+        "start": {
+          "line": 708,
+          "column": 17
+        },
+        "end": {
+          "line": 710,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "RF-008B audit-only historical decoder retains this read-only refusal: snapshot selection construction rejects malformed duplicate authority before audit can read it."
+    },
+    {
+      "identity": {
+        "file": "internal/audit/history.go",
+        "start": {
+          "line": 716,
+          "column": 48
+        },
+        "end": {
+          "line": 718,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "RF-008B audit-only historical decoder retains this read-only refusal: the exact selected authority projection rejects non-scannable selected files before current-state parsing."
+    },
+    {
+      "identity": {
+        "file": "internal/audit/history.go",
+        "start": {
+          "line": 966,
+          "column": 16
+        },
+        "end": {
+          "line": 968,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "RF-008B audit-only historical decoder retains this read-only refusal: strict audit config decoding propagates malformed historical config without mutation."
+    },
+    {
+      "identity": {
+        "file": "internal/generatedcheck/generatedcheck.go",
+        "start": {
+          "line": 191,
+          "column": 17
+        },
+        "end": {
+          "line": 193,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "RF-008B staged partial-authority refusal now occurs before generated drift aggregation; this retained defensive nil-lock branch remains read-only."
     }
   ],
   "directives": [
@@ -12734,8 +12794,8 @@
     {
       "directive": {
         "file": "internal/currentstatecoord/currentstate.go",
-        "line": 190,
-        "targetLine": 190,
+        "line": 187,
+        "targetLine": 187,
         "reason": "plansFromTree converts every validated plan parse failure into plan drift",
         "mapped": true,
         "executed": false
@@ -12746,8 +12806,8 @@
     {
       "directive": {
         "file": "internal/currentstatecoord/currentstate.go",
-        "line": 195,
-        "targetLine": 195,
+        "line": 192,
+        "targetLine": 192,
         "reason": "staged plans and corpora are already validated semantic values",
         "mapped": true,
         "executed": false
@@ -12758,8 +12818,8 @@
     {
       "directive": {
         "file": "internal/currentstatecoord/currentstate.go",
-        "line": 200,
-        "targetLine": 200,
+        "line": 197,
+        "targetLine": 197,
         "reason": "staged semantic owners supplied validated nonempty evidence",
         "mapped": true,
         "executed": false
@@ -12770,8 +12830,8 @@
     {
       "directive": {
         "file": "internal/currentstatecoord/currentstate.go",
-        "line": 260,
-        "targetLine": 260,
+        "line": 257,
+        "targetLine": 257,
         "reason": "partitions copy only validated owner results and fixed nonempty parser evidence",
         "mapped": true,
         "executed": false
@@ -12782,8 +12842,8 @@
     {
       "directive": {
         "file": "internal/currentstatecoord/currentstate.go",
-        "line": 266,
-        "targetLine": 266,
+        "line": 263,
+        "targetLine": 263,
         "reason": "aggregation copies only validated immutable partitions",
         "mapped": true,
         "executed": false
@@ -12794,8 +12854,8 @@
     {
       "directive": {
         "file": "internal/currentstatecoord/currentstate.go",
-        "line": 310,
-        "targetLine": 310,
+        "line": 307,
+        "targetLine": 307,
         "reason": "ParseSources converts every parser failure into DiagnosticsError",
         "mapped": true,
         "executed": false
@@ -12806,8 +12866,8 @@
     {
       "directive": {
         "file": "internal/currentstatecoord/currentstate.go",
-        "line": 336,
-        "targetLine": 336,
+        "line": 333,
+        "targetLine": 333,
         "reason": "IndexTree already opened the same containing repository in CheckStaged; only a concurrent repository removal can fail here",
         "mapped": true,
         "executed": false
@@ -12818,8 +12878,8 @@
     {
       "directive": {
         "file": "internal/currentstatecoord/currentstate.go",
-        "line": 344,
-        "targetLine": 344,
+        "line": 341,
+        "targetLine": 341,
         "reason": "HEAD resolved by HeadExists just above; CommitTree fails only on a mid-read repository fault",
         "mapped": true,
         "executed": false

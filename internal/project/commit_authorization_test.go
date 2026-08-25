@@ -46,7 +46,7 @@ func TestCheckCommitAuthorizationPropagatesEvidenceErrors(t *testing.T) {
 		repo := gitfixture.InitRepo(t)
 		gitfixture.Stage(t, repo, map[string]string{
 			".awf/config.yaml": "prefix: example\nprofile: full\nintegrationBranch: main\n",
-			".awf/awf.lock":    `{"awfVersion":"0.18.0","schemaVersion":31,"files":{}}`,
+			".awf/awf.lock":    `{"awfVersion":"0.18.0","schemaVersion":46,"files":{}}`,
 			"docs/decisions/0001-first.md": `---
 format: current-state-v4
 slug: first

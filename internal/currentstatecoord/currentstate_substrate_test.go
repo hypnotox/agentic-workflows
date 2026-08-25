@@ -18,6 +18,23 @@ func TestCurrentStateContextSubstrateFailuresAndEmptyHead(t *testing.T) {
 	}
 }
 
+func TestCurrentStateLiveAuthorityRefusals(t *testing.T) {
+	belowFloor, err := snapshot.NewTree([]snapshot.File{{Path: ".awf/awf.lock", Mode: snapshot.Regular, Bytes: []byte(`{"awfVersion":"0.39.1","schemaVersion":45,"files":{}}`)}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, found, err := optionalLockFromTree(belowFloor); !found || err == nil {
+		t.Fatalf("below-floor live lock = found %v, err %v", found, err)
+	}
+	partial, err := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: test\nprofile: full\nintegrationBranch: main\n")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := loadTreeCurrentState(t.TempDir(), partial, nil); err == nil {
+		t.Fatal("config-only authority was accepted")
+	}
+}
+
 func TestLoadTreeCurrentStatePropagatesAuthorityParseFailure(t *testing.T) {
 	tree, err := snapshot.NewTree([]snapshot.File{
 		{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: test\nprofile: full\nintegrationBranch: main\ndomains: [tooling]\n")},

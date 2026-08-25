@@ -918,6 +918,16 @@ func staleAuthorizationSyntax(err error) (*commitmsg.SyntaxError, error) {
 	return syntax, nil
 }
 
+// historicalSchemaFloor and historicalSchemaHorizon are deliberately audit
+// values: they describe immutable evidence, not live project support.
+const (
+	historicalSchemaFloor   = 3
+	historicalSchemaHorizon = 46
+)
+
+// ErrHistoricalHorizon marks authority outside audit's evidence-only decoder.
+var ErrHistoricalHorizon = errors.New("unsupported historical audit authority")
+
 func auditLockFromSelection(selection *snapshot.Selection) (*manifest.Lock, bool, error) {
 	file, ok := selection.Lookup(config.DirName + "/awf.lock")
 	if !ok {
@@ -927,7 +937,13 @@ func auditLockFromSelection(selection *snapshot.Selection) (*manifest.Lock, bool
 		return nil, true, fmt.Errorf("%s/awf.lock is not a scannable file", config.DirName)
 	}
 	lock, err := manifest.Parse(file.Bytes)
-	return lock, true, err
+	if err != nil {
+		return nil, true, err
+	}
+	if lock.SchemaVersion < historicalSchemaFloor || lock.SchemaVersion > historicalSchemaHorizon {
+		return nil, true, fmt.Errorf("%w: schema %d is outside supported audit horizon %d through %d; restore an in-horizon revision or audit with a supporting release", ErrHistoricalHorizon, lock.SchemaVersion, historicalSchemaFloor, historicalSchemaHorizon)
+	}
+	return lock, true, nil
 }
 
 func auditConfig(root string, selection *snapshot.Selection, lock *manifest.Lock) (*config.Config, error) {
@@ -939,11 +955,10 @@ func auditConfig(root string, selection *snapshot.Selection, lock *manifest.Lock
 	if !file.Scannable() {
 		return nil, fmt.Errorf("%s/config.yaml is not a scannable file", config.DirName)
 	}
-	schema := migrate.Current()
-	if lock != nil {
-		schema = lock.SchemaVersion
+	if lock == nil {
+		return nil, fmt.Errorf("partial historical .awf authority: .awf/config.yaml requires .awf/awf.lock; restore an in-horizon revision")
 	}
-	data, err := migrate.ConfigForCurrentSchema(file.Bytes, schema)
+	data, err := migrate.ConfigForCurrentSchema(file.Bytes, lock.SchemaVersion)
 	if err != nil {
 		return nil, err
 	}

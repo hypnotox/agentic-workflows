@@ -2,6 +2,7 @@ package project
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/checkresult"
@@ -30,10 +31,9 @@ func stagedCompatibilityDrift(result checkresult.Result) []manifest.Drift {
 	return drift
 }
 
-// TestCheckStagedMigratesHistoricalWorkflowTelemetry compares a generation-19
-// HEAD against the generation-20 index. The historical block is removed only
-// from the immutable before-side bytes before the current strict parser runs.
-func TestCheckStagedMigratesHistoricalWorkflowTelemetry(t *testing.T) {
+// TestCheckStagedRefusesHistoricalWorkflowTelemetry proves staged validation is
+// live-source validation, not an audit forward-decoding path.
+func TestCheckStagedRefusesHistoricalWorkflowTelemetry(t *testing.T) {
 	t.Parallel()
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
@@ -47,8 +47,8 @@ func TestCheckStagedMigratesHistoricalWorkflowTelemetry(t *testing.T) {
 		".awf/awf.lock":    `{"awfVersion":"0.20.0","schemaVersion":20,"files":{}}`,
 	})
 	p := openStaged(t, dir)
-	if _, err := checkStagedProject(p, testContext(t)); err != nil {
-		t.Fatalf("CheckStaged historical migration: %v", err)
+	if _, err := checkStagedProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "supported floor 46") {
+		t.Fatalf("CheckStaged historical source error = %v", err)
 	}
 }
 

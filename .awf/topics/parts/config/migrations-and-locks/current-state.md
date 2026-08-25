@@ -23,9 +23,9 @@ Backing: test
 
 ### `invariant: retired-keys-forward-ported`
 
-Historical config bytes have every retired configuration key stripped before strict current-schema decoding for every historical generation, including the top-level invariants block, audit.baseBranch, generation-38 toggle keys, and selection keys, so audit and staged checks can read every supported historical revision.
+Audit alone forward-ports historical config bytes before strict current-schema decoding within its managed history horizon. Live and staged source operations parse only supported live authority and never forward-port historical bytes.
 Origin: ADR-0251
-Revised-by: ADR-0270
+Revised-by: ADR-0270, ADR-separate-live-upgrade-support-from-historical-audit-decoding
 Backing: test
 
 ### `invariant: toggle-keys-dropped`
@@ -168,9 +168,9 @@ Backing: test
 
 ### `invariant: upgrade-gate`
 
-awf render and awf check exit non-zero with a run-awf-upgrade message when the project's effective generation (0 for the legacy layout, else the lock's schemaVersion) is below current and at least one registered migration targets a generation inside the open gap; a project already at the current schema does not gate.
+Live operations refuse a source below schema 46 before authority dispatch with the supported floor and recovery direction. Only upgrade may execute an ordered supported migration from that floor; ordinary render, check, and staged operations never use historical decoding.
 Origin: ADR-0010
-Revised-by: ADR-0159
+Revised-by: ADR-0159, ADR-separate-live-upgrade-support-from-historical-audit-decoding
 Backing: test
 
 ### `invariant: upgrade-migrates-retirements`
@@ -202,5 +202,6 @@ Backing: test
 
 ### `rule: live-source-compatibility-floor`
 
-Owner-managed live source trees are supported from schema generation 46. After the managed compatibility removal gate is satisfied, a live source below 46 is unsupported and refuses clearly with the supported floor and recovery direction rather than using retained historical migrations. Read-only historical-audit decoding never authorizes live migration.
+Live project authority begins at schema generation 46. A below-floor or partial .awf authority refuses before dispatch with recovery direction; historical parsing is audit-only and cannot authorize live migration.
 Origin: ADR-0297
+Revised-by: ADR-separate-live-upgrade-support-from-historical-audit-decoding

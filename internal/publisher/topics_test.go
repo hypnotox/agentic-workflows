@@ -455,7 +455,7 @@ func TestQueryTopicHistoricalOnlyUsesCutoffAwareWorkingSnapshot(t *testing.T) {
 		".awf/topics/parts/rendering/contracts/current-state.md": "Contracts.\n\n## Claims\n",
 		"docs/decisions/0002-remove.md":                          queryV1ADR(t, "0002", "Remove legacy claim", "- remove `"+claimID+"`"),
 	})
-	lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: 14, Files: map[string]manifest.Entry{}}
+	lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: manifest.LiveSchemaCurrent, Files: map[string]manifest.Entry{}}
 	if err := lock.Save(lockFile(p.Root())); err != nil {
 		t.Fatal(err)
 	}
@@ -507,7 +507,7 @@ func TestQueryTopicRejectsInvalidHistoricalInterpretation(t *testing.T) {
 				files[path] = content
 			}
 			p := csRepo(t, topicProjectConfig, files)
-			lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: 14, Files: map[string]manifest.Entry{}}
+			lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: manifest.LiveSchemaCurrent, Files: map[string]manifest.Entry{}}
 			if err := lock.Save(lockFile(p.Root())); err != nil {
 				t.Fatal(err)
 			}

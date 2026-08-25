@@ -444,7 +444,7 @@ func TestCheckStagedDriftRenderedOutput(t *testing.T) {
 		}
 	})
 
-	t.Run("absent lock and output reach direct and aggregate drift in sorted order", func(t *testing.T) {
+	t.Run("absent staged lock refuses partial authority before drift dispatch", func(t *testing.T) {
 		for _, args := range [][]string{{"awf", "check", "staged", "drift"}, {"awf", "check", "staged"}} {
 			root, repo := setup(t)
 			gitfixture.StageRemoval(t, repo, ".awf/awf.lock", "AGENTS.md")
@@ -452,11 +452,8 @@ func TestCheckStagedDriftRenderedOutput(t *testing.T) {
 			if code := runAt(t, root, args, &out, &errOut); code != 1 {
 				t.Fatalf("%v exit = %d, want 1; stdout=%q stderr=%q", args, code, out.String(), errOut.String())
 			}
-			if errOut.Len() != 0 || !strings.Contains(out.String(), "drift | untracked: .awf/awf.lock") || !strings.Contains(out.String(), "drift | untracked: AGENTS.md") {
-				t.Fatalf("%v absent-membership report streams stdout=%q stderr=%q", args, out.String(), errOut.String())
-			}
-			if strings.Index(out.String(), ".awf/awf.lock") > strings.Index(out.String(), "AGENTS.md") {
-				t.Fatalf("%v untracked findings are not path-sorted: %q", args, out.String())
+			if out.Len() != 0 || !strings.Contains(errOut.String(), "partial .awf authority") {
+				t.Fatalf("%v absent-lock refusal streams stdout=%q stderr=%q", args, out.String(), errOut.String())
 			}
 		}
 	})

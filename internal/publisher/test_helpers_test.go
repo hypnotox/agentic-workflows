@@ -76,6 +76,9 @@ func csRepo(t *testing.T, cfg string, files map[string]string) *ProjectState {
 	repo := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, repo.Root(), cfg)
+	if err := (&manifest.Lock{AWFVersion: Version, SchemaVersion: manifest.LiveSchemaCurrent, Files: map[string]manifest.Entry{}}).Save(lockFile(repo.Root())); err != nil {
+		t.Fatal(err)
+	}
 	if _, ok := files["docs/decisions/0001-first.md"]; !ok {
 		files["docs/decisions/0001-first.md"] = testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTitle("0001: First"), testsupport.WithBody("## Context\nx\n## Consequences\nc\n"))
 	}

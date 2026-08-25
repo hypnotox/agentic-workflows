@@ -185,6 +185,35 @@ func (l *Lock) Marshal() ([]byte, error) {
 	}
 	return append(b, '\n'), nil
 }
+
+// LiveSchemaFloor and LiveSchemaCurrent bound live project authority. Older
+// locks remain historical evidence only; audit decodes them through its
+// read-only horizon.
+const (
+	LiveSchemaFloor   = 46
+	LiveSchemaCurrent = 46
+)
+
+// ErrUnsupportedLiveSource identifies authority that cannot be dispatched by a
+// live operation. Callers add their operation-specific recovery presentation.
+var ErrUnsupportedLiveSource = errors.New("unsupported live source")
+
+// ParseLive accepts only authority a user-invoked operation may dispatch on.
+// Parse remains the compatibility parser for immutable historical evidence.
+func ParseLive(b []byte) (*Lock, error) {
+	l, err := Parse(b)
+	if err != nil {
+		return nil, err
+	}
+	if l.SchemaVersion < LiveSchemaFloor {
+		return nil, fmt.Errorf("%w: schema %d is below supported floor %d; run awf upgrade with a supported release", ErrUnsupportedLiveSource, l.SchemaVersion, LiveSchemaFloor)
+	}
+	if l.SchemaVersion > LiveSchemaCurrent {
+		return nil, fmt.Errorf("%w: schema %d is ahead of supported schema %d; update awf to a supporting release", ErrUnsupportedLiveSource, l.SchemaVersion, LiveSchemaCurrent)
+	}
+	return l, nil
+}
+
 func LoadOptional(path string) (*Lock, bool, error) {
 	l, err := Load(path)
 	if errors.Is(err, os.ErrNotExist) {
