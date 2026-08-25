@@ -199,7 +199,7 @@ correction is allowed without unrelated cleanup riding along.
 | RF-009 | P1 | COMPLETE | Post-refactor critical-path coverage policy and regression control | RF-007, owner ruling |
 | RF-014A | P2 | COMPLETE | Obsolete Program A machinery deleted | Program A milestone |
 | RF-014B | P2 | COMPLETE | Obsolete compatibility residue deleted | RF-008B, compatibility removals applicable |
-| RF-010 | P2 | READY | Current code comments explain invariants, not historical plans and tranches | RF-002..RF-007, compatibility lane closed |
+| RF-010 | P2 | COMPLETE | Current code comments explain invariants, not historical plans and tranches | RF-002..RF-007, compatibility lane closed |
 | RF-011 | P2 | COMPLETE | Roadmap, known issues, and research separated by owner | Program A milestone |
 | RF-012 | P2 | COMPLETE | Tag vocabulary culled to terms with a real consumer | RF-011 |
 | RF-013 | P2 | COMPLETE | Documented remote enforcement matches configured GitHub policy | Program A milestone, live policy verification |
@@ -281,12 +281,12 @@ also passed; its completion report records the exact candidate evidence.
 
 ### Program B start gate
 
-**Status: OPEN; THE COMPATIBILITY LANE IS COMPLETE.** Program A is complete; generated artifacts are
-stable under the new doctrine; changed behaviour has deterministic regression coverage; no known
-adopter-facing contradiction remains; RF-001 through RF-007 establish the architecture and direct
-residual test-oracle ownership; and RF-009 establishes the post-refactor coverage and mutation
-regression policy. The managed-repository upgrade gate, RF-008B candidate census, and applicable
-RF-014B cleanup are complete. RF-010 is ready.
+**Status: COMPLETE.** Program A is complete; generated artifacts are stable under the new doctrine;
+changed behaviour has deterministic regression coverage; no known adopter-facing contradiction
+remains; RF-001 through RF-007 establish the architecture and direct residual test-oracle ownership;
+and RF-009 establishes the post-refactor coverage and mutation regression policy. The
+managed-repository upgrade gate, compatibility cleanup, and RF-010 current-comment cleanup are
+complete.
 
 Program A milestone complete; generated artifacts stable under the new doctrine; new behaviour has
 regression tests; no known adopter-facing contradiction remains; compatibility support policy decided
@@ -305,8 +305,7 @@ history. Items joined by `||` may implement concurrently; integrations remain se
 - **B-F2 cleanup lane:** complete. RF-014A and RF-008B removed their proven residue; RF-014B removed
   the two additional live recognition paths proven obsolete by its fresh census.
 - **B-F3:** RF-002 || RF-012 after their dependencies and applicable cleanup integrate.
-- **B-F4:** RF-003, RF-004, RF-005, RF-006, RF-007, and RF-010 sequentially. The orchestrator may
-  choose the order of RF-003 through RF-005 after RF-002, but they do not implement concurrently.
+- **B-F4:** complete. RF-003, RF-004, RF-005, RF-006, RF-007, and RF-010 integrated sequentially.
 - **B-F5:** RF-009 governed ADR, plan, and implementation under its approved evidence boundary;
   complete.
 
@@ -1271,6 +1270,37 @@ abstraction; oracle strength.
   recovery retain current consumers. No RF-014B-local debt remains.
 - **Unblocked:** The compatibility lane is complete. RF-010 is ready as the final issue before full
   audit-program closure.
+
+### RF-010
+
+- **Range:** Issue base `14b6554b9`; implementation and integration range
+  `14b6554b9..6a6758f17`.
+- **Protected contract:** Current code comments explain active invariants, constraints, rationale, or
+  removal conditions instead of narrating completed plans, tasks, tranches, migrations, and
+  refactors. Useful ADR rationale remains intact, runtime behaviour is unchanged, and unrelated
+  prose is untouched.
+- **Clean integration:** A repository-wide reviewed census selected stale historical narration across
+  production and tests. Each selected comment now states the contract enforced by its surrounding
+  code, while comments that use similar vocabulary for active compatibility, audit, plan-data,
+  recovery, or regression rationale remain unchanged.
+- **Files changed:** Comments in command composition and checks and in ADR, catalog, configuration,
+  context, effort, evaluation, Git, project, publisher, rendering, and worktree owners now describe
+  their current contracts. No executable token changed. Physical line counts remain stable so
+  canonical raw coverage identities are unchanged.
+- **Verification:** The initial census, independent repository grounding, and a final refinement pass
+  covered the current Go corpus. The full gate passed with unchanged coverage identities, zero audit
+  issues, and no production dead code. Workflow audit was clean. Exact-tip independent assurance
+  found five mechanical accuracy or completeness issues; all were corrected in `6a6758f17`, and no
+  verify pass was required. The local audit retained only the advisory missing-Unreleased warning,
+  which does not apply to comment-only changes with no adopter-visible behaviour or generated-byte
+  change.
+- **Deviations:** Preserving physical line counts was necessary after an initial gate exposed that
+  shorter comments shifted line-based coverage identities. The reviewed census was retained instead
+  of a vocabulary blacklist because the same terms still express active contracts elsewhere. Both
+  adjustments preserve the approved outcome.
+- **Residual debt:** None within RF-010.
+- **Unblocked:** Every audit issue is complete. The transient audit-program declaration and document
+  can now be removed.
 
 Close each later issue with the same evidence: identity; baseline and final range; protected contract;
 clean integration; files changed with reason; verification commands and results; material deviations;
