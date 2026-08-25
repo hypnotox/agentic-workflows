@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: separate-live-upgrade-support-from-historical-audit-decoding
-status: Implementing
+status: Implemented
 date: 2026-08-25
 ---
 # ADR-0303: Separate Live Upgrade Support from Historical Audit Decoding
@@ -153,3 +153,4 @@ cleanup remain outside this decision.
 
 - 2026-08-25: Applied; operations: update `tooling/effort-management:memory-skeleton-purpose-partition`, update `tooling/effort-management:managed-effort-format-support`, update `rendering/pi-runtime:pi-session-handoff-workflow`, update `rendering/workflow-skill-templates:memory-checkpoint-chain-coverage`
 - 2026-08-25: Applied; operations: update `adr-system/plan-artifacts:plan-v2-decision-references`, update `adr-system/plan-artifacts:managed-plan-format-support`, update `rendering/workflow-skill-templates:plan-task-detail-modes`
+- 2026-08-25: Implemented; content-sha256: bbad32ab7e06ec40394b5e7e8cbb199e45161956302e1403209969e41c637f79

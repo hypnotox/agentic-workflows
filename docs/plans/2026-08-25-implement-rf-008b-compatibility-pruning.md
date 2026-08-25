@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-25
 adrs: [297, separate-live-upgrade-support-from-historical-audit-decoding]
-status: Proposed
+status: Implemented
 ---
 # Plan: Implement RF-008B Compatibility Pruning
 
