@@ -241,21 +241,6 @@ func (r *Repo) HeadExists(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-// HeadHash resolves the current HEAD commit hash without requiring a clean
-// working tree. The final current-state upgrade runs in an integration worktree
-// that carries the applied but uncommitted attestation patches, so it compares
-// HEAD identity against the sealed PreparedHead without a cleanliness check.
-func (r *Repo) HeadHash(ctx context.Context) (string, error) {
-	if err := checkContext(ctx); err != nil {
-		return "", err
-	}
-	ref, err := r.repo.Head()
-	if err != nil {
-		return "", opaqueWrap("resolve HEAD", err)
-	}
-	return ref.Hash().String(), nil
-}
-
 // Branches returns the repository's local branch short names.
 func (r *Repo) Branches(ctx context.Context) (map[string]bool, error) {
 	if err := checkContext(ctx); err != nil {

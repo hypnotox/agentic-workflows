@@ -33,7 +33,6 @@ func TestRepoMethodsReturnPreCancelledContext(t *testing.T) {
 	for name, call := range map[string]func() error{
 		"changed":        func() error { _, err := gitRepo(t, dir).ChangedPaths(ctx, true, ""); return err },
 		"head":           func() error { _, err := gitRepo(t, dir).HeadExists(ctx); return err },
-		"hash":           func() error { _, err := gitRepo(t, dir).HeadHash(ctx); return err },
 		"branches":       func() error { _, err := gitRepo(t, dir).Branches(ctx); return err },
 		"working":        func() error { _, err := gitRepo(t, dir).WorkingPaths(ctx); return err },
 		"index":          func() error { _, err := gitRepo(t, dir).IndexBlobs(ctx); return err },
@@ -292,9 +291,6 @@ func TestWorkingPathsFindsContainingMonorepo(t *testing.T) {
 	if exists, err := gitRepo(t, filepath.Join(dir, "nested")).HeadExists(testsupport.Context(t)); err != nil || !exists {
 		t.Fatalf("nested HeadExists = %v, %v", exists, err)
 	}
-	if hash, err := gitRepo(t, filepath.Join(dir, "nested")).HeadHash(testsupport.Context(t)); err != nil || hash == "" {
-		t.Fatalf("nested HeadHash = %q, %v", hash, err)
-	}
 	for name, load := range map[string]func() ([]awfgit.IndexBlob, error){
 		"index": func() ([]awfgit.IndexBlob, error) {
 			return gitRepo(t, filepath.Join(dir, "nested")).IndexBlobs(testsupport.Context(t))
@@ -455,26 +451,6 @@ func TestHeadExistsRejectsBrokenSymbolicChains(t *testing.T) {
 				t.Fatalf("WorkingPaths accepted broken chain: paths=%v", paths)
 			}
 		})
-	}
-}
-
-func TestHeadHash(t *testing.T) {
-	repo := gitfixture.InitRepo(t)
-	dir := repo.Root()
-	gitfixture.Commit(t, repo, "base", map[string]string{"a.txt": "a"})
-	if h, err := gitRepo(t, dir).HeadHash(testsupport.Context(t)); err != nil || h == "" {
-		t.Fatalf("born HEAD: hash=%q err=%v; want a hash, nil", h, err)
-	}
-	// An unborn HEAD (a repo with no commits) surfaces the resolve error.
-	unborn := gitfixture.InitRepo(t).Root()
-	if _, err := gitRepo(t, unborn).HeadHash(testsupport.Context(t)); err == nil {
-		t.Fatal("unborn HEAD must surface a resolve error")
-	} else if errors.Is(err, plumbing.ErrReferenceNotFound) {
-		t.Fatalf("HeadHash leaked go-git reference identity: %v", err)
-	}
-	// A non-repository fails to open.
-	if _, err := awfgit.Open(t.TempDir()); err == nil {
-		t.Fatal("non-repository accepted")
 	}
 }
 
@@ -743,8 +719,8 @@ func TestOpenRepoGitfileLayouts(t *testing.T) {
 			if err != nil {
 				t.Fatalf("open linked worktree: %v", err)
 			}
-			if _, err := r.HeadHash(testsupport.Context(t)); err != nil {
-				t.Fatalf("resolve HEAD in linked worktree: %v", err)
+			if exists, err := r.HeadExists(testsupport.Context(t)); err != nil || !exists {
+				t.Fatalf("resolve HEAD in linked worktree: exists=%v err=%v", exists, err)
 			}
 		})
 	}

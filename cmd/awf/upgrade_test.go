@@ -21,7 +21,7 @@ import (
 )
 
 // preparePublicSyncLaterFailure makes public Publisher.Sync commit the earlier
-// AGENTS.md mode correction before the later bridge path cannot be read.
+// AGENTS.md mode correction before a later rendered output cannot be read.
 func upgradeJournalPath(root string) string {
 	return filepath.Join(root, filepath.FromSlash(upgrade.JournalRel))
 }
@@ -73,11 +73,11 @@ func preparePublicSyncLaterFailure(t *testing.T, root string) {
 	if err := os.Chmod(filepath.Join(root, "AGENTS.md"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	bridge := filepath.Join(root, "CLAUDE.md")
-	if err := os.Remove(bridge); err != nil {
+	unreadableOutput := filepath.Join(root, "CLAUDE.md")
+	if err := os.Remove(unreadableOutput); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Mkdir(bridge, 0o755); err != nil {
+	if err := os.Mkdir(unreadableOutput, 0o755); err != nil {
 		t.Fatal(err)
 	}
 }

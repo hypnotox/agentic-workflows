@@ -379,10 +379,9 @@ func guardProjectState(ctx context.Context, root string, cmd clispec.Command, to
 		}
 		return errors.New("a current-state upgrade journal is present; run `awf upgrade --recover` before any other command")
 	}
-	// No journal: admit complete live authority before any bridge or permanent
-	// authority interpretation. Retired layouts and below-floor locks cannot
-	// reach AuthorityState, and an incomplete current control pair is partial
-	// authority rather than missing bridge provenance.
+	// No journal: admit complete live authority before permanent authority
+	// interpretation. Retired layouts and below-floor locks cannot reach
+	// AuthorityState, and an incomplete current control pair is partial authority.
 	if loadErr != nil {
 		if errors.Is(loadErr, manifest.ErrUnsupportedLiveSource) {
 			return presentLiveSourceRefusal(loadErr)

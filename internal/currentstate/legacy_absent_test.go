@@ -33,14 +33,10 @@ var legacyAuthorityIdents = []string{
 // internal/project into internal/contextq; the suffix follows it.
 var legacyContextFields = []string{"Governing", "Related", "Background", "Pitfalls", "Plans"}
 
-// migrationApprovalSeams are the only production files that may spell out the
-// migration approval file's path literal. internal/upgrade/digest.go binds it to
-// the approvalPath const that recomputes the sealed digest before the journaled
-// cutover deletion (the rest of internal/upgrade reaches it through that const,
-// never the raw string), and the closed-tree sweep protects the file while it
-// still exists. A new permanent parser, claim consumer, or runtime path for it is
-// exactly what current-state authority forbids after cutover.
-var migrationApprovalSeams = []string{}
+// migrationApprovalPath is retired cutover authority. No production file may
+// name it now that permanent locks and the generic journal are the only live
+// upgrade authority.
+const migrationApprovalPath = "current-state-migration.yaml"
 
 // bridgeImportPath is the deleted cross-schema bridge package; no production file
 // may import it (its inventory, readiness, snapshot, and approval parsers went
@@ -86,12 +82,11 @@ func productionGoSources(t *testing.T, fn func(path, body string)) int {
 // ADR-derived authority from creeping back after the current-state cutover
 // (ADR-0133/0134/0135). It scans shipped Go and runtime templates for the retired
 // identifiers, confines the legacy context fields to the file they were removed
-// from, forbids the deleted bridge import, and holds the migration approval file
-// to its enumerated transient seams. The companion behavioral assertion that the
+// from, and forbids both the deleted bridge import and migration approval path.
+// The companion behavioral assertion that the
 // retired decision output is no longer planned lives in internal/project, where
 // the output plan is reachable without an import cycle.
 func TestLegacyAuthorityAbsent(t *testing.T) {
-	seams := map[string]bool{}
 	sawContext := false
 	goSeen := productionGoSources(t, func(path, body string) {
 		for _, w := range bannedWholeWords(body, legacyAuthorityIdents) {
@@ -106,14 +101,8 @@ func TestLegacyAuthorityAbsent(t *testing.T) {
 				t.Errorf("context.go carries the retired ADR-derived context field %q; ADR-0134 context selects topic claims, not tag/relation/pitfall/plan expansion", w)
 			}
 		}
-		if strings.Contains(body, "current-state-migration.yaml") {
-			for _, seam := range migrationApprovalSeams {
-				if strings.HasSuffix(path, seam) {
-					seams[seam] = true
-					return
-				}
-			}
-			t.Errorf("%s names the migration approval file; only the enumerated upgrade/sweep seams may - a permanent consumer or runtime-path owner is what cutover forbids (ADR-0136)", path)
+		if strings.Contains(body, migrationApprovalPath) {
+			t.Errorf("%s names the retired migration approval file; permanent locks and the generic journal are the only live upgrade authority (ADR-0136)", path)
 		}
 	})
 	if goSeen < 60 {
@@ -122,12 +111,6 @@ func TestLegacyAuthorityAbsent(t *testing.T) {
 	if !sawContext {
 		t.Fatal(contextGoSuffix + " was not scanned - has the context producer moved?")
 	}
-	for _, seam := range migrationApprovalSeams {
-		if !seams[seam] {
-			t.Errorf("%s no longer names the migration approval file - has the enumerated seam set changed?", seam)
-		}
-	}
-
 	tmplSeen := 0
 	err := fs.WalkDir(templates.FS, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {

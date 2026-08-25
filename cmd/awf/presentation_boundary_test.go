@@ -229,7 +229,6 @@ var nonPresentationWrites = map[string]bool{
 	modulePath + "/internal/project.glossaryRows":           true,
 	modulePath + "/internal/project.pitfallsMarkdown":       true,
 	modulePath + "/internal/project.commitScopeTable":       true,
-	modulePath + "/internal/upgrade.treeDigest":             true,
 }
 
 // These owners create authored payload bytes rather than user-facing text.

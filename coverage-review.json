@@ -496,6 +496,19 @@
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
+          "line": 405,
+          "column": 3
+        },
+        "end": {
+          "line": 405,
+          "column": 142
+        },
+        "statements": 1
+      },
+      "reason": "Working project presence was observed immediately before current control-pair probes and retired-layout classification. This terminal refusal is reachable only if the last recognized layout disappears between those adjacent observations; it remains fail-closed without a filesystem race seam.",
+      "movedFrom": {
+        "file": "cmd/awf/main.go",
+        "start": {
           "line": 406,
           "column": 3
         },
@@ -504,11 +517,23 @@
           "column": 142
         },
         "statements": 1
-      },
-      "reason": "Working project presence was observed immediately before current control-pair probes and retired-layout classification. This terminal refusal is reachable only if the last recognized layout disappears between those adjacent observations; it remains fail-closed without a filesystem race seam."
+      }
     },
     {
       "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 408,
+          "column": 21
+        },
+        "end": {
+          "line": 410,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/main.go:354.21,356.3 1 in function guardProjectState, beginning `{ // coverage-ignore: projectGuardState loaded and validated this unchanged lock`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "cmd/awf/main.go",
         "start": {
           "line": 409,
@@ -519,11 +544,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/main.go:354.21,356.3 1 in function guardProjectState, beginning `{ // coverage-ignore: projectGuardState loaded and validated this unchanged lock`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 422,
+          "column": 10
+        },
+        "end": {
+          "line": 423,
+          "column": 85
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/main.go:368.10,369.85 1 in function guardProjectState, beginning `// coverage-ignore: AuthorityState returns only the closed enum values`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "cmd/awf/main.go",
         "start": {
           "line": 423,
@@ -534,11 +571,23 @@
           "column": 85
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/main.go:368.10,369.85 1 in function guardProjectState, beginning `// coverage-ignore: AuthorityState returns only the closed enum values`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 440,
+          "column": 64
+        },
+        "end": {
+          "line": 442,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "ProjectPresent successfully observed the working config immediately before this second control-pair stat. Reaching this propagation arm requires a concurrent namespace or permission change between adjacent observations; it remains fail-closed without a filesystem race seam.",
+      "movedFrom": {
         "file": "cmd/awf/main.go",
         "start": {
           "line": 441,
@@ -549,11 +598,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "ProjectPresent successfully observed the working config immediately before this second control-pair stat. Reaching this propagation arm requires a concurrent namespace or permission change between adjacent observations; it remains fail-closed without a filesystem race seam."
+      }
     },
     {
       "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 550,
+          "column": 16
+        },
+        "end": {
+          "line": 552,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/main.go:485.16,487.3 1 in function writeStatus, beginning `{ // coverage-ignore: Prose validated the value and status is a fixed grammar-valid label`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "cmd/awf/main.go",
         "start": {
           "line": 551,
@@ -564,11 +625,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/main.go:485.16,487.3 1 in function writeStatus, beginning `{ // coverage-ignore: Prose validated the value and status is a fixed grammar-valid label`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 554,
+          "column": 16
+        },
+        "end": {
+          "line": 556,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/main.go:489.16,491.3 1 in function writeStatus, beginning `{ // coverage-ignore: the validated Field is always a valid root node`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "cmd/awf/main.go",
         "start": {
           "line": 555,
@@ -579,8 +652,7 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/main.go:489.16,491.3 1 in function writeStatus, beginning `{ // coverage-ignore: the validated Field is always a valid root node`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
@@ -5437,6 +5509,19 @@
       "identity": {
         "file": "internal/git/handle.go",
         "start": {
+          "line": 321,
+          "column": 16
+        },
+        "end": {
+          "line": 323,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/git/handle.go:336.16,338.3 1 in function WorkingPaths, beginning `{ // coverage-ignore: awf operates on non-bare adopted worktrees`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
+        "file": "internal/git/handle.go",
+        "start": {
           "line": 336,
           "column": 16
         },
@@ -5445,11 +5530,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/git/handle.go:336.16,338.3 1 in function WorkingPaths, beginning `{ // coverage-ignore: awf operates on non-bare adopted worktrees`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/git/handle.go",
+        "start": {
+          "line": 326,
+          "column": 16
+        },
+        "end": {
+          "line": 328,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/git/handle.go:341.16,343.3 1 in function WorkingPaths, beginning `{ // coverage-ignore: status on the healthy worktree just opened does not fail`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/git/handle.go",
         "start": {
           "line": 341,
@@ -5460,11 +5557,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/git/handle.go:341.16,343.3 1 in function WorkingPaths, beginning `{ // coverage-ignore: status on the healthy worktree just opened does not fail`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/git/handle.go",
+        "start": {
+          "line": 330,
+          "column": 16
+        },
+        "end": {
+          "line": 332,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/git/handle.go:345.16,347.3 1 in function WorkingPaths, beginning `{ // coverage-ignore: Status read the same worktree immediately above; failure requires a concur...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/git/handle.go",
         "start": {
           "line": 345,
@@ -5475,11 +5584,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/git/handle.go:345.16,347.3 1 in function WorkingPaths, beginning `{ // coverage-ignore: Status read the same worktree immediately above; failure requires a concur...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/git/handle.go",
+        "start": {
+          "line": 347,
+          "column": 23
+        },
+        "end": {
+          "line": 348,
+          "column": 23
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/git/handle.go:362.23,363.23 1 in function WorkingPaths, beginning `// coverage-ignore: status returned the path; only a concurrent filesystem fault can make Lstat ...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/git/handle.go",
         "start": {
           "line": 362,
@@ -5490,11 +5611,23 @@
           "column": 23
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/git/handle.go:362.23,363.23 1 in function WorkingPaths, beginning `// coverage-ignore: status returned the path; only a concurrent filesystem fault can make Lstat ...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/git/handle.go",
+        "start": {
+          "line": 441,
+          "column": 16
+        },
+        "end": {
+          "line": 443,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/git/handle.go:456.16,458.3 1 in function resolveCommit, beginning `{ // coverage-ignore: ResolveRevision accepts only commitish revisions; the non-commit-object te...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/git/handle.go",
         "start": {
           "line": 456,
@@ -5505,11 +5638,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/git/handle.go:456.16,458.3 1 in function resolveCommit, beginning `{ // coverage-ignore: ResolveRevision accepts only commitish revisions; the non-commit-object te...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/git/handle.go",
+        "start": {
+          "line": 623,
+          "column": 16
+        },
+        "end": {
+          "line": 625,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/git/handle.go:638.16,640.3 1 in function RangeBlobs, beginning `{ // coverage-ignore: a hash ResolveRevision just returned points at a real object`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/git/handle.go",
         "start": {
           "line": 638,
@@ -5520,11 +5665,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/git/handle.go:638.16,640.3 1 in function RangeBlobs, beginning `{ // coverage-ignore: a hash ResolveRevision just returned points at a real object`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/git/handle.go",
+        "start": {
+          "line": 627,
+          "column": 16
+        },
+        "end": {
+          "line": 629,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/git/handle.go:642.16,644.3 1 in function RangeBlobs, beginning `{ // coverage-ignore: a resolved commit always yields its tree`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/git/handle.go",
         "start": {
           "line": 642,
@@ -5535,11 +5692,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/git/handle.go:642.16,644.3 1 in function RangeBlobs, beginning `{ // coverage-ignore: a resolved commit always yields its tree`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/git/handle.go",
+        "start": {
+          "line": 642,
+          "column": 18
+        },
+        "end": {
+          "line": 644,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/git/handle.go:657.18,659.4 1 in function RangeBlobs, beginning `{ // coverage-ignore: a valid parent commit's tree resolves`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/git/handle.go",
         "start": {
           "line": 657,
@@ -5550,8 +5719,7 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/git/handle.go:657.18,659.4 1 in function RangeBlobs, beginning `{ // coverage-ignore: a valid parent commit's tree resolves`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
@@ -9958,11 +10126,11 @@
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 403,
+          "line": 402,
           "column": 3
         },
         "end": {
-          "line": 403,
+          "line": 402,
           "column": 142
         },
         "statements": 1
@@ -9971,11 +10139,11 @@
       "movedFrom": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 405,
+          "line": 403,
           "column": 3
         },
         "end": {
-          "line": 405,
+          "line": 403,
           "column": 142
         },
         "statements": 1
@@ -9983,6 +10151,19 @@
     },
     {
       "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 406,
+          "column": 2
+        },
+        "end": {
+          "line": 406,
+          "column": 49
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage.",
+      "movedFrom": {
         "file": "cmd/awf/main.go",
         "start": {
           "line": 407,
@@ -9993,11 +10174,23 @@
           "column": 49
         },
         "statements": 1
-      },
-      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+      }
     },
     {
       "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 404,
+          "column": 49
+        },
+        "end": {
+          "line": 406,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage.",
+      "movedFrom": {
         "file": "cmd/awf/main.go",
         "start": {
           "line": 405,
@@ -10008,23 +10201,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage.",
-      "movedFrom": {
-        "file": "cmd/awf/main.go",
-        "start": {
-          "line": 407,
-          "column": 49
-        },
-        "end": {
-          "line": 409,
-          "column": 3
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 426,
+          "column": 64
+        },
+        "end": {
+          "line": 428,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage.",
+      "movedFrom": {
         "file": "cmd/awf/main.go",
         "start": {
           "line": 427,
@@ -10035,23 +10228,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage.",
-      "movedFrom": {
-        "file": "cmd/awf/main.go",
-        "start": {
-          "line": 429,
-          "column": 64
-        },
-        "end": {
-          "line": 431,
-          "column": 4
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 439,
+          "column": 16
+        },
+        "end": {
+          "line": 441,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage.",
+      "movedFrom": {
         "file": "cmd/awf/main.go",
         "start": {
           "line": 440,
@@ -10062,23 +10255,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage.",
-      "movedFrom": {
-        "file": "cmd/awf/main.go",
-        "start": {
-          "line": 442,
-          "column": 16
-        },
-        "end": {
-          "line": 444,
-          "column": 3
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 450,
+          "column": 84
+        },
+        "end": {
+          "line": 452,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage.",
+      "movedFrom": {
         "file": "cmd/awf/main.go",
         "start": {
           "line": 451,
@@ -10089,11 +10282,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+      }
     },
     {
       "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 536,
+          "column": 16
+        },
+        "end": {
+          "line": 538,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage.",
+      "movedFrom": {
         "file": "cmd/awf/main.go",
         "start": {
           "line": 537,
@@ -10104,30 +10309,17 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage.",
-      "movedFrom": {
-        "file": "cmd/awf/main.go",
-        "start": {
-          "line": 539,
-          "column": 16
-        },
-        "end": {
-          "line": 541,
-          "column": 3
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 541,
+          "line": 540,
           "column": 16
         },
         "end": {
-          "line": 543,
+          "line": 542,
           "column": 3
         },
         "statements": 1
@@ -10136,11 +10328,11 @@
       "movedFrom": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 543,
+          "line": 541,
           "column": 16
         },
         "end": {
-          "line": 545,
+          "line": 543,
           "column": 3
         },
         "statements": 1
@@ -14387,8 +14579,8 @@
     {
       "directive": {
         "file": "internal/git/handle.go",
-        "line": 336,
-        "targetLine": 336,
+        "line": 321,
+        "targetLine": 321,
         "reason": "awf operates on non-bare adopted worktrees",
         "mapped": true,
         "executed": false
@@ -14399,8 +14591,8 @@
     {
       "directive": {
         "file": "internal/git/handle.go",
-        "line": 341,
-        "targetLine": 341,
+        "line": 326,
+        "targetLine": 326,
         "reason": "status on the healthy worktree just opened does not fail",
         "mapped": true,
         "executed": false
@@ -14411,8 +14603,8 @@
     {
       "directive": {
         "file": "internal/git/handle.go",
-        "line": 345,
-        "targetLine": 345,
+        "line": 330,
+        "targetLine": 330,
         "reason": "Status read the same worktree immediately above; failure requires a concurrent filesystem fault",
         "mapped": true,
         "executed": false
@@ -14423,8 +14615,8 @@
     {
       "directive": {
         "file": "internal/git/handle.go",
-        "line": 362,
-        "targetLine": 362,
+        "line": 347,
+        "targetLine": 347,
         "reason": "status returned the path; only a concurrent filesystem fault can make Lstat fail otherwise",
         "mapped": true,
         "executed": false
@@ -14435,8 +14627,8 @@
     {
       "directive": {
         "file": "internal/git/handle.go",
-        "line": 456,
-        "targetLine": 456,
+        "line": 441,
+        "targetLine": 441,
         "reason": "ResolveRevision accepts only commitish revisions; the non-commit-object test proves blobs refuse before this lookup",
         "mapped": true,
         "executed": false
@@ -14447,8 +14639,8 @@
     {
       "directive": {
         "file": "internal/git/handle.go",
-        "line": 638,
-        "targetLine": 638,
+        "line": 623,
+        "targetLine": 623,
         "reason": "a hash ResolveRevision just returned points at a real object",
         "mapped": true,
         "executed": false
@@ -14459,8 +14651,8 @@
     {
       "directive": {
         "file": "internal/git/handle.go",
-        "line": 642,
-        "targetLine": 642,
+        "line": 627,
+        "targetLine": 627,
         "reason": "a resolved commit always yields its tree",
         "mapped": true,
         "executed": false
@@ -14471,8 +14663,8 @@
     {
       "directive": {
         "file": "internal/git/handle.go",
-        "line": 657,
-        "targetLine": 657,
+        "line": 642,
+        "targetLine": 642,
         "reason": "a valid parent commit's tree resolves",
         "mapped": true,
         "executed": false

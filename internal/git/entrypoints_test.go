@@ -47,7 +47,6 @@ var entrypointSuites = map[string]suite{
 	"RangeBlobs":    {"internal/git", "TestObjectReadContracts"},
 	"FileText":      {"internal/git", "TestRangeCommitsLinearRangeCarriesChangesAndText"},
 	"HeadExists":    {"internal/git", "TestHeadExists"},
-	"HeadHash":      {"internal/git", "TestHeadHash"},
 
 	// Working-tree truth.
 	"ChangeCounts": {"internal/git", "TestChangeCountsSeparatesEveryDirtyTreeState"},
