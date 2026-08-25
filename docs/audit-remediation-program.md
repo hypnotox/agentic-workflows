@@ -198,8 +198,8 @@ correction is allowed without unrelated cleanup riding along.
 | RF-007 | P2 | COMPLETE | Residual giant tests split by observable behaviour and semantic owner | RF-002..RF-006 |
 | RF-009 | P1 | COMPLETE | Post-refactor critical-path coverage policy and regression control | RF-007, owner ruling |
 | RF-014A | P2 | COMPLETE | Obsolete Program A machinery deleted | Program A milestone |
-| RF-014B | P2 | CONDITIONAL | Obsolete compatibility residue deleted | RF-008B, compatibility removals applicable |
-| RF-010 | P2 | BLOCKED | Current code comments explain invariants, not historical plans and tranches | RF-002..RF-007, compatibility lane closed |
+| RF-014B | P2 | COMPLETE | Obsolete compatibility residue deleted | RF-008B, compatibility removals applicable |
+| RF-010 | P2 | READY | Current code comments explain invariants, not historical plans and tranches | RF-002..RF-007, compatibility lane closed |
 | RF-011 | P2 | COMPLETE | Roadmap, known issues, and research separated by owner | Program A milestone |
 | RF-012 | P2 | COMPLETE | Tag vocabulary culled to terms with a real consumer | RF-011 |
 | RF-013 | P2 | COMPLETE | Documented remote enforcement matches configured GitHub policy | Program A milestone, live policy verification |
@@ -281,12 +281,12 @@ also passed; its completion report records the exact candidate evidence.
 
 ### Program B start gate
 
-**Status: OPEN; RF-008B IS COMPLETE.** Program A is complete; generated artifacts are stable under
-the new doctrine; changed behaviour has deterministic regression coverage; no known adopter-facing
-contradiction remains; RF-001 through RF-007 establish the architecture and direct residual
-test-oracle ownership; and RF-009 establishes the post-refactor coverage and mutation regression
-policy. The managed-repository upgrade gate and RF-008B candidate census are satisfied. RF-014B
-remains conditional, and RF-010 is unblocked when this compatibility-lane transaction integrates.
+**Status: OPEN; THE COMPATIBILITY LANE IS COMPLETE.** Program A is complete; generated artifacts are
+stable under the new doctrine; changed behaviour has deterministic regression coverage; no known
+adopter-facing contradiction remains; RF-001 through RF-007 establish the architecture and direct
+residual test-oracle ownership; and RF-009 establishes the post-refactor coverage and mutation
+regression policy. The managed-repository upgrade gate, RF-008B candidate census, and applicable
+RF-014B cleanup are complete. RF-010 is ready.
 
 Program A milestone complete; generated artifacts stable under the new doctrine; new behaviour has
 regression tests; no known adopter-facing contradiction remains; compatibility support policy decided
@@ -302,9 +302,8 @@ history. Items joined by `||` may implement concurrently; integrations remain se
 - **A-F3:** AF-011 || AF-013 after their dependencies integrate.
 - **A-F4:** AF-010, then AF-012, then AF-014B and the Program A milestone, sequentially.
 - **B-F1:** after the milestone, RF-001 || RF-008A || RF-011 || RF-013.
-- **B-F2 cleanup lane:** RF-014A and RF-008B are complete. RF-014B follows only when its
-  applicability condition holds; the RF-008B census found no presently obsolete retained candidate.
-  Do not overlap this lane with architecture refactors.
+- **B-F2 cleanup lane:** complete. RF-014A and RF-008B removed their proven residue; RF-014B removed
+  the two additional live recognition paths proven obsolete by its fresh census.
 - **B-F3:** RF-002 || RF-012 after their dependencies and applicable cleanup integrate.
 - **B-F4:** RF-003, RF-004, RF-005, RF-006, RF-007, and RF-010 sequentially. The orchestrator may
   choose the order of RF-003 through RF-005 after RF-002, but they do not implement concurrently.
@@ -1242,6 +1241,36 @@ abstraction; oracle strength.
   RF-010 remains blocked until that lane closes.
 - **Unblocked:** No further issue becomes ready. The remaining program work is conditional on the
   managed-repository upgrade gate and its compatibility removals.
+
+### RF-014B
+
+- **Range:** Issue base `eb8fc45db`; ADR-0304, implementation, integration, and numbering range
+  `eb8fc45db..3f854b136`.
+- **Protected contract:** ADR-0304 removes only two live recognition paths absent from every current
+  managed input: tolerance for retired pre-31 routing keys and special backup recognition for the
+  retired co-owned runner. Schema-first refusal, read-only historical decoding, current recovery,
+  confinement, ordinary pruning, represented formats, and every compatibility surface with a current
+  consumer remain intact.
+- **Clean integration:** Live manifest parsing rejects retired routing keys at every admitted schema;
+  audit remains the sole decoder of represented historical routing. Output pruning uses the current
+  template-ID universe without a recognition-only runner identity or its special backup branch.
+- **Files changed:** Manifest admission and tests, template identity and pruning owners and tests,
+  current-state claims, canonical coverage evidence, ADR-0304, the decision index, and the generated
+  lock implement and prove the boundary.
+- **Verification:** Focused tests observed both compatibility paths before removal and passed after
+  implementation. Full tests, render and drift checks, staged checks, repeated full gates, coverage
+  identity checks, dead-code and pin checks, workflow audits, and exact-tip independent assurance
+  passed. The complete shipped audit retained only the advisory no-plan size warning. The local audit
+  retained only the expected six reviewed coverage-identity moves and missing Unreleased-entry
+  advisory.
+- **Deviations:** Fresh grounding overturned an initial inapplicability conclusion by finding the two
+  overlooked consumer-free paths. Independent review corrected one mechanical prune-error identity
+  assertion; no verify pass was required.
+- **Residual debt:** Represented ADR and plan formats, schema-2 effort residents, missing
+  initialization provenance, punctuation exemptions, historical schemas, and generic journal
+  recovery retain current consumers. No RF-014B-local debt remains.
+- **Unblocked:** The compatibility lane is complete. RF-010 is ready as the final issue before full
+  audit-program closure.
 
 Close each later issue with the same evidence: identity; baseline and final range; protected contract;
 clean integration; files changed with reason; verification commands and results; material deviations;
