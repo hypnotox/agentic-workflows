@@ -1,7 +1,7 @@
 {
   "version": 1,
   "modulePath": "github.com/hypnotox/agentic-workflows",
-  "universeSHA256": "c8383b7927fd570eee4b5e55ae2ff202e8b2dba6ce49236ab954bb75d783a97c",
+  "universeSHA256": "56b7c022b7951632cc37453a395ad9e0bf3fb7da6a16763560a87a92bc347daa",
   "repository": [
     {
       "identity": {
@@ -9307,34 +9307,17 @@
       "identity": {
         "file": "internal/upgrade/journal.go",
         "start": {
-          "line": 200,
-          "column": 64
+          "line": 276,
+          "column": 18
         },
         "end": {
-          "line": 202,
-          "column": 3
+          "line": 278,
+          "column": 5
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/upgrade/journal.go:185.70,187.3 1 in function quarantineTree, beginning `{ // coverage-ignore: the quarantine root's parent is the awf directory the journal itself lives...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "internal/upgrade/journal.go",
-        "start": {
-          "line": 222,
-          "column": 64
-        },
-        "end": {
-          "line": 224,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/upgrade/journal.go:206.70,208.3 1 in function restoreTree, beginning `{ // coverage-ignore: the resident path's parent is the awf directory`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
+      "reason": "Journal contains only JSON-representable scalars, slices, and byte content, so marshal failure is a closed defensive arm.",
+      "movedFrom": {
         "file": "internal/upgrade/journal.go",
         "start": {
           "line": 420,
@@ -9345,11 +9328,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/upgrade/journal.go:381.16,383.3 1 in function writeJournal, beginning `{ // coverage-ignore: Journal holds only JSON-representable scalars, slices, and byte content`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/upgrade/journal.go",
+        "start": {
+          "line": 531,
+          "column": 48
+        },
+        "end": {
+          "line": 533,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Transaction planners validate the operation set before the bound commit owner receives it; this defensive revalidation arm remains fail-closed.",
+      "movedFrom": {
         "file": "internal/upgrade/journal.go",
         "start": {
           "line": 519,
@@ -9360,11 +9355,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/upgrade/journal.go:473.48,475.3 1 in function commitTransactionWith, beginning `{ // coverage-ignore: the final-upgrade planner validated the same set before this call`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/upgrade/journal.go",
+        "start": {
+          "line": 643,
+          "column": 2
+        },
+        "end": {
+          "line": 643,
+          "column": 16
+        },
+        "statements": 1
+      },
+      "reason": "Journal restoration supplies a changed set containing the path being removed; the fallback remains a closed defensive arm.",
+      "movedFrom": {
         "file": "internal/upgrade/journal.go",
         "start": {
           "line": 631,
@@ -9375,8 +9382,7 @@
           "column": 16
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/upgrade/journal.go:585.2,585.16 1 in function removeChangedPath, beginning `return changed // coverage-ignore: no caller provides a changed set without its path`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
@@ -9427,6 +9433,19 @@
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
+          "line": 210,
+          "column": 21
+        },
+        "end": {
+          "line": 212,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Run already observed the current config successfully before loading the optional live lock. This propagation arm requires the config path to develop a non-absence filesystem fault after the lock is concurrently absent; it remains fail-closed without a filesystem race seam.",
+      "movedFrom": {
+        "file": "internal/upgrade/operation.go",
+        "start": {
           "line": 201,
           "column": 21
         },
@@ -9435,11 +9454,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Run already observed the current config successfully before loading the optional live lock. This propagation arm requires the config path to develop a non-absence filesystem fault after the lock is concurrently absent; it remains fail-closed without a filesystem race seam."
+      }
     },
     {
       "identity": {
+        "file": "internal/upgrade/operation.go",
+        "start": {
+          "line": 232,
+          "column": 16
+        },
+        "end": {
+          "line": 234,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam.",
+      "movedFrom": {
         "file": "internal/upgrade/operation.go",
         "start": {
           "line": 223,
@@ -9450,11 +9481,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam."
+      }
     },
     {
       "identity": {
+        "file": "internal/upgrade/operation.go",
+        "start": {
+          "line": 242,
+          "column": 17
+        },
+        "end": {
+          "line": 244,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam.",
+      "movedFrom": {
         "file": "internal/upgrade/operation.go",
         "start": {
           "line": 233,
@@ -9465,11 +9508,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam."
+      }
     },
     {
       "identity": {
+        "file": "internal/upgrade/operation.go",
+        "start": {
+          "line": 246,
+          "column": 17
+        },
+        "end": {
+          "line": 248,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam.",
+      "movedFrom": {
         "file": "internal/upgrade/operation.go",
         "start": {
           "line": 237,
@@ -9480,11 +9535,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam."
+      }
     },
     {
       "identity": {
+        "file": "internal/upgrade/operation.go",
+        "start": {
+          "line": 251,
+          "column": 10
+        },
+        "end": {
+          "line": 252,
+          "column": 105
+        },
+        "statements": 1
+      },
+      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam.",
+      "movedFrom": {
         "file": "internal/upgrade/operation.go",
         "start": {
           "line": 242,
@@ -9495,8 +9562,7 @@
           "column": 105
         },
         "statements": 1
-      },
-      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam."
+      }
     },
     {
       "identity": {
@@ -9577,6 +9643,19 @@
       "identity": {
         "file": "internal/upgrade/upgrade.go",
         "start": {
+          "line": 78,
+          "column": 21
+        },
+        "end": {
+          "line": 80,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Verify seals the cutover inputs before planning; only a concurrent filesystem change can invalidate the plan at this point.",
+      "movedFrom": {
+        "file": "internal/upgrade/upgrade.go",
+        "start": {
           "line": 75,
           "column": 16
         },
@@ -9585,23 +9664,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/upgrade/upgrade.go:78.16,80.3 1 in function FinalUpgrade, beginning `{ // coverage-ignore: Verify already required the approval file present via the sealed digest, s...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
-      "movedFrom": {
-        "file": "internal/upgrade/upgrade.go",
-        "start": {
-          "line": 78,
-          "column": 16
-        },
-        "end": {
-          "line": 80,
-          "column": 3
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/upgrade/upgrade.go",
+        "start": {
+          "line": 97,
+          "column": 16
+        },
+        "end": {
+          "line": 99,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "The validated lock model contains only marshalable fields, so this defensive marshal arm remains closed.",
+      "movedFrom": {
         "file": "internal/upgrade/upgrade.go",
         "start": {
           "line": 90,
@@ -9612,77 +9691,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/upgrade/upgrade.go:156.16,158.3 1 in function cutoverOperations, beginning `{ // coverage-ignore: the lock marshals cleanly; see manifest.Marshal`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
-      "movedFrom": {
-        "file": "internal/upgrade/upgrade.go",
-        "start": {
-          "line": 156,
-          "column": 16
-        },
-        "end": {
-          "line": 158,
-          "column": 3
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
         "file": "internal/upgrade/upgrade.go",
         "start": {
-          "line": 94,
-          "column": 16
+          "line": 115,
+          "column": 48
         },
         "end": {
-          "line": 96,
+          "line": 117,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/upgrade/upgrade.go:160.16,162.3 1 in function cutoverOperations, beginning `{ // coverage-ignore: the approval path reads cleanly unless a concurrent removal races`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "reason": "The two-operation cutover plan is well-formed by construction and is revalidated before mutation.",
       "movedFrom": {
-        "file": "internal/upgrade/upgrade.go",
-        "start": {
-          "line": 160,
-          "column": 16
-        },
-        "end": {
-          "line": 162,
-          "column": 3
-        },
-        "statements": 1
-      }
-    },
-    {
-      "identity": {
-        "file": "internal/upgrade/upgrade.go",
-        "start": {
-          "line": 101,
-          "column": 16
-        },
-        "end": {
-          "line": 103,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/upgrade/upgrade.go:167.16,169.3 1 in function cutoverOperations, beginning `{ // coverage-ignore: the lock was read by LoadOptional immediately before this call`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
-      "movedFrom": {
-        "file": "internal/upgrade/upgrade.go",
-        "start": {
-          "line": 167,
-          "column": 16
-        },
-        "end": {
-          "line": 169,
-          "column": 3
-        },
-        "statements": 1
-      }
-    },
-    {
-      "identity": {
         "file": "internal/upgrade/upgrade.go",
         "start": {
           "line": 108,
@@ -9690,19 +9715,6 @@
         },
         "end": {
           "line": 110,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/upgrade/upgrade.go:174.48,176.3 1 in function cutoverOperations, beginning `{ // coverage-ignore: the two-op cutover plan is well-formed by construction`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
-      "movedFrom": {
-        "file": "internal/upgrade/upgrade.go",
-        "start": {
-          "line": 174,
-          "column": 48
-        },
-        "end": {
-          "line": 176,
           "column": 3
         },
         "statements": 1
@@ -11046,47 +11058,23 @@
         {
           "file": "internal/upgrade/journal.go",
           "start": {
-            "line": 200,
-            "column": 64
+            "line": 276,
+            "column": 18
           },
           "end": {
-            "line": 202,
-            "column": 3
+            "line": 278,
+            "column": 5
           },
           "statements": 1
         },
         {
           "file": "internal/upgrade/journal.go",
           "start": {
-            "line": 222,
-            "column": 64
-          },
-          "end": {
-            "line": 224,
-            "column": 3
-          },
-          "statements": 1
-        },
-        {
-          "file": "internal/upgrade/journal.go",
-          "start": {
-            "line": 420,
-            "column": 16
-          },
-          "end": {
-            "line": 422,
-            "column": 3
-          },
-          "statements": 1
-        },
-        {
-          "file": "internal/upgrade/journal.go",
-          "start": {
-            "line": 519,
+            "line": 531,
             "column": 48
           },
           "end": {
-            "line": 521,
+            "line": 533,
             "column": 3
           },
           "statements": 1
@@ -11094,11 +11082,11 @@
         {
           "file": "internal/upgrade/journal.go",
           "start": {
-            "line": 631,
+            "line": 643,
             "column": 2
           },
           "end": {
-            "line": 631,
+            "line": 643,
             "column": 16
           },
           "statements": 1
@@ -11142,11 +11130,11 @@
         {
           "file": "internal/upgrade/operation.go",
           "start": {
-            "line": 201,
+            "line": 210,
             "column": 21
           },
           "end": {
-            "line": 203,
+            "line": 212,
             "column": 4
           },
           "statements": 1
@@ -11154,11 +11142,11 @@
         {
           "file": "internal/upgrade/operation.go",
           "start": {
-            "line": 223,
+            "line": 232,
             "column": 16
           },
           "end": {
-            "line": 225,
+            "line": 234,
             "column": 3
           },
           "statements": 1
@@ -11166,35 +11154,35 @@
         {
           "file": "internal/upgrade/operation.go",
           "start": {
-            "line": 233,
-            "column": 17
-          },
-          "end": {
-            "line": 235,
-            "column": 4
-          },
-          "statements": 1
-        },
-        {
-          "file": "internal/upgrade/operation.go",
-          "start": {
-            "line": 237,
-            "column": 17
-          },
-          "end": {
-            "line": 239,
-            "column": 4
-          },
-          "statements": 1
-        },
-        {
-          "file": "internal/upgrade/operation.go",
-          "start": {
             "line": 242,
+            "column": 17
+          },
+          "end": {
+            "line": 244,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/operation.go",
+          "start": {
+            "line": 246,
+            "column": 17
+          },
+          "end": {
+            "line": 248,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/operation.go",
+          "start": {
+            "line": 251,
             "column": 10
           },
           "end": {
-            "line": 243,
+            "line": 252,
             "column": 105
           },
           "statements": 1
@@ -11262,11 +11250,23 @@
         {
           "file": "internal/upgrade/upgrade.go",
           "start": {
-            "line": 75,
+            "line": 78,
+            "column": 21
+          },
+          "end": {
+            "line": 80,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/upgrade/upgrade.go",
+          "start": {
+            "line": 97,
             "column": 16
           },
           "end": {
-            "line": 77,
+            "line": 99,
             "column": 3
           },
           "statements": 1
@@ -11274,47 +11274,11 @@
         {
           "file": "internal/upgrade/upgrade.go",
           "start": {
-            "line": 90,
-            "column": 16
-          },
-          "end": {
-            "line": 92,
-            "column": 3
-          },
-          "statements": 1
-        },
-        {
-          "file": "internal/upgrade/upgrade.go",
-          "start": {
-            "line": 94,
-            "column": 16
-          },
-          "end": {
-            "line": 96,
-            "column": 3
-          },
-          "statements": 1
-        },
-        {
-          "file": "internal/upgrade/upgrade.go",
-          "start": {
-            "line": 101,
-            "column": 16
-          },
-          "end": {
-            "line": 103,
-            "column": 3
-          },
-          "statements": 1
-        },
-        {
-          "file": "internal/upgrade/upgrade.go",
-          "start": {
-            "line": 108,
+            "line": 115,
             "column": 48
           },
           "end": {
-            "line": 110,
+            "line": 117,
             "column": 3
           },
           "statements": 1
@@ -22840,62 +22804,38 @@
     {
       "directive": {
         "file": "internal/upgrade/journal.go",
-        "line": 200,
-        "targetLine": 200,
-        "reason": "the quarantine root's parent is the awf directory the journal itself lives in",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `}` at internal/upgrade/journal.go:184 feeds `if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {` at internal/upgrade/journal.go:200 in `func quarantineTree(root string, op Operation) error` (internal/upgrade/journal.go:173). Its concrete fault condition is the quarantine root's parent is the awf directory the journal itself lives in, so no safe portable production input induces this error path."
-    },
-    {
-      "directive": {
-        "file": "internal/upgrade/journal.go",
-        "line": 222,
-        "targetLine": 222,
-        "reason": "the resident path's parent is the awf directory",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `}` at internal/upgrade/journal.go:205 feeds `if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {` at internal/upgrade/journal.go:222 in `func restoreTree(root string, op Operation) error` (internal/upgrade/journal.go:194). Its concrete fault condition is the resident path's parent is the awf directory, so no safe portable production input induces this error path."
-    },
-    {
-      "directive": {
-        "file": "internal/upgrade/journal.go",
-        "line": 420,
-        "targetLine": 420,
+        "line": 276,
+        "targetLine": 276,
         "reason": "Journal holds only JSON-representable scalars, slices, and byte content",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/upgrade/journal.go:420, `if err != nil {` follows the concrete operation `b, err := json.MarshalIndent(j, \"\", \"  \")` at internal/upgrade/journal.go:380 in `func writeJournal(root string, j Journal) error` (internal/upgrade/journal.go:379). The reviewed failure condition is Journal holds only JSON-representable scalars, slices, and byte content; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
+      "evidence": "productionJournalOperation marshals a Journal containing only JSON-representable scalars, slices, and byte content; the error arm cannot be reached through a valid Journal value."
     },
     {
       "directive": {
         "file": "internal/upgrade/journal.go",
-        "line": 519,
-        "targetLine": 519,
+        "line": 531,
+        "targetLine": 531,
         "reason": "the final-upgrade planner validated the same set before this call",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err := validateOperations(ops); err != nil {` at internal/upgrade/journal.go:519 is `func commitTransactionWith(root string, ops []Operation, operation journalOperation) (Outcome, error) {` (internal/upgrade/journal.go:472). Within `func commitTransactionWith(root string, ops []Operation, operation journalOperation) (Outcome, error)` at internal/upgrade/journal.go:472, source review establishes the final-upgrade planner validated the same set before this call; this is therefore a closed-state fail-closed branch."
+      "evidence": "commitTransactionBound receives operation sets already constructed and validated by the migration or cutover planner; its repeated validation is a fail-closed invariant check."
     },
     {
       "directive": {
         "file": "internal/upgrade/journal.go",
-        "line": 631,
-        "targetLine": 631,
+        "line": 643,
+        "targetLine": 643,
         "reason": "no caller provides a changed set without its path",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/upgrade/journal.go:631, `return changed` follows the concrete operation `}` at internal/upgrade/journal.go:584 in `func removeChangedPath(changed []Evidence, path string) []Evidence` (internal/upgrade/journal.go:579). The reviewed failure condition is no caller provides a changed set without its path; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
+      "evidence": "removeChangedPath is called only for a journal path already represented in the applied or pending changed set; the unchanged fallback requires an invariant breach."
     },
     {
       "directive": {
@@ -22924,50 +22864,50 @@
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 223,
-        "targetLine": 223,
+        "line": 232,
+        "targetLine": 232,
         "reason": "LoadLiveOptional parses and validates the unchanged authority construction immediately above",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The directive at internal/upgrade/operation.go:223 follows the validated closed invariant stated in source: LoadLiveOptional parses and validates the unchanged authority construction immediately above. Its error arm requires an invariant breach, not a supported input."
-    },
-    {
-      "directive": {
-        "file": "internal/upgrade/operation.go",
-        "line": 233,
-        "targetLine": 233,
-        "reason": "FinalUpgrade constructs its terminal evidence from validated transaction operations",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "Within Run, the branch at internal/upgrade/operation.go:233 follows outcome.CompletedMutation after FinalUpgrade returned validated transaction evidence. That closed construction makes the defensive propagation arm unreachable without an invariant breach."
-    },
-    {
-      "directive": {
-        "file": "internal/upgrade/operation.go",
-        "line": 237,
-        "targetLine": 237,
-        "reason": "CompletedMutation supplies the fixed valid status and only validated journal literals",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "Within Run, the branch at internal/upgrade/operation.go:237 follows mutation.Document after CompletedMutation supplied fixed valid status and validated journal literals. That closed construction makes the defensive propagation arm unreachable without an invariant breach."
+      "evidence": "The directive at internal/upgrade/operation.go:232 follows the validated closed invariant stated in source: LoadLiveOptional parses and validates the unchanged authority construction immediately above. Its error arm requires an invariant breach, not a supported input."
     },
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
         "line": 242,
         "targetLine": 242,
+        "reason": "FinalUpgrade constructs its terminal evidence from validated transaction operations",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "Within Run, the branch at internal/upgrade/operation.go:242 follows outcome.CompletedMutation after FinalUpgrade returned validated transaction evidence. That closed construction makes the defensive propagation arm unreachable without an invariant breach."
+    },
+    {
+      "directive": {
+        "file": "internal/upgrade/operation.go",
+        "line": 246,
+        "targetLine": 246,
+        "reason": "CompletedMutation supplies the fixed valid status and only validated journal literals",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "Within Run, the branch at internal/upgrade/operation.go:246 follows mutation.Document after CompletedMutation supplied fixed valid status and validated journal literals. That closed construction makes the defensive propagation arm unreachable without an invariant breach."
+    },
+    {
+      "directive": {
+        "file": "internal/upgrade/operation.go",
+        "line": 251,
+        "targetLine": 251,
         "reason": "AuthorityState returns only Bridge or Permanent when its validation succeeds",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "Within Run, the default at internal/upgrade/operation.go:242 follows AuthorityState validation, whose closed result set is Bridge or Permanent. Reaching the default requires an invariant breach."
+      "evidence": "Within Run, the default at internal/upgrade/operation.go:251 follows AuthorityState validation, whose closed result set is Bridge or Permanent. Reaching the default requires an invariant breach."
     },
     {
       "directive": {
@@ -23032,62 +22972,38 @@
     {
       "directive": {
         "file": "internal/upgrade/upgrade.go",
-        "line": 75,
-        "targetLine": 75,
-        "reason": "Verify already required the approval file present via the sealed digest, so cutoverOperations' only reachable error branch cannot fire here",
+        "line": 78,
+        "targetLine": 78,
+        "reason": "Verify sealed the inputs, so only a concurrent filesystem change can invalidate cutover planning here",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/upgrade/upgrade.go:78, `if err != nil {` follows the concrete operation `ops, err := cutoverOperations(root, lock)` at internal/upgrade/upgrade.go:77 in `func FinalUpgrade(ctx context.Context, root string, lock *manifest.Lock) (Outcome, error)` (internal/upgrade/upgrade.go:65). The reviewed failure condition is Verify already required the approval file present via the sealed digest, so cutoverOperations' only reachable error branch cannot fire here; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
+      "evidence": "FinalUpgrade verifies the sealed bridge inputs before cutoverOperationsWith; the planning error arm can then require only a concurrent filesystem or namespace change and remains fail-closed."
     },
     {
       "directive": {
         "file": "internal/upgrade/upgrade.go",
-        "line": 90,
-        "targetLine": 90,
+        "line": 97,
+        "targetLine": 97,
         "reason": "the lock marshals cleanly; see manifest.Marshal",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func ResetLegacyResidents(root string, residents []string, schema int) (Outcome, error)` begins at internal/upgrade/upgrade.go:98; its branch `if err != nil {` at internal/upgrade/upgrade.go:121 follows `finalBytes, err := lock.Marshal()` at internal/upgrade/upgrade.go:120. That flow establishes the lock marshals cleanly; see manifest.Marshal, making the defensive return unreachable without an invariant breach."
+      "evidence": "cutoverOperationsWith marshals the already validated manifest lock model, whose fields are all JSON-representable; this defensive error arm remains closed."
     },
     {
       "directive": {
         "file": "internal/upgrade/upgrade.go",
-        "line": 94,
-        "targetLine": 94,
-        "reason": "the approval path reads cleanly unless a concurrent removal races",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "`func cutoverOperations(root string, lock *manifest.Lock) ([]Operation, error)` (starts internal/upgrade/upgrade.go:152) checks `if err != nil {` at internal/upgrade/upgrade.go:160 after `approvalPrior, err := imageOf(root, approvalPath)` at internal/upgrade/upgrade.go:159. Here the approval path reads cleanly unless a concurrent removal races; exercising this exact branch requires an unportable environmental failure."
-    },
-    {
-      "directive": {
-        "file": "internal/upgrade/upgrade.go",
-        "line": 101,
-        "targetLine": 101,
-        "reason": "the lock was read by LoadOptional immediately before this call",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `lockPrior, err := imageOf(root, LockRel())` at internal/upgrade/upgrade.go:166 feeds `if err != nil {` at internal/upgrade/upgrade.go:167 in `func cutoverOperations(root string, lock *manifest.Lock) ([]Operation, error)` (internal/upgrade/upgrade.go:152). Its concrete fault condition is the lock was read by LoadOptional immediately before this call, so no safe portable production input induces this error path."
-    },
-    {
-      "directive": {
-        "file": "internal/upgrade/upgrade.go",
-        "line": 108,
-        "targetLine": 108,
+        "line": 115,
+        "targetLine": 115,
         "reason": "the two-op cutover plan is well-formed by construction",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/upgrade/upgrade.go:174, `if err := validateOperations(ops); err != nil {` follows the concrete operation `}` at internal/upgrade/upgrade.go:173 in `func cutoverOperations(root string, lock *manifest.Lock) ([]Operation, error)` (internal/upgrade/upgrade.go:152). The reviewed failure condition is the two-op cutover plan is well-formed by construction; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
+      "evidence": "cutoverOperationsWith constructs one approval removal followed by the lock replacement, so validateOperations can fail only if that closed construction changes incorrectly."
     },
     {
       "directive": {

@@ -173,6 +173,26 @@ func TestHandleOperations(t *testing.T) {
 	if err := h.Rename("created/child/artifact", "created/child/renamed"); err != nil {
 		t.Fatal(err)
 	}
+	outsideRename := t.TempDir()
+	outsideDestination := filepath.Join(outsideRename, "destination")
+	if err := os.WriteFile(outsideDestination, []byte("outside"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "created/child/source"), []byte("source"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outsideRename, filepath.Join(root, "created/child/escape-destination")); err != nil {
+		t.Skipf("symlink unsupported: %v", err)
+	}
+	if err := h.Rename("created/child/source", "created/child/escape-destination/destination"); err == nil {
+		t.Fatal("rename to escaping symlink ancestor succeeded")
+	}
+	if got, err := os.ReadFile(filepath.Join(root, "created/child/source")); err != nil || string(got) != "source" {
+		t.Fatalf("source after refused rename = %q, %v", got, err)
+	}
+	if got, err := os.ReadFile(outsideDestination); err != nil || string(got) != "outside" {
+		t.Fatalf("outside destination after refused rename = %q, %v", got, err)
+	}
 	if err := h.Remove("created/child/renamed"); err != nil {
 		t.Fatal(err)
 	}

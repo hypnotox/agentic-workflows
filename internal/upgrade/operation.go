@@ -109,7 +109,16 @@ func commitMigration(root string, lock *manifest.Lock, current int, mutations []
 	return commitMigrationWith(root, lock, current, mutations, productionJournalOperation())
 }
 
-func commitMigrationWith(root string, lock *manifest.Lock, current int, mutations []FileMutation, operation journalOperation) (Outcome, error) {
+func commitMigrationWith(root string, lock *manifest.Lock, current int, mutations []FileMutation, operation journalOperation) (outcome Outcome, err error) {
+	err = withBoundJournalOperation(root, operation, func(bound journalOperation) error {
+		var runErr error
+		outcome, runErr = commitMigrationBound(root, lock, current, mutations, bound)
+		return runErr
+	})
+	return outcome, err
+}
+
+func commitMigrationBound(root string, lock *manifest.Lock, current int, mutations []FileMutation, operation journalOperation) (Outcome, error) {
 	seen := make(map[string]bool, len(mutations))
 	ops := make([]Operation, 0, len(mutations)+1)
 	for _, mutation := range mutations {
@@ -123,7 +132,7 @@ func commitMigrationWith(root string, lock *manifest.Lock, current int, mutation
 			return Outcome{}, fmt.Errorf("planned removal %q carries replacement data", mutation.Path)
 		}
 		seen[mutation.Path] = true
-		prior, err := imageOf(root, mutation.Path)
+		prior, err := operation.imageOf(root, mutation.Path)
 		if err != nil {
 			return Outcome{}, fmt.Errorf("read planned migration path %s: %w", mutation.Path, err)
 		}
@@ -137,12 +146,12 @@ func commitMigrationWith(root string, lock *manifest.Lock, current int, mutation
 	if err != nil {
 		return Outcome{}, err
 	}
-	prior, err := imageOf(root, LockRel())
+	prior, err := operation.imageOf(root, LockRel())
 	if err != nil {
 		return Outcome{}, err
 	}
 	ops = append(ops, Operation{Path: LockRel(), Prior: prior, Replacement: Image{Present: true, Mode: 0o644, Content: bytes}})
-	return commitTransactionWith(root, ops, operation)
+	return commitTransactionBound(root, ops, operation)
 }
 
 func reloadCurrentAuthority(root string, floor, current int) (*manifest.Lock, error) {

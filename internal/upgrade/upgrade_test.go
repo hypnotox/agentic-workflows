@@ -2,6 +2,7 @@ package upgrade
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -339,5 +340,34 @@ func TestCutoverOperationsRequiresApprovalPresent(t *testing.T) {
 	lock := &manifest.Lock{AWFVersion: "0.18.0", SchemaVersion: 14, Files: map[string]manifest.Entry{}}
 	if _, err := cutoverOperations(dir, lock); err == nil || !strings.Contains(err.Error(), "approval file") {
 		t.Fatalf("want absent-approval error, got %v", err)
+	}
+}
+
+func TestCutoverOperationsPreserveInjectedPreimageFailures(t *testing.T) {
+	for _, failedPath := range []string{approvalPath, LockRel()} {
+		t.Run(failedPath, func(t *testing.T) {
+			root := t.TempDir()
+			lockPath := operationLock(t, root)
+			lock, err := manifest.Load(lockPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			lock.BridgeAttestation = &manifest.BridgeAttestation{}
+			if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(approvalPath)), []byte("approval"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			failure := errors.New("cutover preimage")
+			operation := productionJournalOperation()
+			image := operation.imageOf
+			operation.imageOf = func(root, path string) (Image, error) {
+				if path == failedPath {
+					return Image{}, failure
+				}
+				return image(root, path)
+			}
+			if _, err := cutoverOperationsWith(root, lock, operation); !errors.Is(err, failure) {
+				t.Fatalf("error = %v, want %v", err, failure)
+			}
+		})
 	}
 }

@@ -231,7 +231,7 @@ func GateState(root string) (string, int, error) {
 // Build produces only registered supported migrations. It never decodes a
 // below-floor source or writes the filesystem; the command composition maps
 // its file mutations to the upgrade journal.
-func Build(ctx context.Context, root string) ([]string, []Change, []FileMutation, error) {
+func Build(ctx context.Context, root string) (applied []string, resultChanges []Change, mutations []FileMutation, returnErr error) {
 	if err := validateRegistry(); err != nil {
 		return nil, nil, nil, err
 	}
@@ -246,10 +246,9 @@ func Build(ctx context.Context, root string) ([]string, []Change, []FileMutation
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	defer files.Close()
+	defer func() { returnErr = errors.Join(returnErr, files.Close()) }()
 	proposed := &ProposedTree{files: files, mutations: map[string]FileMutation{}}
 	changes := &Changes{}
-	var applied []string
 	for _, m := range registry {
 		if m.To <= from {
 			continue

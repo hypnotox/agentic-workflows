@@ -251,7 +251,43 @@ func TestBuildRejectsInvalidMigrationRegistry(t *testing.T) {
 
 // invariant: config/configuration:awf-config-root (TestRetiredConfigLayoutsHavePresenceOnlyProductionConsumers)
 func TestRetiredConfigLayoutsHavePresenceOnlyProductionConsumers(t *testing.T) {
-	allowed := map[string]bool{"retiredLayout": true, "ProjectPresent": true, "ProjectPresentFromFiles": true}
+	allowedCalls := map[string]map[string]bool{
+		"retiredLayout":           {"filepath.Join": true, "os.Stat": true, "errors.Is": true, "fmt.Errorf": true},
+		"ProjectPresent":          {"config.ConfigPath": true, "config.LockPath": true, "filepath.Join": true, "os.Stat": true, "errors.Is": true, "fmt.Errorf": true},
+		"ProjectPresentFromFiles": {"has": true},
+	}
+	presenceOnly := func(function *ast.FuncDecl) bool {
+		valid := true
+		ast.Inspect(function.Body, func(node ast.Node) bool {
+			call, ok := node.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			name := ""
+			switch target := call.Fun.(type) {
+			case *ast.Ident:
+				name = target.Name
+			case *ast.SelectorExpr:
+				if owner, ok := target.X.(*ast.Ident); ok {
+					name = owner.Name + "." + target.Sel.Name
+				}
+			}
+			if !allowedCalls[function.Name.Name][name] {
+				valid = false
+			}
+			return valid
+		})
+		return valid
+	}
+	// This mutation-style specimen proves the census rejects a retired-layout
+	// representation read rather than merely counting its path literal.
+	synthetic, err := parser.ParseFile(token.NewFileSet(), "synthetic.go", `package migrate; func retiredLayout(string) { os.ReadFile(".claude/awf.yaml") }`, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if presenceOnly(synthetic.Decls[0].(*ast.FuncDecl)) {
+		t.Fatal("retired-layout census accepted synthetic representation read")
+	}
 	var found int
 	testsupport.WalkRepoSources(t, testsupport.RepoRoot(t), func(rel string, body []byte) {
 		if !strings.HasSuffix(rel, ".go") || strings.HasSuffix(rel, "_test.go") || (!strings.Contains(string(body), `".claude"`) && !strings.Contains(string(body), `".claude/awf`)) {
@@ -275,8 +311,11 @@ func TestRetiredConfigLayoutsHavePresenceOnlyProductionConsumers(t *testing.T) {
 					return true
 				}
 				found++
-				if !allowed[function.Name.Name] {
+				if _, ok := allowedCalls[function.Name.Name]; !ok {
 					t.Fatalf("retired config layout interpreted by %s", function.Name.Name)
+				}
+				if !presenceOnly(function) {
+					t.Fatalf("retired config layout representation interpreted by %s", function.Name.Name)
 				}
 				return true
 			})

@@ -144,40 +144,30 @@ func withJournalFilesystem(root string, run func(*filesystem.Handle) error) erro
 	return errors.Join(run(files), files.Close())
 }
 
-// imageOf reads path's current image from the root-confined working tree.
-func imageOf(root, path string) (image Image, err error) {
-	err = withJournalFilesystem(root, func(files *filesystem.Handle) error {
-		content, mode, readErr := files.ReadWithMode(path)
-		if errors.Is(readErr, fs.ErrNotExist) {
-			image = Image{Present: false}
-			return nil
-		}
-		if readErr != nil {
-			return readErr
-		}
-		image = Image{Present: true, Mode: uint32(mode.Perm()), Content: content}
-		return nil
-	})
-	return image, err
+type journalFilesystemState struct{ files *filesystem.Handle }
+
+func (s *journalFilesystemState) with(root string, run func(*filesystem.Handle) error) error {
+	if s.files != nil {
+		return run(s.files)
+	}
+	return withJournalFilesystem(root, run)
 }
 
-// applyImage writes or removes path so it exactly matches img, chmod included.
-func applyImage(root, path string, img Image) error {
-	return withJournalFilesystem(root, func(files *filesystem.Handle) error {
-		if !img.Present {
-			if err := files.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
-				return err
-			}
-			return nil
-		}
-		parent := filepath.ToSlash(filepath.Dir(filepath.FromSlash(path)))
-		if err := files.MkdirAll(parent, 0o755); err != nil {
-			return err
-		}
-		// Atomic like the journal that records it: a crash mid-restore would
-		// otherwise leave a truncated file where recovery promised a whole image.
-		return files.Replace(path, img.Content, os.FileMode(img.Mode))
-	})
+// withBoundJournalOperation holds one confined root open for a complete journal
+// transaction or recovery. Production callbacks share this state; injected
+// callbacks remain local to the operation value used by a test.
+func withBoundJournalOperation(root string, operation journalOperation, run func(journalOperation) error) error {
+	files, err := filesystem.Open(root)
+	if err != nil {
+		return err
+	}
+	if operation.state == nil {
+		operation.state = &journalFilesystemState{}
+	}
+	operation.state.files = files
+	runErr := run(operation)
+	operation.state.files = nil
+	return errors.Join(runErr, files.Close())
 }
 
 // quarantineTree renames a resident tree aside. An absent source is already in
@@ -197,7 +187,7 @@ func quarantineTree(root string, op Operation, operation journalOperation) error
 		return err
 	}
 	parent := filepath.ToSlash(filepath.Dir(filepath.FromSlash(op.Quarantine)))
-	if err := operation.mkdirAll(root, parent, 0o755); err != nil { // coverage-ignore: the quarantine root's parent is the awf directory the journal itself lives in
+	if err := operation.mkdirAll(root, parent, 0o755); err != nil {
 		return err
 	}
 	return operation.rename(root, op.Path, op.Quarantine)
@@ -219,7 +209,7 @@ func restoreTree(root string, op Operation, operation journalOperation) error {
 		return err
 	}
 	parent := filepath.ToSlash(filepath.Dir(filepath.FromSlash(op.Path)))
-	if err := operation.mkdirAll(root, parent, 0o755); err != nil { // coverage-ignore: the resident path's parent is the awf directory
+	if err := operation.mkdirAll(root, parent, 0o755); err != nil {
 		return err
 	}
 	return operation.rename(root, op.Quarantine, op.Path)
@@ -231,6 +221,7 @@ func restoreTree(root string, op Operation, operation journalOperation) error {
 // journalOperation owns volatile filesystem dependencies for one transaction
 // or recovery. Tests compose a faulting value without mutable package state.
 type journalOperation struct {
+	state      *journalFilesystemState
 	removeAll  func(string, string) error
 	remove     func(string, string) error
 	imageOf    func(string, string) (Image, error)
@@ -242,26 +233,63 @@ type journalOperation struct {
 }
 
 func productionJournalOperation() journalOperation {
-	return journalOperation{
+	state := &journalFilesystemState{}
+	return journalOperation{state: state,
 		removeAll: func(root, path string) error {
-			return withJournalFilesystem(root, func(files *filesystem.Handle) error { return files.RemoveAll(path) })
+			return state.with(root, func(files *filesystem.Handle) error { return files.RemoveAll(path) })
 		},
 		remove: func(root, path string) error {
-			return withJournalFilesystem(root, func(files *filesystem.Handle) error { return files.Remove(path) })
+			return state.with(root, func(files *filesystem.Handle) error { return files.Remove(path) })
 		},
-		imageOf: imageOf, applyImage: applyImage, write: writeJournal,
+		imageOf: func(root, path string) (image Image, err error) {
+			err = state.with(root, func(files *filesystem.Handle) error {
+				content, mode, readErr := files.ReadWithMode(path)
+				if errors.Is(readErr, fs.ErrNotExist) {
+					image = Image{}
+					return nil
+				}
+				if readErr != nil {
+					return readErr
+				}
+				image = Image{Present: true, Mode: uint32(mode.Perm()), Content: content}
+				return nil
+			})
+			return image, err
+		},
+		applyImage: func(root, path string, img Image) error {
+			return state.with(root, func(files *filesystem.Handle) error {
+				if !img.Present {
+					if err := files.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+						return err
+					}
+					return nil
+				}
+				parent := filepath.ToSlash(filepath.Dir(filepath.FromSlash(path)))
+				if err := files.MkdirAll(parent, 0o755); err != nil {
+					return err
+				}
+				return files.Replace(path, img.Content, os.FileMode(img.Mode))
+			})
+		},
+		write: func(root string, j Journal) error {
+			b, err := json.MarshalIndent(j, "", "  ")
+			if err != nil { // coverage-ignore: Journal holds only JSON-representable scalars, slices, and byte content
+				return err
+			}
+			return state.with(root, func(files *filesystem.Handle) error { return files.Replace(JournalRel, append(b, '\n'), 0o644) })
+		},
 		lstat: func(root, path string) (info os.FileInfo, err error) {
-			err = withJournalFilesystem(root, func(files *filesystem.Handle) error {
+			err = state.with(root, func(files *filesystem.Handle) error {
 				info, err = files.LinkInfo(path)
 				return err
 			})
 			return info, err
 		},
 		mkdirAll: func(root, path string, mode os.FileMode) error {
-			return withJournalFilesystem(root, func(files *filesystem.Handle) error { return files.MkdirAll(path, mode) })
+			return state.with(root, func(files *filesystem.Handle) error { return files.MkdirAll(path, mode) })
 		},
 		rename: func(root, oldPath, newPath string) error {
-			return withJournalFilesystem(root, func(files *filesystem.Handle) error { return files.Rename(oldPath, newPath) })
+			return state.with(root, func(files *filesystem.Handle) error { return files.Rename(oldPath, newPath) })
 		},
 	}
 }
@@ -413,18 +441,6 @@ func safeRelPath(p string) bool {
 	return true
 }
 
-// writeJournal serializes j and writes it durably (atomic temp-file rename)
-// before any tree mutation observes the phase.
-func writeJournal(root string, j Journal) error {
-	b, err := json.MarshalIndent(j, "", "  ")
-	if err != nil { // coverage-ignore: Journal holds only JSON-representable scalars, slices, and byte content
-		return err
-	}
-	return withJournalFilesystem(root, func(files *filesystem.Handle) error {
-		return files.Replace(JournalRel, append(b, '\n'), 0o644)
-	})
-}
-
 // LoadJournal reads and validates the journal under root. A malformed or
 // contract-violating journal is a hard error naming the Git-restoration escape,
 // so no caller mutates the tree on a journal it cannot trust.
@@ -511,11 +527,7 @@ func committedChanged(j Journal, evidence []Evidence) []Evidence {
 	return changed
 }
 
-func commitTransaction(root string, ops []Operation) (Outcome, error) {
-	return commitTransactionWith(root, ops, productionJournalOperation())
-}
-
-func commitTransactionWith(root string, ops []Operation, operation journalOperation) (Outcome, error) {
+func commitTransactionBound(root string, ops []Operation, operation journalOperation) (Outcome, error) {
 	if err := validateOperations(ops); err != nil { // coverage-ignore: the final-upgrade planner validated the same set before this call
 		return Outcome{}, err
 	}
@@ -637,8 +649,26 @@ func Recover(root string) (Outcome, error) {
 	return recoverWith(root, productionJournalOperation())
 }
 
-func recoverWith(root string, operation journalOperation) (Outcome, error) {
-	j, err := LoadJournal(root)
+func recoverWith(root string, operation journalOperation) (outcome Outcome, err error) {
+	err = withBoundJournalOperation(root, operation, func(bound journalOperation) error {
+		var runErr error
+		outcome, runErr = recoverBound(root, bound)
+		return runErr
+	})
+	return outcome, err
+}
+
+func recoverBound(root string, operation journalOperation) (Outcome, error) {
+	var j Journal
+	var bytes []byte
+	if err := operation.state.with(root, func(files *filesystem.Handle) error {
+		var readErr error
+		bytes, readErr = files.Read(JournalRel)
+		return readErr
+	}); err != nil {
+		return Outcome{}, err
+	}
+	j, err := ParseJournal(bytes)
 	if err != nil {
 		return Outcome{}, err
 	}

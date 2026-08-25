@@ -1356,3 +1356,76 @@ func TestRecoverRestoreWriteHaltRetainsAppliedAxes(t *testing.T) {
 		t.Fatalf("changed = %#v, want %#v", outcome.Changed, wantEvidence)
 	}
 }
+
+func TestBoundJournalOperationRejectsMissingRootAndInitializesInjectedState(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "missing")
+	if err := withBoundJournalOperation(missing, journalOperation{}, func(journalOperation) error { return nil }); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("missing root error = %v, want not-exist", err)
+	}
+	if err := withBoundJournalOperation(t.TempDir(), journalOperation{}, func(bound journalOperation) error {
+		if bound.state == nil || bound.state.files == nil {
+			t.Fatal("injected operation did not receive bound filesystem state")
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestJournalTransactionBindsFilesystemToOriginallyOpenedRoot(t *testing.T) {
+	original, rebound := t.TempDir(), t.TempDir()
+	for _, tree := range []string{original, rebound} {
+		mustMkdir(t, filepath.Join(tree, ".awf"))
+		mustWrite(t, filepath.Join(tree, LockRel()), []byte("prior"))
+	}
+	root := filepath.Join(t.TempDir(), "project")
+	if err := os.Symlink(original, root); err != nil {
+		t.Skipf("symlink unsupported: %v", err)
+	}
+	operation := productionJournalOperation()
+	write, writes := operation.write, 0
+	operation.write = func(path string, journal Journal) error {
+		writes++
+		if err := write(path, journal); err != nil {
+			return err
+		}
+		if writes == 1 {
+			if err := os.Remove(root); err != nil {
+				return err
+			}
+			return os.Symlink(rebound, root)
+		}
+		return nil
+	}
+	if _, err := commitTransactionWith(root, []Operation{{Path: LockRel(), Prior: presentImg("prior"), Replacement: presentImg("final")}}, operation); err != nil {
+		t.Fatal(err)
+	}
+	for tree, want := range map[string]string{original: "final", rebound: "prior"} {
+		if got, err := os.ReadFile(filepath.Join(tree, LockRel())); err != nil || string(got) != want {
+			t.Fatalf("%s lock = %q, %v; want %q", tree, got, err, want)
+		}
+	}
+}
+
+func TestJournalResidentRenameHelpersPropagateParentCreationFailures(t *testing.T) {
+	op := treeOp(".awf/efforts/legacy.json", "efforts-legacy.json")
+	for _, tc := range []struct {
+		name string
+		run  func(string, Operation, journalOperation) error
+		seed string
+	}{{"quarantine", quarantineTree, op.Path}, {"restore", restoreTree, op.Quarantine}} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			mustMkdir(t, filepath.Join(root, filepath.FromSlash(tc.seed)))
+			failure := errors.New("create parent")
+			operation := productionJournalOperation()
+			operation.mkdirAll = func(string, string, os.FileMode) error { return failure }
+			if err := tc.run(root, op, operation); !errors.Is(err, failure) {
+				t.Fatalf("error = %v, want %v", err, failure)
+			}
+			if !exists(t, filepath.Join(root, filepath.FromSlash(tc.seed))) {
+				t.Fatalf("%s moved after parent creation failure", tc.seed)
+			}
+		})
+	}
+}

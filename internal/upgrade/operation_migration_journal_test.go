@@ -246,3 +246,31 @@ func TestRunWrapsRejectedMigrationPlanAsJournalFailure(t *testing.T) {
 		t.Fatalf("Run error = %T %v, want journal failure", err, err)
 	}
 }
+
+func TestCommitMigrationPreservesInjectedPreimageFailures(t *testing.T) {
+	for _, failedPath := range []string{".awf/future", LockRel()} {
+		t.Run(failedPath, func(t *testing.T) {
+			root := t.TempDir()
+			operationLock(t, root)
+			lock, err := manifest.Load(config.LockPath(root))
+			if err != nil {
+				t.Fatal(err)
+			}
+			failure := errors.New("migration preimage")
+			operation := productionJournalOperation()
+			image := operation.imageOf
+			operation.imageOf = func(root, path string) (Image, error) {
+				if path == failedPath {
+					return Image{}, failure
+				}
+				return image(root, path)
+			}
+			if _, err := commitMigrationWith(root, lock, 47, []FileMutation{{Path: ".awf/future", Content: []byte("future"), Mode: 0o600}}, operation); !errors.Is(err, failure) {
+				t.Fatalf("error = %v, want %v", err, failure)
+			}
+			if found, err := JournalPresent(root); err != nil || found {
+				t.Fatalf("journal = %t, %v", found, err)
+			}
+		})
+	}
+}

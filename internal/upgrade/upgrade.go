@@ -71,11 +71,18 @@ func FinalUpgrade(ctx context.Context, root string, lock *manifest.Lock) (Outcom
 	if err := Verify(ctx, root, att); err != nil {
 		return Outcome{}, err
 	}
-	ops, err := cutoverOperations(root, lock)
-	if err != nil { // coverage-ignore: Verify already required the approval file present via the sealed digest, so cutoverOperations' only reachable error branch cannot fire here
-		return Outcome{}, err
-	}
-	return commitTransaction(root, ops)
+	operation := productionJournalOperation()
+	var outcome Outcome
+	err = withBoundJournalOperation(root, operation, func(bound journalOperation) error {
+		ops, planErr := cutoverOperationsWith(root, lock, bound)
+		if planErr != nil { // coverage-ignore: Verify sealed the inputs, so only a concurrent filesystem change can invalidate cutover planning here
+			return planErr
+		}
+		var commitErr error
+		outcome, commitErr = commitTransactionBound(root, ops, bound)
+		return commitErr
+	})
+	return outcome, err
 }
 
 // cutoverOperations builds the two-operation cutover plan: delete the sealed
@@ -83,22 +90,22 @@ func FinalUpgrade(ctx context.Context, root string, lock *manifest.Lock) (Outcom
 // drops the attestation and its historical routing payload. The approval file
 // must be present so the transaction journals exactly one
 // deletion of it.
-func cutoverOperations(root string, lock *manifest.Lock) ([]Operation, error) {
+func cutoverOperationsWith(root string, lock *manifest.Lock, operation journalOperation) ([]Operation, error) {
 	final := *lock
 	final.BridgeAttestation = nil
 	finalBytes, err := final.Marshal()
 	if err != nil { // coverage-ignore: the lock marshals cleanly; see manifest.Marshal
 		return nil, err
 	}
-	approvalPrior, err := imageOf(root, approvalPath)
-	if err != nil { // coverage-ignore: the approval path reads cleanly unless a concurrent removal races
+	approvalPrior, err := operation.imageOf(root, approvalPath)
+	if err != nil {
 		return nil, err
 	}
 	if !approvalPrior.Present {
 		return nil, fmt.Errorf("the sealed migration approval file %s is absent; %s", approvalPath, gitRestorationGuidance)
 	}
-	lockPrior, err := imageOf(root, LockRel())
-	if err != nil { // coverage-ignore: the lock was read by LoadOptional immediately before this call
+	lockPrior, err := operation.imageOf(root, LockRel())
+	if err != nil {
 		return nil, err
 	}
 	ops := []Operation{
