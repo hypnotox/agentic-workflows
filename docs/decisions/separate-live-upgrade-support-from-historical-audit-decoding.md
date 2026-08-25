@@ -67,11 +67,14 @@ explicitly deferred.
 - remove `config/migrations-and-locks:hooks-config-dropped`
 - remove `config/migrations-and-locks:list-replacement-fixed-snapshot`
 - remove `config/migrations-and-locks:legacy-read-isolation`
+- update `config/migrations-and-locks:lock-atomic-save`
+- update `config/migrations-and-locks:migration-ordering`
 - remove `config/migrations-and-locks:noop-autobump`
 - remove `config/migrations-and-locks:orienting-skill-backfill`
 - remove `config/migrations-and-locks:retired-plan-resync-selection-migration`
 - remove `config/migrations-and-locks:archive-root-upgrade-boundary`
 - update `config/migrations-and-locks:schema-min-version`
+- update `config/migrations-and-locks:schema-version-lock`
 - remove `config/migrations-and-locks:severity-keys-dropped`
 - remove `config/migrations-and-locks:singleton-doc-migration-relocates-parts`
 - remove `config/migrations-and-locks:structural-heading-part-migration`
@@ -84,6 +87,7 @@ explicitly deferred.
 - update `config/migrations-and-locks:live-source-compatibility-floor`
 - update `adr-system/plan-artifacts:plan-v2-decision-references`
 - update `adr-system/plan-artifacts:managed-plan-format-support`
+- update `rendering/workflow-skill-templates:plan-task-detail-modes`
 - update `tooling/audit-and-snapshots:managed-history-decode-horizon`
 - update `tooling/effort-management:memory-skeleton-purpose-partition`
 - update `tooling/effort-management:managed-effort-format-support`
