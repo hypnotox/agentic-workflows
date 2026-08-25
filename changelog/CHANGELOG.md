@@ -8,6 +8,8 @@ query a single version or a range.
 
 ## [Unreleased]
 
+## [0.40.0] - 2026-08-25
+
 ### Breaking changes
 
 - Live project authority now starts at schema 46. Below-floor, retired-layout, and partial authority refuses before decoding or mutation with recovery guidance; audit alone reads represented managed history from schemas 3 through 46. Live manifests reject retired pre-31 ADR routing keys at every admitted schema, and ordinary output pruning no longer gives the retired co-owned runner a special backup path. Bridge and cutover support, schema-1 effort retirement, legacy four-line effort memory, and plan-v2 ordinal Decision selectors are removed. Generic journal recovery, schema-2 effort residents, represented ADR and plan formats, and frozen pre-V4 ordinal navigation remain supported.
