@@ -13,13 +13,13 @@ Awf already confines and atomically replaces individual published files, and Pub
 
 Linked worktrees have independent tracked configuration, authored sources, generated outputs, and render locks. Git integration is the authority that reconciles those branches, so serializing every checkout under one repository-wide lock would suppress valid parallel work. Resident effort, worktree, and archive roots are different: they resolve to the primary checkout and are physically shared by linked worktrees.
 
-The existing architecture separates neutral filesystem mechanisms, focused command operations, and Publisher policy. Mutation safety must preserve that dependency direction rather than creating an application owner that absorbs domain, local-document, and publication policy.
+The existing architecture separates neutral filesystem mechanisms, focused command operations, and Publisher policy. ADR scaffolding already uses a canonical-identity, persistent-file advisory lock for cross-process allocation. Mutation safety must preserve the dependency direction and single-home rule rather than creating either an application owner that absorbs domain, local-document, and publication policy or a second advisory-lock mechanism.
 
 ## Decision
 
 1. `decision: lease-by-physical-root` Serialize project mutation by the physical root it can change. Tracked-tree mutation uses a checkout-local lease. Mutation of primary-resident state uses a separate lease for that shared root. An operation that changes both acquires both in deterministic order.
 2. `decision: lease-covers-authority-to-outcome` Acquire every applicable lease before loading mutable authority or preparing a mutation plan, and hold it until the operation has published its complete or partial outcome. A lease around only the final write is insufficient because preparation from stale authority is unsafe.
-3. `decision: preserve-focused-policy-owners` Keep confinement and lease mechanics in the neutral filesystem layer. Focused operation packages retain their use-case and recovery policy, while Publisher retains output planning and publication policy. No new cross-operation application owner absorbs those responsibilities.
+3. `decision: preserve-focused-policy-owners` Keep confinement and one shared advisory-lock mechanism in the neutral filesystem layer, extracting or reusing the existing canonical identity, persistent lock-file, acquisition, and process-release mechanics. Focused operation packages retain their use-case and recovery policy, ADR allocation configures the shared mechanism for its directory identity, and Publisher retains output planning and publication policy. No new cross-operation application owner absorbs those responsibilities.
 4. `decision: confined-transaction-primitives` Within a lease, observe and mutate project paths through the root-confined filesystem boundary. Check the loaded configuration identity before replacement, atomically replace existing authority, and create new authored files exclusively so a concurrent or pre-existing file is never clobbered.
 5. `decision: explicit-partial-outcomes` A failed mutating command either preserves its pre-command tree or returns a typed outcome that completely identifies committed effects and the retry or recovery action. Operation and command boundaries must not discard Publisher or focused-operation partial results.
 
@@ -32,7 +32,7 @@ The existing architecture separates neutral filesystem mechanisms, focused comma
 
 ## Consequences
 
-Mutations within one checkout cannot silently lose concurrent configuration updates or publish an output lock from an interleaved plan. Linked worktrees retain independent tracked-tree concurrency, while operations that reach shared resident state serialize only that physical root.
+Mutations within one checkout cannot silently lose concurrent configuration updates or publish an output lock from an interleaved plan. Linked worktrees retain independent tracked-tree concurrency, while operations that reach shared resident state serialize only that physical root. The added lease claim is an invariant with test backing for canonical root identity, deterministic dual-root acquisition, cross-process serialization, and process-exit release.
 
 Operation setup moves inside the lease, so callers cannot prepare a Publisher plan and acquire safety afterward. Focused result and presentation models become richer where rollback cannot be guaranteed. The lease does not make a multi-file operation crash-atomic and does not replace the upgrade journal; atomic replacement, exclusive publication, rollback where safe, and explicit partial outcomes remain necessary.
 
