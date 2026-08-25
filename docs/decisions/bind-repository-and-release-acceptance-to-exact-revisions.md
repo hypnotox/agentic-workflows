@@ -24,13 +24,16 @@ Repository workflow changes and hosted-repository settings form one acceptance b
 3. `decision: evidence-based-test-selection` A path may skip behavioral suites only when repository dependencies prove that it cannot affect them. Broad documentation families are not test-free while repository tests or embedded inputs consume their contents.
 4. `decision: exact-tagged-revision` Release publication is bound to successful required CI conclusions for the exact tagged revision. Main ancestry alone is insufficient. Tag creation or publication uses hosted protection that prevents an unverified revision from bypassing that boundary.
 5. `decision: release-range-mutation-selection` Release verification runs the targeted mutation blocker over the previous release tag through the candidate tag revision. A clean tag index never substitutes for that release range.
-6. `decision: settings-land-after-workflow` Land and verify stable workflow job identities before enabling their required hosted settings. Record the verified settings state in its maintained documentation only after the operator change succeeds.
+6. `decision: documented-hosted-state-is-verified` Maintained documentation may claim that a hosted acceptance control is enforced only when operator verification confirms that the live setting names the stable workflow identity it protects.
 
 ## State changes
 
 - update `tooling/quality-gates:covercheck-mutation-regression`
 - update `tooling/quality-gates:staged-test-selection`
-- add `tooling/quality-gates:exact-revision-repository-and-release-acceptance`
+- add `tooling/quality-gates:exact-revision-repository-acceptance`
+- add `tooling/quality-gates:hosted-main-acceptance-settings`
+- update `tooling/changelog-and-release:release-gate-on-tag`
+- add `tooling/changelog-and-release:hosted-release-protection`
 
 ## Consequences
 
@@ -38,7 +41,7 @@ A commit cannot rely on unstaged compensation, and a future main or release revi
 
 Documentation and other repository inputs run the behavioral suites they can affect. Local gates may take longer, but skips become evidence-based rather than family-wide assumptions.
 
-Hosted settings remain an operator transaction outside an ordinary commit. The repository changes must land first, then their final check names and release control must be verified live before the documented acceptance claim changes. A failed settings update leaves the implementation incomplete rather than being represented as enforced.
+Hosted settings remain an operator transaction outside an ordinary commit. Repository workflow contracts land as invariants with test backing and `./internal/...` proof annotations; the exact-tag release wiring remains owned by the existing test-backed release-gate claim. Live required-status and release-protection claims land separately as rules with no repository-test backing and require operator verification. A failed settings update leaves the implementation incomplete rather than being represented as enforced.
 
 ## Alternatives Considered
 
@@ -49,6 +52,7 @@ Hosted settings remain an operator transaction outside an ordinary commit. The r
 | Treat all documentation as test-free | Repository tests and embedded inputs already consume specific documentation files. |
 | Accept a tag whose commit is merely reachable from main | Reachability does not bind publication to successful CI conclusions for that SHA. |
 | Use the staged mutation selector in a release checkout | A clean tag index contains no release-range selection evidence. |
+| Rely only on the release workflow's exact-tag checkout and pre-publication gate | Tag-time self-verification does not establish the approved pre-existing CI conclusion or prevent an unprotected publication path from bypassing it. |
 
 ## Status history
 
