@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-retire-unrepresented-live-compatibility-recognition: Retire Unrepresented Live Compatibility Recognition](retire-unrepresented-live-compatibility-recognition.md) (Proposed)
+- [ADR-retire-unrepresented-live-compatibility-recognition: Retire Unrepresented Live Compatibility Recognition](retire-unrepresented-live-compatibility-recognition.md) (Accepted)
 
 ## History
 
