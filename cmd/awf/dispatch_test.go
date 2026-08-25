@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"errors"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -61,6 +62,38 @@ func TestRunStagedFullOnlyCapabilityUsesIndexConfig(t *testing.T) {
 	if strings.Contains(stderr.String(), "selected core governance footprint") {
 		t.Fatalf("staged capability consulted working config: %q", stderr.String())
 	}
+}
+
+func TestRunContextStagedCapabilityUsesIndexConfig(t *testing.T) {
+	t.Run("staged Full overrides working Core", func(t *testing.T) {
+		root := syncedGitProject(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+		testsupport.WriteFile(t, filepath.Join(root, "README.md"), "staged\n")
+		gitfixture.Add(t, gitfixture.At(root), "README.md")
+		testsupport.WriteAwfConfig(t, root, "prefix: example\nprofile: core\nintegrationBranch: main\n")
+
+		var stdout, stderr bytes.Buffer
+		if code := runAt(t, root, []string{"awf", "context", "--staged"}, &stdout, &stderr); code != 0 {
+			t.Fatalf("exit = %d, stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+		}
+		if strings.Contains(stderr.String(), "selected core governance footprint") {
+			t.Fatalf("staged capability consulted working config: %q", stderr.String())
+		}
+	})
+
+	t.Run("staged Core overrides working Full", func(t *testing.T) {
+		root := syncedGitProject(t, "prefix: example\nprofile: core\nintegrationBranch: main\n")
+		testsupport.WriteFile(t, filepath.Join(root, "README.md"), "staged\n")
+		gitfixture.Add(t, gitfixture.At(root), "README.md")
+		testsupport.WriteAwfConfig(t, root, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+
+		var stdout, stderr bytes.Buffer
+		if code := runAt(t, root, []string{"awf", "context", "--staged"}, &stdout, &stderr); code != 1 {
+			t.Fatalf("exit = %d, stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+		}
+		if !strings.Contains(stderr.String(), "selected core governance footprint") {
+			t.Fatalf("staged Core capability refusal = %q", stderr.String())
+		}
+	})
 }
 
 func TestRunStagedFullOnlyCapabilityAllowsPreAdoptionIndex(t *testing.T) {

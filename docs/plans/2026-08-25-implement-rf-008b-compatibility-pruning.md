@@ -392,3 +392,9 @@ proved that malformed working config could precede schema-45 refusal and that a 
 could override a staged Full profile. The replacement also preserves an empty pre-adoption staged
 universe. Focused and full tests pass; coverage adds only the reviewed concurrent repository-loss
 arm and otherwise shifts existing closed-state identities.
+
+The settlement review found that `context --staged` remained outside the command-path-only staged
+selector. A mechanical follow-up gives command admission and capability interpretation one shared
+selected-universe predicate. Red-first inverse regressions prove that staged Full overrides working
+Core and staged Core overrides working Full for context queries. Focused and full tests pass, and the
+coverage policy only shifts the already-reviewed command-boundary identities.

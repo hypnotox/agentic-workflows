@@ -232,7 +232,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return dispatchFailure(stdout, stderr, err)
 	}
 	if cmd.FullOnly || top.FullOnly {
-		if err := requireCommandCapability(guardCtx, cwd, top, sub); err != nil {
+		if err := requireCommandCapability(guardCtx, cwd, top, sub, inv); err != nil {
 			cancel()
 			return dispatchFailure(stdout, stderr, err)
 		}
@@ -301,10 +301,15 @@ func selectsStagedDrift(top clispec.Command, sub string) bool {
 	return top.Name == "check" && (sub == "staged" || sub == "staged drift")
 }
 
-func requireCommandCapability(ctx context.Context, root string, top clispec.Command, sub string) error {
+func selectsStagedProjectUniverse(top clispec.Command, sub string, inv invocation) bool {
+	return top.Name == "check" && (sub == "staged" || strings.HasPrefix(sub, "staged ")) ||
+		top.Name == "context" && inv.bools["--staged"]
+}
+
+func requireCommandCapability(ctx context.Context, root string, top clispec.Command, sub string, inv invocation) error {
 	var cfg *config.Config
 	var err error
-	if top.Name == "check" && (sub == "staged" || strings.HasPrefix(sub, "staged ")) {
+	if selectsStagedProjectUniverse(top, sub, inv) {
 		tree, treeErr := stagedTree(ctx, root)
 		if treeErr != nil { // coverage-ignore: guardProjectState just opened the same unchanged staged repository in this command stage
 			return treeErr
@@ -346,7 +351,7 @@ func guardProjectState(ctx context.Context, root string, cmd clispec.Command, to
 	if top.Name == "init" && inv.bools["--describe"] {
 		return nil
 	}
-	staged := top.Name == "check" && (sub == "staged" || strings.HasPrefix(sub, "staged "))
+	staged := selectsStagedProjectUniverse(top, sub, inv)
 	present, journal, journalFound, lock, found, currentConfig, currentLock, loadErr, err := projectGuardState(ctx, root, staged)
 	if err != nil {
 		return err

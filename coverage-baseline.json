@@ -1,7 +1,7 @@
 {
   "version": 1,
   "modulePath": "github.com/hypnotox/agentic-workflows",
-  "universeSHA256": "b50671044d550ce70eb075777f9b830e5134243ecaf6110a8084f0f141dd5e4c",
+  "universeSHA256": "1e651d07f02f1bf40ab407daf6d9f3a837f39615f80991c69de59f3558ec4277",
   "repository": [
     {
       "identity": {
@@ -472,11 +472,11 @@
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 309,
+          "line": 314,
           "column": 21
         },
         "end": {
-          "line": 311,
+          "line": 316,
           "column": 4
         },
         "statements": 1
@@ -487,11 +487,11 @@
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 398,
+          "line": 403,
           "column": 21
         },
         "end": {
-          "line": 400,
+          "line": 405,
           "column": 3
         },
         "statements": 1
@@ -502,11 +502,11 @@
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 412,
+          "line": 417,
           "column": 10
         },
         "end": {
-          "line": 413,
+          "line": 418,
           "column": 85
         },
         "statements": 1
@@ -517,11 +517,11 @@
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 541,
+          "line": 546,
           "column": 16
         },
         "end": {
-          "line": 543,
+          "line": 548,
           "column": 3
         },
         "statements": 1
@@ -532,11 +532,11 @@
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 545,
+          "line": 550,
           "column": 16
         },
         "end": {
-          "line": 547,
+          "line": 552,
           "column": 3
         },
         "statements": 1
@@ -11201,11 +11201,11 @@
         {
           "file": "cmd/awf/main.go",
           "start": {
-            "line": 309,
+            "line": 314,
             "column": 21
           },
           "end": {
-            "line": 311,
+            "line": 316,
             "column": 4
           },
           "statements": 1
@@ -11213,11 +11213,11 @@
         {
           "file": "cmd/awf/main.go",
           "start": {
-            "line": 398,
+            "line": 403,
             "column": 21
           },
           "end": {
-            "line": 400,
+            "line": 405,
             "column": 3
           },
           "statements": 1
@@ -11225,11 +11225,11 @@
         {
           "file": "cmd/awf/main.go",
           "start": {
-            "line": 412,
+            "line": 417,
             "column": 10
           },
           "end": {
-            "line": 413,
+            "line": 418,
             "column": 85
           },
           "statements": 1
@@ -11237,11 +11237,11 @@
         {
           "file": "cmd/awf/main.go",
           "start": {
-            "line": 541,
+            "line": 546,
             "column": 16
           },
           "end": {
-            "line": 543,
+            "line": 548,
             "column": 3
           },
           "statements": 1
@@ -11249,11 +11249,11 @@
         {
           "file": "cmd/awf/main.go",
           "start": {
-            "line": 545,
+            "line": 550,
             "column": 16
           },
           "end": {
-            "line": 547,
+            "line": 552,
             "column": 3
           },
           "statements": 1
@@ -17617,62 +17617,62 @@
     {
       "directive": {
         "file": "cmd/awf/main.go",
-        "line": 309,
-        "targetLine": 309,
+        "line": 314,
+        "targetLine": 314,
         "reason": "guardProjectState just opened the same unchanged staged repository in this command stage",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "In `func run(args []string, stdout, stderr io.Writer) int`, guardProjectState has just completed successfully with the same context, root, and staged selection before `requireCommandCapability` calls `stagedTree` at cmd/awf/main.go:308. Reaching the error arm at line 309 requires the already-opened repository to become unavailable concurrently between those two observations; ordinary deterministic inputs cannot induce it."
+      "evidence": "In `func run(args []string, stdout, stderr io.Writer) int`, guardProjectState has just completed successfully with the same context, root, and staged selection before `requireCommandCapability` calls `stagedTree` at cmd/awf/main.go:313. Reaching the error arm at line 314 requires the already-opened repository to become unavailable concurrently between those two observations; ordinary deterministic inputs cannot induce it."
     },
     {
       "directive": {
         "file": "cmd/awf/main.go",
-        "line": 398,
-        "targetLine": 398,
+        "line": 403,
+        "targetLine": 403,
         "reason": "projectGuardState loaded and validated this unchanged lock",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At cmd/awf/main.go:398, `if stateErr != nil {` is guarded by the preceding `state, stateErr := lock.AuthorityState()` at cmd/awf/main.go:397; in `func guardProjectState(ctx context.Context, root string, cmd clispec.Command, top clispec.Command, sub string, inv invocation) error` (cmd/awf/main.go:342), the predecessor invariant is projectGuardState loaded and validated this unchanged lock. Only violation of that closed state reaches this guard."
+      "evidence": "At cmd/awf/main.go:403, `if stateErr != nil {` is guarded by the preceding `state, stateErr := lock.AuthorityState()` at cmd/awf/main.go:402; in `func guardProjectState(ctx context.Context, root string, cmd clispec.Command, top clispec.Command, sub string, inv invocation) error` (cmd/awf/main.go:347), the predecessor invariant is projectGuardState loaded and validated this unchanged lock. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
         "file": "cmd/awf/main.go",
-        "line": 412,
-        "targetLine": 412,
+        "line": 417,
+        "targetLine": 417,
         "reason": "AuthorityState returns only the closed enum values",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `default:` at cmd/awf/main.go:412 is `return nil` (cmd/awf/main.go:411). Within `func guardProjectState(ctx context.Context, root string, cmd clispec.Command, top clispec.Command, sub string, inv invocation) error` at cmd/awf/main.go:342, source review establishes AuthorityState returns only the closed enum values; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `default:` at cmd/awf/main.go:417 is `return nil` (cmd/awf/main.go:416). Within `func guardProjectState(ctx context.Context, root string, cmd clispec.Command, top clispec.Command, sub string, inv invocation) error` at cmd/awf/main.go:347, source review establishes AuthorityState returns only the closed enum values; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
         "file": "cmd/awf/main.go",
-        "line": 541,
-        "targetLine": 541,
+        "line": 546,
+        "targetLine": 546,
         "reason": "Prose validated the value and status is a fixed grammar-valid label",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at cmd/awf/main.go:541 is `field, err := presentation.NewField(\"status\", value)` (cmd/awf/main.go:540). Within `func writeStatus(stdout io.Writer, status string) error` at cmd/awf/main.go:535, source review establishes Prose validated the value and status is a fixed grammar-valid label; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err != nil {` at cmd/awf/main.go:546 is `field, err := presentation.NewField(\"status\", value)` (cmd/awf/main.go:545). Within `func writeStatus(stdout io.Writer, status string) error` at cmd/awf/main.go:540, source review establishes Prose validated the value and status is a fixed grammar-valid label; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
         "file": "cmd/awf/main.go",
-        "line": 545,
-        "targetLine": 545,
+        "line": 550,
+        "targetLine": 550,
         "reason": "the validated Field is always a valid root node",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At cmd/awf/main.go:545, `if err != nil {` is guarded by the preceding `document, err := presentation.NewDocument(field)` at cmd/awf/main.go:544; in `func writeStatus(stdout io.Writer, status string) error` (cmd/awf/main.go:535), the predecessor invariant is the validated Field is always a valid root node. Only violation of that closed state reaches this guard."
+      "evidence": "At cmd/awf/main.go:550, `if err != nil {` is guarded by the preceding `document, err := presentation.NewDocument(field)` at cmd/awf/main.go:549; in `func writeStatus(stdout io.Writer, status string) error` (cmd/awf/main.go:540), the predecessor invariant is the validated Field is always a valid root node. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
