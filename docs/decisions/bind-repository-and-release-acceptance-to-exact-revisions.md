@@ -24,7 +24,7 @@ Repository workflow changes and hosted-repository settings form one acceptance b
 3. `decision: evidence-based-test-selection` A path may skip behavioral suites only when repository dependencies prove that it cannot affect them. Broad documentation families are not test-free while repository tests or embedded inputs consume their contents.
 4. `decision: exact-tagged-revision` Release publication is bound to successful required CI conclusions for the exact tagged revision. Main ancestry alone is insufficient. Tag creation or publication uses hosted protection that prevents an unverified revision from bypassing that boundary.
 5. `decision: release-range-mutation-selection` Release verification runs the targeted mutation blocker over the previous release tag through the candidate tag revision. A clean tag index never substitutes for that release range.
-6. `decision: documented-hosted-state-is-verified` Maintained documentation may claim that a hosted acceptance control is enforced only when operator verification confirms that the live setting names the stable workflow identity it protects.
+6. `decision: documented-hosted-state-is-verified` Maintained documentation may claim that a hosted acceptance control is enforced only after operator verification. Required status checks must name the stable workflow identities they protect; release-protection settings must match their documented tag, environment, or ref policy.
 
 ## State changes
 
