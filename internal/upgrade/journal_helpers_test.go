@@ -1,7 +1,5 @@
 package upgrade
 
-import "github.com/hypnotox/agentic-workflows/internal/manifest"
-
 func imageOf(root, path string) (Image, error) {
 	return productionJournalOperation().imageOf(root, path)
 }
@@ -21,8 +19,4 @@ func commitTransactionWith(root string, operations []Operation, operation journa
 		return runErr
 	})
 	return outcome, err
-}
-
-func cutoverOperations(root string, lock *manifest.Lock) ([]Operation, error) {
-	return cutoverOperationsWith(root, lock, productionJournalOperation())
 }

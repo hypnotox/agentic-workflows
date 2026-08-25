@@ -112,7 +112,6 @@ func contextPreparationFixture(t *testing.T) string {
 	testsupport.WriteAwfConfig(t, root, contextPreparationYAML)
 	lock := &manifest.Lock{
 		AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{},
-		BridgeAttestation: &manifest.BridgeAttestation{Version: 1, PreparedHead: "x", TreeDigest: "sha256:x", ADRFormatV1From: 2, LegacyADRGaps: []int{}},
 	}
 	if err := lock.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
 		t.Fatal(err)

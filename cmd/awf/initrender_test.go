@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
@@ -303,30 +302,5 @@ func TestRunInitSyncError(t *testing.T) {
 	}
 	if err := runInit(ctx, root, false, false, nil, "", io.Discard); err == nil {
 		t.Error("expected runInit to surface the sync error")
-	}
-}
-
-func TestInitAndUpgradeRefusePreTrackingAuthority(t *testing.T) {
-	ctx := testContext(t)
-	for _, tc := range []struct{ name, lock, want string }{
-		{"missing", "", "bridge release"},
-		{"invalid", `{`, "restore .awf/awf.lock"},
-		{"bridge", `{"awfVersion":"0.1.0","schemaVersion":30,"files":{},"bridgeAttestation":{"version":1,"preparedHead":"h","treeDigest":"sha256:x","adrFormatV1From":1,"legacyADRGaps":[]}}`, "bridge release"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			root := t.TempDir()
-			testsupport.WriteAwfConfig(t, root, minimalYAML)
-			if tc.lock != "" {
-				testsupport.WriteFile(t, config.LockPath(root), tc.lock)
-			}
-			if err := runInit(ctx, root, true, false, nil, "", io.Discard); err == nil || !strings.Contains(err.Error(), tc.want) {
-				t.Fatalf("init=%v", err)
-			}
-			if tc.name == "missing" {
-				if err := runUpgrade(ctx, root, io.Discard); err == nil || !strings.Contains(err.Error(), "complete .awf/config.yaml and .awf/awf.lock") {
-					t.Fatalf("upgrade=%v", err)
-				}
-			}
-		})
 	}
 }

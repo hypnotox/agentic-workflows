@@ -43,12 +43,6 @@ Origin: ADR-0178
 Revised-by: ADR-0215
 Backing: unbacked
 Verify: For each newly exported or shared composition symbol, classify its declaring package, trace the corresponding production or outside-package test caller in the same commit, confirm exactly one named first consumer uses the whole introduced capability, and reject every introduced member without that consumer use.
-### `invariant: upgrade-attestation-filesystem-wiring`
-
-Public upgrade attestation `Verify` opens and closes the production root-confined filesystem handle at its outer boundary, passes that handle through the private consumer-owned structural contract, and no digest or collection helper constructs, discovers, or defaults the dependency.
-Origin: ADR-0216
-Backing: test
-
 ### `invariant: repository-layer-direction`
 
 Repository coordination follows one direction: `cmd/awf` composes and invokes focused application operations; application operations consume immutable project state, domain services, and only the semantic mechanisms they need; domain and state owners consume lower semantic Git, snapshot, filesystem, atomic-publication, and rendering mechanisms. `Loader` constructs `ProjectState`; application operations may invoke `Publisher`, `RepositoryChecker`, and `CurrentStateCoordinator`; `RepositoryChecker` consumes individual checker results without owning their policy. No internal package imports `cmd/awf`; project state, domain, checker, and mechanism owners never import application coordination; `ProjectState` never imports `Loader`; individual check owners never import `RepositoryChecker`; and `internal/project` never imports `internal/contextq` while the existing reverse edge remains. Foundational mechanism chains from snapshot to Git and from filesystem to atomic file publication remain legal.

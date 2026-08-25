@@ -127,7 +127,7 @@ func csRepo(t *testing.T, cfg string, files map[string]string) *ProjectState {
 // TestCheckCurrentState runs the working-tree check end to end: a covered path
 // yields nothing, an owned-but-unscoped path yields one uncovered finding, and a
 // generated (lock-listed) path and a contextIgnore path are both excluded. A
-// sealed bridge attestation supplies the cutoff.
+// permanent lock validation supplies authority.
 func TestCheckCurrentState(t *testing.T) {
 	p := csRepo(t, csYAML, map[string]string{
 		".awf/domains/alpha.yaml":                      "paths:\n  - internal/**\n",

@@ -14,7 +14,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
-	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
@@ -572,30 +571,6 @@ func TestNeededVarsCoversFullCatalog(t *testing.T) {
 		if !vars[name] {
 			t.Errorf("needed vars missing %s", name)
 		}
-	}
-}
-
-func TestInitializeAndSyncAuthorityRefusals(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, _, _, err := syncReportProject(p); err == nil || !strings.Contains(err.Error(), "pre-tracking") {
-		t.Fatalf("missing lock: %v", err)
-	}
-	if _, _, _, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version}); err != nil {
-		t.Fatal(err)
-	}
-	if _, _, _, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version}); err == nil || !strings.Contains(err.Error(), "absent lock") {
-		t.Fatalf("repeat init: %v", err)
-	}
-	lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: 31, Files: map[string]manifest.Entry{}, BridgeAttestation: &manifest.BridgeAttestation{Version: 1, PreparedHead: "h", TreeDigest: "sha256:x", ADRFormatV1From: 1, LegacyADRGaps: []int{}}}
-	if err := lock.Save(lockFile(root)); err != nil {
-		t.Fatal(err)
-	}
-	if _, _, _, err := syncReportProject(p); err == nil || !strings.Contains(err.Error(), "permanent") {
-		t.Fatalf("bridge sync: %v", err)
 	}
 }
 

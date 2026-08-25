@@ -356,9 +356,9 @@ var Commands = []Command{
 			Help: Help{Usage: []string{"awf remove domain <name>"}, Description: "Remove a configured domain."}}},
 	},
 	{
-		Name: "upgrade", Summary: "Migrate the .awf/ config tree or consume a current-state attestation",
+		Name: "upgrade", Summary: "Migrate the .awf/ config tree or recover an interrupted upgrade",
 		BoolFlags: []string{"--recover"}, MaxPos: 0, Gating: Ungated,
-		Help: Help{Usage: []string{"awf upgrade [--recover]"}, Description: "Migrate the .awf/ config tree to the current schema version, then sync.", Options: []HelpItem{{Name: "--recover", Description: "replay the current-state upgrade journal's recovery table"}}, Details: []string{"When the lock carries a bridge attestation, plain upgrade instead performs the", "final current-state cutover: it verifies the complete sealed attestation,", "including the prepared HEAD, tree digest, and historical routing payload, then", "journals deletion of the migration approval file and replacement of the", "permanent lock while discarding the cutoff and gap payload. Attestation and", "readiness reporting live only in the preceding bridge release; this binary", "consumes seals, it never produces them.", "--recover              replay the current-state upgrade journal's recovery", "table: roll an interrupted cutover back or clean up a", "committed one. The only mode a journal permits."}},
+		Help: Help{Usage: []string{"awf upgrade [--recover]"}, Description: "Migrate the .awf/ config tree to the current schema version, then sync.", Options: []HelpItem{{Name: "--recover", Description: "replay the current-state upgrade journal's recovery table"}}, Details: []string{"A current-state upgrade journal blocks ordinary commands until `awf upgrade --recover` rolls a precommit transaction back or cleans postcommit residue. The permanent lock remains the transaction commit point."}},
 	},
 	{
 		Name: "uninstall", Summary: "Remove awf's generated files (keeps .awf/)",

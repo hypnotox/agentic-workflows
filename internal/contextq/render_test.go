@@ -49,8 +49,7 @@ func renderFixture(t *testing.T) *project.ProjectState {
 	testsupport.WriteAwfConfig(t, root, ctxConfig)
 	lock := &manifest.Lock{
 		AWFVersion: project.Version, SchemaVersion: migrate.Current(),
-		Files:             map[string]manifest.Entry{},
-		BridgeAttestation: &manifest.BridgeAttestation{Version: 1, PreparedHead: "x", TreeDigest: "sha256:x", ADRFormatV1From: 2, LegacyADRGaps: []int{}},
+		Files: map[string]manifest.Entry{},
 	}
 	if err := lock.Save(lockFile(root)); err != nil {
 		t.Fatal(err)

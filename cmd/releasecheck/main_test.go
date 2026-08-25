@@ -18,7 +18,7 @@ func changelogFS(content string) fstest.MapFS {
 func runOn(t *testing.T, fsys fstest.MapFS) (int, string, string) {
 	t.Helper()
 	var out, errb bytes.Buffer
-	code := run(os.DirFS("../.."), fsys, &out, &errb, true)
+	code := run(os.DirFS("../.."), fsys, &out, &errb)
 	return code, out.String(), errb.String()
 }
 
@@ -74,20 +74,9 @@ func TestReleaseVersionProbeContract(t *testing.T) {
 	}
 }
 
-func TestRunRefusesIncompleteBridgeTranche(t *testing.T) {
-	var out, errb bytes.Buffer
-	// Exercise run's incomplete-tranche refusal branch directly with a literal
-	// false: project.BridgeTrancheComplete is now true (the tranche landed), so
-	// only a forced false still reaches the refusal the 100% gate must cover.
-	code := run(os.DirFS("../.."), changelogFS("not parsed while incomplete"), &out, &errb, false)
-	if code != 1 || out.Len() != 0 || !strings.Contains(errb.String(), "Plans 1 and 2 must both land before release") {
-		t.Fatalf("incomplete bridge result: code=%d stdout=%q stderr=%q", code, out.String(), errb.String())
-	}
-}
-
 func TestRunFailsProjectLicense(t *testing.T) {
 	var out, errb bytes.Buffer
-	code := run(fstest.MapFS{}, changelogFS("not read after project-license failure"), &out, &errb, true)
+	code := run(fstest.MapFS{}, changelogFS("not read after project-license failure"), &out, &errb)
 	if code != 1 || out.Len() != 0 || !strings.Contains(errb.String(), "project license: read LICENSE") {
 		t.Fatalf("project-license result: code=%d stdout=%q stderr=%q", code, out.String(), errb.String())
 	}
@@ -98,17 +87,6 @@ func TestRunFailsProjectLicense(t *testing.T) {
 // so it no longer emits the incomplete-tranche refusal. Other release checks may
 // still fail in an unreleased working tree, so this test asserts only that the
 // tranche message is gone.
-func TestMainClearsBridgeTranche(t *testing.T) {
-	cmd := exec.Command("go", "run", "./cmd/releasecheck")
-	cmd.Dir = "../.."
-	var out, errb bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &errb
-	_ = cmd.Run()
-	if strings.Contains(errb.String(), "Plans 1 and 2 must both land before release") {
-		t.Fatalf("production releasecheck still refuses the completed tranche: stdout=%q stderr=%q", out.String(), errb.String())
-	}
-}
 
 func TestRunPasses(t *testing.T) {
 	fsys := changelogFS("# Changelog\n\n## [Unreleased]\n\n## [" + project.Version + "] - 2026-07-08\n### Features\n- something\n")

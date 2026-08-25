@@ -18,7 +18,7 @@ help:
       topic | Query current claims, history, references, and applicability
       new | Scaffold a new artifact: kind in {adr, plan, topic, domain, pitfall, doc}
       remove | Remove a configured domain
-      upgrade | Migrate the .awf/ config tree or consume a current-state attestation
+      upgrade | Migrate the .awf/ config tree or recover an interrupted upgrade
       uninstall | Remove awf's generated files (keeps .awf/)
       changelog | Print the embedded changelog, or one version/range of it
       version | Print the awf version

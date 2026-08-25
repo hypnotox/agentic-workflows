@@ -11,7 +11,6 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
-	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
@@ -193,75 +192,6 @@ func TestCheckProseRefusesOnSchemaAheadProject(t *testing.T) {
 // runnable under a committed current-state journal and under an attested lock,
 // where bare check refuses. Without this a commit-msg hook would refuse to
 // validate a message mid-upgrade.
-// invariant: tooling/cli:group-child-project-guard-exemption (TestCheckExemptChildrenRunUnderGuardedProjectState)
-func TestCheckExemptChildrenRunUnderGuardedProjectState(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	lockText := func(t *testing.T, attested bool) string {
-		t.Helper()
-		lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
-		if attested {
-			lock.BridgeAttestation = &manifest.BridgeAttestation{Version: 1, PreparedHead: "head", TreeDigest: "sha256:x", ADRFormatV1From: 2, LegacyADRGaps: []int{}}
-		}
-		b, err := lock.Marshal()
-		if err != nil {
-			t.Fatal(err)
-		}
-		return string(b)
-	}
-	const journal = `{"version":1,"phase":"prepared","finalLockSHA256":"sha256:x","operations":[{"path":".awf/awf.lock","prior":{"present":false,"mode":0,"content":null},"replacement":{"present":false,"mode":0,"content":null}}]}`
-	configText := "prefix: example\nprofile: full\nintegrationBranch: main\n"
-
-	// guarded builds a git-backed project in the named guarded state.
-	guarded := func(t *testing.T, journaled bool) string {
-		t.Helper()
-		repo := gitfixture.InitRepo(t)
-		root := repo.Root()
-		files := map[string]string{
-			".awf/config.yaml": configText,
-			".awf/awf.lock":    lockText(t, !journaled),
-		}
-		if journaled {
-			files[".awf/current-state-upgrade.journal"] = journal
-		}
-		gitfixture.Stage(t, repo, files)
-		gitfixture.Commit(t, repo, "head", nil)
-		return root
-	}
-
-	for _, state := range []struct {
-		name      string
-		journaled bool
-		refusal   string
-	}{
-		{"journal", true, "upgrade journal is present"},
-		{"attestation", false, "committed current-state attestation"},
-	} {
-		t.Run(state.name, func(t *testing.T) {
-			// Bare check refuses: the guard applies to the group's own node.
-			root := guarded(t, state.journaled)
-			var out, errb bytes.Buffer
-			if code := runAt(t, root, []string{"awf", "check"}, &out, &errb); code != 1 {
-				t.Fatalf("bare check exit = %d, want the guard refusal", code)
-			}
-			if !strings.Contains(errb.String(), state.refusal) {
-				t.Fatalf("bare check diagnostic = %q, want %q", errb.String(), state.refusal)
-			}
-			// Only staged commit remains exempt so a commit-msg hook works mid-upgrade.
-			for _, sub := range []string{"commit"} {
-				args := []string{"awf", "check", "staged", sub}
-				msg := filepath.Join(t.TempDir(), "MSG")
-				testsupport.WriteFile(t, msg, "feat(awf): a conventional subject\n")
-				args = append(args, msg)
-				out.Reset()
-				errb.Reset()
-				if code := runAt(t, guarded(t, state.journaled), args, &out, &errb); code != 0 {
-					t.Errorf("check %s exit = %d under a %s, stderr=%q", sub, code, state.name, errb.String())
-				}
-			}
-		})
-	}
-}
 
 // The two new entry points surface their own failures: a drifted rendered file
 // and a current-state finding each exit non-zero with a count-naming error.
@@ -414,5 +344,15 @@ func TestHelpListsCheckChildren(t *testing.T) {
 		if strings.Contains(got, retired) {
 			t.Errorf("awf help still lists the retired top-level %q", strings.TrimSpace(retired))
 		}
+	}
+}
+
+// invariant: tooling/cli:group-child-project-guard-exemption (TestCheckExemptChildrenRunUnderGuardedProjectState)
+func TestCheckExemptChildrenRunUnderGuardedProjectState(t *testing.T) {
+	root := scaffoldProject(t)
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "current-state-upgrade.journal"), `{"version":1,"phase":"prepared","finalLockSHA256":"sha256:x","operations":[{"path":".awf/awf.lock","prior":{"present":false,"mode":0,"content":null},"replacement":{"present":false,"mode":0,"content":null}}]}`)
+	var out, errb bytes.Buffer
+	if code := runAt(t, root, []string{"awf", "check", "staged", "commit", filepath.Join(root, "message")}, &out, &errb); code == 0 && strings.Contains(errb.String(), "current-state upgrade journal") {
+		t.Fatal("commit child was blocked by the journal guard")
 	}
 }

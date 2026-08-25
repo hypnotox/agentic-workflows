@@ -134,7 +134,7 @@ See [the workflow guide](docs/workflow.md) for the full decision criteria.
 | `awf topic <domain>/<topic>[:<claim>] [flags]` | Query current claims, history, references, and applicability |
 | `awf new <kind> <args>` | Scaffold a new artifact: kind in {adr, plan, topic, domain, pitfall, doc} |
 | `awf remove domain <name>` | Remove a configured domain |
-| `awf upgrade [--recover]` | Migrate the .awf/ config tree or consume a current-state attestation |
+| `awf upgrade [--recover]` | Migrate the .awf/ config tree or recover an interrupted upgrade |
 | `awf uninstall` | Remove awf's generated files (keeps .awf/) |
 | `awf changelog [--version <v> \| --since <v> \| --range <from>..<to>]` | Print the embedded changelog, or one version/range of it |
 | `awf version` | Print the awf version |

@@ -23,14 +23,10 @@ import (
 )
 
 func main() { // coverage-ignore: os.Exit wrapper; run is unit-tested
-	os.Exit(run(os.DirFS("."), changelogfs.FS, os.Stdout, os.Stderr, project.BridgeTrancheComplete))
+	os.Exit(run(os.DirFS("."), changelogfs.FS, os.Stdout, os.Stderr))
 }
 
-func run(root, changelogFS fs.FS, stdout, stderr io.Writer, bridgeTrancheComplete bool) int {
-	if !bridgeTrancheComplete {
-		fmt.Fprintln(stderr, "releasecheck: current-state bridge tranche is incomplete; Plans 1 and 2 must both land before release")
-		return 1
-	}
+func run(root, changelogFS fs.FS, stdout, stderr io.Writer) int {
 	if err := projectlicense.Verify(root); err != nil {
 		fmt.Fprintf(stderr, "releasecheck: project license: %v\n", err)
 		return 1

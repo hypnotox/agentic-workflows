@@ -69,7 +69,7 @@ func TestDailyAdvancedDocumentationOwnership(t *testing.T) {
 					t.Errorf("daily guide missing %q", want)
 				}
 			}
-			for _, absent := range []string{"AWF_CONTEXT_SPILL_V1", "bridge attestation", "bytes=<decimal>", "ExtensionAPI.queueCommand"} {
+			for _, absent := range []string{"AWF_CONTEXT_SPILL_V1", "bytes=<decimal>", "ExtensionAPI.queueCommand"} {
 				if strings.Contains(string(daily), absent) {
 					t.Errorf("daily guide duplicates advanced detail %q", absent)
 				}
@@ -110,7 +110,7 @@ func TestDailyAdvancedDocumentationOwnership(t *testing.T) {
 				}
 			}
 			if profile == "full" {
-				for _, want := range []string{"bridge attestation", "awf changelog --since"} {
+				for _, want := range []string{"awf changelog --since"} {
 					if !strings.Contains(string(debugging), want) {
 						t.Errorf("debugging missing advanced upgrade sentinel %q", want)
 					}

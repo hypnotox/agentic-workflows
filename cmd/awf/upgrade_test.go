@@ -217,7 +217,6 @@ func attestLock(t *testing.T, root string) {
 	}
 	lock = &manifest.Lock{
 		AWFVersion: lock.AWFVersion, SchemaVersion: lock.SchemaVersion, Files: lock.Files,
-		BridgeAttestation: &manifest.BridgeAttestation{Version: 1, PreparedHead: "0000000000000000000000000000000000000000", TreeDigest: "sha256:0", ADRFormatV1From: 2, LegacyADRGaps: []int{}},
 	}
 	if err := lock.Save(config.LockPath(root)); err != nil {
 		t.Fatal(err)
@@ -317,41 +316,6 @@ func TestGuardRecoverWithoutJournal(t *testing.T) {
 	errb.Reset()
 	if code := runAt(t, t.TempDir(), []string{"awf", "upgrade", "--recover"}, &out, &errb); code == 0 || !strings.Contains(errb.String(), "not an awf project") {
 		t.Fatalf("recover outside tree: code=%d\n%s", code, errb.String())
-	}
-}
-
-func TestGuardAttestedLockPermitsUpgradeRefusesOthers(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t)
-	attestLock(t, root)
-	// Ordinary commands refuse with the consume-the-attestation diagnostic.
-	var out, errb bytes.Buffer
-	if code := runAt(t, root, []string{"awf", "check"}, &out, &errb); code == 0 || !strings.Contains(errb.String(), "run `awf upgrade` to consume it") {
-		t.Fatalf("check not refused: code=%d\n%s", code, errb.String())
-	}
-	// Plain upgrade is permitted by the guard and reaches the handler, which
-	// verifies the seal and refuses the bogus prepared head (not a guard message).
-	out.Reset()
-	errb.Reset()
-	code := runAt(t, root, []string{"awf", "upgrade"}, &out, &errb)
-	if code == 0 || strings.Contains(errb.String(), "run `awf upgrade` to consume it") {
-		t.Fatalf("upgrade should reach the handler: code=%d\n%s", code, errb.String())
-	}
-	if !strings.Contains(errb.String(), "prepared head") {
-		t.Fatalf("want a seal-verification failure, got: %s", errb.String())
-	}
-}
-
-func TestUpgradeConsumesAttestationRouting(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	// runUpgrade routes an attested lock into the final cutover verifier, which
-	// rejects the bogus sealed facts rather than running a schema migration.
-	root := scaffoldProject(t)
-	attestLock(t, root)
-	if err := runUpgrade(ctx, root, io.Discard); err == nil || !strings.Contains(err.Error(), "prepared head") {
-		t.Fatalf("want seal verification, got %v", err)
 	}
 }
 

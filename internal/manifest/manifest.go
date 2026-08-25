@@ -10,7 +10,6 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 
 	"golang.org/x/mod/semver"
@@ -29,11 +28,10 @@ type Entry struct {
 }
 
 type Lock struct {
-	AWFVersion             string             `json:"awfVersion"`
-	SchemaVersion          int                `json:"schemaVersion"`
-	Files                  map[string]Entry   `json:"files"`
-	BridgeAttestation      *BridgeAttestation `json:"bridgeAttestation,omitempty"`
-	InitializedWithVersion string             `json:"initializedWithVersion,omitempty"`
+	AWFVersion             string           `json:"awfVersion"`
+	SchemaVersion          int              `json:"schemaVersion"`
+	Files                  map[string]Entry `json:"files"`
+	InitializedWithVersion string           `json:"initializedWithVersion,omitempty"`
 }
 
 // Clone returns a fully independent lock projection.
@@ -43,40 +41,18 @@ func (l *Lock) Clone() *Lock {
 	}
 	out := *l
 	out.Files = maps.Clone(l.Files)
-	if l.BridgeAttestation != nil {
-		bridge := *l.BridgeAttestation
-		bridge.LegacyADRGaps = slices.Clone(l.BridgeAttestation.LegacyADRGaps)
-		out.BridgeAttestation = &bridge
-	}
 	return &out
 }
 
-// AuthorityState distinguishes the frozen bridge input from ordinary locks.
+// AuthorityState identifies the sole supported permanent lock authority.
 type AuthorityState uint8
 
-const (
-	AuthorityBridge AuthorityState = iota + 1
-	AuthorityPermanent
-)
+const AuthorityPermanent AuthorityState = 1
 
-// AuthorityState validates the one still-active immutable lock value. Historical
-// routing fields are compatibility input only and are discarded by Parse.
+// AuthorityState validates permanent lock authority. Older adopters may omit
+// initialization provenance and remain valid permanent authority.
 func (l *Lock) AuthorityState() (AuthorityState, error) {
-	if l.BridgeAttestation != nil {
-		if l.InitializedWithVersion != "" {
-			return 0, errors.New("invalid lock authority: bridge attestation cannot be mixed with initialization authority")
-		}
-		if l.BridgeAttestation.LegacyADRGaps == nil {
-			return 0, errors.New("invalid lock authority: bridgeAttestation legacyADRGaps must be an array, not null")
-		}
-		if err := validateBoundary("bridgeAttestation", l.BridgeAttestation.ADRFormatV1From, l.BridgeAttestation.LegacyADRGaps); err != nil {
-			return 0, err
-		}
-		return AuthorityBridge, nil
-	}
 	if l.InitializedWithVersion == "" {
-		// Older adopters predate first-adoption version tracking. Their lock is
-		// still ordinary authority; only an absent lock is pre-tracking.
 		return AuthorityPermanent, nil
 	}
 	initialized, ok := NormalizeSemver(l.InitializedWithVersion)
@@ -100,32 +76,7 @@ func NormalizeSemver(s string) (string, bool) {
 	}
 	return v, true
 }
-func validateBoundary(owner string, cutoff int, gaps []int) error {
-	if cutoff < 1 {
-		return fmt.Errorf("invalid lock authority: %s adrFormatV1From must be positive", owner)
-	}
-	previous := 0
-	for _, gap := range gaps {
-		if gap <= 0 || gap >= cutoff {
-			return fmt.Errorf("invalid lock authority: %s legacyADRGaps value %d must be positive and below cutoff %d", owner, gap, cutoff)
-		}
-		if gap <= previous {
-			return fmt.Errorf("invalid lock authority: %s legacyADRGaps must be sorted and unique", owner)
-		}
-		previous = gap
-	}
-	return nil
-}
 
-// BridgeAttestation preserves version-1 bridge bytes as frozen compatibility
-// input. Its historical routing payload is never promoted into a Lock.
-type BridgeAttestation struct {
-	Version         int    `json:"version"`
-	PreparedHead    string `json:"preparedHead"`
-	TreeDigest      string `json:"treeDigest"`
-	ADRFormatV1From int    `json:"adrFormatV1From"`
-	LegacyADRGaps   []int  `json:"legacyADRGaps"`
-}
 type Drift struct{ Path, Kind, Detail string }
 
 // Hash returns the stable content address used by the lock and attestation.
@@ -151,6 +102,9 @@ func Parse(b []byte) (*Lock, error) {
 	schema, err := parseSchemaVersion(b)
 	if err != nil {
 		return nil, fmt.Errorf("parse lock: %w", err)
+	}
+	if _, ok := raw["bridgeAttestation"]; ok {
+		return nil, fmt.Errorf("parse lock: unknown field %q", "bridgeAttestation")
 	}
 	for _, key := range []string{"adrFormatV1From", "adrFormatV2From", "adrFormatV3From", "legacyAdrGaps"} {
 		if _, ok := raw[key]; ok && schema >= 31 {
@@ -178,7 +132,7 @@ func (l *Lock) Marshal() ([]byte, error) {
 		return nil, err
 	}
 	b, err := json.MarshalIndent(l, "", "  ")
-	if err != nil { // coverage-ignore: Lock contains only JSON-supported fields
+	if err != nil {
 		return nil, err
 	}
 	return append(b, '\n'), nil

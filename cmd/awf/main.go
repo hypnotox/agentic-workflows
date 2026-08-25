@@ -20,7 +20,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/upgrade"
 )
 
-func main() { os.Exit(run(os.Args, os.Stdout, os.Stderr)) } // coverage-ignore: os.Exit wrapper; run(ctx, ) is unit-tested
+func main() { os.Exit(run(os.Args, os.Stdout, os.Stderr)) }
 
 // gitCommandTimeout is the deadline every command boundary puts on the git work
 // it starts. The value is the seam's, so awf and repoaudit cannot drift apart on
@@ -47,28 +47,28 @@ var isInteractive = func() bool {
 // therefore cannot be mistaken for the top-level entry.
 func globalHelp() (presentation.Document, error) {
 	introValue, err := presentation.Prose("render agentic-workflow tooling into a project from a committed .awf config tree")
-	if err != nil { // coverage-ignore: checked-in command metadata is presentation-valid
-		return presentation.Document{}, err // coverage-ignore: checked-in command metadata is presentation-valid
+	if err != nil {
+		return presentation.Document{}, err
 	}
 	intro, err := presentation.NewField("awf", introValue)
-	if err != nil { // coverage-ignore: checked-in command metadata is presentation-valid
-		return presentation.Document{}, err // coverage-ignore: checked-in command metadata is presentation-valid
+	if err != nil {
+		return presentation.Document{}, err
 	}
 	usage, err := presentation.NewList("usage", mustValues("awf <command> [flags]")...)
-	if err != nil { // coverage-ignore: checked-in command metadata is presentation-valid
-		return presentation.Document{}, err // coverage-ignore: checked-in command metadata is presentation-valid
+	if err != nil {
+		return presentation.Document{}, err
 	}
 	commands, err := commandSections(clispec.Commands)
 	if err != nil {
-		return presentation.Document{}, err // coverage-ignore: checked-in command metadata is presentation-valid
+		return presentation.Document{}, err
 	}
 	related, err := presentation.NewList("related commands", mustValues("awf <command> --help")...)
-	if err != nil { // coverage-ignore: checked-in command metadata is presentation-valid
-		return presentation.Document{}, err // coverage-ignore: checked-in command metadata is presentation-valid
+	if err != nil {
+		return presentation.Document{}, err
 	}
 	section, err := presentation.NewSection("help", usage, commands, related)
-	if err != nil { // coverage-ignore: checked-in command metadata is presentation-valid
-		return presentation.Document{}, err // coverage-ignore: checked-in command metadata is presentation-valid
+	if err != nil {
+		return presentation.Document{}, err
 	}
 	return presentation.NewDocument(intro, section)
 }
@@ -83,7 +83,7 @@ func commandSections(specs []clispec.Command) (presentation.Section, error) {
 		return presentation.Section{}, err
 	}
 	group, err := presentation.NewRecordGroup("commands", []string{"command", "summary"}, records...)
-	if err != nil { // coverage-ignore: fixed label/schema and commandRecords always produce arity-two records
+	if err != nil {
 		return presentation.Section{}, err
 	}
 	nodes := []presentation.Node{group}
@@ -106,7 +106,7 @@ func commandSection(spec clispec.Command) (presentation.Section, error) {
 		return presentation.Section{}, err
 	}
 	group, err := presentation.NewRecordGroup("commands", []string{"command", "summary"}, records...)
-	if err != nil { // coverage-ignore: fixed label/schema and commandRecords always produce arity-two records
+	if err != nil {
 		return presentation.Section{}, err
 	}
 	nodes := []presentation.Node{group}
@@ -142,11 +142,11 @@ func commandRecords(specs []clispec.Command) ([]presentation.Record, error) {
 func commandRecord(spec clispec.Command) (presentation.Record, error) {
 	name, err := presentation.Literal(spec.Name)
 	if err != nil {
-		return presentation.Record{}, err // coverage-ignore: checked-in command metadata is presentation-valid
+		return presentation.Record{}, err
 	}
 	summary, err := presentation.Prose(spec.Summary)
 	if err != nil {
-		return presentation.Record{}, err // coverage-ignore: checked-in command metadata is presentation-valid
+		return presentation.Record{}, err
 	}
 	return presentation.NewRecord(name, summary)
 }
@@ -161,7 +161,7 @@ func mustValues(text ...string) []presentation.Value {
 
 func renderHelp(dst io.Writer, spec clispec.Command, path string) error {
 	document, err := spec.Help.Document("awf "+path, spec.Summary)
-	if err != nil { // coverage-ignore: static clispec literals are constructor-valid
+	if err != nil {
 		return err
 	}
 	return presentation.Render(dst, document)
@@ -187,16 +187,16 @@ func run(args []string, stdout, stderr io.Writer) int {
 				}
 				spec = child
 			}
-			if err := renderHelp(stdout, spec, strings.Join(args[2:], " ")); err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
+			if err := renderHelp(stdout, spec, strings.Join(args[2:], " ")); err != nil {
 				return dispatchFailure(stdout, stderr, err)
 			}
 			return 0
 		}
 		document, err := globalHelp()
-		if err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
+		if err != nil {
 			return dispatchFailure(stdout, stderr, err)
 		}
-		if err := presentation.Render(stdout, document); err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
+		if err := presentation.Render(stdout, document); err != nil {
 			return dispatchFailure(stdout, stderr, err)
 		}
 		return 0
@@ -210,7 +210,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return dispatchFailure(stdout, stderr, &usageErr{fmt.Sprintf("unknown command %q", args[1])})
 	}
 	if wantsHelp(rest) { // `awf <cmd> --help`/`-h` - intercept before parseArgs rejects it
-		if err := renderHelp(stdout, cmd, strings.TrimSpace(top.Name+" "+sub)); err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
+		if err := renderHelp(stdout, cmd, strings.TrimSpace(top.Name+" "+sub)); err != nil {
 			return dispatchFailure(stdout, stderr, err)
 		}
 		return 0
@@ -311,7 +311,7 @@ func requireCommandCapability(ctx context.Context, root string, top clispec.Comm
 	var err error
 	if selectsStagedProjectUniverse(top, sub, inv) {
 		tree, treeErr := stagedTree(ctx, root)
-		if treeErr != nil { // coverage-ignore: guardProjectState just opened the same unchanged staged repository in this command stage
+		if treeErr != nil {
 			return treeErr
 		}
 		file, ok := tree.Lookup(config.DirName + "/config.yaml")
@@ -367,7 +367,6 @@ func guardProjectState(ctx context.Context, root string, cmd clispec.Command, to
 	}
 	isUpgrade := top.Name == "upgrade"
 	isRecover := isUpgrade && inv.bools["--recover"]
-	isPlainUpgrade := isUpgrade && !isRecover
 	if journalFound {
 		if staged {
 			_, err = upgrade.ParseJournal(journal)
@@ -405,24 +404,13 @@ func guardProjectState(ctx context.Context, root string, cmd clispec.Command, to
 		}
 		return fmt.Errorf("retired project layout is unsupported at live floor %d; restore a supported .awf control pair", migrate.LiveSchemaFloor)
 	}
-	state, stateErr := lock.AuthorityState()
-	if stateErr != nil { // coverage-ignore: projectGuardState loaded and validated this unchanged lock
-		return fmt.Errorf("invalid authority: restore .awf/awf.lock from version control: %w", stateErr)
+	if _, err := lock.AuthorityState(); err != nil {
+		return fmt.Errorf("invalid authority: restore .awf/awf.lock from version control: %w", err)
 	}
-	switch state {
-	case manifest.AuthorityBridge:
-		if isPlainUpgrade {
-			return nil
-		}
-		return errors.New("this project carries a committed current-state attestation; run `awf upgrade` to consume it")
-	case manifest.AuthorityPermanent:
-		if isRecover {
-			return errors.New("no current-state upgrade journal to recover")
-		}
-		return nil
-	default: // coverage-ignore: AuthorityState returns only the closed enum values
-		return errors.New("invalid authority: restore .awf/awf.lock from version control")
+	if isRecover {
+		return errors.New("no current-state upgrade journal to recover")
 	}
+	return nil
 }
 
 // projectGuardState captures the presence, journal, and lock used by the
@@ -548,11 +536,11 @@ func writeStatus(stdout io.Writer, status string) error {
 		return err
 	}
 	field, err := presentation.NewField("status", value)
-	if err != nil { // coverage-ignore: Prose validated the value and status is a fixed grammar-valid label
+	if err != nil {
 		return err
 	}
 	document, err := presentation.NewDocument(field)
-	if err != nil { // coverage-ignore: the validated Field is always a valid root node
+	if err != nil {
 		return err
 	}
 	return presentation.Render(stdout, document)

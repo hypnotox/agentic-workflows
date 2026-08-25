@@ -29,12 +29,6 @@ var versionFile string
 // bootstrap pin, and CLI output all read this value (ADR-0049).
 var Version = strings.TrimSuffix(versionFile, "\n")
 
-// BridgeTrancheComplete blocks publication while the two-plan current-state
-// bridge tranche is only partially implemented. Plans 1 and 2 have both landed
-// (migration readiness, attestation, and ordinary-command refusal are all
-// present), so the tranche is complete and publication is unblocked.
-const BridgeTrancheComplete = true
-
 // minVersionBySchema maps each config-schema generation to the minimum
 // project.Version allowed to render it; adding a migration without an entry
 // here (and a matching const bump) fails the gate (ADR-0049 Decision 4).
@@ -249,7 +243,7 @@ func (l *Loader) OpenForOperation(ctx context.Context, root string) (*ProjectSta
 		return nil, nil, err
 	}
 	targets, err := resolveTargets(KnownTargets())
-	if err != nil { // coverage-ignore: configured-target validation succeeded and KnownTargets is exhaustively backed by built-in descriptor tests
+	if err != nil {
 		return nil, nil, err
 	}
 	roots := resident.NewRoots(root, l.resolveResidentRoot(ctx, root))

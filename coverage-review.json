@@ -9926,6 +9926,321 @@
         "statements": 2
       },
       "reason": "Initial RF-009 admission of existing uncovered behavior at tools/pi-extension-test/lockrun/lockrun_unix.go:60.3,61.11 2 in function run, beginning `fmt.Fprintf(os.Stderr, \"pi-extension-test: wait for worker: %v\\n\", err) // coverage-ignore: Wait...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 371,
+          "column": 13
+        },
+        "end": {
+          "line": 373,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 405,
+          "column": 3
+        },
+        "end": {
+          "line": 405,
+          "column": 142
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 407,
+          "column": 2
+        },
+        "end": {
+          "line": 407,
+          "column": 49
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 407,
+          "column": 49
+        },
+        "end": {
+          "line": 409,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 429,
+          "column": 64
+        },
+        "end": {
+          "line": 431,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 442,
+          "column": 16
+        },
+        "end": {
+          "line": 444,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 451,
+          "column": 84
+        },
+        "end": {
+          "line": 453,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 539,
+          "column": 16
+        },
+        "end": {
+          "line": 541,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 543,
+          "column": 16
+        },
+        "end": {
+          "line": 545,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 67,
+          "column": 17
+        },
+        "end": {
+          "line": 69,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 70,
+          "column": 3
+        },
+        "end": {
+          "line": 70,
+          "column": 13
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 70,
+          "column": 13
+        },
+        "end": {
+          "line": 72,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 77,
+          "column": 3
+        },
+        "end": {
+          "line": 77,
+          "column": 43
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 77,
+          "column": 43
+        },
+        "end": {
+          "line": 79,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/manifest/manifest.go",
+        "start": {
+          "line": 135,
+          "column": 16
+        },
+        "end": {
+          "line": 137,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/project/project.go",
+        "start": {
+          "line": 246,
+          "column": 16
+        },
+        "end": {
+          "line": 248,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 198,
+          "column": 12
+        },
+        "end": {
+          "line": 200,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 202,
+          "column": 13
+        },
+        "end": {
+          "line": 204,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 206,
+          "column": 62
+        },
+        "end": {
+          "line": 208,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/upgrade/operation.go",
+        "start": {
+          "line": 231,
+          "column": 2
+        },
+        "end": {
+          "line": 231,
+          "column": 49
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/upgrade/operation.go",
+        "start": {
+          "line": 231,
+          "column": 49
+        },
+        "end": {
+          "line": 233,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
     }
   ],
   "directives": [
@@ -10132,318 +10447,6 @@
       },
       "class": "revalidated-impossible-state",
       "evidence": "The immediate predecessor for `if err != nil {` at cmd/awf/init.go:23 is `out, err := initspec.Describe(initspec.InitDescriptors(catalog.Standard.Vars))` (cmd/awf/init.go:22). Within `func runInitWithProjectLoader(ctx context.Context, root string, force, describe bool, sets []string, answersFile string, promptInput io.Reader, interactive bool, stdout io.Writer, loadProject initop.LoadProject, compatibilityGate initop.Gate) error` at cmd/awf/init.go:20, source review establishes descriptors marshal to JSON; cannot fail; this is therefore a closed-state fail-closed branch."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/main.go",
-        "line": 23,
-        "targetLine": 23,
-        "reason": "os.Exit wrapper; run(ctx, ) is unit-tested",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "tested-process-exit",
-      "evidence": "cmd/awf/main.go:23 is the terminating process-composition statement `func main() { os.Exit(run(os.Args, os.Stdout, os.Stderr)) }` in `func main()` (starts at cmd/awf/main.go:23); non-exiting run/runWith behavior is directly exercised by cmd/awf/main_test.go:13 TestRunInitScaffoldsAndSyncs."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/main.go",
-        "line": 50,
-        "targetLine": 50,
-        "reason": "checked-in command metadata is presentation-valid",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at cmd/awf/main.go:50 is `introValue, err := presentation.Prose(\"render agentic-workflow tooling into a project from a committed .awf config tree\")` (cmd/awf/main.go:49). Within `func globalHelp() (presentation.Document, error)` at cmd/awf/main.go:48, source review establishes checked-in command metadata is presentation-valid; this is therefore a closed-state fail-closed branch."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/main.go",
-        "line": 51,
-        "targetLine": 51,
-        "reason": "checked-in command metadata is presentation-valid",
-        "mapped": false,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "At cmd/awf/main.go:51, `return presentation.Document{}, err` is guarded by the preceding `if err != nil {` at cmd/awf/main.go:50; in `func globalHelp() (presentation.Document, error)` (cmd/awf/main.go:48), the predecessor invariant is checked-in command metadata is presentation-valid. Only violation of that closed state reaches this guard."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/main.go",
-        "line": 54,
-        "targetLine": 54,
-        "reason": "checked-in command metadata is presentation-valid",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "At cmd/awf/main.go:54, `if err != nil {` is guarded by the preceding `intro, err := presentation.NewField(\"awf\", introValue)` at cmd/awf/main.go:53; in `func globalHelp() (presentation.Document, error)` (cmd/awf/main.go:48), the predecessor invariant is checked-in command metadata is presentation-valid. Only violation of that closed state reaches this guard."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/main.go",
-        "line": 55,
-        "targetLine": 55,
-        "reason": "checked-in command metadata is presentation-valid",
-        "mapped": false,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "`func globalHelp() (presentation.Document, error)` begins at cmd/awf/main.go:48; its branch `return presentation.Document{}, err` at cmd/awf/main.go:55 follows `if err != nil {` at cmd/awf/main.go:54. That flow establishes checked-in command metadata is presentation-valid, making the defensive return unreachable without an invariant breach."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/main.go",
-        "line": 58,
-        "targetLine": 58,
-        "reason": "checked-in command metadata is presentation-valid",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "`func globalHelp() (presentation.Document, error)` begins at cmd/awf/main.go:48; its branch `if err != nil {` at cmd/awf/main.go:58 follows `usage, err := presentation.NewList(\"usage\", mustValues(\"awf <command> [flags]\")...)` at cmd/awf/main.go:57. That flow establishes checked-in command metadata is presentation-valid, making the defensive return unreachable without an invariant breach."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/main.go",
-        "line": 59,
-        "targetLine": 59,
-        "reason": "checked-in command metadata is presentation-valid",
-        "mapped": false,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `return presentation.Document{}, err` at cmd/awf/main.go:59 is `if err != nil {` (cmd/awf/main.go:58). Within `func globalHelp() (presentation.Document, error)` at cmd/awf/main.go:48, source review establishes checked-in command metadata is presentation-valid; this is therefore a closed-state fail-closed branch."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/main.go",
-        "line": 63,
-        "targetLine": 63,
-        "reason": "checked-in command metadata is presentation-valid",
-        "mapped": false,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "At cmd/awf/main.go:63, `return presentation.Document{}, err` is guarded by the preceding `if err != nil {` at cmd/awf/main.go:62; in `func globalHelp() (presentation.Document, error)` (cmd/awf/main.go:48), the predecessor invariant is checked-in command metadata is presentation-valid. Only violation of that closed state reaches this guard."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/main.go",
-        "line": 66,
-        "targetLine": 66,
-        "reason": "checked-in command metadata is presentation-valid",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "At cmd/awf/main.go:66, `if err != nil {` is guarded by the preceding `related, err := presentation.NewList(\"related commands\", mustValues(\"awf <command> --help\")...)` at cmd/awf/main.go:65; in `func globalHelp() (presentation.Document, error)` (cmd/awf/main.go:48), the predecessor invariant is checked-in command metadata is presentation-valid. Only violation of that closed state reaches this guard."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/main.go",
-        "line": 67,
-        "targetLine": 67,
-        "reason": "checked-in command metadata is presentation-valid",
-        "mapped": false,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "`func globalHelp() (presentation.Document, error)` begins at cmd/awf/main.go:48; its branch `return presentation.Document{}, err` at cmd/awf/main.go:67 follows `if err != nil {` at cmd/awf/main.go:66. That flow establishes checked-in command metadata is presentation-valid, making the defensive return unreachable without an invariant breach."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/main.go",
-        "line": 70,
-        "targetLine": 70,
-        "reason": "checked-in command metadata is presentation-valid",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "`func globalHelp() (presentation.Document, error)` begins at cmd/awf/main.go:48; its branch `if err != nil {` at cmd/awf/main.go:70 follows `section, err := presentation.NewSection(\"help\", usage, commands, related)` at cmd/awf/main.go:69. That flow establishes checked-in command metadata is presentation-valid, making the defensive return unreachable without an invariant breach."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/main.go",
-        "line": 71,
-        "targetLine": 71,
-        "reason": "checked-in command metadata is presentation-valid",
-        "mapped": false,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `return presentation.Document{}, err` at cmd/awf/main.go:71 is `if err != nil {` (cmd/awf/main.go:70). Within `func globalHelp() (presentation.Document, error)` at cmd/awf/main.go:48, source review establishes checked-in command metadata is presentation-valid; this is therefore a closed-state fail-closed branch."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/main.go",
-        "line": 86,
-        "targetLine": 86,
-        "reason": "fixed label/schema and commandRecords always produce arity-two records",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at cmd/awf/main.go:86 is `group, err := presentation.NewRecordGroup(\"commands\", []string{\"command\", \"summary\"}, records...)` (cmd/awf/main.go:85). Within `func commandSections(specs []clispec.Command) (presentation.Section, error)` at cmd/awf/main.go:80, source review establishes fixed label/schema and commandRecords always produce arity-two records; this is therefore a closed-state fail-closed branch."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/main.go",
-        "line": 109,
-        "targetLine": 109,
-        "reason": "fixed label/schema and commandRecords always produce arity-two records",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "`func commandSection(spec clispec.Command) (presentation.Section, error)` begins at cmd/awf/main.go:103; its branch `if err != nil {` at cmd/awf/main.go:109 follows `group, err := presentation.NewRecordGroup(\"commands\", []string{\"command\", \"summary\"}, records...)` at cmd/awf/main.go:108. That flow establishes fixed label/schema and commandRecords always produce arity-two records, making the defensive return unreachable without an invariant breach."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/main.go",
-        "line": 145,
-        "targetLine": 145,
-        "reason": "checked-in command metadata is presentation-valid",
-        "mapped": false,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "`func commandRecord(spec clispec.Command) (presentation.Record, error)` begins at cmd/awf/main.go:142; its branch `return presentation.Record{}, err` at cmd/awf/main.go:145 follows `if err != nil {` at cmd/awf/main.go:144. That flow establishes checked-in command metadata is presentation-valid, making the defensive return unreachable without an invariant breach."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/main.go",
-        "line": 149,
-        "targetLine": 149,
-        "reason": "checked-in command metadata is presentation-valid",
-        "mapped": false,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `return presentation.Record{}, err` at cmd/awf/main.go:149 is `if err != nil {` (cmd/awf/main.go:148). Within `func commandRecord(spec clispec.Command) (presentation.Record, error)` at cmd/awf/main.go:142, source review establishes checked-in command metadata is presentation-valid; this is therefore a closed-state fail-closed branch."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/main.go",
-        "line": 164,
-        "targetLine": 164,
-        "reason": "static clispec literals are constructor-valid",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at cmd/awf/main.go:164 is `document, err := spec.Help.Document(\"awf \"+path, spec.Summary)` (cmd/awf/main.go:163). Within `func renderHelp(dst io.Writer, spec clispec.Command, path string) error` at cmd/awf/main.go:162, source review establishes static clispec literals are constructor-valid; this is therefore a closed-state fail-closed branch."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/main.go",
-        "line": 190,
-        "targetLine": 190,
-        "reason": "validated inputs and fixed presentation grammar make this constructor path unreachable",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "`func run(args []string, stdout, stderr io.Writer) int` begins at cmd/awf/main.go:173; its branch `if err := renderHelp(stdout, spec, strings.Join(args[2:], \" \")); err != nil {` at cmd/awf/main.go:190 follows `}` at cmd/awf/main.go:189. That flow establishes validated inputs and fixed presentation grammar make this constructor path unreachable, making the defensive return unreachable without an invariant breach."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/main.go",
-        "line": 196,
-        "targetLine": 196,
-        "reason": "validated inputs and fixed presentation grammar make this constructor path unreachable",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "`func run(args []string, stdout, stderr io.Writer) int` begins at cmd/awf/main.go:173; its branch `if err != nil {` at cmd/awf/main.go:196 follows `document, err := globalHelp()` at cmd/awf/main.go:195. That flow establishes validated inputs and fixed presentation grammar make this constructor path unreachable, making the defensive return unreachable without an invariant breach."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/main.go",
-        "line": 199,
-        "targetLine": 199,
-        "reason": "validated inputs and fixed presentation grammar make this constructor path unreachable",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "`func run(args []string, stdout, stderr io.Writer) int` begins at cmd/awf/main.go:173; its branch `if err := presentation.Render(stdout, document); err != nil {` at cmd/awf/main.go:199 follows `}` at cmd/awf/main.go:198. That flow establishes validated inputs and fixed presentation grammar make this constructor path unreachable, making the defensive return unreachable without an invariant breach."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/main.go",
-        "line": 213,
-        "targetLine": 213,
-        "reason": "validated inputs and fixed presentation grammar make this constructor path unreachable",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "At cmd/awf/main.go:213, `if err := renderHelp(stdout, cmd, strings.TrimSpace(top.Name+\" \"+sub)); err != nil {` is guarded by the preceding `if wantsHelp(rest) {` at cmd/awf/main.go:212; in `func run(args []string, stdout, stderr io.Writer) int` (cmd/awf/main.go:173), the predecessor invariant is validated inputs and fixed presentation grammar make this constructor path unreachable. Only violation of that closed state reaches this guard."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/main.go",
-        "line": 314,
-        "targetLine": 314,
-        "reason": "guardProjectState just opened the same unchanged staged repository in this command stage",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "In `func run(args []string, stdout, stderr io.Writer) int`, guardProjectState has just completed successfully with the same context, root, and staged selection before `requireCommandCapability` calls `stagedTree` at cmd/awf/main.go:313. Reaching the error arm at line 314 requires the already-opened repository to become unavailable concurrently between those two observations; ordinary deterministic inputs cannot induce it."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/main.go",
-        "line": 409,
-        "targetLine": 409,
-        "reason": "projectGuardState loaded and validated this unchanged lock",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "At cmd/awf/main.go:409, `if stateErr != nil {` is guarded by the preceding `state, stateErr := lock.AuthorityState()` at cmd/awf/main.go:402; in `func guardProjectState(ctx context.Context, root string, cmd clispec.Command, top clispec.Command, sub string, inv invocation) error` (cmd/awf/main.go:347), the predecessor invariant is projectGuardState loaded and validated this unchanged lock. Only violation of that closed state reaches this guard."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/main.go",
-        "line": 423,
-        "targetLine": 423,
-        "reason": "AuthorityState returns only the closed enum values",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `default:` at cmd/awf/main.go:423 is `return nil` (cmd/awf/main.go:416). Within `func guardProjectState(ctx context.Context, root string, cmd clispec.Command, top clispec.Command, sub string, inv invocation) error` at cmd/awf/main.go:347, source review establishes AuthorityState returns only the closed enum values; this is therefore a closed-state fail-closed branch."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/main.go",
-        "line": 551,
-        "targetLine": 551,
-        "reason": "Prose validated the value and status is a fixed grammar-valid label",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at cmd/awf/main.go:551 is `field, err := presentation.NewField(\"status\", value)` (cmd/awf/main.go:541). Within `func writeStatus(stdout io.Writer, status string) error` at cmd/awf/main.go:536, source review establishes Prose validated the value and status is a fixed grammar-valid label; this is therefore a closed-state fail-closed branch."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/main.go",
-        "line": 555,
-        "targetLine": 555,
-        "reason": "the validated Field is always a valid root node",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "At cmd/awf/main.go:555, `if err != nil {` is guarded by the preceding `document, err := presentation.NewDocument(field)` at cmd/awf/main.go:545; in `func writeStatus(stdout io.Writer, status string) error` (cmd/awf/main.go:536), the predecessor invariant is the validated Field is always a valid root node. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
@@ -14935,18 +14938,6 @@
     },
     {
       "directive": {
-        "file": "internal/manifest/manifest.go",
-        "line": 181,
-        "targetLine": 181,
-        "reason": "Lock contains only JSON-supported fields",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `b, err := json.MarshalIndent(l, \"\", \"  \")` at internal/manifest/manifest.go:182 feeds `if err != nil {` at internal/manifest/manifest.go:181 in `func (l *Lock) Marshal() ([]byte, error)` (internal/manifest/manifest.go:178). Its concrete fault condition is Lock contains only JSON-supported fields, so no safe portable production input induces this error path."
-    },
-    {
-      "directive": {
         "file": "internal/memorycite/presentation.go",
         "line": 15,
         "targetLine": 15,
@@ -15460,18 +15451,6 @@
       },
       "class": "revalidated-impossible-state",
       "evidence": "At internal/project/gatedcommands.go:30, `if err != nil {` is guarded by the preceding `step, err := presentation.Literal(\"set profile: full in .awf/config.yaml and run awf render\")` at internal/project/gatedcommands.go:29; in `func (e *CapabilityError) Diagnostic() (presentation.Diagnostic, error)` (internal/project/gatedcommands.go:20), the predecessor invariant is the fixed recovery instruction is a valid literal. Only violation of that closed state reaches this guard."
-    },
-    {
-      "directive": {
-        "file": "internal/project/project.go",
-        "line": 252,
-        "targetLine": 252,
-        "reason": "configured-target validation succeeded and KnownTargets is exhaustively backed by built-in descriptor tests",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "`func (l *Loader) OpenForOperation(ctx context.Context, root string) (*ProjectState, *config.Config, error)` begins at internal/project/project.go:274; its branch `if err != nil {` at internal/project/project.go:292 follows `targets, err := resolveTargets(KnownTargets())` at internal/project/project.go:291. That flow establishes configured-target validation succeeded and KnownTargets is exhaustively backed by built-in descriptor tests, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
@@ -17479,78 +17458,6 @@
     },
     {
       "directive": {
-        "file": "internal/upgrade/operation.go",
-        "line": 75,
-        "targetLine": 75,
-        "reason": "Recover validates journal evidence before producing its Outcome, so its terminal evidence always lowers to literals",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "`func RecoverOperation(root string, present ProjectPresent) (OperationOutcome, error)` begins at internal/upgrade/operation.go:61; its branch `if err != nil {` at internal/upgrade/operation.go:66 follows `mutation, err := outcome.RecoveredMutation()` at internal/upgrade/operation.go:69. That flow establishes Recover validates journal evidence before producing its Outcome, so its terminal evidence always lowers to literals, making the defensive return unreachable without an invariant breach."
-    },
-    {
-      "directive": {
-        "file": "internal/upgrade/operation.go",
-        "line": 79,
-        "targetLine": 79,
-        "reason": "RecoveredMutation supplies the fixed valid status and only validated journal literals",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/upgrade/operation.go:79 is `document, err := mutation.Document()` (internal/upgrade/operation.go:73). Within `func RecoverOperation(root string, present ProjectPresent) (OperationOutcome, error)` at internal/upgrade/operation.go:61, source review establishes RecoveredMutation supplies the fixed valid status and only validated journal literals; this is therefore a closed-state fail-closed branch."
-    },
-    {
-      "directive": {
-        "file": "internal/upgrade/operation.go",
-        "line": 232,
-        "targetLine": 232,
-        "reason": "LoadLiveOptional parses and validates the unchanged authority construction immediately above",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "The directive at internal/upgrade/operation.go:232 follows the validated closed invariant stated in source: LoadLiveOptional parses and validates the unchanged authority construction immediately above. Its error arm requires an invariant breach, not a supported input."
-    },
-    {
-      "directive": {
-        "file": "internal/upgrade/operation.go",
-        "line": 242,
-        "targetLine": 242,
-        "reason": "FinalUpgrade constructs its terminal evidence from validated transaction operations",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "Within Run, the branch at internal/upgrade/operation.go:242 follows outcome.CompletedMutation after FinalUpgrade returned validated transaction evidence. That closed construction makes the defensive propagation arm unreachable without an invariant breach."
-    },
-    {
-      "directive": {
-        "file": "internal/upgrade/operation.go",
-        "line": 246,
-        "targetLine": 246,
-        "reason": "CompletedMutation supplies the fixed valid status and only validated journal literals",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "Within Run, the branch at internal/upgrade/operation.go:246 follows mutation.Document after CompletedMutation supplied fixed valid status and validated journal literals. That closed construction makes the defensive propagation arm unreachable without an invariant breach."
-    },
-    {
-      "directive": {
-        "file": "internal/upgrade/operation.go",
-        "line": 251,
-        "targetLine": 251,
-        "reason": "AuthorityState returns only Bridge or Permanent when its validation succeeds",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "Within Run, the default at internal/upgrade/operation.go:251 follows AuthorityState validation, whose closed result set is Bridge or Permanent. Reaching the default requires an invariant breach."
-    },
-    {
-      "directive": {
         "file": "internal/upgrade/operation_presentation.go",
         "line": 83,
         "targetLine": 83,
@@ -17608,42 +17515,6 @@
       },
       "class": "revalidated-impossible-state",
       "evidence": "`func upgradeRemedies(changed bool) ([]presentation.Value, error)` begins at internal/upgrade/presentation.go:89; its branch `if err != nil {` at internal/upgrade/presentation.go:101 follows `value, err := presentation.Prose(text)` at internal/upgrade/presentation.go:100. That flow establishes closed remedy literals are presentation-valid, making the defensive return unreachable without an invariant breach."
-    },
-    {
-      "directive": {
-        "file": "internal/upgrade/upgrade.go",
-        "line": 78,
-        "targetLine": 78,
-        "reason": "Verify sealed the inputs, so only a concurrent filesystem change can invalidate cutover planning here",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "FinalUpgrade verifies the sealed bridge inputs before cutoverOperationsWith; the planning error arm can then require only a concurrent filesystem or namespace change and remains fail-closed."
-    },
-    {
-      "directive": {
-        "file": "internal/upgrade/upgrade.go",
-        "line": 97,
-        "targetLine": 97,
-        "reason": "the lock marshals cleanly; see manifest.Marshal",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "cutoverOperationsWith marshals the already validated manifest lock model, whose fields are all JSON-representable; this defensive error arm remains closed."
-    },
-    {
-      "directive": {
-        "file": "internal/upgrade/upgrade.go",
-        "line": 115,
-        "targetLine": 115,
-        "reason": "the two-op cutover plan is well-formed by construction",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "cutoverOperationsWith constructs one approval removal followed by the lock replacement, so validateOperations can fail only if that closed construction changes incorrectly."
     },
     {
       "directive": {

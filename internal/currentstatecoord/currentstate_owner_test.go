@@ -73,16 +73,15 @@ func TestContextPreparationUsesSnapshotConfigForOperationState(t *testing.T) {
 
 func TestContextPreparationLockIsDefensive(t *testing.T) {
 	root := t.TempDir()
-	lock := &manifest.Lock{Files: map[string]manifest.Entry{"generated": {}}, BridgeAttestation: &manifest.BridgeAttestation{LegacyADRGaps: []int{1}}}
+	lock := &manifest.Lock{Files: map[string]manifest.Entry{"generated": {}}}
 	prep, err := newContextPreparation(contextState(root), &config.Config{Profile: catalog.ProfileFull}, ownerTree(t), lock)
 	if err != nil {
 		t.Fatal(err)
 	}
 	first := prep.Lock()
 	first.Files["mutated"] = manifest.Entry{}
-	first.BridgeAttestation.LegacyADRGaps[0] = 9
 	fresh := prep.Lock()
-	if _, ok := fresh.Files["mutated"]; ok || fresh.BridgeAttestation.LegacyADRGaps[0] != 1 {
+	if _, ok := fresh.Files["mutated"]; ok {
 		t.Fatalf("context preparation lock aliases caller: %#v", fresh)
 	}
 }

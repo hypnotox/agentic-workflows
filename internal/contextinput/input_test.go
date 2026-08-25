@@ -14,7 +14,7 @@ import (
 func TestNewDefensivelyCopiesMutableSemanticProjections(t *testing.T) {
 	layout := Layout{Docs: map[string]string{"guide": "docs/guide.md"}, Singletons: map[string]string{"guide": "docs/guide.md"}}
 	plans := []plan.Plan{{Phases: []plan.Phase{{Tasks: []plan.Task{{Fields: plan.TaskFields{Paths: []plan.PathEntry{{Value: "a"}}, Applying: []plan.DecisionRef{{ADR: "0001"}}, Context: []plan.DecisionRef{{ADR: "0002"}}}}}, Advances: []string{"advance"}, Completes: []string{"complete"}}}}}
-	lock := &manifest.Lock{Files: map[string]manifest.Entry{"generated.md": {}}, BridgeAttestation: &manifest.BridgeAttestation{LegacyADRGaps: []int{1}}}
+	lock := &manifest.Lock{Files: map[string]manifest.Entry{"generated.md": {}}}
 	declarations := []outputplan.Declaration{outputplan.NewDeclaration("docs/guide.md", "guide", nil, nil, nil)}
 	input := New(layout, currentstate.Loaded{}, NewPlanContext(plans, adr.Corpus{}), nil, lock, declarations, []string{"eligible"}, []string{"ignore"})
 
@@ -25,11 +25,10 @@ func TestNewDefensivelyCopiesMutableSemanticProjections(t *testing.T) {
 	plans[0].Phases[0].Tasks[0].Fields.Context[0].ADR = "mutated"
 	plans[0].Phases[0].Advances[0], plans[0].Phases[0].Completes[0] = "mutated", "mutated"
 	lock.Files["mutated"] = manifest.Entry{}
-	lock.BridgeAttestation.LegacyADRGaps[0] = 9
 	declarations[0] = outputplan.NewDeclaration("mutated", "mutated", nil, nil, nil)
 
 	view := input.Snapshot()
-	if view.Layout.Docs["guide"] != "docs/guide.md" || view.Layout.Singletons["guide"] != "docs/guide.md" || view.PlanState.Plans[0].Phases[0].Tasks[0].Fields.Paths[0].Value != "a" || view.PlanState.Plans[0].Phases[0].Tasks[0].Fields.Applying[0].ADR != "0001" || view.PlanState.Plans[0].Phases[0].Tasks[0].Fields.Context[0].ADR != "0002" || view.PlanState.Plans[0].Phases[0].Advances[0] != "advance" || view.PlanState.Plans[0].Phases[0].Completes[0] != "complete" || view.Lock.Files["mutated"] != (manifest.Entry{}) || view.Lock.BridgeAttestation.LegacyADRGaps[0] != 1 || view.Declarations[0].Path() != "docs/guide.md" {
+	if view.Layout.Docs["guide"] != "docs/guide.md" || view.Layout.Singletons["guide"] != "docs/guide.md" || view.PlanState.Plans[0].Phases[0].Tasks[0].Fields.Paths[0].Value != "a" || view.PlanState.Plans[0].Phases[0].Tasks[0].Fields.Applying[0].ADR != "0001" || view.PlanState.Plans[0].Phases[0].Tasks[0].Fields.Context[0].ADR != "0002" || view.PlanState.Plans[0].Phases[0].Advances[0] != "advance" || view.PlanState.Plans[0].Phases[0].Completes[0] != "complete" || view.Lock.Files["mutated"] != (manifest.Entry{}) || view.Declarations[0].Path() != "docs/guide.md" {
 		t.Fatalf("input retained mutable caller state: %#v", view)
 	}
 	eligible, ignores := []string{"eligible"}, []string{"ignore"}

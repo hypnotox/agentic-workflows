@@ -103,29 +103,6 @@ func TestRunRejectsAbsentProjectAndAuthority(t *testing.T) {
 	}
 }
 
-func TestRunRoutesBridgeAuthorityToFinalCutover(t *testing.T) {
-	root, head, digest := sealedRepo(t)
-	finalLock(t, root, sealedAtt(head, digest))
-	called := false
-	outcome, err := Run(testContext(t), root, func(context.Context, string) (presentation.Mutation, error) {
-		called = true
-		return presentation.Mutation{}, nil
-	}, func(context.Context, string) error { called = true; return nil }, func(string) (bool, error) { return true, nil }, testLiveSchemaRange, func(string) (string, int, error) { return "ok", 46, nil }, nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if called {
-		t.Fatal("bridge cutover ran ordinary migration dependencies")
-	}
-	var rendered strings.Builder
-	if err := presentation.Render(&rendered, outcome.Document); err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(rendered.String(), "status: upgrade completed") {
-		t.Fatalf("presentation = %q", rendered.String())
-	}
-}
-
 func TestRunSequencingAndCurrentSchemaPresentation(t *testing.T) {
 	root := t.TempDir()
 	operationLock(t, root)

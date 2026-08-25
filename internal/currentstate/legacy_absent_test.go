@@ -40,9 +40,7 @@ var legacyContextFields = []string{"Governing", "Related", "Background", "Pitfal
 // never the raw string), and the closed-tree sweep protects the file while it
 // still exists. A new permanent parser, claim consumer, or runtime path for it is
 // exactly what current-state authority forbids after cutover.
-var migrationApprovalSeams = []string{
-	"internal/upgrade/digest.go",
-}
+var migrationApprovalSeams = []string{}
 
 // bridgeImportPath is the deleted cross-schema bridge package; no production file
 // may import it (its inventory, readiness, snapshot, and approval parsers went

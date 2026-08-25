@@ -72,11 +72,11 @@ func RecoverOperation(root string, present ProjectPresent) (OperationOutcome, er
 		return OperationOutcome{}, newJournalFailure("recovery has not reached terminal state", outcome, err)
 	}
 	mutation, err := outcome.RecoveredMutation()
-	if err != nil { // coverage-ignore: Recover validates journal evidence before producing its Outcome, so its terminal evidence always lowers to literals
+	if err != nil {
 		return OperationOutcome{}, err
 	}
 	document, err := mutation.Document()
-	if err != nil { // coverage-ignore: RecoveredMutation supplies the fixed valid status and only validated journal literals
+	if err != nil {
 		return OperationOutcome{}, err
 	}
 	return OperationOutcome{Document: document}, nil
@@ -228,28 +228,8 @@ func Run(ctx context.Context, root string, sync Sync, gate Gate, present Project
 	if err != nil {
 		return OperationOutcome{}, err
 	}
-	authority, err := lock.AuthorityState()
-	if err != nil { // coverage-ignore: LoadLiveOptional parses and validates the unchanged authority construction immediately above
-		return OperationOutcome{}, fmt.Errorf("invalid authority: restore .awf/awf.lock from version control; if a cutover journal exists run `awf upgrade --recover`: %w", err)
-	}
-	switch authority {
-	case manifest.AuthorityBridge:
-		outcome, finalErr := FinalUpgrade(ctx, root, lock)
-		if finalErr != nil {
-			return OperationOutcome{}, newJournalFailure("upgrade has not reached terminal state", outcome, finalErr)
-		}
-		mutation, err := outcome.CompletedMutation()
-		if err != nil { // coverage-ignore: FinalUpgrade constructs its terminal evidence from validated transaction operations
-			return OperationOutcome{}, err
-		}
-		document, err := mutation.Document()
-		if err != nil { // coverage-ignore: CompletedMutation supplies the fixed valid status and only validated journal literals
-			return OperationOutcome{}, err
-		}
-		return OperationOutcome{Document: document}, nil
-	case manifest.AuthorityPermanent:
-	default: // coverage-ignore: AuthorityState returns only Bridge or Permanent when its validation succeeds
-		return OperationOutcome{}, errors.New("invalid authority: restore .awf/awf.lock from version control")
+	if _, err := lock.AuthorityState(); err != nil {
+		return OperationOutcome{}, fmt.Errorf("invalid authority: restore .awf/awf.lock from version control; if a current-state-upgrade journal exists run `awf upgrade --recover`: %w", err)
 	}
 	migration, err := migrate(ctx, root)
 	applied, changes := migration.Applied, migration.Changes
