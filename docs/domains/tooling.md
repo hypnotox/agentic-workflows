@@ -37,5 +37,5 @@ The gated `check` family is organized by subject universe. `check repo` aggregat
 - [Project license](../topics/tooling/project-license.md): The repository license text, public references, and packaged-license contract.
 - [Quality gates](../topics/tooling/quality-gates.md): Coverage, prose, working-memory citations, and the command-runner gate machinery.
 - [Test infrastructure](../topics/tooling/test-infrastructure.md): Shared internal test-support infrastructure and its dependency boundary.
-- [Upgrade runtime](../topics/tooling/upgrade-runtime.md): The current-state migration, attestation, and journaled cutover runtime.
+- [Upgrade runtime](../topics/tooling/upgrade-runtime.md): The supported live-schema migration and journaled recovery runtime.
 

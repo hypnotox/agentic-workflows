@@ -1,4 +1,4 @@
-The upgrade package runs the current-state migration: it verifies the bridge seal, journals the cutover, and writes the permanent lock. The same journal also carries any schema advance that discards resident state, recording each proven resident as a quarantine-by-rename operation alongside the tracked file images, so a resident is restored whole while the transaction can still fail and discarded only once the final lock replacement has committed it. The claims below capture the current upgrade-runtime contracts.
+The upgrade package plans supported live-schema migrations and commits them through a root-confined journal with the replacement lock last. When a schema advance discards resident state, the journal records each proven resident as a quarantine-by-rename operation alongside tracked file images, so failure restores the resident whole and successful cleanup discards it only after the lock commits. The claims below capture the current upgrade-runtime contracts.
 
 ## Claims
 

@@ -469,6 +469,19 @@
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
+          "line": 312,
+          "column": 21
+        },
+        "end": {
+          "line": 314,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "The command guard successfully opened the same staged repository immediately before capability selection; this defensive return requires concurrent repository disappearance between the two observations and is retained fail-closed rather than fault-hooked.",
+      "movedFrom": {
+        "file": "cmd/awf/main.go",
+        "start": {
           "line": 314,
           "column": 21
         },
@@ -477,8 +490,7 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "The command guard successfully opened the same staged repository immediately before capability selection; this defensive return requires concurrent repository disappearance between the two observations and is retained fail-closed rather than fault-hooked."
+      }
     },
     {
       "identity": {
@@ -9289,11 +9301,11 @@
       "identity": {
         "file": "internal/upgrade/journal.go",
         "start": {
-          "line": 276,
+          "line": 274,
           "column": 18
         },
         "end": {
-          "line": 278,
+          "line": 276,
           "column": 5
         },
         "statements": 1
@@ -9302,18 +9314,31 @@
       "movedFrom": {
         "file": "internal/upgrade/journal.go",
         "start": {
-          "line": 420,
-          "column": 16
+          "line": 276,
+          "column": 18
         },
         "end": {
-          "line": 422,
-          "column": 3
+          "line": 278,
+          "column": 5
         },
         "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/upgrade/journal.go",
+        "start": {
+          "line": 529,
+          "column": 48
+        },
+        "end": {
+          "line": 531,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Transaction planners validate the operation set before the bound commit owner receives it; this defensive revalidation arm remains fail-closed.",
+      "movedFrom": {
         "file": "internal/upgrade/journal.go",
         "start": {
           "line": 531,
@@ -9324,30 +9349,17 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Transaction planners validate the operation set before the bound commit owner receives it; this defensive revalidation arm remains fail-closed.",
-      "movedFrom": {
-        "file": "internal/upgrade/journal.go",
-        "start": {
-          "line": 519,
-          "column": 48
-        },
-        "end": {
-          "line": 521,
-          "column": 3
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
         "file": "internal/upgrade/journal.go",
         "start": {
-          "line": 643,
+          "line": 641,
           "column": 2
         },
         "end": {
-          "line": 643,
+          "line": 641,
           "column": 16
         },
         "statements": 1
@@ -9356,11 +9368,11 @@
       "movedFrom": {
         "file": "internal/upgrade/journal.go",
         "start": {
-          "line": 631,
+          "line": 643,
           "column": 2
         },
         "end": {
-          "line": 631,
+          "line": 643,
           "column": 16
         },
         "statements": 1
@@ -9946,6 +9958,19 @@
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
+          "line": 403,
+          "column": 3
+        },
+        "end": {
+          "line": 403,
+          "column": 142
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage.",
+      "movedFrom": {
+        "file": "cmd/awf/main.go",
+        "start": {
           "line": 405,
           "column": 3
         },
@@ -9954,8 +9979,7 @@
           "column": 142
         },
         "statements": 1
-      },
-      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+      }
     },
     {
       "identity": {
@@ -9976,6 +10000,19 @@
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
+          "line": 405,
+          "column": 49
+        },
+        "end": {
+          "line": 407,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage.",
+      "movedFrom": {
+        "file": "cmd/awf/main.go",
+        "start": {
           "line": 407,
           "column": 49
         },
@@ -9984,11 +10021,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+      }
     },
     {
       "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 427,
+          "column": 64
+        },
+        "end": {
+          "line": 429,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage.",
+      "movedFrom": {
         "file": "cmd/awf/main.go",
         "start": {
           "line": 429,
@@ -9999,11 +10048,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+      }
     },
     {
       "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 440,
+          "column": 16
+        },
+        "end": {
+          "line": 442,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage.",
+      "movedFrom": {
         "file": "cmd/awf/main.go",
         "start": {
           "line": 442,
@@ -10014,8 +10075,7 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+      }
     },
     {
       "identity": {
@@ -10036,6 +10096,19 @@
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
+          "line": 537,
+          "column": 16
+        },
+        "end": {
+          "line": 539,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage.",
+      "movedFrom": {
+        "file": "cmd/awf/main.go",
+        "start": {
           "line": 539,
           "column": 16
         },
@@ -10044,11 +10117,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+      }
     },
     {
       "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 541,
+          "column": 16
+        },
+        "end": {
+          "line": 543,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage.",
+      "movedFrom": {
         "file": "cmd/awf/main.go",
         "start": {
           "line": 543,
@@ -10059,8 +10144,7 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+      }
     },
     {
       "identity": {
@@ -17423,8 +17507,8 @@
     {
       "directive": {
         "file": "internal/upgrade/journal.go",
-        "line": 276,
-        "targetLine": 276,
+        "line": 274,
+        "targetLine": 274,
         "reason": "Journal holds only JSON-representable scalars, slices, and byte content",
         "mapped": true,
         "executed": false
@@ -17435,20 +17519,20 @@
     {
       "directive": {
         "file": "internal/upgrade/journal.go",
-        "line": 531,
-        "targetLine": 531,
-        "reason": "the final-upgrade planner validated the same set before this call",
+        "line": 529,
+        "targetLine": 529,
+        "reason": "the supported-migration planner validated the same set before this call",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "commitTransactionBound receives operation sets already constructed and validated by the migration or cutover planner; its repeated validation is a fail-closed invariant check."
+      "evidence": "commitTransactionBound receives operation sets already constructed and validated by the migration or supported-migration planner; its repeated validation is a fail-closed invariant check."
     },
     {
       "directive": {
         "file": "internal/upgrade/journal.go",
-        "line": 643,
-        "targetLine": 643,
+        "line": 641,
+        "targetLine": 641,
         "reason": "no caller provides a changed set without its path",
         "mapped": true,
         "executed": false

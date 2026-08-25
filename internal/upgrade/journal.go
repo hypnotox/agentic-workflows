@@ -1,9 +1,7 @@
-// Package upgrade runs the permanent final current-state upgrade: it verifies
-// only the sealed facts of a bridge attestation and applies the cutover output
-// plan through a recoverable journal. It ships no legacy inventory, approval
-// parser, or cross-schema adapter; the sealed attestation is the sole trust
-// anchor for the legacy adjudication the current-state binary can no longer
-// recompute.
+// Package upgrade plans supported live-schema migrations and applies their
+// output through a root-confined recoverable journal. The journal publishes the
+// replacement lock last and preserves rollback, quarantine, postcommit cleanup,
+// and recovery without interpreting historical authority.
 package upgrade
 
 import (
@@ -26,7 +24,7 @@ const JournalVersion = 1
 
 // Journal phases. A precommit phase (prepared, applying, rolling-back) has not
 // necessarily written the final lock; lock-committed marks the lock as the
-// sealed authority. Every valid phase blocks all project commands except
+// committed authority. Every valid phase blocks all project commands except
 // `awf upgrade --recover`.
 const (
 	phasePrepared      = "prepared"
@@ -36,9 +34,9 @@ const (
 )
 
 // gitRestorationGuidance is the deterministic escape hatch printed when a
-// journal is unusable: the tree must be restored from Git and the bridge
-// reinstalled rather than left half-migrated.
-const gitRestorationGuidance = "restore the working tree from Git (git restore + git clean) and reinstall the bridge release before retrying"
+// journal is unusable: restore the tree from Git before retrying from a
+// supported live source.
+const gitRestorationGuidance = "restore the working tree from Git (git restore + git clean) and retry from a supported live source"
 
 // Operation kinds. An empty kind is a file replacement, so every journal written
 // before resident quarantine existed keeps its exact meaning. A resident-tree
@@ -528,7 +526,7 @@ func committedChanged(j Journal, evidence []Evidence) []Evidence {
 }
 
 func commitTransactionBound(root string, ops []Operation, operation journalOperation) (Outcome, error) {
-	if err := validateOperations(ops); err != nil { // coverage-ignore: the final-upgrade planner validated the same set before this call
+	if err := validateOperations(ops); err != nil { // coverage-ignore: the supported-migration planner validated the same set before this call
 		return Outcome{}, err
 	}
 	j := Journal{Version: JournalVersion, Phase: phasePrepared, FinalLockSHA256: imageSHA(ops[len(ops)-1].Replacement), Operations: ops}

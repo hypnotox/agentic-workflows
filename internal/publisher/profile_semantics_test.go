@@ -179,7 +179,7 @@ func TestCoreOperationalReferenceScannerRejectsEveryArtifactClass(t *testing.T) 
 		".claude/skills/example-reviewing-impl/SKILL.md": "State changes",
 		".awf/hooks/commit-msg.sh":                       "governance workflow",
 		".pi/extensions/awf-subagents/index.ts":          "kind adr, plan, or code",
-		".awf/upgrade.sh":                                "current-state cutover",
+		".awf/upgrade.sh":                                "upgrade script mutation",
 		"docs/config-reference.md":                       "`./awf audit",
 	}
 	for path, mutation := range mutations {

@@ -1,4 +1,4 @@
 title: Upgrade runtime
-summary: The current-state migration, attestation, and journaled cutover runtime.
+summary: The supported live-schema migration and journaled recovery runtime.
 paths:
   - internal/upgrade/**

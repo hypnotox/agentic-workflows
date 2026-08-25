@@ -68,14 +68,14 @@ func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (
 			return initspec.Outcome{}, fmt.Errorf("invalid authority: restore .awf/awf.lock from version control: %w", err)
 		}
 		if !found {
-			return initspec.Outcome{}, errors.New("pre-tracking authority: use the bridge release to attest before initializing")
+			return initspec.Outcome{}, errors.New("pre-tracking authority: restore a supported permanent .awf/awf.lock from version control before initializing")
 		}
 		state, err := lock.AuthorityState()
 		if err != nil { // coverage-ignore: LoadOptional parsed and validated this unchanged lock immediately above
 			return initspec.Outcome{}, fmt.Errorf("invalid authority: restore .awf/awf.lock from version control: %w", err)
 		}
 		if state != manifest.AuthorityPermanent {
-			return initspec.Outcome{}, errors.New("pre-tracking authority: use the bridge release to attest before initializing")
+			return initspec.Outcome{}, errors.New("pre-tracking authority: restore a supported permanent .awf/awf.lock from version control before initializing")
 		}
 	}
 

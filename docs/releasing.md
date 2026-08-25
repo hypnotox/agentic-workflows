@@ -72,7 +72,7 @@ Prebuilt downloads are canonical; `go install` is the source fallback. The publi
 
 `.goreleaser.yaml` and workflow files are hand-maintained outside the awf render/lock set, like `.golangci.yml` and `./x`.
 
-## Adopter migration: current-state cutover
+## Adopter upgrade recovery
 
-Current-state cutover is a one-time adopter operation, not release work. The bridge release seals the prepared tree in `bridgeAttestation`; plain `awf upgrade` consumes the seal, verifies sealed HEAD and the post-normalization tree digest, deletes the approval file in a journaled transaction, permanently locks at `.awf/current-state-upgrade.journal`, and commits cutover last. It consumes, never produces, attestations and runs no project test or gate. For interruption, run `awf upgrade --recover`; if the journal is unusable, restore from Git, reinstall the bridge release, and retry.
+Adopter projects use permanent lock authority. A supported schema upgrade journals its mutations and publishes the replacement lock last. If `.awf/current-state-upgrade.journal` remains after interruption, run only `awf upgrade --recover`; precommit recovery restores prior bytes and residents, while postcommit recovery cleans transaction residue without rolling authority back. If the journal is unusable, restore the project from Git and retry from a supported source.
 

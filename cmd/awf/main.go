@@ -284,18 +284,16 @@ func newGitCommandContext() (context.Context, context.CancelFunc) {
 // Exemption is the resolved command's StateExempt property, not a name list, so
 // a group child carries it independently of its parent. Only `check staged
 // commit` remains exempt while bare `check` and both repo scan children are not,
-// which keeps the commit-msg hook working during a committed journal or an
-// attested lock (ADR-0159 Decision 5). The read-only init descriptor query
-// bypasses it too; outside an adopted tree it is
-// a no-op so config/context/topic keep their static fallback. Inside a tree:
+// which keeps the commit-msg hook working during a committed journal (ADR-0159
+// Decision 5). The read-only init descriptor query bypasses it too; outside an
+// adopted tree it is a no-op so config/context/topic keep their static fallback.
+// Inside a tree:
 //   - a valid journal permits only `awf upgrade --recover`; every other command
 //     refuses with a run-recover diagnostic;
 //   - a malformed journal refuses every mode, recovery included, with the
 //     Git-restoration guidance the journal loader carries;
-//   - with no journal, an attested lock permits only plain `awf upgrade` (the
-//     seal consumption this binary performs) and refuses everything else with a
-//     consume-the-attestation diagnostic; a would-be recovery with no journal is
-//     refused;
+//   - without a journal, complete permanent authority proceeds and a recovery
+//     request refuses because there is no journal;
 //   - a corrupt lock with no journal defers to the existing ADR-0076 refusal.
 func selectsStagedDrift(top clispec.Command, sub string) bool {
 	return top.Name == "check" && (sub == "staged" || sub == "staged drift")

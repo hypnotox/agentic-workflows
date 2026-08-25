@@ -444,9 +444,8 @@ func TestProjectGuardStateSurfacesControlStatErrors(t *testing.T) {
 }
 
 func TestCommandStateGuardAdmitsOnlyCompleteLiveAuthority(t *testing.T) {
-	t.Run("below-floor bridge is refused before authority dispatch", func(t *testing.T) {
+	t.Run("below-floor lock is refused before authority dispatch", func(t *testing.T) {
 		root := scaffoldProject(t)
-		attestLock(t, root)
 		lock, err := manifest.Load(config.LockPath(root))
 		if err != nil {
 			t.Fatal(err)

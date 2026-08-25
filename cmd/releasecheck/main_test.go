@@ -82,12 +82,6 @@ func TestRunFailsProjectLicense(t *testing.T) {
 	}
 }
 
-// TestMainClearsBridgeTranche proves the flipped sentinel is wired into
-// production main: the binary passes project.BridgeTrancheComplete (now true),
-// so it no longer emits the incomplete-tranche refusal. Other release checks may
-// still fail in an unreleased working tree, so this test asserts only that the
-// tranche message is gone.
-
 func TestRunPasses(t *testing.T) {
 	fsys := changelogFS("# Changelog\n\n## [Unreleased]\n\n## [" + project.Version + "] - 2026-07-08\n### Features\n- something\n")
 	code, out, errb := runOn(t, fsys)

@@ -200,11 +200,11 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 		}
 	} else {
 		if !found {
-			return nil, nil, nil, errors.New("pre-tracking authority: ordinary sync cannot create lock authority; use the bridge release to attest")
+			return nil, nil, nil, errors.New("pre-tracking authority: ordinary sync requires a supported permanent lock; restore .awf/awf.lock from version control")
 		}
 		state, stateErr := old.AuthorityState()
 		if stateErr != nil || state != manifest.AuthorityPermanent {
-			return nil, nil, nil, errors.New("pre-tracking authority: ordinary sync requires a permanent lock; use the bridge release to attest")
+			return nil, nil, nil, errors.New("pre-tracking authority: ordinary sync requires a supported permanent lock; restore .awf/awf.lock from version control")
 		}
 	}
 	preservedResidents, err := resident.InspectRoots(p.state.Roots().Resident)

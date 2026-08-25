@@ -3,11 +3,11 @@
 <!-- awf:template-source templates/topics/topic.md.tmpl -->
 # Upgrade runtime
 
-The current-state migration, attestation, and journaled cutover runtime.
+The supported live-schema migration and journaled recovery runtime.
 
 **Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/checkop/**`, `internal/clispec/**`, `internal/commitgateop/**`, `internal/commitmsg/**`, `internal/commitpolicy/**`, `internal/configop/**`, `internal/contextdelivery/**`, `internal/contextinput/**`, `internal/contextop/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/currentstatecoord/**`, `internal/domainop/**`, `internal/effort/**`, `internal/effortop/**`, `internal/evals/**`, `internal/filepublication/**`, `internal/filesystem/**`, `internal/git/**`, `internal/initop/**`, `internal/initspec/**`, `internal/localdocop/**`, `internal/memorycite/**`, `internal/projectlicense/**`, `internal/prosegate/**`, `internal/repositorycheck/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/topicop/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `internal/upgrade/**`. Both domain and topic selectors must match. Run `awf topic tooling/upgrade-runtime --coverage` for current applicable and owned paths and marker sites.
 
-The upgrade package runs the current-state migration: it verifies the bridge seal, journals the cutover, and writes the permanent lock. The same journal also carries any schema advance that discards resident state, recording each proven resident as a quarantine-by-rename operation alongside the tracked file images, so a resident is restored whole while the transaction can still fail and discarded only once the final lock replacement has committed it. The claims below capture the current upgrade-runtime contracts.
+The upgrade package plans supported live-schema migrations and commits them through a root-confined journal with the replacement lock last. When a schema advance discards resident state, the journal records each proven resident as a quarantine-by-rename operation alongside tracked file images, so failure restores the resident whole and successful cleanup discards it only after the lock commits. The claims below capture the current upgrade-runtime contracts.
 
 ## Claims
 

@@ -206,23 +206,6 @@ func writeValidJournal(t *testing.T, root, phase string, finalMatchesLock bool) 
 	}
 }
 
-// attestLock writes a bridge attestation into the project's lock so the guard
-// and the seal-consumption routing observe an attested lock. The sealed facts
-// are deliberately bogus: the tests assert only routing, not a passing seal.
-func attestLock(t *testing.T, root string) {
-	t.Helper()
-	lock, found, err := manifest.LoadOptional(config.LockPath(root))
-	if err != nil || !found {
-		t.Fatalf("load lock: %v found=%t", err, found)
-	}
-	lock = &manifest.Lock{
-		AWFVersion: lock.AWFVersion, SchemaVersion: lock.SchemaVersion, Files: lock.Files,
-	}
-	if err := lock.Save(config.LockPath(root)); err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestGuardValidJournalPermitsOnlyRecover(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
@@ -336,7 +319,7 @@ func TestValidJournalRecoveryRollsBackInterrupted(t *testing.T) {
 		t.Fatal(err)
 	}
 	info, _ := os.Stat(lockPath)
-	final := append(append([]byte{}, lockBytes...), []byte("\n# attested\n")...)
+	final := append(append([]byte{}, lockBytes...), []byte("\n# changed\n")...)
 	prepared := filepath.Join(root, "prepared.txt")
 	if err := os.WriteFile(prepared, []byte("new"), 0o644); err != nil {
 		t.Fatal(err)

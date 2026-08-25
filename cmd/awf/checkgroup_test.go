@@ -188,10 +188,9 @@ func TestCheckProseRefusesOnSchemaAheadProject(t *testing.T) {
 	}
 }
 
-// The per-child project-state exemption: the three hook-wired children stay
-// runnable under a committed current-state journal and under an attested lock,
-// where bare check refuses. Without this a commit-msg hook would refuse to
-// validate a message mid-upgrade.
+// The per-child project-state exemption keeps the hook-wired commit child
+// runnable under a committed current-state journal, where bare check refuses.
+// Without this a commit-msg hook would refuse to validate a message mid-upgrade.
 
 // The two new entry points surface their own failures: a drifted rendered file
 // and a current-state finding each exit non-zero with a count-naming error.
@@ -351,8 +350,21 @@ func TestHelpListsCheckChildren(t *testing.T) {
 func TestCheckExemptChildrenRunUnderGuardedProjectState(t *testing.T) {
 	root := scaffoldProject(t)
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "current-state-upgrade.journal"), `{"version":1,"phase":"prepared","finalLockSHA256":"sha256:x","operations":[{"path":".awf/awf.lock","prior":{"present":false,"mode":0,"content":null},"replacement":{"present":false,"mode":0,"content":null}}]}`)
+	repo := gitfixture.At(root)
+	gitfixture.AddAll(t, repo)
+
 	var out, errb bytes.Buffer
-	if code := runAt(t, root, []string{"awf", "check", "staged", "commit", filepath.Join(root, "message")}, &out, &errb); code == 0 && strings.Contains(errb.String(), "current-state upgrade journal") {
-		t.Fatal("commit child was blocked by the journal guard")
+	if code := runAt(t, root, []string{"awf", "check", "staged"}, &out, &errb); code != 1 || !strings.Contains(errb.String(), "current-state upgrade journal") {
+		t.Fatalf("non-exempt staged check did not prove the journal guard: code=%d stderr=%q", code, errb.String())
+	}
+
+	out.Reset()
+	errb.Reset()
+	message := writeMsg(t, "test(awf): exercise commit hook\n")
+	if code := runAt(t, root, []string{"awf", "check", "staged", "commit", message}, &out, &errb); code != 0 {
+		t.Fatalf("exempt commit child exit = %d, stderr=%q", code, errb.String())
+	}
+	if strings.Contains(errb.String(), "current-state upgrade journal") {
+		t.Fatalf("commit child was blocked by the journal guard: %q", errb.String())
 	}
 }
