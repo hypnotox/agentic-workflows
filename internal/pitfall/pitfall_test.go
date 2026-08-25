@@ -127,7 +127,7 @@ func TestScaffoldUsesCorpusIdentityAndCanonicalSource(t *testing.T) {
 	}
 }
 
-func TestAllocationSerializationEscapingAndLinks(t *testing.T) {
+func TestAllocationSerializationEscaping(t *testing.T) {
 	used := map[string]bool{"hello-world": true, "hello-world-2": true, "hello-world-4": true}
 	if got, err := AllocateSlug(" Hello, WORLD! ", used); err != nil || got != "hello-world-3" {
 		t.Fatalf("slug = %q, %v", got, err)
@@ -168,62 +168,5 @@ func TestAllocationSerializationEscapingAndLinks(t *testing.T) {
 			t.Fatalf("metadata escape retained structural line break: %q", escaped)
 		}
 	}
-	e.Body = "[inline](rel.md) ![image](img/a.png)\n<other.md>\n[id]: refs/a.md\n[external](https://example.com) [root](/x) [frag](#x) <person@example.com> `` [double](no-double.md) ``\n```md\n[fenced](no.md)\n~~\n[still-fenced](no-short.md)\n~~~\n[still-mismatched](no-mismatch.md)\n```\n[after](after.md)\n"
-	links := RelativeLinks(e)
-	if len(links) != 5 {
-		t.Fatalf("links = %#v", links)
-	}
-	for _, l := range links {
-		if l.Source != e.SourcePath || strings.Contains(l.Destination, "no-") || l.Destination == "no.md" || strings.Contains(l.Destination, "@") {
-			t.Fatalf("link = %#v", l)
-		}
-	}
-	shortFence := e
-	shortFence.Body = "~~\n[short](short.md)\n~~\n"
-	if links := RelativeLinks(shortFence); len(links) != 1 || links[0].Destination != "short.md" {
-		t.Fatalf("short fence masked content: %#v", links)
-	}
-	mismatchedFence := e
-	mismatchedFence.Body = "```\n[masked](no.md)\n~~~\n[also-masked](no2.md)\n```\n[visible](yes.md)\n"
-	if links := RelativeLinks(mismatchedFence); len(links) != 1 || links[0].Destination != "yes.md" {
-		t.Fatalf("mismatched fence closed block: %#v", links)
-	}
-	unmatchedInline := e
-	unmatchedInline.Body = "` unmatched [visible](still-relative.md)\n"
-	if links := RelativeLinks(unmatchedInline); len(links) != 1 || links[0].Destination != "still-relative.md" {
-		t.Fatalf("unmatched inline delimiter masked prose: %#v", links)
-	}
-	if got := maskCode("before ``code ` tick`` after"); got != "before                 after" {
-		t.Fatalf("variable inline span mask = %q", got)
-	}
 
-	for _, tc := range []struct {
-		name string
-		body string
-		want []string
-	}{
-		{"multiline-code-span", "before ``code\n[masked](no.md)`` [visible](yes.md)\n", []string{"yes.md"}},
-		{"zero-space-backtick-fence", "```go\n[masked](no.md)\n```\n[visible](yes.md)\n", []string{"yes.md"}},
-		{"one-space-backtick-fence", " ```go\n[masked](no.md)\n ```\n[visible](yes.md)\n", []string{"yes.md"}},
-		{"two-space-tilde-fence", "  ~~~ go\n[masked](no.md)\n  ~~~\n[visible](yes.md)\n", []string{"yes.md"}},
-		{"three-space-tilde-fence", "   ~~~~ go\n[masked](no.md)\n   ~~~~\t\n[visible](yes.md)\n", []string{"yes.md"}},
-		{"four-space-pseudo-fence", "    ~~~\n[visible](yes.md)\n    ~~~\n", []string{"yes.md"}},
-		{"invalid-backtick-info", "```go`bad\n[visible](yes.md)\n~~~\n", []string{"yes.md"}},
-		{"mismatched-closer", "~~~\n[masked](no.md)\n```\n[still-masked](no2.md)\n~~~\n[visible](yes.md)\n", []string{"yes.md"}},
-		{"short-closer", "````\n[masked](no.md)\n```\n[still-masked](no2.md)\n````\n[visible](yes.md)\n", []string{"yes.md"}},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			candidate := e
-			candidate.Body = tc.body
-			links := RelativeLinks(candidate)
-			if len(links) != len(tc.want) {
-				t.Fatalf("links = %#v, want %v", links, tc.want)
-			}
-			for i := range tc.want {
-				if links[i].Destination != tc.want[i] {
-					t.Fatalf("links = %#v, want %v", links, tc.want)
-				}
-			}
-		})
-	}
 }

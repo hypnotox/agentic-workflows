@@ -51,7 +51,7 @@ func repositoryLocalInstruction(src string) string {
 func TestLiveTemplateAndCurrentStateRetiredConfigGuidanceAbsent(t *testing.T) {
 	repoRoot := filepath.Join("..", "..")
 	allowProjectLocal := map[string]int{
-		".awf/topics/parts/config/migrations-and-locks/current-state.md": 2, // historical schema-37 migration fact
+		".awf/topics/parts/config/migrations-and-locks/current-state.md": 0, // supported-floor migration policy
 		".awf/topics/parts/rendering/pi-workflows/current-state.md":      2, // Pi preference-file locality
 		"templates/pi/awf-subagents/index.ts.tmpl":                       1, // Pi preference-file locality
 	}

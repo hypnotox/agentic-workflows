@@ -29,12 +29,6 @@ Working-tree and staged domain sidecars reject empty, duplicate, or malformed an
 Origin: ADR-0256
 Backing: test
 
-### `invariant: glob-migration-anchored`
-
-AnchorNoSlashGlobs rewrites every no-slash pattern in invariants.sources globs and audit.dependencyManifests to a leading double-star form, leaves already-slashed patterns untouched, and is idempotent.
-Origin: ADR-0148
-Backing: test
-
 ### `invariant: hooks-commands-resolvable`
 
 Config validation for sync and check fails when `vars.gateCmd` is unset because the always-rendered hook payloads run the project gate; the error names the exact var to set. The always-rendered runner supplies every awf-verb fallback, so checkCmd and commitGateCmd carry no separate validation arm.

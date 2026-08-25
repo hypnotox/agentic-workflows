@@ -56,27 +56,7 @@ func upgradeMigration(ctx context.Context, root string) (upgrade.MigrationResult
 	for i, change := range changes {
 		texts[i] = change.Text
 	}
-	if err != nil {
-		var collision *migrate.GroundingSkillCollisionError
-		if errors.As(err, &collision) {
-			err = upgradeGroundingCollision{collision}
-		}
-	}
 	return upgrade.MigrationResult{Applied: applied, Changes: texts}, err
-}
-
-type upgradeGroundingCollision struct {
-	cause *migrate.GroundingSkillCollisionError
-}
-
-func (e upgradeGroundingCollision) Error() string { return e.cause.Error() }
-func (e upgradeGroundingCollision) Unwrap() error { return e.cause }
-func (e upgradeGroundingCollision) UpgradeDiagnostic(changes []string) (presentation.Diagnostic, error) {
-	migrationChanges := make([]migrate.Change, len(changes))
-	for i, change := range changes {
-		migrationChanges[i] = migrate.Change{Text: change}
-	}
-	return e.cause.Diagnostic(migrationChanges)
 }
 
 func upgradeCurrentSchemaChange() string { return migrate.CurrentSchemaChange().Text }

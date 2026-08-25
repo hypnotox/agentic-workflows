@@ -287,42 +287,6 @@ func TestPitfallModelSingleHome(t *testing.T) {
 	}
 }
 
-func TestPitfallModelSingleHomeProofRejectsMutations(t *testing.T) {
-	production := pitfallProductionSources(t)
-	for _, tc := range []struct {
-		name   string
-		mutate func(map[string][]byte)
-		want   string
-	}{
-		{
-			name: "outside-entry-duplicate",
-			mutate: func(sources map[string][]byte) {
-				sources["internal/migrate/pitfallcorpus.go"] = append(sources["internal/migrate/pitfallcorpus.go"], []byte("\ntype Entry struct {\nSlug, SourcePath, Title string\nDomains, Tags []string\nRelated []int\nBody string\nSource []byte\n}\n")...)
-			},
-			want: "type Entry",
-		},
-		{
-			name: "consumer-local-allocation-rule",
-			mutate: func(sources map[string][]byte) {
-				path := "internal/migrate/pitfallcorpus.go"
-				sources[path] = bytes.ReplaceAll(sources[path], []byte("pitfall.AllocateSlug("), []byte("consumerAllocateSlug("))
-			},
-			want: "internal/migrate does not call pitfall.AllocateSlug",
-		},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			sources := make(map[string][]byte, len(production))
-			for path, body := range production {
-				sources[path] = bytes.Clone(body)
-			}
-			tc.mutate(sources)
-			if findings := pitfallSemanticHomeFindings(sources); !slices.ContainsFunc(findings, func(finding string) bool { return strings.Contains(finding, tc.want) }) {
-				t.Fatalf("mutation escaped proof: findings=%v, want %q", findings, tc.want)
-			}
-		})
-	}
-}
-
 func pitfallProductionSources(t *testing.T) map[string][]byte {
 	t.Helper()
 	sources := map[string][]byte{}
@@ -439,7 +403,7 @@ func pitfallSemanticHomeFindings(sources map[string][]byte) []string {
 			findings = append(findings, declaration+" homes = "+strings.Join(paths, ", "))
 		}
 	}
-	wantConsumers := map[string]bool{"internal/project": true, "internal/publisher": true, "internal/migrate": true, "internal/pitfallcheck": true, "internal/vocabularycheck": true}
+	wantConsumers := map[string]bool{"internal/project": true, "internal/publisher": true, "internal/pitfallcheck": true, "internal/vocabularycheck": true}
 	for consumer := range consumers {
 		if !wantConsumers[consumer] {
 			findings = append(findings, "unexpected pitfall consumer "+consumer)
@@ -453,7 +417,6 @@ func pitfallSemanticHomeFindings(sources map[string][]byte) []string {
 	for consumer, expected := range map[string][]string{
 		"internal/project":   {"Load"},
 		"internal/publisher": {"Load", "EscapeHeading", "EscapeLinkLabel", "EscapeTableCell"},
-		"internal/migrate":   {"AllocateSlug", "Serialize", "RelativeLinks", "Load"},
 	} {
 		for _, name := range expected {
 			if !consumerCalls[consumer][name] {

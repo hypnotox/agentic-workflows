@@ -907,9 +907,6 @@ func TestConfigSerializationFunnelOwnsEncoding(t *testing.T) {
 		wrote string
 	}{
 		{"SetArrayMember", func() ([]byte, error) { return SetArrayMember([]byte(src), "skills", "tdd", true) }, "skills:\n  - tdd\n"},
-		{"SetMappingScalar", func() ([]byte, error) { return SetMappingScalar([]byte(src), "bootstrap", "enabled", true) }, "bootstrap:\n  enabled: true\n"},
-		{"SetMappingInteger", func() ([]byte, error) { return SetMappingInteger([]byte(src), "currentState", "maxTopicsPerPath", 8) }, "currentState:\n  maxTopicsPerPath: 8\n"},
-		{"SetMappingString", func() ([]byte, error) { return SetMappingString([]byte(src), "runner", "awfInvokeCmd", "./awf") }, "runner:\n  awfInvokeCmd: ./awf\n"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

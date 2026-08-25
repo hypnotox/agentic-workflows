@@ -72,7 +72,7 @@ Backing: test
 
 ### `invariant: resident-output-preservation`
 
-The output plan preserves the effort, managed-worktree, and effort-archive resident roots and their dynamic descendants at the primary control root. Only each root marker is managed; archive descendants remain local and unmanaged. Generation 21 destructively removes only the obsolete metrics and assignments roots, and generation 22 resets the protocol-1 effort records and the whole standalone memory root through the journaled upgrade transaction.
+The output plan preserves the effort, managed-worktree, and effort-archive resident roots and their dynamic descendants at the primary control root. Only each root marker is managed; archive descendants remain local and unmanaged.
 Origin: ADR-0167
-Revised-by: ADR-0175, ADR-0259
+Revised-by: ADR-0175, ADR-0259, ADR-separate-live-upgrade-support-from-historical-audit-decoding
 Backing: test

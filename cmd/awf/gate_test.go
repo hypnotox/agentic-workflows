@@ -400,7 +400,7 @@ func TestGateRejectsStaleSchema(t *testing.T) {
 	if code := runAt(t, root, []string{"awf", "render"}, &out, &errb); code != 1 {
 		t.Errorf("expected the driver to fail render on stale schema, got %d", code)
 	}
-	if got := errb.String(); !strings.Contains(got, "below live floor") || strings.Contains(got, "attest") || strings.Contains(got, "run awf upgrade") {
+	if got := errb.String(); !strings.Contains(got, "retired project layout") || strings.Contains(got, "attest") || strings.Contains(got, "run awf upgrade") {
 		t.Fatalf("driver stale-schema refusal = %q", got)
 	}
 }
@@ -516,7 +516,7 @@ func TestCommandStateGuardAdmitsOnlyCompleteLiveAuthority(t *testing.T) {
 		if code := runAt(t, root, []string{"awf", "render"}, &stdout, &stderr); code != 1 {
 			t.Fatalf("exit = %d, stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 		}
-		if got := stderr.String(); !strings.Contains(got, "retired project layout is unsupported") || strings.Contains(got, "attest") {
+		if got := stderr.String(); !strings.Contains(got, "retired project layout") || strings.Contains(got, "attest") {
 			t.Fatalf("retired-layout refusal = %q", got)
 		}
 	})

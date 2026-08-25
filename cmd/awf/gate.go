@@ -76,6 +76,9 @@ func presentGateRefusal(err error) error {
 // presentLiveSourceRefusal is the shared command boundary for live-source
 // compatibility guidance. Semantic classifiers below cmd carry facts only.
 func presentLiveSourceRefusal(err error) error {
+	if migrate.IsRetiredLayout(err) {
+		return fmt.Errorf("%w: restore a supported .awf control pair or use a release that supports the retired layout", err)
+	}
 	var live *manifest.LiveSourceError
 	if !errors.As(err, &live) {
 		return err

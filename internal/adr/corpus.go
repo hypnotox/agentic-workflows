@@ -265,16 +265,3 @@ func (c Corpus) ClaimOperationHistory(claimID string) (ClaimOperationHistory, bo
 	history.RevisedBy = append([]OperationRecord(nil), history.RevisedBy...)
 	return history, true
 }
-
-// Raw returns the ADR file's bytes. Raw access is enumerated and closed
-// (ADR-0130 item 6): the retirement-token offset surgery, the retired-key
-// frontmatter scan, and the ADR-0191 state-sequence retrofit are the only
-// three legitimate consumers below the semantic layer. A fourth caller means
-// the view is missing a question.
-func (c Corpus) Raw(num string) ([]byte, error) {
-	a, ok := c.byNum[num]
-	if !ok {
-		return nil, fmt.Errorf("no ADR %s in corpus", num)
-	}
-	return os.ReadFile(a.Path)
-}

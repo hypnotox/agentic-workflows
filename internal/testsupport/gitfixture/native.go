@@ -270,13 +270,6 @@ func NativeWorktreeAdd(t *testing.T, f Fixture, path, branch string) {
 	mustNative(t, f, "worktree", "add", "-b", branch, path)
 }
 
-// NativeWorktreeAddDetached registers a linked worktree at path with a detached
-// HEAD at rev.
-func NativeWorktreeAddDetached(t *testing.T, f Fixture, path, rev string) {
-	t.Helper()
-	mustNative(t, f, "worktree", "add", "--detach", path, rev)
-}
-
 // NativeWorktreeRemove unregisters the linked worktree at path.
 func NativeWorktreeRemove(t *testing.T, f Fixture, path string) {
 	t.Helper()

@@ -63,6 +63,7 @@ func TestAuditLockHistoricalHorizonAndRouting(t *testing.T) {
 	}
 }
 
+// invariant: config/migrations-and-locks:retired-keys-forward-ported (TestAuditConfigTreatsOnlyPreProfileSnapshotAsFull)
 func TestAuditConfigTreatsOnlyPreProfileSnapshotAsFull(t *testing.T) {
 	tree := auditTree(t, []snapshot.File{{
 		Path: ".awf/config.yaml", Mode: snapshot.Regular,

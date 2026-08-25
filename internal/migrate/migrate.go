@@ -1,18 +1,11 @@
-// Package migrate ports a project's awf config across schema generations. It is
-// the sole reader of the legacy single-file .claude/awf.yaml (ADR-0010
-// inv: legacy-read-isolation, the named exemption to ADR-0009 inv: config-root)
-// and is imported by nothing on the render/sync/check load path. It reads the
-// compile-time catalog (internal/catalog) for the ADR-0081 close-enabled-set
-// migration - a leaf import that keeps this package off the render path.
-//
-// Migrations collect ordered typed Change values for every performed operation.
-// The command owner presents only terminal results; a no-op run collects no
-// changes.
+// Package migrate owns supported live schema upgrades. Historical schema
+// decoding belongs to internal/audit and retired layouts are recognized only
+// for refusal, never parsed or relocated here.
 package migrate
 
 import (
-	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -21,228 +14,86 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 )
 
-// A Migration ports a project from the generation below To up to To.
+// Migration is one ordered upgrade step for a supported live generation.
 type Migration struct {
-	To              int
-	Name            string
-	Apply           func(ctx context.Context, root string, out *Changes) error
-	OwnsSchemaStamp bool
+	To    int
+	Name  string
+	Apply func(context.Context, string, *Changes) error
 }
 
-// registry is ordered ascending by To; current schema = last To.
-var registry = []Migration{
-	{To: 1, Name: "tree-layout", Apply: treeOnly(applyTreeLayout)},
-	{To: 2, Name: "drop-replacewith", Apply: treeOnly(applyDropReplaceWith)},
-	{To: 3, Name: "awf-dir-relocation", Apply: treeOnly(applyAwfRelocation)},
-	{To: 4, Name: "drop-hooks", Apply: treeOnly(applyDropHooks)},
-	{To: 5, Name: "enable-bootstrap", Apply: treeOnly(applyEnableBootstrap)},
-	{To: 6, Name: "singleton-standard-docs", Apply: treeOnly(applySingletonStandardDocs)},
-	{To: 7, Name: "anchored-globs", Apply: treeOnly(applyAnchoredGlobs)},
-	{To: 8, Name: "close-enabled-set", Apply: treeOnly(applyCloseEnabledSet)},
-	{To: 9, Name: "pitfalls-data", Apply: treeOnly(applyPitfallsData)},
-	{To: 10, Name: "retirement-tokens", Apply: treeOnly(applyRetirementTokens)},
-	{To: 11, Name: "drop-audit-base", Apply: treeOnly(applyDropAuditBase)},
-	{To: 12, Name: "supersession-keys", Apply: treeOnly(applySupersessionKeys)},
-	{To: 13, Name: "exploring-skill-closure", Apply: treeOnly(applyCloseEnabledSet)},
-	{To: 14, Name: "current-state-topic-substrate", Apply: treeOnly(applyCurrentStateTopicSubstrate)},
-	{To: 16, Name: "topic-claim-budget", Apply: treeOnly(applyTopicClaimBudget)},
-	{To: 17, Name: "workflow-telemetry", Apply: treeOnly(applyWorkflowTelemetry)},
-	{To: 18, Name: "enable-runner", Apply: treeOnly(applyEnableRunner)},
-	{To: 19, Name: "rename-retired-commands", Apply: treeOnly(applyRenameRetiredCommands)},
-	{To: 20, Name: "drop-workflow-telemetry", Apply: treeOnly(applyDropWorkflowTelemetry)},
-	{To: 21, Name: "remove-workflow-residents", Apply: applyRemoveWorkflowResidents},
-	{To: 22, Name: "unified-effort-residents", Apply: applyUnifiedEffortResidents, OwnsSchemaStamp: true},
-	{To: 23, Name: "implementer-agent-closure", Apply: treeOnly(applyCloseEnabledSet)},
-	// Generation 24 pairs exploring->explorer and brainstorming->grounding-checker
-	// (ADR-0179); closing an enabled set over a new structural edge is what
-	// applyCloseEnabledSet already does, so an adopter who enables either skill
-	// gains its paired agent on upgrade instead of failing at project open.
-	{To: 24, Name: "explorer-grounding-closure", Apply: treeOnly(applyCloseEnabledSet)},
-	{To: 25, Name: "drop-severity-settings", Apply: treeOnly(applyDropSeveritySettings)},
-	{To: 26, Name: "orienting-skill-backfill", Apply: treeOnly(applyOrientingSkillBackfill)},
-	{To: 27, Name: "adr-number-provenance", Apply: treeOnly(applyADRNumberProvenance)},
-	// ADR-0194 retires the topic claim-count advisory, so the key it configured
-	// is removed rather than tolerated: config.yaml is strict-parsed and a
-	// survivor would hard-fail the new binary.
-	{To: 28, Name: "drop-max-claims-per-topic", Apply: treeOnly(applyDropMaxClaimsPerTopic)},
-	{To: integrationBranchGeneration, Name: "integration-branch-explicit", Apply: treeOnly(applyIntegrationBranch)},
-	{To: intrinsicADRFormatGeneration, Name: "intrinsic-adr-format", Apply: applyIntrinsicADRFormat, OwnsSchemaStamp: true},
-	{To: retargetCheckCommandsGeneration, Name: "retarget-check-commands", Apply: treeOnly(applyRetargetCheckCommands)},
-	{To: 33, Name: "decision-item-slugs", Apply: applyDecisionItemSlugs},
-	{To: 34, Name: "commit-policy", Apply: treeOnly(applyCommitPolicy)},
-	{To: layerCatalogListsGeneration, Name: "layer-catalog-lists", Apply: treeOnly(applyLayerCatalogLists)},
-	{To: structuralHeadingsGeneration, Name: "structural-headings", Apply: treeOnly(applyStructuralHeadings)},
-	{To: 37, Name: "grounding-skill-backfill", Apply: treeOnly(applyGroundingSkillBackfill)},
-	{To: 38, Name: "drop-gate-audit-settings", Apply: treeOnly(applyDropGateAuditSettings)},
-	{To: 39, Name: "drop-selection", Apply: treeOnly(applyDropSelection)},
-	{To: 40, Name: "retire-plan-resync-selection", Apply: treeOnly(applyRetirePlanResync)},
-	{To: globalTopicPathOwnershipGeneration, Name: "global-topic-path-ownership", Apply: treeOnly(applyGlobalTopicPathOwnership)},
-	{To: effortArchiveGeneration, Name: "effort-archive-root", Apply: treeOnly(applyEffortArchiveRoot)},
-	{To: pitfallCorpusGeneration, Name: "pitfall-corpus", Apply: treeOnly(applyPitfallCorpus)},
-	{To: templateSourceGeneration, Name: "template-source-root", Apply: treeOnly(applyTemplateSourceRoot)},
-	{To: localDocsGeneration, Name: "local-docs", Apply: treeOnly(applyLocalDocs)},
-	{To: profileGeneration, Name: "workflow-profile", Apply: treeOnly(applyProfile)},
-}
-
-// treeOnly adapts a migration that only rewrites the config tree to the
-// registry's context-taking shape. Only a migration that reaches Git needs the
-// context, so wrapping the rest keeps that distinction visible in the registry
-// itself rather than hiding it behind an unused parameter in every migration.
-func treeOnly(apply func(root string, out *Changes) error) func(context.Context, string, *Changes) error {
-	return func(_ context.Context, root string, out *Changes) error { return apply(root, out) }
-}
-
-// applyCurrentStateTopicSubstrate ports schema 13 -> 14: the invariants->current-state
-// cutover retires the top-level `invariants` config block. The current-state
-// topic corpus is authored, not migration-generated, so this migration performs
-// no topic synthesis; it only removes the schema field the current strict
-// config.Config no longer accepts, which would otherwise hard-fail the new binary
-// on the migrated tree. Mirroring applyDropAuditBase, the removal collects a
-// change fact so terminal-owner presentation can name an adopter-set value. The edit
-// routes through config.RemoveKey so config.yaml serialization stays owned by
-// internal/config (ADR-0026); the key is top-level, so RemoveKey applies.
-func applyCurrentStateTopicSubstrate(root string, w *Changes) error {
-	return editConfig(root, w, func(src []byte, planned *Changes) ([]byte, error) {
-		out, err := config.RemoveKey(src, "invariants")
-		if err != nil {
-			return nil, err
-		}
-		if !bytes.Equal(out, src) {
-			planned.Add("current-state-topic-substrate: removed the retired top-level invariants block")
-		}
-		return out, nil
-	})
-}
-
-const effortArchiveGeneration = 42
-const templateSourceGeneration = 44
-const localDocsGeneration = 45
-
-// applyEffortArchiveRoot creates a schema boundary for the archive marker.
-// Ordinary upgrade sync owns publication of the governed output and lock.
-func applyEffortArchiveRoot(_ string, _ *Changes) error { return nil }
-
-// applyTemplateSourceRoot deliberately performs no byte rewrite: the optional
-// repository fact is absent-compatible and only a schema boundary is needed.
-func applyTemplateSourceRoot(_ string, _ *Changes) error { return nil }
-
-// applyLocalDocs is no-byte: an absent optional list declares no local docs.
-func applyLocalDocs(_ string, _ *Changes) error { return nil }
-
-// LiveSchemaFloor is the oldest live source upgrade may execute. Earlier
-// migrations remain implemented only until Phase 2 removes them, but are not a
-// registered live upgrade route.
+// LiveSchemaFloor is the oldest source generation this binary can operate on.
 const LiveSchemaFloor = 46
 
-// Current is the current schema generation (the highest registered To).
-func Current() int { return registry[len(registry)-1].To }
+// registry intentionally begins at the floor. The no-op floor entry is the one
+// explicit seam where a later supported schema migration is appended.
+var registry = []Migration{{To: LiveSchemaFloor, Name: "supported-schema-46"}}
 
-// LiveSchemaRange returns the live-source bounds owned by migration policy.
+func Current() int                { return registry[len(registry)-1].To }
 func LiveSchemaRange() (int, int) { return LiveSchemaFloor, Current() }
 
-// Generation reports the project's schema generation. Detection is by layout:
-// a .awf/ tree reports its lock's SchemaVersion (or Current() when no lock yet -
-// fresh init / just-upgraded); a pre-relocation .claude/awf/ tree reports its
-// lock's schema, or 1 when no lock - such a tree is the tree-layout port's
-// output (the port deletes the legacy lock), so every later migration up to and
-// including the To:3 relocation must still apply; the legacy single file
-// reports 0; nothing present reports Current(). A present-but-unreadable lock
-// in either lock-bearing layout is a hard error, never a sentinel generation
-// (ADR-0076 Decision 2, narrowing ADR-0016 Decision 6's presence keying).
-func Generation(root string) (int, error) {
-	newTree := config.ConfigPath(root)
-	oldTree := filepath.Join(root, ".claude", "awf", "config.yaml")
-	legacy := filepath.Join(root, ".claude", "awf.yaml")
-	if _, err := os.Stat(newTree); err == nil {
-		generation, found, err := manifest.LoadSchemaOptional(config.LockPath(root))
-		if err != nil {
-			return 0, err
-		}
-		if !found {
-			return Current(), nil
-		}
-		return generation, nil
-	}
-	if _, err := os.Stat(oldTree); err == nil {
-		generation, found, err := manifest.LoadSchemaOptional(filepath.Join(root, ".claude", "awf", "awf.lock"))
-		if err != nil {
-			return 0, err
-		}
-		if !found {
-			return 1, nil
-		}
-		return generation, nil
-	}
-	if _, err := os.Stat(legacy); err == nil {
-		return 0, nil
-	}
-	return Current(), nil
+// RetiredLayoutError identifies a removed layout without decoding its config.
+type RetiredLayoutError struct{ Layout string }
+
+func (e *RetiredLayoutError) Error() string {
+	return fmt.Sprintf("retired project layout %s is unsupported at live floor %d", e.Layout, LiveSchemaFloor)
+}
+func (e *RetiredLayoutError) Is(target error) bool {
+	return target == manifest.ErrUnsupportedLiveSource
 }
 
-// AuthorityLockPath returns the lock belonging to the active config layout.
-// It keeps all knowledge of retired layout paths inside the migration package.
-func AuthorityLockPath(root string) string {
-	current := config.LockPath(root)
-	if fileExists(config.ConfigPath(root)) || fileExists(current) {
-		return current
-	}
-	if fileExists(filepath.Join(root, ".claude", "awf.yaml")) {
-		return filepath.Join(root, ".claude", "awf.lock")
-	}
-	if fileExists(filepath.Join(root, ".claude", "awf", "config.yaml")) {
-		return filepath.Join(root, ".claude", "awf", "awf.lock")
-	}
-	return current
+func currentConfigPresent(root string) bool {
+	_, err := os.Stat(config.ConfigPath(root))
+	return err == nil
 }
-
-// ProjectPresent reports whether any awf config layout (current tree,
-// pre-relocation tree, or legacy single file) exists under root - the
-// distinction Generation cannot express, since "nothing present" reports
-// Current() (ADR-0076 Decision 4).
-func ProjectPresent(root string) bool {
-	return ProjectPresentFromFiles(func(path string) bool {
-		return fileExists(filepath.Join(root, filepath.FromSlash(path)))
-	})
-}
-
-// ProjectPresentFromFiles reports project presence through a repository-relative
-// file lookup. Snapshot consumers use it so current and legacy layout knowledge
-// remains owned by the migration package rather than being duplicated.
-func ProjectPresentFromFiles(has func(string) bool) bool {
-	for _, path := range []string{
-		config.DirName + "/config.yaml",
-		config.DirName + "/awf.lock",
-		".claude/awf/config.yaml",
-		".claude/awf/awf.lock",
-		".claude/awf.yaml",
+func retiredLayout(root string) string {
+	for _, layout := range []struct{ path, name string }{
+		{filepath.Join(root, ".claude", "awf.yaml"), ".claude/awf.yaml"},
+		{filepath.Join(root, ".claude", "awf"), ".claude/awf/"},
 	} {
-		if has(path) {
+		if _, err := os.Stat(layout.path); err == nil {
+			return layout.name
+		}
+	}
+	return ""
+}
+
+// Generation reads only a current-layout lock schema. Retired layouts receive a
+// typed refusal before their authority representation can be decoded.
+func Generation(root string) (int, error) {
+	if layout := retiredLayout(root); layout != "" && !currentConfigPresent(root) {
+		return 0, &RetiredLayoutError{Layout: layout}
+	}
+	if !currentConfigPresent(root) {
+		return Current(), nil
+	}
+	generation, found, err := manifest.LoadSchemaOptional(config.LockPath(root))
+	if err != nil {
+		return 0, err
+	}
+	if !found {
+		return Current(), nil
+	}
+	return generation, nil
+}
+
+// ProjectPresent recognizes current control files and retired layouts without
+// interpreting their content.
+func ProjectPresent(root string) bool {
+	for _, path := range []string{config.ConfigPath(root), config.LockPath(root), filepath.Join(root, ".claude", "awf.yaml"), filepath.Join(root, ".claude", "awf")} {
+		if _, err := os.Stat(path); err == nil {
 			return true
 		}
 	}
 	return false
 }
 
-// stampLockSchema sets an existing tree lock's SchemaVersion to Current(). A
-// missing lock (e.g. just after the legacy tree-layout port, before the first
-// sync) is a no-op - Generation's no-lock branch already reports Current().
-func stampLockSchemaWithSave(root string, save func(*manifest.Lock, string) error) (bool, error) {
-	lockPath := config.LockPath(root)
-	if !fileExists(lockPath) {
-		return false, nil // no lock yet; the terminal sync stamps it
-	}
-	l, err := manifest.Load(lockPath)
-	if err != nil { // coverage-ignore: reached only via Upgrade, whose upfront Generation now hard-errors on a corrupt lock (ADR-0076), so when this runs the lock loads cleanly
-		return false, err
-	}
-	l.SchemaVersion = Current()
-	if err := save(l, lockPath); err != nil {
-		return false, err
-	}
-	return true, nil
+func ProjectPresentFromFiles(has func(string) bool) bool {
+	return has(config.DirName+"/config.yaml") || has(config.DirName+"/awf.lock") || has(".claude/awf.yaml") || has(".claude/awf/config.yaml") || has(".claude/awf/awf.lock")
 }
 
-// registryTos returns the To values of every registered migration.
+// AuthorityLockPath is always the current control lock. Retired layouts have
+// no live authority lock.
+func AuthorityLockPath(root string) string { return config.LockPath(root) }
 func registryTos() []int {
 	tos := make([]int, len(registry))
 	for i, m := range registry {
@@ -250,11 +101,6 @@ func registryTos() []int {
 	}
 	return tos
 }
-
-// gateStateFor is the pure classifier (extracted for testability): "ahead" when
-// gen is strictly above current (the binary is behind the project - ADR-0039);
-// "ok" when gen == current; "gate" when at least one To lands in the open interval
-// (gen, current]; "autobump" otherwise.
 func gateStateFor(gen, current int, tos []int) string {
 	if gen > current {
 		return "ahead"
@@ -269,26 +115,13 @@ func gateStateFor(gen, current int, tos []int) string {
 	}
 	return "autobump"
 }
+func GateStateForGeneration(gen int) string { return gateStateFor(gen, Current(), registryTos()) }
 
-// GateStateForGeneration classifies an already-loaded schema generation with
-// the same migration-registry semantics as GateState. Snapshot-aware callers
-// use it after loading a lock from their own universe instead of rereading the
-// working tree.
-func GateStateForGeneration(gen int) string {
-	return gateStateFor(gen, Current(), registryTos())
-}
-
-// UpgradeRequiredError identifies a supported live generation that only upgrade
-// may migrate. It carries facts only; the command boundary owns recovery prose.
 type UpgradeRequiredError struct{ Generation, Current int }
 
 func (e *UpgradeRequiredError) Error() string {
 	return fmt.Sprintf("schema %d requires migration to schema %d", e.Generation, e.Current)
 }
-
-// CheckLiveGeneration admits only the live schema range and reports whether the
-// selected generation requires an executable registered migration. A no-op gap
-// remains admissible because ordinary sync owns its schema autobump.
 func CheckLiveGeneration(gen int) error {
 	if err := manifest.ValidateLive(&manifest.Lock{SchemaVersion: gen}, LiveSchemaFloor, Current()); err != nil {
 		return err
@@ -298,9 +131,6 @@ func CheckLiveGeneration(gen int) error {
 	}
 	return nil
 }
-
-// CheckLive classifies the working project's generation through migration-owned
-// layout and registry policy.
 func CheckLive(root string) (int, error) {
 	gen, err := Generation(root)
 	if err != nil {
@@ -308,10 +138,6 @@ func CheckLive(root string) (int, error) {
 	}
 	return gen, CheckLiveGeneration(gen)
 }
-
-// GateState classifies a project ("ok" | "gate" | "autobump" | "ahead") and
-// returns the generation it classified, so upgrade needs only one Generation
-// call for both migration sequencing and current-schema presentation.
 func GateState(root string) (string, int, error) {
 	gen, err := Generation(root)
 	if err != nil {
@@ -320,9 +146,8 @@ func GateState(root string) (string, int, error) {
 	return GateStateForGeneration(gen), gen, nil
 }
 
-// Upgrade applies every registered migration with To > Generation(root), in
-// ascending To order, and returns applied names and ordered changes, including
-// facts collected before a migration failure.
+// Upgrade executes only registered supported migrations. It never decodes or
+// writes a below-floor source.
 func Upgrade(ctx context.Context, root string) ([]string, []Change, error) {
 	from, err := Generation(root)
 	if err != nil {
@@ -331,16 +156,9 @@ func Upgrade(ctx context.Context, root string) ([]string, []Change, error) {
 	if err := manifest.ValidateLive(&manifest.Lock{SchemaVersion: from}, LiveSchemaFloor, Current()); err != nil {
 		return nil, nil, err
 	}
-	return upgradeUnchecked(ctx, root, from, func(lock *manifest.Lock, path string) error { return lock.Save(path) })
-}
-
-// upgradeUnchecked retains obsolete implementations for package-local tests
-// until Phase 2 deletes them. Live callers use Upgrade only.
-func upgradeUnchecked(ctx context.Context, root string, from int, save func(*manifest.Lock, string) error) ([]string, []Change, error) {
 	changes := &Changes{}
 	var applied []string
-	var highestApplied Migration
-	for _, m := range registry { // registry is already ascending by To
+	for _, m := range registry {
 		if m.To <= from {
 			continue
 		}
@@ -348,16 +166,13 @@ func upgradeUnchecked(ctx context.Context, root string, from int, save func(*man
 			return applied, changes.Items(), fmt.Errorf("migration %q (to %d): %w", m.Name, m.To, err)
 		}
 		applied = append(applied, m.Name)
-		highestApplied = m
-	}
-	if len(applied) > 0 && !highestApplied.OwnsSchemaStamp {
-		stamped, err := stampLockSchemaWithSave(root, save)
-		if err != nil {
-			return applied, changes.Items(), err
-		}
-		if stamped {
-			changes.Add("schema-stamp: updated awf.lock schema version")
-		}
 	}
 	return applied, changes.Items(), nil
+}
+
+// IsRetiredLayout makes presentation boundaries distinguish layout refusal
+// from a below-floor current lock without retaining a layout reader.
+func IsRetiredLayout(err error) bool {
+	var retired *RetiredLayoutError
+	return errors.As(err, &retired)
 }

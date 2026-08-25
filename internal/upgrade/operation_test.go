@@ -289,6 +289,30 @@ func TestRunPreservesCurrentAuthorityStatFailuresBeforeDispatch(t *testing.T) {
 	}
 }
 
+func TestRunPreservesInitialLockStatFailure(t *testing.T) {
+	root := t.TempDir()
+	lockPath := operationLock(t, root)
+	if err := os.Remove(lockPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("awf.lock", lockPath); err != nil {
+		t.Fatal(err)
+	}
+	called := false
+	_, err := Run(testContext(t), root,
+		func(context.Context, string) (presentation.Mutation, error) {
+			called = true
+			return presentation.Mutation{}, nil
+		},
+		func(context.Context, string) error { called = true; return nil },
+		func(string) bool { return true }, config.LockPath, testLiveSchemaRange,
+		func(string) (string, int, error) { called = true; return "ok", 46, nil },
+		func(context.Context, string) (MigrationResult, error) { called = true; return MigrationResult{}, nil }, nil)
+	if !errors.Is(err, syscall.ELOOP) || called {
+		t.Fatalf("Run() error = %v, dispatch = %t, want initial lock stat failure", err, called)
+	}
+}
+
 func TestRunRevalidatesCurrentAuthorityAfterSchemaClassification(t *testing.T) {
 	for _, tc := range []struct {
 		name   string

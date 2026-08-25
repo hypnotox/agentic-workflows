@@ -51,17 +51,6 @@ func (a ADR) InvariantDecls() []InvariantDecl {
 	return decls
 }
 
-// DeclaredSlugs returns the invariant slugs a's Invariants section declares,
-// backed and unbacked alike, in declaration order.
-func (a ADR) DeclaredSlugs() []string {
-	decls := a.InvariantDecls()
-	slugs := make([]string, 0, len(decls))
-	for _, d := range decls {
-		slugs = append(slugs, d.Slug)
-	}
-	return slugs
-}
-
 // invariantBullets splits an Invariants section into markdown list items, each
 // joined with its wrapped continuation lines. A bullet starts at a list-item
 // lead and runs until the next list-item lead, a blank line, or the section end

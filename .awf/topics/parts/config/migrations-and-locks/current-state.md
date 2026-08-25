@@ -1,69 +1,14 @@
-These packages migrate the config tree across schema generations and read and write the awf.lock manifest. The claims below capture the current migration and lock contracts.
+The migrate package executes supported live schema advances, while audit decodes represented historical schemas read-only. These claims capture the live migration seam and lock contracts.
 
 ## Claims
 
-### `invariant: pitfall-corpus-migration`
-
-Schema generation 43 fully preflights the legacy ordered pitfall registry, deterministic reserved slugs, canonical leaves, relative links, destinations, duplicate titles, and the sidecar remainder; it accepts byte-identical partial leaves, creates every missing leaf exclusively before retiring `data.pitfalls`, and preserves a sections-only sidecar so interruption and retry cannot lose authority.
-Origin: ADR-0262
-Backing: test
-
-
-### `invariant: selection-keys-dropped`
-
-Schema generation 39 removes skills, agents, docs, targets, and docsDir from config.yaml, announces each removal actually performed, and preserves surviving bytes and key order.
-Origin: ADR-0251
-Backing: test
-
-### `invariant: sidecar-local-field-dropped`
-
-Schema generation 39 preflights every sidecar before mutation, refuses with an actionable path when local is true, otherwise removes local from every sidecar while preserving other bytes and modes and announcing each changed file.
-Origin: ADR-0251
-Backing: test
-
 ### `invariant: retired-keys-forward-ported`
 
-Audit alone forward-ports historical config bytes before strict current-schema decoding within its managed history horizon. Live and staged source operations parse only supported live authority and never forward-port historical bytes.
+Audit alone owns historical config decoding and any required read-only translation within its managed history horizon. Live and staged source operations parse only supported live authority and never forward-port historical bytes.
 Origin: ADR-0251
 Revised-by: ADR-0270, ADR-separate-live-upgrade-support-from-historical-audit-decoding
 Backing: test
 
-### `invariant: toggle-keys-dropped`
-
-Schema generation 38 removes hooks, runner, the proseGate.enabled and memoryCite.enabled children, nine audit tuning children, and currentState.maxTopicsPerPath, announces each removal it performs, drops a block emptied by removal, and preserves every surviving key, value, comment, and key order.
-Origin: ADR-0253
-Backing: test
-
-### `invariant: grounding-skill-backfill`
-
-Schema generation 37 enables standard grounding only when selected standard brainstorming is enabled. It leaves project-local brainstorming untouched, refuses a project-local grounding collision before mutation with actionable recovery, and is atomic and idempotent.
-Origin: ADR-0243
-Backing: test
-
-
-### `invariant: audit-migration-announces-removal`
-
-The schema-11 config migration prints the removed audit.baseBranch key when it strips one from an adopter's config, rather than removing it silently.
-Origin: ADR-0127
-Backing: unbacked
-Verify: Run `awf upgrade` on a schema-10 tree whose `.awf/config.yaml` sets audit.baseBranch and confirm the command output names the removed key.
-### `invariant: awf-relocation-migration`
-
-The migration registry carries a relocation step that reports a project still keeping its config under `.claude/awf/` as a pending upgrade (a generation below the current schema, so the version gate blocks it); running the upgrade moves that tree to `.awf/` and stamps the new schema version.
-Origin: ADR-0016
-Backing: test
-
-### `invariant: claim-budget-key-dropped`
-
-Schema generation 28 removes currentState.maxClaimsPerTopic from a config tree, announcing the removal it performs, and leaves every other configured key and its value intact. It seeds no replacement child, so a currentState block whose only remaining member was the retired key is dropped with it.
-Origin: ADR-0194
-Backing: test
-
-### `invariant: close-enabled-set-migration`
-
-The schema-8 migration closes the enabled set additively over skill, agent, and doc requirements, drops dormant non-local doc-gated skills, and is idempotent and atomic.
-Origin: ADR-0081
-Backing: test
 
 ### `invariant: corrupt-lock-refuses`
 
@@ -71,131 +16,49 @@ A present-but-unreadable .awf/awf.lock causes a hard error in every lock reader;
 Origin: ADR-0076
 Backing: test
 
-### `invariant: hooks-config-dropped`
-
-The migration that drops automatic hook handling strips the hooks key from .awf/config.yaml while leaving all other configured keys intact.
-Origin: ADR-0032
-Backing: test
-
-### `invariant: list-replacement-fixed-snapshot`
-
-Schema generation 35 classifies only its frozen kind, artifact, and list-key snapshot, preflights every matching sidecar before writing, and refuses any non-null non-list replacement with all changed axes false and an actionable repair. A list is retained with matching dataDefaults false, null is removed with that suppression, each changed sidecar is atomically replaced and announced, unrelated mappings, comments, key order, and modes are preserved, retry after a later write failure completes safely, rerun is a silent no-op, and future catalog list keys are excluded.
-Origin: ADR-0236
-Backing: test
-
-### `invariant: legacy-read-isolation`
-
-The legacy single-file config at .claude/awf.yaml is read only by the migrate package's frozen legacy reader during awf upgrade; no config-load, render, or check path ever opens it.
-Origin: ADR-0010
-Revised-by: ADR-0159
-Backing: test
 
 ### `invariant: lock-atomic-save`
 
-Ordinary render loads and completely replaces the lock through the selected tracked root-confined handle, while migration rewrites of existing config files retain their temp-file-plus-rename helper that leaves no temp residue when the rename fails. Neither path writes the lock or migration target in place.
+Ordinary render loads and completely replaces the lock through the selected tracked root-confined handle. A supported schema advance retains journaled rollback and publishes its lock replacement last, so recovery never exposes partial authority.
 Origin: ADR-0076
-Revised-by: ADR-0269
+Revised-by: ADR-0269, ADR-separate-live-upgrade-support-from-historical-audit-decoding
 Backing: test
+
 
 ### `invariant: migration-ordering`
 
-awf upgrade applies exactly the registered migrations whose target generation exceeds the project's detected generation, in ascending target order, and re-running it at the current schema applies nothing and exits zero.
+awf upgrade applies only registered migrations for supported live sources whose target generation exceeds the source generation, in ascending target order. The explicit ordered seam begins at schema 46; re-running at the current schema applies nothing and exits zero.
 Origin: ADR-0010
+Revised-by: ADR-separate-live-upgrade-support-from-historical-audit-decoding
 Backing: test
 
-### `invariant: noop-autobump`
-
-When a project's effective generation is below current but no registered migration targets a generation inside the open gap, awf render writes the lock at the current schema version without gating and without error.
-Origin: ADR-0010
-Revised-by: ADR-0159
-Backing: test
-
-### `invariant: orienting-skill-backfill`
-
-The schema-26 migration enables the orienting skill in any config that has brainstorming enabled, as a bespoke idempotent atomic edit announced per addition; configs without brainstorming are untouched, and the closure primitive is not used because no structural edge reaches orienting.
-Origin: ADR-0187
-Backing: test
-
-### `invariant: retired-plan-resync-selection-migration`
-
-Schema generation 40 handles a generation-39-stamped tree that did not receive the independently landed selection retirement: it first removes and reports the retired plan reconciliation skill item, then completes generation 39's removal of all selection keys and artifact-sidecar `local` markers before strict current-config validation. The config-editor-backed targeted removal is idempotent and alias-safe, preserves sequence order and unrelated values until the complete selection surface is removed, and leaves absence unchanged. The combined migration preserves generation 39's sidecar preflight and atomic-write boundaries. Historical config bytes receive the same unconditional forward port before current catalog consumption: older trees run generation 39 normally, while a generation-39-stamped compatibility tree receives the complete retirement at generation 40.
-Origin: ADR-0255
-Backing: test
 
 ### `invariant: schema-min-version`
 
-Every config-schema generation is paired with a minimum binary version in a lookup table, and the current schema generation always has an entry. The binary's own version is never below the minimum recorded for the current schema generation.
+Every supported live config-schema generation is paired with a minimum binary version in a lookup table, and the current schema generation always has an entry. Retired historical schemas have no live minimum-version authority. The binary's own version is never below the minimum recorded for the current schema generation.
 Origin: ADR-0049
+Revised-by: ADR-separate-live-upgrade-support-from-historical-audit-decoding
 Backing: test
+
 
 ### `invariant: schema-version-lock`
 
-The lock file carries an integer schemaVersion, and sync stamps the current highest registered migration target, including the profile migration; awfVersion remains an independent tool release string.
+The lock file carries an integer schemaVersion, and sync stamps the current highest registered supported migration target. awfVersion remains an independent tool release string.
 Origin: ADR-0010
-Revised-by: ADR-0278
+Revised-by: ADR-0278, ADR-separate-live-upgrade-support-from-historical-audit-decoding
 Backing: test
 
-### `invariant: severity-keys-dropped`
-
-Schema generation 25 removes currentState.topicCoverage and currentState.topicFanout from a config tree, announcing each removal it performs, and leaves every other configured key and its value intact. Where the two were the block's only children it seeds and announces the default maxTopicsPerPath instead of letting the emptied currentState block be dropped.
-Origin: ADR-0183
-Revised-by: ADR-0184, ADR-0185, ADR-0192
-Backing: test
-
-### `invariant: singleton-doc-migration-relocates-parts`
-
-The singleton-standard-docs migration relocates each promoted standard doc's sidecar file and its convention-part directory from under `.awf/docs/` to the `.awf/` singleton locations, not only stripping the doc's `docs:` array entry.
-Origin: ADR-0043
-Backing: test
-
-### `invariant: structural-heading-part-migration`
-
-Schema generation 36 uses a frozen part-path and heading snapshot, preflights every matching part, removes only an exact leading legacy heading after authoring comments while preserving every other byte and mode, and refuses custom or multiple leading headings before any mutation with an actionable operation outcome. Changed parts are atomically written and announced; no-heading parts are untouched, retry is safe, and later headings remain out of scope.
-Origin: ADR-0237
-Backing: test
-
-### `invariant: unified-effort-resident-migration`
-
-Schema generation 22 resets the protocol-1 residents rather than migrating them, as one journaled transaction whose final lock replacement is the commit point. A complete read-only preflight first classifies every legacy leaf, the UUID `<uuid>.json` records, the efforts `.lock`, each `.<uuid>.<worktree|integration|removal>.partial` evidence file, and the whole standalone `.awf/memory/` root, keeping each governed `.gitignore` and every protocol-2 effort directory untouched. The preflight refuses before the journal exists, reporting that no bytes changed and naming the required next action, while any legacy managed worktree path, Git registration, `awf/<uuid>` branch, or partial-evidence checkout remains, and equally for any unknown, malformed, symlinked, hard-linked, non-directory, foreign-owned, or unconfinable resident. Proven residents are quarantined by rename, restored whole if the transaction fails before the lock commits, and discarded only after it, so the reset and the new generation become true together or not at all.
-Origin: ADR-0175
-Backing: test
 
 ### `invariant: upgrade-gate`
 
-Live operations refuse a source below schema 46 before authority dispatch with the supported floor and recovery direction. Only upgrade may execute an ordered supported migration from that floor; ordinary render, check, and staged operations never use historical decoding.
+Live operations refuse a source below schema 46, a retired layout, or partial authority before decoding, dispatch, or mutation with the supported floor and recovery direction. Only upgrade may execute an ordered supported migration from that floor; ordinary render, check, and staged operations never use historical decoding.
 Origin: ADR-0010
 Revised-by: ADR-0159, ADR-separate-live-upgrade-support-from-historical-audit-decoding
 Backing: test
 
-### `invariant: upgrade-migrates-retirements`
-
-The generation-10 migration strips the retires_invariants key from every ADR under the historical config's docs dir and, for each ADR that had a non-empty list, appends one bookkeeping Decision item whose tokens name each retired slug's declaring ADR, inserts the carrier's number into each target's related list when absent, and fails naming the carrier and slug when a retired slug resolves to no declaring ADR.
-Origin: ADR-0120
-Revised-by: ADR-0251
-Backing: test
-
-### `invariant: upgrade-migrates-supersession-keys`
-
-The generation-12 upgrade migration strips supersedes and superseded_by from every ADR under the historical config's docs directory, appends to each former full-supersession carrier one bookkeeping Decision item whose supersedes tokens claim each predecessor anchor, inserts the carrier number into each target's related list when absent, rewrites each predecessor's status to bare Superseded, and rewrites every pre-existing inline item token to refines while leaving slug tokens untouched.
-Origin: ADR-0128
-Revised-by: ADR-0251
-Backing: test
-
-### `invariant: workflow-telemetry-config-migration`
-
-Schema generation 21 removes only `.awf/metrics` and `.awf/assignments` from the primary control root. It reports each root in that order as removed or already absent, refuses symlinks and non-directories without removal, and permits retry after partial failure while ordinary schema, lock, render, drift, discovery, sweep, and uninstall ownership excludes both roots.
-Origin: ADR-0146
-Revised-by: ADR-0164, ADR-0167
-Backing: test
-
-### `invariant: profile-full-migration`
-
-Existing repositories missing the required profile field migrate byte-preservingly and idempotently to profile: full before strict parsing and synchronization.
-Origin: ADR-0278
-Backing: test
 
 ### `rule: live-source-compatibility-floor`
 
-Live project authority begins at schema generation 46. A below-floor or partial .awf authority refuses before dispatch with recovery direction; historical parsing is audit-only and cannot authorize live migration.
+Live project authority begins at schema generation 46. A below-floor, retired-layout, or partial authority refuses before decoding or dispatch with recovery direction; historical parsing is audit-only and cannot authorize live migration.
 Origin: ADR-0297
 Revised-by: ADR-separate-live-upgrade-support-from-historical-audit-decoding

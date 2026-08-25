@@ -129,9 +129,9 @@ Backing: test
 
 ### `invariant: corpus-raw-access-enumerated`
 
-The three ordered schema migrations in internal/migrate are the only call sites of the corpus view's raw-bytes accessor, and no file outside internal/adr calls os.ReadFile on an ADR.Path.
+No production caller uses the corpus view's raw-bytes accessor or calls os.ReadFile on an ADR.Path; audit owns its isolated historical decoder.
 Origin: ADR-0130
-Revised-by: ADR-0138, ADR-0191
+Revised-by: ADR-0138, ADR-0191, ADR-separate-live-upgrade-support-from-historical-audit-decoding
 Backing: test
 
 ### `invariant: corpus-single-identity-key`

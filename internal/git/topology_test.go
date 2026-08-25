@@ -31,12 +31,16 @@ func TestListWorktreeRegistrationsReportsEveryRegisteredCheckout(t *testing.T) {
 	// The entrypoint is called here directly, not only through the helper below,
 	// so this suite visibly exercises what it is registered against: a suite that
 	// reaches its entrypoint only through a helper reads as unrelated to it.
-	direct, err := awfgit.ListWorktreeRegistrations(testContext(t), primary)
+	repo, err := awfgit.Open(primary)
+	if err != nil {
+		t.Fatal(err)
+	}
+	direct, err := repo.WorktreeList(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(direct) != 3 {
-		t.Fatalf("ListWorktreeRegistrations returned %d registrations, want the primary and its two linked checkouts", len(direct))
+		t.Fatalf("WorktreeList returned %d registrations, want the primary and its two linked checkouts", len(direct))
 	}
 	fromPrimary := registrationsByPath(t, primary)
 	fromLinked := registrationsByPath(t, detached)
@@ -128,7 +132,11 @@ func TestControlRootsAgreeWithRegisteredTopology(t *testing.T) {
 
 func registrationsByPath(t *testing.T, invoking string) map[string]awfgit.WorktreeRegistration {
 	t.Helper()
-	list, err := awfgit.ListWorktreeRegistrations(testContext(t), invoking)
+	repo, err := awfgit.Open(invoking)
+	if err != nil {
+		t.Fatalf("open repository from %q: %v", invoking, err)
+	}
+	list, err := repo.WorktreeList(testContext(t))
 	if err != nil {
 		t.Fatalf("list worktree registrations from %q: %v", invoking, err)
 	}

@@ -71,6 +71,16 @@ func TestParseLiveRejectsBelowFloorBeforeAuthorityValidation(t *testing.T) {
 	}
 }
 
+func TestLoadSchemaOptionalPreservesReadFailure(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "awf.lock")
+	if err := os.Symlink("awf.lock", path); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := LoadSchemaOptional(path); err == nil || !strings.Contains(err.Error(), "read lock") {
+		t.Fatalf("LoadSchemaOptional() error = %v, want read failure", err)
+	}
+}
+
 func TestLoadMissingFile(t *testing.T) {
 	// A non-existent lock path surfaces a wrapped read error.
 	p := filepath.Join(t.TempDir(), "absent.lock")

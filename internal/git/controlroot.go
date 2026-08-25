@@ -226,12 +226,6 @@ type WorktreeRegistration struct {
 	Prunable bool
 }
 
-// ListWorktreeRegistrations returns the repository's native-Git registrations
-// without consulting or scanning filesystem ancestors.
-func ListWorktreeRegistrations(ctx context.Context, invokingRoot string) ([]WorktreeRegistration, error) {
-	return listWorktreeRegistrations(ctx, newRunner(invokingRoot), invokingRoot)
-}
-
 // listWorktreeRegistrations is the one registration read. The free entrypoint
 // above serves callers inspecting topology before any single repository is the
 // subject; Repo.WorktreeList serves callers that already hold a handle. Both

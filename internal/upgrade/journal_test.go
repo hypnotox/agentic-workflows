@@ -687,7 +687,7 @@ func TestJournalResidentKindRejections(t *testing.T) {
 	}
 }
 
-// invariant: config/migrations-and-locks:unified-effort-resident-migration (TestJournalResidentCommitQuarantinesThenDiscards)
+// invariant: config/migrations-and-locks:lock-atomic-save (TestJournalResidentCommitQuarantinesThenDiscards)
 func TestJournalResidentCommitQuarantinesThenDiscards(t *testing.T) {
 	root := t.TempDir()
 	seedResidents(t, root)
@@ -726,7 +726,7 @@ func TestJournalResidentCommitQuarantinesThenDiscards(t *testing.T) {
 	}
 }
 
-// invariant: config/migrations-and-locks:unified-effort-resident-migration (TestJournalResidentRollbackRestoresQuarantinedBytes)
+// invariant: config/migrations-and-locks:lock-atomic-save (TestJournalResidentRollbackRestoresQuarantinedBytes)
 func TestJournalResidentRollbackRestoresQuarantinedBytes(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("root bypasses directory permissions")
@@ -772,7 +772,7 @@ func TestJournalResidentRollbackRestoresQuarantinedBytes(t *testing.T) {
 // TestJournalResidentInterruption pins every crash point around the resident
 // renames. Each case materializes the exact tree an interruption would leave
 // and requires `awf upgrade --recover` to converge, twice.
-// invariant: config/migrations-and-locks:unified-effort-resident-migration (TestJournalResidentInterruption)
+// invariant: config/migrations-and-locks:lock-atomic-save (TestJournalResidentInterruption)
 func TestJournalResidentInterruption(t *testing.T) {
 	const (
 		leafRel  = ".awf/efforts/legacy.json"
@@ -972,7 +972,7 @@ func TestJournalResidentAbsentResidentCommits(t *testing.T) {
 	}
 }
 
-// invariant: config/migrations-and-locks:unified-effort-resident-migration (TestJournalResidentCollisionRefusals)
+// invariant: config/migrations-and-locks:lock-atomic-save (TestJournalResidentCollisionRefusals)
 func TestJournalResidentCollisionRefusals(t *testing.T) {
 	t.Run("occupied-quarantine-destination", func(t *testing.T) {
 		root := t.TempDir()

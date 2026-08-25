@@ -86,14 +86,13 @@ var entrypointSuites = map[string]suite{
 	"VerifySSH":               {"internal/git", "TestVerifySSHUsesRealGitAndCleansTrustFile"},
 
 	// Free entrypoints: each precedes an opened repository or does without one.
-	"Open":                      {"internal/git", "TestOpenRepo"},
-	"OpenContaining":            {"internal/git", "TestOpenContainingStopsAtMalformedCandidateAndHidesBackendErrors"},
-	"ResolveControlRoots":       {"internal/git", "TestControlRootsAgreeWithRegisteredTopology"},
-	"ListWorktreeRegistrations": {"internal/git", "TestListWorktreeRegistrationsReportsEveryRegisteredCheckout"},
-	"MergeInProgress":           {"internal/git", "TestMergeInProgressPrimaryCheckout"},
-	"MergeHeads":                {"internal/git", "TestMergeInProgressPrimaryCheckout"},
-	"ParseRange":                {"internal/git", "TestParseRangeTable"},
-	"ProjectResidentRoot":       {"cmd/awf", "TestResolveProjectResidentRoot"},
+	"Open":                {"internal/git", "TestOpenRepo"},
+	"OpenContaining":      {"internal/git", "TestOpenContainingStopsAtMalformedCandidateAndHidesBackendErrors"},
+	"ResolveControlRoots": {"internal/git", "TestControlRootsAgreeWithRegisteredTopology"},
+	"MergeInProgress":     {"internal/git", "TestMergeInProgressPrimaryCheckout"},
+	"MergeHeads":          {"internal/git", "TestMergeInProgressPrimaryCheckout"},
+	"ParseRange":          {"internal/git", "TestParseRangeTable"},
+	"ProjectResidentRoot": {"cmd/awf", "TestResolveProjectResidentRoot"},
 }
 
 // moduleRoot resolves the module root from this package's directory.

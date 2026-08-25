@@ -61,6 +61,36 @@ func TestControlRootInternalParserAndHelpers(t *testing.T) {
 	}
 }
 
+func TestWorktreeListPreservesNativeAndSafetyFailures(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake native Git fixture requires a POSIX script")
+	}
+	for _, tc := range []struct {
+		name, body string
+		wantHard   bool
+	}{
+		{name: "native command", body: "#!/bin/sh\nprintf 'list failed\\n' >&2\nexit 7\n"},
+		{name: "malformed porcelain", body: "#!/bin/sh\nprintf 'worktree /abs\\000HEAD x\\000branch refs/heads/main\\000'\n", wantHard: true},
+		{name: "relative registration", body: "#!/bin/sh\nprintf 'worktree relative\\000HEAD x\\000branch refs/heads/main\\000\\000'\n", wantHard: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			bin := t.TempDir()
+			if err := os.WriteFile(filepath.Join(bin, "git"), []byte(tc.body), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+			_, err := listWorktreeRegistrations(testContext(t), newRunner(t.TempDir()), "fixture-root")
+			if err == nil {
+				t.Fatal("listWorktreeRegistrations() succeeded")
+			}
+			var hard *HardSafetyError
+			if errors.As(err, &hard) != tc.wantHard {
+				t.Fatalf("error = %T %v, want hard safety = %t", err, err, tc.wantHard)
+			}
+		})
+	}
+}
+
 func TestNativeGitFailuresRetainSeamIdentityAndContext(t *testing.T) {
 	nonRepository := filepath.Join(t.TempDir(), "not-a-repository")
 	if err := os.Mkdir(nonRepository, 0o700); err != nil {
@@ -179,27 +209,6 @@ func shellStageResult(current, target, success string) string {
 		return "printf 'stage failure\\n' >&2; exit 7"
 	}
 	return success
-}
-
-func TestListWorktreeRegistrationsErrors(t *testing.T) {
-	if _, err := ListWorktreeRegistrations(testContext(t), filepath.Join(t.TempDir(), "not-a-repository")); err == nil {
-		t.Fatal("non-repository registration list succeeded")
-	}
-	bin := t.TempDir()
-	script := filepath.Join(bin, "git")
-	if err := os.WriteFile(script, []byte("#!/bin/sh\nprintf 'malformed\\000'\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
-	if _, err := ListWorktreeRegistrations(testContext(t), t.TempDir()); err == nil {
-		t.Fatal("malformed registration topology accepted")
-	}
-	if err := os.WriteFile(script, []byte("#!/bin/sh\nprintf 'worktree relative\\000HEAD abc\\000branch refs/heads/main\\000\\000'\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := ListWorktreeRegistrations(testContext(t), t.TempDir()); err == nil {
-		t.Fatal("relative registration path accepted")
-	}
 }
 
 func TestControlRootInternalGitDirAndSafetyErrors(t *testing.T) {

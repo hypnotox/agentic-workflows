@@ -823,49 +823,14 @@ func TestClaimOperationHistoryOrdersByADRNumber(t *testing.T) {
 // invariant: adr-system/adr-lifecycle:corpus-raw-access-enumerated (TestCorpusRawAccessEnumerated)
 func TestCorpusRawAccessEnumerated(t *testing.T) {
 	raw, pathReads := rawAccessFindings(loadProductionPackages(t))
-	want := map[string]bool{
-		"internal/migrate/retirementtokens.go":    true,
-		"internal/migrate/supersessionkeys.go":    true,
-		"internal/migrate/adrnumberprovenance.go": true,
-	}
+	want := map[string]bool{}
 	if problems := rawAccessProblems(raw, want); len(problems) != 0 {
-		t.Errorf("Corpus.Raw call set differs from the three single-call migration seams:\n\t%s", strings.Join(problems, "\n\t"))
+		t.Errorf("Corpus.Raw call set differs from the closed live surface:\n\t%s", strings.Join(problems, "\n\t"))
 	}
 	if len(pathReads) != 0 {
 		t.Errorf("an ADR file is read directly rather than through the view's accessor:\n\t%s", strings.Join(pathReads, "\n\t"))
 	}
-	mutation := loadMutationPackage(t, "internal/migrate/corpus_mutation_fixture.go", "./internal/migrate", `package migrate
 
-import (
-	"os"
-
-	"github.com/hypnotox/agentic-workflows/internal/adr"
-)
-
-func mutationRaw(c adr.Corpus, rec adr.ADR) {
-	_, _ = c.Raw("0001")
-	_, _ = c.Raw("0002")
-	raw := c.Raw
-	_, _ = raw("0003")
-	_, _ = os.ReadFile(rec.Path)
-	path := rec.Path
-	_, _ = os.ReadFile(path)
-}
-`)
-	mutationRaw, mutationReads := rawAccessFindings(mutation)
-	mutationPath := "internal/migrate/corpus_mutation_fixture.go"
-	if len(mutationRaw[mutationPath]) != 3 || len(mutationReads) != 2 {
-		t.Fatalf("raw-access direct/method-value mutation fixtures: Raw=%#v ReadFile(ADR.Path)=%#v, want three typed calls and two typed reads", mutationRaw, mutationReads)
-	}
-	mutationAllowed := map[string]bool{
-		"internal/migrate/retirementtokens.go":    true,
-		"internal/migrate/supersessionkeys.go":    true,
-		"internal/migrate/adrnumberprovenance.go": true,
-		mutationPath: true,
-	}
-	if problems := rawAccessProblems(mutationRaw, mutationAllowed); len(problems) != 1 || !strings.Contains(problems[0], "exactly one") {
-		t.Fatalf("extra Raw call in an allowed file escaped the cardinality check: %#v", problems)
-	}
 }
 
 func fromLine(path string, i int, line string) string {
@@ -893,14 +858,10 @@ func TestCorpusAbsentADR(t *testing.T) {
 	if c.Has("9999") {
 		t.Error("Has reported an absent ADR present")
 	}
-	if _, err := c.Raw("9999"); err == nil {
-		t.Error("Raw on an absent ADR returned no error")
-	}
-
 	// The present ADR answers for real, so the guards above are not passing
 	// vacuously over an empty corpus.
-	if _, err := c.Raw("0001"); err != nil {
-		t.Errorf("Raw(0001): %v", err)
+	if _, ok := c.ByNumber("0001"); !ok {
+		t.Error("ByNumber did not resolve the present ADR")
 	}
 }
 

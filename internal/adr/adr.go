@@ -158,13 +158,6 @@ func (a ADR) DecisionItems() []int {
 	return items
 }
 
-// DecisionBounds returns the exact Decision section byte bounds for the three
-// historical migrations that perform surgical source rewrites. General corpus
-// consumers must use semantic queries instead of raw ADR bytes.
-func (a ADR) DecisionBounds() (start, end int, ok bool) {
-	return a.decisionStart, a.decisionEnd, a.decisionEnd != 0
-}
-
 // FilenameRe matches an ADR filename (NNNN-slug.md); group 1 is the 4-digit number.
 var FilenameRe = regexp.MustCompile(`^(\d{4})-.+\.md$`)
 

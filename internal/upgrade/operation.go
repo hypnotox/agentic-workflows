@@ -114,6 +114,25 @@ func Run(ctx context.Context, root string, sync Sync, gate Gate, present Project
 	}
 	lockPath := authorityPath(root)
 	floor, current := liveSchemaRange()
+	// A retired layout has neither current control file. Classify it before
+	// loading authority so its removed representation is never decoded.
+	configFound, configErr := currentConfigPresent(root)
+	if configErr != nil {
+		return OperationOutcome{}, configErr
+	}
+	_, lockStatErr := os.Stat(lockPath)
+	lockFoundOnDisk := lockStatErr == nil
+	if lockStatErr != nil && !errors.Is(lockStatErr, os.ErrNotExist) {
+		return OperationOutcome{}, fmt.Errorf("stat .awf/awf.lock: %w", lockStatErr)
+	}
+	state := ""
+	if !configFound && !lockFoundOnDisk && schemaGate != nil {
+		var err error
+		state, _, err = schemaGate(root)
+		if err != nil {
+			return OperationOutcome{}, err
+		}
+	}
 	lock, found, err := manifest.LoadLiveOptional(lockPath, floor, current)
 	if err != nil {
 		return OperationOutcome{}, err
@@ -133,10 +152,12 @@ func Run(ctx context.Context, root string, sync Sync, gate Gate, present Project
 		if err := requireCurrentConfig(root); err != nil {
 			return OperationOutcome{}, err
 		}
-	}
-	state, _, err := schemaGate(root)
-	if err != nil {
-		return OperationOutcome{}, err
+		if schemaGate != nil {
+			state, _, err = schemaGate(root)
+			if err != nil {
+				return OperationOutcome{}, err
+			}
+		}
 	}
 	if currentAuthority {
 		lock, err = reloadCurrentAuthority(root, lockPath, floor, current)

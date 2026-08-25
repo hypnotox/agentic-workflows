@@ -405,7 +405,7 @@ func TestRunUpgradeLegacyAdopterRefusesBelowFloorWithoutMutation(t *testing.T) {
 	var out bytes.Buffer
 	if err := runUpgrade(ctx, root, &out); !errors.Is(err, manifest.ErrUnsupportedLiveSource) {
 		t.Fatalf("runUpgrade legacy = %v, want below-floor refusal", err)
-	} else if !strings.Contains(err.Error(), "use a release that supports schema 0") {
+	} else if !strings.Contains(err.Error(), "supports the retired layout") {
 		t.Fatalf("legacy refusal presentation = %q, want recovery guidance", err)
 	}
 	assertUpgradeFixtureUnchanged(t, root, before)
@@ -474,24 +474,26 @@ func TestRunUpgradePresentsAheadAndPartialAuthorityRefusals(t *testing.T) {
 	}
 }
 
-func TestRunUpgradeMigrationError(t *testing.T) {
-	ctx := testContext(t)
-	// A legacy config that fails to parse makes the migration error.
+func TestRunUpgradeRendersSuccessfulFinalJournalMutation(t *testing.T) {
+	root := scaffoldProject(t)
+	var stdout bytes.Buffer
+	if err := runUpgrade(testContext(t), root, &stdout); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout.String(), "status: completed") {
+		t.Fatalf("upgrade output = %q", stdout.String())
+	}
+}
+
+func TestRunUpgradeRetiredLayoutDoesNotDecodeMalformedConfig(t *testing.T) {
 	root := t.TempDir()
-	claude := filepath.Join(root, ".claude")
-	if err := os.MkdirAll(claude, 0o755); err != nil {
-		t.Fatal(err)
+	testsupport.WriteFile(t, filepath.Join(root, ".claude", "awf.yaml"), ": : malformed")
+	before := snapshotUpgradeFixture(t, root)
+	err := runUpgrade(testContext(t), root, io.Discard)
+	if !errors.Is(err, manifest.ErrUnsupportedLiveSource) || !strings.Contains(err.Error(), "retired layout") {
+		t.Fatalf("retired layout error = %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(claude, "awf.yaml"), []byte(": : not valid : :\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	lock := &manifest.Lock{AWFVersion: "0.1.0", Files: map[string]manifest.Entry{}}
-	if err := lock.Save(filepath.Join(claude, "awf.lock")); err != nil {
-		t.Fatal(err)
-	}
-	if err := runUpgrade(ctx, root, io.Discard); err == nil {
-		t.Error("expected migration error for a malformed legacy config")
-	}
+	assertUpgradeFixtureUnchanged(t, root, before)
 }
 
 // invariant: tooling/cli:upgrade-always-syncs (TestRunUpgradeAlreadyCurrentStillSyncs)
