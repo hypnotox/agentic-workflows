@@ -85,9 +85,14 @@ explicitly deferred.
 - remove `config/migrations-and-locks:workflow-telemetry-config-migration`
 - remove `config/migrations-and-locks:profile-full-migration`
 - update `config/migrations-and-locks:live-source-compatibility-floor`
+- update `config/configuration:awf-config-root`
+- update `adr-system/adr-lifecycle:corpus-raw-access-enumerated`
 - update `adr-system/plan-artifacts:plan-v2-decision-references`
 - update `adr-system/plan-artifacts:managed-plan-format-support`
+- update `rendering/singletons-and-payloads:resident-output-preservation`
+- update `rendering/workflow-skill-templates:memory-checkpoint-chain-coverage`
 - update `rendering/workflow-skill-templates:plan-task-detail-modes`
+- remove `code-design/dependency-composition:upgrade-attestation-filesystem-wiring`
 - update `tooling/audit-and-snapshots:managed-history-decode-horizon`
 - update `tooling/effort-management:memory-skeleton-purpose-partition`
 - update `tooling/effort-management:managed-effort-format-support`
