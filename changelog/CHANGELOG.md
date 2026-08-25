@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Breaking changes
 
+- Live project authority now starts at schema 46. Below-floor, retired-layout, and partial authority refuses before decoding or mutation with recovery guidance; audit alone reads represented managed history from schemas 3 through 46. Bridge and cutover support, schema-1 effort retirement, legacy four-line effort memory, and plan-v2 ordinal Decision selectors are removed. Generic journal recovery, schema-2 effort residents, represented ADR and plan formats, and frozen pre-V4 ordinal navigation remain supported.
+
 - The approval boundary is an unresolved material decision rather than any hand-authored production-code change. A routine change whose outcome, design, scope, safety, and verification are already settled now proceeds without an approval stop, whatever kind of file it touches, and the per-artifact carve-out for documentation, test, and generated-output work is removed because the general rule already covers it.
 
 ### Features

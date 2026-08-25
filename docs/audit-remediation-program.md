@@ -189,7 +189,7 @@ correction is allowed without unrelated cleanup riding along.
 |---|---|---|---|---|
 | RF-001 | P1 | COMPLETE | Concrete dependency direction and one named semantic owner per extraction | Program A milestone |
 | RF-008A | P1 | COMPLETE | Durable private compatibility policy and a real support-floor inventory | Program A milestone |
-| RF-008B | P1 | READY | Obsolete compatibility pruned below the support floor | RF-008A, managed repos upgraded |
+| RF-008B | P1 | COMPLETE | Obsolete compatibility pruned below the support floor | RF-008A, managed repos upgraded |
 | RF-002 | P1 | COMPLETE | Residual project state separated from operations | RF-001 |
 | RF-003 | P1 | COMPLETE | One application owner for output planning and publication coordination | RF-002 |
 | RF-004 | P1 | COMPLETE | Check aggregation separated from check policy; severity in the result model | AF-013, RF-002 |
@@ -212,8 +212,8 @@ and the repository-required gate passed before commit. The adopter upgrade commi
 `aeonseed@3cc8492`, `fleet@afaef79`, `go-php@7e7649dd`, `jugend-im-zentrum@d41b054`,
 `nouris@2468d0d`, `pi-science@ab434da`, `pi-tools@489e6e3`, `remote_pi@141e782`, and
 `sudoku-solver@17435bd`; agentic-workflows supplied the `0.39.2` producer baseline and revalidated at
-`cb044a262`. RF-008B is `READY`. Its candidate-specific no-dependency adjudication remains inside
-that issue.
+`cb044a262`. RF-008B's candidate-specific no-dependency adjudication and disposable upgrade census
+also passed; its completion report records the exact candidate evidence.
 
 ### Pre-approved Program B boundaries
 
@@ -281,12 +281,12 @@ that issue.
 
 ### Program B start gate
 
-**Status: OPEN; RF-008B IS READY.** Program A is complete; generated artifacts are stable under the
-new doctrine; changed behaviour has deterministic regression coverage; no known adopter-facing
+**Status: OPEN; RF-008B IS COMPLETE.** Program A is complete; generated artifacts are stable under
+the new doctrine; changed behaviour has deterministic regression coverage; no known adopter-facing
 contradiction remains; RF-001 through RF-007 establish the architecture and direct residual
 test-oracle ownership; and RF-009 establishes the post-refactor coverage and mutation regression
-policy. The managed-repository upgrade gate is satisfied. RF-014B remains conditional on applicable
-RF-008B removals, and RF-010 remains blocked until that compatibility lane closes.
+policy. The managed-repository upgrade gate and RF-008B candidate census are satisfied. RF-014B
+remains conditional, and RF-010 is unblocked when this compatibility-lane transaction integrates.
 
 Program A milestone complete; generated artifacts stable under the new doctrine; new behaviour has
 regression tests; no known adopter-facing contradiction remains; compatibility support policy decided
@@ -302,8 +302,9 @@ history. Items joined by `||` may implement concurrently; integrations remain se
 - **A-F3:** AF-011 || AF-013 after their dependencies integrate.
 - **A-F4:** AF-010, then AF-012, then AF-014B and the Program A milestone, sequentially.
 - **B-F1:** after the milestone, RF-001 || RF-008A || RF-011 || RF-013.
-- **B-F2 cleanup lane:** RF-014A is complete; RF-008B is next, followed by RF-014B only when its
-  applicability condition holds. Do not overlap this lane with architecture refactors.
+- **B-F2 cleanup lane:** RF-014A and RF-008B are complete. RF-014B follows only when its
+  applicability condition holds; the RF-008B census found no presently obsolete retained candidate.
+  Do not overlap this lane with architecture refactors.
 - **B-F3:** RF-002 || RF-012 after their dependencies and applicable cleanup integrate.
 - **B-F4:** RF-003, RF-004, RF-005, RF-006, RF-007, and RF-010 sequentially. The orchestrator may
   choose the order of RF-003 through RF-005 after RF-002, but they do not implement concurrently.
@@ -839,6 +840,41 @@ abstraction; oracle strength.
 - **Unblocked:** B-F1 is complete. RF-014A is next in B-F2. RF-008B remains `CONDITIONAL` until all
   managed repositories are upgraded and each removal candidate passes the no-dependency gate;
   RF-014B remains conditional on applicable compatibility removals.
+
+### RF-008B
+
+- **Range:** Issue base `eaafe14d0`; implementation range `eaafe14d0..432419c34`, followed by the
+  Phase 6 release and program-currency transaction.
+- **Protected contract:** ADR-0297 and the successor compatibility ADR enforce schema 46 as the live
+  source floor, preserve current-plus-one installed releases and one ordered future migration seam,
+  and confine represented schemas 3 through 46 to read-only audit decoding. Unsupported live or
+  historical authority refuses before mutation. Represented formats and generic recovery remain.
+- **Clean integration:** Live admission, supported migration planning, and audit history have separate
+  owners. Upgrade commits planned changes through one root-confined journal with the current lock
+  last. Bridge and cutover support, below-floor live migrations, schema-1 effort retirement, legacy
+  memory conversion, and plan-v2 ordinal selectors are removed with their proofs and guidance.
+- **Files changed:** Command admission; audit, manifest, migration, upgrade, effort, worktree, and plan
+  owners; root-confined journal operations; current-state claims; generated guidance; ADR and plan
+  records; coverage policy; release notes; and this program report carry and prove the boundary.
+- **Verification:** Focused and full tests, render and drift checks, dead-code analysis, staged checks,
+  repeated full gates, coverage identity checks, targeted mutation falsification, phase reviews, and
+  workflow audits passed through the implementation tip. One candidate binary with SHA-256
+  `42dba8f71b4a49a20398d99b44973d83d49bae5e7cb1a35d98ae39cb500e0f85` upgraded disposable copies
+  of every managed primary tip and passed candidate checks plus each repository-required gate. Every
+  managed source checkout remained clean at its original tip and every disposable tree was removed.
+  Final focused and full tests, render and drift checks, staged checks, dead-code, version, pin, and
+  full gate checks passed; only pre-existing advisory lint findings remained.
+- **Deviations:** Strict live admission removed the archive-root and anchored-glob migration claims
+  whose below-floor implementations became false. Review also required ordered multi-step overlays,
+  one confined transaction handle, physical lock-last proof, and staged-universe capability loading.
+  These corrections preserve the approved compatibility, recovery, and verification boundaries.
+- **Residual debt:** Three current locks still omit initialization provenance and four current configs
+  retain inert punctuation exemptions. Represented ADR and plan forms, actual schemas 3 through 46,
+  schema-2 effort residents, and generic journal recovery have current consumers. `project.Open`,
+  historical-comment cleanup, and punctuation normalization remain outside RF-008B.
+- **Unblocked:** RF-010 becomes ready when this transaction integrates. RF-014B remains
+  `CONDITIONAL`; the census found no retained compatibility candidate currently obsolete, so no
+  deletion is forced and its status does not change in this issue.
 
 ### RF-014A
 
