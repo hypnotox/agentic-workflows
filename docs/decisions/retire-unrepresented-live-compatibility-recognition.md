@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: retire-unrepresented-live-compatibility-recognition
-status: Implementing
+status: Implemented
 date: 2026-08-25
 ---
 # ADR-retire-unrepresented-live-compatibility-recognition: Retire Unrepresented Live Compatibility Recognition
@@ -72,3 +72,4 @@ unblocks RF-010. Retained compatibility continues to follow ADR-0297's managed-c
 - 2026-08-25: Accepted; content-sha256: fe3a5a3cabcc6b651f6e25426b3d1f503579aef9025d53d53509fb5a055e99bd
 - 2026-08-25: Implementing; content-sha256: fe3a5a3cabcc6b651f6e25426b3d1f503579aef9025d53d53509fb5a055e99bd
 - 2026-08-25: Applied; operations: remove `rendering/companion-scripts:runner-prune-backup`, update `rendering/project-output-plan:template-id-single-derivation`
+- 2026-08-25: Implemented; content-sha256: fe3a5a3cabcc6b651f6e25426b3d1f503579aef9025d53d53509fb5a055e99bd
