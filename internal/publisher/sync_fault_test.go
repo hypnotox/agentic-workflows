@@ -620,10 +620,9 @@ func TestSyncLockSaveRefusesParentSwap(t *testing.T) {
 	}
 }
 
-// invariant: rendering/companion-scripts:runner-prune-backup (TestConcurrentRunnerBackupsPublishCompleteRescueCopies)
-func TestConcurrentRunnerBackupsPublishCompleteRescueCopies(t *testing.T) {
+func TestConcurrentBackupsPublishCompleteCopies(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	const source = "complete runner rescue\n"
+	const source = "complete backup source\n"
 	testsupport.WriteFile(t, filepath.Join(root, "x"), source)
 	sourceInfo, err := os.Stat(filepath.Join(root, "x"))
 	if err != nil {

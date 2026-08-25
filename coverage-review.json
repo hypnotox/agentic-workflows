@@ -8248,6 +8248,19 @@
       "identity": {
         "file": "internal/publisher/sync.go",
         "start": {
+          "line": 216,
+          "column": 102
+        },
+        "end": {
+          "line": 218,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "RF-014B removal of retired runner-only pruning shifted this existing defensive or closed-state arm; its prior reviewed reachability rationale and direct owner coverage remain unchanged.",
+      "movedFrom": {
+        "file": "internal/publisher/sync.go",
+        "start": {
           "line": 217,
           "column": 102
         },
@@ -8256,11 +8269,23 @@
           "column": 5
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/sync.go:217.102,219.5 1 in function syncReportWithPlan, beginning `{ // coverage-ignore: rendered catalog skill/agent syntax is template-fixed and cannot be invali...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 373,
+          "column": 16
+        },
+        "end": {
+          "line": 375,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "RF-014B removal of retired runner-only pruning shifted this existing defensive or closed-state arm; its prior reviewed reachability rationale and direct owner coverage remain unchanged.",
+      "movedFrom": {
         "file": "internal/publisher/sync.go",
         "start": {
           "line": 388,
@@ -8271,11 +8296,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/sync.go:388.16,390.3 1 in function syncReportWithPlan, beginning `{ // coverage-ignore: sync constructs only authority-valid lock fields, so marshal failure requi...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 433,
+          "column": 16
+        },
+        "end": {
+          "line": 435,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "RF-014B removal of retired runner-only pruning shifted this existing defensive or closed-state arm; its prior reviewed reachability rationale and direct owner coverage remain unchanged.",
+      "movedFrom": {
         "file": "internal/publisher/sync.go",
         "start": {
           "line": 448,
@@ -8286,8 +8323,7 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/sync.go:448.16,450.3 1 in function syncMutation, beginning `{ // coverage-ignore: fixed nonempty completion action always validates as prose`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
@@ -10483,6 +10519,19 @@
       "identity": {
         "file": "internal/publisher/sync.go",
         "start": {
+          "line": 197,
+          "column": 12
+        },
+        "end": {
+          "line": 199,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "RF-014B removal of retired runner-only pruning shifted this existing defensive or closed-state arm; its prior reviewed reachability rationale and direct owner coverage remain unchanged.",
+      "movedFrom": {
+        "file": "internal/publisher/sync.go",
+        "start": {
           "line": 198,
           "column": 12
         },
@@ -10491,11 +10540,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 201,
+          "column": 13
+        },
+        "end": {
+          "line": 203,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "RF-014B removal of retired runner-only pruning shifted this existing defensive or closed-state arm; its prior reviewed reachability rationale and direct owner coverage remain unchanged.",
+      "movedFrom": {
         "file": "internal/publisher/sync.go",
         "start": {
           "line": 202,
@@ -10506,11 +10567,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 205,
+          "column": 62
+        },
+        "end": {
+          "line": 207,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "RF-014B removal of retired runner-only pruning shifted this existing defensive or closed-state arm; its prior reviewed reachability rationale and direct owner coverage remain unchanged.",
+      "movedFrom": {
         "file": "internal/publisher/sync.go",
         "start": {
           "line": 206,
@@ -10521,8 +10594,7 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+      }
     },
     {
       "identity": {
@@ -16727,50 +16799,50 @@
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 217,
-        "targetLine": 217,
+        "line": 216,
+        "targetLine": 216,
         "reason": "rendered catalog skill/agent syntax is template-fixed and cannot be invalid at sync time",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/publisher/sync.go:217, `if err := validatePublicationArtifact([]byte(f.Content()), AgentDialect(f.Encoder())); err != nil {` is guarded by the preceding `if f.Policy().ValidateFrontmatter {` at internal/publisher/sync.go:216; in `func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFilesystems, op *outputplan.Plan) (backups []Backup, changes []Change, pruned []string, err error)` (internal/publisher/sync.go:178), the predecessor invariant is rendered catalog skill/agent syntax is template-fixed and cannot be invalid at sync time. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/publisher/sync.go:216, `if err := validatePublicationArtifact([]byte(f.Content()), AgentDialect(f.Encoder())); err != nil {` is guarded by the preceding `if f.Policy().ValidateFrontmatter {` at internal/publisher/sync.go:215; in `func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFilesystems, op *outputplan.Plan) (backups []Backup, changes []Change, pruned []string, err error)` (internal/publisher/sync.go:177), the predecessor invariant is rendered catalog skill/agent syntax is template-fixed and cannot be invalid at sync time. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 388,
-        "targetLine": 388,
+        "line": 373,
+        "targetLine": 373,
         "reason": "sync constructs only authority-valid lock fields, so marshal failure requires a future representation change",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/publisher/sync.go:388, `if err != nil {` is guarded by the preceding `lockBytes, err = lock.Marshal()` at internal/publisher/sync.go:387; in `func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFilesystems, op *outputplan.Plan) (backups []Backup, changes []Change, pruned []string, err error)` (internal/publisher/sync.go:178), the predecessor invariant is sync constructs only authority-valid lock fields, so marshal failure requires a future representation change. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/publisher/sync.go:373, `if err != nil {` is guarded by the preceding `lockBytes, err = lock.Marshal()` at internal/publisher/sync.go:372; in `func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFilesystems, op *outputplan.Plan) (backups []Backup, changes []Change, pruned []string, err error)` (internal/publisher/sync.go:177), the predecessor invariant is sync constructs only authority-valid lock fields, so marshal failure requires a future representation change. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 389,
-        "targetLine": 389,
+        "line": 374,
+        "targetLine": 374,
         "reason": "sync constructs only authority-valid lock fields, so marshal failure requires a future representation change",
         "mapped": false,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFilesystems, op *outputplan.Plan) (backups []Backup, changes []Change, pruned []string, err error)` begins at internal/publisher/sync.go:178; its branch `return backups, changes, pruned, err` at internal/publisher/sync.go:389 follows `if err != nil {` at internal/publisher/sync.go:388. That flow establishes sync constructs only authority-valid lock fields, so marshal failure requires a future representation change, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFilesystems, op *outputplan.Plan) (backups []Backup, changes []Change, pruned []string, err error)` begins at internal/publisher/sync.go:177; its branch `return backups, changes, pruned, err` at internal/publisher/sync.go:374 follows `if err != nil {` at internal/publisher/sync.go:373. That flow establishes sync constructs only authority-valid lock fields, so marshal failure requires a future representation change, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 448,
-        "targetLine": 448,
+        "line": 433,
+        "targetLine": 433,
         "reason": "fixed nonempty completion action always validates as prose",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/publisher/sync.go:448, `if err != nil {` is guarded by the preceding `next, err := presentation.Prose(\"continue with the rendered project state\")` at internal/publisher/sync.go:447; in `func syncMutation(backups []Backup, changes []Change, pruned []string) (presentation.Mutation, error)` (internal/publisher/sync.go:396), the predecessor invariant is fixed nonempty completion action always validates as prose. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/publisher/sync.go:433, `if err != nil {` is guarded by the preceding `next, err := presentation.Prose(\"continue with the rendered project state\")` at internal/publisher/sync.go:432; in `func syncMutation(backups []Backup, changes []Change, pruned []string) (presentation.Mutation, error)` (internal/publisher/sync.go:381), the predecessor invariant is fixed nonempty completion action always validates as prose. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {

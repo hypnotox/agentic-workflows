@@ -50,8 +50,7 @@ type Change struct {
 
 // Sync renders and writes the project, additionally backing up any
 // foreign file (on disk but absent from the start-of-sync lock) before overwriting
-// it - plus a pruned co-owned runner before removing it (ADR-0156 item 9) -
-// and returning those backups (ADR-0035) plus the per-file provenance of
+// it and returning those backups (ADR-0035) plus the per-file provenance of
 // output that changed against the prior lock and the lock-relative paths of the
 // files its prune actually removed (both path-sorted; a file whose output is
 // byte-identical, and first-adoption initialization with no prior lock reports
@@ -335,13 +334,7 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 				continue
 			}
 			filesystem, outputPath := filesystems.output(path)
-			// The outgoing co-owned runner is the one pruned output an adopter
-			// hand-authored inside (its in-place verb bodies), so it is backed
-			// up before removal for the one-time hand-port instead of vanishing
-			// into git history (ADR-0156 item 9). A backup failure aborts the
-			// prune - never a silent fall-through to deletion.
-			switch entry.TemplateID {
-			case localDocTID:
+			if entry.TemplateID == localDocTID {
 				if info, existsErr := filesystem.LinkInfo(outputPath); existsErr != nil && !errors.Is(existsErr, fs.ErrNotExist) {
 					return backups, changes, pruned, fmt.Errorf("inspect pruned local document %s: %w", path, existsErr)
 				} else if existsErr == nil {
@@ -351,14 +344,6 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 					bak, bakErr := backupFileConfined(outputPath, filesystem)
 					if bakErr != nil {
 						return backups, changes, pruned, fmt.Errorf("back up pruned local document %s: %w", path, bakErr)
-					}
-					backups = append(backups, Backup{Path: path, Bak: bak})
-				}
-			case coOwnedRunnerTID:
-				if info, existsErr := filesystem.LinkInfo(outputPath); existsErr == nil && info.Mode()&fs.ModeSymlink == 0 {
-					bak, bakErr := backupFileConfined(outputPath, filesystem)
-					if bakErr != nil {
-						return backups, changes, pruned, fmt.Errorf("back up pruned runner %s: %w", path, bakErr)
 					}
 					backups = append(backups, Backup{Path: path, Bak: bak})
 				}

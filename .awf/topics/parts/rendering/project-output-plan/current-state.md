@@ -91,9 +91,9 @@ Backing: test
 
 ### `invariant: template-id-single-derivation`
 
-Template identity derives from the catalog, the kind-descriptor table, and the singleton and target declaration tables alone; no production file outside those declaration files spells a full template-ID path literal, and internal/topic receives template identity and content from its caller rather than re-reading the embedded tree. Live identity resolution derives from those same authorities, while the co-owned runner remains recognition-only.
+Template identity derives from the catalog, the kind-descriptor table, and the singleton and target declaration tables alone; no production file outside those declaration files spells a full template-ID path literal, and internal/topic receives template identity and content from its caller rather than re-reading the embedded tree. Live identity resolution derives from those same authorities.
 Origin: ADR-0195
-Revised-by: ADR-0235
+Revised-by: ADR-0235, ADR-retire-unrepresented-live-compatibility-recognition
 Backing: test
 
 ### `invariant: conditional-unit-single-source`

@@ -470,7 +470,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:e026ad000ba8daedd2f985f4e90af47d7546a7e16a14202aca6c8e7b3cf2c672",
+      "outputHash": "sha256:b50f3704f00f1a0a74a24d633f57bf502419c5a2696e1b480d2b554edc6af847",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -988,8 +988,8 @@
     "docs/topics/rendering/companion-scripts.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:d1fbadd543f58e726eadacbc6180ae3053a1eecb07b487facc221d0e3ffec9d8",
-      "outputHash": "sha256:8341b0f802dc10cb10b9063b447e5ea369ceddc62d6879e90cf238836cb36fb1"
+      "configHash": "sha256:630588ae771631291e3e0392b082a6d3f9b080700d71f64e037cd4fcf7f8665e",
+      "outputHash": "sha256:e47cd5e540e9cbd44b46bd2f9ff37356f2e7481ce7990041437829804c217420"
     },
     "docs/topics/rendering/doc-outputs.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -1030,8 +1030,8 @@
     "docs/topics/rendering/project-output-plan.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:1c9207f1bf4de27c710adae33e39b6b2f5ad8297f3806023e8c59220fbd4fd63",
-      "outputHash": "sha256:04231f3692c79674eea31870eb5c3360a37de011aebc4ec57ba484458f42a9fd"
+      "configHash": "sha256:5971401114e6b3a05d1e8b5491fc530c500cd9a916db1109e5288715494eb41d",
+      "outputHash": "sha256:84e3045ab41da989fd2dde19c8c1004c1cea5c89b2b911a6127c20f286f27590"
     },
     "docs/topics/rendering/render-engine.md": {
       "templateId": "topics/topic.md.tmpl",

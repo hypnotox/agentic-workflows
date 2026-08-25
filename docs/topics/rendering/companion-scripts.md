@@ -43,13 +43,6 @@ Origin: ADR-0148
 Revised-by: ADR-0156, ADR-0158, ADR-0210, ADR-0253
 Backing: test
 
-### `invariant: runner-prune-backup`
-
-A lock prune that removes a co-owned runner output (an outgoing lock entry whose template id is `runner/x.tmpl`) backs the file up through complete exclusive publication on the standard backup path (`x.awf-bak`, collision-suffixed) instead of deleting it, and still records the path as pruned. It retries only a destination-exists refusal at the next suffix, preserves source permission bits, and propagates every non-collision publication error without retry.
-Origin: ADR-0156
-Revised-by: ADR-0258
-Backing: test
-
 ### `invariant: runner-pure-forwarder`
 
 The always-rendered wrapper at the repo-root path `awf` contains no per-verb dispatch and no in-place-editable region: it resolves one awf invocation and execs it with all arguments forwarded verbatim.

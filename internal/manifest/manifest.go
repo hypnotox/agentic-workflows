@@ -92,8 +92,8 @@ func Load(path string) (*Lock, error) {
 	return Parse(b)
 }
 
-// Parse accepts retired routing keys only in schema 30 and earlier, where it
-// discards them. Schema 31 seals their retirement by refusing their presence.
+// Parse rejects retired routing keys at every schema. Historical decoding is
+// owned by audit rather than the live manifest model.
 func Parse(b []byte) (*Lock, error) {
 	var raw map[string]json.RawMessage
 	if err := json.Unmarshal(b, &raw); err != nil {
@@ -107,7 +107,7 @@ func Parse(b []byte) (*Lock, error) {
 		return nil, fmt.Errorf("parse lock: unknown field %q", "bridgeAttestation")
 	}
 	for _, key := range []string{"adrFormatV1From", "adrFormatV2From", "adrFormatV3From", "legacyAdrGaps"} {
-		if _, ok := raw[key]; ok && schema >= 31 {
+		if _, ok := raw[key]; ok {
 			return nil, fmt.Errorf("parse lock: unknown field %q for schema %d", key, schema)
 		}
 	}

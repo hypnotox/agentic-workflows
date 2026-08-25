@@ -285,19 +285,21 @@ func TestAuthorityStateValidation(t *testing.T) {
 	}
 }
 
-func TestParseRejectsEveryRetiredRoutingKeyAtSchema31(t *testing.T) {
+func TestParseRejectsEveryRetiredRoutingKeyAtEverySchema(t *testing.T) {
 	for key, value := range map[string]string{
 		"adrFormatV1From": "1",
 		"adrFormatV2From": "1",
 		"adrFormatV3From": "1",
 		"legacyAdrGaps":   "[]",
 	} {
-		t.Run(key, func(t *testing.T) {
-			input := fmt.Sprintf(`{"awfVersion":"0.31.0","schemaVersion":31,"files":{},%q:%s}`, key, value)
-			if _, err := Parse([]byte(input)); err == nil || !strings.Contains(err.Error(), key) {
-				t.Fatalf("error = %v, want rejection naming %s", err, key)
-			}
-		})
+		for _, schema := range []int{0, 30, 31, 46} {
+			t.Run(fmt.Sprintf("%s/schema-%d", key, schema), func(t *testing.T) {
+				input := fmt.Sprintf(`{"awfVersion":"0.31.0","schemaVersion":%d,"files":{},%q:%s}`, schema, key, value)
+				if _, err := Parse([]byte(input)); err == nil || !strings.Contains(err.Error(), key) {
+					t.Fatalf("error = %v, want rejection naming %s", err, key)
+				}
+			})
+		}
 	}
 }
 

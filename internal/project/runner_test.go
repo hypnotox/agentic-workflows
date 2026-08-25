@@ -114,95 +114,9 @@ func TestRunnerPublicationSafe(t *testing.T) {
 	}
 }
 
-// A sync's lock prune that removes the co-owned runner output (an outgoing
-// lock entry whose template id is runner/x.tmpl) backs the file up through the
-// standard backup path - never clobbering a prior backup - instead of deleting
-// it, and still reports the path as pruned.
-// invariant: rendering/companion-scripts:runner-prune-backup (TestPruneBacksUpCoOwnedRunner)
-func TestPruneBacksUpCoOwnedRunner(t *testing.T) {
-	for _, tc := range []struct {
-		name     string
-		staleBak bool // a pre-existing x.awf-bak occupies the plain suffix
-		wantBak  string
-	}{
-		{"plain suffix", false, "x.awf-bak"},
-		{"collision-suffixed", true, "x.awf-bak.1"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
-			p, err := Open(testContext(t), root)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err := syncProject(p); err != nil {
-				t.Fatal(err)
-			}
-			// Rewrite the lock so the rendered wrapper entry presents as the
-			// legacy co-owned runner at path x (the ADR-0101 shape the prune
-			// backup exists for), and move the file with it.
-			lock, err := manifest.Load(lockFile(root))
-			if err != nil {
-				t.Fatal(err)
-			}
-			entry := lock.Files["awf"]
-			entry.TemplateID = coOwnedRunnerTID
-			lock.Files["x"] = entry
-			delete(lock.Files, "awf")
-			if err := lock.Save(lockFile(root)); err != nil {
-				t.Fatal(err)
-			}
-			if err := os.Rename(filepath.Join(root, "awf"), filepath.Join(root, "x")); err != nil {
-				t.Fatal(err)
-			}
-			before, err := os.ReadFile(filepath.Join(root, "x"))
-			if err != nil {
-				t.Fatal(err)
-			}
-			const stale = "stale prior backup\n"
-			if tc.staleBak {
-				if err := os.WriteFile(filepath.Join(root, "x.awf-bak"), []byte(stale), 0o644); err != nil {
-					t.Fatal(err)
-				}
-			}
-			disabled := "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n"
-			if err := os.WriteFile(configPath(root), []byte(disabled), 0o644); err != nil {
-				t.Fatal(err)
-			}
-			p2, err := Open(testContext(t), root)
-			if err != nil {
-				t.Fatal(err)
-			}
-			backups, _, pruned, err := syncReportProject(p2)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if _, err := os.Stat(filepath.Join(root, "x")); !os.IsNotExist(err) {
-				t.Errorf("pruned runner must be gone from its path, stat err = %v", err)
-			}
-			bak, err := os.ReadFile(filepath.Join(root, tc.wantBak))
-			if err != nil {
-				t.Fatalf("runner backup missing: %v", err)
-			}
-			if string(bak) != string(before) {
-				t.Errorf("backup content differs from the pruned runner:\n%s", bak)
-			}
-			if !slices.Contains(pruned, "x") {
-				t.Errorf("runner must still be reported pruned: %v", pruned)
-			}
-			if !slices.Contains(backups, Backup{Path: "x", Bak: tc.wantBak}) {
-				t.Errorf("runner backup must be reported alongside other backups: %v", backups)
-			}
-			if tc.staleBak {
-				prior, err := os.ReadFile(filepath.Join(root, "x.awf-bak"))
-				if err != nil || string(prior) != stale {
-					t.Errorf("prior backup clobbered: %q, err = %v", prior, err)
-				}
-			}
-		})
-	}
-}
-
-func TestPruneRemovesManagedRunnerSymlinkWithoutTargetAccess(t *testing.T) {
+// A retired co-owned runner identity has no special prune behavior. Like an
+// ordinary managed output, it is removed without a backup and reported pruned.
+func TestPruneTreatsRetiredRunnerAsOrdinaryManagedOutput(t *testing.T) {
 	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -216,7 +130,53 @@ func TestPruneRemovesManagedRunnerSymlinkWithoutTargetAccess(t *testing.T) {
 		t.Fatal(err)
 	}
 	entry := lock.Files["awf"]
-	entry.TemplateID = coOwnedRunnerTID
+	entry.TemplateID = "runner/x.tmpl"
+	lock.Files["x"] = entry
+	delete(lock.Files, "awf")
+	if err := lock.Save(lockFile(root)); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(filepath.Join(root, "awf"), filepath.Join(root, "x")); err != nil {
+		t.Fatal(err)
+	}
+	p, err = Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	backups, _, pruned, err := syncReportProject(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "x")); !os.IsNotExist(err) {
+		t.Errorf("pruned output remains, stat err = %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "x.awf-bak")); !os.IsNotExist(err) {
+		t.Errorf("ordinary prune created a backup, stat err = %v", err)
+	}
+	for _, backup := range backups {
+		if backup.Path == "x" {
+			t.Errorf("ordinary prune reported a backup: %v", backups)
+		}
+	}
+	if !slices.Contains(pruned, "x") {
+		t.Errorf("ordinary prune was not reported: %v", pruned)
+	}
+}
+
+func TestPruneRemovesManagedSymlinkWithoutTargetAccess(t *testing.T) {
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := syncProject(p); err != nil {
+		t.Fatal(err)
+	}
+	lock, err := manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry := lock.Files["awf"]
 	lock.Files["x"] = entry
 	delete(lock.Files, "awf")
 	if err := lock.Save(lockFile(root)); err != nil {
@@ -237,64 +197,13 @@ func TestPruneRemovesManagedRunnerSymlinkWithoutTargetAccess(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(backups) != 0 {
-		t.Fatalf("managed runner symlink backups = %v", backups)
+		t.Fatalf("managed symlink backups = %v", backups)
 	}
 	if !slices.Contains(pruned, "x") {
-		t.Fatalf("managed runner symlink pruned = %v", pruned)
+		t.Fatalf("managed symlink pruned = %v", pruned)
 	}
 	if _, err := os.Lstat(filepath.Join(root, "x")); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("managed runner symlink remains: %v", err)
-	}
-}
-
-// invariant: rendering/companion-scripts:runner-prune-backup (TestRunnerPrunePropagatesBackupFailure)
-func TestRunnerPrunePropagatesBackupFailure(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := syncProject(p); err != nil {
-		t.Fatal(err)
-	}
-	lock, err := manifest.Load(lockFile(root))
-	if err != nil {
-		t.Fatal(err)
-	}
-	entry := lock.Files["awf"]
-	entry.TemplateID = coOwnedRunnerTID
-	lock.Files["x"] = entry
-	delete(lock.Files, "awf")
-	if err := lock.Save(lockFile(root)); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Remove(filepath.Join(root, "awf")); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Mkdir(filepath.Join(root, "x"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	p, err = Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, _, _, err = syncReportProject(p)
-	if err == nil || !strings.Contains(err.Error(), "back up pruned runner x") || !strings.Contains(err.Error(), "read backup source") {
-		t.Fatalf("runner prune backup error = %v", err)
-	}
-	var pathError *os.PathError
-	if !errors.As(err, &pathError) {
-		t.Fatalf("runner prune backup error identity = %T, want *os.PathError", err)
-	}
-	if info, statErr := os.Stat(filepath.Join(root, "x")); statErr != nil || !info.IsDir() {
-		t.Fatalf("runner source changed after backup refusal: info=%v error=%v", info, statErr)
-	}
-	preserved, err := manifest.Load(lockFile(root))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, ok := preserved.Files["x"]; !ok {
-		t.Fatal("runner lock entry was removed after backup refusal")
+		t.Fatalf("managed symlink remains: %v", err)
 	}
 }
 

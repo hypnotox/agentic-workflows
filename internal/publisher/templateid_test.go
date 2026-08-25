@@ -25,20 +25,19 @@ var templateIDScanPatterns = []string{"./internal/...", "./cmd/..."}
 
 // sanctionedTemplateIDFiles are the declaration files template identity is
 // allowed to be spelled in, as repository-relative slash paths: the catalog's
-// own DocEntry TIDs, the kind-descriptor table, and the two declaration
-// tables in the project package (the target descriptors and the non-catalog
-// singleton ids). Every other production file resolves an id through one of
+// own DocEntry TIDs, the mirrored kind-descriptor tables, the non-catalog
+// singleton table, and the target descriptors. Every other production file
+// resolves an id through one of
 // them (ADR-0195 item 5). The consolidation left output_plan.go with zero
 // literals, so it is deliberately NOT sanctioned: reintroducing an inline id
 // at its historical duplication site must fail this scan, and the per-file
 // vacuity check below hard-fails any entry that stops contributing.
 var sanctionedTemplateIDFiles = map[string]bool{
-	"internal/catalog/standard.go":         true,
-	"internal/project/kind.go":             true,
-	"internal/project/template_catalog.go": true,
-	"internal/publisher/kind.go":           true,
-	"internal/publisher/singleton.go":      true,
-	"internal/projectstate/target.go":      true,
+	"internal/catalog/standard.go":    true,
+	"internal/project/kind.go":        true,
+	"internal/publisher/kind.go":      true,
+	"internal/publisher/singleton.go": true,
+	"internal/projectstate/target.go": true,
 }
 
 // isTemplateIDLiteral reports whether a string literal spells a full template-ID
@@ -277,7 +276,6 @@ func fixtureConformingTID(name string) string {
 
 // TestLiveTemplateIDsResolve derives the complete live identity population from
 // its existing owners and verifies every live entry resolves in the embedded FS.
-// coOwnedRunnerTID is recognition-only and must not enter this population.
 // invariant: rendering/project-output-plan:template-id-single-derivation (TestLiveTemplateIDsResolve)
 func TestLiveTemplateIDsResolve(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
@@ -293,9 +291,6 @@ func TestLiveTemplateIDsResolve(t *testing.T) {
 		if descriptor.freeformDomain && !ids[descriptor.templateID(catalog.Standard, "")] {
 			t.Errorf("kind-derived domain template %q is not live", descriptor.templateID(catalog.Standard, ""))
 		}
-	}
-	if ids[coOwnedRunnerTID] {
-		t.Error("recognition-only runner is live")
 	}
 	for tid := range ids {
 		if _, err := fs.ReadFile(templates.FS, tid); err != nil {

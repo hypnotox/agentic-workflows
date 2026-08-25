@@ -12,8 +12,8 @@ import (
 
 // Template-ID declarations for every render unit that has no catalog DocEntry:
 // the adapter bridge, the config-tree singletons (the bootstrap pair, the
-// git-hook payloads, the awf wrapper), the resident-root gitignores, the topic
-// doc pair, and the retired co-owned runner the prune backup still matches.
+// git-hook payloads, the awf wrapper), the resident-root gitignores, and the
+// topic doc pair.
 // Together with the catalog's own DocEntry TIDs (internal/catalog/standard.go),
 // the kind-descriptor table (kind.go), and the target declaration table
 // (target.go) these are the only production spellings of a template id
@@ -30,12 +30,6 @@ const (
 	topicIndexTID    = "topics/index.md.tmpl"
 	pitfallEntryTID  = "pitfalls/entry.md.tmpl"
 	localDocTID      = "docs/local.md.tmpl"
-
-	// coOwnedRunnerTID is the legacy co-owned command-runner template id
-	// (ADR-0101 shape). The prune backup matches it on the OUTGOING lock entry,
-	// so the value stays this historic id no matter where the runner render unit
-	// moves later (ADR-0156 Decision item 9).
-	coOwnedRunnerTID = "runner/x.tmpl"
 
 	// residentGitignoreTIDSuffix completes a resident root's template id.
 	// internal/resident owns the closed root-name set and never spells a

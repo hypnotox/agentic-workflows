@@ -7,22 +7,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 )
 
-// Template-ID declarations for every render unit that has no catalog DocEntry:
-// the adapter bridge, the config-tree singletons (the bootstrap pair, the
-// git-hook payloads, the awf wrapper), the resident-root gitignores, the topic
-// doc pair, and the retired co-owned runner the prune backup still matches.
-// Together with the catalog's own DocEntry TIDs (internal/catalog/standard.go),
-// the kind-descriptor table (kind.go), and the target declaration table
-// (target.go) these are the only production spellings of a template id
-// (inv: template-id-single-derivation).
-const (
-	// coOwnedRunnerTID is the legacy co-owned command-runner template id
-	// (ADR-0101 shape). The prune backup matches it on the OUTGOING lock entry,
-	// so the value stays this historic id no matter where the runner render unit
-	// moves later (ADR-0156 Decision item 9).
-	coOwnedRunnerTID = "runner/x.tmpl"
-)
-
 // hookTID returns the embedded template id of a git-hook payload script
 // (ADR-0048), derived from the payload name in hookNames.
 func hookTID(name string) string { return "hooks/" + name + ".sh.tmpl" }
