@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-serialize-project-mutations-by-physical-root: Serialize Project Mutations by Physical Root](serialize-project-mutations-by-physical-root.md) (Proposed)
 
 ## History
 
