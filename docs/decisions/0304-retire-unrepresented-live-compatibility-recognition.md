@@ -4,7 +4,7 @@ slug: retire-unrepresented-live-compatibility-recognition
 status: Implemented
 date: 2026-08-25
 ---
-# ADR-retire-unrepresented-live-compatibility-recognition: Retire Unrepresented Live Compatibility Recognition
+# ADR-0304: Retire Unrepresented Live Compatibility Recognition
 
 
 ## Context

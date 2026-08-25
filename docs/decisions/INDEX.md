@@ -309,4 +309,4 @@ _No decisions are in flight._
 - [ADR-0301: Move Context Query Input Below Application Coordination](0301-move-context-query-input-below-application-coordination.md) (Implemented)
 - [ADR-0302: Hybrid raw coverage ratchet and targeted mutation regression](0302-hybrid-raw-coverage-ratchet-and-targeted-mutation-regression.md) (Implemented)
 - [ADR-0303: Separate Live Upgrade Support from Historical Audit Decoding](0303-separate-live-upgrade-support-from-historical-audit-decoding.md) (Implemented)
-- [ADR-retire-unrepresented-live-compatibility-recognition: Retire Unrepresented Live Compatibility Recognition](retire-unrepresented-live-compatibility-recognition.md) (Implemented)
+- [ADR-0304: Retire Unrepresented Live Compatibility Recognition](0304-retire-unrepresented-live-compatibility-recognition.md) (Implemented)
