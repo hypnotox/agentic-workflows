@@ -429,16 +429,23 @@ func TestPlanV2DecisionReferences(t *testing.T) {
 			}
 		})
 	}
-	for _, reference := range []string{"0001:#1", "0001:#01"} {
-		t.Run("ordinal "+reference, func(t *testing.T) {
-			bad := strings.Replace(body, "task-scoped-plan-decision-context-and-phase-outcomes:plan-v2", reference, 1)
-			dir := t.TempDir()
-			writePlan(t, dir, "2026-08-02-ordinal.md", bad)
-			_, err := plan.ParseDir(dir)
-			if err == nil || !strings.Contains(err.Error(), "plan-v2 Decision references require a stable lowercase-kebab Decision slug") {
-				t.Fatalf("ordinal reference %q error = %v", reference, err)
-			}
-		})
+	for _, tc := range []struct {
+		field, authored string
+	}{
+		{field: "Applying", authored: "task-scoped-plan-decision-context-and-phase-outcomes:plan-v2"},
+		{field: "Context", authored: "0001:frozen-history"},
+	} {
+		for _, reference := range []string{"0001:#1", "0001:#01"} {
+			t.Run(tc.field+" ordinal "+reference, func(t *testing.T) {
+				bad := strings.Replace(body, tc.authored, reference, 1)
+				dir := t.TempDir()
+				writePlan(t, dir, "2026-08-02-ordinal.md", bad)
+				_, err := plan.ParseDir(dir)
+				if err == nil || !strings.Contains(err.Error(), "plan-v2 Decision references require a stable lowercase-kebab Decision slug") {
+					t.Fatalf("%s ordinal reference %q error = %v", tc.field, reference, err)
+				}
+			})
+		}
 	}
 	for name, tc := range map[string]struct{ field, replacement string }{
 		"whitespace before colon":           {"Applying", "Applying : ["},

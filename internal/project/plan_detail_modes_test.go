@@ -28,6 +28,12 @@ func TestPlanTaskDetailModesStayAligned(t *testing.T) {
 		"layout": map[string]any{"plansDir": "docs/plans"},
 		"data":   catalog.Standard.Agents["plan-reviewer"].Data,
 	})
+	defaultReviewSkill := renderSkillGolden(t, "reviewing-plan", map[string]any{
+		"prefix": "example",
+		"vars":   map[string]any{},
+		"layout": map[string]any{"plansDir": "docs/plans"},
+		"data":   map[string]any{},
+	})
 	defaultReadme := renderGolden(t, "plans-readme/README.md.tmpl", map[string]any{
 		"layout": map[string]any{"plansDir": "docs/plans"},
 	})
@@ -51,6 +57,16 @@ func TestPlanTaskDetailModesStayAligned(t *testing.T) {
 	assertPlanScaffoldDetailContract(t, planPolicySurface{
 		"default plan template", defaultPlanTemplate, "### Task 1.1:", "### Phase close",
 	})
+	for _, surface := range []struct {
+		name, output, required string
+	}{
+		{"default writing skill", defaultWriter, "target Decisions only by stable V4 `decision:` slug"},
+		{"default reviewing skill", defaultReviewSkill, "frozen pre-V4 ordinals are not plan references"},
+		{"default plans README", defaultReadme, "`<adr-identity>:<decision-slug>` references"},
+		{"default plan template", defaultPlanTemplate, "`<adr-number-or-retained-slug>:<decision-slug>`"},
+	} {
+		assertStablePlanDecisionReferenceContract(t, surface.name, surface.output, surface.required)
+	}
 
 	root := testsupport.RepoRoot(t)
 	for _, surface := range []planPolicySurface{
@@ -70,6 +86,30 @@ func TestPlanTaskDetailModesStayAligned(t *testing.T) {
 		name: "docs/plans/template.md", output: readPlanPolicyFile(t, root, "docs/plans/template.md"),
 		start: "### Task 1.1:", end: "### Phase close",
 	})
+	for _, surface := range []struct {
+		name, required string
+	}{
+		{".claude/skills/awf-writing-plans/SKILL.md", "target Decisions only by stable V4 `decision:` slug"},
+		{".pi/skills/awf-writing-plans/SKILL.md", "target Decisions only by stable V4 `decision:` slug"},
+		{".claude/skills/awf-reviewing-plan/SKILL.md", "frozen pre-V4 ordinals are not plan references"},
+		{".pi/skills/awf-reviewing-plan/SKILL.md", "frozen pre-V4 ordinals are not plan references"},
+		{"docs/plans/README.md", "`<adr-identity>:<decision-slug>` references"},
+		{"docs/plans/template.md", "`<adr-number-or-retained-slug>:<decision-slug>`"},
+	} {
+		assertStablePlanDecisionReferenceContract(t, surface.name, readPlanPolicyFile(t, root, surface.name), surface.required)
+	}
+}
+
+func assertStablePlanDecisionReferenceContract(t *testing.T, name, output, required string) {
+	t.Helper()
+	if !strings.Contains(output, required) {
+		t.Errorf("%s missing stable plan Decision reference contract %q", name, required)
+	}
+	for _, forbidden := range []string{"decision-slug-or-#N", "frozen `#N` only for pre-V4 Decision prose"} {
+		if strings.Contains(output, forbidden) {
+			t.Errorf("%s retains plan-v2 ordinal Decision guidance %q", name, forbidden)
+		}
+	}
 }
 
 var planTaskDetailContractClauses = []string{
