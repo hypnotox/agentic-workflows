@@ -102,8 +102,6 @@ Use `./awf read plan <plan> <P[.T]>` for executable plan scope. For command flag
 - **Roadmap:** [docs/roadmap.md](docs/roadmap.md), uncommitted ideas and future phases
 - **Testing:** [docs/testing.md](docs/testing.md), gate tiers, test layout, what each tier covers
 
-- **Audit Remediation Program:** [docs/audit-remediation-program.md](docs/audit-remediation-program.md), External audit remediation backlog and wave sequencing, transient until every issue is closed
-
 - **Known Issues:** [docs/known-issues.md](docs/known-issues.md), Reproducible concrete defects with completion criteria
 
 - **Research:** [docs/research/index.md](docs/research/index.md), Unresolved design questions and experiments with decision triggers

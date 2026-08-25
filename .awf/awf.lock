@@ -419,8 +419,8 @@
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
       "templateHash": "sha256:92eb3877438f40b273230d5e2f96947b92d87fe38e9b4e91541a624e7cf0ec5b",
-      "configHash": "sha256:8d9d1da6dd6a918390e1194a7ab59e5f740bf2594dc9744849b5a7d89be2fe7c",
-      "outputHash": "sha256:2b21143af025797251095b5bd455e94bbea7b7dc2009dde4f3a34a3df169b9af"
+      "configHash": "sha256:9104247aec9cfebd7775a9822ce6023647dd00db6451f52bb1e1ab59a93ad6e9",
+      "outputHash": "sha256:7863143df902e6af91d9a3b03e8aad54fde4808756502bbcd1cec23ee49965e6"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",
@@ -446,18 +446,11 @@
       "configHash": "sha256:555740a091030128637b72bb0f9bcb71ffeadf0d24bc78094aa543311a664219",
       "outputHash": "sha256:437b914795ad1996cb88e4cef890fd05551d852ba39bb8a355c2f6a46113ab87"
     },
-    "docs/audit-remediation-program.md": {
-      "templateId": "docs/local.md.tmpl",
-      "templateHash": "sha256:f09ab3b6e84fa2d6a10c6f2ac2a6e1552ad8cada8855c9e378f432a96b7c733d",
-      "configHash": "sha256:0ade5e5cb0c190ba3e6cb15343e33f72f1317352e11e4eb547474ed9adbb0006",
-      "outputHash": "sha256:b23b4f7cac56c96261bab01aecf87789be5e68d116ff6e87e77f7decd322a7f2",
-      "regenChecked": true
-    },
     "docs/config-reference.md": {
       "templateId": "docs/config-reference.md.tmpl",
       "templateHash": "sha256:05aeaef660be3c972872c80a377e1d50cc7da2711d35d7162dfaa281e46f186c",
       "configHash": "sha256:3661e518870161b5b42e657a0d9f9b1854bd63521a5e22ebbe6b113ed2fc8761",
-      "outputHash": "sha256:be04d6339f2186d57a8d8c18d2d046fea329f7ed153732f6f605d6a94692bead",
+      "outputHash": "sha256:59e5128a580a33550be2cd3750cfbb490cfdc0c8326a6f53e73a760f1852fd45",
       "regenChecked": true
     },
     "docs/debugging.md": {
