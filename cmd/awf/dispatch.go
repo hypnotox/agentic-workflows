@@ -222,9 +222,9 @@ func wantsHelp(rest []string) bool {
 	return slices.Contains(rest, "--help") || slices.Contains(rest, "-h")
 }
 
-// parseArgs validates rest against cmd's flag/positional spec and builds the
-// invocation in one pass (folding the former checkArgs/positionals/valueFlag/
-// setFlags/hasFlag/baseFlag scans). A value flag consumes its following token.
+// parseArgs validates rest against cmd's flag and positional spec, builds the
+// invocation in one pass, and consumes each value flag with its following
+// token.
 func parseArgs(cmd clispec.Command, rest []string) (invocation, error) {
 	inv := invocation{bools: map[string]bool{}, values: map[string]string{}, multi: map[string][]string{}}
 	for i := 0; i < len(rest); i++ {

@@ -255,12 +255,12 @@ func TestRemovalRefusesDirtyAndUnmergedWithoutForce(t *testing.T) {
 }
 
 // TestInvokingCheckoutCleanlinessGuardsDestructiveOperations pins the refusal
-// that guards the INVOKING checkout, in both directions. The oracle behind it
-// changed in this phase: the implementation this replaced carried a regex
-// allowance for untracked .awf/efforts and .awf/worktrees entries, while
-// ChangeCounts carries none, so owned resident state now stays invisible only
-// because awf renders the .gitignore that covers it. Neither direction was
-// pinned at this layer, so removing the refusal entirely left the suite green.
+// that guards the INVOKING checkout in both directions. ChangeCounts carries
+// no special allowance for untracked .awf/efforts or .awf/worktrees entries.
+// Owned resident state stays invisible only through the rendered .gitignore
+// rules that cover it. Foreign untracked state still blocks destructive
+// operations in either
+// direction.
 func TestInvokingCheckoutCleanlinessGuardsDestructiveOperations(t *testing.T) {
 	root := initWorktreeRepo(t, "sha1")
 	createEffort(t, root, "invoking-cleanliness", "Invoking cleanliness")

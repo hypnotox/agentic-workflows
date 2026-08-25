@@ -60,8 +60,8 @@ func assertDispatch(t *testing.T, root, skill, agent, spineToken string) {
 func TestExplorationConsumerToPiToolSeam(t *testing.T) {
 	cat := loadCatalog(t)
 	root := syncFullCatalogForTarget(t, cat, "pi")
-	// Orienting replaced brainstorming as the exploring consumer: brainstorming
-	// now reaches exploration only by invoking orienting.
+	// Orienting owns exploration dispatch; debugging and the coupling audit are
+	// the other direct exploration consumers.
 	for _, consumer := range []string{"orienting", "debugging", "refactor-coupling-audit"} {
 		body := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-"+consumer, "SKILL.md"))
 		if !strings.Contains(body, "exploring") {

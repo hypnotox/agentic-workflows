@@ -74,11 +74,11 @@ func TestCurrentStateReportRouting(t *testing.T) {
 }
 
 // csNoPolicyYAML declares no currentState block. It is the base rather than a
-// subtraction from csYAML on purpose: since ADR-0192 the two shapes produce
-// identical coverage and fan-out findings, so a derivation that silently failed
-// to strip the block would leave the no-policy tests green while exercising the
-// wrong shape, and phase 2 puts a proof marker on exactly those tests. Deriving
-// in this direction has no pattern to fall out of sync.
+// subtraction from csYAML on purpose: under ADR-0192, the two shapes produce
+// identical coverage and fan-out findings. A derivation that silently failed
+// to strip the block would leave the no-policy tests green while exercising
+// the wrong shape. Deriving in this direction has no replacement pattern to
+// fall out of sync.
 const csNoPolicyYAML = `prefix: example
 profile: full
 integrationBranch: main
@@ -177,10 +177,10 @@ func TestCheckCurrentState(t *testing.T) {
 // internal/bar.go is owned by the domain but scoped by no claim-bearing topic,
 // so it yields the coverage finding.
 //
-// The DeepEqual below pins severity.Error and severity.Warn exactly, which is
-// also what backs severity-not-configurable's fixed-rank clause; that clause lost
-// its only marker when this test's previous assertion (of the struck
-// block-presence sentence) was inverted.
+// The DeepEqual below pins severity.Error and severity.Warn exactly.
+// Those assertions also back severity-not-configurable's fixed-rank clause,
+// so its proof marker remains attached here.
+// Together they form the complete rank oracle.
 // invariant: rendering/sync-and-drift:coverage-evaluation-unconditional (TestCheckCurrentStateNoPolicy)
 // invariant: config/configuration:severity-not-configurable (TestCheckCurrentStateNoPolicy)
 func TestCheckCurrentStateNoPolicy(t *testing.T) {

@@ -342,9 +342,9 @@ func adrRelatedResult(corpus adr.Corpus) (checkresult.Result, error) {
 	return referencecheck.ADRRelated(values)
 }
 
-// The result adapters are the Phase 1 producer boundary. Their legacy helpers
-// remain available to direct callers, but ordinary CheckReport composition only
-// receives owner-classified results.
+// Result adapters preserve owner-classified results for ordinary CheckReport
+// composition. Legacy helpers remain available to direct callers without
+// changing the normal composition boundary.
 func planResult(p renderInputs, corpus adr.Corpus, plans []plan.Plan) checkresult.Result {
 	result, err := plancheck.Validity(plans, corpus, config.AuditScopes(p.cfg.Audit), fullProfile(p))
 	if err != nil { // coverage-ignore: validity over prepared semantic values is infallible

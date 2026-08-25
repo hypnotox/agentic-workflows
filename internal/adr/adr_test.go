@@ -357,9 +357,9 @@ func TestNewFileRejectsMissingFrontmatter(t *testing.T) {
 	}
 }
 
-// The template is the one authored surface the scaffold reads, and Phase 6
-// rewrites its frontmatter to the V3 shape. A V3 marker must therefore be
-// accepted, and the per-record slug must stay the scaffold's to write.
+// The template is the one authored surface the scaffold reads. It rewrites the
+// template frontmatter to the V3 shape, accepts its marker, and writes the
+// per-record slug.
 func TestNewFileAcceptsAV3TemplateAndRefusesADeclaredSlug(t *testing.T) {
 	dir := t.TempDir()
 	v3Template := strings.Replace(adrTemplateFixture, "format: current-state-v1", "format: current-state-v3", 1)
@@ -716,10 +716,10 @@ func TestLegacyStatusPredicates(t *testing.T) {
 }
 
 func TestStatusLiteralsOwnedByADRPackage(t *testing.T) {
-	// Two shapes: a comparison against an ADR's .Status field, and a comparison
-	// of any local against a status literal. internal/audit used to hold the
-	// second shape on a local `st`; Phase 3 of the coverage-derived-supersession
-	// plan gave it parsed records, so the scan covers both from here on.
+	// The scan covers both supported status-comparison shapes. One compares an
+	// ADR's .Status field against a literal; the other compares any local
+	// against a status literal. Both remain inside this package's ownership
+	// boundary.
 	statusCmp := regexp.MustCompile(
 		`\.Status\s*[!=]=\s*"` +
 			`|HasPrefix\([^)]*\.Status\s*,\s*"` +

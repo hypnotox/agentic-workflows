@@ -371,8 +371,8 @@ func TestSyncPrunesRemovedTargetTree(t *testing.T) {
 	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
-	// Remove a real rendered target surface from the next output plan. Selection
-	// edits no longer remove catalog paths in Phase 2, so they cannot prove prune.
+	// Remove a real rendered target surface from the next output plan. Only a
+	// catalog-path removal proves pruning; selection edits do not remove paths.
 	if err := os.WriteFile(filepath.Join(root, ".claude", "unrelated.txt"), []byte("keep\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}

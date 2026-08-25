@@ -2,9 +2,9 @@ package catalog
 
 // Standard is the compile-time catalog: awf's static description of the standard
 // (skills, agents, docs, singletons, the domain-doc spec, and the fillable vars).
-// It replaces the former embedded catalog.yaml runtime parse (ADR-0060). Default
-// Data bags are kept as map[string]any / []any / scalars - the shapes yaml.v3
-// produced - so the per-file ConfigHash stays byte-identical.
+// Its default Data bags retain map[string]any, []any, and scalar shapes
+// compatible with yaml.v3 output, so each per-file ConfigHash stays
+// byte-identical (ADR-0060).
 var Standard = &Catalog{
 	Skills: map[string]SkillSpec{
 		"brainstorming": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Clarify an outcome and settle an approved design.", Trigger: "Use when work needs a material choice or clarification.", CommonFollowUps: []string{"proposing-adr", "writing-plans", "executing-direct"}}, Sections: []string{

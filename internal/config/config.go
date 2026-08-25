@@ -480,9 +480,9 @@ func cloneConfigValue(value reflect.Value) reflect.Value {
 	}
 }
 
-// CurrentStateConfig configures bridge-preparation validation for canonical
-// current-state topics. It is deliberately separate from the legacy invariant
-// authority, which remains active throughout the bridge tranche.
+// CurrentStateConfig configures canonical current-state topic validation.
+// Its authority remains deliberately separate from legacy invariant
+// configuration.
 type CurrentStateConfig struct {
 	Sources   []CurrentStateSource `yaml:"sources"`
 	TestGlobs []string             `yaml:"testGlobs"`

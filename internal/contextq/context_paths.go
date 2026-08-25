@@ -219,10 +219,10 @@ type ContextFacetError struct{ Value string }
 func (e *ContextFacetError) Error() string { return "unknown context facet " + strconv.Quote(e.Value) }
 
 // safelyMatchablePaths returns every scannable snapshot path: the universe a
-// selector may be matched against. This is a deliberate private copy of the
-// core's identical filter (ADR-0195 Phase 1 ruling): it is a three-line filter
-// over the snapshot tree, and exporting it from the core purely to share it
-// would widen the seam this package exists to narrow.
+// selector may be matched against. This deliberate private copy uses the
+// core's identical three-line snapshot-tree filter. Exporting that filter
+// solely for reuse would widen the seam this package exists to narrow
+// (ADR-0195).
 func safelyMatchablePaths(tree *snapshot.Tree) []string {
 	out := []string{}
 	for _, f := range tree.List() {

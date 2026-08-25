@@ -397,8 +397,8 @@ func retainsOperationDependency(typ types.Type, seen map[types.Type]bool) bool {
 	return false
 }
 
-// TestProjectStateBoundary pins the Phase 1 loaded-fact boundary: state keeps
-// only private facts and cannot accidentally retain an operation mechanism.
+// TestProjectStateBoundary pins the loaded-fact boundary: state keeps only
+// private facts and cannot accidentally retain an operation mechanism.
 func TestProjectStateBoundary(t *testing.T) {
 	pkgs := loadProjectPackage(t, nil)
 	var state *types.Named

@@ -550,8 +550,8 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 					t.Errorf("%s grounding skill does not name the grounding-checker agent", target)
 				}
 			}
-			// Orienting owns the dispatch conditions brainstorming used to carry
-			// inline; brainstorming now reaches them only by invoking orienting.
+			// Orienting owns exploration dispatch conditions; brainstorming
+			// reaches them only by invoking orienting.
 			for _, consumer := range []string{"orienting", "debugging", "refactor-coupling-audit"} {
 				body := skillBody(consumer)
 				for _, want := range []string{"location is unknown", "and inline search would pollute the parent context", "exact-known-file", "genuinely trivial"} {

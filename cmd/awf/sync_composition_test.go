@@ -202,7 +202,7 @@ func assertSyncCompositionCalls(t *testing.T, got, want map[syncCompositionCall]
 func TestRunSyncIgnoresSkillSelection(t *testing.T) {
 	ctx := testContext(t)
 	root := scaffoldProject(t)
-	// Phase 2 retains parsing of the selection field but renders the full catalog.
+
 	testsupport.WriteAwfConfig(t, root, strings.Replace(minimalYAML, "skills: [tdd]", "skills: []", 1))
 	var out bytes.Buffer
 	if err := runSync(ctx, root, &out); err != nil {

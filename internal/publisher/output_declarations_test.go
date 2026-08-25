@@ -341,8 +341,8 @@ func TestNormalizeOutputInputsOrdersRolesAtOnePath(t *testing.T) {
 	}
 }
 
-// Full-catalog declaration planning must parse every standard sidecar, even
-// when Phase 2's legacy selection arrays omit that artifact.
+// Full-catalog declaration planning parses every standard sidecar regardless
+// of legacy selection arrays.
 func TestBuildOutputDeclarationsRejectsMalformedFullCatalogSidecars(t *testing.T) {
 	for _, tc := range []struct {
 		name, kind, artifact, config, sidecar string

@@ -6,14 +6,14 @@ import "testing"
 // the single fixture home and owns both lanes; internal/git's own suites drive
 // the mechanism the seam wraps, so they exercise what everyone else must not.
 //
-// internal/testsupport/deps_test.go deliberately does NOT need an entry, though
-// the Task 6.2 grep post-check excludes it. That exclusion exists because a
-// textual scan cannot tell an import from a string constant, and that file
-// carries a Git library path as the fixture data of the dependency checker.
-// This walker reads the import list, so the constant is invisible to it and a
-// carve-out would shield nothing. TestFixtureAllowlistEntriesAreAllLoadBearing
-// is what proves that, and it is why the entry was removed rather than kept as
-// harmless.
+// internal/testsupport/deps_test.go deliberately does NOT need an entry. It
+// carries a Git library path as fixture data, not as an import. This walker
+// reads the import list, so that string constant is invisible to it and a
+// carve-out would shield nothing.
+//
+// TestFixtureAllowlistEntriesAreAllLoadBearing proves that every retained
+// entry remains necessary and prevents harmless-looking carve-outs from
+// weakening the boundary.
 var fixtureAllowlist = []string{
 	"internal/testsupport/gitfixture/",
 	"internal/git/",

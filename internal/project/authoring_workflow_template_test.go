@@ -78,8 +78,8 @@ func TestOrientingTemplate(t *testing.T) {
 
 // invariant: rendering/workflow-skill-templates:orienting-single-home (TestOrientingSkillContract)
 func TestOrientingSkillContract(t *testing.T) {
-	// The same render proves both the single home and the references that
-	// replaced the three consumer skills' inline copies.
+	// The same render proves that orienting is the single home and that all three
+	// dependent skills reference it.
 	config := func(target string) string {
 		return "prefix: example\nprofile: full\nintegrationBranch: main\n"
 	}
@@ -119,9 +119,9 @@ func TestOrientingSkillContract(t *testing.T) {
 					t.Errorf("%s grounding-checker missing %q", target, want)
 				}
 			}
-			// The single home is only single if the three sites that gave up
-			// their inline copies reference it instead. Brainstorming's
-			// reference is pinned to its first step, which is what the claim says.
+			// The single home requires all three dependent skills to reference it.
+			// Brainstorming's reference is pinned to its first step, which is what
+			// the claim says.
 			for _, consumer := range []string{"brainstorming", "proposing-adr", "writing-plans"} {
 				if ref := files[adapter.SkillPath("example", consumer)]; !strings.Contains(ref, "`example-orienting`") {
 					t.Errorf("%s %s does not reference the orienting skill", target, consumer)

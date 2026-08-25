@@ -586,7 +586,7 @@ func TestCheckStagedNoPolicy(t *testing.T) {
 
 // TestCheckStagedRejectsBridgePromotionWithArbitraryV2Boundary uses snapshots
 // whose ADR-0002 bytes are valid only under each side's own lock: V1 under the
-// bridge HEAD and V2 under the staged permanent lock. Phase 3 must reject that
+// bridge HEAD and V2 under the staged permanent lock. The staged check rejects
 // arbitrary V2 activation rather than treating it as the sealed V1 promotion.
 // TestCheckStagedTransitionFinding stages a claim removal with no removing ADR:
 // the HEAD-to-index diff surfaces the unmatched mutation.

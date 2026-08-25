@@ -115,7 +115,7 @@ func TestLiveTemplateAndCurrentStateRetiredConfigGuidanceAbsent(t *testing.T) {
 // invariant: rendering/templates:template-source-residue (TestTemplateSourceResidue)
 func TestTemplateSourceResidue(t *testing.T) {
 	// The marker sits on the assertion rather than on the var it guards, so the
-	// proof site contains the check that proves it (ADR-0131 Task 3.3).
+	// proof site contains the check that proves the ADR-0131 invariant.
 	// invariant: rendering/sync-and-drift:residue-exemptions-pinned-three (TestTemplateSourceResidue)
 	if len(identityExempt) != 5 ||
 		!identityExempt["bootstrap/awf-bootstrap.sh.tmpl"] ||

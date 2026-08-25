@@ -338,7 +338,7 @@ func TestHelpListsCheckChildren(t *testing.T) {
 			t.Errorf("awf help omits the check child %q:\n%s", sub, got)
 		}
 	}
-	// The four retired top-level names are gone from the overview.
+	// The overview contains no entries for these four top-level names.
 	for _, retired := range []string{"invariants |", "prose-gate |", "memory-gate |", "commit-gate |"} {
 		if strings.Contains(got, retired) {
 			t.Errorf("awf help still lists the retired top-level %q", strings.TrimSpace(retired))

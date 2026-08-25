@@ -117,9 +117,9 @@ func TestMemoryDisplayDiffBoundsCompleteRows(t *testing.T) {
 	}
 }
 
-// referenceBoundedDisplayRows is the per-candidate selection the incremental
-// byte accounting replaced: it re-rendered every row for every candidate. It
-// stays here as the oracle for byte-identical output.
+// referenceBoundedDisplayRows is the straightforward oracle for incremental
+// byte accounting. It re-renders every row for every candidate and proves
+// byte-identical output.
 func referenceBoundedDisplayRows(rows []displayDiffRow, width int) (string, bool) {
 	const marker = "[content elided]"
 	normalized := append([]displayDiffRow(nil), rows...)

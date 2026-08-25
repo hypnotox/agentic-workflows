@@ -199,10 +199,10 @@ func TestNewGatesInHandler(t *testing.T) {
 	}
 }
 
-// TestInitAndUpgradeGateBehindVersion pins that init and upgrade re-assert the
-// binary-version gate their chained sync used to provide (removed from runSync in
-// the parse-once refactor): a tree whose lock awfVersion is newer than the binary
-// refuses rather than silently re-stamping a downgraded version.
+// TestInitAndUpgradeGateBehindVersion pins that init and upgrade apply the
+// binary-version gate before sync. A tree whose lock awfVersion is newer than
+// the binary refuses rather than silently re-stamping a downgraded version
+// before any sync can rewrite its lock.
 func TestInitAndUpgradeGateBehindVersion(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx

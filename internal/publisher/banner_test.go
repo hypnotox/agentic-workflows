@@ -200,10 +200,10 @@ func TestInjectBannerResidentGitignore(t *testing.T) {
 	}
 }
 
-// TestIndexMdCarriesCanonicalBanner regresses a banner drift: generateIndexMD
-// (like the former generateActiveMD) must call injectBanner rather than return
-// adr.RenderIndexMD's content as-is, so INDEX.md's banner matches every other
-// rendered artifact's canonical bannerText.
+// TestIndexMdCarriesCanonicalBanner requires generateIndexMD to call
+// injectBanner rather than return adr.RenderIndexMD's content as-is, so
+// INDEX.md's banner matches every other rendered artifact's canonical
+// bannerText.
 func TestIndexMdCarriesCanonicalBanner(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\ndomains: []\n", nil)
 	p, err := Open(testContext(t), root)

@@ -27,11 +27,11 @@ var templateIDScanPatterns = []string{"./internal/...", "./cmd/..."}
 // allowed to be spelled in, as repository-relative slash paths: the catalog's
 // own DocEntry TIDs, the mirrored kind-descriptor tables, the non-catalog
 // singleton table, and the target descriptors. Every other production file
-// resolves an id through one of
-// them (ADR-0195 item 5). The consolidation left output_plan.go with zero
-// literals, so it is deliberately NOT sanctioned: reintroducing an inline id
-// at its historical duplication site must fail this scan, and the per-file
-// vacuity check below hard-fails any entry that stops contributing.
+// resolves an id through one of them (ADR-0195 item 5). output_plan.go owns no
+// declarations and is deliberately NOT sanctioned. Adding an inline id there
+// must fail this scan. The per-file vacuity check below also hard-fails any
+// sanctioned entry that stops
+// contributing.
 var sanctionedTemplateIDFiles = map[string]bool{
 	"internal/catalog/standard.go":    true,
 	"internal/project/kind.go":        true,
