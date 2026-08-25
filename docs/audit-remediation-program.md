@@ -843,8 +843,8 @@ abstraction; oracle strength.
 
 ### RF-008B
 
-- **Range:** Issue base `eaafe14d0`; implementation range `eaafe14d0..432419c34`, followed by the
-  Phase 6 release and program-currency transaction.
+- **Range:** Issue base `eaafe14d0`; implementation and Phase 6 currency range
+  `eaafe14d0..ca30a89f1`.
 - **Protected contract:** ADR-0297 and the successor compatibility ADR enforce schema 46 as the live
   source floor, preserve current-plus-one installed releases and one ordered future migration seam,
   and confine represented schemas 3 through 46 to read-only audit decoding. Unsupported live or
