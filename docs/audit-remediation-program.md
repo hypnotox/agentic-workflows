@@ -1245,7 +1245,7 @@ abstraction; oracle strength.
 ### RF-014B
 
 - **Range:** Issue base `eb8fc45db`; ADR-0304, implementation, integration, and numbering range
-  `eb8fc45db..3f854b136`.
+  `eb8fc45db..3f854b136`; program evidence and release-note closure through `d2b9fd5d6`.
 - **Protected contract:** ADR-0304 removes only two live recognition paths absent from every current
   managed input: tolerance for retired pre-31 routing keys and special backup recognition for the
   retired co-owned runner. Schema-first refusal, read-only historical decoding, current recovery,
@@ -1260,9 +1260,9 @@ abstraction; oracle strength.
 - **Verification:** Focused tests observed both compatibility paths before removal and passed after
   implementation. Full tests, render and drift checks, staged checks, repeated full gates, coverage
   identity checks, dead-code and pin checks, workflow audits, and exact-tip independent assurance
-  passed. The complete shipped audit retained only the advisory no-plan size warning. The local audit
-  retained only the expected six reviewed coverage-identity moves and missing Unreleased-entry
-  advisory.
+  passed. The complete shipped audit retained only the advisory no-plan size warning. After the
+  initial missing Unreleased entry was corrected, the final local audit retained only the expected six
+  reviewed coverage-identity moves.
 - **Deviations:** Fresh grounding overturned an initial inapplicability conclusion by finding the two
   overlooked consumer-free paths. Independent review corrected one mechanical prune-error identity
   assertion; no verify pass was required.
