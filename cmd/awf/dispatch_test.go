@@ -8,11 +8,13 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/clispec"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
-func TestRunRefusesFullOnlyCommandForCoreProfileBeforeStateGuard(t *testing.T) {
-	root := t.TempDir()
+func TestRunRefusesFullOnlyCommandForCoreProfileAfterStateAdmission(t *testing.T) {
+	root := scaffoldProject(t)
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nprofile: core\nintegrationBranch: main\n")
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var stdout, stderr bytes.Buffer
@@ -31,6 +33,46 @@ func TestRunRefusesFullOnlyCommandForCoreProfileBeforeStateGuard(t *testing.T) {
 		if code := run([]string{"awf", "audit", "HEAD"}, &stdout, &stderr); code != 1 {
 			t.Fatalf("invalid capability config exit = %d, stderr = %q", code, stderr.String())
 		}
+	}
+}
+
+func TestRunFullOnlyCapabilityFollowsLiveAuthorityAdmission(t *testing.T) {
+	root := scaffoldProject(t)
+	testsupport.WriteAwfConfig(t, root, "profile: [\n")
+	testsupport.WriteFile(t, config.LockPath(root), `{"awfVersion":"0.39.2","schemaVersion":45,"files":{},"bridgeAttestation":{"version":1,"adrFormatV1From":1,"legacyADRGaps":null}}`)
+
+	var stdout, stderr bytes.Buffer
+	if code := runAt(t, root, []string{"awf", "audit", "HEAD"}, &stdout, &stderr); code != 1 {
+		t.Fatalf("exit = %d, stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+	if got := stderr.String(); !strings.Contains(got, "below live floor") || strings.Contains(got, "parse config") {
+		t.Fatalf("Full-only admission order = %q", got)
+	}
+}
+
+func TestRunStagedFullOnlyCapabilityUsesIndexConfig(t *testing.T) {
+	root := syncedGitProject(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nprofile: core\nintegrationBranch: main\n")
+
+	var stdout, stderr bytes.Buffer
+	if code := runAt(t, root, []string{"awf", "check", "staged", "state"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("exit = %d, stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+	if strings.Contains(stderr.String(), "selected core governance footprint") {
+		t.Fatalf("staged capability consulted working config: %q", stderr.String())
+	}
+}
+
+func TestRunStagedFullOnlyCapabilityAllowsPreAdoptionIndex(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
+
+	var stdout, stderr bytes.Buffer
+	if code := runAt(t, repo.Root(), []string{"awf", "check", "staged", "state"}, &stdout, &stderr); code != 1 {
+		t.Fatalf("exit = %d, stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+	if got := stderr.String(); !strings.Contains(got, "no staged .awf/awf.lock") || strings.Contains(got, "governance footprint") {
+		t.Fatalf("pre-adoption staged capability = %q", got)
 	}
 }
 
@@ -77,8 +119,9 @@ func TestRunDispatchesEveryFullOnlyCommandFamilyByProfile(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name+" core refusal", func(t *testing.T) {
-			root := t.TempDir()
+			root := scaffoldProject(t)
 			testsupport.WriteAwfConfig(t, root, "prefix: example\nprofile: core\nintegrationBranch: main\n")
+			gitfixture.Add(t, gitfixture.At(root), ".awf/config.yaml")
 			testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 			var stdout, stderr bytes.Buffer
 			if code := run(tc.args, &stdout, &stderr); code != 1 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "is unavailable in the selected core governance footprint") {

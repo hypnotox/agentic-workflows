@@ -385,3 +385,10 @@ replace the originally loaded lock after schema classification. The operation no
 lock and uses that value for authority dispatch, while the loader itself proves lock presence and
 errors and a separate config probe proves the complete current pair. A replacement regression failed
 red against the stale lock, and focused plus whole-module coverage tests pass with no new exclusion.
+
+The final Phase 1 verify settlement moves Full-only capability interpretation behind live authority
+admission and reads the staged config from the index for staged commands. Red-first command tests
+proved that malformed working config could precede schema-45 refusal and that a working Core profile
+could override a staged Full profile. The replacement also preserves an empty pre-adoption staged
+universe. Focused and full tests pass; coverage adds only the reviewed concurrent repository-loss
+arm and otherwise shifts existing closed-state identities.

@@ -222,26 +222,20 @@ func run(args []string, stdout, stderr io.Writer) int {
 		}
 		return dispatchFailure(stdout, stderr, err) // parseArgs only returns usageErr → exit 2
 	}
-	// Profile capability refusal precedes state and version guards and every handler.
-	if cmd.FullOnly || top.FullOnly {
-		cfg, loadErr := config.Load(config.RootDir(cwd))
-		if loadErr == nil {
-			if err := cfg.Validate(); err != nil {
-				return dispatchFailure(stdout, stderr, err)
-			}
-			if err := project.RequireCapability(cfg.Profile, strings.TrimSpace(top.Name+" "+sub), true); err != nil {
-				return dispatchFailure(stdout, stderr, err)
-			}
-		} else if !errors.Is(loadErr, os.ErrNotExist) && migrate.ProjectPresent(cwd) {
-			return dispatchFailure(stdout, stderr, loadErr)
-		}
-	}
 	// Process guards own interruption before dispatch so independently invocable
-	// handlers receive only operational project state.
+	// handlers receive only operational project state. Capability interpretation
+	// follows live-source admission and reads the same working or staged universe
+	// as the command rather than allowing config parsing to precede schema refusal.
 	guardCtx, cancel := newGitCommandContext()
 	if err := guardProjectState(guardCtx, cwd, cmd, top, sub, inv); err != nil {
 		cancel()
 		return dispatchFailure(stdout, stderr, err)
+	}
+	if cmd.FullOnly || top.FullOnly {
+		if err := requireCommandCapability(guardCtx, cwd, top, sub); err != nil {
+			cancel()
+			return dispatchFailure(stdout, stderr, err)
+		}
 	}
 	cancel()
 	// The driver gates every Gated command before its handler; config/context/topic/new
@@ -305,6 +299,34 @@ func newGitCommandContext() (context.Context, context.CancelFunc) {
 //   - a corrupt lock with no journal defers to the existing ADR-0076 refusal.
 func selectsStagedDrift(top clispec.Command, sub string) bool {
 	return top.Name == "check" && (sub == "staged" || sub == "staged drift")
+}
+
+func requireCommandCapability(ctx context.Context, root string, top clispec.Command, sub string) error {
+	var cfg *config.Config
+	var err error
+	if top.Name == "check" && (sub == "staged" || strings.HasPrefix(sub, "staged ")) {
+		tree, treeErr := stagedTree(ctx, root)
+		if treeErr != nil { // coverage-ignore: guardProjectState just opened the same unchanged staged repository in this command stage
+			return treeErr
+		}
+		file, ok := tree.Lookup(config.DirName + "/config.yaml")
+		if !ok {
+			return nil
+		}
+		cfg, err = config.Parse(config.RootDir(root), file.Bytes)
+	} else {
+		cfg, err = config.Load(config.RootDir(root))
+		if errors.Is(err, os.ErrNotExist) && !migrate.ProjectPresent(root) {
+			return nil
+		}
+	}
+	if err != nil {
+		return err
+	}
+	if err := cfg.Validate(); err != nil {
+		return err
+	}
+	return project.RequireCapability(cfg.Profile, strings.TrimSpace(top.Name+" "+sub), true)
 }
 
 func validateCurrentAuthority(found, currentConfig, currentLock bool) error {
