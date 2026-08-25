@@ -80,7 +80,7 @@ Backing: test
 
 The current-state journal guard reads the deepest resolved command's exemption property, so `awf check staged commit` stays runnable in the states where its commit-msg hook must still function while the repo scan children remain guarded.
 Origin: ADR-0159
-Revised-by: ADR-0210, ADR-separate-live-upgrade-support-from-historical-audit-decoding
+Revised-by: ADR-0210, ADR-0303
 Backing: test
 
 ### `invariant: invariants-in-check`

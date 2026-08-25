@@ -81,7 +81,7 @@ Backing: test
 
 Plan-v2 parses nonempty unique Applying and Context JSON references with a four-digit-or-retained-slug ADR identity and lowercase-kebab V4 selector; malformed Applying or Context field lookalikes, including a nonexact colon separator, block before task prose. The project resolves every plan-level ADR link through the corpus identity map, compares Applying membership by resolved record identity, permits Applying to amendable V4 ADRs, and requires Context to be frozen. Frozen pre-V4 ordinal navigation remains ADR-owned historical access and is not plan-v2 reference syntax.
 Origin: ADR-0217
-Revised-by: ADR-separate-live-upgrade-support-from-historical-audit-decoding
+Revised-by: ADR-0303
 Backing: test
 
 ### `invariant: plan-v2-phase-outcomes`
@@ -108,4 +108,4 @@ Backing: test
 
 Retain markerless, plan-v1, and plan-v2 parsing plus numeric and retained-slug ADR links because current managed plans use them; plan-v2 remains the current authoring format and uses only stable V4 Decision slugs. Frozen pre-V4 ordinal navigation remains supported outside plan-v2 references. Hypothetical external adoption is not retention evidence.
 Origin: ADR-0297
-Revised-by: ADR-separate-live-upgrade-support-from-historical-audit-decoding
+Revised-by: ADR-0303

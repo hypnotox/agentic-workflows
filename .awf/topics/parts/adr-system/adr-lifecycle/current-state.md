@@ -131,7 +131,7 @@ Backing: test
 
 No production caller uses the corpus view's raw-bytes accessor or calls os.ReadFile on an ADR.Path; audit owns its isolated historical decoder.
 Origin: ADR-0130
-Revised-by: ADR-0138, ADR-0191, ADR-separate-live-upgrade-support-from-historical-audit-decoding
+Revised-by: ADR-0138, ADR-0191, ADR-0303
 Backing: test
 
 ### `invariant: corpus-single-identity-key`

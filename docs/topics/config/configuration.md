@@ -46,7 +46,7 @@ Backing: test
 
 Configuration loads from `.awf/config.yaml` and the lock is read from and written to `.awf/awf.lock`; no live operation reads or writes either retired `.claude/awf/` layout. Retired layouts are recognized only to refuse them before decoding.
 Origin: ADR-0016
-Revised-by: ADR-0159, ADR-separate-live-upgrade-support-from-historical-audit-decoding
+Revised-by: ADR-0159, ADR-0303
 Backing: test
 
 ### `invariant: config-mutation-roundtrip`

@@ -36,4 +36,4 @@ Origin: ADR-0297
 
 Retain the generic journaled upgrade commit point, rollback, quarantine, postcommit cleanup, and recovery as current mutation safety. Permanent locks are the only live authority; unsupported lock fields refuse before upgrade mutation. Hypothetical external adoption is not retention evidence.
 Origin: ADR-0297
-Revised-by: ADR-separate-live-upgrade-support-from-historical-audit-decoding
+Revised-by: ADR-0303

@@ -4,7 +4,7 @@ slug: separate-live-upgrade-support-from-historical-audit-decoding
 status: Implementing
 date: 2026-08-25
 ---
-# ADR-separate-live-upgrade-support-from-historical-audit-decoding: Separate Live Upgrade Support from Historical Audit Decoding
+# ADR-0303: Separate Live Upgrade Support from Historical Audit Decoding
 
 
 ## Context

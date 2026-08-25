@@ -74,5 +74,5 @@ Backing: test
 
 The output plan preserves the effort, managed-worktree, and effort-archive resident roots and their dynamic descendants at the primary control root. Only each root marker is managed; archive descendants remain local and unmanaged.
 Origin: ADR-0167
-Revised-by: ADR-0175, ADR-0259, ADR-separate-live-upgrade-support-from-historical-audit-decoding
+Revised-by: ADR-0175, ADR-0259, ADR-0303
 Backing: test

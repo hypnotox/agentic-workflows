@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-separate-live-upgrade-support-from-historical-audit-decoding: Separate Live Upgrade Support from Historical Audit Decoding](separate-live-upgrade-support-from-historical-audit-decoding.md) (Implementing)
+- [ADR-0303: Separate Live Upgrade Support from Historical Audit Decoding](0303-separate-live-upgrade-support-from-historical-audit-decoding.md) (Implementing)
 
 ## History
 
