@@ -2143,4 +2143,12 @@ func TestAuditAuthorityRequiresCompletePairAndKeepsUnknownHistoricalLockFields(t
 	if cfg, err := state.committedConfig(); err != nil || cfg == nil {
 		t.Fatalf("complete config = %#v, %v", cfg, err)
 	}
+
+	bridgeState := load([]snapshot.File{
+		{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: test\nprofile: full\nintegrationBranch: main\n")},
+		{Path: ".awf/awf.lock", Mode: snapshot.Regular, Bytes: []byte(`{"schemaVersion":46,"bridgeAttestation":{"version":1}}`)},
+	})
+	if _, err := bridgeState.committedConfig(); err == nil || !strings.Contains(err.Error(), `bridgeAttestation`) {
+		t.Fatalf("bridge-shaped historical authority error = %v, want retired-field refusal", err)
+	}
 }

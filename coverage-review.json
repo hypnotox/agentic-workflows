@@ -1384,6 +1384,19 @@
       "identity": {
         "file": "internal/audit/historical.go",
         "start": {
+          "line": 24,
+          "column": 51
+        },
+        "end": {
+          "line": 26,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Historical decoder error-formatting branch is defensive after decoder tests cover malformed JSON, YAML, schema horizons, unknown fields, and no-write adaptation; this exact formatting fallback has no distinct externally meaningful branch.",
+      "movedFrom": {
+        "file": "internal/audit/historical.go",
+        "start": {
           "line": 21,
           "column": 51
         },
@@ -1392,11 +1405,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Historical decoder error-formatting branch is defensive after decoder tests cover malformed JSON, YAML, schema horizons, unknown fields, and no-write adaptation; this exact formatting fallback has no distinct externally meaningful branch."
+      }
     },
     {
       "identity": {
+        "file": "internal/audit/historical.go",
+        "start": {
+          "line": 38,
+          "column": 18
+        },
+        "end": {
+          "line": 40,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Historical decoder error-formatting branch is defensive after decoder tests cover malformed JSON, YAML, schema horizons, unknown fields, and no-write adaptation; this exact formatting fallback has no distinct externally meaningful branch.",
+      "movedFrom": {
         "file": "internal/audit/historical.go",
         "start": {
           "line": 35,
@@ -1407,11 +1432,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Historical decoder error-formatting branch is defensive after decoder tests cover malformed JSON, YAML, schema horizons, unknown fields, and no-write adaptation; this exact formatting fallback has no distinct externally meaningful branch."
+      }
     },
     {
       "identity": {
+        "file": "internal/audit/historical.go",
+        "start": {
+          "line": 57,
+          "column": 16
+        },
+        "end": {
+          "line": 59,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Historical decoder error-formatting branch is defensive after decoder tests cover malformed JSON, YAML, schema horizons, unknown fields, and no-write adaptation; this exact formatting fallback has no distinct externally meaningful branch.",
+      "movedFrom": {
         "file": "internal/audit/historical.go",
         "start": {
           "line": 54,
@@ -1422,8 +1459,7 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Historical decoder error-formatting branch is defensive after decoder tests cover malformed JSON, YAML, schema horizons, unknown fields, and no-write adaptation; this exact formatting fallback has no distinct externally meaningful branch."
+      }
     },
     {
       "identity": {

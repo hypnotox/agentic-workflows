@@ -17,6 +17,9 @@ func decodeHistoricalLock(src []byte) (*historicalLock, error) {
 	if err := json.Unmarshal(src, &raw); err != nil {
 		return nil, fmt.Errorf("parse historical lock: %w", err)
 	}
+	if _, ok := raw["bridgeAttestation"]; ok {
+		return nil, fmt.Errorf("parse historical lock: unsupported field %q", "bridgeAttestation")
+	}
 	var lock historicalLock
 	if err := json.Unmarshal(src, &lock); err != nil {
 		return nil, fmt.Errorf("parse historical lock: %w", err)
