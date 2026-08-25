@@ -264,7 +264,7 @@ func TestAdrLifecycleTemplate(t *testing.T) {
 		"direct implicit completion with its matching claim mutations",
 		"status-only terminal transaction after explicit application",
 		"V4 Decision items begin with a unique inline `decision: <lowercase-kebab-slug>` marker",
-		"use canonical `#N` only after their authored-format lifecycle freezes the record",
+		"canonical `#N` remains available only for frozen ADR navigation and is not plan-v2 reference syntax",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {

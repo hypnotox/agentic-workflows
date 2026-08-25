@@ -748,7 +748,7 @@ func validateTask(path string, task Task, body string) error {
 	return nil
 }
 
-var decisionRefRe = regexp.MustCompile(`^([a-z0-9]+(?:-[a-z0-9]+)*):([a-z0-9]+(?:-[a-z0-9]+)*|#[1-9][0-9]*)$`)
+var decisionRefRe = regexp.MustCompile(`^([a-z0-9]+(?:-[a-z0-9]+)*):([a-z0-9]+(?:-[a-z0-9]+)*)$`)
 var allDigitDecisionIdentityRe = regexp.MustCompile(`^[0-9]+$`)
 var dodLeadRe = regexp.MustCompile("^[-*+] `dod: ([a-z0-9]+(?:-[a-z0-9]+)*)` .+")
 var plainBulletRe = regexp.MustCompile(`^[-*+] `)
@@ -776,7 +776,14 @@ func parseDecisionRefs(raw, kind string) ([]DecisionRef, error) {
 	refs := make([]DecisionRef, 0, len(values))
 	for _, value := range values {
 		m := decisionRefRe.FindStringSubmatch(value)
-		if m == nil || (allDigitDecisionIdentityRe.MatchString(m[1]) && len(m[1]) != 4) {
+		if m == nil {
+			_, selector, found := strings.Cut(value, ":")
+			if found && strings.HasPrefix(selector, "#") {
+				return nil, fmt.Errorf("invalid Decision reference %q: plan-v2 Decision references require a stable lowercase-kebab Decision slug", value)
+			}
+			return nil, fmt.Errorf("invalid Decision reference %q", value)
+		}
+		if allDigitDecisionIdentityRe.MatchString(m[1]) && len(m[1]) != 4 {
 			return nil, fmt.Errorf("invalid Decision reference %q", value)
 		}
 		refs = append(refs, DecisionRef{Authored: value, ADR: m[1], Selector: m[2], Kind: kind})

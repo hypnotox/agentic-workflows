@@ -127,13 +127,6 @@ func TestResolvePlanDecisionsUsesFrozenCorpusIdentityAndSelector(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	v3Source := strings.Replace(v4Source, "current-state-v4", "current-state-v3", 1)
-	v3Source = strings.Replace(v3Source, "1. `decision: first` First.\n\n2. `decision: zeta` Zeta.", "1. First.\n\n2. Zeta.", 1)
-	v3, err := adr.ParseV3("0001-fixture.md", []byte(v3Source))
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	resolve := func(record adr.ADR, link plan.ADRLink, ref plan.DecisionRef, context, selectorError bool) ([]plan.ResolvedDecision, error) {
 		t.Helper()
 		corpus, err := adr.NewCorpus([]adr.ADR{record})
@@ -214,24 +207,6 @@ func TestResolvePlanDecisionsUsesFrozenCorpusIdentityAndSelector(t *testing.T) {
 		t.Fatalf("selected Context selector error = %v", err)
 	}
 
-	frozenV3 := v3
-	frozenV3.Status = "Implemented"
-	ordinal := plan.DecisionRef{Authored: "fixture:#1", ADR: "fixture", Selector: "#1", Kind: "Applying"}
-	if resolved, err := resolve(frozenV3, plan.ADRLink{Slug: "fixture"}, ordinal, false, false); err != nil || len(resolved) != 1 {
-		t.Fatalf("frozen pre-V4 ordinal = %#v, %v", resolved, err)
-	}
-	amendableV3, err := adr.NewCorpus([]adr.ADR{v3})
-	if err != nil {
-		t.Fatal(err)
-	}
-	amendablePlan := plan.Plan{Filename: "v2.md", Path: "docs/plans/v2.md", Format: "plan-v2", ADRs: []plan.ADRLink{{Slug: "fixture"}}, Phases: []plan.Phase{{Number: 1, Tasks: []plan.Task{{Number: 1, Fields: plan.TaskFields{Applying: []plan.DecisionRef{ordinal}}}}}}}
-	if drift, _ := planArtifactReport([]plan.Plan{amendablePlan}, amendableV3); len(drift) != 1 || !strings.Contains(drift[0].Detail, adr.ErrDecisionSelectorAmendable.Error()) {
-		t.Fatalf("amendable pre-V4 ordinal drift = %#v", drift)
-	}
-	if _, _, err := resolveSelectedPlanDecisions(amendablePlan, amendableV3, amendablePlan.Phases[0], amendablePlan.Phases[0].Tasks[0]); err == nil || !errors.Is(err, adr.ErrDecisionSelectorAmendable) {
-		t.Fatalf("amendable pre-V4 ordinal error = %v", err)
-	}
-
 	assertSelector := func(selector string, cause error) {
 		t.Helper()
 		_, err := resolve(frozenV4, plan.ADRLink{Slug: "fixture"}, plan.DecisionRef{Authored: "fixture:" + selector, ADR: "fixture", Selector: selector, Kind: "Applying"}, false, true)
@@ -240,7 +215,6 @@ func TestResolvePlanDecisionsUsesFrozenCorpusIdentityAndSelector(t *testing.T) {
 			t.Fatalf("selector %q error = %#v", selector, err)
 		}
 	}
-	assertSelector("#1", adr.ErrDecisionSelectorIncompatible)
 	assertSelector("missing", adr.ErrDecisionSelectorUnknown)
 }
 

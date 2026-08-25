@@ -79,8 +79,9 @@ Backing: test
 
 ### `invariant: plan-v2-decision-references`
 
-Plan-v2 parses nonempty unique Applying and Context JSON references with a four-digit-or-retained-slug ADR identity, lowercase-kebab V4 selector, or canonical positive frozen pre-V4 `#N` selector; malformed Applying or Context field lookalikes, including a nonexact colon separator, block before task prose. The project resolves every plan-level ADR link through the corpus identity map, compares Applying membership by resolved record identity, permits Applying to amendable V4 ADRs, requires Context to be frozen, and retains frozen pre-V4 `#N` compatibility.
+Plan-v2 parses nonempty unique Applying and Context JSON references with a four-digit-or-retained-slug ADR identity and lowercase-kebab V4 selector; malformed Applying or Context field lookalikes, including a nonexact colon separator, block before task prose. The project resolves every plan-level ADR link through the corpus identity map, compares Applying membership by resolved record identity, permits Applying to amendable V4 ADRs, and requires Context to be frozen. Frozen pre-V4 ordinal navigation remains ADR-owned historical access and is not plan-v2 reference syntax.
 Origin: ADR-0217
+Revised-by: ADR-separate-live-upgrade-support-from-historical-audit-decoding
 Backing: test
 
 ### `invariant: plan-v2-phase-outcomes`
@@ -105,5 +106,6 @@ Backing: test
 
 ### `rule: managed-plan-format-support`
 
-Retain markerless, plan-v1, and plan-v2 parsing plus numeric and retained-slug ADR links because current managed plans use them; plan-v2 remains the current authoring format. The frozen pre-V4 ordinal Decision selector is removable only after the managed compatibility removal gate rechecks that no managed plan-v2 reference uses it. Hypothetical external adoption is not retention evidence.
+Retain markerless, plan-v1, and plan-v2 parsing plus numeric and retained-slug ADR links because current managed plans use them; plan-v2 remains the current authoring format and uses only stable V4 Decision slugs. Frozen pre-V4 ordinal navigation remains supported outside plan-v2 references. Hypothetical external adoption is not retention evidence.
 Origin: ADR-0297
+Revised-by: ADR-separate-live-upgrade-support-from-historical-audit-decoding

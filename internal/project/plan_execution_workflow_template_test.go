@@ -165,7 +165,7 @@ func TestWritingPlansTemplate(t *testing.T) {
 		"dead-code escape",
 		"nonempty JSON `Applying:` or `Context:` array",
 		"stable `dod: <slug>` bullets",
-		"frozen `#N` only for pre-V4 Decision prose",
+		"Frozen pre-V4 ordinals remain historical ADR navigation and are not plan-v2 references",
 		"generic staging, gate, clean-tree, checkpoint, routing, and reviewer protocol belong to their workflow owners",
 	}
 	for _, phrase := range loadBearing {

@@ -400,7 +400,7 @@ func withoutBatchOnlyFields(body string) string {
 // invariant: adr-system/plan-artifacts:plan-v2-decision-references (TestPlanV2DecisionReferences)
 func TestPlanV2DecisionReferences(t *testing.T) {
 	body := strings.Replace(v1Plan, "format: plan-v1", "format: plan-v2", 1)
-	body = strings.Replace(body, "### Task 1.1: Build it\n", "### Task 1.1: Build it\nApplying: [\"task-scoped-plan-decision-context-and-phase-outcomes:plan-v2\"]\nContext: [\"0001:#1\"]\n", 1)
+	body = strings.Replace(body, "### Task 1.1: Build it\n", "### Task 1.1: Build it\nApplying: [\"task-scoped-plan-decision-context-and-phase-outcomes:plan-v2\"]\nContext: [\"0001:frozen-history\"]\n", 1)
 	body = strings.Replace(body, "- A valid plan parses and projects.", "- `dod: complete` A valid plan parses and projects.", 1)
 	body = strings.Replace(body, "**Execution mode: inline.**", "**Execution mode: inline.**\n\nCompletes: [\"complete\"]", 1)
 	dir := t.TempDir()
@@ -419,7 +419,6 @@ func TestPlanV2DecisionReferences(t *testing.T) {
 		"numeric identity is four digits": "12:plan-v2",
 		"repeated selector hyphen":        "task-scoped-plan-decision-context-and-phase-outcomes:plan--v2",
 		"trailing selector hyphen":        "task-scoped-plan-decision-context-and-phase-outcomes:plan-v2-",
-		"noncanonical ordinal":            "0001:#01",
 	} {
 		t.Run(name, func(t *testing.T) {
 			bad := strings.Replace(body, "task-scoped-plan-decision-context-and-phase-outcomes:plan-v2", reference, 1)
@@ -427,6 +426,17 @@ func TestPlanV2DecisionReferences(t *testing.T) {
 			writePlan(t, dir, "2026-08-02-bad.md", bad)
 			if _, err := plan.ParseDir(dir); err == nil {
 				t.Fatalf("invalid reference %q accepted", reference)
+			}
+		})
+	}
+	for _, reference := range []string{"0001:#1", "0001:#01"} {
+		t.Run("ordinal "+reference, func(t *testing.T) {
+			bad := strings.Replace(body, "task-scoped-plan-decision-context-and-phase-outcomes:plan-v2", reference, 1)
+			dir := t.TempDir()
+			writePlan(t, dir, "2026-08-02-ordinal.md", bad)
+			_, err := plan.ParseDir(dir)
+			if err == nil || !strings.Contains(err.Error(), "plan-v2 Decision references require a stable lowercase-kebab Decision slug") {
+				t.Fatalf("ordinal reference %q error = %v", reference, err)
 			}
 		})
 	}

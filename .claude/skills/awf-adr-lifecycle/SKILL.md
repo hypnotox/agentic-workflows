@@ -125,7 +125,7 @@ schema retrofit may migrate its machine-readable encoding.
 
 ## Decision references
 
-V4 Decision items begin with a unique inline `decision: <lowercase-kebab-slug>` marker. Use that stable slug with the ADR number or retained pending ADR slug in plan references. Pre-V4 Decision items have no stable marker: use canonical `#N` only after their authored-format lifecycle freezes the record; never treat a legacy ordinal as a current-authority or supersession anchor.
+V4 Decision items begin with a unique inline `decision: <lowercase-kebab-slug>` marker. Use that stable slug with the ADR number or retained pending ADR slug in plan references. Pre-V4 Decision items have no stable marker: canonical `#N` remains available only for frozen ADR navigation and is not plan-v2 reference syntax; never treat a legacy ordinal as a current-authority or supersession anchor.
 
 <!-- awf:template-source templates/skills/adr-lifecycle/SKILL.md.tmpl#notes -->
 <!-- awf:edit notes: default; create .awf/skills/parts/adr-lifecycle/notes.md to override -->

@@ -114,7 +114,7 @@ This skill may run without an effort. If continuity independently fired, validat
 <!-- awf:template-source templates/skills/writing-plans/SKILL.md.tmpl#plan-template-ref -->
 <!-- awf:edit plan-template-ref: default; create .awf/skills/parts/writing-plans/plan-template-ref.md to override -->
 <!-- awf:template-source templates/skills/writing-plans/SKILL.md.tmpl -->
-Start from the canonical skeleton rather than a blank file: run `./awf new plan "<Title>"` to scaffold a dated plan from the rendered template. The skeleton carries `format: plan-v2`, lifecycle frontmatter, the `# Plan:` H1, Goal and Architecture summary, heading-identified phase/task and Phase close declarations, slugged Definition-of-done bullets, matching phase outcome ownership, and optional Notes. For a linked pending ADR use its retained slug; target V4 Decisions by stable `decision:` slug, and use frozen `#N` only for pre-V4 Decision prose.
+Start from the canonical skeleton rather than a blank file: run `./awf new plan "<Title>"` to scaffold a dated plan from the rendered template. The skeleton carries `format: plan-v2`, lifecycle frontmatter, the `# Plan:` H1, Goal and Architecture summary, heading-identified phase/task and Phase close declarations, slugged Definition-of-done bullets, matching phase outcome ownership, and optional Notes. For a linked pending ADR use its retained slug; target Decisions only by stable V4 `decision:` slug. Frozen pre-V4 ordinals remain historical ADR navigation and are not plan-v2 references.
 
 <!-- awf:template-source templates/skills/writing-plans/SKILL.md.tmpl#procedure-write-plan -->
 <!-- awf:edit procedure-write-plan: default; create .awf/skills/parts/writing-plans/procedure-write-plan.md to override -->
