@@ -31,8 +31,8 @@ func TestControlRootInternalParserAndHelpers(t *testing.T) {
 		[]byte("worktree /a\x00HEAD x\x00branch b\x00bare value\x00\x00"),
 		[]byte("worktree /a\x00HEAD x\x00branch b\x00unknown\x00\x00"),
 		[]byte("worktree /a\x00HEAD x\x00branch b\x00"),
-		// Shapes the worktree manager's own parser used to reject before the seam
-		// became the single home for registration parsing.
+		// An empty prunable reason is malformed input for the single registration
+		// parser and must be rejected.
 		[]byte("worktree /a\x00HEAD x\x00branch b\x00prunable \x00\x00"),
 		[]byte("worktree /a\x00HEAD x\x00\x00"),
 		[]byte("worktree /a\x00HEAD x\x00branch b\x00detached\x00\x00"),

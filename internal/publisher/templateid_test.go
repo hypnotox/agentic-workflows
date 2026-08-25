@@ -166,10 +166,10 @@ func topicTemplatesImportFindings(pkgs []*packages.Package) []string {
 // TestTemplateIDsDeriveFromTheDeclarationTables proves the claim: no production
 // file under internal/ or cmd/ outside the declaration tables spells a full
 // template-ID path, so an id is always resolved through the catalog entry, the
-// kind descriptor, or a declaration table row. The retired
-// validateDeclarationPlanParity compared one derivation with itself once the
-// consolidation landed; this scan replaces it by forbidding the second
-// derivation outright.
+// kind descriptor, or a declaration table row. Comparing one derivation with
+// itself is vacuous. This independent scan forbids a second derivation outright,
+// keeps declaration tables as the only permitted literal owners, and fails a
+// duplicate implementation even when it agrees with those declarations.
 //
 // The detector matches string literals only - an id assembled from fragments
 // that never spell a separator and the suffix together, or read out of data,

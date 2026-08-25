@@ -481,8 +481,8 @@ func cloneConfigValue(value reflect.Value) reflect.Value {
 }
 
 // CurrentStateConfig configures canonical current-state topic validation.
-// Its authority remains deliberately separate from legacy invariant
-// configuration.
+// Sources define claim-bearing scan inputs; TestGlobs define proof-source
+// boundaries.
 type CurrentStateConfig struct {
 	Sources   []CurrentStateSource `yaml:"sources"`
 	TestGlobs []string             `yaml:"testGlobs"`

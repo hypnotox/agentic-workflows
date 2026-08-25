@@ -666,9 +666,9 @@ func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
 	}
 }
 
-// The generated indexes carry RegenChecked=true (drift checked by regeneration,
-// not the frozen OutputHash); an ordinary rendered file carries false. This is the
-// single source of truth that replaced the hardcoded index-path literals.
+// Generated indexes carry RegenChecked=true and use regeneration drift checks,
+// while ordinary rendered files carry false and use frozen OutputHash checks.
+// The attribute is the single source for selecting the applicable check.
 func TestRegenCheckedAttribute(t *testing.T) {
 	root := scaffold(t, domainCfg)
 	p, err := Open(testContext(t), root)

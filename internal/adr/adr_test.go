@@ -357,9 +357,9 @@ func TestNewFileRejectsMissingFrontmatter(t *testing.T) {
 	}
 }
 
-// The template is the one authored surface the scaffold reads. It rewrites the
-// template frontmatter to the V3 shape, accepts its marker, and writes the
-// per-record slug.
+// The test supplies a V3 template. The scaffold accepts its marker, rewrites it
+// to the current registered format, injects the per-record slug, and refuses a
+// template-declared slug.
 func TestNewFileAcceptsAV3TemplateAndRefusesADeclaredSlug(t *testing.T) {
 	dir := t.TempDir()
 	v3Template := strings.Replace(adrTemplateFixture, "format: current-state-v1", "format: current-state-v3", 1)
