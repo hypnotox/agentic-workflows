@@ -22,6 +22,15 @@ staged checks. The live registry still exposes legacy layouts and filesystem mut
 path that no managed tree retains. This coupling can either preserve an accidental live route below
 the supported floor or break reachable historical audit when obsolete mutation code is removed.
 
+Bridge lock compatibility crosses several live consumers. The manifest model parses and validates
+bridge authority. Command guarding, initialization, and publication consult that authority before
+config loading or rendering. Upgrade dispatch verifies and finalizes the bridge, while migration
+layout and generation classification route old projects toward upgrade. Release checking carries a
+permanently true bridge sentinel. Audit also parses historical locks through the live manifest
+model. The final census therefore permits live manifest, command, initialization, publication,
+upgrade, migration, and release-check bridge branches to disappear, but any bridge shape present in
+reachable managed history must move behind audit's historical decoder rather than remain live.
+
 Historical decoding and live mutation have different owners and constraints. Live operations need
 strict current authority, a future migration seam from the supported floor, and journaled atomic
 mutation. Audit needs read-only interpretation of the actual managed history horizon, including old
@@ -38,9 +47,9 @@ explicitly deferred.
 
 ## Decision
 
-1. `decision: separate-live-and-historical-compatibility` Live project operations and historical audit use separate compatibility boundaries. Live operations accept the current layout at or above schema 46 through the binary's current schema, reject an older schema or retired layout before authority dispatch or mutation with the supported floor and recovery direction, and never call the historical decoder. Staged checks apply the live floor to both compared project states, except that a genuinely empty pre-adoption HEAD remains an empty universe.
+1. `decision: separate-live-and-historical-compatibility` Live project operations and historical audit use separate compatibility boundaries. The current layout at schema 46 through the binary's current schema is classified as supported live source. Only upgrade may execute a required supported migration; every other live operation gates before authority dispatch while the source is below the binary's current schema. An older schema or retired layout is rejected before authority dispatch or mutation with the supported floor and recovery direction, and no live operation calls the historical decoder. Staged checks apply the live floor to both compared project states, except that a genuinely empty pre-adoption HEAD remains an empty universe.
 2. `decision: retain-supported-floor-migration-seam` Live upgrade retains one ordered migration seam beginning at the supported schema-46 floor, schema-ahead and binary-version checks, atomic lock publication, and journaled rollback and recovery. Mutation steps, layout readers, and reset paths below the live floor do not remain registered as hypothetical upgrade support.
-3. `decision: explicit-managed-history-decoder` Audit owns read-only config and lock decoding for the actual managed history horizon. Its lower bound remains schema 3, and an explicit tracked upper bound begins at schema 46 and advances only after managed-corpus evidence proves that a newer binary-supported schema entered reachable history. Audit refuses missing, malformed, future, below-horizon, or otherwise unsupported historical authority shapes with the horizon and recovery direction.
+3. `decision: explicit-managed-history-decoder` Audit owns read-only config and lock decoding for the actual managed history horizon. Its lower bound remains schema 3, and an explicit tracked upper bound begins at schema 46 and advances only after managed-corpus evidence proves that a newer binary-supported schema entered reachable history. A genuinely pre-`.awf` revision remains an empty audit universe. Where historical `.awf` authority is expected, audit refuses a missing, malformed, future, below-horizon, or otherwise unsupported shape with the horizon and recovery direction.
 4. `decision: remove-unrepresented-compatibility` After the final candidate-specific managed-corpus recheck, remove plan-v2 ordinal Decision selectors, legacy four-line effort memory support, schema-1 effort and worktree retirement paths, and bridge-only attestation, approval, adjudication, marker-cleanup, and release-sentinel support. Preserve represented ADR and plan formats, canonical schema-2 effort residents, generic journal safety, and historical forms required inside the audit horizon.
 
 ## State changes
