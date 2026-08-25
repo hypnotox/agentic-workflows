@@ -147,10 +147,10 @@ func TestPruneTreatsRetiredRunnerAsOrdinaryManagedOutput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(root, "x")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(root, "x")); !errors.Is(err, os.ErrNotExist) {
 		t.Errorf("pruned output remains, stat err = %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(root, "x.awf-bak")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(root, "x.awf-bak")); !errors.Is(err, os.ErrNotExist) {
 		t.Errorf("ordinary prune created a backup, stat err = %v", err)
 	}
 	for _, backup := range backups {
