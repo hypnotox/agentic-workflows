@@ -80,10 +80,11 @@ func TestRunConfiguredAnnouncesEmptyRange(t *testing.T) {
 
 func TestRunConfiguredUsesLockedGeneratedPaths(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
-	lock := `{"awfVersion":"0.1.0","schemaVersion":1,"files":{"generated.go":{}}}`
+	lock := `{"awfVersion":"0.1.0","schemaVersion":3,"files":{"generated.go":{}}}`
 	base := gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{
-		".awf/awf.lock": lock,
-		"generated.go":  "package x\n",
+		".awf/awf.lock":    lock,
+		".awf/config.yaml": "prefix: test\n",
+		"generated.go":     "package x\n",
 	})
 	gitfixture.Commit(t, repo, "feat(awf): generated update", map[string]string{"generated.go": "package x\n" + strings.Repeat("var n int\n", 500)})
 

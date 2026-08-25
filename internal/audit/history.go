@@ -15,8 +15,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
-	"github.com/hypnotox/agentic-workflows/internal/manifest"
-	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
@@ -266,13 +264,13 @@ func (s *revisionStore) releaseAll() {
 // is loaded once by the operation; lock and current-state parsing are separately
 // lazy so a pre-policy merge can inspect only its schema boundary.
 type revisionState struct {
-	loadLock          func() (*manifest.Lock, bool, error)
+	loadLock          func() (*historicalLock, bool, error)
 	loadUniverse      func() (currentstate.Universe, error)
 	heavyMaterialized bool
 	heavyLive         bool
 
 	lockReady bool
-	lock      *manifest.Lock
+	lock      *historicalLock
 	lockFound bool
 	lockErr   error
 
@@ -530,7 +528,7 @@ func policyRelevant(paths []string, docsDir string) bool {
 	return false
 }
 
-func (s *revisionState) lockEvidence() (*manifest.Lock, bool, error) {
+func (s *revisionState) lockEvidence() (*historicalLock, bool, error) {
 	if !s.lockReady {
 		if s.loadLock != nil {
 			s.lock, s.lockFound, s.lockErr = s.loadLock()
@@ -660,14 +658,23 @@ func loadSelectedRevision(ctx context.Context, root, revision string, entryRead 
 		byPath[entry.Path] = entry
 	}
 	configPath := config.DirName + "/config.yaml"
-	configEntry, found := byPath[configPath]
-	if !found {
+	lockPath := config.DirName + "/awf.lock"
+	configEntry, hasConfig := byPath[configPath]
+	_, hasLock := byPath[lockPath]
+	hasResidue := false
+	for path := range byPath {
+		if strings.HasPrefix(path, config.DirName+"/") {
+			hasResidue = true
+			break
+		}
+	}
+	if !hasConfig && !hasLock && !hasResidue {
 		return emptyRevisionState(), nil
 	}
-	controls := []string{configPath}
-	if _, ok := byPath[config.DirName+"/awf.lock"]; ok {
-		controls = append(controls, config.DirName+"/awf.lock")
+	if !hasConfig || !hasLock {
+		return revisionStateFromControlOutcome(nil, hasLock, nil, &PartialHistoricalAuthorityError{Config: hasConfig, Lock: hasLock, Residue: hasResidue}), nil
 	}
+	controls := []string{configPath, lockPath}
 	blobs, err := blobRead(ctx, revision, controls)
 	if err != nil {
 		return nil, err
@@ -743,7 +750,7 @@ func emptyRevisionState() *revisionState {
 	return &revisionState{lockReady: true, universeReady: true}
 }
 
-func revisionStateFromControlOutcome(lock *manifest.Lock, lockFound bool, lockErr, configErr error) *revisionState {
+func revisionStateFromControlOutcome(lock *historicalLock, lockFound bool, lockErr, configErr error) *revisionState {
 	return &revisionState{
 		lockReady:     true,
 		lock:          lock,
@@ -757,7 +764,7 @@ func revisionStateFromControlOutcome(lock *manifest.Lock, lockFound bool, lockEr
 	}
 }
 
-func revisionStateFromAuthority(cfg *config.Config, lock *manifest.Lock, lockFound bool, load func() (currentstate.Universe, error)) *revisionState {
+func revisionStateFromAuthority(cfg *config.Config, lock *historicalLock, lockFound bool, load func() (currentstate.Universe, error)) *revisionState {
 	return &revisionState{lockReady: true, lock: lock, lockFound: lockFound, configReady: true, config: cfg, loadUniverse: load}
 }
 
@@ -928,7 +935,20 @@ const (
 // ErrHistoricalHorizon marks authority outside audit's evidence-only decoder.
 var ErrHistoricalHorizon = errors.New("unsupported historical audit authority")
 
-func auditLockFromSelection(selection *snapshot.Selection) (*manifest.Lock, bool, error) {
+type HistoricalHorizonError struct{ Schema, Floor, Horizon int }
+
+func (e *HistoricalHorizonError) Error() string {
+	return fmt.Sprintf("historical schema %d outside %d..%d", e.Schema, e.Floor, e.Horizon)
+}
+func (e *HistoricalHorizonError) Is(target error) bool { return target == ErrHistoricalHorizon }
+
+type PartialHistoricalAuthorityError struct{ Config, Lock, Residue bool }
+
+func (e *PartialHistoricalAuthorityError) Error() string {
+	return fmt.Sprintf("partial historical authority: config=%t lock=%t residue=%t", e.Config, e.Lock, e.Residue)
+}
+
+func auditLockFromSelection(selection *snapshot.Selection) (*historicalLock, bool, error) {
 	file, ok := selection.Lookup(config.DirName + "/awf.lock")
 	if !ok {
 		return nil, false, nil
@@ -936,17 +956,17 @@ func auditLockFromSelection(selection *snapshot.Selection) (*manifest.Lock, bool
 	if !file.Scannable() {
 		return nil, true, fmt.Errorf("%s/awf.lock is not a scannable file", config.DirName)
 	}
-	lock, err := manifest.Parse(file.Bytes)
+	lock, err := decodeHistoricalLock(file.Bytes)
 	if err != nil {
 		return nil, true, err
 	}
 	if lock.SchemaVersion < historicalSchemaFloor || lock.SchemaVersion > historicalSchemaHorizon {
-		return nil, true, fmt.Errorf("%w: schema %d is outside supported audit horizon %d through %d; restore an in-horizon revision or audit with a supporting release", ErrHistoricalHorizon, lock.SchemaVersion, historicalSchemaFloor, historicalSchemaHorizon)
+		return nil, true, &HistoricalHorizonError{Schema: lock.SchemaVersion, Floor: historicalSchemaFloor, Horizon: historicalSchemaHorizon}
 	}
 	return lock, true, nil
 }
 
-func auditConfig(root string, selection *snapshot.Selection, lock *manifest.Lock) (*config.Config, error) {
+func auditConfig(root string, selection *snapshot.Selection, lock *historicalLock) (*config.Config, error) {
 	file, ok := selection.Lookup(config.DirName + "/config.yaml")
 	if !ok {
 		//nolint:nilnil // an absent committed config means an empty historical universe, not a load failure
@@ -956,9 +976,9 @@ func auditConfig(root string, selection *snapshot.Selection, lock *manifest.Lock
 		return nil, fmt.Errorf("%s/config.yaml is not a scannable file", config.DirName)
 	}
 	if lock == nil {
-		return nil, fmt.Errorf("partial historical .awf authority: .awf/config.yaml requires .awf/awf.lock; restore an in-horizon revision")
+		return nil, &PartialHistoricalAuthorityError{Config: true}
 	}
-	data, err := migrate.ConfigForCurrentSchema(file.Bytes, lock.SchemaVersion)
+	data, err := decodeHistoricalConfig(file.Bytes, lock.SchemaVersion)
 	if err != nil {
 		return nil, err
 	}

@@ -331,7 +331,7 @@ func TestDropSelectionRegisteredAtGeneration39(t *testing.T) {
 	if !found {
 		t.Fatal("drop-selection migration is not registered at generation 39")
 	}
-	applied, _, err := Upgrade(context.Background(), t.TempDir())
+	applied, _, err := upgradeLegacyForTest(context.Background(), t.TempDir())
 	if err != nil || len(applied) != 0 {
 		t.Fatalf("empty upgrade = %v, %v", applied, err)
 	}

@@ -101,7 +101,7 @@ func TestRetirePlanResyncMigrationReportsAndStamps(t *testing.T) {
 		t.Fatal(err)
 	}
 	stampLockAt(t, filepath.Join(root, ".awf", "awf.lock"), 39)
-	applied, changes, err := Upgrade(context.Background(), root)
+	applied, changes, err := upgradeLegacyForTest(context.Background(), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +150,7 @@ func TestRetirePlanResyncMigrationReportsAndStamps(t *testing.T) {
 	if info, err := os.Stat(skillSidecar); err != nil || info.Mode().Perm() != 0o640 {
 		t.Fatalf("skill sidecar mode = %v, %v", info, err)
 	}
-	applied, changes, err = Upgrade(context.Background(), root)
+	applied, changes, err = upgradeLegacyForTest(context.Background(), root)
 	if err != nil || len(applied) != 0 || len(changes) != 0 {
 		t.Fatalf("repeat = %v, %v, %v", applied, changes, err)
 	}

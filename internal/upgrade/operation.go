@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
@@ -27,6 +28,9 @@ type AuthorityLockPath func(string) string
 
 // SchemaGate reports root's migration relation and schema generation.
 type SchemaGate func(string) (string, int, error)
+
+// LiveSchemaRange supplies the migrate-owned live compatibility bounds.
+type LiveSchemaRange func() (floor, current int)
 
 // SchemaAheadError constructs the refusal for an unsupported future schema.
 type SchemaAheadError func(int) error
@@ -72,7 +76,7 @@ func RecoverOperation(root string, present ProjectPresent) (OperationOutcome, er
 // Run executes the normal upgrade use case. Migration, authority and journal
 // coordination live here; cmd/awf supplies only its concrete terminal sync and
 // gate dependencies.
-func Run(ctx context.Context, root string, sync Sync, gate Gate, present ProjectPresent, authorityPath AuthorityLockPath, schemaGate SchemaGate, schemaAhead SchemaAheadError, migrate Migration, currentSchemaChange CurrentSchemaChange) (OperationOutcome, error) {
+func Run(ctx context.Context, root string, sync Sync, gate Gate, present ProjectPresent, authorityPath AuthorityLockPath, liveSchemaRange LiveSchemaRange, schemaGate SchemaGate, schemaAhead SchemaAheadError, migrate Migration, currentSchemaChange CurrentSchemaChange) (OperationOutcome, error) {
 	if !present(root) {
 		return OperationOutcome{}, errors.New("not an awf project (run `awf init`)")
 	}
@@ -82,7 +86,27 @@ func Run(ctx context.Context, root string, sync Sync, gate Gate, present Project
 		return OperationOutcome{}, err
 	}
 	if !found {
-		return OperationOutcome{}, errors.New("pre-tracking authority: use the bridge release to attest before upgrading")
+		if _, err := os.Stat(config.ConfigPath(root)); err == nil {
+			return OperationOutcome{}, &manifest.PartialAuthorityError{Config: true, Lock: false}
+		}
+		return OperationOutcome{}, errors.New("not an awf project")
+	}
+	if lockPath == config.LockPath(root) {
+		if _, lockErr := os.Stat(lockPath); lockErr == nil {
+			if _, err := os.Stat(config.ConfigPath(root)); os.IsNotExist(err) {
+				return OperationOutcome{}, &manifest.PartialAuthorityError{Config: false, Lock: true}
+			} else if err != nil { // coverage-ignore: after the lock proves this is a current authority root, config stat can fail only through a concurrent namespace, permission, or storage fault
+				return OperationOutcome{}, err
+			}
+		}
+	}
+	floor, current := liveSchemaRange()
+	if err := manifest.ValidateLive(lock, floor, current); err != nil {
+		return OperationOutcome{}, err
+	}
+	state, generation, err := schemaGate(root)
+	if err != nil {
+		return OperationOutcome{}, err
 	}
 	authority, err := lock.AuthorityState()
 	if err != nil { // coverage-ignore: LoadOptional parses and validates the unchanged authority construction immediately above
@@ -106,10 +130,6 @@ func Run(ctx context.Context, root string, sync Sync, gate Gate, present Project
 	case manifest.AuthorityPermanent:
 	default: // coverage-ignore: AuthorityState returns only Bridge or Permanent when its validation succeeds
 		return OperationOutcome{}, errors.New("invalid authority: restore .awf/awf.lock from version control")
-	}
-	state, generation, err := schemaGate(root)
-	if err != nil {
-		return OperationOutcome{}, err
 	}
 	if state == "ahead" {
 		return OperationOutcome{}, schemaAhead(generation)

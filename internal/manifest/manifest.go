@@ -186,30 +186,42 @@ func (l *Lock) Marshal() ([]byte, error) {
 	return append(b, '\n'), nil
 }
 
-// LiveSchemaFloor and LiveSchemaCurrent bound live project authority. Older
-// locks remain historical evidence only; audit decodes them through its
-// read-only horizon.
-const (
-	LiveSchemaFloor   = 46
-	LiveSchemaCurrent = 46
-)
-
-// ErrUnsupportedLiveSource identifies authority that cannot be dispatched by a
-// live operation. Callers add their operation-specific recovery presentation.
+// ErrUnsupportedLiveSource identifies authority that cannot be dispatched by a live operation.
 var ErrUnsupportedLiveSource = errors.New("unsupported live source")
 
-// ParseLive accepts only authority a user-invoked operation may dispatch on.
-// Parse remains the compatibility parser for immutable historical evidence.
-func ParseLive(b []byte) (*Lock, error) {
+// LiveSourceError carries live compatibility facts without recovery presentation.
+type LiveSourceError struct{ Schema, Floor, Current int }
+
+func (e *LiveSourceError) Error() string {
+	if e.Schema < e.Floor {
+		return fmt.Sprintf("schema %d is below live floor %d", e.Schema, e.Floor)
+	}
+	return fmt.Sprintf("schema %d is ahead of live schema %d", e.Schema, e.Current)
+}
+func (e *LiveSourceError) Is(target error) bool { return target == ErrUnsupportedLiveSource }
+
+// PartialAuthorityError identifies an incomplete control pair without prescribing recovery.
+type PartialAuthorityError struct{ Config, Lock bool }
+
+func (e *PartialAuthorityError) Error() string {
+	return fmt.Sprintf("partial authority: config=%t lock=%t", e.Config, e.Lock)
+}
+
+// ValidateLive accepts only authority a user-invoked operation may dispatch on.
+func ValidateLive(l *Lock, floor, current int) error {
+	if l.SchemaVersion < floor || l.SchemaVersion > current {
+		return &LiveSourceError{Schema: l.SchemaVersion, Floor: floor, Current: current}
+	}
+	return nil
+}
+
+func ParseLive(b []byte, floor, current int) (*Lock, error) {
 	l, err := Parse(b)
 	if err != nil {
 		return nil, err
 	}
-	if l.SchemaVersion < LiveSchemaFloor {
-		return nil, fmt.Errorf("%w: schema %d is below supported floor %d; run awf upgrade with a supported release", ErrUnsupportedLiveSource, l.SchemaVersion, LiveSchemaFloor)
-	}
-	if l.SchemaVersion > LiveSchemaCurrent {
-		return nil, fmt.Errorf("%w: schema %d is ahead of supported schema %d; update awf to a supporting release", ErrUnsupportedLiveSource, l.SchemaVersion, LiveSchemaCurrent)
+	if err := ValidateLive(l, floor, current); err != nil {
+		return nil, err
 	}
 	return l, nil
 }

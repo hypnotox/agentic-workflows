@@ -1,15 +1,55 @@
 package project
 
 import (
+	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
+
+func snapshotResidentMigrationFixture(t *testing.T, root string) map[string][]byte {
+	t.Helper()
+	files := make(map[string][]byte)
+	if err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		contents, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		files[filepath.ToSlash(rel)] = contents
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return files
+}
+
+func assertResidentMigrationFixtureUnchanged(t *testing.T, root string, before map[string][]byte) {
+	t.Helper()
+	after := snapshotResidentMigrationFixture(t, root)
+	if len(after) != len(before) {
+		t.Fatalf("fixture file count after refusal = %d, want %d: %#v", len(after), len(before), after)
+	}
+	for path, want := range before {
+		if got, ok := after[path]; !ok || !bytes.Equal(got, want) {
+			t.Fatalf("fixture file %s after refusal = %q, want byte-identical %q", path, got, want)
+		}
+	}
+}
 
 // Generation 21 removes the obsolete workflow roots and generation 22 resets
 // the standalone memory root, while the three roots awf still owns keep every
@@ -35,78 +75,23 @@ func TestResidentMigrationsPreserveOwnedRootsThroughProjectSync(t *testing.T) {
 		testsupport.WriteFile(t, filepath.Join(root, ".awf", name, "retained", "nested", "resident.go"), name)
 	}
 
-	if _, _, err := migrate.Upgrade(testContext(t), root); err != nil {
-		t.Fatal(err)
+	before := snapshotResidentMigrationFixture(t, root)
+	if _, _, err := migrate.Upgrade(testContext(t), root); !errors.Is(err, manifest.ErrUnsupportedLiveSource) {
+		t.Fatalf("legacy upgrade = %v, want below-floor refusal", err)
 	}
-	for _, name := range []string{"metrics", "assignments"} {
-		if _, err := os.Lstat(filepath.Join(root, ".awf", name)); !os.IsNotExist(err) {
-			t.Fatalf("obsolete %s root remains after migration: %v", name, err)
-		}
-	}
-	for _, name := range []string{"efforts", "worktrees", "effort-archive"} {
-		path := filepath.Join(root, ".awf", name, "retained", "nested", "resident.go")
-		if got, err := os.ReadFile(path); err != nil || string(got) != name {
-			t.Fatalf("retained %s resident changed: %q, %v", name, got, err)
-		}
-	}
-	// The standalone memory root is reset, not migrated: generation 22 stops
-	// owning it, so the whole root goes with the journaled schema advance.
-	if _, err := os.Lstat(filepath.Join(root, ".awf", "memory")); !os.IsNotExist(err) {
-		t.Fatalf("standalone memory root survived the schema-22 reset: %v", err)
-	}
-
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := syncProject(p); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := renderAll(p); err != nil {
-		t.Fatal(err)
-	}
-	for _, name := range []string{"metrics", "assignments"} {
-		if _, err := os.Lstat(filepath.Join(root, ".awf", name)); !os.IsNotExist(err) {
-			t.Fatalf("obsolete %s root was recreated by sync/render: %v", name, err)
-		}
-	}
-	for _, name := range []string{"efforts", "worktrees", "effort-archive"} {
-		path := filepath.Join(root, ".awf", name, "retained", "nested", "resident.go")
-		if got, err := os.ReadFile(path); err != nil || string(got) != name {
-			t.Fatalf("retained %s resident changed after sync/render: %q, %v", name, got, err)
-		}
-	}
-	if _, err := os.Lstat(filepath.Join(root, ".awf", "memory")); !os.IsNotExist(err) {
-		t.Fatalf("sync/render recreated the standalone memory root: %v", err)
-	}
+	assertResidentMigrationFixtureUnchanged(t, root, before)
 }
 
-func TestRetiredPlanResyncDuplicateSelectionsUpgradeAndSync(t *testing.T) {
+func TestRetiredPlanResyncRefusesBelowFloorWithoutMutation(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: test-gate}\nskills: [reviewing-plan-resync, reviewing-plan-resync]\nagents: []\ntargets: [claude]\n")
 	lock := &manifest.Lock{AWFVersion: "0.31.0", SchemaVersion: 37, Files: map[string]manifest.Entry{}, InitializedWithVersion: "0.31.0"}
 	if err := lock.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := migrate.Upgrade(testContext(t), root); err != nil {
-		t.Fatal(err)
+	before := snapshotResidentMigrationFixture(t, root)
+	if _, _, err := migrate.Upgrade(testContext(t), root); !errors.Is(err, manifest.ErrUnsupportedLiveSource) {
+		t.Fatalf("legacy upgrade = %v, want below-floor refusal", err)
 	}
-	configBytes, err := os.ReadFile(filepath.Join(root, ".awf", "config.yaml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.Contains(string(configBytes), "reviewing-plan-resync") {
-		t.Fatalf("retired duplicate survived upgrade:\n%s", configBytes)
-	}
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := syncProject(p); err != nil {
-		t.Fatal(err)
-	}
-	applied, changes, err := migrate.Upgrade(testContext(t), root)
-	if err != nil || len(applied) != 0 || len(changes) != 0 {
-		t.Fatalf("second upgrade = %v, %v, %v", applied, changes, err)
-	}
+	assertResidentMigrationFixtureUnchanged(t, root, before)
 }

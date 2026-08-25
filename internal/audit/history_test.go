@@ -17,7 +17,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
-	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
@@ -69,14 +68,14 @@ func TestAuditConfigTreatsOnlyPreProfileSnapshotAsFull(t *testing.T) {
 		Path: ".awf/config.yaml", Mode: snapshot.Regular,
 		Bytes: []byte("prefix: test\nintegrationBranch: main\n"),
 	}})
-	cfg, err := auditConfig(t.TempDir(), auditSelection(t, tree), &manifest.Lock{SchemaVersion: 45})
+	cfg, err := auditConfig(t.TempDir(), auditSelection(t, tree), &historicalLock{SchemaVersion: 45})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if cfg.Profile != catalog.ProfileFull {
 		t.Fatalf("pre-profile historical profile = %q, want Full", cfg.Profile)
 	}
-	if _, err := auditConfig(t.TempDir(), auditSelection(t, tree), &manifest.Lock{SchemaVersion: 46}); err == nil {
+	if _, err := auditConfig(t.TempDir(), auditSelection(t, tree), &historicalLock{SchemaVersion: 46}); err == nil {
 		t.Fatal("profile-schema historical config without profile accepted")
 	}
 }
@@ -335,7 +334,7 @@ func TestHistoryOperationDischargesSkippedAndFailedConsumers(t *testing.T) {
 		commits := []replayCommit{{Hash: "merge", Revision: "result", IsMerge: true, Parents: []string{"first", "incoming"}}}
 		heavyLoads := map[string]int{}
 		op := newHistoryOperationFromCompact(commits, nil, 1, func(_ context.Context, revision string) (*revisionState, error) {
-			state := &revisionState{lockReady: true, lock: &manifest.Lock{SchemaVersion: 30}, lockFound: true, configReady: true, config: &config.Config{}}
+			state := &revisionState{lockReady: true, lock: &historicalLock{SchemaVersion: 30}, lockFound: true, configReady: true, config: &config.Config{}}
 			state.loadUniverse = func() (currentstate.Universe, error) {
 				heavyLoads[revision]++
 				return currentstate.Universe{Sources: map[string][]byte{revision: []byte(revision)}}, nil
@@ -404,7 +403,7 @@ func TestHistoryOperationDischargesSkippedAndFailedConsumers(t *testing.T) {
 
 func TestHistoryOperationReleasesSourcesBeforeUniverse(t *testing.T) {
 	source := []byte("historical ADR")
-	state := &revisionState{lockReady: true, lock: &manifest.Lock{SchemaVersion: 31}, lockFound: true}
+	state := &revisionState{lockReady: true, lock: &historicalLock{SchemaVersion: 31}, lockFound: true}
 	state.loadUniverse = func() (currentstate.Universe, error) {
 		return currentstate.Universe{Sources: map[string][]byte{"0001": source}}, nil
 	}
@@ -435,7 +434,7 @@ func TestHistoryOperationTracksHeterogeneousOctopusFrontier(t *testing.T) {
 	commit := replayCommit{Hash: "octopus", Revision: "result", IsMerge: true, Message: "Merge", Parents: []string{"first", "incoming-one", "incoming-two", "incoming-three"}}
 	states := map[string]*revisionState{}
 	op := newHistoryOperationFromCompact([]replayCommit{commit}, nil, 1, func(_ context.Context, revision string) (*revisionState, error) {
-		state := &revisionState{lockReady: true, lock: &manifest.Lock{SchemaVersion: 31}, lockFound: true, configReady: true, config: &config.Config{}}
+		state := &revisionState{lockReady: true, lock: &historicalLock{SchemaVersion: 31}, lockFound: true, configReady: true, config: &config.Config{}}
 		state.loadUniverse = func() (currentstate.Universe, error) {
 			return currentstate.Universe{Sources: map[string][]byte{revision: []byte(revision)}}, nil
 		}
@@ -618,7 +617,7 @@ func TestHistoryOperationPreservesStreamFindingOrderAcrossGraphReplay(t *testing
 			{Ordinal: 1, Hash: "stream-second", Revision: "a-result", IsMerge: true, Message: "Merge\n\nAWF-Allow-Version: bad", Parents: []string{"a-first", "a-incoming"}},
 		}
 		op := newHistoryOperationFromCompact(commits, []Finding{ordinary}, len(commits), func(context.Context, string) (*revisionState, error) {
-			return fixedRevisionState(&manifest.Lock{SchemaVersion: 31}, true, currentstate.Universe{}), nil
+			return fixedRevisionState(&historicalLock{SchemaVersion: 31}, true, currentstate.Universe{}), nil
 		}, nil, func(context.Context) ([]Finding, error) { return []Finding{liveFinding}, nil })
 		findings, err := op.run(testContext(t))
 		if err != nil {
@@ -663,7 +662,7 @@ func TestHistoryOperationConsumesOrderedOctopusParents(t *testing.T) {
 	var loads []string
 	op := newHistoryOperationFromCompact(commits, nil, 1, func(_ context.Context, revision string) (*revisionState, error) {
 		loads = append(loads, revision)
-		return fixedRevisionState(&manifest.Lock{SchemaVersion: 31}, true, currentstate.Universe{}), nil
+		return fixedRevisionState(&historicalLock{SchemaVersion: 31}, true, currentstate.Universe{}), nil
 	}, nil, func(context.Context) ([]Finding, error) { return nil, nil })
 	if findings, err := op.run(testContext(t)); err != nil || len(findings) != 0 {
 		t.Fatalf("octopus replay findings = %#v, error = %v", findings, err)
@@ -702,9 +701,9 @@ func TestHistoryOperationChecksCancellationBetweenCachedConsumers(t *testing.T) 
 	t.Run("between stale and transition", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(testContext(t))
 		state := &revisionState{
-			loadLock: func() (*manifest.Lock, bool, error) {
+			loadLock: func() (*historicalLock, bool, error) {
 				cancel()
-				return &manifest.Lock{SchemaVersion: 30}, true, nil
+				return &historicalLock{SchemaVersion: 30}, true, nil
 			},
 			universeReady: true,
 		}
@@ -766,7 +765,7 @@ func TestHistoryOperationChecksCancellationBetweenCachedConsumers(t *testing.T) 
 }
 
 func TestStreamingHistoryOperationReportsMalformedMergeAuthorization(t *testing.T) {
-	state := fixedRevisionState(&manifest.Lock{SchemaVersion: 31}, true, currentstate.Universe{})
+	state := fixedRevisionState(&historicalLock{SchemaVersion: 31}, true, currentstate.Universe{})
 	op := newHistoryOperationFromCompact([]replayCommit{{Hash: "merge", Revision: "merge", IsMerge: true, Message: "Merge\n\nAWF-Allow-Version: bad", Parents: []string{"first", "incoming"}}}, nil, 1, func(context.Context, string) (*revisionState, error) { return state, nil }, nil, func(context.Context) ([]Finding, error) { return nil, nil })
 	findings, err := op.staleMergeFindings(testContext(t))
 	if err != nil || countRule(findings, "stale-merge-authorization", severity.Error) != 1 {
@@ -1160,7 +1159,7 @@ func TestAuditPropagatesHistoricalCancellation(t *testing.T) {
 		},
 		"stale-merge-only evidence": func(t *testing.T, termination error) ([]Finding, []string, error) {
 			var events []string
-			result := fixedRevisionState(&manifest.Lock{SchemaVersion: 31}, true, currentstate.Universe{})
+			result := fixedRevisionState(&historicalLock{SchemaVersion: 31}, true, currentstate.Universe{})
 			incoming := &revisionState{
 				lockReady: true,
 				loadUniverse: func() (currentstate.Universe, error) {
@@ -1280,7 +1279,7 @@ func TestAuditPropagatesHistoricalCancellation(t *testing.T) {
 				_, err = loadSelectedRevision(testContext(t), t.TempDir(), "revision",
 					func(context.Context, string) ([]awfgit.TreeEntry, error) {
 						events = append(events, "enumerate")
-						return []awfgit.TreeEntry{{Path: ".awf/config.yaml", Mode: awfgit.BlobRegular}}, nil
+						return []awfgit.TreeEntry{{Path: ".awf/config.yaml", Mode: awfgit.BlobRegular}, {Path: ".awf/awf.lock", Mode: awfgit.BlobRegular}}, nil
 					},
 					func(context.Context, string, []string) ([]awfgit.IndexBlob, error) {
 						events = append(events, "selected blob read")
@@ -1411,9 +1410,9 @@ func TestHistoryOperationStreamsAndReleasesFinalConsumers(t *testing.T) {
 	withRecord := currentstate.Universe{ADRs: []adr.ADR{record}, Sources: map[string][]byte{"0001": source}}
 	states := map[string]*revisionState{
 		"ordinary": fixedRevisionState(nil, false, currentstate.Universe{}),
-		"result":   fixedRevisionState(&manifest.Lock{SchemaVersion: 31}, true, withRecord),
-		"first":    fixedRevisionState(&manifest.Lock{SchemaVersion: 31}, true, first),
-		"incoming": fixedRevisionState(&manifest.Lock{SchemaVersion: 31}, true, withRecord),
+		"result":   fixedRevisionState(&historicalLock{SchemaVersion: 31}, true, withRecord),
+		"first":    fixedRevisionState(&historicalLock{SchemaVersion: 31}, true, first),
+		"incoming": fixedRevisionState(&historicalLock{SchemaVersion: 31}, true, withRecord),
 	}
 	states["first"].configReady = true
 	states["first"].config = &config.Config{}
@@ -1617,7 +1616,7 @@ func TestHistoryOperationErrorPaths(t *testing.T) {
 	}
 
 	malformedLock := &revisionState{
-		loadLock: func() (*manifest.Lock, bool, error) {
+		loadLock: func() (*historicalLock, bool, error) {
 			return nil, true, errors.New("malformed lock")
 		},
 	}
@@ -1665,7 +1664,7 @@ func TestHistoryOperationErrorPaths(t *testing.T) {
 		})
 	}
 
-	result := fixedRevisionState(&manifest.Lock{SchemaVersion: 31}, true, currentstate.Universe{})
+	result := fixedRevisionState(&historicalLock{SchemaVersion: 31}, true, currentstate.Universe{})
 	firstError, err := newHistoryOperation(ctx, "base", "head", Inputs{},
 		func(context.Context, string, string) ([]awfgit.Commit, error) {
 			return []awfgit.Commit{{Hash: "merge", Revision: "result", IsMerge: true, Parents: []string{"first", "incoming"}}}, nil
@@ -1684,7 +1683,7 @@ func TestHistoryOperationErrorPaths(t *testing.T) {
 	}
 }
 
-func fixedRevisionState(lock *manifest.Lock, found bool, universe currentstate.Universe) *revisionState {
+func fixedRevisionState(lock *historicalLock, found bool, universe currentstate.Universe) *revisionState {
 	return &revisionState{
 		lockReady: true, lock: lock, lockFound: found,
 		universeReady: true, universe: universe,
@@ -1885,8 +1884,8 @@ func TestHistoricalStateSelectsOnlyAuthorityBlobs(t *testing.T) {
 	}{
 		{"default", base, string(bodies[configPath]), lock, [][]string{{configPath, lockPath}, {".awf/topics/metadata/alpha/one.yaml", ".awf/topics/parts/alpha/one/current-state.md", "docs/decisions/0001-one.md"}}, false},
 		{"custom docs config still uses docs authority", base, "prefix: test\nprofile: full\nintegrationBranch: main\ntargets: [claude]\ndomains: [alpha]\ndocsDir: records\n", lock, [][]string{{configPath, lockPath}, {".awf/topics/metadata/alpha/one.yaml", ".awf/topics/parts/alpha/one/current-state.md", "docs/decisions/0001-one.md"}}, false},
-		{"absent config", base[1:], "", lock, nil, false},
-		{"absent lock", append([]awfgit.TreeEntry{base[0]}, base[2:]...), string(bodies[configPath]), "", [][]string{{configPath}}, true},
+		{"absent config", base[1:], "", lock, nil, true},
+		{"absent lock", append([]awfgit.TreeEntry{base[0]}, base[2:]...), string(bodies[configPath]), "", nil, true},
 		{"symlink authority", append([]awfgit.TreeEntry{{Path: configPath, Mode: awfgit.BlobSymlink}}, base[1:]...), string(bodies[configPath]), lock, [][]string{{configPath, lockPath}}, true},
 		{"historical schema", base, "prefix: test\ndomains: [alpha]\nskills: []\nworkflowTelemetry:\n  retention:\n    maxCompletedEffortAgeDays: 1\n", `{"awfVersion":"v0.18.0","schemaVersion":19,"files":{}}`, [][]string{{configPath, lockPath}, {".awf/topics/metadata/alpha/one.yaml", ".awf/topics/parts/alpha/one/current-state.md", "docs/decisions/0001-one.md"}}, false},
 	} {
@@ -1986,6 +1985,7 @@ func TestLoadSelectedRevisionRejectsIncompleteOrUnscannableEvidence(t *testing.T
 	const configPath = ".awf/config.yaml"
 	entries := []awfgit.TreeEntry{
 		{Path: configPath, Mode: awfgit.BlobRegular},
+		{Path: ".awf/awf.lock", Mode: awfgit.BlobRegular},
 		{Path: "docs/decisions/0001-one.md", Mode: awfgit.BlobRegular},
 	}
 	configBlob := awfgit.IndexBlob{Path: configPath, Mode: awfgit.BlobRegular, Bytes: []byte("prefix: test\nprofile: full\nintegrationBranch: main\ntargets: [claude]\ndomains: []\n")}
@@ -2006,7 +2006,7 @@ func TestLoadSelectedRevisionRejectsIncompleteOrUnscannableEvidence(t *testing.T
 
 	t.Run("invalid controls selection", func(t *testing.T) {
 		_, err := loadSelectedRevision(testContext(t), t.TempDir(), "revision", entryRead,
-			load([]awfgit.IndexBlob{{Path: configPath, Mode: awfgit.BlobMode(99)}}))
+			load([]awfgit.IndexBlob{{Path: configPath, Mode: awfgit.BlobMode(99)}, {Path: ".awf/awf.lock", Mode: awfgit.BlobRegular, Bytes: []byte(`{"schemaVersion":46}`)}}))
 		if err == nil {
 			t.Fatal("invalid selected controls accepted")
 		}
@@ -2036,7 +2036,7 @@ func TestLoadSelectedRevisionRejectsIncompleteOrUnscannableEvidence(t *testing.T
 	} {
 		t.Run(name, func(t *testing.T) {
 			state, err := loadSelectedRevision(testContext(t), t.TempDir(), "revision", entryRead,
-				load([]awfgit.IndexBlob{configBlob}, authority))
+				load([]awfgit.IndexBlob{configBlob, {Path: ".awf/awf.lock", Mode: awfgit.BlobRegular, Bytes: []byte(`{"schemaVersion":46}`)}}, authority))
 			if err == nil {
 				_, err = state.currentState()
 			}
@@ -2088,5 +2088,58 @@ func TestHistoryOperationEmptyRangeRunsLiveOnce(t *testing.T) {
 	}
 	if liveCalls != 1 || loads != 0 {
 		t.Fatalf("live calls=%d revision loads=%d, want 1 and 0", liveCalls, loads)
+	}
+}
+
+func TestAuditAuthorityRequiresCompletePairAndKeepsUnknownHistoricalLockFields(t *testing.T) {
+	load := func(files []snapshot.File) *revisionState {
+		t.Helper()
+		state, err := loadSelectedRevision(testContext(t), t.TempDir(), "revision", func(context.Context, string) ([]awfgit.TreeEntry, error) {
+			entries := make([]awfgit.TreeEntry, len(files))
+			for i, file := range files {
+				entries[i] = awfgit.TreeEntry{Path: file.Path, Mode: awfgit.BlobRegular}
+			}
+			return entries, nil
+		}, func(_ context.Context, _ string, paths []string) ([]awfgit.IndexBlob, error) {
+			var blobs []awfgit.IndexBlob
+			for _, path := range paths {
+				for _, file := range files {
+					if file.Path == path {
+						blobs = append(blobs, awfgit.IndexBlob{Path: path, Mode: awfgit.BlobRegular, Bytes: file.Bytes})
+					}
+				}
+			}
+			return blobs, nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return state
+	}
+	for _, tc := range []struct {
+		name  string
+		files []snapshot.File
+	}{
+		{"config only", []snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: test\n")}}},
+		{"lock only", []snapshot.File{{Path: ".awf/awf.lock", Mode: snapshot.Regular, Bytes: []byte(`{"schemaVersion":46,"unknownHistoricalField":true}`)}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := load(tc.files).committedConfig()
+			var partial *PartialHistoricalAuthorityError
+			if !errors.As(err, &partial) {
+				t.Fatalf("config result error = %v, want typed partial-authority refusal", err)
+			}
+		})
+	}
+	state := load([]snapshot.File{
+		{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: test\nprofile: full\nintegrationBranch: main\n")},
+		{Path: ".awf/awf.lock", Mode: snapshot.Regular, Bytes: []byte(`{"schemaVersion":46,"unknownHistoricalField":true}`)},
+	})
+	lock, found, err := state.lockEvidence()
+	if err != nil || !found || lock == nil {
+		t.Fatalf("complete lock evidence = %#v, %t, %v", lock, found, err)
+	}
+	if cfg, err := state.committedConfig(); err != nil || cfg == nil {
+		t.Fatalf("complete config = %#v, %v", cfg, err)
 	}
 }

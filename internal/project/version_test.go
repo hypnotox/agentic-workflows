@@ -1,6 +1,7 @@
 package project
 
 import (
+	"bytes"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -11,6 +12,45 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
+
+func snapshotVersionFixture(t *testing.T, root string) map[string][]byte {
+	t.Helper()
+	files := make(map[string][]byte)
+	if err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		contents, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		files[filepath.ToSlash(rel)] = contents
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return files
+}
+
+func assertVersionFixtureUnchanged(t *testing.T, root string, before map[string][]byte) {
+	t.Helper()
+	after := snapshotVersionFixture(t, root)
+	if len(after) != len(before) {
+		t.Fatalf("fixture file count after refusal = %d, want %d: %#v", len(after), len(before), after)
+	}
+	for path, want := range before {
+		if got, ok := after[path]; !ok || !bytes.Equal(got, want) {
+			t.Fatalf("fixture file %s after refusal = %q, want byte-identical %q", path, got, want)
+		}
+	}
+}
 
 // invariant: config/migrations-and-locks:schema-min-version (TestSchemaMinimumVersionAuthority)
 // invariant: tooling/cli:single-version-authority (TestSchemaMinimumVersionAuthority)
@@ -106,87 +146,13 @@ func TestArchiveRootUpgradeBoundary(t *testing.T) {
 		t.Fatalf("generation-41 effort command = %v\n%s; want upgrade gate", err, output)
 	}
 
-	if output, err := run(root, "upgrade"); err != nil {
-		t.Fatalf("awf upgrade: %v\n%s", err, output)
+	before := snapshotVersionFixture(t, root)
+	if output, err := run(root, "upgrade"); err == nil || !strings.Contains(output, "below live floor 46") {
+		t.Fatalf("awf upgrade = %v\n%s; want below-floor refusal", err, output)
 	}
-	lock, err := manifest.Load(lockPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	const markerRel = ".awf/effort-archive/.gitignore"
-	if lock.SchemaVersion != migrate.Current() {
-		t.Fatalf("upgraded lock schema = %d, want current %d", lock.SchemaVersion, migrate.Current())
-	}
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	planned, err := renderAll(p)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var wantEntry manifest.Entry
-	for _, file := range planned {
-		if file.Path == markerRel {
-			wantEntry = manifest.Entry{
-				TemplateID: file.TemplateID, TemplateHash: file.TemplateHash,
-				ConfigHash: file.ConfigHash, OutputHash: manifest.Hash([]byte(file.Content)),
-				RegenChecked: file.RegenChecked,
-			}
-			break
-		}
-	}
-	if got, ok := lock.Files[markerRel]; !ok || got != wantEntry {
-		t.Fatalf("upgraded lock marker entry = %#v, present %v; want %#v", got, ok, wantEntry)
-	}
-	marker := filepath.Join(root, filepath.FromSlash(markerRel))
-	want := "# " + bannerText + "\n*\n!.gitignore\n"
-	assertMarker := func(state string) {
-		t.Helper()
-		got, err := os.ReadFile(marker)
-		if err != nil || string(got) != want {
-			t.Fatalf("%s marker = %q, %v; want %q", state, got, err, want)
-		}
-	}
-	assertMarker("upgraded")
-	archiveDescendant := filepath.Join(root, ".awf", "effort-archive", "id-slug", "nested", "adversarial.go")
-	const archiveBytes = "not valid Go and never interpreted\n"
-	if err := os.MkdirAll(filepath.Dir(archiveDescendant), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(archiveDescendant, []byte(archiveBytes), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	assertArchiveDescendant := func(state string) {
-		t.Helper()
-		got, err := os.ReadFile(archiveDescendant)
-		if err != nil || string(got) != archiveBytes {
-			t.Fatalf("%s archive descendant = %q, %v; want byte-identical", state, got, err)
-		}
-	}
-
-	if output, err := run(root, "render"); err != nil || strings.Contains(output, markerRel) {
-		t.Fatalf("correct marker render = %v\n%s; want unchanged marker", err, output)
-	}
-	assertMarker("unchanged")
-	assertArchiveDescendant("unchanged marker render")
-	if err := os.Remove(marker); err != nil {
-		t.Fatal(err)
-	}
-	if output, err := run(root, "render"); err != nil || !strings.Contains(output, markerRel) {
-		t.Fatalf("missing marker repair = %v\n%s", err, output)
-	}
-	assertMarker("missing repair")
-	assertArchiveDescendant("missing marker repair")
-	if err := os.WriteFile(marker, []byte("stale\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if output, err := run(root, "render"); err != nil || !strings.Contains(output, markerRel) {
-		t.Fatalf("stale marker repair = %v\n%s", err, output)
-	}
-	assertMarker("stale repair")
-	assertArchiveDescendant("stale marker repair")
+	assertVersionFixtureUnchanged(t, root, before)
 }
+
 func TestCheckStagedRejectsInitializedVersionMutation(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	gitfixture.Stage(t, repo, stagedHeadFiles())

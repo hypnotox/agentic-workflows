@@ -44,12 +44,12 @@ func TestParseLiveAcceptsOnlyCurrentLiveSchema(t *testing.T) {
 		schema int
 		wantOK bool
 	}{
-		{name: "floor", schema: LiveSchemaFloor, wantOK: true},
-		{name: "below floor", schema: LiveSchemaFloor - 1},
-		{name: "ahead", schema: LiveSchemaCurrent + 1},
+		{name: "floor", schema: 46, wantOK: true},
+		{name: "below floor", schema: 46 - 1},
+		{name: "ahead", schema: 46 + 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := ParseLive([]byte(fmt.Sprintf(`{"awfVersion":"0.39.2","schemaVersion":%d,"files":{}}`, tc.schema)))
+			_, err := ParseLive([]byte(fmt.Sprintf(`{"awfVersion":"0.39.2","schemaVersion":%d,"files":{}}`, tc.schema)), 46, 46)
 			if tc.wantOK && err != nil {
 				t.Fatalf("ParseLive() error = %v", err)
 			}

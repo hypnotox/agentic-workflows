@@ -211,7 +211,7 @@ func finalLock(t *testing.T, dir string, att *manifest.BridgeAttestation) *manif
 	t.Helper()
 	lock := &manifest.Lock{
 		AWFVersion:        "0.18.0",
-		SchemaVersion:     14,
+		SchemaVersion:     46,
 		Files:             map[string]manifest.Entry{"docs/x.md": {OutputHash: "sha256:1"}},
 		BridgeAttestation: att,
 	}

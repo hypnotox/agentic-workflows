@@ -148,7 +148,7 @@ func TestGateBlocksWhenBehind(t *testing.T) {
 func TestUpgradeRelocatesLocklessPreRelocationTree(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(root, ".claude", "awf", "config.yaml"), "prefix: ex\nskills: []\nagents: []\n")
-	applied, _, err := Upgrade(testContext(t), root)
+	applied, _, err := upgradeLegacyForTest(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Upgrade: %v", err)
 	}
@@ -380,9 +380,9 @@ func TestUpgradePropagatesMigrationError(t *testing.T) {
 	if got := mustGeneration(t, root); got != 0 {
 		t.Fatalf("Generation(malformed legacy) = %d, want 0", got)
 	}
-	applied, _, err := Upgrade(testContext(t), root)
+	applied, _, err := upgradeLegacyForTest(testContext(t), root)
 	if err == nil || !strings.Contains(err.Error(), "tree-layout") {
-		t.Fatalf("Upgrade(testContext(t), malformed legacy) err = %v, want a tree-layout migration error", err)
+		t.Fatalf("upgradeLegacyForTest(testContext(t), malformed legacy) err = %v, want a tree-layout migration error", err)
 	}
 	if len(applied) != 0 {
 		t.Errorf("Upgrade applied = %v, want [] on failure", applied)
@@ -637,7 +637,7 @@ func TestAwfRelocationGatesAndMoves(t *testing.T) {
 	if mustGateState(t, root) != "gate" {
 		t.Fatalf("expected gate state, got %q", mustGateState(t, root))
 	}
-	_, changes, err := Upgrade(testContext(t), root)
+	_, changes, err := upgradeLegacyForTest(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1108,7 +1108,7 @@ func TestUpgradeAppliesExactlyTheMigrationsAboveTheDetectedGeneration(t *testing
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "prefix: ex\n")
 	stampLockAt(t, filepath.Join(root, ".awf", "awf.lock"), 2)
 
-	applied, _, err := Upgrade(testContext(t), root)
+	applied, _, err := upgradeLegacyForTest(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1120,7 +1120,7 @@ func TestUpgradeAppliesExactlyTheMigrationsAboveTheDetectedGeneration(t *testing
 	// Upgrade stamped the lock at the current generation, so the re-run has
 	// nothing above it left to apply and still exits zero.
 	ran = nil
-	applied, _, err = Upgrade(testContext(t), root)
+	applied, _, err = upgradeLegacyForTest(testContext(t), root)
 	if err != nil {
 		t.Fatalf("re-run at the current schema errored: %v", err)
 	}
@@ -1142,7 +1142,7 @@ func TestUpgradeFallbackStampsWhenHighestMigrationDoesNotOwnStamp(t *testing.T) 
 	next := Current() + 1
 	registry = append(append([]Migration(nil), registry...), Migration{To: next, Name: "test-fallback-stamp", Apply: func(context.Context, string, *Changes) error { return nil }})
 	t.Cleanup(func() { registry = original })
-	applied, _, err := Upgrade(testContext(t), root)
+	applied, _, err := upgradeLegacyForTest(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1279,7 +1279,7 @@ func TestGenerationCorruptTreeLockErrors(t *testing.T) {
 	if _, err := Generation(root); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
 		t.Fatalf("want corrupt-lock error, got %v", err)
 	}
-	if _, _, err := Upgrade(testContext(t), root); err == nil {
+	if _, _, err := upgradeLegacyForTest(testContext(t), root); err == nil {
 		t.Fatal("Upgrade must refuse a corrupt lock upfront")
 	}
 }
@@ -1360,7 +1360,7 @@ func TestMigrationOrderingAscendingAndIdempotent(t *testing.T) {
 		root := t.TempDir()
 		testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "prefix: ex\n")
 		stampLockAt(t, filepath.Join(root, ".awf", "awf.lock"), from)
-		applied, _, err := Upgrade(testContext(t), root)
+		applied, _, err := upgradeLegacyForTest(testContext(t), root)
 		if err != nil {
 			t.Fatalf("Upgrade from %d: %v", from, err)
 		}
@@ -1370,7 +1370,7 @@ func TestMigrationOrderingAscendingAndIdempotent(t *testing.T) {
 
 		// Re-running at the schema the first run reached applies nothing and exits
 		// zero, so upgrade is safe to repeat.
-		again, _, err := Upgrade(testContext(t), root)
+		again, _, err := upgradeLegacyForTest(testContext(t), root)
 		if err != nil {
 			t.Errorf("re-running Upgrade from %d: %v", from, err)
 		}
@@ -1378,4 +1378,52 @@ func TestMigrationOrderingAscendingAndIdempotent(t *testing.T) {
 			t.Errorf("re-running Upgrade from %d applied %v, want nothing", from, again)
 		}
 	}
+}
+
+// upgradeLegacyForTest reaches retained obsolete implementations directly;
+// production callers must use Upgrade, which enforces LiveSchemaFloor.
+func upgradeLegacyForTest(ctx context.Context, root string) ([]string, []Change, error) {
+	from, err := Generation(root)
+	if err != nil {
+		return nil, nil, err
+	}
+	return upgradeUnchecked(ctx, root, from, func(lock *manifest.Lock, path string) error { return lock.Save(path) })
+}
+
+func TestUpgradeLiveSchemaAdmission(t *testing.T) {
+	t.Run("below floor refuses before dispatch", func(t *testing.T) {
+		root := t.TempDir()
+		testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "prefix: test\n")
+		stampLockAt(t, filepath.Join(root, ".awf", "awf.lock"), LiveSchemaFloor-1)
+		original := registry
+		defer func() { registry = original }()
+		called := false
+		registry = append([]Migration{{To: LiveSchemaFloor, Name: "floor", Apply: func(context.Context, string, *Changes) error { called = true; return nil }}}, original...)
+		_, _, err := Upgrade(testContext(t), root)
+		if !errors.Is(err, manifest.ErrUnsupportedLiveSource) || called {
+			t.Fatalf("below-floor upgrade error=%v dispatch=%v, want refusal before dispatch", err, called)
+		}
+	})
+
+	t.Run("supported migration reaches the live migration seam", func(t *testing.T) {
+		root := t.TempDir()
+		testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "prefix: test\n")
+		from := Current()
+		stampLockAt(t, filepath.Join(root, ".awf", "awf.lock"), from)
+		original := registry
+		defer func() { registry = original }()
+		registry = append(registry, Migration{To: from + 1, Name: "live-seam", Apply: func(context.Context, string, *Changes) error { return nil }})
+		if applied, _, err := Upgrade(testContext(t), root); err != nil || !slices.Equal(applied, []string{"live-seam"}) {
+			t.Fatalf("supported upgrade applied=%v err=%v", applied, err)
+		}
+	})
+
+	t.Run("corrupt authority is returned before live validation", func(t *testing.T) {
+		root := t.TempDir()
+		testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "prefix: test\n")
+		testsupport.WriteFile(t, filepath.Join(root, ".awf", "awf.lock"), "{")
+		if _, _, err := Upgrade(testContext(t), root); err == nil {
+			t.Fatal("corrupt authority accepted")
+		}
+	})
 }

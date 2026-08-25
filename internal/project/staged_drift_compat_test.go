@@ -47,7 +47,7 @@ func TestCheckStagedRefusesHistoricalWorkflowTelemetry(t *testing.T) {
 		".awf/awf.lock":    `{"awfVersion":"0.20.0","schemaVersion":20,"files":{}}`,
 	})
 	p := openStaged(t, dir)
-	if _, err := checkStagedProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "supported floor 46") {
+	if _, err := checkStagedProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "live floor 46") {
 		t.Fatalf("CheckStaged historical source error = %v", err)
 	}
 }

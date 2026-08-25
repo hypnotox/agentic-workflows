@@ -26,7 +26,7 @@ func TestDecisionItemSlugsMigrationPreservesAuthoredBytes(t *testing.T) {
 	testsupport.WriteFile(t, filepath.Join(root, "notes.txt"), string(ordinary))
 
 	var out Changes
-	applied, _, err := Upgrade(testContext(t), root)
+	applied, _, err := upgradeLegacyForTest(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

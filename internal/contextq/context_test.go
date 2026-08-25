@@ -402,7 +402,7 @@ func TestUncovered(t *testing.T) {
 	files["gen/output.md"] = "generated\n"
 	files["gen/skipped.md"] = "ignored\n"
 	p := ctxRepo(t, cfg, files)
-	lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: manifest.LiveSchemaCurrent, Files: map[string]manifest.Entry{"gen/output.md": {}}}
+	lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: 46, Files: map[string]manifest.Entry{"gen/output.md": {}}}
 	if err := lock.Save(lockFile(p.Root())); err != nil {
 		t.Fatal(err)
 	}

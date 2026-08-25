@@ -57,7 +57,7 @@ func TestWorkflowTelemetryMigrationIsHistoricalInputForGeneration20(t *testing.T
 	if err := lock.Save(config.LockPath(registryRoot)); err != nil {
 		t.Fatal(err)
 	}
-	applied, _, err := Upgrade(testContext(t), registryRoot)
+	applied, _, err := upgradeLegacyForTest(testContext(t), registryRoot)
 	if err != nil {
 		t.Fatal(err)
 	}

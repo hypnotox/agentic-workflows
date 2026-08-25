@@ -16,6 +16,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/plancheck"
@@ -315,7 +316,7 @@ func lockFromTree(tree *snapshot.Tree) (*manifest.Lock, error) {
 	if !file.Scannable() {
 		return nil, fmt.Errorf("staged %s/awf.lock is not a scannable file", config.DirName)
 	}
-	lock, err := manifest.ParseLive(file.Bytes)
+	lock, err := manifest.ParseLive(file.Bytes, migrate.LiveSchemaFloor, migrate.Current())
 	if err != nil {
 		return nil, fmt.Errorf("parse staged lock: %w", err)
 	}
@@ -356,7 +357,7 @@ func optionalLockFromTree(tree *snapshot.Tree) (*manifest.Lock, bool, error) {
 	if !file.Scannable() {
 		return nil, true, fmt.Errorf("snapshot %s/awf.lock is not a scannable file", config.DirName)
 	}
-	lock, err := manifest.ParseLive(file.Bytes)
+	lock, err := manifest.ParseLive(file.Bytes, migrate.LiveSchemaFloor, migrate.Current())
 	if err != nil {
 		return nil, true, fmt.Errorf("parse snapshot lock: %w", err)
 	}
@@ -387,6 +388,10 @@ func validateLockTransition(beforeTree, afterTree *snapshot.Tree, before, after 
 // config is nil, with no error, when the tree carries no .awf/config.yaml: a
 // pre-adoption or empty universe a caller may treat as an empty side.
 func loadTreeCurrentState(root string, tree *snapshot.Tree, lock *manifest.Lock) (currentstate.Loaded, *config.Config, error) {
+	_, hasConfig := tree.Lookup(config.DirName + "/config.yaml")
+	if !hasConfig && lock != nil {
+		return currentstate.Loaded{}, nil, fmt.Errorf("partial .awf authority: .awf/awf.lock requires .awf/config.yaml; restore both or delete .awf deliberately to re-adopt")
+	}
 	cfg, found, err := configFromTree(root, tree, lock)
 	if err != nil || !found {
 		return currentstate.Loaded{}, cfg, err

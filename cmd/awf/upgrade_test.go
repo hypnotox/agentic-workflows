@@ -21,6 +21,48 @@ import (
 
 // preparePublicSyncLaterFailure makes public Publisher.Sync commit the earlier
 // AGENTS.md mode correction before the later bridge path cannot be read.
+func snapshotUpgradeFixture(t *testing.T, root string) map[string][]byte {
+	t.Helper()
+	files := make(map[string][]byte)
+	if err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if path == filepath.Join(root, ".git") && info.IsDir() {
+			return filepath.SkipDir
+		}
+		if info.IsDir() {
+			return nil
+		}
+		contents, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		files[filepath.ToSlash(rel)] = contents
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return files
+}
+
+func assertUpgradeFixtureUnchanged(t *testing.T, root string, before map[string][]byte) {
+	t.Helper()
+	after := snapshotUpgradeFixture(t, root)
+	if len(after) != len(before) {
+		t.Fatalf("fixture file count after refusal = %d, want %d: %#v", len(after), len(before), after)
+	}
+	for path, want := range before {
+		if got, ok := after[path]; !ok || !bytes.Equal(got, want) {
+			t.Fatalf("fixture file %s after refusal = %q, want byte-identical %q", path, got, want)
+		}
+	}
+}
+
 func preparePublicSyncLaterFailure(t *testing.T, root string) {
 	t.Helper()
 	if err := os.Chmod(filepath.Join(root, "AGENTS.md"), 0o600); err != nil {
@@ -72,9 +114,8 @@ func TestUpgradeMigrationAdaptsGroundingCollision(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err := upgradeMigration(testContext(t), root)
-	var collision upgradeGroundingCollision
-	if !errors.As(err, &collision) || collision.cause.Path != "skills/grounding.yaml" {
-		t.Fatalf("error = %v, want adapted grounding collision", err)
+	if !errors.Is(err, manifest.ErrUnsupportedLiveSource) {
+		t.Fatalf("error = %v, want below-floor refusal", err)
 	}
 }
 
@@ -342,7 +383,7 @@ func TestValidJournalRecoveryRollsBackInterrupted(t *testing.T) {
 	}
 }
 
-func TestRunUpgradeLegacyAdopterRendersAndChecksClean(t *testing.T) {
+func TestRunUpgradeLegacyAdopterRefusesBelowFloorWithoutMutation(t *testing.T) {
 	ctx := testContext(t)
 	// A legacy single-file project migrates to the tree layout, covering the
 	// applied-migrations loop and the terminal sync.
@@ -359,35 +400,20 @@ func TestRunUpgradeLegacyAdopterRendersAndChecksClean(t *testing.T) {
 	if err := (&manifest.Lock{AWFVersion: "0.1.0", Files: map[string]manifest.Entry{}}).Save(filepath.Join(claude, "awf.lock")); err != nil {
 		t.Fatal(err)
 	}
+	before := snapshotUpgradeFixture(t, root)
 	var out bytes.Buffer
-	if err := runUpgrade(ctx, root, &out); err != nil {
-		t.Fatalf("runUpgrade legacy: %v", err)
+	if err := runUpgrade(ctx, root, &out); !errors.Is(err, manifest.ErrUnsupportedLiveSource) {
+		t.Fatalf("runUpgrade legacy = %v, want below-floor refusal", err)
+	} else if !strings.Contains(err.Error(), "use a release that supports schema 0") {
+		t.Fatalf("legacy refusal presentation = %q, want recovery guidance", err)
 	}
-	if !strings.Contains(out.String(), "status: completed") || !strings.Contains(out.String(), "awf-dir-relocation: moved .claude/awf to .awf") || strings.Contains(out.String(), "note:") {
-		t.Errorf("expected structured migration mutation with production relocation evidence, got %q", out.String())
-	}
-	for _, path := range []string{".awf/config.yaml", ".awf/awf.lock"} {
-		if _, err := os.Stat(filepath.Join(root, path)); err != nil {
-			t.Errorf("upgraded project missing %s: %v", path, err)
-		}
-	}
-	agents, err := os.ReadFile(filepath.Join(root, "AGENTS.md"))
-	if err != nil {
-		t.Fatalf("read rendered AGENTS.md: %v", err)
-	}
-	if !strings.Contains(string(agents), "# example Agent Guide") {
-		t.Errorf("rendered AGENTS.md missing stable heading: %q", agents)
-	}
-	gitfixture.AddAll(t, repo)
-	if err := runCheckRepo(ctx, root, io.Discard); err != nil {
-		t.Fatalf("repository check after upgrade: %v", err)
-	}
+	assertUpgradeFixtureUnchanged(t, root, before)
 }
 
 // A schema-7 config the ADR-0081 closure validation refuses is repaired by
 // awf upgrade: close-enabled-set closes the enabled set, then the terminal
 // sync opens it cleanly.
-func TestRunUpgradeRepairsUnclosedConfig(t *testing.T) {
+func TestRunUpgradeRefusesBelowFloorWithoutMutation(t *testing.T) {
 	ctx := testContext(t)
 	repo := gitfixture.InitRepo(t)
 	root := repo.Root()
@@ -400,15 +426,14 @@ func TestRunUpgradeRepairsUnclosedConfig(t *testing.T) {
 	if err := runCheck(ctx, root, io.Discard); err == nil {
 		t.Fatal("pre-upgrade check should refuse (schema gate)")
 	}
+	before := snapshotUpgradeFixture(t, root)
 	var out bytes.Buffer
-	if err := runUpgrade(ctx, root, &out); err != nil {
-		t.Fatalf("runUpgrade: %v", err)
+	if err := runUpgrade(ctx, root, &out); !errors.Is(err, manifest.ErrUnsupportedLiveSource) {
+		t.Fatalf("runUpgrade = %v, want below-floor refusal", err)
+	} else if !strings.Contains(err.Error(), "use a release that supports schema 7") {
+		t.Fatalf("below-floor refusal presentation = %q, want recovery guidance", err)
 	}
-	if strings.Contains(out.String(), `close-enabled-set: enabled skill`) {
-		t.Errorf("advisory workflow catalog unexpectedly closed requirements: %q", out.String())
-	}
-	// The migration's resident-root rewrite is validated by its own focused tests;
-	// this fixture has no generated resident files to compare after the upgrade.
+	assertUpgradeFixtureUnchanged(t, root, before)
 }
 
 func TestRunUpgradeMigrationError(t *testing.T) {

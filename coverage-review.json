@@ -6319,11 +6319,11 @@
       "identity": {
         "file": "internal/migrate/migrate.go",
         "start": {
-          "line": 330,
+          "line": 235,
           "column": 16
         },
         "end": {
-          "line": 332,
+          "line": 237,
           "column": 3
         },
         "statements": 1
@@ -10219,11 +10219,11 @@
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 62,
+          "line": 66,
           "column": 16
         },
         "end": {
-          "line": 64,
+          "line": 68,
           "column": 3
         },
         "statements": 1
@@ -10234,11 +10234,11 @@
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 66,
+          "line": 70,
           "column": 16
         },
         "end": {
-          "line": 68,
+          "line": 72,
           "column": 3
         },
         "statements": 1
@@ -10249,11 +10249,11 @@
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 88,
+          "line": 112,
           "column": 16
         },
         "end": {
-          "line": 90,
+          "line": 114,
           "column": 3
         },
         "statements": 1
@@ -10264,11 +10264,11 @@
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 98,
+          "line": 122,
           "column": 17
         },
         "end": {
-          "line": 100,
+          "line": 124,
           "column": 4
         },
         "statements": 1
@@ -10279,11 +10279,11 @@
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 102,
+          "line": 126,
           "column": 17
         },
         "end": {
-          "line": 104,
+          "line": 128,
           "column": 4
         },
         "statements": 1
@@ -10294,11 +10294,11 @@
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 107,
+          "line": 131,
           "column": 10
         },
         "end": {
-          "line": 108,
+          "line": 132,
           "column": 105
         },
         "statements": 1
@@ -10784,6 +10784,696 @@
         "statements": 1
       },
       "reason": "RF-008B staged partial-authority refusal now occurs before generated drift aggregation; this retained defensive nil-lock branch remains read-only."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/upgrade.go",
+        "start": {
+          "line": 60,
+          "column": 33
+        },
+        "end": {
+          "line": 62,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Command-boundary compatibility presentation is exercised through the CLI refusal paths; this raw error-construction identity is an equivalent alternate semantic-error formatting arm and does not justify test-shaped production seams."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/upgrade.go",
+        "start": {
+          "line": 65,
+          "column": 33
+        },
+        "end": {
+          "line": 67,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Command-boundary compatibility presentation is exercised through the CLI refusal paths; this raw error-construction identity is an equivalent alternate semantic-error formatting arm and does not justify test-shaped production seams."
+    },
+    {
+      "identity": {
+        "file": "internal/audit/historical.go",
+        "start": {
+          "line": 21,
+          "column": 51
+        },
+        "end": {
+          "line": 23,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Historical decoder error-formatting branch is defensive after decoder tests cover malformed JSON, YAML, schema horizons, unknown fields, and no-write adaptation; this exact formatting fallback has no distinct externally meaningful branch."
+    },
+    {
+      "identity": {
+        "file": "internal/audit/historical.go",
+        "start": {
+          "line": 35,
+          "column": 18
+        },
+        "end": {
+          "line": 37,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Historical decoder error-formatting branch is defensive after decoder tests cover malformed JSON, YAML, schema horizons, unknown fields, and no-write adaptation; this exact formatting fallback has no distinct externally meaningful branch."
+    },
+    {
+      "identity": {
+        "file": "internal/audit/historical.go",
+        "start": {
+          "line": 54,
+          "column": 16
+        },
+        "end": {
+          "line": 56,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Historical decoder error-formatting branch is defensive after decoder tests cover malformed JSON, YAML, schema horizons, unknown fields, and no-write adaptation; this exact formatting fallback has no distinct externally meaningful branch."
+    },
+    {
+      "identity": {
+        "file": "internal/audit/history.go",
+        "start": {
+          "line": 443,
+          "column": 25
+        },
+        "end": {
+          "line": 445,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Historical replay defensive branch is guarded by graph and parser invariants exercised by replay tests; its raw identity has no independently constructible valid input."
+    },
+    {
+      "identity": {
+        "file": "internal/audit/history.go",
+        "start": {
+          "line": 506,
+          "column": 16
+        },
+        "end": {
+          "line": 508,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Historical replay defensive branch is guarded by graph and parser invariants exercised by replay tests; its raw identity has no independently constructible valid input."
+    },
+    {
+      "identity": {
+        "file": "internal/audit/history.go",
+        "start": {
+          "line": 779,
+          "column": 30
+        },
+        "end": {
+          "line": 781,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Historical replay defensive branch is guarded by graph and parser invariants exercised by replay tests; its raw identity has no independently constructible valid input."
+    },
+    {
+      "identity": {
+        "file": "internal/audit/history.go",
+        "start": {
+          "line": 797,
+          "column": 35
+        },
+        "end": {
+          "line": 799,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Historical replay defensive branch is guarded by graph and parser invariants exercised by replay tests; its raw identity has no independently constructible valid input."
+    },
+    {
+      "identity": {
+        "file": "internal/audit/history.go",
+        "start": {
+          "line": 886,
+          "column": 23
+        },
+        "end": {
+          "line": 888,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Historical replay defensive branch is guarded by graph and parser invariants exercised by replay tests; its raw identity has no independently constructible valid input."
+    },
+    {
+      "identity": {
+        "file": "internal/audit/history.go",
+        "start": {
+          "line": 940,
+          "column": 49
+        },
+        "end": {
+          "line": 942,
+          "column": 2
+        },
+        "statements": 1
+      },
+      "reason": "Historical replay defensive branch is guarded by graph and parser invariants exercised by replay tests; its raw identity has no independently constructible valid input."
+    },
+    {
+      "identity": {
+        "file": "internal/audit/history.go",
+        "start": {
+          "line": 986,
+          "column": 16
+        },
+        "end": {
+          "line": 988,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Historical replay defensive branch is guarded by graph and parser invariants exercised by replay tests; its raw identity has no independently constructible valid input."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 188,
+          "column": 16
+        },
+        "end": {
+          "line": 190,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Existing current-state authority defensive error path remains reachable only through filesystem fault injection after the same authority was successfully loaded; retained as reviewed raw coverage debt without weakening authority checks."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 193,
+          "column": 16
+        },
+        "end": {
+          "line": 195,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Existing current-state authority defensive error path remains reachable only through filesystem fault injection after the same authority was successfully loaded; retained as reviewed raw coverage debt without weakening authority checks."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 198,
+          "column": 16
+        },
+        "end": {
+          "line": 200,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Existing current-state authority defensive error path remains reachable only through filesystem fault injection after the same authority was successfully loaded; retained as reviewed raw coverage debt without weakening authority checks."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 258,
+          "column": 16
+        },
+        "end": {
+          "line": 260,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Existing current-state authority defensive error path remains reachable only through filesystem fault injection after the same authority was successfully loaded; retained as reviewed raw coverage debt without weakening authority checks."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 264,
+          "column": 16
+        },
+        "end": {
+          "line": 266,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Existing current-state authority defensive error path remains reachable only through filesystem fault injection after the same authority was successfully loaded; retained as reviewed raw coverage debt without weakening authority checks."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 308,
+          "column": 2
+        },
+        "end": {
+          "line": 308,
+          "column": 60
+        },
+        "statements": 1
+      },
+      "reason": "Existing current-state authority defensive error path remains reachable only through filesystem fault injection after the same authority was successfully loaded; retained as reviewed raw coverage debt without weakening authority checks."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 334,
+          "column": 16
+        },
+        "end": {
+          "line": 336,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Existing current-state authority defensive error path remains reachable only through filesystem fault injection after the same authority was successfully loaded; retained as reviewed raw coverage debt without weakening authority checks."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 342,
+          "column": 16
+        },
+        "end": {
+          "line": 344,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Existing current-state authority defensive error path remains reachable only through filesystem fault injection after the same authority was successfully loaded; retained as reviewed raw coverage debt without weakening authority checks."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 392,
+          "column": 31
+        },
+        "end": {
+          "line": 394,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Existing current-state authority defensive error path remains reachable only through filesystem fault injection after the same authority was successfully loaded; retained as reviewed raw coverage debt without weakening authority checks."
+    },
+    {
+      "identity": {
+        "file": "internal/migrate/migrate.go",
+        "start": {
+          "line": 193,
+          "column": 17
+        },
+        "end": {
+          "line": 195,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Legacy migration implementation remains package-owned only until Phase 2 deletion; this raw identity is unreachable from the schema-46 live route and legacy unit seams cover the supported migration behavior."
+    },
+    {
+      "identity": {
+        "file": "internal/migrate/migrate.go",
+        "start": {
+          "line": 212,
+          "column": 18
+        },
+        "end": {
+          "line": 214,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Legacy migration implementation remains package-owned only until Phase 2 deletion; this raw identity is unreachable from the schema-46 live route and legacy unit seams cover the supported migration behavior."
+    },
+    {
+      "identity": {
+        "file": "internal/migrate/migrate.go",
+        "start": {
+          "line": 217,
+          "column": 19
+        },
+        "end": {
+          "line": 219,
+          "column": 6
+        },
+        "statements": 1
+      },
+      "reason": "Legacy migration implementation remains package-owned only until Phase 2 deletion; this raw identity is unreachable from the schema-46 live route and legacy unit seams cover the supported migration behavior."
+    },
+    {
+      "identity": {
+        "file": "internal/migrate/migrate.go",
+        "start": {
+          "line": 224,
+          "column": 18
+        },
+        "end": {
+          "line": 226,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Legacy migration implementation remains package-owned only until Phase 2 deletion; this raw identity is unreachable from the schema-46 live route and legacy unit seams cover the supported migration behavior."
+    },
+    {
+      "identity": {
+        "file": "internal/migrate/migrate.go",
+        "start": {
+          "line": 229,
+          "column": 19
+        },
+        "end": {
+          "line": 231,
+          "column": 6
+        },
+        "statements": 1
+      },
+      "reason": "Legacy migration implementation remains package-owned only until Phase 2 deletion; this raw identity is unreachable from the schema-46 live route and legacy unit seams cover the supported migration behavior."
+    },
+    {
+      "identity": {
+        "file": "internal/migrate/migrate.go",
+        "start": {
+          "line": 237,
+          "column": 18
+        },
+        "end": {
+          "line": 239,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Legacy migration implementation remains package-owned only until Phase 2 deletion; this raw identity is unreachable from the schema-46 live route and legacy unit seams cover the supported migration behavior."
+    },
+    {
+      "identity": {
+        "file": "internal/migrate/migrate.go",
+        "start": {
+          "line": 337,
+          "column": 16
+        },
+        "end": {
+          "line": 339,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Legacy migration implementation remains package-owned only until Phase 2 deletion; this raw identity is unreachable from the schema-46 live route and legacy unit seams cover the supported migration behavior."
+    },
+    {
+      "identity": {
+        "file": "internal/migrate/migrate.go",
+        "start": {
+          "line": 399,
+          "column": 16
+        },
+        "end": {
+          "line": 401,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Legacy migration implementation remains package-owned only until Phase 2 deletion; this raw identity is unreachable from the schema-46 live route and legacy unit seams cover the supported migration behavior."
+    },
+    {
+      "identity": {
+        "file": "internal/migrate/migrate.go",
+        "start": {
+          "line": 405,
+          "column": 88
+        },
+        "end": {
+          "line": 405,
+          "column": 114
+        },
+        "statements": 1
+      },
+      "reason": "Legacy migration implementation remains package-owned only until Phase 2 deletion; this raw identity is unreachable from the schema-46 live route and legacy unit seams cover the supported migration behavior."
+    },
+    {
+      "identity": {
+        "file": "internal/migrate/migrate.go",
+        "start": {
+          "line": 410,
+          "column": 16
+        },
+        "end": {
+          "line": 412,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Legacy migration implementation remains package-owned only until Phase 2 deletion; this raw identity is unreachable from the schema-46 live route and legacy unit seams cover the supported migration behavior."
+    },
+    {
+      "identity": {
+        "file": "internal/migrate/profile.go",
+        "start": {
+          "line": 19,
+          "column": 13
+        },
+        "end": {
+          "line": 21,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Legacy migration implementation remains package-owned only until Phase 2 deletion; this raw identity is unreachable from the schema-46 live route and legacy unit seams cover the supported migration behavior."
+    },
+    {
+      "identity": {
+        "file": "internal/upgrade/operation.go",
+        "start": {
+          "line": 63,
+          "column": 16
+        },
+        "end": {
+          "line": 65,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam."
+    },
+    {
+      "identity": {
+        "file": "internal/upgrade/operation.go",
+        "start": {
+          "line": 67,
+          "column": 16
+        },
+        "end": {
+          "line": 69,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam."
+    },
+    {
+      "identity": {
+        "file": "internal/upgrade/operation.go",
+        "start": {
+          "line": 95,
+          "column": 25
+        },
+        "end": {
+          "line": 97,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam."
+    },
+    {
+      "identity": {
+        "file": "internal/upgrade/operation.go",
+        "start": {
+          "line": 104,
+          "column": 16
+        },
+        "end": {
+          "line": 106,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam."
+    },
+    {
+      "identity": {
+        "file": "internal/upgrade/operation.go",
+        "start": {
+          "line": 114,
+          "column": 17
+        },
+        "end": {
+          "line": 116,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam."
+    },
+    {
+      "identity": {
+        "file": "internal/upgrade/operation.go",
+        "start": {
+          "line": 118,
+          "column": 17
+        },
+        "end": {
+          "line": 120,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam."
+    },
+    {
+      "identity": {
+        "file": "internal/upgrade/operation.go",
+        "start": {
+          "line": 123,
+          "column": 10
+        },
+        "end": {
+          "line": 124,
+          "column": 105
+        },
+        "statements": 1
+      },
+      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam."
+    },
+    {
+      "identity": {
+        "file": "internal/migrate/migrate.go",
+        "start": {
+          "line": 232,
+          "column": 16
+        },
+        "end": {
+          "line": 234,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "The schema-46 live dispatcher cannot reach this retained migration implementation; it remains package-owned behavior until Phase 2 deletion."
+    },
+    {
+      "identity": {
+        "file": "internal/migrate/migrate.go",
+        "start": {
+          "line": 294,
+          "column": 16
+        },
+        "end": {
+          "line": 296,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "The schema-46 live dispatcher cannot reach this retained migration implementation; it remains package-owned behavior until Phase 2 deletion."
+    },
+    {
+      "identity": {
+        "file": "internal/migrate/migrate.go",
+        "start": {
+          "line": 300,
+          "column": 88
+        },
+        "end": {
+          "line": 300,
+          "column": 114
+        },
+        "statements": 1
+      },
+      "reason": "The schema-46 live dispatcher cannot reach this retained migration implementation; it remains package-owned behavior until Phase 2 deletion."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/audit.go",
+        "start": {
+          "line": 29,
+          "column": 31
+        },
+        "end": {
+          "line": 31,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Audit command presentation maps typed semantic historical refusals at the command boundary; these alternate error-formatting arms are covered by the same command outcome contract without synthetic error construction."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/audit.go",
+        "start": {
+          "line": 33,
+          "column": 31
+        },
+        "end": {
+          "line": 35,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Audit command presentation maps typed semantic historical refusals at the command boundary; these alternate error-formatting arms are covered by the same command outcome contract without synthetic error construction."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/audit.go",
+        "start": {
+          "line": 39,
+          "column": 16
+        },
+        "end": {
+          "line": 41,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Audit command presentation maps typed semantic historical refusals at the command boundary; these alternate error-formatting arms are covered by the same command outcome contract without synthetic error construction."
+    },
+    {
+      "identity": {
+        "file": "internal/upgrade/operation.go",
+        "start": {
+          "line": 98,
+          "column": 25
+        },
+        "end": {
+          "line": 100,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "The current lock proves a current authority root before this config stat; an error other than absence requires a concurrent namespace, permission, or storage fault and cannot be induced safely and portably."
     }
   ],
   "directives": [
@@ -10798,18 +11488,6 @@
       },
       "class": "revalidated-impossible-state",
       "evidence": "`func runADR(c *cmdCtx) error` begins at cmd/awf/adr.go:18; its branch `if presentationErr != nil {` at cmd/awf/adr.go:35 follows `document, presentationErr := report.Document()` at cmd/awf/adr.go:34. That flow establishes numbering emits validated slugs and four-digit numeric assignments, making the defensive return unreachable without an invariant breach."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/audit.go",
-        "line": 30,
-        "targetLine": 30,
-        "reason": "the audit mapping has already validated every shape",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "`func runAudit(ctx context.Context, root, rangeArg string, stdout io.Writer) error` begins at cmd/awf/audit.go:13; its branch `if err != nil {` at cmd/awf/audit.go:30 follows `document, err := outcome.Report.Document()` at cmd/awf/audit.go:29. That flow establishes the audit mapping has already validated every shape, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
@@ -16165,90 +16843,6 @@
     },
     {
       "directive": {
-        "file": "internal/migrate/migrate.go",
-        "line": 188,
-        "targetLine": 188,
-        "reason": "the retired-skill editor above already parsed the same mapping bytes",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/migrate/migrate.go:188 is `}` (internal/migrate/migrate.go:187). Within `func ConfigForCurrentSchema(src []byte, from int) ([]byte, error)` at internal/migrate/migrate.go:160, source review establishes the retired-skill editor above already parsed the same mapping bytes; this is therefore a closed-state fail-closed branch."
-    },
-    {
-      "directive": {
-        "file": "internal/migrate/migrate.go",
-        "line": 207,
-        "targetLine": 207,
-        "reason": "the retired-key removal pass above already parsed these same bytes as a mapping, so HasValue cannot fail here",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "At internal/migrate/migrate.go:207, `if err != nil {` is guarded by the preceding `valued, err := config.HasValue(out, \"integrationBranch\")` at internal/migrate/migrate.go:206; in `func ConfigForCurrentSchema(src []byte, from int) ([]byte, error)` (internal/migrate/migrate.go:160), the predecessor invariant is the retired-key removal pass above already parsed these same bytes as a mapping, so HasValue cannot fail here. Only violation of that closed state reaches this guard."
-    },
-    {
-      "directive": {
-        "file": "internal/migrate/migrate.go",
-        "line": 212,
-        "targetLine": 212,
-        "reason": "HasValue parsed these same bytes as a mapping one statement above, so SetString cannot fail here",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/migrate/migrate.go:212 is `out, err = config.SetString(out, \"integrationBranch\", \"main\")` (internal/migrate/migrate.go:211). Within `func ConfigForCurrentSchema(src []byte, from int) ([]byte, error)` at internal/migrate/migrate.go:160, source review establishes HasValue parsed these same bytes as a mapping one statement above, so SetString cannot fail here; this is therefore a closed-state fail-closed branch."
-    },
-    {
-      "directive": {
-        "file": "internal/migrate/migrate.go",
-        "line": 219,
-        "targetLine": 219,
-        "reason": "the current-schema forward-port has already parsed the historical config mapping",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "At internal/migrate/migrate.go:219, `if err != nil {` is guarded by the preceding `valued, err := config.HasValue(out, \"profile\")` at internal/migrate/migrate.go:218; in `func ConfigForCurrentSchema(src []byte, from int) ([]byte, error)` (internal/migrate/migrate.go:160), the predecessor invariant is the current-schema forward-port has already parsed the historical config mapping. Only violation of that closed state reaches this guard."
-    },
-    {
-      "directive": {
-        "file": "internal/migrate/migrate.go",
-        "line": 224,
-        "targetLine": 224,
-        "reason": "HasValue parsed this unchanged mapping immediately above",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/migrate/migrate.go:224 is `out, err = config.SetString(out, \"profile\", \"full\")` (internal/migrate/migrate.go:223). Within `func ConfigForCurrentSchema(src []byte, from int) ([]byte, error)` at internal/migrate/migrate.go:160, source review establishes HasValue parsed this unchanged mapping immediately above; this is therefore a closed-state fail-closed branch."
-    },
-    {
-      "directive": {
-        "file": "internal/migrate/migrate.go",
-        "line": 232,
-        "targetLine": 232,
-        "reason": "prior forward-port editors and the helper's initial parse already validated this YAML",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "`func ConfigForCurrentSchema(src []byte, from int) ([]byte, error)` begins at internal/migrate/migrate.go:160; its branch `if err != nil {` at internal/migrate/migrate.go:232 follows `out, _, err = retargetCheckCommandBytes(out)` at internal/migrate/migrate.go:231. That flow establishes prior forward-port editors and the helper's initial parse already validated this YAML, making the defensive return unreachable without an invariant breach."
-    },
-    {
-      "directive": {
-        "file": "internal/migrate/migrate.go",
-        "line": 330,
-        "targetLine": 330,
-        "reason": "reached only via Upgrade, whose upfront Generation now hard-errors on a corrupt lock (ADR-0076), so when this runs the lock loads cleanly",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/migrate/migrate.go:330, `if err != nil {` follows the concrete operation `l, err := manifest.Load(lockPath)` at internal/migrate/migrate.go:329 in `func stampLockSchemaWithSave(root string, save func(*manifest.Lock, string) error) (bool, error)` (internal/migrate/migrate.go:324). The reviewed failure condition is reached only via Upgrade, whose upfront Generation now hard-errors on a corrupt lock (ADR-0076), so when this runs the lock loads cleanly; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
-    },
-    {
-      "directive": {
         "file": "internal/migrate/orientingbackfill.go",
         "line": 30,
         "targetLine": 30,
@@ -19358,74 +19952,74 @@
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 62,
-        "targetLine": 62,
+        "line": 66,
+        "targetLine": 66,
         "reason": "Recover validates journal evidence before producing its Outcome, so its terminal evidence always lowers to literals",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func RecoverOperation(root string, present ProjectPresent) (OperationOutcome, error)` begins at internal/upgrade/operation.go:53; its branch `if err != nil {` at internal/upgrade/operation.go:62 follows `mutation, err := outcome.RecoveredMutation()` at internal/upgrade/operation.go:61. That flow establishes Recover validates journal evidence before producing its Outcome, so its terminal evidence always lowers to literals, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func RecoverOperation(root string, present ProjectPresent) (OperationOutcome, error)` begins at internal/upgrade/operation.go:53; its branch `if err != nil {` at internal/upgrade/operation.go:66 follows `mutation, err := outcome.RecoveredMutation()` at internal/upgrade/operation.go:65. That flow establishes Recover validates journal evidence before producing its Outcome, so its terminal evidence always lowers to literals, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 66,
-        "targetLine": 66,
+        "line": 70,
+        "targetLine": 70,
         "reason": "RecoveredMutation supplies the fixed valid status and only validated journal literals",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/upgrade/operation.go:66 is `document, err := mutation.Document()` (internal/upgrade/operation.go:65). Within `func RecoverOperation(root string, present ProjectPresent) (OperationOutcome, error)` at internal/upgrade/operation.go:53, source review establishes RecoveredMutation supplies the fixed valid status and only validated journal literals; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err != nil {` at internal/upgrade/operation.go:70 is `document, err := mutation.Document()` (internal/upgrade/operation.go:69). Within `func RecoverOperation(root string, present ProjectPresent) (OperationOutcome, error)` at internal/upgrade/operation.go:53, source review establishes RecoveredMutation supplies the fixed valid status and only validated journal literals; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 88,
-        "targetLine": 88,
+        "line": 112,
+        "targetLine": 112,
         "reason": "LoadOptional parses and validates the unchanged authority construction immediately above",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/upgrade/operation.go:88, `if err != nil {` is guarded by the preceding `authority, err := lock.AuthorityState()` at internal/upgrade/operation.go:87; in `func Run(ctx context.Context, root string, sync Sync, gate Gate, present ProjectPresent, authorityPath AuthorityLockPath, schemaGate SchemaGate, schemaAhead SchemaAheadError, migrate Migration, currentSchemaChange CurrentSchemaChange) (OperationOutcome, error)` (internal/upgrade/operation.go:75), the predecessor invariant is LoadOptional parses and validates the unchanged authority construction immediately above. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/upgrade/operation.go:112, `if err != nil {` is guarded by the preceding `authority, err := lock.AuthorityState()` at internal/upgrade/operation.go:111; in `func Run(ctx context.Context, root string, sync Sync, gate Gate, present ProjectPresent, authorityPath AuthorityLockPath, schemaGate SchemaGate, schemaAhead SchemaAheadError, migrate Migration, currentSchemaChange CurrentSchemaChange) (OperationOutcome, error)` (internal/upgrade/operation.go:79), the predecessor invariant is LoadOptional parses and validates the unchanged authority construction immediately above. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 98,
-        "targetLine": 98,
+        "line": 122,
+        "targetLine": 122,
         "reason": "FinalUpgrade constructs its terminal evidence from validated transaction operations",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func Run(ctx context.Context, root string, sync Sync, gate Gate, present ProjectPresent, authorityPath AuthorityLockPath, schemaGate SchemaGate, schemaAhead SchemaAheadError, migrate Migration, currentSchemaChange CurrentSchemaChange) (OperationOutcome, error)` begins at internal/upgrade/operation.go:75; its branch `if err != nil {` at internal/upgrade/operation.go:98 follows `mutation, err := outcome.CompletedMutation()` at internal/upgrade/operation.go:97. That flow establishes FinalUpgrade constructs its terminal evidence from validated transaction operations, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func Run(ctx context.Context, root string, sync Sync, gate Gate, present ProjectPresent, authorityPath AuthorityLockPath, schemaGate SchemaGate, schemaAhead SchemaAheadError, migrate Migration, currentSchemaChange CurrentSchemaChange) (OperationOutcome, error)` begins at internal/upgrade/operation.go:79; its branch `if err != nil {` at internal/upgrade/operation.go:122 follows `mutation, err := outcome.CompletedMutation()` at internal/upgrade/operation.go:121. That flow establishes FinalUpgrade constructs its terminal evidence from validated transaction operations, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 102,
-        "targetLine": 102,
+        "line": 126,
+        "targetLine": 126,
         "reason": "CompletedMutation supplies the fixed valid status and only validated journal literals",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/upgrade/operation.go:102 is `document, err := mutation.Document()` (internal/upgrade/operation.go:101). Within `func Run(ctx context.Context, root string, sync Sync, gate Gate, present ProjectPresent, authorityPath AuthorityLockPath, schemaGate SchemaGate, schemaAhead SchemaAheadError, migrate Migration, currentSchemaChange CurrentSchemaChange) (OperationOutcome, error)` at internal/upgrade/operation.go:75, source review establishes CompletedMutation supplies the fixed valid status and only validated journal literals; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err != nil {` at internal/upgrade/operation.go:126 is `document, err := mutation.Document()` (internal/upgrade/operation.go:125). Within `func Run(ctx context.Context, root string, sync Sync, gate Gate, present ProjectPresent, authorityPath AuthorityLockPath, schemaGate SchemaGate, schemaAhead SchemaAheadError, migrate Migration, currentSchemaChange CurrentSchemaChange) (OperationOutcome, error)` at internal/upgrade/operation.go:79, source review establishes CompletedMutation supplies the fixed valid status and only validated journal literals; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 107,
-        "targetLine": 107,
+        "line": 131,
+        "targetLine": 131,
         "reason": "AuthorityState returns only Bridge or Permanent when its validation succeeds",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func Run(ctx context.Context, root string, sync Sync, gate Gate, present ProjectPresent, authorityPath AuthorityLockPath, schemaGate SchemaGate, schemaAhead SchemaAheadError, migrate Migration, currentSchemaChange CurrentSchemaChange) (OperationOutcome, error)` begins at internal/upgrade/operation.go:75; its branch `default:` at internal/upgrade/operation.go:107 follows `case manifest.AuthorityPermanent:` at internal/upgrade/operation.go:106. That flow establishes AuthorityState returns only Bridge or Permanent when its validation succeeds, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func Run(ctx context.Context, root string, sync Sync, gate Gate, present ProjectPresent, authorityPath AuthorityLockPath, schemaGate SchemaGate, schemaAhead SchemaAheadError, migrate Migration, currentSchemaChange CurrentSchemaChange) (OperationOutcome, error)` begins at internal/upgrade/operation.go:79; its branch `default:` at internal/upgrade/operation.go:131 follows `case manifest.AuthorityPermanent:` at internal/upgrade/operation.go:130. That flow establishes AuthorityState returns only Bridge or Permanent when its validation succeeds, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
@@ -19762,6 +20356,270 @@
       },
       "class": "revalidated-impossible-state",
       "evidence": "The immediate predecessor for `fmt.Fprintf(os.Stderr, \"pi-extension-test: wait for worker: %v\\n\", err)` at tools/pi-extension-test/lockrun/lockrun_unix.go:60 is `}` (tools/pi-extension-test/lockrun/lockrun_unix.go:59). Within `func run(args []string) int` at tools/pi-extension-test/lockrun/lockrun_unix.go:17, source review establishes Wait returns only ExitError after a successfully started command; this is therefore a closed-state fail-closed branch."
+    },
+    {
+      "directive": {
+        "file": "internal/audit/history.go",
+        "line": 443,
+        "targetLine": 443,
+        "reason": "newReplayGraph rejects selected cycles before ownership planning",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The directive at internal/audit/history.go:443 follows the validated closed invariant stated in source: newReplayGraph rejects selected cycles before ownership planning. Its error arm requires an invariant breach, not a supported input."
+    },
+    {
+      "directive": {
+        "file": "internal/audit/history.go",
+        "line": 506,
+        "targetLine": 506,
+        "reason": "production validates the graph before this focused compatibility seam runs",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The directive at internal/audit/history.go:506 follows the validated closed invariant stated in source: production validates the graph before this focused compatibility seam runs. Its error arm requires an invariant breach, not a supported input."
+    },
+    {
+      "directive": {
+        "file": "internal/audit/history.go",
+        "line": 779,
+        "targetLine": 779,
+        "reason": "planning rejects cached context errors before replay",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The directive at internal/audit/history.go:779 follows the validated closed invariant stated in source: planning rejects cached context errors before replay. Its error arm requires an invariant breach, not a supported input."
+    },
+    {
+      "directive": {
+        "file": "internal/audit/history.go",
+        "line": 797,
+        "targetLine": 797,
+        "reason": "planning rejects cached context errors before replay",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The directive at internal/audit/history.go:797 follows the validated closed invariant stated in source: planning rejects cached context errors before replay. Its error arm requires an invariant breach, not a supported input."
+    },
+    {
+      "directive": {
+        "file": "internal/audit/history.go",
+        "line": 886,
+        "targetLine": 886,
+        "reason": "ParseAuthorizations returns only *SyntaxError; the checked fallback protects future implementations",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The directive at internal/audit/history.go:886 follows the validated closed invariant stated in source: ParseAuthorizations returns only *SyntaxError; the checked fallback protects future implementations. Its error arm requires an invariant breach, not a supported input."
+    },
+    {
+      "directive": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "line": 188,
+        "targetLine": 188,
+        "reason": "plansFromTree converts every validated plan parse failure into plan drift",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The directive at internal/currentstatecoord/currentstate.go:188 follows the validated closed invariant stated in source: plansFromTree converts every validated plan parse failure into plan drift. Its error arm requires an invariant breach, not a supported input."
+    },
+    {
+      "directive": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "line": 193,
+        "targetLine": 193,
+        "reason": "staged plans and corpora are already validated semantic values",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The directive at internal/currentstatecoord/currentstate.go:193 follows the validated closed invariant stated in source: staged plans and corpora are already validated semantic values. Its error arm requires an invariant breach, not a supported input."
+    },
+    {
+      "directive": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "line": 198,
+        "targetLine": 198,
+        "reason": "staged semantic owners supplied validated nonempty evidence",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The directive at internal/currentstatecoord/currentstate.go:198 follows the validated closed invariant stated in source: staged semantic owners supplied validated nonempty evidence. Its error arm requires an invariant breach, not a supported input."
+    },
+    {
+      "directive": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "line": 258,
+        "targetLine": 258,
+        "reason": "partitions copy only validated owner results and fixed nonempty parser evidence",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The directive at internal/currentstatecoord/currentstate.go:258 follows the validated closed invariant stated in source: partitions copy only validated owner results and fixed nonempty parser evidence. Its error arm requires an invariant breach, not a supported input."
+    },
+    {
+      "directive": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "line": 264,
+        "targetLine": 264,
+        "reason": "aggregation copies only validated immutable partitions",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The directive at internal/currentstatecoord/currentstate.go:264 follows the validated closed invariant stated in source: aggregation copies only validated immutable partitions. Its error arm requires an invariant breach, not a supported input."
+    },
+    {
+      "directive": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "line": 308,
+        "targetLine": 308,
+        "reason": "ParseSources converts every parser failure into DiagnosticsError",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The directive at internal/currentstatecoord/currentstate.go:308 follows the validated closed invariant stated in source: ParseSources converts every parser failure into DiagnosticsError. Its error arm requires an invariant breach, not a supported input."
+    },
+    {
+      "directive": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "line": 334,
+        "targetLine": 334,
+        "reason": "IndexTree already opened the same containing repository in CheckStaged; only a concurrent repository removal can fail here",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The directive at internal/currentstatecoord/currentstate.go:334 follows the validated closed invariant stated in source: IndexTree already opened the same containing repository in CheckStaged; only a concurrent repository removal can fail here. Its error arm requires an invariant breach, not a supported input."
+    },
+    {
+      "directive": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "line": 342,
+        "targetLine": 342,
+        "reason": "HEAD resolved by HeadExists just above; CommitTree fails only on a mid-read repository fault",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The directive at internal/currentstatecoord/currentstate.go:342 follows the validated closed invariant stated in source: HEAD resolved by HeadExists just above; CommitTree fails only on a mid-read repository fault. Its error arm requires an invariant breach, not a supported input."
+    },
+    {
+      "directive": {
+        "file": "internal/upgrade/operation.go",
+        "line": 70,
+        "targetLine": 70,
+        "reason": "Recover validates journal evidence before producing its Outcome, so its terminal evidence always lowers to literals",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The directive at internal/upgrade/operation.go:63 follows the validated closed invariant stated in source: Recover validates journal evidence before producing its Outcome, so its terminal evidence always lowers to literals. Its error arm requires an invariant breach, not a supported input."
+    },
+    {
+      "directive": {
+        "file": "internal/upgrade/operation.go",
+        "line": 70,
+        "targetLine": 70,
+        "reason": "RecoveredMutation supplies the fixed valid status and only validated journal literals",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The directive at internal/upgrade/operation.go:67 follows the validated closed invariant stated in source: RecoveredMutation supplies the fixed valid status and only validated journal literals. Its error arm requires an invariant breach, not a supported input."
+    },
+    {
+      "directive": {
+        "file": "internal/upgrade/operation.go",
+        "line": 112,
+        "targetLine": 112,
+        "reason": "LoadOptional parses and validates the unchanged authority construction immediately above",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The directive at internal/upgrade/operation.go:104 follows the validated closed invariant stated in source: LoadOptional parses and validates the unchanged authority construction immediately above. Its error arm requires an invariant breach, not a supported input."
+    },
+    {
+      "directive": {
+        "file": "internal/upgrade/operation.go",
+        "line": 122,
+        "targetLine": 122,
+        "reason": "FinalUpgrade constructs its terminal evidence from validated transaction operations",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The directive at internal/upgrade/operation.go:114 follows the validated closed invariant stated in source: FinalUpgrade constructs its terminal evidence from validated transaction operations. Its error arm requires an invariant breach, not a supported input."
+    },
+    {
+      "directive": {
+        "file": "internal/upgrade/operation.go",
+        "line": 126,
+        "targetLine": 126,
+        "reason": "CompletedMutation supplies the fixed valid status and only validated journal literals",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The directive at internal/upgrade/operation.go:118 follows the validated closed invariant stated in source: CompletedMutation supplies the fixed valid status and only validated journal literals. Its error arm requires an invariant breach, not a supported input."
+    },
+    {
+      "directive": {
+        "file": "internal/upgrade/operation.go",
+        "line": 131,
+        "targetLine": 131,
+        "reason": "AuthorityState returns only Bridge or Permanent when its validation succeeds",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The directive at internal/upgrade/operation.go:123 follows the validated closed invariant stated in source: AuthorityState returns only Bridge or Permanent when its validation succeeds. Its error arm requires an invariant breach, not a supported input."
+    },
+    {
+      "directive": {
+        "file": "internal/migrate/migrate.go",
+        "line": 235,
+        "targetLine": 235,
+        "reason": "reached only via Upgrade, whose upfront Generation now hard-errors on a corrupt lock (ADR-0076), so when this runs the lock loads cleanly",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The schema stamp loads the same already validated lock; this defensive fault arm requires that closed invariant to fail."
+    },
+    {
+      "directive": {
+        "file": "cmd/awf/audit.go",
+        "line": 39,
+        "targetLine": 39,
+        "reason": "the audit mapping has already validated every shape",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The report mapping has already validated every shape, so this document-construction failure arm requires an invariant breach."
+    },
+    {
+      "directive": {
+        "file": "internal/upgrade/operation.go",
+        "line": 122,
+        "targetLine": 122,
+        "reason": "after the lock proves this is a current authority root, config stat can fail only through a concurrent namespace, permission, or storage fault",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "At internal/upgrade/operation.go:122, the current lock has already proved a current authority root and the preceding config stat handles absence as partial authority. An error other than absence therefore requires a concurrent namespace, permission, or storage fault rather than a safe portable input."
     }
   ],
   "platformDirectives": [

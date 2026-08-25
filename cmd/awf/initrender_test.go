@@ -323,7 +323,7 @@ func TestInitAndUpgradeRefusePreTrackingAuthority(t *testing.T) {
 				t.Fatalf("init=%v", err)
 			}
 			if tc.name == "missing" {
-				if err := runUpgrade(ctx, root, io.Discard); err == nil || !strings.Contains(err.Error(), tc.want) {
+				if err := runUpgrade(ctx, root, io.Discard); err == nil || !strings.Contains(err.Error(), "complete .awf/config.yaml and .awf/awf.lock") {
 					t.Fatalf("upgrade=%v", err)
 				}
 			}

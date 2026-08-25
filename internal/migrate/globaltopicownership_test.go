@@ -46,7 +46,7 @@ func TestGlobalTopicPathOwnershipUpgradeOnlyStampsSchema(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	applied, changes, err := Upgrade(context.Background(), root)
+	applied, changes, err := upgradeLegacyForTest(context.Background(), root)
 	if err != nil {
 		t.Fatal(err)
 	}
