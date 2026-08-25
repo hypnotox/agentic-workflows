@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -244,6 +245,110 @@ func TestRunRefusesPartialCurrentAuthorityBeforeDispatch(t *testing.T) {
 			var partial *manifest.PartialAuthorityError
 			if !errors.As(err, &partial) || *partial != tc.want || called {
 				t.Fatalf("error=%v partial=%#v dispatch=%t, want %#v before dispatch", err, partial, called, tc.want)
+			}
+		})
+	}
+}
+
+func TestRunPreservesCurrentAuthorityStatFailuresBeforeDispatch(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		writeLock bool
+	}{
+		{name: "loaded lock", writeLock: true},
+		{name: "missing lock"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			if tc.writeLock {
+				operationLock(t, root)
+				if err := os.Remove(config.ConfigPath(root)); err != nil {
+					t.Fatal(err)
+				}
+			} else if err := os.MkdirAll(filepath.Dir(config.ConfigPath(root)), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink("config.yaml", config.ConfigPath(root)); err != nil {
+				t.Fatal(err)
+			}
+
+			called := false
+			_, err := Run(testContext(t), root,
+				func(context.Context, string) (presentation.Mutation, error) {
+					called = true
+					return presentation.Mutation{}, nil
+				},
+				func(context.Context, string) error { called = true; return nil },
+				func(string) bool { return true }, config.LockPath, testLiveSchemaRange,
+				func(string) (string, int, error) { called = true; return "ok", 46, nil },
+				func(context.Context, string) (MigrationResult, error) { called = true; return MigrationResult{}, nil }, nil)
+			if !errors.Is(err, syscall.ELOOP) || called {
+				t.Fatalf("Run() error = %v, dispatch = %t, want config stat failure before dispatch", err, called)
+			}
+		})
+	}
+}
+
+func TestRunRevalidatesCurrentAuthorityAfterSchemaClassification(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		mutate func(t *testing.T, lockPath string)
+		check  func(t *testing.T, err error)
+	}{
+		{
+			name: "lock disappeared",
+			mutate: func(t *testing.T, lockPath string) {
+				t.Helper()
+				if err := os.Remove(lockPath); err != nil {
+					t.Fatal(err)
+				}
+			},
+			check: func(t *testing.T, err error) {
+				t.Helper()
+				var partial *manifest.PartialAuthorityError
+				if !errors.As(err, &partial) || !partial.Config || partial.Lock {
+					t.Fatalf("Run() error = %#v, want config-only partial authority", err)
+				}
+			},
+		},
+		{
+			name: "lock stat failure",
+			mutate: func(t *testing.T, lockPath string) {
+				t.Helper()
+				if err := os.Remove(lockPath); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink("awf.lock", lockPath); err != nil {
+					t.Fatal(err)
+				}
+			},
+			check: func(t *testing.T, err error) {
+				t.Helper()
+				if !errors.Is(err, syscall.ELOOP) {
+					t.Fatalf("Run() error = %v, want lock stat failure", err)
+				}
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			lockPath := operationLock(t, root)
+			called := false
+			_, err := Run(testContext(t), root,
+				func(context.Context, string) (presentation.Mutation, error) {
+					called = true
+					return presentation.Mutation{}, nil
+				},
+				func(context.Context, string) error { called = true; return nil },
+				func(string) bool { return true }, config.LockPath, testLiveSchemaRange,
+				func(string) (string, int, error) {
+					tc.mutate(t, lockPath)
+					return "ok", 46, nil
+				},
+				func(context.Context, string) (MigrationResult, error) { called = true; return MigrationResult{}, nil }, nil)
+			tc.check(t, err)
+			if called {
+				t.Fatal("migration, gate, or sync ran after current authority changed")
 			}
 		})
 	}

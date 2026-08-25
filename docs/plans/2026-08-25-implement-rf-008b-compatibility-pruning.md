@@ -371,3 +371,11 @@ checks lock presence before using the loaded value and preserves non-absence sta
 owner tests and `go test ./...` pass. Coverage reconciliation directly covers the new reachable
 branches, retains one reviewed command arm for the future supported-migration seam, and regenerates
 the 96.8% raw and 99.9% filtered baseline.
+
+Final verify settlement after `a9afe1fd2` closes two mechanical upgrade-owner findings. Current-pair
+filesystem failures now propagate before dispatch, and the operation revalidates the pair after
+schema classification so a disappeared or faulting lock cannot reach migration, gate, or sync.
+The disappearance regression failed red with the prior nil dereference, and temporary propagation
+falsification made the config-stat regression fail as expected. Focused upgrade tests and a fresh
+whole-module coverage run pass; the regenerated profile reports 96.8% raw and 99.9% filtered
+coverage without the obsolete upgrade stat exclusion.

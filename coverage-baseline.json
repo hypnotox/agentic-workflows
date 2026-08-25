@@ -1,7 +1,7 @@
 {
   "version": 1,
   "modulePath": "github.com/hypnotox/agentic-workflows",
-  "universeSHA256": "75be95a4e55dd58384698b69465b585303769c0902c84108552a246112cf4481",
+  "universeSHA256": "d346fa05411340372ebcac086f96980e0faae8c9aeed9ec36d92ee4fbd26b815",
   "repository": [
     {
       "identity": {
@@ -10327,26 +10327,11 @@
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 96,
-          "column": 25
-        },
-        "end": {
-          "line": 98,
-          "column": 5
-        },
-        "statements": 1
-      },
-      "reason": "Upgrade transaction lowering uses validated closed presentation evidence; its defensive error propagation arm is retained without a synthetic invalid transaction seam."
-    },
-    {
-      "identity": {
-        "file": "internal/upgrade/operation.go",
-        "start": {
-          "line": 106,
+          "line": 137,
           "column": 16
         },
         "end": {
-          "line": 108,
+          "line": 139,
           "column": 3
         },
         "statements": 1
@@ -10357,11 +10342,11 @@
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 116,
+          "line": 147,
           "column": 17
         },
         "end": {
-          "line": 118,
+          "line": 149,
           "column": 4
         },
         "statements": 1
@@ -10372,11 +10357,11 @@
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 120,
+          "line": 151,
           "column": 17
         },
         "end": {
-          "line": 122,
+          "line": 153,
           "column": 4
         },
         "statements": 1
@@ -10387,11 +10372,11 @@
       "identity": {
         "file": "internal/upgrade/operation.go",
         "start": {
-          "line": 125,
+          "line": 156,
           "column": 10
         },
         "end": {
-          "line": 126,
+          "line": 157,
           "column": 105
         },
         "statements": 1
@@ -12939,23 +12924,11 @@
         {
           "file": "internal/upgrade/operation.go",
           "start": {
-            "line": 96,
-            "column": 25
-          },
-          "end": {
-            "line": 98,
-            "column": 5
-          },
-          "statements": 1
-        },
-        {
-          "file": "internal/upgrade/operation.go",
-          "start": {
-            "line": 106,
+            "line": 137,
             "column": 16
           },
           "end": {
-            "line": 108,
+            "line": 139,
             "column": 3
           },
           "statements": 1
@@ -12963,11 +12936,11 @@
         {
           "file": "internal/upgrade/operation.go",
           "start": {
-            "line": 116,
+            "line": 147,
             "column": 17
           },
           "end": {
-            "line": 118,
+            "line": 149,
             "column": 4
           },
           "statements": 1
@@ -12975,11 +12948,11 @@
         {
           "file": "internal/upgrade/operation.go",
           "start": {
-            "line": 120,
+            "line": 151,
             "column": 17
           },
           "end": {
-            "line": 122,
+            "line": 153,
             "column": 4
           },
           "statements": 1
@@ -12987,11 +12960,11 @@
         {
           "file": "internal/upgrade/operation.go",
           "start": {
-            "line": 125,
+            "line": 156,
             "column": 10
           },
           "end": {
-            "line": 126,
+            "line": 157,
             "column": 105
           },
           "statements": 1
@@ -25681,62 +25654,50 @@
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 96,
-        "targetLine": 96,
-        "reason": "after the lock proves this is a current authority root, config stat can fail only through a concurrent namespace, permission, or storage fault",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/upgrade/operation.go:96, the current lock has already proved a current authority root and the preceding config stat handles absence as partial authority. An error other than absence therefore requires a concurrent namespace, permission, or storage fault rather than a safe portable input."
-    },
-    {
-      "directive": {
-        "file": "internal/upgrade/operation.go",
-        "line": 106,
-        "targetLine": 106,
+        "line": 137,
+        "targetLine": 137,
         "reason": "LoadLiveOptional parses and validates the unchanged authority construction immediately above",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The directive at internal/upgrade/operation.go:106 follows the validated closed invariant stated in source: LoadLiveOptional parses and validates the unchanged authority construction immediately above. Its error arm requires an invariant breach, not a supported input."
+      "evidence": "The directive at internal/upgrade/operation.go:137 follows the validated closed invariant stated in source: LoadLiveOptional parses and validates the unchanged authority construction immediately above. Its error arm requires an invariant breach, not a supported input."
     },
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 116,
-        "targetLine": 116,
+        "line": 147,
+        "targetLine": 147,
         "reason": "FinalUpgrade constructs its terminal evidence from validated transaction operations",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The directive at internal/upgrade/operation.go:116 follows the validated closed invariant stated in source: FinalUpgrade constructs its terminal evidence from validated transaction operations. Its error arm requires an invariant breach, not a supported input."
+      "evidence": "The directive at internal/upgrade/operation.go:147 follows the validated closed invariant stated in source: FinalUpgrade constructs its terminal evidence from validated transaction operations. Its error arm requires an invariant breach, not a supported input."
     },
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 120,
-        "targetLine": 120,
+        "line": 151,
+        "targetLine": 151,
         "reason": "CompletedMutation supplies the fixed valid status and only validated journal literals",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The directive at internal/upgrade/operation.go:120 follows the validated closed invariant stated in source: CompletedMutation supplies the fixed valid status and only validated journal literals. Its error arm requires an invariant breach, not a supported input."
+      "evidence": "The directive at internal/upgrade/operation.go:151 follows the validated closed invariant stated in source: CompletedMutation supplies the fixed valid status and only validated journal literals. Its error arm requires an invariant breach, not a supported input."
     },
     {
       "directive": {
         "file": "internal/upgrade/operation.go",
-        "line": 125,
-        "targetLine": 125,
+        "line": 156,
+        "targetLine": 156,
         "reason": "AuthorityState returns only Bridge or Permanent when its validation succeeds",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The directive at internal/upgrade/operation.go:125 follows the validated closed invariant stated in source: AuthorityState returns only Bridge or Permanent when its validation succeeds. Its error arm requires an invariant breach, not a supported input."
+      "evidence": "The directive at internal/upgrade/operation.go:156 follows the validated closed invariant stated in source: AuthorityState returns only Bridge or Permanent when its validation succeeds. Its error arm requires an invariant breach, not a supported input."
     },
     {
       "directive": {

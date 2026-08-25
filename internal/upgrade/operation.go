@@ -70,6 +70,31 @@ func RecoverOperation(root string, present ProjectPresent) (OperationOutcome, er
 	return OperationOutcome{Document: document}, nil
 }
 
+func currentAuthorityPresence(root string) (configFound, lockFound bool, err error) {
+	if _, statErr := os.Stat(config.ConfigPath(root)); statErr == nil {
+		configFound = true
+	} else if !errors.Is(statErr, os.ErrNotExist) {
+		return false, false, fmt.Errorf("stat .awf/config.yaml: %w", statErr)
+	}
+	if _, statErr := os.Stat(config.LockPath(root)); statErr == nil {
+		lockFound = true
+	} else if !errors.Is(statErr, os.ErrNotExist) {
+		return false, false, fmt.Errorf("stat .awf/awf.lock: %w", statErr)
+	}
+	return configFound, lockFound, nil
+}
+
+func validateCurrentAuthority(root string) error {
+	configFound, lockFound, err := currentAuthorityPresence(root)
+	if err != nil {
+		return err
+	}
+	if !configFound || !lockFound {
+		return &manifest.PartialAuthorityError{Config: configFound, Lock: lockFound}
+	}
+	return nil
+}
+
 // Run executes the normal upgrade use case. Migration, authority and journal
 // coordination live here; cmd/awf supplies only its concrete terminal sync and
 // gate dependencies.
@@ -84,23 +109,29 @@ func Run(ctx context.Context, root string, sync Sync, gate Gate, present Project
 		return OperationOutcome{}, err
 	}
 	if !found {
-		if _, err := os.Stat(config.ConfigPath(root)); err == nil {
+		configFound, _, statErr := currentAuthorityPresence(root)
+		if statErr != nil {
+			return OperationOutcome{}, statErr
+		}
+		if configFound {
 			return OperationOutcome{}, &manifest.PartialAuthorityError{Config: true, Lock: false}
 		}
 		return OperationOutcome{}, errors.New("not an awf project")
 	}
-	if lockPath == config.LockPath(root) {
-		if _, lockErr := os.Stat(lockPath); lockErr == nil {
-			if _, err := os.Stat(config.ConfigPath(root)); os.IsNotExist(err) {
-				return OperationOutcome{}, &manifest.PartialAuthorityError{Config: false, Lock: true}
-			} else if err != nil { // coverage-ignore: after the lock proves this is a current authority root, config stat can fail only through a concurrent namespace, permission, or storage fault
-				return OperationOutcome{}, err
-			}
+	currentAuthority := lockPath == config.LockPath(root)
+	if currentAuthority {
+		if err := validateCurrentAuthority(root); err != nil {
+			return OperationOutcome{}, err
 		}
 	}
 	state, _, err := schemaGate(root)
 	if err != nil {
 		return OperationOutcome{}, err
+	}
+	if currentAuthority {
+		if err := validateCurrentAuthority(root); err != nil {
+			return OperationOutcome{}, err
+		}
 	}
 	authority, err := lock.AuthorityState()
 	if err != nil { // coverage-ignore: LoadLiveOptional parses and validates the unchanged authority construction immediately above
