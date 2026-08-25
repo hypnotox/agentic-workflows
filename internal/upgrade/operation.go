@@ -70,29 +70,39 @@ func RecoverOperation(root string, present ProjectPresent) (OperationOutcome, er
 	return OperationOutcome{Document: document}, nil
 }
 
-func currentAuthorityPresence(root string) (configFound, lockFound bool, err error) {
-	if _, statErr := os.Stat(config.ConfigPath(root)); statErr == nil {
-		configFound = true
-	} else if !errors.Is(statErr, os.ErrNotExist) {
-		return false, false, fmt.Errorf("stat .awf/config.yaml: %w", statErr)
+func currentConfigPresent(root string) (bool, error) {
+	if _, err := os.Stat(config.ConfigPath(root)); err == nil {
+		return true, nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return false, fmt.Errorf("stat .awf/config.yaml: %w", err)
 	}
-	if _, statErr := os.Stat(config.LockPath(root)); statErr == nil {
-		lockFound = true
-	} else if !errors.Is(statErr, os.ErrNotExist) {
-		return false, false, fmt.Errorf("stat .awf/awf.lock: %w", statErr)
-	}
-	return configFound, lockFound, nil
+	return false, nil
 }
 
-func validateCurrentAuthority(root string) error {
-	configFound, lockFound, err := currentAuthorityPresence(root)
+func requireCurrentConfig(root string) error {
+	found, err := currentConfigPresent(root)
 	if err != nil {
 		return err
 	}
-	if !configFound || !lockFound {
-		return &manifest.PartialAuthorityError{Config: configFound, Lock: lockFound}
+	if !found {
+		return &manifest.PartialAuthorityError{Config: false, Lock: true}
 	}
 	return nil
+}
+
+func reloadCurrentAuthority(root, lockPath string, floor, current int) (*manifest.Lock, error) {
+	lock, found, err := manifest.LoadLiveOptional(lockPath, floor, current)
+	if err != nil {
+		return nil, err
+	}
+	configFound, err := currentConfigPresent(root)
+	if err != nil {
+		return nil, err
+	}
+	if !found || !configFound {
+		return nil, &manifest.PartialAuthorityError{Config: configFound, Lock: found}
+	}
+	return lock, nil
 }
 
 // Run executes the normal upgrade use case. Migration, authority and journal
@@ -109,7 +119,7 @@ func Run(ctx context.Context, root string, sync Sync, gate Gate, present Project
 		return OperationOutcome{}, err
 	}
 	if !found {
-		configFound, _, statErr := currentAuthorityPresence(root)
+		configFound, statErr := currentConfigPresent(root)
 		if statErr != nil {
 			return OperationOutcome{}, statErr
 		}
@@ -120,7 +130,7 @@ func Run(ctx context.Context, root string, sync Sync, gate Gate, present Project
 	}
 	currentAuthority := lockPath == config.LockPath(root)
 	if currentAuthority {
-		if err := validateCurrentAuthority(root); err != nil {
+		if err := requireCurrentConfig(root); err != nil {
 			return OperationOutcome{}, err
 		}
 	}
@@ -129,7 +139,8 @@ func Run(ctx context.Context, root string, sync Sync, gate Gate, present Project
 		return OperationOutcome{}, err
 	}
 	if currentAuthority {
-		if err := validateCurrentAuthority(root); err != nil {
+		lock, err = reloadCurrentAuthority(root, lockPath, floor, current)
+		if err != nil {
 			return OperationOutcome{}, err
 		}
 	}

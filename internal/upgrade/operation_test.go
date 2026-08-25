@@ -329,6 +329,19 @@ func TestRunRevalidatesCurrentAuthorityAfterSchemaClassification(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "lock replaced",
+			mutate: func(t *testing.T, lockPath string) {
+				t.Helper()
+				testsupport.WriteFile(t, lockPath, `{"awfVersion":"0.39.2","schemaVersion":45,"files":{},"bridgeAttestation":{"version":1}}`)
+			},
+			check: func(t *testing.T, err error) {
+				t.Helper()
+				if !errors.Is(err, manifest.ErrUnsupportedLiveSource) {
+					t.Fatalf("Run() error = %v, want replacement live-source refusal", err)
+				}
+			},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
@@ -351,6 +364,32 @@ func TestRunRevalidatesCurrentAuthorityAfterSchemaClassification(t *testing.T) {
 				t.Fatal("migration, gate, or sync ran after current authority changed")
 			}
 		})
+	}
+}
+
+func TestRunRevalidatesConfigAfterSchemaClassification(t *testing.T) {
+	root := t.TempDir()
+	operationLock(t, root)
+	called := false
+	_, err := Run(testContext(t), root,
+		func(context.Context, string) (presentation.Mutation, error) {
+			called = true
+			return presentation.Mutation{}, nil
+		},
+		func(context.Context, string) error { called = true; return nil },
+		func(string) bool { return true }, config.LockPath, testLiveSchemaRange,
+		func(string) (string, int, error) {
+			if err := os.Remove(config.ConfigPath(root)); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink("config.yaml", config.ConfigPath(root)); err != nil {
+				t.Fatal(err)
+			}
+			return "ok", 46, nil
+		},
+		func(context.Context, string) (MigrationResult, error) { called = true; return MigrationResult{}, nil }, nil)
+	if !errors.Is(err, syscall.ELOOP) || called {
+		t.Fatalf("Run() error = %v, dispatch = %t, want config stat failure after schema classification", err, called)
 	}
 }
 

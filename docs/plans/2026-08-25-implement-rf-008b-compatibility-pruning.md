@@ -379,3 +379,9 @@ The disappearance regression failed red with the prior nil dereference, and temp
 falsification made the config-stat regression fail as expected. Focused upgrade tests and a fresh
 whole-module coverage run pass; the regenerated profile reports 96.8% raw and 99.9% filtered
 coverage without the obsolete upgrade stat exclusion.
+
+The renewed verify found one further mechanical stale-value path: presence revalidation alone did not
+replace the originally loaded lock after schema classification. The operation now reloads the live
+lock and uses that value for authority dispatch, while the loader itself proves lock presence and
+errors and a separate config probe proves the complete current pair. A replacement regression failed
+red against the stale lock, and focused plus whole-module coverage tests pass with no new exclusion.
