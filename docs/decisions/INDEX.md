@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-preserve-brainstorming-continuity-before-handoff: Preserve brainstorming continuity before handoff](preserve-brainstorming-continuity-before-handoff.md) (Proposed)
 
 ## History
 
