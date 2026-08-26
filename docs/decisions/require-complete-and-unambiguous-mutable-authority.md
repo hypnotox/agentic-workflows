@@ -40,14 +40,17 @@ allowing downstream operations to infer whether partially decoded authority was 
 ## Consequences
 
 - Mutable authority cannot gain an ignored suffix or depend on permissive decoder behavior.
-- Existing malformed locks or multi-document configuration that happened to decode are rejected and
-  require operator correction.
-- The ordinary live-lock parser, rather than only Publisher, owns permanent-inventory validity, so
-  all current-authority consumers receive the same refusal.
+- Canonical prior inputs remain compatible. Previously tolerated multi-document configuration,
+  ambiguous live locks, and unbound journals require operator correction rather than automatic
+  migration.
+- Working-tree and snapshot configuration loaders share the strict contract, so render and Publisher
+  refuse ambiguous config or sidecars before mutation. The ordinary manifest live-lock parser owns
+  permanent-inventory validity for every current-authority consumer, rather than leaving it to
+  Publisher alone. Upgrade recovery validates its journal before recovery mutation.
 - Recovery remains journal based and lock-last. It gains an integrity precondition rather than a new
   recovery protocol.
-- Historical audit decoding remains separate and may preserve compatibility where it is not live
-  mutation authority.
+- Historical config and lock decoding used by audit or migration classification remains separate
+  from the strict live-authority contract.
 
 ## Alternatives Considered
 
