@@ -99,8 +99,16 @@ func Acquire(ctx context.Context, scope string, roots ...string) (func() error, 
 	return lease.Release, nil
 }
 
-// AcquireProjectLease returns the transaction identity for composition across
-// immutable root discovery, mutable authority loading, planning, and outcome.
+// AcquireTrackedLease obtains the checkout-local mutation lease. Operations
+// that do not reach primary-resident state must use this instead of a combined
+// project lease so independent linked worktrees can proceed concurrently.
+func AcquireTrackedLease(ctx context.Context, root string) (*Lease, error) {
+	return acquire(ctx, []leaseRequest{{scope: "project-tracked-locks", root: root}})
+}
+
+// AcquireProjectLease returns the transaction identity for an operation that
+// changes both checkout-local and primary-resident state. acquire canonicalizes
+// and orders both identities before taking either lock.
 func AcquireProjectLease(ctx context.Context, tracked, resident string) (*Lease, error) {
 	return acquire(ctx, []leaseRequest{
 		{scope: "project-tracked-locks", root: tracked},

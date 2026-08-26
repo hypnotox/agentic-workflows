@@ -9,14 +9,25 @@ import (
 	"path/filepath"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
 )
 
 // Run adds doc after checking its output collision, then synchronizes and
 // returns the synchronization presentation for the command to render.
-func Run(ctx context.Context, root string, doc config.LocalDoc, loader *project.Loader) error {
-	state, cfg, err := loader.OpenForOperation(ctx, root)
+func Run(ctx context.Context, root string, doc config.LocalDoc, loader *project.Loader) (err error) {
+	lease, err := loader.AcquireProjectLease(ctx, root)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, lease.Release()) }()
+	files, err := filesystem.Open(root)
+	if err != nil {
+		return err
+	}
+	defer files.Close()
+	state, cfg, configIdentity, err := loader.OpenForMutation(ctx, root, files)
 	if err != nil {
 		return err
 	}
@@ -24,11 +35,7 @@ func Run(ctx context.Context, root string, doc config.LocalDoc, loader *project.
 	if err := composed.PreflightLocalDoc(doc); err != nil {
 		return err
 	}
-	source, err := os.ReadFile(config.ConfigPath(root))
-	if err != nil { // coverage-ignore: Loader just read this exact config path; failure requires a concurrent namespace or storage fault
-		return err
-	}
-	updated, err := config.AppendLocalDoc(source, doc)
+	updated, err := config.AppendLocalDoc(cfg.Source(), doc)
 	if err != nil {
 		return err
 	}
@@ -39,14 +46,14 @@ func Run(ctx context.Context, root string, doc config.LocalDoc, loader *project.
 	} else if !errors.Is(err, os.ErrNotExist) { // coverage-ignore: PreflightLocalDoc inspected this exact destination moments earlier; a different result requires concurrent namespace mutation
 		return fmt.Errorf("inspect local document destination: %w", err)
 	}
-	if err := os.WriteFile(config.ConfigPath(root), updated, 0o644); err != nil { // coverage-ignore: the config was just read from this path; failure requires a permission, storage, or concurrent namespace fault
+	if err := files.ReplaceExpected(".awf/config.yaml", configIdentity, updated, 0o644); err != nil {
 		return err
 	}
 	state, cfg, err = loader.OpenForOperation(ctx, root)
 	if err != nil { // coverage-ignore: the operation just wrote a Loader-derived valid config; failure requires concurrent project mutation
 		return err
 	}
-	result, err := publisher.New(state.OutputState(), cfg, publisher.NewFilesystemReader(state.Root()), project.Version).Sync()
+	result, err := publisher.New(state.OutputState(), cfg, publisher.NewFilesystemReader(state.Root()), project.Version).SyncLeased(ctx, lease)
 	if err != nil {
 		return err
 	}

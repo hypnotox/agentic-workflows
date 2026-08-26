@@ -1077,8 +1077,8 @@
     "docs/topics/tooling/cli.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:3ab2899375264e2959ad93dc15296cfd0c92b2cd8f62999ab9c9e91a3af4e184",
-      "outputHash": "sha256:937a72ca73748b63e3bde6570ef4bc05648293d1963070fc94aab815cd94e3d7"
+      "configHash": "sha256:268e94128f7665fc782868b2a554d30bfe54a8cdcb8bee7c03923d5479ab81ce",
+      "outputHash": "sha256:a730f23bf6cf941b58b96387b55c4e82939a0f14fadd35342e5cd840ccfb8f6b"
     },
     "docs/topics/tooling/commit-policy.md": {
       "templateId": "topics/topic.md.tmpl",

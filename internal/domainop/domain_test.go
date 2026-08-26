@@ -9,6 +9,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
@@ -118,6 +119,15 @@ func TestDomainOperationsReportSynchronizationFailure(t *testing.T) {
 	})
 }
 
+func scaffoldCurrentStateForTest(root string, cfg *config.Config, name string) error {
+	files, err := filesystem.Open(root)
+	if err != nil {
+		return err
+	}
+	defer files.Close()
+	return scaffoldCurrentStateConfined(files, root, cfg, name)
+}
+
 func TestScaffoldCurrentStatePreservesExistingAndReportsFilesystemFailures(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, fixtureConfig)
@@ -127,7 +137,7 @@ func TestScaffoldCurrentStatePreservesExistingAndReportsFilesystemFailures(t *te
 	}
 	path := cfg.PartPath("domains", "payments", "current-state")
 	testsupport.WriteFile(t, path, "kept")
-	if err := scaffoldCurrentState(cfg, "payments"); err != nil {
+	if err := scaffoldCurrentStateForTest(root, cfg, "payments"); err != nil {
 		t.Fatal(err)
 	}
 	got, err := os.ReadFile(path)
@@ -140,7 +150,7 @@ func TestScaffoldCurrentStatePreservesExistingAndReportsFilesystemFailures(t *te
 	if err := os.Symlink(filepath.Base(path), path); err != nil {
 		t.Fatal(err)
 	}
-	if err := scaffoldCurrentState(cfg, "payments"); err == nil {
+	if err := scaffoldCurrentStateForTest(root, cfg, "payments"); err == nil {
 		t.Fatal("self-referential current-state symlink accepted")
 	}
 	if _, err := hasSidecarOrParts("/dev/null", "payments"); err == nil || !strings.Contains(err.Error(), "inspect authored domain path") {

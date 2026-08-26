@@ -2,16 +2,19 @@
 package project
 
 import (
+	"bytes"
 	"context"
 	_ "embed"
 	"errors"
 	"fmt"
+	"io/fs"
 	"path/filepath"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
@@ -220,6 +223,46 @@ func Open(ctx context.Context, root string, selected ...*awfgit.Repo) (*ProjectS
 func (l *Loader) Open(ctx context.Context, root string) (*ProjectState, error) {
 	state, _, err := l.OpenForOperation(ctx, root)
 	return state, err
+}
+
+// AcquireTrackedLease obtains the selected checkout's transaction capability.
+// Focused operation packages request it through their composed Loader rather
+// than importing filesystem merely to acquire a neutral capability.
+func (l *Loader) AcquireTrackedLease(ctx context.Context, root string) (*filesystem.Lease, error) {
+	return filesystem.AcquireTrackedLease(ctx, root)
+}
+
+// AcquireProjectLease obtains both the selected-checkout and shared-resident
+// transaction capabilities in filesystem's deterministic canonical order.
+func (l *Loader) AcquireProjectLease(ctx context.Context, root string) (*filesystem.Lease, error) {
+	return filesystem.AcquireProjectLease(ctx, root, l.resolveResidentRoot(ctx, root))
+}
+
+// OpenForMutation loads authority through the supplied confined handle and
+// returns the identity of precisely the config bytes the Loader parsed. The
+// byte comparison closes the otherwise invisible interval between confined
+// observation and config-tree parsing; callers use identity for their expected
+// replacement.
+func (l *Loader) OpenForMutation(ctx context.Context, root string, files *filesystem.Handle) (*ProjectState, *config.Config, fs.FileInfo, error) {
+	if files == nil {
+		return nil, nil, nil, errors.New("project Loader: missing confined filesystem handle")
+	}
+	identity, err := files.LinkInfo(".awf/config.yaml")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	bytesBefore, err := files.Read(".awf/config.yaml")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	state, cfg, err := l.OpenForOperation(ctx, root)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if !bytes.Equal(bytesBefore, cfg.Source()) {
+		return nil, nil, nil, filesystem.ErrIdentityChanged
+	}
+	return state, cfg, identity, nil
 }
 
 // OpenForOperation returns immutable state together with the one concrete

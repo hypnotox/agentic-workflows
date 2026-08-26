@@ -1,7 +1,7 @@
 {
   "version": 1,
   "modulePath": "github.com/hypnotox/agentic-workflows",
-  "universeSHA256": "86666e2fad2a381613ead637bfb9b8250f199b224fcb32825ebf07e5e4167eb5",
+  "universeSHA256": "607f6fa76c1e241cefec96b9f3ae6db783770fda82d536ac5669a377d6e32a1d",
   "repository": [
     {
       "identity": {
@@ -2857,76 +2857,196 @@
       "identity": {
         "file": "internal/domainop/domain.go",
         "start": {
+          "line": 27,
+          "column": 16
+        },
+        "end": {
+          "line": 29,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/domainop/domain.go:27.16,29.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 32,
+          "column": 16
+        },
+        "end": {
           "line": 34,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/domainop/domain.go:32.16,34.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 46,
           "column": 16
         },
         "end": {
-          "line": 36,
+          "line": 48,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/domainop/domain.go:34.16,36.3 1 in function Add, beginning `{ // coverage-ignore: Loader parsed and validated this exact domains sequence immediately above`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Phase 4 transaction review: internal/domainop/domain.go:46.16,48.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
     },
     {
       "identity": {
         "file": "internal/domainop/domain.go",
         "start": {
-          "line": 37,
-          "column": 78
+          "line": 49,
+          "column": 70
         },
         "end": {
-          "line": 39,
+          "line": 51,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/domainop/domain.go:37.78,39.3 1 in function Add, beginning `{ // coverage-ignore: the config was just read from this path; failure requires a permission, st...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Phase 4 transaction review: internal/domainop/domain.go:49.70,51.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
     },
     {
       "identity": {
         "file": "internal/domainop/domain.go",
         "start": {
-          "line": 63,
+          "line": 64,
           "column": 16
         },
         "end": {
-          "line": 65,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/domainop/domain.go:63.16,65.3 1 in function Remove, beginning `{ // coverage-ignore: Loader parsed and validated this exact domains sequence immediately above`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "internal/domainop/domain.go",
-        "start": {
           "line": 66,
-          "column": 78
-        },
-        "end": {
-          "line": 68,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/domainop/domain.go:66.78,68.3 1 in function Remove, beginning `{ // coverage-ignore: the config was just read from this path; failure requires a permission, st...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Phase 4 transaction review: internal/domainop/domain.go:64.16,66.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
     },
     {
       "identity": {
         "file": "internal/domainop/domain.go",
         "start": {
-          "line": 100,
+          "line": 69,
           "column": 16
         },
         "end": {
-          "line": 102,
+          "line": 71,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/domainop/domain.go:100.16,102.3 1 in function synchronize, beginning `{ // coverage-ignore: a nil Sync error returns a completed result with a mutation`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Phase 4 transaction review: internal/domainop/domain.go:69.16,71.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 85,
+          "column": 16
+        },
+        "end": {
+          "line": 87,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/domainop/domain.go:85.16,87.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 88,
+          "column": 70
+        },
+        "end": {
+          "line": 90,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/domainop/domain.go:88.70,90.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 105,
+          "column": 16
+        },
+        "end": {
+          "line": 107,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/domainop/domain.go:105.16,107.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 113,
+          "column": 35
+        },
+        "end": {
+          "line": 115,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/domainop/domain.go:113.35,115.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 117,
+          "column": 24
+        },
+        "end": {
+          "line": 119,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/domainop/domain.go:117.24,119.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 134,
+          "column": 42
+        },
+        "end": {
+          "line": 136,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/domainop/domain.go:134.42,136.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 143,
+          "column": 16
+        },
+        "end": {
+          "line": 145,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/domainop/domain.go:143.16,145.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
     },
     {
       "identity": {
@@ -5530,91 +5650,91 @@
       "identity": {
         "file": "internal/filesystem/lease.go",
         "start": {
-          "line": 130,
+          "line": 138,
           "column": 3
         },
         "end": {
-          "line": 130,
+          "line": 138,
           "column": 24
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/filesystem/lease.go:130.3,130.24 1, beginning `if a.scope \u003e b.scope {`. This is a comparator arm whose execution depends on the standard-library sort schedule; canonical, reversed, and duplicate requests prove the resulting root-then-scope order without coupling tests to comparator calls. Lease tests directly cover typed stages, canonical and alias identity, deterministic root ordering, cancellation, explicit release, cross-process contention, and process-exit release."
+      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:138.3,138.24 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
     },
     {
       "identity": {
         "file": "internal/filesystem/lease.go",
         "start": {
-          "line": 130,
+          "line": 138,
           "column": 24
         },
         "end": {
-          "line": 132,
+          "line": 140,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/filesystem/lease.go:130.24,132.4 1, beginning `if a.scope \u003e b.scope {`. This is a comparator arm whose execution depends on the standard-library sort schedule; canonical, reversed, and duplicate requests prove the resulting root-then-scope order without coupling tests to comparator calls. Lease tests directly cover typed stages, canonical and alias identity, deterministic root ordering, cancellation, explicit release, cross-process contention, and process-exit release."
+      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:138.24,140.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
     },
     {
       "identity": {
         "file": "internal/filesystem/lease.go",
         "start": {
-          "line": 133,
+          "line": 141,
           "column": 3
         },
         "end": {
-          "line": 133,
+          "line": 141,
           "column": 11
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/filesystem/lease.go:133.3,133.11 1, beginning `return 0`. This is a comparator arm whose execution depends on the standard-library sort schedule; canonical, reversed, and duplicate requests prove the resulting root-then-scope order without coupling tests to comparator calls. Lease tests directly cover typed stages, canonical and alias identity, deterministic root ordering, cancellation, explicit release, cross-process contention, and process-exit release."
+      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:141.3,141.11 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
     },
     {
       "identity": {
         "file": "internal/filesystem/lease.go",
         "start": {
-          "line": 156,
+          "line": 164,
           "column": 18
         },
         "end": {
-          "line": 160,
+          "line": 168,
           "column": 5
         },
         "statements": 3
       },
-      "reason": "Phase 3 renewed review of internal/filesystem/lease.go:156.18,160.5 3, beginning `if err != nil {`. This releases already-acquired identities when a later lease cache cannot be prepared; the error requires a host cache-location, creation, or mode fault during multi-root acquisition. Lease tests directly cover typed stages, canonical and alias identity, deterministic root ordering, cancellation, explicit release, cross-process contention, and process-exit release."
+      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:164.18,168.5 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
     },
     {
       "identity": {
         "file": "internal/filesystem/lease.go",
         "start": {
-          "line": 172,
+          "line": 180,
           "column": 54
         },
         "end": {
-          "line": 176,
+          "line": 184,
           "column": 4
         },
         "statements": 3
       },
-      "reason": "Phase 3 renewed review of internal/filesystem/lease.go:172.54,176.4 3, beginning `if err := os.Chmod(lock.Path(), 0o600); err != nil {`. This closes the new lock and all earlier identities if restrictive lock-file mode cannot be applied, a host permission or storage fault after successful acquisition. Lease tests directly cover typed stages, canonical and alias identity, deterministic root ordering, cancellation, explicit release, cross-process contention, and process-exit release."
+      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:180.54,184.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
     },
     {
       "identity": {
         "file": "internal/filesystem/lease.go",
         "start": {
-          "line": 191,
+          "line": 199,
           "column": 47
         },
         "end": {
-          "line": 193,
+          "line": 201,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/filesystem/lease.go:191.47,193.3 1, beginning `if err := os.Chmod(cache, 0o700); err != nil {`. This returns a typed cache-mode stage when restrictive cache-directory mode cannot be applied, a host permission or storage fault after successful creation. Lease tests directly cover typed stages, canonical and alias identity, deterministic root ordering, cancellation, explicit release, cross-process contention, and process-exit release."
+      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:199.47,201.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
     },
     {
       "identity": {
@@ -7426,53 +7546,38 @@
       "identity": {
         "file": "internal/localdocop/localdoc.go",
         "start": {
-          "line": 28,
+          "line": 21,
           "column": 16
         },
         "end": {
-          "line": 30,
+          "line": 23,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/localdocop/localdoc.go:28.16,30.3 1 in function Run, beginning `{ // coverage-ignore: Loader just read this exact config path; failure requires a concurrent nam...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Phase 4 transaction review: internal/localdocop/localdoc.go:21.16,23.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
     },
     {
       "identity": {
         "file": "internal/localdocop/localdoc.go",
         "start": {
-          "line": 39,
-          "column": 44
+          "line": 26,
+          "column": 16
         },
         "end": {
-          "line": 41,
+          "line": 28,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/localdocop/localdoc.go:39.44,41.3 1 in function Run, beginning `{ // coverage-ignore: PreflightLocalDoc inspected this exact destination moments earlier; a diff...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "internal/localdocop/localdoc.go",
-        "start": {
-          "line": 42,
-          "column": 78
-        },
-        "end": {
-          "line": 44,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/localdocop/localdoc.go:42.78,44.3 1 in function Run, beginning `{ // coverage-ignore: the config was just read from this path; failure requires a permission, st...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Phase 4 transaction review: internal/localdocop/localdoc.go:26.16,28.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
     },
     {
       "identity": {
         "file": "internal/localdocop/localdoc.go",
         "start": {
           "line": 46,
-          "column": 16
+          "column": 44
         },
         "end": {
           "line": 48,
@@ -7480,22 +7585,52 @@
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/localdocop/localdoc.go:46.16,48.3 1 in function Run, beginning `{ // coverage-ignore: the operation just wrote a Loader-derived valid config; failure requires c...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Phase 4 transaction review: internal/localdocop/localdoc.go:46.44,48.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
     },
     {
       "identity": {
         "file": "internal/localdocop/localdoc.go",
         "start": {
-          "line": 54,
-          "column": 16
+          "line": 49,
+          "column": 98
         },
         "end": {
-          "line": 56,
+          "line": 51,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/localdocop/localdoc.go:54.16,56.3 1 in function Run, beginning `{ // coverage-ignore: a nil Sync error returns a completed result with a mutation`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Phase 4 transaction review: internal/localdocop/localdoc.go:49.98,51.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/localdocop/localdoc.go",
+        "start": {
+          "line": 53,
+          "column": 16
+        },
+        "end": {
+          "line": 55,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/localdocop/localdoc.go:53.16,55.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/localdocop/localdoc.go",
+        "start": {
+          "line": 61,
+          "column": 16
+        },
+        "end": {
+          "line": 63,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/localdocop/localdoc.go:61.16,63.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
     },
     {
       "identity": {
@@ -8176,16 +8311,76 @@
       "identity": {
         "file": "internal/project/project.go",
         "start": {
-          "line": 246,
-          "column": 16
+          "line": 247,
+          "column": 18
         },
         "end": {
-          "line": 248,
+          "line": 249,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/project/project.go:246.16,248.3 1 in OpenForOperation, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+      "reason": "Phase 4 transaction review: internal/project/project.go:247.18,249.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/project/project.go",
+        "start": {
+          "line": 255,
+          "column": 16
+        },
+        "end": {
+          "line": 257,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/project/project.go:255.16,257.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/project/project.go",
+        "start": {
+          "line": 259,
+          "column": 16
+        },
+        "end": {
+          "line": 261,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/project/project.go:259.16,261.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/project/project.go",
+        "start": {
+          "line": 262,
+          "column": 45
+        },
+        "end": {
+          "line": 264,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/project/project.go:262.45,264.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/project/project.go",
+        "start": {
+          "line": 289,
+          "column": 16
+        },
+        "end": {
+          "line": 291,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/project/project.go:289.16,291.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
     },
     {
       "identity": {
@@ -10831,46 +11026,61 @@
       "identity": {
         "file": "internal/topic/scaffold.go",
         "start": {
-          "line": 34,
+          "line": 33,
           "column": 16
         },
         "end": {
-          "line": 36,
+          "line": 35,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/topic/scaffold.go:34.16,36.3 1 in function CreatedDocument, beginning `{ // coverage-ignore: every path is validated above and created-files is a fixed grammar-valid l...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Phase 4 transaction review: internal/topic/scaffold.go:33.16,35.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
     },
     {
       "identity": {
         "file": "internal/topic/scaffold.go",
         "start": {
-          "line": 38,
+          "line": 37,
           "column": 16
         },
         "end": {
-          "line": 40,
+          "line": 39,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/topic/scaffold.go:38.16,40.3 1 in function CreatedDocument, beginning `{ // coverage-ignore: the validated List is always an admitted Section child`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Phase 4 transaction review: internal/topic/scaffold.go:37.16,39.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
     },
     {
       "identity": {
         "file": "internal/topic/scaffold.go",
         "start": {
-          "line": 98,
-          "column": 16
+          "line": 53,
+          "column": 19
         },
         "end": {
-          "line": 100,
+          "line": 55,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/topic/scaffold.go:98.16,100.3 1 in function ScaffoldFiles, beginning `{ // coverage-ignore: the fixed string-only metadata struct always marshals`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Phase 4 transaction review: internal/topic/scaffold.go:53.19,55.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topic/scaffold.go",
+        "start": {
+          "line": 101,
+          "column": 16
+        },
+        "end": {
+          "line": 103,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topic/scaffold.go:101.16,103.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
     },
     {
       "identity": {
@@ -10931,6 +11141,156 @@
         "statements": 1
       },
       "reason": "Initial RF-009 admission of existing uncovered behavior at internal/topic/tree.go:113.85,115.5 1 in function authorityEntriesFromTreeFiles, beginning `{ // coverage-ignore: distinct snapshot paths yield distinct topic IDs; recordMeta duplicate is ...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 21,
+          "column": 16
+        },
+        "end": {
+          "line": 23,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:21.16,23.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 35,
+          "column": 17
+        },
+        "end": {
+          "line": 37,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:35.17,37.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 41,
+          "column": 3
+        },
+        "end": {
+          "line": 41,
+          "column": 20
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:41.3,41.20 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 47,
+          "column": 70
+        },
+        "end": {
+          "line": 50,
+          "column": 42
+        },
+        "statements": 3
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:47.70,50.42 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 50,
+          "column": 42
+        },
+        "end": {
+          "line": 51,
+          "column": 86
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:50.42,51.86 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 51,
+          "column": 86
+        },
+        "end": {
+          "line": 53,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:51.86,53.5 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 55,
+          "column": 3
+        },
+        "end": {
+          "line": 55,
+          "column": 59
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:55.3,55.59 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 59,
+          "column": 84
+        },
+        "end": {
+          "line": 61,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:59.84,61.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 62,
+          "column": 65
+        },
+        "end": {
+          "line": 64,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:62.65,64.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 73,
+          "column": 16
+        },
+        "end": {
+          "line": 75,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:73.16,75.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
     },
     {
       "identity": {
@@ -12942,11 +13302,59 @@
         {
           "file": "internal/project/project.go",
           "start": {
-            "line": 246,
+            "line": 247,
+            "column": 18
+          },
+          "end": {
+            "line": 249,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/project.go",
+          "start": {
+            "line": 255,
             "column": 16
           },
           "end": {
-            "line": 248,
+            "line": 257,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/project.go",
+          "start": {
+            "line": 259,
+            "column": 16
+          },
+          "end": {
+            "line": 261,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/project.go",
+          "start": {
+            "line": 262,
+            "column": 45
+          },
+          "end": {
+            "line": 264,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/project/project.go",
+          "start": {
+            "line": 289,
+            "column": 16
+          },
+          "end": {
+            "line": 291,
             "column": 3
           },
           "statements": 1
@@ -16839,11 +17247,11 @@
         {
           "file": "internal/topic/scaffold.go",
           "start": {
-            "line": 34,
+            "line": 33,
             "column": 16
           },
           "end": {
-            "line": 36,
+            "line": 35,
             "column": 3
           },
           "statements": 1
@@ -16851,11 +17259,11 @@
         {
           "file": "internal/topic/scaffold.go",
           "start": {
-            "line": 38,
+            "line": 37,
             "column": 16
           },
           "end": {
-            "line": 40,
+            "line": 39,
             "column": 3
           },
           "statements": 1
@@ -16863,11 +17271,23 @@
         {
           "file": "internal/topic/scaffold.go",
           "start": {
-            "line": 98,
+            "line": 53,
+            "column": 19
+          },
+          "end": {
+            "line": 55,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/topic/scaffold.go",
+          "start": {
+            "line": 101,
             "column": 16
           },
           "end": {
-            "line": 100,
+            "line": 103,
             "column": 3
           },
           "statements": 1
@@ -18691,62 +19111,14 @@
     {
       "directive": {
         "file": "internal/domainop/domain.go",
-        "line": 34,
-        "targetLine": 34,
-        "reason": "Loader parsed and validated this exact domains sequence immediately above",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "At internal/domainop/domain.go:63, `if err != nil {` is guarded by the preceding `updated, err := config.SetArrayMember(cfg.Source(), \"domains\", name, false)` at internal/domainop/domain.go:62; in `func Remove(ctx context.Context, root, name string, loader *project.Loader) (presentation.Document, bool, error)` (internal/domainop/domain.go:47), the predecessor invariant is Loader parsed and validated this exact domains sequence immediately above. Only violation of that closed state reaches this guard."
-    },
-    {
-      "directive": {
-        "file": "internal/domainop/domain.go",
-        "line": 37,
-        "targetLine": 37,
-        "reason": "the config was just read from this path; failure requires a permission, storage, or concurrent namespace fault",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/domainop/domain.go:66, `if err := os.WriteFile(config.ConfigPath(root), updated, 0o644); err != nil {` follows the concrete operation `}` at internal/domainop/domain.go:65 in `func Remove(ctx context.Context, root, name string, loader *project.Loader) (presentation.Document, bool, error)` (internal/domainop/domain.go:47). The reviewed failure condition is the config was just read from this path; failure requires a permission, storage, or concurrent namespace fault; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
-    },
-    {
-      "directive": {
-        "file": "internal/domainop/domain.go",
-        "line": 63,
-        "targetLine": 63,
-        "reason": "Loader parsed and validated this exact domains sequence immediately above",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "At internal/domainop/domain.go:63, `if err != nil {` is guarded by the preceding `updated, err := config.SetArrayMember(cfg.Source(), \"domains\", name, false)` at internal/domainop/domain.go:62; in `func Remove(ctx context.Context, root, name string, loader *project.Loader) (presentation.Document, bool, error)` (internal/domainop/domain.go:47), the predecessor invariant is Loader parsed and validated this exact domains sequence immediately above. Only violation of that closed state reaches this guard."
-    },
-    {
-      "directive": {
-        "file": "internal/domainop/domain.go",
-        "line": 66,
-        "targetLine": 66,
-        "reason": "the config was just read from this path; failure requires a permission, storage, or concurrent namespace fault",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/domainop/domain.go:66, `if err := os.WriteFile(config.ConfigPath(root), updated, 0o644); err != nil {` follows the concrete operation `}` at internal/domainop/domain.go:65 in `func Remove(ctx context.Context, root, name string, loader *project.Loader) (presentation.Document, bool, error)` (internal/domainop/domain.go:47). The reviewed failure condition is the config was just read from this path; failure requires a permission, storage, or concurrent namespace fault; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
-    },
-    {
-      "directive": {
-        "file": "internal/domainop/domain.go",
-        "line": 100,
-        "targetLine": 100,
+        "line": 143,
+        "targetLine": 143,
         "reason": "a nil Sync error returns a completed result with a mutation",
         "mapped": true,
         "executed": false
       },
-      "class": "revalidated-impossible-state",
-      "evidence": "`func synchronize(ctx context.Context, root string, loader *project.Loader) (presentation.Document, error)` begins at internal/domainop/domain.go:90; its branch `if err != nil {` at internal/domainop/domain.go:100 follows `mutation, err := result.Mutation()` at internal/domainop/domain.go:99. That flow establishes a nil Sync error returns a completed result with a mutation, making the defensive return unreachable without an invariant breach."
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Phase 4 review: internal/domainop/domain.go:143 is retained as an explicitly scoped deterministic fault boundary; normal transaction behavior is tested without test-only production injection."
     },
     {
       "directive": {
@@ -21811,62 +22183,38 @@
     {
       "directive": {
         "file": "internal/localdocop/localdoc.go",
-        "line": 28,
-        "targetLine": 28,
-        "reason": "Loader just read this exact config path; failure requires a concurrent namespace or storage fault",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `source, err := os.ReadFile(config.ConfigPath(root))` at internal/localdocop/localdoc.go:27 feeds `if err != nil {` at internal/localdocop/localdoc.go:28 in `func Run(ctx context.Context, root string, doc config.LocalDoc, loader *project.Loader) error` (internal/localdocop/localdoc.go:18). Its concrete fault condition is Loader just read this exact config path; failure requires a concurrent namespace or storage fault, so no safe portable production input induces this error path."
-    },
-    {
-      "directive": {
-        "file": "internal/localdocop/localdoc.go",
-        "line": 39,
-        "targetLine": 39,
+        "line": 46,
+        "targetLine": 46,
         "reason": "PreflightLocalDoc inspected this exact destination moments earlier; a different result requires concurrent namespace mutation",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func Run(ctx context.Context, root string, doc config.LocalDoc, loader *project.Loader) error` (starts internal/localdocop/localdoc.go:18) checks `} else if !errors.Is(err, os.ErrNotExist) {` at internal/localdocop/localdoc.go:39 after `return fmt.Errorf(\"local document destination already exists: %s\", relative)` at internal/localdocop/localdoc.go:38. Here PreflightLocalDoc inspected this exact destination moments earlier; a different result requires concurrent namespace mutation; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "Phase 4 review: internal/localdocop/localdoc.go:46 is retained as an explicitly scoped deterministic fault boundary; normal transaction behavior is tested without test-only production injection."
     },
     {
       "directive": {
         "file": "internal/localdocop/localdoc.go",
-        "line": 42,
-        "targetLine": 42,
-        "reason": "the config was just read from this path; failure requires a permission, storage, or concurrent namespace fault",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "`func Run(ctx context.Context, root string, doc config.LocalDoc, loader *project.Loader) error` (starts internal/localdocop/localdoc.go:18) checks `if err := os.WriteFile(config.ConfigPath(root), updated, 0o644); err != nil {` at internal/localdocop/localdoc.go:42 after `}` at internal/localdocop/localdoc.go:41. Here the config was just read from this path; failure requires a permission, storage, or concurrent namespace fault; exercising this exact branch requires an unportable environmental failure."
-    },
-    {
-      "directive": {
-        "file": "internal/localdocop/localdoc.go",
-        "line": 46,
-        "targetLine": 46,
+        "line": 53,
+        "targetLine": 53,
         "reason": "the operation just wrote a Loader-derived valid config; failure requires concurrent project mutation",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `state, cfg, err = loader.OpenForOperation(ctx, root)` at internal/localdocop/localdoc.go:45 feeds `if err != nil {` at internal/localdocop/localdoc.go:46 in `func Run(ctx context.Context, root string, doc config.LocalDoc, loader *project.Loader) error` (internal/localdocop/localdoc.go:18). Its concrete fault condition is the operation just wrote a Loader-derived valid config; failure requires concurrent project mutation, so no safe portable production input induces this error path."
+      "evidence": "Phase 4 review: internal/localdocop/localdoc.go:53 is retained as an explicitly scoped deterministic fault boundary; normal transaction behavior is tested without test-only production injection."
     },
     {
       "directive": {
         "file": "internal/localdocop/localdoc.go",
-        "line": 54,
-        "targetLine": 54,
+        "line": 61,
+        "targetLine": 61,
         "reason": "a nil Sync error returns a completed result with a mutation",
         "mapped": true,
         "executed": false
       },
-      "class": "revalidated-impossible-state",
-      "evidence": "`func Run(ctx context.Context, root string, doc config.LocalDoc, loader *project.Loader) error` begins at internal/localdocop/localdoc.go:18; its branch `if err != nil {` at internal/localdocop/localdoc.go:54 follows `mutation, err := result.Mutation()` at internal/localdocop/localdoc.go:53. That flow establishes a nil Sync error returns a completed result with a mutation, making the defensive return unreachable without an invariant breach."
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Phase 4 review: internal/localdocop/localdoc.go:61 is retained as an explicitly scoped deterministic fault boundary; normal transaction behavior is tested without test-only production injection."
     },
     {
       "directive": {
@@ -24283,38 +24631,38 @@
     {
       "directive": {
         "file": "internal/topic/scaffold.go",
-        "line": 34,
-        "targetLine": 34,
+        "line": 33,
+        "targetLine": 33,
         "reason": "every path is validated above and created-files is a fixed grammar-valid label",
         "mapped": true,
         "executed": false
       },
-      "class": "revalidated-impossible-state",
-      "evidence": "At internal/topic/scaffold.go:34, `if err != nil {` is guarded by the preceding `list, err := presentation.NewList(\"created files\", values...)` at internal/topic/scaffold.go:33; in `func CreatedDocument(files []ScaffoldFile) (presentation.Document, error)` (internal/topic/scaffold.go:24), the predecessor invariant is every path is validated above and created-files is a fixed grammar-valid label. Only violation of that closed state reaches this guard."
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Phase 4 review: internal/topic/scaffold.go:33 is retained as an explicitly scoped deterministic fault boundary; normal transaction behavior is tested without test-only production injection."
     },
     {
       "directive": {
         "file": "internal/topic/scaffold.go",
-        "line": 38,
-        "targetLine": 38,
+        "line": 37,
+        "targetLine": 37,
         "reason": "the validated List is always an admitted Section child",
         "mapped": true,
         "executed": false
       },
-      "class": "revalidated-impossible-state",
-      "evidence": "`func CreatedDocument(files []ScaffoldFile) (presentation.Document, error)` begins at internal/topic/scaffold.go:24; its branch `if err != nil {` at internal/topic/scaffold.go:38 follows `section, err := presentation.NewSection(\"topic\", list)` at internal/topic/scaffold.go:37. That flow establishes the validated List is always an admitted Section child, making the defensive return unreachable without an invariant breach."
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Phase 4 review: internal/topic/scaffold.go:37 is retained as an explicitly scoped deterministic fault boundary; normal transaction behavior is tested without test-only production injection."
     },
     {
       "directive": {
         "file": "internal/topic/scaffold.go",
-        "line": 98,
-        "targetLine": 98,
+        "line": 101,
+        "targetLine": 101,
         "reason": "the fixed string-only metadata struct always marshals",
         "mapped": true,
         "executed": false
       },
-      "class": "revalidated-impossible-state",
-      "evidence": "`func ScaffoldFiles(root string, cfg *config.Config, domain, title string) ([]ScaffoldFile, error)` begins at internal/topic/scaffold.go:52; its branch `if err != nil {` at internal/topic/scaffold.go:98 follows `})` at internal/topic/scaffold.go:97. That flow establishes the fixed string-only metadata struct always marshals, making the defensive return unreachable without an invariant breach."
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Phase 4 review: internal/topic/scaffold.go:101 is retained as an explicitly scoped deterministic fault boundary; normal transaction behavior is tested without test-only production injection."
     },
     {
       "directive": {

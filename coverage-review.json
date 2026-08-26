@@ -9526,33 +9526,6 @@
       "identity": {
         "file": "cmd/awf/sync.go",
         "start": {
-          "line": 67,
-          "column": 16
-        },
-        "end": {
-          "line": 69,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 reviewed cmd/awf/sync.go:60.16,62.3 1 in runSyncPrinting, beginning `if err != nil {`. The source exclusion records that typed results and fixed presentation grammar make this mapping failure unreachable. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
-      "movedFrom": {
-        "file": "cmd/awf/sync.go",
-        "start": {
-          "line": 60,
-          "column": 16
-        },
-        "end": {
-          "line": 62,
-          "column": 3
-        },
-        "statements": 1
-      }
-    },
-    {
-      "identity": {
-        "file": "cmd/awf/sync.go",
-        "start": {
           "line": 75,
           "column": 35
         },
@@ -11348,6 +11321,981 @@
         "statements": 1
       },
       "reason": "The parent Root was successfully opened immediately before this anchor and remains live until its deferred close, so this defensive branch requires an invariant breach or platform fault."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 27,
+          "column": 16
+        },
+        "end": {
+          "line": 29,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/domainop/domain.go:27.16,29.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 32,
+          "column": 16
+        },
+        "end": {
+          "line": 34,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/domainop/domain.go:32.16,34.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 46,
+          "column": 16
+        },
+        "end": {
+          "line": 48,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/domainop/domain.go:46.16,48.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 49,
+          "column": 70
+        },
+        "end": {
+          "line": 51,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/domainop/domain.go:49.70,51.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 64,
+          "column": 16
+        },
+        "end": {
+          "line": 66,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/domainop/domain.go:64.16,66.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 69,
+          "column": 16
+        },
+        "end": {
+          "line": 71,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/domainop/domain.go:69.16,71.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 85,
+          "column": 16
+        },
+        "end": {
+          "line": 87,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/domainop/domain.go:85.16,87.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 88,
+          "column": 70
+        },
+        "end": {
+          "line": 90,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/domainop/domain.go:88.70,90.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 105,
+          "column": 16
+        },
+        "end": {
+          "line": 107,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/domainop/domain.go:105.16,107.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 113,
+          "column": 35
+        },
+        "end": {
+          "line": 115,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/domainop/domain.go:113.35,115.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 117,
+          "column": 24
+        },
+        "end": {
+          "line": 119,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/domainop/domain.go:117.24,119.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 134,
+          "column": 42
+        },
+        "end": {
+          "line": 136,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/domainop/domain.go:134.42,136.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 143,
+          "column": 16
+        },
+        "end": {
+          "line": 145,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/domainop/domain.go:143.16,145.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/lease.go",
+        "start": {
+          "line": 111,
+          "column": 77
+        },
+        "end": {
+          "line": 113,
+          "column": 2
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:111.77,113.2 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/lease.go",
+        "start": {
+          "line": 144,
+          "column": 3
+        },
+        "end": {
+          "line": 144,
+          "column": 24
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:144.3,144.24 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/lease.go",
+        "start": {
+          "line": 144,
+          "column": 24
+        },
+        "end": {
+          "line": 146,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:144.24,146.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/lease.go",
+        "start": {
+          "line": 147,
+          "column": 3
+        },
+        "end": {
+          "line": 147,
+          "column": 11
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:147.3,147.11 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/lease.go",
+        "start": {
+          "line": 170,
+          "column": 18
+        },
+        "end": {
+          "line": 174,
+          "column": 5
+        },
+        "statements": 3
+      },
+      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:170.18,174.5 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/lease.go",
+        "start": {
+          "line": 186,
+          "column": 54
+        },
+        "end": {
+          "line": 190,
+          "column": 4
+        },
+        "statements": 3
+      },
+      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:186.54,190.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/lease.go",
+        "start": {
+          "line": 205,
+          "column": 47
+        },
+        "end": {
+          "line": 207,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:205.47,207.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/localdocop/localdoc.go",
+        "start": {
+          "line": 21,
+          "column": 16
+        },
+        "end": {
+          "line": 23,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/localdocop/localdoc.go:21.16,23.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/localdocop/localdoc.go",
+        "start": {
+          "line": 26,
+          "column": 16
+        },
+        "end": {
+          "line": 28,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/localdocop/localdoc.go:26.16,28.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/localdocop/localdoc.go",
+        "start": {
+          "line": 46,
+          "column": 44
+        },
+        "end": {
+          "line": 48,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/localdocop/localdoc.go:46.44,48.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/localdocop/localdoc.go",
+        "start": {
+          "line": 49,
+          "column": 98
+        },
+        "end": {
+          "line": 51,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/localdocop/localdoc.go:49.98,51.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/localdocop/localdoc.go",
+        "start": {
+          "line": 53,
+          "column": 16
+        },
+        "end": {
+          "line": 55,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/localdocop/localdoc.go:53.16,55.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/localdocop/localdoc.go",
+        "start": {
+          "line": 61,
+          "column": 16
+        },
+        "end": {
+          "line": 63,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/localdocop/localdoc.go:61.16,63.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/project/project.go",
+        "start": {
+          "line": 247,
+          "column": 18
+        },
+        "end": {
+          "line": 249,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/project/project.go:247.18,249.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/project/project.go",
+        "start": {
+          "line": 255,
+          "column": 16
+        },
+        "end": {
+          "line": 257,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/project/project.go:255.16,257.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/project/project.go",
+        "start": {
+          "line": 259,
+          "column": 16
+        },
+        "end": {
+          "line": 261,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/project/project.go:259.16,261.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/project/project.go",
+        "start": {
+          "line": 262,
+          "column": 45
+        },
+        "end": {
+          "line": 264,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/project/project.go:262.45,264.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/project/project.go",
+        "start": {
+          "line": 289,
+          "column": 16
+        },
+        "end": {
+          "line": 291,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/project/project.go:289.16,291.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topic/scaffold.go",
+        "start": {
+          "line": 62,
+          "column": 19
+        },
+        "end": {
+          "line": 64,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topic/scaffold.go:62.19,64.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topic/scaffold.go",
+        "start": {
+          "line": 110,
+          "column": 16
+        },
+        "end": {
+          "line": 112,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topic/scaffold.go:110.16,112.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 25,
+          "column": 16
+        },
+        "end": {
+          "line": 27,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:25.16,27.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 39,
+          "column": 17
+        },
+        "end": {
+          "line": 41,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:39.17,41.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 45,
+          "column": 3
+        },
+        "end": {
+          "line": 45,
+          "column": 20
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:45.3,45.20 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 51,
+          "column": 70
+        },
+        "end": {
+          "line": 54,
+          "column": 42
+        },
+        "statements": 3
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:51.70,54.42 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 54,
+          "column": 42
+        },
+        "end": {
+          "line": 55,
+          "column": 86
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:54.42,55.86 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 55,
+          "column": 86
+        },
+        "end": {
+          "line": 57,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:55.86,57.5 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 59,
+          "column": 3
+        },
+        "end": {
+          "line": 59,
+          "column": 59
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:59.3,59.59 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 63,
+          "column": 84
+        },
+        "end": {
+          "line": 65,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:63.84,65.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 66,
+          "column": 65
+        },
+        "end": {
+          "line": 68,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:66.65,68.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 77,
+          "column": 16
+        },
+        "end": {
+          "line": 79,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:77.16,79.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 102,
+          "column": 139
+        },
+        "end": {
+          "line": 104,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:102.139,104.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 130,
+          "column": 2
+        },
+        "end": {
+          "line": 130,
+          "column": 37
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:130.2,130.37 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topic/scaffold.go",
+        "start": {
+          "line": 33,
+          "column": 16
+        },
+        "end": {
+          "line": 35,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topic/scaffold.go:33.16,35.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topic/scaffold.go",
+        "start": {
+          "line": 37,
+          "column": 16
+        },
+        "end": {
+          "line": 39,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topic/scaffold.go:37.16,39.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topic/scaffold.go",
+        "start": {
+          "line": 53,
+          "column": 19
+        },
+        "end": {
+          "line": 55,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topic/scaffold.go:53.19,55.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topic/scaffold.go",
+        "start": {
+          "line": 101,
+          "column": 16
+        },
+        "end": {
+          "line": 103,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topic/scaffold.go:101.16,103.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 21,
+          "column": 16
+        },
+        "end": {
+          "line": 23,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:21.16,23.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 35,
+          "column": 17
+        },
+        "end": {
+          "line": 37,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:35.17,37.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 41,
+          "column": 3
+        },
+        "end": {
+          "line": 41,
+          "column": 20
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:41.3,41.20 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 47,
+          "column": 70
+        },
+        "end": {
+          "line": 50,
+          "column": 42
+        },
+        "statements": 3
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:47.70,50.42 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 50,
+          "column": 42
+        },
+        "end": {
+          "line": 51,
+          "column": 86
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:50.42,51.86 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 51,
+          "column": 86
+        },
+        "end": {
+          "line": 53,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:51.86,53.5 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 55,
+          "column": 3
+        },
+        "end": {
+          "line": 55,
+          "column": 59
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:55.3,55.59 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 59,
+          "column": 84
+        },
+        "end": {
+          "line": 61,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:59.84,61.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 62,
+          "column": 65
+        },
+        "end": {
+          "line": 64,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:62.65,64.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 73,
+          "column": 16
+        },
+        "end": {
+          "line": 75,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:73.16,75.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/lease.go",
+        "start": {
+          "line": 138,
+          "column": 3
+        },
+        "end": {
+          "line": 138,
+          "column": 24
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:138.3,138.24 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/lease.go",
+        "start": {
+          "line": 138,
+          "column": 24
+        },
+        "end": {
+          "line": 140,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:138.24,140.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/lease.go",
+        "start": {
+          "line": 141,
+          "column": 3
+        },
+        "end": {
+          "line": 141,
+          "column": 11
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:141.3,141.11 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/lease.go",
+        "start": {
+          "line": 164,
+          "column": 18
+        },
+        "end": {
+          "line": 168,
+          "column": 5
+        },
+        "statements": 3
+      },
+      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:164.18,168.5 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/lease.go",
+        "start": {
+          "line": 180,
+          "column": 54
+        },
+        "end": {
+          "line": 184,
+          "column": 4
+        },
+        "statements": 3
+      },
+      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:180.54,184.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/lease.go",
+        "start": {
+          "line": 199,
+          "column": 47
+        },
+        "end": {
+          "line": 201,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:199.47,201.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
     }
   ],
   "directives": [
@@ -15482,18 +16430,6 @@
     {
       "directive": {
         "file": "internal/localdocop/localdoc.go",
-        "line": 46,
-        "targetLine": 46,
-        "reason": "the operation just wrote a Loader-derived valid config; failure requires concurrent project mutation",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `state, cfg, err = loader.OpenForOperation(ctx, root)` at internal/localdocop/localdoc.go:45 feeds `if err != nil {` at internal/localdocop/localdoc.go:46 in `func Run(ctx context.Context, root string, doc config.LocalDoc, loader *project.Loader) error` (internal/localdocop/localdoc.go:18). Its concrete fault condition is the operation just wrote a Loader-derived valid config; failure requires concurrent project mutation, so no safe portable production input induces this error path."
-    },
-    {
-      "directive": {
-        "file": "internal/localdocop/localdoc.go",
         "line": 54,
         "targetLine": 54,
         "reason": "a nil Sync error returns a completed result with a mutation",
@@ -19066,6 +20002,102 @@
       },
       "class": "revalidated-impossible-state",
       "evidence": "This return is the body of the immediately preceding live-parent anchor invariant and shares its impossible-state condition."
+    },
+    {
+      "directive": {
+        "file": "internal/domainop/domain.go",
+        "line": 143,
+        "targetLine": 143,
+        "reason": "a nil Sync error returns a completed result with a mutation",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Phase 4 review: internal/domainop/domain.go:143 is retained as an explicitly scoped deterministic fault boundary; normal transaction behavior is tested without test-only production injection."
+    },
+    {
+      "directive": {
+        "file": "internal/localdocop/localdoc.go",
+        "line": 46,
+        "targetLine": 46,
+        "reason": "PreflightLocalDoc inspected this exact destination moments earlier; a different result requires concurrent namespace mutation",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Phase 4 review: internal/localdocop/localdoc.go:46 is retained as an explicitly scoped deterministic fault boundary; normal transaction behavior is tested without test-only production injection."
+    },
+    {
+      "directive": {
+        "file": "internal/localdocop/localdoc.go",
+        "line": 53,
+        "targetLine": 53,
+        "reason": "the operation just wrote a Loader-derived valid config; failure requires concurrent project mutation",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Phase 4 review: internal/localdocop/localdoc.go:53 is retained as an explicitly scoped deterministic fault boundary; normal transaction behavior is tested without test-only production injection."
+    },
+    {
+      "directive": {
+        "file": "internal/localdocop/localdoc.go",
+        "line": 61,
+        "targetLine": 61,
+        "reason": "a nil Sync error returns a completed result with a mutation",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Phase 4 review: internal/localdocop/localdoc.go:61 is retained as an explicitly scoped deterministic fault boundary; normal transaction behavior is tested without test-only production injection."
+    },
+    {
+      "directive": {
+        "file": "internal/topic/scaffold.go",
+        "line": 110,
+        "targetLine": 110,
+        "reason": "the fixed string-only metadata struct always marshals",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Phase 4 review: internal/topic/scaffold.go:110 is retained as an explicitly scoped deterministic fault boundary; normal transaction behavior is tested without test-only production injection."
+    },
+    {
+      "directive": {
+        "file": "internal/topic/scaffold.go",
+        "line": 33,
+        "targetLine": 33,
+        "reason": "every path is validated above and created-files is a fixed grammar-valid label",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Phase 4 review: internal/topic/scaffold.go:33 is retained as an explicitly scoped deterministic fault boundary; normal transaction behavior is tested without test-only production injection."
+    },
+    {
+      "directive": {
+        "file": "internal/topic/scaffold.go",
+        "line": 37,
+        "targetLine": 37,
+        "reason": "the validated List is always an admitted Section child",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Phase 4 review: internal/topic/scaffold.go:37 is retained as an explicitly scoped deterministic fault boundary; normal transaction behavior is tested without test-only production injection."
+    },
+    {
+      "directive": {
+        "file": "internal/topic/scaffold.go",
+        "line": 101,
+        "targetLine": 101,
+        "reason": "the fixed string-only metadata struct always marshals",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Phase 4 review: internal/topic/scaffold.go:101 is retained as an explicitly scoped deterministic fault boundary; normal transaction behavior is tested without test-only production injection."
     }
   ],
   "platformDirectives": [

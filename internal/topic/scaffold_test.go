@@ -2,6 +2,7 @@ package topic
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,6 +14,21 @@ import (
 )
 
 func scaffoldConfig() *config.Config { return &config.Config{Domains: []string{"rendering"}} }
+
+var scaffoldStat = os.Stat
+
+func scaffoldFilesForTest(root string, cfg *config.Config, domain, title string) ([]ScaffoldFile, error) {
+	return ScaffoldFilesWithExists(cfg, domain, title, func(relative string) (bool, error) {
+		_, err := scaffoldStat(filepath.Join(root, filepath.FromSlash(relative)))
+		if err == nil {
+			return true, nil
+		}
+		if errors.Is(err, os.ErrNotExist) {
+			return false, nil
+		}
+		return false, fmt.Errorf("inspect topic scaffold path %q: %w", relative, err)
+	})
+}
 
 func TestCreatedDocumentOwnsExactPathList(t *testing.T) {
 	document, err := CreatedDocument([]ScaffoldFile{{Path: "one.yaml"}, {Path: "two.md"}})
@@ -33,7 +49,7 @@ func TestCreatedDocumentOwnsExactPathList(t *testing.T) {
 }
 
 func TestScaffoldFilesExactPairAndSlug(t *testing.T) {
-	files, err := ScaffoldFiles(t.TempDir(), scaffoldConfig(), "rendering", "  Current State: Topics!  ")
+	files, err := scaffoldFilesForTest(t.TempDir(), scaffoldConfig(), "rendering", "  Current State: Topics!  ")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +94,7 @@ func TestScaffoldFilesValidationAndAllocation(t *testing.T) {
 		{"reserved index", "rendering", "Index!", "reserved"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := ScaffoldFiles(t.TempDir(), scaffoldConfig(), tc.domain, tc.title)
+			_, err := scaffoldFilesForTest(t.TempDir(), scaffoldConfig(), tc.domain, tc.title)
 			if err == nil || !strings.Contains(err.Error(), tc.contains) {
 				t.Fatalf("error = %v, want %q", err, tc.contains)
 			}
@@ -92,7 +108,7 @@ func TestScaffoldFilesValidationAndAllocation(t *testing.T) {
 	} {
 		testsupport.WriteFile(t, filepath.Join(root, path), "existing\n")
 	}
-	files, err := ScaffoldFiles(root, scaffoldConfig(), "rendering", "Same")
+	files, err := scaffoldFilesForTest(root, scaffoldConfig(), "rendering", "Same")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +125,7 @@ func TestScaffoldFilesRefusesEitherOrphanHalf(t *testing.T) {
 		t.Run(filepath.Base(filepath.Dir(orphan))+filepath.Ext(orphan), func(t *testing.T) {
 			root := t.TempDir()
 			testsupport.WriteFile(t, filepath.Join(root, orphan), "orphan\n")
-			if _, err := ScaffoldFiles(root, scaffoldConfig(), "rendering", "Orphan"); err == nil || !strings.Contains(err.Error(), "orphaned scaffold half") {
+			if _, err := scaffoldFilesForTest(root, scaffoldConfig(), "rendering", "Orphan"); err == nil || !strings.Contains(err.Error(), "orphaned scaffold half") {
 				t.Fatalf("error = %v", err)
 			}
 		})
@@ -131,7 +147,7 @@ func TestScaffoldFilesReportsMetadataAndPartStatErrors(t *testing.T) {
 				}
 				return nil, os.ErrNotExist
 			})
-			_, err := ScaffoldFiles(t.TempDir(), scaffoldConfig(), "rendering", "Stat Failure")
+			_, err := scaffoldFilesForTest(t.TempDir(), scaffoldConfig(), "rendering", "Stat Failure")
 			if !errors.Is(err, statErr) || !strings.Contains(err.Error(), "inspect topic scaffold path") || !strings.Contains(err.Error(), tc.wantPath) {
 				t.Fatalf("error = %v", err)
 			}
@@ -145,10 +161,21 @@ func TestScaffoldPathExists(t *testing.T) {
 	if err := os.WriteFile(path, nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if ok, err := scaffoldPathExists(path); err != nil || !ok {
+	if ok, err := scaffoldPathExistsForTest(path); err != nil || !ok {
 		t.Fatalf("present = %v, %v", ok, err)
 	}
-	if ok, err := scaffoldPathExists(filepath.Join(root, "missing")); err != nil || ok {
+	if ok, err := scaffoldPathExistsForTest(filepath.Join(root, "missing")); err != nil || ok {
 		t.Fatalf("missing = %v, %v", ok, err)
 	}
+}
+
+func scaffoldPathExistsForTest(path string) (bool, error) {
+	_, err := scaffoldStat(path)
+	if err == nil {
+		return true, nil
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	return false, err
 }

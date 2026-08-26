@@ -1,6 +1,7 @@
 package publisher
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -137,7 +138,13 @@ func TestScaffoldedZeroClaimTopicPipeline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	files, err := topic.ScaffoldFiles(root, testConfig(p), "rendering", "Prepared Shell")
+	files, err := topic.ScaffoldFilesWithExists(testConfig(p), "rendering", "Prepared Shell", func(path string) (bool, error) {
+		_, err := os.Stat(filepath.Join(root, filepath.FromSlash(path)))
+		if errors.Is(err, os.ErrNotExist) {
+			return false, nil
+		}
+		return err == nil, err
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -558,7 +565,13 @@ currentState:
 	if err != nil {
 		t.Fatal(err)
 	}
-	scaffold, err := topic.ScaffoldFiles(root, testConfig(p), "schedule", "Contracts")
+	scaffold, err := topic.ScaffoldFilesWithExists(testConfig(p), "schedule", "Contracts", func(path string) (bool, error) {
+		_, err := os.Stat(filepath.Join(root, filepath.FromSlash(path)))
+		if errors.Is(err, os.ErrNotExist) {
+			return false, nil
+		}
+		return err == nil, err
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -235,11 +235,12 @@ var nonPresentationWrites = map[string]bool{
 // Their literals are not presentation syntax and must remain distinguishable
 // from a raw CLI presentation literal.
 var nonPresentationLiteralOwners = map[string]bool{
-	modulePath + "/internal/topic.ScaffoldFiles":      true,
-	modulePath + "/internal/topic.ParsePart":          true,
-	modulePath + "/internal/effort.memoryBody":        true,
-	modulePath + "/internal/project.pitfallsMarkdown": true,
-	modulePath + "/internal/project.commitScopeTable": true,
+	modulePath + "/internal/topic.ScaffoldFiles":           true,
+	modulePath + "/internal/topic.ScaffoldFilesWithExists": true,
+	modulePath + "/internal/topic.ParsePart":               true,
+	modulePath + "/internal/effort.memoryBody":             true,
+	modulePath + "/internal/project.pitfallsMarkdown":      true,
+	modulePath + "/internal/project.commitScopeTable":      true,
 }
 
 func loadPresentationPackages(t *testing.T, overlay map[string][]byte) []*packages.Package {

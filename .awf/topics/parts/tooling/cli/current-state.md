@@ -4,9 +4,9 @@ The cmd packages and their spec helpers implement the awf command surfaces and t
 
 ### `invariant: cli-creation-and-inventory`
 
-The CLI lists fixed catalog inventory and never selects individual catalog membership. Full creates authored ADRs, plans, topics, and domains; both governance footprints retain pitfalls and additive local documents, while the selected footprint controls rendered membership.
+The CLI lists fixed catalog inventory and never selects individual catalog membership. Full creates authored ADRs, plans, topics, and domains; both governance footprints retain pitfalls and additive local documents, while the selected footprint controls rendered membership. Every selected-checkout creation takes its transaction lease before authority or destination planning, exclusively creates authored inputs through the confined filesystem boundary, and reports a complete result or every committed effect with recovery guidance.
 Origin: ADR-0254
-Revised-by: ADR-0262, ADR-0272, ADR-0278, ADR-0292
+Revised-by: ADR-0262, ADR-0272, ADR-0278, ADR-0292, ADR-serialize-project-mutations-by-physical-root
 Backing: test
 
 ### `invariant: pitfall-scaffold`
@@ -17,8 +17,9 @@ Backing: test
 
 ### `invariant: domain-lifecycle-commands`
 
-`awf new domain` validates and scaffolds a configured domain without clobbering authored parts; `awf remove domain` prunes rendered output and reports authored residue as orphaned.
+`awf new domain` validates and scaffolds a configured domain without clobbering authored parts; `awf remove domain` prunes rendered output and reports authored residue as orphaned. Both acquire every applicable physical-root lease before loading mutable authority, replace the exact observed configuration identity through the confined filesystem boundary, and retain committed publication facts with retry or recovery guidance when a later step fails. These leases serialize operations but do not claim crash atomicity.
 Origin: ADR-0254
+Revised-by: ADR-serialize-project-mutations-by-physical-root
 Backing: test
 
 ### `invariant: adr-new-version-gated`

@@ -3,7 +3,6 @@ package topic
 import (
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -47,9 +46,13 @@ type scaffoldMetadata struct {
 	Paths   []string `yaml:"paths"`
 }
 
-// ScaffoldFiles validates and allocates the paired authored inputs for a topic.
-// It inspects both trees but performs no writes.
-func ScaffoldFiles(root string, cfg *config.Config, domain, title string) ([]ScaffoldFile, error) {
+// ScaffoldFilesWithExists plans paired authored inputs using the caller's
+// selected-root observation capability. Topic owns allocation and source shape;
+// its operation owner chooses the confined observation mechanism.
+func ScaffoldFilesWithExists(cfg *config.Config, domain, title string, exists func(string) (bool, error)) ([]ScaffoldFile, error) {
+	if exists == nil {
+		return nil, errors.New("topic scaffold: missing path observer")
+	}
 	if !kebabRE.MatchString(domain) {
 		return nil, fmt.Errorf("topic domain %q must use lowercase kebab-case", domain)
 	}
@@ -74,11 +77,11 @@ func ScaffoldFiles(root string, cfg *config.Config, domain, title string) ([]Sca
 		}
 		metadataPath = filepath.ToSlash(filepath.Join(config.DirName, "topics", "metadata", domain, candidate+".yaml"))
 		partPath = filepath.ToSlash(filepath.Join(config.DirName, "topics", "parts", domain, candidate, "current-state.md"))
-		metadataExists, err := scaffoldPathExists(filepath.Join(root, filepath.FromSlash(metadataPath)))
+		metadataExists, err := exists(metadataPath)
 		if err != nil {
 			return nil, err
 		}
-		partExists, err := scaffoldPathExists(filepath.Join(root, filepath.FromSlash(partPath)))
+		partExists, err := exists(partPath)
 		if err != nil {
 			return nil, err
 		}
@@ -105,18 +108,4 @@ func ScaffoldFiles(root string, cfg *config.Config, domain, title string) ([]Sca
 	return []ScaffoldFile{{Path: metadataPath, Content: metadata}, {Path: partPath, Content: part}}, nil
 }
 
-var (
-	slugNonAlnumRE = regexp.MustCompile(`[^a-z0-9]+`)
-	scaffoldStat   = os.Stat
-)
-
-func scaffoldPathExists(path string) (bool, error) {
-	_, err := scaffoldStat(path)
-	if err == nil {
-		return true, nil
-	}
-	if errors.Is(err, os.ErrNotExist) {
-		return false, nil
-	}
-	return false, fmt.Errorf("inspect topic scaffold path %q: %w", filepath.ToSlash(path), err)
-}
+var slugNonAlnumRE = regexp.MustCompile(`[^a-z0-9]+`)

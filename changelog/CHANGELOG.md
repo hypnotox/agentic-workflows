@@ -14,6 +14,8 @@ query a single version or a range.
 
 - Project rendering now serializes tracked and shared resident mutations by canonical physical root, prepares inside the lease, commits through confined identity-aware operations, and reports stable partial effects with recovery guidance.
 
+- Domain, local-document, and topic creation now acquire checkout transaction leases before authority loading, retain the observed config identity for replacement, and exclusively publish authored sources. These protections serialize live operations but do not claim crash atomicity.
+
 ## [0.40.0] - 2026-08-25
 
 ### Breaking changes
