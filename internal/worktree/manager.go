@@ -352,9 +352,9 @@ func (m *Manager) rollback(ctx context.Context, record effort.Record, addErr err
 	case rollbackResult.ResiduePath != "":
 		reservation := rollbackResult.ReservationPath
 		return &CreationError{
-			Message:   fmt.Sprintf("worktree creation failed: %v; effort %s deletion restored reservation %s and left identity-bound cleanup residue %s: %v", addErr, slug, reservation, rollbackResult.ResiduePath, rollbackErr),
-			Condition: "managed worktree creation failed and effort deletion retained its reservation plus identity-bound cleanup residue", ChangedEffort: true, ChangedTopology: changedTopology, Topology: effects, ManagedPath: path, ManagedBranch: branch(slug), Cause: addErr, RollbackCause: rollbackErr,
-			Steps: []string{"inspect `" + reservation + "`", "inspect `" + rollbackResult.ResiduePath + "`", "remove only paths whose identities are verified", "retry effort creation only after the active resident, reservation, and cleanup residue are absent"},
+			Message:   fmt.Sprintf("worktree creation failed: %v; effort %s deletion retained identity-bound entries across reservation path %s and cleanup residue %s: %v", addErr, slug, reservation, rollbackResult.ResiduePath, rollbackErr),
+			Condition: "managed worktree creation failed and effort deletion retained identity-bound reservation and cleanup paths requiring inspection", ChangedEffort: true, ChangedTopology: changedTopology, Topology: effects, ManagedPath: path, ManagedBranch: branch(slug), Cause: addErr, RollbackCause: rollbackErr,
+			Steps: []string{"inspect `" + reservation + "`", "inspect `" + rollbackResult.ResiduePath + "`", "remove only paths whose identities are verified", "retry effort creation only after the active resident, reservation path, and cleanup residue are absent"},
 		}
 	case rollbackResult.Reserved:
 		reservation := rollbackResult.ReservationPath

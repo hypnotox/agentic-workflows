@@ -536,5 +536,7 @@ one opened selected-root identity, and closes the resident capability before wor
 Focused red-first regressions prove all three defects and exact residue presentation. Parent semantic
 inspection additionally found that a selected-root close failure after successful topic publication
 lost the created-path outcome; a red-first operation regression now requires the typed partial result
-to retain every created path and prohibit unsafe retry. These corrections remain inside the approved
-confinement and complete-outcome boundaries.
+to retain every created path and prohibit unsafe retry. The verify pass then removed an unsupported
+claim about which identity occupies each retained rollback path and directly rendered the close
+outcome to prove its exact path groups and recovery guidance. These corrections remain inside the
+approved confinement and complete-outcome boundaries.

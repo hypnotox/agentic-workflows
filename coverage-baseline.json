@@ -121,7 +121,7 @@
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/effort.go:56.16,58.3 1 in function openEffortComposition, beginning `{ // coverage-ignore: ResolveControlRoots just proved this path is a checkout; a failed open req...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
     },
     {
       "identity": {
@@ -136,7 +136,7 @@
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/effort.go:61.17,63.4 1 in function literal, beginning `{ // coverage-ignore: the gated command already loaded this same project; failure requires a con...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
     },
     {
       "identity": {
@@ -151,7 +151,7 @@
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/effort.go:65.17,67.4 1 in function literal, beginning `{ // coverage-ignore: the gate already built the same closed output plan; failure requires a con...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
     },
     {
       "identity": {
@@ -166,7 +166,7 @@
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/effort.go:69.17,71.4 1 in function literal, beginning `{ // coverage-ignore: the closed resident registry always contributes this marker to the prepare...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
     },
     {
       "identity": {
@@ -331,7 +331,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed cmd/awf/init.go:25.17,27.4 1 in runInitWithProjectLoader, beginning `if err != nil {`. The source exclusion records that descriptors marshal to JSON; cannot fail. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 4 post-review coverage reconciliation reviewed cmd/awf/init.go:25.17,27.4 1 in runInitWithProjectLoader, beginning `if err != nil {`. The source exclusion records that descriptors marshal to JSON; cannot fail. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -346,7 +346,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed cmd/awf/init.go:50.83,52.5 1 in runInitWithProjectLoader, beginning `if presentErr := renderInitOutcome(partial.Outcome, stdout); presentErr != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
+      "reason": "Phase 4 post-review coverage reconciliation reviewed cmd/awf/init.go:50.83,52.5 1 in runInitWithProjectLoader, beginning `if presentErr := renderInitOutcome(partial.Outcome, stdout); presentErr != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
@@ -1051,7 +1051,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed cmd/awf/sync.go:43.16,45.3 1 in runSyncPrinting, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
+      "reason": "Phase 4 post-review coverage reconciliation reviewed cmd/awf/sync.go:43.16,45.3 1 in runSyncPrinting, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
@@ -1066,19 +1066,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed cmd/awf/sync.go:54.70,56.4 1 in runSyncPrinting, beginning `if presentErr := renderPartialSync(stdout, err); presentErr != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam.",
-      "movedFrom": {
-        "file": "cmd/awf/sync.go",
-        "start": {
-          "line": 54,
-          "column": 70
-        },
-        "end": {
-          "line": 56,
-          "column": 4
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed cmd/awf/sync.go:61.75,63.4 1 in finishSyncPrinting, beginning `if presentErr := renderPartialSync(stdout, combined); presentErr != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
@@ -1093,19 +1081,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed cmd/awf/sync.go:60.16,62.3 1 in runSyncPrinting, beginning `if err != nil {`. The source exclusion records that typed results and fixed presentation grammar make this mapping failure unreachable. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
-      "movedFrom": {
-        "file": "cmd/awf/sync.go",
-        "start": {
-          "line": 60,
-          "column": 16
-        },
-        "end": {
-          "line": 62,
-          "column": 3
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed cmd/awf/sync.go:67.16,69.3 1 in finishSyncPrinting, beginning `if err != nil {`. The source exclusion records that typed results and fixed presentation grammar make this mapping failure unreachable. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -1120,19 +1096,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed cmd/awf/sync.go:68.35,70.3 1 in renderPartialSync, beginning `if !errors.As(syncErr, \u0026partial) {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam.",
-      "movedFrom": {
-        "file": "cmd/awf/sync.go",
-        "start": {
-          "line": 68,
-          "column": 35
-        },
-        "end": {
-          "line": 70,
-          "column": 3
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed cmd/awf/sync.go:75.35,77.3 1 in renderPartialSync, beginning `if !errors.As(syncErr, \u0026partial) {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
@@ -1147,19 +1111,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed cmd/awf/sync.go:72.16,74.3 1 in renderPartialSync, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam.",
-      "movedFrom": {
-        "file": "cmd/awf/sync.go",
-        "start": {
-          "line": 72,
-          "column": 16
-        },
-        "end": {
-          "line": 74,
-          "column": 3
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed cmd/awf/sync.go:79.16,81.3 1 in renderPartialSync, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
@@ -1174,19 +1126,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed cmd/awf/sync.go:80.16,82.3 1 in renderSyncMutation, beginning `if err != nil {`. The source exclusion records that typed results and fixed presentation grammar make this mapping failure unreachable. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
-      "movedFrom": {
-        "file": "cmd/awf/sync.go",
-        "start": {
-          "line": 80,
-          "column": 16
-        },
-        "end": {
-          "line": 82,
-          "column": 3
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed cmd/awf/sync.go:87.16,89.3 1 in renderSyncMutation, beginning `if err != nil {`. The source exclusion records that typed results and fixed presentation grammar make this mapping failure unreachable. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -5671,19 +5611,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 verify-pass settlement review of internal/filesystem/expected_commit_linux.go:33.24,35.4 1 in exchangeExpectedAnchored. This is post-exchange failure to inspect the displaced entry through the newly root-confined immediate-parent handle; changed-identity rollback and successful anchored exchange are directly tested, while the concrete os.Root inspection fault has no safe deterministic injection seam.",
-      "movedFrom": {
-        "file": "internal/filesystem/expected_commit_linux.go",
-        "start": {
-          "line": 34,
-          "column": 24
-        },
-        "end": {
-          "line": 36,
-          "column": 4
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/expected_commit_linux.go:33.24,35.4 1 in exchangeExpectedAnchored, beginning `if inspectErr != nil {`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested."
     },
     {
       "identity": {
@@ -5698,19 +5626,7 @@
         },
         "statements": 2
       },
-      "reason": "Phase 3 verify-pass settlement review of internal/filesystem/expected_commit_linux.go:36.52,39.4 2 in exchangeExpectedAnchored. This is failure of the second native exchange while restoring an unexpected displaced identity through the anchored parent; changed-winner rollback is directly tested and the second syscall failure is not safely injectable.",
-      "movedFrom": {
-        "file": "internal/filesystem/expected_commit_linux.go",
-        "start": {
-          "line": 37,
-          "column": 52
-        },
-        "end": {
-          "line": 40,
-          "column": 4
-        },
-        "statements": 2
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/expected_commit_linux.go:36.52,39.4 2 in exchangeExpectedAnchored, beginning `if rollbackErr := exchange(); rollbackErr != nil {`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested."
     },
     {
       "identity": {
@@ -6340,7 +6256,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/filesystem/lease.go:77.28,79.3 1, beginning `if l == nil || l.released {`. This is the nil-or-already-released guard that makes release idempotent or prevents a stale Lease from being accepted as transaction authority. Lease tests directly cover typed stages, canonical and alias identity, deterministic root ordering, cancellation, explicit release, cross-process contention, and process-exit release."
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/lease.go:77.28,79.3 1 in CoversTracked, beginning `if l == nil || l.released {`. This is an idempotent release, host permission, lock creation, or acquisition cleanup return; cross-process exclusion, deterministic multi-root acquisition, cancellation, explicit release, and process-exit release are directly tested."
     },
     {
       "identity": {
@@ -7360,7 +7276,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/initop/init.go:41.39,43.2 1 in Error, beginning `func (e *PartialError) Error() string {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:41.39,43.2 1 in Error, beginning `func (e *PartialError) Error() string {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
     },
     {
       "identity": {
@@ -7375,19 +7291,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:66.16,68.3 1, beginning `if err != nil {`. This returns a pre-authority lease acquisition failure with no committed Init effect. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
-      "movedFrom": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 66,
-          "column": 16
-        },
-        "end": {
-          "line": 68,
-          "column": 3
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:77.16,79.3 1 in runWithDependencies, beginning `if err != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
     },
     {
       "identity": {
@@ -7402,7 +7306,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:85.10,85.39 1 in runWithDependencies. This selects the typed effectless Init outcome when lease release fails after an earlier partial outcome but before Publisher records an effect; committed Publisher and scaffold release failures are directly tested, while a real flock close failure after that exact rollback boundary is not safely injectable."
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:85.10,85.39 1 in runWithDependencies, beginning `} else if outcome.ConfigPath != \"\" {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
     },
     {
       "identity": {
@@ -7417,19 +7321,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:72.32,74.5 1, beginning `if outcome.ConfigPath != \"\" {`. This selects typed partial versus ordinary release failure from the already-constructed outcome; real flock close failure is not safely injectable through the production lease. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
-      "movedFrom": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 72,
-          "column": 32
-        },
-        "end": {
-          "line": 74,
-          "column": 5
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:85.39,87.5 1 in runWithDependencies, beginning `} else if outcome.ConfigPath != \"\" {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
     },
     {
       "identity": {
@@ -7444,19 +7336,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:74.10,76.5 1, beginning `} else {`. This selects typed partial versus ordinary release failure from the already-constructed outcome; real flock close failure is not safely injectable through the production lease. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
-      "movedFrom": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 74,
-          "column": 10
-        },
-        "end": {
-          "line": 76,
-          "column": 5
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:87.10,89.5 1 in runWithDependencies, beginning `} else {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
     },
     {
       "identity": {
@@ -7471,19 +7351,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:101.17,103.4 1, beginning `if err != nil {`. This is an existing-authority load, absence, validation, or permanent-state refusal before Init mutates the tree. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
-      "movedFrom": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 101,
-          "column": 17
-        },
-        "end": {
-          "line": 103,
-          "column": 4
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:114.17,116.4 1 in runWithDependencies, beginning `if err != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
     },
     {
       "identity": {
@@ -7498,19 +7366,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:104.13,106.4 1, beginning `if !found {`. This is an existing-authority load, absence, validation, or permanent-state refusal before Init mutates the tree. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
-      "movedFrom": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 104,
-          "column": 13
-        },
-        "end": {
-          "line": 106,
-          "column": 4
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:117.13,119.4 1 in runWithDependencies, beginning `if !found {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
     },
     {
       "identity": {
@@ -7525,19 +7381,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:108.17,110.4 1, beginning `if err != nil { // coverage-ignore: LoadOptional parsed and validated this unchanged lock immediately above`. The source directive records that LoadOptional parsed and validated this unchanged lock immediately above. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
-      "movedFrom": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 108,
-          "column": 17
-        },
-        "end": {
-          "line": 110,
-          "column": 4
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:121.17,123.4 1 in runWithDependencies, beginning `if err != nil {`. The source exclusion records that LoadOptional parsed and validated this unchanged lock immediately above. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -7552,19 +7396,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:111.43,113.4 1, beginning `if state != manifest.AuthorityPermanent {`. This is an existing-authority load, absence, validation, or permanent-state refusal before Init mutates the tree. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
-      "movedFrom": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 111,
-          "column": 43
-        },
-        "end": {
-          "line": 113,
-          "column": 4
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:124.43,126.4 1 in runWithDependencies, beginning `if state != manifest.AuthorityPermanent {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
     },
     {
       "identity": {
@@ -7579,19 +7411,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:131.17,133.4 1, beginning `if err != nil { // coverage-ignore: ScaffoldConfig renders a static template over a dir basename; cannot fail in practice`. The source directive records that ScaffoldConfig renders a static template over a dir basename; cannot fail in practice. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
-      "movedFrom": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 131,
-          "column": 17
-        },
-        "end": {
-          "line": 133,
-          "column": 4
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:143.17,145.4 1 in runWithDependencies, beginning `if err != nil {`. The source exclusion records that ScaffoldConfig renders a static template over a dir basename; cannot fail in practice. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -7606,19 +7426,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:135.21,137.4 1, beginning `if openErr != nil {`. This reports failure to open the confined root before scaffold creation, so no Init effect has committed. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
-      "movedFrom": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 135,
-          "column": 21
-        },
-        "end": {
-          "line": 137,
-          "column": 4
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:147.21,149.4 1 in runWithDependencies, beginning `if openErr != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
     },
     {
       "identity": {
@@ -7633,19 +7441,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:140.36,142.4 1, beginning `if err != nil || closeErr != nil {`. This routes scaffold publication or handle-close failure through identity-checked rollback so committed directory, config, or residue effects cannot escape the typed outcome. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
-      "movedFrom": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 140,
-          "column": 36
-        },
-        "end": {
-          "line": 142,
-          "column": 4
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:152.36,154.4 1 in runWithDependencies, beginning `if err != nil || closeErr != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
     },
     {
       "identity": {
@@ -7660,19 +7456,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:162.16,164.3 1, beginning `if err != nil { // coverage-ignore: preparation validated every planned path; failure now requires an unportable root-confined filesystem fault`. The source directive records that preparation validated every planned path; failure now requires an unportable root-confined filesystem fault. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
-      "movedFrom": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 162,
-          "column": 16
-        },
-        "end": {
-          "line": 164,
-          "column": 3
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:174.16,176.3 1 in runWithDependencies, beginning `if err != nil {`. The source exclusion records that preparation validated every planned path; failure now requires an unportable root-confined filesystem fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -7687,19 +7471,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:165.41,167.3 1, beginning `if len(collisions) \u003e 0 \u0026\u0026 !input.Force { // coverage-ignore: the non-force probe plans the same full catalog; force makes this condition false`. The source directive records that the non-force probe plans the same full catalog; force makes this condition false. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
-      "movedFrom": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 165,
-          "column": 41
-        },
-        "end": {
-          "line": 167,
-          "column": 3
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:177.41,179.3 1 in runWithDependencies, beginning `if len(collisions) \u003e 0 \u0026\u0026 !input.Force {`. The source exclusion records that the non-force probe plans the same full catalog; force makes this condition false. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -7714,19 +7486,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:202.3,202.27 1, beginning `return failScaffold(err)`. This uses expected-identity rollback when Publisher fails before either Publisher or scaffold reports a committed effect. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
-      "movedFrom": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 202,
-          "column": 3
-        },
-        "end": {
-          "line": 202,
-          "column": 27
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:194.3,194.27 1 in runWithDependencies, beginning `return failScaffold(err)`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
     },
     {
       "identity": {
@@ -7741,19 +7501,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:205.16,208.3 2, beginning `if err != nil { // coverage-ignore: typed Publisher results and fixed presentation grammar make this mapping failure unreachable`. The source directive records that typed Publisher results and fixed presentation grammar make this mapping failure unreachable. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
-      "movedFrom": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 205,
-          "column": 16
-        },
-        "end": {
-          "line": 208,
-          "column": 3
-        },
-        "statements": 2
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:197.16,199.3 1 in runWithDependencies, beginning `if err != nil {`. The source exclusion records that typed Publisher results and fixed presentation grammar make this mapping failure unreachable. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -7768,19 +7516,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:252.57,254.3 1, beginning `if dirErr != nil \u0026\u0026 !errors.Is(dirErr, fs.ErrNotExist) {`. This preserves a committed scaffold directory in the partial inventory when identity-checked cleanup fails for a reason other than already-absent. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
-      "movedFrom": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 252,
-          "column": 57
-        },
-        "end": {
-          "line": 254,
-          "column": 3
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:242.57,244.3 1 in createScaffold, beginning `if dirErr != nil \u0026\u0026 !errors.Is(dirErr, fs.ErrNotExist) {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
     },
     {
       "identity": {
@@ -7795,19 +7531,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:293.20,295.3 1, beginning `if openErr != nil {`. This returns a complete typed scaffold inventory when the confined rollback handle cannot be opened after scaffold commitment. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
-      "movedFrom": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 293,
-          "column": 20
-        },
-        "end": {
-          "line": 295,
-          "column": 3
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:282.20,284.3 1 in rollbackScaffold, beginning `if openErr != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
     },
     {
       "identity": {
@@ -7822,19 +7546,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:182.26,184.26 2, beginning `if mutationErr != nil {`. This fallback inventories scaffold effects when Publisher result presentation itself fails, preserving both causes rather than dropping committed Init state. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
-      "movedFrom": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 182,
-          "column": 26
-        },
-        "end": {
-          "line": 184,
-          "column": 26
-        },
-        "statements": 2
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:312.24,314.3 1 in publisherPartialOutcome, beginning `if mutationErr != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
     },
     {
       "identity": {
@@ -7849,19 +7561,7 @@
         },
         "statements": 3
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:190.24,193.6 2, beginning `if valueErr != nil { // coverage-ignore: fixed paths and prose contain no line break`. The source directive records that fixed paths and prose contain no line break. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
-      "movedFrom": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 190,
-          "column": 24
-        },
-        "end": {
-          "line": 193,
-          "column": 6
-        },
-        "statements": 2
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:317.22,321.4 3 in publisherPartialOutcome, beginning `if valueErr != nil {`. The source exclusion records that fixed paths and prose contain no line break. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -7876,19 +7576,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:325.17,327.4 1, beginning `if err != nil { // coverage-ignore: fixed path and prose contain no line break`. The source directive records that fixed path and prose contain no line break. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
-      "movedFrom": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 325,
-          "column": 17
-        },
-        "end": {
-          "line": 327,
-          "column": 4
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:333.17,335.4 1 in scaffoldEffectValues, beginning `if err != nil {`. The source exclusion records that fixed path and prose contain no line break. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -7903,19 +7591,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:332.17,334.4 1, beginning `if err != nil { // coverage-ignore: fixed path and prose contain no line break`. The source directive records that fixed path and prose contain no line break. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
-      "movedFrom": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 332,
-          "column": 17
-        },
-        "end": {
-          "line": 334,
-          "column": 4
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:340.17,342.4 1 in scaffoldEffectValues, beginning `if err != nil {`. The source exclusion records that fixed path and prose contain no line break. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -7930,19 +7606,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:339.17,341.4 1, beginning `if err != nil {`. This preserves the underlying presentation error if a committed publication-residue path cannot be represented, rather than omitting that residue from recovery. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
-      "movedFrom": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 339,
-          "column": 17
-        },
-        "end": {
-          "line": 341,
-          "column": 4
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:347.17,349.4 1 in scaffoldEffectValues, beginning `if err != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
     },
     {
       "identity": {
@@ -7957,19 +7621,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:349.21,351.3 1, beginning `if valueErr != nil { // coverage-ignore: fixed paths and prose contain no line break`. The source directive records that fixed paths and prose contain no line break. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
-      "movedFrom": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 349,
-          "column": 21
-        },
-        "end": {
-          "line": 351,
-          "column": 3
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:357.21,359.3 1 in scaffoldPartialOutcome, beginning `if valueErr != nil {`. The source exclusion records that fixed paths and prose contain no line break. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -7984,19 +7636,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:377.16,379.3 1, beginning `if err != nil { // coverage-ignore: MkdirTemp fails only on an unwritable TMPDIR, which a test cannot trigger portably`. The source directive records that MkdirTemp fails only on an unwritable TMPDIR, which a test cannot trigger portably. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
-      "movedFrom": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 377,
-          "column": 16
-        },
-        "end": {
-          "line": 379,
-          "column": 3
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:385.16,387.3 1 in probeCollisions, beginning `if err != nil {`. The source exclusion records that MkdirTemp fails only on an unwritable TMPDIR, which a test cannot trigger portably. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -8011,19 +7651,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:382.16,384.3 1, beginning `if err != nil { // coverage-ignore: ScaffoldConfig over the embedded catalog cannot fail at runtime`. The source directive records that ScaffoldConfig over the embedded catalog cannot fail at runtime. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
-      "movedFrom": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 382,
-          "column": 16
-        },
-        "end": {
-          "line": 384,
-          "column": 3
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:390.16,392.3 1 in probeCollisions, beginning `if err != nil {`. The source exclusion records that ScaffoldConfig over the embedded catalog cannot fail at runtime. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -8038,19 +7666,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:386.66,388.3 1, beginning `if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil { // coverage-ignore: a fresh temp dir's child MkdirAll fails only on a permission fault root bypasses`. The source directive records that a fresh temp dir's child MkdirAll fails only on a permission fault root bypasses. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
-      "movedFrom": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 386,
-          "column": 66
-        },
-        "end": {
-          "line": 388,
-          "column": 3
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:394.66,396.3 1 in probeCollisions, beginning `if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil {`. The source exclusion records that a fresh temp dir's child MkdirAll fails only on a permission fault root bypasses. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -8065,19 +7681,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:389.63,391.3 1, beginning `if err := os.WriteFile(cfgPath, scaffold, 0o644); err != nil { // coverage-ignore: post-MkdirAll write into a fresh temp dir cannot fail in practice`. The source directive records that post-MkdirAll write into a fresh temp dir cannot fail in practice. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
-      "movedFrom": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 389,
-          "column": 63
-        },
-        "end": {
-          "line": 391,
-          "column": 3
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:397.63,399.3 1 in probeCollisions, beginning `if err := os.WriteFile(cfgPath, scaffold, 0o644); err != nil {`. The source exclusion records that post-MkdirAll write into a fresh temp dir cannot fail in practice. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -8092,19 +7696,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:394.16,396.3 1, beginning `if err != nil { // coverage-ignore: a freshly-scaffolded default config always opens`. The source directive records that a freshly-scaffolded default config always opens. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
-      "movedFrom": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 394,
-          "column": 16
-        },
-        "end": {
-          "line": 396,
-          "column": 3
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:402.16,404.3 1 in probeCollisions, beginning `if err != nil {`. The source exclusion records that a freshly-scaffolded default config always opens. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -8119,19 +7711,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:398.16,400.3 1, beginning `if err != nil { // coverage-ignore: rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail`. The source directive records that rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
-      "movedFrom": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 398,
-          "column": 16
-        },
-        "end": {
-          "line": 400,
-          "column": 3
-        },
-        "statements": 1
-      }
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:406.16,408.3 1 in probeCollisions, beginning `if err != nil {`. The source exclusion records that rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -8236,7 +7816,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/initspec/presentation.go:29.16,31.3 1 in Document, beginning `if err != nil {`. The source exclusion records that fixed nonempty prose contains no forbidden line break. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initspec/presentation.go:29.16,31.3 1 in Document, beginning `if err != nil {`. The source exclusion records that fixed nonempty prose contains no forbidden line break. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -8251,7 +7831,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/initspec/presentation.go:33.16,35.3 1 in Document, beginning `if err != nil {`. The source exclusion records that Literal validated the value and config is a fixed grammar-valid label. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initspec/presentation.go:33.16,35.3 1 in Document, beginning `if err != nil {`. The source exclusion records that Literal validated the value and config is a fixed grammar-valid label. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -8266,7 +7846,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/initspec/presentation.go:37.16,39.3 1 in Document, beginning `if err != nil {`. The source exclusion records that Prose validated the value and config-action is a fixed grammar-valid label. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initspec/presentation.go:37.16,39.3 1 in Document, beginning `if err != nil {`. The source exclusion records that Prose validated the value and config-action is a fixed grammar-valid label. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -8281,7 +7861,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/initspec/presentation.go:45.22,47.4 1 in Document, beginning `if valueErr != nil {`. The source exclusion records that fixed nonempty prose contains no forbidden line break. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initspec/presentation.go:45.22,47.4 1 in Document, beginning `if valueErr != nil {`. The source exclusion records that fixed nonempty prose contains no forbidden line break. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -12397,21 +11977,6 @@
       "identity": {
         "file": "internal/topicop/scaffold.go",
         "start": {
-          "line": 33,
-          "column": 28
-        },
-        "end": {
-          "line": 34,
-          "column": 12
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 post-review coverage reconciliation of internal/topicop/scaffold.go:33.28,34.12 1 in Document, beginning `if len(group.paths) == 0 { continue`. This is a confined scaffold observation or authority boundary. Focused tests exercise dependency ordering, exclusive collision, symlink refusal, rollback, and typed partial outcomes; the remaining external filesystem fault is not deterministically inducible through an existing real seam."
-    },
-    {
-      "identity": {
-        "file": "internal/topicop/scaffold.go",
-        "start": {
           "line": 39,
           "column": 18
         },
@@ -12796,7 +12361,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/upgrade/operation.go:231.49,233.3 1 in Run, beginning `if _, err := lock.AuthorityState(); err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/upgrade/operation.go:231.49,233.3 1 in Run, beginning `if _, err := lock.AuthorityState(); err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
@@ -13051,7 +12616,7 @@
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/worktree/presentation.go:14.16,16.3 1 in function Diagnostic, beginning `{ // coverage-ignore: yesNo always returns a nonempty prose value`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Topology fields use fixed validated labels and boolean values, so their construction cannot fail without an internal presentation invariant breach; topology diagnostic success and exact managed facts are directly tested."
     },
     {
       "identity": {
@@ -13066,7 +12631,7 @@
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/worktree/presentation.go:18.16,20.3 1 in function Diagnostic, beginning `{ // coverage-ignore: fixed grammar-valid topology label always validates`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/worktree/presentation.go:18.16,16.3 1 in function Diagnostic, beginning `{ // coverage-ignore: yesNo always returns a nonempty prose value`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
@@ -13081,7 +12646,7 @@
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/worktree/presentation.go:46.17,48.4 1 in function Diagnostic, beginning `{ // coverage-ignore: yesNo always returns a nonempty prose value`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Phase 4 post-review coverage reconciliation of internal/worktree/presentation.go:46.17,44.4 1 in Diagnostic, beginning `if err != nil { // coverage-ignore: yesNo always returns a nonempty prose value return presentation.Diagnostic{}, err }`. This is a presentation-construction failure for fixed labels and worktree-owner normalized topology effects, booleans, mutations, or recovery steps. Worktree presentation tests exercise exact changed axes and ordered actions; invalid presentation grammar cannot arise from the closed typed model."
     },
     {
       "identity": {
@@ -13096,7 +12661,7 @@
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/worktree/presentation.go:50.17,52.4 1 in function Diagnostic, beginning `{ // coverage-ignore: fixed grammar-valid changed-axis labels always validate`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/worktree/presentation.go:50.17,48.4 1 in function Diagnostic, beginning `{ // coverage-ignore: yesNo always returns a nonempty prose value`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
@@ -27005,7 +26570,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func (e *CreationError) Diagnostic() (presentation.Diagnostic, error)` begins at internal/worktree/presentation.go:39; its branch `if err != nil {` at internal/worktree/presentation.go:46 follows `value, err := presentation.Prose(yesNo(fact.value))` at internal/worktree/presentation.go:45. That flow establishes yesNo always returns a nonempty prose value, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func (e *CreationError) Diagnostic() (presentation.Diagnostic, error)` begins at internal/worktree/presentation.go:43; its branch `if err != nil {` at internal/worktree/presentation.go:50 follows `value, err := presentation.Prose(yesNo(fact.value))` at internal/worktree/presentation.go:49. That flow establishes yesNo always returns a nonempty prose value, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
@@ -27017,7 +26582,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/worktree/presentation.go:50 is `field, err := presentation.NewField(fact.label, value)` (internal/worktree/presentation.go:49). Within `func (e *CreationError) Diagnostic() (presentation.Diagnostic, error)` at internal/worktree/presentation.go:39, source review establishes fixed grammar-valid changed-axis labels always validate; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err != nil {` at internal/worktree/presentation.go:54 is `field, err := presentation.NewField(fact.label, value)` (internal/worktree/presentation.go:53). Within `func (e *CreationError) Diagnostic() (presentation.Diagnostic, error)` at internal/worktree/presentation.go:43, source review establishes fixed grammar-valid changed-axis labels always validate; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {

@@ -246,6 +246,22 @@ func TestScaffoldCloseFailureReportsEveryCommittedPath(t *testing.T) {
 	if len(partial.Recovery) != 2 || !strings.Contains(partial.Recovery[0], "inspect") || !strings.Contains(partial.Recovery[1], "do not retry") {
 		t.Fatalf("close recovery = %v", partial.Recovery)
 	}
+	document, documentErr := partial.Document()
+	if documentErr != nil {
+		t.Fatal(documentErr)
+	}
+	var rendered strings.Builder
+	if renderErr := presentation.Render(&rendered, document); renderErr != nil {
+		t.Fatal(renderErr)
+	}
+	for _, want := range []string{"created paths", "metadata.yaml", "part.md", "remaining paths", "do not retry scaffolding"} {
+		if !strings.Contains(rendered.String(), want) {
+			t.Errorf("close diagnostic omitted %q: %s", want, rendered.String())
+		}
+	}
+	if strings.Contains(rendered.String(), "removed paths") {
+		t.Fatalf("close diagnostic rendered an empty removed group: %s", rendered.String())
+	}
 
 	operationFailure := errors.New("operation failed")
 	for _, test := range []struct {
