@@ -30,7 +30,7 @@ On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per `docs
 <!-- awf:template-source templates/skills/brainstorming/SKILL.md.tmpl -->
 2. **Clarify one question at a time.** Narrow the outcome without inventing requirements.
 3. **Present proportionate approaches.** Offer alternatives with trade-offs and a recommendation when a material choice exists; a straightforward choice may need only a concise comparison.
-4. **Evaluate continuity independently.** Invoke `awf-effort-workflow` only when durable continuity materially helps. Brainstorming itself never creates an effort, and design may remain effort-free.
+4. **Evaluate continuity independently.** Evaluate it when brainstorming begins and whenever a continuity-relevant fact changes. Brainstorming may begin effort-free, but if it continues after its first settled material decision, invoke `awf-effort-workflow` to create or resume ownership before proceeding further. A single-decision brainstorm may still remain effort-free. Brainstorming itself never creates an effort.
 5. **Evaluate repository-premise risk independently.** If correctness depends on broad or uncertain repository facts, hidden coupling, cross-domain effects, unfamiliar architecture, or high-consequence assumptions, invoke `awf-grounding`. A localized design choice may skip grounding, while a clear broad-repository design may ground without further brainstorming. Resolve its mechanical, reasoned, or user-decision findings in this workflow; do not dispatch the grounding checker directly or loop grounding.
 
 <!-- awf:template-source templates/skills/brainstorming/SKILL.md.tmpl#example-clarifying-questions -->

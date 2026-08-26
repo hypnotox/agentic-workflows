@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-preserve-brainstorming-continuity-before-handoff: Preserve brainstorming continuity before handoff](preserve-brainstorming-continuity-before-handoff.md) (Proposed)
+- [ADR-preserve-brainstorming-continuity-before-handoff: Preserve brainstorming continuity before handoff](preserve-brainstorming-continuity-before-handoff.md) (Implementing)
 
 ## History
 

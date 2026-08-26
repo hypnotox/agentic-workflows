@@ -8,6 +8,10 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Features
+
+- Brainstorming now evaluates continuity at entry and when relevant facts change. Continuing beyond its first settled material decision creates or resumes effort ownership before further work; late-created effort memory is initialized from retained evidence before Pi handoff, while single-decision brainstorming remains effort-free.
+
 ## [0.40.0] - 2026-08-25
 
 ### Breaking changes

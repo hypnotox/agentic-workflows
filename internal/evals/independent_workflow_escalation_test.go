@@ -164,6 +164,55 @@ func TestIndependentWorkflowEscalation(t *testing.T) {
 	}
 }
 
+// invariant: rendering/workflow-skill-templates:independent-workflow-escalation (TestBrainstormContinuityBoundary)
+// invariant: rendering/workflow-skill-templates:mandatory-approval-boundaries (TestBrainstormContinuityBoundary)
+// invariant: rendering/workflow-skill-templates:memory-checkpoint-chain-coverage (TestBrainstormContinuityBoundary)
+// invariant: rendering/workflow-skill-templates:unified-effort-workflow-coverage (TestBrainstormContinuityBoundary)
+// invariant: rendering/workflow-skill-templates:effort-workflow (TestBrainstormContinuityBoundary)
+func TestBrainstormContinuityBoundary(t *testing.T) {
+	for _, profile := range []string{"core", "full"} {
+		t.Run(profile, func(t *testing.T) {
+			root := syncPlanFlexibilityProfile(t, profile)
+			for _, target := range []string{"pi", "claude"} {
+				t.Run(target, func(t *testing.T) {
+					brainstorming := read(t, planSkillPath(root, target, "brainstorming"))
+					effort := read(t, planSkillPath(root, target, "effort-workflow"))
+					workflow := read(t, filepath.Join(root, "docs", "workflow.md"))
+
+					assertContainsAll(t, target+" "+profile+" brainstorming continuity", brainstorming,
+						"Evaluate it when brainstorming begins and whenever a continuity-relevant fact changes",
+						"may begin effort-free", "first settled material decision", "before proceeding further", "single-decision brainstorm may still remain effort-free")
+					assertOrderedPhrases(t, brainstorming, "first settled material decision", "create or resume ownership before proceeding further")
+					lateOwnership := strings.Replace(brainstorming, "create or resume ownership before proceeding further", "proceed further before creating or resuming ownership", 1)
+					if hasOrderedPhrases(lateOwnership, "first settled material decision", "create or resume ownership before proceeding further") {
+						t.Errorf("%s %s accepted continuation before ownership", target, profile)
+					}
+
+					assertContainsAll(t, target+" "+profile+" effort continuity", effort,
+						"whenever continuity-relevant facts change", "continuing after its first settled material decision requires creation or resumption before proceeding further",
+						"initialize the owned memory from retained evidence before any handoff", "current outcome in `## Brief`", "required user-provenance and `Record:` evidence", "relevant observations in `## Observations`", "current phase and next action", "reconfirmed, not reconstructed", "Do not hand off until this initialization is complete")
+					assertOrderedPhrases(t, effort, "initialize the owned memory from retained evidence before any handoff", "Do not hand off until this initialization is complete")
+					missingEvidenceRecovery := strings.Replace(effort, "Missing exact required user evidence must be reconfirmed, not reconstructed.", "Missing exact required user evidence may be reconstructed.", 1)
+					if strings.Contains(missingEvidenceRecovery, "reconfirmed, not reconstructed") {
+						t.Errorf("%s %s accepted reconstructed user evidence", target, profile)
+					}
+
+					assertContainsAll(t, target+" "+profile+" fixed identity", effort,
+						"Effort title and slug are fixed", "add no retitle operation, schema change, or history-deleting lifecycle", "Refinements inside the owned outcome remain in that effort", "material outcome drift requires a different outcome", "fixed-identity successor", "Transfer necessary still-valid context", "verify the successor is resumable", "close the obsolete effort through the existing topology-safety and finish/archive lifecycle")
+					assertOrderedPhrases(t, effort, "fixed-identity successor", "Transfer necessary still-valid context", "verify the successor is resumable", "close the obsolete effort")
+					wrongArchiveOrder := strings.Replace(effort, "Transfer necessary still-valid context, verify the successor is resumable, then close the obsolete effort", "close the obsolete effort, then transfer necessary still-valid context and verify the successor is resumable", 1)
+					if hasOrderedPhrases(wrongArchiveOrder, "Transfer necessary still-valid context", "verify the successor is resumable", "close the obsolete effort") {
+						t.Errorf("%s %s accepted archive before successor resumability", target, profile)
+					}
+
+					assertContainsAll(t, target+" "+profile+" workflow continuity", workflow,
+						"Handoff is prohibited while required late-creation memory initialization remains incomplete", "Missing exact required user evidence must be reconfirmed, not reconstructed")
+				})
+			}
+		})
+	}
+}
+
 // invariant: rendering/workflow-skill-templates:mandatory-approval-boundaries (TestMandatoryApprovalBoundaries)
 func TestMandatoryApprovalBoundaries(t *testing.T) {
 	cat := loadCatalog(t)

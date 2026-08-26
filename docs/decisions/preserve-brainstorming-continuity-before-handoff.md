@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: preserve-brainstorming-continuity-before-handoff
-status: Proposed
+status: Implementing
 date: 2026-08-26
 ---
 # ADR-preserve-brainstorming-continuity-before-handoff: Preserve brainstorming continuity before handoff
@@ -96,3 +96,5 @@ unchanged.
 ## Status history
 
 - 2026-08-26: Proposed
+- 2026-08-26: Implementing; content-sha256: 100916e9776dd3ab1cff1a7c7aff2810e498387043e075124e3336be2d8cadd1
+- 2026-08-26: Applied; operations: update `rendering/workflow-skill-templates:independent-workflow-escalation`, update `rendering/workflow-skill-templates:mandatory-approval-boundaries`, update `rendering/workflow-skill-templates:memory-checkpoint-chain-coverage`, update `rendering/workflow-skill-templates:unified-effort-workflow-coverage`, update `rendering/workflow-skill-templates:effort-workflow`, update `rendering/pi-runtime:pi-session-handoff-workflow`
