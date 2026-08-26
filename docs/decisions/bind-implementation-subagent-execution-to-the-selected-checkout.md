@@ -41,7 +41,7 @@ The parent session remains stable, and no effort identity becomes hidden routing
 
 The parent-session half of the wrong-checkout issue is mitigated, not closed. Documentation must not claim session-wide confinement, and the known issue remains until its existing completion criteria are satisfied or deliberately revised by a later decision.
 
-Pi-tools can continue independent development and patching. Awf tests its profile contract and pinned test-support dependency, but does not claim revision-reproducible adopter execution.
+Pi-tools can continue independent development and patching. Awf tests its profile contract and pinned test-support dependency, but does not claim revision-reproducible adopter execution. Every affected rendered template preserves missingkey-zero behavior and emits no no-value token when optional values are empty.
 
 ## Alternatives Considered
 
