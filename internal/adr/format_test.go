@@ -77,8 +77,8 @@ func TestParseRecordRoutesByIntrinsicFormat(t *testing.T) {
 		name     string
 		scaffold func(string, string) (string, error)
 	}{
-		{"numbered", adr.NewFile},
-		{"pending", adr.NewPendingFile},
+		{"numbered", adr.NewFileForTest},
+		{"pending", adr.NewPendingFileForTest},
 	} {
 		t.Run("registry scaffold "+tc.name, func(t *testing.T) {
 			path, err := tc.scaffold(dir, "Registry "+tc.name)

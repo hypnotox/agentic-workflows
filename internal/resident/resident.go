@@ -120,10 +120,16 @@ type Backup struct {
 	Bak  string
 }
 
+// UninstallReport records every stable root-relative effect committed by an
+// uninstall. Removed remains the compatibility summary; callers that need to
+// recover or present the result use the exact effect lists.
 type UninstallReport struct {
-	Removed        int
-	PreservedRoots []string
-	Backups        []Backup
+	Removed          int
+	RemovedGenerated []string
+	PreservedRoots   []string
+	Backups          []Backup
+	RemovedEmptyDirs []string
+	LockRemoved      bool
 }
 
 // PartialUninstallError retains the committed uninstall report when a later
@@ -151,34 +157,11 @@ func partialUninstall(report UninstallReport, cause error) error {
 
 // Document maps an uninstall result into its complete ordinary presentation.
 func (r UninstallReport) Document() (presentation.Document, error) {
-	removed, err := presentation.Literal(strconv.Itoa(r.Removed))
-	if err != nil { // coverage-ignore: decimal formatting always produces a nonempty literal without line breaks
-		return presentation.Document{}, err
-	}
-	removedField, err := presentation.NewField("generated files removed", removed)
-	if err != nil { // coverage-ignore: Literal validated the value and the label is fixed and grammar-valid
-		return presentation.Document{}, err
-	}
 	note, err := presentation.Prose("the authored .awf config remains in place; delete it to fully remove")
-	if err != nil { // coverage-ignore: fixed nonempty prose contains no forbidden line break
+	if err != nil {
 		return presentation.Document{}, err
 	}
-	notes := []presentation.Value{note}
-	for _, root := range r.PreservedRoots {
-		value, err := presentation.Prose("preserved resident data under .awf/" + root)
-		if err != nil { // coverage-ignore: the fixed prefix remains nonempty after normalization of a validated resident-root name
-			return presentation.Document{}, err
-		}
-		notes = append(notes, value)
-	}
-	for _, backup := range r.Backups {
-		value, err := presentation.Prose("backed up " + backup.Path + " to " + backup.Bak)
-		if err != nil { // coverage-ignore: backup paths are confined lock-relative paths
-			return presentation.Document{}, err
-		}
-		notes = append(notes, value)
-	}
-	return (presentation.Mutation{Status: "uninstall completed", Identity: []presentation.Field{removedField}, Notes: notes}).Document()
+	return r.document("uninstall completed", []presentation.Value{note}, nil)
 }
 
 // PartialDocument retains every completed uninstall fact when a later removal
@@ -188,29 +171,6 @@ func (r UninstallReport) PartialDocument() (presentation.Document, error) {
 }
 
 func (r UninstallReport) partialDocument(recovery []string) (presentation.Document, error) {
-	removed, err := presentation.Literal(strconv.Itoa(r.Removed))
-	if err != nil {
-		return presentation.Document{}, err
-	}
-	removedField, err := presentation.NewField("generated files removed", removed)
-	if err != nil {
-		return presentation.Document{}, err
-	}
-	values := make([]presentation.Value, 0, len(r.PreservedRoots)+len(r.Backups))
-	for _, root := range r.PreservedRoots {
-		value, err := presentation.Prose("preserved resident data under .awf/" + root)
-		if err != nil {
-			return presentation.Document{}, err
-		}
-		values = append(values, value)
-	}
-	for _, backup := range r.Backups {
-		value, err := presentation.Prose("backed up " + backup.Path + " to " + backup.Bak)
-		if err != nil {
-			return presentation.Document{}, err
-		}
-		values = append(values, value)
-	}
 	next := make([]presentation.Value, 0, len(recovery))
 	for _, action := range recovery {
 		value, err := presentation.Prose(action)
@@ -219,12 +179,58 @@ func (r UninstallReport) partialDocument(recovery []string) (presentation.Docume
 		}
 		next = append(next, value)
 	}
-	return (presentation.Mutation{Status: "uninstall partially committed", Identity: []presentation.Field{removedField}, Notes: values, NextActions: next}).Document()
+	return r.document("uninstall partially committed", nil, next)
 }
 
-// InspectRoots examines direct children only. It never traverses a
-// dynamic resident tree; a descendant other than the managed .gitignore keeps
-// its root intact.
+func (r UninstallReport) document(status string, prefix, next []presentation.Value) (presentation.Document, error) {
+	removed, err := presentation.Literal(strconv.Itoa(r.Removed))
+	if err != nil {
+		return presentation.Document{}, err
+	}
+	removedField, err := presentation.NewField("generated files removed", removed)
+	if err != nil {
+		return presentation.Document{}, err
+	}
+	notes := append([]presentation.Value{}, prefix...)
+	appendNote := func(text string) error {
+		value, err := presentation.Prose(text)
+		if err != nil {
+			return err
+		}
+		notes = append(notes, value)
+		return nil
+	}
+	for _, root := range r.PreservedRoots {
+		if err := appendNote("preserved resident data under .awf/" + root); err != nil {
+			return presentation.Document{}, err
+		}
+	}
+	for _, path := range r.RemovedGenerated {
+		if err := appendNote("removed generated " + path); err != nil {
+			return presentation.Document{}, err
+		}
+	}
+	for _, backup := range r.Backups {
+		if err := appendNote("backed up " + backup.Path + " to " + backup.Bak); err != nil {
+			return presentation.Document{}, err
+		}
+	}
+	for _, path := range r.RemovedEmptyDirs {
+		if err := appendNote("removed empty directory " + path); err != nil {
+			return presentation.Document{}, err
+		}
+	}
+	if r.LockRemoved {
+		if err := appendNote("removed lock .awf/awf.lock"); err != nil {
+			return presentation.Document{}, err
+		}
+	}
+	return (presentation.Mutation{Status: status, Identity: []presentation.Field{removedField}, Notes: notes, NextActions: next}).Document()
+}
+
+// InspectRoots examines direct children only. It never traverses a dynamic
+// resident tree; a descendant other than the managed .gitignore keeps its root
+// intact. Publisher's read-only inspection owns its existing host-path seam.
 func InspectRoots(root string) ([]string, error) {
 	preserved := []string{}
 	for _, name := range RootNames() {
@@ -233,7 +239,7 @@ func InspectRoots(root string) ([]string, error) {
 		if errors.Is(err, os.ErrNotExist) {
 			continue
 		}
-		if err != nil { // coverage-ignore: root discovery's lstat error needs an external filesystem fault; unsafe and non-empty roots are covered
+		if err != nil {
 			return nil, fmt.Errorf("inspect resident root %s: %w", name, err)
 		}
 		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
@@ -267,24 +273,11 @@ func PreserveRemoval(path string, preserved []string) bool {
 	return false
 }
 
-// RemoveGeneratedFile removes one generated file. An already-absent path is a
-// successful no-op; every other failure remains actionable so its lock entry
-// can be preserved for a retry.
-func RemoveGeneratedFile(path string) (bool, error) {
-	err := os.Remove(path)
-	switch {
-	case err == nil:
-		return true, nil
-	case errors.Is(err, os.ErrNotExist):
-		return false, nil
-	default:
-		return false, fmt.Errorf("remove generated file %s: %w", path, err)
-	}
-}
-
 type uninstallHandle interface {
+	Read(string) ([]byte, error)
 	LinkInfo(string) (fs.FileInfo, error)
 	Backup(string) (string, error)
+	RemoveExpected(string, fs.FileInfo) error
 	Close() error
 }
 
@@ -292,8 +285,6 @@ type uninstallOps struct {
 	open         func(string) (uninstallHandle, error)
 	residentRoot func(context.Context, string) string
 	inspectRoots func(string) ([]string, error)
-	removeFile   func(string) (bool, error)
-	remove       func(string) error
 }
 
 func productionUninstallOpen(root string) (uninstallHandle, error) {
@@ -301,108 +292,149 @@ func productionUninstallOpen(root string) (uninstallHandle, error) {
 	if err != nil {
 		return nil, err
 	}
-	return asUninstallHandle(handle), nil
+	return handle, nil
 }
 
-func asUninstallHandle(handle uninstallHandle) uninstallHandle { return handle }
+const uninstallLockPath = ".awf/awf.lock"
 
-// Uninstall removes awf's generated footprint while preserving dynamic resident
-// state. It is a free function so a broken config does not block it.
-// preserveTemplate is a bounded policy supplied by outer composition.
-// touches-state: rendering/sync-and-drift:uninstall-removes-lock-entries - lock-tracked file removal; proof in resident_test.go
-func Uninstall(ctx context.Context, root string, preserveTemplate func(string) bool) (UninstallReport, error) {
-	return uninstallWith(ctx, root, preserveTemplate, uninstallOps{
-		open:         productionUninstallOpen,
-		residentRoot: awfgit.ProjectResidentRoot,
-		inspectRoots: InspectRoots,
-		removeFile:   RemoveGeneratedFile,
-		remove:       os.Remove,
-	})
+// UninstallLeased removes awf's generated footprint while preserving dynamic
+// resident state. The caller supplies the live dual-root lease acquired before
+// authority loading; this operation verifies it before reading the lock.
+func UninstallLeased(ctx context.Context, root string, preserveTemplate func(string) bool, lease *filesystem.Lease) (UninstallReport, error) {
+	residentRoot := awfgit.ProjectResidentRoot(ctx, root)
+	if !lease.CoversProject(root, residentRoot) {
+		return UninstallReport{}, fmt.Errorf("uninstall requires a live project lease")
+	}
+	return uninstallWith(ctx, root, preserveTemplate, uninstallOps{open: productionUninstallOpen, residentRoot: func(context.Context, string) string { return residentRoot }, inspectRoots: InspectRoots})
 }
 
-func uninstallWith(ctx context.Context, root string, preserveTemplate func(string) bool, ops uninstallOps) (UninstallReport, error) {
-	lockPath := config.LockPath(root)
+func uninstallWith(ctx context.Context, root string, preserveTemplate func(string) bool, ops uninstallOps) (report UninstallReport, returnErr error) {
 	residentRoot := root
 	if ops.residentRoot != nil {
 		residentRoot = ops.residentRoot(ctx, root)
 	}
-	lock, found, err := manifest.LoadOptional(lockPath)
+	tracked, err := ops.open(root)
 	if err != nil {
-		return UninstallReport{}, err
+		return report, fmt.Errorf("open tracked uninstall root: %w", err)
 	}
-	if !found {
-		return UninstallReport{}, fmt.Errorf("no %s: nothing to uninstall", filepath.Join(config.DirName, "awf.lock"))
+	trackedClosed := false
+	defer func() {
+		if !trackedClosed {
+			returnErr = errors.Join(returnErr, tracked.Close())
+		}
+	}()
+	resident := tracked
+	residentClosed := true
+	if residentRoot != root {
+		resident, err = ops.open(residentRoot)
+		if err != nil {
+			return report, fmt.Errorf("open resident uninstall root: %w", err)
+		}
+		residentClosed = false
+		defer func() {
+			if !residentClosed {
+				returnErr = errors.Join(returnErr, resident.Close())
+			}
+		}()
+	}
+	lockInfo, err := tracked.LinkInfo(uninstallLockPath)
+	if errors.Is(err, fs.ErrNotExist) {
+		return report, fmt.Errorf("no %s: nothing to uninstall", filepath.Join(config.DirName, "awf.lock"))
+	}
+	if err != nil {
+		return report, fmt.Errorf("unreadable .awf/awf.lock (%w): restore it from version control, or delete it deliberately to re-adopt", err)
+	}
+	if lockInfo.Mode()&fs.ModeSymlink != 0 || !lockInfo.Mode().IsRegular() {
+		return report, fmt.Errorf("unreadable .awf/awf.lock (unsafe lock): restore it from version control, or delete it deliberately to re-adopt")
+	}
+	lockBytes, err := tracked.Read(uninstallLockPath)
+	if err != nil {
+		return report, fmt.Errorf("unreadable .awf/awf.lock (%w): restore it from version control, or delete it deliberately to re-adopt", err)
+	}
+	lock, err := manifest.Parse(lockBytes)
+	if err != nil {
+		return report, fmt.Errorf("unreadable .awf/awf.lock (%w): restore it from version control, or delete it deliberately to re-adopt", err)
 	}
 	preserved, err := ops.inspectRoots(residentRoot)
 	if err != nil {
-		return UninstallReport{}, err
+		return report, err
 	}
-	report := UninstallReport{PreservedRoots: preserved}
-	dirs := map[string]bool{}
-	for path := range lock.Files {
-		// A non-local entry (corrupted or malicious lock) would delete outside
-		// the root. Runtime-shaped resident entries are corrupt and never removed.
-		if !filepath.IsLocal(filepath.FromSlash(path)) || PreserveRemoval(path, preserved) {
+	report.PreservedRoots = preserved
+	paths := slices.Collect(maps.Keys(lock.Files))
+	slices.Sort(paths)
+	dirs := map[string]uninstallHandle{}
+	for _, path := range paths {
+		if PreserveRemoval(path, preserved) {
 			continue
 		}
-		abs := filepath.Join(root, path)
+		handle := tracked
 		if IsResidentPath(path) {
-			abs = filepath.Join(residentRoot, filepath.FromSlash(path))
+			handle = resident
 		}
-		if preserveTemplate != nil && preserveTemplate(lock.Files[path].TemplateID) {
-			backupRoot, backupPath := root, path
-			if IsResidentPath(path) {
-				backupRoot = residentRoot
-				backupPath = path
-			}
-			handle, openErr := ops.open(backupRoot)
-			if openErr != nil {
-				return report, partialUninstall(report, fmt.Errorf("open local-document root: %w", openErr))
-			}
-			info, statErr := handle.LinkInfo(backupPath)
-			if statErr != nil && !errors.Is(statErr, os.ErrNotExist) {
-				_ = handle.Close()
-				return report, partialUninstall(report, fmt.Errorf("inspect local document %s: %w", path, statErr))
-			}
-			if statErr == nil {
-				if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
-					_ = handle.Close()
-					return report, partialUninstall(report, fmt.Errorf("unsafe local document %s", path))
-				}
-				bak, backupErr := handle.Backup(backupPath)
-				if backupErr != nil {
-					_ = handle.Close()
-					return report, partialUninstall(report, fmt.Errorf("back up local document %s: %w", path, backupErr))
-				}
-				report.Backups = append(report.Backups, Backup{Path: path, Bak: bak})
-			}
-			if closeErr := handle.Close(); closeErr != nil {
-				return report, partialUninstall(report, fmt.Errorf("close local-document root: %w", closeErr))
-			}
+		info, infoErr := handle.LinkInfo(path)
+		if infoErr != nil && !errors.Is(infoErr, fs.ErrNotExist) {
+			return report, partialUninstall(report, fmt.Errorf("inspect generated file %s: %w", path, infoErr))
 		}
-		removed, err := ops.removeFile(abs)
-		if err != nil {
-			return report, partialUninstall(report, err)
+		if preserveTemplate != nil && preserveTemplate(lock.Files[path].TemplateID) && infoErr == nil {
+			if info.Mode()&fs.ModeSymlink != 0 || !info.Mode().IsRegular() {
+				return report, partialUninstall(report, fmt.Errorf("unsafe local document %s", path))
+			}
+			bak, backupErr := handle.Backup(path)
+			if backupErr != nil {
+				return report, partialUninstall(report, fmt.Errorf("back up local document %s: %w", path, backupErr))
+			}
+			report.Backups = append(report.Backups, Backup{Path: path, Bak: bak})
 		}
-		if removed {
+		if infoErr == nil {
+			if err := handle.RemoveExpected(path, info); err != nil {
+				return report, partialUninstall(report, fmt.Errorf("remove generated file %s: %w", path, err))
+			}
 			report.Removed++
+			report.RemovedGenerated = append(report.RemovedGenerated, path)
 		}
-		base := root
-		if IsResidentPath(path) {
-			base = residentRoot
-		}
-		for d := filepath.Dir(abs); d != base; d = filepath.Dir(d) {
-			dirs[d] = true
+		for dir := filepath.ToSlash(filepath.Dir(path)); dir != "." && dir != "/"; dir = filepath.ToSlash(filepath.Dir(dir)) {
+			dirs[dir] = handle
 		}
 	}
-	// Remove now-empty directories deepest-first.
 	dirList := slices.Collect(maps.Keys(dirs))
-	slices.SortFunc(dirList, func(a, b string) int { return len(b) - len(a) })
-	for _, d := range dirList {
-		_ = os.Remove(d)
+	slices.SortFunc(dirList, func(a, b string) int {
+		if len(a) != len(b) {
+			return len(b) - len(a)
+		}
+		return strings.Compare(a, b)
+	})
+	for _, dir := range dirList {
+		info, err := dirs[dir].LinkInfo(dir)
+		if errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return report, partialUninstall(report, fmt.Errorf("inspect empty directory %s: %w", dir, err))
+		}
+		if !info.IsDir() {
+			continue
+		}
+		if err := dirs[dir].RemoveExpected(dir, info); err != nil {
+			if errors.Is(err, filesystem.ErrDirectoryNotEmpty) {
+				continue
+			}
+			return report, partialUninstall(report, fmt.Errorf("remove empty directory %s: %w", dir, err))
+		}
+		report.RemovedEmptyDirs = append(report.RemovedEmptyDirs, filepath.ToSlash(dir))
 	}
-	if err := ops.remove(lockPath); err != nil {
+	if err := tracked.RemoveExpected(uninstallLockPath, lockInfo); err != nil {
 		return report, partialUninstall(report, fmt.Errorf("remove lock: %w", err))
 	}
+	report.LockRemoved = true
+	if resident != tracked {
+		if err := resident.Close(); err != nil {
+			return report, partialUninstall(report, fmt.Errorf("close resident uninstall root: %w", err))
+		}
+		residentClosed = true
+	}
+	if err := tracked.Close(); err != nil {
+		return report, partialUninstall(report, fmt.Errorf("close tracked uninstall root: %w", err))
+	}
+	trackedClosed = true
 	return report, nil
 }

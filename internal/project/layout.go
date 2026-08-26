@@ -1,10 +1,6 @@
 package project
 
-import (
-	"path/filepath"
-
-	"github.com/hypnotox/agentic-workflows/internal/config"
-)
+import "github.com/hypnotox/agentic-workflows/internal/config"
 
 // Layout is the fixed, awf-given docs layout in typed form for Go consumers.
 // These paths are not configurable through the project tree.
@@ -33,9 +29,4 @@ func docOutPath(p renderInputs, name string) string {
 		path = name + ".md"
 	}
 	return config.DocsDir + "/" + path
-}
-
-// decisionsDir is the absolute ADR decisions directory.
-func decisionsDir(root string) string {
-	return filepath.Join(root, config.DocsDir, "decisions")
 }

@@ -225,7 +225,7 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 			t.Errorf("initialization prepared-universe route %q count = %d, want %d", route, got, want)
 		}
 	}
-	for _, forbidden := range []string{"composed.InitCollisions()", "prepared.Initialize(", "prepared.Sync()", "composed.Initialize(", "composed.Sync()"} {
+	for _, forbidden := range []string{"composed.InitCollisions()", "prepared.Initialize(", "prepared.SyncLeased(context.Background(), nil)", "composed.Initialize(", "composed.SyncLeased(context.Background(), nil)"} {
 		if strings.Contains(initSource, forbidden) {
 			t.Errorf("initialization reconstructs its prepared universe through %q", forbidden)
 		}

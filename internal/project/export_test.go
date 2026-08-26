@@ -190,7 +190,7 @@ func syncProject(state *ProjectState) error {
 	if !found {
 		_, err = pub.Initialize(publisher.InitAuthority{InitializedWithVersion: Version})
 	} else {
-		_, err = pub.Sync()
+		_, err = pub.SyncLeased(context.Background(), nil)
 	}
 	return err
 }
@@ -225,7 +225,7 @@ func projectResult(result publisher.Result, err error) ([]Backup, []Change, []st
 	return result.Backups(), result.Changes(), result.Pruned(), err
 }
 func syncReportProject(state *ProjectState) ([]Backup, []Change, []string, error) {
-	return projectResult(publisher.New(state.OutputState(), testConfig(state), publisher.NewFilesystemReader(state.Root()), Version).Sync())
+	return projectResult(publisher.New(state.OutputState(), testConfig(state), publisher.NewFilesystemReader(state.Root()), Version).SyncLeased(context.Background(), nil))
 }
 func initializeReportProject(state *ProjectState, seed InitAuthority) ([]Backup, []Change, []string, error) {
 	return projectResult(publisher.New(state.OutputState(), testConfig(state), publisher.NewFilesystemReader(state.Root()), Version).Initialize(seed))
@@ -281,8 +281,18 @@ func numberPendingADRsWithPublisherProject(state *ProjectState, slugs []string, 
 	return report, errors.Join(numberErr, lease.Release())
 }
 
-func newADRProject(state *ProjectState, ctx context.Context, title string) (string, error) {
-	return NewADR(state.Root(), testConfig(state), testRepo(state), ctx, title)
+func newADRProject(state *ProjectState, ctx context.Context, title string) (result string, returnErr error) {
+	lease, err := filesystem.AcquireTrackedLease(ctx, state.Root())
+	if err != nil {
+		return "", err
+	}
+	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
+	files, err := filesystem.Open(state.Root())
+	if err != nil {
+		return "", err
+	}
+	defer func() { returnErr = errors.Join(returnErr, files.Close()) }()
+	return NewADRLeased(state.Root(), testConfig(state), testRepo(state), ctx, title, lease, files)
 }
 func newPitfallProject(state *ProjectState, title string) (presentation.Document, error) {
 	return NewPitfall(state.Root(), title)

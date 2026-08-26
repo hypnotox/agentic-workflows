@@ -44,7 +44,7 @@ func TestUpgradeSyncMutationWithPreservesPartialPublisherOutcome(t *testing.T) {
 	cause := errors.New("late publication failure")
 	mutation, err := upgradeSyncMutationWith(testContext(t), root, upgradeSyncDependencies{
 		publisherSync: func(ctx context.Context, state *project.ProjectState, cfg *config.Config) (publisher.Result, error) {
-			result, syncErr := composePublisher(state, cfg).Sync()
+			result, syncErr := composePublisher(state, cfg).SyncLeased(context.Background(), nil)
 			if syncErr != nil {
 				t.Fatal(syncErr)
 			}

@@ -261,16 +261,33 @@ func run(args []string, stdout, stderr io.Writer) int {
 	handlerCtx, cancel := newGitCommandContext()
 	defer cancel()
 	result := handlers[top.Name](&cmdCtx{ctx: handlerCtx, root: cwd, sub: sub, inv: inv, stdout: stdout, stdin: stdin})
-	if result.err == nil {
-		return 0
+	return completeHandlerResult(stdout, stderr, result)
+}
+
+// completeHandlerResult ends a command operation only after the command has
+// completed its selected output. In particular, typed errors are transformed
+// into their model-owned diagnostics and written centrally before the mutation
+// lease is released.
+func completeHandlerResult(stdout, stderr io.Writer, result handlerResult) int {
+	code := 0
+	if result.err != nil {
+		// A handler declares a complete report explicitly. It has already been
+		// rendered to stdout and owns its failing exit; diagnostics were not
+		// produced as reports and are rendered once to stderr below.
+		if result.producedReport {
+			code = 1
+		} else {
+			code = dispatchFailure(stdout, stderr, result.err)
+		}
 	}
-	// A handler declares a complete report explicitly. It has already been
-	// rendered to stdout and owns its failing exit; diagnostics were not produced
-	// as reports and are rendered once to stderr below.
-	if result.producedReport {
-		return 1
+	if result.release != nil {
+		if err := result.release(); err != nil {
+			// Output has completed, so a release error cannot be rendered without
+			// a second report. Preserve the failing process result instead.
+			return 1
+		}
 	}
-	return dispatchFailure(stdout, stderr, result.err)
+	return code
 }
 
 // newGitCommandContext gives each process-command stage its own full timeout.

@@ -510,10 +510,13 @@ ownership boundary.
 
 Phase 4 review found that its initial commits closed only part of the writer population and released
 or acquired leases outside several authority-to-presentation boundaries. Settlement centralizes
-effort scope selection, classifies exact topology and upgrade recovery effects, completes focused
-operation result models, and keeps creation, ADR numbering, uninstall, upgrade, and lifecycle leases
-through presentation. ADR numbering now loads its corpus and mutates records and provenance through
-one selected-root handle, removes unleased compatibility writers, and composes exact numbering,
-provenance, and Publisher effects. These authority-determined corrections preserve Publisher,
-upgrade-journal, Git-integration, and focused lifecycle ownership rather than introducing parallel
-policy.
+effort scope selection, removes parallel unleased plan, ADR, topic, domain, and uninstall writers,
+classifies exact topology and upgrade recovery effects, and keeps applicable leases through actual
+success or diagnostic presentation. Plan and ADR parent-swap regressions and the uninstall fault
+matrix prove confined effects; blocking diagnostic writers prove competing effort and upgrade
+transactions cannot begin before presentation completes. ADR numbering and scaffolding load their
+corpora and mutate records and provenance through the selected-root handle. Upgrade presentation
+labels planned migrations separately until journal commit, and worktree removal and effort-creation
+rollback retain exact known topology axes without inventing certainty. These authority-determined
+corrections preserve Publisher, upgrade-journal, Git-integration, and focused lifecycle ownership
+rather than introducing parallel policy.

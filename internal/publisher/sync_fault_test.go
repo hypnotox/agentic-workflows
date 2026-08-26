@@ -2,6 +2,7 @@ package publisher
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io/fs"
 	"os"
@@ -790,7 +791,7 @@ func TestSyncReportsResidentDirectoryModeCorrection(t *testing.T) {
 	if err := os.Chmod(residentDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	result, err := testPublisher(renderInputsForTest(state)).Sync()
+	result, err := testPublisher(renderInputsForTest(state)).SyncLeased(context.Background(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -828,7 +829,7 @@ func TestPublisherSyncRetainsCommittedPartialResultOnLaterFilesystemFailure(t *t
 		t.Fatal(err)
 	}
 
-	result, err := testPublisher(renderInputsForTest(state)).Sync()
+	result, err := testPublisher(renderInputsForTest(state)).SyncLeased(context.Background(), nil)
 	if err == nil {
 		t.Fatal("Sync accepted an unreplaceable later output")
 	}

@@ -5,6 +5,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
@@ -47,13 +48,18 @@ func BuildListDocument(state *ProjectState, cfg *config.Config, kindFilter strin
 	return listDocument(cfg, state.catalog(), kindFilter)
 }
 
-// NewADR scaffolds one branch-aware ADR through the supplied repository.
-func NewADR(root string, cfg *config.Config, repo *awfgit.Repo, ctx context.Context, title string) (string, error) {
-	return newADR(root, cfg, repo, ctx, title)
+// NewADRLeased scaffolds one branch-aware ADR through the caller-held
+// selected-root capability. The caller retains its tracked lease through
+// presentation.
+func NewADRLeased(root string, cfg *config.Config, repo *awfgit.Repo, ctx context.Context, title string, lease *filesystem.Lease, files *filesystem.Handle) (string, error) {
+	return newADRLeased(root, cfg, repo, ctx, title, lease, files)
 }
 
-// NewPlan scaffolds one plan beneath root.
-func NewPlan(root, title string) (string, error) { return newPlan(root, title) }
+// NewPlanLeased scaffolds one plan through the caller-held selected-root
+// capability. The caller retains its tracked lease through presentation.
+func NewPlanLeased(root, title string, files *filesystem.Handle) (string, error) {
+	return newPlanLeased(root, title, files)
+}
 
 // NewPitfall scaffolds one authored pitfall beneath root.
 func NewPitfall(root, title string) (presentation.Document, error) { return newPitfall(root, title) }

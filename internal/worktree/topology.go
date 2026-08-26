@@ -27,6 +27,34 @@ func (e TopologyEffects) Changed() bool {
 	return e.ManagedPath || e.GitRegistration || e.Branch || e.ReceivingHEAD || e.Uncertain
 }
 
+func (e TopologyEffects) merge(other TopologyEffects) TopologyEffects {
+	return TopologyEffects{
+		ManagedPath:     e.ManagedPath || other.ManagedPath,
+		GitRegistration: e.GitRegistration || other.GitRegistration,
+		Branch:          e.Branch || other.Branch,
+		ReceivingHEAD:   e.ReceivingHEAD || other.ReceivingHEAD,
+		Uncertain:       e.Uncertain || other.Uncertain,
+	}
+}
+
+// changedSince retains only the axes whose observed presence changed between
+// two topology snapshots. A failed removal command is therefore not credited
+// with an axis that was already present before it ran.
+func (e TopologyEffects) changedSince(before TopologyEffects) TopologyEffects {
+	if e.Uncertain || before.Uncertain {
+		// TopologyEffects deliberately does not claim which probe was unavailable.
+		// Without that provenance, comparing a false value could fabricate a
+		// removal axis, so preserve uncertainty alone.
+		return TopologyEffects{Uncertain: true}
+	}
+	return TopologyEffects{
+		ManagedPath:     e.ManagedPath != before.ManagedPath,
+		GitRegistration: e.GitRegistration != before.GitRegistration,
+		Branch:          e.Branch != before.Branch,
+		ReceivingHEAD:   e.ReceivingHEAD != before.ReceivingHEAD,
+	}
+}
+
 type RefusalError struct {
 	Category        string
 	Condition       string
@@ -82,8 +110,8 @@ func (e *CreationError) Unwrap() []error {
 
 // refusal records model-owned, independently executable recovery actions. NextAction
 // remains the legacy one-line summary used by Error; presentation uses NextActions.
-func refusal(category, condition string, changed bool, actions ...string) error {
-	return &RefusalError{Category: category, Condition: condition, ChangedTopology: changed, NextAction: strings.Join(actions, "; "), NextActions: actions}
+func refusal(category, condition string, actions ...string) error {
+	return &RefusalError{Category: category, Condition: condition, NextAction: strings.Join(actions, "; "), NextActions: actions}
 }
 
 func refusalCause(category, condition string, changed bool, err error, actions ...string) error {

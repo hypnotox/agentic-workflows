@@ -103,7 +103,7 @@ func TestFinishSyncPrintingPresentsCompleteEffectsOnLeaseReleaseFailure(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := composePublisher(state, cfg).Sync()
+	result, err := composePublisher(state, cfg).SyncLeased(context.Background(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,20 +171,20 @@ import (
 
 func mutationAddsPostRender(state *project.ProjectState, cfg *config.Config, ctx context.Context) {
 	_ = ctx
-	_, _ = publisher.New(state.OutputState(), cfg, publisher.NewFilesystemReader(state.Root()), project.Version).Sync()
+	_, _ = publisher.New(state.OutputState(), cfg, publisher.NewFilesystemReader(state.Root()), project.Version).SyncLeased(context.Background(), nil)
 }
 
 var mutationAddsPackagePostRender = func(state *project.ProjectState, cfg *config.Config, ctx context.Context) {
 	_ = ctx
-	_, _ = publisher.New(state.OutputState(), cfg, publisher.NewFilesystemReader(state.Root()), project.Version).Sync()
+	_, _ = publisher.New(state.OutputState(), cfg, publisher.NewFilesystemReader(state.Root()), project.Version).SyncLeased(context.Background(), nil)
 }
 `),
 	})
 	got := syncCompositionCalls(mutation)
-	if got[syncCompositionCall{file: "sync_wiring_mutation_fixture.go", owner: "mutationAddsPostRender", name: "Sync"}] != 1 {
+	if got[syncCompositionCall{file: "sync_wiring_mutation_fixture.go", owner: "mutationAddsPostRender", name: "SyncLeased"}] != 1 {
 		t.Fatal("typed caller census did not detect an added post-mutation render")
 	}
-	if got[syncCompositionCall{file: "sync_wiring_mutation_fixture.go", owner: "<package>", name: "Sync"}] != 1 {
+	if got[syncCompositionCall{file: "sync_wiring_mutation_fixture.go", owner: "<package>", name: "SyncLeased"}] != 1 {
 		t.Fatal("typed caller census did not detect a package-level post-mutation render")
 	}
 }

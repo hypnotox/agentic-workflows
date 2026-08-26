@@ -39,7 +39,7 @@ func TestRunCommitsPlannedMigrationBeforeOrdinarySyncWithLockLast(t *testing.T) 
 		func() (int, int) { return 46, 47 },
 		func(string) (string, int, error) { return "gate", 46, nil },
 		func(context.Context, string) (MigrationResult, error) {
-			return MigrationResult{Applied: []string{"future"}, Mutations: []FileMutation{
+			return MigrationResult{Planned: []string{"future"}, Mutations: []FileMutation{
 				{Path: path, Content: []byte("future\n"), Mode: 0o600},
 				{Path: removedPath, Remove: true},
 			}}, nil
@@ -237,7 +237,7 @@ func TestRunWrapsRejectedMigrationPlanAsJournalFailure(t *testing.T) {
 		func() (int, int) { return 46, 47 },
 		func(string) (string, int, error) { return "gate", 46, nil },
 		func(context.Context, string) (MigrationResult, error) {
-			return MigrationResult{Applied: []string{"future"}, Mutations: []FileMutation{{Path: LockRel(), Mode: 0o600}}}, nil
+			return MigrationResult{Planned: []string{"future"}, Mutations: []FileMutation{{Path: LockRel(), Mode: 0o600}}}, nil
 		},
 		func() string { return "current schema" },
 	)

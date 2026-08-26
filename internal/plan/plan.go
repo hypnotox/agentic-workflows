@@ -16,7 +16,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/hypnotox/agentic-workflows/internal/filepublication"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
 )
 
@@ -243,25 +243,19 @@ func replaceOnce(s, old, replacement string) (string, error) {
 	return strings.Replace(s, old, replacement, 1), nil
 }
 
-// NewFile scaffolds a new plan under dir from the rendered plans template
-// (dir/template.md): today's date filled, marker comments stripped, named
-// YYYY-MM-DD-slug.md. No sequential number is allocated. Refuses to overwrite.
+// NewFileLeased scaffolds one plan through the caller-held selected-root
+// handle. plansDir is root-relative, so template observation and exclusive
+// publication remain confined to the authority protected by the caller's lease.
 // touches-state: adr-system/plan-artifacts:plan-new-unnumbered - unnumbered dated plan scaffold; proof in plan_test.go
-func NewFile(dir, title string) (string, error) {
-	return newFile(dir, title, filepublication.Publish)
-}
-
-// newFile retains plan-owned naming and refusal presentation while accepting
-// the publication operation at its consumer boundary for deterministic tests.
-func newFile(dir, title string, publish func(string, []byte, fs.FileMode) error) (string, error) {
+func NewFileLeased(files *filesystem.Handle, plansDir, title string) (string, error) {
 	title = strings.TrimSpace(title)
 	slug, err := slugify(title)
 	if err != nil {
 		return "", err
 	}
 	date := now().Format("2006-01-02")
-	path := filepath.Join(dir, date+"-"+slug+".md")
-	raw, err := os.ReadFile(filepath.Join(dir, "template.md"))
+	path := filepath.ToSlash(filepath.Join(plansDir, date+"-"+slug+".md"))
+	raw, err := files.Read(filepath.ToSlash(filepath.Join(plansDir, "template.md")))
 	if err != nil {
 		return "", fmt.Errorf("plan: read template: %w", err)
 	}
@@ -274,7 +268,7 @@ func newFile(dir, title string, publish func(string, []byte, fs.FileMode) error)
 	if err != nil {
 		return "", err
 	}
-	if err := publish(path, []byte(content), 0o644); err != nil {
+	if err := files.Publish(path, []byte(content), fs.FileMode(0o644)); err != nil {
 		if errors.Is(err, os.ErrExist) {
 			return "", fmt.Errorf("plan: %s already exists", path)
 		}

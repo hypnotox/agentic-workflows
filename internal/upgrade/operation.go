@@ -47,7 +47,7 @@ type FileMutation struct {
 
 // MigrationResult records applied migration steps and user-facing changes.
 type MigrationResult struct {
-	Applied   []string
+	Planned   []string
 	Changes   []string
 	Mutations []FileMutation
 }
@@ -232,16 +232,17 @@ func Run(ctx context.Context, root string, sync Sync, gate Gate, present Project
 		return OperationOutcome{}, fmt.Errorf("invalid authority: restore .awf/awf.lock from version control; if a current-state-upgrade journal exists run `awf upgrade --recover`: %w", err)
 	}
 	migration, err := migrate(ctx, root)
-	applied, changes := migration.Applied, migration.Changes
+	planned, applied, changes := migration.Planned, []string(nil), migration.Changes
 	if err != nil {
 		return OperationOutcome{}, newUpgradeFailure(applied, changes, presentation.Mutation{}, err)
 	}
 	schemaCurrent := state == "ok"
-	if len(migration.Mutations) > 0 || len(applied) > 0 {
+	if len(migration.Mutations) > 0 || len(planned) > 0 {
 		journalOutcome, journalErr := commitMigration(root, lock, current, migration.Mutations)
 		if journalErr != nil {
 			return OperationOutcome{}, newJournalFailure("migration has not reached terminal state", journalOutcome, journalErr)
 		}
+		applied = planned
 	}
 	if err := gate(ctx, root); err != nil {
 		return OperationOutcome{}, newUpgradeFailure(applied, changes, presentation.Mutation{}, err)

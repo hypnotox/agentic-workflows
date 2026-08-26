@@ -15,6 +15,18 @@ import (
 	"time"
 )
 
+func Acquire(ctx context.Context, scope string, roots ...string) (func() error, error) {
+	requests := make([]leaseRequest, 0, len(roots))
+	for _, root := range roots {
+		requests = append(requests, leaseRequest{scope: scope, root: root})
+	}
+	lease, err := acquire(ctx, requests)
+	if err != nil {
+		return nil, err
+	}
+	return lease.Release, nil
+}
+
 func TestLeaseErrorCarriesTypedStageIdentity(t *testing.T) {
 	_, err := Acquire(context.Background(), "lease-test", filepath.Join(t.TempDir(), "missing"))
 	var leaseErr *LeaseError

@@ -449,13 +449,13 @@ func TestUninstallSplitsMissingVsCorrupt(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	syncClean(t, root)
 	corruptProjectLock(t, root)
-	if _, err := resident.Uninstall(testContext(t), root, nil); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
+	if _, err := uninstallProject(t, root); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
 		t.Fatalf("corrupt lock must refuse uninstall with the hint, got %v", err)
 	}
 	if err := os.Remove(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := resident.Uninstall(testContext(t), root, nil); err == nil || !strings.Contains(err.Error(), "nothing to uninstall") {
+	if _, err := uninstallProject(t, root); err == nil || !strings.Contains(err.Error(), "nothing to uninstall") {
 		t.Fatalf("missing lock lost its message: %v", err)
 	}
 }

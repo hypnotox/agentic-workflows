@@ -58,17 +58,6 @@ func (e *PartialScaffoldError) Document() (presentation.Document, error) {
 	return (presentation.Mutation{Status: "topic scaffold partially committed", Changes: changes, NextActions: next}).Document()
 }
 
-// Scaffold creates one topic's paired authored inputs atomically enough to
-// remove every input and newly-created parent when a later step fails.
-func Scaffold(root string, cfg *config.Config, domain, title string) (presentation.Document, error) {
-	files, err := filesystem.Open(root)
-	if err != nil {
-		return presentation.Document{}, err
-	}
-	defer files.Close()
-	return scaffoldConfined(files, cfg, domain, title)
-}
-
 // scaffoldConfined creates authored inputs through one selected-root handle.
 // Every source is exclusive, and rollback removes only paths this invocation
 // published. Parent directories are deliberately retained when another actor
@@ -126,5 +115,10 @@ func CreateLeased(ctx context.Context, root, domain, title string, loader *proje
 	if err != nil {
 		return presentation.Document{}, err
 	}
-	return Scaffold(root, cfg, domain, title)
+	files, err := filesystem.Open(root)
+	if err != nil {
+		return presentation.Document{}, err
+	}
+	defer files.Close()
+	return scaffoldConfined(files, cfg, domain, title)
 }

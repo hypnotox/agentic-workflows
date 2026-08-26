@@ -1,13 +1,8 @@
 package adr_test
 
 import (
-	"bufio"
-	"encoding/json"
-	"fmt"
-	"io"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -287,7 +282,7 @@ func TestNewFileHappyPath(t *testing.T) {
 		return time.Date(2026, 7, clockCalls, 0, 0, 0, 0, time.UTC)
 	})
 
-	path, err := adr.NewFile(dir, "My Cool Title")
+	path, err := adr.NewFileForTest(dir, "My Cool Title")
 	if err != nil {
 		t.Fatalf("NewFile: %v", err)
 	}
@@ -330,7 +325,7 @@ func TestNewFileUsesCurrentRegisteredFormat(t *testing.T) {
 	swapNow(t, fixedNow)
 	dir := t.TempDir()
 	writeTemplateFixture(t, dir)
-	path, err := adr.NewFile(dir, "Format Title")
+	path, err := adr.NewFileForTest(dir, "Format Title")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -352,7 +347,7 @@ func TestNewFileRejectsMissingFrontmatter(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte("# ADR-NNNN: Title\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := adr.NewFile(dir, "No Frontmatter"); err == nil || !strings.Contains(err.Error(), "missing frontmatter") {
+	if _, err := adr.NewFileForTest(dir, "No Frontmatter"); err == nil || !strings.Contains(err.Error(), "missing frontmatter") {
 		t.Fatalf("missing frontmatter error = %v", err)
 	}
 }
@@ -366,7 +361,7 @@ func TestNewFileAcceptsAV3TemplateAndRefusesADeclaredSlug(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(v3Template), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	path, err := adr.NewFile(dir, "Keep The Corpus")
+	path, err := adr.NewFileForTest(dir, "Keep The Corpus")
 	if err != nil {
 		t.Fatalf("V3 template scaffold: %v", err)
 	}
@@ -380,7 +375,7 @@ func TestNewFileAcceptsAV3TemplateAndRefusesADeclaredSlug(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(strings.Replace(v3Template, "status: Proposed", "slug: fixed\nstatus: Proposed", 1)), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := adr.NewFile(dir, "Declared Slug"); err == nil || !strings.Contains(err.Error(), "must not declare slug") {
+	if _, err := adr.NewFileForTest(dir, "Declared Slug"); err == nil || !strings.Contains(err.Error(), "must not declare slug") {
 		t.Fatalf("declared-slug refusal = %v", err)
 	}
 }
@@ -393,11 +388,11 @@ func TestNewFileSequentialCallsGetDifferentNumbers(t *testing.T) {
 	dir := t.TempDir()
 	writeTemplateFixture(t, dir)
 	swapNow(t, fixedNow)
-	first, err := adr.NewFile(dir, "First Title")
+	first, err := adr.NewFileForTest(dir, "First Title")
 	if err != nil {
 		t.Fatalf("first NewFile: %v", err)
 	}
-	second, err := adr.NewFile(dir, "Second Title")
+	second, err := adr.NewFileForTest(dir, "Second Title")
 	if err != nil {
 		t.Fatalf("second NewFile: %v", err)
 	}
@@ -417,7 +412,7 @@ func TestNewPendingFileWritesSlugIdentity(t *testing.T) {
 	dir := t.TempDir()
 	writeTemplateFixture(t, dir)
 	swapNow(t, fixedNow)
-	path, err := adr.NewPendingFile(dir, "Pending Record Here")
+	path, err := adr.NewPendingFileForTest(dir, "Pending Record Here")
 	if err != nil {
 		t.Fatalf("NewPendingFile: %v", err)
 	}
@@ -458,8 +453,8 @@ func TestNewFileRefusals(t *testing.T) {
 				name string
 				call func(dir string) (string, error)
 			}{
-				{"numbered", func(dir string) (string, error) { return adr.NewFile(dir, tc.title) }},
-				{"pending", func(dir string) (string, error) { return adr.NewPendingFile(dir, tc.title) }},
+				{"numbered", func(dir string) (string, error) { return adr.NewFileForTest(dir, tc.title) }},
+				{"pending", func(dir string) (string, error) { return adr.NewPendingFileForTest(dir, tc.title) }},
 			} {
 				t.Run(form.name, func(t *testing.T) {
 					dir := t.TempDir()
@@ -496,10 +491,10 @@ func TestNewFileRefusesSlugAlreadyInCorpus(t *testing.T) {
 			if tc.seed == "numbered" {
 				legacy := testsupport.ADR("Accepted", testsupport.WithDate("2026-07-21"), testsupport.WithTitle("0001: Taken Title"))
 				testsupport.WriteFile(t, filepath.Join(dir, "0001-taken-title.md"), legacy)
-			} else if _, err := adr.NewPendingFile(dir, "Taken Title"); err != nil {
+			} else if _, err := adr.NewPendingFileForTest(dir, "Taken Title"); err != nil {
 				t.Fatal(err)
 			}
-			_, err := adr.NewPendingFile(dir, "Taken Title")
+			_, err := adr.NewPendingFileForTest(dir, "Taken Title")
 			if err == nil || !strings.Contains(err.Error(), `slug "taken-title" already used by`) {
 				t.Fatalf("err = %v, want the slug-collision refusal", err)
 			}
@@ -517,8 +512,8 @@ func TestScaffoldReadsIdentityBesideAnUnparseableBody(t *testing.T) {
 		name     string
 		scaffold func(dir string) (string, error)
 	}{
-		{"numbered", func(dir string) (string, error) { return adr.NewFile(dir, "Second One") }},
-		{"pending", func(dir string) (string, error) { return adr.NewPendingFile(dir, "Second One") }},
+		{"numbered", func(dir string) (string, error) { return adr.NewFileForTest(dir, "Second One") }},
+		{"pending", func(dir string) (string, error) { return adr.NewPendingFileForTest(dir, "Second One") }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
@@ -551,14 +546,14 @@ func TestNewFilePropagatesIdentityCorpusError(t *testing.T) {
 	if err := os.Mkdir(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := adr.NewFile(dir, "Some Title"); err == nil {
+	if _, err := adr.NewFileForTest(dir, "Some Title"); err == nil {
 		t.Fatal("expected the identity corpus glob error to propagate")
 	}
 }
 
 func TestNewFileMissingTemplate(t *testing.T) {
 	dir := t.TempDir()
-	if _, err := adr.NewFile(dir, "No Template Here"); err == nil {
+	if _, err := adr.NewFileForTest(dir, "No Template Here"); err == nil {
 		t.Fatal("expected error for missing template.md")
 	}
 }
@@ -566,7 +561,7 @@ func TestNewFileMissingTemplate(t *testing.T) {
 func TestNewFileEmptySlug(t *testing.T) {
 	dir := t.TempDir()
 	// No template.md needed - slugify errors before the file is ever read.
-	if _, err := adr.NewFile(dir, "!!!"); err == nil {
+	if _, err := adr.NewFileForTest(dir, "!!!"); err == nil {
 		t.Fatal("expected slugify error for an all-punctuation title")
 	}
 }
@@ -588,7 +583,7 @@ func TestNewFileRejectsInvalidGovernedTemplateMarkers(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(broken), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := adr.NewFile(dir, "Bad Format"); err == nil || !strings.Contains(err.Error(), tc.want) {
+			if _, err := adr.NewFileForTest(dir, "Bad Format"); err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("format marker error = %v, want %q", err, tc.want)
 			}
 		})
@@ -601,7 +596,7 @@ func TestNewFileMissingDatePlaceholder(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(broken), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	_, err := adr.NewFile(dir, "Some Title")
+	_, err := adr.NewFileForTest(dir, "Some Title")
 	if err == nil || !strings.Contains(err.Error(), `template missing expected "date: YYYY-MM-DD"`) {
 		t.Fatalf("err = %v, want missing frontmatter date placeholder", err)
 	}
@@ -613,7 +608,7 @@ func TestNewFileMissingProposedHistoryDatePlaceholder(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(broken), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	_, err := adr.NewFile(dir, "Some Title")
+	_, err := adr.NewFileForTest(dir, "Some Title")
 	if err == nil || !strings.Contains(err.Error(), `ADR template Proposed history: adr: template missing expected "- YYYY-MM-DD: Proposed"`) {
 		t.Fatalf("err = %v, want missing Proposed history date placeholder", err)
 	}
@@ -625,7 +620,7 @@ func TestNewFileMissingTitlePlaceholder(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(broken), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := adr.NewFile(dir, "Some Title"); err == nil {
+	if _, err := adr.NewFileForTest(dir, "Some Title"); err == nil {
 		t.Fatal("expected error for missing title placeholder")
 	}
 }
@@ -776,173 +771,4 @@ func mustCorpus(t *testing.T, dir string) adr.Corpus {
 		t.Fatalf("LoadCorpus(%s): %v", dir, err)
 	}
 	return c
-}
-
-type scaffoldProcessResult struct {
-	Path  string
-	Error string
-}
-
-// TestADRScaffoldProcess is the subprocess half of the concurrency proofs.
-// Its stdin barrier releases both creators at one explicit boundary.
-func TestADRScaffoldProcess(t *testing.T) {
-	if os.Getenv("ADR_SCAFFOLD_PROCESS") == "" {
-		return
-	}
-	dir, title := os.Getenv("ADR_SCAFFOLD_DIR"), os.Getenv("ADR_SCAFFOLD_TITLE")
-	fmt.Fprintln(os.Stdout, "ready")
-	if _, err := bufio.NewReader(os.Stdin).ReadString('\n'); err != nil {
-		t.Fatal(err)
-	}
-	var path string
-	var err error
-	if os.Getenv("ADR_SCAFFOLD_PENDING") == "1" {
-		path, err = adr.NewPendingFile(dir, title)
-	} else {
-		path, err = adr.NewFile(dir, title)
-	}
-	result := scaffoldProcessResult{Path: path}
-	if err != nil {
-		result.Error = err.Error()
-	}
-	encoded, err := json.Marshal(result)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(os.Getenv("ADR_SCAFFOLD_RESULT"), encoded, 0o600); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func startScaffoldProcess(t *testing.T, dir, title string, pending bool, cacheRoot string) (stdin io.WriteCloser, command *exec.Cmd, result string) {
-	t.Helper()
-	result = filepath.Join(t.TempDir(), "result.json")
-	command = exec.Command(os.Args[0], "-test.run=^TestADRScaffoldProcess$")
-	command.Env = append(os.Environ(), "ADR_SCAFFOLD_PROCESS=1", "ADR_SCAFFOLD_DIR="+dir,
-		"ADR_SCAFFOLD_TITLE="+title, "ADR_SCAFFOLD_RESULT="+result,
-		"XDG_CACHE_HOME="+cacheRoot, "HOME="+cacheRoot, "LOCALAPPDATA="+cacheRoot)
-	if pending {
-		command.Env = append(command.Env, "ADR_SCAFFOLD_PENDING=1")
-	}
-	var err error
-	stdin, err = command.StdinPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	stdout, err := command.StdoutPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := command.Start(); err != nil {
-		t.Fatal(err)
-	}
-	if ready, err := bufio.NewReader(stdout).ReadString('\n'); err != nil || ready != "ready\n" {
-		t.Fatalf("scaffold process readiness = %q, %v", ready, err)
-	}
-	return stdin, command, result
-}
-
-func finishScaffoldProcesses(t *testing.T, firstIn, secondIn io.WriteCloser, first, second *exec.Cmd, firstResult, secondResult string) []scaffoldProcessResult {
-	t.Helper()
-	for _, in := range []io.WriteCloser{firstIn, secondIn} {
-		if _, err := io.WriteString(in, "release\n"); err != nil {
-			t.Fatal(err)
-		}
-		if err := in.Close(); err != nil {
-			t.Fatal(err)
-		}
-	}
-	for _, command := range []*exec.Cmd{first, second} {
-		if err := command.Wait(); err != nil {
-			t.Fatal(err)
-		}
-	}
-	results := make([]scaffoldProcessResult, 2)
-	for i, path := range []string{firstResult, secondResult} {
-		data, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := json.Unmarshal(data, &results[i]); err != nil {
-			t.Fatal(err)
-		}
-	}
-	return results
-}
-
-func TestNewFileConcurrentNumberedCreators(t *testing.T) {
-	dir := t.TempDir()
-	cache := t.TempDir()
-	writeTemplateFixture(t, dir)
-	firstIn, first, firstResult := startScaffoldProcess(t, dir, "First Creator", false, cache)
-	secondIn, second, secondResult := startScaffoldProcess(t, dir, "Second Creator", false, cache)
-	results := finishScaffoldProcesses(t, firstIn, secondIn, first, second, firstResult, secondResult)
-	for _, result := range results {
-		if result.Error != "" {
-			t.Fatalf("numbered creator refused: %s", result.Error)
-		}
-	}
-	parsed, err := adr.ParseDir(dir)
-	if err != nil {
-		t.Fatalf("concurrent corpus must parse: %v", err)
-	}
-	if len(parsed) != 2 || parsed[0].Number != "0001" || parsed[1].Number != "0002" {
-		t.Fatalf("numbered corpus = %#v, want unique sequential 0001 and 0002", parsed)
-	}
-}
-
-func TestNewPendingFileConcurrentCreators(t *testing.T) {
-	dir := t.TempDir()
-	cache := t.TempDir()
-	writeTemplateFixture(t, dir)
-	firstIn, first, firstResult := startScaffoldProcess(t, dir, "One Pending", true, cache)
-	secondIn, second, secondResult := startScaffoldProcess(t, dir, "One Pending", true, cache)
-	results := finishScaffoldProcesses(t, firstIn, secondIn, first, second, firstResult, secondResult)
-	successes := 0
-	for _, result := range results {
-		if result.Error == "" {
-			successes++
-		}
-	}
-	if successes != 1 {
-		t.Fatalf("pending creators had %d successes, want one: %#v", successes, results)
-	}
-	path := filepath.Join(dir, "one-pending.md")
-	got, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(got), "# ADR-one-pending: One Pending") {
-		t.Fatalf("winner bytes are not a complete pending record: %q", got[:min(len(got), 200)])
-	}
-}
-
-// TestNewFileConcurrentAliasCreators proves a symlink spelling selects the
-// same directory transaction as its resolved target.
-func TestNewFileConcurrentAliasCreators(t *testing.T) {
-	dir := filepath.Join(t.TempDir(), "decisions")
-	if err := os.Mkdir(dir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	alias := filepath.Join(filepath.Dir(dir), "decisions-alias")
-	if err := os.Symlink(dir, alias); err != nil {
-		t.Skipf("symlink aliases unavailable: %v", err)
-	}
-	cache := t.TempDir()
-	writeTemplateFixture(t, dir)
-	firstIn, first, firstResult := startScaffoldProcess(t, dir, "Resolved Creator", false, cache)
-	secondIn, second, secondResult := startScaffoldProcess(t, alias, "Alias Creator", false, cache)
-	results := finishScaffoldProcesses(t, firstIn, secondIn, first, second, firstResult, secondResult)
-	for _, result := range results {
-		if result.Error != "" {
-			t.Fatalf("alias creator refused: %s", result.Error)
-		}
-	}
-	parsed, err := adr.ParseDir(dir)
-	if err != nil {
-		t.Fatalf("alias corpus must parse: %v", err)
-	}
-	if len(parsed) != 2 || parsed[0].Number != "0001" || parsed[1].Number != "0002" {
-		t.Fatalf("alias corpus = %#v, want unique sequential 0001 and 0002", parsed)
-	}
 }

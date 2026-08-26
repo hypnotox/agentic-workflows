@@ -16,7 +16,7 @@ query a single version or a range.
 
 - Domain, local-document, and topic creation now acquire checkout transaction leases before authority loading, retain the observed config identity for replacement, and exclusively publish authored sources. These protections serialize live operations but do not claim crash atomicity.
 
-- Project scaffolding, ADR numbering, upgrades, uninstall, effort lifecycle, and managed-worktree lifecycle now hold the applicable tracked or shared-resident leases from mutable authority loading through complete outcome presentation. Partial failures retain exact committed paths, topology, upgrade recovery, and Publisher effects with safe recovery guidance.
+- Plan and ADR scaffolding, ADR numbering, upgrades, uninstall, effort lifecycle, and managed-worktree lifecycle now hold every applicable tracked or shared-resident lease from mutable authority loading through complete outcome presentation. Confined mutation paths reject parent relocation, and partial failures retain exact committed paths, topology, upgrade recovery, and Publisher effects with safe recovery guidance.
 
 ## [0.40.0] - 2026-08-25
 

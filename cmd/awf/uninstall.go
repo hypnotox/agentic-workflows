@@ -22,7 +22,7 @@ func runUninstall(ctx context.Context, root string, stdout io.Writer) (returnErr
 		return err
 	}
 	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
-	report, uninstallErr := resident.Uninstall(ctx, root, publisher.IsLocalDocTemplate)
+	report, uninstallErr := resident.UninstallLeased(ctx, root, publisher.IsLocalDocTemplate, lease)
 	if uninstallErr != nil {
 		var partial *resident.PartialUninstallError
 		if !errors.As(uninstallErr, &partial) {

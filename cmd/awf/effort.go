@@ -118,7 +118,11 @@ func runEffort(c *cmdCtx, compose composeEffort) (returnErr error) {
 		// The effort application-composition seam chooses resident or dual-root
 		// scope before any resident record or Git topology observation; command
 		// composition retains it through rendered presentation.
-		defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
+		if c.retainLease != nil {
+			c.retainLease(lease.Release)
+		} else {
+			defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
+		}
 	}
 	composed, err := compose(c.ctx, c.root)
 	if err != nil {

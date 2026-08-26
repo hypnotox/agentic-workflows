@@ -28,7 +28,7 @@ func evalPreparation(p *project.ProjectState, cfg *config.Config) (publisher.Pre
 func syncEvalProject(t *testing.T, p *project.ProjectState) error {
 	t.Helper()
 	cfg := mustEvalConfig(t, p)
-	_, err := publisher.New(p.OutputState(), cfg, publisher.NewFilesystemReader(p.Root()), project.Version).Sync()
+	_, err := publisher.New(p.OutputState(), cfg, publisher.NewFilesystemReader(p.Root()), project.Version).SyncLeased(context.Background(), nil)
 	return err
 }
 

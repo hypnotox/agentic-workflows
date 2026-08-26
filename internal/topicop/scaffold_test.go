@@ -49,7 +49,12 @@ func TestCreateReportsUnavailableProject(t *testing.T) {
 
 func TestScaffoldCreatesPairedAuthoredInputs(t *testing.T) {
 	root := t.TempDir()
-	_, err := Scaffold(root, &config.Config{Domains: []string{"rendering"}}, "rendering", "Current State")
+	files, err := filesystem.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer files.Close()
+	_, err = scaffoldConfined(files, &config.Config{Domains: []string{"rendering"}}, "rendering", "Current State")
 	if err != nil {
 		t.Fatal(err)
 	}

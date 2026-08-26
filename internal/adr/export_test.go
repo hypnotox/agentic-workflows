@@ -2,9 +2,15 @@ package adr
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
+
 	"testing"
 	"time"
+
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 // SetNowForTest overrides the now seam for a test and returns the previous
@@ -71,5 +77,107 @@ func TestLoadCorpusFromTreeRejectsReaderFaultsAndMalformedAuthority(t *testing.T
 	}, files: map[string][]byte{"docs/decisions/0001-valid.md": valid}}, "docs/decisions")
 	if err != nil || len(corpus.All()) != 1 || corpus.All()[0].Path != "docs/decisions/0001-valid.md" {
 		t.Fatalf("filtered tree corpus = %#v, %v", corpus.All(), err)
+	}
+}
+
+// NewFileForTest exposes the confined scaffold only to external ADR tests.
+func NewFileForTest(dir, title string) (string, error) {
+	files, err := filesystem.Open(dir)
+	if err != nil {
+		return "", err
+	}
+	defer files.Close()
+	path, err := scaffoldRecordConfined(files, ".", title, CurrentFormat(), false)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, filepath.FromSlash(path)), nil
+}
+
+// NewPendingFileForTest exposes the confined pending scaffold only to external ADR tests.
+func NewPendingFileForTest(dir, title string) (string, error) {
+	files, err := filesystem.Open(dir)
+	if err != nil {
+		return "", err
+	}
+	defer files.Close()
+	path, err := scaffoldRecordConfined(files, ".", title, CurrentFormat(), true)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, filepath.FromSlash(path)), nil
+}
+
+// invariant: adr-system/adr-lifecycle:adr-new-no-overwrite (TestScaffoldRecordConfinedRefusesParentSwap)
+func TestScaffoldRecordConfinedRefusesParentSwap(t *testing.T) {
+	root := t.TempDir()
+	decisions := filepath.Join(root, "docs", "decisions")
+	if err := os.MkdirAll(decisions, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(decisions, "template.md"), []byte("---\nformat: current-state-v1\nstatus: Proposed\ndate: YYYY-MM-DD\n---\n# ADR-NNNN: Title\n\n## State changes\n\nNone.\n\n## Status history\n\n- YYYY-MM-DD: Proposed\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	outside := t.TempDir()
+	sentinel := filepath.Join(outside, "sentinel")
+	if err := os.WriteFile(sentinel, []byte("outside"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	files, err := filesystem.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer files.Close()
+	previous := now
+	now = func() time.Time {
+		moved := filepath.Join(root, "docs", "decisions-before-swap")
+		if err := os.Rename(decisions, moved); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(outside, decisions); err != nil {
+			t.Fatal(err)
+		}
+		return time.Date(2026, 8, 26, 0, 0, 0, 0, time.UTC)
+	}
+	defer func() { now = previous }()
+	_, err = scaffoldRecordConfined(files, "docs/decisions", "Swap Refusal", CurrentFormat(), false)
+	if err == nil {
+		t.Fatal("parent swap unexpectedly published")
+	}
+	if !strings.Contains(err.Error(), "path escapes from parent") {
+		t.Fatalf("parent-swap refusal = %v, want root-confinement identity", err)
+	}
+	if got, readErr := os.ReadFile(sentinel); readErr != nil || string(got) != "outside" {
+		t.Fatalf("outside sentinel = %q, %v", got, readErr)
+	}
+	if _, statErr := os.Stat(filepath.Join(outside, "0001-swap-refusal.md")); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("outside ADR = %v, want not exist; refusal=%v", statErr, err)
+	}
+}
+
+func TestADRCreationRequiresCoveringLease(t *testing.T) {
+	if _, err := NewFileLeased(t.TempDir(), nil, nil, "docs/decisions", "No Lease"); err == nil || !strings.Contains(err.Error(), "covering tracked lease") {
+		t.Fatalf("unleased ADR writer error = %v", err)
+	}
+}
+
+// TestADRWriterSingleHome rejects a return to host-path writers or the nested
+// ADR allocation lock. Production creation accepts both the transaction lease
+// and selected-root handle at its only entry points.
+func TestADRWriterSingleHome(t *testing.T) {
+	body, err := os.ReadFile(filepath.Join(testsupport.RepoRoot(t), "internal", "adr", "adr.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(body)
+	for _, forbidden := range []string{"func NewFile(", "func NewPendingFile(", "func acquireScaffoldLock", "filesystem.Acquire("} {
+		if strings.Contains(source, forbidden) {
+			t.Fatalf("obsolete or unleased ADR writer survived: %s", forbidden)
+		}
+	}
+	for _, required := range []string{"func NewFileLeased(root string, lease *filesystem.Lease, files *filesystem.Handle", "func NewPendingFileLeased(root string, lease *filesystem.Lease, files *filesystem.Handle", "func scaffoldRecordConfined(files *filesystem.Handle"} {
+		if !strings.Contains(source, required) {
+			t.Fatalf("confined writer wiring absent: %s", required)
+		}
 	}
 }

@@ -1,6 +1,7 @@
 package publisher
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -185,7 +186,7 @@ func TestSyncPlanningFailurePrecedesInvalidCommandWiring(t *testing.T) {
 	missing.TID = "missing/live-template.tmpl"
 	selected.Docs["missing-live-fixture"] = missing
 	lower := projectstate.NewDerivedWithFacts(base.Root(), base.Roots(), base.Nested(), base.Facts(), selected, base.CompleteCatalog(), base.Targets())
-	_, err := New(lower, cfg, NewFilesystemReader(state.Root()), project.Version).Sync()
+	_, err := New(lower, cfg, NewFilesystemReader(state.Root()), project.Version).SyncLeased(context.Background(), nil)
 	if err == nil || !strings.Contains(err.Error(), "missing/live-template.tmpl") {
 		t.Fatalf("Sync error = %v, want planning error", err)
 	}

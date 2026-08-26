@@ -94,21 +94,6 @@ func (l *Lease) CoversProject(tracked, resident string) bool {
 	return err == nil && slices.Equal(l.identities, want)
 }
 
-// Acquire obtains persistent advisory leases for roots in one semantic scope.
-// It is process-exit safe because advisory locks belong to the open file
-// descriptor, and callers should explicitly call the returned release.
-func Acquire(ctx context.Context, scope string, roots ...string) (func() error, error) {
-	requests := make([]leaseRequest, 0, len(roots))
-	for _, root := range roots {
-		requests = append(requests, leaseRequest{scope: scope, root: root})
-	}
-	lease, err := acquire(ctx, requests)
-	if err != nil {
-		return nil, err
-	}
-	return lease.Release, nil
-}
-
 // AcquireTrackedLease obtains the checkout-local mutation lease. Operations
 // that do not reach primary-resident state must use this instead of a combined
 // project lease so independent linked worktrees can proceed concurrently.

@@ -104,7 +104,7 @@ func TestAddReportsBlockedCurrentStateParent(t *testing.T) {
 }
 
 func TestSynchronizeReportsUnavailableProject(t *testing.T) {
-	if _, err := synchronize(context.Background(), t.TempDir(), operationLoader()); err == nil {
+	if _, err := synchronize(context.Background(), t.TempDir(), operationLoader(), nil); err == nil {
 		t.Fatal("unavailable project synchronized")
 	}
 }
@@ -145,7 +145,8 @@ func scaffoldCurrentStateForTest(root string, cfg *config.Config, name string) e
 		return err
 	}
 	defer files.Close()
-	return scaffoldCurrentStateConfined(files, root, cfg, name)
+	_, err = scaffoldCurrentStateConfined(files, root, cfg, name)
+	return err
 }
 
 func TestScaffoldCurrentStatePreservesExistingAndReportsFilesystemFailures(t *testing.T) {
@@ -173,10 +174,19 @@ func TestScaffoldCurrentStatePreservesExistingAndReportsFilesystemFailures(t *te
 	if err := scaffoldCurrentStateForTest(root, cfg, "payments"); err == nil {
 		t.Fatal("self-referential current-state symlink accepted")
 	}
-	if _, err := hasSidecarOrParts("/dev/null", "payments"); err == nil || !strings.Contains(err.Error(), "inspect authored domain path") {
-		t.Fatalf("inspection error = %v", err)
+	blocked, openErr := filesystem.Open("/dev/null")
+	if openErr == nil {
+		defer blocked.Close()
+		if _, err := hasSidecarOrParts(blocked, "payments"); err == nil || !strings.Contains(err.Error(), "inspect authored domain path") {
+			t.Fatalf("inspection error = %v", err)
+		}
 	}
-	orphaned, err := hasSidecarOrParts(root, "absent")
+	files, err := filesystem.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer files.Close()
+	orphaned, err := hasSidecarOrParts(files, "absent")
 	if err != nil || orphaned {
 		t.Fatalf("absent authored inputs = %t, %v", orphaned, err)
 	}

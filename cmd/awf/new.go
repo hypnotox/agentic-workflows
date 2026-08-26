@@ -58,7 +58,12 @@ func newADR(ctx context.Context, root string, titleWords []string, stdout io.Wri
 	if err != nil {
 		return err
 	}
-	path, err := project.NewADR(state.Root(), cfg, repo, ctx, strings.Join(titleWords, " "))
+	files, err := filesystem.Open(state.Root())
+	if err != nil {
+		return err
+	}
+	defer func() { returnErr = errors.Join(returnErr, files.Close()) }()
+	path, err := project.NewADRLeased(state.Root(), cfg, repo, ctx, strings.Join(titleWords, " "), lease, files)
 	if err != nil {
 		return err
 	}
@@ -81,7 +86,12 @@ func newPlan(ctx context.Context, root string, titleWords []string, stdout io.Wr
 	if err != nil {
 		return err
 	}
-	path, err := project.NewPlan(state.Root(), strings.Join(titleWords, " "))
+	files, err := filesystem.Open(state.Root())
+	if err != nil {
+		return err
+	}
+	defer func() { returnErr = errors.Join(returnErr, files.Close()) }()
+	path, err := project.NewPlanLeased(state.Root(), strings.Join(titleWords, " "), files)
 	if err != nil {
 		return err
 	}

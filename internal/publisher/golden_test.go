@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/render"
@@ -127,8 +128,16 @@ func TestEndToEndGolden(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(parseDir, "template.md"), plansTemplate, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := plan.NewFile(parseDir, "Scaffold"); err != nil {
+	files, err := filesystem.Open(parseDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := plan.NewFileLeased(files, ".", "Scaffold"); err != nil {
+		_ = files.Close()
 		t.Fatalf("scaffold from rendered template: %v", err)
+	}
+	if err := files.Close(); err != nil {
+		t.Fatal(err)
 	}
 	parsed, err := plan.ParseDir(parseDir)
 	if err != nil || len(parsed) != 1 || strings.TrimSpace(parsed[0].Goal) == "" || strings.TrimSpace(parsed[0].ArchitectureSummary) == "" || !strings.Contains(parsed[0].DefinitionOfDone, "- ") {

@@ -8,10 +8,25 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
+
+func uninstallProject(t *testing.T, root string) (resident.UninstallReport, error) {
+	t.Helper()
+	lease, err := filesystem.AcquireProjectLease(testContext(t), root, awfgit.ProjectResidentRoot(testContext(t), root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	report, uninstallErr := resident.UninstallLeased(testContext(t), root, nil, lease)
+	if err := lease.Release(); err != nil {
+		t.Fatalf("release uninstall lease: %v", err)
+	}
+	return report, uninstallErr
+}
 
 func TestSyncPrunesResidentLockEntryFromResidentRoot(t *testing.T) {
 	root := scaffold(t, sampleYAML)
@@ -88,7 +103,7 @@ func TestUninstallPreservesResidentState(t *testing.T) {
 	if err := lock.Save(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
-	report, err := resident.Uninstall(testContext(t), root, nil)
+	report, err := uninstallProject(t, root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +132,7 @@ func TestUninstallRemovesEmptyResidentRoot(t *testing.T) {
 	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
-	report, err := resident.Uninstall(testContext(t), root, nil)
+	report, err := uninstallProject(t, root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +176,7 @@ func TestUninstallRejectsUnsafeResidentRoot(t *testing.T) {
 				}
 				t.Cleanup(func() { _ = os.Chmod(efforts, 0o700) })
 			}
-			if _, err := resident.Uninstall(testContext(t), root, nil); err == nil {
+			if _, err := uninstallProject(t, root); err == nil {
 				t.Fatalf("unsafe %s efforts root accepted", kind)
 			}
 			if _, err := os.Stat(lockFile(root)); err != nil {

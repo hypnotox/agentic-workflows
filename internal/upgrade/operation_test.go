@@ -115,7 +115,7 @@ func TestRunSequencingAndCurrentSchemaPresentation(t *testing.T) {
 		func(context.Context, string) error { calls = append(calls, "gate"); return nil },
 		func(context.Context, string) (MigrationResult, error) {
 			calls = append(calls, "migrate")
-			return MigrationResult{Applied: []string{"first"}, Changes: []string{"changed config"}}, nil
+			return MigrationResult{Planned: []string{"first"}, Changes: []string{"changed config"}}, nil
 		},
 		func(string) (string, int, error) { calls = append(calls, "schema"); return "ok", 14, nil },
 	)
@@ -408,7 +408,7 @@ func TestRunFailureRetainsMigrationAndSyncFacts(t *testing.T) {
 	failure := errors.New("terminal sync failed")
 	partialMutation := presentation.Mutation{Changes: []presentation.MutationChange{{Label: "outputs", Values: []presentation.Value{mustProse(t, "changed AGENTS.md")}}}}
 	_, err := runOperation(t, root, func(context.Context, string) (presentation.Mutation, error) { return partialMutation, failure }, func(context.Context, string) error { return nil }, func(context.Context, string) (MigrationResult, error) {
-		return MigrationResult{Applied: []string{"first"}, Changes: []string{"changed config"}}, nil
+		return MigrationResult{Planned: []string{"first"}, Changes: []string{"changed config"}}, nil
 	}, func(string) (string, int, error) { return "behind", 13, nil })
 	if !errors.Is(err, failure) {
 		t.Fatalf("error = %v", err)
@@ -458,7 +458,7 @@ func TestRunGateFailureRetainsOrderedMigrationFacts(t *testing.T) {
 	operationLock(t, root)
 	failure := errors.New("gate failed")
 	_, err := runOperation(t, root, nil, func(context.Context, string) error { return failure }, func(context.Context, string) (MigrationResult, error) {
-		return MigrationResult{Applied: []string{"first", "second"}, Changes: []string{"first change", "second change"}}, nil
+		return MigrationResult{Planned: []string{"first", "second"}, Changes: []string{"first change", "second change"}}, nil
 	}, func(string) (string, int, error) { return "behind", 13, nil })
 	var partial upgradeFailure
 	if !errors.Is(err, failure) || !errors.As(err, &partial) {
@@ -499,7 +499,7 @@ func TestRunMigrationAndPresentationRejectInvalidSemanticValues(t *testing.T) {
 	root := t.TempDir()
 	operationLock(t, root)
 	_, err := runOperation(t, root, func(context.Context, string) (presentation.Mutation, error) { return presentation.Mutation{}, nil }, func(context.Context, string) error { return nil }, func(context.Context, string) (MigrationResult, error) {
-		return MigrationResult{Applied: []string{"\n"}}, nil
+		return MigrationResult{Planned: []string{"\n"}}, nil
 	}, func(string) (string, int, error) { return "behind", 13, nil })
 	if err == nil {
 		t.Fatal("invalid migration name accepted")

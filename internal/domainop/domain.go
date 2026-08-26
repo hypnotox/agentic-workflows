@@ -112,10 +112,11 @@ func AddLeased(ctx context.Context, root, name string, loader *project.Loader, l
 		return Outcome{}, err
 	}
 	outcome.ConfigReplaced = true
-	if err := scaffoldCurrentStateConfined(files, root, cfg, name); err != nil {
+	created, err := scaffoldCurrentStateConfined(files, root, cfg, name)
+	if err != nil {
 		return outcome, &PartialError{Outcome: outcome, Cause: err, Recovery: []string{"repair the authored domain path, then retry"}}
 	}
-	outcome.ScaffoldCreated = true
+	outcome.ScaffoldCreated = created
 	result, syncErr := synchronize(ctx, root, loader, lease)
 	outcome.Publisher = result
 	if syncErr != nil {
@@ -161,7 +162,7 @@ func RemoveLeased(ctx context.Context, root, name string, loader *project.Loader
 	if syncErr != nil {
 		return outcome, &PartialError{Outcome: outcome, Cause: syncErr, Recovery: []string{"repair the reported publication fault, then retry"}}
 	}
-	outcome.Orphaned, err = hasSidecarOrParts(root, name)
+	outcome.Orphaned, err = hasSidecarOrParts(files, name)
 	if err != nil {
 		return outcome, &PartialError{Outcome: outcome, Cause: err, Recovery: []string{"inspect authored domain paths, then retry"}}
 	}
@@ -172,52 +173,49 @@ func replaceConfig(files *filesystem.Handle, expected fs.FileInfo, updated []byt
 	return files.ReplaceExpected(".awf/config.yaml", expected, updated, 0o644)
 }
 
-func scaffoldCurrentStateConfined(files *filesystem.Handle, root string, cfg *config.Config, name string) error {
+func scaffoldCurrentStateConfined(files *filesystem.Handle, root string, cfg *config.Config, name string) (bool, error) {
 	path, err := filepath.Rel(root, cfg.PartPath("domains", name, "current-state"))
 	if err != nil {
-		return err
+		return false, err
 	}
 	path = filepath.ToSlash(path)
 	if err := files.MkdirAll(filepath.ToSlash(filepath.Dir(path)), 0o755); err != nil {
-		return err
+		return false, err
 	}
 	if err := files.Publish(path, fmt.Appendf(nil, currentStateStub, name), 0o644); err != nil {
 		if !errors.Is(err, os.ErrExist) {
-			return err
+			return false, err
 		}
 		info, inspectErr := files.LinkInfo(path)
 		if inspectErr != nil {
-			return inspectErr
+			return false, inspectErr
 		}
-		if info.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("current-state scaffold path %q is a symlink", path)
+		if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+			return false, fmt.Errorf("unsafe current-state scaffold path %q", path)
 		}
+		return false, nil
 	}
-	return nil
+	return true, nil
 }
 
-func synchronize(ctx context.Context, root string, loader *project.Loader, leases ...*filesystem.Lease) (publisher.Result, error) {
+func synchronize(ctx context.Context, root string, loader *project.Loader, lease *filesystem.Lease) (publisher.Result, error) {
+	if !loader.CoversProjectLease(ctx, root, lease) {
+		return publisher.Result{}, errors.New("domain synchronization requires a covering project lease")
+	}
 	state, cfg, err := loader.OpenForOperation(ctx, root)
 	if err != nil {
 		return publisher.Result{}, err
 	}
 	composed := publisher.New(state.OutputState(), cfg, publisher.NewFilesystemReader(state.Root()), project.Version)
-	var result publisher.Result
-	if len(leases) == 0 || leases[0] == nil {
-		result, err = composed.Sync()
-	} else {
-		result, err = composed.SyncLeased(ctx, leases[0])
-	}
-	return result, err
+	return composed.SyncLeased(ctx, lease)
 }
 
-func hasSidecarOrParts(root, name string) (bool, error) {
-	awf := config.RootDir(root)
-	for _, path := range []string{filepath.Join(awf, "domains", name+".yaml"), filepath.Join(awf, "domains", "parts", name)} {
-		if _, err := os.Stat(path); err == nil {
+func hasSidecarOrParts(files *filesystem.Handle, name string) (bool, error) {
+	for _, path := range []string{filepath.ToSlash(filepath.Join(config.DirName, "domains", name+".yaml")), filepath.ToSlash(filepath.Join(config.DirName, "domains", "parts", name))} {
+		if _, err := files.LinkInfo(path); err == nil {
 			return true, nil
 		} else if !errors.Is(err, os.ErrNotExist) {
-			return false, fmt.Errorf("inspect authored domain path %s: %w", filepath.ToSlash(path), err)
+			return false, fmt.Errorf("inspect authored domain path %s: %w", path, err)
 		}
 	}
 	return false, nil

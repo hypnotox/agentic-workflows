@@ -49,15 +49,6 @@ type Change struct {
 	Cause string
 }
 
-// Sync renders and writes the project, additionally backing up any
-// foreign file (on disk but absent from the start-of-sync lock) before overwriting
-// it and returning those backups (ADR-0035) plus the per-file provenance of
-// output that changed against the prior lock and the lock-relative paths of the
-// files its prune actually removed (both path-sorted; a file whose output is
-// byte-identical, and first-adoption initialization with no prior lock reports
-// no change - a routine re-sync stays silent).
-func (p *Publisher) Sync() (Result, error) { return p.run(context.Background(), nil, nil) }
-
 // Initialize derives and publishes a first adoption in one transaction.
 func (p *Publisher) Initialize(seed InitAuthority) (Result, error) {
 	return p.run(context.Background(), nil, &seed)

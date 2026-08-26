@@ -330,24 +330,30 @@ func onIntegrationBranch(root string, cfg *config.Config, repo *awfgit.Repo, ctx
 	return branch == cfg.IntegrationBranch
 }
 
-// NewADR scaffolds a new ADR file under the project's decisions dir from the
-// rendered template, with its title/date filled in and marker comments
-// stripped, refusing to overwrite an existing file. It is branch-aware
-// (ADR-0202 item 5): on the integration branch it allocates the next sequential
-// number, and anywhere else - including a detached HEAD or an unreadable
-// repository - it writes a slug-identified pending record that `awf adr number`
-// numbers at integration. Mirrors the CheckInvariants/Audit pattern - cmd/awf
-// reaches this only through this exported method, never internal/project.Layout
-// directly.
-func newADR(root string, cfg *config.Config, repo *awfgit.Repo, ctx context.Context, title string) (string, error) {
+// newADRLeased keeps branch-aware identity allocation at project while ADR
+// corpus, template, destination, and publication access stay on the selected
+// root handle. The caller's tracked lease covers the whole operation.
+func newADRLeased(root string, cfg *config.Config, repo *awfgit.Repo, ctx context.Context, title string, lease *filesystem.Lease, files *filesystem.Handle) (string, error) {
+	decisions := filepath.ToSlash(filepath.Join(config.DocsDir, "decisions"))
+	var path string
+	var err error
 	if !onIntegrationBranch(root, cfg, repo, ctx) {
-		return adr.NewPendingFile(decisionsDir(root), title)
+		path, err = adr.NewPendingFileLeased(root, lease, files, decisions, title)
+	} else {
+		path, err = adr.NewFileLeased(root, lease, files, decisions, title)
 	}
-	return adr.NewFile(decisionsDir(root), title)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(root, filepath.FromSlash(path)), nil
 }
 
-// NewPlan scaffolds a new plan under docsDir/plans from the rendered plans
-// template. Mirrors NewADR minus sequential numbering (ADR-0098).
-func newPlan(root, title string) (string, error) {
-	return plan.NewFile(filepath.Join(root, config.DocsDir, "plans"), title)
+// newPlanLeased keeps plan naming at the plan owner while root-relative
+// template observation and publication use the selected-root capability.
+func newPlanLeased(root, title string, files *filesystem.Handle) (string, error) {
+	path, err := plan.NewFileLeased(files, filepath.ToSlash(filepath.Join(config.DocsDir, "plans")), title)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(root, filepath.FromSlash(path)), nil
 }

@@ -33,6 +33,9 @@ type cmdCtx struct {
 	inv    invocation
 	stdout io.Writer
 	stdin  io.Reader
+	// retainLease is set only by the process dispatcher for operations whose
+	// outcome diagnostic must remain within the mutation lease.
+	retainLease func(func() error)
 }
 
 // handlerResult states whether a handler produced a complete failing report.
@@ -40,9 +43,22 @@ type cmdCtx struct {
 type handlerResult struct {
 	err            error
 	producedReport bool
+	// release is retained only by operations whose diagnostic presentation must
+	// remain within their mutation lease.
+	release func() error
 }
 
 func handlerFailure(err error) handlerResult { return handlerResult{err: err} }
+func handlerFailureHeld(err error, release func() error) handlerResult {
+	return handlerResult{err: err, release: release}
+}
+
+type leaseRetainingWriter struct {
+	io.Writer
+	retain func(func() error)
+}
+
+func (w leaseRetainingWriter) retainLease(release func() error) { w.retain(release) }
 func handlerReport(err error) handlerResult {
 	return handlerResult{err: err, producedReport: completeProducedReport(err)}
 }
@@ -145,8 +161,12 @@ var handlers = map[string]handler{
 	"audit": func(c *cmdCtx) handlerResult {
 		return handlerReport(runAudit(c.ctx, c.root, firstPos(c.inv.positionals), c.stdout))
 	},
-	"effort": func(c *cmdCtx) handlerResult { return handlerFailure(runEffort(c, openEffortComposition)) },
-	"adr":    func(c *cmdCtx) handlerResult { return handlerFailure(runADR(c)) },
+	"effort": func(c *cmdCtx) handlerResult {
+		var release func() error
+		c.retainLease = func(value func() error) { release = value }
+		return handlerFailureHeld(runEffort(c, openEffortComposition), release)
+	},
+	"adr": func(c *cmdCtx) handlerResult { return handlerFailure(runADR(c)) },
 	"list": func(c *cmdCtx) handlerResult {
 		return handlerFailure(runList(c.ctx, c.root, firstPos(c.inv.positionals), c.stdout))
 	},
@@ -184,7 +204,9 @@ var handlers = map[string]handler{
 		return handlerFailure(runRemoveDomain(c.ctx, c.root, c.inv.positionals[0], c.stdout))
 	},
 	"upgrade": func(c *cmdCtx) handlerResult {
-		return handlerFailure(runUpgradeFlags(c.ctx, c.root, c.inv.bools["--recover"], c.stdout))
+		var release func() error
+		stdout := leaseRetainingWriter{Writer: c.stdout, retain: func(value func() error) { release = value }}
+		return handlerFailureHeld(runUpgradeFlags(c.ctx, c.root, c.inv.bools["--recover"], stdout), release)
 	},
 	"uninstall": func(c *cmdCtx) handlerResult { return handlerFailure(runUninstall(c.ctx, c.root, c.stdout)) },
 	"changelog": func(c *cmdCtx) handlerResult {

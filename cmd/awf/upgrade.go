@@ -14,6 +14,10 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/upgrade"
 )
 
+// leaseRetainer is the command-result handoff for a mutation lease. The
+// command-selected writer carries it without giving model rendering to cmd.
+type leaseRetainer interface{ retainLease(func() error) }
+
 // runUpgradeFlags retains CLI mode selection and renders the semantic result on
 // the command-selected stream.
 func runUpgradeFlags(ctx context.Context, root string, recoverMode bool, stdout io.Writer) error {
@@ -28,7 +32,11 @@ func runRecover(ctx context.Context, root string, stdout io.Writer) (returnErr e
 	if err != nil {
 		return err
 	}
-	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
+	if retained, ok := stdout.(leaseRetainer); ok {
+		retained.retainLease(lease.Release)
+	} else {
+		defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
+	}
 	outcome, err := upgrade.RecoverOperation(root, migrate.ProjectPresent)
 	if err != nil {
 		return err
@@ -41,7 +49,11 @@ func runUpgrade(ctx context.Context, root string, stdout io.Writer) (returnErr e
 	if err != nil {
 		return err
 	}
-	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
+	if retained, ok := stdout.(leaseRetainer); ok {
+		retained.retainLease(lease.Release)
+	} else {
+		defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
+	}
 	// The terminal publisher shares this operation's lease rather than acquiring
 	// a nested transaction after migration has already observed authority.
 	sync := func(ctx context.Context, root string) (presentation.Mutation, error) {
@@ -100,7 +112,7 @@ func upgradeMigration(ctx context.Context, root string) (upgrade.MigrationResult
 	for i, mutation := range planned {
 		mutations[i] = upgrade.FileMutation{Path: mutation.Path, Content: mutation.Content, Mode: mutation.Mode, Remove: mutation.Remove}
 	}
-	return upgrade.MigrationResult{Applied: applied, Changes: texts, Mutations: mutations}, err
+	return upgrade.MigrationResult{Planned: applied, Changes: texts, Mutations: mutations}, err
 }
 
 func upgradeCurrentSchemaChange() string { return migrate.CurrentSchemaChange().Text }

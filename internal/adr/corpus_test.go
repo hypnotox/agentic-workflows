@@ -22,9 +22,6 @@ var (
 	productionPackagesOnce sync.Once
 	productionPackages     []*packages.Package
 	productionPackagesErr  error
-	windowsADRPackagesOnce sync.Once
-	windowsADRPackages     []*packages.Package
-	windowsADRPackagesErr  error
 )
 
 func loadProductionPackages(t *testing.T) []*packages.Package {
@@ -54,29 +51,6 @@ func loadProductionPackages(t *testing.T) []*packages.Package {
 		t.Fatal(productionPackagesErr)
 	}
 	return productionPackages
-}
-
-func loadWindowsADRPackages(t *testing.T) []*packages.Package {
-	t.Helper()
-	windowsADRPackagesOnce.Do(func() {
-		windowsADRPackages, windowsADRPackagesErr = packages.Load(&packages.Config{
-			Dir:  filepath.Join("..", ".."),
-			Env:  append(os.Environ(), "GOOS=windows"),
-			Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo,
-		}, "./internal/adr")
-		if windowsADRPackagesErr == nil {
-			for _, pkg := range windowsADRPackages {
-				if len(pkg.Errors) != 0 {
-					windowsADRPackagesErr = pkg.Errors[0]
-					break
-				}
-			}
-		}
-	})
-	if windowsADRPackagesErr != nil {
-		t.Fatal(windowsADRPackagesErr)
-	}
-	return windowsADRPackages
 }
 
 func sourcePath(pos token.Position) string {
@@ -364,102 +338,30 @@ func loadMutationPackage(t *testing.T, rel, pattern, body string) []*packages.Pa
 	return pkgs
 }
 
-func loadWindowsMutationPackage(t *testing.T, rel, body string) []*packages.Package {
-	t.Helper()
-	root, err := filepath.Abs(filepath.Join("..", ".."))
-	if err != nil {
-		t.Fatal(err)
-	}
-	filename := filepath.Join(root, filepath.FromSlash(rel))
-	pkgs, err := packages.Load(&packages.Config{
-		Dir:     root,
-		Env:     append(os.Environ(), "GOOS=windows"),
-		Mode:    packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo,
-		Overlay: map[string][]byte{filename: []byte(body)},
-	}, "./internal/adr")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, pkg := range pkgs {
-		if len(pkg.Errors) != 0 {
-			t.Fatal(pkg.Errors[0])
-		}
-	}
-	return pkgs
-}
-
-// parseDirProblems reports the ParseDir call sites that fall outside the two
-// approved seams. It only computes; TestCorpusParsedOnce is what asserts.
+// parseDirProblems reports ParseDir calls outside the one full-body corpus seam.
 func parseDirProblems(callers map[callOwner][]string) []string {
-	want := map[callOwner]bool{
-		{path: "internal/adr/corpus.go", name: "LoadCorpus"}:      true,
-		{path: "internal/adr/adr.go", name: "loadIdentityCorpus"}: true,
-	}
+	want := callOwner{path: "internal/adr/corpus.go", name: "LoadCorpus"}
 	var problems []string
 	for owner, positions := range callers {
-		if !want[owner] {
-			problems = append(problems, owner.path+":"+owner.name+" calls ParseDir outside the approved seams: "+strings.Join(positions, ", "))
+		if owner != want {
+			problems = append(problems, owner.path+":"+owner.name+" calls ParseDir outside the approved seam: "+strings.Join(positions, ", "))
 		}
 	}
-	for owner := range want {
-		if len(callers[owner]) != 1 {
-			problems = append(problems, owner.path+":"+owner.name+" must call ParseDir exactly once; found "+strconv.Itoa(len(callers[owner])))
-		}
+	if len(callers[want]) != 1 {
+		problems = append(problems, want.path+":"+want.name+" must call ParseDir exactly once; found "+strconv.Itoa(len(callers[want])))
 	}
 	return problems
 }
 
-func replaceMutationSource(t *testing.T, rel, old, replacement string) string {
-	t.Helper()
-	body, err := os.ReadFile(filepath.Join(testsupport.RepoRoot(t), filepath.FromSlash(rel)))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.Count(string(body), old) != 1 {
-		t.Fatalf("mutation target %q occurs %d times in %s, want 1", old, strings.Count(string(body), old), rel)
-	}
-	return strings.Replace(string(body), old, replacement, 1)
-}
-
-// TestCorpusParsedOnce enforces ADR-0130 item 1: one parse per invocation.
-// adr.ParseDir has no production caller outside internal/adr - every consumer
-// enters through Corpus construction - and inside internal/adr only the two
-// construction seams call it: LoadCorpus, the full-body read every consumer of
-// a governed record enters through, and loadIdentityCorpus, the identity-only
-// read scaffolding uses so authoring never depends on another record's body
-// parsing (ADR-0202 item 17).
+// TestCorpusParsedOnce enforces the public full-body corpus boundary. ADR
+// scaffolding uses its selected-root confined identity reader instead of a host
+// path corpus parse.
 // invariant: adr-system/adr-lifecycle:corpus-parsed-once (TestCorpusParsedOnce)
 func TestCorpusParsedOnce(t *testing.T) {
 	pkgs := loadProductionPackages(t)
-	windowsPkgs := loadWindowsADRPackages(t)
-	callers := parseDirCallFindings(pkgs)
-	for owner, positions := range parseDirCallFindings(windowsPkgs) {
-		if strings.HasSuffix(owner.path, "_windows.go") {
-			callers[owner] = positions
-		}
+	if problems := parseDirProblems(parseDirCallFindings(pkgs)); len(problems) != 0 {
+		t.Errorf("ParseDir call set differs from the corpus seam:\n\t%s", strings.Join(problems, "\n\t"))
 	}
-	inspectedADRFiles := map[string]bool{}
-	for _, set := range [][]*packages.Package{pkgs, windowsPkgs} {
-		for _, pkg := range set {
-			for _, file := range pkg.Syntax {
-				path := sourcePath(pkg.Fset.Position(file.Pos()))
-				if strings.HasPrefix(path, "internal/adr/") {
-					inspectedADRFiles[path] = true
-				}
-			}
-		}
-	}
-	testsupport.WalkRepoFiles(t, testsupport.RepoRoot(t), func(rel string) bool {
-		return strings.HasPrefix(rel, "internal/adr/") && strings.HasSuffix(rel, ".go") && !strings.HasSuffix(rel, "_test.go")
-	}, func(rel string, _ []byte) {
-		if !inspectedADRFiles[rel] {
-			t.Errorf("production ADR source %s was not inspected", rel)
-		}
-	})
-	if problems := parseDirProblems(callers); len(problems) != 0 {
-		t.Errorf("ParseDir call set differs from the full-body and identity-only corpus seams:\n\t%s", strings.Join(problems, "\n\t"))
-	}
-
 	aliasMutation := loadMutationPackage(t, "internal/currentstate/corpus_mutation_fixture.go", "./internal/currentstate", `package currentstate
 
 import "github.com/hypnotox/agentic-workflows/internal/adr"
@@ -472,42 +374,6 @@ func mutationParseDir() {
 	aliasOwner := callOwner{path: "internal/currentstate/corpus_mutation_fixture.go", name: "mutationParseDir"}
 	if got := parseDirCallFindings(aliasMutation)[aliasOwner]; len(got) != 1 {
 		t.Fatalf("aliased ParseDir invocation escaped the production detector: %#v", got)
-	}
-
-	windowsSource := replaceMutationSource(t, "internal/adr/scaffold_lock_windows.go", "\nfunc canonicalDecisionsDirectory", "\nfunc mutationWindowsParseDir() { _, _ = ParseDir(`C:\\\\decisions`) }\n\nfunc canonicalDecisionsDirectory")
-	windowsMutation := loadWindowsMutationPackage(t, "internal/adr/scaffold_lock_windows.go", windowsSource)
-	windowsOwner := callOwner{path: "internal/adr/scaffold_lock_windows.go", name: "mutationWindowsParseDir"}
-	if got := parseDirCallFindings(windowsMutation)[windowsOwner]; len(got) != 1 {
-		t.Fatalf("Windows-only ParseDir invocation escaped the production detector: %#v", got)
-	}
-
-	const identityParseCall = "func loadIdentityCorpus(dir string) (Corpus, error) {\n\tadrs, err := ParseDir(dir)\n"
-	withoutIdentity := replaceMutationSource(t, "internal/adr/adr.go", identityParseCall, "func loadIdentityCorpus(dir string) (Corpus, error) {\n\tvar adrs []ADR\n\tvar err error\n")
-	withoutIdentityPkgs := loadMutationPackage(t, "internal/adr/adr.go", "./internal/adr", withoutIdentity)
-	if problems := parseDirProblems(parseDirCallFindings(withoutIdentityPkgs)); len(problems) != 1 ||
-		!strings.Contains(strings.Join(problems, "\n"), "loadIdentityCorpus must call ParseDir exactly once") {
-		// LoadCorpus is in corpus.go and remains visible, so only the missing
-		// call should be reported.
-		t.Fatalf("removed loadIdentityCorpus call escaped cardinality proof: %#v", problems)
-	}
-
-	extraFunction := replaceMutationSource(t, "internal/adr/adr.go", "\nfunc NewFile(dir, title string)", `
-func mutationOtherParseDir(dir string) {
-	_, _ = ParseDir(dir)
-}
-
-func NewFile(dir, title string)`)
-	extraFunctionPkgs := loadMutationPackage(t, "internal/adr/adr.go", "./internal/adr", extraFunction)
-	if problems := parseDirProblems(parseDirCallFindings(extraFunctionPkgs)); len(problems) != 1 ||
-		!strings.Contains(strings.Join(problems, "\n"), "adr.go:mutationOtherParseDir calls ParseDir outside") {
-		t.Fatalf("additional adr.go function call escaped enclosing-function proof: %#v", problems)
-	}
-
-	duplicateIdentity := replaceMutationSource(t, "internal/adr/adr.go", identityParseCall, identityParseCall+"\t_, _ = ParseDir(dir)\n")
-	duplicateIdentityPkgs := loadMutationPackage(t, "internal/adr/adr.go", "./internal/adr", duplicateIdentity)
-	if problems := parseDirProblems(parseDirCallFindings(duplicateIdentityPkgs)); len(problems) != 1 ||
-		!strings.Contains(strings.Join(problems, "\n"), "loadIdentityCorpus must call ParseDir exactly once; found 2") {
-		t.Fatalf("duplicate loadIdentityCorpus ParseDir call escaped cardinality proof: %#v", problems)
 	}
 }
 

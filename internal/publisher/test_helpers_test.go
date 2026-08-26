@@ -2,6 +2,7 @@ package publisher
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/contextinput"
 	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/project"
@@ -314,12 +316,22 @@ func mustDeriveSkills(t *testing.T, state *ProjectState) map[string]bool {
 	}
 	return out
 }
-func newADRProject(state *ProjectState, ctx context.Context, title string) (string, error) {
+func newADRProject(state *ProjectState, ctx context.Context, title string) (result string, returnErr error) {
 	repo, err := awfgit.Open(state.Root())
 	if err != nil {
 		return "", err
 	}
-	return project.NewADR(state.Root(), testConfig(state), repo, ctx, title)
+	lease, err := filesystem.AcquireTrackedLease(ctx, state.Root())
+	if err != nil {
+		return "", err
+	}
+	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
+	files, err := filesystem.Open(state.Root())
+	if err != nil {
+		return "", err
+	}
+	defer func() { returnErr = errors.Join(returnErr, files.Close()) }()
+	return project.NewADRLeased(state.Root(), testConfig(state), repo, ctx, title, lease, files)
 }
 func projectOperationSemantics(prepared Preparation) project.OperationSemantics {
 	return project.OperationSemantics{ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: prepared.PlansError(), GeneratedOutput: prepared.GeneratedOutput(), Vocabulary: prepared.Vocabulary()}
@@ -356,7 +368,7 @@ func initializeReportProject(state *ProjectState, seed InitAuthority) ([]Backup,
 }
 func syncReportProject(state *ProjectState) ([]Backup, []string, error) {
 	cfg := testConfig(state)
-	result, err := New(lowerForConfig(state.OutputState(), cfg), cfg, NewFilesystemReader(state.Root()), project.Version).Sync()
+	result, err := New(lowerForConfig(state.OutputState(), cfg), cfg, NewFilesystemReader(state.Root()), project.Version).SyncLeased(context.Background(), nil)
 	return result.Backups(), result.Pruned(), err
 }
 func contextStateProject(state *ProjectState, ctx context.Context) (contextinput.Input, error) {
@@ -425,7 +437,7 @@ func syncProject(state *ProjectState) error {
 		return err
 	}
 	if found {
-		_, err = pub.Sync()
+		_, err = pub.SyncLeased(context.Background(), nil)
 	} else {
 		_, err = pub.Initialize(InitAuthority{InitializedWithVersion: project.Version})
 	}

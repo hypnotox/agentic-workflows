@@ -1,7 +1,7 @@
 {
   "version": 1,
   "modulePath": "github.com/hypnotox/agentic-workflows",
-  "universeSHA256": "12aa853dc49d7acc076054ebcccd0438440dd40a3e47dd56840c6d672452509a",
+  "universeSHA256": "c0479f172e55fe66d30df31aff53ad12114f65b12c3cbf8de740d9ad2febc5e6",
   "repository": [
     {
       "identity": {
@@ -109,16 +109,16 @@
       "identity": {
         "file": "cmd/awf/dispatch.go",
         "start": {
-          "line": 140,
+          "line": 156,
           "column": 22
         },
         "end": {
-          "line": 142,
+          "line": 158,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/dispatch.go:140.22,142.4 1 in function literal, beginning `{ // coverage-ignore: clispec admits only the declared plan child before dispatch`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Phase 3 reviewed cmd/awf/dispatch.go:156.22,158.4 1 in runCheckGroup, beginning `if c.sub != \"plan\" {`. The source exclusion records that clispec admits only the declared plan child before dispatch. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -274,109 +274,61 @@
       "identity": {
         "file": "cmd/awf/effort.go",
         "start": {
-          "line": 343,
+          "line": 347,
           "column": 12
         },
         "end": {
-          "line": 345,
+          "line": 349,
           "column": 6
         },
         "statements": 1
       },
-      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested.",
-      "movedFrom": {
-        "file": "cmd/awf/effort.go",
-        "start": {
-          "line": 377,
-          "column": 12
-        },
-        "end": {
-          "line": 379,
-          "column": 6
-        },
-        "statements": 1
-      }
+      "reason": "Phase 3 reviewed cmd/awf/effort.go:347.12,349.6 1 in rejectDuplicateJSONKeys, beginning `if !ok {`. The source exclusion records that json.Decoder guarantees object member tokens are strings after More. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
         "file": "cmd/awf/effort.go",
         "start": {
-          "line": 364,
+          "line": 368,
           "column": 11
         },
         "end": {
-          "line": 365,
+          "line": 369,
           "column": 60
         },
         "statements": 1
       },
-      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested.",
-      "movedFrom": {
-        "file": "cmd/awf/effort.go",
-        "start": {
-          "line": 398,
-          "column": 11
-        },
-        "end": {
-          "line": 399,
-          "column": 60
-        },
-        "statements": 1
-      }
+      "reason": "Phase 3 reviewed cmd/awf/effort.go:368.11,369.60 1 in rejectDuplicateJSONKeys, beginning `default:`. The source exclusion records that json.Decoder yields only object or array opening delimiters at a value position. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
         "file": "cmd/awf/effort.go",
         "start": {
-          "line": 577,
+          "line": 581,
           "column": 16
         },
         "end": {
-          "line": 579,
+          "line": 583,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested.",
-      "movedFrom": {
-        "file": "cmd/awf/effort.go",
-        "start": {
-          "line": 611,
-          "column": 16
-        },
-        "end": {
-          "line": 613,
-          "column": 3
-        },
-        "statements": 1
-      }
+      "reason": "Phase 3 reviewed cmd/awf/effort.go:581.16,583.3 1 in writeEffortMemoryProtocol, beginning `if err != nil {`. The source exclusion records that the closed protocol structs contain only JSON-supported values. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
         "file": "cmd/awf/effort.go",
         "start": {
-          "line": 598,
+          "line": 602,
           "column": 16
         },
         "end": {
-          "line": 600,
+          "line": 604,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested.",
-      "movedFrom": {
-        "file": "cmd/awf/effort.go",
-        "start": {
-          "line": 632,
-          "column": 16
-        },
-        "end": {
-          "line": 634,
-          "column": 3
-        },
-        "statements": 1
-      }
+      "reason": "Phase 3 reviewed cmd/awf/effort.go:602.16,604.3 1 in writeEffortActivityProtocol, beginning `if err != nil {`. The source exclusion records that fixed protocol types cannot fail encoding; writer failures are covered at the shared output boundary. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -802,106 +754,121 @@
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 312,
-          "column": 21
+          "line": 284,
+          "column": 42
         },
         "end": {
-          "line": 314,
+          "line": 288,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "The command guard successfully opened the same staged repository immediately before capability selection; this defensive return requires concurrent repository disappearance between the two observations and is retained fail-closed rather than fault-hooked."
+      "reason": "Phase 3 reviewed cmd/awf/main.go:284.42,288.4 1 in completeHandlerResult, beginning `if err := result.release(); err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 402,
+          "line": 329,
+          "column": 21
+        },
+        "end": {
+          "line": 331,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed cmd/awf/main.go:329.21,331.4 1 in requireCommandCapability, beginning `if treeErr != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 419,
           "column": 3
         },
         "end": {
-          "line": 402,
+          "line": 419,
           "column": 142
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed cmd/awf/main.go:402.3,402.142 1 in guardProjectState, beginning `return fmt.Errorf(\"retired project layout is unsupported at live floor %d; restore a supported .awf control pair\", migrate.LiveSchemaFloor)`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
+      "reason": "Phase 3 reviewed cmd/awf/main.go:419.3,419.142 1 in guardProjectState, beginning `return fmt.Errorf(\"retired project layout is unsupported at live floor %d; restore a supported .awf control pair\", migrate.LiveSchemaFloor)`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 404,
+          "line": 421,
           "column": 49
         },
         "end": {
-          "line": 406,
+          "line": 423,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed cmd/awf/main.go:404.49,406.3 1 in guardProjectState, beginning `if _, err := lock.AuthorityState(); err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
+      "reason": "Phase 3 reviewed cmd/awf/main.go:421.49,423.3 1 in guardProjectState, beginning `if _, err := lock.AuthorityState(); err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 426,
+          "line": 443,
           "column": 64
         },
         "end": {
-          "line": 428,
+          "line": 445,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed cmd/awf/main.go:426.64,428.4 1 in projectGuardState, beginning `if configErr != nil \u0026\u0026 !errors.Is(configErr, os.ErrNotExist) {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
+      "reason": "Phase 3 reviewed cmd/awf/main.go:443.64,445.4 1 in projectGuardState, beginning `if configErr != nil \u0026\u0026 !errors.Is(configErr, os.ErrNotExist) {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 439,
+          "line": 456,
           "column": 16
         },
         "end": {
-          "line": 441,
+          "line": 458,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed cmd/awf/main.go:439.16,441.3 1 in projectGuardState, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
+      "reason": "Phase 3 reviewed cmd/awf/main.go:456.16,458.3 1 in projectGuardState, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 536,
+          "line": 553,
           "column": 16
         },
         "end": {
-          "line": 538,
+          "line": 555,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed cmd/awf/main.go:536.16,538.3 1 in writeStatus, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
+      "reason": "Phase 3 reviewed cmd/awf/main.go:553.16,555.3 1 in writeStatus, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
         "file": "cmd/awf/main.go",
         "start": {
-          "line": 540,
+          "line": 557,
           "column": 16
         },
         "end": {
-          "line": 542,
+          "line": 559,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed cmd/awf/main.go:540.16,542.3 1 in writeStatus, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
+      "reason": "Phase 3 reviewed cmd/awf/main.go:557.16,559.3 1 in writeStatus, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
@@ -934,190 +901,196 @@
       "identity": {
         "file": "cmd/awf/new.go",
         "start": {
-          "line": 73,
+          "line": 62,
           "column": 16
         },
         "end": {
-          "line": 75,
+          "line": 64,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested.",
-      "movedFrom": {
+      "reason": "Phase 3 reviewed cmd/awf/new.go:62.16,64.3 1 in newADR, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
+    },
+    {
+      "identity": {
         "file": "cmd/awf/new.go",
         "start": {
-          "line": 76,
-          "column": 16
-        },
-        "end": {
           "line": 78,
-          "column": 3
-        },
-        "statements": 1
-      }
-    },
-    {
-      "identity": {
-        "file": "cmd/awf/new.go",
-        "start": {
-          "line": 104,
           "column": 16
         },
         "end": {
-          "line": 106,
+          "line": 80,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation of cmd/awf/new.go:104.16,106.3 1 in newDoc, beginning `if err != nil { return err }`. This propagates a gate, lease, or operation-owner failure before the command can report success. Focused command and operation tests exercise refusal, mutation, and complete-outcome behavior; the remaining external boundary fault is not deterministically inducible through an existing real seam."
+      "reason": "Phase 3 reviewed cmd/awf/new.go:78.16,80.3 1 in newPlan, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
         "file": "cmd/awf/new.go",
         "start": {
-          "line": 117,
+          "line": 90,
+          "column": 16
+        },
+        "end": {
+          "line": 92,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed cmd/awf/new.go:90.16,92.3 1 in newPlan, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/new.go",
+        "start": {
+          "line": 114,
+          "column": 16
+        },
+        "end": {
+          "line": 116,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed cmd/awf/new.go:114.16,116.3 1 in newDoc, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/new.go",
+        "start": {
+          "line": 127,
           "column": 3
         },
         "end": {
-          "line": 118,
+          "line": 128,
           "column": 25
         },
         "statements": 2
       },
-      "reason": "Phase 4 post-review coverage reconciliation of cmd/awf/new.go:117.3,118.25 2 in newDoc, beginning `document, documentErr := partial.Document() if documentErr != nil {`. This is the command boundary's secondary failure path while converting or rendering an already-produced typed partial outcome. Focused command tests exercise complete partial-effect presentation and the primary operation error; inducing the independent presentation failure would require a test-only renderer fault seam."
+      "reason": "Phase 3 reviewed cmd/awf/new.go:127.3,128.25 2 in newDoc, beginning `document, documentErr := partial.Document()`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
         "file": "cmd/awf/new.go",
         "start": {
-          "line": 118,
+          "line": 128,
           "column": 25
         },
         "end": {
-          "line": 120,
+          "line": 130,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation of cmd/awf/new.go:118.25,120.4 1 in newDoc, beginning `if documentErr != nil { return errors.Join(err, documentErr) }`. This is the command boundary's secondary failure path while converting or rendering an already-produced typed partial outcome. Focused command tests exercise complete partial-effect presentation and the primary operation error; inducing the independent presentation failure would require a test-only renderer fault seam."
+      "reason": "Phase 3 reviewed cmd/awf/new.go:128.25,130.4 1 in newDoc, beginning `if documentErr != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
         "file": "cmd/awf/new.go",
         "start": {
-          "line": 121,
+          "line": 131,
           "column": 3
         },
         "end": {
-          "line": 121,
+          "line": 131,
           "column": 65
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation of cmd/awf/new.go:121.3,121.65 1 in newDoc, beginning `return errors.Join(err, presentation.Render(stdout, document))`. This is the command boundary's secondary failure path while converting or rendering an already-produced typed partial outcome. Focused command tests exercise complete partial-effect presentation and the primary operation error; inducing the independent presentation failure would require a test-only renderer fault seam."
+      "reason": "Phase 3 reviewed cmd/awf/new.go:131.3,131.65 1 in newDoc, beginning `return errors.Join(err, presentation.Render(stdout, document))`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
         "file": "cmd/awf/new.go",
         "start": {
-          "line": 124,
+          "line": 134,
           "column": 16
         },
         "end": {
-          "line": 126,
+          "line": 136,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation of cmd/awf/new.go:124.16,126.3 1 in newDoc, beginning `if err != nil { return err }`. This propagates a gate, lease, or operation-owner failure before the command can report success. Focused command and operation tests exercise refusal, mutation, and complete-outcome behavior; the remaining external boundary fault is not deterministically inducible through an existing real seam."
+      "reason": "Phase 3 reviewed cmd/awf/new.go:134.16,136.3 1 in newDoc, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
         "file": "cmd/awf/new.go",
         "start": {
-          "line": 146,
+          "line": 156,
           "column": 16
         },
         "end": {
-          "line": 148,
+          "line": 158,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested.",
-      "movedFrom": {
-        "file": "cmd/awf/new.go",
-        "start": {
-          "line": 131,
-          "column": 16
-        },
-        "end": {
-          "line": 133,
-          "column": 3
-        },
-        "statements": 1
-      }
+      "reason": "Phase 3 reviewed cmd/awf/new.go:156.16,158.3 1 in newPitfall, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
         "file": "cmd/awf/new.go",
         "start": {
-          "line": 169,
+          "line": 179,
           "column": 16
         },
         "end": {
-          "line": 171,
+          "line": 181,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation of cmd/awf/new.go:169.16,171.3 1 in newTopic, beginning `if err != nil { return err }`. This propagates a gate, lease, or operation-owner failure before the command can report success. Focused command and operation tests exercise refusal, mutation, and complete-outcome behavior; the remaining external boundary fault is not deterministically inducible through an existing real seam."
+      "reason": "Phase 3 reviewed cmd/awf/new.go:179.16,181.3 1 in newTopic, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
         "file": "cmd/awf/new.go",
         "start": {
-          "line": 186,
+          "line": 196,
           "column": 3
         },
         "end": {
-          "line": 187,
+          "line": 197,
           "column": 25
         },
         "statements": 2
       },
-      "reason": "Phase 4 post-review coverage reconciliation of cmd/awf/new.go:186.3,187.25 2 in newTopic, beginning `partialDocument, documentErr := partial.Document() if documentErr != nil {`. This is the command boundary's secondary failure path while converting or rendering an already-produced typed partial outcome. Focused command tests exercise complete partial-effect presentation and the primary operation error; inducing the independent presentation failure would require a test-only renderer fault seam."
+      "reason": "Phase 3 reviewed cmd/awf/new.go:196.3,197.25 2 in newTopic, beginning `partialDocument, documentErr := partial.Document()`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
         "file": "cmd/awf/new.go",
         "start": {
-          "line": 187,
+          "line": 197,
           "column": 25
         },
         "end": {
-          "line": 189,
+          "line": 199,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation of cmd/awf/new.go:187.25,189.4 1 in newTopic, beginning `if documentErr != nil { return errors.Join(err, documentErr) }`. This is the command boundary's secondary failure path while converting or rendering an already-produced typed partial outcome. Focused command tests exercise complete partial-effect presentation and the primary operation error; inducing the independent presentation failure would require a test-only renderer fault seam."
+      "reason": "Phase 3 reviewed cmd/awf/new.go:197.25,199.4 1 in newTopic, beginning `if documentErr != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
         "file": "cmd/awf/new.go",
         "start": {
-          "line": 190,
+          "line": 200,
           "column": 3
         },
         "end": {
-          "line": 190,
+          "line": 200,
           "column": 72
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation of cmd/awf/new.go:190.3,190.72 1 in newTopic, beginning `return errors.Join(err, presentation.Render(stdout, partialDocument))`. This is the command boundary's secondary failure path while converting or rendering an already-produced typed partial outcome. Focused command tests exercise complete partial-effect presentation and the primary operation error; inducing the independent presentation failure would require a test-only renderer fault seam."
+      "reason": "Phase 3 reviewed cmd/awf/new.go:200.3,200.72 1 in newTopic, beginning `return errors.Join(err, presentation.Render(stdout, partialDocument))`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
@@ -1420,115 +1393,91 @@
       "identity": {
         "file": "cmd/awf/upgrade.go",
         "start": {
-          "line": 41,
+          "line": 49,
           "column": 16
         },
         "end": {
-          "line": 43,
+          "line": 51,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
+      "reason": "Phase 3 reviewed cmd/awf/upgrade.go:49.16,51.3 1 in runUpgrade, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
         "file": "cmd/awf/upgrade.go",
         "start": {
-          "line": 64,
+          "line": 76,
           "column": 16
         },
         "end": {
-          "line": 66,
+          "line": 78,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
+      "reason": "Phase 3 reviewed cmd/awf/upgrade.go:76.16,78.3 1 in upgradeSyncMutationLeased, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
         "file": "cmd/awf/upgrade.go",
         "start": {
-          "line": 68,
+          "line": 80,
           "column": 16
         },
         "end": {
-          "line": 70,
+          "line": 82,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
+      "reason": "Phase 3 reviewed cmd/awf/upgrade.go:80.16,82.3 1 in upgradeSyncMutationLeased, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
         "file": "cmd/awf/upgrade.go",
         "start": {
-          "line": 74,
+          "line": 86,
           "column": 25
         },
         "end": {
-          "line": 76,
+          "line": 88,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation of cmd/awf/upgrade.go:74.25,76.4 1 in upgradeSyncMutationLeased, beginning `if mutationErr != nil { return presentation.Mutation{}, mutationErr }`. This is the command boundary's secondary failure path while converting or rendering an already-produced typed partial outcome. Focused command tests exercise complete partial-effect presentation and the primary operation error; inducing the independent presentation failure would require a test-only renderer fault seam."
+      "reason": "Phase 3 reviewed cmd/awf/upgrade.go:86.25,88.4 1 in upgradeSyncMutationLeased, beginning `if mutationErr != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
         "file": "cmd/awf/upgrade.go",
         "start": {
-          "line": 96,
+          "line": 108,
           "column": 33
         },
         "end": {
-          "line": 98,
+          "line": 110,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested.",
-      "movedFrom": {
-        "file": "cmd/awf/upgrade.go",
-        "start": {
-          "line": 93,
-          "column": 33
-        },
-        "end": {
-          "line": 95,
-          "column": 3
-        },
-        "statements": 1
-      }
+      "reason": "Phase 3 reviewed cmd/awf/upgrade.go:108.33,110.3 1 in upgradeMigration, beginning `for i, change := range changes {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
         "file": "cmd/awf/upgrade.go",
         "start": {
-          "line": 100,
+          "line": 112,
           "column": 35
         },
         "end": {
-          "line": 102,
+          "line": 114,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested.",
-      "movedFrom": {
-        "file": "cmd/awf/upgrade.go",
-        "start": {
-          "line": 97,
-          "column": 35
-        },
-        "end": {
-          "line": 99,
-          "column": 3
-        },
-        "statements": 1
-      }
+      "reason": "Phase 3 reviewed cmd/awf/upgrade.go:112.35,114.3 1 in upgradeMigration, beginning `for i, mutation := range planned {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
@@ -1909,46 +1858,91 @@
       "identity": {
         "file": "internal/adr/adr.go",
         "start": {
-          "line": 511,
+          "line": 393,
+          "column": 21
+        },
+        "end": {
+          "line": 395,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/adr/adr.go:393.21,395.5 1 in loadIdentityCorpusConfined, beginning `if !info.IsDir() {`. This is the ADR-specific adapter error return around the shared lease owner; shared lease acquisition, release, cancellation, and cross-process behavior are directly tested at the filesystem boundary."
+    },
+    {
+      "identity": {
+        "file": "internal/adr/adr.go",
+        "start": {
+          "line": 402,
+          "column": 17
+        },
+        "end": {
+          "line": 404,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/adr/adr.go:402.17,404.4 1 in loadIdentityCorpusConfined, beginning `if err != nil {`. This is the ADR-specific adapter error return around the shared lease owner; shared lease acquisition, release, cancellation, and cross-process behavior are directly tested at the filesystem boundary."
+    },
+    {
+      "identity": {
+        "file": "internal/adr/adr.go",
+        "start": {
+          "line": 406,
+          "column": 17
+        },
+        "end": {
+          "line": 408,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/adr/adr.go:406.17,408.4 1 in loadIdentityCorpusConfined, beginning `if err != nil {`. This is the ADR-specific adapter error return around the shared lease owner; shared lease acquisition, release, cancellation, and cross-process behavior are directly tested at the filesystem boundary."
+    },
+    {
+      "identity": {
+        "file": "internal/adr/adr.go",
+        "start": {
+          "line": 409,
+          "column": 65
+        },
+        "end": {
+          "line": 411,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/adr/adr.go:409.65,411.4 1 in loadIdentityCorpusConfined, beginning `if a.Number == \"\" \u0026\u0026 a.Format != CurrentFormat() \u0026\u0026 !a.IsV3() {`. This is the ADR-specific adapter error return around the shared lease owner; shared lease acquisition, release, cancellation, and cross-process behavior are directly tested at the filesystem boundary."
+    },
+    {
+      "identity": {
+        "file": "internal/adr/adr.go",
+        "start": {
+          "line": 477,
+          "column": 48
+        },
+        "end": {
+          "line": 479,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/adr/adr.go:477.48,479.3 1 in NewPendingFileLeased, beginning `if lease == nil || !lease.CoversTracked(root) {`. This is the ADR-specific adapter error return around the shared lease owner; shared lease acquisition, release, cancellation, and cross-process behavior are directly tested at the filesystem boundary."
+    },
+    {
+      "identity": {
+        "file": "internal/adr/adr.go",
+        "start": {
+          "line": 508,
           "column": 16
         },
         "end": {
-          "line": 513,
+          "line": 510,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/adr/adr.go:518.16,520.3 1 in function scaffoldRecordWith, beginning `{ // coverage-ignore: loadIdentityCorpus already rejected any record whose number is not the fou...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "internal/adr/adr.go",
-        "start": {
-          "line": 522,
-          "column": 41
-        },
-        "end": {
-          "line": 524,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/adr/adr.go:529.41,531.3 1 in function scaffoldRecordWith, beginning `{ // coverage-ignore: the slug-collision refusal above already rejects a pending name in the cor...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "internal/adr/adr.go",
-        "start": {
-          "line": 524,
-          "column": 32
-        },
-        "end": {
-          "line": 526,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/adr/adr.go:531.32,533.3 1 in function scaffoldRecordWith, beginning `{ // coverage-ignore: Stat fails here only on a permission fault a test cannot trigger`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Phase 3 reviewed internal/adr/adr.go:508.16,510.3 1 in scaffoldRecordConfined, beginning `if err != nil {`. This is the ADR-specific adapter error return around the shared lease owner; shared lease acquisition, release, cancellation, and cross-process behavior are directly tested at the filesystem boundary."
     },
     {
       "identity": {
@@ -2117,66 +2111,6 @@
         },
         "statements": 1
       }
-    },
-    {
-      "identity": {
-        "file": "internal/adr/scaffold_lock.go",
-        "start": {
-          "line": 27,
-          "column": 32
-        },
-        "end": {
-          "line": 29,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/adr/scaffold_lock.go:27.32,29.3 1, beginning `if !errors.As(err, \u0026leaseErr) {`. This passes through a non-LeaseError unchanged so the adapter does not misclassify errors from a future shared-owner wrapper. ADR adapter routing is asserted in scaffold_lock_test.go, while canonical identity and acquisition stages are exercised at the filesystem owner."
-    },
-    {
-      "identity": {
-        "file": "internal/adr/scaffold_lock.go",
-        "start": {
-          "line": 31,
-          "column": 37
-        },
-        "end": {
-          "line": 32,
-          "column": 78
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/adr/scaffold_lock.go:31.37,32.78 1, beginning `case filesystem.LeaseCanonicalRoot:`. This preserves the established ADR diagnostic if canonical identity changes between ADR prevalidation and shared-owner acquisition; the shared owner supplies the typed stage. ADR adapter routing is asserted in scaffold_lock_test.go, while canonical identity and acquisition stages are exercised at the filesystem owner."
-    },
-    {
-      "identity": {
-        "file": "internal/adr/scaffold_lock.go",
-        "start": {
-          "line": 37,
-          "column": 33
-        },
-        "end": {
-          "line": 38,
-          "column": 61
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/adr/scaffold_lock.go:37.33,38.61 1, beginning `case filesystem.LeaseCacheMode:`. This maps the shared owner's cache-permission stage to the established ADR-facing diagnostic; inducing chmod failure after successful cache creation is host-dependent. ADR adapter routing is asserted in scaffold_lock_test.go, while canonical identity and acquisition stages are exercised at the filesystem owner."
-    },
-    {
-      "identity": {
-        "file": "internal/adr/scaffold_lock.go",
-        "start": {
-          "line": 39,
-          "column": 10
-        },
-        "end": {
-          "line": 40,
-          "column": 18
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/adr/scaffold_lock.go:39.10,40.18 1, beginning `default:`. This passes through acquisition, file-mode, and any future typed stages rather than incorrectly labeling them as ADR cache failures. ADR adapter routing is asserted in scaffold_lock_test.go, while canonical identity and acquisition stages are exercised at the filesystem owner."
     },
     {
       "identity": {
@@ -3922,44 +3856,64 @@
       "identity": {
         "file": "internal/domainop/domain.go",
         "start": {
-          "line": 132,
+          "line": 133,
           "column": 50
         },
         "end": {
-          "line": 134,
+          "line": 135,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation of internal/domainop/domain.go:132.50,134.3 1 in remove, beginning `} else if !loader.CoversProjectLease(ctx, root, lease) { return Outcome{}, errors.New(\"domain operation requires a covering project lease\") }`. This is the defensive rejection of a supplied lease that does not cover the selected project root. Transaction tests exercise lease acquisition, covered mutation, contention, stale authority, collision, and confinement; the collaborator-only mismatch remains visible raw debt.",
-      "movedFrom": {
-        "file": "internal/domainop/domain.go",
-        "start": {
-          "line": 162,
-          "column": 57
-        },
-        "end": {
-          "line": 164,
-          "column": 3
-        },
-        "statements": 1
-      }
+      "reason": "Phase 3 reviewed internal/domainop/domain.go:133.50,135.3 1 in RemoveLeased, beginning `if !loader.CoversProjectLease(ctx, root, lease) {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/domainop/domain.go",
         "start": {
-          "line": 136,
+          "line": 137,
           "column": 16
         },
         "end": {
-          "line": 138,
+          "line": 139,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 4 dead-code cleanup moved the reviewed branch from internal/domainop/domain.go:166.16,168.3 1 to internal/domainop/domain.go:136.16,138.3 1 without changing its behavior. Phase 4 transaction review: internal/domainop/domain.go:69.16,71.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam.",
-      "movedFrom": {
+      "reason": "Phase 3 reviewed internal/domainop/domain.go:137.16,139.3 1 in RemoveLeased, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 153,
+          "column": 16
+        },
+        "end": {
+          "line": 155,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/domainop/domain.go:153.16,155.3 1 in RemoveLeased, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 156,
+          "column": 70
+        },
+        "end": {
+          "line": 158,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/domainop/domain.go:156.70,158.3 1 in RemoveLeased, beginning `if err := replaceConfig(files, configIdentity, updated); err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
         "file": "internal/domainop/domain.go",
         "start": {
           "line": 166,
@@ -3970,176 +3924,60 @@
           "column": 3
         },
         "statements": 1
-      }
+      },
+      "reason": "Phase 3 reviewed internal/domainop/domain.go:166.16,168.3 1 in RemoveLeased, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/domainop/domain.go",
         "start": {
-          "line": 152,
+          "line": 178,
           "column": 16
         },
         "end": {
-          "line": 154,
+          "line": 180,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 4 dead-code cleanup moved the reviewed branch from internal/domainop/domain.go:182.16,184.3 1 to internal/domainop/domain.go:152.16,154.3 1 without changing its behavior. Phase 4 transaction review: internal/domainop/domain.go:85.16,87.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam.",
-      "movedFrom": {
-        "file": "internal/domainop/domain.go",
-        "start": {
-          "line": 182,
-          "column": 16
-        },
-        "end": {
-          "line": 184,
-          "column": 3
-        },
-        "statements": 1
-      }
+      "reason": "Phase 3 reviewed internal/domainop/domain.go:178.16,180.3 1 in scaffoldCurrentStateConfined, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/domainop/domain.go",
         "start": {
-          "line": 155,
-          "column": 70
-        },
-        "end": {
-          "line": 157,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 dead-code cleanup moved the reviewed branch from internal/domainop/domain.go:185.70,187.3 1 to internal/domainop/domain.go:155.70,157.3 1 without changing its behavior. Phase 4 transaction review: internal/domainop/domain.go:88.70,90.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam.",
-      "movedFrom": {
-        "file": "internal/domainop/domain.go",
-        "start": {
-          "line": 185,
-          "column": 70
-        },
-        "end": {
-          "line": 187,
-          "column": 3
-        },
-        "statements": 1
-      }
-    },
-    {
-      "identity": {
-        "file": "internal/domainop/domain.go",
-        "start": {
-          "line": 165,
-          "column": 16
-        },
-        "end": {
-          "line": 167,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 post-review coverage reconciliation of internal/domainop/domain.go:165.16,167.3 1 in remove, beginning `if err != nil { return outcome, \u0026PartialError{Outcome: outcome, Cause: err, Recovery: []string{\"inspect authored domain paths, then retry\"}} }`. This returns the owner-built typed partial outcome when a later sync or authority step fails. Focused fault tests exercise committed config, scaffold, declaration, Publisher effects, recovery, and cause identity; this additional external boundary combination is not deterministically inducible through an existing real seam.",
-      "movedFrom": {
-        "file": "internal/domainop/domain.go",
-        "start": {
-          "line": 195,
-          "column": 16
-        },
-        "end": {
-          "line": 197,
-          "column": 3
-        },
-        "statements": 1
-      }
-    },
-    {
-      "identity": {
-        "file": "internal/domainop/domain.go",
-        "start": {
-          "line": 177,
-          "column": 16
-        },
-        "end": {
-          "line": 179,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 dead-code cleanup moved the reviewed branch from internal/domainop/domain.go:207.16,209.3 1 to internal/domainop/domain.go:177.16,179.3 1 without changing its behavior. Phase 4 transaction review: internal/domainop/domain.go:105.16,107.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam.",
-      "movedFrom": {
-        "file": "internal/domainop/domain.go",
-        "start": {
-          "line": 207,
-          "column": 16
-        },
-        "end": {
-          "line": 209,
-          "column": 3
-        },
-        "statements": 1
-      }
-    },
-    {
-      "identity": {
-        "file": "internal/domainop/domain.go",
-        "start": {
-          "line": 185,
+          "line": 186,
           "column": 35
         },
         "end": {
-          "line": 187,
+          "line": 188,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 4 dead-code cleanup moved the reviewed branch from internal/domainop/domain.go:215.35,217.4 1 to internal/domainop/domain.go:185.35,187.4 1 without changing its behavior. Phase 4 transaction review: internal/domainop/domain.go:113.35,115.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam.",
-      "movedFrom": {
-        "file": "internal/domainop/domain.go",
-        "start": {
-          "line": 215,
-          "column": 35
-        },
-        "end": {
-          "line": 217,
-          "column": 4
-        },
-        "statements": 1
-      }
+      "reason": "Phase 3 reviewed internal/domainop/domain.go:186.35,188.4 1 in scaffoldCurrentStateConfined, beginning `if !errors.Is(err, os.ErrExist) {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/domainop/domain.go",
         "start": {
-          "line": 189,
+          "line": 190,
           "column": 24
         },
         "end": {
-          "line": 191,
+          "line": 192,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 4 dead-code cleanup moved the reviewed branch from internal/domainop/domain.go:219.24,221.4 1 to internal/domainop/domain.go:189.24,191.4 1 without changing its behavior. Phase 4 transaction review: internal/domainop/domain.go:117.24,119.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam.",
-      "movedFrom": {
-        "file": "internal/domainop/domain.go",
-        "start": {
-          "line": 219,
-          "column": 24
-        },
-        "end": {
-          "line": 221,
-          "column": 4
-        },
-        "statements": 1
-      }
+      "reason": "Phase 3 reviewed internal/domainop/domain.go:190.24,192.4 1 in scaffoldCurrentStateConfined, beginning `if inspectErr != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/domainop/domain.go",
         "start": {
           "line": 206,
-          "column": 42
+          "column": 16
         },
         "end": {
           "line": 208,
@@ -4147,19 +3985,22 @@
         },
         "statements": 1
       },
-      "reason": "Phase 4 dead-code cleanup moved the reviewed branch from internal/domainop/domain.go:236.42,238.3 1 to internal/domainop/domain.go:206.42,208.3 1 without changing its behavior. Phase 4 transaction review: internal/domainop/domain.go:134.42,136.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam.",
-      "movedFrom": {
+      "reason": "Phase 3 reviewed internal/domainop/domain.go:206.16,208.3 1 in synchronize, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
         "file": "internal/domainop/domain.go",
         "start": {
-          "line": 236,
-          "column": 42
+          "line": 217,
+          "column": 45
         },
         "end": {
-          "line": 238,
-          "column": 3
+          "line": 219,
+          "column": 4
         },
         "statements": 1
-      }
+      },
+      "reason": "Phase 3 reviewed internal/domainop/domain.go:217.45,219.4 1 in hasSidecarOrParts, beginning `} else if !errors.Is(err, os.ErrNotExist) {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
@@ -5822,6 +5663,21 @@
     },
     {
       "identity": {
+        "file": "internal/filesystem/canonical_root_other.go",
+        "start": {
+          "line": 14,
+          "column": 16
+        },
+        "end": {
+          "line": 16,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/filesystem/canonical_root_other.go:14.16,16.3 1 in CanonicalRoot, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
         "file": "internal/filesystem/directory.go",
         "start": {
           "line": 25,
@@ -6757,6 +6613,21 @@
       "identity": {
         "file": "internal/filesystem/lease.go",
         "start": {
+          "line": 35,
+          "column": 37
+        },
+        "end": {
+          "line": 35,
+          "column": 98
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/filesystem/lease.go:35.37,35.98 1 in Error, beginning `func (e *LeaseError) Error() string { return \"lease \" + string(e.Kind) + \": \" + e.Cause.Error() }`. This is an idempotent release, host permission, lock creation, or acquisition cleanup return; cross-process exclusion, deterministic multi-root acquisition, cancellation, explicit release, and process-exit release are directly tested."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/lease.go",
+        "start": {
           "line": 77,
           "column": 28
         },
@@ -6772,26 +6643,11 @@
       "identity": {
         "file": "internal/filesystem/lease.go",
         "start": {
-          "line": 87,
-          "column": 28
-        },
-        "end": {
-          "line": 89,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 post-review coverage reconciliation of internal/filesystem/lease.go:87.28,89.3 1 in CoversProject, beginning `if l == nil || l.released { return false }`. This is the nil-or-released authority guard for lease coverage. Lease tests directly cover canonical identity, active coverage, explicit release, cancellation, cross-process contention, and process-exit release; the stale guard remains visible raw debt."
-    },
-    {
-      "identity": {
-        "file": "internal/filesystem/lease.go",
-        "start": {
-          "line": 155,
+          "line": 140,
           "column": 3
         },
         "end": {
-          "line": 155,
+          "line": 140,
           "column": 24
         },
         "statements": 1
@@ -6800,11 +6656,11 @@
       "movedFrom": {
         "file": "internal/filesystem/lease.go",
         "start": {
-          "line": 145,
+          "line": 155,
           "column": 3
         },
         "end": {
-          "line": 145,
+          "line": 155,
           "column": 24
         },
         "statements": 1
@@ -6812,6 +6668,19 @@
     },
     {
       "identity": {
+        "file": "internal/filesystem/lease.go",
+        "start": {
+          "line": 140,
+          "column": 24
+        },
+        "end": {
+          "line": 142,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Lease acquisition and release error branch depends on an external cache, lock, or filesystem failure; normal lock behavior and cancellation are directly covered.",
+      "movedFrom": {
         "file": "internal/filesystem/lease.go",
         "start": {
           "line": 155,
@@ -6822,50 +6691,77 @@
           "column": 4
         },
         "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/lease.go",
+        "start": {
+          "line": 143,
+          "column": 3
+        },
+        "end": {
+          "line": 143,
+          "column": 11
+        },
+        "statements": 1
       },
       "reason": "Lease acquisition and release error branch depends on an external cache, lock, or filesystem failure; normal lock behavior and cancellation are directly covered.",
       "movedFrom": {
         "file": "internal/filesystem/lease.go",
         "start": {
-          "line": 145,
-          "column": 24
+          "line": 158,
+          "column": 3
         },
         "end": {
-          "line": 147,
+          "line": 158,
+          "column": 11
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/lease.go",
+        "start": {
+          "line": 156,
+          "column": 17
+        },
+        "end": {
+          "line": 159,
           "column": 4
         },
-        "statements": 1
-      }
-    },
-    {
-      "identity": {
-        "file": "internal/filesystem/lease.go",
-        "start": {
-          "line": 158,
-          "column": 3
-        },
-        "end": {
-          "line": 158,
-          "column": 11
-        },
-        "statements": 1
+        "statements": 2
       },
-      "reason": "Lease acquisition and release error branch depends on an external cache, lock, or filesystem failure; normal lock behavior and cancellation are directly covered.",
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/lease.go:171.17,174.4 2 in acquire, beginning `if err != nil {`. This is an idempotent release, host permission, lock creation, or acquisition cleanup return; cross-process exclusion, deterministic multi-root acquisition, cancellation, explicit release, and process-exit release are directly tested.",
       "movedFrom": {
         "file": "internal/filesystem/lease.go",
         "start": {
-          "line": 148,
-          "column": 3
+          "line": 171,
+          "column": 17
         },
         "end": {
-          "line": 148,
-          "column": 11
+          "line": 174,
+          "column": 4
         },
-        "statements": 1
+        "statements": 2
       }
     },
     {
       "identity": {
+        "file": "internal/filesystem/lease.go",
+        "start": {
+          "line": 166,
+          "column": 18
+        },
+        "end": {
+          "line": 170,
+          "column": 5
+        },
+        "statements": 3
+      },
+      "reason": "Lease acquisition and release error branch depends on an external cache, lock, or filesystem failure; normal lock behavior and cancellation are directly covered.",
+      "movedFrom": {
         "file": "internal/filesystem/lease.go",
         "start": {
           "line": 181,
@@ -6876,23 +6772,23 @@
           "column": 5
         },
         "statements": 3
-      },
-      "reason": "Lease acquisition and release error branch depends on an external cache, lock, or filesystem failure; normal lock behavior and cancellation are directly covered.",
-      "movedFrom": {
-        "file": "internal/filesystem/lease.go",
-        "start": {
-          "line": 171,
-          "column": 18
-        },
-        "end": {
-          "line": 175,
-          "column": 5
-        },
-        "statements": 3
       }
     },
     {
       "identity": {
+        "file": "internal/filesystem/lease.go",
+        "start": {
+          "line": 182,
+          "column": 54
+        },
+        "end": {
+          "line": 186,
+          "column": 4
+        },
+        "statements": 3
+      },
+      "reason": "Lease acquisition and release error branch depends on an external cache, lock, or filesystem failure; normal lock behavior and cancellation are directly covered.",
+      "movedFrom": {
         "file": "internal/filesystem/lease.go",
         "start": {
           "line": 197,
@@ -6903,30 +6799,71 @@
           "column": 4
         },
         "statements": 3
-      },
-      "reason": "Lease acquisition and release error branch depends on an external cache, lock, or filesystem failure; normal lock behavior and cancellation are directly covered.",
-      "movedFrom": {
-        "file": "internal/filesystem/lease.go",
-        "start": {
-          "line": 187,
-          "column": 54
-        },
-        "end": {
-          "line": 191,
-          "column": 4
-        },
-        "statements": 3
       }
     },
     {
       "identity": {
         "file": "internal/filesystem/lease.go",
         "start": {
-          "line": 216,
+          "line": 194,
+          "column": 16
+        },
+        "end": {
+          "line": 196,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/lease.go:209.16,211.3 1 in leaseCache, beginning `if err != nil {`. This is an idempotent release, host permission, lock creation, or acquisition cleanup return; cross-process exclusion, deterministic multi-root acquisition, cancellation, explicit release, and process-exit release are directly tested.",
+      "movedFrom": {
+        "file": "internal/filesystem/lease.go",
+        "start": {
+          "line": 209,
+          "column": 16
+        },
+        "end": {
+          "line": 211,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/lease.go",
+        "start": {
+          "line": 198,
+          "column": 50
+        },
+        "end": {
+          "line": 200,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/lease.go:213.50,215.3 1 in leaseCache, beginning `if err := os.MkdirAll(cache, 0o700); err != nil {`. This is an idempotent release, host permission, lock creation, or acquisition cleanup return; cross-process exclusion, deterministic multi-root acquisition, cancellation, explicit release, and process-exit release are directly tested.",
+      "movedFrom": {
+        "file": "internal/filesystem/lease.go",
+        "start": {
+          "line": 213,
+          "column": 50
+        },
+        "end": {
+          "line": 215,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/lease.go",
+        "start": {
+          "line": 201,
           "column": 47
         },
         "end": {
-          "line": 218,
+          "line": 203,
           "column": 3
         },
         "statements": 1
@@ -6935,11 +6872,11 @@
       "movedFrom": {
         "file": "internal/filesystem/lease.go",
         "start": {
-          "line": 206,
+          "line": 216,
           "column": 47
         },
         "end": {
-          "line": 208,
+          "line": 218,
           "column": 3
         },
         "statements": 1
@@ -9110,6 +9047,21 @@
     },
     {
       "identity": {
+        "file": "internal/plan/plan.go",
+        "start": {
+          "line": 275,
+          "column": 3
+        },
+        "end": {
+          "line": 275,
+          "column": 59
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/plan/plan.go:275.3,275.59 1 in NewFileLeased, beginning `return \"\", fmt.Errorf(\"plan: publish %s: %w\", path, err)`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
         "file": "internal/plan/source.go",
         "start": {
           "line": 44,
@@ -11017,6 +10969,19 @@
       "identity": {
         "file": "internal/publisher/sync.go",
         "start": {
+          "line": 66,
+          "column": 18
+        },
+        "end": {
+          "line": 68,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:75.18,77.3 1 in InitializeLeased, beginning `if lease == nil {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested.",
+      "movedFrom": {
+        "file": "internal/publisher/sync.go",
+        "start": {
           "line": 75,
           "column": 18
         },
@@ -11025,11 +10990,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/publisher/sync.go:75.18,77.3 1 in InitializeLeased, beginning `if lease == nil {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 85,
+          "column": 64
+        },
+        "end": {
+          "line": 87,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:94.64,96.3 1 in run, beginning `} else if !lease.CoversProject(roots.Tracked, roots.Resident) {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested.",
+      "movedFrom": {
         "file": "internal/publisher/sync.go",
         "start": {
           "line": 94,
@@ -11040,11 +11017,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/publisher/sync.go:94.64,96.3 1 in run, beginning `} else if !lease.CoversProject(roots.Tracked, roots.Resident) {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 90,
+          "column": 42
+        },
+        "end": {
+          "line": 92,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:99.42,101.5 1 in run, beginning `if err := lease.Release(); err != nil {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested.",
+      "movedFrom": {
         "file": "internal/publisher/sync.go",
         "start": {
           "line": 99,
@@ -11055,11 +11044,23 @@
           "column": 5
         },
         "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/publisher/sync.go:99.42,101.5 1 in run, beginning `if err := lease.Release(); err != nil {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 153,
+          "column": 30
+        },
+        "end": {
+          "line": 155,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:162.30,164.3 1 in partialOrError, beginning `if errors.As(err, \u0026partial) {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested.",
+      "movedFrom": {
         "file": "internal/publisher/sync.go",
         "start": {
           "line": 162,
@@ -11070,23 +11071,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/publisher/sync.go:157.30,159.3 1 in partialOrError, beginning `if errors.As(err, \u0026partial) {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested.",
-      "movedFrom": {
-        "file": "internal/publisher/sync.go",
-        "start": {
-          "line": 157,
-          "column": 30
-        },
-        "end": {
-          "line": 159,
-          "column": 3
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 169,
+          "column": 17
+        },
+        "end": {
+          "line": 171,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:178.17,180.4 1 in PartialMutation, beginning `if err != nil {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested.",
+      "movedFrom": {
         "file": "internal/publisher/sync.go",
         "start": {
           "line": 178,
@@ -11097,23 +11098,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/publisher/sync.go:173.17,175.4 1 in PartialMutation, beginning `if err != nil {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested.",
-      "movedFrom": {
-        "file": "internal/publisher/sync.go",
-        "start": {
-          "line": 173,
-          "column": 17
-        },
-        "end": {
-          "line": 175,
-          "column": 4
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 175,
+          "column": 16
+        },
+        "end": {
+          "line": 177,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:184.16,186.3 1 in PartialMutation, beginning `if err != nil {`. The source exclusion records that fixed presentation text. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
         "file": "internal/publisher/sync.go",
         "start": {
           "line": 184,
@@ -11124,23 +11125,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/publisher/sync.go:179.16,181.3 1 in PartialMutation, beginning `if err != nil {`. The source exclusion records that fixed presentation text. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
-      "movedFrom": {
-        "file": "internal/publisher/sync.go",
-        "start": {
-          "line": 179,
-          "column": 16
-        },
-        "end": {
-          "line": 181,
-          "column": 3
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 198,
+          "column": 23
+        },
+        "end": {
+          "line": 200,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:207.23,209.3 1 in appendCommittedOperationEffects, beginning `if effect.Path == \"\" {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested.",
+      "movedFrom": {
         "file": "internal/publisher/sync.go",
         "start": {
           "line": 207,
@@ -11151,23 +11152,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/publisher/sync.go:202.23,204.3 1, beginning `if effect.Path == \"\" {`. This fills an operation effect's path from the native publication error when the caller intentionally left the committed path to the filesystem owner. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering.",
-      "movedFrom": {
-        "file": "internal/publisher/sync.go",
-        "start": {
-          "line": 202,
-          "column": 23
-        },
-        "end": {
-          "line": 204,
-          "column": 3
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 271,
+          "column": 16
+        },
+        "end": {
+          "line": 273,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:280.16,282.3 1 in sync, beginning `if err != nil {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested.",
+      "movedFrom": {
         "file": "internal/publisher/sync.go",
         "start": {
           "line": 280,
@@ -11178,23 +11179,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/publisher/sync.go:275.16,277.3 1, beginning `if err != nil {`. This returns failure to open the confined tracked or resident handle before Publisher mutation, with an empty Result. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering.",
-      "movedFrom": {
-        "file": "internal/publisher/sync.go",
-        "start": {
-          "line": 275,
-          "column": 16
-        },
-        "end": {
-          "line": 277,
-          "column": 3
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 304,
+          "column": 12
+        },
+        "end": {
+          "line": 306,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:313.12,315.4 1 in syncReportWithPlan, beginning `if found {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested.",
+      "movedFrom": {
         "file": "internal/publisher/sync.go",
         "start": {
           "line": 313,
@@ -11205,23 +11206,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/publisher/sync.go:308.12,310.4 1, beginning `if found {`. This is a lock-presence or permanent-authority refusal before output planning mutates any tracked or resident path. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering.",
-      "movedFrom": {
+      }
+    },
+    {
+      "identity": {
         "file": "internal/publisher/sync.go",
         "start": {
           "line": 308,
-          "column": 12
+          "column": 13
         },
         "end": {
           "line": 310,
           "column": 4
         },
         "statements": 1
-      }
-    },
-    {
-      "identity": {
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:317.13,319.4 1 in syncReportWithPlan, beginning `if !found {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested.",
+      "movedFrom": {
         "file": "internal/publisher/sync.go",
         "start": {
           "line": 317,
@@ -11232,23 +11233,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/publisher/sync.go:312.13,314.4 1, beginning `if !found {`. This is a lock-presence or permanent-authority refusal before output planning mutates any tracked or resident path. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering.",
-      "movedFrom": {
+      }
+    },
+    {
+      "identity": {
         "file": "internal/publisher/sync.go",
         "start": {
           "line": 312,
-          "column": 13
+          "column": 62
         },
         "end": {
           "line": 314,
           "column": 4
         },
         "statements": 1
-      }
-    },
-    {
-      "identity": {
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:321.62,323.4 1 in syncReportWithPlan, beginning `if stateErr != nil || state != manifest.AuthorityPermanent {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested.",
+      "movedFrom": {
         "file": "internal/publisher/sync.go",
         "start": {
           "line": 321,
@@ -11259,23 +11260,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/publisher/sync.go:316.62,318.4 1, beginning `if stateErr != nil || state != manifest.AuthorityPermanent {`. This is a lock-presence or permanent-authority refusal before output planning mutates any tracked or resident path. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering.",
-      "movedFrom": {
-        "file": "internal/publisher/sync.go",
-        "start": {
-          "line": 316,
-          "column": 62
-        },
-        "end": {
-          "line": 318,
-          "column": 4
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 323,
+          "column": 102
+        },
+        "end": {
+          "line": 325,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:332.102,334.5 1 in syncReportWithPlan, beginning `if err := validatePublicationArtifact([]byte(f.Content()), AgentDialect(f.Encoder())); err != nil {`. The source exclusion records that rendered catalog skill/agent syntax is template-fixed and cannot be invalid at sync time. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
         "file": "internal/publisher/sync.go",
         "start": {
           "line": 332,
@@ -11286,23 +11287,23 @@
           "column": 5
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/publisher/sync.go:327.102,329.5 1, beginning `if err := validatePublicationArtifact([]byte(f.Content()), AgentDialect(f.Encoder())); err != nil { // coverage-ignore: rendered catalog skill/agent syntax is template-fixed and cannot be invalid at sync time`. The source directive records that rendered catalog skill/agent syntax is template-fixed and cannot be invalid at sync time. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering.",
-      "movedFrom": {
-        "file": "internal/publisher/sync.go",
-        "start": {
-          "line": 327,
-          "column": 102
-        },
-        "end": {
-          "line": 329,
-          "column": 5
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 368,
+          "column": 60
+        },
+        "end": {
+          "line": 370,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:377.60,379.4 1 in syncReportWithPlan, beginning `if infoErr != nil \u0026\u0026 !errors.Is(infoErr, fs.ErrNotExist) {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested.",
+      "movedFrom": {
         "file": "internal/publisher/sync.go",
         "start": {
           "line": 377,
@@ -11313,23 +11314,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/publisher/sync.go:372.60,374.4 1, beginning `if infoErr != nil \u0026\u0026 !errors.Is(infoErr, fs.ErrNotExist) {`. This reports an unexpected output identity-observation failure before backup or replacement, preserving the effects already accumulated for earlier outputs. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering.",
-      "movedFrom": {
-        "file": "internal/publisher/sync.go",
-        "start": {
-          "line": 372,
-          "column": 60
-        },
-        "end": {
-          "line": 374,
-          "column": 4
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 476,
+          "column": 91
+        },
+        "end": {
+          "line": 480,
+          "column": 29
+        },
+        "statements": 4
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:485.91,489.29 4 in syncReportWithPlan, beginning `if committedPath, residuePath, committed := committedPublication(bakErr); committed {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested.",
+      "movedFrom": {
         "file": "internal/publisher/sync.go",
         "start": {
           "line": 485,
@@ -11340,23 +11341,23 @@
           "column": 29
         },
         "statements": 4
-      },
-      "reason": "Phase 3 renewed review of internal/publisher/sync.go:480.91,484.29 4, beginning `if committedPath, residuePath, committed := committedPublication(bakErr); committed {`. This records a backup as committed when native atomic publication reports that its destination changed despite a later cleanup failure, so the partial Result never loses the backup fact. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering.",
-      "movedFrom": {
-        "file": "internal/publisher/sync.go",
-        "start": {
-          "line": 480,
-          "column": 91
-        },
-        "end": {
-          "line": 484,
-          "column": 29
-        },
-        "statements": 4
       }
     },
     {
       "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 480,
+          "column": 29
+        },
+        "end": {
+          "line": 482,
+          "column": 9
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:489.29,491.9 1 in syncReportWithPlan, beginning `if residuePath != \"\" {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested.",
+      "movedFrom": {
         "file": "internal/publisher/sync.go",
         "start": {
           "line": 489,
@@ -11367,23 +11368,23 @@
           "column": 9
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/publisher/sync.go:484.29,486.9 1, beginning `if residuePath != \"\" {`. This separately records native publication temporary residue when backup destination commit succeeded but cleanup failed. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering.",
-      "movedFrom": {
-        "file": "internal/publisher/sync.go",
-        "start": {
-          "line": 484,
-          "column": 29
-        },
-        "end": {
-          "line": 486,
-          "column": 9
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 494,
+          "column": 67
+        },
+        "end": {
+          "line": 496,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:503.67,505.5 1 in syncReportWithPlan, beginning `if observeErr != nil \u0026\u0026 !errors.Is(observeErr, fs.ErrNotExist) {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested.",
+      "movedFrom": {
         "file": "internal/publisher/sync.go",
         "start": {
           "line": 503,
@@ -11394,23 +11395,23 @@
           "column": 5
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/publisher/sync.go:498.67,500.5 1, beginning `if observeErr != nil \u0026\u0026 !errors.Is(observeErr, fs.ErrNotExist) {`. This reports a retired-output identity observation fault before removal while preserving prior backup and output effects. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering.",
-      "movedFrom": {
-        "file": "internal/publisher/sync.go",
-        "start": {
-          "line": 498,
-          "column": 67
-        },
-        "end": {
-          "line": 500,
-          "column": 5
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 525,
+          "column": 32
+        },
+        "end": {
+          "line": 526,
+          "column": 19
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:534.32,535.19 1 in syncReportWithPlan, beginning `if a.resident != b.resident {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested.",
+      "movedFrom": {
         "file": "internal/publisher/sync.go",
         "start": {
           "line": 534,
@@ -11421,23 +11422,23 @@
           "column": 19
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/publisher/sync.go:529.32,530.19 1, beginning `if a.resident != b.resident {`. This comparator arm gives cleanup effects a total depth-first, tracked-before-resident, lexical order; tests assert the resulting stable order without binding to sort callback scheduling. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering.",
-      "movedFrom": {
-        "file": "internal/publisher/sync.go",
-        "start": {
-          "line": 529,
-          "column": 32
-        },
-        "end": {
-          "line": 530,
-          "column": 19
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 526,
+          "column": 19
+        },
+        "end": {
+          "line": 528,
+          "column": 6
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:535.19,537.6 1 in syncReportWithPlan, beginning `if a.resident {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested.",
+      "movedFrom": {
         "file": "internal/publisher/sync.go",
         "start": {
           "line": 535,
@@ -11448,23 +11449,23 @@
           "column": 6
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/publisher/sync.go:530.19,532.6 1, beginning `if a.resident {`. This comparator arm gives cleanup effects a total depth-first, tracked-before-resident, lexical order; tests assert the resulting stable order without binding to sort callback scheduling. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering.",
-      "movedFrom": {
-        "file": "internal/publisher/sync.go",
-        "start": {
-          "line": 530,
-          "column": 19
-        },
-        "end": {
-          "line": 532,
-          "column": 6
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 529,
+          "column": 5
+        },
+        "end": {
+          "line": 529,
+          "column": 14
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:538.5,538.14 1 in syncReportWithPlan, beginning `return -1`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested.",
+      "movedFrom": {
         "file": "internal/publisher/sync.go",
         "start": {
           "line": 538,
@@ -11475,23 +11476,23 @@
           "column": 14
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/publisher/sync.go:533.5,533.14 1, beginning `return -1`. This comparator arm gives cleanup effects a total depth-first, tracked-before-resident, lexical order; tests assert the resulting stable order without binding to sort callback scheduling. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering.",
-      "movedFrom": {
-        "file": "internal/publisher/sync.go",
-        "start": {
-          "line": 533,
-          "column": 5
-        },
-        "end": {
-          "line": 533,
-          "column": 14
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 536,
+          "column": 43
+        },
+        "end": {
+          "line": 537,
+          "column": 14
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:545.43,546.14 1 in syncReportWithPlan, beginning `if errors.Is(infoErr, fs.ErrNotExist) {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested.",
+      "movedFrom": {
         "file": "internal/publisher/sync.go",
         "start": {
           "line": 545,
@@ -11502,23 +11503,23 @@
           "column": 14
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/publisher/sync.go:540.43,541.14 1, beginning `if errors.Is(infoErr, fs.ErrNotExist) {`. This treats an already-absent cleanup directory as complete and continues without claiming a removal effect. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering.",
-      "movedFrom": {
-        "file": "internal/publisher/sync.go",
-        "start": {
-          "line": 540,
-          "column": 43
-        },
-        "end": {
-          "line": 541,
-          "column": 14
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 541,
+          "column": 21
+        },
+        "end": {
+          "line": 542,
+          "column": 13
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:550.21,551.13 1 in syncReportWithPlan, beginning `if !info.IsDir() {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested.",
+      "movedFrom": {
         "file": "internal/publisher/sync.go",
         "start": {
           "line": 550,
@@ -11529,23 +11530,23 @@
           "column": 13
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/publisher/sync.go:545.21,546.13 1, beginning `if !info.IsDir() {`. This skips a cleanup candidate whose observed entry is no longer a directory, avoiding mutation of a changed winner. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering.",
-      "movedFrom": {
-        "file": "internal/publisher/sync.go",
-        "start": {
-          "line": 545,
-          "column": 21
-        },
-        "end": {
-          "line": 546,
-          "column": 13
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 555,
+          "column": 16
+        },
+        "end": {
+          "line": 557,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:564.16,566.3 1 in syncReportWithPlan, beginning `if err != nil {`. The source exclusion records that sync constructs only authority-valid lock fields, so marshal failure requires a future representation change. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
         "file": "internal/publisher/sync.go",
         "start": {
           "line": 564,
@@ -11556,23 +11557,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/publisher/sync.go:559.16,561.3 1, beginning `if err != nil { // coverage-ignore: sync constructs only authority-valid lock fields, so marshal failure requires a future representation change`. The source directive records that sync constructs only authority-valid lock fields, so marshal failure requires a future representation change. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering.",
-      "movedFrom": {
-        "file": "internal/publisher/sync.go",
-        "start": {
-          "line": 559,
-          "column": 16
-        },
-        "end": {
-          "line": 561,
-          "column": 3
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 640,
+          "column": 16
+        },
+        "end": {
+          "line": 642,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:649.16,651.3 1 in syncMutation, beginning `if err != nil {`. The source exclusion records that fixed nonempty completion action always validates as prose. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
         "file": "internal/publisher/sync.go",
         "start": {
           "line": 649,
@@ -11580,19 +11581,6 @@
         },
         "end": {
           "line": 651,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/publisher/sync.go:644.16,646.3 1, beginning `if err != nil { // coverage-ignore: fixed nonempty completion action always validates as prose`. The source directive records that fixed nonempty completion action always validates as prose. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering.",
-      "movedFrom": {
-        "file": "internal/publisher/sync.go",
-        "start": {
-          "line": 644,
-          "column": 16
-        },
-        "end": {
-          "line": 646,
           "column": 3
         },
         "statements": 1
@@ -11782,188 +11770,113 @@
       "identity": {
         "file": "internal/resident/resident.go",
         "start": {
-          "line": 155,
-          "column": 16
+          "line": 144,
+          "column": 48
         },
         "end": {
-          "line": 157,
-          "column": 3
+          "line": 144,
+          "column": 74
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/resident/resident.go:132.16,134.3 1 in function Document, beginning `{ // coverage-ignore: decimal formatting always produces a nonempty literal without line breaks`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
-      "movedFrom": {
-        "file": "internal/resident/resident.go",
-        "start": {
-          "line": 132,
-          "column": 16
-        },
-        "end": {
-          "line": 134,
-          "column": 3
-        },
-        "statements": 1
-      }
+      "reason": "Phase 3 reviewed internal/resident/resident.go:144.48,144.74 1 in Error, beginning `func (e *PartialUninstallError) Error() string { return e.Cause.Error() }`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/resident/resident.go",
         "start": {
-          "line": 159,
-          "column": 16
-        },
-        "end": {
           "line": 161,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/resident/resident.go:136.16,138.3 1 in function Document, beginning `{ // coverage-ignore: Literal validated the value and the label is fixed and grammar-valid`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
-      "movedFrom": {
-        "file": "internal/resident/resident.go",
-        "start": {
-          "line": 136,
           "column": 16
         },
         "end": {
-          "line": 138,
-          "column": 3
-        },
-        "statements": 1
-      }
-    },
-    {
-      "identity": {
-        "file": "internal/resident/resident.go",
-        "start": {
           "line": 163,
-          "column": 16
-        },
-        "end": {
-          "line": 165,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/resident/resident.go:140.16,142.3 1 in function Document, beginning `{ // coverage-ignore: fixed nonempty prose contains no forbidden line break`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
-      "movedFrom": {
-        "file": "internal/resident/resident.go",
-        "start": {
-          "line": 140,
-          "column": 16
-        },
-        "end": {
-          "line": 142,
-          "column": 3
-        },
-        "statements": 1
-      }
+      "reason": "Phase 3 reviewed internal/resident/resident.go:161.16,163.3 1 in Document, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/resident/resident.go",
         "start": {
-          "line": 169,
+          "line": 177,
           "column": 17
         },
         "end": {
-          "line": 171,
+          "line": 179,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/resident/resident.go:146.17,148.4 1 in function Document, beginning `{ // coverage-ignore: the fixed prefix remains nonempty after normalization of a validated resid...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
-      "movedFrom": {
-        "file": "internal/resident/resident.go",
-        "start": {
-          "line": 146,
-          "column": 17
-        },
-        "end": {
-          "line": 148,
-          "column": 4
-        },
-        "statements": 1
-      }
+      "reason": "Phase 3 reviewed internal/resident/resident.go:177.17,179.4 1 in partialDocument, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/resident/resident.go",
         "start": {
-          "line": 176,
-          "column": 17
-        },
-        "end": {
-          "line": 178,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/resident/resident.go:153.17,155.4 1 in function Document, beginning `{ // coverage-ignore: backup paths are confined lock-relative paths`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
-      "movedFrom": {
-        "file": "internal/resident/resident.go",
-        "start": {
-          "line": 153,
-          "column": 17
-        },
-        "end": {
-          "line": 155,
-          "column": 4
-        },
-        "statements": 1
-      }
-    },
-    {
-      "identity": {
-        "file": "internal/resident/resident.go",
-        "start": {
-          "line": 192,
+          "line": 187,
           "column": 16
         },
         "end": {
-          "line": 194,
+          "line": 189,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation of internal/resident/resident.go:192.16,194.3 1 in partialDocument, beginning `if err != nil { return presentation.Document{}, err }`. This is a presentation-construction failure for fixed labels and resident-owner normalized paths, counts, effects, or recovery steps. Resident tests exercise complete and partial uninstall semantics, exact effects, unsafe-root refusal, and deterministic ordering; invalid presentation grammar cannot arise from the closed typed model."
+      "reason": "Phase 3 reviewed internal/resident/resident.go:187.16,189.3 1 in document, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/resident/resident.go",
         "start": {
-          "line": 196,
+          "line": 191,
           "column": 16
         },
         "end": {
-          "line": 198,
+          "line": 193,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation of internal/resident/resident.go:196.16,198.3 1 in partialDocument, beginning `if err != nil { return presentation.Document{}, err }`. This is a presentation-construction failure for fixed labels and resident-owner normalized paths, counts, effects, or recovery steps. Resident tests exercise complete and partial uninstall semantics, exact effects, unsafe-root refusal, and deterministic ordering; invalid presentation grammar cannot arise from the closed typed model."
+      "reason": "Phase 3 reviewed internal/resident/resident.go:191.16,193.3 1 in document, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/resident/resident.go",
         "start": {
-          "line": 202,
+          "line": 197,
           "column": 17
         },
         "end": {
+          "line": 199,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/resident/resident.go:197.17,199.4 1 in document, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
           "line": 204,
+          "column": 82
+        },
+        "end": {
+          "line": 206,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation of internal/resident/resident.go:202.17,204.4 1 in partialDocument, beginning `if err != nil { return presentation.Document{}, err }`. This is a presentation-construction failure for fixed labels and resident-owner normalized paths, counts, effects, or recovery steps. Resident tests exercise complete and partial uninstall semantics, exact effects, unsafe-root refusal, and deterministic ordering; invalid presentation grammar cannot arise from the closed typed model."
+      "reason": "Phase 3 reviewed internal/resident/resident.go:204.82,206.4 1 in document, beginning `if err := appendNote(\"preserved resident data under .awf/\" + root); err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/resident/resident.go",
         "start": {
           "line": 209,
-          "column": 17
+          "column": 65
         },
         "end": {
           "line": 211,
@@ -11971,49 +11884,352 @@
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation of internal/resident/resident.go:209.17,211.4 1 in partialDocument, beginning `if err != nil { return presentation.Document{}, err }`. This is a presentation-construction failure for fixed labels and resident-owner normalized paths, counts, effects, or recovery steps. Resident tests exercise complete and partial uninstall semantics, exact effects, unsafe-root refusal, and deterministic ordering; invalid presentation grammar cannot arise from the closed typed model."
+      "reason": "Phase 3 reviewed internal/resident/resident.go:209.65,211.4 1 in document, beginning `if err := appendNote(\"removed generated \" + path); err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/resident/resident.go",
         "start": {
-          "line": 217,
-          "column": 17
+          "line": 214,
+          "column": 86
         },
         "end": {
+          "line": 216,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/resident/resident.go:214.86,216.4 1 in document, beginning `if err := appendNote(\"backed up \" + backup.Path + \" to \" + backup.Bak); err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
           "line": 219,
+          "column": 71
+        },
+        "end": {
+          "line": 221,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation of internal/resident/resident.go:217.17,219.4 1 in partialDocument, beginning `if err != nil { return presentation.Document{}, err }`. This is a presentation-construction failure for fixed labels and resident-owner normalized paths, counts, effects, or recovery steps. Resident tests exercise complete and partial uninstall semantics, exact effects, unsafe-root refusal, and deterministic ordering; invalid presentation grammar cannot arise from the closed typed model."
+      "reason": "Phase 3 reviewed internal/resident/resident.go:219.71,221.4 1 in document, beginning `if err := appendNote(\"removed empty directory \" + path); err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/resident/resident.go",
         "start": {
-          "line": 236,
-          "column": 17
+          "line": 224,
+          "column": 66
         },
         "end": {
-          "line": 238,
+          "line": 226,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/resident/resident.go:172.17,174.4 1 in function InspectRoots, beginning `{ // coverage-ignore: root discovery's lstat error needs an external filesystem fault; unsafe an...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
-      "movedFrom": {
+      "reason": "Phase 3 reviewed internal/resident/resident.go:224.66,226.4 1 in document, beginning `if err := appendNote(\"removed lock .awf/awf.lock\"); err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
         "file": "internal/resident/resident.go",
         "start": {
-          "line": 172,
+          "line": 242,
           "column": 17
         },
         "end": {
-          "line": 174,
+          "line": 244,
           "column": 4
         },
         "statements": 1
-      }
+      },
+      "reason": "Phase 3 reviewed internal/resident/resident.go:242.17,244.4 1 in InspectRoots, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 292,
+          "column": 16
+        },
+        "end": {
+          "line": 294,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/resident/resident.go:292.16,294.3 1 in productionUninstallOpen, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 317,
+          "column": 16
+        },
+        "end": {
+          "line": 319,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/resident/resident.go:317.16,319.3 1 in uninstallWith, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 328,
+          "column": 26
+        },
+        "end": {
+          "line": 330,
+          "column": 17
+        },
+        "statements": 2
+      },
+      "reason": "Phase 3 reviewed internal/resident/resident.go:328.26,330.17 2 in uninstallWith, beginning `if residentRoot != root {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 330,
+          "column": 17
+        },
+        "end": {
+          "line": 332,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/resident/resident.go:330.17,332.4 1 in uninstallWith, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 333,
+          "column": 3
+        },
+        "end": {
+          "line": 334,
+          "column": 16
+        },
+        "statements": 2
+      },
+      "reason": "Phase 3 reviewed internal/resident/resident.go:333.3,334.16 2 in uninstallWith, beginning `residentClosed = false`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 334,
+          "column": 16
+        },
+        "end": {
+          "line": 335,
+          "column": 23
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/resident/resident.go:334.16,335.23 1 in uninstallWith, beginning `defer func() {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 335,
+          "column": 23
+        },
+        "end": {
+          "line": 337,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/resident/resident.go:335.23,337.5 1 in uninstallWith, beginning `if !residentClosed {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 344,
+          "column": 16
+        },
+        "end": {
+          "line": 346,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/resident/resident.go:344.16,346.3 1 in uninstallWith, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 347,
+          "column": 73
+        },
+        "end": {
+          "line": 349,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/resident/resident.go:347.73,349.3 1 in uninstallWith, beginning `if lockInfo.Mode()\u0026fs.ModeSymlink != 0 || !lockInfo.Mode().IsRegular() {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 351,
+          "column": 16
+        },
+        "end": {
+          "line": 353,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/resident/resident.go:351.16,353.3 1 in uninstallWith, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 379,
+          "column": 67
+        },
+        "end": {
+          "line": 381,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/resident/resident.go:379.67,381.5 1 in uninstallWith, beginning `if info.Mode()\u0026fs.ModeSymlink != 0 || !info.Mode().IsRegular() {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 383,
+          "column": 24
+        },
+        "end": {
+          "line": 385,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/resident/resident.go:383.24,385.5 1 in uninstallWith, beginning `if backupErr != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 408,
+          "column": 37
+        },
+        "end": {
+          "line": 409,
+          "column": 12
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/resident/resident.go:408.37,409.12 1 in uninstallWith, beginning `if errors.Is(err, fs.ErrNotExist) {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 411,
+          "column": 17
+        },
+        "end": {
+          "line": 413,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/resident/resident.go:411.17,413.4 1 in uninstallWith, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 414,
+          "column": 20
+        },
+        "end": {
+          "line": 415,
+          "column": 12
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/resident/resident.go:414.20,415.12 1 in uninstallWith, beginning `if !info.IsDir() {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 421,
+          "column": 4
+        },
+        "end": {
+          "line": 421,
+          "column": 98
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/resident/resident.go:421.4,421.98 1 in uninstallWith, beginning `return report, partialUninstall(report, fmt.Errorf(\"remove empty directory %s: %w\", dir, err))`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 429,
+          "column": 25
+        },
+        "end": {
+          "line": 430,
+          "column": 42
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/resident/resident.go:429.25,430.42 1 in uninstallWith, beginning `if resident != tracked {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 430,
+          "column": 42
+        },
+        "end": {
+          "line": 432,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/resident/resident.go:430.42,432.4 1 in uninstallWith, beginning `if err := resident.Close(); err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 433,
+          "column": 3
+        },
+        "end": {
+          "line": 433,
+          "column": 24
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/resident/resident.go:433.3,433.24 1 in uninstallWith, beginning `residentClosed = true`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
@@ -13051,292 +13267,196 @@
       "identity": {
         "file": "internal/topicop/scaffold.go",
         "start": {
-          "line": 65,
-          "column": 16
+          "line": 68,
+          "column": 17
         },
         "end": {
-          "line": 67,
-          "column": 3
+          "line": 70,
+          "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:21.16,23.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam.",
-      "movedFrom": {
-        "file": "internal/topicop/scaffold.go",
-        "start": {
-          "line": 21,
-          "column": 16
-        },
-        "end": {
-          "line": 23,
-          "column": 3
-        },
-        "statements": 1
-      }
+      "reason": "Phase 3 reviewed internal/topicop/scaffold.go:68.17,70.4 1 in scaffoldConfined, beginning `if err == nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/topicop/scaffold.go",
         "start": {
-          "line": 79,
-          "column": 17
+          "line": 74,
+          "column": 3
         },
         "end": {
-          "line": 81,
-          "column": 4
+          "line": 74,
+          "column": 20
         },
         "statements": 1
       },
-      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:35.17,37.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam.",
-      "movedFrom": {
-        "file": "internal/topicop/scaffold.go",
-        "start": {
-          "line": 35,
-          "column": 17
-        },
-        "end": {
-          "line": 37,
-          "column": 4
-        },
-        "statements": 1
-      }
+      "reason": "Phase 3 reviewed internal/topicop/scaffold.go:74.3,74.20 1 in scaffoldConfined, beginning `return false, err`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/topicop/scaffold.go",
         "start": {
-          "line": 85,
-          "column": 3
+          "line": 80,
+          "column": 70
         },
         "end": {
-          "line": 85,
-          "column": 20
+          "line": 83,
+          "column": 42
+        },
+        "statements": 3
+      },
+      "reason": "Phase 3 reviewed internal/topicop/scaffold.go:80.70,83.42 3 in scaffoldConfined, beginning `rollbackCreated := func(cause error) (presentation.Document, error) {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 83,
+          "column": 42
+        },
+        "end": {
+          "line": 84,
+          "column": 86
         },
         "statements": 1
       },
-      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:41.3,41.20 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam.",
-      "movedFrom": {
+      "reason": "Phase 3 reviewed internal/topicop/scaffold.go:83.42,84.86 1 in scaffoldConfined, beginning `for i := len(created) - 1; i \u003e= 0; i-- {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
         "file": "internal/topicop/scaffold.go",
         "start": {
-          "line": 41,
-          "column": 3
+          "line": 84,
+          "column": 86
         },
         "end": {
-          "line": 41,
-          "column": 20
+          "line": 87,
+          "column": 5
+        },
+        "statements": 2
+      },
+      "reason": "Phase 3 reviewed internal/topicop/scaffold.go:84.86,87.5 2 in scaffoldConfined, beginning `if err := files.Remove(created[i]); err != nil \u0026\u0026 !errors.Is(err, os.ErrNotExist) {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 87,
+          "column": 10
+        },
+        "end": {
+          "line": 89,
+          "column": 5
         },
         "statements": 1
-      }
+      },
+      "reason": "Phase 3 reviewed internal/topicop/scaffold.go:87.10,89.5 1 in scaffoldConfined, beginning `} else {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/topicop/scaffold.go",
         "start": {
           "line": 91,
-          "column": 70
-        },
-        "end": {
-          "line": 94,
-          "column": 42
-        },
-        "statements": 3
-      },
-      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:47.70,50.42 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam.",
-      "movedFrom": {
-        "file": "internal/topicop/scaffold.go",
-        "start": {
-          "line": 47,
-          "column": 70
-        },
-        "end": {
-          "line": 50,
-          "column": 42
-        },
-        "statements": 3
-      }
-    },
-    {
-      "identity": {
-        "file": "internal/topicop/scaffold.go",
-        "start": {
-          "line": 94,
-          "column": 42
-        },
-        "end": {
-          "line": 95,
-          "column": 86
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:50.42,51.86 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam.",
-      "movedFrom": {
-        "file": "internal/topicop/scaffold.go",
-        "start": {
-          "line": 50,
-          "column": 42
-        },
-        "end": {
-          "line": 51,
-          "column": 86
-        },
-        "statements": 1
-      }
-    },
-    {
-      "identity": {
-        "file": "internal/topicop/scaffold.go",
-        "start": {
-          "line": 95,
-          "column": 86
-        },
-        "end": {
-          "line": 98,
-          "column": 5
-        },
-        "statements": 2
-      },
-      "reason": "Phase 4 post-review coverage reconciliation of internal/topicop/scaffold.go:95.86,98.5 2 in scaffoldConfined, beginning `if err := files.Remove(created[i]); err != nil \u0026\u0026 !errors.Is(err, os.ErrNotExist) { failures = append(failures, fmt.Errorf(\"remove topic scaffold path %q: %w\", created[i], err)) remaining = append(remaining, created[i]) `. This is one branch of reverse-order scaffold rollback and typed residue accounting after a later failure. Focused fault tests exercise created, removed, remaining, joined-cause, and safe-recovery semantics; this additional cleanup combination remains visible raw debt without a test-only filesystem seam."
-    },
-    {
-      "identity": {
-        "file": "internal/topicop/scaffold.go",
-        "start": {
-          "line": 98,
-          "column": 10
-        },
-        "end": {
-          "line": 100,
-          "column": 5
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 post-review coverage reconciliation of internal/topicop/scaffold.go:98.10,100.5 1 in scaffoldConfined, beginning `} else { removed = append(removed, created[i]) }`. This is one branch of reverse-order scaffold rollback and typed residue accounting after a later failure. Focused fault tests exercise created, removed, remaining, joined-cause, and safe-recovery semantics; this additional cleanup combination remains visible raw debt without a test-only filesystem seam."
-    },
-    {
-      "identity": {
-        "file": "internal/topicop/scaffold.go",
-        "start": {
-          "line": 102,
           "column": 3
         },
         "end": {
-          "line": 102,
+          "line": 91,
           "column": 25
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation of internal/topicop/scaffold.go:102.3,102.25 1 in scaffoldConfined, beginning `if len(failures) != 0 {`. This is one branch of reverse-order scaffold rollback and typed residue accounting after a later failure. Focused fault tests exercise created, removed, remaining, joined-cause, and safe-recovery semantics; this additional cleanup combination remains visible raw debt without a test-only filesystem seam."
+      "reason": "Phase 3 reviewed internal/topicop/scaffold.go:91.3,91.25 1 in scaffoldConfined, beginning `if len(failures) != 0 {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/topicop/scaffold.go",
         "start": {
-          "line": 102,
+          "line": 91,
           "column": 25
         },
         "end": {
-          "line": 104,
+          "line": 93,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation of internal/topicop/scaffold.go:102.25,104.4 1 in scaffoldConfined, beginning `if len(failures) != 0 { return presentation.Document{}, \u0026PartialScaffoldError{Created: append([]string(nil), created...), Removed: removed, Remaining: remaining, Cause: errors.Join(append([]error{cause}, failures...)...)`. This is a presentation-construction failure for fixed labels and scaffold-owner normalized path groups or recovery steps. Focused tests exercise exact created, removed, remaining, and recovery semantics; invalid presentation grammar cannot arise from the closed typed model."
+      "reason": "Phase 3 reviewed internal/topicop/scaffold.go:91.25,93.4 1 in scaffoldConfined, beginning `if len(failures) != 0 {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/topicop/scaffold.go",
         "start": {
-          "line": 105,
+          "line": 94,
           "column": 3
         },
         "end": {
-          "line": 105,
+          "line": 94,
           "column": 40
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation of internal/topicop/scaffold.go:105.3,105.40 1 in scaffoldConfined, beginning `return presentation.Document{}, cause`. This is a presentation-construction failure for fixed labels and scaffold-owner normalized path groups or recovery steps. Focused tests exercise exact created, removed, remaining, and recovery semantics; invalid presentation grammar cannot arise from the closed typed model."
+      "reason": "Phase 3 reviewed internal/topicop/scaffold.go:94.3,94.40 1 in scaffoldConfined, beginning `return presentation.Document{}, cause`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/topicop/scaffold.go",
         "start": {
-          "line": 109,
+          "line": 98,
           "column": 84
         },
         "end": {
+          "line": 100,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/topicop/scaffold.go:98.84,100.4 1 in scaffoldConfined, beginning `if err := files.MkdirAll(filepath.ToSlash(filepath.Dir(rel)), 0o755); err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 101,
+          "column": 65
+        },
+        "end": {
+          "line": 103,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/topicop/scaffold.go:101.65,103.4 1 in scaffoldConfined, beginning `if err := files.Publish(rel, file.Content, 0o644); err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
           "line": 111,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:59.84,61.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam.",
-      "movedFrom": {
-        "file": "internal/topicop/scaffold.go",
-        "start": {
-          "line": 59,
-          "column": 84
-        },
-        "end": {
-          "line": 61,
-          "column": 4
-        },
-        "statements": 1
-      }
-    },
-    {
-      "identity": {
-        "file": "internal/topicop/scaffold.go",
-        "start": {
-          "line": 112,
-          "column": 65
-        },
-        "end": {
-          "line": 114,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:62.65,64.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam.",
-      "movedFrom": {
-        "file": "internal/topicop/scaffold.go",
-        "start": {
-          "line": 62,
-          "column": 65
-        },
-        "end": {
-          "line": 64,
-          "column": 4
-        },
-        "statements": 1
-      }
-    },
-    {
-      "identity": {
-        "file": "internal/topicop/scaffold.go",
-        "start": {
-          "line": 122,
           "column": 48
         },
         "end": {
-          "line": 124,
+          "line": 113,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation of internal/topicop/scaffold.go:122.48,124.3 1 in create, beginning `} else if !lease.CoversTracked(root) { return presentation.Document{}, errors.New(\"topic operation requires a covering tracked lease\") }`. This is a presentation-construction failure for fixed labels and scaffold-owner normalized path groups or recovery steps. Focused tests exercise exact created, removed, remaining, and recovery semantics; invalid presentation grammar cannot arise from the closed typed model.",
-      "movedFrom": {
+      "reason": "Phase 3 reviewed internal/topicop/scaffold.go:111.48,113.3 1 in CreateLeased, beginning `if lease == nil || !lease.CoversTracked(root) {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
         "file": "internal/topicop/scaffold.go",
         "start": {
-          "line": 138,
-          "column": 39
+          "line": 119,
+          "column": 16
         },
         "end": {
-          "line": 140,
+          "line": 121,
           "column": 3
         },
         "statements": 1
-      }
+      },
+      "reason": "Phase 3 reviewed internal/topicop/scaffold.go:119.16,121.3 1 in CreateLeased, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
@@ -13675,127 +13795,76 @@
       "identity": {
         "file": "internal/worktree/manager.go",
         "start": {
-          "line": 326,
+          "line": 288,
+          "column": 20
+        },
+        "end": {
+          "line": 290,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/worktree/manager.go:288.20,290.3 1 in rollback, beginning `if pathErr != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/worktree/manager.go",
+        "start": {
+          "line": 345,
           "column": 44
         },
         "end": {
-          "line": 328,
+          "line": 347,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation of internal/worktree/manager.go:326.44,328.3 1 in topologyEffects, beginning `} else if !errors.Is(err, os.ErrNotExist) { effects.Uncertain = true }`. This is a topology observation race or secondary Git/filesystem failure after the worktree owner has classified committed effects. Focused lifecycle tests exercise exact changed axes, uncertainty, deterministic dual-root leasing, safe recovery, and refusal behavior; the remaining external race is not deterministically inducible through an existing real seam."
+      "reason": "Phase 3 reviewed internal/worktree/manager.go:345.44,347.3 1 in topologyEffects, beginning `} else if !errors.Is(err, os.ErrNotExist) {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/worktree/manager.go",
         "start": {
-          "line": 330,
-          "column": 16
-        },
-        "end": {
-          "line": 332,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 post-review coverage reconciliation of internal/worktree/manager.go:330.16,332.3 1 in topologyEffects, beginning `if err != nil { effects.Uncertain = true } else {`. This is a topology observation race or secondary Git/filesystem failure after the worktree owner has classified committed effects. Focused lifecycle tests exercise exact changed axes, uncertainty, deterministic dual-root leasing, safe recovery, and refusal behavior; the remaining external race is not deterministically inducible through an existing real seam."
-    },
-    {
-      "identity": {
-        "file": "internal/worktree/manager.go",
-        "start": {
-          "line": 343,
-          "column": 16
-        },
-        "end": {
-          "line": 345,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 post-review coverage reconciliation of internal/worktree/manager.go:343.16,345.3 1 in topologyEffects, beginning `if err != nil { effects.Uncertain = true } else if exists {`. This is a topology observation race or secondary Git/filesystem failure after the worktree owner has classified committed effects. Focused lifecycle tests exercise exact changed axes, uncertainty, deterministic dual-root leasing, safe recovery, and refusal behavior; the remaining external race is not deterministically inducible through an existing real seam."
-    },
-    {
-      "identity": {
-        "file": "internal/worktree/manager.go",
-        "start": {
-          "line": 409,
+          "line": 428,
           "column": 15
         },
         "end": {
-          "line": 411,
+          "line": 430,
           "column": 5
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation of internal/worktree/manager.go:409.15,411.5 1 in Integrate, beginning `if changed { return Result{}, \u0026RefusalError{Category: \"operation\", Condition: \"fast-forward failed\", ChangedTopology: true, Topology: TopologyEffects{ReceivingHEAD: true}, Err: err, NextAction: \"inspect the receiving che`. This is a topology observation race or secondary Git/filesystem failure after the worktree owner has classified committed effects. Focused lifecycle tests exercise exact changed axes, uncertainty, deterministic dual-root leasing, safe recovery, and refusal behavior; the remaining external race is not deterministically inducible through an existing real seam.",
-      "movedFrom": {
-        "file": "internal/worktree/manager.go",
-        "start": {
-          "line": 415,
-          "column": 15
-        },
-        "end": {
-          "line": 417,
-          "column": 5
-        },
-        "statements": 1
-      }
+      "reason": "Phase 3 reviewed internal/worktree/manager.go:428.15,430.5 1 in Integrate, beginning `if changed {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/worktree/manager.go",
         "start": {
-          "line": 522,
+          "line": 556,
           "column": 49
         },
         "end": {
-          "line": 524,
+          "line": 558,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 4 dead-code cleanup moved the reviewed branch from internal/worktree/manager.go:528.49,530.4 1 to internal/worktree/manager.go:522.49,524.4 1 without changing its behavior. Initial RF-009 admission of existing uncovered behavior at internal/worktree/manager.go:506.49,508.4 1 in function Remove, beginning `{ // coverage-ignore: local lstat reports an inode or os.ErrNotExist absent a kernel fault`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
-      "movedFrom": {
-        "file": "internal/worktree/manager.go",
-        "start": {
-          "line": 528,
-          "column": 49
-        },
-        "end": {
-          "line": 530,
-          "column": 4
-        },
-        "statements": 1
-      }
+      "reason": "Phase 3 reviewed internal/worktree/manager.go:556.49,558.4 1 in Remove, beginning `} else if !errors.Is(statErr, os.ErrNotExist) {`. The source exclusion records that local lstat reports an inode or os.ErrNotExist absent a kernel fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
         "file": "internal/worktree/manager.go",
         "start": {
-          "line": 578,
+          "line": 613,
           "column": 46
         },
         "end": {
-          "line": 580,
+          "line": 615,
           "column": 6
         },
         "statements": 1
       },
-      "reason": "Phase 4 dead-code cleanup moved the reviewed branch from internal/worktree/manager.go:584.46,586.6 1 to internal/worktree/manager.go:578.46,580.6 1 without changing its behavior. Initial RF-009 admission of existing uncovered behavior at internal/worktree/manager.go:561.46,563.6 1 in function Remove, beginning `{ // coverage-ignore: path identity and cleanliness were just proven; recursive removal failure ...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
-      "movedFrom": {
-        "file": "internal/worktree/manager.go",
-        "start": {
-          "line": 584,
-          "column": 46
-        },
-        "end": {
-          "line": 586,
-          "column": 6
-        },
-        "statements": 1
-      }
+      "reason": "Phase 3 reviewed internal/worktree/manager.go:613.46,615.6 1 in Remove, beginning `if err := os.RemoveAll(path); err != nil {`. The source exclusion records that path identity and cleanliness were just proven; recursive removal failure requires a concurrent namespace or storage fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -13976,6 +14045,21 @@
     },
     {
       "identity": {
+        "file": "internal/worktree/topology.go",
+        "start": {
+          "line": 44,
+          "column": 37
+        },
+        "end": {
+          "line": 49,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/worktree/topology.go:44.37,49.3 1 in changedSince, beginning `if e.Uncertain || before.Uncertain {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
         "file": "tools/pi-extension-test/lockrun/lockrun_unix.go",
         "start": {
           "line": 15,
@@ -14102,11 +14186,11 @@
         {
           "file": "cmd/awf/dispatch.go",
           "start": {
-            "line": 140,
+            "line": 156,
             "column": 22
           },
           "end": {
-            "line": 142,
+            "line": 158,
             "column": 4
           },
           "statements": 1
@@ -14186,11 +14270,11 @@
         {
           "file": "cmd/awf/effort.go",
           "start": {
-            "line": 343,
+            "line": 347,
             "column": 12
           },
           "end": {
-            "line": 345,
+            "line": 349,
             "column": 6
           },
           "statements": 1
@@ -14198,11 +14282,11 @@
         {
           "file": "cmd/awf/effort.go",
           "start": {
-            "line": 364,
+            "line": 368,
             "column": 11
           },
           "end": {
-            "line": 365,
+            "line": 369,
             "column": 60
           },
           "statements": 1
@@ -14210,11 +14294,11 @@
         {
           "file": "cmd/awf/effort.go",
           "start": {
-            "line": 577,
+            "line": 581,
             "column": 16
           },
           "end": {
-            "line": 579,
+            "line": 583,
             "column": 3
           },
           "statements": 1
@@ -14222,11 +14306,11 @@
         {
           "file": "cmd/awf/effort.go",
           "start": {
-            "line": 598,
+            "line": 602,
             "column": 16
           },
           "end": {
-            "line": 600,
+            "line": 604,
             "column": 3
           },
           "statements": 1
@@ -14570,11 +14654,11 @@
         {
           "file": "cmd/awf/main.go",
           "start": {
-            "line": 312,
-            "column": 21
+            "line": 284,
+            "column": 42
           },
           "end": {
-            "line": 314,
+            "line": 288,
             "column": 4
           },
           "statements": 1
@@ -14582,11 +14666,23 @@
         {
           "file": "cmd/awf/main.go",
           "start": {
-            "line": 402,
+            "line": 329,
+            "column": 21
+          },
+          "end": {
+            "line": 331,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/main.go",
+          "start": {
+            "line": 419,
             "column": 3
           },
           "end": {
-            "line": 402,
+            "line": 419,
             "column": 142
           },
           "statements": 1
@@ -14594,11 +14690,11 @@
         {
           "file": "cmd/awf/main.go",
           "start": {
-            "line": 404,
+            "line": 421,
             "column": 49
           },
           "end": {
-            "line": 406,
+            "line": 423,
             "column": 3
           },
           "statements": 1
@@ -14606,11 +14702,11 @@
         {
           "file": "cmd/awf/main.go",
           "start": {
-            "line": 426,
+            "line": 443,
             "column": 64
           },
           "end": {
-            "line": 428,
+            "line": 445,
             "column": 4
           },
           "statements": 1
@@ -14618,11 +14714,11 @@
         {
           "file": "cmd/awf/main.go",
           "start": {
-            "line": 439,
+            "line": 456,
             "column": 16
           },
           "end": {
-            "line": 441,
+            "line": 458,
             "column": 3
           },
           "statements": 1
@@ -14630,11 +14726,11 @@
         {
           "file": "cmd/awf/main.go",
           "start": {
-            "line": 536,
+            "line": 553,
             "column": 16
           },
           "end": {
-            "line": 538,
+            "line": 555,
             "column": 3
           },
           "statements": 1
@@ -14642,11 +14738,11 @@
         {
           "file": "cmd/awf/main.go",
           "start": {
-            "line": 540,
+            "line": 557,
             "column": 16
           },
           "end": {
-            "line": 542,
+            "line": 559,
             "column": 3
           },
           "statements": 1
@@ -14666,11 +14762,11 @@
         {
           "file": "cmd/awf/new.go",
           "start": {
-            "line": 73,
+            "line": 62,
             "column": 16
           },
           "end": {
-            "line": 75,
+            "line": 64,
             "column": 3
           },
           "statements": 1
@@ -14678,11 +14774,11 @@
         {
           "file": "cmd/awf/new.go",
           "start": {
-            "line": 104,
+            "line": 78,
             "column": 16
           },
           "end": {
-            "line": 106,
+            "line": 80,
             "column": 3
           },
           "statements": 1
@@ -14690,11 +14786,35 @@
         {
           "file": "cmd/awf/new.go",
           "start": {
-            "line": 117,
+            "line": 90,
+            "column": 16
+          },
+          "end": {
+            "line": 92,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/new.go",
+          "start": {
+            "line": 114,
+            "column": 16
+          },
+          "end": {
+            "line": 116,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "cmd/awf/new.go",
+          "start": {
+            "line": 127,
             "column": 3
           },
           "end": {
-            "line": 118,
+            "line": 128,
             "column": 25
           },
           "statements": 2
@@ -14702,11 +14822,11 @@
         {
           "file": "cmd/awf/new.go",
           "start": {
-            "line": 118,
+            "line": 128,
             "column": 25
           },
           "end": {
-            "line": 120,
+            "line": 130,
             "column": 4
           },
           "statements": 1
@@ -14714,11 +14834,11 @@
         {
           "file": "cmd/awf/new.go",
           "start": {
-            "line": 121,
+            "line": 131,
             "column": 3
           },
           "end": {
-            "line": 121,
+            "line": 131,
             "column": 65
           },
           "statements": 1
@@ -14726,11 +14846,11 @@
         {
           "file": "cmd/awf/new.go",
           "start": {
-            "line": 124,
+            "line": 134,
             "column": 16
           },
           "end": {
-            "line": 126,
+            "line": 136,
             "column": 3
           },
           "statements": 1
@@ -14738,11 +14858,11 @@
         {
           "file": "cmd/awf/new.go",
           "start": {
-            "line": 146,
+            "line": 156,
             "column": 16
           },
           "end": {
-            "line": 148,
+            "line": 158,
             "column": 3
           },
           "statements": 1
@@ -14750,11 +14870,11 @@
         {
           "file": "cmd/awf/new.go",
           "start": {
-            "line": 169,
+            "line": 179,
             "column": 16
           },
           "end": {
-            "line": 171,
+            "line": 181,
             "column": 3
           },
           "statements": 1
@@ -14762,11 +14882,11 @@
         {
           "file": "cmd/awf/new.go",
           "start": {
-            "line": 186,
+            "line": 196,
             "column": 3
           },
           "end": {
-            "line": 187,
+            "line": 197,
             "column": 25
           },
           "statements": 2
@@ -14774,11 +14894,11 @@
         {
           "file": "cmd/awf/new.go",
           "start": {
-            "line": 187,
+            "line": 197,
             "column": 25
           },
           "end": {
-            "line": 189,
+            "line": 199,
             "column": 4
           },
           "statements": 1
@@ -14786,11 +14906,11 @@
         {
           "file": "cmd/awf/new.go",
           "start": {
-            "line": 190,
+            "line": 200,
             "column": 3
           },
           "end": {
-            "line": 190,
+            "line": 200,
             "column": 72
           },
           "statements": 1
@@ -14978,11 +15098,11 @@
         {
           "file": "cmd/awf/upgrade.go",
           "start": {
-            "line": 41,
+            "line": 49,
             "column": 16
           },
           "end": {
-            "line": 43,
+            "line": 51,
             "column": 3
           },
           "statements": 1
@@ -14990,11 +15110,11 @@
         {
           "file": "cmd/awf/upgrade.go",
           "start": {
-            "line": 64,
+            "line": 76,
             "column": 16
           },
           "end": {
-            "line": 66,
+            "line": 78,
             "column": 3
           },
           "statements": 1
@@ -15002,11 +15122,11 @@
         {
           "file": "cmd/awf/upgrade.go",
           "start": {
-            "line": 68,
+            "line": 80,
             "column": 16
           },
           "end": {
-            "line": 70,
+            "line": 82,
             "column": 3
           },
           "statements": 1
@@ -15014,11 +15134,11 @@
         {
           "file": "cmd/awf/upgrade.go",
           "start": {
-            "line": 74,
+            "line": 86,
             "column": 25
           },
           "end": {
-            "line": 76,
+            "line": 88,
             "column": 4
           },
           "statements": 1
@@ -15026,11 +15146,11 @@
         {
           "file": "cmd/awf/upgrade.go",
           "start": {
-            "line": 96,
+            "line": 108,
             "column": 33
           },
           "end": {
-            "line": 98,
+            "line": 110,
             "column": 3
           },
           "statements": 1
@@ -15038,11 +15158,11 @@
         {
           "file": "cmd/awf/upgrade.go",
           "start": {
-            "line": 100,
+            "line": 112,
             "column": 35
           },
           "end": {
-            "line": 102,
+            "line": 114,
             "column": 3
           },
           "statements": 1
@@ -17049,11 +17169,11 @@
         {
           "file": "internal/publisher/sync.go",
           "start": {
-            "line": 75,
+            "line": 66,
             "column": 18
           },
           "end": {
-            "line": 77,
+            "line": 68,
             "column": 3
           },
           "statements": 1
@@ -17061,11 +17181,11 @@
         {
           "file": "internal/publisher/sync.go",
           "start": {
-            "line": 94,
+            "line": 85,
             "column": 64
           },
           "end": {
-            "line": 96,
+            "line": 87,
             "column": 3
           },
           "statements": 1
@@ -17073,11 +17193,11 @@
         {
           "file": "internal/publisher/sync.go",
           "start": {
-            "line": 99,
+            "line": 90,
             "column": 42
           },
           "end": {
-            "line": 101,
+            "line": 92,
             "column": 5
           },
           "statements": 1
@@ -17085,11 +17205,11 @@
         {
           "file": "internal/publisher/sync.go",
           "start": {
-            "line": 162,
+            "line": 153,
             "column": 30
           },
           "end": {
-            "line": 164,
+            "line": 155,
             "column": 3
           },
           "statements": 1
@@ -17097,11 +17217,11 @@
         {
           "file": "internal/publisher/sync.go",
           "start": {
-            "line": 178,
+            "line": 169,
             "column": 17
           },
           "end": {
-            "line": 180,
+            "line": 171,
             "column": 4
           },
           "statements": 1
@@ -17109,11 +17229,11 @@
         {
           "file": "internal/publisher/sync.go",
           "start": {
-            "line": 184,
+            "line": 175,
             "column": 16
           },
           "end": {
-            "line": 186,
+            "line": 177,
             "column": 3
           },
           "statements": 1
@@ -17121,11 +17241,11 @@
         {
           "file": "internal/publisher/sync.go",
           "start": {
-            "line": 207,
+            "line": 198,
             "column": 23
           },
           "end": {
-            "line": 209,
+            "line": 200,
             "column": 3
           },
           "statements": 1
@@ -17133,11 +17253,11 @@
         {
           "file": "internal/publisher/sync.go",
           "start": {
-            "line": 280,
+            "line": 271,
             "column": 16
           },
           "end": {
-            "line": 282,
+            "line": 273,
             "column": 3
           },
           "statements": 1
@@ -17145,11 +17265,11 @@
         {
           "file": "internal/publisher/sync.go",
           "start": {
-            "line": 313,
+            "line": 304,
             "column": 12
           },
           "end": {
-            "line": 315,
+            "line": 306,
             "column": 4
           },
           "statements": 1
@@ -17157,11 +17277,11 @@
         {
           "file": "internal/publisher/sync.go",
           "start": {
-            "line": 317,
+            "line": 308,
             "column": 13
           },
           "end": {
-            "line": 319,
+            "line": 310,
             "column": 4
           },
           "statements": 1
@@ -17169,11 +17289,11 @@
         {
           "file": "internal/publisher/sync.go",
           "start": {
-            "line": 321,
+            "line": 312,
             "column": 62
           },
           "end": {
-            "line": 323,
+            "line": 314,
             "column": 4
           },
           "statements": 1
@@ -17181,11 +17301,11 @@
         {
           "file": "internal/publisher/sync.go",
           "start": {
-            "line": 332,
+            "line": 323,
             "column": 102
           },
           "end": {
-            "line": 334,
+            "line": 325,
             "column": 5
           },
           "statements": 1
@@ -17193,11 +17313,11 @@
         {
           "file": "internal/publisher/sync.go",
           "start": {
-            "line": 377,
+            "line": 368,
             "column": 60
           },
           "end": {
-            "line": 379,
+            "line": 370,
             "column": 4
           },
           "statements": 1
@@ -17205,11 +17325,11 @@
         {
           "file": "internal/publisher/sync.go",
           "start": {
-            "line": 485,
+            "line": 476,
             "column": 91
           },
           "end": {
-            "line": 489,
+            "line": 480,
             "column": 29
           },
           "statements": 4
@@ -17217,11 +17337,11 @@
         {
           "file": "internal/publisher/sync.go",
           "start": {
-            "line": 489,
+            "line": 480,
             "column": 29
           },
           "end": {
-            "line": 491,
+            "line": 482,
             "column": 9
           },
           "statements": 1
@@ -17229,11 +17349,11 @@
         {
           "file": "internal/publisher/sync.go",
           "start": {
-            "line": 503,
+            "line": 494,
             "column": 67
           },
           "end": {
-            "line": 505,
+            "line": 496,
             "column": 5
           },
           "statements": 1
@@ -17241,11 +17361,11 @@
         {
           "file": "internal/publisher/sync.go",
           "start": {
-            "line": 534,
+            "line": 525,
             "column": 32
           },
           "end": {
-            "line": 535,
+            "line": 526,
             "column": 19
           },
           "statements": 1
@@ -17253,11 +17373,11 @@
         {
           "file": "internal/publisher/sync.go",
           "start": {
-            "line": 535,
+            "line": 526,
             "column": 19
           },
           "end": {
-            "line": 537,
+            "line": 528,
             "column": 6
           },
           "statements": 1
@@ -17265,11 +17385,11 @@
         {
           "file": "internal/publisher/sync.go",
           "start": {
-            "line": 538,
+            "line": 529,
             "column": 5
           },
           "end": {
-            "line": 538,
+            "line": 529,
             "column": 14
           },
           "statements": 1
@@ -17277,11 +17397,11 @@
         {
           "file": "internal/publisher/sync.go",
           "start": {
-            "line": 545,
+            "line": 536,
             "column": 43
           },
           "end": {
-            "line": 546,
+            "line": 537,
             "column": 14
           },
           "statements": 1
@@ -17289,11 +17409,11 @@
         {
           "file": "internal/publisher/sync.go",
           "start": {
-            "line": 550,
+            "line": 541,
             "column": 21
           },
           "end": {
-            "line": 551,
+            "line": 542,
             "column": 13
           },
           "statements": 1
@@ -17301,11 +17421,11 @@
         {
           "file": "internal/publisher/sync.go",
           "start": {
-            "line": 564,
+            "line": 555,
             "column": 16
           },
           "end": {
-            "line": 566,
+            "line": 557,
             "column": 3
           },
           "statements": 1
@@ -17313,11 +17433,11 @@
         {
           "file": "internal/publisher/sync.go",
           "start": {
-            "line": 649,
+            "line": 640,
             "column": 16
           },
           "end": {
-            "line": 651,
+            "line": 642,
             "column": 3
           },
           "statements": 1
@@ -19315,11 +19435,23 @@
         {
           "file": "internal/worktree/manager.go",
           "start": {
-            "line": 326,
+            "line": 288,
+            "column": 20
+          },
+          "end": {
+            "line": 290,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/worktree/manager.go",
+          "start": {
+            "line": 345,
             "column": 44
           },
           "end": {
-            "line": 328,
+            "line": 347,
             "column": 3
           },
           "statements": 1
@@ -19327,35 +19459,11 @@
         {
           "file": "internal/worktree/manager.go",
           "start": {
-            "line": 330,
-            "column": 16
-          },
-          "end": {
-            "line": 332,
-            "column": 3
-          },
-          "statements": 1
-        },
-        {
-          "file": "internal/worktree/manager.go",
-          "start": {
-            "line": 343,
-            "column": 16
-          },
-          "end": {
-            "line": 345,
-            "column": 3
-          },
-          "statements": 1
-        },
-        {
-          "file": "internal/worktree/manager.go",
-          "start": {
-            "line": 409,
+            "line": 428,
             "column": 15
           },
           "end": {
-            "line": 411,
+            "line": 430,
             "column": 5
           },
           "statements": 1
@@ -19363,11 +19471,11 @@
         {
           "file": "internal/worktree/manager.go",
           "start": {
-            "line": 522,
+            "line": 556,
             "column": 49
           },
           "end": {
-            "line": 524,
+            "line": 558,
             "column": 4
           },
           "statements": 1
@@ -19375,11 +19483,11 @@
         {
           "file": "internal/worktree/manager.go",
           "start": {
-            "line": 578,
+            "line": 613,
             "column": 46
           },
           "end": {
-            "line": 580,
+            "line": 615,
             "column": 6
           },
           "statements": 1
@@ -19515,6 +19623,18 @@
             "column": 5
           },
           "statements": 1
+        },
+        {
+          "file": "internal/worktree/topology.go",
+          "start": {
+            "line": 44,
+            "column": 37
+          },
+          "end": {
+            "line": 49,
+            "column": 3
+          },
+          "statements": 1
         }
       ]
     },
@@ -19530,35 +19650,71 @@
         {
           "file": "internal/adr/adr.go",
           "start": {
-            "line": 511,
+            "line": 393,
+            "column": 21
+          },
+          "end": {
+            "line": 395,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/adr/adr.go",
+          "start": {
+            "line": 402,
+            "column": 17
+          },
+          "end": {
+            "line": 404,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/adr/adr.go",
+          "start": {
+            "line": 406,
+            "column": 17
+          },
+          "end": {
+            "line": 408,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/adr/adr.go",
+          "start": {
+            "line": 409,
+            "column": 65
+          },
+          "end": {
+            "line": 411,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/adr/adr.go",
+          "start": {
+            "line": 477,
+            "column": 48
+          },
+          "end": {
+            "line": 479,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/adr/adr.go",
+          "start": {
+            "line": 508,
             "column": 16
           },
           "end": {
-            "line": 513,
-            "column": 3
-          },
-          "statements": 1
-        },
-        {
-          "file": "internal/adr/adr.go",
-          "start": {
-            "line": 522,
-            "column": 41
-          },
-          "end": {
-            "line": 524,
-            "column": 3
-          },
-          "statements": 1
-        },
-        {
-          "file": "internal/adr/adr.go",
-          "start": {
-            "line": 524,
-            "column": 32
-          },
-          "end": {
-            "line": 526,
+            "line": 510,
             "column": 3
           },
           "statements": 1
@@ -19656,54 +19812,6 @@
           "end": {
             "line": 58,
             "column": 3
-          },
-          "statements": 1
-        },
-        {
-          "file": "internal/adr/scaffold_lock.go",
-          "start": {
-            "line": 27,
-            "column": 32
-          },
-          "end": {
-            "line": 29,
-            "column": 3
-          },
-          "statements": 1
-        },
-        {
-          "file": "internal/adr/scaffold_lock.go",
-          "start": {
-            "line": 31,
-            "column": 37
-          },
-          "end": {
-            "line": 32,
-            "column": 78
-          },
-          "statements": 1
-        },
-        {
-          "file": "internal/adr/scaffold_lock.go",
-          "start": {
-            "line": 37,
-            "column": 33
-          },
-          "end": {
-            "line": 38,
-            "column": 61
-          },
-          "statements": 1
-        },
-        {
-          "file": "internal/adr/scaffold_lock.go",
-          "start": {
-            "line": 39,
-            "column": 10
-          },
-          "end": {
-            "line": 40,
-            "column": 18
           },
           "statements": 1
         },
@@ -20326,14 +20434,14 @@
     {
       "directive": {
         "file": "cmd/awf/dispatch.go",
-        "line": 140,
-        "targetLine": 140,
+        "line": 156,
+        "targetLine": 156,
         "reason": "clispec admits only the declared plan child before dispatch",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`run` constructs cmdCtx.sub from `resolve(args[1:])` at cmd/awf/main.go:202 and dispatches `handlers[top.Name]` at cmd/awf/main.go:269. internal/clispec/clispec.go:387 returns only the `read` command whose sole child is `plan`; thus `if c.sub != \"plan\" {` at cmd/awf/dispatch.go:140 is a closed-command fail-closed guard."
+      "evidence": "Phase 3 reviewed directive cmd/awf/dispatch.go:156 targeting line 156: `clispec admits only the declared plan child before dispatch`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
@@ -20398,50 +20506,50 @@
     {
       "directive": {
         "file": "cmd/awf/effort.go",
-        "line": 343,
-        "targetLine": 343,
+        "line": 347,
+        "targetLine": 347,
         "reason": "json.Decoder guarantees object member tokens are strings after More",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if !ok {` at cmd/awf/effort.go:333 is `key, ok := keyToken.(string)` (cmd/awf/effort.go:332). Within `func rejectDuplicateJSONKeys(raw []byte) error` at cmd/awf/effort.go:312, source review establishes json.Decoder guarantees object member tokens are strings after More; this is therefore a closed-state fail-closed branch."
+      "evidence": "Phase 3 reviewed directive cmd/awf/effort.go:347 targeting line 347: `json.Decoder guarantees object member tokens are strings after More`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "cmd/awf/effort.go",
-        "line": 364,
-        "targetLine": 364,
+        "line": 368,
+        "targetLine": 368,
         "reason": "json.Decoder yields only object or array opening delimiters at a value position",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `default:` at cmd/awf/effort.go:354 is `return err` (cmd/awf/effort.go:353). Within `func rejectDuplicateJSONKeys(raw []byte) error` at cmd/awf/effort.go:312, source review establishes json.Decoder yields only object or array opening delimiters at a value position; this is therefore a closed-state fail-closed branch."
+      "evidence": "Phase 3 reviewed directive cmd/awf/effort.go:368 targeting line 368: `json.Decoder yields only object or array opening delimiters at a value position`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "cmd/awf/effort.go",
-        "line": 577,
-        "targetLine": 577,
+        "line": 581,
+        "targetLine": 581,
         "reason": "the closed protocol structs contain only JSON-supported values",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at cmd/awf/effort.go:567 is `raw, err := json.Marshal(envelope)` (cmd/awf/effort.go:566). Within `func writeEffortMemoryProtocol(out io.Writer, result effort.MemoryOperationResult) error` at cmd/awf/effort.go:458, source review establishes the closed protocol structs contain only JSON-supported values; this is therefore a closed-state fail-closed branch."
+      "evidence": "Phase 3 reviewed directive cmd/awf/effort.go:581 targeting line 581: `the closed protocol structs contain only JSON-supported values`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "cmd/awf/effort.go",
-        "line": 598,
-        "targetLine": 598,
+        "line": 602,
+        "targetLine": 602,
         "reason": "fixed protocol types cannot fail encoding; writer failures are covered at the shared output boundary",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at cmd/awf/effort.go:588 is `raw, err := json.Marshal(value)` (cmd/awf/effort.go:587). Within `func writeEffortActivityProtocol(out io.Writer, value any) error` at cmd/awf/effort.go:586, source review establishes fixed protocol types cannot fail encoding; writer failures are covered at the shared output boundary; this is therefore a closed-state fail-closed branch."
+      "evidence": "Phase 3 reviewed directive cmd/awf/effort.go:602 targeting line 602: `fixed protocol types cannot fail encoding; writer failures are covered at the shared output boundary`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
@@ -20814,42 +20922,6 @@
       },
       "class": "tested-process-exit",
       "evidence": "cmd/versioncheck/main.go:12 is the terminating process-composition statement `func main() {` in `func main()` (starts at cmd/versioncheck/main.go:12); non-exiting run/runWith behavior is directly exercised by cmd/versioncheck/main_test.go:9 TestRun."
-    },
-    {
-      "directive": {
-        "file": "internal/adr/adr.go",
-        "line": 511,
-        "targetLine": 511,
-        "reason": "loadIdentityCorpus already rejected any record whose number is not the four-digit group FilenameRe captured",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/adr/adr.go:518, `if err != nil {` follows the concrete operation `next, err := corpus.NextIdentity()` at internal/adr/adr.go:517 in `func scaffoldRecordWith(` (internal/adr/adr.go:481). The reviewed failure condition is loadIdentityCorpus already rejected any record whose number is not the four-digit group FilenameRe captured; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
-    },
-    {
-      "directive": {
-        "file": "internal/adr/adr.go",
-        "line": 522,
-        "targetLine": 522,
-        "reason": "the slug-collision refusal above already rejects a pending name in the corpus, and the number is one past every numbered record, so this path can only pre-exist via a concurrent-process race a single-threaded test cannot construct",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `path = filepath.Join(dir, base)` at internal/adr/adr.go:528 feeds `if _, err := os.Stat(path); err == nil {` at internal/adr/adr.go:529 in `func scaffoldRecordWith(` (internal/adr/adr.go:481). Its concrete fault condition is the slug-collision refusal above already rejects a pending name in the corpus, and the number is one past every numbered record, so this path can only pre-exist via a concurrent-process race a single-threaded test cannot construct, so no safe portable production input induces this error path."
-    },
-    {
-      "directive": {
-        "file": "internal/adr/adr.go",
-        "line": 524,
-        "targetLine": 524,
-        "reason": "Stat fails here only on a permission fault a test cannot trigger",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "`func scaffoldRecordWith(` (starts internal/adr/adr.go:481) checks `} else if !os.IsNotExist(err) {` at internal/adr/adr.go:531 after `return \"\", fmt.Errorf(\"adr: %s already exists\", path)` at internal/adr/adr.go:530. Here Stat fails here only on a permission fault a test cannot trigger; exercising this exact branch requires an unportable environmental failure."
     },
     {
       "directive": {
@@ -26506,20 +26578,20 @@
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 184,
-        "targetLine": 184,
+        "line": 175,
+        "targetLine": 175,
         "reason": "fixed presentation text",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/publisher/sync.go:179 targeting line 179: `fixed presentation text`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Phase 4 post-review coverage reconciliation reviewed directive internal/publisher/sync.go:184 targeting line 184: `fixed presentation text`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 332,
-        "targetLine": 332,
+        "line": 323,
+        "targetLine": 323,
         "reason": "rendered catalog skill/agent syntax is template-fixed and cannot be invalid at sync time",
         "mapped": true,
         "executed": false
@@ -26530,8 +26602,8 @@
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 564,
-        "targetLine": 564,
+        "line": 555,
+        "targetLine": 555,
         "reason": "sync constructs only authority-valid lock fields, so marshal failure requires a future representation change",
         "mapped": true,
         "executed": false
@@ -26542,8 +26614,8 @@
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 565,
-        "targetLine": 565,
+        "line": 556,
+        "targetLine": 556,
         "reason": "sync constructs only authority-valid lock fields, so marshal failure requires a future representation change",
         "mapped": false,
         "executed": false
@@ -26554,8 +26626,8 @@
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 649,
-        "targetLine": 649,
+        "line": 640,
+        "targetLine": 640,
         "reason": "fixed nonempty completion action always validates as prose",
         "mapped": true,
         "executed": false
@@ -26706,78 +26778,6 @@
       },
       "class": "revalidated-impossible-state",
       "evidence": "The immediate predecessor for `if err != nil {` at internal/repositorycheck/repositorycheck.go:214 is `withoutWarnings, err = checkresult.New(nonWarnings, result.Information())` (internal/repositorycheck/repositorycheck.go:213). Within `func SplitWarnings(result checkresult.Result) (withoutWarnings, warnings checkresult.Result, err error)` at internal/repositorycheck/repositorycheck.go:204, source review establishes splitting a validated immutable result cannot invalidate evidence; this is therefore a closed-state fail-closed branch."
-    },
-    {
-      "directive": {
-        "file": "internal/resident/resident.go",
-        "line": 155,
-        "targetLine": 155,
-        "reason": "decimal formatting always produces a nonempty literal without line breaks",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/resident/resident.go:132 is `removed, err := presentation.Literal(strconv.Itoa(r.Removed))` (internal/resident/resident.go:131). Within `func (r UninstallReport) Document() (presentation.Document, error)` at internal/resident/resident.go:130, source review establishes decimal formatting always produces a nonempty literal without line breaks; this is therefore a closed-state fail-closed branch."
-    },
-    {
-      "directive": {
-        "file": "internal/resident/resident.go",
-        "line": 159,
-        "targetLine": 159,
-        "reason": "Literal validated the value and the label is fixed and grammar-valid",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "At internal/resident/resident.go:136, `if err != nil {` is guarded by the preceding `removedField, err := presentation.NewField(\"generated files removed\", removed)` at internal/resident/resident.go:135; in `func (r UninstallReport) Document() (presentation.Document, error)` (internal/resident/resident.go:130), the predecessor invariant is Literal validated the value and the label is fixed and grammar-valid. Only violation of that closed state reaches this guard."
-    },
-    {
-      "directive": {
-        "file": "internal/resident/resident.go",
-        "line": 163,
-        "targetLine": 163,
-        "reason": "fixed nonempty prose contains no forbidden line break",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "`func (r UninstallReport) Document() (presentation.Document, error)` begins at internal/resident/resident.go:130; its branch `if err != nil {` at internal/resident/resident.go:140 follows `note, err := presentation.Prose(\"the authored .awf config remains in place; delete it to fully remove\")` at internal/resident/resident.go:139. That flow establishes fixed nonempty prose contains no forbidden line break, making the defensive return unreachable without an invariant breach."
-    },
-    {
-      "directive": {
-        "file": "internal/resident/resident.go",
-        "line": 169,
-        "targetLine": 169,
-        "reason": "the fixed prefix remains nonempty after normalization of a validated resident-root name",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "`func (r UninstallReport) Document() (presentation.Document, error)` begins at internal/resident/resident.go:130; its branch `if err != nil {` at internal/resident/resident.go:146 follows `value, err := presentation.Prose(\"preserved resident data under .awf/\" + root)` at internal/resident/resident.go:145. That flow establishes the fixed prefix remains nonempty after normalization of a validated resident-root name, making the defensive return unreachable without an invariant breach."
-    },
-    {
-      "directive": {
-        "file": "internal/resident/resident.go",
-        "line": 176,
-        "targetLine": 176,
-        "reason": "backup paths are confined lock-relative paths",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `value, err := presentation.Prose(\"backed up \" + backup.Path + \" to \" + backup.Bak)` at internal/resident/resident.go:152 feeds `if err != nil {` at internal/resident/resident.go:153 in `func (r UninstallReport) Document() (presentation.Document, error)` (internal/resident/resident.go:130). Its concrete fault condition is backup paths are confined lock-relative paths, so no safe portable production input induces this error path."
-    },
-    {
-      "directive": {
-        "file": "internal/resident/resident.go",
-        "line": 236,
-        "targetLine": 236,
-        "reason": "root discovery's lstat error needs an external filesystem fault; unsafe and non-empty roots are covered",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/resident/resident.go:172, `if err != nil {` follows the concrete operation `}` at internal/resident/resident.go:171 in `func InspectRoots(root string) ([]string, error)` (internal/resident/resident.go:164). The reviewed failure condition is root discovery's lstat error needs an external filesystem fault; unsafe and non-empty roots are covered; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
     },
     {
       "directive": {
@@ -27622,26 +27622,26 @@
     {
       "directive": {
         "file": "internal/worktree/manager.go",
-        "line": 522,
-        "targetLine": 522,
+        "line": 556,
+        "targetLine": 556,
         "reason": "local lstat reports an inode or os.ErrNotExist absent a kernel fault",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/worktree/manager.go:522, `} else if !errors.Is(statErr, os.ErrNotExist) {` follows `pathPresent = true` at internal/worktree/manager.go:521 in `func (m *Manager) Remove` (starts line 499). The reviewed failure needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
+      "evidence": "Phase 3 reviewed directive internal/worktree/manager.go:556 targeting line 556: `local lstat reports an inode or os.ErrNotExist absent a kernel fault`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/worktree/manager.go",
-        "line": 578,
-        "targetLine": 578,
+        "line": 613,
+        "targetLine": 613,
         "reason": "path identity and cleanliness were just proven; recursive removal failure requires a concurrent namespace or storage fault",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func (m *Manager) Remove` (starts internal/worktree/manager.go:499) checks `if err := os.RemoveAll(path); err != nil {` at line 578 after exact path identity and cleanliness validation. Exercising this cleanup failure requires an unportable concurrent namespace or storage fault."
+      "evidence": "Phase 3 reviewed directive internal/worktree/manager.go:613 targeting line 613: `path identity and cleanliness were just proven; recursive removal failure requires a concurrent namespace or storage fault`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
