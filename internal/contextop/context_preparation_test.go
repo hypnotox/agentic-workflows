@@ -367,12 +367,14 @@ func TestNonordinaryRoutesRetainCompletePublisherPreparation(t *testing.T) {
 	root := contextPreparationFixture(t)
 	testsupport.WriteAwfConfig(t, root, contextPreparationYAML+"render:\n  templateSourceRoot: templates\n")
 	testsupport.WriteFile(t, filepath.Join(root, "templates", "agents-doc", "AGENTS.md.tmpl"), "{{ broken")
+	gitfixture.AddAll(t, gitfixture.At(root))
 	state, repo := contextPreparationProject(t, root)
 	load := func(context.Context, string) (*project.ProjectState, *config.Config, *awfgit.Repo, error) {
 		return state, nil, repo, nil
 	}
 	gate := func(context.Context, string) error { return nil }
 	for _, input := range []Input{
+		{Paths: []string{"internal/foo/x.go"}, Staged: true},
 		{Paths: []string{"internal/foo/x.go"}, Range: "base..head"},
 		{Paths: []string{"internal/foo/x.go"}, Uncovered: true},
 	} {
