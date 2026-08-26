@@ -26,6 +26,7 @@ type scaffoldLinkResult struct {
 
 type scaffoldFaultFilesystem struct {
 	links      []scaffoldLinkResult
+	mkdirInfo  fs.FileInfo
 	mkdirErr   error
 	publishErr error
 }
@@ -35,7 +36,9 @@ func (f *scaffoldFaultFilesystem) LinkInfo(string) (fs.FileInfo, error) {
 	f.links = f.links[1:]
 	return result.info, result.err
 }
-func (f *scaffoldFaultFilesystem) Mkdir(string, fs.FileMode) error { return f.mkdirErr }
+func (f *scaffoldFaultFilesystem) CreateDirectory(string, fs.FileMode) (fs.FileInfo, error) {
+	return f.mkdirInfo, f.mkdirErr
+}
 func (f *scaffoldFaultFilesystem) Publish(string, []byte, fs.FileMode) error {
 	return f.publishErr
 }
@@ -67,6 +70,30 @@ func TestCreateScaffoldDoesNotClaimDirectoryWonByConcurrentCreator(t *testing.T)
 	}
 }
 
+func TestCreateScaffoldRetainsIdentityReturnedByDirectoryCreation(t *testing.T) {
+	createdDirectory := t.TempDir()
+	createdInfo, err := os.Lstat(createdDirectory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	configFile := filepath.Join(createdDirectory, "config")
+	if err := os.WriteFile(configFile, []byte("config"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	configInfo, err := os.Lstat(configFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	filesystem := &scaffoldFaultFilesystem{
+		links:     []scaffoldLinkResult{{err: fs.ErrNotExist}, {info: configInfo}},
+		mkdirInfo: createdInfo,
+	}
+	scaffold, err := createScaffold(filesystem, []byte("config"))
+	if err != nil || !scaffold.createdDir || !os.SameFile(scaffold.dirInfo, createdInfo) {
+		t.Fatalf("scaffold creation identity = %#v, %v", scaffold, err)
+	}
+}
+
 func TestCreateScaffoldPreservesExclusiveDirectoryCreationFailure(t *testing.T) {
 	want := errors.New("mkdir failed")
 	scaffold, err := createScaffold(&scaffoldFaultFilesystem{
@@ -74,6 +101,17 @@ func TestCreateScaffoldPreservesExclusiveDirectoryCreationFailure(t *testing.T) 
 	}, []byte("config"))
 	if !errors.Is(err, want) || scaffold.committed() {
 		t.Fatalf("exclusive mkdir outcome = %#v, %v; want unchanged failure", scaffold, err)
+	}
+}
+
+func TestCreateScaffoldPreservesConcurrentDirectoryObservationFailure(t *testing.T) {
+	want := errors.New("observe concurrent directory winner")
+	scaffold, err := createScaffold(&scaffoldFaultFilesystem{
+		links:    []scaffoldLinkResult{{err: fs.ErrNotExist}, {err: want}},
+		mkdirErr: fs.ErrExist,
+	}, []byte("config"))
+	if !errors.Is(err, fs.ErrExist) || !errors.Is(err, want) || scaffold.committed() {
+		t.Fatalf("concurrent directory observation = %#v, %v; want unchanged joined failure", scaffold, err)
 	}
 }
 
@@ -92,8 +130,12 @@ func TestCreateScaffoldReportsEveryPostDirectoryAndPublicationEffect(t *testing.
 		wantResidue   int
 	}{
 		{
-			name:          "post-mkdir-observation",
-			filesystem:    &scaffoldFaultFilesystem{links: []scaffoldLinkResult{{err: fs.ErrNotExist}, {err: failure}}},
+			name: "post-directory-publication",
+			filesystem: &scaffoldFaultFilesystem{
+				links:      []scaffoldLinkResult{{err: fs.ErrNotExist}},
+				mkdirInfo:  dirInfo,
+				publishErr: failure,
+			},
 			wantDirectory: true,
 		},
 		{

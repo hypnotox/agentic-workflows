@@ -220,7 +220,7 @@ func projectSemantics(prepared publisher.Preparation) project.OperationSemantics
 }
 
 type scaffoldFilesystem interface {
-	Mkdir(string, fs.FileMode) error
+	CreateDirectory(string, fs.FileMode) (fs.FileInfo, error)
 	Publish(string, []byte, fs.FileMode) error
 	LinkInfo(string) (fs.FileInfo, error)
 }
@@ -243,17 +243,17 @@ func createScaffold(handle scaffoldFilesystem, contents []byte) (scaffold scaffo
 		return scaffold, dirErr
 	}
 	if errors.Is(dirErr, fs.ErrNotExist) {
-		mkdirErr := handle.Mkdir(config.DirName, 0o755)
-		if mkdirErr == nil {
+		createdInfo, createErr := handle.CreateDirectory(
+			config.DirName, 0o755,
+		)
+		if createErr == nil {
 			scaffold.createdDir = true
-		} else if !errors.Is(mkdirErr, fs.ErrExist) {
-			return scaffold, mkdirErr
+			dirInfo = createdInfo
+		} else if !errors.Is(createErr, fs.ErrExist) {
+			return scaffold, createErr
+		} else if dirInfo, dirErr = handle.LinkInfo(config.DirName); dirErr != nil {
+			return scaffold, errors.Join(createErr, dirErr)
 		}
-		dirInfo, dirErr = handle.LinkInfo(config.DirName)
-		if dirErr != nil {
-			return scaffold, errors.Join(mkdirErr, dirErr)
-		}
-		scaffold.dirInfo = dirInfo
 	}
 	scaffold.dirInfo = dirInfo
 	configRel := filepath.ToSlash(filepath.Join(config.DirName, "config.yaml"))

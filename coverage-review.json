@@ -9634,31 +9634,17 @@
       "identity": {
         "file": "internal/filesystem/expected_commit_linux.go",
         "start": {
-          "line": 17,
-          "column": 16
+          "line": 33,
+          "column": 24
         },
         "end": {
-          "line": 19,
-          "column": 3
+          "line": 35,
+          "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/filesystem/expected_commit_linux.go:17.16,19.3 1 in exchangeExpected. Failure to duplicate the already-open confined root anchor is a host filesystem fault without a safe production injection seam; root-anchor success and relocated-parent refusal are directly tested.",
+      "reason": "Phase 3 verify-pass settlement review of internal/filesystem/expected_commit_linux.go:33.24,35.4 1 in exchangeExpectedAnchored. This is post-exchange failure to inspect the displaced entry through the newly root-confined immediate-parent handle; changed-identity rollback and successful anchored exchange are directly tested, while the concrete os.Root inspection fault has no safe deterministic injection seam.",
       "movedFrom": {
-        "file": "internal/filesystem/expected_commit_linux.go",
-        "start": {
-          "line": 19,
-          "column": 16
-        },
-        "end": {
-          "line": 21,
-          "column": 3
-        },
-        "statements": 1
-      }
-    },
-    {
-      "identity": {
         "file": "internal/filesystem/expected_commit_linux.go",
         "start": {
           "line": 34,
@@ -9669,36 +9655,10 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/expected_commit_linux.go:34.24,36.4 1 in exchangeExpectedAnchored. This is post-exchange failure to inspect the displaced entry; changed-identity rollback and successful exchange are directly tested, while the concrete os.Root inspection fault has no safe deterministic injection seam.",
-      "movedFrom": {
-        "file": "internal/filesystem/expected_commit_linux.go",
-        "start": {
-          "line": 33,
-          "column": 24
-        },
-        "end": {
-          "line": 35,
-          "column": 4
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
-        "file": "internal/filesystem/expected_commit_linux.go",
-        "start": {
-          "line": 37,
-          "column": 52
-        },
-        "end": {
-          "line": 40,
-          "column": 4
-        },
-        "statements": 2
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/expected_commit_linux.go:37.52,40.4 2 in exchangeExpectedAnchored. This is failure of the second native exchange while restoring an unexpected displaced identity; changed-winner rollback is directly tested and the second syscall failure is not safely injectable.",
-      "movedFrom": {
         "file": "internal/filesystem/expected_commit_linux.go",
         "start": {
           "line": 36,
@@ -9709,23 +9669,23 @@
           "column": 4
         },
         "statements": 2
+      },
+      "reason": "Phase 3 verify-pass settlement review of internal/filesystem/expected_commit_linux.go:36.52,39.4 2 in exchangeExpectedAnchored. This is failure of the second native exchange while restoring an unexpected displaced identity through the anchored parent; changed-winner rollback is directly tested and the second syscall failure is not safely injectable.",
+      "movedFrom": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 37,
+          "column": 52
+        },
+        "end": {
+          "line": 40,
+          "column": 4
+        },
+        "statements": 2
       }
     },
     {
       "identity": {
-        "file": "internal/filesystem/expected_commit_linux.go",
-        "start": {
-          "line": 43,
-          "column": 47
-        },
-        "end": {
-          "line": 44,
-          "column": 52
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/expected_commit_linux.go:43.47,44.52 1 in exchangeExpectedAnchored. This is failure to remove the verified displaced entry after exchange; successful cleanup is directly tested and the concrete os.Root removal fault has no safe deterministic injection seam.",
-      "movedFrom": {
         "file": "internal/filesystem/expected_commit_linux.go",
         "start": {
           "line": 42,
@@ -9736,23 +9696,23 @@
           "column": 52
         },
         "statements": 1
+      },
+      "reason": "Phase 3 verify-pass settlement review of internal/filesystem/expected_commit_linux.go:42.47,43.52 1 in exchangeExpectedAnchored. This is failure to remove the verified displaced entry after anchored exchange; successful cleanup is directly tested and the concrete os.Root removal fault has no safe deterministic injection seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 43,
+          "column": 47
+        },
+        "end": {
+          "line": 44,
+          "column": 52
+        },
+        "statements": 1
       }
     },
     {
       "identity": {
-        "file": "internal/filesystem/expected_commit_linux.go",
-        "start": {
-          "line": 44,
-          "column": 52
-        },
-        "end": {
-          "line": 47,
-          "column": 4
-        },
-        "statements": 2
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/expected_commit_linux.go:44.52,47.4 2 in exchangeExpectedAnchored. This is failure of the compensating native exchange after displaced-entry cleanup fails; successful cleanup is directly tested and the paired syscall failure is not safely injectable.",
-      "movedFrom": {
         "file": "internal/filesystem/expected_commit_linux.go",
         "start": {
           "line": 43,
@@ -9763,50 +9723,50 @@
           "column": 4
         },
         "statements": 2
-      }
-    },
-    {
-      "identity": {
-        "file": "internal/filesystem/expected_commit_linux.go",
-        "start": {
-          "line": 48,
-          "column": 3
-        },
-        "end": {
-          "line": 48,
-          "column": 20
-        },
-        "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/filesystem/expected_commit_linux.go:48.3,48.20 1 in exchangeExpectedAnchored. This returns the original displaced-entry cleanup failure after successful rollback; the rollback behavior is covered through reachable identity mismatch while the preceding concrete removal fault is not safely injectable.",
+      "reason": "Phase 3 verify-pass settlement review of internal/filesystem/expected_commit_linux.go:43.52,46.4 2 in exchangeExpectedAnchored. This is failure of the compensating anchored exchange after displaced-entry cleanup fails; successful cleanup is directly tested and the paired syscall failure is not safely injectable.",
       "movedFrom": {
         "file": "internal/filesystem/expected_commit_linux.go",
         "start": {
-          "line": 47,
-          "column": 3
+          "line": 44,
+          "column": 52
         },
         "end": {
           "line": 47,
-          "column": 20
-        },
-        "statements": 1
-      }
-    },
-    {
-      "identity": {
-        "file": "internal/filesystem/expected_commit_linux.go",
-        "start": {
-          "line": 51,
-          "column": 50
-        },
-        "end": {
-          "line": 53,
           "column": 4
         },
+        "statements": 2
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 47,
+          "column": 3
+        },
+        "end": {
+          "line": 47,
+          "column": 20
+        },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/filesystem/expected_commit_linux.go:51.50,53.4 1 in exchangeExpectedAnchored. This reports a post-exchange disappearance or removal fault for the destination during expected removal; successful file and directory removal are directly tested and no test-only syscall seam is introduced.",
+      "reason": "Phase 3 verify-pass settlement review of internal/filesystem/expected_commit_linux.go:47.3,47.20 1 in exchangeExpectedAnchored. This returns the original displaced-entry cleanup failure after successful anchored rollback; the rollback behavior is covered through reachable identity mismatch while the preceding concrete removal fault is not safely injectable.",
       "movedFrom": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 48,
+          "column": 3
+        },
+        "end": {
+          "line": 48,
+          "column": 20
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
         "file": "internal/filesystem/expected_commit_linux.go",
         "start": {
           "line": 50,
@@ -9814,6 +9774,19 @@
         },
         "end": {
           "line": 52,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 verify-pass settlement review of internal/filesystem/expected_commit_linux.go:50.50,52.4 1 in exchangeExpectedAnchored. This reports a post-exchange disappearance or removal fault for the anchored destination during expected removal; successful file and directory removal are directly tested and no test-only syscall seam is introduced.",
+      "movedFrom": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 51,
+          "column": 50
+        },
+        "end": {
+          "line": 53,
           "column": 4
         },
         "statements": 1
@@ -9853,19 +9826,6 @@
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 180,
-          "column": 47
-        },
-        "end": {
-          "line": 182,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:168.47,170.3 1, beginning `if err := validPath(destination); err != nil {`. This rejects an invalid confined destination before namespace mutation; production callers pass validated project-relative paths and the common path validator is directly exercised. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
-      "movedFrom": {
-        "file": "internal/filesystem/handle.go",
-        "start": {
           "line": 168,
           "column": 47
         },
@@ -9874,23 +9834,23 @@
           "column": 3
         },
         "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:168.47,170.3 1, beginning `if err := validPath(destination); err != nil {`. This rejects an invalid confined destination before namespace mutation; production callers pass validated project-relative paths and the common path validator is directly exercised. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 180,
+          "column": 47
+        },
+        "end": {
+          "line": 182,
+          "column": 3
+        },
+        "statements": 1
       }
     },
     {
       "identity": {
-        "file": "internal/filesystem/handle.go",
-        "start": {
-          "line": 199,
-          "column": 48
-        },
-        "end": {
-          "line": 201,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:187.48,189.4 1, beginning `if _, err := rand.Read(token[:]); err != nil { // coverage-ignore: the operating-system random source is required by the Go runtime and cannot be faulted through this seam`. The source directive records that the operating-system random source is required by the Go runtime and cannot be faulted through this seam. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
-      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 187,
@@ -9901,23 +9861,23 @@
           "column": 4
         },
         "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:187.48,189.4 1, beginning `if _, err := rand.Read(token[:]); err != nil { // coverage-ignore: the operating-system random source is required by the Go runtime and cannot be faulted through this seam`. The source directive records that the operating-system random source is required by the Go runtime and cannot be faulted through this seam. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 199,
+          "column": 48
+        },
+        "end": {
+          "line": 201,
+          "column": 4
+        },
+        "statements": 1
       }
     },
     {
       "identity": {
-        "file": "internal/filesystem/handle.go",
-        "start": {
-          "line": 205,
-          "column": 34
-        },
-        "end": {
-          "line": 206,
-          "column": 12
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:193.34,194.12 1, beginning `if errors.Is(err, fs.ErrExist) { // coverage-ignore: a collision requires predicting the cryptographically random temporary name before this operation`. The source directive records that a collision requires predicting the cryptographically random temporary name before this operation. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
-      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 193,
@@ -9928,23 +9888,23 @@
           "column": 12
         },
         "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:193.34,194.12 1, beginning `if errors.Is(err, fs.ErrExist) { // coverage-ignore: a collision requires predicting the cryptographically random temporary name before this operation`. The source directive records that a collision requires predicting the cryptographically random temporary name before this operation. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 205,
+          "column": 34
+        },
+        "end": {
+          "line": 206,
+          "column": 12
+        },
+        "statements": 1
       }
     },
     {
       "identity": {
-        "file": "internal/filesystem/handle.go",
-        "start": {
-          "line": 213,
-          "column": 17
-        },
-        "end": {
-          "line": 215,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:201.17,203.3 1, beginning `if file == nil { // coverage-ignore: exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle`. The source directive records that exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
-      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 201,
@@ -9955,23 +9915,23 @@
           "column": 3
         },
         "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:201.17,203.3 1, beginning `if file == nil { // coverage-ignore: exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle`. The source directive records that exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 213,
+          "column": 17
+        },
+        "end": {
+          "line": 215,
+          "column": 3
+        },
+        "statements": 1
       }
     },
     {
       "identity": {
-        "file": "internal/filesystem/handle.go",
-        "start": {
-          "line": 217,
-          "column": 18
-        },
-        "end": {
-          "line": 219,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:205.18,207.4 1, beginning `if file != nil { // coverage-ignore: this remains non-nil only after a local temporary write storage fault`. The source directive records that this remains non-nil only after a local temporary write storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
-      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 205,
@@ -9982,23 +9942,23 @@
           "column": 4
         },
         "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:205.18,207.4 1, beginning `if file != nil { // coverage-ignore: this remains non-nil only after a local temporary write storage fault`. The source directive records that this remains non-nil only after a local temporary write storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 217,
+          "column": 18
+        },
+        "end": {
+          "line": 219,
+          "column": 4
+        },
+        "statements": 1
       }
     },
     {
       "identity": {
-        "file": "internal/filesystem/handle.go",
-        "start": {
-          "line": 221,
-          "column": 86
-        },
-        "end": {
-          "line": 223,
-          "column": 5
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:209.86,211.5 1, beginning `if err := h.root.Remove(temporary); err != nil && !errors.Is(err, fs.ErrNotExist) { // coverage-ignore: the concrete root can fault here only through a concurrent namespace change or storage fault`. The source directive records that the concrete root can fault here only through a concurrent namespace change or storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
-      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 209,
@@ -10009,23 +9969,23 @@
           "column": 5
         },
         "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:209.86,211.5 1, beginning `if err := h.root.Remove(temporary); err != nil && !errors.Is(err, fs.ErrNotExist) { // coverage-ignore: the concrete root can fault here only through a concurrent namespace change or storage fault`. The source directive records that the concrete root can fault here only through a concurrent namespace change or storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 221,
+          "column": 86
+        },
+        "end": {
+          "line": 223,
+          "column": 5
+        },
+        "statements": 1
       }
     },
     {
       "identity": {
-        "file": "internal/filesystem/handle.go",
-        "start": {
-          "line": 226,
-          "column": 48
-        },
-        "end": {
-          "line": 228,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:214.48,216.3 1, beginning `if n, err := file.Write(contents); err != nil { // coverage-ignore: writing a locally-created regular temporary requires a storage fault`. The source directive records that writing a locally-created regular temporary requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
-      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 214,
@@ -10036,23 +9996,23 @@
           "column": 3
         },
         "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:214.48,216.3 1, beginning `if n, err := file.Write(contents); err != nil { // coverage-ignore: writing a locally-created regular temporary requires a storage fault`. The source directive records that writing a locally-created regular temporary requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 226,
+          "column": 48
+        },
+        "end": {
+          "line": 228,
+          "column": 3
+        },
+        "statements": 1
       }
     },
     {
       "identity": {
-        "file": "internal/filesystem/handle.go",
-        "start": {
-          "line": 228,
-          "column": 31
-        },
-        "end": {
-          "line": 230,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:216.31,218.3 1, beginning `} else if n != len(contents) { // coverage-ignore: os.File.Write returns a non-nil error when it writes fewer bytes than requested`. The source directive records that os.File.Write returns a non-nil error when it writes fewer bytes than requested. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
-      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 216,
@@ -10063,23 +10023,23 @@
           "column": 3
         },
         "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:216.31,218.3 1, beginning `} else if n != len(contents) { // coverage-ignore: os.File.Write returns a non-nil error when it writes fewer bytes than requested`. The source directive records that os.File.Write returns a non-nil error when it writes fewer bytes than requested. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 228,
+          "column": 31
+        },
+        "end": {
+          "line": 230,
+          "column": 3
+        },
+        "statements": 1
       }
     },
     {
       "identity": {
-        "file": "internal/filesystem/handle.go",
-        "start": {
-          "line": 231,
-          "column": 41
-        },
-        "end": {
-          "line": 233,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:219.41,221.3 1, beginning `if err := file.Chmod(mode); err != nil { // coverage-ignore: chmod of a newly-created regular temporary requires a storage fault`. The source directive records that chmod of a newly-created regular temporary requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
-      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 219,
@@ -10090,23 +10050,23 @@
           "column": 3
         },
         "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:219.41,221.3 1, beginning `if err := file.Chmod(mode); err != nil { // coverage-ignore: chmod of a newly-created regular temporary requires a storage fault`. The source directive records that chmod of a newly-created regular temporary requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 231,
+          "column": 41
+        },
+        "end": {
+          "line": 233,
+          "column": 3
+        },
+        "statements": 1
       }
     },
     {
       "identity": {
-        "file": "internal/filesystem/handle.go",
-        "start": {
-          "line": 234,
-          "column": 36
-        },
-        "end": {
-          "line": 236,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:222.36,224.3 1, beginning `if err := file.Sync(); err != nil { // coverage-ignore: syncing a locally-created regular temporary requires a storage fault`. The source directive records that syncing a locally-created regular temporary requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
-      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 222,
@@ -10117,23 +10077,23 @@
           "column": 3
         },
         "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:222.36,224.3 1, beginning `if err := file.Sync(); err != nil { // coverage-ignore: syncing a locally-created regular temporary requires a storage fault`. The source directive records that syncing a locally-created regular temporary requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 234,
+          "column": 36
+        },
+        "end": {
+          "line": 236,
+          "column": 3
+        },
+        "statements": 1
       }
     },
     {
       "identity": {
-        "file": "internal/filesystem/handle.go",
-        "start": {
-          "line": 237,
-          "column": 37
-        },
-        "end": {
-          "line": 239,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:225.37,227.3 1, beginning `if err := file.Close(); err != nil { // coverage-ignore: closing a locally-created regular temporary after a successful sync requires a storage fault`. The source directive records that closing a locally-created regular temporary after a successful sync requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
-      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 225,
@@ -10144,23 +10104,23 @@
           "column": 3
         },
         "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:225.37,227.3 1, beginning `if err := file.Close(); err != nil { // coverage-ignore: closing a locally-created regular temporary after a successful sync requires a storage fault`. The source directive records that closing a locally-created regular temporary after a successful sync requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 237,
+          "column": 37
+        },
+        "end": {
+          "line": 239,
+          "column": 3
+        },
+        "statements": 1
       }
     },
     {
       "identity": {
-        "file": "internal/filesystem/handle.go",
-        "start": {
-          "line": 278,
-          "column": 47
-        },
-        "end": {
-          "line": 280,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:266.47,268.3 1, beginning `if err := validPath(destination); err != nil {`. This rejects an invalid confined destination before namespace mutation; production callers pass validated project-relative paths and the common path validator is directly exercised. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
-      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 266,
@@ -10171,23 +10131,23 @@
           "column": 3
         },
         "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:266.47,268.3 1, beginning `if err := validPath(destination); err != nil {`. This rejects an invalid confined destination before namespace mutation; production callers pass validated project-relative paths and the common path validator is directly exercised. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 278,
+          "column": 47
+        },
+        "end": {
+          "line": 280,
+          "column": 3
+        },
+        "statements": 1
       }
     },
     {
       "identity": {
-        "file": "internal/filesystem/handle.go",
-        "start": {
-          "line": 281,
-          "column": 21
-        },
-        "end": {
-          "line": 283,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:269.21,271.3 1, beginning `if expected == nil {`. This rejects removal without a previously observed entry identity, preserving the expected-identity contract before any namespace mutation. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
-      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 269,
@@ -10198,23 +10158,23 @@
           "column": 3
         },
         "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:269.21,271.3 1, beginning `if expected == nil {`. This rejects removal without a previously observed entry identity, preserving the expected-identity contract before any namespace mutation. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 281,
+          "column": 21
+        },
+        "end": {
+          "line": 283,
+          "column": 3
+        },
+        "statements": 1
       }
     },
     {
       "identity": {
-        "file": "internal/filesystem/handle.go",
-        "start": {
-          "line": 286,
-          "column": 17
-        },
-        "end": {
-          "line": 288,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:274.17,276.4 1, beginning `if err != nil {`. This reports failure to open an observed directory before installing the exchange temporary; it requires a concurrent namespace change or host I/O fault after observation. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
-      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 274,
@@ -10225,23 +10185,23 @@
           "column": 4
         },
         "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:274.17,276.4 1, beginning `if err != nil {`. This reports failure to open an observed directory before installing the exchange temporary; it requires a concurrent namespace change or host I/O fault after observation. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 286,
+          "column": 17
+        },
+        "end": {
+          "line": 288,
+          "column": 4
+        },
+        "statements": 1
       }
     },
     {
       "identity": {
-        "file": "internal/filesystem/handle.go",
-        "start": {
-          "line": 294,
-          "column": 53
-        },
-        "end": {
-          "line": 296,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:282.53,284.4 1, beginning `if !errors.Is(readErr, io.EOF) || closeErr != nil {`. This distinguishes an empty directory from a read or close fault before exchange; empty and nonempty directory outcomes are directly tested, while the I/O-fault arm is not portably inducible. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
-      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 282,
@@ -10252,23 +10212,23 @@
           "column": 4
         },
         "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:282.53,284.4 1, beginning `if !errors.Is(readErr, io.EOF) || closeErr != nil {`. This distinguishes an empty directory from a read or close fault before exchange; empty and nonempty directory outcomes are directly tested, while the I/O-fault arm is not portably inducible. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 294,
+          "column": 53
+        },
+        "end": {
+          "line": 296,
+          "column": 4
+        },
+        "statements": 1
       }
     },
     {
       "identity": {
-        "file": "internal/filesystem/handle.go",
-        "start": {
-          "line": 302,
-          "column": 48
-        },
-        "end": {
-          "line": 304,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:290.48,292.4 1, beginning `if _, err := rand.Read(token[:]); err != nil { // coverage-ignore: the operating-system random source is required by the Go runtime and cannot be faulted through this seam`. The source directive records that the operating-system random source is required by the Go runtime and cannot be faulted through this seam. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
-      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 290,
@@ -10279,23 +10239,23 @@
           "column": 4
         },
         "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:290.48,292.4 1, beginning `if _, err := rand.Read(token[:]); err != nil { // coverage-ignore: the operating-system random source is required by the Go runtime and cannot be faulted through this seam`. The source directive records that the operating-system random source is required by the Go runtime and cannot be faulted through this seam. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 302,
+          "column": 48
+        },
+        "end": {
+          "line": 304,
+          "column": 4
+        },
+        "statements": 1
       }
     },
     {
       "identity": {
-        "file": "internal/filesystem/handle.go",
-        "start": {
-          "line": 312,
-          "column": 50
-        },
-        "end": {
-          "line": 315,
-          "column": 6
-        },
-        "statements": 2
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:300.50,303.6 2, beginning `if closeErr := file.Close(); closeErr != nil { // coverage-ignore: closing a newly-created empty regular file requires a storage fault`. The source directive records that closing a newly-created empty regular file requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
-      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 300,
@@ -10306,23 +10266,23 @@
           "column": 6
         },
         "statements": 2
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:300.50,303.6 2, beginning `if closeErr := file.Close(); closeErr != nil { // coverage-ignore: closing a newly-created empty regular file requires a storage fault`. The source directive records that closing a newly-created empty regular file requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 312,
+          "column": 50
+        },
+        "end": {
+          "line": 315,
+          "column": 6
+        },
+        "statements": 2
       }
     },
     {
       "identity": {
-        "file": "internal/filesystem/handle.go",
-        "start": {
-          "line": 318,
-          "column": 40
-        },
-        "end": {
-          "line": 319,
-          "column": 12
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:306.40,307.12 1, beginning `if errors.Is(returnErr, fs.ErrExist) { // coverage-ignore: collision requires predicting a cryptographically random temporary`. The source directive records that collision requires predicting a cryptographically random temporary. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
-      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 306,
@@ -10333,23 +10293,23 @@
           "column": 12
         },
         "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:306.40,307.12 1, beginning `if errors.Is(returnErr, fs.ErrExist) { // coverage-ignore: collision requires predicting a cryptographically random temporary`. The source directive records that collision requires predicting a cryptographically random temporary. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 318,
+          "column": 40
+        },
+        "end": {
+          "line": 319,
+          "column": 12
+        },
+        "statements": 1
       }
     },
     {
       "identity": {
-        "file": "internal/filesystem/handle.go",
-        "start": {
-          "line": 321,
-          "column": 23
-        },
-        "end": {
-          "line": 323,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:309.23,311.4 1, beginning `if returnErr != nil {`. This reports inability to create the same-directory exchange temporary, a host permission or storage fault before mutation. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
-      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 309,
@@ -10360,23 +10320,23 @@
           "column": 4
         },
         "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:309.23,311.4 1, beginning `if returnErr != nil {`. This reports inability to create the same-directory exchange temporary, a host permission or storage fault before mutation. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 321,
+          "column": 23
+        },
+        "end": {
+          "line": 323,
+          "column": 4
+        },
+        "statements": 1
       }
     },
     {
       "identity": {
-        "file": "internal/filesystem/handle.go",
-        "start": {
-          "line": 327,
-          "column": 14
-        },
-        "end": {
-          "line": 329,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:315.14,317.3 1, beginning `if !created { // coverage-ignore: exhausting random temporary names is not practically triggerable`. The source directive records that exhausting random temporary names is not practically triggerable. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
-      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 315,
@@ -10387,23 +10347,23 @@
           "column": 3
         },
         "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:315.14,317.3 1, beginning `if !created { // coverage-ignore: exhausting random temporary names is not practically triggerable`. The source directive records that exhausting random temporary names is not practically triggerable. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 327,
+          "column": 14
+        },
+        "end": {
+          "line": 329,
+          "column": 3
+        },
+        "statements": 1
       }
     },
     {
       "identity": {
-        "file": "internal/filesystem/handle.go",
-        "start": {
-          "line": 332,
-          "column": 86
-        },
-        "end": {
-          "line": 334,
-          "column": 5
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:320.86,322.5 1, beginning `if err := h.root.Remove(temporary); err != nil && !errors.Is(err, fs.ErrNotExist) {`. This reports failure to clean the same-directory exchange temporary after an uncommitted native-exchange refusal; reaching it requires a second concurrent namespace or storage fault during cleanup. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
-      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 320,
@@ -10414,23 +10374,23 @@
           "column": 5
         },
         "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:320.86,322.5 1, beginning `if err := h.root.Remove(temporary); err != nil && !errors.Is(err, fs.ErrNotExist) {`. This reports failure to clean the same-directory exchange temporary after an uncommitted native-exchange refusal; reaching it requires a second concurrent namespace or storage fault during cleanup. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 332,
+          "column": 86
+        },
+        "end": {
+          "line": 334,
+          "column": 5
+        },
+        "statements": 1
       }
     },
     {
       "identity": {
-        "file": "internal/filesystem/handle.go",
-        "start": {
-          "line": 385,
-          "column": 20
-        },
-        "end": {
-          "line": 387,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:373.20,375.3 1, beginning `if statErr != nil { // coverage-ignore: stat on a successfully read confined regular file requires a storage fault`. The source directive records that stat on a successfully read confined regular file requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
-      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 373,
@@ -10441,17 +10401,30 @@
           "column": 3
         },
         "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:373.20,375.3 1, beginning `if statErr != nil { // coverage-ignore: stat on a successfully read confined regular file requires a storage fault`. The source directive records that stat on a successfully read confined regular file requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 385,
+          "column": 20
+        },
+        "end": {
+          "line": 387,
+          "column": 3
+        },
+        "statements": 1
       }
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 388,
+          "line": 376,
           "column": 21
         },
         "end": {
-          "line": 390,
+          "line": 378,
           "column": 3
         },
         "statements": 1
@@ -10460,11 +10433,11 @@
       "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 376,
+          "line": 388,
           "column": 21
         },
         "end": {
-          "line": 378,
+          "line": 390,
           "column": 3
         },
         "statements": 1
@@ -11255,6 +11228,126 @@
         },
         "statements": 1
       }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/directory.go",
+        "start": {
+          "line": 25,
+          "column": 48
+        },
+        "end": {
+          "line": 27,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "The operating-system random source is required by the Go runtime and cannot be faulted through the concrete filesystem handle; no safe deterministic input reaches this defensive failure."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/directory.go",
+        "start": {
+          "line": 29,
+          "column": 72
+        },
+        "end": {
+          "line": 30,
+          "column": 12
+        },
+        "statements": 1
+      },
+      "reason": "This collision requires predicting the cryptographically random directory temporary name before creation; retaining the branch prevents unsafe replacement without adding a test-only random source."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/directory.go",
+        "start": {
+          "line": 37,
+          "column": 23
+        },
+        "end": {
+          "line": 39,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Exhausting 100 cryptographically random directory temporary names cannot be induced through the concrete production handle without replacing the production entropy source for a metric-only seam."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/directory.go",
+        "start": {
+          "line": 42,
+          "column": 86
+        },
+        "end": {
+          "line": 44,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Cleanup of the just-created unpredictable temporary fails only after a concurrent namespace change or storage fault; the defensive joined error preserves that failure without weakening cleanup."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/directory.go",
+        "start": {
+          "line": 48,
+          "column": 16
+        },
+        "end": {
+          "line": 50,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Opening the just-created unpredictable directory temporary fails only after a concurrent namespace change or storage fault; a production callback solely to fault this step would weaken the concrete boundary."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/directory.go",
+        "start": {
+          "line": 53,
+          "column": 39
+        },
+        "end": {
+          "line": 55,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Stat or close of the just-opened directory requires a storage fault; the branch preserves fail-closed identity capture without a test-only production descriptor seam."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/directory.go",
+        "start": {
+          "line": 74,
+          "column": 16
+        },
+        "end": {
+          "line": 76,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "The parent Root was successfully opened immediately before this anchor and remains live until its deferred close, so this defensive branch requires an invariant breach or platform fault."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/expected_commit.go",
+        "start": {
+          "line": 21,
+          "column": 16
+        },
+        "end": {
+          "line": 23,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "The parent Root was successfully opened immediately before this anchor and remains live until its deferred close, so this defensive branch requires an invariant breach or platform fault."
     }
   ],
   "directives": [
@@ -18233,8 +18326,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 199,
-        "targetLine": 199,
+        "line": 187,
+        "targetLine": 187,
         "reason": "the operating-system random source is required by the Go runtime and cannot be faulted through this seam",
         "mapped": true,
         "executed": false
@@ -18245,8 +18338,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 205,
-        "targetLine": 205,
+        "line": 193,
+        "targetLine": 193,
         "reason": "a collision requires predicting the cryptographically random temporary name before this operation",
         "mapped": true,
         "executed": false
@@ -18257,8 +18350,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 206,
-        "targetLine": 206,
+        "line": 194,
+        "targetLine": 194,
         "reason": "a collision requires predicting the cryptographically random temporary name before this operation",
         "mapped": false,
         "executed": false
@@ -18269,8 +18362,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 213,
-        "targetLine": 213,
+        "line": 201,
+        "targetLine": 201,
         "reason": "exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle",
         "mapped": true,
         "executed": false
@@ -18281,8 +18374,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 214,
-        "targetLine": 214,
+        "line": 202,
+        "targetLine": 202,
         "reason": "exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle",
         "mapped": false,
         "executed": false
@@ -18293,8 +18386,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 217,
-        "targetLine": 217,
+        "line": 205,
+        "targetLine": 205,
         "reason": "this remains non-nil only after a local temporary write storage fault",
         "mapped": true,
         "executed": false
@@ -18305,8 +18398,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 218,
-        "targetLine": 218,
+        "line": 206,
+        "targetLine": 206,
         "reason": "a second close failure after a replacement write failure requires a second storage fault",
         "mapped": false,
         "executed": false
@@ -18317,8 +18410,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 221,
-        "targetLine": 221,
+        "line": 209,
+        "targetLine": 209,
         "reason": "the concrete root can fault here only through a concurrent namespace change or storage fault",
         "mapped": true,
         "executed": false
@@ -18329,8 +18422,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 222,
-        "targetLine": 222,
+        "line": 210,
+        "targetLine": 210,
         "reason": "the concrete root can fault here only through a concurrent namespace change or storage fault",
         "mapped": false,
         "executed": false
@@ -18341,8 +18434,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 226,
-        "targetLine": 226,
+        "line": 214,
+        "targetLine": 214,
         "reason": "writing a locally-created regular temporary requires a storage fault",
         "mapped": true,
         "executed": false
@@ -18353,8 +18446,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 227,
-        "targetLine": 227,
+        "line": 215,
+        "targetLine": 215,
         "reason": "writing a locally-created regular temporary requires a storage fault",
         "mapped": false,
         "executed": false
@@ -18365,8 +18458,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 228,
-        "targetLine": 228,
+        "line": 216,
+        "targetLine": 216,
         "reason": "os.File.Write returns a non-nil error when it writes fewer bytes than requested",
         "mapped": true,
         "executed": false
@@ -18377,8 +18470,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 229,
-        "targetLine": 229,
+        "line": 217,
+        "targetLine": 217,
         "reason": "os.File.Write returns a non-nil error when it writes fewer bytes than requested",
         "mapped": false,
         "executed": false
@@ -18389,8 +18482,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 231,
-        "targetLine": 231,
+        "line": 219,
+        "targetLine": 219,
         "reason": "chmod of a newly-created regular temporary requires a storage fault",
         "mapped": true,
         "executed": false
@@ -18401,8 +18494,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 232,
-        "targetLine": 232,
+        "line": 220,
+        "targetLine": 220,
         "reason": "chmod of a newly-created regular temporary requires a storage fault",
         "mapped": false,
         "executed": false
@@ -18413,8 +18506,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 234,
-        "targetLine": 234,
+        "line": 222,
+        "targetLine": 222,
         "reason": "syncing a locally-created regular temporary requires a storage fault",
         "mapped": true,
         "executed": false
@@ -18425,8 +18518,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 235,
-        "targetLine": 235,
+        "line": 223,
+        "targetLine": 223,
         "reason": "syncing a locally-created regular temporary requires a storage fault",
         "mapped": false,
         "executed": false
@@ -18437,8 +18530,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 237,
-        "targetLine": 237,
+        "line": 225,
+        "targetLine": 225,
         "reason": "closing a locally-created regular temporary after a successful sync requires a storage fault",
         "mapped": true,
         "executed": false
@@ -18449,8 +18542,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 238,
-        "targetLine": 238,
+        "line": 226,
+        "targetLine": 226,
         "reason": "closing a locally-created regular temporary after a successful sync requires a storage fault",
         "mapped": false,
         "executed": false
@@ -18461,8 +18554,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 302,
-        "targetLine": 302,
+        "line": 290,
+        "targetLine": 290,
         "reason": "the operating-system random source is required by the Go runtime and cannot be faulted through this seam",
         "mapped": true,
         "executed": false
@@ -18473,8 +18566,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 312,
-        "targetLine": 312,
+        "line": 300,
+        "targetLine": 300,
         "reason": "closing a newly-created empty regular file requires a storage fault",
         "mapped": true,
         "executed": false
@@ -18485,8 +18578,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 313,
-        "targetLine": 313,
+        "line": 301,
+        "targetLine": 301,
         "reason": "cleanup after a close storage fault requires the same unportable fault source",
         "mapped": false,
         "executed": false
@@ -18497,8 +18590,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 314,
-        "targetLine": 314,
+        "line": 302,
+        "targetLine": 302,
         "reason": "closing a newly-created empty regular file requires a storage fault",
         "mapped": false,
         "executed": false
@@ -18509,8 +18602,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 318,
-        "targetLine": 318,
+        "line": 306,
+        "targetLine": 306,
         "reason": "collision requires predicting a cryptographically random temporary",
         "mapped": true,
         "executed": false
@@ -18521,8 +18614,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 319,
-        "targetLine": 319,
+        "line": 307,
+        "targetLine": 307,
         "reason": "collision requires predicting a cryptographically random temporary",
         "mapped": false,
         "executed": false
@@ -18533,8 +18626,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 327,
-        "targetLine": 327,
+        "line": 315,
+        "targetLine": 315,
         "reason": "exhausting random temporary names is not practically triggerable",
         "mapped": true,
         "executed": false
@@ -18545,8 +18638,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 328,
-        "targetLine": 328,
+        "line": 316,
+        "targetLine": 316,
         "reason": "exhausting random temporary names is not practically triggerable",
         "mapped": false,
         "executed": false
@@ -18557,8 +18650,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 385,
-        "targetLine": 385,
+        "line": 373,
+        "targetLine": 373,
         "reason": "stat on a successfully read confined regular file requires a storage fault",
         "mapped": true,
         "executed": false
@@ -18569,8 +18662,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 386,
-        "targetLine": 386,
+        "line": 374,
+        "targetLine": 374,
         "reason": "stat on a successfully read confined regular file requires a storage fault",
         "mapped": false,
         "executed": false
@@ -18581,8 +18674,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 388,
-        "targetLine": 388,
+        "line": 376,
+        "targetLine": 376,
         "reason": "close after a successful confined read requires a storage fault",
         "mapped": true,
         "executed": false
@@ -18593,8 +18686,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 389,
-        "targetLine": 389,
+        "line": 377,
+        "targetLine": 377,
         "reason": "close after a successful confined read requires a storage fault",
         "mapped": false,
         "executed": false
@@ -18793,6 +18886,186 @@
       },
       "class": "revalidated-impossible-state",
       "evidence": "Renewed Phase 3 review of directive internal/initop/init.go:398 records `rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail`. The current profile state is mapped=true, executed=false. Focused Init tests cover rollback, changed-winner preservation, and complete directory, config, and residue effect presentation around this guard."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/directory.go",
+        "line": 25,
+        "targetLine": 25,
+        "reason": "the operating-system random source is required by the Go runtime and cannot be faulted through this seam",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "CreateDirectory reads a fresh token from crypto/rand through the concrete production handle. The Go runtime depends on the operating-system random source, and this owner has no injectable entropy dependency, so a safe portable production input cannot induce the error."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/directory.go",
+        "line": 29,
+        "targetLine": 29,
+        "reason": "a collision requires predicting the cryptographically random temporary name before this operation",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "CreateDirectory derives a 128-bit random sibling name immediately before exclusive Mkdir. Reaching this branch requires predicting and creating that exact name first; the concrete production handle intentionally has no test-only entropy seam."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/directory.go",
+        "line": 30,
+        "targetLine": 30,
+        "reason": "a collision requires predicting the cryptographically random temporary name before this operation",
+        "mapped": false,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "This continue is the body of the immediately preceding cryptographically unpredictable exclusive-Mkdir collision branch, so it shares the same uninducible condition."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/directory.go",
+        "line": 37,
+        "targetLine": 37,
+        "reason": "exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "The loop attempts 100 independently random 128-bit exclusive names. Exhaustion cannot be safely induced through the concrete production handle without a metric-only entropy seam."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/directory.go",
+        "line": 38,
+        "targetLine": 38,
+        "reason": "exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle",
+        "mapped": false,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "This return is the body of the immediately preceding 100-name exhaustion guard and shares its uninducible condition."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/directory.go",
+        "line": 42,
+        "targetLine": 42,
+        "reason": "cleanup fails only after a concurrent namespace change or storage fault",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "The temporary was created by this operation under an unpredictable name. Its deferred Remove can fail only after an external namespace change or storage fault; the branch retains and joins that cleanup failure."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/directory.go",
+        "line": 43,
+        "targetLine": 43,
+        "reason": "cleanup fails only after a concurrent namespace change or storage fault",
+        "mapped": false,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "This joined cleanup return is the body of the immediately preceding unpredictable-temporary removal failure and shares its external-fault condition."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/directory.go",
+        "line": 48,
+        "targetLine": 48,
+        "reason": "opening the just-created unpredictable temporary fails only after a concurrent namespace change or storage fault",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "The operation exclusively created this random temporary immediately before Open. Failure requires an external namespace change or storage fault; adding an open callback would create a test-only production seam around the concrete filesystem owner."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/directory.go",
+        "line": 49,
+        "targetLine": 49,
+        "reason": "opening the just-created unpredictable temporary fails only after a concurrent namespace change or storage fault",
+        "mapped": false,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "This return is the body of the immediately preceding just-created temporary Open failure and shares its external-fault condition."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/directory.go",
+        "line": 53,
+        "targetLine": 53,
+        "reason": "stat or close of the just-opened directory requires a storage fault",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "The directory descriptor was successfully opened on the prior statement. Stat or Close failure requires a storage fault; the branch preserves fail-closed identity capture without a test-only descriptor seam."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/directory.go",
+        "line": 54,
+        "targetLine": 54,
+        "reason": "stat or close of the just-opened directory requires a storage fault",
+        "mapped": false,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "This return is the body of the immediately preceding opened-directory Stat or Close fault and shares its storage-fault condition."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/directory.go",
+        "line": 74,
+        "targetLine": 74,
+        "reason": "the newly opened parent remains live until its deferred close",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "publishDirectoryNoReplace has just successfully opened parentRoot and defers its Close after opening the anchor. Without an invariant breach or platform fault, opening dot on that live Root cannot fail."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/directory.go",
+        "line": 75,
+        "targetLine": 75,
+        "reason": "the newly opened parent remains live until its deferred close",
+        "mapped": false,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "This return is the body of the immediately preceding live-parent anchor invariant and shares its impossible-state condition."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/expected_commit.go",
+        "line": 21,
+        "targetLine": 21,
+        "reason": "the newly opened parent remains live until its deferred close",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "exchangeExpected has just successfully opened parentRoot and defers its Close after opening the anchor. Without an invariant breach or platform fault, opening dot on that live Root cannot fail."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/expected_commit.go",
+        "line": 22,
+        "targetLine": 22,
+        "reason": "the newly opened parent remains live until its deferred close",
+        "mapped": false,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "This return is the body of the immediately preceding live-parent anchor invariant and shares its impossible-state condition."
     }
   ],
   "platformDirectives": [

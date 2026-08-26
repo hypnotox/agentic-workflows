@@ -489,3 +489,14 @@ owner census. A Linux destination-disappearance regression now reaches the nativ
 replacing its prior coverage admission; the remaining native cleanup admissions name their exact
 uninjectable branches. These changes preserve the approved filesystem and operation ownership
 boundaries and require no protected-contract deviation.
+
+The single Phase 3 verify pass found two remaining ownership races. Native expected mutation could
+follow a symlink installed where a prepared parent had been relocated, transiently exchanging
+outside-root entries before rollback; an inotify-backed regression observed both replacement and
+removal touch the outside directory. Commit now resolves the immediate parent through the selected
+`os.Root` and gives native exchange only leaf names. Init could also record a replacement directory
+observed after its own `Mkdir`; directory creation now records the temporary directory's opened
+identity before exclusive no-replace publication, with `internal/filepublication` retaining the
+single released-platform publication owner. The scaffold keeps that returned identity without a
+post-publication lookup. Both regressions pass, released-platform filesystem packages compile, and
+this reasoned settlement preserves the approved confinement and focused-owner boundaries.

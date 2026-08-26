@@ -277,8 +277,6 @@ func TestHandleOperations(t *testing.T) {
 		t.Fatalf("failed replacement changed destination = %q, %v, %v", marker, failedInfo, errors.Join(markerReadErr, failedStatErr))
 	}
 	for _, operation := range []func() error{
-		func() error { return h.Mkdir("..", 0o755) },
-		func() error { return h.Mkdir("dir/file/child", 0o755) },
 		func() error { return h.MkdirAll("..", 0o755) },
 		func() error { return h.Publish("../artifact", nil, 0o644) },
 		func() error { return h.Replace("../artifact", nil, 0o644) },
@@ -511,6 +509,67 @@ func TestExpectedIdentityReplacementAndRemovalRefuseStaleEntries(t *testing.T) {
 	}
 }
 
+func TestCreateDirectoryReturnsPublishedIdentityAndRefusesExistingDestination(t *testing.T) {
+	container := t.TempDir()
+	root := filepath.Join(container, "root")
+	if err := os.Mkdir(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	h, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+	created, err := h.CreateDirectory("owned", 0o750)
+	if err != nil {
+		t.Fatal(err)
+	}
+	owned := filepath.Join(root, "owned")
+	if info, err := os.Lstat(owned); err != nil || !os.SameFile(created, info) || info.Mode().Perm() != 0o750 {
+		t.Fatalf("created identity = %v, path identity = %v, error %v", created, info, err)
+	}
+	if _, err := h.CreateDirectory("owned", 0o700); !errors.Is(err, fs.ErrExist) {
+		t.Fatalf("existing directory creation = %v, want exists", err)
+	}
+	if _, err := h.CreateDirectory("../escape", 0o700); err == nil {
+		t.Fatal("invalid directory creation succeeded")
+	}
+	if _, err := h.CreateDirectory("missing/child", 0o700); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("missing-parent directory creation = %v, want not exist", err)
+	}
+	if err := publishDirectoryNoReplace(h.root, "temporary", "other/destination"); err == nil {
+		t.Fatal("different-parent directory publication succeeded")
+	}
+	outside := filepath.Join(container, "outside")
+	if err := os.Mkdir(outside, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(root, "escape-parent")); err == nil {
+		if err := publishDirectoryNoReplace(h.root, "escape-parent/temporary", "escape-parent/destination"); err == nil {
+			t.Fatal("directory publication through escaping parent succeeded")
+		}
+	}
+	if _, err := exchangeExpected(h.root, "temporary", "other/destination", created, false); err == nil {
+		t.Fatal("different-parent expected mutation succeeded")
+	}
+	relocated := filepath.Join(container, "relocated")
+	if err := os.Rename(owned, relocated); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(owned, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.RemoveExpected("owned", created); !errors.Is(err, ErrIdentityChanged) {
+		t.Fatalf("replacement removal = %v, want identity change", err)
+	}
+	if info, err := os.Lstat(relocated); err != nil || !os.SameFile(created, info) {
+		t.Fatalf("returned identity does not name created directory after relocation: %v, %v", info, err)
+	}
+	if info, err := os.Lstat(owned); err != nil || os.SameFile(created, info) {
+		t.Fatalf("replacement directory was claimed or removed: %v, %v", info, err)
+	}
+}
+
 func TestExpectedIdentityReplacementAndRemovalCommitFilesAndEmptyDirectories(t *testing.T) {
 	root := t.TempDir()
 	h, err := Open(root)
@@ -597,16 +656,11 @@ func TestExpectedMutationRootAnchorRefusesRelocatedParent(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			anchor, err := h.root.Open(".")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer anchor.Close()
 			relocated := filepath.Join(outside, "parent")
 			if err := os.Rename(filepath.Join(rootPath, "parent"), relocated); err != nil {
 				t.Fatal(err)
 			}
-			consumed, err := exchangeExpectedAnchored(h.root, anchor, "parent/temporary", "parent/destination", expected, remove)
+			consumed, err := exchangeExpected(h.root, "parent/temporary", "parent/destination", expected, remove)
 			if err == nil || consumed {
 				t.Fatalf("relocated-parent commit = consumed %v, error %v; want uncommitted refusal", consumed, err)
 			}

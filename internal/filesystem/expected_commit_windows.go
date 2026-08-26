@@ -17,15 +17,14 @@ import (
 
 var replaceFileW = windows.NewLazySystemDLL("kernel32.dll").NewProc("ReplaceFileW")
 
-func exchangeExpected(root *os.Root, temporary, destination string, expected fs.FileInfo, remove bool) (bool, error) {
-	anchor, err := root.Open(".")
-	if err != nil {
-		return false, fmt.Errorf("filesystem: open atomic root: %w", err)
-	}
-	defer anchor.Close()
-	return exchangeExpectedAnchored(root, anchor, temporary, destination, expected, remove)
-}
-
+// exchangeExpectedAnchored performs the platform-native leaf exchange.
+//
+// The common expected-mutation owner resolves the immediate parent through
+// os.Root, opens its stable anchor, and supplies only final path components
+// before this platform helper runs. Keeping intermediate path resolution out
+// of the native syscall prevents a replaced parent symlink from redirecting
+// the exchange outside the selected root while preserving one native owner
+// for each released platform's atomic replacement operation.
 func exchangeExpectedAnchored(root *os.Root, anchor *os.File, temporary, destination string, expected fs.FileInfo, remove bool) (bool, error) {
 	rootName, err := finalWindowsPath(windows.Handle(anchor.Fd()))
 	if err != nil {
