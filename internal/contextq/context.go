@@ -59,7 +59,9 @@ func (q *Query) ContextForOptions(queries []string, options ContextOptions) Cont
 		}
 	}
 	slices.Sort(nested)
-	set := contextPathSet{tree: state.Tree, nested: nested, outputs: outputs, ignores: state.ContextIgnore, domainPaths: state.Loaded.Topics.DomainPaths, impacts: map[string]contextPathImpact{}}
+	// The index is query-local: it retains complete path metadata while leaving
+	// semantic impact projection to the requests that actually need it.
+	set := newContextPathSet(state.Tree, nested, outputs, state.ContextIgnore, state.Loaded.Topics.DomainPaths)
 	selectedADRs := state.Loaded.Corpus
 	lay := state.Layout
 	markerSitesByPath := map[string][]topic.MarkerSite{}
@@ -103,9 +105,9 @@ func (q *Query) ContextForOptions(queries []string, options ContextOptions) Cont
 		}
 		return impact
 	}
-	for _, f := range state.Tree.List() {
-		set.impacts[f.Path] = makeImpact(f.Path, false)
-	}
+	set.project = makeImpact
+	// Explicit requests retain their explicit-only artifact projection even when
+	// a repeated or directory request also reaches the same path.
 	for _, raw := range queries {
 		if strings.TrimSpace(raw) != "" {
 			lookup := filepath.ToSlash(filepath.Clean(raw))

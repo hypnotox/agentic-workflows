@@ -5,6 +5,7 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -184,11 +185,51 @@ type contextSelectorImpact struct {
 
 type contextPathSet struct {
 	tree        *snapshot.Tree
+	paths       []string
+	entries     map[string]snapshot.File
 	nested      []string
 	outputs     map[string]bool
 	ignores     []string
 	domainPaths map[string][]string
 	impacts     map[string]contextPathImpact
+	project     func(string, bool) contextPathImpact
+}
+
+// newContextPathSet indexes the complete query inventory once. Exact requests
+// use entries while directory requests use the contiguous sorted prefix range.
+func newContextPathSet(tree *snapshot.Tree, nested []string, outputs map[string]bool, ignores []string, domainPaths map[string][]string) contextPathSet {
+	files := tree.List()
+	set := contextPathSet{tree: tree, paths: make([]string, 0, len(files)), entries: make(map[string]snapshot.File, len(files)), nested: nested, outputs: outputs, ignores: ignores, domainPaths: domainPaths, impacts: map[string]contextPathImpact{}}
+	for _, file := range files {
+		set.paths = append(set.paths, file.Path)
+		set.entries[file.Path] = file
+	}
+	slices.Sort(set.paths)
+	return set
+}
+
+func (set contextPathSet) lookup(p string) (snapshot.File, bool) {
+	return set.entries[p], set.entries[p].Path != ""
+}
+
+func (set contextPathSet) prefixRange(prefix string) (int, int) {
+	start := sort.SearchStrings(set.paths, prefix)
+	end := sort.Search(len(set.paths), func(i int) bool {
+		return set.paths[i] >= prefix && !strings.HasPrefix(set.paths[i], prefix)
+	})
+	return start, end
+}
+
+func (set contextPathSet) impactFor(p string, explicit bool) contextPathImpact {
+	if impact, ok := set.impacts[p]; ok {
+		return impact
+	}
+	if set.project == nil {
+		return contextPathImpact{}
+	}
+	impact := set.project(p, explicit)
+	set.impacts[p] = impact
+	return impact
 }
 
 func ParseContextFacets(values []string, full bool) ([]ContextFacet, error) {
@@ -235,7 +276,6 @@ func safelyMatchablePaths(tree *snapshot.Tree) []string {
 
 func buildContextRequests(queries []string, set contextPathSet, options ContextOptions) []contextRequestReport {
 	requests := []contextRequestReport{}
-	files := set.tree.List()
 	for _, raw := range queries {
 		if strings.TrimSpace(raw) == "" {
 			continue
@@ -247,28 +287,22 @@ func buildContextRequests(queries []string, set contextPathSet, options ContextO
 		if lookup == "." {
 			prefix = ""
 		}
-		if _, ok := set.tree.Lookup(lookup); !ok && !outsideContextPath(lookup) {
-			for _, f := range files {
-				if strings.HasPrefix(f.Path, prefix) {
-					directory = true
-					break
-				}
-			}
+		if _, ok := set.lookup(lookup); !ok && !outsideContextPath(lookup) {
+			start, end := set.prefixRange(prefix)
+			directory = start < end
 		}
 		if directory {
 			report.Kind = requestDirectoryExpanded
 			dir := contextDirectory{Excluded: []contextClassificationCount{}, Groups: []contextGroup{}, Relationships: emptyContextRelationships()}
 			counts := map[pathClassification]int{}
 			groups := map[string]*contextGroup{}
-			for _, f := range files {
-				if !strings.HasPrefix(f.Path, prefix) {
-					continue
-				}
+			start, end := set.prefixRange(prefix)
+			for _, filePath := range set.paths[start:end] {
 				// Nested roots and symlinks are census boundaries and count once.
 				boundary := false
 				for _, root := range set.nested {
-					if f.Path == root+"/.awf/config.yaml" || strings.HasPrefix(f.Path, root+"/") {
-						if f.Path == root+"/.awf/config.yaml" {
+					if filePath == root+"/.awf/config.yaml" || strings.HasPrefix(filePath, root+"/") {
+						if filePath == root+"/.awf/config.yaml" {
 							counts[pathNestedAdopter]++
 						}
 						boundary = true
@@ -278,7 +312,7 @@ func buildContextRequests(queries []string, set contextPathSet, options ContextO
 				if boundary {
 					continue
 				}
-				impact := set.impacts[f.Path]
+				impact := set.impactFor(filePath, false)
 				if impact.Classification == pathSymlink {
 					counts[pathSymlink]++
 					continue
@@ -296,7 +330,7 @@ func buildContextRequests(queries []string, set contextPathSet, options ContextO
 					groups[key] = g
 				}
 				g.Count++
-				g.Members = append(g.Members, f.Path)
+				g.Members = append(g.Members, filePath)
 			}
 			for _, class := range []pathClassification{pathContextIgnored, pathGeneratedOutput, pathNestedAdopter, pathSymlink, pathNotFound, pathOutsideRepository} {
 				if counts[class] > 0 {
@@ -324,7 +358,7 @@ func buildContextRequests(queries []string, set contextPathSet, options ContextO
 			if options.Selection != SelectionExplicit {
 				report.Kind = requestGitSelected
 			}
-			impact := set.impacts[lookup]
+			impact := set.impactFor(lookup, options.Selection == SelectionExplicit)
 			report.Exact = &contextExactEntry{Path: lookup, Context: impact}
 		}
 		requests = append(requests, report)
@@ -452,7 +486,7 @@ func classifyContextPath(p string, set contextPathSet) (pathClassification, stri
 	if set.outputs[p] {
 		return pathGeneratedOutput, "", nil
 	}
-	if f, ok := set.tree.Lookup(p); ok && f.Mode == snapshot.Symlink {
+	if f, ok := set.lookup(p); ok && f.Mode == snapshot.Symlink {
 		target := string(f.Bytes)
 		inside := true
 		if path.IsAbs(target) {
@@ -466,7 +500,7 @@ func classifyContextPath(p string, set contextPathSet) (pathClassification, stri
 	if pathglob.MatchAny(set.ignores, p) {
 		return pathContextIgnored, "", nil
 	}
-	if _, ok := set.tree.Lookup(p); !ok {
+	if _, ok := set.lookup(p); !ok {
 		return pathNotFound, "", nil
 	}
 	for _, globs := range set.domainPaths {

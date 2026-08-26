@@ -43,7 +43,7 @@ func TestContextRequestCensusGroupingAndClassification(t *testing.T) {
 		t.Fatal(err)
 	}
 	covered := contextPathImpact{Classification: pathCovered, Domains: []domainRef{}, Topics: []contextPathTopic{}, Relationships: contextRelationships{State: []string{"d/t:kept"}, Touches: []string{}, Proofs: []string{}}, Provenance: []contextProvenance{}, Warnings: []contextWarning{}}
-	set := contextPathSet{tree: tree, nested: []string{"nested"}, outputs: map[string]bool{"generated": true}, ignores: []string{"ignored/**"}, domainPaths: map[string][]string{"d": {"owned/**"}}, impacts: map[string]contextPathImpact{}}
+	set := newContextPathSet(tree, []string{"nested"}, map[string]bool{"generated": true}, []string{"ignored/**"}, map[string][]string{"d": {"owned/**"}})
 	for _, f := range tree.List() {
 		class, nested, target := classifyContextPath(f.Path, set)
 		impact := covered
@@ -96,6 +96,37 @@ func TestContextRequestCensusGroupingAndClassification(t *testing.T) {
 		if got != want {
 			t.Errorf("%s=%s", p, got)
 		}
+	}
+}
+
+func TestContextPathSetProjectsExactAndSortedDescendantsOnDemand(t *testing.T) {
+	tree, err := snapshot.NewTree([]snapshot.File{
+		{Path: "dir/a.go", Mode: snapshot.Regular},
+		{Path: "dir/b.go", Mode: snapshot.Regular},
+		{Path: "other/c.go", Mode: snapshot.Regular},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	set := newContextPathSet(tree, nil, nil, nil, nil)
+	projected := []string{}
+	set.project = func(p string, _ bool) contextPathImpact {
+		projected = append(projected, p)
+		return contextPathImpact{Classification: pathCovered, Provenance: []contextProvenance{}, Domains: []domainRef{}, Topics: []contextPathTopic{}, Relationships: emptyContextRelationships(), Warnings: []contextWarning{}}
+	}
+	exact := buildContextRequests([]string{"dir/a.go"}, set, ContextOptions{Selection: SelectionExplicit})
+	if len(exact) != 1 || exact[0].Exact == nil || !slices.Equal(projected, []string{"dir/a.go"}) {
+		t.Fatalf("exact=%#v projected=%v", exact, projected)
+	}
+	projected = nil
+	set = newContextPathSet(tree, nil, nil, nil, nil)
+	set.project = func(p string, _ bool) contextPathImpact {
+		projected = append(projected, p)
+		return contextPathImpact{Classification: pathCovered, Provenance: []contextProvenance{}, Domains: []domainRef{}, Topics: []contextPathTopic{}, Relationships: emptyContextRelationships(), Warnings: []contextWarning{}}
+	}
+	directory := buildContextRequests([]string{"dir"}, set, ContextOptions{Selection: SelectionExplicit})
+	if len(directory) != 1 || directory[0].Directory == nil || !slices.Equal(projected, []string{"dir/a.go", "dir/b.go"}) {
+		t.Fatalf("directory=%#v projected=%v", directory, projected)
 	}
 }
 
@@ -180,10 +211,11 @@ func TestContextDirectoryGroupingUsesOnlyVisibleProjection(t *testing.T) {
 			Warnings:       []contextWarning{},
 		}
 	}
-	set := contextPathSet{tree: tree, impacts: map[string]contextPathImpact{
+	set := newContextPathSet(tree, nil, nil, nil, nil)
+	set.impacts = map[string]contextPathImpact{
 		"dir/a.go": makeImpact("d/t:a", "source-a"),
 		"dir/b.go": makeImpact("d/t:b", "source-b"),
-	}}
+	}
 	cases := []struct {
 		name   string
 		facets []ContextFacet
