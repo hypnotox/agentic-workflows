@@ -1,7 +1,7 @@
 {
   "version": 1,
   "modulePath": "github.com/hypnotox/agentic-workflows",
-  "universeSHA256": "f5a94ab6f0d2d7bf8c5e63afce545540aea0347c4b87c5d3aed6c63cd1f58906",
+  "universeSHA256": "1fbe1f8566c33235e659bede4824a259490888b04db88cd9f55b0766c8923411",
   "repository": [
     {
       "identity": {
@@ -7564,6 +7564,19 @@
       "identity": {
         "file": "internal/publisher/inputs.go",
         "start": {
+          "line": 183,
+          "column": 16
+        },
+        "end": {
+          "line": 185,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 2 focused Publisher extraction moved this retained defensive arm without changing its closed-state behavior or test oracle.",
+      "movedFrom": {
+        "file": "internal/publisher/inputs.go",
+        "start": {
           "line": 133,
           "column": 16
         },
@@ -7572,11 +7585,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/inputs.go:133.16,135.3 1 in function Prepare, beginning `{ // coverage-ignore: output-plan construction already validated the same glossary input`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/inputs.go",
+        "start": {
+          "line": 230,
+          "column": 16
+        },
+        "end": {
+          "line": 232,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 2 focused Publisher extraction moved this retained defensive arm without changing its closed-state behavior or test oracle.",
+      "movedFrom": {
         "file": "internal/publisher/inputs.go",
         "start": {
           "line": 180,
@@ -7587,11 +7612,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/inputs.go:180.16,182.3 1 in function vocabularySemantics, beginning `{ // coverage-ignore: project loading already validated the selected sidecar`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/inputs.go",
+        "start": {
+          "line": 234,
+          "column": 16
+        },
+        "end": {
+          "line": 236,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 2 focused Publisher extraction moved this retained defensive arm without changing its closed-state behavior or test oracle.",
+      "movedFrom": {
         "file": "internal/publisher/inputs.go",
         "start": {
           "line": 184,
@@ -7602,11 +7639,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/inputs.go:184.16,186.3 1 in function vocabularySemantics, beginning `{ // coverage-ignore: output-plan glossary transform already validated authored records`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/inputs.go",
+        "start": {
+          "line": 238,
+          "column": 16
+        },
+        "end": {
+          "line": 240,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 2 focused Publisher extraction moved this retained defensive arm without changing its closed-state behavior or test oracle.",
+      "movedFrom": {
         "file": "internal/publisher/inputs.go",
         "start": {
           "line": 188,
@@ -7617,8 +7666,7 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/inputs.go:188.16,190.3 1 in function vocabularySemantics, beginning `{ // coverage-ignore: output-plan glossary transform already validated the merged records`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
@@ -12039,11 +12087,11 @@
         {
           "file": "internal/publisher/inputs.go",
           "start": {
-            "line": 133,
+            "line": 183,
             "column": 16
           },
           "end": {
-            "line": 135,
+            "line": 185,
             "column": 3
           },
           "statements": 1
@@ -12051,11 +12099,11 @@
         {
           "file": "internal/publisher/inputs.go",
           "start": {
-            "line": 180,
+            "line": 230,
             "column": 16
           },
           "end": {
-            "line": 182,
+            "line": 232,
             "column": 3
           },
           "statements": 1
@@ -12063,11 +12111,11 @@
         {
           "file": "internal/publisher/inputs.go",
           "start": {
-            "line": 184,
+            "line": 234,
             "column": 16
           },
           "end": {
-            "line": 186,
+            "line": 236,
             "column": 3
           },
           "statements": 1
@@ -12075,11 +12123,11 @@
         {
           "file": "internal/publisher/inputs.go",
           "start": {
-            "line": 188,
+            "line": 238,
             "column": 16
           },
           "end": {
-            "line": 190,
+            "line": 240,
             "column": 3
           },
           "statements": 1
@@ -21028,8 +21076,8 @@
     {
       "directive": {
         "file": "internal/publisher/inputs.go",
-        "line": 133,
-        "targetLine": 133,
+        "line": 183,
+        "targetLine": 183,
         "reason": "output-plan construction already validated the same glossary input",
         "mapped": true,
         "executed": false
@@ -21040,8 +21088,8 @@
     {
       "directive": {
         "file": "internal/publisher/inputs.go",
-        "line": 180,
-        "targetLine": 180,
+        "line": 230,
+        "targetLine": 230,
         "reason": "project loading already validated the selected sidecar",
         "mapped": true,
         "executed": false
@@ -21052,8 +21100,8 @@
     {
       "directive": {
         "file": "internal/publisher/inputs.go",
-        "line": 184,
-        "targetLine": 184,
+        "line": 234,
+        "targetLine": 234,
         "reason": "output-plan glossary transform already validated authored records",
         "mapped": true,
         "executed": false
@@ -21064,8 +21112,8 @@
     {
       "directive": {
         "file": "internal/publisher/inputs.go",
-        "line": 188,
-        "targetLine": 188,
+        "line": 238,
+        "targetLine": 238,
         "reason": "output-plan glossary transform already validated the merged records",
         "mapped": true,
         "executed": false

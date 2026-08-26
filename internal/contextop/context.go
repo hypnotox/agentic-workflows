@@ -98,7 +98,11 @@ func Run(ctx context.Context, root string, input Input, load LoadProject, workin
 		if loadErr != nil {
 			return nil, loadErr
 		}
-		state, err = workingState(ctx, projectState, repo)
+		if input.Range != "" {
+			state, err = workingCompleteState(ctx, projectState, repo)
+		} else {
+			state, err = workingState(ctx, projectState, repo)
+		}
 	}
 	if err != nil {
 		return nil, err
@@ -129,7 +133,7 @@ func uncovered(ctx context.Context, root string, input Input, load LoadProject, 
 		if loadErr != nil {
 			return nil, loadErr
 		}
-		state, err = workingState(ctx, projectState, repo)
+		state, err = workingCompleteState(ctx, projectState, repo)
 	}
 	if err != nil {
 		return nil, err
@@ -138,6 +142,14 @@ func uncovered(ctx context.Context, root string, input Input, load LoadProject, 
 }
 
 func workingState(ctx context.Context, state *project.ProjectState, repo *awfgit.Repo) (contextinput.Input, error) {
+	prep, err := currentstatecoord.PrepareWorkingContext(state.OutputState(), repo, ctx)
+	if err != nil {
+		return contextinput.Input{}, err
+	}
+	return focused(prep)
+}
+
+func workingCompleteState(ctx context.Context, state *project.ProjectState, repo *awfgit.Repo) (contextinput.Input, error) {
 	prep, err := currentstatecoord.PrepareWorkingContext(state.OutputState(), repo, ctx)
 	if err != nil {
 		return contextinput.Input{}, err
@@ -151,6 +163,14 @@ func stagedState(ctx context.Context, root string) (contextinput.Input, error) {
 		return contextinput.Input{}, err
 	}
 	return complete(prep)
+}
+
+func focused(prep *currentstatecoord.ContextPreparation) (contextinput.Input, error) {
+	prepared, err := publisher.New(prep.State, prep.Config, prep.Reader, project.Version).PrepareContext()
+	if err != nil {
+		return contextinput.Input{}, err
+	}
+	return currentstatecoord.CompleteContext(prep, prepared.ADRs(), prepared.Topics(), prepared.Plans(), prepared.Declarations()), nil
 }
 
 func complete(prep *currentstatecoord.ContextPreparation) (contextinput.Input, error) {

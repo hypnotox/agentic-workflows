@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/contextinput"
 	"github.com/hypnotox/agentic-workflows/internal/contextq"
 	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
@@ -174,13 +175,39 @@ func TestWorkingStateUsesFilesystemWithoutRepository(t *testing.T) {
 	if _, err := workingState(canceled, state, nil); !errors.Is(err, context.Canceled) {
 		t.Fatalf("working context filesystem cancellation error = %v", err)
 	}
+	if _, err := workingCompleteState(canceled, state, nil); !errors.Is(err, context.Canceled) {
+		t.Fatalf("complete working context filesystem cancellation error = %v", err)
+	}
+}
+
+func TestWorkingStateSkipsUnrelatedRenderValidation(t *testing.T) {
+	root := contextPreparationFixture(t)
+	// This source override is parsed only while rendering the generated agents
+	// document; declaration projection merely records it as an input.
+	testsupport.WriteAwfConfig(t, root, contextPreparationYAML+"render:\n  templateSourceRoot: templates\n")
+	testsupport.WriteFile(t, filepath.Join(root, "templates", "agents-doc", "AGENTS.md.tmpl"), "{{ broken")
+	state, repo := contextPreparationProject(t, root)
+	prep, err := currentstatecoord.PrepareWorkingContext(state.OutputState(), repo, testsupport.Context(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := complete(prep); err == nil || !strings.Contains(err.Error(), "template") {
+		t.Fatalf("complete Publisher preparation error = %v, want unrelated template render validation", err)
+	}
+	input, err := workingState(testsupport.Context(t), state, repo)
+	if err != nil {
+		t.Fatalf("focused ordinary context rejected unrelated render validation: %v", err)
+	}
+	if got := contextq.New(input).ContextForOptions([]string{"internal/foo/x.go"}, contextq.ContextOptions{}); len(got.Requests) != 1 {
+		t.Fatalf("focused ordinary context result = %#v", got)
+	}
 }
 
 func TestWorkingStatePropagatesPublisherPreparationFailure(t *testing.T) {
 	root := contextPreparationFixture(t)
 	state, repo := contextPreparationProject(t, root)
 	writeMalformedPitfall(t, root)
-	_, err := workingState(testsupport.Context(t), state, repo)
+	_, err := workingCompleteState(testsupport.Context(t), state, repo)
 	requireMalformedPitfallError(t, err)
 }
 
@@ -335,3 +362,53 @@ func TestContextPreparationRespectsProfileAuthority(t *testing.T) {
 }
 
 var _ outputplan.TreeReader = (*countingContextReader)(nil)
+
+func TestNonordinaryRoutesRetainCompletePublisherPreparation(t *testing.T) {
+	root := contextPreparationFixture(t)
+	testsupport.WriteAwfConfig(t, root, contextPreparationYAML+"render:\n  templateSourceRoot: templates\n")
+	testsupport.WriteFile(t, filepath.Join(root, "templates", "agents-doc", "AGENTS.md.tmpl"), "{{ broken")
+	state, repo := contextPreparationProject(t, root)
+	load := func(context.Context, string) (*project.ProjectState, *config.Config, *awfgit.Repo, error) {
+		return state, nil, repo, nil
+	}
+	gate := func(context.Context, string) error { return nil }
+	for _, input := range []Input{
+		{Paths: []string{"internal/foo/x.go"}, Range: "base..head"},
+		{Paths: []string{"internal/foo/x.go"}, Uncovered: true},
+	} {
+		if _, err := Run(testsupport.Context(t), root, input, load, gate, gate); err == nil || !strings.Contains(err.Error(), "template") {
+			t.Fatalf("nonordinary input %#v error = %v, want complete render validation", input, err)
+		}
+	}
+}
+
+func TestFocusedContextRetainsRequiredAnswerValidation(t *testing.T) {
+	cases := []struct {
+		name   string
+		mutate func(*testing.T, string)
+	}{
+		{"authority", func(t *testing.T, root string) {
+			testsupport.WriteFile(t, filepath.Join(root, ".awf", "topics", "metadata", "alpha", "one.yaml"), "title: [broken\n")
+		}},
+		{"marker", func(t *testing.T, root string) {
+			testsupport.WriteFile(t, filepath.Join(root, "internal", "foo", "x.go"), "package foo\n// state: no-such-claim\n")
+		}},
+		{"plan link", func(t *testing.T, root string) {
+			testsupport.WriteFile(t, filepath.Join(root, "docs", "plans", "2026-08-04-broken.md"), "---\nformat: plan-v2\ndate: 2026-08-04\nstatus: Proposed\n---\n# Plan: Broken\n")
+		}},
+		{"declaration", func(t *testing.T, root string) { writeMalformedPitfall(t, root) }},
+		{"requested artifact", func(t *testing.T, root string) {
+			testsupport.WriteFile(t, filepath.Join(root, ".awf", "awf.lock"), "not a lock\n")
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := contextPreparationFixture(t)
+			tc.mutate(t, root)
+			state, repo := contextPreparationProject(t, root)
+			if _, err := workingState(testsupport.Context(t), state, repo); err == nil {
+				t.Fatal("focused context accepted malformed input needed for its answer")
+			}
+		})
+	}
+}

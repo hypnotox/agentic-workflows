@@ -351,9 +351,10 @@ func TestContextCompositionOwnershipRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	parserCalls := map[string]map[string]int{
-		"Prepare":                          {"deriveOperationStateWithPitfalls": 1, "derivePlans": 1},
-		"deriveOperationStateWithPitfalls": {"LoadCorpusFromTree": 1, "LoadCorpusFromReader": 1},
-		"derivePlans":                      {"ParseSources": 1},
+		"Prepare":                {"deriveOperationStateWithPitfalls": 1, "derivePlans": 1},
+		"PrepareContext":         {"deriveContextSemantics": 1, "derivePlans": 1, "buildOutputDeclarations": 1},
+		"deriveContextSemantics": {"LoadCorpusFromTree": 1, "LoadCorpusFromReader": 1},
+		"derivePlans":            {"ParseSources": 1},
 	}
 	for _, declaration := range publisherFile.Decls {
 		fn, ok := declaration.(*ast.FuncDecl)

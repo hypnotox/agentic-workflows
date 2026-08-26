@@ -10625,6 +10625,114 @@
         "statements": 1
       },
       "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/inputs.go",
+        "start": {
+          "line": 183,
+          "column": 16
+        },
+        "end": {
+          "line": 185,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 2 focused Publisher extraction moved this retained defensive arm without changing its closed-state behavior or test oracle.",
+      "movedFrom": {
+        "file": "internal/publisher/inputs.go",
+        "start": {
+          "line": 133,
+          "column": 16
+        },
+        "end": {
+          "line": 135,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/inputs.go",
+        "start": {
+          "line": 230,
+          "column": 16
+        },
+        "end": {
+          "line": 232,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 2 focused Publisher extraction moved this retained defensive arm without changing its closed-state behavior or test oracle.",
+      "movedFrom": {
+        "file": "internal/publisher/inputs.go",
+        "start": {
+          "line": 180,
+          "column": 16
+        },
+        "end": {
+          "line": 182,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/inputs.go",
+        "start": {
+          "line": 234,
+          "column": 16
+        },
+        "end": {
+          "line": 236,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 2 focused Publisher extraction moved this retained defensive arm without changing its closed-state behavior or test oracle.",
+      "movedFrom": {
+        "file": "internal/publisher/inputs.go",
+        "start": {
+          "line": 184,
+          "column": 16
+        },
+        "end": {
+          "line": 186,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/inputs.go",
+        "start": {
+          "line": 238,
+          "column": 16
+        },
+        "end": {
+          "line": 240,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 2 focused Publisher extraction moved this retained defensive arm without changing its closed-state behavior or test oracle.",
+      "movedFrom": {
+        "file": "internal/publisher/inputs.go",
+        "start": {
+          "line": 188,
+          "column": 16
+        },
+        "end": {
+          "line": 190,
+          "column": 3
+        },
+        "statements": 1
+      }
     }
   ],
   "directives": [
@@ -18079,6 +18187,54 @@
       },
       "class": "revalidated-impossible-state",
       "evidence": "The immediate predecessor for `fmt.Fprintf(os.Stderr, \"pi-extension-test: wait for worker: %v\\n\", err)` at tools/pi-extension-test/lockrun/lockrun_unix.go:60 is `}` (tools/pi-extension-test/lockrun/lockrun_unix.go:59). Within `func run(args []string) int` at tools/pi-extension-test/lockrun/lockrun_unix.go:17, source review establishes Wait returns only ExitError after a successfully started command; this is therefore a closed-state fail-closed branch."
+    },
+    {
+      "directive": {
+        "file": "internal/publisher/inputs.go",
+        "line": 183,
+        "targetLine": 183,
+        "reason": "output-plan construction already validated the same glossary input",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The immediate predecessor for `if err != nil {` at internal/publisher/inputs.go:133 is `vocabulary, err := vocabularySemantics(p.inputs, pitfalls)` (internal/publisher/inputs.go:132). Within `func (p *Publisher) Prepare() (Preparation, error)` at internal/publisher/inputs.go:122, source review establishes output-plan construction already validated the same glossary input; this is therefore a closed-state fail-closed branch."
+    },
+    {
+      "directive": {
+        "file": "internal/publisher/inputs.go",
+        "line": 230,
+        "targetLine": 230,
+        "reason": "project loading already validated the selected sidecar",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "`func vocabularySemantics(p renderInputs, pitfalls pitfall.Corpus) (vocabularycheck.Input, error)` begins at internal/publisher/inputs.go:178; its branch `if err != nil {` at internal/publisher/inputs.go:180 follows `sc, err := p.cfg.Sidecar(\"docs\", \"glossary\")` at internal/publisher/inputs.go:179. That flow establishes project loading already validated the selected sidecar, making the defensive return unreachable without an invariant breach."
+    },
+    {
+      "directive": {
+        "file": "internal/publisher/inputs.go",
+        "line": 234,
+        "targetLine": 234,
+        "reason": "output-plan glossary transform already validated authored records",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The immediate predecessor for `if err != nil {` at internal/publisher/inputs.go:184 is `authored, err := glossary.Records(sc.Data[\"terms\"])` (internal/publisher/inputs.go:183). Within `func vocabularySemantics(p renderInputs, pitfalls pitfall.Corpus) (vocabularycheck.Input, error)` at internal/publisher/inputs.go:178, source review establishes output-plan glossary transform already validated authored records; this is therefore a closed-state fail-closed branch."
+    },
+    {
+      "directive": {
+        "file": "internal/publisher/inputs.go",
+        "line": 238,
+        "targetLine": 238,
+        "reason": "output-plan glossary transform already validated the merged records",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "At internal/publisher/inputs.go:188, `if err != nil {` is guarded by the preceding `merged, err := glossary.Merge(withDefaultData(sc, projectCatalog(p).Docs[\"glossary\"].Data, glossary.SpecializedListDataKeys(\"docs\", \"glossary\")...))` at internal/publisher/inputs.go:187; in `func vocabularySemantics(p renderInputs, pitfalls pitfall.Corpus) (vocabularycheck.Input, error)` (internal/publisher/inputs.go:178), the predecessor invariant is output-plan glossary transform already validated the merged records. Only violation of that closed state reaches this guard."
     }
   ],
   "platformDirectives": [

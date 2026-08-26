@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-prepare-ordinary-context-without-full-rendering: Prepare ordinary context without full rendering](prepare-ordinary-context-without-full-rendering.md) (Proposed)
+- [ADR-prepare-ordinary-context-without-full-rendering: Prepare ordinary context without full rendering](prepare-ordinary-context-without-full-rendering.md) (Implementing)
 
 ## History
 
