@@ -140,16 +140,16 @@ type syncCompositionCall struct {
 // invariant: code-design/dependency-composition:sync-project-loader-wiring (TestSyncCompositionAndCallers)
 func TestSyncCompositionAndCallers(t *testing.T) {
 	want := map[syncCompositionCall]int{
-		{file: "projectstate.go", owner: "openProjectOperation", name: "NewLoader"}:                   1,
-		{file: "projectstate.go", owner: "openProjectOperation", name: "NewLoaderWithoutRepository"}:  1,
-		{file: "projectstate.go", owner: "openProjectOperation", name: "OpenForOperation"}:            2,
-		{file: "sync.go", owner: "newProjectLoader", name: "NewLoader"}:                               1,
-		{file: "sync.go", owner: "newProjectLoader", name: "NewLoaderWithoutRepository"}:              1,
-		{file: "sync.go", owner: "runSyncPrinting", name: "OpenForOperation"}:                         1,
-		{file: "sync.go", owner: "runSyncPrinting", name: "SyncLeased"}:                               1,
-		{file: "upgrade_presentation.go", owner: "productionUpgradeSyncDependencies", name: "Sync"}:   1,
-		{file: "upgrade_presentation.go", owner: "upgradeSyncMutationWith", name: "OpenForOperation"}: 1,
-		{file: "adr.go", owner: "runADR", name: "Sync"}:                                               1,
+		{file: "projectstate.go", owner: "openProjectOperation", name: "NewLoader"}:                  1,
+		{file: "projectstate.go", owner: "openProjectOperation", name: "NewLoaderWithoutRepository"}: 1,
+		{file: "projectstate.go", owner: "openProjectOperation", name: "OpenForOperation"}:           2,
+		{file: "sync.go", owner: "newProjectLoader", name: "NewLoader"}:                              1,
+		{file: "sync.go", owner: "newProjectLoader", name: "NewLoaderWithoutRepository"}:             1,
+		{file: "sync.go", owner: "runSyncPrinting", name: "OpenForOperation"}:                        1,
+		{file: "sync.go", owner: "runSyncPrinting", name: "SyncLeased"}:                              1,
+		{file: "upgrade.go", owner: "upgradeSyncMutationLeased", name: "OpenForOperation"}:           1,
+		{file: "upgrade.go", owner: "upgradeSyncMutationLeased", name: "SyncLeased"}:                 1,
+		{file: "adr.go", owner: "runADR", name: "SyncLeased"}:                                        1,
 	}
 	assertSyncCompositionCalls(t, syncCompositionCalls(loadSyncCompositionPackage(t, nil)), want)
 

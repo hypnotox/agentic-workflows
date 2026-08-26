@@ -271,15 +271,15 @@ func functionBodyByObject(pkg *packages.Package, object *types.Func) *ast.BlockS
 }
 
 func unexpectedRouteEvasions(path string, evasions []string) []string {
-	// ADR numbering supplies Publisher synchronization as the declared concrete
-	// callback dependency of the one currentstatecoord operation. The callback
-	// is not invoked by command code and cannot satisfy the route operation.
-	if path != "adr number" {
+	// Numbering and upgrade supply Publisher synchronization as a concrete
+	// callback dependency while their focused operation retains lifecycle and
+	// recovery ownership. The callback cannot satisfy either route operation.
+	if path != "adr number" && path != "upgrade" {
 		return evasions
 	}
 	out := evasions[:0]
 	for _, evasion := range evasions {
-		if evasion != "github.com/hypnotox/agentic-workflows/internal/publisher.Sync" {
+		if evasion != "github.com/hypnotox/agentic-workflows/internal/publisher.Sync" && evasion != "github.com/hypnotox/agentic-workflows/internal/publisher.SyncLeased" {
 			out = append(out, evasion)
 		}
 	}
@@ -597,6 +597,9 @@ func statementBlock(statement ast.Stmt) *ast.BlockStmt {
 func assertBranchOperations(t *testing.T, pkg *packages.Package, name string, body *ast.BlockStmt, want []string) {
 	t.Helper()
 	got, evasions := operationCalls(pkg, body)
+	if strings.HasPrefix(name, "upgrade ") {
+		evasions = unexpectedRouteEvasions("upgrade", evasions)
+	}
 	if len(evasions) != 0 || !sameOperations(got, want) {
 		t.Errorf("%s operations = %v, evasions = %v, want %v", name, got, evasions, want)
 	}

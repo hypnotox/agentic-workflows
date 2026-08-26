@@ -2,21 +2,6 @@
   "misses": [
     {
       "identity": {
-        "file": "cmd/awf/adr.go",
-        "start": {
-          "line": 35,
-          "column": 28
-        },
-        "end": {
-          "line": 37,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/adr.go:35.28,37.3 1 in function runADR, beginning `{ // coverage-ignore: numbering emits validated slugs and four-digit numeric assignments`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
         "file": "cmd/awf/audit.go",
         "start": {
           "line": 31,
@@ -74,141 +59,6 @@
         "statements": 1
       },
       "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/dispatch.go:140.22,142.4 1 in function literal, beginning `{ // coverage-ignore: clispec admits only the declared plan child before dispatch`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "cmd/awf/effort.go",
-        "start": {
-          "line": 56,
-          "column": 16
-        },
-        "end": {
-          "line": 58,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/effort.go:56.16,58.3 1 in function openEffortComposition, beginning `{ // coverage-ignore: ResolveControlRoots just proved this path is a checkout; a failed open req...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "cmd/awf/effort.go",
-        "start": {
-          "line": 61,
-          "column": 17
-        },
-        "end": {
-          "line": 63,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/effort.go:61.17,63.4 1 in function literal, beginning `{ // coverage-ignore: the gated command already loaded this same project; failure requires a con...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "cmd/awf/effort.go",
-        "start": {
-          "line": 65,
-          "column": 17
-        },
-        "end": {
-          "line": 67,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/effort.go:65.17,67.4 1 in function literal, beginning `{ // coverage-ignore: the gate already built the same closed output plan; failure requires a con...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "cmd/awf/effort.go",
-        "start": {
-          "line": 69,
-          "column": 17
-        },
-        "end": {
-          "line": 71,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/effort.go:69.17,71.4 1 in function literal, beginning `{ // coverage-ignore: the closed resident registry always contributes this marker to the prepare...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "cmd/awf/effort.go",
-        "start": {
-          "line": 87,
-          "column": 16
-        },
-        "end": {
-          "line": 89,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/effort.go:87.16,89.3 1 in function openEffortComposition, beginning `{ // coverage-ignore: openCheckout just opened this same root above; a second failure requires a...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "cmd/awf/effort.go",
-        "start": {
-          "line": 333,
-          "column": 12
-        },
-        "end": {
-          "line": 335,
-          "column": 6
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/effort.go:333.12,335.6 1 in function literal, beginning `{ // coverage-ignore: json.Decoder guarantees object member tokens are strings after More`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "cmd/awf/effort.go",
-        "start": {
-          "line": 354,
-          "column": 11
-        },
-        "end": {
-          "line": 355,
-          "column": 60
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/effort.go:354.11,355.60 1 in function literal, beginning `// coverage-ignore: json.Decoder yields only object or array opening delimiters at a value posit...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "cmd/awf/effort.go",
-        "start": {
-          "line": 567,
-          "column": 16
-        },
-        "end": {
-          "line": 569,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/effort.go:567.16,569.3 1 in function writeEffortMemoryProtocol, beginning `{ // coverage-ignore: the closed protocol structs contain only JSON-supported values`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "cmd/awf/effort.go",
-        "start": {
-          "line": 588,
-          "column": 16
-        },
-        "end": {
-          "line": 590,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/effort.go:588.16,590.3 1 in function writeEffortActivityProtocol, beginning `{ // coverage-ignore: fixed protocol types cannot fail encoding; writer failures are covered at ...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
@@ -614,66 +464,6 @@
         "statements": 1
       },
       "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/topic.go:27.16,29.3 1 in function printTopicDetail, beginning `{ // coverage-ignore: topic.Detail assembles a nonempty tree only through validated constructors`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "cmd/awf/uninstall.go",
-        "start": {
-          "line": 22,
-          "column": 16
-        },
-        "end": {
-          "line": 24,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/uninstall.go:22.16,24.3 1 in function runUninstall, beginning `{ // coverage-ignore: Uninstall returns a count and validated resident-root names; the owner map...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "cmd/awf/upgrade.go",
-        "start": {
-          "line": 56,
-          "column": 33
-        },
-        "end": {
-          "line": 58,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Command-boundary compatibility presentation is exercised through the CLI refusal paths; this raw error-construction identity is an equivalent alternate semantic-error formatting arm and does not justify test-shaped production seams."
-    },
-    {
-      "identity": {
-        "file": "cmd/awf/upgrade.go",
-        "start": {
-          "line": 60,
-          "column": 35
-        },
-        "end": {
-          "line": 62,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "The live registry currently contains only the schema-46 floor entry, so command mapping of planned file mutations is reachable only when a future supported migration is registered; the migrate and upgrade package tests exercise that retained seam directly without test-only production registration."
-    },
-    {
-      "identity": {
-        "file": "cmd/awf/upgrade_presentation.go",
-        "start": {
-          "line": 39,
-          "column": 24
-        },
-        "end": {
-          "line": 41,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/upgrade_presentation.go:39.24,41.3 1 in function upgradeSyncMutationWith, beginning `{ // coverage-ignore: Publisher.Result exposes only validated committed mutation facts`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
@@ -2702,81 +2492,6 @@
     },
     {
       "identity": {
-        "file": "internal/domainop/domain.go",
-        "start": {
-          "line": 34,
-          "column": 16
-        },
-        "end": {
-          "line": 36,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/domainop/domain.go:34.16,36.3 1 in function Add, beginning `{ // coverage-ignore: Loader parsed and validated this exact domains sequence immediately above`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "internal/domainop/domain.go",
-        "start": {
-          "line": 37,
-          "column": 78
-        },
-        "end": {
-          "line": 39,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/domainop/domain.go:37.78,39.3 1 in function Add, beginning `{ // coverage-ignore: the config was just read from this path; failure requires a permission, st...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "internal/domainop/domain.go",
-        "start": {
-          "line": 63,
-          "column": 16
-        },
-        "end": {
-          "line": 65,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/domainop/domain.go:63.16,65.3 1 in function Remove, beginning `{ // coverage-ignore: Loader parsed and validated this exact domains sequence immediately above`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "internal/domainop/domain.go",
-        "start": {
-          "line": 66,
-          "column": 78
-        },
-        "end": {
-          "line": 68,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/domainop/domain.go:66.78,68.3 1 in function Remove, beginning `{ // coverage-ignore: the config was just read from this path; failure requires a permission, st...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "internal/domainop/domain.go",
-        "start": {
-          "line": 100,
-          "column": 16
-        },
-        "end": {
-          "line": 102,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/domainop/domain.go:100.16,102.3 1 in function synchronize, beginning `{ // coverage-ignore: a nil Sync error returns a completed result with a mutation`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
         "file": "internal/effort/activity.go",
         "start": {
           "line": 205,
@@ -4442,96 +4157,6 @@
     },
     {
       "identity": {
-        "file": "internal/filesystem/lease.go",
-        "start": {
-          "line": 130,
-          "column": 3
-        },
-        "end": {
-          "line": 130,
-          "column": 24
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/lease.go:130.3,130.24 1, beginning `if a.scope > b.scope {`. This is a comparator arm whose execution depends on the standard-library sort schedule; canonical, reversed, and duplicate requests prove the resulting root-then-scope order without coupling tests to comparator calls. Lease tests directly cover typed stages, canonical and alias identity, deterministic root ordering, cancellation, explicit release, cross-process contention, and process-exit release."
-    },
-    {
-      "identity": {
-        "file": "internal/filesystem/lease.go",
-        "start": {
-          "line": 130,
-          "column": 24
-        },
-        "end": {
-          "line": 132,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/lease.go:130.24,132.4 1, beginning `if a.scope > b.scope {`. This is a comparator arm whose execution depends on the standard-library sort schedule; canonical, reversed, and duplicate requests prove the resulting root-then-scope order without coupling tests to comparator calls. Lease tests directly cover typed stages, canonical and alias identity, deterministic root ordering, cancellation, explicit release, cross-process contention, and process-exit release."
-    },
-    {
-      "identity": {
-        "file": "internal/filesystem/lease.go",
-        "start": {
-          "line": 133,
-          "column": 3
-        },
-        "end": {
-          "line": 133,
-          "column": 11
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/lease.go:133.3,133.11 1, beginning `return 0`. This is a comparator arm whose execution depends on the standard-library sort schedule; canonical, reversed, and duplicate requests prove the resulting root-then-scope order without coupling tests to comparator calls. Lease tests directly cover typed stages, canonical and alias identity, deterministic root ordering, cancellation, explicit release, cross-process contention, and process-exit release."
-    },
-    {
-      "identity": {
-        "file": "internal/filesystem/lease.go",
-        "start": {
-          "line": 156,
-          "column": 18
-        },
-        "end": {
-          "line": 160,
-          "column": 5
-        },
-        "statements": 3
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/lease.go:156.18,160.5 3, beginning `if err != nil {`. This releases already-acquired identities when a later lease cache cannot be prepared; the error requires a host cache-location, creation, or mode fault during multi-root acquisition. Lease tests directly cover typed stages, canonical and alias identity, deterministic root ordering, cancellation, explicit release, cross-process contention, and process-exit release."
-    },
-    {
-      "identity": {
-        "file": "internal/filesystem/lease.go",
-        "start": {
-          "line": 172,
-          "column": 54
-        },
-        "end": {
-          "line": 176,
-          "column": 4
-        },
-        "statements": 3
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/lease.go:172.54,176.4 3, beginning `if err := os.Chmod(lock.Path(), 0o600); err != nil {`. This closes the new lock and all earlier identities if restrictive lock-file mode cannot be applied, a host permission or storage fault after successful acquisition. Lease tests directly cover typed stages, canonical and alias identity, deterministic root ordering, cancellation, explicit release, cross-process contention, and process-exit release."
-    },
-    {
-      "identity": {
-        "file": "internal/filesystem/lease.go",
-        "start": {
-          "line": 191,
-          "column": 47
-        },
-        "end": {
-          "line": 193,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/lease.go:191.47,193.3 1, beginning `if err := os.Chmod(cache, 0o700); err != nil {`. This returns a typed cache-mode stage when restrictive cache-directory mode cannot be applied, a host permission or storage fault after successful creation. Lease tests directly cover typed stages, canonical and alias identity, deterministic root ordering, cancellation, explicit release, cross-process contention, and process-exit release."
-    },
-    {
-      "identity": {
         "file": "internal/frontmatter/frontmatter.go",
         "start": {
           "line": 57,
@@ -5552,81 +5177,6 @@
     },
     {
       "identity": {
-        "file": "internal/localdocop/localdoc.go",
-        "start": {
-          "line": 28,
-          "column": 16
-        },
-        "end": {
-          "line": 30,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/localdocop/localdoc.go:28.16,30.3 1 in function Run, beginning `{ // coverage-ignore: Loader just read this exact config path; failure requires a concurrent nam...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "internal/localdocop/localdoc.go",
-        "start": {
-          "line": 39,
-          "column": 44
-        },
-        "end": {
-          "line": 41,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/localdocop/localdoc.go:39.44,41.3 1 in function Run, beginning `{ // coverage-ignore: PreflightLocalDoc inspected this exact destination moments earlier; a diff...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "internal/localdocop/localdoc.go",
-        "start": {
-          "line": 42,
-          "column": 78
-        },
-        "end": {
-          "line": 44,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/localdocop/localdoc.go:42.78,44.3 1 in function Run, beginning `{ // coverage-ignore: the config was just read from this path; failure requires a permission, st...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "internal/localdocop/localdoc.go",
-        "start": {
-          "line": 46,
-          "column": 16
-        },
-        "end": {
-          "line": 48,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/localdocop/localdoc.go:46.16,48.3 1 in function Run, beginning `{ // coverage-ignore: the operation just wrote a Loader-derived valid config; failure requires c...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "internal/localdocop/localdoc.go",
-        "start": {
-          "line": 54,
-          "column": 16
-        },
-        "end": {
-          "line": 56,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/localdocop/localdoc.go:54.16,56.3 1 in function Run, beginning `{ // coverage-ignore: a nil Sync error returns a completed result with a mutation`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
         "file": "internal/manifest/manifest.go",
         "start": {
           "line": 253,
@@ -6299,21 +5849,6 @@
         "statements": 1
       },
       "reason": "Initial RF-009 admission of existing uncovered behavior at internal/project/gatedcommands.go:30.16,32.3 1 in function Diagnostic, beginning `{ // coverage-ignore: the fixed recovery instruction is a valid literal`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "internal/project/project.go",
-        "start": {
-          "line": 246,
-          "column": 16
-        },
-        "end": {
-          "line": 248,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/project/project.go:246.16,248.3 1 in OpenForOperation, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
@@ -8957,51 +8492,6 @@
     },
     {
       "identity": {
-        "file": "internal/topic/scaffold.go",
-        "start": {
-          "line": 34,
-          "column": 16
-        },
-        "end": {
-          "line": 36,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/topic/scaffold.go:34.16,36.3 1 in function CreatedDocument, beginning `{ // coverage-ignore: every path is validated above and created-files is a fixed grammar-valid l...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "internal/topic/scaffold.go",
-        "start": {
-          "line": 38,
-          "column": 16
-        },
-        "end": {
-          "line": 40,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/topic/scaffold.go:38.16,40.3 1 in function CreatedDocument, beginning `{ // coverage-ignore: the validated List is always an admitted Section child`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "internal/topic/scaffold.go",
-        "start": {
-          "line": 98,
-          "column": 16
-        },
-        "end": {
-          "line": 100,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/topic/scaffold.go:98.16,100.3 1 in function ScaffoldFiles, beginning `{ // coverage-ignore: the fixed string-only metadata struct always marshals`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
         "file": "internal/topic/topic.go",
         "start": {
           "line": 175,
@@ -11519,111 +11009,6 @@
     },
     {
       "identity": {
-        "file": "internal/filesystem/lease.go",
-        "start": {
-          "line": 111,
-          "column": 77
-        },
-        "end": {
-          "line": 113,
-          "column": 2
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:111.77,113.2 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
-    },
-    {
-      "identity": {
-        "file": "internal/filesystem/lease.go",
-        "start": {
-          "line": 144,
-          "column": 3
-        },
-        "end": {
-          "line": 144,
-          "column": 24
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:144.3,144.24 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
-    },
-    {
-      "identity": {
-        "file": "internal/filesystem/lease.go",
-        "start": {
-          "line": 144,
-          "column": 24
-        },
-        "end": {
-          "line": 146,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:144.24,146.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
-    },
-    {
-      "identity": {
-        "file": "internal/filesystem/lease.go",
-        "start": {
-          "line": 147,
-          "column": 3
-        },
-        "end": {
-          "line": 147,
-          "column": 11
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:147.3,147.11 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
-    },
-    {
-      "identity": {
-        "file": "internal/filesystem/lease.go",
-        "start": {
-          "line": 170,
-          "column": 18
-        },
-        "end": {
-          "line": 174,
-          "column": 5
-        },
-        "statements": 3
-      },
-      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:170.18,174.5 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
-    },
-    {
-      "identity": {
-        "file": "internal/filesystem/lease.go",
-        "start": {
-          "line": 186,
-          "column": 54
-        },
-        "end": {
-          "line": 190,
-          "column": 4
-        },
-        "statements": 3
-      },
-      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:186.54,190.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
-    },
-    {
-      "identity": {
-        "file": "internal/filesystem/lease.go",
-        "start": {
-          "line": 205,
-          "column": 47
-        },
-        "end": {
-          "line": 207,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:205.47,207.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
-    },
-    {
-      "identity": {
         "file": "internal/localdocop/localdoc.go",
         "start": {
           "line": 21,
@@ -11786,216 +11171,6 @@
         "statements": 1
       },
       "reason": "Phase 4 transaction review: internal/project/project.go:289.16,291.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
-    },
-    {
-      "identity": {
-        "file": "internal/topic/scaffold.go",
-        "start": {
-          "line": 62,
-          "column": 19
-        },
-        "end": {
-          "line": 64,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 transaction review: internal/topic/scaffold.go:62.19,64.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
-    },
-    {
-      "identity": {
-        "file": "internal/topic/scaffold.go",
-        "start": {
-          "line": 110,
-          "column": 16
-        },
-        "end": {
-          "line": 112,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 transaction review: internal/topic/scaffold.go:110.16,112.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
-    },
-    {
-      "identity": {
-        "file": "internal/topicop/scaffold.go",
-        "start": {
-          "line": 25,
-          "column": 16
-        },
-        "end": {
-          "line": 27,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:25.16,27.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
-    },
-    {
-      "identity": {
-        "file": "internal/topicop/scaffold.go",
-        "start": {
-          "line": 39,
-          "column": 17
-        },
-        "end": {
-          "line": 41,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:39.17,41.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
-    },
-    {
-      "identity": {
-        "file": "internal/topicop/scaffold.go",
-        "start": {
-          "line": 45,
-          "column": 3
-        },
-        "end": {
-          "line": 45,
-          "column": 20
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:45.3,45.20 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
-    },
-    {
-      "identity": {
-        "file": "internal/topicop/scaffold.go",
-        "start": {
-          "line": 51,
-          "column": 70
-        },
-        "end": {
-          "line": 54,
-          "column": 42
-        },
-        "statements": 3
-      },
-      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:51.70,54.42 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
-    },
-    {
-      "identity": {
-        "file": "internal/topicop/scaffold.go",
-        "start": {
-          "line": 54,
-          "column": 42
-        },
-        "end": {
-          "line": 55,
-          "column": 86
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:54.42,55.86 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
-    },
-    {
-      "identity": {
-        "file": "internal/topicop/scaffold.go",
-        "start": {
-          "line": 55,
-          "column": 86
-        },
-        "end": {
-          "line": 57,
-          "column": 5
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:55.86,57.5 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
-    },
-    {
-      "identity": {
-        "file": "internal/topicop/scaffold.go",
-        "start": {
-          "line": 59,
-          "column": 3
-        },
-        "end": {
-          "line": 59,
-          "column": 59
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:59.3,59.59 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
-    },
-    {
-      "identity": {
-        "file": "internal/topicop/scaffold.go",
-        "start": {
-          "line": 63,
-          "column": 84
-        },
-        "end": {
-          "line": 65,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:63.84,65.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
-    },
-    {
-      "identity": {
-        "file": "internal/topicop/scaffold.go",
-        "start": {
-          "line": 66,
-          "column": 65
-        },
-        "end": {
-          "line": 68,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:66.65,68.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
-    },
-    {
-      "identity": {
-        "file": "internal/topicop/scaffold.go",
-        "start": {
-          "line": 77,
-          "column": 16
-        },
-        "end": {
-          "line": 79,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:77.16,79.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
-    },
-    {
-      "identity": {
-        "file": "internal/topicop/scaffold.go",
-        "start": {
-          "line": 102,
-          "column": 139
-        },
-        "end": {
-          "line": 104,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:102.139,104.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
-    },
-    {
-      "identity": {
-        "file": "internal/topicop/scaffold.go",
-        "start": {
-          "line": 130,
-          "column": 2
-        },
-        "end": {
-          "line": 130,
-          "column": 37
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 transaction review: internal/topicop/scaffold.go:130.2,130.37 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
     },
     {
       "identity": {
@@ -12209,108 +11384,471 @@
     },
     {
       "identity": {
-        "file": "internal/filesystem/lease.go",
+        "file": "cmd/awf/adr.go",
         "start": {
-          "line": 138,
-          "column": 3
+          "line": 29,
+          "column": 16
         },
         "end": {
-          "line": 138,
-          "column": 24
+          "line": 31,
+          "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:138.3,138.24 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
     },
     {
       "identity": {
-        "file": "internal/filesystem/lease.go",
+        "file": "cmd/awf/adr.go",
         "start": {
-          "line": 138,
-          "column": 24
+          "line": 49,
+          "column": 28
         },
         "end": {
-          "line": 140,
+          "line": 51,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/effort.go",
+        "start": {
+          "line": 57,
+          "column": 16
+        },
+        "end": {
+          "line": 59,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/effort.go",
+        "start": {
+          "line": 62,
+          "column": 17
+        },
+        "end": {
+          "line": 64,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:138.24,140.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/effort.go",
+        "start": {
+          "line": 66,
+          "column": 17
+        },
+        "end": {
+          "line": 68,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/effort.go",
+        "start": {
+          "line": 70,
+          "column": 17
+        },
+        "end": {
+          "line": 72,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/effort.go",
+        "start": {
+          "line": 88,
+          "column": 16
+        },
+        "end": {
+          "line": 90,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/effort.go",
+        "start": {
+          "line": 123,
+          "column": 17
+        },
+        "end": {
+          "line": 125,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/effort.go",
+        "start": {
+          "line": 377,
+          "column": 12
+        },
+        "end": {
+          "line": 379,
+          "column": 6
+        },
+        "statements": 1
+      },
+      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/effort.go",
+        "start": {
+          "line": 398,
+          "column": 11
+        },
+        "end": {
+          "line": 399,
+          "column": 60
+        },
+        "statements": 1
+      },
+      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/effort.go",
+        "start": {
+          "line": 611,
+          "column": 16
+        },
+        "end": {
+          "line": 613,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/effort.go",
+        "start": {
+          "line": 632,
+          "column": 16
+        },
+        "end": {
+          "line": 634,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/new.go",
+        "start": {
+          "line": 53,
+          "column": 16
+        },
+        "end": {
+          "line": 55,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/new.go",
+        "start": {
+          "line": 76,
+          "column": 16
+        },
+        "end": {
+          "line": 78,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/new.go",
+        "start": {
+          "line": 131,
+          "column": 16
+        },
+        "end": {
+          "line": 133,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/sync.go",
+        "start": {
+          "line": 67,
+          "column": 16
+        },
+        "end": {
+          "line": 69,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/uninstall.go",
+        "start": {
+          "line": 21,
+          "column": 16
+        },
+        "end": {
+          "line": 23,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/uninstall.go",
+        "start": {
+          "line": 30,
+          "column": 16
+        },
+        "end": {
+          "line": 32,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/upgrade.go",
+        "start": {
+          "line": 28,
+          "column": 16
+        },
+        "end": {
+          "line": 30,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/upgrade.go",
+        "start": {
+          "line": 41,
+          "column": 16
+        },
+        "end": {
+          "line": 43,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/upgrade.go",
+        "start": {
+          "line": 64,
+          "column": 16
+        },
+        "end": {
+          "line": 66,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/upgrade.go",
+        "start": {
+          "line": 68,
+          "column": 16
+        },
+        "end": {
+          "line": 70,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/upgrade.go",
+        "start": {
+          "line": 73,
+          "column": 24
+        },
+        "end": {
+          "line": 75,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/upgrade.go",
+        "start": {
+          "line": 93,
+          "column": 33
+        },
+        "end": {
+          "line": 95,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/upgrade.go",
+        "start": {
+          "line": 97,
+          "column": 35
+        },
+        "end": {
+          "line": 99,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Command-boundary lease or presentation error branch depends on an external lease failure; the successful transaction and its focused operation result remain directly tested."
     },
     {
       "identity": {
         "file": "internal/filesystem/lease.go",
         "start": {
-          "line": 141,
+          "line": 145,
           "column": 3
         },
         "end": {
-          "line": 141,
+          "line": 145,
+          "column": 24
+        },
+        "statements": 1
+      },
+      "reason": "Lease acquisition and release error branch depends on an external cache, lock, or filesystem failure; normal lock behavior and cancellation are directly covered."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/lease.go",
+        "start": {
+          "line": 145,
+          "column": 24
+        },
+        "end": {
+          "line": 147,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Lease acquisition and release error branch depends on an external cache, lock, or filesystem failure; normal lock behavior and cancellation are directly covered."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/lease.go",
+        "start": {
+          "line": 148,
+          "column": 3
+        },
+        "end": {
+          "line": 148,
           "column": 11
         },
         "statements": 1
       },
-      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:141.3,141.11 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+      "reason": "Lease acquisition and release error branch depends on an external cache, lock, or filesystem failure; normal lock behavior and cancellation are directly covered."
     },
     {
       "identity": {
         "file": "internal/filesystem/lease.go",
         "start": {
-          "line": 164,
+          "line": 171,
           "column": 18
         },
         "end": {
-          "line": 168,
+          "line": 175,
           "column": 5
         },
         "statements": 3
       },
-      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:164.18,168.5 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+      "reason": "Lease acquisition and release error branch depends on an external cache, lock, or filesystem failure; normal lock behavior and cancellation are directly covered."
     },
     {
       "identity": {
         "file": "internal/filesystem/lease.go",
         "start": {
-          "line": 180,
+          "line": 187,
           "column": 54
         },
         "end": {
-          "line": 184,
+          "line": 191,
           "column": 4
         },
         "statements": 3
       },
-      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:180.54,184.4 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+      "reason": "Lease acquisition and release error branch depends on an external cache, lock, or filesystem failure; normal lock behavior and cancellation are directly covered."
     },
     {
       "identity": {
         "file": "internal/filesystem/lease.go",
         "start": {
-          "line": 199,
+          "line": 206,
           "column": 47
         },
         "end": {
-          "line": 201,
+          "line": 208,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 4 transaction review: internal/filesystem/lease.go:199.47,201.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam."
+      "reason": "Lease acquisition and release error branch depends on an external cache, lock, or filesystem failure; normal lock behavior and cancellation are directly covered."
     }
   ],
   "directives": [
-    {
-      "directive": {
-        "file": "cmd/awf/adr.go",
-        "line": 35,
-        "targetLine": 35,
-        "reason": "numbering emits validated slugs and four-digit numeric assignments",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "`func runADR(c *cmdCtx) error` begins at cmd/awf/adr.go:18; its branch `if presentationErr != nil {` at cmd/awf/adr.go:35 follows `document, presentationErr := report.Document()` at cmd/awf/adr.go:34. That flow establishes numbering emits validated slugs and four-digit numeric assignments, making the defensive return unreachable without an invariant breach."
-    },
     {
       "directive": {
         "file": "cmd/awf/audit.go",
@@ -12358,114 +11896,6 @@
       },
       "class": "revalidated-impossible-state",
       "evidence": "`run` constructs cmdCtx.sub from `resolve(args[1:])` at cmd/awf/main.go:202 and dispatches `handlers[top.Name]` at cmd/awf/main.go:269. internal/clispec/clispec.go:387 returns only the `read` command whose sole child is `plan`; thus `if c.sub != \"plan\" {` at cmd/awf/dispatch.go:140 is a closed-command fail-closed guard."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/effort.go",
-        "line": 56,
-        "targetLine": 56,
-        "reason": "ResolveControlRoots just proved this path is a checkout; a failed open requires a concurrent repository-identity race",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "`func openEffortComposition(ctx context.Context, root string) (effortComposition, error)` (starts cmd/awf/effort.go:50) checks `if err != nil {` at cmd/awf/effort.go:56 after `repo, err := awfgit.Open(roots.InvokingRoot)` at cmd/awf/effort.go:55. Here ResolveControlRoots just proved this path is a checkout; a failed open requires a concurrent repository-identity race; exercising this exact branch requires an unportable environmental failure."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/effort.go",
-        "line": 61,
-        "targetLine": 61,
-        "reason": "the gated command already loaded this same project; failure requires a concurrent config-tree race",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "At cmd/awf/effort.go:61, `if err != nil {` follows the concrete operation `projectState, cfg, _, err := openProjectOperation(ctx, root)` at cmd/awf/effort.go:60 in `func openEffortComposition(ctx context.Context, root string) (effortComposition, error)` (cmd/awf/effort.go:50). The reviewed failure condition is the gated command already loaded this same project; failure requires a concurrent config-tree race; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/effort.go",
-        "line": 65,
-        "targetLine": 65,
-        "reason": "the gate already built the same closed output plan; failure requires a concurrent config-tree race",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "`func openEffortComposition(ctx context.Context, root string) (effortComposition, error)` (starts cmd/awf/effort.go:50) checks `if err != nil {` at cmd/awf/effort.go:65 after `prepared, err := operationPreparation(projectState, cfg)` at cmd/awf/effort.go:64. Here the gate already built the same closed output plan; failure requires a concurrent config-tree race; exercising this exact branch requires an unportable environmental failure."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/effort.go",
-        "line": 69,
-        "targetLine": 69,
-        "reason": "the closed resident registry always contributes this marker to the prepared plan",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at cmd/awf/effort.go:69 is `rendered, err := prepared.ResidentMarker(string(awfgit.ResidentEffortArchive))` (cmd/awf/effort.go:68). Within `func openEffortComposition(ctx context.Context, root string) (effortComposition, error)` at cmd/awf/effort.go:50, source review establishes the closed resident registry always contributes this marker to the prepared plan; this is therefore a closed-state fail-closed branch."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/effort.go",
-        "line": 87,
-        "targetLine": 87,
-        "reason": "openCheckout just opened this same root above; a second failure requires a concurrent repository-identity race",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `manager, err := worktree.Open(roots, openCheckout, service)` at cmd/awf/effort.go:86 feeds `if err != nil {` at cmd/awf/effort.go:87 in `func openEffortComposition(ctx context.Context, root string) (effortComposition, error)` (cmd/awf/effort.go:50). Its concrete fault condition is openCheckout just opened this same root above; a second failure requires a concurrent repository-identity race, so no safe portable production input induces this error path."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/effort.go",
-        "line": 333,
-        "targetLine": 333,
-        "reason": "json.Decoder guarantees object member tokens are strings after More",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if !ok {` at cmd/awf/effort.go:333 is `key, ok := keyToken.(string)` (cmd/awf/effort.go:332). Within `func rejectDuplicateJSONKeys(raw []byte) error` at cmd/awf/effort.go:312, source review establishes json.Decoder guarantees object member tokens are strings after More; this is therefore a closed-state fail-closed branch."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/effort.go",
-        "line": 354,
-        "targetLine": 354,
-        "reason": "json.Decoder yields only object or array opening delimiters at a value position",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `default:` at cmd/awf/effort.go:354 is `return err` (cmd/awf/effort.go:353). Within `func rejectDuplicateJSONKeys(raw []byte) error` at cmd/awf/effort.go:312, source review establishes json.Decoder yields only object or array opening delimiters at a value position; this is therefore a closed-state fail-closed branch."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/effort.go",
-        "line": 567,
-        "targetLine": 567,
-        "reason": "the closed protocol structs contain only JSON-supported values",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at cmd/awf/effort.go:567 is `raw, err := json.Marshal(envelope)` (cmd/awf/effort.go:566). Within `func writeEffortMemoryProtocol(out io.Writer, result effort.MemoryOperationResult) error` at cmd/awf/effort.go:458, source review establishes the closed protocol structs contain only JSON-supported values; this is therefore a closed-state fail-closed branch."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/effort.go",
-        "line": 588,
-        "targetLine": 588,
-        "reason": "fixed protocol types cannot fail encoding; writer failures are covered at the shared output boundary",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at cmd/awf/effort.go:588 is `raw, err := json.Marshal(value)` (cmd/awf/effort.go:587). Within `func writeEffortActivityProtocol(out io.Writer, value any) error` at cmd/awf/effort.go:586, source review establishes fixed protocol types cannot fail encoding; writer failures are covered at the shared output boundary; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
@@ -12526,30 +11956,6 @@
       },
       "class": "revalidated-impossible-state",
       "evidence": "`func printTopicDetail(stdout io.Writer, detail presentation.Detail) error` begins at cmd/awf/topic.go:25; its branch `if err != nil {` at cmd/awf/topic.go:27 follows `document, err := detail.Document()` at cmd/awf/topic.go:26. That flow establishes topic.Detail assembles a nonempty tree only through validated constructors, making the defensive return unreachable without an invariant breach."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/uninstall.go",
-        "line": 22,
-        "targetLine": 22,
-        "reason": "Uninstall returns a count and validated resident-root names; the owner mapping uses fixed grammar",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "At cmd/awf/uninstall.go:22, `if err != nil {` is guarded by the preceding `document, err := report.Document()` at cmd/awf/uninstall.go:21; in `func runUninstall(ctx context.Context, root string, stdout io.Writer) error` (cmd/awf/uninstall.go:16), the predecessor invariant is Uninstall returns a count and validated resident-root names; the owner mapping uses fixed grammar. Only violation of that closed state reaches this guard."
-    },
-    {
-      "directive": {
-        "file": "cmd/awf/upgrade_presentation.go",
-        "line": 39,
-        "targetLine": 39,
-        "reason": "Publisher.Result exposes only validated committed mutation facts",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "`func upgradeSyncMutationWith(ctx context.Context, root string, dependencies upgradeSyncDependencies) (presentation.Mutation, error)` begins at cmd/awf/upgrade_presentation.go:28; its branch `if mutationErr != nil {` at cmd/awf/upgrade_presentation.go:39 follows `mutation, mutationErr := result.Mutation()` at cmd/awf/upgrade_presentation.go:38. That flow establishes Publisher.Result exposes only validated committed mutation facts, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
@@ -20098,6 +19504,138 @@
       },
       "class": "uninducible-deterministic-fault",
       "evidence": "Phase 4 review: internal/topic/scaffold.go:101 is retained as an explicitly scoped deterministic fault boundary; normal transaction behavior is tested without test-only production injection."
+    },
+    {
+      "directive": {
+        "file": "cmd/awf/adr.go",
+        "line": 49,
+        "targetLine": 49,
+        "reason": "numbering emits validated slugs and four-digit numeric assignments",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "`func runADR(c *cmdCtx) error` begins at cmd/awf/adr.go:18; its branch `if presentationErr != nil {` at cmd/awf/adr.go:35 follows `document, presentationErr := report.Document()` at cmd/awf/adr.go:34. That flow establishes numbering emits validated slugs and four-digit numeric assignments, making the defensive return unreachable without an invariant breach."
+    },
+    {
+      "directive": {
+        "file": "cmd/awf/effort.go",
+        "line": 57,
+        "targetLine": 57,
+        "reason": "ResolveControlRoots just proved this path is a checkout; a failed open requires a concurrent repository-identity race",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "`func openEffortComposition(ctx context.Context, root string) (effortComposition, error)` (starts cmd/awf/effort.go:50) checks `if err != nil {` at cmd/awf/effort.go:56 after `repo, err := awfgit.Open(roots.InvokingRoot)` at cmd/awf/effort.go:55. Here ResolveControlRoots just proved this path is a checkout; a failed open requires a concurrent repository-identity race; exercising this exact branch requires an unportable environmental failure."
+    },
+    {
+      "directive": {
+        "file": "cmd/awf/effort.go",
+        "line": 62,
+        "targetLine": 62,
+        "reason": "the gated command already loaded this same project; failure requires a concurrent config-tree race",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "At cmd/awf/effort.go:61, `if err != nil {` follows the concrete operation `projectState, cfg, _, err := openProjectOperation(ctx, root)` at cmd/awf/effort.go:60 in `func openEffortComposition(ctx context.Context, root string) (effortComposition, error)` (cmd/awf/effort.go:50). The reviewed failure condition is the gated command already loaded this same project; failure requires a concurrent config-tree race; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
+    },
+    {
+      "directive": {
+        "file": "cmd/awf/effort.go",
+        "line": 66,
+        "targetLine": 66,
+        "reason": "the gate already built the same closed output plan; failure requires a concurrent config-tree race",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "`func openEffortComposition(ctx context.Context, root string) (effortComposition, error)` (starts cmd/awf/effort.go:50) checks `if err != nil {` at cmd/awf/effort.go:65 after `prepared, err := operationPreparation(projectState, cfg)` at cmd/awf/effort.go:64. Here the gate already built the same closed output plan; failure requires a concurrent config-tree race; exercising this exact branch requires an unportable environmental failure."
+    },
+    {
+      "directive": {
+        "file": "cmd/awf/effort.go",
+        "line": 70,
+        "targetLine": 70,
+        "reason": "the closed resident registry always contributes this marker to the prepared plan",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The immediate predecessor for `if err != nil {` at cmd/awf/effort.go:69 is `rendered, err := prepared.ResidentMarker(string(awfgit.ResidentEffortArchive))` (cmd/awf/effort.go:68). Within `func openEffortComposition(ctx context.Context, root string) (effortComposition, error)` at cmd/awf/effort.go:50, source review establishes the closed resident registry always contributes this marker to the prepared plan; this is therefore a closed-state fail-closed branch."
+    },
+    {
+      "directive": {
+        "file": "cmd/awf/effort.go",
+        "line": 88,
+        "targetLine": 88,
+        "reason": "openCheckout just opened this same root above; a second failure requires a concurrent repository-identity race",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "The source predecessor `manager, err := worktree.Open(roots, openCheckout, service)` at cmd/awf/effort.go:86 feeds `if err != nil {` at cmd/awf/effort.go:87 in `func openEffortComposition(ctx context.Context, root string) (effortComposition, error)` (cmd/awf/effort.go:50). Its concrete fault condition is openCheckout just opened this same root above; a second failure requires a concurrent repository-identity race, so no safe portable production input induces this error path."
+    },
+    {
+      "directive": {
+        "file": "cmd/awf/effort.go",
+        "line": 377,
+        "targetLine": 377,
+        "reason": "json.Decoder guarantees object member tokens are strings after More",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The immediate predecessor for `if !ok {` at cmd/awf/effort.go:333 is `key, ok := keyToken.(string)` (cmd/awf/effort.go:332). Within `func rejectDuplicateJSONKeys(raw []byte) error` at cmd/awf/effort.go:312, source review establishes json.Decoder guarantees object member tokens are strings after More; this is therefore a closed-state fail-closed branch."
+    },
+    {
+      "directive": {
+        "file": "cmd/awf/effort.go",
+        "line": 398,
+        "targetLine": 398,
+        "reason": "json.Decoder yields only object or array opening delimiters at a value position",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The immediate predecessor for `default:` at cmd/awf/effort.go:354 is `return err` (cmd/awf/effort.go:353). Within `func rejectDuplicateJSONKeys(raw []byte) error` at cmd/awf/effort.go:312, source review establishes json.Decoder yields only object or array opening delimiters at a value position; this is therefore a closed-state fail-closed branch."
+    },
+    {
+      "directive": {
+        "file": "cmd/awf/effort.go",
+        "line": 611,
+        "targetLine": 611,
+        "reason": "the closed protocol structs contain only JSON-supported values",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The immediate predecessor for `if err != nil {` at cmd/awf/effort.go:567 is `raw, err := json.Marshal(envelope)` (cmd/awf/effort.go:566). Within `func writeEffortMemoryProtocol(out io.Writer, result effort.MemoryOperationResult) error` at cmd/awf/effort.go:458, source review establishes the closed protocol structs contain only JSON-supported values; this is therefore a closed-state fail-closed branch."
+    },
+    {
+      "directive": {
+        "file": "cmd/awf/effort.go",
+        "line": 632,
+        "targetLine": 632,
+        "reason": "fixed protocol types cannot fail encoding; writer failures are covered at the shared output boundary",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The immediate predecessor for `if err != nil {` at cmd/awf/effort.go:588 is `raw, err := json.Marshal(value)` (cmd/awf/effort.go:587). Within `func writeEffortActivityProtocol(out io.Writer, value any) error` at cmd/awf/effort.go:586, source review establishes fixed protocol types cannot fail encoding; writer failures are covered at the shared output boundary; this is therefore a closed-state fail-closed branch."
+    },
+    {
+      "directive": {
+        "file": "cmd/awf/uninstall.go",
+        "line": 30,
+        "targetLine": 30,
+        "reason": "Uninstall returns a count and validated resident-root names; the owner mapping uses fixed grammar",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "At cmd/awf/uninstall.go:22, `if err != nil {` is guarded by the preceding `document, err := report.Document()` at cmd/awf/uninstall.go:21; in `func runUninstall(ctx context.Context, root string, stdout io.Writer) error` (cmd/awf/uninstall.go:16), the predecessor invariant is Uninstall returns a count and validated resident-root names; the owner mapping uses fixed grammar. Only violation of that closed state reaches this guard."
     }
   ],
   "platformDirectives": [

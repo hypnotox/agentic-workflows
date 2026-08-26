@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/localdocop"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
@@ -40,13 +42,18 @@ func runNew(ctx context.Context, root, kind string, args []string, stdout io.Wri
 	}
 }
 
-func newADR(ctx context.Context, root string, titleWords []string, stdout io.Writer) error {
+func newADR(ctx context.Context, root string, titleWords []string, stdout io.Writer) (returnErr error) {
 	if len(titleWords) == 0 {
 		return &usageErr{"usage: awf new adr <title>"}
 	}
 	if err := gate(ctx, root); err != nil {
 		return err
 	}
+	lease, err := filesystem.AcquireTrackedLease(ctx, root)
+	if err != nil {
+		return err
+	}
+	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
 	state, cfg, repo, err := openProjectOperation(ctx, root)
 	if err != nil {
 		return err
@@ -58,13 +65,18 @@ func newADR(ctx context.Context, root string, titleWords []string, stdout io.Wri
 	return writeStatus(stdout, "created: "+path)
 }
 
-func newPlan(ctx context.Context, root string, titleWords []string, stdout io.Writer) error {
+func newPlan(ctx context.Context, root string, titleWords []string, stdout io.Writer) (returnErr error) {
 	if len(titleWords) == 0 {
 		return &usageErr{"usage: awf new plan <title>"}
 	}
 	if err := gate(ctx, root); err != nil {
 		return err
 	}
+	lease, err := filesystem.AcquireTrackedLease(ctx, root)
+	if err != nil {
+		return err
+	}
+	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
 	state, _, _, err := openProjectOperation(ctx, root)
 	if err != nil {
 		return err
@@ -108,13 +120,18 @@ func derivedLocalDocTitle(name string) string {
 	return strings.Join(words, " ")
 }
 
-func newPitfall(ctx context.Context, root string, args []string, stdout io.Writer) error {
+func newPitfall(ctx context.Context, root string, args []string, stdout io.Writer) (returnErr error) {
 	if len(args) != 1 {
 		return &usageErr{"usage: awf new pitfall <title>"}
 	}
 	if err := gate(ctx, root); err != nil {
 		return err
 	}
+	lease, err := filesystem.AcquireTrackedLease(ctx, root)
+	if err != nil {
+		return err
+	}
+	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
 	state, _, _, err := openProjectOperation(ctx, root)
 	if err != nil {
 		return err

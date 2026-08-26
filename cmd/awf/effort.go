@@ -16,6 +16,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/effort"
 	"github.com/hypnotox/agentic-workflows/internal/effortop"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/worktree"
@@ -95,7 +96,7 @@ func openEffortComposition(ctx context.Context, root string) (effortComposition,
 // contract is exactly a subset of the handle's surface.
 func openCheckout(root string) (worktree.Runner, error) { return awfgit.Open(root) }
 
-func runEffort(c *cmdCtx, compose composeEffort) error {
+func runEffort(c *cmdCtx, compose composeEffort) (returnErr error) {
 	if err := validateEffortGrammar(c); err != nil {
 		if c.sub == "memory" || strings.HasPrefix(c.sub, "memory ") {
 			return &usageErr{boundedMemoryCommandError(err).Error()}
@@ -109,6 +110,22 @@ func runEffort(c *cmdCtx, compose composeEffort) error {
 			return boundedMemoryCommandError(err)
 		}
 		editRequest = &request
+	}
+	if effortMutates(c) {
+		residentRoot := awfgit.ProjectResidentRoot(c.ctx, c.root)
+		var lease *filesystem.Lease
+		var err error
+		if effortNeedsProjectLease(c) {
+			lease, err = filesystem.AcquireProjectLease(c.ctx, c.root, residentRoot)
+		} else {
+			lease, err = filesystem.AcquireResidentLease(c.ctx, residentRoot)
+		}
+		if err != nil {
+			return err
+		}
+		// The lease begins before composition opens resident records or Git
+		// topology, and remains live until the command has rendered its outcome.
+		defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
 	}
 	composed, err := compose(c.ctx, c.root)
 	if err != nil {
@@ -157,6 +174,33 @@ func runEffort(c *cmdCtx, compose composeEffort) error {
 		return err
 	}
 	return presentation.Render(c.stdout, document)
+}
+
+// effortMutates identifies the command population that changes resident
+// lifecycle authority. Read/list/show operations intentionally remain lease-free.
+func effortMutates(c *cmdCtx) bool {
+	switch c.sub {
+	case "finish", "worktree", "integrate", "memory edit", "memory update", "activity attach", "activity heartbeat", "activity detach":
+		return true
+	case "new":
+		return true
+	default:
+		return false
+	}
+}
+
+// effortNeedsProjectLease identifies lifecycle operations that combine resident
+// state with selected-checkout or Git topology. Pure memory, activity, and
+// worktree-free effort creation retain linked-worktree tracked concurrency.
+func effortNeedsProjectLease(c *cmdCtx) bool {
+	switch c.sub {
+	case "finish", "worktree", "integrate":
+		return true
+	case "new":
+		return !c.inv.bools["--no-worktree"]
+	default:
+		return false
+	}
 }
 
 func memoryReadInput(c *cmdCtx) effort.MemoryReadInput {

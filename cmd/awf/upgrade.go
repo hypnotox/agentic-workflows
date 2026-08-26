@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
@@ -21,7 +23,12 @@ func runUpgradeFlags(ctx context.Context, root string, recoverMode bool, stdout 
 	return runUpgrade(ctx, root, stdout)
 }
 
-func runRecover(root string, stdout io.Writer) error {
+func runRecover(root string, stdout io.Writer) (returnErr error) {
+	lease, err := filesystem.AcquireTrackedLease(context.Background(), root)
+	if err != nil {
+		return err
+	}
+	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
 	outcome, err := upgrade.RecoverOperation(root, migrate.ProjectPresent)
 	if err != nil {
 		return err
@@ -29,8 +36,18 @@ func runRecover(root string, stdout io.Writer) error {
 	return presentation.Render(stdout, outcome.Document)
 }
 
-func runUpgrade(ctx context.Context, root string, stdout io.Writer) error {
-	outcome, err := upgrade.Run(ctx, root, upgradeSyncMutation, gate, migrate.ProjectPresent, migrate.LiveSchemaRange, migrate.GateState, upgradeMigration, upgradeCurrentSchemaChange)
+func runUpgrade(ctx context.Context, root string, stdout io.Writer) (returnErr error) {
+	lease, err := filesystem.AcquireProjectLease(ctx, root, awfgit.ProjectResidentRoot(ctx, root))
+	if err != nil {
+		return err
+	}
+	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
+	// The terminal publisher shares this operation's lease rather than acquiring
+	// a nested transaction after migration has already observed authority.
+	sync := func(ctx context.Context, root string) (presentation.Mutation, error) {
+		return upgradeSyncMutationLeased(ctx, root, lease)
+	}
+	outcome, err := upgrade.Run(ctx, root, sync, gate, migrate.ProjectPresent, migrate.LiveSchemaRange, migrate.GateState, upgradeMigration, upgradeCurrentSchemaChange)
 	if err != nil {
 		return presentUpgradeRefusal(err)
 	}
@@ -39,6 +56,26 @@ func runUpgrade(ctx context.Context, root string, stdout io.Writer) error {
 
 // presentUpgradeRefusal is the command boundary for recovery guidance; semantic
 // compatibility errors remain machine-classifiable below this boundary.
+// upgradeSyncMutationLeased is the normal-upgrade terminal publication under
+// the lease acquired before authority and journal planning. Recovery remains
+// journal-owned and does not use Publisher.
+func upgradeSyncMutationLeased(ctx context.Context, root string, lease *filesystem.Lease) (presentation.Mutation, error) {
+	loader, err := newProjectLoader(root)
+	if err != nil {
+		return presentation.Mutation{}, err
+	}
+	state, cfg, err := loader.OpenForOperation(ctx, root)
+	if err != nil {
+		return presentation.Mutation{}, err
+	}
+	result, syncErr := composePublisher(state, cfg).SyncLeased(ctx, lease)
+	mutation, mutationErr := result.Mutation()
+	if mutationErr != nil {
+		return presentation.Mutation{}, mutationErr
+	}
+	return mutation, syncErr
+}
+
 func presentUpgradeRefusal(err error) error {
 	if errors.Is(err, manifest.ErrUnsupportedLiveSource) {
 		return presentLiveSourceRefusal(err)

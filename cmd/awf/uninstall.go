@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"io"
 
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
@@ -13,7 +16,12 @@ import (
 // resident.Uninstall: lock-tracked files, the dirs they leave empty, and the
 // lock). It deliberately leaves the authored .awf/ config (config.yaml,
 // sidecars, convention parts) in place.
-func runUninstall(ctx context.Context, root string, stdout io.Writer) error {
+func runUninstall(ctx context.Context, root string, stdout io.Writer) (returnErr error) {
+	lease, err := filesystem.AcquireProjectLease(ctx, root, awfgit.ProjectResidentRoot(ctx, root))
+	if err != nil {
+		return err
+	}
+	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
 	report, err := resident.Uninstall(ctx, root, publisher.IsLocalDocTemplate)
 	if err != nil {
 		return err
