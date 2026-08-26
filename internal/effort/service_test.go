@@ -423,7 +423,6 @@ func TestServiceRefusesAMissingDependency(t *testing.T) {
 		"worktree":       func(d *Dependencies) { d.Worktrees = nil },
 		"branch":         func(d *Dependencies) { d.BranchExists = nil },
 		"reference":      func(d *Dependencies) { d.ValidateRef = nil },
-		"tree removal":   func(d *Dependencies) { d.RemoveTree = nil },
 		"archive marker": func(d *Dependencies) { d.ExpectedArchiveMarker = nil },
 	} {
 		t.Run(name, func(t *testing.T) {

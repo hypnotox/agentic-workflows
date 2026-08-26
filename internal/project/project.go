@@ -350,8 +350,8 @@ func newADRLeased(root string, cfg *config.Config, repo *awfgit.Repo, ctx contex
 
 // newPlanLeased keeps plan naming at the plan owner while root-relative
 // template observation and publication use the selected-root capability.
-func newPlanLeased(root, title string, files *filesystem.Handle) (string, error) {
-	path, err := plan.NewFileLeased(files, filepath.ToSlash(filepath.Join(config.DocsDir, "plans")), title)
+func newPlanLeased(root, title string, lease *filesystem.Lease, files *filesystem.Handle) (string, error) {
+	path, err := plan.NewFileLeased(root, lease, files, filepath.ToSlash(filepath.Join(config.DocsDir, "plans")), title)
 	if err != nil {
 		return "", err
 	}

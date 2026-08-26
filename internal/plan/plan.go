@@ -244,10 +244,23 @@ func replaceOnce(s, old, replacement string) (string, error) {
 }
 
 // NewFileLeased scaffolds one plan through the caller-held selected-root
-// handle. plansDir is root-relative, so template observation and exclusive
+// capability. plansDir is root-relative, so template observation and exclusive
 // publication remain confined to the authority protected by the caller's lease.
 // touches-state: adr-system/plan-artifacts:plan-new-unnumbered - unnumbered dated plan scaffold; proof in plan_test.go
-func NewFileLeased(files *filesystem.Handle, plansDir, title string) (string, error) {
+func NewFileLeased(root string, lease *filesystem.Lease, files *filesystem.Handle, plansDir, title string) (string, error) {
+	if lease == nil || !lease.CoversTracked(root) {
+		return "", errors.New("plan creation requires a covering tracked lease")
+	}
+	if files == nil {
+		return "", errors.New("plan creation requires a selected-root handle")
+	}
+	matches, err := files.RootMatches(root)
+	if err != nil {
+		return "", err
+	}
+	if !matches {
+		return "", errors.New("plan creation handle does not match selected root")
+	}
 	title = strings.TrimSpace(title)
 	slug, err := slugify(title)
 	if err != nil {

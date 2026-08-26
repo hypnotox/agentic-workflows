@@ -87,8 +87,10 @@ type FinishResult struct {
 
 // RollbackResult reports the narrow failed-creation deletion transition.
 type RollbackResult struct {
-	Reserved bool
-	Removed  bool
+	Reserved        bool
+	Removed         bool
+	ReservationPath string
+	ResiduePath     string
 }
 
 // RecoveryAction is one independently executable ordered remedy for a failed

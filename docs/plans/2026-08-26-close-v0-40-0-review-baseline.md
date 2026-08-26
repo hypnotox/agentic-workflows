@@ -520,3 +520,12 @@ labels planned migrations separately until journal commit, and worktree removal 
 rollback retain exact known topology axes without inventing certainty. These authority-determined
 corrections preserve Publisher, upgrade-journal, Git-integration, and focused lifecycle ownership
 rather than introducing parallel policy.
+
+Renewed Phase 4 review found six remaining authority and presentation gaps. Settlement binds plan and
+ADR scaffold leases to the identity of their selected-root handles, inspects uninstall preservation
+through its already-open confined capability, and replaces raw resident worktree preparation and
+cleanup with the shared resident capability. Failed effort-creation rollback now detaches and retires
+only the observed identity while preserving a same-name successor and reporting an exact reservation
+or committed cleanup residue. Worktree failures report the exact managed path and branch. Root-swap,
+same-name successor, mismatched-handle, confined-preservation, and exact diagnostic regressions pass;
+these corrections preserve the approved transaction model without widening lifecycle policy.

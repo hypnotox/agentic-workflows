@@ -323,23 +323,6 @@ func TestFinishReservationCorruptionAndPublicationRacePreserveBytes(t *testing.T
 	})
 }
 
-func TestRollbackCreationRemovalFailureRetainsReservation(t *testing.T) {
-	root := initEffortRepo(t)
-	service := openTestService(t, root, func(deps *Dependencies) {
-		noTopology(deps)
-		deps.UUID = func() (string, error) { return testIDA, nil }
-		deps.RemoveTree = func(string) error { return errors.New("remove") }
-	})
-	record, err := service.New(testContext(t), NewInput{Slug: "rollback-remove", Title: "Rollback remove"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	result, err := service.RollbackCreation(testContext(t), record)
-	if err == nil || !result.Reserved || result.Removed {
-		t.Fatalf("result=%#v err=%v", result, err)
-	}
-}
-
 func TestRollbackCreationFaultBoundariesRetainTypedState(t *testing.T) {
 	for _, stage := range []string{"rollback.rename", "rollback.root-fsync", "rollback.delete", "rollback.delete-fsync"} {
 		t.Run(stage, func(t *testing.T) {

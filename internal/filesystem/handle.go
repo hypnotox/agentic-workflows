@@ -16,7 +16,22 @@ import (
 
 // Handle provides root-confined filesystem operations.
 type Handle struct {
-	root *os.Root
+	root     *os.Root
+	identity fs.FileInfo
+}
+
+// RootMatches reports whether this handle remains anchored at root's current
+// directory identity. It lets operation owners reject a handle supplied for a
+// different selected checkout before it can observe or publish anything.
+func (h *Handle) RootMatches(root string) (bool, error) {
+	info, err := os.Stat(root)
+	if err != nil {
+		return false, fmt.Errorf("filesystem: inspect root %q: %w", root, err)
+	}
+	if !info.IsDir() {
+		return false, fmt.Errorf("filesystem: root %q is not a directory", root)
+	}
+	return os.SameFile(h.identity, info), nil
 }
 
 // ErrIdentityChanged reports that a path no longer names the entry observed by
@@ -43,7 +58,12 @@ func Open(root string) (*Handle, error) {
 	if err != nil {
 		return nil, fmt.Errorf("filesystem: open root %q: %w", root, err)
 	}
-	return &Handle{root: r}, nil
+	identity, err := r.Stat(".")
+	if err != nil {
+		_ = r.Close()
+		return nil, fmt.Errorf("filesystem: identify opened root %q: %w", root, err)
+	}
+	return &Handle{root: r, identity: identity}, nil
 }
 
 // Close closes the root-confined filesystem handle.
@@ -226,7 +246,7 @@ func (h *Handle) ReplaceExpected(destination string, expected fs.FileInfo, conte
 		return fmt.Errorf("filesystem: close replacement temporary for %q: %w", destination, err) // coverage-ignore: closing a locally-created regular temporary after a successful sync requires a storage fault
 	}
 	file = nil
-	consumed, err := exchangeExpected(h.root, temporary, destination, expected, false)
+	consumed, err := exchangeExpected(h.root, temporary, destination, expected, false, false)
 	if consumed {
 		temporary = ""
 	}
@@ -258,6 +278,61 @@ func (h *Handle) RemoveAll(path string) error {
 	if err := h.root.RemoveAll(path); err != nil {
 		return fmt.Errorf("filesystem: remove-all %q: %w", path, err)
 	}
+	return nil
+}
+
+// RetireExpected atomically detaches the expected directory before deleting its
+// contents. A same-name successor installed after the exchange is never
+// traversed or removed.
+func (h *Handle) RetireExpected(destination string, expected fs.FileInfo) (returnErr error) {
+	if err := validPath(destination); err != nil {
+		return fmt.Errorf("filesystem: retire %q: %w", destination, err)
+	}
+	if expected == nil || !expected.IsDir() {
+		return fmt.Errorf("filesystem: retire %q: %w", destination, ErrIdentityChanged)
+	}
+	var temporary string
+	for range 100 {
+		var token [16]byte
+		if _, err := rand.Read(token[:]); err != nil {
+			return fmt.Errorf("filesystem: name retirement temporary for %q: %w", destination, err)
+		}
+		temporary = path.Join(path.Dir(destination), ".awf-retire-"+hex.EncodeToString(token[:]))
+		if err := h.root.Mkdir(temporary, 0o700); errors.Is(err, fs.ErrExist) {
+			continue
+		} else if err != nil {
+			return fmt.Errorf("filesystem: create retirement temporary for %q: %w", destination, err)
+		}
+		break
+	}
+	if temporary == "" { // coverage-ignore: random collision exhaustion is not practical
+		return fmt.Errorf("filesystem: create retirement temporary for %q: collisions exhausted", destination)
+	}
+	defer func() {
+		if temporary != "" {
+			if err := h.root.RemoveAll(temporary); err != nil && !errors.Is(err, fs.ErrNotExist) {
+				returnErr = errors.Join(returnErr, fmt.Errorf("filesystem: retire cleanup residue %q: %w", temporary, err))
+			}
+		}
+	}()
+	consumed, err := exchangeExpected(h.root, temporary, destination, expected, true, true)
+	if err != nil {
+		if consumed {
+			// The platform owner reports the retained residue. Do not let deferred
+			// cleanup erase committed recovery evidence.
+			temporary = ""
+		}
+		return fmt.Errorf("filesystem: retire %q: %w", destination, err)
+	}
+	if !consumed { // coverage-ignore: a successful expected exchange always consumes the temporary
+		return fmt.Errorf("filesystem: retire %q: expected mutation was not committed", destination) // coverage-ignore: platform helpers cannot report success without consumption
+	}
+	residue := temporary
+	if err := h.root.RemoveAll(residue); err != nil {
+		temporary = ""
+		return &filepublication.CommittedCleanupError{DestinationPath: destination, ResiduePath: residue, Cause: fmt.Errorf("remove retired tree: %w", err)}
+	}
+	temporary = ""
 	return nil
 }
 
@@ -322,7 +397,7 @@ func (h *Handle) RemoveExpected(destination string, expected fs.FileInfo) (retur
 			}
 		}
 	}()
-	consumed, err := exchangeExpected(h.root, temporary, destination, expected, true)
+	consumed, err := exchangeExpected(h.root, temporary, destination, expected, true, false)
 	if consumed {
 		temporary = ""
 	}
@@ -341,6 +416,23 @@ func (h *Handle) Remove(path string) error {
 		return fmt.Errorf("filesystem: remove %q: %w", path, err)
 	}
 	return nil
+}
+
+// ReadDir lists direct children beneath the selected root.
+func (h *Handle) ReadDir(path string) ([]fs.DirEntry, error) {
+	if err := validPath(path); err != nil {
+		return nil, fmt.Errorf("filesystem: read directory %q: %w", path, err)
+	}
+	directory, err := h.root.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("filesystem: read directory %q: %w", path, err)
+	}
+	entries, readErr := directory.ReadDir(-1)
+	closeErr := directory.Close()
+	if readErr != nil || closeErr != nil {
+		return nil, fmt.Errorf("filesystem: read directory %q: %w", path, errors.Join(readErr, closeErr))
+	}
+	return entries, nil
 }
 
 // Read reads path beneath the selected root.

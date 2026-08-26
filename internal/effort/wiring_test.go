@@ -1,7 +1,6 @@
 package effort
 
 import (
-	"os"
 	"testing"
 	"time"
 
@@ -27,7 +26,6 @@ func testWiring(t *testing.T, root string) (awfgit.ControlRoots, Dependencies) {
 		Worktrees:             repo.WorktreeList,
 		BranchExists:          repo.BranchExists,
 		ValidateRef:           repo.ValidateRefName,
-		RemoveTree:            os.RemoveAll,
 		ExpectedArchiveMarker: func() ([]byte, error) { return []byte(testArchiveMarker), nil },
 	}
 }

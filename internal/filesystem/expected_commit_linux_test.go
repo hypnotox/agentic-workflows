@@ -55,7 +55,7 @@ func TestExpectedMutationNeverTouchesRelocatedParentThroughEscapingSymlink(t *te
 				t.Fatal(err)
 			}
 
-			consumed, err := exchangeExpected(h.root, "parent/temporary", "parent/destination", expected, remove)
+			consumed, err := exchangeExpected(h.root, "parent/temporary", "parent/destination", expected, remove, false)
 			if err == nil || consumed {
 				t.Fatalf("escaping-parent commit = consumed %v, error %v; want uncommitted refusal", consumed, err)
 			}

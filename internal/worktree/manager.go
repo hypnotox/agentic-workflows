@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -40,6 +41,17 @@ type Runner interface {
 // of holding a single handle.
 type OpenCheckout func(root string) (Runner, error)
 
+// ResidentHandle is the confined resident-root capability the manager needs.
+type ResidentHandle interface {
+	Close() error
+	MkdirAll(string, fs.FileMode) error
+	LinkInfo(string) (fs.FileInfo, error)
+	RetireExpected(string, fs.FileInfo) error
+}
+
+// OpenResident provides the selected resident-root filesystem capability.
+type OpenResident func(root awfgit.ResidentName) (ResidentHandle, error)
+
 // Result carries structured managed-topology facts for orchestration and presentation mapping.
 type Result struct {
 	Condition       string
@@ -56,8 +68,9 @@ type Manager struct {
 	// git is the invoking checkout's surface, opened once with the roots it was
 	// proven against; open serves the managed checkout, which exists only part
 	// of the time.
-	git  Runner
-	open OpenCheckout
+	git          Runner
+	open         OpenCheckout
+	openResident OpenResident
 }
 
 // Open composes a manager over the control roots and dependencies it is given.
@@ -66,9 +79,12 @@ type Manager struct {
 // identity. Both dependencies are required: a manager silently defaulting its
 // Git access or its effort authority would make the composition root's choices
 // unverifiable.
-func Open(roots awfgit.ControlRoots, open OpenCheckout, efforts *effort.Service) (*Manager, error) {
+func Open(roots awfgit.ControlRoots, open OpenCheckout, openResident OpenResident, efforts *effort.Service) (*Manager, error) {
 	if open == nil {
 		panic("worktree Manager: missing checkout opener dependency")
+	}
+	if openResident == nil {
+		panic("worktree Manager: missing resident filesystem opener dependency")
 	}
 	if efforts == nil {
 		panic("worktree Manager: missing effort service dependency")
@@ -77,7 +93,7 @@ func Open(roots awfgit.ControlRoots, open OpenCheckout, efforts *effort.Service)
 	if err != nil {
 		return nil, err
 	}
-	return &Manager{roots: roots, efforts: efforts, git: checkout, open: open}, nil
+	return &Manager{roots: roots, efforts: efforts, git: checkout, open: open, openResident: openResident}, nil
 }
 
 func (m *Manager) managed(slug string) (string, error) {
@@ -89,6 +105,12 @@ func (m *Manager) managed(slug string) (string, error) {
 }
 
 func branch(slug string) string { return "awf/" + slug }
+
+// residentWorktrees opens the owned worktree parent as a confined capability.
+// Git still owns registration changes; this capability owns only resident bytes.
+func (m *Manager) residentWorktrees() (ResidentHandle, error) {
+	return m.openResident(awfgit.ResidentWorktrees)
+}
 
 func (m *Manager) validateManagedTarget(ctx context.Context, path string) error {
 	if _, err := m.roots.ResidentRoot(awfgit.ResidentWorktrees); err != nil {
@@ -239,7 +261,12 @@ func (m *Manager) Add(ctx context.Context, slug, base string) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil { // coverage-ignore: ResidentRoot proved the owned resident ancestry; failure requires a concurrent namespace or storage fault
+	resident, err := m.residentWorktrees()
+	if err != nil {
+		return Result{}, fmt.Errorf("open managed worktree root: %w", err)
+	}
+	defer resident.Close()
+	if err := resident.MkdirAll(".", 0o700); err != nil {
 		return Result{}, fmt.Errorf("create managed worktree root: %w", err)
 	}
 	if err := m.validateLiveInvokingCheckout(ctx); err != nil {
@@ -248,13 +275,13 @@ func (m *Manager) Add(ctx context.Context, slug, base string) (Result, error) {
 	if err := m.git.WorktreeAdd(ctx, path, branch(slug), full); err != nil {
 		effects := m.topologyEffects(ctx, slug, path)
 		if effects.Changed() {
-			return Result{}, &RefusalError{Category: "operation", Condition: "git worktree add failed", ChangedTopology: true, Topology: effects, Err: err,
+			return Result{}, &RefusalError{Category: "operation", Condition: "git worktree add failed", ChangedTopology: true, Topology: effects, ManagedPath: path, ManagedBranch: branch(slug), Err: err,
 				NextAction: "inspect actual Git topology", NextActions: []string{"inspect actual Git topology", "clean only the named managed path, registration, and branch with native Git", "retry add"}}
 		}
 		return Result{}, refusalCause("operation", "git worktree add failed", false, err, "address or resolve the reported failed Git call", "retry add")
 	}
 	if err := exactRegistration(ctx, m.git, path, wantBranch); err != nil {
-		return Result{}, &RefusalError{Category: "repository-identity", Condition: "Git add returned without exact managed registration", ChangedTopology: true, Topology: TopologyEffects{ManagedPath: true, GitRegistration: true, Branch: true}, Err: err, NextAction: "inspect actual Git topology", NextActions: []string{"inspect actual Git topology", "perform safe native-Git cleanup", "retry"}}
+		return Result{}, &RefusalError{Category: "repository-identity", Condition: "Git add returned without exact managed registration", ChangedTopology: true, Topology: TopologyEffects{ManagedPath: true, GitRegistration: true, Branch: true}, ManagedPath: path, ManagedBranch: branch(slug), Err: err, NextAction: "inspect actual Git topology", NextActions: []string{"inspect actual Git topology", "perform safe native-Git cleanup", "retry"}}
 	}
 	return Result{
 		Condition: "managed worktree added for " + slug, ChangedTopology: true,
@@ -299,32 +326,42 @@ func (m *Manager) rollback(ctx context.Context, record effort.Record, addErr err
 	case rollbackErr == nil:
 		return &CreationError{
 			Message:   fmt.Sprintf("worktree creation failed: %v; effort %s rolled back; next action: retry `awf effort new --slug %q %q`", addErr, slug, record.Slug, record.Title),
-			Condition: "managed worktree creation failed and the effort was rolled back", ChangedTopology: changedTopology, Topology: effects, Cause: addErr,
+			Condition: "managed worktree creation failed and the effort was rolled back", ChangedTopology: changedTopology, Topology: effects, ManagedPath: path, ManagedBranch: branch(slug), Cause: addErr,
 			Steps: []string{"fix the reported cause", fmt.Sprintf("retry `awf effort new --slug %q %q`", record.Slug, record.Title)},
 		}
 	case errors.Is(rollbackErr, effort.ErrManagedTopologyPresent):
 		return &CreationError{
 			Message:   fmt.Sprintf("worktree creation failed: %v; effort %s retained: managed topology remains; next action: inspect `git worktree list --porcelain`", addErr, slug),
-			Condition: "managed worktree creation failed and topology remains", ChangedEffort: true, ChangedTopology: changedTopology, Topology: effects, Cause: addErr, RollbackCause: rollbackErr,
+			Condition: "managed worktree creation failed and topology remains", ChangedEffort: true, ChangedTopology: changedTopology, Topology: effects, ManagedPath: path, ManagedBranch: branch(slug), Cause: addErr, RollbackCause: rollbackErr,
 			Steps: []string{"inspect `git worktree list --porcelain`", fmt.Sprintf("clean up with native Git or `awf effort worktree remove %s`", slug), fmt.Sprintf("retry `awf effort worktree add %s` or finish the effort", slug)},
 		}
 	case rollbackResult.Removed:
 		reservation := ".awf/efforts/.finishing-" + record.ID + "-" + slug
 		return &CreationError{
 			Message:   fmt.Sprintf("worktree creation failed: %v; effort %s deletion completed with parent durability uncertainty: %v; next action: verify the active resident and %s are absent", addErr, slug, rollbackErr, reservation),
-			Condition: "managed worktree creation failed after effort deletion with durability uncertainty", ChangedTopology: changedTopology, Topology: effects, Cause: addErr, RollbackCause: rollbackErr,
+			Condition: "managed worktree creation failed after effort deletion with durability uncertainty", ChangedTopology: changedTopology, Topology: effects, ManagedPath: path, ManagedBranch: branch(slug), Cause: addErr, RollbackCause: rollbackErr,
 			Steps: []string{fmt.Sprintf("verify `.awf/efforts/%s` is absent", slug), fmt.Sprintf("verify `%s` is absent", reservation), "retry effort creation only after both paths are absent"},
 		}
-	case rollbackResult.Reserved:
+	case rollbackResult.ResiduePath != "":
 		return &CreationError{
-			Message:   fmt.Sprintf("worktree creation failed: %v; effort %s deletion rollback was interrupted: %v; next action: inspect the finishing reservation", addErr, slug, rollbackErr),
-			Condition: "managed worktree creation failed and effort deletion rollback was interrupted", ChangedEffort: true, ChangedTopology: changedTopology, Topology: effects, Cause: addErr, RollbackCause: rollbackErr,
-			Steps: []string{"inspect the identity-bound finishing reservation", "complete safe manual cleanup only after verifying its immutable identity"},
+			Message:   fmt.Sprintf("worktree creation failed: %v; effort %s deletion left identity-bound cleanup residue %s: %v", addErr, slug, rollbackResult.ResiduePath, rollbackErr),
+			Condition: "managed worktree creation failed and effort deletion left identity-bound cleanup residue", ChangedEffort: true, ChangedTopology: changedTopology, Topology: effects, ManagedPath: path, ManagedBranch: branch(slug), Cause: addErr, RollbackCause: rollbackErr,
+			Steps: []string{"inspect `" + rollbackResult.ResiduePath + "`", "remove only the verified identity-bound cleanup residue", "retry effort creation only after the active resident and cleanup residue are absent"},
+		}
+	case rollbackResult.Reserved:
+		reservation := rollbackResult.ReservationPath
+		if reservation == "" {
+			reservation = ".awf/efforts/.finishing-" + record.ID + "-" + slug
+		}
+		return &CreationError{
+			Message:   fmt.Sprintf("worktree creation failed: %v; effort %s deletion rollback was interrupted: %v; next action: inspect the finishing reservation at %s", addErr, slug, rollbackErr, reservation),
+			Condition: "managed worktree creation failed and effort deletion rollback was interrupted", ChangedEffort: true, ChangedTopology: changedTopology, Topology: effects, ManagedPath: path, ManagedBranch: branch(slug), Cause: addErr, RollbackCause: rollbackErr,
+			Steps: []string{"inspect `" + reservation + "`", "complete safe manual cleanup only after verifying its immutable identity"},
 		}
 	default:
 		return &CreationError{
 			Message:   fmt.Sprintf("worktree creation failed: %v; effort %s retained: rollback failed: %v; next action: retry `awf effort worktree add %s` or inspect the resident", addErr, slug, rollbackErr, slug),
-			Condition: "managed worktree creation failed and effort rollback failed", ChangedEffort: true, ChangedTopology: changedTopology, Topology: effects, Cause: addErr, RollbackCause: rollbackErr,
+			Condition: "managed worktree creation failed and effort rollback failed", ChangedEffort: true, ChangedTopology: changedTopology, Topology: effects, ManagedPath: path, ManagedBranch: branch(slug), Cause: addErr, RollbackCause: rollbackErr,
 			Steps: []string{"resolve the rollback failure", fmt.Sprintf("retry `awf effort worktree add %s` or `awf effort finish %s`", slug, slug)},
 		}
 	}
@@ -496,7 +533,7 @@ var removalProbeRecoveryActions = []string{
 // removalProbeFailure preserves a mechanism error before any mutation, but
 // after one converts it to the actionable topology outcome that a caller needs
 // to recover safely from the residue before retrying.
-func removalProbeFailure(changed bool, effects TopologyEffects, condition string, err error) error {
+func removalProbeFailure(changed bool, effects TopologyEffects, path, managedBranch, condition string, err error) error {
 	if !changed {
 		return err
 	}
@@ -512,13 +549,14 @@ func removalProbeFailure(changed bool, effects TopologyEffects, condition string
 	}
 	return &RefusalError{
 		Category: category, Condition: condition, ChangedTopology: true, Topology: effects,
+		ManagedPath: path, ManagedBranch: managedBranch,
 		NextAction: removalProbeRecovery, NextActions: removalProbeRecoveryActions, Err: err,
 	}
 }
 
-func removalRefusal(effects TopologyEffects, category, condition string, err error, actions ...string) error {
+func removalRefusal(effects TopologyEffects, path, managedBranch, category, condition string, err error, actions ...string) error {
 	changed := effects.Changed()
-	return &RefusalError{Category: category, Condition: condition, ChangedTopology: changed, Topology: effects, NextAction: strings.Join(actions, "; "), NextActions: actions, Err: err}
+	return &RefusalError{Category: category, Condition: condition, ChangedTopology: changed, Topology: effects, ManagedPath: path, ManagedBranch: managedBranch, NextAction: strings.Join(actions, "; "), NextActions: actions, Err: err}
 }
 
 // removalMutationFailure re-observes a failed destructive command. It records
@@ -527,7 +565,7 @@ func removalRefusal(effects TopologyEffects, category, condition string, err err
 func (m *Manager) removalMutationFailure(ctx context.Context, slug, path string, effects, before TopologyEffects, condition string, err error, actions ...string) error {
 	after := m.topologyEffects(ctx, slug, path)
 	effects = effects.merge(after.changedSince(before))
-	return removalRefusal(effects, "operation", condition, err, actions...)
+	return removalRefusal(effects, path, branch(slug), "operation", condition, err, actions...)
 }
 
 func (m *Manager) Remove(ctx context.Context, slug string) (Result, error) {
@@ -554,28 +592,28 @@ func (m *Manager) Remove(ctx context.Context, slug string) (Result, error) {
 		if _, statErr := managedLstat(path); statErr == nil {
 			pathPresent = true
 		} else if !errors.Is(statErr, os.ErrNotExist) { // coverage-ignore: local lstat reports an inode or os.ErrNotExist absent a kernel fault
-			return Result{}, removalProbeFailure(changed, effects, "managed path probe failed during removal", statErr)
+			return Result{}, removalProbeFailure(changed, effects, path, branch(slug), "managed path probe failed during removal", statErr)
 		}
 		regs, regsErr := m.git.WorktreeList(ctx)
 		if regsErr != nil {
-			return Result{}, removalProbeFailure(changed, effects, "managed topology probe failed during removal", regsErr)
+			return Result{}, removalProbeFailure(changed, effects, path, branch(slug), "managed topology probe failed during removal", regsErr)
 		}
 		var exact *awfgit.WorktreeRegistration
 		for index := range regs {
 			registration := &regs[index]
 			if filepath.Clean(registration.Path) == filepath.Clean(path) {
 				if exact != nil || registration.Branch != "refs/heads/"+branch(slug) || registration.Detached || registration.Bare {
-					return Result{}, removalRefusal(effects, "repository-identity", "managed path registration is not exact", nil, "inspect native Git topology", "clean it manually without discarding work")
+					return Result{}, removalRefusal(effects, path, branch(slug), "repository-identity", "managed path registration is not exact", nil, "inspect native Git topology", "clean it manually without discarding work")
 				}
 				exact = registration
 			}
 			if registration.Branch == "refs/heads/"+branch(slug) && filepath.Clean(registration.Path) != filepath.Clean(path) {
-				return Result{}, removalRefusal(effects, "repository-identity", "managed branch is registered at a foreign path", nil, "inspect native Git topology", "clean it manually without discarding work")
+				return Result{}, removalRefusal(effects, path, branch(slug), "repository-identity", "managed branch is registered at a foreign path", nil, "inspect native Git topology", "clean it manually without discarding work")
 			}
 		}
 		branchPresent, branchErr := m.git.BranchExists(ctx, branch(slug))
 		if branchErr != nil {
-			return Result{}, removalProbeFailure(changed, effects, "managed branch probe failed during removal", branchErr)
+			return Result{}, removalProbeFailure(changed, effects, path, branch(slug), "managed branch probe failed during removal", branchErr)
 		}
 		observed := TopologyEffects{ManagedPath: pathPresent, GitRegistration: exact != nil, Branch: branchPresent}
 		if !pathPresent && exact == nil && !branchPresent {
@@ -584,25 +622,25 @@ func (m *Manager) Remove(ctx context.Context, slug string) (Result, error) {
 		if branchPresent {
 			merged, ancestryErr := m.git.Ancestor(ctx, branch(slug), "HEAD")
 			if ancestryErr != nil {
-				return Result{}, removalProbeFailure(changed, effects, "managed branch ancestry probe failed during removal", ancestryErr)
+				return Result{}, removalProbeFailure(changed, effects, path, branch(slug), "managed branch ancestry probe failed during removal", ancestryErr)
 			}
 			if !merged {
-				return Result{}, removalRefusal(effects, "ancestry", "managed branch is not merged into the target", nil, "integrate the managed branch, or inspect the branch with native Git", "if integration was selected, settle terminal review", "if inspection selected discarding, discard the branch explicitly with native Git")
+				return Result{}, removalRefusal(effects, path, branch(slug), "ancestry", "managed branch is not merged into the target", nil, "integrate the managed branch, or inspect the branch with native Git", "if integration was selected, settle terminal review", "if inspection selected discarding, discard the branch explicitly with native Git")
 			}
 		}
 		if pathPresent {
 			if err := m.validateManagedTarget(ctx, path); err != nil {
-				return Result{}, removalProbeFailure(changed, effects, "managed target validation failed during removal", err)
+				return Result{}, removalProbeFailure(changed, effects, path, branch(slug), "managed target validation failed during removal", err)
 			}
 			managedCheckout, openErr := m.open(path)
 			if openErr != nil {
-				return Result{}, removalProbeFailure(changed, effects, "managed checkout open failed during removal", openErr)
+				return Result{}, removalProbeFailure(changed, effects, path, branch(slug), "managed checkout open failed during removal", openErr)
 			}
 			if err := operationFree(ctx, managedCheckout); err != nil {
-				return Result{}, removalProbeFailure(changed, effects, "managed checkout operation probe failed during removal", err)
+				return Result{}, removalProbeFailure(changed, effects, path, branch(slug), "managed checkout operation probe failed during removal", err)
 			}
 			if err := requireClean(ctx, managedCheckout); err != nil {
-				return Result{}, removalRefusal(effects, "cleanliness", "managed worktree is dirty", err, "commit the changes with native Git, or inspect them with native Git", "if inspection selected discarding, discard the changes explicitly with native Git", "retry ordinary removal")
+				return Result{}, removalRefusal(effects, path, branch(slug), "cleanliness", "managed worktree is dirty", err, "commit the changes with native Git, or inspect them with native Git", "if inspection selected discarding, discard the changes explicitly with native Git", "retry ordinary removal")
 			}
 			if exact != nil {
 				if err := m.git.WorktreeRemove(ctx, path); err != nil {
@@ -610,8 +648,17 @@ func (m *Manager) Remove(ctx context.Context, slug string) (Result, error) {
 				}
 				effects.ManagedPath, effects.GitRegistration = true, true
 			} else {
-				if err := os.RemoveAll(path); err != nil { // coverage-ignore: path identity and cleanliness were just proven; recursive removal failure requires a concurrent namespace or storage fault
-					return Result{}, m.removalMutationFailure(ctx, slug, path, effects, observed, "proven unregistered managed path cleanup failed", err, "inspect the path", "retry ordinary removal")
+				resident, openErr := m.residentWorktrees()
+				if openErr != nil {
+					return Result{}, m.removalMutationFailure(ctx, slug, path, effects, observed, "open unregistered managed path cleanup root failed", openErr, "inspect the path", "retry ordinary removal")
+				}
+				expected, infoErr := resident.LinkInfo(slug)
+				if infoErr == nil {
+					infoErr = resident.RetireExpected(slug, expected)
+				}
+				closeErr := resident.Close()
+				if infoErr != nil || closeErr != nil {
+					return Result{}, m.removalMutationFailure(ctx, slug, path, effects, observed, "proven unregistered managed path cleanup failed", errors.Join(infoErr, closeErr), "inspect the path", "retry ordinary removal")
 				}
 				effects.ManagedPath = true
 			}

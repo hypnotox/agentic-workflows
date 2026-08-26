@@ -179,7 +179,7 @@ func TestUninstallPartialEffectsFaultMatrix(t *testing.T) {
 					return nil, e
 				}
 				return failingHandle{h, tc.fail, failure}, nil
-			}, inspectRoots: func(string) ([]string, error) { return nil, nil }}
+			}, inspectRoots: func(uninstallHandle) ([]string, error) { return nil, nil }}
 			report, err := uninstallWith(context.Background(), root, func(s string) bool { return s == "local" }, ops)
 			if !errors.Is(err, failure) {
 				t.Fatalf("error = %v", err)
@@ -223,7 +223,7 @@ func TestUninstallReportsLockRemovalBeforeTerminalFault(t *testing.T) {
 			}
 			return closeFailingHandle{uninstallHandle: handle, failure: failure}, nil
 		},
-		inspectRoots: func(string) ([]string, error) { return nil, nil },
+		inspectRoots: func(uninstallHandle) ([]string, error) { return nil, nil },
 	})
 	if !errors.Is(err, failure) {
 		t.Fatalf("error = %v, want %v", err, failure)
@@ -250,7 +250,7 @@ func TestUninstallRefusesParentSwapWithoutOutsideMutation(t *testing.T) {
 	testsupport.WriteFile(t, filepath.Join(root, "safe/generated.md"), "inside\n")
 	testsupport.WriteFile(t, filepath.Join(outside, "generated.md"), "outside\n")
 	saveLock(t, root, map[string]manifest.Entry{"safe/generated.md": {}})
-	ops := uninstallOps{open: productionUninstallOpen, inspectRoots: func(string) ([]string, error) {
+	ops := uninstallOps{open: productionUninstallOpen, inspectRoots: func(uninstallHandle) ([]string, error) {
 		if err := os.Rename(filepath.Join(root, "safe"), filepath.Join(root, "safe-old")); err != nil {
 			return nil, err
 		}
@@ -265,6 +265,51 @@ func TestUninstallRefusesParentSwapWithoutOutsideMutation(t *testing.T) {
 	}
 	if len(report.RemovedGenerated) != 0 {
 		t.Fatalf("swapped path reported removed: %#v", report)
+	}
+}
+
+func TestInspectRootsReportsMissingResidentRoot(t *testing.T) {
+	if _, err := InspectRoots(filepath.Join(t.TempDir(), "missing")); err == nil {
+		t.Fatal("missing resident root inspection succeeded")
+	}
+}
+
+func TestUninstallKeepsPreservationInspectionAndMutationOnOpenedRoot(t *testing.T) {
+	container := t.TempDir()
+	root := filepath.Join(container, "project")
+	if err := os.Mkdir(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	ignore := filepath.Join(config.DirName, "efforts", ".gitignore")
+	testsupport.WriteFile(t, filepath.Join(root, ignore), "original ignore\n")
+	testsupport.WriteFile(t, filepath.Join(root, config.DirName, "efforts", "owned-data"), "preserve\n")
+	saveLock(t, root, map[string]manifest.Entry{filepath.ToSlash(ignore): {}})
+	relocated := filepath.Join(container, "opened-root")
+	ops := uninstallOps{open: productionUninstallOpen, inspectRoots: func(handle uninstallHandle) ([]string, error) {
+		if err := os.Rename(root, relocated); err != nil {
+			return nil, err
+		}
+		if err := os.Mkdir(root, 0o755); err != nil {
+			return nil, err
+		}
+		testsupport.WriteFile(t, filepath.Join(root, "replacement-sentinel"), "keep\n")
+		return inspectRootsConfined(handle)
+	}}
+	report, err := uninstallWith(context.Background(), root, nil, ops)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(report.PreservedRoots, []string{"efforts"}) {
+		t.Fatalf("preserved roots = %v", report.PreservedRoots)
+	}
+	if got, err := os.ReadFile(filepath.Join(relocated, ignore)); err != nil || string(got) != "original ignore\n" {
+		t.Fatalf("opened-root preserved file = %q, %v", got, err)
+	}
+	if _, err := os.Lstat(config.LockPath(relocated)); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("opened-root lock was not removed: %v", err)
+	}
+	if got, err := os.ReadFile(filepath.Join(root, "replacement-sentinel")); err != nil || string(got) != "keep\n" {
+		t.Fatalf("replacement root changed: %q, %v", got, err)
 	}
 }
 

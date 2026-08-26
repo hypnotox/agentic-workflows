@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/hypnotox/agentic-workflows/internal/filepublication"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
@@ -30,7 +32,6 @@ type Dependencies struct {
 	Worktrees             func(context.Context) ([]awfgit.WorktreeRegistration, error)
 	BranchExists          func(context.Context, string) (bool, error)
 	ValidateRef           func(context.Context, string) (bool, error)
-	RemoveTree            func(string) error
 	ExpectedArchiveMarker func() ([]byte, error)
 	// Fault is the durability-boundary hook the restartable-finish tests
 	// interrupt the service at. It is the one optional member: a nil Fault
@@ -48,7 +49,6 @@ type Service struct {
 	worktrees             func(context.Context) ([]awfgit.WorktreeRegistration, error)
 	branchExists          func(context.Context, string) (bool, error)
 	validateRef           func(context.Context, string) (bool, error)
-	removeTree            func(string) error
 	expectedArchiveMarker func() ([]byte, error)
 }
 
@@ -68,8 +68,6 @@ func Open(roots awfgit.ControlRoots, deps Dependencies) (*Service, error) {
 		panic("effort Service: missing branch probe dependency")
 	case deps.ValidateRef == nil:
 		panic("effort Service: missing reference validation dependency")
-	case deps.RemoveTree == nil:
-		panic("effort Service: missing tree removal dependency")
 	case deps.ExpectedArchiveMarker == nil:
 		panic("effort Service: missing archive marker dependency")
 	}
@@ -80,7 +78,7 @@ func Open(roots awfgit.ControlRoots, deps Dependencies) (*Service, error) {
 	return &Service{
 		paths: resolved, store: store{paths: resolved, fault: deps.Fault},
 		clock: deps.Clock, uuid: deps.UUID, worktrees: deps.Worktrees,
-		branchExists: deps.BranchExists, validateRef: deps.ValidateRef, removeTree: deps.RemoveTree,
+		branchExists: deps.BranchExists, validateRef: deps.ValidateRef,
 		expectedArchiveMarker: deps.ExpectedArchiveMarker,
 	}, nil
 }
@@ -357,7 +355,18 @@ func (s *Service) RollbackCreation(ctx context.Context, identity Record) (Rollba
 	if err := moveDirectoryNoReplace(active, reservation); err != nil { // coverage-ignore: identity was just proven and the UUID reservation is absent
 		return RollbackResult{}, fmt.Errorf("reserve failed-creation rollback: %w", err)
 	}
-	result := RollbackResult{Reserved: true}
+	result := RollbackResult{Reserved: true, ReservationPath: reservation}
+	reservedRecord, err := s.store.loadDirectory(reservation, identity.Slug, true)
+	if err != nil {
+		return result, fmt.Errorf("validate identity-bound failed-creation reservation: %w", err)
+	}
+	if reservedRecord.ID != identity.ID || reservedRecord.Slug != identity.Slug {
+		return result, fmt.Errorf("validate identity-bound failed-creation reservation: immutable identity changed")
+	}
+	reservedIdentity, err := os.Lstat(reservation)
+	if err != nil {
+		return result, fmt.Errorf("identify identity-bound failed-creation reservation: %w", err)
+	}
 	if err := s.store.hit("rollback.root-fsync"); err != nil {
 		return result, fmt.Errorf("sync efforts parent after rollback reservation: %w", err)
 	}
@@ -367,10 +376,23 @@ func (s *Service) RollbackCreation(ctx context.Context, identity Record) (Rollba
 	if err := s.store.hit("rollback.delete"); err != nil {
 		return result, err
 	}
-	if err := s.removeTree(reservation); err != nil {
-		return result, fmt.Errorf("delete identity-bound failed-creation reservation: %w", err)
+	files, err := filesystem.Open(s.paths.efforts)
+	if err != nil {
+		return result, fmt.Errorf("open identity-bound failed-creation reservation root: %w", err)
 	}
-	result.Removed = true
+	err = files.RetireExpected(tombstoneName(record), reservedIdentity)
+	closeErr := files.Close()
+	if err == nil {
+		result.Removed = true
+		result.ReservationPath = ""
+	}
+	if err != nil || closeErr != nil {
+		var cleanup *filepublication.CommittedCleanupError
+		if errors.As(err, &cleanup) {
+			result.ResiduePath = filepath.Join(s.paths.efforts, filepath.FromSlash(cleanup.ResiduePath))
+		}
+		return result, fmt.Errorf("delete identity-bound failed-creation reservation: %w", errors.Join(err, closeErr))
+	}
 	if err := s.store.hit("rollback.delete-fsync"); err != nil {
 		return result, fmt.Errorf("sync efforts parent after rollback deletion: %w", err)
 	}

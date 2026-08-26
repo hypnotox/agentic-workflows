@@ -25,7 +25,7 @@ var replaceFileW = windows.NewLazySystemDLL("kernel32.dll").NewProc("ReplaceFile
 // of the native syscall prevents a replaced parent symlink from redirecting
 // the exchange outside the selected root while preserving one native owner
 // for each released platform's atomic replacement operation.
-func exchangeExpectedAnchored(root *os.Root, anchor *os.File, temporary, destination string, expected fs.FileInfo, remove bool) (bool, error) {
+func exchangeExpectedAnchored(root *os.Root, anchor *os.File, temporary, destination string, expected fs.FileInfo, remove, retain bool) (bool, error) {
 	rootName, err := finalWindowsPath(windows.Handle(anchor.Fd()))
 	if err != nil {
 		return false, err
@@ -33,7 +33,7 @@ func exchangeExpectedAnchored(root *os.Root, anchor *os.File, temporary, destina
 	temporaryAbs := filepath.Join(rootName, filepath.FromSlash(temporary))
 	destinationAbs := filepath.Join(rootName, filepath.FromSlash(destination))
 	if remove {
-		return removeExpectedWindows(root, temporary, temporaryAbs, destination, destinationAbs, expected)
+		return removeExpectedWindows(root, temporary, temporaryAbs, destination, destinationAbs, expected, retain)
 	}
 	displaced := temporary + ".displaced"
 	displacedAbs := filepath.Join(rootName, filepath.FromSlash(displaced))
@@ -52,13 +52,15 @@ func exchangeExpectedAnchored(root *os.Root, anchor *os.File, temporary, destina
 		}
 		return false, mismatch
 	}
-	if err := root.Remove(displaced); err != nil {
-		return true, &filepublication.CommittedCleanupError{DestinationPath: destination, ResiduePath: displaced, Cause: err}
+	if !retain {
+		if err := root.Remove(displaced); err != nil {
+			return true, &filepublication.CommittedCleanupError{DestinationPath: destination, ResiduePath: displaced, Cause: err}
+		}
 	}
 	return true, nil
 }
 
-func removeExpectedWindows(root *os.Root, temporary, temporaryAbs, destination, destinationAbs string, expected fs.FileInfo) (bool, error) {
+func removeExpectedWindows(root *os.Root, temporary, temporaryAbs, destination, destinationAbs string, expected fs.FileInfo, retain bool) (bool, error) {
 	if err := root.Remove(temporary); err != nil {
 		return false, fmt.Errorf("filesystem: remove atomic marker %q: %w", temporary, err)
 	}
@@ -76,6 +78,9 @@ func removeExpectedWindows(root *os.Root, temporary, temporaryAbs, destination, 
 			return true, &filepublication.CommittedCleanupError{DestinationPath: destination, ResiduePath: temporary, Cause: cause}
 		}
 		return true, mismatch
+	}
+	if retain {
+		return true, nil
 	}
 	if err := root.Remove(temporary); err != nil {
 		return true, &filepublication.CommittedCleanupError{DestinationPath: destination, ResiduePath: temporary, Cause: err}

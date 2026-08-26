@@ -60,6 +60,8 @@ type RefusalError struct {
 	Condition       string
 	ChangedTopology bool // legacy summary; Topology carries exact axes.
 	Topology        TopologyEffects
+	ManagedPath     string
+	ManagedBranch   string
 	NextAction      string
 	NextActions     []string
 	Err             error
@@ -89,6 +91,8 @@ type CreationError struct {
 	ChangedEffort   bool
 	ChangedTopology bool
 	Topology        TopologyEffects
+	ManagedPath     string
+	ManagedBranch   string
 	Cause           error
 	RollbackCause   error
 	Steps           []string

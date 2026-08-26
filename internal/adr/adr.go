@@ -465,8 +465,8 @@ var reservedSlugStems = map[string]bool{"readme": true, "index": true, "template
 // NewFileLeased scaffolds a numbered ADR through the caller-held selected-root
 // capability. The lease must cover root through the command's presented outcome.
 func NewFileLeased(root string, lease *filesystem.Lease, files *filesystem.Handle, dir, title string) (string, error) {
-	if lease == nil || !lease.CoversTracked(root) {
-		return "", errors.New("ADR creation requires a covering tracked lease")
+	if err := requireScaffoldCapability(root, lease, files); err != nil {
+		return "", err
 	}
 	return scaffoldRecordConfined(files, dir, title, CurrentFormat(), false)
 }
@@ -474,10 +474,27 @@ func NewFileLeased(root string, lease *filesystem.Lease, files *filesystem.Handl
 // NewPendingFileLeased scaffolds a slug-identified pending ADR through the
 // caller-held selected-root capability.
 func NewPendingFileLeased(root string, lease *filesystem.Lease, files *filesystem.Handle, dir, title string) (string, error) {
-	if lease == nil || !lease.CoversTracked(root) {
-		return "", errors.New("ADR creation requires a covering tracked lease")
+	if err := requireScaffoldCapability(root, lease, files); err != nil {
+		return "", err
 	}
 	return scaffoldRecordConfined(files, dir, title, CurrentFormat(), true)
+}
+
+func requireScaffoldCapability(root string, lease *filesystem.Lease, files *filesystem.Handle) error {
+	if lease == nil || !lease.CoversTracked(root) {
+		return errors.New("ADR creation requires a covering tracked lease")
+	}
+	if files == nil {
+		return errors.New("ADR creation requires a selected-root handle")
+	}
+	matches, err := files.RootMatches(root)
+	if err != nil {
+		return err
+	}
+	if !matches {
+		return errors.New("ADR creation handle does not match selected root")
+	}
+	return nil
 }
 
 // scaffoldRecordConfined is the sole production writer of scaffolded decision

@@ -57,8 +57,8 @@ func NewADRLeased(root string, cfg *config.Config, repo *awfgit.Repo, ctx contex
 
 // NewPlanLeased scaffolds one plan through the caller-held selected-root
 // capability. The caller retains its tracked lease through presentation.
-func NewPlanLeased(root, title string, files *filesystem.Handle) (string, error) {
-	return newPlanLeased(root, title, files)
+func NewPlanLeased(root, title string, lease *filesystem.Lease, files *filesystem.Handle) (string, error) {
+	return newPlanLeased(root, title, lease, files)
 }
 
 // NewPitfall scaffolds one authored pitfall beneath root.

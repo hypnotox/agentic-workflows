@@ -1,6 +1,7 @@
 package publisher
 
 import (
+	"context"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -132,9 +133,19 @@ func TestEndToEndGolden(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := plan.NewFileLeased(files, ".", "Scaffold"); err != nil {
+	lease, err := filesystem.AcquireProjectLease(context.Background(), parseDir, parseDir)
+	if err != nil {
+		_ = files.Close()
+		t.Fatal(err)
+	}
+	if _, err := plan.NewFileLeased(parseDir, lease, files, ".", "Scaffold"); err != nil {
+		_ = lease.Release()
 		_ = files.Close()
 		t.Fatalf("scaffold from rendered template: %v", err)
+	}
+	if err := lease.Release(); err != nil {
+		_ = files.Close()
+		t.Fatal(err)
 	}
 	if err := files.Close(); err != nil {
 		t.Fatal(err)

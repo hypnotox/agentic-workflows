@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/effort"
 	"github.com/hypnotox/agentic-workflows/internal/effortop"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/worktree"
@@ -77,13 +77,18 @@ func openEffortComposition(ctx context.Context, root string) (effortComposition,
 		Worktrees:             repo.WorktreeList,
 		BranchExists:          repo.BranchExists,
 		ValidateRef:           repo.ValidateRefName,
-		RemoveTree:            os.RemoveAll,
 		ExpectedArchiveMarker: archiveMarker,
 	})
 	if err != nil {
 		return effortComposition{}, err
 	}
-	manager, err := worktree.Open(roots, openCheckout, service)
+	manager, err := worktree.Open(roots, openCheckout, func(name awfgit.ResidentName) (worktree.ResidentHandle, error) {
+		residentRoot, rootErr := roots.ResidentRoot(name)
+		if rootErr != nil {
+			return nil, rootErr
+		}
+		return filesystem.Open(residentRoot)
+	}, service)
 	if err != nil { // coverage-ignore: openCheckout just opened this same root above; a second failure requires a concurrent repository-identity race
 		return effortComposition{}, err
 	}

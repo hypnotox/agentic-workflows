@@ -1,14 +1,63 @@
 package plan_test
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
 )
+
+func TestNewFileLeasedRequiresMatchingLiveCapability(t *testing.T) {
+	if _, err := plan.NewFileLeased(t.TempDir(), nil, nil, ".", "No Lease"); err == nil || !strings.Contains(err.Error(), "covering tracked lease") {
+		t.Fatalf("unleased plan writer error = %v", err)
+	}
+	root := t.TempDir()
+	lease, err := filesystem.AcquireTrackedLease(context.Background(), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := lease.Release(); err != nil {
+			t.Errorf("release tracked lease: %v", err)
+		}
+	}()
+	if _, err := plan.NewFileLeased(root, lease, nil, ".", "No Handle"); err == nil || !strings.Contains(err.Error(), "selected-root handle") {
+		t.Fatalf("handle-free plan writer error = %v", err)
+	}
+}
+
+func TestNewFileLeasedRefusesMismatchedHandleBeforeReadOrPublication(t *testing.T) {
+	rootA, rootB := t.TempDir(), t.TempDir()
+	if err := os.WriteFile(filepath.Join(rootB, "template.md"), []byte("# Plan: Title\ndate: YYYY-MM-DD\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	lease, err := filesystem.AcquireTrackedLease(context.Background(), rootA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := lease.Release(); err != nil {
+			t.Errorf("release tracked lease: %v", err)
+		}
+	}()
+	handle, err := filesystem.Open(rootB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer handle.Close()
+	if _, err := plan.NewFileLeased(rootA, lease, handle, ".", "Refused"); err == nil || !strings.Contains(err.Error(), "does not match") {
+		t.Fatalf("mismatched scaffold error = %v", err)
+	}
+	matches, globErr := filepath.Glob(filepath.Join(rootB, "*-refused.md"))
+	if globErr != nil || len(matches) != 0 {
+		t.Fatalf("mismatched handle published in root B: %v, %v", matches, globErr)
+	}
+}
 
 // TestParseDirParsesFrontmatterAndSkipsNonPlans covers the happy path (a plan
 // with frontmatter, a frontmatter-less plan) and the FilenameRe exclusions

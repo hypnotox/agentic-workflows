@@ -549,7 +549,7 @@ func TestCreateDirectoryReturnsPublishedIdentityAndRefusesExistingDestination(t 
 			t.Fatal("directory publication through escaping parent succeeded")
 		}
 	}
-	if _, err := exchangeExpected(h.root, "temporary", "other/destination", created, false); err == nil {
+	if _, err := exchangeExpected(h.root, "temporary", "other/destination", created, false, false); err == nil {
 		t.Fatal("different-parent expected mutation succeeded")
 	}
 	relocated := filepath.Join(container, "relocated")
@@ -567,6 +567,43 @@ func TestCreateDirectoryReturnsPublishedIdentityAndRefusesExistingDestination(t 
 	}
 	if info, err := os.Lstat(owned); err != nil || os.SameFile(created, info) {
 		t.Fatalf("replacement directory was claimed or removed: %v, %v", info, err)
+	}
+}
+
+func TestRetireExpectedRemovesOnlyTheObservedNonemptyDirectory(t *testing.T) {
+	root := t.TempDir()
+	h, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+	if err := os.Mkdir(filepath.Join(root, "retired"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "retired", "payload"), []byte("old"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	expected, err := h.LinkInfo("retired")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h.RetireExpected("retired", expected); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(filepath.Join(root, "retired")); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("retired directory remains: %v", err)
+	}
+	if err := os.Mkdir(filepath.Join(root, "retired"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "retired", "successor"), []byte("keep"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.RetireExpected("retired", expected); !errors.Is(err, ErrIdentityChanged) {
+		t.Fatalf("successor retirement = %v, want identity change", err)
+	}
+	if got, err := os.ReadFile(filepath.Join(root, "retired", "successor")); err != nil || string(got) != "keep" {
+		t.Fatalf("successor changed: bytes=%q error=%v", got, err)
 	}
 }
 
@@ -660,7 +697,7 @@ func TestExpectedMutationRootAnchorRefusesRelocatedParent(t *testing.T) {
 			if err := os.Rename(filepath.Join(rootPath, "parent"), relocated); err != nil {
 				t.Fatal(err)
 			}
-			consumed, err := exchangeExpected(h.root, "parent/temporary", "parent/destination", expected, remove)
+			consumed, err := exchangeExpected(h.root, "parent/temporary", "parent/destination", expected, remove, false)
 			if err == nil || consumed {
 				t.Fatalf("relocated-parent commit = consumed %v, error %v; want uncommitted refusal", consumed, err)
 			}
@@ -697,7 +734,7 @@ func TestExpectedMutationRefusesDisappearedDestination(t *testing.T) {
 	if err := os.Remove(filepath.Join(root, "destination")); err != nil {
 		t.Fatal(err)
 	}
-	consumed, err := exchangeExpected(h.root, "temporary", "destination", expected, false)
+	consumed, err := exchangeExpected(h.root, "temporary", "destination", expected, false, false)
 	if err == nil || consumed {
 		t.Fatalf("disappeared-destination commit = consumed %v, error %v; want uncommitted refusal", consumed, err)
 	}
@@ -728,6 +765,36 @@ func TestExpectedIdentityRemovalPreservesNonemptyDirectory(t *testing.T) {
 	}
 	if got, err := os.ReadFile(filepath.Join(root, "owned", "child")); err != nil || string(got) != "preserve" {
 		t.Fatalf("nonempty directory child = %q, %v", got, err)
+	}
+}
+
+func TestHandleIdentityAndRetirementInputRefusals(t *testing.T) {
+	h, root := openFixture(t)
+	if _, err := h.RootMatches(filepath.Join(t.TempDir(), "missing")); err == nil {
+		t.Fatal("missing root identity comparison succeeded")
+	}
+	fileRoot := filepath.Join(t.TempDir(), "file")
+	if err := os.WriteFile(fileRoot, []byte("not a directory"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.RootMatches(fileRoot); err == nil {
+		t.Fatal("file root identity comparison succeeded")
+	}
+	if err := h.RetireExpected("../outside", nil); err == nil {
+		t.Fatal("invalid retirement path succeeded")
+	}
+	if err := os.WriteFile(filepath.Join(root, "file"), []byte("content"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	regular, err := h.LinkInfo("file")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h.RetireExpected("file", regular); !errors.Is(err, ErrIdentityChanged) {
+		t.Fatalf("regular-file retirement = %v, want identity change", err)
+	}
+	if _, err := h.ReadDir("../outside"); err == nil {
+		t.Fatal("invalid read-directory path succeeded")
 	}
 }
 
@@ -788,6 +855,7 @@ func TestRootConfinedFilesystemSingleHome(t *testing.T) {
 		{"second handle", "internal/filesystem/handle.go", "package filesystem\ntype Other struct{}\ntype Handle struct{}", "exported concrete Other"},
 		{"provider interface", "internal/filesystem/handle.go", "package filesystem\ntype Handle struct{}\ntype Filesystem interface{ Read(string) }", "interface Filesystem"},
 		{"unexported interface", "internal/filesystem/handle.go", "package filesystem\ntype Handle struct{}\ntype filesystem interface{ Read(string) }", "interface filesystem"},
+		{"returned constructor", "internal/upgrade/upgrade.go", "package upgrade\nimport \"github.com/hypnotox/agentic-workflows/internal/filesystem\"\nfunc Open(x string) (*filesystem.Handle, error) { return filesystem.Open(x) }", ""},
 		{"compile-only reference", "internal/upgrade/upgrade.go", "package upgrade\nimport \"github.com/hypnotox/agentic-workflows/internal/filesystem\"\nvar _ = filesystem.Open", "filesystem import without constructor/capability flow"},
 		{"arbitrary selector", "internal/upgrade/upgrade.go", "package upgrade\nimport \"github.com/hypnotox/agentic-workflows/internal/filesystem\"\nvar _ = filesystem.Handle", "filesystem import without constructor/capability flow"},
 		{"second flock owner", "internal/upgrade/upgrade.go", "package upgrade\nimport \"github.com/gofrs/flock\"\nvar _ = flock.New", "outside filesystem imports advisory-lock implementation"},
@@ -972,6 +1040,9 @@ func filesystemConsumerFinding(rel, src string) string {
 				}
 			}
 		case *ast.CallExpr:
+			if isFilesystemConstructor(n, imports) {
+				capability = true
+			}
 			if s, ok := n.Fun.(*ast.SelectorExpr); ok {
 				if id, ok := s.X.(*ast.Ident); ok && bound[id.Name] {
 					capability = true

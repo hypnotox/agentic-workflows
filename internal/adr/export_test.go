@@ -1,6 +1,7 @@
 package adr
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -155,9 +156,56 @@ func TestScaffoldRecordConfinedRefusesParentSwap(t *testing.T) {
 	}
 }
 
-func TestADRCreationRequiresCoveringLease(t *testing.T) {
+func TestADRCreationRefusesMismatchedHandleBeforeReadingOrPublishing(t *testing.T) {
+	rootA, rootB := t.TempDir(), t.TempDir()
+	decisions := filepath.Join(rootB, "docs", "decisions")
+	if err := os.MkdirAll(decisions, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(decisions, "template.md"), []byte("---\nformat: current-state-v1\nstatus: Proposed\ndate: YYYY-MM-DD\n---\n# ADR-NNNN: Title\n\n## State changes\n\nNone.\n\n## Status history\n\n- YYYY-MM-DD: Proposed\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	lease, err := filesystem.AcquireTrackedLease(context.Background(), rootA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := lease.Release(); err != nil {
+			t.Errorf("release tracked lease: %v", err)
+		}
+	}()
+	files, err := filesystem.Open(rootB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer files.Close()
+	for _, create := range []func(string, *filesystem.Lease, *filesystem.Handle, string, string) (string, error){NewFileLeased, NewPendingFileLeased} {
+		if _, err := create(rootA, lease, files, "docs/decisions", "Refused"); err == nil || !strings.Contains(err.Error(), "does not match") {
+			t.Fatalf("mismatched scaffold error = %v", err)
+		}
+	}
+	matches, err := filepath.Glob(filepath.Join(decisions, "*refused.md"))
+	if err != nil || len(matches) != 0 {
+		t.Fatalf("mismatched handle published in root B: %v, %v", matches, err)
+	}
+}
+
+func TestADRCreationRequiresMatchingLiveCapability(t *testing.T) {
 	if _, err := NewFileLeased(t.TempDir(), nil, nil, "docs/decisions", "No Lease"); err == nil || !strings.Contains(err.Error(), "covering tracked lease") {
 		t.Fatalf("unleased ADR writer error = %v", err)
+	}
+	root := t.TempDir()
+	lease, err := filesystem.AcquireTrackedLease(context.Background(), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := lease.Release(); err != nil {
+			t.Errorf("release tracked lease: %v", err)
+		}
+	}()
+	if _, err := NewFileLeased(root, lease, nil, "docs/decisions", "No Handle"); err == nil || !strings.Contains(err.Error(), "selected-root handle") {
+		t.Fatalf("handle-free ADR writer error = %v", err)
 	}
 }
 

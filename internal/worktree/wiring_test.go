@@ -9,12 +9,23 @@ import (
 	"time"
 
 	"github.com/hypnotox/agentic-workflows/internal/effort"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
 // openCheckout is the production binding: the Git seam's handle satisfies the
 // manager's checkout contract with no adapter between them.
 func openCheckout(root string) (Runner, error) { return awfgit.Open(root) }
+
+func openResidentForRoots(roots awfgit.ControlRoots) OpenResident {
+	return func(name awfgit.ResidentName) (ResidentHandle, error) {
+		root, err := roots.ResidentRoot(name)
+		if err != nil {
+			return nil, err
+		}
+		return filesystem.Open(root)
+	}
+}
 
 // checkoutStub answers exactly like the checkout it wraps except where a test
 // sets an override. Every operation is listed so an override is chosen by name
@@ -237,7 +248,6 @@ func newEffortService(t *testing.T, roots awfgit.ControlRoots, uuid func() (stri
 		Worktrees:             repo.WorktreeList,
 		BranchExists:          repo.BranchExists,
 		ValidateRef:           repo.ValidateRefName,
-		RemoveTree:            os.RemoveAll,
 		ExpectedArchiveMarker: func() ([]byte, error) { return []byte("marker\n"), nil },
 		Fault:                 fault,
 	})
@@ -251,7 +261,7 @@ func newEffortService(t *testing.T, roots awfgit.ControlRoots, uuid func() (stri
 func managerWith(t *testing.T, root string, open OpenCheckout) *Manager {
 	t.Helper()
 	roots := worktreeControlRoots(t, root)
-	manager, err := Open(roots, open, newEffortService(t, roots, nil, nil))
+	manager, err := Open(roots, open, openResidentForRoots(roots), newEffortService(t, roots, nil, nil))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -279,7 +289,7 @@ func managerRooted(t *testing.T, root string, drift func(*awfgit.ControlRoots), 
 		}
 		return stub, nil
 	}
-	manager, err := Open(drifted, open, service)
+	manager, err := Open(drifted, open, openResidentForRoots(drifted), service)
 	if err != nil {
 		t.Fatal(err)
 	}

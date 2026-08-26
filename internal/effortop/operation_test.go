@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/hypnotox/agentic-workflows/internal/effort"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
@@ -49,12 +50,18 @@ func TestRunCoordinatesResidentAndTopologyOwners(t *testing.T) {
 		Clock:     func() time.Time { return time.Date(2026, 8, 23, 0, 0, 0, 0, time.UTC) },
 		UUID:      func() (string, error) { return "018f47a0-7b3d-4c52-8f1a-123456789abc", nil },
 		Worktrees: repo.WorktreeList, BranchExists: repo.BranchExists, ValidateRef: repo.ValidateRefName,
-		RemoveTree: os.RemoveAll, ExpectedArchiveMarker: func() ([]byte, error) { return []byte("*\n"), nil },
+		ExpectedArchiveMarker: func() ([]byte, error) { return []byte("*\n"), nil },
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	manager, err := worktree.Open(roots, func(path string) (worktree.Runner, error) { return awfgit.Open(path) }, service)
+	manager, err := worktree.Open(roots, func(path string) (worktree.Runner, error) { return awfgit.Open(path) }, func(name awfgit.ResidentName) (worktree.ResidentHandle, error) {
+		root, rootErr := roots.ResidentRoot(name)
+		if rootErr != nil {
+			return nil, rootErr
+		}
+		return filesystem.Open(root)
+	}, service)
 	if err != nil {
 		t.Fatal(err)
 	}

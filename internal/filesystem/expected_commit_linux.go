@@ -20,7 +20,7 @@ import (
 // of the native syscall prevents a replaced parent symlink from redirecting
 // the exchange outside the selected root while preserving one native owner
 // for each released platform's atomic replacement operation.
-func exchangeExpectedAnchored(root *os.Root, anchor *os.File, temporary, destination string, expected fs.FileInfo, remove bool) (bool, error) {
+func exchangeExpectedAnchored(root *os.Root, anchor *os.File, temporary, destination string, expected fs.FileInfo, remove, retain bool) (bool, error) {
 	exchange := func() error {
 		return unix.Renameat2(int(anchor.Fd()), temporary, int(anchor.Fd()), destination, unix.RENAME_EXCHANGE)
 	}
@@ -38,6 +38,12 @@ func exchangeExpectedAnchored(root *os.Root, anchor *os.File, temporary, destina
 			return true, &filepublication.CommittedCleanupError{DestinationPath: destination, ResiduePath: temporary, Cause: cause}
 		}
 		return false, mismatch
+	}
+	if retain {
+		if err := root.Remove(destination); err != nil {
+			return true, &filepublication.CommittedCleanupError{DestinationPath: destination, ResiduePath: temporary, Cause: fmt.Errorf("remove retirement reservation: %w", err)}
+		}
+		return true, nil
 	}
 	if err := root.Remove(temporary); err != nil {
 		if rollbackErr := exchange(); rollbackErr != nil {

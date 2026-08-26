@@ -91,7 +91,7 @@ func newPlan(ctx context.Context, root string, titleWords []string, stdout io.Wr
 		return err
 	}
 	defer func() { returnErr = errors.Join(returnErr, files.Close()) }()
-	path, err := project.NewPlanLeased(state.Root(), strings.Join(titleWords, " "), files)
+	path, err := project.NewPlanLeased(state.Root(), strings.Join(titleWords, " "), lease, files)
 	if err != nil {
 		return err
 	}

@@ -231,21 +231,36 @@ func (r UninstallReport) document(status string, prefix, next []presentation.Val
 // InspectRoots examines direct children only. It never traverses a dynamic
 // resident tree; a descendant other than the managed .gitignore keeps its root
 // intact. Publisher's read-only inspection owns its existing host-path seam.
+// InspectRoots is the read-only inspection entry point used by Publisher.
 func InspectRoots(root string) ([]string, error) {
+	files, err := filesystem.Open(root)
+	if err != nil {
+		return nil, err
+	}
+	defer files.Close()
+	return inspectRootsConfined(files)
+}
+
+// inspectRootsConfined preserves resident policy while consuming the caller's
+// already-open confined root capability.
+func inspectRootsConfined(files interface {
+	LinkInfo(string) (fs.FileInfo, error)
+	ReadDir(string) ([]fs.DirEntry, error)
+}) ([]string, error) {
 	preserved := []string{}
 	for _, name := range RootNames() {
-		path := filepath.Join(root, config.DirName, name)
-		info, err := os.Lstat(path)
-		if errors.Is(err, os.ErrNotExist) {
+		path := filepath.ToSlash(filepath.Join(config.DirName, name))
+		info, err := files.LinkInfo(path)
+		if errors.Is(err, fs.ErrNotExist) {
 			continue
 		}
 		if err != nil {
 			return nil, fmt.Errorf("inspect resident root %s: %w", name, err)
 		}
-		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+		if info.Mode()&fs.ModeSymlink != 0 || !info.IsDir() {
 			return nil, fmt.Errorf("unsafe resident root %s", name)
 		}
-		entries, err := os.ReadDir(path)
+		entries, err := files.ReadDir(path)
 		if err != nil {
 			return nil, err
 		}
@@ -275,6 +290,7 @@ func PreserveRemoval(path string, preserved []string) bool {
 
 type uninstallHandle interface {
 	Read(string) ([]byte, error)
+	ReadDir(string) ([]fs.DirEntry, error)
 	LinkInfo(string) (fs.FileInfo, error)
 	Backup(string) (string, error)
 	RemoveExpected(string, fs.FileInfo) error
@@ -284,7 +300,7 @@ type uninstallHandle interface {
 type uninstallOps struct {
 	open         func(string) (uninstallHandle, error)
 	residentRoot func(context.Context, string) string
-	inspectRoots func(string) ([]string, error)
+	inspectRoots func(uninstallHandle) ([]string, error)
 }
 
 func productionUninstallOpen(root string) (uninstallHandle, error) {
@@ -305,7 +321,7 @@ func UninstallLeased(ctx context.Context, root string, preserveTemplate func(str
 	if !lease.CoversProject(root, residentRoot) {
 		return UninstallReport{}, fmt.Errorf("uninstall requires a live project lease")
 	}
-	return uninstallWith(ctx, root, preserveTemplate, uninstallOps{open: productionUninstallOpen, residentRoot: func(context.Context, string) string { return residentRoot }, inspectRoots: InspectRoots})
+	return uninstallWith(ctx, root, preserveTemplate, uninstallOps{open: productionUninstallOpen, residentRoot: func(context.Context, string) string { return residentRoot }, inspectRoots: func(handle uninstallHandle) ([]string, error) { return inspectRootsConfined(handle) }})
 }
 
 func uninstallWith(ctx context.Context, root string, preserveTemplate func(string) bool, ops uninstallOps) (report UninstallReport, returnErr error) {
@@ -355,7 +371,7 @@ func uninstallWith(ctx context.Context, root string, preserveTemplate func(strin
 	if err != nil {
 		return report, fmt.Errorf("unreadable .awf/awf.lock (%w): restore it from version control, or delete it deliberately to re-adopt", err)
 	}
-	preserved, err := ops.inspectRoots(residentRoot)
+	preserved, err := ops.inspectRoots(resident)
 	if err != nil {
 		return report, err
 	}

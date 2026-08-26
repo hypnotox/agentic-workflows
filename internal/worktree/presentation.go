@@ -14,6 +14,10 @@ func (e *RefusalError) Diagnostic() (presentation.Diagnostic, error) {
 	if err != nil {
 		return presentation.Diagnostic{}, err
 	}
+	changed, err = appendManagedFacts(changed, e.ManagedPath, e.ManagedBranch)
+	if err != nil {
+		return presentation.Diagnostic{}, err
+	}
 	if len(e.NextActions) == 0 {
 		return presentation.Diagnostic{}, errors.New("worktree refusal has no modeled recovery actions")
 	}
@@ -53,6 +57,10 @@ func (e *CreationError) Diagnostic() (presentation.Diagnostic, error) {
 		return presentation.Diagnostic{}, err
 	}
 	changed = append(changed, topology...)
+	changed, err = appendManagedFacts(changed, e.ManagedPath, e.ManagedBranch)
+	if err != nil {
+		return presentation.Diagnostic{}, err
+	}
 	steps := make([]presentation.Value, 0, len(e.Steps))
 	for _, text := range e.Steps {
 		step, err := presentation.Literal(text)
@@ -62,6 +70,24 @@ func (e *CreationError) Diagnostic() (presentation.Diagnostic, error) {
 		steps = append(steps, step)
 	}
 	return presentation.Diagnostic{Condition: e.Condition, State: "operation", Changed: changed, Cause: mechanismCauseText(e), Steps: steps}, nil
+}
+
+func appendManagedFacts(fields []presentation.Field, path, branch string) ([]presentation.Field, error) {
+	for _, fact := range []struct{ label, value string }{{"managed path", path}, {"managed branch", branch}} {
+		if fact.value == "" {
+			continue
+		}
+		value, err := presentation.Literal(fact.value)
+		if err != nil {
+			return nil, err
+		}
+		field, err := presentation.NewField(fact.label, value)
+		if err != nil {
+			return nil, err
+		}
+		fields = append(fields, field)
+	}
+	return fields, nil
 }
 
 func topologyDiagnosticFields(topology TopologyEffects, legacy bool) ([]presentation.Field, error) {
