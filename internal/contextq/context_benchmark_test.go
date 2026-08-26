@@ -11,9 +11,17 @@ import (
 
 func benchmarkContextQuery(b *testing.B, size int) *Query {
 	b.Helper()
-	files := make([]snapshot.File, size)
-	for i := range files {
-		files[i] = snapshot.File{Path: fmt.Sprintf("internal/bench/file-%04d.go", i), Mode: snapshot.Regular}
+	files := make([]snapshot.File, 0, size)
+	requested := max(1, size/4)
+	before := (size - requested) / 2
+	for i := range before {
+		files = append(files, snapshot.File{Path: fmt.Sprintf("aaa-unrelated/file-%04d.go", i), Mode: snapshot.Regular})
+	}
+	for i := range requested {
+		files = append(files, snapshot.File{Path: fmt.Sprintf("internal/bench/file-%04d.go", i), Mode: snapshot.Regular})
+	}
+	for i := len(files); i < size; i++ {
+		files = append(files, snapshot.File{Path: fmt.Sprintf("zzz-unrelated/file-%04d.go", i), Mode: snapshot.Regular})
 	}
 	tree, err := snapshot.NewTree(files)
 	if err != nil {

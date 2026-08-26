@@ -106,14 +106,6 @@ func (q *Query) ContextForOptions(queries []string, options ContextOptions) Cont
 		return impact
 	}
 	set.project = makeImpact
-	// Explicit requests retain their explicit-only artifact projection even when
-	// a repeated or directory request also reaches the same path.
-	for _, raw := range queries {
-		if strings.TrimSpace(raw) != "" {
-			lookup := filepath.ToSlash(filepath.Clean(raw))
-			set.impacts[lookup] = makeImpact(lookup, options.Selection == SelectionExplicit)
-		}
-	}
 	requests := buildContextRequests(queries, set, options)
 	directSources := map[string]map[int]map[string]bool{}
 	applicable := map[string]topic.Topic{}

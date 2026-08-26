@@ -192,6 +192,7 @@ type contextPathSet struct {
 	ignores     []string
 	domainPaths map[string][]string
 	impacts     map[string]contextPathImpact
+	explicit    map[string]bool
 	project     func(string, bool) contextPathImpact
 }
 
@@ -199,7 +200,7 @@ type contextPathSet struct {
 // use entries while directory requests use the contiguous sorted prefix range.
 func newContextPathSet(tree *snapshot.Tree, nested []string, outputs map[string]bool, ignores []string, domainPaths map[string][]string) contextPathSet {
 	files := tree.List()
-	set := contextPathSet{tree: tree, paths: make([]string, 0, len(files)), entries: make(map[string]snapshot.File, len(files)), nested: nested, outputs: outputs, ignores: ignores, domainPaths: domainPaths, impacts: map[string]contextPathImpact{}}
+	set := contextPathSet{tree: tree, paths: make([]string, 0, len(files)), entries: make(map[string]snapshot.File, len(files)), nested: nested, outputs: outputs, ignores: ignores, domainPaths: domainPaths, impacts: map[string]contextPathImpact{}, explicit: map[string]bool{}}
 	for _, file := range files {
 		set.paths = append(set.paths, file.Path)
 		set.entries[file.Path] = file
@@ -220,14 +221,29 @@ func (set contextPathSet) prefixRange(prefix string) (int, int) {
 	return start, end
 }
 
-func (set contextPathSet) impactFor(p string, explicit bool) contextPathImpact {
+func (set contextPathSet) directoryRange(lookup string) (int, int, bool) {
+	if lookup == "." {
+		return 0, len(set.paths), true
+	}
+	if _, ok := set.lookup(lookup); ok || outsideContextPath(lookup) {
+		return 0, 0, false
+	}
+	start, end := set.prefixRange(lookup + "/")
+	return start, end, start < end
+}
+
+func (set contextPathSet) markExplicit(p string) {
+	set.explicit[p] = true
+}
+
+func (set contextPathSet) impactFor(p string) contextPathImpact {
 	if impact, ok := set.impacts[p]; ok {
 		return impact
 	}
 	if set.project == nil {
 		return contextPathImpact{}
 	}
-	impact := set.project(p, explicit)
+	impact := set.project(p, set.explicit[p])
 	set.impacts[p] = impact
 	return impact
 }
@@ -275,6 +291,20 @@ func safelyMatchablePaths(tree *snapshot.Tree) []string {
 }
 
 func buildContextRequests(queries []string, set contextPathSet, options ContextOptions) []contextRequestReport {
+	// Explicit artifact projection dominates directory projection for a path
+	// regardless of request order, matching the established mixed-query result.
+	if options.Selection == SelectionExplicit {
+		for _, raw := range queries {
+			if strings.TrimSpace(raw) == "" {
+				continue
+			}
+			lookup := filepath.ToSlash(filepath.Clean(raw))
+			if _, _, directory := set.directoryRange(lookup); !directory {
+				set.markExplicit(lookup)
+			}
+		}
+	}
+
 	requests := []contextRequestReport{}
 	for _, raw := range queries {
 		if strings.TrimSpace(raw) == "" {
@@ -282,21 +312,12 @@ func buildContextRequests(queries []string, set contextPathSet, options ContextO
 		}
 		lookup := filepath.ToSlash(filepath.Clean(raw))
 		report := contextRequestReport{Index: len(requests) + 1, Argument: raw, Lookup: lookup, Kind: requestLiteral}
-		directory := lookup == "."
-		prefix := lookup + "/"
-		if lookup == "." {
-			prefix = ""
-		}
-		if _, ok := set.lookup(lookup); !ok && !outsideContextPath(lookup) {
-			start, end := set.prefixRange(prefix)
-			directory = start < end
-		}
+		start, end, directory := set.directoryRange(lookup)
 		if directory {
 			report.Kind = requestDirectoryExpanded
 			dir := contextDirectory{Excluded: []contextClassificationCount{}, Groups: []contextGroup{}, Relationships: emptyContextRelationships()}
 			counts := map[pathClassification]int{}
 			groups := map[string]*contextGroup{}
-			start, end := set.prefixRange(prefix)
 			for _, filePath := range set.paths[start:end] {
 				// Nested roots and symlinks are census boundaries and count once.
 				boundary := false
@@ -312,7 +333,7 @@ func buildContextRequests(queries []string, set contextPathSet, options ContextO
 				if boundary {
 					continue
 				}
-				impact := set.impactFor(filePath, false)
+				impact := set.impactFor(filePath)
 				if impact.Classification == pathSymlink {
 					counts[pathSymlink]++
 					continue
@@ -358,7 +379,7 @@ func buildContextRequests(queries []string, set contextPathSet, options ContextO
 			if options.Selection != SelectionExplicit {
 				report.Kind = requestGitSelected
 			}
-			impact := set.impactFor(lookup, options.Selection == SelectionExplicit)
+			impact := set.impactFor(lookup)
 			report.Exact = &contextExactEntry{Path: lookup, Context: impact}
 		}
 		requests = append(requests, report)

@@ -1,6 +1,7 @@
 package contextq
 
 import (
+	"fmt"
 	"reflect"
 	"slices"
 	"strings"
@@ -101,32 +102,37 @@ func TestContextRequestCensusGroupingAndClassification(t *testing.T) {
 
 func TestContextPathSetProjectsExactAndSortedDescendantsOnDemand(t *testing.T) {
 	tree, err := snapshot.NewTree([]snapshot.File{
+		{Path: "aaa/before.go", Mode: snapshot.Regular},
+		{Path: "dir-previous/outside.go", Mode: snapshot.Regular},
 		{Path: "dir/a.go", Mode: snapshot.Regular},
-		{Path: "dir/b.go", Mode: snapshot.Regular},
-		{Path: "other/c.go", Mode: snapshot.Regular},
+		{Path: "dir/nested/b.go", Mode: snapshot.Regular},
+		{Path: "dir0/outside.go", Mode: snapshot.Regular},
+		{Path: "zzz/after.go", Mode: snapshot.Regular},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	set := newContextPathSet(tree, nil, nil, nil, nil)
 	projected := []string{}
-	set.project = func(p string, _ bool) contextPathImpact {
-		projected = append(projected, p)
+	set.project = func(p string, explicit bool) contextPathImpact {
+		projected = append(projected, fmt.Sprintf("%s:%t", p, explicit))
 		return contextPathImpact{Classification: pathCovered, Provenance: []contextProvenance{}, Domains: []domainRef{}, Topics: []contextPathTopic{}, Relationships: emptyContextRelationships(), Warnings: []contextWarning{}}
 	}
 	exact := buildContextRequests([]string{"dir/a.go"}, set, ContextOptions{Selection: SelectionExplicit})
-	if len(exact) != 1 || exact[0].Exact == nil || !slices.Equal(projected, []string{"dir/a.go"}) {
+	if len(exact) != 1 || exact[0].Exact == nil || !slices.Equal(projected, []string{"dir/a.go:true"}) {
 		t.Fatalf("exact=%#v projected=%v", exact, projected)
 	}
+
 	projected = nil
 	set = newContextPathSet(tree, nil, nil, nil, nil)
-	set.project = func(p string, _ bool) contextPathImpact {
-		projected = append(projected, p)
+	set.project = func(p string, explicit bool) contextPathImpact {
+		projected = append(projected, fmt.Sprintf("%s:%t", p, explicit))
 		return contextPathImpact{Classification: pathCovered, Provenance: []contextProvenance{}, Domains: []domainRef{}, Topics: []contextPathTopic{}, Relationships: emptyContextRelationships(), Warnings: []contextWarning{}}
 	}
-	directory := buildContextRequests([]string{"dir"}, set, ContextOptions{Selection: SelectionExplicit})
-	if len(directory) != 1 || directory[0].Directory == nil || !slices.Equal(projected, []string{"dir/a.go", "dir/b.go"}) {
-		t.Fatalf("directory=%#v projected=%v", directory, projected)
+	mixed := buildContextRequests([]string{"dir", "dir/a.go"}, set, ContextOptions{Selection: SelectionExplicit})
+	want := []string{"dir/a.go:true", "dir/nested/b.go:false"}
+	if len(mixed) != 2 || mixed[0].Directory == nil || mixed[1].Exact == nil || !slices.Equal(projected, want) {
+		t.Fatalf("mixed=%#v projected=%v want=%v", mixed, projected, want)
 	}
 }
 
