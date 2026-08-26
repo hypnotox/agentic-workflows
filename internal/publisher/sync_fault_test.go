@@ -700,6 +700,7 @@ func TestSyncRefusesInvalidPermanentLockBeforeMutation(t *testing.T) {
 		{name: "empty inventory", lock: `{"awfVersion":"0.40.0","schemaVersion":46,"files":{}}`},
 		{name: "misspelled inventory", lock: `{"awfVersion":"0.40.0","schemaVersion":46,"fiels":{"x":{}}}`},
 		{name: "duplicate inventory entry", lock: `{"awfVersion":"0.40.0","schemaVersion":46,"files":{"x":{},"x":{}}}`},
+		{name: "non-local inventory entry", lock: `{"awfVersion":"0.40.0","schemaVersion":46,"files":{"../escape":{},"AGENTS.md":{}}}`},
 		{name: "unknown entry field", lock: `{"awfVersion":"0.40.0","schemaVersion":46,"files":{"x":{"typo":true}}}`},
 		{name: "trailing document", lock: `{"awfVersion":"0.40.0","schemaVersion":46,"files":{"x":{}}} {}`},
 	} {

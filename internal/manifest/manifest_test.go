@@ -353,7 +353,7 @@ func TestParseLiveRejectsAmbiguousOrEmptyPermanentInventory(t *testing.T) {
 
 // invariant: config/migrations-and-locks:corrupt-lock-refuses (TestParseLiveRejectsMalformedInventoryForms)
 func TestParseLiveRejectsMalformedInventoryForms(t *testing.T) {
-	for _, files := range []string{"null", "[]", `{"":{}}`, `{"x":{},"x":{}}`, `{"x":1}`, `{"x":{"unknown":true}}`} {
+	for _, files := range []string{"null", "[]", `{"":{}}`, `{"x":{},"x":{}}`, `{"../escape":{}}`, `{"./x":{}}`, `{"a\\b":{}}`, `{"x":1}`, `{"x":{"unknown":true}}`} {
 		source := `{"awfVersion":"0.40.0","schemaVersion":46,"files":` + files + `}`
 		if _, err := ParseLive([]byte(source), 46, 46); err == nil {
 			t.Fatalf("accepted files=%s", files)

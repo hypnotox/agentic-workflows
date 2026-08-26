@@ -197,7 +197,7 @@ func TestPerTargetDriftProjection(t *testing.T) {
 	}
 }
 
-func TestSyncPruneSkipsEscapingLockPaths(t *testing.T) {
+func TestSyncPruneRefusesEscapingLockPathBeforeMutation(t *testing.T) {
 	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	victim := filepath.Join(root, "..", "victim.txt")
 	testsupport.WriteFile(t, victim, "keep me\n")
@@ -216,15 +216,27 @@ func TestSyncPruneSkipsEscapingLockPaths(t *testing.T) {
 	if err := lock.Save(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
+	lockBefore, err := os.ReadFile(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	agents := filepath.Join(root, "AGENTS.md")
+	agentsBefore, err := os.ReadFile(agents)
+	if err != nil {
+		t.Fatal(err)
+	}
 	p2, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := syncProject(p2); err != nil {
-		t.Fatal(err)
+	if err := syncProject(p2); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
+		t.Fatalf("sync error = %v, want corrupt-lock refusal", err)
 	}
-	if _, err := os.Stat(victim); err != nil {
-		t.Errorf("prune deleted the out-of-tree file: %v", err)
+	for path, want := range map[string][]byte{victim: []byte("keep me\n"), agents: agentsBefore, lockFile(root): lockBefore} {
+		got, err := os.ReadFile(path)
+		if err != nil || !bytes.Equal(got, want) {
+			t.Fatalf("%s after refusal = %q, %v; want %q", path, got, err, want)
+		}
 	}
 }
 

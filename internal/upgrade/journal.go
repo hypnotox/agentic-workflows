@@ -457,10 +457,58 @@ func LoadJournal(root string) (Journal, error) {
 	return ParseJournal(b)
 }
 
+func rejectDuplicateJSONFields(b []byte) error {
+	dec := json.NewDecoder(bytes.NewReader(b))
+	if err := rejectDuplicateJSONValue(dec); err != nil {
+		return err
+	}
+	return requireJSONEOF(dec)
+}
+
+func rejectDuplicateJSONValue(dec *json.Decoder) error {
+	tok, err := dec.Token()
+	if err != nil {
+		return err
+	}
+	delim, ok := tok.(json.Delim)
+	if !ok {
+		return nil
+	}
+	switch delim {
+	case '{':
+		seen := map[string]bool{}
+		for dec.More() {
+			nameToken, err := dec.Token()
+			if err != nil {
+				return err
+			}
+			name := nameToken.(string)
+			if seen[name] {
+				return fmt.Errorf("duplicate field %q", name)
+			}
+			seen[name] = true
+			if err := rejectDuplicateJSONValue(dec); err != nil {
+				return err
+			}
+		}
+	case '[':
+		for dec.More() {
+			if err := rejectDuplicateJSONValue(dec); err != nil {
+				return err
+			}
+		}
+	}
+	_, err = dec.Token()
+	return err
+}
+
 // ParseJournal validates a journal captured from an immutable snapshot. It is
 // the staged-check counterpart of LoadJournal, sharing the exact journal
 // contract without materializing index bytes into the working tree.
 func ParseJournal(b []byte) (Journal, error) {
+	if err := rejectDuplicateJSONFields(b); err != nil {
+		return Journal{}, fmt.Errorf("malformed upgrade journal: %w; %s", err, gitRestorationGuidance)
+	}
 	var j Journal
 	dec := json.NewDecoder(bytes.NewReader(b))
 	dec.DisallowUnknownFields()
@@ -474,9 +522,6 @@ func ParseJournal(b []byte) (Journal, error) {
 	case phasePrepared, phaseApplying, phaseRollingBack, phaseLockCommitted:
 	default:
 		return Journal{}, fmt.Errorf("unknown upgrade journal phase %q; %s", j.Phase, gitRestorationGuidance)
-	}
-	if err := requireJSONEOF(dec); err != nil {
-		return Journal{}, fmt.Errorf("malformed upgrade journal: %w; %s", err, gitRestorationGuidance)
 	}
 	if err := validateOperations(j.Operations); err != nil {
 		return Journal{}, fmt.Errorf("invalid upgrade journal: %w; %s", err, gitRestorationGuidance)

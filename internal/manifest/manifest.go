@@ -195,8 +195,12 @@ func validateInventory(raw json.RawMessage) error {
 			return fmt.Errorf("malformed files inventory: %w", err)
 		}
 		name := tok.(string)
+		local := filepath.FromSlash(name)
 		if name == "" || seen[name] {
 			return fmt.Errorf("duplicate or empty files inventory entry %q", name)
+		}
+		if strings.Contains(name, `\`) || !filepath.IsLocal(local) || filepath.ToSlash(filepath.Clean(local)) != name || name == "." {
+			return fmt.Errorf("non-local or non-canonical files inventory entry %q", name)
 		}
 		seen[name] = true
 		count++

@@ -328,11 +328,6 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 			if want[path] || resident.PreserveRemoval(path, preservedResidents) {
 				continue
 			}
-			// A non-local entry (corrupted or malicious lock) would delete outside
-			// the root and send the ancestor walk below it, never reaching p.root().
-			if !filepath.IsLocal(filepath.FromSlash(path)) {
-				continue
-			}
 			filesystem, outputPath := filesystems.output(path)
 			if entry.TemplateID == localDocTID {
 				if info, existsErr := filesystem.LinkInfo(outputPath); existsErr != nil && !errors.Is(existsErr, fs.ErrNotExist) {

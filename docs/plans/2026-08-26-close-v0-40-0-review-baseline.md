@@ -464,7 +464,13 @@ that `manifest.Parse` and `LoadOptional` still bypassed permanent-inventory vali
 consumers. The settlement makes the ordinary parser own that validation, adds an Uninstall regression
 that proves ambiguous or empty inventory refuses without removing the generated file or lock, and
 adds the missing snapshot-config proof marker. The Uninstall regression failed against the reviewed
-range and passes with the seam correction.
+range and passes with the seam correction. Renewed exact-range review then found two remaining
+unambiguous-authority gaps: non-local lock inventory paths were skipped while other entries could
+mutate, and duplicate fields at nested journal levels survived typed JSON decoding. Mechanical review
+settlement rejects non-local or non-canonical inventory paths at the manifest owner, proves Publisher,
+render, and Uninstall preserve state on refusal, rejects duplicate fields recursively before journal
+decoding, and adds journal-level, operation-level, image-level, and fuzz evidence. All new regressions
+failed against `0d0ad25fe` and pass with the settlement.
 
 Initial plan review corrected one scope error and one lifecycle-ordering ambiguity. Bootstrap cache
 hardening was removed because the approved outline explicitly deferred it. Archive metadata

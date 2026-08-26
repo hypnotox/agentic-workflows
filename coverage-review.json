@@ -8296,11 +8296,11 @@
       "identity": {
         "file": "internal/publisher/sync.go",
         "start": {
-          "line": 373,
+          "line": 368,
           "column": 16
         },
         "end": {
-          "line": 375,
+          "line": 370,
           "column": 3
         },
         "statements": 1
@@ -8309,11 +8309,11 @@
       "movedFrom": {
         "file": "internal/publisher/sync.go",
         "start": {
-          "line": 388,
+          "line": 373,
           "column": 16
         },
         "end": {
-          "line": 390,
+          "line": 375,
           "column": 3
         },
         "statements": 1
@@ -8323,11 +8323,11 @@
       "identity": {
         "file": "internal/publisher/sync.go",
         "start": {
-          "line": 433,
+          "line": 428,
           "column": 16
         },
         "end": {
-          "line": 435,
+          "line": 430,
           "column": 3
         },
         "statements": 1
@@ -8336,11 +8336,11 @@
       "movedFrom": {
         "file": "internal/publisher/sync.go",
         "start": {
-          "line": 448,
+          "line": 433,
           "column": 16
         },
         "end": {
-          "line": 450,
+          "line": 435,
           "column": 3
         },
         "statements": 1
@@ -9589,11 +9589,11 @@
       "identity": {
         "file": "internal/upgrade/journal.go",
         "start": {
-          "line": 549,
+          "line": 594,
           "column": 48
         },
         "end": {
-          "line": 551,
+          "line": 596,
           "column": 3
         },
         "statements": 1
@@ -9602,11 +9602,11 @@
       "movedFrom": {
         "file": "internal/upgrade/journal.go",
         "start": {
-          "line": 529,
+          "line": 549,
           "column": 48
         },
         "end": {
-          "line": 531,
+          "line": 551,
           "column": 3
         },
         "statements": 1
@@ -9616,11 +9616,11 @@
       "identity": {
         "file": "internal/upgrade/journal.go",
         "start": {
-          "line": 661,
+          "line": 706,
           "column": 2
         },
         "end": {
-          "line": 661,
+          "line": 706,
           "column": 16
         },
         "statements": 1
@@ -9629,11 +9629,11 @@
       "movedFrom": {
         "file": "internal/upgrade/journal.go",
         "start": {
-          "line": 641,
+          "line": 661,
           "column": 2
         },
         "end": {
-          "line": 641,
+          "line": 661,
           "column": 16
         },
         "statements": 1
@@ -10510,11 +10510,11 @@
       "identity": {
         "file": "internal/manifest/manifest.go",
         "start": {
-          "line": 249,
+          "line": 253,
           "column": 16
         },
         "end": {
-          "line": 251,
+          "line": 255,
           "column": 3
         },
         "statements": 1
@@ -10523,11 +10523,11 @@
       "movedFrom": {
         "file": "internal/manifest/manifest.go",
         "start": {
-          "line": 251,
+          "line": 249,
           "column": 16
         },
         "end": {
-          "line": 253,
+          "line": 251,
           "column": 3
         },
         "statements": 1
@@ -16844,38 +16844,38 @@
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 373,
-        "targetLine": 373,
+        "line": 368,
+        "targetLine": 368,
         "reason": "sync constructs only authority-valid lock fields, so marshal failure requires a future representation change",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/publisher/sync.go:373, `if err != nil {` is guarded by the preceding `lockBytes, err = lock.Marshal()` at internal/publisher/sync.go:372; in `func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFilesystems, op *outputplan.Plan) (backups []Backup, changes []Change, pruned []string, err error)` (internal/publisher/sync.go:177), the predecessor invariant is sync constructs only authority-valid lock fields, so marshal failure requires a future representation change. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/publisher/sync.go:368, `if err != nil {` is guarded by the preceding `lockBytes, err = lock.Marshal()` at internal/publisher/sync.go:372; in `func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFilesystems, op *outputplan.Plan) (backups []Backup, changes []Change, pruned []string, err error)` (internal/publisher/sync.go:177), the predecessor invariant is sync constructs only authority-valid lock fields, so marshal failure requires a future representation change. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 374,
-        "targetLine": 374,
+        "line": 369,
+        "targetLine": 369,
         "reason": "sync constructs only authority-valid lock fields, so marshal failure requires a future representation change",
         "mapped": false,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFilesystems, op *outputplan.Plan) (backups []Backup, changes []Change, pruned []string, err error)` begins at internal/publisher/sync.go:177; its branch `return backups, changes, pruned, err` at internal/publisher/sync.go:374 follows `if err != nil {` at internal/publisher/sync.go:373. That flow establishes sync constructs only authority-valid lock fields, so marshal failure requires a future representation change, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFilesystems, op *outputplan.Plan) (backups []Backup, changes []Change, pruned []string, err error)` begins at internal/publisher/sync.go:177; its branch `return backups, changes, pruned, err` at internal/publisher/sync.go:369 follows `if err != nil {` at internal/publisher/sync.go:373. That flow establishes sync constructs only authority-valid lock fields, so marshal failure requires a future representation change, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 433,
-        "targetLine": 433,
+        "line": 428,
+        "targetLine": 428,
         "reason": "fixed nonempty completion action always validates as prose",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/publisher/sync.go:433, `if err != nil {` is guarded by the preceding `next, err := presentation.Prose(\"continue with the rendered project state\")` at internal/publisher/sync.go:432; in `func syncMutation(backups []Backup, changes []Change, pruned []string) (presentation.Mutation, error)` (internal/publisher/sync.go:381), the predecessor invariant is fixed nonempty completion action always validates as prose. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/publisher/sync.go:428, `if err != nil {` is guarded by the preceding `next, err := presentation.Prose(\"continue with the rendered project state\")` at internal/publisher/sync.go:432; in `func syncMutation(backups []Backup, changes []Change, pruned []string) (presentation.Mutation, error)` (internal/publisher/sync.go:381), the predecessor invariant is fixed nonempty completion action always validates as prose. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
@@ -17852,8 +17852,8 @@
     {
       "directive": {
         "file": "internal/upgrade/journal.go",
-        "line": 549,
-        "targetLine": 549,
+        "line": 594,
+        "targetLine": 594,
         "reason": "the supported-migration planner validated the same set before this call",
         "mapped": true,
         "executed": false
@@ -17864,8 +17864,8 @@
     {
       "directive": {
         "file": "internal/upgrade/journal.go",
-        "line": 661,
-        "targetLine": 661,
+        "line": 706,
+        "targetLine": 706,
         "reason": "no caller provides a changed set without its path",
         "mapped": true,
         "executed": false

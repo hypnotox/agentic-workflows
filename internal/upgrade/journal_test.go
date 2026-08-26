@@ -1,6 +1,7 @@
 package upgrade
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -196,6 +197,9 @@ func lockJournal(phase string) Journal {
 }
 
 func TestJournalLoadRejections(t *testing.T) {
+	if _, err := ParseJournal(nil); err == nil || !strings.Contains(err.Error(), "malformed") {
+		t.Fatalf("empty journal: %v", err)
+	}
 	root := t.TempDir()
 	mustMkdir(t, filepath.Join(root, ".awf"))
 	mustWrite(t, JournalPath(root), []byte("{not json"))
@@ -1536,6 +1540,85 @@ func TestRecoverRefusesUnboundOrTrailingJournalBeforeMutation(t *testing.T) {
 	}
 }
 
+func TestRecoverRefusesDuplicateJournalFieldsBeforeMutation(t *testing.T) {
+	valid, err := json.Marshal(lockJournal(phaseApplying))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name string
+		old  string
+		dup  string
+	}{
+		{name: "journal field", old: `"phase":"applying"`, dup: `"phase":"prepared","phase":"applying"`},
+		{name: "operation field", old: `"path":"a.txt"`, dup: `"path":"z.txt","path":"a.txt"`},
+		{name: "image field", old: `"present":true`, dup: `"present":false,"present":true`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			journal := bytes.Replace(valid, []byte(tc.old), []byte(tc.dup), 1)
+			if bytes.Equal(journal, valid) {
+				t.Fatalf("duplicate fixture did not replace %s", tc.old)
+			}
+			root := t.TempDir()
+			mustMkdir(t, filepath.Join(root, ".awf"))
+			mustWrite(t, JournalPath(root), journal)
+			mustWrite(t, filepath.Join(root, "a.txt"), []byte("unchanged"))
+			mustWrite(t, filepath.Join(root, LockRel()), []byte("old-lock"))
+			before := captureTree(t, root)
+			if _, err := Recover(root); err == nil {
+				t.Fatal("accepted duplicate journal field")
+			}
+			if after := captureTree(t, root); !slices.Equal(after, before) {
+				t.Fatalf("tree mutated on refusal\nbefore: %#v\nafter:  %#v", before, after)
+			}
+		})
+	}
+}
+
+func testJSONFieldsUnique(input []byte) bool {
+	dec := json.NewDecoder(bytes.NewReader(input))
+	var walk func() bool
+	walk = func() bool {
+		tok, err := dec.Token()
+		if err != nil {
+			return false
+		}
+		delim, ok := tok.(json.Delim)
+		if !ok {
+			return true
+		}
+		if delim == '{' {
+			seen := map[string]bool{}
+			for dec.More() {
+				key, err := dec.Token()
+				name, ok := key.(string)
+				if err != nil || !ok || seen[name] {
+					return false
+				}
+				seen[name] = true
+				if !walk() {
+					return false
+				}
+			}
+		} else if delim == '[' {
+			for dec.More() {
+				if !walk() {
+					return false
+				}
+			}
+		} else {
+			return false
+		}
+		_, err = dec.Token()
+		return err == nil
+	}
+	if !walk() {
+		return false
+	}
+	var extra any
+	return errors.Is(dec.Decode(&extra), io.EOF)
+}
+
 func FuzzParseJournal(f *testing.F) {
 	validJournal := lockJournal(phaseApplying)
 	valid, err := json.Marshal(validJournal)
@@ -1554,7 +1637,10 @@ func FuzzParseJournal(f *testing.F) {
 	if err != nil {
 		f.Fatal(err)
 	}
-	for _, seed := range [][]byte{valid, append(append([]byte(nil), valid...), []byte("\n{}")...), mismatchedBytes, unsortedBytes, []byte(`{"version":1,"phase":"prepared","finalLockSHA256":"","operations":[]}`), []byte(`{"version":1`)} {
+	duplicateJournal := bytes.Replace(valid, []byte(`"phase":"applying"`), []byte(`"phase":"prepared","phase":"applying"`), 1)
+	duplicateOperation := bytes.Replace(valid, []byte(`"path":"a.txt"`), []byte(`"path":"z.txt","path":"a.txt"`), 1)
+	duplicateImage := bytes.Replace(valid, []byte(`"present":true`), []byte(`"present":false,"present":true`), 1)
+	for _, seed := range [][]byte{valid, append(append([]byte(nil), valid...), []byte("\n{}")...), mismatchedBytes, unsortedBytes, duplicateJournal, duplicateOperation, duplicateImage, []byte(`{"version":1,"phase":"prepared","finalLockSHA256":"","operations":[]}`), []byte(`{"version":1`)} {
 		f.Add(seed)
 	}
 	f.Fuzz(func(t *testing.T, input []byte) {
@@ -1573,6 +1659,9 @@ func FuzzParseJournal(f *testing.F) {
 		var extra any
 		if err := dec.Decode(&extra); !errors.Is(err, io.EOF) {
 			t.Fatalf("accepted trailing journal input: %v", err)
+		}
+		if !testJSONFieldsUnique(input) {
+			t.Fatal("accepted journal with duplicate JSON fields")
 		}
 		if len(j.Operations) == 0 {
 			t.Fatal("accepted journal without operations")

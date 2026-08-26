@@ -60,16 +60,15 @@ func TestUninstallRefusesAmbiguousOrEmptyLiveLockBeforeMutation(t *testing.T) {
 	}
 }
 
-// A lock entry escaping the repo root (corrupted or malicious lock) must be
-// skipped: the out-of-tree target survives and the empty-dir ancestor walk
-// terminates instead of looping forever below the root.
-// invariant: rendering/sync-and-drift:uninstall-removes-lock-entries (TestUninstallSkipsEscapingLockPaths)
-func TestUninstallSkipsEscapingLockPaths(t *testing.T) {
+// invariant: config/migrations-and-locks:corrupt-lock-refuses (TestUninstallRefusesEscapingLockPathBeforeMutation)
+// invariant: rendering/sync-and-drift:uninstall-removes-lock-entries (TestUninstallRefusesEscapingLockPathBeforeMutation)
+func TestUninstallRefusesEscapingLockPathBeforeMutation(t *testing.T) {
 	root := t.TempDir()
 	victim := filepath.Join(root, "..", "victim.txt")
 	testsupport.WriteFile(t, victim, "keep me\n")
 	const inTree = ".claude/skills/x/SKILL.md"
-	testsupport.WriteFile(t, filepath.Join(root, inTree), "x\n")
+	inTreePath := filepath.Join(root, inTree)
+	testsupport.WriteFile(t, inTreePath, "x\n")
 	lock := &manifest.Lock{Files: map[string]manifest.Entry{
 		"../victim.txt": {},
 		inTree:          {},
@@ -80,19 +79,13 @@ func TestUninstallSkipsEscapingLockPaths(t *testing.T) {
 	if err := lock.Save(config.LockPath(root)); err != nil {
 		t.Fatal(err)
 	}
-	report, err := Uninstall(testsupport.Context(t), root, nil)
-	if err != nil {
-		t.Fatalf("Uninstall: %v", err)
+	if _, err := Uninstall(testsupport.Context(t), root, nil); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
+		t.Fatalf("Uninstall() error = %v, want corrupt-lock refusal", err)
 	}
-	if report.Removed != 1 {
-		t.Errorf("removed = %d, want 1 (the in-tree file only)", report.Removed)
-	}
-	if _, err := os.Stat(victim); err != nil {
-		t.Errorf("escaping lock entry deleted the out-of-tree file: %v", err)
-	}
-	// invariant: rendering/sync-and-drift:uninstall-removes-lock-entries (TestUninstallSkipsEscapingLockPaths)
-	if _, err := os.Stat(filepath.Join(root, inTree)); !os.IsNotExist(err) {
-		t.Errorf("in-tree lock entry not removed (err = %v)", err)
+	for _, path := range []string{victim, inTreePath, config.LockPath(root)} {
+		if _, err := os.Stat(path); err != nil {
+			t.Fatalf("Uninstall() mutated %s despite refusal: %v", path, err)
+		}
 	}
 }
 
